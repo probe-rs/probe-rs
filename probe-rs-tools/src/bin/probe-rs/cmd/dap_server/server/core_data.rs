@@ -1,8 +1,11 @@
+use std::any::Any;
 use std::collections::HashMap;
 use std::num::NonZeroU32;
+use std::time::Duration;
 use std::{ops::Range, path::Path};
 
 use super::session_data::{self, ActiveBreakpoint, BreakpointType, SourceLocationScope};
+use crate::cmd::dap_server::debug_adapter::dap::repl_commands::ReplCommand;
 use crate::util::rtt::client::RttClient;
 use crate::util::rtt::{self, DataFormat, DefmtProcessor, DefmtState};
 use crate::{
@@ -23,7 +26,9 @@ use crate::{
 };
 use anyhow::{Result, anyhow};
 use probe_rs::semihosting::SemihostingCommand;
-use probe_rs::{BreakpointCause, BreakpointError};
+use probe_rs::{
+    Architecture, BreakpointCause, BreakpointError, CoreInformation, Error, MemoryInterface as _,
+};
 use probe_rs::{Core, CoreStatus, HaltReason, rtt::ScanRegion};
 use probe_rs_debug::VerifiedBreakpoint;
 use probe_rs_debug::{
@@ -57,6 +62,8 @@ pub struct CoreData {
     pub rtt_header_cleared: bool,
     pub next_semihosting_handle: u32,
     pub semihosting_handles: HashMap<u32, SemihostingFile>,
+    pub repl_commands: Vec<ReplCommand>,
+    pub test_data: Box<dyn Any>,
 }
 
 /// File descriptor for files opened by the target.
@@ -70,16 +77,21 @@ pub struct SemihostingFile {
 ///
 /// Usage: To get access to this structure please use the [session_data::SessionData::attach_core] method. Please keep access/locks to this to a minimum duration.
 pub struct CoreHandle<'p> {
+    pub(crate) core_id: usize,
     pub(crate) core: Core<'p>,
     pub(crate) core_data: &'p mut CoreData,
 }
 
 impl CoreHandle<'_> {
+    pub(crate) fn id(&self) -> usize {
+        self.core_id
+    }
+
     /// Some MS DAP requests (e.g. `step`) implicitly expect the core to resume processing and then to optionally halt again, before the request completes.
     ///
     /// This method is used to set the `last_known_status` to [`CoreStatus::Unknown`] (because we cannot verify that it will indeed resume running until we have polled it again),
     ///   as well as [`DebugAdapter::all_cores_halted`] = `false`, without notifying the client of any status changes.
-    pub(crate) fn reset_core_status<P: ProtocolAdapter>(
+    pub(crate) fn reset_core_status<P: ProtocolAdapter + ?Sized>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
     ) {
@@ -124,7 +136,7 @@ impl CoreHandle<'_> {
             CoreStatus::Running | CoreStatus::Sleeping => {
                 let event_body = Some(ContinuedEventBody {
                     all_threads_continued: Some(true), // TODO: Implement multi-core awareness here
-                    thread_id: self.core.id() as i64,
+                    thread_id: self.id() as i64,
                 });
                 debug_adapter.send_event("continued", event_body)?;
                 tracing::trace!("Notified DAP client that the core continued: {:?}", status);
@@ -184,6 +196,7 @@ impl CoreHandle<'_> {
             return Ok(());
         }
 
+        let core_id = self.id();
         let client = if let Some(client) = self.core_data.rtt_client.as_mut() {
             client
         } else {
@@ -195,7 +208,7 @@ impl CoreHandle<'_> {
             ))
         };
 
-        if client.core_id() != self.core.id() {
+        if client.core_id() != core_id {
             return Ok(());
         }
 
@@ -328,7 +341,9 @@ impl CoreHandle<'_> {
     }
 
     /// Clear a single breakpoint from target configuration.
-    pub(crate) fn clear_breakpoint(&mut self, address: u64) -> Result<()> {
+    ///
+    /// Returns whether the breakpoint was successfully cleared.
+    pub(crate) fn clear_breakpoint(&mut self, address: u64) -> Result<bool> {
         match self.core.clear_hw_breakpoint(address) {
             Ok(_) => {}
             Err(probe_rs::Error::BreakpointOperation(BreakpointError::NotFound(_addr))) => {}
@@ -336,8 +351,10 @@ impl CoreHandle<'_> {
         }
         if let Some((breakpoint_position, _)) = self.find_breakpoint_in_cache(address) {
             self.core_data.breakpoints.remove(breakpoint_position);
+            Ok(true)
+        } else {
+            Ok(false)
         }
-        Ok(())
     }
 
     /// Clear all breakpoints of a specified [`super::session_data::BreakpointType`].
@@ -606,7 +623,7 @@ impl CoreHandle<'_> {
                 )));
             }
             SemihostingCommand::ExitError(details) => {
-                debug_adapter.log_to_console(format!("Application has exited with  {details}"));
+                debug_adapter.log_to_console(format!("Application has exited with {details}"));
                 return Ok(CoreStatus::Halted(HaltReason::Breakpoint(
                     BreakpointCause::Semihosting(command),
                 )));
@@ -635,7 +652,7 @@ impl CoreHandle<'_> {
         let event_body = Some(StoppedEventBody {
             reason: reason.to_string(),
             description: Some(description),
-            thread_id: Some(self.core.id() as i64),
+            thread_id: Some(self.id() as i64),
             preserve_focus_hint: Some(false),
             text: None,
             all_threads_stopped: Some(debug_adapter.all_cores_halted),
@@ -645,6 +662,86 @@ impl CoreHandle<'_> {
         tracing::trace!("Notified DAP client that the core halted: {:?}", status);
 
         Ok(())
+    }
+
+    /// Reads memory from the target.
+    ///
+    /// Returns a vector containing as many bytes as possible to read, stopping at the first error.
+    ///
+    /// If we can't read any bytes, returns an error.
+    pub(crate) fn read_memory_lossy(
+        &mut self,
+        mut address: u64,
+        count: usize,
+    ) -> Result<Vec<u8>, Error> {
+        let mut num_bytes_unread = count;
+        // The probe-rs API does not return partially read data.
+        // It either succeeds for the whole buffer or not. However, doing single byte reads is slow, so we will
+        // do reads in larger chunks, until we get an error, and then do smaller reads, then smaller, as long as
+        // we get any data, to make sure we get all the data we can.
+        let mut result_buffer = vec![];
+
+        // Get a suitable chunk size. It needs to be a power of two, at most 256, at most the count.
+        fn chunk_size(count: usize, max_chunk_size: usize) -> usize {
+            (max_chunk_size.min(count) / 2).next_power_of_two()
+        }
+
+        let mut fast_buff = [0u8; 256];
+        let mut max_chunk_size = fast_buff.len();
+
+        while num_bytes_unread > 0 && max_chunk_size > 0 {
+            let chunk_size = chunk_size(num_bytes_unread, max_chunk_size);
+            let buffer = &mut fast_buff[..chunk_size];
+
+            if let Err(e) = self.core.read(address, buffer) {
+                // If we haven't read any data yet, and we could not read a single byte, return an error.
+                if result_buffer.is_empty() && chunk_size == 1 {
+                    return Err(e);
+                }
+
+                // Failed to read chunk, try smaller chunk size.
+                max_chunk_size = chunk_size / 2;
+            } else {
+                result_buffer.extend_from_slice(buffer);
+                address += chunk_size as u64;
+                num_bytes_unread -= chunk_size;
+            }
+        }
+
+        Ok(result_buffer)
+    }
+
+    /// Writes memory of the target core.
+    pub(crate) fn write_memory(&mut self, address: u64, data_bytes: &[u8]) -> Result<(), Error> {
+        self.core.write_8(address, data_bytes)
+    }
+
+    pub(crate) fn reapply_breakpoints(&mut self) {
+        if [Architecture::Riscv, Architecture::Xtensa].contains(&self.core.architecture()) {
+            let saved_breakpoints = std::mem::take(&mut self.core_data.breakpoints);
+
+            for breakpoint in saved_breakpoints {
+                if let Err(error) =
+                    self.set_breakpoint(breakpoint.address, breakpoint.breakpoint_type.clone())
+                {
+                    // This will cause the debugger to show the user an error, but not stop the debugger.
+                    tracing::error!(
+                        "Failed to re-enable breakpoint {:?} after reset. {}",
+                        breakpoint,
+                        error
+                    );
+                }
+            }
+        }
+    }
+
+    pub(crate) fn reset_and_halt(&mut self) -> Result<CoreInformation, Error> {
+        let core_info = self.core.reset_and_halt(Duration::from_millis(500))?;
+
+        // On some architectures, we need to re-enable any breakpoints that were previously set, because the core reset 'forgets' them.
+        self.reapply_breakpoints();
+
+        Ok(core_info)
     }
 }
 

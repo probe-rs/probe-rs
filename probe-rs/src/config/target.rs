@@ -24,7 +24,7 @@ pub struct Target {
     pub name: String,
     /// The cores of the target.
     pub cores: Vec<Core>,
-    /// The name of the flash algorithm.
+    /// The list of available flash algorithms.
     pub flash_algorithms: Vec<RawFlashAlgorithm>,
     /// The memory map of the target.
     pub memory_map: Vec<MemoryRegion>,

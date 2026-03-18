@@ -21,14 +21,14 @@ variants:
     - main
     access:
       boot: true
-  - !Generic
+  - !Nvm
     name: ConfigROM
     range:
-      start: 0x100a000
+      start: 0x100a100
       end: 0x100a300
     cores:
     - main
-  - !Generic
+  - !Nvm
     name: DataFlash
     range:
       start: 0x8000000
@@ -60,14 +60,14 @@ variants:
       end: 0x240000
     cores:
     - main
-  - !Generic
+  - !Nvm
     name: ConfigROM
     range:
-      start: 0x100a000
+      start: 0x100a100
       end: 0x100a300
     cores:
     - main
-  - !Generic
+  - !Nvm
     name: DataFlash
     range:
       start: 0x8000000
@@ -102,14 +102,14 @@ variants:
     - main
     access:
       boot: true
-  - !Generic
+  - !Nvm
     name: ConfigROM
     range:
-      start: 0x100a000
+      start: 0x100a100
       end: 0x100a300
     cores:
     - main
-  - !Generic
+  - !Nvm
     name: DataFlash
     range:
       start: 0x8000000
@@ -134,21 +134,21 @@ variants:
     core_access_options: !Arm
       ap: !v1 0
   memory_map:
-  - !Generic
+  - !Nvm
     name: Flash_Upper
     range:
       start: 0x200000
       end: 0x260000
     cores:
     - main
-  - !Generic
+  - !Nvm
     name: ConfigROM
     range:
-      start: 0x100a000
+      start: 0x100a100
       end: 0x100a300
     cores:
     - main
-  - !Generic
+  - !Nvm
     name: DataFlash
     range:
       start: 0x8000000
@@ -183,14 +183,14 @@ variants:
     - main
     access:
       boot: true
-  - !Generic
+  - !Nvm
     name: ConfigROM
     range:
-      start: 0x100a000
+      start: 0x100a100
       end: 0x100a300
     cores:
     - main
-  - !Generic
+  - !Nvm
     name: DataFlash
     range:
       start: 0x8000000
@@ -215,21 +215,21 @@ variants:
     core_access_options: !Arm
       ap: !v1 0
   memory_map:
-  - !Generic
+  - !Nvm
     name: Flash_Upper
     range:
       start: 0x200000
       end: 0x280000
     cores:
     - main
-  - !Generic
+  - !Nvm
     name: ConfigROM
     range:
-      start: 0x100a000
+      start: 0x100a100
       end: 0x100a300
     cores:
     - main
-  - !Generic
+  - !Nvm
     name: DataFlash
     range:
       start: 0x8000000
@@ -308,7 +308,7 @@ flash_algorithms:
   data_section_offset: 0xc58
   flash_properties:
     address_range:
-      start: 0x100a000
+      start: 0x100a100
       end: 0x100a300
     page_size: 0x10
     erased_byte_value: 0xff

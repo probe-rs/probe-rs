@@ -6,7 +6,7 @@ use std::ops::ControlFlow;
 use probe_rs_target::CoreType;
 
 use crate::unwind_pc_without_debuginfo;
-use probe_rs::MemoryInterface;
+use probe_rs::{InstructionSet, MemoryInterface};
 
 use super::{DebugError, DebugInfo, DebugRegisters, StackFrame};
 
@@ -108,7 +108,7 @@ pub trait ExceptionInterface {
         unwind_registers: &mut DebugRegisters,
         frame_pc: u64,
         _stack_frames: &[StackFrame],
-        instruction_set: Option<probe_rs::InstructionSet>,
+        instruction_set: Option<InstructionSet>,
         _memory: &mut dyn MemoryInterface,
     ) -> ControlFlow<Option<DebugError>> {
         unwind_pc_without_debuginfo(unwind_registers, frame_pc, instruction_set)

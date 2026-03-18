@@ -329,6 +329,56 @@ where
     /// can be called.  Takes no arguments, but may return failure if a batched
     /// operation fails.
     fn flush(&mut self) -> Result<(), ERR>;
+
+    /// Execute a single memory operation.
+    ///
+    /// This function is used to execute a single memory operation, such as reading or writing data.
+    fn execute_single_memory_operation(
+        &mut self,
+        mut operation: Operation<'_>,
+    ) -> Result<(), crate::Error>
+    where
+        Error: From<ERR>,
+    {
+        let result = match operation.operation {
+            OperationKind::Read(ref mut data) => self.read(operation.address, data),
+            OperationKind::Read8(ref mut data) => self.read_8(operation.address, data),
+            OperationKind::Read16(ref mut data) => self.read_16(operation.address, data),
+            OperationKind::Read32(ref mut data) => self.read_32(operation.address, data),
+            OperationKind::Read64(ref mut data) => self.read_64(operation.address, data),
+            OperationKind::Write(data) => self.write(operation.address, data),
+            OperationKind::Write8(data) => self.write_8(operation.address, data),
+            OperationKind::Write16(data) => self.write_16(operation.address, data),
+            OperationKind::Write32(data) => self.write_32(operation.address, data),
+            OperationKind::Write64(data) => self.write_64(operation.address, data),
+            OperationKind::WriteWord8(data) => self.write_word_8(operation.address, data),
+            OperationKind::WriteWord16(data) => self.write_word_16(operation.address, data),
+            OperationKind::WriteWord32(data) => self.write_word_32(operation.address, data),
+            OperationKind::WriteWord64(data) => self.write_word_64(operation.address, data),
+        };
+        result.map_err(Error::from)
+    }
+
+    /// Execute a batch of operations.
+    ///
+    /// Operations are executed in the order they are provided.
+    /// If any operation fails, the remaining operations are not executed.
+    /// The result of each operation is stored in the `result` field of the `Operation` struct.
+    ///
+    /// This method should be implemented for architectures that don't support background memory access.
+    fn execute_memory_operations(&mut self, operations: &mut [Operation<'_>])
+    where
+        Error: From<ERR>,
+    {
+        for operation in operations {
+            let result = self.execute_single_memory_operation(operation.reborrow());
+            let success = result.is_ok();
+            operation.result = Some(result);
+            if !success {
+                break;
+            }
+        }
+    }
 }
 
 // Helper functions to validate address space constraints
@@ -462,5 +512,77 @@ where
 
     fn flush(&mut self) -> Result<(), Error> {
         self.memory_mut().flush().map_err(Error::from)
+    }
+
+    fn execute_memory_operations(&mut self, operations: &mut [Operation<'_>]) {
+        self.memory_mut().execute_memory_operations(operations)
+    }
+}
+
+/// The kind of memory operation that can be batched.
+#[derive(Debug)]
+pub enum OperationKind<'a> {
+    Read(&'a mut [u8]),
+    Read8(&'a mut [u8]),
+    Read16(&'a mut [u16]),
+    Read32(&'a mut [u32]),
+    Read64(&'a mut [u64]),
+    Write(&'a [u8]),
+    Write8(&'a [u8]),
+    Write16(&'a [u16]),
+    Write32(&'a [u32]),
+    Write64(&'a [u64]),
+    WriteWord8(u8),
+    WriteWord16(u16),
+    WriteWord32(u32),
+    WriteWord64(u64),
+}
+
+/// A memory operation that can be batched.
+#[derive(Debug)]
+pub struct Operation<'a> {
+    /// The address of the operation.
+    pub address: u64,
+
+    /// The result of the operation.
+    ///
+    /// If the operation has not been executed yet, this will be `None`. Otherwise, it will contain the result of the operation.
+    pub result: Option<Result<(), Error>>,
+
+    /// The kind of operation.
+    pub operation: OperationKind<'a>,
+}
+
+impl<'a> Operation<'a> {
+    /// Create a new memory operation.
+    pub fn new(address: u64, operation: OperationKind<'a>) -> Self {
+        Operation {
+            address,
+            result: None,
+            operation,
+        }
+    }
+
+    pub(crate) fn reborrow(&mut self) -> Operation<'_> {
+        Operation {
+            address: self.address,
+            result: self.result.take(),
+            operation: match self.operation {
+                OperationKind::Read(ref mut data) => OperationKind::Read(data),
+                OperationKind::Read8(ref mut data) => OperationKind::Read8(data),
+                OperationKind::Read16(ref mut data) => OperationKind::Read16(data),
+                OperationKind::Read32(ref mut data) => OperationKind::Read32(data),
+                OperationKind::Read64(ref mut data) => OperationKind::Read64(data),
+                OperationKind::Write(data) => OperationKind::Write(data),
+                OperationKind::Write8(data) => OperationKind::Write8(data),
+                OperationKind::Write16(data) => OperationKind::Write16(data),
+                OperationKind::Write32(data) => OperationKind::Write32(data),
+                OperationKind::Write64(data) => OperationKind::Write64(data),
+                OperationKind::WriteWord8(data) => OperationKind::WriteWord8(data),
+                OperationKind::WriteWord16(data) => OperationKind::WriteWord16(data),
+                OperationKind::WriteWord32(data) => OperationKind::WriteWord32(data),
+                OperationKind::WriteWord64(data) => OperationKind::WriteWord64(data),
+            },
+        }
     }
 }

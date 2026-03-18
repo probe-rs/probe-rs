@@ -21,14 +21,14 @@ variants:
     - main
     access:
       boot: true
-  - !Generic
+  - !Nvm
     name: ConfigROM
     range:
-      start: 0x100a000
+      start: 0x100a100
       end: 0x100a300
     cores:
     - main
-  - !Generic
+  - !Nvm
     name: DataFlash
     range:
       start: 0x8000000
@@ -62,14 +62,14 @@ variants:
     - main
     access:
       boot: true
-  - !Generic
+  - !Nvm
     name: ConfigROM
     range:
-      start: 0x100a000
+      start: 0x100a100
       end: 0x100a300
     cores:
     - main
-  - !Generic
+  - !Nvm
     name: DataFlash
     range:
       start: 0x8000000

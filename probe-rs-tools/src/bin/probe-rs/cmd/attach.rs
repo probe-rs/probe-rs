@@ -51,6 +51,7 @@ impl Cmd {
             },
             self.run.shared_options.always_print_stacktrace,
             &mut target_output_files,
+            self.run.shared_options.stack_frame_limit,
         )
         .await?;
 

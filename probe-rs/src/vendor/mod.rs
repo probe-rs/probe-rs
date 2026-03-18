@@ -21,7 +21,9 @@ use crate::{
     probe::Probe,
 };
 
+pub mod amd;
 pub mod espressif;
+pub mod holtek;
 pub mod infineon;
 pub mod microchip;
 pub mod nordicsemi;
@@ -71,8 +73,10 @@ pub trait Vendor: Send + Sync + std::fmt::Display {
 
 static VENDORS: LazyLock<RwLock<Vec<Box<dyn Vendor>>>> = LazyLock::new(|| {
     let vendors: Vec<Box<dyn Vendor>> = vec![
+        Box::new(amd::Amd),
         Box::new(microchip::Microchip),
         Box::new(infineon::Infineon),
+        Box::new(holtek::Holtek),
         Box::new(silabs::SiliconLabs),
         Box::new(ti::TexasInstruments),
         Box::new(espressif::Espressif),

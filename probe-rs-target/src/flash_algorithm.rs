@@ -81,6 +81,11 @@ pub struct RawFlashAlgorithm {
     /// and debug messages will be read over RTT.
     #[serde(serialize_with = "hex_option")]
     pub rtt_location: Option<u64>,
+    /// Milliseconds between RTT polls.
+    ///
+    /// Defaults to 20ms.
+    #[serde(default = "default_rtt_poll_interval")]
+    pub rtt_poll_interval: u64,
     /// The properties of the flash on the device.
     pub flash_properties: FlashProperties,
     /// List of cores that can use this algorithm
@@ -199,4 +204,8 @@ impl serde::de::Visitor<'_> for Bytes {
     {
         Ok(v.to_vec())
     }
+}
+
+fn default_rtt_poll_interval() -> u64 {
+    20
 }

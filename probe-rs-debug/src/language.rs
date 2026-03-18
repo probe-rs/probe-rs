@@ -3,7 +3,8 @@ use probe_rs::MemoryInterface;
 
 use crate::{
     Bitfield, DebugError, DebugInfo, GimliReader, Modifier, Variable, VariableCache, VariableName,
-    VariableType, VariableValue, stack_frame::StackFrameInfo, unit_info::UnitInfo,
+    VariableType, VariableValue, function_die::FunctionDie, stack_frame::StackFrameInfo,
+    unit_info::UnitInfo,
 };
 
 /// C, C89, C99, C11, ...
@@ -55,6 +56,15 @@ pub trait ProgrammingLanguage {
         )
     }
     fn format_pointer_type(&self, pointee: Option<&str>) -> String;
+
+    fn format_function_name(
+        &self,
+        function_name: &str,
+        _function_die: &FunctionDie<'_>,
+        _debug_info: &super::DebugInfo,
+    ) -> String {
+        function_name.to_string()
+    }
 
     fn process_tag_with_no_type(&self, _variable: &Variable, tag: gimli::DwTag) -> VariableValue {
         VariableValue::Error(format!("Error: Failed to decode {tag} type reference"))

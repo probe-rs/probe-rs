@@ -548,6 +548,7 @@ pub(super) fn list_espjtag_devices() -> Vec<DebugProbeInfo> {
                     device.serial_number().map(Into::into),
                     &EspUsbJtagFactory,
                     None,
+                    false,
                 )
             })
             .collect(),

@@ -5,7 +5,7 @@ use crate::{
     unwind_pc_without_debuginfo,
 };
 
-use probe_rs::{MemoryInterface, RegisterRole, RegisterValue};
+use probe_rs::{InstructionSet, MemoryInterface, RegisterRole, RegisterValue};
 
 pub struct XtensaExceptionHandler;
 
@@ -35,6 +35,11 @@ impl XtensaExceptionHandler {
 
         // We can try and use FP to unwind SP and RA that allows us to continue unwinding.
 
+        let ra = unwind_registers.get_register_value_by_role(&RegisterRole::ReturnAddress)?;
+        if ra == 0 {
+            return Ok(());
+        }
+
         // Current register values.
         let sp = unwind_registers.get_register_value_by_role(&RegisterRole::StackPointer)?;
 
@@ -45,7 +50,6 @@ impl XtensaExceptionHandler {
             ));
         }
 
-        let ra = unwind_registers.get_register_value_by_role(&RegisterRole::ReturnAddress)?;
         let windowsize = (ra & 0xc000_0000) >> 30;
 
         // Read A0-A3 from current stack frame's Register-Spill Area.
@@ -76,7 +80,10 @@ impl XtensaExceptionHandler {
 
         if windowsize > 1 {
             // The rest of the registers are in the previous stack frame.
-            let frame_sp = memory.read_word_32(caller_sp as u64 - 12)?;
+            let Some(caller_sp) = caller_sp.checked_sub(12) else {
+                return Ok(());
+            };
+            let frame_sp = memory.read_word_32(caller_sp as u64)?;
 
             // We've already read 4 registers out of windowsize * 4.
             const AREGS: [&str; 8] = ["a4", "a5", "a6", "a7", "a8", "a9", "a10", "a11"];
@@ -86,10 +93,13 @@ impl XtensaExceptionHandler {
             let frame_to_read = &mut frame[..regs_to_read as usize];
 
             // For windowsize = 3(12 registers), the offset is -48
-            memory.read_32(
-                frame_sp as u64 - 16 - 4 * regs_to_read,
-                &mut frame_to_read[..],
-            )?;
+            let sp_offset = 16 + 4 * regs_to_read;
+
+            let Some(frame_sp) = (frame_sp as u64).checked_sub(sp_offset) else {
+                return Ok(());
+            };
+
+            memory.read_32(frame_sp, &mut frame_to_read[..])?;
 
             for (reg, reg_value) in AREGS.iter().zip(frame_to_read.iter().copied()) {
                 let reg = unwind_registers
@@ -109,7 +119,7 @@ impl ExceptionInterface for XtensaExceptionHandler {
         unwind_registers: &mut DebugRegisters,
         frame_pc: u64,
         _stack_frames: &[StackFrame],
-        instruction_set: Option<probe_rs::InstructionSet>,
+        instruction_set: Option<InstructionSet>,
         memory: &mut dyn MemoryInterface,
     ) -> ControlFlow<Option<DebugError>> {
         // Use the default method to unwind PC.

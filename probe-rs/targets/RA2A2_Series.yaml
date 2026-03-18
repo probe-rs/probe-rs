@@ -21,7 +21,7 @@ variants:
     - main
     access:
       boot: true
-  - !Generic
+  - !Nvm
     name: ConfigROM
     range:
       start: 0x1010000
@@ -35,7 +35,7 @@ variants:
       end: 0x2000c000
     cores:
     - main
-  - !Generic
+  - !Nvm
     name: DataFlash
     range:
       start: 0x40100000
@@ -62,7 +62,7 @@ variants:
     - main
     access:
       boot: true
-  - !Generic
+  - !Nvm
     name: ConfigROM
     range:
       start: 0x1010000
@@ -76,7 +76,7 @@ variants:
       end: 0x2000c000
     cores:
     - main
-  - !Generic
+  - !Nvm
     name: DataFlash
     range:
       start: 0x40100000

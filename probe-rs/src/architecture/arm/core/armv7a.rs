@@ -188,6 +188,16 @@ impl<'probe> Armv7a<'probe> {
         {
             self.prepare_r0_for_clobber()?;
 
+            // Check CP10/CP11 in CPACR which indicate whether the FPU is enabled;
+            // if it's disabled (both 0) then don't try to read MVFR0 as it would fault.
+            let instruction = build_mrc(15, 0, 0, 1, 0, 2);
+            self.execute_instruction(instruction)?;
+            let instruction = build_mcr(14, 0, 0, 0, 5, 0);
+            let cpacr = Cpacr(self.execute_instruction_with_result(instruction)?);
+            if cpacr.cp(10) == 0 || cpacr.cp(11) == 0 {
+                return Ok(());
+            }
+
             // VMRS r0, MVFR0
             let instruction = build_vmrs(0, 0b0111);
             self.execute_instruction(instruction)?;
@@ -551,7 +561,7 @@ fn check_and_clear_data_abort(
     dbgdscr: Dbgdscr,
 ) -> Result<(), ArmError> {
     // Check if we had any aborts, if so clear them and fail
-    if dbgdscr.adabort_l() || dbgdscr.sdabort_l() {
+    if dbgdscr.adabort_l() || dbgdscr.sdabort_l() || dbgdscr.und_l() {
         let address = Dbgdrcr::get_mmio_address_from_base(base_address)?;
         let mut dbgdrcr = Dbgdrcr(0);
         dbgdrcr.set_cse(true);
@@ -743,6 +753,15 @@ impl CoreInterface for Armv7a<'_> {
         // set writeback values
         self.writeback_registers()?;
 
+        // Disable ITRen before sending RRQ (per ARM C5.7)
+        if self.itr_enabled {
+            let address = Dbgdscr::get_mmio_address_from_base(self.base_address)?;
+            let mut dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
+            dbgdscr.set_itren(false);
+            self.memory.write_word_32(address, dbgdscr.into())?;
+            self.itr_enabled = false;
+        }
+
         run(&mut *self.memory, self.base_address)?;
 
         // Recompute / verify current state
@@ -781,20 +800,20 @@ impl CoreInterface for Armv7a<'_> {
             Some(self.base_address),
         )?;
 
-        // Request halt
-        let address = Dbgdrcr::get_mmio_address_from_base(self.base_address)?;
-        let mut value = Dbgdrcr(0);
-        value.set_hrq(true);
+        if !self.core_halted()? {
+            tracing::warn!("Core not halted after reset, platform-specific setup may be required");
+            tracing::warn!("Requesting halt anyway, but system may already be initialised");
+            let address = Dbgdrcr::get_mmio_address_from_base(self.base_address)?;
+            let mut value = Dbgdrcr(0);
+            value.set_hrq(true);
+            self.memory.write_word_32(address, value.into())?;
+        }
 
-        self.memory.write_word_32(address, value.into())?;
-
-        // Release from reset
         self.sequence.reset_catch_clear(
             &mut *self.memory,
             crate::CoreType::Armv7a,
             Some(self.base_address),
         )?;
-
         self.wait_for_core_halted(timeout)?;
 
         // Update core status
@@ -1816,7 +1835,23 @@ mod test {
         let mut dbgdscr = Dbgdscr(0);
         dbgdscr.set_instrcoml_l(true);
         dbgdscr.set_txfull_l(true);
+        let mut cpacr = Cpacr(0);
+        cpacr.set_cp(10, 0b11);
+        cpacr.set_cp(11, 0b11);
 
+        // CPACR read: MRC
+        probe.expected_write(
+            Dbgitr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            build_mrc(15, 0, 0, 1, 0, 2),
+        );
+        probe.expected_read(
+            Dbgdscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            dbgdscr.into(),
+        );
+        // CPACR read: MCR
+        add_read_reg_expectations(probe, 0, cpacr.0);
+
+        // MVFR0 read
         probe.expected_write(
             Dbgitr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
             build_vmrs(0, 0b0111),
@@ -2250,6 +2285,19 @@ mod test {
 
         // Writeback r0
         add_set_r0_expectation(&mut probe, 0);
+
+        // Disable ITRen
+        let mut dbgdscr = Dbgdscr(0);
+        dbgdscr.set_itren(true);
+        probe.expected_read(
+            Dbgdscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            dbgdscr.into(),
+        );
+        dbgdscr.set_itren(false);
+        probe.expected_write(
+            Dbgdscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            dbgdscr.into(),
+        );
 
         // Write resume request
         let mut dbgdrcr = Dbgdrcr(0);

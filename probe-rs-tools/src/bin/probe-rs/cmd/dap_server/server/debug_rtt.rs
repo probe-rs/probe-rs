@@ -20,10 +20,10 @@ pub struct RttConnection {
 impl RttConnection {
     /// Polls all the available channels for data and transmits data to the client.
     /// If at least one channel had data, then return a `true` status.
-    pub async fn process_rtt_data<'probe, P: ProtocolAdapter>(
+    pub async fn process_rtt_data<P: ProtocolAdapter>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
-        target_core: &mut Core<'probe>,
+        target_core: &mut Core<'_>,
     ) -> bool {
         let mut at_least_one_channel_had_data = false;
         for debugger_rtt_channel in self.debugger_rtt_channels.iter_mut() {
@@ -35,7 +35,7 @@ impl RttConnection {
     }
 
     /// Clean up the RTT connection, restoring the state changes that we made.
-    pub fn clean_up(&mut self, target_core: &mut Core) -> Result<(), DebuggerError> {
+    pub fn clean_up(&mut self, target_core: &mut Core<'_>) -> Result<(), DebuggerError> {
         self.client
             .clean_up(target_core)
             .map_err(|err| DebuggerError::Other(anyhow!(err)))?;
@@ -54,9 +54,9 @@ impl DebuggerRttChannel {
     /// Poll and retrieve data from the target, and send it to the client, depending on the state of `hasClientWindow`.
     /// Doing this selectively ensures that we don't pull data from target buffers until we have an output window, and also helps us drain buffers after the target has entered a `is_halted` state.
     /// Errors will be reported back to the `debug_adapter`, and the return `bool` value indicates whether there was available data that was processed.
-    pub(crate) async fn poll_rtt_data<'probe, P: ProtocolAdapter>(
+    pub(crate) async fn poll_rtt_data<P: ProtocolAdapter>(
         &mut self,
-        core: &mut Core<'probe>,
+        core: &mut Core<'_>,
         debug_adapter: &mut DebugAdapter<P>,
         client: &mut RttClient,
     ) -> bool {

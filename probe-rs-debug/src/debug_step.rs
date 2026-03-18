@@ -1,6 +1,6 @@
 use super::{DebugError, VerifiedBreakpoint, debug_info::DebugInfo};
 use probe_rs::{
-    CoreInterface, CoreStatus, HaltReason,
+    CoreInterface, CoreStatus, Error, HaltReason,
     architecture::{
         arm::ArmError, riscv::communication_interface::RiscvError,
         xtensa::communication_interface::XtensaError,
@@ -366,9 +366,9 @@ fn run_to_address(
                 program_counter = core.halt(Duration::from_millis(500))?.pc;
                 if matches!(
                     error,
-                    probe_rs::Error::Arm(ArmError::Timeout)
-                        | probe_rs::Error::Riscv(RiscvError::Timeout)
-                        | probe_rs::Error::Xtensa(XtensaError::Timeout)
+                    Error::Arm(ArmError::Timeout)
+                        | Error::Riscv(RiscvError::Timeout)
+                        | Error::Xtensa(XtensaError::Timeout)
                 ) {
                     // This is not a quick step and halt operation. Notify the user that we are not going to wait any longer, and then return the current program counter so that the debugger can show the user where the forced halt happened.
                     tracing::error!(

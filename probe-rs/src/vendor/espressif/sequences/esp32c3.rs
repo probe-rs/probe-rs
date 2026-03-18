@@ -69,22 +69,19 @@ impl ESP32C3 {
             RiscvBusAccess::A128,
         ];
         for access in accesses {
-            let method = memory_access_config.default_method(access);
-
-            // FIXME: this is a terrible hack because we should not need to halt to read memory.
-            memory_access_config
-                .set_default_method(access, method.min(MemoryAccessMethod::HaltedSystemBus));
-
-            if method != MemoryAccessMethod::SystemBus {
-                // External data bus
-                // Loading external memory is slower than the CPU. If we can't access something via the
-                // system bus, select the waiting program buffer method.
-                memory_access_config.set_region_override(
-                    access,
-                    0x3C00_0000..0x3C80_0000,
-                    MemoryAccessMethod::WaitingProgramBuffer,
-                );
-            }
+            // External data/instruction bus
+            // Loading external memory is slower than the CPU. If we can't access something via the
+            // system bus, select the waiting program buffer method.
+            memory_access_config.set_region_override(
+                access,
+                0x3C00_0000..0x3C80_0000,
+                MemoryAccessMethod::WaitingProgramBuffer,
+            );
+            memory_access_config.set_region_override(
+                access,
+                0x4200_0000..0x4280_0000,
+                MemoryAccessMethod::WaitingProgramBuffer,
+            );
         }
 
         Ok(())

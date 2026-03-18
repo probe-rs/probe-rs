@@ -481,3 +481,119 @@ memory_mapped_bitfield_register! {
     /// Power up status
     pub pu, _ : 0;
 }
+
+memory_mapped_bitfield_register! {
+    /// DBGVCR - Vector Catch Register
+    pub struct Dbgvcr(u32);
+    0x01C, "DBGVCR",
+    impl From;
+
+    // Vector catch enable for implementations with security extensions:
+    // Exceptions taken to Non-secure PL1 modes.
+    // Without security extensions, fields are UNK/SBZP.
+    /// FIQ interrupt exception Vector catch enable in Non-secure state
+    pub nsf, set_nsf : 31;
+
+    /// IRQ interrupt exception Vector catch enable in Non-secure state
+    pub nsi, set_nsi : 30;
+
+    /// Data Abort exception Vector catch enable in Non-secure state
+    pub nsd, set_nsd : 28;
+
+    /// Prefetch Abort exception Vector catch enable in Non-secure state
+    pub nsp, set_nsp : 27;
+
+    /// Supervisor Call exception Vector catch enable in Non-secure state
+    pub nss, set_nss : 26;
+
+    /// Undefined Instruction exception Vector catch enable in Non-secure state
+    pub nsu, set_nsu : 25;
+
+    // Vector catch enable for implementations with security extensions:
+    // Exceptions taken to Hyp mode in Non-secure state.
+    // Without security extensions, fields are UNK/SBZP.
+    /// FIQ interrupt exception Vector catch enable in Non-secure state
+    pub nshf, set_nshf : 23;
+
+    /// IRQ interrupt exception Vector catch enable in Non-secure state
+    pub nshi, set_nshi : 22;
+
+    /// Hyp Trap or Hyp mode entry exception Vector catch enable in Non-secure state
+    pub nshe, set_nshe : 21;
+
+    /// Data Abort, from Hyp mode exception Vector catch enable in Non-secure state
+    pub nshd, set_nshd : 20;
+
+    /// Prefetch Abort, from Hyp mode exception Vector catch enable in Non-secure state
+    pub nshp, set_nshp : 19;
+
+    /// Hypervisor Call, from Hyp mode exception Vector catch enable in Non-secure state
+    pub nshc, set_nshc : 18;
+
+    /// Undefined Instruction, from Hyp mode exception Vector catch enable in Non-secure state
+    pub nshu, set_nshu : 17;
+
+    // Monitor mode Vector catch enable for implementations with security extensions.
+    // Without security extensions, fields are UNK/SBZP.
+    /// FIQ interrupt exception Vector catch enable, in Secure state on Monitor mode vector
+    pub mf, set_mf : 15;
+
+    /// IRQ interrupt exception Vector catch enable in Secure state on Monitor mode vector
+    pub mi, set_mi : 14;
+
+    /// Data Abort exception exception Vector catch enable in Secure state on Monitor mode vector
+    pub md, set_md : 12;
+
+    /// Prefetch Abort exception exception Vector catch enable in Secure state on Monitor mode vector
+    pub mp, set_mp : 11;
+
+    /// Secure Monitor Call exception Vector catch enable in Secure state
+    pub ms, set_ms : 10;
+
+    // Local vector catch enable bits.
+    // On implementations with security extensions, for exceptiosn taken to Secure state that are
+    // not taken to Monitor mode.
+    /// FIQ interrupt exception Vector catch enable in Secure state
+    pub sf, set_sf : 7;
+
+    /// IRQ interrupt exception Vector catch enable in Secure state
+    pub si, set_si : 6;
+
+    /// DAta Abort exception Vector catch enable in Secure state
+    pub sd, set_sd : 4;
+
+    /// Prefetch Abort exception Vector catch enable in Secure state
+    pub sp, set_sp : 3;
+
+    /// Supervisor Call exception Vector catch enable in Secure state
+    pub ss, set_ss : 2;
+
+    /// Undefined Instruction exception Vector catch enable in Secure state
+    pub su, set_su : 1;
+
+    // Always present:
+    /// Reset Vector catch enable
+    pub r, set_r : 0;
+}
+
+// Implement CPACR with a plain bitfield as it is not memory-mapped.
+bitfield::bitfield! {
+    /// Register mapping for the Coprocessor Access Control Register.
+    #[derive(Copy, Clone)]
+    #[allow(clippy::upper_case_acronyms)]
+    #[allow(non_camel_case_types)]
+    pub struct Cpacr(u32);
+    impl Debug;
+
+    /// Access rights for coprocessor n for accesses from PL1 and PL0
+    pub cp, set_cp : 1, 0, 13;
+
+    /// Disable CP14 access to trace registers
+    pub trcdis, set_trcdis : 28;
+
+    /// Disable use of D16-D31 of the Floating-point Extension register file
+    pub d32dis, set_d32dis : 30;
+
+    /// Disable Advanced SIMD functionality
+    pub asedis, set_asedis : 31;
+}

@@ -163,7 +163,9 @@ impl CoreDump {
     /// # Arguments
     /// * `core`: The core to dump.
     /// * `ranges`: Memory ranges that should be dumped.
-    pub fn dump_core(core: &mut Core, ranges: Vec<Range<u64>>) -> Result<Self, Error> {
+    pub fn dump_core(core: &mut Core<'_>, ranges: Vec<Range<u64>>) -> Result<Self, Error> {
+        core.spill_registers()?;
+
         let mut registers = HashMap::new();
         for register in core.registers().all_registers() {
             let value = core.read_core_reg(register.id())?;

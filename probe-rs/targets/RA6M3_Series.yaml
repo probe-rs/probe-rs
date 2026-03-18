@@ -21,11 +21,11 @@ variants:
     - main
     access:
       boot: true
-  - !Generic
+  - !Nvm
     name: ConfigROM
     range:
-      start: 0x100a000
-      end: 0x100a080
+      start: 0x100a100
+      end: 0x100a180
     cores:
     - main
   - !Generic
@@ -42,7 +42,7 @@ variants:
       end: 0x20080000
     cores:
     - main
-  - !Generic
+  - !Nvm
     name: DataFlash
     range:
       start: 0x40100000
@@ -69,11 +69,11 @@ variants:
     - main
     access:
       boot: true
-  - !Generic
+  - !Nvm
     name: ConfigROM
     range:
-      start: 0x100a000
-      end: 0x100a080
+      start: 0x100a100
+      end: 0x100a180
     cores:
     - main
   - !Generic
@@ -90,7 +90,7 @@ variants:
       end: 0x20080000
     cores:
     - main
-  - !Generic
+  - !Nvm
     name: DataFlash
     range:
       start: 0x40100000

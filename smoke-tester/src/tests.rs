@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use anyhow::Context;
-use colored::Colorize;
+use libtest_mimic::Failed;
 use linkme::distributed_slice;
 use probe_rs::{
     Architecture, Core, CoreInterface, MemoryInterface, Session,
@@ -11,11 +11,11 @@ use probe_rs::{
 
 pub mod stepping;
 
-use crate::{CORE_TESTS, SESSION_TESTS, TestFailure, TestResult, TestTracker, println_test_status};
+use crate::{CORE_TESTS, SESSION_TESTS, TestResult, dut_definition::DutDefinition, skip_test};
 
-#[distributed_slice(CORE_TESTS)]
-pub fn test_register_read(tracker: &TestTracker, core: &mut Core) -> TestResult {
-    println_test_status!(tracker, blue, "Testing register read...");
+#[smoke_tester_macros::test(core)]
+pub fn test_register_read(_dut_definition: &DutDefinition, core: &mut Core) -> TestResult {
+    println!("Testing register read...");
 
     let register = core.registers();
 
@@ -28,9 +28,9 @@ pub fn test_register_read(tracker: &TestTracker, core: &mut Core) -> TestResult 
     Ok(())
 }
 
-#[distributed_slice(CORE_TESTS)]
-fn test_register_write(tracker: &TestTracker, core: &mut Core) -> TestResult {
-    println_test_status!(tracker, blue, "Testing register write...");
+#[smoke_tester_macros::test(core)]
+fn test_register_write(_definition: &DutDefinition, core: &mut Core) -> TestResult {
+    println!("Testing register write...");
 
     let register = core.registers();
 
@@ -69,16 +69,8 @@ fn test_register_write(tracker: &TestTracker, core: &mut Core) -> TestResult {
     Ok(())
 }
 
-fn test_write_read(
-    scenario: &str,
-    tracker: &TestTracker,
-    core: &mut Core,
-    address: u64,
-    data: &[u8],
-) -> TestResult {
-    println_test_status!(
-        tracker,
-        blue,
+fn test_write_read(scenario: &str, core: &mut Core, address: u64, data: &[u8]) -> TestResult {
+    println!(
         "Testing: write and read at address {:#010X}: {scenario}",
         address
     );
@@ -101,8 +93,8 @@ fn test_write_read(
     Ok(())
 }
 
-#[distributed_slice(CORE_TESTS)]
-fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
+#[smoke_tester_macros::test(core)]
+fn test_memory_access(_dut: &DutDefinition, core: &mut Core) -> TestResult {
     let memory_regions = core
         .memory_regions()
         .filter_map(MemoryRegion::as_ram_region)
@@ -113,16 +105,14 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
     for ram in memory_regions {
         let ram_start = ram.range.start;
         let ram_size = ram.range.end - ram.range.start;
-        println_test_status!(
-            tracker,
-            blue,
+        println!(
             "Testing region: {} ({:#010X} - {:#010X})",
             ram.name.as_deref().unwrap_or("<unnamed region>"),
             ram.range.start,
             ram.range.end
         );
 
-        println_test_status!(tracker, blue, "Test - RAM Start 32");
+        println!("Test - RAM Start 32");
         // Write first word
         core.write_word_32(ram_start, 0xababab)?;
         let value = core.read_word_32(ram_start)?;
@@ -131,7 +121,7 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
             "Error reading back 4 bytes from address {ram_start:#010X}"
         );
 
-        println_test_status!(tracker, blue, "Test - RAM End 32");
+        println!("Test - RAM End 32");
         // Write last word
         let addr = ram_start + ram_size - 4;
         core.write_word_32(addr, 0xababac)?;
@@ -141,7 +131,7 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
             "Error reading back 4 bytes from address {addr:#010X}"
         );
 
-        println_test_status!(tracker, blue, "Test - RAM Start 8");
+        println!("Test - RAM Start 8");
         // Write first byte
         core.write_word_8(ram_start, 0xac)?;
         let value = core.read_word_8(ram_start)?;
@@ -150,7 +140,7 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
             "Error reading back 1 byte from address {ram_start:#010X}"
         );
 
-        println_test_status!(tracker, blue, "Test - RAM 8 Unaligned");
+        println!("Test - RAM 8 Unaligned");
         let address = ram_start + 1;
         let data = 0x23;
         // Write last byte
@@ -165,7 +155,7 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
             "Error reading back 1 byte from address {address:#010X}"
         );
 
-        println_test_status!(tracker, blue, "Test - RAM End 8");
+        println!("Test - RAM End 8");
         // Write last byte
         let address = ram_start + ram_size - 1;
         core.write_word_8(address, 0xcd)
@@ -179,17 +169,15 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
             "Error reading back 1 byte from address {address:#010X}"
         );
 
-        test_write_read("1 byte at RAM start", tracker, core, ram_start, &[0x56])?;
+        test_write_read("1 byte at RAM start", core, ram_start, &[0x56])?;
         test_write_read(
             "4 bytes at RAM start",
-            tracker,
             core,
             ram_start,
             &[0x12, 0x34, 0x56, 0x78],
         )?;
         test_write_read(
             "4 bytes at RAM end",
-            tracker,
             core,
             ram_start + ram_size - 4,
             &[0x12, 0x34, 0x56, 0x78],
@@ -199,9 +187,9 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
     Ok(())
 }
 
-#[distributed_slice(CORE_TESTS)]
-fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
-    println_test_status!(tracker, blue, "Testing HW breakpoints");
+#[smoke_tester_macros::test(core)]
+fn test_hw_breakpoints(_definition: &DutDefinition, core: &mut Core) -> TestResult {
+    println!("Testing HW breakpoints");
 
     let memory_regions: Vec<_> = core
         .memory_regions()
@@ -211,17 +199,13 @@ fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
         .collect();
 
     if memory_regions.is_empty() {
-        return Err(TestFailure::Skipped(
-            "No NVM memory regions found, unable to test HW breakpoints.".to_string(),
-        ));
+        skip_test!("No NVM memory regions found, unable to test HW breakpoints.".to_string());
     }
 
     // For this test, we assume that code is executed from Flash / non-volatile memory, and try to set breakpoints
     // in these regions.
     for region in memory_regions {
-        println_test_status!(
-            tracker,
-            blue,
+        println!(
             "Testing region: {} ({:#010X} - {:#010X})",
             region.name.as_deref().unwrap_or("<unnamed region>"),
             region.range.start,
@@ -231,10 +215,10 @@ fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
 
         let num_breakpoints = core.available_breakpoint_units()?;
 
-        println_test_status!(tracker, blue, "{} breakpoints supported", num_breakpoints);
+        println!("{} breakpoints supported", num_breakpoints);
 
         if num_breakpoints == 0 {
-            println_test_status!(tracker, blue, "No HW breakpoints supported");
+            println!("No HW breakpoints supported");
             continue;
         }
 
@@ -292,16 +276,10 @@ fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
     Ok(())
 }
 
-#[distributed_slice(SESSION_TESTS)]
-pub fn test_flashing(tracker: &TestTracker, session: &mut Session) -> Result<(), TestFailure> {
-    let Some(test_binary) = tracker
-        .current_dut_definition()
-        .flash_test_binary
-        .as_deref()
-    else {
-        return Err(TestFailure::MissingResource(
-            "No flash test binary specified".to_string(),
-        ));
+#[smoke_tester_macros::test(session)]
+pub fn test_flashing(dut_definition: &DutDefinition, session: &mut Session) -> Result<(), Failed> {
+    let Some(test_binary) = dut_definition.flash_test_binary.as_deref() else {
+        skip_test!("No flash test binary specified");
     };
 
     let mut options = DownloadOptions::default();
@@ -310,8 +288,8 @@ pub fn test_flashing(tracker: &TestTracker, session: &mut Session) -> Result<(),
         print!(".");
     });
 
-    println_test_status!(tracker, blue, "Starting flashing test");
-    println_test_status!(tracker, blue, "Binary: {}", test_binary.display());
+    println!("Starting flashing test");
+    println!("Binary: {}", test_binary.display());
 
     let start_time = Instant::now();
 
@@ -322,17 +300,12 @@ pub fn test_flashing(tracker: &TestTracker, session: &mut Session) -> Result<(),
     println!();
 
     if let Err(err) = result {
-        return Err(TestFailure::Error(err.into()));
+        return Err(err.into());
     }
 
-    println_test_status!(
-        tracker,
-        blue,
-        "Total time for flashing: {:.2?}",
-        start_time.elapsed()
-    );
+    println!("Total time for flashing: {:.2?}", start_time.elapsed());
 
-    println_test_status!(tracker, blue, "Finished flashing");
+    println!("Finished flashing");
 
     Ok(())
 }
