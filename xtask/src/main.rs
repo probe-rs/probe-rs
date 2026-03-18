@@ -34,6 +34,23 @@ enum Cli {
         /// The version to be released in semver format.
         version: String,
     },
+    /// Creates a local sync branch from OpenSiFli/master and merges an upstream ref with --no-ff.
+    SyncUpstream {
+        /// The upstream tag or ref to merge, e.g. v0.30.0 or probe-rs/master.
+        upstream_ref: String,
+        /// Upstream remote to fetch before creating the sync branch.
+        #[arg(long, default_value = "probe-rs")]
+        upstream_remote: String,
+        /// Base ref for the OpenSiFli release branch.
+        #[arg(long, default_value = "OpenSiFli/master")]
+        base_ref: String,
+        /// Local branch name to create. Defaults to sync/<upstream-ref>.
+        #[arg(long)]
+        branch: Option<String>,
+        /// Print the git commands without changing the repository.
+        #[arg(long, default_value_t = false)]
+        dry_run: bool,
+    },
     AssembleChangelog {
         /// The version to be released
         version: String,
@@ -61,6 +78,13 @@ fn try_main() -> anyhow::Result<()> {
     match Cli::parse() {
         Cli::FetchPrs => fetch_prs()?,
         Cli::Release { version } => create_release_pr(version)?,
+        Cli::SyncUpstream {
+            upstream_ref,
+            upstream_remote,
+            base_ref,
+            branch,
+            dry_run,
+        } => sync_upstream(upstream_ref, upstream_remote, base_ref, branch, dry_run)?,
         Cli::AssembleChangelog {
             version,
             force,
@@ -109,6 +133,158 @@ fn create_release_pr(version: String) -> Result<()> {
     .run()?;
 
     Ok(())
+}
+
+fn sync_upstream(
+    upstream_ref: String,
+    upstream_remote: String,
+    base_ref: String,
+    branch: Option<String>,
+    dry_run: bool,
+) -> Result<()> {
+    let sh = Shell::new()?;
+    let branch = branch.unwrap_or_else(|| default_sync_branch_name(&upstream_ref));
+
+    ensure!(
+        !branch.trim().is_empty(),
+        "Derived sync branch name is empty. Pass --branch explicitly."
+    );
+
+    if dry_run {
+        let message = format!("sync: merge {upstream_ref} from {upstream_remote}");
+
+        println!("Dry run, no changes made.");
+        println!("  git fetch OpenSiFli");
+        println!("  git fetch {upstream_remote} --tags");
+        println!("  git switch -c {branch} {base_ref}");
+        println!("  git merge --no-ff --log -m \"{message}\" {upstream_ref}");
+        return Ok(());
+    }
+
+    ensure_clean_worktree(&sh)?;
+
+    cmd!(sh, "git fetch OpenSiFli").run()?;
+    cmd!(sh, "git fetch {upstream_remote} --tags").run()?;
+
+    ensure_ref_exists(&sh, &base_ref, "base ref")?;
+    ensure_ref_exists(&sh, &upstream_ref, "upstream ref")?;
+    ensure_valid_branch_name(&sh, &branch)?;
+    ensure_local_branch_absent(&sh, &branch)?;
+
+    let message = format!("sync: merge {upstream_ref} from {upstream_remote}");
+
+    cmd!(sh, "git switch -c {branch} {base_ref}").run()?;
+    cmd!(sh, "git merge --no-ff --log -m {message} {upstream_ref}").run()?;
+
+    println!();
+    println!("Prepared sync branch '{branch}'.");
+    println!("Next steps:");
+    println!("  1. Resolve conflicts and refresh any OpenSiFli-only patches.");
+    println!("  2. Run CI and SiFli smoke tests on '{branch}'.");
+    println!("  3. Push '{branch}' and open a PR into OpenSiFli/master once it is ready.");
+
+    Ok(())
+}
+
+fn ensure_clean_worktree(sh: &Shell) -> Result<()> {
+    let status = cmd!(sh, "git status --short").read()?;
+
+    ensure!(
+        status.trim().is_empty(),
+        "Working tree has local changes. Commit or stash them before starting an upstream sync."
+    );
+
+    Ok(())
+}
+
+fn ensure_ref_exists(sh: &Shell, git_ref: &str, label: &str) -> Result<()> {
+    let exists = cmd!(sh, "git rev-parse --verify --quiet {git_ref}")
+        .quiet()
+        .ignore_status()
+        .output()?
+        .status
+        .success();
+
+    ensure!(exists, "Unknown {label} '{git_ref}'.");
+
+    Ok(())
+}
+
+fn ensure_valid_branch_name(sh: &Shell, branch: &str) -> Result<()> {
+    let valid = cmd!(sh, "git check-ref-format --branch {branch}")
+        .quiet()
+        .ignore_status()
+        .output()?
+        .status
+        .success();
+
+    ensure!(
+        valid,
+        "Invalid branch name '{branch}'. Pass --branch with a valid local branch name."
+    );
+
+    Ok(())
+}
+
+fn ensure_local_branch_absent(sh: &Shell, branch: &str) -> Result<()> {
+    let full_ref = format!("refs/heads/{branch}");
+    let exists = cmd!(sh, "git show-ref --verify --quiet {full_ref}")
+        .quiet()
+        .ignore_status()
+        .output()?
+        .status
+        .success();
+
+    ensure!(
+        !exists,
+        "Local branch '{branch}' already exists. Delete it first or pass --branch with a new name."
+    );
+
+    Ok(())
+}
+
+fn default_sync_branch_name(upstream_ref: &str) -> String {
+    let upstream_ref = upstream_ref
+        .trim()
+        .trim_start_matches("refs/tags/")
+        .trim_start_matches("refs/heads/");
+    let branch = sanitize_branch_component(upstream_ref);
+
+    format!(
+        "sync/{}",
+        if branch.is_empty() {
+            "upstream"
+        } else {
+            &branch
+        }
+    )
+}
+
+fn sanitize_branch_component(value: &str) -> String {
+    let mut branch = String::with_capacity(value.len());
+    let mut last_was_dash = false;
+
+    for ch in value.chars() {
+        let mapped = match ch {
+            'a'..='z' | 'A'..='Z' | '0'..='9' | '.' | '_' | '-' => Some(ch),
+            '/' | ':' | ' ' => Some('-'),
+            _ => Some('-'),
+        };
+
+        if let Some(ch) = mapped {
+            if ch == '-' {
+                if !last_was_dash {
+                    branch.push(ch);
+                }
+                last_was_dash = true;
+            } else {
+                branch.push(ch);
+                last_was_dash = false;
+            }
+        }
+    }
+
+    branch.trim_matches('-').to_string()
 }
 
 const CHANGELOG_CATEGORIES: &[&str] = &["Added", "Changed", "Fixed", "Removed"];
@@ -557,6 +733,41 @@ fn assemble_changelog(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{default_sync_branch_name, sanitize_branch_component};
+
+    #[test]
+    fn derives_sync_branch_from_tag() {
+        assert_eq!(default_sync_branch_name("v0.30.0"), "sync/v0.30.0");
+        assert_eq!(
+            default_sync_branch_name("refs/tags/v0.30.0"),
+            "sync/v0.30.0"
+        );
+    }
+
+    #[test]
+    fn derives_sync_branch_from_branch_ref() {
+        assert_eq!(
+            default_sync_branch_name("probe-rs/master"),
+            "sync/probe-rs-master"
+        );
+        assert_eq!(
+            default_sync_branch_name("refs/heads/release/0.30"),
+            "sync/release-0.30"
+        );
+    }
+
+    #[test]
+    fn sanitizes_invalid_branch_characters() {
+        assert_eq!(
+            sanitize_branch_component(" release candidate:v0.30.0 "),
+            "release-candidate-v0.30.0"
+        );
+        assert_eq!(sanitize_branch_component("///"), "");
+    }
 }
 
 fn write_changelog_section(

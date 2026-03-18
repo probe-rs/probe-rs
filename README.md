@@ -7,6 +7,8 @@ written in Rust
 
 This repository is a fork of the original [probe-rs](https://github.com/probe-rs/probe-rs) maintained by OpenSiFli.
 
+OpenSiFli publishes from `OpenSiFli/master` and syncs upstream `probe-rs` releases with merge-based sync branches. Maintainers should use `cargo xtask sync-upstream <upstream-tag>` and follow [doc/release.md](doc/release.md) instead of rebasing the public release branch.
+
 The goal of this library is to provide a toolkit to interact with a variety of embedded MCUs and debug probes and provides a direct interface to the debug probe,
 which then enables other software to use its debug functionality.
 
