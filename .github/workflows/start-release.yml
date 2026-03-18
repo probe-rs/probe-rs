@@ -49,7 +49,7 @@ jobs:
           git config user.name "probe-rs"
           git config user.email "bot@probe.rs"
           git config --global gpg.format ssh
-          git config --global user.signingkey 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGr8+OZiQ6EHlhZcsPbnbkiW0wBtgNYGR2J5SI+QOw9Q bot@probe.rs'
+          git config --global user.signingkey 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEZPDbrqwBsmBL+n123GWqUIn3X4PZIeqWBrlh7kNzml opensifli-probe-rs'
           git fetch --unshallow
           git fetch --tags
 
