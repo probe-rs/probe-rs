@@ -22,7 +22,9 @@ tracing = "0.1"
 serde.workspace = true
 yaml_serde.workspace = true
 
-espflash = { version = "4", default-features = false }
+# Temporary: latest release of espflash lacks full C61 support — use a needed rev until merged
+espflash = { git = "https://github.com/esp-rs/espflash", rev = "b985936", default-features = false }
+# espflash = { version = "4", default-features = false }
 
 [build-dependencies]
 probe-rs = { workspace = true, features = ["test"] }
