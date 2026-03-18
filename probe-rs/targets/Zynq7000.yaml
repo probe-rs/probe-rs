@@ -1,0 +1,100 @@
+# Generated from https://github.com/adamgreig/zynq7000-qspi-flash-algorithm
+#
+# Zynq-7000 SoCs have three APs:
+# 0: MEM-AP that masters the main memory bus, can access all memory
+#    without CPU intervention, but is not on the CPU debug bus.
+#    Debug component access is via global memory-mapped address.
+#    Can't modify debug registers when software lock is active.
+# 1: MEM-AP on the APB-AP debug bus. Can only access debug peripherals.
+#    Uses a different debug base address, hence 0x80090000 below instead
+#    of the global address 0xF8890000 in the user guide.
+# 2: JTAG-AP which can only be used to drive SRST from debug.
+#
+# By default, the BootROM maps the first 192kB of OCM to the lower addresses,
+# leaving the final 64kB mapped to the top 64kB of address space.
+---
+name: Zynq 7000 Series
+manufacturer:
+  id: 0xC9
+  cc: 0x0
+variants:
+- name: X7Z
+  cores:
+    - name: core0
+      type: armv7a
+      core_access_options: !Arm
+        ap: !v1 1
+        debug_base: 0x80090000
+        cti_base: 0x80098000
+        jtag_tap: 1
+    - name: core1
+      type: armv7a
+      core_access_options: !Arm
+        ap: !v1 1
+        debug_base: 0x80092000
+        cti_base: 0x80099000
+        jtag_tap: 1
+  jtag:
+    scan_chain:
+      - name: PL
+        ir_len: 6
+      - name: PS
+        ir_len: 4
+  rtt_scan_ranges:
+    - start: 0x00000000
+      end: 0x00030000
+  memory_map:
+    - !Ram
+      name: OCM
+      range:
+        start: 0x00000000
+        end: 0x00030000
+      cores:
+        - core0
+        - core1
+    - !Ram
+      name: DDR
+      range:
+        start: 0x00100000
+        end: 0x3fffffff
+      cores:
+        - core0
+        - core1
+    - !Nvm
+      name: QSPI
+      range:
+        start: 0xfc000000
+        end: 0xfcffffff
+      cores:
+        - core0
+        - core1
+  flash_algorithms:
+    - zynq7000-qspi-flash-algorithm
+flash_algorithms:
+- name: zynq7000-qspi-flash-algorithm
+  description: Flash algorithm for generic QSPI x1 external flash setup
+  default: true
+  instructions: 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
+  load_address: 0x20
+  pc_init: 0x1c4
+  pc_uninit: 0x52c
+  pc_program_page: 0x2ec
+  pc_erase_sector: 0xd8
+  pc_erase_all: 0x44
+  pc_verify: 0x588
+  pc_blank_check: 0x0
+  pc_read: 0x4e0
+  data_section_offset: 0x974
+  flash_properties:
+    address_range:
+      start: 0xfc000000
+      end: 0xfd000000
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+  cores:
+  - core0

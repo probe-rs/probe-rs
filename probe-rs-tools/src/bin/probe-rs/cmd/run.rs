@@ -145,6 +145,10 @@ pub struct SharedOptions {
     #[clap(long)]
     pub(crate) always_print_stacktrace: bool,
 
+    /// Limit the number of stack frames to print.
+    #[clap(long, default_value = "500")]
+    pub(crate) stack_frame_limit: u32,
+
     /// Suppress filename and line number information from the rtt log
     #[clap(long)]
     pub(crate) no_location: bool,
@@ -255,6 +259,7 @@ impl Cmd {
                 Some(rtt_client),
                 &mut target_output_files,
                 semihosting_options,
+                self.shared_options.stack_frame_limit,
             )
             .await
         } else {
@@ -271,6 +276,7 @@ impl Cmd {
                 },
                 self.shared_options.always_print_stacktrace,
                 &mut target_output_files,
+                self.shared_options.stack_frame_limit,
             )
             .await
         }
@@ -423,7 +429,7 @@ impl<'a> ElfReader<'a> {
 }
 
 impl EmbeddedTestElfInfo {
-    fn from_elf(path: &Path) -> anyhow::Result<Option<Self>> {
+    pub(crate) fn from_elf(path: &Path) -> anyhow::Result<Option<Self>> {
         let mut file = File::open(path).map_err(FileDownloadError::IO)?;
 
         let mut buffer = Vec::new();

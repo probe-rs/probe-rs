@@ -9,10 +9,13 @@ use super::{
 use crate::{SourceLocation, VerifiedBreakpoint, stack_frame::StackFrameInfo, unit_info::RangeExt};
 use gimli::{
     BaseAddresses, DebugFrame, RunTimeEndian, UnwindContext, UnwindSection, UnwindTableRow,
+    read::RegisterRule,
 };
 use object::read::{Object, ObjectSection};
-use probe_rs::{Error, MemoryInterface, RegisterDataType, RegisterRole, RegisterValue, UnwindRule};
-use probe_rs_target::InstructionSet;
+use probe_rs::{
+    CoreRegister, Error, InstructionSet, MemoryInterface, RegisterDataType, RegisterRole,
+    RegisterValue, UnwindRule,
+};
 use std::{
     borrow, cmp::Ordering, num::NonZeroU64, ops::ControlFlow, path::Path, rc::Rc, str::from_utf8,
 };
@@ -541,8 +544,15 @@ impl DebugInfo {
         initial_registers: DebugRegisters,
         exception_handler: &dyn ExceptionInterface,
         instruction_set: Option<InstructionSet>,
-    ) -> Result<Vec<StackFrame>, probe_rs::Error> {
-        self.unwind_impl(initial_registers, core, exception_handler, instruction_set)
+        max_stack_frame_count: usize,
+    ) -> Result<Vec<StackFrame>, Error> {
+        self.unwind_impl(
+            initial_registers,
+            core,
+            exception_handler,
+            instruction_set,
+            max_stack_frame_count,
+        )
     }
 
     pub(crate) fn unwind_impl(
@@ -551,7 +561,8 @@ impl DebugInfo {
         memory: &mut impl MemoryInterface,
         exception_handler: &dyn ExceptionInterface,
         instruction_set: Option<InstructionSet>,
-    ) -> Result<Vec<StackFrame>, probe_rs::Error> {
+        max_stack_frame_count: usize,
+    ) -> Result<Vec<StackFrame>, Error> {
         let mut stack_frames = Vec::<StackFrame>::new();
 
         let mut unwind_context = Box::new(gimli::UnwindContext::new());
@@ -568,9 +579,13 @@ impl DebugInfo {
                 }
             })
         {
+            if stack_frames.len() >= max_stack_frame_count {
+                tracing::warn!("Stopped unwinding the stack after {max_stack_frame_count} frames");
+                break;
+            }
             let frame_pc = frame_pc_register_value.try_into().map_err(|error| {
                 let message = format!("Cannot convert register value for program counter to a 64-bit integer value: {error:?}");
-                probe_rs::Error::Register(message)
+                Error::Register(message)
             })?;
 
             // PART 1: Construct the `StackFrame`s for the current program counter.
@@ -766,10 +781,8 @@ impl DebugInfo {
             let Ok(current_pc) =
                 callee_frame_registers.get_register_value_by_role(&RegisterRole::ProgramCounter)
             else {
-                let error =    probe_rs::Error::Other(
-                        "UNWIND: Tried to unwind return address value where current program counter is unknown.".to_string()
-                    );
-                tracing::error!("{:?}", &error);
+                let error = "UNWIND: Tried to unwind return address value where current program counter is unknown.";
+                tracing::error!("{error}");
                 if let Some(first_frame) = stack_frames.last_mut() {
                     first_frame.function_name =
                         format!("{} : ERROR: {error}", first_frame.function_name);
@@ -1036,7 +1049,7 @@ pub fn get_unwind_info<'a>(
 pub fn determine_cfa<R: gimli::ReaderOffset>(
     unwind_registers: &DebugRegisters,
     unwind_info: &UnwindTableRow<R>,
-) -> Result<Option<u64>, probe_rs::Error> {
+) -> Result<Option<u64>, Error> {
     let gimli::CfaRule::RegisterAndOffset { register, offset } = unwind_info.cfa() else {
         unimplemented!()
     };
@@ -1085,7 +1098,7 @@ pub fn determine_cfa<R: gimli::ReaderOffset>(
 pub fn unwind_pc_without_debuginfo(
     unwind_registers: &mut DebugRegisters,
     _frame_pc: u64,
-    instruction_set: Option<probe_rs::InstructionSet>,
+    instruction_set: Option<InstructionSet>,
 ) -> ControlFlow<Option<DebugError>> {
     // For non exception frames, we cannot do stack unwinding if we do not have debug info.
     // However, there is one case where we can continue. When the frame registers have a valid
@@ -1106,7 +1119,7 @@ pub fn unwind_pc_without_debuginfo(
             callee_frame_registers.get_register_value_by_role(&RegisterRole::ProgramCounter)
         else {
             return ControlFlow::Break(
-                Some(probe_rs::Error::Other(
+                Some(Error::Other(
                     "UNWIND: Tried to unwind return address value where current program counter is unknown.".to_string()
                 ).into())
             );
@@ -1134,9 +1147,7 @@ pub fn unwind_register(
     unwind_info: &gimli::UnwindTableRow<GimliReaderOffset>,
     unwind_cfa: Option<u64>,
     memory: &mut dyn MemoryInterface,
-) -> Result<Option<RegisterValue>, probe_rs::Error> {
-    use gimli::read::RegisterRule;
-
+) -> Result<Option<RegisterValue>, Error> {
     // If we do not have unwind info, or there is no register rule, then use UnwindRule::Undefined.
     let register_rule = debug_register
         .dwarf_id
@@ -1153,12 +1164,12 @@ pub fn unwind_register(
 }
 
 fn unwind_register_using_rule(
-    debug_register: &probe_rs::CoreRegister,
+    debug_register: &CoreRegister,
     callee_frame_registers: &DebugRegisters,
     unwind_cfa: Option<u64>,
     memory: &mut dyn MemoryInterface,
     register_rule: gimli::RegisterRule<usize>,
-) -> Result<Option<RegisterValue>, probe_rs::Error> {
+) -> Result<Option<RegisterValue>, Error> {
     use gimli::read::RegisterRule;
 
     let mut register_rule_string = format!("{register_rule:?}");
@@ -1195,7 +1206,7 @@ fn unwind_register_using_rule(
                         .get_register_value_by_role(&RegisterRole::ProgramCounter)
                     else {
                         return Err(
-                            probe_rs::Error::Other(
+                            Error::Other(
                                 "UNWIND: Tried to unwind return address value where current program counter is unknown.".to_string()
                             )
                         );
@@ -1206,7 +1217,7 @@ fn unwind_register_using_rule(
                         .and_then(|lr| lr.value)
                     else {
                         return Err(
-                            probe_rs::Error::Other(
+                            Error::Other(
                                 "UNWIND: Tried to unwind return address value where current return address is unknown.".to_string()
                             )
                         );
@@ -1261,7 +1272,7 @@ fn unwind_register_using_rule(
         RegisterRule::Offset(address_offset) => {
             // "The previous value of this register is saved at the address CFA+N where CFA is the current CFA value and N is a signed offset"
             let Some(unwind_cfa) = unwind_cfa else {
-                return Err(probe_rs::Error::Other(
+                return Err(Error::Other(
                     "UNWIND: Tried to unwind `RegisterRule` at CFA = None.".to_string(),
                 ));
             };
@@ -1336,7 +1347,7 @@ fn unwind_program_counter_register(
     register_rule_string: &mut String,
 ) -> Option<RegisterValue> {
     if return_address.is_max_value() || return_address.is_zero() {
-        tracing::warn!(
+        tracing::debug!(
             "No reliable return address is available, so we cannot determine the program counter to unwind the previous frame."
         );
         return None;
@@ -1546,6 +1557,7 @@ mod test {
                 &mut mocked_mem,
                 exception_handler.as_ref(),
                 Some(probe_rs_target::InstructionSet::Thumb2),
+                500,
             )
             .unwrap();
 
@@ -1698,6 +1710,7 @@ mod test {
                 &mut dummy_mem,
                 exception_handler.as_ref(),
                 Some(probe_rs_target::InstructionSet::Thumb2),
+                500,
             )
             .unwrap();
 
@@ -1824,6 +1837,7 @@ mod test {
                 &mut dummy_mem,
                 exception_handler.as_ref(),
                 Some(probe_rs_target::InstructionSet::Thumb2),
+                500,
             )
             .unwrap();
 
@@ -1916,6 +1930,7 @@ mod test {
                 &mut dummy_mem,
                 exception_handler.as_ref(),
                 Some(probe_rs_target::InstructionSet::Thumb2),
+                500,
             )
             .unwrap();
 
@@ -1946,6 +1961,7 @@ mod test {
                 initial_registers,
                 exception_handler.as_ref(),
                 Some(instruction_set),
+                1000,
             )
             .unwrap();
 
@@ -1991,6 +2007,7 @@ mod test {
                 initial_registers,
                 exception_handler.as_ref(),
                 Some(instruction_set),
+                1000,
             )
             .unwrap();
 

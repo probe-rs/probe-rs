@@ -38,6 +38,7 @@ pub struct Config {
 pub struct Probe {
     pub usb_vid: Option<String>,
     pub usb_pid: Option<String>,
+    pub interface: Option<u8>,
     pub serial: Option<String>,
     pub protocol: WireProtocol,
     pub speed: Option<u32>,
@@ -54,6 +55,7 @@ pub struct Flashing {
     pub disable_double_buffering: bool,
     pub preverify: bool,
     pub verify: bool,
+    pub read_flasher_rtt: bool,
 }
 
 /// The reset config struct holding all the possible reset options.

@@ -8,7 +8,7 @@ use crate::error::Error;
 use crate::flashing::encoder::FlashEncoder;
 use crate::flashing::{FlashLayout, FlashSector};
 use crate::memory::MemoryInterface;
-use crate::rtt::{self, Rtt, ScanRegion};
+use crate::rtt::{Rtt, ScanRegion};
 use crate::{Core, InstructionSet, core::CoreRegisters, session::Session};
 use crate::{CoreStatus, Target};
 use std::borrow::Cow;
@@ -120,6 +120,7 @@ pub(super) struct Flasher {
     pub(super) flash_algorithm: FlashAlgorithm,
     pub(super) loaded: bool,
     pub(super) regions: Vec<LoadedRegion>,
+    pub(super) read_flasher_rtt: bool,
 }
 
 /// The byte used to fill the stack when checking for stack overflows.
@@ -142,6 +143,7 @@ impl Flasher {
             flash_algorithm,
             loaded: false,
             regions: Vec::new(),
+            read_flasher_rtt: false,
         })
     }
 
@@ -252,6 +254,7 @@ impl Flasher {
             rtt: None,
             progress,
             flash_algorithm: &self.flash_algorithm,
+            read_flasher_rtt: self.read_flasher_rtt,
             _operation: PhantomData,
         };
 
@@ -762,6 +765,10 @@ impl Flasher {
         });
         Ok(())
     }
+
+    pub(crate) fn read_rtt_output(&mut self, read: bool) {
+        self.read_flasher_rtt = read;
+    }
 }
 
 struct Registers {
@@ -796,6 +803,7 @@ pub(super) struct ActiveFlasher<'op, 'p, O: Operation> {
     rtt: Option<Rtt>,
     progress: &'op mut FlashProgress<'p>,
     flash_algorithm: &'op FlashAlgorithm,
+    read_flasher_rtt: bool,
     _operation: PhantomData<O>,
 }
 
@@ -952,11 +960,8 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
             (
                 self.core.return_address(),
                 // For ARM Cortex-M cores, we have to add 1 to the return address,
-                // to ensure that we stay in Thumb mode. A32 also generally supports
-                // Thumb and uses the same `BKPT` instruction when in this mode.
-                if self.instruction_set == InstructionSet::Thumb2
-                    || self.instruction_set == InstructionSet::A32
-                {
+                // to ensure that we stay in Thumb mode.
+                if self.instruction_set == InstructionSet::Thumb2 {
                     Some(into_reg(algo.load_address + 1)?)
                 } else {
                     Some(into_reg(algo.load_address)?)
@@ -995,14 +1000,17 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
         // Resume target operation.
         self.core.run().map_err(FlashError::Run)?;
 
-        if let Some(rtt_address) = self.flash_algorithm.rtt_control_block {
-            match rtt::try_attach_to_rtt(
+        if let Some(rtt_address) = self.flash_algorithm.rtt_control_block
+            && self.rtt.is_none()
+            && self.read_flasher_rtt
+        {
+            match crate::rtt::try_attach_to_rtt(
                 &mut self.core,
                 Duration::from_secs(1),
                 &ScanRegion::Exact(rtt_address),
             ) {
                 Ok(rtt) => self.rtt = Some(rtt),
-                Err(rtt::Error::NoControlBlockLocation) => {}
+                Err(crate::rtt::Error::NoControlBlockLocation) => {}
                 Err(error) => tracing::error!("RTT could not be initialized: {error}"),
             }
         }
@@ -1017,6 +1025,9 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
 
         // Wait until halted state is active again.
         let start = Instant::now();
+        let mut last_read = Instant::now();
+
+        let poll_interval = Duration::from_millis(self.flash_algorithm.rtt_poll_interval);
 
         loop {
             match self
@@ -1037,11 +1048,17 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
                 }
                 _ => {} // All other statuses are okay: we'll just keep polling.
             }
-            self.read_rtt()?;
-            if start.elapsed() >= timeout {
+
+            let now = Instant::now();
+
+            if now - last_read >= poll_interval {
+                self.read_rtt()?;
+                last_read = now;
+            }
+            if now - start >= timeout {
+                self.read_rtt()?;
                 return Err(FlashError::Core(Error::Timeout));
             }
-            std::thread::sleep(Duration::from_millis(1));
         }
 
         self.check_for_stack_overflow()?;

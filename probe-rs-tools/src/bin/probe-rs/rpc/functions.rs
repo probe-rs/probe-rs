@@ -1,12 +1,13 @@
 use std::{any::Any, ops::DerefMut};
 use std::{convert::Infallible, future::Future};
 
+use crate::rpc::SessionState;
 use crate::rpc::functions::file::{
     AppendFileRequest, CreateFileResponse, append_temp_file, create_temp_file,
 };
 use crate::{
     rpc::{
-        Key, SessionState,
+        ConnectionState, Key,
         functions::{
             chip::{
                 ChipInfoRequest, ChipInfoResponse, ListFamiliesResponse, LoadChipFamilyRequest,
@@ -144,8 +145,7 @@ impl From<RpcError> for anyhow::Error {
 
 #[derive(Clone)]
 pub struct RpcSpawnContext {
-    state: SessionState,
-    token: CancellationToken,
+    state: ConnectionState,
     sender: PostcardSender<WireTxImpl>,
 }
 
@@ -210,11 +210,15 @@ where
 
 impl RpcSpawnContext {
     fn dry_run(&self, sessid: Key<Session>) -> bool {
-        self.state.dry_run(sessid)
+        self.shared_session(sessid).dry_run()
     }
 
     fn session_blocking(&self, sessid: Key<Session>) -> impl DerefMut<Target = Session> + use<> {
-        self.state.session_blocking(sessid)
+        self.shared_session(sessid).session_blocking()
+    }
+
+    fn shared_session(&self, sessid: Key<Session>) -> SessionState<'_> {
+        self.state.shared_session(sessid)
     }
 
     pub fn object_mut_blocking<T: Any + Send>(
@@ -225,7 +229,7 @@ impl RpcSpawnContext {
     }
 
     pub fn cancellation_token(&self) -> CancellationToken {
-        self.token.clone()
+        self.state.token.clone()
     }
 
     pub async fn run_blocking<T, F, REQ, RESP>(&mut self, request: REQ, task: F) -> RESP
@@ -315,8 +319,8 @@ pub(crate) enum ProbeAccess {
 }
 
 pub struct RpcContext {
-    state: SessionState,
-    token: CancellationToken,
+    /// State associated with a single connection.
+    state: ConnectionState,
     sender: Option<PostcardSender<WireTxImpl>>,
     probe_access: ProbeAccess,
 }
@@ -325,10 +329,9 @@ impl SpawnContext for RpcContext {
     type SpawnCtxt = RpcSpawnContext;
 
     fn spawn_ctxt(&mut self) -> Self::SpawnCtxt {
-        self.token = CancellationToken::new();
+        self.state.token = CancellationToken::new();
         RpcSpawnContext {
             state: self.state.clone(),
-            token: self.token.clone(),
             sender: self.sender.clone().unwrap(),
         }
     }
@@ -337,8 +340,7 @@ impl SpawnContext for RpcContext {
 impl RpcContext {
     pub fn new(probe_access: ProbeAccess) -> Self {
         Self {
-            state: SessionState::new(),
-            token: CancellationToken::new(),
+            state: ConnectionState::new(),
             sender: None,
             probe_access,
         }
@@ -413,7 +415,7 @@ async fn cancel_handler(
     _msg: (),
     _sender: &PostcardSender<WireTxImpl>,
 ) {
-    ctx.token.cancel();
+    ctx.state.token.cancel();
 }
 
 #[derive(Clone)]

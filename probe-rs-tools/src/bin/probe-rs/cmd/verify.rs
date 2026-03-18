@@ -20,6 +20,10 @@ pub struct Cmd {
 
     #[clap(long)]
     pub disable_progressbars: bool,
+
+    /// Whether to read the RTT output from the flash loader, if available.
+    #[clap(long)]
+    pub read_flasher_rtt: bool,
 }
 
 impl Cmd {
@@ -32,7 +36,12 @@ impl Cmd {
             Some(CliProgressBars::new())
         };
         let loader = session
-            .build_flash_loader(self.path.to_path_buf(), self.format_options, None)
+            .build_flash_loader(
+                self.path.to_path_buf(),
+                self.format_options,
+                None,
+                self.read_flasher_rtt,
+            )
             .await?;
 
         let result = session

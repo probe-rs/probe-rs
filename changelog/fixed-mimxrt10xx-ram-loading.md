@@ -1,1 +1,0 @@
-Revise the MIMXRT10xx reset approach to better support RAM loading.

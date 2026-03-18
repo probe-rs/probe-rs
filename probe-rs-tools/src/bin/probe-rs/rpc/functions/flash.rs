@@ -38,6 +38,28 @@ pub struct DownloadOptions {
     pub verify: bool,
     /// Disable double buffering when loading flash.
     pub disable_double_buffering: bool,
+    /// If there are multiple valid flash algorithms for a memory region, this list allows
+    /// overriding the default selection.
+    pub preferred_algos: Vec<String>,
+}
+
+impl DownloadOptions {
+    pub fn sanitize(&mut self) {
+        // Remove surrounding quotes and whitespaces from list.
+        if !self.preferred_algos.is_empty() {
+            // Iterate over the vector and modify each string in place
+            for algo in self.preferred_algos.iter_mut() {
+                *algo = algo
+                    .trim()
+                    .trim_matches(|c| c == '\'' || c == '"')
+                    .chars()
+                    .filter(|c| !c.is_whitespace())
+                    .collect();
+            }
+            // Remove any empty strings resulting from inputs like ",," or ", ,"
+            self.preferred_algos.retain(|s| !s.is_empty());
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -46,6 +68,7 @@ pub struct BuildRequest {
     pub path: String,
     pub format: FormatOptions,
     pub image_target: Option<String>,
+    pub read_flasher_rtt: bool,
 }
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -63,7 +86,7 @@ pub async fn build(
 ) -> BuildResponse {
     // build loader
     let mut session = ctx.session(request.sessid).await;
-    let loader = build_loader(
+    let mut loader = build_loader(
         &mut session,
         &request.path,
         request.format,
@@ -72,6 +95,8 @@ pub async fn build(
             .as_deref()
             .and_then(InstructionSet::from_target_triple),
     )?;
+
+    loader.read_rtt_output(request.read_flasher_rtt);
 
     Ok(BuildResult {
         boot_info: loader.boot_info().into(),
@@ -96,6 +121,7 @@ impl FlashRequest {
         options.preverify = false;
         options.verify = self.options.verify;
         options.disable_double_buffering = self.options.disable_double_buffering;
+        options.preferred_algos = self.options.preferred_algos.clone();
 
         options
     }
@@ -385,6 +411,7 @@ fn flash_impl(
 pub struct EraseRequest {
     pub sessid: Key<Session>,
     pub command: EraseCommand,
+    pub read_flasher_rtt: bool,
 }
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -414,7 +441,9 @@ fn erase_impl(
     });
 
     match request.command {
-        EraseCommand::All => flashing::erase_all(&mut session, &mut progress)?,
+        EraseCommand::All => {
+            flashing::erase_all(&mut session, &mut progress, request.read_flasher_rtt)?
+        }
     }
 
     Ok(())
@@ -454,7 +483,9 @@ fn verify_impl(
     let mut progress = FlashProgress::new(move |event| {
         ProgressEvent::from_library_event(event, |event| {
             // Only emit Verify-related events.
-            if event.is_operation(Operation::Verify) {
+            if event.is_operation(Operation::Verify)
+                || matches!(event, ProgressEvent::DiagnosticMessage { .. })
+            {
                 sender.blocking_send(event).unwrap()
             }
         });

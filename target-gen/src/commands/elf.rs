@@ -82,6 +82,7 @@ pub fn cmd_elf(
         // core access cannot be determined, use the current value
         algorithm.cores.clone_from(&current.cores);
         algorithm.description.clone_from(&current.description);
+        algorithm.rtt_poll_interval = current.rtt_poll_interval;
 
         family.flash_algorithms[algorithm_to_update] = algorithm;
 

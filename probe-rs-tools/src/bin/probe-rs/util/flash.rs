@@ -132,6 +132,8 @@ pub fn build_loader(
                 .idf_partition_table
                 .map(PathBuf::from),
             target_app_partition: format_options.idf_options.idf_target_app_partition,
+            flash_frequency: format_options.idf_options.idf_flash_freq.map(From::from),
+            flash_mode: format_options.idf_options.idf_flash_mode.map(From::from),
         }),
     };
 
@@ -306,7 +308,9 @@ impl CliProgressBars {
             ProgressEvent::Finished(operation) => {
                 progress_bars.get_mut(operation).finish();
             }
-            ProgressEvent::DiagnosticMessage { .. } => {}
+            ProgressEvent::DiagnosticMessage { message } => {
+                logging::println(message);
+            }
         }
     }
 }

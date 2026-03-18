@@ -26,6 +26,8 @@ disable_double_buffering = false
 preverify = false
 # Whether to verify flash contents after downloading
 verify = false
+# Whether to read RTT output from the flash loader
+read_flasher_rtt = false
 
 [default.reset]
 # Whether or not the target should be reset.

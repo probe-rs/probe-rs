@@ -15,6 +15,7 @@ use crate::{
         register_cache::RegisterCache,
         xdm::{DebugStatus, XdmState},
     },
+    memory::{Operation, OperationKind},
     probe::{DebugProbeError, DeferredResultIndex, JtagAccess},
 };
 
@@ -279,6 +280,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
 
     /// Enter debug mode.
     pub fn enter_debug_mode(&mut self) -> Result<(), XtensaError> {
+        self.state.register_cache = RegisterCache::new();
         self.xdm.enter_debug_mode()?;
 
         self.state.is_halted = self.xdm.status()?.stopped();
@@ -381,16 +383,16 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         // various errors, but we will retry the operation.
         let result = op(self);
 
-        // If the core was running, resume it.
-        let before_status = DebugStatus(self.xdm.read_deferred_result(status_idx)?.into_u32());
-        if !before_status.stopped() {
-            self.resume_core()?;
-        }
-
         // If we did not manage to halt the core at once, let's retry using the slow path.
         let after_status = DebugStatus(self.xdm.read_deferred_result(is_halted_idx)?.into_u32());
 
         if after_status.stopped() {
+            // If the core was running, resume it.
+            let before_status = DebugStatus(self.xdm.read_deferred_result(status_idx)?.into_u32());
+            if !before_status.stopped() {
+                self.resume_core()?;
+            }
+
             return result;
         }
         self.state.is_halted = false;
@@ -495,7 +497,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self), level = "debug")]
     fn schedule_write_cpu_register(
         &mut self,
         register: CpuRegister,
@@ -542,8 +544,9 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         register: impl Into<Register>,
     ) -> Result<MaybeDeferredResultIndex, XtensaError> {
         let register = register.into();
-        if let Some(entry) = self.state.register_cache.get_mut(register) {
-            return Ok(MaybeDeferredResultIndex::Value(entry.current_value()));
+        if let Some(value) = self.state.register_cache.original_value_of(register) {
+            // Already read, can be accessed from the cache.
+            return Ok(value);
         }
 
         let reader = match register {
@@ -556,7 +559,8 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
                 self.schedule_read_special_register(self.core_properties.debug_level.ps())?
             }
         };
-        Ok(MaybeDeferredResultIndex::Deferred(reader))
+        self.state.register_cache.store_deferred(register, reader);
+        Ok(MaybeDeferredResultIndex::Deferred(register))
     }
 
     /// Read a register.
@@ -564,20 +568,8 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         &mut self,
         register: impl Into<Register>,
     ) -> Result<u32, XtensaError> {
-        let register = register.into();
-        if let Some(entry) = self.state.register_cache.get_mut(register) {
-            return Ok(entry.current_value());
-        }
-
-        match self.schedule_read_register(register)? {
-            MaybeDeferredResultIndex::Value(value) => Ok(value),
-            MaybeDeferredResultIndex::Deferred(reader) => {
-                // We need to read the register value from the target.
-                let value = self.xdm.read_deferred_result(reader)?.into_u32();
-                self.state.register_cache.store(register, value);
-                Ok(value)
-            }
-        }
+        let reader = self.schedule_read_register(register)?;
+        self.read_deferred_result(reader)
     }
 
     /// Schedules writing a register.
@@ -616,17 +608,17 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     }
 
     /// Ensures that a scratch register is saved in the register cache before overwriting it.
-    #[tracing::instrument(skip(self, register), fields(register))]
+    #[tracing::instrument(skip(self, register), fields(register), level = "debug")]
     fn ensure_register_saved(&mut self, register: impl Into<Register>) -> Result<(), XtensaError> {
         let register = register.into();
 
         tracing::debug!("Saving register: {:?}", register);
-        self.read_register_untyped(register)?;
+        self.schedule_read_register(register)?;
 
         Ok(())
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self), level = "debug")]
     pub(super) fn restore_registers(&mut self) -> Result<(), XtensaError> {
         tracing::debug!("Restoring registers");
 
@@ -643,21 +635,19 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             let dirty_regs = self
                 .state
                 .register_cache
-                .iter_mut()
+                .iter()
                 .filter(|(r, entry)| entry.is_dirty() && filter(r))
                 .map(|(r, _)| r)
                 .collect::<Vec<_>>();
 
-            // First, restore special registers
             for register in dirty_regs {
-                let entry = self
+                let restore_value = self
                     .state
                     .register_cache
-                    .get_mut(register)
-                    .unwrap_or_else(|| panic!("Register {register:?} is not in the cache"));
+                    .resolved_original_value_of(register, &mut self.xdm)
+                    .unwrap_or_else(|| panic!("Saved register {register:?} is not in the cache. This is a bug, please report it."))?;
 
-                let value = entry.original_value();
-                self.schedule_write_register_untyped(register, value)?;
+                self.schedule_write_register_untyped(register, restore_value)?;
             }
         }
 
@@ -778,6 +768,81 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         })
     }
 
+    /// Executes a single memory operation when the processor is halted.
+    fn execute_single_memory_operation_halted(
+        &mut self,
+        operation: Operation<'_>,
+    ) -> Result<(), ProbeRsError> {
+        enum Op<'a> {
+            Read(&'a mut [u8]),
+            Write(&'a [u8]),
+        }
+        impl Op<'_> {
+            fn data_len(&self) -> usize {
+                match self {
+                    Op::Read(bytes) => bytes.len(),
+                    Op::Write(bytes) => bytes.len(),
+                }
+            }
+        }
+
+        let mut temp_bytes = [0; 8];
+        let op = match operation.operation {
+            OperationKind::Read(data) => Op::Read(data),
+            OperationKind::Read8(data) => Op::Read(data),
+            OperationKind::Read16(data) => Op::Read(data.as_mut_bytes()),
+            OperationKind::Read32(data) => Op::Read(data.as_mut_bytes()),
+            OperationKind::Read64(data) => Op::Read(data.as_mut_bytes()),
+            OperationKind::Write(data) => Op::Write(data),
+            OperationKind::Write8(data) => Op::Write(data),
+            OperationKind::Write16(data) => Op::Write(data.as_bytes()),
+            OperationKind::Write32(data) => Op::Write(data.as_bytes()),
+            OperationKind::Write64(data) => Op::Write(data.as_bytes()),
+            OperationKind::WriteWord8(word) => {
+                let word_bytes = size_of_val(&word);
+                let bytes = &mut temp_bytes[..word_bytes];
+                bytes.copy_from_slice(&word.to_le_bytes());
+                Op::Write(bytes)
+            }
+            OperationKind::WriteWord16(word) => {
+                let word_bytes = size_of_val(&word);
+                let bytes = &mut temp_bytes[..word_bytes];
+                bytes.copy_from_slice(&word.to_le_bytes());
+                Op::Write(bytes)
+            }
+            OperationKind::WriteWord32(word) => {
+                let word_bytes = size_of_val(&word);
+                let bytes = &mut temp_bytes[..word_bytes];
+                bytes.copy_from_slice(&word.to_le_bytes());
+                Op::Write(bytes)
+            }
+            OperationKind::WriteWord64(word) => {
+                let word_bytes = size_of_val(&word);
+                let bytes = &mut temp_bytes[..word_bytes];
+                bytes.copy_from_slice(&word.to_le_bytes());
+                Op::Write(bytes)
+            }
+        };
+
+        if op.data_len() == 0 {
+            return Ok(());
+        }
+
+        let address = operation.address;
+
+        let mut memory_access = self.memory_access_for(address, op.data_len());
+        memory_access.save_scratch_registers(self)?;
+
+        match op {
+            Op::Read(dst) => self
+                .read_memory_impl(memory_access.as_mut(), address, dst)
+                .map_err(ProbeRsError::Xtensa),
+            Op::Write(buffer) => self
+                .write_memory_impl(memory_access.as_mut(), address, buffer)
+                .map_err(ProbeRsError::Xtensa),
+        }
+    }
+
     fn write_memory_impl(
         &mut self,
         memory_access: &mut dyn MemoryAccess,
@@ -876,7 +941,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             ps.set_woe(true);
             ps
         })?;
-        self.restore_registers()?;
+        self.state.register_cache = RegisterCache::new();
 
         Ok(())
     }
@@ -889,13 +954,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         &mut self,
         result: MaybeDeferredResultIndex,
     ) -> Result<u32, XtensaError> {
-        match result {
-            MaybeDeferredResultIndex::Value(value) => Ok(value),
-            MaybeDeferredResultIndex::Deferred(deferred_result_index) => self
-                .xdm
-                .read_deferred_result(deferred_result_index)
-                .map(|r| r.into_u32()),
-        }
+        self.state.register_cache.resolve(result, &mut self.xdm)
     }
 }
 
@@ -997,6 +1056,29 @@ impl MemoryInterface for XtensaCommunicationInterface<'_> {
 
     fn flush(&mut self) -> Result<(), crate::Error> {
         Ok(())
+    }
+
+    fn execute_memory_operations(&mut self, operations: &mut [Operation<'_>]) {
+        if operations.is_empty() {
+            return;
+        }
+        let result = self.fast_halted_access(|this| {
+            for operation in operations.iter_mut() {
+                let result = this.execute_single_memory_operation_halted(operation.reborrow());
+                let success = result.is_ok();
+                operation.result = Some(result);
+                if !success {
+                    break;
+                }
+            }
+            Ok(())
+        });
+
+        if result.is_err()
+            && let Some(op) = operations.get_mut(0)
+        {
+            op.result = Some(result.map_err(ProbeRsError::Xtensa));
+        }
     }
 }
 
@@ -1429,6 +1511,6 @@ pub(crate) enum MaybeDeferredResultIndex {
     /// The result is already available.
     Value(u32),
 
-    /// The result is deferred.
-    Deferred(DeferredResultIndex),
+    /// The result is deferred and can be accessed via the register cache.
+    Deferred(Register),
 }

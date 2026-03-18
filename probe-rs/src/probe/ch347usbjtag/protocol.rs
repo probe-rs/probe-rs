@@ -297,6 +297,7 @@ pub(super) fn list_ch347usbjtag_devices() -> Vec<DebugProbeInfo> {
                     device.serial_number().map(Into::into),
                     &Ch347UsbJtagFactory,
                     None,
+                    false,
                 )
             })
             .collect(),

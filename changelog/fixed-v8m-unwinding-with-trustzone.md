@@ -1,1 +1,0 @@
-Add banked stack pointer registers for v8m targets, including TrustZone and non-TrustZone

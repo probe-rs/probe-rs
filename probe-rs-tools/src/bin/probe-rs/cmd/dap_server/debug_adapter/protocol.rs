@@ -30,6 +30,20 @@ pub trait ProtocolAdapter {
         &mut self,
         event_type: &str,
         event_body: Option<S>,
+    ) -> anyhow::Result<()>
+    where
+        Self: Sized,
+    {
+        self.dyn_send_event(
+            event_type,
+            event_body.map(|event_body| serde_json::to_value(event_body).unwrap_or_default()),
+        )
+    }
+
+    fn dyn_send_event(
+        &mut self,
+        event_type: &str,
+        event_body: Option<serde_json::Value>,
     ) -> anyhow::Result<()>;
 
     fn send_raw_response(&mut self, response: Response) -> anyhow::Result<()>;
@@ -328,21 +342,17 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
     }
 
     #[instrument(level = "trace", skip_all)]
-    fn send_event<S: Serialize>(
+    fn dyn_send_event(
         &mut self,
         event_type: &str,
-        event_body: Option<S>,
+        event_body: Option<serde_json::Value>,
     ) -> anyhow::Result<()> {
         let new_event = Event {
             seq: self.get_next_seq(),
             type_: "event".to_string(),
             event: event_type.to_string(),
-            body: event_body.map(|event_body| serde_json::to_value(event_body).unwrap_or_default()),
+            body: event_body,
         };
-
-        let result = self
-            .send_data(Frame::new(new_event.clone().into()))
-            .context("Unexpected Error while sending event.");
 
         if event_type != "output" {
             // This would result in an endless loop.
@@ -357,7 +367,8 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
             }
         }
 
-        result
+        self.send_data(Frame::new(new_event.into()))
+            .context("Unexpected Error while sending event.")
     }
 
     fn set_console_log_level(&mut self, log_level: ConsoleLog) {

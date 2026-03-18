@@ -1,3 +1,19 @@
+# MANUAL EDIT: Prepended four 00 bytes to the start of the 2048 flash algorithm
+# instructions and offset all pointers by 4 to match. For some unknown reason
+# the instructions cause the final 12 bytes of each 512-byte page to be
+# corrupted (with the final 8 bytes being written with the 8 bytes that should
+# have been written to the previous sector) whenever the instructions are
+# loaded at memory offset 04, or 24, 44, etc. Other (4-byte-aligned) offsets
+# are all OK. Since we have a flash algorithm header that's 4 bytes (the two
+# BKPT instructions) and start loading at the start of RAM, the normal code
+# address is 2040_0004, which triggers the bug. By offsetting the instructions
+# with some nulls, we work around the problem.
+# Note that this is reproducible in PyOCD if the allocator is changed to place
+# the instructions at the start of ram instead of at the end, and the location
+# of the page buffers and stack doesn't affect the bug. It seems to be isolated
+# to the load address of the algorithm instructions and thus is probably a bug
+# in the flash algorithm.
+---
 name: SAMV71
 manufacturer:
   id: 0x1f
@@ -601,13 +617,13 @@ flash_algorithms:
 - name: atsamv7x_2048
   description: ATSAMV7x 2048kB Flash
   default: true
-  instructions: YEkwtUlECGBgSV9ICGBP9HBgXknkOQhgT/QAQFxJCGBbSbAxCGBcS1pIGGBaSrQ6EGgg8AMAQBwQYFdIfDgBaAkH/NURaCHwcAERYAFoCQf81VFMxDwhaFBNKUMhYAFoiQP81SFoTU0h8HABGDUpQyFgIWgh8IBxQfRcESFgAWjJA/zVEWgh8AMBSRwRYAFoCQf81QEhEWABaAkH/NU9SEAcGGAAIDC9AigU0TdKPEjgOhBgEB0BaMkH/NAzSdg5CWiJBwfUNkn+MRFgAOAAvwFoyQf70C1JK0hAHAhgACBwRy9IKUkIOOA5CGAIHQDgAL8BaMkH+9AAIHBHIUojSUpE5DkSaIAaQAog8AMAgByCsiNIAB9A6gIgSGAA4AC/iGjAB/vQHkiAH0DqAiBIYADgAL+IaMAH+9CIaBDwDgAA0AEgcEcPSTC1SUQPS+Q7CWhBGkwKWRUgygkfIMD70Q9JoLIMOUHqACBYYADgAL+YaMAH+9CYaBDwDgAA0AEgML0AAAQAAAAAQ0ZF5AwOQFQYDkAAQ01Q5AYOQAgANwANAABaAAAAAAAAAAA=
-  pc_init: 0x1
-  pc_uninit: 0xa9
-  pc_program_page: 0x147
-  pc_erase_sector: 0xfd
-  pc_erase_all: 0xe3
-  data_section_offset: 0x1a4
+  instructions: AAAAAGBJMLVJRAhgYElfSAhgT/RwYF5J5DkIYE/0AEBcSQhgW0mwMQhgXEtaSBhgWkq0OhBoIPADAEAcEGBXSHw4AWgJB/zVEWgh8HABEWABaAkH/NVRTMQ8IWhQTSlDIWABaIkD/NUhaE1NIfBwARg1KUMhYCFoIfCAcUH0XBEhYAFoyQP81RFoIfADAUkcEWABaAkH/NUBIRFgAWgJB/zVPUhAHBhgACAwvQIoFNE3SjxI4DoQYBAdAWjJB/zQM0nYOQloiQcH1DZJ/jERYADgAL8BaMkH+9AtSStIQBwIYAAgcEcvSClJCDjgOQhgCB0A4AC/AWjJB/vQACBwRyFKI0lKROQ5EmiAGkAKIPADAIAcgrIjSAAfQOoCIEhgAOAAv4howAf70B5IgB9A6gIgSGAA4AC/iGjAB/vQiGgQ8A4AANABIHBHD0kwtUlED0vkOwloQRpMClkVIMoJHyDA+9EPSaCyDDlB6gAgWGAA4AC/mGjAB/vQmGgQ8A4AANABIDC9AAAEAAAAAENGReQMDkBUGA5AAENNUOQGDkAIADcADQAAWgAAAAAAAAAA
+  pc_init: 0x5
+  pc_uninit: 0xad
+  pc_program_page: 0x14b
+  pc_erase_sector: 0x101
+  pc_erase_all: 0xe7
+  data_section_offset: 0x1a8
   flash_properties:
     address_range:
       start: 0x400000

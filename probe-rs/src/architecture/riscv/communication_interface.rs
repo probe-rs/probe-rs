@@ -328,6 +328,8 @@ pub struct RiscvCommunicationInterfaceState {
     current_dmcontrol: Dmcontrol,
 
     memory_access_config: MemoryAccessConfig,
+
+    sw_breakpoint_debug_enabled: bool,
 }
 
 /// Timeout for RISC-V operations.
@@ -377,6 +379,8 @@ impl RiscvCommunicationInterfaceState {
             current_dmcontrol: Dmcontrol(0),
 
             memory_access_config: MemoryAccessConfig::default(),
+
+            sw_breakpoint_debug_enabled: false,
         }
     }
 
@@ -820,6 +824,10 @@ impl<'state> RiscvCommunicationInterface<'state> {
         // clear the halt request
         dmcontrol.set_haltreq(false);
         self.write_dm_register(dmcontrol)?;
+
+        if !self.state.sw_breakpoint_debug_enabled {
+            self.debug_on_sw_breakpoint(true)?;
+        }
 
         Ok(())
     }
@@ -1689,9 +1697,6 @@ impl<'state> RiscvCommunicationInterface<'state> {
             MemoryAccessMethod::WaitingProgramBuffer => {
                 self.perform_memory_read_progbuf(address, true)?
             }
-            MemoryAccessMethod::HaltedSystemBus => {
-                self.halted_access(|this| this.perform_memory_read_sysbus(address))?
-            }
             MemoryAccessMethod::SystemBus => self.perform_memory_read_sysbus(address)?,
             MemoryAccessMethod::AbstractCommand => {
                 unimplemented!("Memory access using abstract commands is not implemted")
@@ -1725,9 +1730,6 @@ impl<'state> RiscvCommunicationInterface<'state> {
             MemoryAccessMethod::WaitingProgramBuffer => {
                 self.perform_memory_read_multiple_progbuf(address, data, true)?;
             }
-            MemoryAccessMethod::HaltedSystemBus => {
-                self.halted_access(|this| this.perform_memory_read_multiple_sysbus(address, data))?
-            }
             MemoryAccessMethod::SystemBus => {
                 self.perform_memory_read_multiple_sysbus(address, data)?;
             }
@@ -1746,9 +1748,6 @@ impl<'state> RiscvCommunicationInterface<'state> {
             }
             MemoryAccessMethod::WaitingProgramBuffer => {
                 self.perform_memory_write_progbuf(address, data, true)?
-            }
-            MemoryAccessMethod::HaltedSystemBus => {
-                self.halted_access(|this| this.perform_memory_write_sysbus(address, &[data]))?
             }
             MemoryAccessMethod::SystemBus => self.perform_memory_write_sysbus(address, &[data])?,
             MemoryAccessMethod::AbstractCommand => {
@@ -1770,9 +1769,6 @@ impl<'state> RiscvCommunicationInterface<'state> {
             .state
             .memory_range_access_method(V::WIDTH, address_range);
         match access_method {
-            MemoryAccessMethod::HaltedSystemBus => {
-                self.halted_access(|this| this.perform_memory_write_sysbus(address, data))?
-            }
             MemoryAccessMethod::SystemBus => self.perform_memory_write_sysbus(address, data)?,
             MemoryAccessMethod::ProgramBuffer => {
                 self.perform_memory_write_multiple_progbuf(address, data, false)?
@@ -1974,7 +1970,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         Ok(())
     }
 
-    pub(crate) fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), RiscvError> {
+    fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), RiscvError> {
         let mut dcsr = Dcsr(self.read_csr(0x7b0)?);
 
         dcsr.set_ebreakm(enabled);
@@ -1982,6 +1978,10 @@ impl<'state> RiscvCommunicationInterface<'state> {
         dcsr.set_ebreaku(enabled);
 
         match self.abstract_cmd_register_write(0x7b0, dcsr.0) {
+            Ok(()) => {
+                self.state.sw_breakpoint_debug_enabled = enabled;
+                Ok(())
+            }
             Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
                 tracing::debug!(
                     "Could not write core register {:#x} with abstract command, falling back to program buffer",
@@ -2330,13 +2330,6 @@ impl MemoryInterface for RiscvCommunicationInterface<'_> {
         self.read_multiple(address, data)
     }
 
-    fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), crate::Error> {
-        let address = valid_32bit_address(address)?;
-        tracing::debug!("read from {:#08x}", address);
-
-        self.read_multiple(address, data)
-    }
-
     fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), crate::error::Error> {
         let address = valid_32bit_address(address)?;
         let low_word = data as u32;
@@ -2450,8 +2443,6 @@ pub enum MemoryAccessMethod {
     WaitingProgramBuffer,
     /// Memory access using the program buffer is supported
     ProgramBuffer,
-    /// Memory access using system bus access supported, but only when the core is halted
-    HaltedSystemBus,
     /// Memory access using system bus access supported
     SystemBus,
 }
