@@ -311,6 +311,11 @@ pub struct Cmd {
     /// After flashing, read back all the flashed data to verify it has been written correctly.
     #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub verify: bool,
+
+    /// Skip the resetting of the chip. This can be useful if there is other tooling in place which
+    /// performs this task before flashing. It currently only works for RAM flashing.
+    #[clap(long)]
+    pub skip_reset: bool,
 }
 
 impl Cmd {
@@ -390,6 +395,7 @@ impl Cmd {
                         flashing_enabled: self.launch && self.binary.is_some(),
                         verify_before_flashing: self.preverify,
                         verify_after_flashing: self.verify,
+                        skip_reset: self.skip_reset,
                         ..FlashingConfig::default()
                     },
                     core_configs: vec![CoreConfig {
