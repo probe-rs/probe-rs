@@ -212,6 +212,7 @@ pub struct AttachRequest {
     pub connect_under_reset: bool,
     pub dry_run: bool,
     pub allow_erase_all: bool,
+    pub allow_permanent_debug_lock: bool,
     pub resume_target: bool,
 }
 
@@ -227,6 +228,7 @@ impl From<&AttachRequest> for ProbeOptions {
             connect_under_reset: request.connect_under_reset,
             dry_run: request.dry_run,
             allow_erase_all: request.allow_erase_all,
+            allow_permanent_debug_lock: request.allow_permanent_debug_lock,
         }
     }
 }

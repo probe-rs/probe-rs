@@ -1131,6 +1131,11 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         None
     }
 
+    /// Return the Debug Lock Sequence implementation if it exists
+    fn debug_lock_sequence(&self) -> Option<Arc<dyn DebugLockSequence>> {
+        None
+    }
+
     /// Return the APs that are expected to work.
     fn allowed_access_ports(&self) -> Vec<u8> {
         (0..=255).collect()
@@ -1150,6 +1155,38 @@ pub trait DebugEraseSequence: Send + Sync {
     /// which case it will return `Error::Probe(DebugProbeError::ReAttachRequired)`
     fn erase_all(&self, _interface: &mut dyn ArmDebugInterface) -> Result<(), ArmError> {
         Err(ArmError::NotImplemented("erase_all"))
+    }
+}
+
+/// Describes a debug lock level supported by a device.
+#[derive(Debug, Clone)]
+pub struct LockLevel {
+    /// The name of this lock level, used to select it via `--level`.
+    pub name: String,
+    /// A human-readable description of what this lock level does.
+    pub description: String,
+    /// Whether this lock is permanent (irreversible).
+    /// If `true`, the `--allow-permanent-debug-lock` permission is required.
+    pub is_permanent: bool,
+}
+
+/// Debug Lock Handling via the Device's Debug Interface
+pub trait DebugLockSequence: Send + Sync {
+    /// Return the lock levels supported by this device.
+    ///
+    /// If only one level is supported, the caller will use it as
+    /// the default without requiring `--level`.
+    fn supported_lock_levels(&self) -> Vec<LockLevel>;
+
+    /// Lock the debug port at the given level.
+    ///
+    /// `level` is one of the names returned by [`Self::supported_lock_levels()`].
+    /// The caller is responsible for validating the level name and checking
+    /// permissions before calling this method.
+    ///
+    /// A power cycle is typically required after locking for it to take effect.
+    fn lock(&self, _interface: &mut dyn ArmDebugInterface, _level: &str) -> Result<(), ArmError> {
+        Err(ArmError::NotImplemented("lock"))
     }
 }
 
