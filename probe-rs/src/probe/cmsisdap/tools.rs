@@ -378,15 +378,14 @@ pub fn open_device_from_selector(
                 tracing::trace!("Trying device {:?}", device);
 
                 if selector.matches(&device) {
-                    let (v2_infos, v1_infos): (Vec<_>, Vec<_>) =
-                        get_cmsisdap_info(&device, true)
-                            .into_iter()
-                            .filter(|dpi| {
-                                tracing::trace!("DebugProbeInfo: {:?}", dpi);
-                                // Only compare if the selector has an interface to compare to
-                                selector.interface.is_none_or(|i| Some(i) == dpi.interface)
-                            })
-                            .partition(|dpi| !dpi.is_hid_interface);
+                    let (v2_infos, v1_infos): (Vec<_>, Vec<_>) = get_cmsisdap_info(&device, true)
+                        .into_iter()
+                        .filter(|dpi| {
+                            tracing::trace!("DebugProbeInfo: {:?}", dpi);
+                            // Only compare if the selector has an interface to compare to
+                            selector.interface.is_none_or(|i| Some(i) == dpi.interface)
+                        })
+                        .partition(|dpi| !dpi.is_hid_interface);
 
                     // If the VID, PID, and potentially SN all match,
                     // and the device is a valid CMSIS-DAP probe,
