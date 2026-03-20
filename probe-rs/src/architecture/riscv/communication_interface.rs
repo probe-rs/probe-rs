@@ -1343,22 +1343,38 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
             core.schedule_setup_program_buffer(&[lw_command])?;
 
-            core.schedule_write_dm_register(Data0(address))?;
+            // On RV64, use a 64-bit abstract register write to load the address
+            // into S0.  A 32-bit write sign-extends the value, which turns
+            // addresses with bit 31 set (e.g. 0x80000000 ILM, 0x90000000 DLM)
+            // into incorrect 64-bit addresses like 0xFFFFFFFF80000000.
+            if core.state.xlen_64 {
+                core.abstract_cmd_register_write_64(&registers::S0, u64::from(address))?;
 
-            // Write s0, then execute program buffer
-            let mut command = AccessRegisterCommand(0);
-            command.set_cmd_type(0);
-            command.set_transfer(true);
-            command.set_write(true);
+                // Execute program buffer (lw from [s0]).
+                let mut command = AccessRegisterCommand(0);
+                command.set_cmd_type(0);
+                command.set_transfer(false);
+                command.set_postexec(true);
+                command.set_regno((registers::S0).id.0 as u32);
+                core.schedule_write_dm_register(command)?;
+            } else {
+                core.schedule_write_dm_register(Data0(address))?;
 
-            // registers are 32 bit, so we have size 2 here
-            command.set_aarsize(RiscvBusAccess::A32);
-            command.set_postexec(true);
+                // Write s0, then execute program buffer
+                let mut command = AccessRegisterCommand(0);
+                command.set_cmd_type(0);
+                command.set_transfer(true);
+                command.set_write(true);
 
-            // register s0, ie. 0x1008
-            command.set_regno((registers::S0).id.0 as u32);
+                // registers are 32 bit, so we have size 2 here
+                command.set_aarsize(RiscvBusAccess::A32);
+                command.set_postexec(true);
 
-            core.schedule_write_dm_register(command)?;
+                // register s0, ie. 0x1008
+                command.set_regno((registers::S0).id.0 as u32);
+
+                core.schedule_write_dm_register(command)?;
+            }
 
             if wait_for_idle {
                 core.wait_for_idle(Duration::from_millis(10))?;
@@ -1402,22 +1418,36 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 assembly::addi(8, 8, V::WIDTH.byte_width() as i16),
             ])?;
 
-            core.schedule_write_dm_register(Data0(address))?;
+            // On RV64, use a 64-bit abstract register write to load the address
+            // into S0 to avoid sign-extension of addresses with bit 31 set.
+            if core.state.xlen_64 {
+                core.abstract_cmd_register_write_64(&registers::S0, u64::from(address))?;
 
-            // Write s0, then execute program buffer
-            let mut command = AccessRegisterCommand(0);
-            command.set_cmd_type(0);
-            command.set_transfer(true);
-            command.set_write(true);
+                // Execute program buffer (lw from [s0], addi s0).
+                let mut command = AccessRegisterCommand(0);
+                command.set_cmd_type(0);
+                command.set_transfer(false);
+                command.set_postexec(true);
+                command.set_regno((registers::S0).id.0 as u32);
+                core.schedule_write_dm_register(command)?;
+            } else {
+                core.schedule_write_dm_register(Data0(address))?;
 
-            // registers are 32 bit, so we have size 2 here
-            command.set_aarsize(RiscvBusAccess::A32);
-            command.set_postexec(true);
+                // Write s0, then execute program buffer
+                let mut command = AccessRegisterCommand(0);
+                command.set_cmd_type(0);
+                command.set_transfer(true);
+                command.set_write(true);
 
-            // register s0, ie. 0x1008
-            command.set_regno((registers::S0).id.0 as u32);
+                // registers are 32 bit, so we have size 2 here
+                command.set_aarsize(RiscvBusAccess::A32);
+                command.set_postexec(true);
 
-            core.schedule_write_dm_register(command)?;
+                // register s0, ie. 0x1008
+                command.set_regno((registers::S0).id.0 as u32);
+
+                core.schedule_write_dm_register(command)?;
+            }
 
             if wait_for_idle {
                 core.wait_for_idle(Duration::from_millis(10))?;
@@ -1530,8 +1560,20 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
             core.schedule_setup_program_buffer(&[sw_command])?;
 
-            // write address into s0
-            core.abstract_cmd_register_write(&registers::S0, address)?;
+            // Write the target address into S0.
+            //
+            // On RV64 a 32-bit abstract register write (aarsize=2) leaves the upper
+            // 32 bits of the destination register implementation-defined: the spec
+            // allows either zero- or sign-extension.  The Nuclei UX600 sign-extends,
+            // so address 0x90000000 becomes 0xFFFF_FFFF_9000_0000, which causes the
+            // subsequent `sw` to fault (abstractcs.cmderr=2, silently swallowed when
+            // wait_for_idle is false).  Use a 64-bit abstract write on RV64 so that
+            // S0 always holds the correctly zero-extended address.
+            if core.state.xlen_64 {
+                core.abstract_cmd_register_write_64(&registers::S0, u64::from(address))?;
+            } else {
+                core.abstract_cmd_register_write(&registers::S0, address)?;
+            }
 
             // write data into data 0
             core.schedule_write_dm_register(Data0(data.into()))?;
@@ -1597,8 +1639,12 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 assembly::addi(8, 8, V::WIDTH.byte_width() as i16),
             ])?;
 
-            // write address into s0
-            core.abstract_cmd_register_write(&registers::S0, address)?;
+            // Same RV64 sign-extension fix as in perform_memory_write_progbuf.
+            if core.state.xlen_64 {
+                core.abstract_cmd_register_write_64(&registers::S0, u64::from(address))?;
+            } else {
+                core.abstract_cmd_register_write(&registers::S0, address)?;
+            }
 
             for value in data {
                 // write data into data 0
