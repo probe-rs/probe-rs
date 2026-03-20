@@ -83,6 +83,111 @@ impl RiscvDebugSequence for NucleiSequence {
             config.set_default_method(width, MemoryAccessMethod::ProgramBuffer);
         }
 
+        // Enable machine-mode execution for all internal program-buffer accesses.
+        //
+        // `dcsr.prv` is set by hardware to the privilege level at which the
+        // hart halted.  When Linux halts in S-mode the program buffer runs with
+        // SV39 page tables active, so physical addresses like 0x80000000 (ILM)
+        // and 0x90000000 (DLM) may not be mapped or may be write-protected,
+        // causing `sw` instructions to fault and set cmderr=4.
+        //
+        // Setting `force_machine_mode_progbuf` on the interface state makes
+        // `halted_access` re-write `dcsr.prv = M` after every internal halt,
+        // giving direct physical-address access without going through the MMU.
+        tracing::debug!("NucleiSequence: enabling force_machine_mode_progbuf");
+        interface.set_force_machine_mode_progbuf(true);
+
+        // Detect XLEN from MISA before any memory operations.
+        //
+        // `on_connect` runs before `Riscv64::new()` which normally calls
+        // `set_xlen_64(true)`.  Without this, the program-buffer write path
+        // uses a 32-bit abstract register write to load the target address
+        // into S0.  On RV64, 32-bit register writes are sign-extended by
+        // the DM, so addresses with bit 31 set (e.g. 0x80010000 DLM) become
+        // 0xFFFF_FFFF_8001_0000 — a completely wrong address.
+        //
+        // MISA.MXL (bits [XLEN-1:XLEN-2]) indicates the native XLEN.
+        // For RV64 the top two bits of the 64-bit MISA are 0b10.
+        if let Ok(misa) = interface.read_csr_progbuf_64(0x301) {
+            let mxl = misa >> 62;
+            if mxl == 2 {
+                tracing::info!(
+                    "NucleiSequence: detected RV64 (MISA={:#018x}), setting xlen_64",
+                    misa
+                );
+                interface.set_xlen_64(true);
+            } else {
+                tracing::debug!("NucleiSequence: MISA={:#018x}, MXL={}", misa, mxl);
+            }
+        }
+
+        // Probe ILM and DLM base addresses for diagnostic logging.
+        if let Ok(milmb) = interface.read_csr_progbuf_64(0x7C0) {
+            let ilm_base = milmb & !1u64;
+            tracing::info!("NucleiSequence: ILM base (milmb) = {:#010x}", ilm_base);
+        }
+        if let Ok(mdlmb) = interface.read_csr_progbuf_64(0x7C1) {
+            let dlm_base = mdlmb & !1u64;
+            tracing::info!("NucleiSequence: DLM base (mdlmb) = {:#010x}", dlm_base);
+        }
+
+        // Write-then-readback test using the NUSPI fctrl register.
+        //
+        // We need a memory-mapped location that:
+        //   (a) is writable via store instructions,
+        //   (b) is not modified by Linux between halted_access calls, and
+        //   (c) can be safely toggled without side-effects.
+        //
+        // ILM is read-only from the CPU data bus (stores silently dropped).
+        // DLM is actively modified by Linux between operations.
+        // The NUSPI fctrl register at 0x10014060 meets all criteria: it is a
+        // peripheral register, writable, and we are about to set it anyway.
+        //
+        // Test: toggle bit 0, read back, verify, then restore.
+        {
+            let fctrl_addr = NUSPI_BASE + NUSPI_FCTRL;
+            match interface.read_word_32(fctrl_addr) {
+                Ok(original) => {
+                    let toggled = original ^ FCTRL_EN;
+                    if let Err(e) = interface.write_word_32(fctrl_addr, toggled) {
+                        tracing::warn!("NucleiSequence: fctrl write test failed: {:?}", e);
+                    } else {
+                        match interface.read_word_32(fctrl_addr) {
+                            Ok(readback) => {
+                                if readback == toggled {
+                                    tracing::info!(
+                                        "NucleiSequence: write test at fctrl {:#010x}: \
+                                         wrote {:#010x}, read back {:#010x} — SUCCESS",
+                                        fctrl_addr,
+                                        toggled,
+                                        readback,
+                                    );
+                                } else {
+                                    tracing::warn!(
+                                        "NucleiSequence: write test at fctrl {:#010x}: \
+                                         wrote {:#010x}, read back {:#010x} — MISMATCH",
+                                        fctrl_addr,
+                                        toggled,
+                                        readback,
+                                    );
+                                }
+                                // Restore original value.
+                                let _ = interface.write_word_32(fctrl_addr, original);
+                            }
+                            Err(e) => {
+                                tracing::warn!("NucleiSequence: fctrl readback failed: {:?}", e);
+                                // Best-effort restore.
+                                let _ = interface.write_word_32(fctrl_addr, original);
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("NucleiSequence: fctrl read failed: {:?}", e);
+                }
+            }
+        }
+
         // Re-enable XIP mode on the NUSPI flash controller.
         //
         // When Linux is running its SPI driver clears fctrl[0], which disables
