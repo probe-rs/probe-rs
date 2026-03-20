@@ -122,15 +122,35 @@ pub async fn select_probe(
     request: SelectProbeRequest,
 ) -> SelectProbeResponse {
     let lister = ctx.lister();
+
+    // Capture the requested interface before consuming the selector.
+    // Some probe types (e.g. FTDI multi-channel) list one entry per USB device
+    // without per-channel DebugProbeInfo entries; the channel is resolved at
+    // open() time via the selector. We must propagate the interface from the
+    // original selector into the returned DebugProbeEntry so that the subsequent
+    // attach() call opens the correct channel.
+    let requested_interface = request.probe.as_ref().and_then(|s| s.interface);
+
     let mut list = lister.list(request.probe.map(|sel| sel.into()).as_ref());
+
+    // If the probe entry does not carry an interface (common for FTDI probes)
+    // but the caller requested one, copy it from the original selector.
+    let with_interface = |mut entry: DebugProbeEntry| {
+        if entry.interface.is_none() {
+            entry.interface = requested_interface;
+        }
+        entry
+    };
 
     match list.len() {
         0 => Err(OperationError::NoProbesFound.into()),
-        1 => Ok(SelectProbeResult::Success(DebugProbeEntry::from(
-            list.swap_remove(0),
+        1 => Ok(SelectProbeResult::Success(with_interface(
+            DebugProbeEntry::from(list.swap_remove(0)),
         ))),
         _ => Ok(SelectProbeResult::MultipleProbes(
-            list.into_iter().map(Into::into).collect(),
+            list.into_iter()
+                .map(|e| with_interface(DebugProbeEntry::from(e)))
+                .collect(),
         )),
     }
 }
