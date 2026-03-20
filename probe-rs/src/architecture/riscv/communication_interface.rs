@@ -788,8 +788,31 @@ impl<'state> RiscvCommunicationInterface<'state> {
     }
 
     /// Disable debugging on the target.
+    ///
+    /// Always attempts to deassert `dmcontrol.dmactive` even when earlier
+    /// cleanup steps (e.g. clearing software-breakpoint enable in DCSR)
+    /// fail.  Without this, a stuck DM (dmistat=3) caused by an abrupt
+    /// disconnect leaves the debug module active with no way to recover
+    /// short of a full power cycle.
     pub fn disable_debug_module(&mut self) -> Result<(), RiscvError> {
-        self.debug_on_sw_breakpoint(false)?;
+        // Best-effort: try to clear ebreak bits in DCSR, but do not let
+        // failure prevent us from deactivating the debug module below.
+        if let Err(e) = self.debug_on_sw_breakpoint(false) {
+            tracing::warn!(
+                "disable_debug_module: could not clear sw-breakpoint state: {:?}",
+                e
+            );
+        }
+
+        // Clear any sticky DMI errors (dmistat=3) that may have accumulated
+        // from timed-out operations, so the final dmactive=0 write can
+        // actually reach the debug module.
+        if let Err(e) = self.dtm.clear_error_state() {
+            tracing::warn!(
+                "disable_debug_module: could not clear DMI error state: {:?}",
+                e
+            );
+        }
 
         let mut control = Dmcontrol(0);
         control.set_dmactive(false);
