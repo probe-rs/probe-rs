@@ -337,6 +337,33 @@ impl ProbeFactory for FtdiProbeFactory {
     fn list_probes(&self) -> Vec<DebugProbeInfo> {
         list_ftdi_devices()
     }
+
+    fn list_probes_filtered(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
+        // FTDI probes are enumerated as one entry per USB device. The interface/channel
+        // (A/B/C/D) is not stored in DebugProbeInfo; it is a runtime selection passed
+        // through to open(). The default list_probes_filtered() filters by interface,
+        // which causes "no probe found" when the user specifies e.g. `--probe VID:PID-1`
+        // to select Channel B on an FT2232H, because interface is always None in the
+        // listed entries.
+        //
+        // Match only on VID, PID, and (optionally) serial number, ignoring interface.
+        self.list_probes()
+            .into_iter()
+            .filter(|probe| {
+                selector.as_ref().is_none_or(|s| {
+                    probe.vendor_id == s.vendor_id
+                        && probe.product_id == s.product_id
+                        && s.serial_number.as_ref().is_none_or(|sn| {
+                            if let Some(probe_sn) = &probe.serial_number {
+                                probe_sn == sn
+                            } else {
+                                sn.is_empty()
+                            }
+                        })
+                })
+            })
+            .collect()
+    }
 }
 
 /// An FTDI-based debug probe.
