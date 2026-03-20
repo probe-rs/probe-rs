@@ -1036,17 +1036,26 @@ impl CoreInterface for Riscv64<'_> {
         for bp_unit_index in 0..num_hw_breakpoints {
             self.write_csr(tselect, bp_unit_index as u64)?;
 
-            // On RV64 tdata1 is 64 bits; the Mcontrol bitfield is still 32-bit low half compatible.
-            let tdata_raw = self.read_csr(tdata1)? as u32;
-            let tdata_value = Mcontrol(tdata_raw);
+            // On RV64, tdata1 is 64 bits.  The type field is at bits [63:60]
+            // (not [31:28] as in the 32-bit Mcontrol bitfield).  Extract the
+            // type from the full 64-bit value, then use the low 32 bits for
+            // the remaining Mcontrol fields which are position-compatible.
+            let tdata_raw64 = self.read_csr(tdata1)?;
+            let trigger_type = (tdata_raw64 >> 60) as u32;
+            let tdata_value = Mcontrol(tdata_raw64 as u32);
 
-            tracing::debug!("Breakpoint {}: {:?}", bp_unit_index, tdata_value);
+            tracing::debug!(
+                "Breakpoint {}: type={}, {:?}",
+                bp_unit_index,
+                trigger_type,
+                tdata_value
+            );
 
             let trigger_any_mode_active = tdata_value.m() || tdata_value.s() || tdata_value.u();
             let trigger_any_action_enabled =
                 tdata_value.execute() || tdata_value.store() || tdata_value.load();
 
-            if tdata_value.type_() == 0b10
+            if trigger_type == 0b10
                 && tdata_value.action() == 1
                 && tdata_value.match_() == 0
                 && trigger_any_mode_active
@@ -1073,10 +1082,11 @@ impl CoreInterface for Riscv64<'_> {
         for bp_unit_index in 0..self.available_breakpoint_units()? as usize {
             self.write_csr(tselect, bp_unit_index as u64)?;
 
-            let tdata_raw = self.read_csr(tdata1)? as u32;
-            let mut tdata_value = Mcontrol(tdata_raw);
+            let tdata_raw64 = self.read_csr(tdata1)?;
+            let trigger_type = (tdata_raw64 >> 60) as u32;
+            let mut tdata_value = Mcontrol(tdata_raw64 as u32);
 
-            if tdata_value.type_() == 2
+            if trigger_type == 2
                 && tdata_value.action() == 1
                 && tdata_value.match_() == 0
                 && tdata_value.execute()
@@ -1090,7 +1100,10 @@ impl CoreInterface for Riscv64<'_> {
                 );
                 tdata_value.set_m(state);
                 tdata_value.set_u(state);
-                self.write_csr(tdata1, tdata_value.0 as u64)?;
+                // Preserve the upper 32 bits (type, dmode) from the original
+                // tdata1 value when writing back.
+                let updated = (tdata_raw64 & 0xFFFF_FFFF_0000_0000) | (tdata_value.0 as u64);
+                self.write_csr(tdata1, updated)?;
             }
         }
 
@@ -1108,27 +1121,29 @@ impl CoreInterface for Riscv64<'_> {
 
         self.write_csr(tselect, bp_unit_index as u64)?;
 
-        let tdata_raw = self.read_csr(tdata1)? as u32;
-        let tdata_value = Mcontrol(tdata_raw);
-
-        let trigger_type = tdata_value.type_();
+        let tdata_raw64 = self.read_csr(tdata1)?;
+        let trigger_type = (tdata_raw64 >> 60) as u32;
         if trigger_type != 0b10 {
             return Err(RiscvError::UnexpectedTriggerType(trigger_type).into());
         }
 
+        // Build the mcontrol value in the low 32 bits, then place the type
+        // field at bits [63:60] for the 64-bit tdata1 write.
         let mut instruction_breakpoint = Mcontrol(0);
         instruction_breakpoint.set_action(1);
-        instruction_breakpoint.set_type(2);
         instruction_breakpoint.set_match(0);
         instruction_breakpoint.set_m(true);
         instruction_breakpoint.set_u(true);
         instruction_breakpoint.set_execute(true);
-        instruction_breakpoint.set_dmode(true);
         instruction_breakpoint.set_select(false);
+
+        // On RV64 the type (bits [63:60]) and dmode (bit 59) are in the upper
+        // half.  Construct the full 64-bit tdata1 value.
+        let tdata1_val: u64 = (2u64 << 60) | (1u64 << 59) | (instruction_breakpoint.0 as u64);
 
         self.write_csr(tdata1, 0)?;
         self.write_csr(tdata2, addr)?;
-        self.write_csr(tdata1, instruction_breakpoint.0 as u64)?;
+        self.write_csr(tdata1, tdata1_val)?;
 
         Ok(())
     }
