@@ -650,8 +650,9 @@ pub async fn monitor(
         rl.should_print_line_on(true, false);
         loop {
             match rl.readline().await {
-                Ok(ReadlineEvent::Line(line)) => {
+                Ok(ReadlineEvent::Line(mut line)) => {
                     rl.add_history_entry(line.clone());
+                    line.push('\n');
                     if let Some(client) = data.rtt_client
                         && let Err(error) = session
                             .send_to_rtt(client, selected_channel, line.into_bytes())
