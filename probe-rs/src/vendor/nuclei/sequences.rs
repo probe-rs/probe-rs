@@ -131,63 +131,6 @@ impl RiscvDebugSequence for NucleiSequence {
             tracing::info!("NucleiSequence: DLM base (mdlmb) = {:#010x}", dlm_base);
         }
 
-        // Write-then-readback test using the NUSPI fctrl register.
-        //
-        // We need a memory-mapped location that:
-        //   (a) is writable via store instructions,
-        //   (b) is not modified by Linux between halted_access calls, and
-        //   (c) can be safely toggled without side-effects.
-        //
-        // ILM is read-only from the CPU data bus (stores silently dropped).
-        // DLM is actively modified by Linux between operations.
-        // The NUSPI fctrl register at 0x10014060 meets all criteria: it is a
-        // peripheral register, writable, and we are about to set it anyway.
-        //
-        // Test: toggle bit 0, read back, verify, then restore.
-        {
-            let fctrl_addr = NUSPI_BASE + NUSPI_FCTRL;
-            match interface.read_word_32(fctrl_addr) {
-                Ok(original) => {
-                    let toggled = original ^ FCTRL_EN;
-                    if let Err(e) = interface.write_word_32(fctrl_addr, toggled) {
-                        tracing::warn!("NucleiSequence: fctrl write test failed: {:?}", e);
-                    } else {
-                        match interface.read_word_32(fctrl_addr) {
-                            Ok(readback) => {
-                                if readback == toggled {
-                                    tracing::info!(
-                                        "NucleiSequence: write test at fctrl {:#010x}: \
-                                         wrote {:#010x}, read back {:#010x} — SUCCESS",
-                                        fctrl_addr,
-                                        toggled,
-                                        readback,
-                                    );
-                                } else {
-                                    tracing::warn!(
-                                        "NucleiSequence: write test at fctrl {:#010x}: \
-                                         wrote {:#010x}, read back {:#010x} — MISMATCH",
-                                        fctrl_addr,
-                                        toggled,
-                                        readback,
-                                    );
-                                }
-                                // Restore original value.
-                                let _ = interface.write_word_32(fctrl_addr, original);
-                            }
-                            Err(e) => {
-                                tracing::warn!("NucleiSequence: fctrl readback failed: {:?}", e);
-                                // Best-effort restore.
-                                let _ = interface.write_word_32(fctrl_addr, original);
-                            }
-                        }
-                    }
-                }
-                Err(e) => {
-                    tracing::warn!("NucleiSequence: fctrl read failed: {:?}", e);
-                }
-            }
-        }
-
         // Re-enable XIP mode on the NUSPI flash controller.
         //
         // When Linux is running its SPI driver clears fctrl[0], which disables

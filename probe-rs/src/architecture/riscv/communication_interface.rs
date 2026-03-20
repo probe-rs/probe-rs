@@ -906,10 +906,6 @@ impl<'state> RiscvCommunicationInterface<'state> {
         &mut self,
         op: impl FnOnce(&mut Self) -> Result<R, RiscvError>,
     ) -> Result<R, RiscvError> {
-        tracing::debug!(
-            "halted_access: force_machine_mode_progbuf={}",
-            self.state.force_machine_mode_progbuf
-        );
         let was_running = self.halt_with_previous(Duration::from_millis(100))?;
 
         // If requested, force the program buffer privilege level to machine mode
@@ -1654,21 +1650,8 @@ impl<'state> RiscvCommunicationInterface<'state> {
             // subsequent `sw` to fault (abstractcs.cmderr=2, silently swallowed when
             // wait_for_idle is false).  Use a 64-bit abstract write on RV64 so that
             // S0 always holds the correctly zero-extended address.
-            tracing::debug!(
-                "perform_memory_write_progbuf: xlen_64={}, address={:#010x}",
-                core.state.xlen_64,
-                address
-            );
             if core.state.xlen_64 {
                 core.abstract_cmd_register_write_64(&registers::S0, u64::from(address))?;
-                // Verify S0 readback (temporary diagnostic).
-                match core.abstract_cmd_register_read_64(&registers::S0) {
-                    Ok(s0) => tracing::debug!(
-                        "perform_memory_write_progbuf: S0 readback = {:#018x} (expected {:#010x})",
-                        s0, address
-                    ),
-                    Err(e) => tracing::warn!("perform_memory_write_progbuf: S0 readback failed: {:?}", e),
-                }
             } else {
                 core.abstract_cmd_register_write(&registers::S0, address)?;
             }
