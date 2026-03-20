@@ -334,6 +334,14 @@ pub struct RiscvCommunicationInterfaceState {
     /// Whether the connected core is 64-bit (RV64). When true, memory access
     /// methods will accept 64-bit addresses and CSR access uses 64-bit data registers.
     pub(super) xlen_64: bool,
+
+    /// When true, `halted_access` will set `dcsr.prv = M` (machine mode) after
+    /// every internal halt and restore the original `prv` before resuming.
+    ///
+    /// Use this on targets (e.g. Nuclei UX600 running Linux) whose ILM/DLM are
+    /// not mapped in the supervisor page table: the program buffer must execute
+    /// at M-privilege so that physical addresses are used directly.
+    pub(crate) force_machine_mode_progbuf: bool,
 }
 
 /// Timeout for RISC-V operations.
@@ -387,6 +395,7 @@ impl RiscvCommunicationInterfaceState {
             sw_breakpoint_debug_enabled: false,
 
             xlen_64: false,
+            force_machine_mode_progbuf: false,
         }
     }
 
@@ -924,7 +933,88 @@ impl<'state> RiscvCommunicationInterface<'state> {
     ) -> Result<R, RiscvError> {
         let was_running = self.halt_with_previous(Duration::from_millis(100))?;
 
+        // If requested, force the program buffer privilege level to machine mode
+        // so that memory accesses bypass the MMU and use physical addresses.
+        //
+        // `dcsr.prv` is a hardware-written field: the CPU sets it to the
+        // privilege level at which it halted.  When Linux halts in supervisor
+        // mode (dcsr.prv = S), virtual memory is active in the program buffer,
+        // and on-chip SRAMs at their physical addresses (ILM 0x80000000, DLM
+        // 0x90000000) may not be mapped or may be write-protected in the
+        // supervisor page table.  Forcing prv = M gives direct physical access.
+        //
+        // IMPORTANT: we use abstract register commands (not read_csr_progbuf*)
+        // because the progbuf variants call halted_access themselves, which
+        // would cause infinite mutual recursion.  Abstract commands operate
+        // directly on DMI without re-entering halted_access.
+        let saved_prv: Option<u32> = if self.state.force_machine_mode_progbuf {
+            const DCSR_REGNO: u16 = 0x7b0;
+            const PRV_MASK: u32 = 0x3;
+            const PRV_M: u32 = 0x3;
+            // Bit 15: ebreakm — when set, `ebreak` in M-mode enters debug mode
+            // rather than taking a normal M-mode exception.  Without this bit the
+            // implicit `ebreak` at the end of the program buffer exits debug mode
+            // and sets cmderr=4 (halt/resume).
+            const EBREAKM: u32 = 1 << 15;
+
+            // Read DCSR via abstract command (safe: no halted_access recursion).
+            match self.abstract_cmd_register_read(DCSR_REGNO) {
+                Ok(dcsr) => {
+                    let prv = dcsr & PRV_MASK;
+                    tracing::debug!(
+                        "halted_access: DCSR read = {:#010x}, prv = {}, ebreakm = {}",
+                        dcsr,
+                        prv,
+                        (dcsr & EBREAKM) != 0
+                    );
+
+                    // Build the desired DCSR: prv=M, ebreakm=1.
+                    let need_prv = prv != PRV_M;
+                    let need_ebreakm = (dcsr & EBREAKM) == 0;
+                    if need_prv || need_ebreakm {
+                        let dcsr_new = (dcsr & !PRV_MASK & !EBREAKM) | PRV_M | EBREAKM;
+                        tracing::debug!(
+                            "halted_access: updating DCSR {:#010x} -> {:#010x} \
+                             (prv {} -> M, ebreakm {} -> 1)",
+                            dcsr,
+                            dcsr_new,
+                            prv,
+                            (dcsr & EBREAKM) != 0
+                        );
+                        if let Err(e) = self.abstract_cmd_register_write(DCSR_REGNO, dcsr_new) {
+                            tracing::warn!("halted_access: could not update DCSR: {:?}", e);
+                        }
+                    } else {
+                        tracing::debug!("halted_access: DCSR already M-mode + ebreakm");
+                    }
+                    Some(prv)
+                }
+                Err(e) => {
+                    tracing::warn!("halted_access: could not read DCSR: {:?}", e);
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
         let result = op(self);
+
+        // Restore the original dcsr.prv when it was not already M-mode.
+        // ebreakm is intentionally left set so that a resumed hart still
+        // returns to debug mode on ebreak; the normal halt/resume flow will
+        // eventually call debug_on_sw_breakpoint(false) at session close.
+        // Best-effort: ignore errors to not shadow the result of op().
+        if let Some(prv) = saved_prv {
+            const DCSR_REGNO: u16 = 0x7b0;
+            const PRV_MASK: u32 = 0x3;
+            const PRV_M: u32 = 0x3;
+            if prv != PRV_M
+                && let Ok(dcsr) = self.abstract_cmd_register_read(DCSR_REGNO)
+            {
+                let _ = self.abstract_cmd_register_write(DCSR_REGNO, (dcsr & !PRV_MASK) | prv);
+            }
+        }
 
         if was_running {
             self.resume_core()?;
@@ -1094,8 +1184,17 @@ impl<'state> RiscvCommunicationInterface<'state> {
     ///
     /// In RV64 mode, memory access methods accept 64-bit addresses without
     /// the `valid_32bit_address` restriction.
-    pub(super) fn set_xlen_64(&mut self, is_64: bool) {
+    pub(crate) fn set_xlen_64(&mut self, is_64: bool) {
         self.state.xlen_64 = is_64;
+    }
+
+    /// Enable machine-mode execution inside `halted_access`.
+    ///
+    /// When set, `halted_access` writes `dcsr.prv = M` after every internal
+    /// halt so that program-buffer instructions use physical addresses
+    /// regardless of the privilege level at which the hart was interrupted.
+    pub(crate) fn set_force_machine_mode_progbuf(&mut self, force: bool) {
+        self.state.force_machine_mode_progbuf = force;
     }
 
     /// Schedules a DM register read, flushes the queue and returns the result.
@@ -2266,11 +2365,23 @@ impl<'state> RiscvCommunicationInterface<'state> {
     }
 
     fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), RiscvError> {
-        let mut dcsr = Dcsr(self.read_csr(0x7b0)?);
+        let raw = self.read_csr(0x7b0)?;
+        let mut dcsr = Dcsr(raw);
+        tracing::debug!(
+            "debug_on_sw_breakpoint({}): DCSR before = {:#010x}",
+            enabled,
+            raw
+        );
 
         dcsr.set_ebreakm(enabled);
         dcsr.set_ebreaks(enabled);
         dcsr.set_ebreaku(enabled);
+
+        tracing::debug!(
+            "debug_on_sw_breakpoint({}): DCSR to write = {:#010x}",
+            enabled,
+            dcsr.0
+        );
 
         match self.abstract_cmd_register_write(0x7b0, dcsr.0) {
             Ok(()) => {
