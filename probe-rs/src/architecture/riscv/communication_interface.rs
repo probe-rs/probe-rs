@@ -889,9 +889,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
     }
 
     pub(crate) fn core_info(&mut self) -> Result<CoreInformation, RiscvError> {
-        let pc: u64 = self
-            .read_csr(super::registers::PC.id().0)
-            .map(|v| v.into())?;
+        let pc: u64 = if self.state.xlen_64 {
+            self.read_csr_64(super::registers::PC.id().0)?
+        } else {
+            self.read_csr(super::registers::PC.id().0)?.into()
+        };
 
         Ok(CoreInformation { pc })
     }
