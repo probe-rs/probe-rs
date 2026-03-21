@@ -43,10 +43,16 @@ pub struct RttChannelEventBody {
     pub data_format: rtt::DataFormat,
 }
 
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PromptKind {
+    Rtt,
+}
+
 #[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreatePromptEventBody {
-    pub prompt_kind: String,
+    pub prompt_kind: PromptKind,
     pub prompt_name: String,
     pub prompt_handle: u32,
 }

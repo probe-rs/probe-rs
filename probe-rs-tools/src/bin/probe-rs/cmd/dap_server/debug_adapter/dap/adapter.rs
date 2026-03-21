@@ -1661,9 +1661,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     }
 
     /// Send a custom `probe-rs-rtt-channel-config` event to the MS DAP Client, to create a window for a specific RTT channel.
-    pub fn open_prompt(&mut self, kind: &str, name: &str, handle: u32) -> bool {
+    pub fn open_prompt(&mut self, kind: PromptKind, name: &str, handle: u32) -> bool {
         let Ok(event_body) = serde_json::to_value(CreatePromptEventBody {
-            prompt_kind: kind.to_string(),
+            prompt_kind: kind,
             prompt_name: name.to_string(),
             prompt_handle: handle,
         }) else {

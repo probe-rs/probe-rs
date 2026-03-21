@@ -11,6 +11,7 @@ use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 
 use crate::cmd::dap_server::debug_adapter::dap::adapter::DebugAdapter;
+use crate::cmd::dap_server::debug_adapter::dap::dap_types;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::InitializeRequestArguments;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::OutputEventBody;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::ProgressStartEventBody;
@@ -577,7 +578,7 @@ impl Client {
                 };
 
                 let prompt = serde_json::from_value::<CreatePromptEventBody>(body)?;
-                if prompt.prompt_kind.as_str() == "rtt" {
+                if prompt.prompt_kind == dap_types::PromptKind::Rtt {
                     self.prompts.push(PromptKind::Rtt {
                         channel: prompt.prompt_handle,
                         channel_name: prompt.prompt_name.clone(),
