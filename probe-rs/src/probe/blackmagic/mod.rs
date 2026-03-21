@@ -27,6 +27,7 @@ use crate::{
         RawJtagIo, RawSwdIo, SwdSettings, WireProtocol, blackmagic::arm::BlackMagicProbeArmDebug,
     },
 };
+use bitfield::bitfield;
 use bitvec::vec::BitVec;
 use serialport::{SerialPortType, available_ports};
 
@@ -76,6 +77,17 @@ impl core::fmt::Display for ProtocolVersion {
             }
         )
     }
+}
+
+bitfield! {
+    #[derive(Copy, Clone)]
+    struct Accelerators(u64);
+    impl Debug;
+
+    bool, has_adiv5, set_has_adiv5: 0;
+    bool, has_cortex_ar, _: 1;
+    bool, has_riscv, _: 2;
+    bool, has_adiv6, _: 3;
 }
 
 #[expect(dead_code)]
@@ -1143,22 +1155,26 @@ impl DebugProbe for BlackMagicProbe {
         mut self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
-        let has_adiv5 = match self.remote_protocol {
-            ProtocolVersion::V0 => false,
+        let accelerators = match self.remote_protocol {
+            ProtocolVersion::V0 => Accelerators(0),
             ProtocolVersion::V0P
             | ProtocolVersion::V1
             | ProtocolVersion::V2
-            | ProtocolVersion::V3 => true,
+            | ProtocolVersion::V3 => {
+                let mut accelerators = Accelerators(0);
+                accelerators.set_has_adiv5(true);
+                accelerators
+            }
             ProtocolVersion::V4 => {
-                if let Ok(accelerators) = self.command(RemoteCommand::GetAccelerators) {
-                    accelerators.0 & 1 != 0
+                if let Ok(response) = self.command(RemoteCommand::GetAccelerators) {
+                    Accelerators(response.0)
                 } else {
-                    false
+                    Accelerators(0)
                 }
             }
         };
 
-        if has_adiv5 {
+        if accelerators.has_adiv5() {
             match BlackMagicProbeArmDebug::new(self, sequence) {
                 Ok(interface) => Ok(Box::new(interface)),
                 Err((probe, err)) => Err((probe.into_probe(), err)),
