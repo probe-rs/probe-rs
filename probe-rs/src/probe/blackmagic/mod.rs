@@ -1256,7 +1256,7 @@ impl DebugProbe for BlackMagicProbe {
         };
 
         if accelerators.has_adiv5() {
-            match BlackMagicProbeArmDebug::new(self, sequence) {
+            match BlackMagicProbeArmDebug::new(self, sequence, accelerators) {
                 Ok(interface) => Ok(Box::new(interface)),
                 Err((probe, err)) => Err((probe.into_probe(), err)),
             }

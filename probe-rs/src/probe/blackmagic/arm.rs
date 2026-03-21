@@ -1,6 +1,7 @@
 use crate::MemoryInterface;
 use crate::architecture::arm::{
-    ApAddress, ArmDebugInterface, DapAccess, FullyQualifiedApAddress, RawDapAccess, SwoAccess,
+    ApAddress, ApV2Address, ArmDebugInterface, DapAccess, FullyQualifiedApAddress, RawDapAccess,
+    SwoAccess,
     ap::{
         self, AccessPortType, AddressIncrement, CSW, DataSize,
         memory_ap::{MemoryAp, MemoryApType},
@@ -14,7 +15,9 @@ use crate::architecture::arm::{
     memory::ArmMemoryInterface,
     sequences::ArmDebugSequence,
 };
-use crate::probe::blackmagic::{Align, BlackMagicProbe, ProtocolVersion, RemoteCommand};
+use crate::probe::blackmagic::{
+    Accelerators, Align, BlackMagicProbe, ProtocolVersion, RemoteCommand,
+};
 use crate::probe::{ArmError, DebugProbeError, Probe};
 use std::collections::BTreeSet;
 use std::collections::hash_map;
@@ -40,6 +43,9 @@ pub(crate) struct BlackMagicProbeArmDebug {
 
     /// Whether to enable a hardware feature to detect overruns
     use_overrun_detect: bool,
+
+    /// Accelerators supported by this probe.
+    accelerators: Accelerators,
 }
 
 #[derive(Debug)]
@@ -54,6 +60,7 @@ impl BlackMagicProbeArmDebug {
     pub fn new(
         probe: Box<BlackMagicProbe>,
         sequence: Arc<dyn ArmDebugSequence>,
+        accelerators: Accelerators,
     ) -> Result<Self, (Box<BlackMagicProbe>, ArmError)> {
         Ok(Self {
             probe,
@@ -62,6 +69,7 @@ impl BlackMagicProbeArmDebug {
             current_dp: None,
             dps: HashMap::new(),
             use_overrun_detect: true,
+            accelerators,
         })
     }
 
@@ -220,6 +228,11 @@ impl ArmDebugInterface for BlackMagicProbeArmDebug {
         &mut self,
         access_port: &FullyQualifiedApAddress,
     ) -> Result<Box<dyn crate::architecture::arm::memory::ArmMemoryInterface + '_>, ArmError> {
+        // The root port in APv2 is special.
+        if let ApAddress::V2(ApV2Address(None)) = access_port.ap() {
+            return Ok(Box::new(ap::v2::RootMemoryInterface::new(self, access_port.dp())?) as _);
+        }
+
         let mut current_ap = MemoryAp::new(self, access_port)?;
 
         // Construct a CSW to pass to the AP when accessing memory.
@@ -540,10 +553,18 @@ impl DapAccess for BlackMagicProbeArmDebug {
                     }
                 }
             }
-            ApAddress::V2(_) => {
-                return Err(ArmError::NotImplemented(
-                    "BlackMagicProbe does not yet support APv2",
-                ));
+            ApAddress::V2(ApV2Address(apsel)) => {
+                if !self.accelerators.has_adiv6() {
+                    return Err(ArmError::Probe(
+                        DebugProbeError::CommandNotSupportedByProbe {
+                            command_name: "adiv6 raw ap read",
+                        },
+                    ));
+                }
+                let index = 0;
+                let apsel = apsel.unwrap_or(0) | (addr & !0x0FFF);
+                let addr = (addr & 0x0FFF) as u16;
+                RemoteCommand::AdiV6ReadApV4 { index, apsel, addr }
             }
         };
         let result = u32::from_be(
@@ -593,10 +614,23 @@ impl DapAccess for BlackMagicProbeArmDebug {
                     },
                 }
             }
-            ApAddress::V2(_) => {
-                return Err(ArmError::NotImplemented(
-                    "BlackMagicProbe does not yet support APv2",
-                ));
+            ApAddress::V2(ApV2Address(apsel)) => {
+                if !self.accelerators.has_adiv6() {
+                    return Err(ArmError::Probe(
+                        DebugProbeError::CommandNotSupportedByProbe {
+                            command_name: "adiv6 raw ap write",
+                        },
+                    ));
+                }
+                let index = 0;
+                let apsel = apsel.unwrap_or(0) | (addr & !0x0FFF);
+                let addr = (addr & 0x0FFF) as u16;
+                RemoteCommand::AdiV6WriteApV4 {
+                    index,
+                    apsel,
+                    addr,
+                    value,
+                }
             }
         };
 
@@ -711,10 +745,22 @@ impl BlackMagicProbeMemoryInterface<'_> {
                     data,
                 },
             },
-            ApAddress::V2(_) => {
-                return Err(ArmError::NotImplemented(
-                    "BlackMagicProbe does not yet support APv2",
-                ));
+            ApAddress::V2(ApV2Address(apsel)) => {
+                if !self.probe.accelerators.has_adiv6() {
+                    return Err(ArmError::Probe(
+                        DebugProbeError::CommandNotSupportedByProbe {
+                            command_name: "adiv6 memory read",
+                        },
+                    ));
+                }
+                let apsel = apsel.unwrap_or(0);
+                RemoteCommand::AdiV6MemReadV4 {
+                    index: self.index,
+                    apsel,
+                    csw: self.csw,
+                    offset,
+                    data,
+                }
             }
         };
         self.probe
@@ -787,10 +833,23 @@ impl BlackMagicProbeMemoryInterface<'_> {
                     data,
                 },
             },
-            ApAddress::V2(_) => {
-                return Err(ArmError::NotImplemented(
-                    "BlackMagicProbe does not yet support APv2",
-                ));
+            ApAddress::V2(ApV2Address(apsel)) => {
+                if !self.probe.accelerators.has_adiv6() {
+                    return Err(ArmError::Probe(
+                        DebugProbeError::CommandNotSupportedByProbe {
+                            command_name: "adiv6 memory write",
+                        },
+                    ));
+                }
+                let apsel = apsel.unwrap_or(0);
+                RemoteCommand::AdiV6MemWriteV4 {
+                    index: self.index,
+                    apsel,
+                    csw: self.csw,
+                    align,
+                    offset,
+                    data,
+                }
             }
         };
         let result = self
