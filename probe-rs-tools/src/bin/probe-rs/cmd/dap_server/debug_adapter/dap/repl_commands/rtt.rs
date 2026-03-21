@@ -58,6 +58,8 @@ fn write(
         ));
     };
 
+    let mut data = data.to_string();
+    data.push('\n');
     rtt.client
         .write_down_channel(&mut target_core.core, channel_id, data)
         .map_err(|e| {
