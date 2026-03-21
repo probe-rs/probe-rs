@@ -149,7 +149,7 @@ mod test {
     fn test_make_fx_profile() {
         let executable_name = "esp32c6_coredump_elf";
         let executable_location =
-            get_path_for_test_files(format!("debug-unwind-tests/{executable_name}.elf").as_str());
+            get_path_for_test_files(format!("{executable_name}.elf").as_str());
 
         let object_bytes = std::fs::read(&executable_location).unwrap();
         let obj = object::File::parse(object_bytes.as_slice()).unwrap();
