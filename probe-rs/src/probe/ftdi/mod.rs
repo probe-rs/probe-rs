@@ -46,9 +46,35 @@ struct JtagAdapter {
 }
 
 impl JtagAdapter {
-    fn open(ftdi: FtdiDevice, usb_device: DeviceInfo) -> Result<Self, DebugProbeError> {
+    /// Map a USB interface number from `--probe VID:PID-INTERFACE` to an FTDI channel.
+    ///
+    /// Multi-channel FTDI chips (FT2232H, FT4232H) expose each channel as a
+    /// separate USB interface. The mapping is: 0 = Channel A, 1 = Channel B,
+    /// 2 = Channel C, 3 = Channel D. Defaults to Channel A when no interface
+    /// is specified.
+    fn map_interface(usb_interface: Option<u8>) -> ftdaye::Interface {
+        match usb_interface {
+            Some(0) | None => ftdaye::Interface::A,
+            Some(1) => ftdaye::Interface::B,
+            Some(2) => ftdaye::Interface::C,
+            Some(3) => ftdaye::Interface::D,
+            Some(n) => {
+                tracing::warn!(
+                    "FTDI interface number {n} is out of range (0..=3), defaulting to Channel A"
+                );
+                ftdaye::Interface::A
+            }
+        }
+    }
+
+    fn open(
+        ftdi: FtdiDevice,
+        usb_device: DeviceInfo,
+        usb_interface: Option<u8>,
+    ) -> Result<Self, DebugProbeError> {
+        let interface = Self::map_interface(usb_interface);
         let device = ftdaye::Builder::new()
-            .with_interface(ftdaye::Interface::A)
+            .with_interface(interface)
             .with_read_timeout(Duration::from_secs(5))
             .with_write_timeout(Duration::from_secs(5))
             .usb_open(usb_device)?;
@@ -300,7 +326,7 @@ impl ProbeFactory for FtdiProbeFactory {
         }
 
         let probe = FtdiProbe {
-            adapter: JtagAdapter::open(ftdi, probes.pop().unwrap())?,
+            adapter: JtagAdapter::open(ftdi, probes.pop().unwrap(), selector.interface)?,
             jtag_state: JtagDriverState::default(),
             swd_settings: SwdSettings::default(),
         };
@@ -310,6 +336,33 @@ impl ProbeFactory for FtdiProbeFactory {
 
     fn list_probes(&self) -> Vec<DebugProbeInfo> {
         list_ftdi_devices()
+    }
+
+    fn list_probes_filtered(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
+        // FTDI probes are enumerated as one entry per USB device. The interface/channel
+        // (A/B/C/D) is not stored in DebugProbeInfo; it is a runtime selection passed
+        // through to open(). The default list_probes_filtered() filters by interface,
+        // which causes "no probe found" when the user specifies e.g. `--probe VID:PID-1`
+        // to select Channel B on an FT2232H, because interface is always None in the
+        // listed entries.
+        //
+        // Match only on VID, PID, and (optionally) serial number, ignoring interface.
+        self.list_probes()
+            .into_iter()
+            .filter(|probe| {
+                selector.as_ref().is_none_or(|s| {
+                    probe.vendor_id == s.vendor_id
+                        && probe.product_id == s.product_id
+                        && s.serial_number.as_ref().is_none_or(|sn| {
+                            if let Some(probe_sn) = &probe.serial_number {
+                                probe_sn == sn
+                            } else {
+                                sn.is_empty()
+                            }
+                        })
+                })
+            })
+            .collect()
     }
 }
 

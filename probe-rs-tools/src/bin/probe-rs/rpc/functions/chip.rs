@@ -151,8 +151,10 @@ pub enum CoreType {
     Armv8a,
     /// ARMv8-M: Cortex M23, M33
     Armv8m,
-    /// RISC-V
+    /// RISC-V (32-bit)
     Riscv,
+    /// RISC-V (64-bit)
+    Riscv64,
     /// Xtensa - TODO: may need to split into NX, LX6 and LX7
     Xtensa,
 }
@@ -167,6 +169,7 @@ impl From<probe_rs_target::CoreType> for CoreType {
             probe_rs_target::CoreType::Armv8a => CoreType::Armv8a,
             probe_rs_target::CoreType::Armv8m => CoreType::Armv8m,
             probe_rs_target::CoreType::Riscv => CoreType::Riscv,
+            probe_rs_target::CoreType::Riscv64 => CoreType::Riscv64,
             probe_rs_target::CoreType::Xtensa => CoreType::Xtensa,
         }
     }

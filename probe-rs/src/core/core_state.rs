@@ -6,7 +6,7 @@ use crate::{
             core::{CortexAState, CortexMState},
             dp::DpAddress,
         },
-        riscv::{RiscvCoreState, communication_interface::RiscvCommunicationInterface},
+        riscv::{Riscv64, RiscvCoreState, communication_interface::RiscvCommunicationInterface},
         xtensa::{XtensaCoreState, communication_interface::XtensaCommunicationInterface},
     },
 };
@@ -168,22 +168,27 @@ impl CombinedCoreState {
         };
         let debug_sequence = sequence.clone();
 
-        let SpecificCoreState::Riscv(s) = &mut self.specific_state else {
-            unreachable!(
-                "The stored core state is not compatible with the RISC-V architecture. \
-                This should never happen. Please file a bug if it does."
-            );
-        };
-
         let hart = options.hart_id.unwrap_or_default();
         interface.select_hart(hart)?;
 
-        Ok(Core::new(
-            self.id,
-            name,
-            target,
-            crate::architecture::riscv::Riscv32::new(interface, s, debug_sequence)?,
-        ))
+        match &mut self.specific_state {
+            SpecificCoreState::Riscv(s) => Ok(Core::new(
+                self.id,
+                name,
+                target,
+                crate::architecture::riscv::Riscv32::new(interface, s, debug_sequence)?,
+            )),
+            SpecificCoreState::Riscv64(s) => Ok(Core::new(
+                self.id,
+                name,
+                target,
+                Riscv64::new(interface, s, debug_sequence)?,
+            )),
+            _ => unreachable!(
+                "The stored core state is not compatible with the RISC-V architecture. \
+                This should never happen. Please file a bug if it does."
+            ),
+        }
     }
 
     pub(crate) fn attach_xtensa<'probe>(
@@ -278,8 +283,10 @@ pub enum SpecificCoreState {
     Armv8a(CortexAState),
     /// The state of an ARMv8-M core.
     Armv8m(CortexMState),
-    /// The state of an RISC-V core.
+    /// The state of a 32-bit RISC-V core.
     Riscv(RiscvCoreState),
+    /// The state of a 64-bit RISC-V core.
+    Riscv64(RiscvCoreState),
     /// The state of an Xtensa core.
     Xtensa(XtensaCoreState),
 }
@@ -294,6 +301,7 @@ impl SpecificCoreState {
             CoreType::Armv8a => SpecificCoreState::Armv8a(CortexAState::new()),
             CoreType::Armv8m => SpecificCoreState::Armv8m(CortexMState::new()),
             CoreType::Riscv => SpecificCoreState::Riscv(RiscvCoreState::new()),
+            CoreType::Riscv64 => SpecificCoreState::Riscv64(RiscvCoreState::new()),
             CoreType::Xtensa => SpecificCoreState::Xtensa(XtensaCoreState::new()),
         }
     }
@@ -307,6 +315,7 @@ impl SpecificCoreState {
             SpecificCoreState::Armv8a(_) => CoreType::Armv8a,
             SpecificCoreState::Armv8m(_) => CoreType::Armv8m,
             SpecificCoreState::Riscv(_) => CoreType::Riscv,
+            SpecificCoreState::Riscv64(_) => CoreType::Riscv64,
             SpecificCoreState::Xtensa(_) => CoreType::Xtensa,
         }
     }
