@@ -4,7 +4,7 @@ use std::num::NonZeroU32;
 use std::{ops::Range, path::Path};
 
 use super::session_data::{self, ActiveBreakpoint, BreakpointType, SourceLocationScope};
-use crate::cmd::dap_server::debug_adapter::dap::dap_types::MessageSeverity;
+use crate::cmd::dap_server::debug_adapter::dap::dap_types::{MessageSeverity, PromptKind};
 use crate::cmd::dap_server::debug_adapter::dap::repl_commands::ReplCommand;
 use crate::util::rtt::client::RttClient;
 use crate::util::rtt::{self, DataFormat, DefmtProcessor, DefmtState};
@@ -301,6 +301,14 @@ impl CoreHandle<'_> {
             });
 
             debug_adapter.rtt_window(up_channel.number(), channel_name, data_format);
+        }
+
+        for down_channel in client.down_channels() {
+            debug_adapter.open_prompt(
+                PromptKind::Rtt,
+                &down_channel.channel_name(),
+                down_channel.number(),
+            );
         }
 
         self.core_data.rtt_connection = Some(debug_rtt::RttConnection {
