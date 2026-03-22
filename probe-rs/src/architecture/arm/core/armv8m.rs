@@ -567,7 +567,7 @@ impl CoreInterface for Armv8m<'_> {
                 }
             }
             VectorCatchCondition::Svc | VectorCatchCondition::Hlt => {
-                return Err(Error::NotImplemented("vector catch condition"));
+                return Err(Error::NotImplemented("vector catch condition Svc/Hlt"));
             }
         };
 
@@ -596,7 +596,7 @@ impl CoreInterface for Armv8m<'_> {
                 }
             }
             VectorCatchCondition::Svc | VectorCatchCondition::Hlt => {
-                return Err(Error::NotImplemented("vector catch condition"));
+                return Err(Error::NotImplemented("vector catch condition Svc/Hlt"));
             }
         };
 

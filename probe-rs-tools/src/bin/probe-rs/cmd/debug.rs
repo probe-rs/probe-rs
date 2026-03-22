@@ -165,6 +165,16 @@ pub struct Cmd {
     #[clap(long)]
     pub no_catch_hardfault: bool,
 
+    /// Disable SVC vector catch (halts on SVC exception).
+    /// Only applies to ARMv7-A/R cores.
+    #[clap(long)]
+    pub no_catch_svc: bool,
+
+    /// Disable HLT vector catch (halts on UNDEF exception for HLT instruction).
+    /// Only applies to ARMv7-A/R cores.
+    #[clap(long)]
+    pub no_catch_hlt: bool,
+
     /// Disable reading RTT data.
     #[clap(long, help_heading = "LOG CONFIGURATION / RTT")]
     pub no_rtt: bool,
@@ -177,16 +187,6 @@ pub struct Cmd {
     /// After flashing, read back all the flashed data to verify it has been written correctly.
     #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub verify: bool,
-
-    /// Disable SVC vector catch (halts on SVC exception).
-    /// Only applies to ARMv7-A/R cores.
-    #[clap(long)]
-    pub no_catch_svc: bool,
-
-    /// Disable HLT vector catch (halts on UNDEF exception for HLT instruction).
-    /// Only applies to ARMv7-A/R cores.
-    #[clap(long)]
-    pub no_catch_hlt: bool,
 }
 
 impl Cmd {

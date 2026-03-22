@@ -924,7 +924,7 @@ impl CoreInterface for Armv6m<'_> {
                 demcr.set_vc_corereset(true);
             }
             VectorCatchCondition::Svc | VectorCatchCondition::Hlt => {
-                return Err(Error::NotImplemented("vector catch condition"));
+                return Err(Error::NotImplemented("vector catch condition Svc/Hlt"));
             }
         };
 
@@ -946,7 +946,7 @@ impl CoreInterface for Armv6m<'_> {
                 demcr.set_vc_corereset(false);
             }
             VectorCatchCondition::Svc | VectorCatchCondition::Hlt => {
-                return Err(Error::NotImplemented("vector catch condition"));
+                return Err(Error::NotImplemented("vector catch condition Svc/Hlt"));
             }
         };
 
