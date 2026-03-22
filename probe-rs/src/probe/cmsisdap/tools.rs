@@ -103,18 +103,22 @@ fn get_cmsisdap_info(device: &DeviceInfo, list_both_versions: bool) -> Vec<Debug
             let is_hid_interface = if interface.class() == USB_CLASS_HID {
                 tracing::trace!("    HID interface found");
                 true
-            } else if (interface.class(), interface.subclass())
-                != (USB_CMSIS_DAP_CLASS, USB_CMSIS_DAP_SUBCLASS)
-            {
+            } else if interface.class() != USB_CMSIS_DAP_CLASS {
                 tracing::trace!(
-                    "Interface {} has a cmsis-dap description but wrong classes ({}, {}), skipping",
+                    "Interface {} has a cmsis-dap description but wrong class ({}), skipping",
                     interface.interface_number(),
                     interface.class(),
-                    interface.subclass(),
                 );
                 // Not a CMSIS-DAP v2 interface, skip.
                 continue;
             } else {
+                if interface.subclass() != USB_CMSIS_DAP_SUBCLASS {
+                    tracing::trace!(
+                        "Interface {} has a non-standard subclass ({}), treating as CMSIS-DAP v2",
+                        interface.interface_number(),
+                        interface.subclass(),
+                    );
+                }
                 false
             };
 
@@ -373,24 +377,33 @@ pub fn open_device_from_selector(
             for device in devices {
                 tracing::trace!("Trying device {:?}", device);
 
-                if selector.matches(&device)
-                    && let Some(device_info) =
-                        get_cmsisdap_info(&device, true).into_iter().find(|dpi| {
+                if selector.matches(&device) {
+                    let (v2_infos, v1_infos): (Vec<_>, Vec<_>) = get_cmsisdap_info(&device, true)
+                        .into_iter()
+                        .filter(|dpi| {
                             tracing::trace!("DebugProbeInfo: {:?}", dpi);
                             // Only compare if the selector has an interface to compare to
                             selector.interface.is_none_or(|i| Some(i) == dpi.interface)
                         })
-                {
+                        .partition(|dpi| !dpi.is_hid_interface);
+
                     // If the VID, PID, and potentially SN all match,
                     // and the device is a valid CMSIS-DAP probe,
-                    // attempt to open the device in v2 mode.
-                    if let Some(device) = open_v2_device(&device, device_info.interface)? {
-                        return Ok(device);
-                    } else {
-                        #[cfg(feature = "cmsisdap_v1")]
-                        {
-                            // Otherwise, save as a potential CMSIS-DAP v1 HID device and continue.
-                            hid_device_info = Some(device_info);
+                    // attempt to open v2 (non-HID) interfaces first.
+                    for device_info in &v2_infos {
+                        if let Some(device) = open_v2_device(&device, device_info.interface)? {
+                            return Ok(device);
+                        }
+                    }
+
+                    #[cfg(feature = "cmsisdap_v1")]
+                    {
+                        // If no v2 interface worked, save the first v1 HID interface
+                        // as a potential CMSIS-DAP v1 HID device to use as fallback.
+                        // Using the v1 interface info (not v2) ensures we filter to the
+                        // correct HID interface in the fallback path below.
+                        if let Some(v1_info) = v1_infos.into_iter().next() {
+                            hid_device_info = Some(v1_info);
                         }
                     }
                 }
