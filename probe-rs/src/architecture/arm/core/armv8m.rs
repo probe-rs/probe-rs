@@ -566,6 +566,9 @@ impl CoreInterface for Armv8m<'_> {
                     demcr.set_vc_sferr(true);
                 }
             }
+            VectorCatchCondition::Svc | VectorCatchCondition::Hlt => {
+                return Err(Error::NotImplemented("vector catch condition Svc/Hlt"));
+            }
         };
 
         self.memory
@@ -591,6 +594,9 @@ impl CoreInterface for Armv8m<'_> {
                 if idpfr1.security_present() {
                     demcr.set_vc_sferr(false);
                 }
+            }
+            VectorCatchCondition::Svc | VectorCatchCondition::Hlt => {
+                return Err(Error::NotImplemented("vector catch condition Svc/Hlt"));
             }
         };
 

@@ -8,7 +8,7 @@ use crate::{
             RttTopic, SemihostingTopic, WireTxImpl, flash::BootInfo,
         },
         utils::{
-            run_loop::{ReturnReason, RunLoop, RunLoopPoller},
+            run_loop::{ReturnReason, RunLoop, RunLoopPoller, VectorCatchConfig},
             semihosting::{SemihostingFileManager, SemihostingOptions},
         },
     },
@@ -51,6 +51,10 @@ pub struct MonitorOptions {
     pub catch_reset: bool,
     /// Enable hardfault vector catch if its supported on the target.
     pub catch_hardfault: bool,
+    /// Enable SVC vector catch (ARMv7-A/R only).
+    pub catch_svc: bool,
+    /// Enable HLT vector catch (ARMv7-A/R only).
+    pub catch_hlt: bool,
     /// RTT client if used.
     pub rtt_client: Option<Key<RttClient>>,
     /// Configure the support for semihosting.
@@ -218,8 +222,12 @@ fn monitor_impl(
 
     let exit_reason = run_loop.run_until(
         &shared_session,
-        request.options.catch_hardfault,
-        request.options.catch_reset,
+        VectorCatchConfig {
+            catch_hardfault: request.options.catch_hardfault,
+            catch_reset: request.options.catch_reset,
+            catch_svc: request.options.catch_svc,
+            catch_hlt: request.options.catch_hlt,
+        },
         poller,
         None,
         |halt_reason, core| semihosting_sink.handle_halt(halt_reason, core),
