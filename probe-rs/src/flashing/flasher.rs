@@ -960,19 +960,11 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
             (regs.argument_register(3), registers.r3),
             (
                 regs.core_register(9),
-                if init {
-                    Some(algo.static_base)
-                } else {
-                    None
-                },
+                if init { Some(algo.static_base) } else { None },
             ),
             (
                 self.core.stack_pointer(),
-                if init {
-                    Some(algo.stack_top)
-                } else {
-                    None
-                },
+                if init { Some(algo.stack_top) } else { None },
             ),
             (
                 self.core.return_address(),
@@ -1082,15 +1074,15 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
 
         self.check_for_stack_overflow()?;
 
-        let result_reg: RegisterValue = self
-            .core
-            .read_core_reg(regs.result_register(0))
-            .map_err(|error| {
-                FlashError::Core(Error::ReadRegister {
-                    register: regs.result_register(0).to_string(),
-                    source: Box::new(error),
-                })
-            })?;
+        let result_reg: RegisterValue =
+            self.core
+                .read_core_reg(regs.result_register(0))
+                .map_err(|error| {
+                    FlashError::Core(Error::ReadRegister {
+                        register: regs.result_register(0).to_string(),
+                        source: Box::new(error),
+                    })
+                })?;
         let r: u32 = match result_reg {
             RegisterValue::U32(v) => v,
             RegisterValue::U64(v) => v as u32,

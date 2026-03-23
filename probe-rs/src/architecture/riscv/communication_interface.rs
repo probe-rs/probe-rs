@@ -968,12 +968,12 @@ impl<'state> RiscvCommunicationInterface<'state> {
                     let need_prv = prv != Self::PRV_M;
                     let need_ebreakm = (dcsr & Self::EBREAKM) == 0;
                     if need_prv || need_ebreakm {
-                        let dcsr_new = (dcsr & !Self::PRV_MASK & !Self::EBREAKM)
-                            | Self::PRV_M
-                            | Self::EBREAKM;
+                        let dcsr_new =
+                            (dcsr & !Self::PRV_MASK & !Self::EBREAKM) | Self::PRV_M | Self::EBREAKM;
                         tracing::trace!(
                             "halted_access: updating DCSR {:#010x} -> {:#010x}",
-                            dcsr, dcsr_new,
+                            dcsr,
+                            dcsr_new,
                         );
                         if let Err(e) = self.write_dcsr_inline(dcsr_new) {
                             tracing::warn!("halted_access: could not update DCSR: {:?}", e);
@@ -1001,19 +1001,19 @@ impl<'state> RiscvCommunicationInterface<'state> {
         // Restore the original dcsr.prv when it was not already M-mode.
         // Note: ebreakm is intentionally left set -- it must remain enabled
         // for progbuf-based debug access to work on targets like FU740.
-        if let Some(prv) = saved_prv {
-            if prv != Self::PRV_M {
-                match self.read_dcsr_inline() {
-                    Ok(dcsr) => {
-                        let new_dcsr = (dcsr & !Self::PRV_MASK) | prv;
-                        let _ = self.write_dcsr_inline(new_dcsr);
-                    }
-                    Err(e) => {
-                        tracing::warn!(
-                            "Failed to restore dcsr.prv after halted_access: {e}. \
-                             Core may resume with incorrect privilege level."
-                        );
-                    }
+        if let Some(prv) = saved_prv
+            && prv != Self::PRV_M
+        {
+            match self.read_dcsr_inline() {
+                Ok(dcsr) => {
+                    let new_dcsr = (dcsr & !Self::PRV_MASK) | prv;
+                    let _ = self.write_dcsr_inline(new_dcsr);
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "Failed to restore dcsr.prv after halted_access: {e}. \
+                         Core may resume with incorrect privilege level."
+                    );
                 }
             }
         }
@@ -1058,18 +1058,21 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         if self.state.xlen_64 {
             let s0_saved = self.save_s0_64()?;
-            self.execute_abstract_command(postexec_cmd.0)?;
-            let dcsr_val = self
-                .abstract_cmd_register_read_64(&registers::S0)
-                .map(|v| v as u32)?;
+            let result = (|| {
+                self.execute_abstract_command(postexec_cmd.0)?;
+                self.abstract_cmd_register_read_64(&registers::S0)
+                    .map(|v| v as u32)
+            })();
             self.restore_s0_64(s0_saved)?;
-            Ok(dcsr_val)
+            result
         } else {
             let s0_saved = self.save_s0()?;
-            self.execute_abstract_command(postexec_cmd.0)?;
-            let dcsr_val = self.abstract_cmd_register_read(&registers::S0)?;
+            let result = (|| {
+                self.execute_abstract_command(postexec_cmd.0)?;
+                self.abstract_cmd_register_read(&registers::S0)
+            })();
             self.restore_s0(s0_saved)?;
-            Ok(dcsr_val)
+            result
         }
     }
 
@@ -1098,17 +1101,21 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         if self.state.xlen_64 {
             let s0_saved = self.save_s0_64()?;
-            self.abstract_cmd_register_write_64(&registers::S0, value as u64)?;
-            self.execute_abstract_command(postexec_cmd.0)?;
+            let result = (|| {
+                self.abstract_cmd_register_write_64(&registers::S0, value as u64)?;
+                self.execute_abstract_command(postexec_cmd.0)
+            })();
             self.restore_s0_64(s0_saved)?;
+            result
         } else {
             let s0_saved = self.save_s0()?;
-            self.abstract_cmd_register_write(&registers::S0, value)?;
-            self.execute_abstract_command(postexec_cmd.0)?;
+            let result = (|| {
+                self.abstract_cmd_register_write(&registers::S0, value)?;
+                self.execute_abstract_command(postexec_cmd.0)
+            })();
             self.restore_s0(s0_saved)?;
+            result
         }
-
-        Ok(())
     }
 
     pub(super) fn read_csr(&mut self, address: u16) -> Result<u32, RiscvError> {
@@ -1759,8 +1766,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
                                 tracing::warn!(
                                     "Autoexec Busy during chunk [{}, {}). \
                                      S0={:#x}, progress={}, reliable={}",
-                                    out_idx, batch_end, current_addr,
-                                    progress, reliable,
+                                    out_idx,
+                                    batch_end,
+                                    current_addr,
+                                    progress,
+                                    reliable,
                                 );
 
                                 if reliable <= out_idx {
@@ -1771,9 +1781,8 @@ impl<'state> RiscvCommunicationInterface<'state> {
                                 }
 
                                 // Re-prime from the reliable index.
-                                let new_addr = (u64::from(address)
-                                    + reliable as u64 * width)
-                                    as u32;
+                                let new_addr =
+                                    (u64::from(address) + reliable as u64 * width) as u32;
                                 core.autoexec_prime_pipeline(new_addr)?;
                                 out_idx = reliable;
                             }
@@ -1799,10 +1808,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
                     // === NON-AUTOEXEC PATH ===
                     // Write address to S0 and execute first progbuf iteration.
                     if core.state.xlen_64 {
-                        core.abstract_cmd_register_write_64(
-                            &registers::S0,
-                            u64::from(address),
-                        )?;
+                        core.abstract_cmd_register_write_64(&registers::S0, u64::from(address))?;
 
                         let mut command = AccessRegisterCommand(0);
                         command.set_cmd_type(0);
@@ -1828,13 +1834,18 @@ impl<'state> RiscvCommunicationInterface<'state> {
                     }
 
                     // Read all but last word via COMMAND + DATA0 per word.
+                    let aarsize = if core.state.xlen_64 {
+                        RiscvBusAccess::A64
+                    } else {
+                        RiscvBusAccess::A32
+                    };
                     let mut result_idxs = Vec::with_capacity(data_len - 1);
                     for out_idx in 0..data_len - 1 {
                         let mut command = AccessRegisterCommand(0);
                         command.set_cmd_type(0);
                         command.set_transfer(true);
                         command.set_write(false);
-                        command.set_aarsize(RiscvBusAccess::A32);
+                        command.set_aarsize(aarsize);
                         command.set_postexec(true);
                         command.set_regno((registers::S1).id.0 as u32);
 
@@ -1847,7 +1858,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
                         }
                     }
 
-                    let last_value = core.abstract_cmd_register_read(&registers::S1)?;
+                    let last_value = if core.state.xlen_64 {
+                        core.abstract_cmd_register_read_64(&registers::S1)? as u32
+                    } else {
+                        core.abstract_cmd_register_read(&registers::S1)?
+                    };
                     data[data.len() - 1] = V::from_register_value(last_value);
 
                     for (out_idx, value_idx) in result_idxs {
@@ -2333,7 +2348,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// Write a 64-bit CSR value via the program buffer (RV64 fallback path).
     pub fn write_csr_progbuf_64(&mut self, address: u16, value: u64) -> Result<(), RiscvError> {
         self.halted_access(|core| {
-            tracing::debug!("Writing 64-bit CSR {:#04x}={:#x} via program buffer", address, value);
+            tracing::debug!(
+                "Writing 64-bit CSR {:#04x}={:#x} via program buffer",
+                address,
+                value
+            );
 
             if address > RISCV_MAX_CSR_ADDR {
                 return Err(RiscvError::UnsupportedCsrAddress(address));
