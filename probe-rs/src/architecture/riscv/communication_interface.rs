@@ -1288,6 +1288,8 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// When set, `halted_access` writes `dcsr.prv = M` after every internal
     /// halt so that program-buffer instructions use physical addresses
     /// regardless of the privilege level at which the hart was interrupted.
+    // Used by vendor sequences (e.g. Nuclei, SiFive) not yet in this branch.
+    #[expect(dead_code)]
     pub(crate) fn set_force_machine_mode_progbuf(&mut self, force: bool) {
         self.state.force_machine_mode_progbuf = force;
     }
