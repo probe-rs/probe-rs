@@ -926,6 +926,17 @@ impl<'state> RiscvCommunicationInterface<'state> {
         Ok(())
     }
 
+    // DCSR register number and privilege-level constants, shared across
+    // halted_access setup and restore paths.
+    const DCSR_REGNO: u16 = 0x7b0;
+    const PRV_MASK: u32 = 0x3;
+    const PRV_M: u32 = 0x3;
+    /// Bit 15: ebreakm -- when set, `ebreak` in M-mode enters debug mode
+    /// rather than taking a normal M-mode exception.  Without this bit the
+    /// implicit `ebreak` at the end of the program buffer would exit debug
+    /// mode and set cmderr=4 (halt/resume).
+    const EBREAKM: u32 = 1 << 15;
+
     /// Executes an operation while the core is halted.
     pub fn halted_access<R>(
         &mut self,
@@ -948,46 +959,39 @@ impl<'state> RiscvCommunicationInterface<'state> {
         // would cause infinite mutual recursion.  Abstract commands operate
         // directly on DMI without re-entering halted_access.
         let saved_prv: Option<u32> = if self.state.force_machine_mode_progbuf {
-            const DCSR_REGNO: u16 = 0x7b0;
-            const PRV_MASK: u32 = 0x3;
-            const PRV_M: u32 = 0x3;
-            // Bit 15: ebreakm — when set, `ebreak` in M-mode enters debug mode
-            // rather than taking a normal M-mode exception.  Without this bit the
-            // implicit `ebreak` at the end of the program buffer exits debug mode
-            // and sets cmderr=4 (halt/resume).
-            const EBREAKM: u32 = 1 << 15;
-
             // Read DCSR via abstract command (safe: no halted_access recursion).
-            match self.abstract_cmd_register_read(DCSR_REGNO) {
+            match self.abstract_cmd_register_read(Self::DCSR_REGNO) {
                 Ok(dcsr) => {
-                    let prv = dcsr & PRV_MASK;
-                    tracing::debug!(
-                        "halted_access: DCSR read = {:#010x}, prv = {}, ebreakm = {}",
-                        dcsr,
-                        prv,
-                        (dcsr & EBREAKM) != 0
+                    let prv = dcsr & Self::PRV_MASK;
+                    tracing::trace!(
+                        "halted_access: DCSR = {:#010x}, prv = {}, ebreakm = {}",
+                        dcsr, prv, (dcsr & Self::EBREAKM) != 0
                     );
 
                     // Build the desired DCSR: prv=M, ebreakm=1.
-                    let need_prv = prv != PRV_M;
-                    let need_ebreakm = (dcsr & EBREAKM) == 0;
+                    let need_prv = prv != Self::PRV_M;
+                    let need_ebreakm = (dcsr & Self::EBREAKM) == 0;
                     if need_prv || need_ebreakm {
-                        let dcsr_new = (dcsr & !PRV_MASK & !EBREAKM) | PRV_M | EBREAKM;
-                        tracing::debug!(
-                            "halted_access: updating DCSR {:#010x} -> {:#010x} \
-                             (prv {} -> M, ebreakm {} -> 1)",
-                            dcsr,
-                            dcsr_new,
-                            prv,
-                            (dcsr & EBREAKM) != 0
+                        let dcsr_new = (dcsr & !Self::PRV_MASK & !Self::EBREAKM)
+                            | Self::PRV_M
+                            | Self::EBREAKM;
+                        tracing::trace!(
+                            "halted_access: updating DCSR {:#010x} -> {:#010x}",
+                            dcsr, dcsr_new,
                         );
-                        if let Err(e) = self.abstract_cmd_register_write(DCSR_REGNO, dcsr_new) {
+                        if let Err(e) =
+                            self.abstract_cmd_register_write(Self::DCSR_REGNO, dcsr_new)
+                        {
                             tracing::warn!("halted_access: could not update DCSR: {:?}", e);
+                            // Write failed -- do not record prv so the restore
+                            // path is skipped and op() errors are not masked.
+                            None
+                        } else {
+                            Some(prv)
                         }
                     } else {
-                        tracing::debug!("halted_access: DCSR already M-mode + ebreakm");
+                        Some(prv)
                     }
-                    Some(prv)
                 }
                 Err(e) => {
                     tracing::warn!("halted_access: could not read DCSR: {:?}", e);
@@ -1001,18 +1005,26 @@ impl<'state> RiscvCommunicationInterface<'state> {
         let result = op(self);
 
         // Restore the original dcsr.prv when it was not already M-mode.
-        // ebreakm is intentionally left set so that a resumed hart still
-        // returns to debug mode on ebreak; the normal halt/resume flow will
-        // eventually call debug_on_sw_breakpoint(false) at session close.
-        // Best-effort: ignore errors to not shadow the result of op().
+        // Note: ebreakm is intentionally left set -- it must remain enabled
+        // for progbuf-based debug access to work.  The normal halt/resume
+        // flow will eventually call debug_on_sw_breakpoint(false) at session
+        // close.
         if let Some(prv) = saved_prv {
-            const DCSR_REGNO: u16 = 0x7b0;
-            const PRV_MASK: u32 = 0x3;
-            const PRV_M: u32 = 0x3;
-            if prv != PRV_M
-                && let Ok(dcsr) = self.abstract_cmd_register_read(DCSR_REGNO)
-            {
-                let _ = self.abstract_cmd_register_write(DCSR_REGNO, (dcsr & !PRV_MASK) | prv);
+            if prv != Self::PRV_M {
+                match self.abstract_cmd_register_read(Self::DCSR_REGNO) {
+                    Ok(dcsr) => {
+                        let _ = self.abstract_cmd_register_write(
+                            Self::DCSR_REGNO,
+                            (dcsr & !Self::PRV_MASK) | prv,
+                        );
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            "Failed to restore dcsr.prv after halted_access: {e}. \
+                             Core may resume with incorrect privilege level."
+                        );
+                    }
+                }
             }
         }
 
