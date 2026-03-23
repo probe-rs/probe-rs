@@ -954,21 +954,17 @@ impl<'state> RiscvCommunicationInterface<'state> {
         // 0x90000000) may not be mapped or may be write-protected in the
         // supervisor page table.  Forcing prv = M gives direct physical access.
         //
-        // IMPORTANT: we use abstract register commands (not read_csr_progbuf*)
-        // because the progbuf variants call halted_access themselves, which
-        // would cause infinite mutual recursion.  Abstract commands operate
-        // directly on DMI without re-entering halted_access.
+        // IMPORTANT: we first try abstract register commands.  If they return
+        // NotSupported (e.g. FU740 DM has no abstract CSR support), fall back
+        // to an *inline* program-buffer CSR read that does NOT call
+        // halted_access (avoiding infinite recursion).  The inline approach
+        // saves/restores s0 via abstract GPR commands (which the DM does
+        // support) and uses csrr/csrw instructions in the program buffer.
         let saved_prv: Option<u32> = if self.state.force_machine_mode_progbuf {
-            // Read DCSR via abstract command (safe: no halted_access recursion).
-            match self.abstract_cmd_register_read(Self::DCSR_REGNO) {
+            // Try abstract command first, then progbuf fallback.
+            match self.read_dcsr_inline() {
                 Ok(dcsr) => {
                     let prv = dcsr & Self::PRV_MASK;
-                    tracing::trace!(
-                        "halted_access: DCSR = {:#010x}, prv = {}, ebreakm = {}",
-                        dcsr, prv, (dcsr & Self::EBREAKM) != 0
-                    );
-
-                    // Build the desired DCSR: prv=M, ebreakm=1.
                     let need_prv = prv != Self::PRV_M;
                     let need_ebreakm = (dcsr & Self::EBREAKM) == 0;
                     if need_prv || need_ebreakm {
@@ -979,9 +975,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
                             "halted_access: updating DCSR {:#010x} -> {:#010x}",
                             dcsr, dcsr_new,
                         );
-                        if let Err(e) =
-                            self.abstract_cmd_register_write(Self::DCSR_REGNO, dcsr_new)
-                        {
+                        if let Err(e) = self.write_dcsr_inline(dcsr_new) {
                             tracing::warn!("halted_access: could not update DCSR: {:?}", e);
                             // Write failed -- do not record prv so the restore
                             // path is skipped and op() errors are not masked.
@@ -1006,17 +1000,13 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         // Restore the original dcsr.prv when it was not already M-mode.
         // Note: ebreakm is intentionally left set -- it must remain enabled
-        // for progbuf-based debug access to work.  The normal halt/resume
-        // flow will eventually call debug_on_sw_breakpoint(false) at session
-        // close.
+        // for progbuf-based debug access to work on targets like FU740.
         if let Some(prv) = saved_prv {
             if prv != Self::PRV_M {
-                match self.abstract_cmd_register_read(Self::DCSR_REGNO) {
+                match self.read_dcsr_inline() {
                     Ok(dcsr) => {
-                        let _ = self.abstract_cmd_register_write(
-                            Self::DCSR_REGNO,
-                            (dcsr & !Self::PRV_MASK) | prv,
-                        );
+                        let new_dcsr = (dcsr & !Self::PRV_MASK) | prv;
+                        let _ = self.write_dcsr_inline(new_dcsr);
                     }
                     Err(e) => {
                         tracing::warn!(
@@ -1033,6 +1023,92 @@ impl<'state> RiscvCommunicationInterface<'state> {
         }
 
         result
+    }
+
+    /// Read DCSR without recursing into `halted_access`.
+    ///
+    /// Tries abstract CSR command first.  If that returns `NotSupported`
+    /// (e.g. FU740 DM), falls back to an inline program-buffer `csrr`
+    /// that saves/restores s0 via abstract GPR commands.
+    ///
+    /// Uses the correct aarsize for the target's XLEN so that strict DM
+    /// implementations do not reject the access.
+    fn read_dcsr_inline(&mut self) -> Result<u32, RiscvError> {
+        // Try abstract CSR access first (cheapest path).
+        let abstract_result: Result<u32, RiscvError> = if self.state.xlen_64 {
+            self.abstract_cmd_register_read_64(Self::DCSR_REGNO)
+                .map(|v| v as u32)
+        } else {
+            self.abstract_cmd_register_read(Self::DCSR_REGNO)
+        };
+        match abstract_result {
+            Ok(v) => return Ok(v),
+            Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
+                // Fall through to program-buffer path.
+            }
+            Err(e) => return Err(e),
+        }
+
+        // Program-buffer fallback: csrr s0, dcsr; then read s0 via abstract GPR.
+        let csrr_cmd = assembly::csrr(8, Self::DCSR_REGNO);
+        self.schedule_setup_program_buffer(&[csrr_cmd])?;
+
+        let mut postexec_cmd = AccessRegisterCommand(0);
+        postexec_cmd.set_postexec(true);
+
+        if self.state.xlen_64 {
+            let s0_saved = self.save_s0_64()?;
+            self.execute_abstract_command(postexec_cmd.0)?;
+            let dcsr_val = self
+                .abstract_cmd_register_read_64(&registers::S0)
+                .map(|v| v as u32)?;
+            self.restore_s0_64(s0_saved)?;
+            Ok(dcsr_val)
+        } else {
+            let s0_saved = self.save_s0()?;
+            self.execute_abstract_command(postexec_cmd.0)?;
+            let dcsr_val = self.abstract_cmd_register_read(&registers::S0)?;
+            self.restore_s0(s0_saved)?;
+            Ok(dcsr_val)
+        }
+    }
+
+    /// Write DCSR without recursing into `halted_access`.
+    ///
+    /// Same strategy as [`Self::read_dcsr_inline`]: abstract first, then
+    /// inline progbuf.
+    fn write_dcsr_inline(&mut self, value: u32) -> Result<(), RiscvError> {
+        let abstract_result = if self.state.xlen_64 {
+            self.abstract_cmd_register_write_64(Self::DCSR_REGNO, value as u64)
+        } else {
+            self.abstract_cmd_register_write(Self::DCSR_REGNO, value)
+        };
+        match abstract_result {
+            Ok(()) => return Ok(()),
+            Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {}
+            Err(e) => return Err(e),
+        }
+
+        // Program-buffer fallback: write value to s0, then csrw dcsr, s0.
+        let csrw_cmd = assembly::csrw(Self::DCSR_REGNO, 8);
+        self.schedule_setup_program_buffer(&[csrw_cmd])?;
+
+        let mut postexec_cmd = AccessRegisterCommand(0);
+        postexec_cmd.set_postexec(true);
+
+        if self.state.xlen_64 {
+            let s0_saved = self.save_s0_64()?;
+            self.abstract_cmd_register_write_64(&registers::S0, value as u64)?;
+            self.execute_abstract_command(postexec_cmd.0)?;
+            self.restore_s0_64(s0_saved)?;
+        } else {
+            let s0_saved = self.save_s0()?;
+            self.abstract_cmd_register_write(&registers::S0, value)?;
+            self.execute_abstract_command(postexec_cmd.0)?;
+            self.restore_s0(s0_saved)?;
+        }
+
+        Ok(())
     }
 
     pub(super) fn read_csr(&mut self, address: u16) -> Result<u32, RiscvError> {
