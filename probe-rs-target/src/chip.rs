@@ -46,6 +46,15 @@ pub struct Jtag {
     #[serde(default)]
     pub scan_chain: Option<Vec<ScanChainElement>>,
 
+    /// When set to `true`, the scan chain described in `scan_chain` is used as-is, bypassing
+    /// the JTAG auto-detection (DR/IR scan). This is required for targets whose JTAG TAP does
+    /// not respond to the standard IDCODE scan (e.g., some RISC-V cores during early power-up).
+    ///
+    /// When `false` (the default), `scan_chain` is treated as a hint for IR-length disambiguation
+    /// during the normal auto-detection scan.
+    #[serde(default)]
+    pub force_scan_chain: bool,
+
     /// Describes JTAG tunnel for Risc-V
     #[serde(default)]
     pub riscv_tunnel: Option<RiscvJtagTunnel>,
