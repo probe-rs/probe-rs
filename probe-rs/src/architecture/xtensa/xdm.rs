@@ -487,6 +487,7 @@ impl<'probe> Xdm<'probe> {
     }
 
     pub(super) fn read_idcode(&mut self) -> Result<u32, XtensaError> {
+        self.probe.tap_reset()?;
         let instr = TapInstruction::Idcode;
 
         let capture = self
