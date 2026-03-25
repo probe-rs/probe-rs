@@ -687,6 +687,38 @@ impl DebugInfo {
                         break 'unwind;
                     }
 
+                    // Check for exception frames, same as PART 3 below.
+                    // This is needed because the exception check in PART 3 only
+                    // runs after DWARF unwinding, but we may have no DWARF info
+                    // for the current frame (e.g., outlined functions in release builds).
+                    if unwind_registers
+                        .get_return_address()
+                        .is_some_and(|ra| ra.value.is_some())
+                    {
+                        match exception_handler.exception_details(
+                            memory,
+                            &unwind_registers,
+                            &callee_frame_registers,
+                            self,
+                        ) {
+                            Ok(Some(exception_info)) => {
+                                tracing::trace!(
+                                    "UNWIND: Stack unwind reached an exception handler {} (no debug info path)",
+                                    exception_info.description
+                                );
+                                unwind_registers = exception_info.handler_frame.registers.clone();
+                                stack_frames.push(exception_info.handler_frame);
+                                continue 'unwind;
+                            }
+                            Ok(None) => {}
+                            Err(e) => {
+                                tracing::warn!(
+                                    "UNWIND: Error checking exception context (no debug info path): {e:?}"
+                                );
+                            }
+                        }
+                    }
+
                     if callee_frame_registers == unwind_registers {
                         tracing::debug!("No change, preventing infinite loop");
                         break;
@@ -737,7 +769,12 @@ impl DebugInfo {
                 .get_return_address()
                 .is_some_and(|ra| ra.value.is_some())
             {
-                match exception_handler.exception_details(memory, &unwind_registers, self) {
+                match exception_handler.exception_details(
+                    memory,
+                    &unwind_registers,
+                    &callee_frame_registers,
+                    self,
+                ) {
                     Ok(Some(exception_info)) => {
                         tracing::trace!(
                             "UNWIND: Stack unwind reached an exception handler {}",
@@ -1159,7 +1196,9 @@ fn unwind_register_using_rule(
             // In many cases, the DWARF has `Undefined` rules for variables like frame pointer, program counter, etc.,
             // so we hard-code some rules here to make sure unwinding can continue. If there is a valid rule, it will bypass these hardcoded ones.
             match &debug_register {
-                fp if fp.register_has_role(RegisterRole::FramePointer) => {
+                fp if fp.register_has_role(RegisterRole::FramePointer)
+                    && fp.unwind_rule != UnwindRule::Preserve =>
+                {
                     register_rule_string = "FP=CFA (dwarf Undefined)".to_string();
                     unwind_cfa.map(|unwind_cfa| {
                         if fp.data_type == RegisterDataType::UnsignedInteger(32) {
@@ -2185,8 +2224,8 @@ mod test {
         )
         .unwrap();
 
-        // If there is no rule defined for the frame pointer,
-        // we assume that it is the same as the canonical frame address.
-        assert_eq!(value, Some(RegisterValue::U32(0x200)));
+        // R7/FP has UnwindRule::Preserve, so when DWARF says Undefined,
+        // the callee value (0x100) is preserved (R7 is callee-saved in ARM ABI).
+        assert_eq!(value, Some(RegisterValue::U32(0x100)));
     }
 }

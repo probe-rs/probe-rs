@@ -432,51 +432,86 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
         &self,
         memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &DebugRegisters,
+        _callee_frame_registers: &DebugRegisters,
         _raw_exception: u32,
     ) -> Result<DebugRegisters, DebugError> {
-        // TODO v8m has additional optional stacked registers
         let mut calling_stack_registers = vec![0u32; EXCEPTION_STACK_REGISTERS.len()];
         let stack_frame_return_address: u32 = get_stack_frame_return_address(stackframe_registers)?;
         let exc_return = ExcReturn(stack_frame_return_address);
         let idpfr1 = IdPfr1(memory_interface.read_word_32(IdPfr1::get_mmio_address())?);
         let secure = idpfr1.security_present();
 
-        let sp_value = if exc_return.is_exception_flag() == 0xFF {
-            // EXC_RETURN, returning from an exception
-            let sp_reg_id = if secure {
-                let stack_info = (
-                    exc_return.use_secure_stack(),
-                    exc_return.stack_pointer_selection(),
+        tracing::trace!(
+            "v8m exception unwind: EXC_RETURN={:#010x} S={} DCRS={} FType={} Mode={} SPSEL={} ES={} security_ext={}",
+            stack_frame_return_address,
+            exc_return.use_secure_stack(),
+            exc_return.use_default_register_stacking(),
+            exc_return.use_standard_stackframe(),
+            exc_return.mode(),
+            exc_return.stack_pointer_selection(),
+            exc_return.exception_secure(),
+            secure,
+        );
+
+        let sp_value: u64 = if exc_return.is_exception_flag() == 0xFF {
+            // EXC_RETURN, returning from an exception.
+            //
+            // For the SP to read the exception frame from, we need to distinguish:
+            // - SPSEL=1 (PSP): the exception frame is on PSP, which is a different
+            //   stack from the handler's MSP. The hardware PSP register is correct
+            //   because the handler doesn't modify PSP.
+            // - SPSEL=0 (MSP): the exception frame is on MSP, the same stack the
+            //   handler uses. The hardware MSP includes the handler's own pushes.
+            //   We must use the DWARF-unwound generic SP, which gives us the
+            //   handler's entry SP = the top of the exception frame.
+            if exc_return.stack_pointer_selection() {
+                // SPSEL=1: exception frame is on PSP (different stack from handler).
+                // Read from the hardware PSP register.
+                let sp_reg_id = if secure {
+                    if exc_return.use_secure_stack() {
+                        0b00011011u16 // PSP_S
+                    } else {
+                        0b00011001 // PSP_NS
+                    }
+                } else {
+                    0b00010010 // PSP
+                };
+
+                let reg = stackframe_registers
+                    .get_register(sp_reg_id.into())
+                    .ok_or_else(|| {
+                        Error::Register(format!(
+                            "No Stack Pointer register with id {sp_reg_id:#04x}. Please report this as a bug."
+                        ))
+                    })?;
+                tracing::trace!(
+                    "v8m exception unwind: SPSEL=1, using hardware PSP register '{}' (id={:#04x}) = {:?}",
+                    reg.core_register.name(),
+                    sp_reg_id,
+                    reg.value,
                 );
-
-                match stack_info {
-                    (false, false) => 0b00011000, // non-secure, main stack pointer
-                    (false, true) => 0b00011001,  // non-secure, process stack pointer
-                    (true, false) => 0b00011010,  // secure, main stack pointer
-                    (true, true) => 0b00011011,   // secure, process stack pointer
-                }
+                let val: u64 = reg
+                    .value
+                    .ok_or_else(|| {
+                        Error::Register(format!(
+                            "No value for Stack Pointer register '{}'. Please report this as a bug.",
+                            reg.core_register.name()
+                        ))
+                    })?
+                    .try_into()?;
+                val
             } else {
-                match exc_return.stack_pointer_selection() {
-                    false => 0b00010001, // main stack pointer
-                    true => 0b00010010,  // process stack pointer
-                }
-            };
-
-            stackframe_registers
-                .get_register(sp_reg_id.into())
-                .ok_or_else(|| {
-                    Error::Register(
-                        "No Stack Pointer register. Please report this as a bug.".to_string(),
-                    )
-                })?
-                .value
-                .ok_or_else(|| {
-                    Error::Register(
-                        "No value for Stack Pointer register. Please report this as a bug."
-                            .to_string(),
-                    )
-                })?
-                .try_into()?
+                // SPSEL=0: exception frame is on MSP (same stack as handler).
+                // Use the DWARF-unwound generic SP from stackframe_registers,
+                // which is the handler's entry SP = top of the exception frame.
+                let sp =
+                    stackframe_registers.get_register_value_by_role(&RegisterRole::StackPointer)?;
+                tracing::trace!(
+                    "v8m exception unwind: SPSEL=0, using DWARF-unwound generic SP = {:#010x}",
+                    sp,
+                );
+                sp
+            }
         } else if exc_return.is_exception_flag() == 0xFE {
             // FNC_RETURN, returning from a secure -> non-secure function call
             // get SPSEL from CONTROL_S, unstack ReturnAddress (and retpsr?)
@@ -485,15 +520,60 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
             stackframe_registers.get_register_value_by_role(&RegisterRole::StackPointer)?
         };
 
-        memory_interface.read_32(sp_value, &mut calling_stack_registers)?;
+        // Determine offset to state context based on whether additional state context
+        // (integrity signature + R4-R11) was stacked.
+        // DCRS=1 means default stacking rules (no additional state context for non-secure).
+        // DCRS=0 means additional state context was stacked (0x28 bytes before state context).
+        let additional_state_context_size: u64 = if !exc_return.use_default_register_stacking() {
+            // DCRS=0: additional state context (integrity sig + reserved + R4-R11) = 0x28 bytes
+            0x28
+        } else {
+            0
+        };
+
+        let state_context_addr = sp_value + additional_state_context_size;
+        tracing::trace!(
+            "v8m exception unwind: sp_value={:#010x} additional_state_context_size={:#x} state_context_addr={:#010x}",
+            sp_value,
+            additional_state_context_size,
+            state_context_addr,
+        );
+
+        memory_interface.read_32(state_context_addr, &mut calling_stack_registers)?;
+        tracing::trace!(
+            "v8m exception unwind: stacked registers: R0={:#010x} R1={:#010x} R2={:#010x} R3={:#010x} R12={:#010x} LR={:#010x} PC={:#010x} xPSR={:#010x}",
+            calling_stack_registers[0],
+            calling_stack_registers[1],
+            calling_stack_registers[2],
+            calling_stack_registers[3],
+            calling_stack_registers[4],
+            calling_stack_registers[5],
+            calling_stack_registers[6],
+            calling_stack_registers[7],
+        );
+
         let mut calling_frame_registers = stackframe_registers.clone();
-        // TODO: v8m has "Additional State Context" registers that may be stacked
-        // not handled yet. don't think they're needed for unwind
+
+        // Overwrite the stacked registers (R0-R3, R12, LR, PC, xPSR) with values
+        // read from the exception frame on the stack.
         for (i, register_role) in EXCEPTION_STACK_REGISTERS.iter().enumerate() {
             calling_frame_registers
                 .get_register_mut_by_role(register_role)?
                 .value = Some(RegisterValue::U32(calling_stack_registers[i]));
         }
+
+        // Set the generic SP to the source stack pointer value.
+        // The handler's generic SP (from DWARF unwinding) is MSP, but the exception
+        // frame may be on PSP. We set SP to the source stack value here;
+        // exception_details will later advance it past the exception frame.
+        let generic_sp =
+            calling_frame_registers.get_register_mut_by_role(&RegisterRole::StackPointer)?;
+        generic_sp.value = Some(RegisterValue::U32(sp_value as u32));
+        tracing::trace!(
+            "v8m calling_frame_registers: set generic SP to source stack value {:#010x}",
+            sp_value,
+        );
+
         Ok(calling_frame_registers)
     }
 
@@ -519,47 +599,122 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
         &self,
         memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &DebugRegisters,
+        callee_frame_registers: &DebugRegisters,
         _debug_info: &DebugInfo,
     ) -> Result<Option<ExceptionInfo>, DebugError> {
         let stack_frame_return_address: u32 = get_stack_frame_return_address(stackframe_registers)?;
-        if ExcReturn(stack_frame_return_address).is_exception_flag() == 0xFF {
-            // This is an exception frame.
+        let exc_return = ExcReturn(stack_frame_return_address);
 
-            let raw_exception = self.raw_exception(stackframe_registers)?;
-            let description = self.exception_description(raw_exception, memory_interface)?;
-            let registers = self.calling_frame_registers(
-                memory_interface,
-                stackframe_registers,
-                raw_exception,
-            )?;
+        tracing::trace!(
+            "v8m exception_details: LR={:#010x} is_exception_flag={:#04x}",
+            stack_frame_return_address,
+            exc_return.is_exception_flag(),
+        );
 
-            let exception_frame_pc =
-                registers.get_register_value_by_role(&RegisterRole::ProgramCounter)?;
-
-            let handler_frame = StackFrame {
-                id: get_object_reference(),
-                function_name: description.clone(),
-                source_location: None,
-                registers,
-                pc: RegisterValue::U32(exception_frame_pc as u32),
-                frame_base: None,
-                is_inlined: false,
-                local_variables: None,
-                canonical_frame_address: None,
-            };
-
-            // TODO update SP as in v6m+v7m?
-
-            Ok(Some(ExceptionInfo {
-                raw_exception,
-                description,
-                handler_frame,
-            }))
-        } else {
+        if exc_return.is_exception_flag() != 0xFF {
             // This is a normal function return.
-            Ok(None)
+            return Ok(None);
         }
+
+        // This is an exception frame.
+        let raw_exception = self.raw_exception(stackframe_registers)?;
+        let description = self.exception_description(raw_exception, memory_interface)?;
+        tracing::trace!(
+            "v8m exception_details: raw_exception={} description={}",
+            raw_exception,
+            description,
+        );
+
+        let mut registers = self.calling_frame_registers(
+            memory_interface,
+            stackframe_registers,
+            callee_frame_registers,
+            raw_exception,
+        )?;
+
+        let exception_frame_pc =
+            registers.get_register_value_by_role(&RegisterRole::ProgramCounter)?;
+
+        // Compute the frame size to update SP past the exception frame.
+        // See ARMv8-M ARM section B3.19 and pseudocode PushStack/PushCalleeStack.
+        //
+        // The exception frame layout from SP upward is:
+        //   [Additional state context: integrity sig + reserved + R4-R11 = 0x28 bytes] (if DCRS=0)
+        //   [State context: R0,R1,R2,R3,R12,LR,ReturnAddress,RETPSR = 0x20 bytes] (always)
+        //   [FP caller context: S0-S15,FPSCR,VPR = 0x48 bytes] (if FType=0)
+        //   [FP callee context: S16-S31 = 0x40 bytes] (if FType=0 and secure TS)
+        //
+        // DCRS (bit 5): 0 = additional state context stacked, 1 = default rules (not stacked for NS)
+        // FType (bit 4): 0 = extended FP frame, 1 = standard integer-only frame
+
+        let additional_state_size: usize = if !exc_return.use_default_register_stacking() {
+            0x28
+        } else {
+            0
+        };
+
+        let state_context_size: usize = 0x20;
+
+        let fp_context_size: usize = if !exc_return.use_standard_stackframe() {
+            // FType=0: extended frame with FP registers (S0-S15, FPSCR, VPR = 18 words = 0x48)
+            0x48
+        } else {
+            0
+        };
+
+        let frame_size = additional_state_size + state_context_size + fp_context_size;
+
+        // Check RETPSR.SPREALIGN (bit 9) to determine if the stack was realigned.
+        let stacked_xpsr = calling_stack_registers_xpsr(&registers)?;
+        let sprealign = Xpsr(stacked_xpsr).stack_was_realigned();
+        let alignment_padding: usize = if sprealign { 4 } else { 0 };
+
+        let total_frame_size = frame_size + alignment_padding;
+
+        tracing::trace!(
+            "v8m exception_details: frame_size={:#x} sprealign={} total_frame_size={:#x}",
+            frame_size,
+            sprealign,
+            total_frame_size,
+        );
+
+        // Update the generic SP register to point past the exception frame,
+        // restoring it to the pre-exception value.
+        let sp = registers.get_register_mut_by_role(&RegisterRole::StackPointer)?;
+        if let Some(sp_value) = sp.value.as_mut() {
+            tracing::trace!(
+                "v8m exception_details: updating SP from {:#} by +{:#x}",
+                sp_value,
+                total_frame_size,
+            );
+            sp_value.increment_address(total_frame_size)?;
+            tracing::trace!("v8m exception_details: new SP = {:#}", sp_value);
+        }
+
+        let handler_frame = StackFrame {
+            id: get_object_reference(),
+            function_name: description.clone(),
+            source_location: None,
+            registers,
+            pc: RegisterValue::U32(exception_frame_pc as u32),
+            frame_base: None,
+            is_inlined: false,
+            local_variables: None,
+            canonical_frame_address: None,
+        };
+
+        Ok(Some(ExceptionInfo {
+            raw_exception,
+            description,
+            handler_frame,
+        }))
     }
+}
+
+/// Extract the stacked xPSR value from the calling frame registers.
+fn calling_stack_registers_xpsr(registers: &DebugRegisters) -> Result<u32, Error> {
+    let xpsr = registers.get_register_value_by_role(&RegisterRole::ProcessorStatus)? as u32;
+    Ok(xpsr)
 }
 
 fn get_stack_frame_return_address(stackframe_registers: &DebugRegisters) -> Result<u32, Error> {

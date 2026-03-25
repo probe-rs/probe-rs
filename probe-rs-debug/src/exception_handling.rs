@@ -66,6 +66,7 @@ pub trait ExceptionInterface {
         &self,
         _memory: &mut dyn MemoryInterface,
         _stackframe_registers: &DebugRegisters,
+        _callee_frame_registers: &DebugRegisters,
         _debug_info: &DebugInfo,
     ) -> Result<Option<ExceptionInfo>, DebugError> {
         // For architectures where the exception handling has not been implemented in probe-rs,
@@ -75,10 +76,13 @@ pub trait ExceptionInterface {
     }
 
     /// Using the `stackframe_registers` for a "called frame", retrieve updated register values for the "calling frame".
+    /// `callee_frame_registers` contains the register values before DWARF unwinding, which
+    /// preserves the hardware-read values for callee-saved registers not in the exception frame.
     fn calling_frame_registers(
         &self,
         _memory: &mut dyn MemoryInterface,
         _stackframe_registers: &crate::DebugRegisters,
+        _callee_frame_registers: &crate::DebugRegisters,
         _raw_exception: u32,
     ) -> Result<crate::DebugRegisters, DebugError> {
         Err(DebugError::NotImplemented("calling frame registers"))
