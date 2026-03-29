@@ -1,6 +1,13 @@
 //! CMSIS-DAP probe implementation.
 mod commands;
 mod tools;
+pub use self::commands::edbg_avr::{
+    ATMEGA4809, AvrChipDescriptor, AvrMemoryRegion, IceFirmwareVersion, KNOWN_AVR_CHIPS,
+    PkobnUpdiInfo, erase_attached_pkobn_updi, erase_pkobn_updi, identify_attached_pkobn_updi,
+    query_attached_pkobn_updi, query_pkobn_updi, read_attached_pkobn_updi_region,
+    read_pkobn_updi_region, reset_pkobn_updi, write_attached_pkobn_updi_flash,
+    write_pkobn_updi_flash,
+};
 
 use crate::{
     CoreStatus,
@@ -779,10 +786,32 @@ impl CmsisDap {
             return Ok(());
         }
 
+        // UPDI piggybacks on the CMSIS-DAP SWD transport layer for vendor command
+        // access to the EDBG/JTAGICE3 protocol.
+        if self.protocol == Some(WireProtocol::Updi) {
+            match commands::send_command(&mut self.device, &ConnectRequest::Swd)? {
+                ConnectResponse::SuccessfulInitForSWD => {}
+                ConnectResponse::SuccessfulInitForJTAG | ConnectResponse::InitFailed => {
+                    return Err(CmsisDapError::ErrorResponse(RequestError::InitFailed {
+                        protocol: self.protocol,
+                    })
+                    .into());
+                }
+            }
+
+            let _: Result<HostStatusResponse, _> =
+                commands::send_command(&mut self.device, &HostStatusRequest::connected(true));
+
+            tracing::info!("Using protocol {}", WireProtocol::Updi);
+            self.connected = true;
+            return Ok(());
+        }
+
         let protocol: ConnectRequest = if let Some(protocol) = self.protocol {
             match protocol {
                 WireProtocol::Swd => ConnectRequest::Swd,
                 WireProtocol::Jtag => ConnectRequest::Jtag,
+                WireProtocol::Updi => unreachable!("handled above"),
             }
         } else {
             ConnectRequest::DefaultPort
@@ -935,6 +964,10 @@ impl DebugProbe for CmsisDap {
         // Run connect sequence (may already be done earlier via swj operations)
         self.connect_if_needed()?;
 
+        if self.active_protocol() == Some(WireProtocol::Updi) {
+            return Ok(());
+        }
+
         // Set speed after connecting as it can be reset during protocol selection
         self.set_speed(self.speed_khz)?;
 
@@ -994,6 +1027,10 @@ impl DebugProbe for CmsisDap {
             }
             WireProtocol::Swd if self.capabilities.swd_implemented => {
                 self.protocol = Some(WireProtocol::Swd);
+                Ok(())
+            }
+            WireProtocol::Updi => {
+                self.protocol = Some(WireProtocol::Updi);
                 Ok(())
             }
             _ => Err(DebugProbeError::UnsupportedProtocol(protocol)),
@@ -1411,4 +1448,9 @@ impl From<ScanChainError> for CmsisDapError {
             ScanChainError::InvalidIR => CmsisDapError::InvalidIR,
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    // Tests removed: connect_request_for was inlined back into connect_if_needed.
 }

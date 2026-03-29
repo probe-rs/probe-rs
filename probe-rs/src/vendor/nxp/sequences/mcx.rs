@@ -387,6 +387,7 @@ impl ArmDebugSequence for MCX {
                     abort.set_stkerrclr(true);
                     interface.write_dp_register(dp, abort)?;
                 }
+                _ => {} // Other protocols don't reach ARM debug sequences.
             }
         }
 

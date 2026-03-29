@@ -246,6 +246,13 @@ impl Cmd {
 
         // Determine if this is a launch or attach session
         let session_command = if self.launch { "launch" } else { "attach" };
+        let wire_protocol = match self.common.protocol {
+            Some(probe_rs::probe::WireProtocol::Updi) => {
+                anyhow::bail!("The protocol 'UPDI' is not supported by this command.")
+            }
+            Some(protocol) => Some(protocol),
+            None => None,
+        };
 
         debug_client
             .send(|seq| Request {
@@ -258,7 +265,7 @@ impl Cmd {
                     chip_description_path: self.common.chip_description_path,
                     connect_under_reset: self.common.connect_under_reset,
                     speed: self.common.speed,
-                    wire_protocol: self.common.protocol,
+                    wire_protocol,
                     allow_erase_all: false,
                     flashing_config: FlashingConfig {
                         flashing_enabled: self.launch && self.binary.is_some(),

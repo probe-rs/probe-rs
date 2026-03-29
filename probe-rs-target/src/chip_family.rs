@@ -51,6 +51,8 @@ pub enum CoreType {
     Riscv64,
     /// Xtensa - TODO: may need to split into NX, LX6 and LX7
     Xtensa,
+    /// AVR (megaAVR, AVR Dx, AVR Ex series with UPDI)
+    Avr,
 }
 
 impl CoreType {
@@ -68,6 +70,10 @@ impl CoreType {
 
     fn is_xtensa(&self) -> bool {
         matches!(self, CoreType::Xtensa)
+    }
+
+    fn is_avr(&self) -> bool {
+        matches!(self, CoreType::Avr)
     }
 
     fn is_arm(&self) -> bool {
@@ -88,6 +94,7 @@ impl CoreType {
         match self {
             CoreType::Riscv | CoreType::Riscv64 => Architecture::Riscv,
             CoreType::Xtensa => Architecture::Xtensa,
+            CoreType::Avr => Architecture::Avr,
             _ => Architecture::Arm,
         }
     }
@@ -102,6 +109,8 @@ pub enum Architecture {
     Riscv,
     /// An Xtensa core.
     Xtensa,
+    /// An AVR core.
+    Avr,
 }
 
 /// Instruction set used by a core
@@ -345,6 +354,12 @@ impl ChipFamily {
                     CoreAccessOptions::Xtensa(_) if !core.core_type.is_xtensa() => {
                         return Err(format!(
                             "Xtensa options don't match core type {:?} on core {}",
+                            core.core_type, core.name
+                        ));
+                    }
+                    CoreAccessOptions::Avr(_) if !core.core_type.is_avr() => {
+                        return Err(format!(
+                            "Avr options don't match core type {:?} on core {}",
                             core.core_type, core.name
                         ));
                     }
