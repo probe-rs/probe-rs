@@ -157,6 +157,8 @@ pub enum CoreType {
     Riscv,
     /// Xtensa - TODO: may need to split into NX, LX6 and LX7
     Xtensa,
+    /// AVR
+    Avr,
 }
 
 impl From<probe_rs_target::CoreType> for CoreType {
@@ -171,6 +173,7 @@ impl From<probe_rs_target::CoreType> for CoreType {
             probe_rs_target::CoreType::Armv8m => CoreType::Armv8m,
             probe_rs_target::CoreType::Riscv => CoreType::Riscv,
             probe_rs_target::CoreType::Xtensa => CoreType::Xtensa,
+            probe_rs_target::CoreType::Avr => CoreType::Avr,
         }
     }
 }

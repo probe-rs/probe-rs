@@ -536,6 +536,7 @@ fn perform_raw_transfers<P: DebugProbe + RawSwdIo + JtagAccess>(
     match probe.active_protocol().unwrap() {
         WireProtocol::Swd => perform_swd_transfers(probe, transfers),
         WireProtocol::Jtag => perform_jtag_transfers(probe, transfers),
+        WireProtocol::Updi => Err(DebugProbeError::UnsupportedProtocol(WireProtocol::Updi)),
     }
 }
 
@@ -1190,6 +1191,9 @@ fn send_sequence<P: RawSwdIo + JtagAccess>(
         }
         WireProtocol::Swd => {
             probe.swd_io(sequence.io_items())?;
+        }
+        WireProtocol::Updi => {
+            return Err(DebugProbeError::UnsupportedProtocol(WireProtocol::Updi));
         }
     }
 

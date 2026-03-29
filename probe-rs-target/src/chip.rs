@@ -178,6 +178,8 @@ pub enum CoreAccessOptions {
     Riscv(RiscvCoreAccessOptions),
     /// Xtensa specific options
     Xtensa(XtensaCoreAccessOptions),
+    /// AVR specific options (UPDI, no debug interface)
+    Avr(AvrCoreAccessOptions),
 }
 
 /// An address for AP accesses
@@ -239,3 +241,10 @@ pub struct XtensaCoreAccessOptions {
     /// The JTAG TAP index of the core's debug module
     pub jtag_tap: Option<usize>,
 }
+
+/// The data required to access an AVR core via UPDI.
+///
+/// Currently empty — AVR UPDI access is configured at the session level
+/// via the chip descriptor, not per-core.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AvrCoreAccessOptions {}

@@ -6,6 +6,7 @@ use crate::{
             core::{CortexARState, CortexMState},
             dp::DpAddress,
         },
+        avr::AvrCoreState,
         riscv::{RiscvCoreState, communication_interface::RiscvCommunicationInterface},
         xtensa::{XtensaCoreState, communication_interface::XtensaCommunicationInterface},
     },
@@ -230,6 +231,30 @@ impl CombinedCoreState {
         ))
     }
 
+    // TODO: abstract behind an AVR communication interface trait instead of hardcoding CmsisDap
+    pub(crate) fn attach_avr<'probe>(
+        &'probe mut self,
+        target: &'probe Target,
+        probe: &'probe mut crate::probe::cmsisdap::CmsisDap,
+        chip: &'static crate::probe::cmsisdap::AvrChipDescriptor,
+    ) -> Result<Core<'probe>, Error> {
+        let name = &target.cores[self.id].name;
+
+        let SpecificCoreState::Avr(s) = &mut self.specific_state else {
+            unreachable!(
+                "The stored core state is not compatible with the AVR architecture. \
+                This should never happen. Please file a bug if it does."
+            );
+        };
+
+        Ok(Core::new(
+            self.id,
+            name,
+            target,
+            crate::architecture::avr::Avr::new(probe, s, chip),
+        ))
+    }
+
     /// Get the memory AP for this core.
     ///
     /// ## Panic
@@ -297,6 +322,8 @@ pub enum SpecificCoreState {
     Riscv(RiscvCoreState),
     /// The state of an Xtensa core.
     Xtensa(XtensaCoreState),
+    /// The state of an AVR core.
+    Avr(AvrCoreState),
 }
 
 impl SpecificCoreState {
@@ -311,6 +338,7 @@ impl SpecificCoreState {
             CoreType::Armv8m => SpecificCoreState::Armv8m(CortexMState::new()),
             CoreType::Riscv => SpecificCoreState::Riscv(RiscvCoreState::new()),
             CoreType::Xtensa => SpecificCoreState::Xtensa(XtensaCoreState::new()),
+            CoreType::Avr => SpecificCoreState::Avr(AvrCoreState::new()),
         }
     }
 
@@ -325,6 +353,7 @@ impl SpecificCoreState {
             SpecificCoreState::Armv8m(_) => CoreType::Armv8m,
             SpecificCoreState::Riscv(_) => CoreType::Riscv,
             SpecificCoreState::Xtensa(_) => CoreType::Xtensa,
+            SpecificCoreState::Avr(_) => CoreType::Avr,
         }
     }
 }

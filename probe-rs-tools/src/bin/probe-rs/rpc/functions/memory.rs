@@ -92,7 +92,8 @@ pub async fn write_memory<W: Word>(
     request: WriteMemoryRequest<W>,
 ) -> NoResponse {
     let mut session = ctx.session(request.sessid).await;
-    let mut core = session.core(request.core as usize).unwrap();
+    // Bugfix: use `?` instead of `.unwrap()` to avoid panic on invalid core index.
+    let mut core = session.core(request.core as usize)?;
     W::write(&mut core, request.address, &request.data)?;
     Ok(())
 }

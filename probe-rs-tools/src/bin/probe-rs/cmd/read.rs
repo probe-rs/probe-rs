@@ -7,6 +7,7 @@ use crate::rpc::client::{CoreInterface, RpcClient};
 use crate::CoreOptions;
 use crate::util::cli;
 use crate::util::common_options::{ProbeOptions, ReadWriteBitWidth, ReadWriteOptions};
+use probe_rs::probe::WireProtocol;
 use std::io::Write;
 use std::path::PathBuf;
 
@@ -158,6 +159,7 @@ pub struct Cmd {
 
 impl Cmd {
     pub async fn run(self, client: RpcClient) -> anyhow::Result<()> {
+        let is_updi = self.probe_options.protocol == Some(WireProtocol::Updi);
         let session = cli::attach_probe(&client, self.probe_options, false).await?;
         let core = session.core(self.shared.core);
 
@@ -185,7 +187,10 @@ impl Cmd {
             )?,
         };
 
-        session.resume_all_cores().await?;
+        // AVR UPDI sessions have no debug cores to resume.
+        if !is_updi {
+            session.resume_all_cores().await?;
+        }
 
         Ok(())
     }

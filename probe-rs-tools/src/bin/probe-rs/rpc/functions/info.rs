@@ -23,12 +23,16 @@ use probe_rs::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState,
         },
     },
-    probe::{Probe, WireProtocol as ProbeRsWireProtocol},
+    probe::{
+        Probe, WireProtocol as ProbeRsWireProtocol,
+        cmsisdap::{CmsisDap, query_attached_pkobn_updi},
+    },
 };
 use probe_rs_target::ScanChainElement;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    cmd::edbg_avr_info,
     rpc::functions::{
         NoResponse, RpcContext, TargetInfoDataTopic,
         chip::JEP106Code,
@@ -61,6 +65,7 @@ impl From<&TargetInfoRequest> for ProbeOptions {
             protocol: match request.protocol {
                 WireProtocol::Jtag => Some(ProbeRsWireProtocol::Jtag),
                 WireProtocol::Swd => Some(ProbeRsWireProtocol::Swd),
+                WireProtocol::Updi => Some(ProbeRsWireProtocol::Updi),
             },
             non_interactive: true,
             probe: Some(request.probe.selector().into()),
@@ -321,6 +326,24 @@ async fn try_show_info(
         probe.attach_to_unspecified_under_reset()?;
     } else {
         probe.attach_to_unspecified()?;
+    }
+
+    if probe.protocol() == Some(ProbeRsWireProtocol::Updi) {
+        let probe_name = probe.get_name();
+        let cmsis: &mut CmsisDap = Probe::try_into(&mut probe)
+            .ok_or_else(|| anyhow::anyhow!("UPDI info requires a CMSIS-DAP probe"))?;
+        let info = query_attached_pkobn_updi(cmsis)?;
+        ctx.publish::<TargetInfoDataTopic>(
+            VarSeq::Seq2(0),
+            &InfoEvent::Message(format!("Probe: {probe_name}")),
+        )
+        .await?;
+        for line in edbg_avr_info::format_info_lines(&info) {
+            ctx.publish::<TargetInfoDataTopic>(VarSeq::Seq2(0), &InfoEvent::Message(line))
+                .await?;
+        }
+
+        return Ok(());
     }
 
     if probe.has_arm_debug_interface() {
