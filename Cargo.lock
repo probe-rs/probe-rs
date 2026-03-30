@@ -2565,6 +2565,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "object"
+version = "0.39.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "63944c133d03f44e75866bbd160b95af0ec3f6a13d936d69d31c81078cbc5baf"
+dependencies = [
+ "flate2",
+ "memchr",
+ "ruzstd",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2879,7 +2890,7 @@ dependencies = [
  "itm",
  "jep106",
  "nusb",
- "object 0.38.1",
+ "object 0.39.0",
  "parking_lot",
  "pretty_assertions",
  "probe-rs-target",
@@ -2906,7 +2917,7 @@ dependencies = [
  "gimli 0.33.0",
  "insta",
  "itertools 0.14.0",
- "object 0.38.1",
+ "object 0.39.0",
  "parse_int",
  "pretty_assertions",
  "probe-rs",
@@ -2995,7 +3006,7 @@ dependencies = [
  "libtest-mimic",
  "linkme",
  "num-traits",
- "object 0.38.1",
+ "object 0.39.0",
  "parking_lot",
  "parse_int",
  "postcard",
