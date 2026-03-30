@@ -53,7 +53,7 @@ hidapi = { version = "2.6.4", default-features = false, features = [
 ], optional = true }
 itertools = "0.14"
 jep106 = "0.3"
-object = { version = "0.38", default-features = false, features = [
+object = { version = "0.39", default-features = false, features = [
     "elf",
     "read_core",
     "std",
@@ -96,7 +96,7 @@ pretty_assertions = "1"
 test-case = "3"
 test-log = { version = "0.2.16", features = ["trace"] }
 insta = { version = "1.38", default-features = false }
-object = { version = "0.38", default-features = false, features = [
+object = { version = "0.39", default-features = false, features = [
     "elf",
     "read_core",
     "std",
