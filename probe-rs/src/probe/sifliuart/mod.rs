@@ -51,17 +51,19 @@ impl fmt::Display for SifliUartCommand<'_> {
             SifliUartCommand::Enter => write!(f, "Enter"),
             SifliUartCommand::Exit => write!(f, "Exit"),
             SifliUartCommand::MEMRead { addr, len } => {
-                write!(f, "MEMRead {{ addr: {addr:#X}, len: {len:#X} }}")
+                write!(
+                    f,
+                    "MEMRead {{ addr: {addr:#X}, words: {len}, bytes: {} }}",
+                    usize::from(*len) * 4
+                )
             }
             SifliUartCommand::MEMWrite { addr, data } => {
-                write!(f, "MEMWrite {{ addr: {addr:#X}, data: [")?;
-                for (i, d) in data.iter().enumerate() {
-                    if i > 0 {
-                        write!(f, ", ")?;
-                    }
-                    write!(f, "{d:#X}")?;
-                }
-                write!(f, "] }}")
+                write!(
+                    f,
+                    "MEMWrite {{ addr: {addr:#X}, words: {}, bytes: {} }}",
+                    data.len(),
+                    data.len() * 4
+                )
             }
         }
     }
@@ -72,16 +74,7 @@ impl fmt::Display for SifliUartResponse {
         match self {
             SifliUartResponse::Enter => write!(f, "Enter"),
             SifliUartResponse::Exit => write!(f, "Exit"),
-            SifliUartResponse::MEMRead { data } => {
-                write!(f, "MEMRead {{ data: [")?;
-                for (i, byte) in data.iter().enumerate() {
-                    if i > 0 {
-                        write!(f, ", ")?;
-                    }
-                    write!(f, "{byte:#04X}")?;
-                }
-                write!(f, "] }}")
-            }
+            SifliUartResponse::MEMRead { data } => write!(f, "MEMRead {{ bytes: {} }}", data.len()),
             SifliUartResponse::MEMWrite => write!(f, "MEMWrite"),
         }
     }
@@ -147,9 +140,14 @@ impl SifliUart {
     }
 
     fn command(&mut self, command: SifliUartCommand) -> Result<SifliUartResponse, CommandError> {
-        tracing::info!("Command: {}", command);
+        tracing::debug!("SiFli UART command: {}", command);
         let mut transport = self.transport.lock().unwrap();
-        transport.transaction(&command, DEFUALT_RECV_TIMEOUT)
+        let result = transport.transaction(&command, DEFUALT_RECV_TIMEOUT);
+        match &result {
+            Ok(response) => tracing::debug!("SiFli UART response: {}", response),
+            Err(error) => tracing::debug!("SiFli UART command failed: {}", error),
+        }
+        result
     }
 
     fn take_console(&self) -> SifliUartConsole {
@@ -173,35 +171,53 @@ impl DebugProbe for SifliUart {
     }
 
     fn attach(&mut self) -> Result<(), DebugProbeError> {
-        let ret = self.command(SifliUartCommand::Enter);
-        if let Err(e) = ret {
-            tracing::error!("Enter command error: {:?}", e);
-            return Err(DebugProbeError::NotAttached);
+        match self.command(SifliUartCommand::Enter) {
+            Ok(SifliUartResponse::Enter) => Ok(()),
+            Ok(response) => {
+                tracing::error!("Unexpected Enter response: {}", response);
+                Err(DebugProbeError::NotAttached)
+            }
+            Err(error) => {
+                tracing::error!("Enter command error: {}", error);
+                Err(DebugProbeError::NotAttached)
+            }
         }
-        Ok(())
     }
 
     fn detach(&mut self) -> Result<(), Error> {
-        let ret = self.command(SifliUartCommand::Exit);
-        if let Err(e) = ret {
-            tracing::error!("Exit command error: {:?}", e);
-            return Err(Error::from(DebugProbeError::Other(
-                "Exit command error".to_string(),
-            )));
+        match self.command(SifliUartCommand::Exit) {
+            Ok(SifliUartResponse::Exit) => Ok(()),
+            Ok(response) => {
+                tracing::error!("Unexpected Exit response: {}", response);
+                Err(Error::from(DebugProbeError::Other(format!(
+                    "Unexpected Exit response: {response}"
+                ))))
+            }
+            Err(error) => {
+                tracing::error!("Exit command error: {}", error);
+                Err(Error::from(DebugProbeError::Other(format!(
+                    "Exit command error: {error}"
+                ))))
+            }
         }
-        Ok(())
     }
 
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        todo!()
+        Err(DebugProbeError::NotImplemented {
+            function_name: "target_reset",
+        })
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
-        todo!()
+        Err(DebugProbeError::NotImplemented {
+            function_name: "target_reset_assert",
+        })
     }
 
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
-        todo!()
+        Err(DebugProbeError::NotImplemented {
+            function_name: "target_reset_deassert",
+        })
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
@@ -309,7 +325,7 @@ impl SifliUartFactory {
 }
 
 impl SifliUartResponse {
-    fn from_payload(recv_data: Vec<u8>) -> Result<Self, CommandError> {
+    fn from_payload(recv_data: &[u8]) -> Result<Self, CommandError> {
         let Some(&last) = recv_data.last() else {
             return Err(CommandError::ParameterError(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,

@@ -1,16 +1,47 @@
-use super::{CommandError, SifliUartCommand, SifliUartResponse, START_WORD};
+use super::{CommandError, START_WORD, SifliUartCommand, SifliUartResponse};
 use std::collections::VecDeque;
+use std::fmt;
 use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::time::{Duration, Instant};
 
 const HEADER_LEN: usize = 4;
+const DEBUG_FRAME_TYPE: [u8; 2] = [0x10, 0x00];
+const TRACE_PREVIEW_BYTES: usize = 48;
 
 pub(super) struct SifliUartTransport {
     reader: BufReader<Box<dyn Read + Send>>,
     writer: BufWriter<Box<dyn Write + Send>>,
     state: ParserState,
     console_up_buffer: VecDeque<u8>,
-    response_ready: Option<Vec<u8>>,
+    response_queue: VecDeque<FrameCandidate>,
+}
+
+struct FrameCandidate {
+    payload: Vec<u8>,
+    raw_frame_bytes: Vec<u8>,
+}
+
+struct BytePreview<'a> {
+    bytes: &'a [u8],
+    max_len: usize,
+}
+
+impl fmt::Display for BytePreview<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let shown = self.bytes.len().min(self.max_len);
+        for (idx, byte) in self.bytes[..shown].iter().enumerate() {
+            if idx > 0 {
+                write!(f, " ")?;
+            }
+            write!(f, "{byte:02X}")?;
+        }
+
+        if shown < self.bytes.len() {
+            write!(f, " .. (+{} bytes)", self.bytes.len() - shown)?;
+        }
+
+        Ok(())
+    }
 }
 
 enum ParserState {
@@ -24,6 +55,7 @@ enum ParserState {
     },
     ReadingPayload {
         expected_len: usize,
+        is_debug_frame: bool,
         payload: Vec<u8>,
         raw_frame_bytes: Vec<u8>,
     },
@@ -42,7 +74,7 @@ impl SifliUartTransport {
             writer: BufWriter::new(writer),
             state: ParserState::Idle,
             console_up_buffer: VecDeque::new(),
-            response_ready: None,
+            response_queue: VecDeque::new(),
         }
     }
 
@@ -51,7 +83,7 @@ impl SifliUartTransport {
         command: &SifliUartCommand<'_>,
         timeout: Duration,
     ) -> Result<SifliUartResponse, CommandError> {
-        self.response_ready = None;
+        self.response_queue.clear();
         self.send_debug_frame(command)?;
 
         if matches!(command, SifliUartCommand::Exit) {
@@ -60,8 +92,22 @@ impl SifliUartTransport {
 
         let start = Instant::now();
         loop {
-            if let Some(payload) = self.response_ready.take() {
-                return SifliUartResponse::from_payload(payload);
+            while let Some(frame) = self.response_queue.pop_front() {
+                match SifliUartResponse::from_payload(&frame.payload) {
+                    Ok(response) => return Ok(response),
+                    Err(error) => {
+                        tracing::debug!(
+                            frame_len = frame.raw_frame_bytes.len(),
+                            frame = %BytePreview {
+                                bytes: &frame.raw_frame_bytes,
+                                max_len: TRACE_PREVIEW_BYTES,
+                            },
+                            "Ignoring invalid SiFli UART frame candidate: {}",
+                            error
+                        );
+                        self.console_up_buffer.extend(frame.raw_frame_bytes);
+                    }
+                }
             }
 
             if start.elapsed() >= timeout {
@@ -101,8 +147,14 @@ impl SifliUartTransport {
         loop {
             match self.read_into_parser() {
                 Ok(true) => {}
-                Ok(false) => return Ok(()),
-                Err(error) if should_retry_read(&error) => return Ok(()),
+                Ok(false) => {
+                    self.flush_candidate_to_console();
+                    return Ok(());
+                }
+                Err(error) if should_retry_read(&error) => {
+                    self.flush_candidate_to_console();
+                    return Ok(());
+                }
                 Err(error) => return Err(error),
             }
         }
@@ -130,6 +182,15 @@ impl SifliUartTransport {
         frame.push(0x10);
         frame.push(0x00);
         frame.extend_from_slice(&payload);
+
+        tracing::trace!(
+            frame_len = frame.len(),
+            frame = %BytePreview {
+                bytes: &frame,
+                max_len: TRACE_PREVIEW_BYTES,
+            },
+            "TX SiFli UART frame"
+        );
 
         self.writer
             .write_all(&frame)
@@ -173,13 +234,20 @@ impl SifliUartTransport {
                 raw_frame_bytes.push(byte);
 
                 if header_buf.len() == HEADER_LEN {
-                    let expected_len =
-                        u16::from_le_bytes([header_buf[0], header_buf[1]]) as usize;
-                    self.state = ParserState::ReadingPayload {
-                        expected_len,
-                        payload: Vec::with_capacity(expected_len),
-                        raw_frame_bytes,
-                    };
+                    let expected_len = u16::from_le_bytes([header_buf[0], header_buf[1]]) as usize;
+                    let is_debug_frame = header_buf[2..] == DEBUG_FRAME_TYPE;
+
+                    if expected_len == 0 {
+                        self.console_up_buffer.extend(raw_frame_bytes);
+                        self.state = ParserState::Idle;
+                    } else {
+                        self.state = ParserState::ReadingPayload {
+                            expected_len,
+                            is_debug_frame,
+                            payload: Vec::with_capacity(expected_len),
+                            raw_frame_bytes,
+                        };
+                    }
                 } else {
                     self.state = ParserState::ReadingHeader {
                         header_buf,
@@ -189,6 +257,7 @@ impl SifliUartTransport {
             }
             ParserState::ReadingPayload {
                 expected_len,
+                is_debug_frame,
                 mut payload,
                 mut raw_frame_bytes,
             } => {
@@ -196,8 +265,19 @@ impl SifliUartTransport {
                 raw_frame_bytes.push(byte);
 
                 if payload.len() == expected_len {
-                    if payload.last() == Some(&0x06) {
-                        self.response_ready = Some(payload);
+                    if is_debug_frame && payload.last() == Some(&0x06) {
+                        tracing::trace!(
+                            frame_len = raw_frame_bytes.len(),
+                            frame = %BytePreview {
+                                bytes: &raw_frame_bytes,
+                                max_len: TRACE_PREVIEW_BYTES,
+                            },
+                            "RX SiFli UART frame"
+                        );
+                        self.response_queue.push_back(FrameCandidate {
+                            payload,
+                            raw_frame_bytes,
+                        });
                     } else {
                         self.console_up_buffer.extend(raw_frame_bytes);
                     }
@@ -205,6 +285,7 @@ impl SifliUartTransport {
                 } else {
                     self.state = ParserState::ReadingPayload {
                         expected_len,
+                        is_debug_frame,
                         payload,
                         raw_frame_bytes,
                     };
@@ -334,7 +415,8 @@ mod tests {
 
     #[test]
     fn pure_console_bytes_are_buffered() {
-        let (mut transport, _) = make_transport(ChunkReader::from_chunks([b"hello world".to_vec()]));
+        let (mut transport, _) =
+            make_transport(ChunkReader::from_chunks([b"hello world".to_vec()]));
         let mut out = [0u8; 32];
 
         let count = transport.console_read(&mut out).unwrap();
@@ -345,7 +427,8 @@ mod tests {
     #[test]
     fn standard_debug_frame_is_parsed() {
         let payload = [0xD1, 0x06];
-        let (mut transport, writer) = make_transport(ChunkReader::from_chunks([debug_frame(&payload)]));
+        let (mut transport, writer) =
+            make_transport(ChunkReader::from_chunks([debug_frame(&payload)]));
 
         let response = transport
             .transaction(&SifliUartCommand::Enter, Duration::from_millis(10))
@@ -394,6 +477,24 @@ mod tests {
     }
 
     #[test]
+    fn invalid_debug_candidate_is_reinjected_during_transaction() {
+        let invalid_payload = [0x41, 0x42, 0x06];
+        let valid_payload = [0xD1, 0x06];
+        let input = [debug_frame(&invalid_payload), debug_frame(&valid_payload)].concat();
+        let (mut transport, _) = make_transport(ChunkReader::from_chunks([input]));
+
+        let response = transport
+            .transaction(&SifliUartCommand::Enter, Duration::from_millis(10))
+            .unwrap();
+
+        assert!(matches!(response, SifliUartResponse::Enter));
+
+        let mut out = [0u8; 32];
+        let count = transport.console_read(&mut out).unwrap();
+        assert_eq!(&out[..count], debug_frame(&invalid_payload).as_slice());
+    }
+
+    #[test]
     fn console_sequence_containing_frame_prefix_is_preserved() {
         let mut bogus = debug_frame(&[0x41, 0x42, 0x43]);
         *bogus.last_mut().unwrap() = 0x00;
@@ -413,10 +514,23 @@ mod tests {
 
         let result = transport.transaction(&SifliUartCommand::Enter, Duration::from_millis(5));
 
-        assert!(matches!(result, Err(CommandError::ParameterError(error)) if error.kind() == io::ErrorKind::TimedOut));
+        assert!(
+            matches!(result, Err(CommandError::ParameterError(error)) if error.kind() == io::ErrorKind::TimedOut)
+        );
 
         let mut out = [0u8; 16];
         let count = transport.console_read(&mut out).unwrap();
+        assert_eq!(&out[..count], partial.as_slice());
+    }
+
+    #[test]
+    fn console_timeout_flushes_partial_candidate() {
+        let partial = vec![0x7E, 0x79, 0x02, 0x00];
+        let (mut transport, _) = make_transport(ChunkReader::from_chunks([partial.clone()]));
+        let mut out = [0u8; 16];
+
+        let count = transport.console_read(&mut out).unwrap();
+
         assert_eq!(&out[..count], partial.as_slice());
     }
 }
