@@ -8,8 +8,8 @@ use probe_rs::{
     flashing::{FileDownloadError, FlashError},
     integration::FakeProbe,
     probe::{
-        DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeAuxChannel,
-        WireProtocol, list::Lister, sifliuart::console::SifliUartConsole,
+        DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeAuxChannel, WireProtocol,
+        list::Lister, sifliuart::console::SifliUartConsole,
     },
 };
 use serde::{Deserialize, Serialize};

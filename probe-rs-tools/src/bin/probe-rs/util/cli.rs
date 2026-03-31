@@ -24,9 +24,7 @@ use crate::{
         functions::{
             CancelTopic, RttTopic, SemihostingTopic, UartConsoleTopic,
             flash::{BootInfo, DownloadOptions, FlashLayout, ProgressEvent, VerifyResult},
-            monitor::{
-                MonitorMode, MonitorOptions, RttEvent, SemihostingEvent, UartConsoleEvent,
-            },
+            monitor::{MonitorMode, MonitorOptions, RttEvent, SemihostingEvent, UartConsoleEvent},
             probe::{
                 AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, SelectProbeResult,
             },
@@ -90,11 +88,7 @@ pub async fn attach_probe(
         AttachResult::Success {
             session,
             uart_console,
-        } => Ok(SessionInterface::new(
-            client.clone(),
-            session,
-            uart_console,
-        )),
+        } => Ok(SessionInterface::new(client.clone(), session, uart_console)),
         AttachResult::ProbeNotFound => anyhow::bail!("Probe not found"),
         AttachResult::FailedToOpenProbe(error) => anyhow::bail!("Failed to open probe: {error}"),
         AttachResult::ProbeInUse => anyhow::bail!("Probe is already in use"),
@@ -1048,10 +1042,8 @@ mod tests {
             .await
             .unwrap();
 
-        let mut target_output_files = HashMap::from([(
-            ChannelIdentifier::Uart("uart".to_string()),
-            file,
-        )]);
+        let mut target_output_files =
+            HashMap::from([(ChannelIdentifier::Uart("uart".to_string()), file)]);
 
         let mut client = CliRttClient {
             handle: dummy_rtt_key(),

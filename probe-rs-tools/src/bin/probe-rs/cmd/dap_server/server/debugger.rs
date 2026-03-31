@@ -944,20 +944,22 @@ mod test {
         },
         server::configuration::{ConsoleLog, CoreConfig, FlashingConfig, SessionConfig},
     };
+    use crate::util::rtt::DataFormat;
     use probe_rs::{
         Error,
-        architecture::arm::{ArmDebugInterface, ArmError, sequences::ArmDebugSequence},
         architecture::arm::FullyQualifiedApAddress,
+        architecture::arm::{ArmDebugInterface, ArmError, sequences::ArmDebugSequence},
         config::Registry,
         integration::{FakeProbe, Operation},
         probe::{
             DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe,
-            ProbeAuxChannel, ProbeFactory, WireProtocol, list::Lister,
+            ProbeAuxChannel, ProbeFactory, WireProtocol,
+            list::Lister,
             sifliuart::{SifliUart, console::SifliUartConsole},
         },
     };
-    use serialport::{ClearBuffer, DataBits, FlowControl, Parity, SerialPort, StopBits};
     use serde_json::json;
+    use serialport::{ClearBuffer, DataBits, FlowControl, Parity, SerialPort, StopBits};
     use std::{
         cell::RefCell,
         collections::{BTreeMap, HashMap, VecDeque},
@@ -968,7 +970,6 @@ mod test {
         time::Duration as StdDuration,
     };
     use test_case::test_case;
-    use crate::util::rtt::DataFormat;
     use time::UtcOffset;
 
     const TEST_CHIP_NAME: &str = "nRF52833_xxAA";
@@ -1358,9 +1359,7 @@ mod test {
         (probe_info, fake_probe)
     }
 
-    fn uart_enabled_probe(
-        uart_read_data: &[u8],
-    ) -> (DebugProbeInfo, Probe, Arc<Mutex<Vec<u8>>>) {
+    fn uart_enabled_probe(uart_read_data: &[u8]) -> (DebugProbeInfo, Probe, Arc<Mutex<Vec<u8>>>) {
         let (probe_info, fake_probe) = fake_probe();
         let (console, written) = test_uart_console(uart_read_data);
 
@@ -1525,7 +1524,8 @@ mod test {
         protocol_adapter.expect_event(
             "probe-rs-rtt-channel-config",
             Some(RttChannelEventBody {
-                channel_number: crate::cmd::dap_server::server::debug_uart_console::UART_CONSOLE_CHANNEL_NUMBER,
+                channel_number:
+                    crate::cmd::dap_server::server::debug_uart_console::UART_CONSOLE_CHANNEL_NUMBER,
                 channel_name: "uart".to_string(),
                 data_format: DataFormat::String,
             }),
@@ -1533,7 +1533,8 @@ mod test {
         protocol_adapter
             .add_request("rttWindowOpened")
             .with_arguments(RttWindowOpenedArguments {
-                channel_number: crate::cmd::dap_server::server::debug_uart_console::UART_CONSOLE_CHANNEL_NUMBER,
+                channel_number:
+                    crate::cmd::dap_server::server::debug_uart_console::UART_CONSOLE_CHANNEL_NUMBER,
                 window_is_open: true,
             })
             .and_succesful_response();
@@ -1541,7 +1542,8 @@ mod test {
         protocol_adapter.expect_event(
             "probe-rs-rtt-data",
             Some(RttDataEventBody {
-                channel_number: crate::cmd::dap_server::server::debug_uart_console::UART_CONSOLE_CHANNEL_NUMBER,
+                channel_number:
+                    crate::cmd::dap_server::server::debug_uart_console::UART_CONSOLE_CHANNEL_NUMBER,
                 data: "hello uart\n".to_string(),
             }),
         );
@@ -1583,7 +1585,8 @@ mod test {
         protocol_adapter.expect_event(
             "probe-rs-rtt-channel-config",
             Some(RttChannelEventBody {
-                channel_number: crate::cmd::dap_server::server::debug_uart_console::UART_CONSOLE_CHANNEL_NUMBER,
+                channel_number:
+                    crate::cmd::dap_server::server::debug_uart_console::UART_CONSOLE_CHANNEL_NUMBER,
                 channel_name: "uart".to_string(),
                 data_format: DataFormat::String,
             }),

@@ -38,8 +38,8 @@ use crate::{
             ReadMemory64Endpoint, ResetCoreAndHaltEndpoint, ResetCoreEndpoint,
             ResumeAllCoresEndpoint, RpcResult, RunTestEndpoint, SelectProbeEndpoint,
             TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint, TempFileDataEndpoint,
-            TokioSpawner, VerifyEndpoint, WriteChannelEndpoint, WriteMemory8Endpoint, WriteMemory16Endpoint,
-            WriteMemory32Endpoint, WriteMemory64Endpoint,
+            TokioSpawner, VerifyEndpoint, WriteChannelEndpoint, WriteMemory8Endpoint,
+            WriteMemory16Endpoint, WriteMemory32Endpoint, WriteMemory64Endpoint,
             chip::{ChipData, ChipFamily, ChipInfoRequest, LoadChipFamilyRequest},
             file::{AppendFileRequest, TempFile},
             flash::{
@@ -49,8 +49,7 @@ use crate::{
             info::{InfoEvent, TargetInfoRequest},
             memory::{ReadMemoryRequest, WriteMemoryRequest},
             monitor::{
-                MonitorExitReason, MonitorMode, MonitorOptions, MonitorRequest,
-                WriteChannelRequest,
+                MonitorExitReason, MonitorMode, MonitorOptions, MonitorRequest, WriteChannelRequest,
             },
             probe::{
                 AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector,

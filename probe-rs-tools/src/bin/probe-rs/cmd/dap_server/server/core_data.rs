@@ -326,8 +326,10 @@ impl CoreHandle<'_> {
             DataFormat::String,
         );
 
-        self.core_data.uart_console_connection =
-            Some(debug_uart_console::Connection::new(console, timestamp_offset));
+        self.core_data.uart_console_connection = Some(debug_uart_console::Connection::new(
+            console,
+            timestamp_offset,
+        ));
 
         Ok(())
     }

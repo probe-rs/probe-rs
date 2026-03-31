@@ -2,6 +2,7 @@ use super::{
     configuration::{self, CoreConfig, SessionConfig},
     core_data::{CoreData, CoreHandle},
 };
+use crate::util::common_options::AttachedAuxChannels;
 use crate::{
     FormatKind,
     cmd::{
@@ -33,7 +34,6 @@ use probe_rs_debug::{
 };
 use std::{any::Any, collections::HashMap, env::set_current_dir, time::Duration};
 use time::UtcOffset;
-use crate::util::common_options::AttachedAuxChannels;
 
 /// The supported breakpoint types
 #[derive(Clone, Debug, PartialEq)]
