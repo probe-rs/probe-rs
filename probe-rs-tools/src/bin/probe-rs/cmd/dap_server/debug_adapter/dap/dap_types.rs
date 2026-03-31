@@ -35,6 +35,14 @@ pub struct RttWindowOpenedArguments {
     pub window_is_open: bool,
 }
 
+/// Arguments for a custom request that forwards user input to a named probe-rs channel.
+#[derive(Clone, PartialEq, Eq, Debug, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChannelInputArguments {
+    pub channel: String,
+    pub data: String,
+}
+
 #[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RttChannelEventBody {

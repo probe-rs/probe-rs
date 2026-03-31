@@ -8,10 +8,38 @@ use probe_rs::{
     flashing::{FileDownloadError, FlashError},
     integration::FakeProbe,
     probe::{
-        DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, WireProtocol, list::Lister,
+        DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeAuxChannel,
+        WireProtocol, list::Lister, sifliuart::console::SifliUartConsole,
     },
 };
 use serde::{Deserialize, Serialize};
+
+#[derive(Default)]
+pub(crate) struct AttachedAuxChannels {
+    pub(crate) sifli_uart_console: Option<SifliUartConsole>,
+}
+
+impl AttachedAuxChannels {
+    pub(crate) fn take_from_probe(probe: &mut Probe) -> Self {
+        probe.take_aux_channels().into()
+    }
+}
+
+impl From<Vec<ProbeAuxChannel>> for AttachedAuxChannels {
+    fn from(channels: Vec<ProbeAuxChannel>) -> Self {
+        let mut attached = Self::default();
+
+        for channel in channels {
+            match channel {
+                ProbeAuxChannel::SifliUartConsole(console) => {
+                    attached.sifli_uart_console = Some(console);
+                }
+            }
+        }
+
+        attached
+    }
+}
 
 /// Common options when flashing a target device.
 #[derive(Debug, clap::Parser)]

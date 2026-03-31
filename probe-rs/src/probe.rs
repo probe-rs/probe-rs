@@ -37,6 +37,12 @@ use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
 
+/// Optional probe-owned side channels that can be extracted before creating a session.
+pub enum ProbeAuxChannel {
+    /// A raw UART console channel exposed by the SiFli UART probe.
+    SifliUartConsole(sifliuart::console::SifliUartConsole),
+}
+
 /// Used to log warnings when the measured target voltage is
 /// lower than 1.4V, if at all measurable.
 const LOW_TARGET_VOLTAGE_WARNING_THRESHOLD: f32 = 1.4;
@@ -317,6 +323,11 @@ impl Probe {
     /// Get the human readable name for the probe.
     pub fn get_name(&self) -> String {
         self.inner.get_name().to_string()
+    }
+
+    /// Extracts any auxiliary channels owned by the probe.
+    pub fn take_aux_channels(&mut self) -> Vec<ProbeAuxChannel> {
+        self.inner.take_aux_channels()
     }
 
     /// Attach to the chip.
@@ -777,6 +788,11 @@ pub trait DebugProbe: Any + Send + fmt::Debug {
     /// if the probe doesn’t support reading the target voltage.
     fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
         Ok(None)
+    }
+
+    /// Extracts probe-specific auxiliary channels before the probe is consumed by a session.
+    fn take_aux_channels(&mut self) -> Vec<ProbeAuxChannel> {
+        vec![]
     }
 }
 

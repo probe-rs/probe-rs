@@ -2,24 +2,31 @@
 //! Refer to <https://webfile.lovemcu.cn/file/user%20manual/UM5201-SF32LB52x-%E7%94%A8%E6%88%B7%E6%89%8B%E5%86%8C%20V0p81.pdf#153> for specific communication formats
 
 mod arm;
+/// Shared UART console handle for SiFli UART probes.
+pub mod console;
+mod transport;
 
 use crate::Error;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::architecture::arm::{ArmDebugInterface, ArmError};
+use crate::probe::ProbeAuxChannel;
 use crate::probe::sifliuart::arm::SifliUartArmDebug;
+use crate::probe::sifliuart::console::SifliUartConsole;
+use crate::probe::sifliuart::transport::SifliUartTransport;
 use crate::probe::{
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
     ProbeFactory, WireProtocol,
 };
 use serialport::{SerialPort, SerialPortType, available_ports};
-use std::io::{BufReader, BufWriter, Read, Write};
-use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::io::{Read, Write};
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use std::{env, fmt};
 
 const START_WORD: [u8; 2] = [0x7E, 0x79];
 
 const DEFUALT_RECV_TIMEOUT: Duration = Duration::from_secs(3);
+const DEFAULT_SERIAL_TIMEOUT: Duration = Duration::from_millis(10);
 
 const DEFUALT_UART_BAUD: u32 = 1000000;
 
@@ -103,8 +110,7 @@ impl fmt::Display for CommandError {
 
 /// SiFli UART Debug Probe, Only support SiFli chip.
 pub struct SifliUart {
-    reader: BufReader<Box<dyn Read + Send>>,
-    writer: BufWriter<Box<dyn Write + Send>>,
+    transport: Arc<Mutex<SifliUartTransport>>,
     _serial_port: Box<dyn SerialPort>,
     baud: u32,
 }
@@ -130,163 +136,24 @@ impl SifliUart {
         writer: Box<dyn Write + Send>,
         port: Box<dyn SerialPort>,
     ) -> Result<Self, DebugProbeError> {
-        let reader = BufReader::new(reader);
-        let writer = BufWriter::new(writer);
+        let transport = Arc::new(Mutex::new(SifliUartTransport::new(reader, writer)));
 
         let probe = SifliUart {
-            reader,
-            writer,
+            transport,
             baud: DEFUALT_UART_BAUD,
             _serial_port: port,
         };
         Ok(probe)
     }
 
-    fn create_header(len: u16) -> Vec<u8> {
-        let mut header = vec![];
-        header.extend_from_slice(&START_WORD);
-        header.extend_from_slice(&len.to_le_bytes());
-        header.push(0x10);
-        header.push(0x00);
-        header
-    }
-
-    fn send(
-        writer: &mut BufWriter<Box<dyn Write + Send>>,
-        command: &SifliUartCommand,
-    ) -> Result<(), CommandError> {
-        let mut send_data = vec![];
-        match command {
-            SifliUartCommand::Enter => {
-                let temp = [0x41, 0x54, 0x53, 0x46, 0x33, 0x32, 0x05, 0x21];
-                send_data.extend_from_slice(&temp);
-            }
-            SifliUartCommand::Exit => {
-                let temp = [0x41, 0x54, 0x53, 0x46, 0x33, 0x32, 0x18, 0x21];
-                send_data.extend_from_slice(&temp);
-            }
-            SifliUartCommand::MEMRead { addr, len } => {
-                send_data.push(0x40);
-                send_data.push(0x72);
-                send_data.extend_from_slice(&addr.to_le_bytes());
-                send_data.extend_from_slice(&len.to_le_bytes());
-            }
-            SifliUartCommand::MEMWrite { addr, data } => {
-                send_data.push(0x40);
-                send_data.push(0x77);
-                send_data.extend_from_slice(&addr.to_le_bytes());
-                send_data.extend_from_slice(&(data.len() as u16).to_le_bytes());
-                for d in data.iter() {
-                    send_data.extend_from_slice(&d.to_le_bytes());
-                }
-            }
-        }
-
-        let header = Self::create_header(send_data.len() as u16);
-        writer
-            .write_all(&header)
-            .map_err(CommandError::ProbeError)?;
-        writer
-            .write_all(&send_data)
-            .map_err(CommandError::ProbeError)?;
-        writer.flush().map_err(CommandError::ProbeError)?;
-
-        Ok(())
-    }
-
-    fn recv(
-        reader: &mut BufReader<Box<dyn Read + Send>>,
-    ) -> Result<SifliUartResponse, CommandError> {
-        let start_time = Instant::now();
-        let mut buffer = vec![];
-        let mut recv_data = vec![];
-
-        loop {
-            if start_time.elapsed() >= DEFUALT_RECV_TIMEOUT {
-                return Err(CommandError::ParameterError(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    "Timeout",
-                )));
-            }
-
-            let mut byte = [0; 1];
-            if reader.read_exact(&mut byte).is_err() {
-                continue;
-            }
-
-            if (byte[0] == START_WORD[0]) || (buffer.len() == 1 && byte[0] == START_WORD[1]) {
-                buffer.push(byte[0]);
-            } else {
-                buffer.clear();
-            }
-            tracing::info!("Recv buffer: {:?}", buffer);
-
-            if buffer.ends_with(&START_WORD) {
-                let err = Err(CommandError::ParameterError(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    "Invalid frame size",
-                )));
-                recv_data.clear();
-                // Header Length
-                let mut temp = [0; 2];
-                if reader.read_exact(&mut temp).is_err() {
-                    return err;
-                }
-                let size = u16::from_le_bytes(temp);
-                tracing::info!("Recv size: {}", size);
-
-                // Header channel and crc
-                if reader.read_exact(&mut temp).is_err() {
-                    return err;
-                }
-
-                while recv_data.len() < size as usize {
-                    if reader.read_exact(&mut byte).is_err() {
-                        return err;
-                    }
-                    recv_data.push(byte[0]);
-                    tracing::info!("Recv data: {:?}", recv_data);
-                }
-                break;
-            } else if buffer.len() == 2 {
-                buffer.clear();
-            }
-        }
-
-        if recv_data[recv_data.len() - 1] != 0x06 {
-            return Err(CommandError::ParameterError(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Invalid end of frame",
-            )));
-        }
-
-        match recv_data[0] {
-            0xD1 => Ok(SifliUartResponse::Enter),
-            0xD0 => Ok(SifliUartResponse::Exit),
-            0xD2 => {
-                let data = recv_data[1..recv_data.len() - 1].to_vec();
-                Ok(SifliUartResponse::MEMRead { data })
-            }
-            0xD3 => Ok(SifliUartResponse::MEMWrite),
-            _ => Err(CommandError::ParameterError(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Invalid frame type",
-            ))),
-        }
-    }
-
     fn command(&mut self, command: SifliUartCommand) -> Result<SifliUartResponse, CommandError> {
         tracing::info!("Command: {}", command);
-        let ret = Self::send(&mut self.writer, &command);
-        if let Err(e) = ret {
-            tracing::error!("Command send error: {:?}", e);
-            return Err(e);
-        }
+        let mut transport = self.transport.lock().unwrap();
+        transport.transaction(&command, DEFUALT_RECV_TIMEOUT)
+    }
 
-        match command {
-            SifliUartCommand::Exit => Ok(SifliUartResponse::Exit),
-            _ => Self::recv(&mut self.reader),
-        }
+    fn take_console(&self) -> SifliUartConsole {
+        SifliUartConsole::new(self.transport.clone())
     }
 }
 
@@ -362,6 +229,10 @@ impl DebugProbe for SifliUart {
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
         self
     }
+
+    fn take_aux_channels(&mut self) -> Vec<ProbeAuxChannel> {
+        vec![ProbeAuxChannel::SifliUartConsole(self.take_console())]
+    }
 }
 
 /// Factory for creating [`SifliUart`] probes.
@@ -413,7 +284,7 @@ impl SifliUartFactory {
     fn open_port(&self, port_name: &str) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         let mut port = serialport::new(port_name, DEFUALT_UART_BAUD)
             .dtr_on_open(false)
-            .timeout(Duration::from_secs(3))
+            .timeout(DEFAULT_SERIAL_TIMEOUT)
             .open()
             .map_err(|_| {
                 DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)
@@ -434,6 +305,37 @@ impl SifliUartFactory {
 
         SifliUart::new(Box::new(reader), Box::new(writer), port)
             .map(|probe| Box::new(probe) as Box<dyn DebugProbe>)
+    }
+}
+
+impl SifliUartResponse {
+    fn from_payload(recv_data: Vec<u8>) -> Result<Self, CommandError> {
+        let Some(&last) = recv_data.last() else {
+            return Err(CommandError::ParameterError(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Invalid frame size",
+            )));
+        };
+
+        if last != 0x06 {
+            return Err(CommandError::ParameterError(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Invalid end of frame",
+            )));
+        }
+
+        match recv_data[0] {
+            0xD1 => Ok(SifliUartResponse::Enter),
+            0xD0 => Ok(SifliUartResponse::Exit),
+            0xD2 => Ok(SifliUartResponse::MEMRead {
+                data: recv_data[1..recv_data.len() - 1].to_vec(),
+            }),
+            0xD3 => Ok(SifliUartResponse::MEMWrite),
+            _ => Err(CommandError::ParameterError(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Invalid frame type",
+            ))),
+        }
     }
 }
 

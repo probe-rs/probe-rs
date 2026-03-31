@@ -8,7 +8,10 @@ use crate::{
         Key,
         functions::{RpcContext, RpcResult},
     },
-    util::common_options::{OperationError, ProbeOptions},
+    util::{
+        common_options::{AttachedAuxChannels, OperationError, ProbeOptions},
+        sifli_uart_client::SifliUartClient,
+    },
 };
 
 use std::fmt::Display;
@@ -137,7 +140,10 @@ pub async fn select_probe(
 
 #[derive(Serialize, Deserialize, Schema)]
 pub enum AttachResult {
-    Success(Key<Session>),
+    Success {
+        session: Key<Session>,
+        uart_console: Option<Key<SifliUartClient>>,
+    },
     ProbeNotFound,
     FailedToOpenProbe(String),
     ProbeInUse,
@@ -242,7 +248,7 @@ pub async fn attach(
     let common_options = ProbeOptions::from(&request).load(&mut registry)?;
     let target = common_options.get_target_selector()?;
 
-    let probe = match common_options.attach_probe(&ctx.lister()) {
+    let mut probe = match common_options.attach_probe(&ctx.lister()) {
         Ok(probe) => probe,
         Err(OperationError::NoProbesFound) => return Ok(AttachResult::ProbeNotFound),
         Err(error) => {
@@ -253,6 +259,7 @@ pub async fn attach(
         }
     };
 
+    let aux_channels = AttachedAuxChannels::take_from_probe(&mut probe);
     let mut session = common_options.attach_session(probe, target)?;
 
     // attach_session halts the target, let's give the user the option
@@ -260,6 +267,13 @@ pub async fn attach(
     if request.resume_target {
         session.resume_all_cores()?;
     }
+    let uart_console = match aux_channels.sifli_uart_console {
+        Some(console) => Some(ctx.store_object(SifliUartClient::new(console)).await),
+        None => None,
+    };
     let session_id = ctx.set_session(session, common_options.dry_run()).await;
-    Ok(AttachResult::Success(session_id))
+    Ok(AttachResult::Success {
+        session: session_id,
+        uart_console,
+    })
 }

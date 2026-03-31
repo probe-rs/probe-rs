@@ -20,7 +20,7 @@ use crate::{
             protocol::ProtocolAdapter,
         },
         peripherals::svd_variables::SvdCache,
-        server::debug_rtt,
+        server::{debug_rtt, debug_uart_console},
     },
     util::rtt::RttDecoder,
 };
@@ -28,6 +28,7 @@ use anyhow::{Result, anyhow};
 use probe_rs::semihosting::SemihostingCommand;
 use probe_rs::{
     Architecture, BreakpointCause, BreakpointError, CoreInformation, Error, MemoryInterface as _,
+    probe::sifliuart::console::SifliUartConsole,
 };
 use probe_rs::{Core, CoreStatus, HaltReason, rtt::ScanRegion};
 use probe_rs_debug::VerifiedBreakpoint;
@@ -57,6 +58,8 @@ pub struct CoreData {
     pub breakpoints: Vec<session_data::ActiveBreakpoint>,
     pub rtt_scan_ranges: ScanRegion,
     pub rtt_connection: Option<debug_rtt::RttConnection>,
+    pub uart_console: Option<SifliUartConsole>,
+    pub uart_console_connection: Option<debug_uart_console::Connection>,
     pub rtt_client: Option<RttClient>,
     pub clear_rtt_header: bool,
     pub rtt_header_cleared: bool,
@@ -300,6 +303,31 @@ impl CoreHandle<'_> {
             client,
             debugger_rtt_channels,
         });
+
+        Ok(())
+    }
+
+    pub fn attach_to_uart_console<P: ProtocolAdapter>(
+        &mut self,
+        debug_adapter: &mut DebugAdapter<P>,
+        timestamp_offset: UtcOffset,
+    ) -> Result<()> {
+        if self.core_data.uart_console_connection.is_some() {
+            return Ok(());
+        }
+
+        let Some(console) = self.core_data.uart_console.take() else {
+            return Ok(());
+        };
+
+        debug_adapter.rtt_window(
+            debug_uart_console::UART_CONSOLE_CHANNEL_NUMBER,
+            "uart".to_string(),
+            DataFormat::String,
+        );
+
+        self.core_data.uart_console_connection =
+            Some(debug_uart_console::Connection::new(console, timestamp_offset));
 
         Ok(())
     }

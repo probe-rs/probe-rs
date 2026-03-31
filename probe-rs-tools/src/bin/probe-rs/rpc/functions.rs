@@ -19,7 +19,10 @@ use crate::{
             },
             info::{InfoEvent, TargetInfoRequest, target_info},
             memory::{ReadMemoryRequest, WriteMemoryRequest, read_memory, write_memory},
-            monitor::{MonitorRequest, MonitorResponse, RttEvent, SemihostingEvent, monitor},
+            monitor::{
+                MonitorRequest, MonitorResponse, RttEvent, SemihostingEvent, UartConsoleEvent,
+                WriteChannelRequest, monitor, write_channel,
+            },
             probe::{
                 AttachRequest, AttachResponse, ListProbesRequest, ListProbesResponse,
                 SelectProbeRequest, SelectProbeResponse, attach, list_probes, select_probe,
@@ -469,6 +472,7 @@ endpoints! {
     | EraseEndpoint             | EraseRequest            | NoResponse              | "flash/erase"      |
     | VerifyEndpoint            | VerifyRequest           | VerifyResponse          | "flash/verify"     |
     | MonitorEndpoint           | MonitorRequest          | MonitorResponse         | "monitor"          |
+    | WriteChannelEndpoint      | WriteChannelRequest     | NoResponse              | "channel/write"    |
 
     | ListTestsEndpoint         | ListTestsRequest        | ListTestsResponse       | "tests/list"       |
     | RunTestEndpoint           | RunTestRequest          | RunTestResponse         | "tests/run"        |
@@ -512,6 +516,7 @@ topics! {
     | ProgressEventTopic  | ProgressEvent    | "flash/progress" |     |
     | RttTopic            | RttEvent         | "rtt"            |     |
     | SemihostingTopic    | SemihostingEvent | "semihosting"    |     |
+    | UartConsoleTopic    | UartConsoleEvent | "uart_console"   |     |
 }
 
 postcard_rpc::define_dispatch! {
@@ -538,6 +543,7 @@ postcard_rpc::define_dispatch! {
         | EraseEndpoint             | async     | erase             |
         | VerifyEndpoint            | async     | verify            |
         | MonitorEndpoint           | spawn     | monitor           |
+        | WriteChannelEndpoint      | async     | write_channel     |
 
         | ListTestsEndpoint         | spawn     | list_tests        |
         | RunTestEndpoint           | spawn     | run_test          |

@@ -38,7 +38,7 @@ use crate::{
             ReadMemory64Endpoint, ResetCoreAndHaltEndpoint, ResetCoreEndpoint,
             ResumeAllCoresEndpoint, RpcResult, RunTestEndpoint, SelectProbeEndpoint,
             TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint, TempFileDataEndpoint,
-            TokioSpawner, VerifyEndpoint, WriteMemory8Endpoint, WriteMemory16Endpoint,
+            TokioSpawner, VerifyEndpoint, WriteChannelEndpoint, WriteMemory8Endpoint, WriteMemory16Endpoint,
             WriteMemory32Endpoint, WriteMemory64Endpoint,
             chip::{ChipData, ChipFamily, ChipInfoRequest, LoadChipFamilyRequest},
             file::{AppendFileRequest, TempFile},
@@ -48,7 +48,10 @@ use crate::{
             },
             info::{InfoEvent, TargetInfoRequest},
             memory::{ReadMemoryRequest, WriteMemoryRequest},
-            monitor::{MonitorExitReason, MonitorMode, MonitorOptions, MonitorRequest},
+            monitor::{
+                MonitorExitReason, MonitorMode, MonitorOptions, MonitorRequest,
+                WriteChannelRequest,
+            },
             probe::{
                 AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector,
                 ListProbesRequest, SelectProbeRequest, SelectProbeResult,
@@ -65,6 +68,7 @@ use crate::{
     util::{
         cli::MonitorEvent,
         rtt::{RttChannelConfig, client::RttClient},
+        sifli_uart_client::SifliUartClient,
     },
 };
 
@@ -370,6 +374,10 @@ impl RpcClient {
         self.send_resp::<AttachEndpoint, _>(&request).await
     }
 
+    pub async fn write_channel(&self, request: WriteChannelRequest) -> anyhow::Result<()> {
+        self.send_resp::<WriteChannelEndpoint, _>(&request).await
+    }
+
     pub async fn list_probes(&self) -> anyhow::Result<Vec<DebugProbeEntry>> {
         self.send_resp::<ListProbesEndpoint, _>(&ListProbesRequest::all())
             .await
@@ -414,16 +422,39 @@ impl RpcClient {
 #[derive(Clone)]
 pub struct SessionInterface {
     sessid: Key<Session>,
+    uart_console: Option<Key<SifliUartClient>>,
     client: RpcClient,
 }
 
 impl SessionInterface {
-    pub fn new(client: RpcClient, sessid: Key<Session>) -> Self {
-        Self { sessid, client }
+    pub fn new(
+        client: RpcClient,
+        sessid: Key<Session>,
+        uart_console: Option<Key<SifliUartClient>>,
+    ) -> Self {
+        Self {
+            sessid,
+            uart_console,
+            client,
+        }
     }
 
     pub fn client(&self) -> RpcClient {
         self.client.clone()
+    }
+
+    pub fn uart_console(&self) -> Option<Key<SifliUartClient>> {
+        self.uart_console
+    }
+
+    pub async fn write_uart_console(&self, data: Vec<u8>) -> anyhow::Result<()> {
+        let Some(handle) = self.uart_console else {
+            anyhow::bail!("The attached probe does not expose a UART console channel");
+        };
+
+        self.client
+            .write_channel(WriteChannelRequest { handle, data })
+            .await
     }
 
     pub fn core(&self, core: usize) -> CoreInterface {

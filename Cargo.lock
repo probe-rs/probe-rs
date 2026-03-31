@@ -3034,6 +3034,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "serialport",
  "sha2",
  "signal-hook",
  "svd-parser",

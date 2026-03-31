@@ -9,11 +9,11 @@ use postcard_rpc::host_client::HostClient;
 use postcard_schema::Schema;
 use serde::de::DeserializeOwned;
 use time::UtcOffset;
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::{runtime::Handle, sync::mpsc::UnboundedSender};
 use tokio_util::sync::CancellationToken;
 
-use crate::cmd::run::EmbeddedTestElfInfo;
+use crate::cmd::run::{ChannelStdin, EmbeddedTestElfInfo};
 use crate::rpc::functions::monitor::MonitorExitReason;
 use crate::rpc::utils::semihosting::SemihostingOptions;
 use crate::{
@@ -22,9 +22,11 @@ use crate::{
         Key,
         client::{MultiSubscribeError, MultiSubscription, MultiTopic, RpcClient, SessionInterface},
         functions::{
-            CancelTopic, RttTopic, SemihostingTopic,
+            CancelTopic, RttTopic, SemihostingTopic, UartConsoleTopic,
             flash::{BootInfo, DownloadOptions, FlashLayout, ProgressEvent, VerifyResult},
-            monitor::{MonitorMode, MonitorOptions, RttEvent, SemihostingEvent},
+            monitor::{
+                MonitorMode, MonitorOptions, RttEvent, SemihostingEvent, UartConsoleEvent,
+            },
             probe::{
                 AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, SelectProbeResult,
             },
@@ -85,7 +87,14 @@ pub async fn attach_probe(
         .await?;
 
     match result {
-        AttachResult::Success(sessid) => Ok(SessionInterface::new(client.clone(), sessid)),
+        AttachResult::Success {
+            session,
+            uart_console,
+        } => Ok(SessionInterface::new(
+            client.clone(),
+            session,
+            uart_console,
+        )),
         AttachResult::ProbeNotFound => anyhow::bail!("Probe not found"),
         AttachResult::FailedToOpenProbe(error) => anyhow::bail!("Failed to open probe: {error}"),
         AttachResult::ProbeInUse => anyhow::bail!("Probe is already in use"),
@@ -157,6 +166,8 @@ pub(crate) enum ChannelIdentifier {
     Rtt(String),
     /// A named semihosting channel
     Semihosting(String),
+    /// A named UART channel
+    Uart(String),
     /// Selector that matches any channel; depending on the context, this usually means "any
     /// channel that is not explicitly handled".
     CatchAll,
@@ -172,8 +183,9 @@ impl std::str::FromStr for ChannelIdentifier {
             [unqualified] => ChannelIdentifier::Unqualified(unqualified.to_string()),
             ["rtt", rtt] => ChannelIdentifier::Rtt(rtt.to_string()),
             ["semihosting", semihosting] => ChannelIdentifier::Semihosting(semihosting.to_string()),
+            ["uart", uart] => ChannelIdentifier::Uart(uart.to_string()),
             _ => anyhow::bail!(
-                "Channel identifiers with colons need to be qualified as `rtt:name` or `semihosting:name`."
+                "Channel identifiers with colons need to be qualified as `rtt:name`, `semihosting:name`, or `uart:name`."
             ),
         })
     }
@@ -185,6 +197,7 @@ impl ChannelIdentifier {
         match self {
             ChannelIdentifier::Rtt(n) => Some(ChannelIdentifier::Unqualified(n.clone())),
             ChannelIdentifier::Semihosting(n) => Some(ChannelIdentifier::Unqualified(n.clone())),
+            ChannelIdentifier::Uart(n) => Some(ChannelIdentifier::Unqualified(n.clone())),
             _ => None,
         }
     }
@@ -314,12 +327,13 @@ pub async fn rtt_client(
     // The actual data processor objects will be created once we have the channel names.
     Ok(CliRttClient {
         handle: rtt_client.handle,
-        timestamp_offset,
+        channel_processors: vec![],
+        uart_channel_processor: None,
+        log_format,
         show_timestamps,
         show_location,
-        channel_processors: vec![],
+        timestamp_offset,
         defmt_data,
-        log_format,
     })
 }
 
@@ -433,6 +447,7 @@ pub async fn flash(
 pub enum MonitorEvent {
     Rtt(RttEvent),
     Semihosting(SemihostingEvent),
+    UartConsole(UartConsoleEvent),
 }
 
 impl MultiTopic for MonitorEvent {
@@ -450,13 +465,19 @@ impl MultiTopic for MonitorEvent {
         // one for RTT, one for semihosting, then introduce a MultiSubscription impl for them
         let rtt = RttTopic::subscribe(client, depth).await?;
         let semihosting = SemihostingTopic::subscribe(client, depth).await?;
-        Ok(MonitorSubscription { rtt, semihosting })
+        let uart_console = UartConsoleTopic::subscribe(client, depth).await?;
+        Ok(MonitorSubscription {
+            rtt,
+            semihosting,
+            uart_console,
+        })
     }
 }
 
 pub struct MonitorSubscription {
     rtt: <RttTopic as MultiTopic>::Subscription,
     semihosting: <SemihostingTopic as MultiTopic>::Subscription,
+    uart_console: <UartConsoleTopic as MultiTopic>::Subscription,
 }
 impl MultiSubscription for MonitorSubscription {
     type Message = MonitorEvent;
@@ -465,6 +486,7 @@ impl MultiSubscription for MonitorSubscription {
         tokio::select! {
             message = self.rtt.recv() => message.map(MonitorEvent::Rtt),
             message = self.semihosting.recv() => message.map(MonitorEvent::Semihosting),
+            message = self.uart_console.recv() => message.map(MonitorEvent::UartConsole),
         }
     }
 }
@@ -477,9 +499,19 @@ pub async fn monitor(
     mut rtt_client: Option<CliRttClient>,
     options: MonitorOptions,
     print_stack_trace: bool,
+    channel_stdin: Option<ChannelStdin>,
     target_output_files: &mut TargetOutputFiles,
     stack_frame_limit: u32,
 ) -> anyhow::Result<()> {
+    if matches!(channel_stdin, Some(ChannelStdin::Uart)) && session.uart_console().is_none() {
+        anyhow::bail!("The attached probe does not expose a UART console channel");
+    }
+
+    let stdin_forwarder = channel_stdin.map(|channel| {
+        let session = session.clone();
+        tokio::spawn(async move { forward_stdin_to_channel(session, channel).await })
+    });
+
     let monitor = session.monitor(mode, options, async |msg| {
         print_monitor_event(&mut rtt_client.as_mut(), msg, target_output_files).await;
     });
@@ -488,6 +520,11 @@ pub async fn monitor(
         session.client().publish::<CancelTopic>(&()).await.unwrap();
     })
     .await;
+
+    if let Some(task) = stdin_forwarder {
+        task.abort();
+        let _ = task.await;
+    }
 
     let (print_stack_trace, result) = match result {
         Ok(MonitorExitReason::Success | MonitorExitReason::SemihostingExit(Ok(_))) => {
@@ -553,6 +590,25 @@ pub async fn monitor(
     }
 
     result
+}
+
+async fn forward_stdin_to_channel(
+    session: SessionInterface,
+    channel: ChannelStdin,
+) -> anyhow::Result<()> {
+    let mut stdin = tokio::io::stdin();
+    let mut buf = [0u8; 1024];
+
+    loop {
+        let count = stdin.read(&mut buf).await?;
+        if count == 0 {
+            return Ok(());
+        }
+
+        match channel {
+            ChannelStdin::Uart => session.write_uart_console(buf[..count].to_vec()).await?,
+        }
+    }
 }
 
 #[expect(clippy::too_many_arguments)]
@@ -761,6 +817,7 @@ where
 pub struct CliRttClient {
     handle: Key<RttClient>,
     channel_processors: Vec<Channel>,
+    uart_channel_processor: Option<Channel>,
 
     // Data necessary to create the channel processors once we know the channel names.
     log_format: Option<String>,
@@ -817,6 +874,21 @@ impl CliRttClient {
             }
         }
     }
+
+    fn on_uart_channel_discovered(&mut self, channel: &str) {
+        if self.uart_channel_processor.is_some() {
+            return;
+        }
+
+        self.uart_channel_processor = Some(Channel::new(
+            channel.to_string(),
+            RttDecoder::String {
+                timestamp_offset: self.timestamp_offset,
+                last_line_done: false,
+                show_timestamps: self.show_timestamps,
+            },
+        ));
+    }
 }
 
 async fn print_monitor_event(
@@ -867,6 +939,33 @@ async fn print_monitor_event(
                 _ = remote_processor.write_all(data.as_bytes()).await;
             };
         }
+        MonitorEvent::UartConsole(UartConsoleEvent::Discovered { channel_name }) => {
+            let Some(client) = rtt_client else {
+                return;
+            };
+
+            client.on_uart_channel_discovered(&channel_name);
+        }
+        MonitorEvent::UartConsole(UartConsoleEvent::Output { bytes }) => {
+            let Some(client) = rtt_client else {
+                return;
+            };
+
+            if client.uart_channel_processor.is_none() {
+                client.on_uart_channel_discovered("uart");
+            }
+
+            let Some(processor) = client.uart_channel_processor.as_mut() else {
+                return;
+            };
+
+            processor
+                .process(
+                    &bytes,
+                    ChannelIdentifier::Uart(processor.channel.clone()).find_in(target_output_files),
+                )
+                .await;
+        }
     }
 }
 
@@ -910,5 +1009,85 @@ impl RttDataHandler for Printer<'_> {
             _ = copy_to.write_all(data.as_bytes()).await;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+    use std::{
+        collections::HashMap,
+        path::PathBuf,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    fn dummy_rtt_key() -> Key<RttClient> {
+        serde_json::from_value(json!({
+            "key": 0,
+            "marker": null
+        }))
+        .unwrap()
+    }
+
+    fn temp_output_path(name: &str) -> PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!("probe-rs-{name}-{nanos}.log"))
+    }
+
+    #[tokio::test]
+    async fn uart_console_event_is_written_to_uart_target_file() {
+        let path = temp_output_path("uart-cli-smoke");
+        let file = tokio::fs::OpenOptions::new()
+            .append(true)
+            .create(true)
+            .open(&path)
+            .await
+            .unwrap();
+
+        let mut target_output_files = HashMap::from([(
+            ChannelIdentifier::Uart("uart".to_string()),
+            file,
+        )]);
+
+        let mut client = CliRttClient {
+            handle: dummy_rtt_key(),
+            channel_processors: vec![],
+            uart_channel_processor: None,
+            log_format: None,
+            show_timestamps: false,
+            show_location: false,
+            timestamp_offset: None,
+            defmt_data: None,
+        };
+        let mut client_ref = Some(&mut client);
+
+        print_monitor_event(
+            &mut client_ref,
+            MonitorEvent::UartConsole(UartConsoleEvent::Discovered {
+                channel_name: "uart".to_string(),
+            }),
+            &mut target_output_files,
+        )
+        .await;
+        print_monitor_event(
+            &mut client_ref,
+            MonitorEvent::UartConsole(UartConsoleEvent::Output {
+                bytes: b"hello from uart\n".to_vec(),
+            }),
+            &mut target_output_files,
+        )
+        .await;
+
+        drop(client_ref);
+        drop(target_output_files);
+
+        let written = tokio::fs::read_to_string(&path).await.unwrap();
+        assert_eq!(written, "hello from uart\n");
+
+        tokio::fs::remove_file(path).await.unwrap();
     }
 }

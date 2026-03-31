@@ -33,6 +33,7 @@ use probe_rs_debug::{
 };
 use std::{any::Any, collections::HashMap, env::set_current_dir, time::Duration};
 use time::UtcOffset;
+use crate::util::common_options::AttachedAuxChannels;
 
 /// The supported breakpoint types
 #[derive(Clone, Debug, PartialEq)]
@@ -87,7 +88,8 @@ impl SessionData {
         let target_selector = TargetSelector::from(config.chip.as_deref());
 
         let options = config.probe_options().load(registry)?;
-        let target_probe = options.attach_probe(lister)?;
+        let mut target_probe = options.attach_probe(lister)?;
+        let mut aux_channels = AttachedAuxChannels::take_from_probe(&mut target_probe);
         let mut target_session = options
             .attach_session(target_probe, target_selector)
             .map_err(|operation_error| {
@@ -205,6 +207,8 @@ impl SessionData {
                 breakpoints: vec![],
                 rtt_scan_ranges: ScanRegion::Ranges(vec![]),
                 rtt_connection: None,
+                uart_console: aux_channels.sifli_uart_console.take(),
+                uart_console_connection: None,
                 rtt_client: None,
                 // For launch requests, always clear the RTT header, otherwise we may attach before the channel names are set.
                 clear_rtt_header: session_type == TargetSessionType::LaunchRequest,
@@ -394,6 +398,19 @@ impl SessionData {
                             .ok();
                     }
                 }
+            }
+
+            if let Some(core_uart) = &mut target_core.core_data.uart_console_connection {
+                if core_uart.process_output(debug_adapter).await {
+                    suggest_delay_required = false;
+                }
+            } else if debug_adapter.configuration_is_done()
+                && let Err(error) =
+                    target_core.attach_to_uart_console(debug_adapter, timestamp_offset)
+            {
+                debug_adapter
+                    .show_error_message(&DebuggerError::Other(error))
+                    .ok();
             }
 
             // Handle potential semihosting commands. If the command is handled,

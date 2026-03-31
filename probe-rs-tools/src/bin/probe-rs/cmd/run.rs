@@ -93,6 +93,11 @@ pub struct TestOptions {
     _no_op: NoOpTestOptions,
 }
 
+#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+pub enum ChannelStdin {
+    Uart,
+}
+
 /// Options which are ignored, but exist for compatibility with libtest.
 #[derive(Debug, clap::Parser)]
 struct NoOpTestOptions {
@@ -188,6 +193,10 @@ pub struct SharedOptions {
     /// "^/(\d).(\d)$=/path$1/file$2.txt"`).
     #[arg(long, help_heading = "SEMIHOSTING CONFIGURATION")]
     pub semihosting_file: Vec<String>,
+
+    /// Forward stdin bytes to the selected target channel.
+    #[arg(long, value_enum, help_heading = "CHANNEL INPUT")]
+    pub channel_stdin: Option<ChannelStdin>,
 }
 
 impl Cmd {
@@ -272,9 +281,11 @@ impl Cmd {
                     catch_reset: !self.run_options.no_catch_reset,
                     catch_hardfault: !self.run_options.no_catch_hardfault,
                     rtt_client: Some(client_handle),
+                    uart_client: session.uart_console(),
                     semihosting_options,
                 },
                 self.shared_options.always_print_stacktrace,
+                self.shared_options.channel_stdin,
                 &mut target_output_files,
                 self.shared_options.stack_frame_limit,
             )

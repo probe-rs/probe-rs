@@ -47,9 +47,11 @@ impl Cmd {
                 catch_reset: !self.run.run_options.no_catch_reset,
                 catch_hardfault: !self.run.run_options.no_catch_hardfault,
                 rtt_client: Some(client_handle),
+                uart_client: session.uart_console(),
                 semihosting_options,
             },
             self.run.shared_options.always_print_stacktrace,
+            self.run.shared_options.channel_stdin,
             &mut target_output_files,
             self.run.shared_options.stack_frame_limit,
         )

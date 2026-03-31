@@ -4,15 +4,16 @@ use crate::{
     rpc::{
         Key,
         functions::{
-            MonitorEndpoint, MultiTopicPublisher, MultiTopicWriter, RpcResult, RpcSpawnContext,
-            RttTopic, SemihostingTopic, WireTxImpl, flash::BootInfo,
+            MonitorEndpoint, MultiTopicPublisher, MultiTopicWriter, NoResponse, RpcContext,
+            RpcResult, RpcSpawnContext, RttTopic, SemihostingTopic, UartConsoleTopic, WireTxImpl,
+            flash::BootInfo,
         },
         utils::{
             run_loop::{ReturnReason, RunLoop, RunLoopPoller},
             semihosting::{SemihostingFileManager, SemihostingOptions},
         },
     },
-    util::rtt::client::RttClient,
+    util::{rtt::client::RttClient, sifli_uart_client::SifliUartClient},
 };
 use anyhow::Context;
 use postcard_rpc::{header::VarHeader, server::Sender};
@@ -53,8 +54,16 @@ pub struct MonitorOptions {
     pub catch_hardfault: bool,
     /// RTT client if used.
     pub rtt_client: Option<Key<RttClient>>,
+    /// SiFli UART console client if used.
+    pub uart_client: Option<Key<SifliUartClient>>,
     /// Configure the support for semihosting.
     pub semihosting_options: SemihostingOptions,
+}
+
+#[derive(Serialize, Deserialize, Schema)]
+pub struct WriteChannelRequest {
+    pub handle: Key<SifliUartClient>,
+    pub data: Vec<u8>,
 }
 
 /// Monitor in normal run mode.
@@ -121,9 +130,16 @@ pub enum SemihostingEvent {
     Output { stream: String, data: String },
 }
 
+#[derive(Serialize, Deserialize, Schema)]
+pub enum UartConsoleEvent {
+    Discovered { channel_name: String },
+    Output { bytes: Vec<u8> },
+}
+
 pub(crate) struct MonitorSender {
     rtt: mpsc::Sender<RttEvent>,
     semihosting_output: mpsc::Sender<SemihostingEvent>,
+    uart_console: mpsc::Sender<UartConsoleEvent>,
 }
 impl MonitorSender {
     pub(crate) fn send_semihosting_event(
@@ -136,11 +152,19 @@ impl MonitorSender {
     pub(crate) fn send_rtt_event(&self, event: RttEvent) -> Result<(), SendError<RttEvent>> {
         self.rtt.blocking_send(event)
     }
+
+    pub(crate) fn send_uart_event(
+        &self,
+        event: UartConsoleEvent,
+    ) -> Result<(), SendError<UartConsoleEvent>> {
+        self.uart_console.blocking_send(event)
+    }
 }
 
 pub(crate) struct MonitorPublisher {
     rtt: <RttTopic as MultiTopicWriter>::Publisher,
     semihosting_output: <SemihostingTopic as MultiTopicWriter>::Publisher,
+    uart_console: <UartConsoleTopic as MultiTopicWriter>::Publisher,
 }
 
 impl MultiTopicWriter for MonitorSender {
@@ -149,16 +173,19 @@ impl MultiTopicWriter for MonitorSender {
 
     fn create(token: CancellationToken) -> (Self::Sender, Self::Publisher) {
         let (rtt_sender, rtt_publisher) = RttTopic::create(token.clone());
-        let (semihosting_sender, semihosting_publisher) = SemihostingTopic::create(token);
+        let (semihosting_sender, semihosting_publisher) = SemihostingTopic::create(token.clone());
+        let (uart_sender, uart_publisher) = UartConsoleTopic::create(token);
 
         (
             Self {
                 rtt: rtt_sender,
                 semihosting_output: semihosting_sender,
+                uart_console: uart_sender,
             },
             MonitorPublisher {
                 rtt: rtt_publisher,
                 semihosting_output: semihosting_publisher,
+                uart_console: uart_publisher,
             },
         )
     }
@@ -168,9 +195,22 @@ impl MultiTopicPublisher for MonitorPublisher {
     async fn publish(self, sender: &Sender<WireTxImpl>) {
         tokio::join!(
             self.rtt.publish(sender),
-            self.semihosting_output.publish(sender)
+            self.semihosting_output.publish(sender),
+            self.uart_console.publish(sender)
         );
     }
+}
+
+pub async fn write_channel(
+    ctx: &mut RpcContext,
+    _header: VarHeader,
+    request: WriteChannelRequest,
+) -> NoResponse {
+    let mut client = ctx.object_mut(request.handle).await;
+    client
+        .write(&request.data)
+        .map_err(|error| anyhow::anyhow!(error))?;
+    Ok(())
 }
 
 fn monitor_impl(
@@ -189,6 +229,10 @@ fn monitor_impl(
         .options
         .rtt_client
         .map(|rtt_client| ctx.object_mut_blocking(rtt_client));
+    let mut uart_client = request
+        .options
+        .uart_client
+        .map(|uart_client| ctx.object_mut_blocking(uart_client));
 
     let core_id = rtt_client.as_ref().map(|rtt| rtt.core_id()).unwrap_or(0);
 
@@ -202,15 +246,26 @@ fn monitor_impl(
         request.mode.prepare(&mut session, run_loop.core_id)?;
     }
 
-    let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
-        rtt_client: client,
-        clear_control_block: request.mode.should_clear_rtt_header(),
-        sender: |message| {
-            sender
-                .send_rtt_event(message)
-                .context("Failed to send RTT event")
-        },
-    });
+    let poller = CombinedPoller {
+        rtt: rtt_client.as_deref_mut().map(|client| RttPoller {
+            rtt_client: client,
+            clear_control_block: request.mode.should_clear_rtt_header(),
+            sender: |message| {
+                sender
+                    .send_rtt_event(message)
+                    .context("Failed to send RTT event")
+            },
+        }),
+        uart: uart_client.as_deref_mut().map(|client| UartConsolePoller {
+            client,
+            discovered: false,
+            sender: |message| {
+                sender
+                    .send_uart_event(message)
+                    .context("Failed to send UART console event")
+            },
+        }),
+    };
 
     let exit_reason = run_loop.run_until(
         &shared_session,
@@ -294,6 +349,94 @@ where
 
     fn exit(&mut self, core: &mut Core<'_>) -> anyhow::Result<()> {
         self.rtt_client.clean_up(core)?;
+        Ok(())
+    }
+}
+
+pub(crate) struct UartConsolePoller<'c, S>
+where
+    S: FnMut(UartConsoleEvent) -> anyhow::Result<()>,
+    S: 'c,
+{
+    pub client: &'c mut SifliUartClient,
+    pub discovered: bool,
+    pub sender: S,
+}
+
+impl<'c, S> UartConsolePoller<'c, S>
+where
+    S: FnMut(UartConsoleEvent) -> anyhow::Result<()>,
+    S: 'c,
+{
+    fn announce_channel(&mut self) -> anyhow::Result<()> {
+        if self.discovered {
+            return Ok(());
+        }
+
+        (self.sender)(UartConsoleEvent::Discovered {
+            channel_name: self.client.channel_name().to_string(),
+        })
+        .with_context(|| "Failed to send UART console discovery")?;
+        self.discovered = true;
+        Ok(())
+    }
+}
+
+impl<'c, S> RunLoopPoller for UartConsolePoller<'c, S>
+where
+    S: FnMut(UartConsoleEvent) -> anyhow::Result<()>,
+    S: 'c,
+{
+    fn start(&mut self, _core: &mut Core<'_>) -> anyhow::Result<()> {
+        self.announce_channel()
+    }
+
+    fn poll(&mut self, _core: &mut Core<'_>) -> anyhow::Result<Duration> {
+        self.announce_channel()?;
+
+        let bytes = self.client.poll()?;
+        if bytes.is_empty() {
+            return Ok(Duration::from_millis(100));
+        }
+
+        (self.sender)(UartConsoleEvent::Output {
+            bytes: bytes.to_vec(),
+        })
+        .with_context(|| "Failed to send UART console output")?;
+
+        Ok(Duration::ZERO)
+    }
+
+    fn exit(&mut self, _core: &mut Core<'_>) -> anyhow::Result<()> {
+        Ok(())
+    }
+}
+
+pub(crate) struct CombinedPoller<R, U> {
+    pub rtt: R,
+    pub uart: U,
+}
+
+impl<R, U> RunLoopPoller for CombinedPoller<R, U>
+where
+    R: RunLoopPoller,
+    U: RunLoopPoller,
+{
+    fn start(&mut self, core: &mut Core<'_>) -> anyhow::Result<()> {
+        self.rtt.start(core)?;
+        self.uart.start(core)?;
+        Ok(())
+    }
+
+    fn poll(&mut self, core: &mut Core<'_>) -> anyhow::Result<Duration> {
+        let rtt_delay = self.rtt.poll(core)?;
+        let uart_delay = self.uart.poll(core)?;
+        Ok(rtt_delay.min(uart_delay))
+    }
+
+    fn exit(&mut self, core: &mut Core<'_>) -> anyhow::Result<()> {
+        self.rtt.exit(core)?;
+        self.uart.exit(core)?;
         Ok(())
     }
 }

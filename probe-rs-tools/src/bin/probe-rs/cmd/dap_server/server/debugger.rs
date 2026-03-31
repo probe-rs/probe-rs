@@ -12,9 +12,9 @@ use crate::{
             dap::{
                 adapter::{DebugAdapter, get_arguments},
                 dap_types::{
-                    Capabilities, DisconnectResponse, Event, ExitedEventBody,
-                    InitializeRequestArguments, MessageSeverity, Request, RttWindowOpenedArguments,
-                    TerminatedEventBody,
+                    Capabilities, ChannelInputArguments, DisconnectResponse, Event,
+                    ExitedEventBody, InitializeRequestArguments, MessageSeverity, Request,
+                    RttWindowOpenedArguments, TerminatedEventBody,
                 },
                 request_helpers::halt_core,
             },
@@ -804,23 +804,48 @@ fn dispatch_request<P: ProtocolAdapter>(
 ) -> anyhow::Result<DebugSessionStatus> {
     match request.command.as_ref() {
         "rttWindowOpened" => {
-            if let Some(debugger_rtt_target) = target_core.core_data.rtt_connection.as_mut() {
-                let arguments: RttWindowOpenedArguments = get_arguments(debug_adapter, &request)?;
+            let arguments: RttWindowOpenedArguments = get_arguments(debug_adapter, &request)?;
 
-                if let Some(rtt_channel) = debugger_rtt_target
+            if let Some(debugger_rtt_target) = target_core.core_data.rtt_connection.as_mut()
+                && let Some(rtt_channel) = debugger_rtt_target
                     .debugger_rtt_channels
                     .iter_mut()
                     .find(|debugger_rtt_channel| {
                         debugger_rtt_channel.channel_number == arguments.channel_number
                     })
-                {
-                    rtt_channel.has_client_window = arguments.window_is_open;
-                }
-
-                debug_adapter
-                    .send_response::<()>(&request, Ok(None))
-                    .context("Could not deserialize arguments for RttWindowOpened")?;
+            {
+                rtt_channel.has_client_window = arguments.window_is_open;
             }
+
+            if let Some(uart_console) = target_core.core_data.uart_console_connection.as_mut()
+                && arguments.channel_number
+                    == crate::cmd::dap_server::server::debug_uart_console::UART_CONSOLE_CHANNEL_NUMBER
+            {
+                uart_console.has_client_window = arguments.window_is_open;
+            }
+
+            debug_adapter
+                .send_response::<()>(&request, Ok(None))
+                .context("Could not deserialize arguments for RttWindowOpened")?;
+        }
+        "channelInput" => {
+            let arguments: ChannelInputArguments = get_arguments(debug_adapter, &request)?;
+
+            match arguments.channel.as_str() {
+                "uart" => {
+                    let Some(uart_console) = target_core.core_data.uart_console_connection.as_mut()
+                    else {
+                        return Err(anyhow!("UART console channel is not available"));
+                    };
+
+                    uart_console.client.write(arguments.data.as_bytes())?;
+                }
+                other => return Err(anyhow!("Unsupported input channel '{other}'")),
+            }
+
+            debug_adapter
+                .send_response::<()>(&request, Ok(None))
+                .context("Could not handle channelInput request")?;
         }
         "disconnect" => {
             debug_adapter.disconnect(target_core, &request)?;
@@ -908,33 +933,42 @@ mod test {
             dap::{
                 adapter::DebugAdapter,
                 dap_types::{
-                    Capabilities, DisassembleArguments, DisassembleResponseBody,
-                    DisassembledInstruction, DisconnectArguments, ErrorResponseBody,
-                    InitializeRequestArguments, Message, Request, Response, Source, Thread,
-                    ThreadsResponseBody,
+                    Capabilities, ChannelInputArguments, DisassembleArguments,
+                    DisassembleResponseBody, DisassembledInstruction, DisconnectArguments,
+                    ErrorResponseBody, InitializeRequestArguments, Message, Request, Response,
+                    RttChannelEventBody, RttDataEventBody, RttWindowOpenedArguments, Source,
+                    Thread, ThreadsResponseBody,
                 },
             },
             protocol::ProtocolAdapter,
         },
         server::configuration::{ConsoleLog, CoreConfig, FlashingConfig, SessionConfig},
-        test::TestLister,
     };
     use probe_rs::{
+        Error,
+        architecture::arm::{ArmDebugInterface, ArmError, sequences::ArmDebugSequence},
         architecture::arm::FullyQualifiedApAddress,
         config::Registry,
         integration::{FakeProbe, Operation},
         probe::{
-            DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory,
-            list::Lister,
+            DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe,
+            ProbeAuxChannel, ProbeFactory, WireProtocol, list::Lister,
+            sifliuart::{SifliUart, console::SifliUartConsole},
         },
     };
+    use serialport::{ClearBuffer, DataBits, FlowControl, Parity, SerialPort, StopBits};
     use serde_json::json;
     use std::{
+        cell::RefCell,
         collections::{BTreeMap, HashMap, VecDeque},
         fmt::Display,
+        io::{self, Read, Write},
         path::PathBuf,
+        sync::{Arc, Mutex},
+        time::Duration as StdDuration,
     };
     use test_case::test_case;
+    use crate::util::rtt::DataFormat;
     use time::UtcOffset;
 
     const TEST_CHIP_NAME: &str = "nRF52833_xxAA";
@@ -1324,22 +1358,59 @@ mod test {
         (probe_info, fake_probe)
     }
 
+    fn uart_enabled_probe(
+        uart_read_data: &[u8],
+    ) -> (DebugProbeInfo, Probe, Arc<Mutex<Vec<u8>>>) {
+        let (probe_info, fake_probe) = fake_probe();
+        let (console, written) = test_uart_console(uart_read_data);
+
+        let probe = Probe::from_specific_probe(Box::new(AuxFakeProbe {
+            inner: fake_probe,
+            console,
+        }));
+
+        (probe_info, probe, written)
+    }
+
     async fn execute_test(
         protocol_adapter: MockProtocolAdapter,
         with_probe: bool,
     ) -> Result<(), DebuggerError> {
         let debug_adapter = DebugAdapter::new(protocol_adapter);
 
-        let lister = TestLister::new();
-        if with_probe {
-            lister.probes.borrow_mut().push(fake_probe());
-        }
-        let lister = Lister::with_lister(Box::new(lister));
+        let lister = if with_probe {
+            let lister = OwnedTestLister::new();
+            let (info, fake_probe) = fake_probe();
+            lister
+                .probes
+                .borrow_mut()
+                .push((info, Probe::from_specific_probe(Box::new(fake_probe))));
+            Lister::with_lister(Box::new(lister))
+        } else {
+            Lister::with_lister(Box::new(OwnedTestLister::new()))
+        };
 
         let mut registry = Registry::from_builtin_families();
         let mut debugger = Debugger::new(UtcOffset::UTC, None)?;
         debugger
             .debug_session(&mut registry, debug_adapter, &lister)
+            .await
+    }
+
+    async fn execute_test_with_lister(
+        protocol_adapter: MockProtocolAdapter,
+        lister: impl probe_rs::integration::ProbeLister + 'static,
+    ) -> Result<(), DebuggerError> {
+        let debug_adapter = DebugAdapter::new(protocol_adapter);
+        let lister = Lister::with_lister(Box::new(lister));
+
+        let mut debugger = Debugger::new(UtcOffset::UTC, None)?;
+        debugger
+            .debug_session(
+                &mut Registry::from_builtin_families(),
+                debug_adapter,
+                &lister,
+            )
             .await
     }
 
@@ -1435,6 +1506,107 @@ mod test {
         disconnect_protocol_adapter(&mut protocol_adapter);
 
         execute_test(protocol_adapter, true).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn dap_uart_console_smoke_test() {
+        let mut protocol_adapter = initialized_protocol_adapter();
+
+        protocol_adapter
+            .add_request("attach")
+            .with_arguments(valid_session_config())
+            .and_succesful_response();
+        protocol_adapter.expect_event("initialized", None::<u32>);
+
+        protocol_adapter
+            .add_request("configurationDone")
+            .and_succesful_response();
+
+        protocol_adapter.expect_event(
+            "probe-rs-rtt-channel-config",
+            Some(RttChannelEventBody {
+                channel_number: crate::cmd::dap_server::server::debug_uart_console::UART_CONSOLE_CHANNEL_NUMBER,
+                channel_name: "uart".to_string(),
+                data_format: DataFormat::String,
+            }),
+        );
+        protocol_adapter
+            .add_request("rttWindowOpened")
+            .with_arguments(RttWindowOpenedArguments {
+                channel_number: crate::cmd::dap_server::server::debug_uart_console::UART_CONSOLE_CHANNEL_NUMBER,
+                window_is_open: true,
+            })
+            .and_succesful_response();
+
+        protocol_adapter.expect_event(
+            "probe-rs-rtt-data",
+            Some(RttDataEventBody {
+                channel_number: crate::cmd::dap_server::server::debug_uart_console::UART_CONSOLE_CHANNEL_NUMBER,
+                data: "hello uart\n".to_string(),
+            }),
+        );
+        protocol_adapter
+            .add_request("threads")
+            .and_succesful_response()
+            .with_body(ThreadsResponseBody {
+                threads: vec![Thread {
+                    id: 0,
+                    name: format!("0-{TEST_CHIP_NAME}"),
+                }],
+            });
+
+        disconnect_protocol_adapter(&mut protocol_adapter);
+
+        let lister = OwnedTestLister::new();
+        let (info, probe, _written) = uart_enabled_probe(b"hello uart\n");
+        lister.probes.borrow_mut().push((info, probe));
+
+        execute_test_with_lister(protocol_adapter, lister)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn dap_channel_input_smoke_test() {
+        let mut protocol_adapter = initialized_protocol_adapter();
+
+        protocol_adapter
+            .add_request("attach")
+            .with_arguments(valid_session_config())
+            .and_succesful_response();
+        protocol_adapter.expect_event("initialized", None::<u32>);
+
+        protocol_adapter
+            .add_request("configurationDone")
+            .and_succesful_response();
+
+        protocol_adapter.expect_event(
+            "probe-rs-rtt-channel-config",
+            Some(RttChannelEventBody {
+                channel_number: crate::cmd::dap_server::server::debug_uart_console::UART_CONSOLE_CHANNEL_NUMBER,
+                channel_name: "uart".to_string(),
+                data_format: DataFormat::String,
+            }),
+        );
+        protocol_adapter
+            .add_request("channelInput")
+            .with_arguments(ChannelInputArguments {
+                channel: "uart".to_string(),
+                data: "ping\n".to_string(),
+            })
+            .and_succesful_response();
+
+        disconnect_protocol_adapter(&mut protocol_adapter);
+
+        let lister = OwnedTestLister::new();
+        let (info, probe, written) = uart_enabled_probe(b"");
+        lister.probes.borrow_mut().push((info, probe));
+
+        execute_test_with_lister(protocol_adapter, lister)
+            .await
+            .unwrap();
+
+        assert_eq!(written.lock().unwrap().as_slice(), b"ping\n");
     }
 
     #[tokio::test]
@@ -1618,5 +1790,307 @@ mod test {
         disconnect_protocol_adapter(&mut protocol_adapter);
 
         execute_test(protocol_adapter, true).await.unwrap();
+    }
+
+    #[derive(Debug, Default)]
+    struct OwnedTestLister {
+        probes: RefCell<Vec<(DebugProbeInfo, Probe)>>,
+    }
+
+    impl OwnedTestLister {
+        fn new() -> Self {
+            Self {
+                probes: RefCell::new(Vec::new()),
+            }
+        }
+    }
+
+    impl probe_rs::integration::ProbeLister for OwnedTestLister {
+        fn open(&self, selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError> {
+            let probe_index = self.probes.borrow().iter().position(|(info, _)| {
+                info.product_id == selector.product_id
+                    && info.vendor_id == selector.vendor_id
+                    && info.serial_number == selector.serial_number
+            });
+
+            if let Some(index) = probe_index {
+                let (_info, probe) = self.probes.borrow_mut().swap_remove(index);
+                Ok(probe)
+            } else {
+                Err(DebugProbeError::ProbeCouldNotBeCreated(
+                    probe_rs::probe::ProbeCreationError::CouldNotOpen,
+                ))
+            }
+        }
+
+        fn list(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
+            self.probes
+                .borrow()
+                .iter()
+                .filter_map(|(info, _)| {
+                    if selector
+                        .as_ref()
+                        .is_none_or(|selector| selector.matches_probe(info))
+                    {
+                        Some(info.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        }
+    }
+
+    struct AuxFakeProbe {
+        inner: FakeProbe,
+        console: SifliUartConsole,
+    }
+
+    impl std::fmt::Debug for AuxFakeProbe {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("AuxFakeProbe").finish()
+        }
+    }
+
+    impl DebugProbe for AuxFakeProbe {
+        fn get_name(&self) -> &str {
+            self.inner.get_name()
+        }
+
+        fn speed_khz(&self) -> u32 {
+            self.inner.speed_khz()
+        }
+
+        fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
+            self.inner.set_speed(speed_khz)
+        }
+
+        fn attach(&mut self) -> Result<(), DebugProbeError> {
+            self.inner.attach()
+        }
+
+        fn detach(&mut self) -> Result<(), Error> {
+            self.inner.detach()
+        }
+
+        fn target_reset(&mut self) -> Result<(), DebugProbeError> {
+            self.inner.target_reset()
+        }
+
+        fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+            self.inner.target_reset_assert()
+        }
+
+        fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+            self.inner.target_reset_deassert()
+        }
+
+        fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
+            self.inner.select_protocol(protocol)
+        }
+
+        fn active_protocol(&self) -> Option<WireProtocol> {
+            self.inner.active_protocol()
+        }
+
+        fn has_arm_interface(&self) -> bool {
+            self.inner.has_arm_interface()
+        }
+
+        fn try_get_arm_debug_interface<'probe>(
+            self: Box<Self>,
+            sequence: Arc<dyn ArmDebugSequence>,
+        ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
+            let this = *self;
+            Box::new(this.inner).try_get_arm_debug_interface(sequence)
+        }
+
+        fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+            let this = *self;
+            Box::new(this.inner)
+        }
+
+        fn take_aux_channels(&mut self) -> Vec<ProbeAuxChannel> {
+            vec![ProbeAuxChannel::SifliUartConsole(self.console.clone())]
+        }
+    }
+
+    fn test_uart_console(read_data: &[u8]) -> (SifliUartConsole, Arc<Mutex<Vec<u8>>>) {
+        let writer = Arc::new(Mutex::new(Vec::new()));
+        let probe = SifliUart::new(
+            Box::new(ChunkReader {
+                chunks: VecDeque::from([read_data.to_vec()]),
+            }),
+            Box::new(SharedWriter {
+                bytes: writer.clone(),
+            }),
+            Box::new(NoopSerialPort::default()),
+        )
+        .unwrap();
+
+        let mut probe = Probe::new(probe);
+        let console = probe
+            .take_aux_channels()
+            .into_iter()
+            .find_map(|channel| match channel {
+                ProbeAuxChannel::SifliUartConsole(console) => Some(console),
+            })
+            .unwrap();
+
+        (console, writer)
+    }
+
+    struct ChunkReader {
+        chunks: VecDeque<Vec<u8>>,
+    }
+
+    impl Read for ChunkReader {
+        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            let Some(chunk) = self.chunks.pop_front() else {
+                return Err(io::Error::new(io::ErrorKind::TimedOut, "no more data"));
+            };
+            let len = chunk.len().min(buf.len());
+            buf[..len].copy_from_slice(&chunk[..len]);
+            Ok(len)
+        }
+    }
+
+    struct SharedWriter {
+        bytes: Arc<Mutex<Vec<u8>>>,
+    }
+
+    impl Write for SharedWriter {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.bytes.lock().unwrap().extend_from_slice(buf);
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[derive(Clone, Default)]
+    struct NoopSerialPort {
+        timeout: StdDuration,
+    }
+
+    impl Read for NoopSerialPort {
+        fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
+            Err(io::Error::new(io::ErrorKind::TimedOut, "unused"))
+        }
+    }
+
+    impl Write for NoopSerialPort {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    impl SerialPort for NoopSerialPort {
+        fn name(&self) -> Option<String> {
+            Some("noop".to_string())
+        }
+
+        fn baud_rate(&self) -> serialport::Result<u32> {
+            Ok(1_000_000)
+        }
+
+        fn data_bits(&self) -> serialport::Result<DataBits> {
+            Ok(DataBits::Eight)
+        }
+
+        fn flow_control(&self) -> serialport::Result<FlowControl> {
+            Ok(FlowControl::None)
+        }
+
+        fn parity(&self) -> serialport::Result<Parity> {
+            Ok(Parity::None)
+        }
+
+        fn stop_bits(&self) -> serialport::Result<StopBits> {
+            Ok(StopBits::One)
+        }
+
+        fn timeout(&self) -> StdDuration {
+            self.timeout
+        }
+
+        fn set_baud_rate(&mut self, _baud_rate: u32) -> serialport::Result<()> {
+            Ok(())
+        }
+
+        fn set_data_bits(&mut self, _data_bits: DataBits) -> serialport::Result<()> {
+            Ok(())
+        }
+
+        fn set_flow_control(&mut self, _flow_control: FlowControl) -> serialport::Result<()> {
+            Ok(())
+        }
+
+        fn set_parity(&mut self, _parity: Parity) -> serialport::Result<()> {
+            Ok(())
+        }
+
+        fn set_stop_bits(&mut self, _stop_bits: StopBits) -> serialport::Result<()> {
+            Ok(())
+        }
+
+        fn set_timeout(&mut self, timeout: StdDuration) -> serialport::Result<()> {
+            self.timeout = timeout;
+            Ok(())
+        }
+
+        fn write_request_to_send(&mut self, _level: bool) -> serialport::Result<()> {
+            Ok(())
+        }
+
+        fn write_data_terminal_ready(&mut self, _level: bool) -> serialport::Result<()> {
+            Ok(())
+        }
+
+        fn read_clear_to_send(&mut self) -> serialport::Result<bool> {
+            Ok(false)
+        }
+
+        fn read_data_set_ready(&mut self) -> serialport::Result<bool> {
+            Ok(false)
+        }
+
+        fn read_ring_indicator(&mut self) -> serialport::Result<bool> {
+            Ok(false)
+        }
+
+        fn read_carrier_detect(&mut self) -> serialport::Result<bool> {
+            Ok(false)
+        }
+
+        fn bytes_to_read(&self) -> serialport::Result<u32> {
+            Ok(0)
+        }
+
+        fn bytes_to_write(&self) -> serialport::Result<u32> {
+            Ok(0)
+        }
+
+        fn clear(&self, _buffer_to_clear: ClearBuffer) -> serialport::Result<()> {
+            Ok(())
+        }
+
+        fn try_clone(&self) -> serialport::Result<Box<dyn SerialPort>> {
+            Ok(Box::new(self.clone()))
+        }
+
+        fn set_break(&self) -> serialport::Result<()> {
+            Ok(())
+        }
+
+        fn clear_break(&self) -> serialport::Result<()> {
+            Ok(())
+        }
     }
 }
