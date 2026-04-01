@@ -23,9 +23,7 @@ use crate::{
     core::{Architecture, CombinedCoreState},
     probe::{
         AttachMethod, DebugProbeError, Probe, ProbeCreationError, WireProtocol,
-        cmsisdap::{AvrChipDescriptor, CmsisDap, erase_attached_pkobn_updi},
-        fake_probe::FakeProbe,
-        list::Lister,
+        cmsisdap::AvrChipDescriptor, fake_probe::FakeProbe, list::Lister,
     },
 };
 use std::ops::DerefMut;
@@ -111,7 +109,7 @@ enum ArchitectureInterface {
         riscv_mem_ap_cores: Vec<Option<(FullyQualifiedApAddress, RiscvDebugInterfaceState)>>,
     },
     Jtag(Probe, Vec<JtagInterface>),
-    Avr(Probe, &'static AvrChipDescriptor),
+    Avr(Box<dyn crate::architecture::avr::UpdiInterface>),
 }
 
 impl fmt::Debug for ArchitectureInterface {
@@ -125,7 +123,7 @@ impl fmt::Debug for ArchitectureInterface {
                 .debug_tuple("ArchitectureInterface::Jtag(..)")
                 .field(ifaces)
                 .finish(),
-            ArchitectureInterface::Avr(_, _) => f.write_str("ArchitectureInterface::Avr(..)"),
+            ArchitectureInterface::Avr(_) => f.write_str("ArchitectureInterface::Avr(..)"),
         }
     }
 }
@@ -175,11 +173,8 @@ impl ArchitectureInterface {
                     }
                 }
             }
-            ArchitectureInterface::Avr(probe, chip) => {
-                let cmsis = probe
-                    .try_into::<CmsisDap>()
-                    .ok_or(Error::NotImplemented("AVR requires a CMSIS-DAP probe"))?;
-                combined_state.attach_avr(target, cmsis, chip)
+            ArchitectureInterface::Avr(interface) => {
+                combined_state.attach_avr(target, interface.as_mut())
             }
         }
     }
@@ -241,24 +236,28 @@ impl Session {
         target: Target,
         cores: Vec<CombinedCoreState>,
     ) -> Result<Self, Error> {
-        use crate::probe::cmsisdap::KNOWN_AVR_CHIPS;
-        let chip: &'static AvrChipDescriptor = KNOWN_AVR_CHIPS
-            .iter()
-            .find(|c| c.name.eq_ignore_ascii_case(&target.name))
+        // Extract AvrCoreAccessOptions from the target's first core.
+        let avr_opts = target
+            .cores
+            .first()
+            .and_then(|core| match &core.core_access_options {
+                probe_rs_target::CoreAccessOptions::Avr(opts) => Some(opts),
+                _ => None,
+            })
             .ok_or_else(|| {
                 Error::Other(format!(
-                    "no AVR UPDI descriptor found for chip '{}'; known chips: {}",
+                    "no AVR core access options found for chip '{}'",
                     target.name,
-                    KNOWN_AVR_CHIPS
-                        .iter()
-                        .map(|c| c.name)
-                        .collect::<Vec<_>>()
-                        .join(", ")
                 ))
             })?;
+        let chip = AvrChipDescriptor::from(avr_opts);
+        // Extract a mutable CmsisDap reference from the probe for the UPDI interface.
+        // The Probe is moved into the Session and the CmsisDap is accessed via downcast.
+        let interface =
+            crate::probe::cmsisdap::avr_interface::OwnedCmsisDapUpdi::from_probe(probe, chip)?;
         Ok(Session {
             target,
-            interfaces: ArchitectureInterface::Avr(probe, chip),
+            interfaces: ArchitectureInterface::Avr(Box::new(interface)),
             cores,
             configured_trace_sink: None,
         })
@@ -959,12 +958,7 @@ impl Session {
     /// The caller is responsible for checking permissions before calling this method.
     pub fn erase_all(&mut self) -> Result<(), Error> {
         match &mut self.interfaces {
-            ArchitectureInterface::Avr(probe, chip) => {
-                let cmsis = probe
-                    .try_into::<CmsisDap>()
-                    .ok_or(Error::NotImplemented("AVR CMSIS-DAP session erase"))?;
-                erase_attached_pkobn_updi(cmsis, chip).map_err(Error::from)
-            }
+            ArchitectureInterface::Avr(interface) => interface.erase_chip().map_err(Error::from),
             _ => Err(Error::NotImplemented(
                 "Session erase-all is only implemented for AVR local sessions.",
             )),
@@ -1070,7 +1064,7 @@ impl Session {
                     Architecture::Xtensa
                 }
             }
-            ArchitectureInterface::Avr(_, _) => Architecture::Avr,
+            ArchitectureInterface::Avr(_) => Architecture::Avr,
         }
     }
 

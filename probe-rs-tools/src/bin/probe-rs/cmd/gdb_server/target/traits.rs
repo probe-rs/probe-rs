@@ -35,6 +35,14 @@ impl<T> GdbErrorExt<T> for Result<T, Error> {
                 // EIO
                 Err(TargetError::Errno(122))
             }
+            Err(Error::Probe(error)) => {
+                tracing::debug!("Probe error (non-fatal): {error:#}");
+                Err(TargetError::Errno(122))
+            }
+            Err(Error::Other(ref msg)) => {
+                tracing::debug!("Non-fatal error: {msg}");
+                Err(TargetError::Errno(122))
+            }
             Err(e) => Err(TargetError::Fatal(e.into())),
         }
     }

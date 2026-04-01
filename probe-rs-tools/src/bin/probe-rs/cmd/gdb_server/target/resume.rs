@@ -1,7 +1,10 @@
 use super::{ResumeAction, RuntimeTarget};
 
 use gdbstub::target::ext::base::multithread::MultiThreadSingleStepOps;
-use gdbstub::target::ext::base::multithread::{MultiThreadResume, MultiThreadSingleStep};
+use gdbstub::target::ext::base::multithread::{
+    MultiThreadResume, MultiThreadSchedulerLocking, MultiThreadSchedulerLockingOps,
+    MultiThreadSingleStep,
+};
 
 impl MultiThreadResume for RuntimeTarget<'_> {
     fn resume(&mut self) -> Result<(), Self::Error> {
@@ -43,6 +46,18 @@ impl MultiThreadResume for RuntimeTarget<'_> {
 
     fn support_single_step(&mut self) -> Option<MultiThreadSingleStepOps<'_, Self>> {
         Some(self)
+    }
+
+    fn support_scheduler_locking(&mut self) -> Option<MultiThreadSchedulerLockingOps<'_, Self>> {
+        Some(self)
+    }
+}
+
+impl MultiThreadSchedulerLocking for RuntimeTarget<'_> {
+    fn set_resume_action_scheduler_lock(&mut self) -> Result<(), Self::Error> {
+        // For single-core AVR targets, scheduler locking is a no-op.
+        // For multi-core targets, this would freeze non-resumed cores.
+        Ok(())
     }
 }
 

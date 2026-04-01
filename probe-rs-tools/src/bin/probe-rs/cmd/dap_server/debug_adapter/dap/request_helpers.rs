@@ -473,7 +473,7 @@ fn get_capstone_le(
                 capstone::arch::riscv::ArchExtraMode::RiscVC,
             ))
             .build(),
-        InstructionSet::Xtensa => return Err(DebuggerError::Unimplemented),
+        InstructionSet::Xtensa | InstructionSet::Avr => return Err(DebuggerError::Unimplemented),
     }
     .map_err(|err| anyhow!("Error creating capstone: {err:?}"))?;
     let _ = cs.set_skipdata(true);

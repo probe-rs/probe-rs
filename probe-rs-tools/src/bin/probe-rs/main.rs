@@ -124,8 +124,6 @@ impl Cli {
             Subcommand::Reset(cmd) => cmd.run(client).await,
             Subcommand::Debug(cmd) => cmd.run(client, utc_offset).await,
             Subcommand::Download(cmd) => cmd.run(client).await,
-            Subcommand::EdbgAvrInfo(cmd) => cmd.run(&lister),
-            Subcommand::EdbgAvrRead(cmd) => cmd.run(&lister),
             Subcommand::Run(cmd) => cmd.run(client, utc_offset).await,
             Subcommand::Attach(cmd) => cmd.run(client, utc_offset).await,
             Subcommand::Verify(cmd) => cmd.run(client).await,
@@ -169,10 +167,6 @@ enum Subcommand {
     Debug(cmd::debug::Cmd),
     /// Download memory to attached target
     Download(cmd::download::Cmd),
-    /// Experimental: query a Curiosity Nano nEDBG probe in AVR UPDI mode
-    EdbgAvrInfo(cmd::edbg_avr_info::Cmd),
-    /// Experimental: read from a Curiosity Nano nEDBG probe in AVR UPDI mode
-    EdbgAvrRead(cmd::edbg_avr_read::Cmd),
     /// Compare memory to attached target
     Verify(cmd::verify::Cmd),
     /// Erase all nonvolatile memory of attached target
@@ -462,35 +456,6 @@ impl FormatOptions {
                 flash_mode: self.idf_options.idf_flash_mode.map(From::from),
             }),
         }
-    }
-
-    pub(crate) fn binary_format_for_path(&self, path: &Path) -> anyhow::Result<FormatKind> {
-        if self.binary_format != FormatKind::Target {
-            return Ok(self.binary_format);
-        }
-
-        match path
-            .extension()
-            .and_then(|extension| extension.to_str())
-            .map(|extension| extension.to_ascii_lowercase())
-            .as_deref()
-        {
-            Some("hex" | "ihex") => Ok(FormatKind::Hex),
-            Some("elf") => Ok(FormatKind::Elf),
-            Some("bin") => Ok(FormatKind::Bin),
-            Some("uf2") => Ok(FormatKind::Uf2),
-            _ => anyhow::bail!(
-                "The UPDI path requires '--binary-format' for files without a recognized extension."
-            ),
-        }
-    }
-
-    pub(crate) fn bin_base_address(&self) -> Option<u64> {
-        self.bin_options.base_address
-    }
-
-    pub(crate) fn bin_skip(&self) -> u32 {
-        self.bin_options.skip
     }
 }
 
