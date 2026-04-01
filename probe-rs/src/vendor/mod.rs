@@ -17,9 +17,8 @@ use crate::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState,
         },
     },
-    config::{ChipInfo, DebugSequence, Registry, TargetDescriptionSource},
+    config::{ChipInfo, DebugSequence, Registry},
     probe::{Probe, WireProtocol},
-    rtt::ScanRegion,
 };
 
 pub mod amd;
@@ -291,13 +290,31 @@ pub(crate) fn auto_determine_target(
     let mut found_target = None;
 
     if probe.protocol() == Some(WireProtocol::Updi) {
-        use crate::config::{MemoryRegion, NvmRegion};
-        use crate::probe::cmsisdap::{CmsisDap, identify_attached_pkobn_updi};
+        use crate::probe::cmsisdap::{AvrChipDescriptor, CmsisDap, identify_attached_pkobn_updi};
+
+        // Build chip descriptor list from the YAML registry for EDBG sign-on.
+        let avr_chips: Vec<AvrChipDescriptor> = registry
+            .families()
+            .iter()
+            .flat_map(|f| f.variants())
+            .filter_map(|chip| {
+                chip.cores
+                    .first()
+                    .and_then(|core| match &core.core_access_options {
+                        probe_rs_target::CoreAccessOptions::Avr(opts) => {
+                            let mut desc = AvrChipDescriptor::from(opts);
+                            desc.name = chip.name.clone();
+                            Some(desc)
+                        }
+                        _ => None,
+                    })
+            })
+            .collect();
 
         let chip = {
             let cmsis: Option<&mut CmsisDap> = Probe::try_into(&mut probe);
             match cmsis {
-                Some(cmsis) => identify_attached_pkobn_updi(cmsis)?,
+                Some(cmsis) => identify_attached_pkobn_updi(cmsis, &avr_chips)?,
                 None => {
                     return Err(Error::Other(
                         "UPDI auto-detection requires a CMSIS-DAP probe".to_string(),
@@ -308,48 +325,11 @@ pub(crate) fn auto_determine_target(
 
         tracing::info!("UPDI auto-detection identified: {}", chip.name);
 
-        // Populate the Target memory map with basic NVM regions from the chip
-        // descriptor. The actual UPDI memory operations go through the chip
-        // descriptor directly (not Target.memory_map), but this gives downstream
-        // code visibility into the available memory.
-        let core_name = "avr".to_string();
-        let memory_map = vec![
-            MemoryRegion::Nvm(NvmRegion {
-                name: Some("Flash".to_string()),
-                range: u64::from(chip.flash_base)
-                    ..u64::from(chip.flash_base) + u64::from(chip.flash_size),
-                cores: vec![core_name.clone()],
-                is_alias: false,
-                access: None,
-            }),
-            MemoryRegion::Nvm(NvmRegion {
-                name: Some("EEPROM".to_string()),
-                range: u64::from(chip.eeprom_base)
-                    ..u64::from(chip.eeprom_base) + u64::from(chip.eeprom_size),
-                cores: vec![core_name.clone()],
-                is_alias: false,
-                access: None,
-            }),
-        ];
-
-        // TODO: move AVR target definitions to YAML target files
-        let target = Target {
-            name: chip.name.to_string(),
-            cores: vec![probe_rs_target::Core {
-                name: "avr".to_string(),
-                core_type: probe_rs_target::CoreType::Avr,
-                core_access_options: probe_rs_target::CoreAccessOptions::Avr(
-                    probe_rs_target::AvrCoreAccessOptions {},
-                ),
-            }],
-            flash_algorithms: vec![],
-            memory_map,
-            source: TargetDescriptionSource::Generic,
-            debug_sequence: DebugSequence::Avr(()),
-            rtt_scan_regions: ScanRegion::Ram,
-            jtag: None,
-            default_format: None,
-        };
+        // Look up the target from the YAML registry by device signature.
+        let chip_info = ChipInfo::Avr(crate::config::AvrChipInfo {
+            signature: chip.signature,
+        });
+        let target = registry.get_target_by_chip_info(chip_info)?;
 
         tracing::info!("Found target: {}", target.name);
         probe.detach()?;

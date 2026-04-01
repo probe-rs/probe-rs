@@ -231,16 +231,14 @@ impl CombinedCoreState {
         ))
     }
 
-    // TODO: abstract behind an AVR communication interface trait instead of hardcoding CmsisDap
     pub(crate) fn attach_avr<'probe>(
         &'probe mut self,
         target: &'probe Target,
-        probe: &'probe mut crate::probe::cmsisdap::CmsisDap,
-        chip: &'static crate::probe::cmsisdap::AvrChipDescriptor,
+        interface: &'probe mut dyn crate::architecture::avr::UpdiInterface,
     ) -> Result<Core<'probe>, Error> {
         let name = &target.cores[self.id].name;
 
-        let SpecificCoreState::Avr(s) = &mut self.specific_state else {
+        let SpecificCoreState::Avr(_s) = &mut self.specific_state else {
             unreachable!(
                 "The stored core state is not compatible with the AVR architecture. \
                 This should never happen. Please file a bug if it does."
@@ -251,7 +249,7 @@ impl CombinedCoreState {
             self.id,
             name,
             target,
-            crate::architecture::avr::Avr::new(probe, s, chip),
+            crate::architecture::avr::Avr::new(interface, &target.memory_map),
         ))
     }
 

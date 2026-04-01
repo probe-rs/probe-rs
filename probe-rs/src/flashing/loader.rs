@@ -631,7 +631,20 @@ impl FlashLoader {
         session: &mut Session,
         progress: &mut FlashProgress<'_>,
     ) -> Result<(), FlashError> {
-        let mut algos = self.prepare_plan(session, false, &[])?;
+        let algos = self.prepare_plan(session, false, &[]);
+
+        let mut algos = match algos {
+            Ok(algos) if algos.is_empty() && !self.builder.data.is_empty() => {
+                return self.verify_via_memory_interface(session);
+            }
+            Ok(algos) => algos,
+            Err(FlashError::NoFlashLoaderAlgorithmAttached { .. })
+                if !self.builder.data.is_empty() =>
+            {
+                return self.verify_via_memory_interface(session);
+            }
+            Err(e) => return Err(e),
+        };
 
         for flasher in algos.iter_mut() {
             let mut program_size = 0;
@@ -670,11 +683,28 @@ impl FlashLoader {
         mut options: DownloadOptions,
     ) -> Result<(), FlashError> {
         tracing::debug!("Committing FlashLoader!");
-        let mut algos = self.prepare_plan(
+        let algos = self.prepare_plan(
             session,
             options.keep_unwritten_bytes,
             &options.preferred_algos,
-        )?;
+        );
+
+        // If no flash algorithms are available (e.g. AVR UPDI), fall back to
+        // direct memory writes via MemoryInterface. This works because
+        // architectures like AVR implement write_8() with native flash
+        // programming commands.
+        let mut algos = match algos {
+            Ok(algos) if algos.is_empty() && !self.builder.data.is_empty() => {
+                return self.commit_via_memory_interface(session, &mut options);
+            }
+            Ok(algos) => algos,
+            Err(FlashError::NoFlashLoaderAlgorithmAttached { .. })
+                if !self.builder.data.is_empty() =>
+            {
+                return self.commit_via_memory_interface(session, &mut options);
+            }
+            Err(e) => return Err(e),
+        };
 
         if options.dry_run {
             tracing::info!("Skipping programming, dry run!");
@@ -800,6 +830,97 @@ impl FlashLoader {
 
         if options.verify {
             self.verify_ram(session)?;
+        }
+
+        Ok(())
+    }
+
+    /// Verify flash data using direct memory reads via MemoryInterface.
+    fn verify_via_memory_interface(&self, session: &mut Session) -> Result<(), FlashError> {
+        tracing::info!("No flash algorithms — verifying via direct memory reads");
+        let mut core = session.core(0).map_err(FlashError::Core)?;
+        for (&address, data) in &self.builder.data {
+            let mut readback = vec![0u8; data.len()];
+            core.read_8(address, &mut readback)
+                .map_err(|e| FlashError::FlashReadFailed {
+                    source: Box::new(e),
+                })?;
+            if readback != *data {
+                return Err(FlashError::Verify);
+            }
+        }
+        Ok(())
+    }
+
+    /// Flash data using direct memory writes via MemoryInterface.
+    ///
+    /// Uses core 0 for all writes — currently only AVR UPDI (single-core) uses
+    /// this path. Multi-core architectures would need per-region core selection.
+    ///
+    /// This is used for architectures (like AVR UPDI) that don't have flash
+    /// algorithms. The architecture's `write_8()` implementation handles the
+    /// actual flash programming protocol.
+    fn commit_via_memory_interface(
+        &self,
+        session: &mut Session,
+        options: &mut DownloadOptions,
+    ) -> Result<(), FlashError> {
+        tracing::info!("No flash algorithms — using direct memory writes");
+
+        if options.dry_run {
+            tracing::info!("Skipping programming, dry run!");
+            return Ok(());
+        }
+
+        // Erase: for architectures without algorithms, use session-level erase.
+        if !options.skip_erase && options.do_chip_erase {
+            tracing::info!("Erasing chip...");
+            options.progress.started_erasing();
+            session
+                .erase_all()
+                .map_err(|e| FlashError::ChipEraseFailed {
+                    source: Box::new(e),
+                })?;
+            options.progress.finished_erasing();
+        }
+
+        // Program: write each data block via MemoryInterface.
+        options.progress.started_programming();
+        {
+            let mut core = session.core(0).map_err(FlashError::Core)?;
+            for (&address, data) in &self.builder.data {
+                tracing::debug!(
+                    "  writing {:#010x}..{:#010x} ({} bytes)",
+                    address,
+                    address + data.len() as u64,
+                    data.len()
+                );
+                core.write_8(address, data)
+                    .map_err(|e| FlashError::PageWrite {
+                        page_address: address,
+                        source: Box::new(e),
+                    })?;
+                options
+                    .progress
+                    .page_programmed(data.len() as u64, std::time::Duration::ZERO);
+            }
+        }
+        options.progress.finished_programming();
+
+        // Verify: read back and compare.
+        if options.verify {
+            tracing::info!("Verifying...");
+            let mut core = session.core(0).map_err(FlashError::Core)?;
+            for (&address, data) in &self.builder.data {
+                let mut readback = vec![0u8; data.len()];
+                core.read_8(address, &mut readback)
+                    .map_err(|e| FlashError::FlashReadFailed {
+                        source: Box::new(e),
+                    })?;
+                if readback != *data {
+                    return Err(FlashError::Verify);
+                }
+            }
         }
 
         Ok(())

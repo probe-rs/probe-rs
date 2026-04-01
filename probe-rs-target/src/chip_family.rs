@@ -126,6 +126,8 @@ pub enum InstructionSet {
     RV32C,
     /// Xtensa instruction set
     Xtensa,
+    /// AVR instruction set (16-bit, variable-length)
+    Avr,
 }
 
 impl InstructionSet {
@@ -136,6 +138,7 @@ impl InstructionSet {
             "arm" => Some(InstructionSet::A32),
             "aarch64" => Some(InstructionSet::A64),
             "xtensa" => Some(InstructionSet::Xtensa),
+            "avr" => Some(InstructionSet::Avr),
             other => {
                 if let Some(features) = other.strip_prefix("riscv32") {
                     if features.contains('c') {
@@ -162,6 +165,7 @@ impl InstructionSet {
             InstructionSet::RV32 => 4,
             InstructionSet::RV32C => 2,
             InstructionSet::Xtensa => 2,
+            InstructionSet::Avr => 2, // AVR instructions are 16-bit (2 bytes) or 32-bit (4 bytes)
         }
     }
     /// Get the maximum instruction size in bytes. All supported architectures have a maximum instruction size of 4 bytes.

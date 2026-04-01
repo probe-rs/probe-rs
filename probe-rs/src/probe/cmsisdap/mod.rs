@@ -1,12 +1,15 @@
 //! CMSIS-DAP probe implementation.
+pub mod avr_interface;
 mod commands;
 mod tools;
 pub use self::commands::edbg_avr::{
-    ATMEGA4809, AvrChipDescriptor, AvrMemoryRegion, IceFirmwareVersion, KNOWN_AVR_CHIPS,
-    PkobnUpdiInfo, erase_attached_pkobn_updi, erase_pkobn_updi, identify_attached_pkobn_updi,
-    query_attached_pkobn_updi, query_pkobn_updi, read_attached_pkobn_updi_region,
-    read_pkobn_updi_region, reset_pkobn_updi, write_attached_pkobn_updi_flash,
-    write_pkobn_updi_flash,
+    AvrChipDescriptor, AvrDebugState, AvrMemoryRegion, DEBUG_MTYPE_EEPROM, DEBUG_MTYPE_SRAM,
+    IceFirmwareVersion, PkobnUpdiInfo, debug_avr_cleanup, debug_avr_enter, debug_avr_halt,
+    debug_avr_hw_break_clear, debug_avr_hw_break_set, debug_avr_read_memory, debug_avr_read_pc,
+    debug_avr_read_registers, debug_avr_read_sp, debug_avr_read_sreg, debug_avr_reset,
+    debug_avr_run, debug_avr_status, debug_avr_step, erase_attached_pkobn_updi,
+    identify_attached_pkobn_updi, query_attached_pkobn_updi, read_attached_pkobn_updi_region,
+    write_attached_pkobn_updi_flash,
 };
 
 use crate::{
