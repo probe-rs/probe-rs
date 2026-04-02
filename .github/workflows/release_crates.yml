@@ -1,5 +1,6 @@
 # This Action is triggered when a PR with the label 'release' is closed and merged into 'master'.
-# It creates and pushes release tags (no crates.io publishing).
+# In this fork we only create and push release tags for GitHub Releases.
+# crates.io publishing is intentionally disabled.
 
 on:
   pull_request:
@@ -10,7 +11,7 @@ on:
 permissions:
   contents: write
 
-name: Tag release
+name: Tag release for GitHub Release
 
 jobs:
   release:
@@ -61,7 +62,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
         # The tag prefix is set to an empty string, so that the tag is just the version number, and doesn't contain the crate name.
-      - name: Tag and push release
+      - name: Create and push release tags
         run: |
           # Checkout appropriate branch based on trigger type
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -73,16 +74,25 @@ jobs:
             echo "Running on current branch: $(git branch --show-current)"
           fi
 
+          # crates.io publishing is disabled in this fork.
+          # echo "::group::Setup auth for crates.io"
+          # cargo login ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          # echo "::endgroup::"
+          #
+          # echo "::group::Publishing on crates.io using 'cargo release publish'"
+          # cargo release publish --no-confirm --execute
+          # echo "::endgroup::"
+
           echo "::group::Tagging release using 'cargo release tag'"
           cargo release tag --no-confirm --execute --sign-tag --tag-prefix "" --exclude probe-rs-mi
           # `|| true` to avoid "no package selected" errors if probe-rs-mi is not updated
-          cargo release tag --no-confirm --execute --sign-tag --package probe-rs-mi || true
+          # cargo release tag --no-confirm --execute --sign-tag --package probe-rs-mi || true
           echo "::endgroup::"
 
           echo "::group::Pushing tags to remote using 'cargo release push'"
           cargo release push --no-confirm --execute --tag-prefix "" --exclude probe-rs-mi
           # `|| true` to avoid "no package selected" errors if probe-rs-mi is not updated
-          cargo release push --no-confirm --execute --package probe-rs-mi || true
+          # cargo release push --no-confirm --execute --package probe-rs-mi || true
           echo "::endgroup::"
         env:
           SSH_AUTH_SOCK: /tmp/ssh_agent.sock

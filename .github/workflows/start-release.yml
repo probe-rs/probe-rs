@@ -3,8 +3,13 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Version to release
+        description: Base version to release, must be in a.b.c format
         required: true
+        type: string
+      prerelease:
+        description: Optional suffix appended as a.b.c-sifli.<suffix>; leave empty to use a.b.c-sifli
+        required: false
+        default: ""
         type: string
 
 jobs:
@@ -14,8 +19,6 @@ jobs:
       pull-requests: write
       contents: write
     runs-on: ubuntu-latest
-    env:
-      BRANCH_NAME: create-release/${{ inputs.version }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -28,14 +31,9 @@ jobs:
         uses: taiki-e/install-action@v2
         with:
           tool: cargo-release,cargo-semver-checks
-      # TODO: Libudev is required for semver checks for 0.31.0 and can be removed after.
-      - name: Install libudev (linux)
-        run: |
-          sudo apt update
-          sudo apt install -y libudev-dev
       - name: Install SSH
         run: |
-          apt-get update -y && apt-get install openssh-client -y
+          sudo apt-get update -y && sudo apt-get install openssh-client -y
           eval $(ssh-agent -s -a $SSH_AUTH_SOCK)
           echo "$SSH_SIGNING_KEY" | tr -d '\r' | ssh-add -
           mkdir -p ~/.ssh
@@ -53,54 +51,93 @@ jobs:
           git fetch --unshallow
           git fetch --tags
 
+      - name: Prepare release version
+        run: |
+          base_version="${{ inputs.version }}"
+          prerelease_suffix="${{ inputs.prerelease }}"
+
+          if [[ ! "$base_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid base version: $base_version"
+            echo "Expected a version in a.b.c format"
+            exit 1
+          fi
+
+          if [[ -n "$prerelease_suffix" ]]; then
+            full_version="${base_version}-sifli.${prerelease_suffix}"
+          else
+            full_version="${base_version}-sifli"
+          fi
+
+          branch_version="$(printf '%s' "$full_version" | sed -E 's#[^A-Za-z0-9._-]+#-#g')"
+          branch_version="${branch_version#.}"
+          branch_version="${branch_version#-}"
+          branch_name="release/${branch_version}"
+
+          echo "FULL_VERSION=${full_version}" >> "$GITHUB_ENV"
+          echo "BRANCH_NAME=${branch_name}" >> "$GITHUB_ENV"
+
+          echo "Prepared release version: ${full_version}"
+          echo "Prepared release branch: ${branch_name}"
+
       - name: Create branch
         run: |
-          git checkout -b ${BRANCH_NAME}
+          git checkout -b "${BRANCH_NAME}"
+
+      - name: Validate release version
+        run: |
+          version="${FULL_VERSION}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-sifli(\..+)?$ ]]; then
+            echo "Invalid version: $version"
+            echo "Expected versions like 1.2.3-sifli or 1.2.3-sifli.beta.1"
+            exit 1
+          fi
 
       - name: Update changelog
         run: |
-          cargo xtask assemble-changelog --commit ${{ inputs.version }}
+          cargo xtask assemble-changelog --commit ${FULL_VERSION}
         env:
           SSH_AUTH_SOCK: /tmp/ssh_agent.sock
           GH_TOKEN: ${{ secrets.GH_PAT }}
 
       - name: Bump versions
         run: |
-          cargo release version ${{ inputs.version }} --exclude probe-rs-mi --execute --verbose --no-confirm --allow-branch ${BRANCH_NAME}
+          cargo release version "${FULL_VERSION}" --exclude probe-rs-mi --execute --verbose --no-confirm --allow-branch "${BRANCH_NAME}"
           cargo release replace --execute --verbose --no-confirm
           cargo release hook --execute --verbose --no-confirm
           cargo release commit --execute --verbose --no-confirm --sign-commit
         env:
           SSH_AUTH_SOCK: /tmp/ssh_agent.sock
 
-      - name: Check semver compliance
-        run: |
-          cargo semver-checks check-release -p probe-rs -p probe-rs-targets
+      # - name: Check semver compliance
+      #   run: |
+      #     cargo semver-checks check-release -p probe-rs -p probe-rs-targets
 
       - name: Push branch
         run: |
-          git push origin ${BRANCH_NAME}
+          git push origin "${BRANCH_NAME}"
 
       - name: create pull request
         run: |
-          # PR patch version releases against the corresponding release/$version branch
-          # and all other versions against master
-          IFS='.' read -ra version <<< "${{ inputs.version }}"
+          # Strip the prerelease suffix before deciding the target branch.
+          version_core="${FULL_VERSION}"
+          version_core="${version_core%%-*}"
+          IFS='.' read -ra version <<< "$version_core"
+          # PR patch version releases against the corresponding release/x.y branch
+          # and all other versions against master.
           if [[ "${version[2]}" == "0" ]]
           then
             branch="master"
           else
             branch="release/${version[0]}.${version[1]}"
           fi
-          gh pr create -B $branch -H "${BRANCH_NAME}"\
-            --title "Release ${{ inputs.version }}"\
+          gh pr create -B "$branch" -H "${BRANCH_NAME}"\
+            --title "Release ${FULL_VERSION}"\
             --label "release"\
             --label "changelog:skip"\
             --body "Released packages are:
 
           - probe-rs
           - probe-rs-target
-          - rtthost
           - target-gen
           - probe-rs-tools
           - probe-rs-mi

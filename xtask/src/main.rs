@@ -31,8 +31,11 @@ enum Cli {
     FetchPrs,
     /// Starts the release process for the given version by creating a new MR.
     Release {
-        /// The version to be released in semver format.
+        /// The base version to be released in a.b.c format.
         version: String,
+        /// Optional suffix appended as a.b.c-sifli.<suffix>.
+        #[arg(long)]
+        prerelease: Option<String>,
     },
     /// Creates a local sync branch from OpenSiFli/master and merges an upstream ref with --no-ff.
     SyncUpstream {
@@ -77,7 +80,10 @@ enum Cli {
 fn try_main() -> anyhow::Result<()> {
     match Cli::parse() {
         Cli::FetchPrs => fetch_prs()?,
-        Cli::Release { version } => create_release_pr(version)?,
+        Cli::Release {
+            version,
+            prerelease,
+        } => create_release_pr(version, prerelease)?,
         Cli::SyncUpstream {
             upstream_ref,
             upstream_remote,
@@ -110,7 +116,7 @@ fn fetch_prs() -> Result<()> {
     Ok(())
 }
 
-fn create_release_pr(version: String) -> Result<()> {
+fn create_release_pr(version: String, prerelease: Option<String>) -> Result<()> {
     let sh = Shell::new()?;
 
     // Make sure we are on the right branch and we have the latest state pulled from our source of truth, GH.
@@ -122,15 +128,19 @@ fn create_release_pr(version: String) -> Result<()> {
 
     if branch != "master" && !branch.starts_with("release/") {
         bail!(
-            "Invalid current branch '{branch}'. Make sure you're either on `master` or `release/x.y`."
+            "Invalid current branch '{branch}'. Make sure you're either on `master` or a `release/*` branch."
         )
     }
 
-    cmd!(
-        sh,
+    let mut command = format!(
         "gh workflow run 'Open a release PR' --ref {branch} -f version={version}"
-    )
-    .run()?;
+    );
+
+    if let Some(prerelease) = prerelease {
+        write!(&mut command, " -f prerelease={prerelease}")?;
+    }
+
+    cmd!(sh, "{command}").run()?;
 
     Ok(())
 }
@@ -663,9 +673,12 @@ fn assemble_changelog(
     let mut assembled = Vec::new();
 
     let mut writer = Cursor::new(&mut assembled);
+    let shell = Shell::new()?;
+    let release_date = cmd!(shell, "date +%Y-%m-%d").read()?.trim().to_string();
 
-    // Add an unreleased header, this will get picked up by `cargo-release` later.
-    writeln!(writer, "## [Unreleased]")?;
+    writeln!(writer, "## [{version}]")?;
+    writeln!(writer)?;
+    writeln!(writer, "Released {release_date}")?;
     writeln!(writer)?;
 
     let mut fragments_found = false;
@@ -719,8 +732,6 @@ fn assemble_changelog(
             }
         }
     }
-
-    let shell = Shell::new()?;
 
     if create_commit && !no_cleanup {
         cmd!(shell, "git add {CHANGELOG_FILE}").run()?;

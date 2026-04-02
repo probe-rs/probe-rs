@@ -1,0 +1,96 @@
+name: Sync GitHub Release To SiFli CDN
+
+on:
+  workflow_call:
+    inputs:
+      plan:
+        required: true
+        type: string
+    secrets:
+      COS_DOWNLOAD_SECRET_ID:
+        required: false
+      COS_DOWNLOAD_SECRET_KEY:
+        required: false
+      COS_DOWNLOAD_REGION:
+        required: false
+      COS_DOWNLOAD_BUCKET:
+        required: false
+      COS_DOWNLOAD_FLUSH_URL:
+        required: false
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  sync-release-assets:
+    if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      COS_DOWNLOAD_SECRET_ID: ${{ secrets.COS_DOWNLOAD_SECRET_ID }}
+      COS_DOWNLOAD_SECRET_KEY: ${{ secrets.COS_DOWNLOAD_SECRET_KEY }}
+      COS_DOWNLOAD_REGION: ${{ secrets.COS_DOWNLOAD_REGION }}
+      COS_DOWNLOAD_BUCKET: ${{ secrets.COS_DOWNLOAD_BUCKET }}
+      COS_DOWNLOAD_FLUSH_URL: ${{ secrets.COS_DOWNLOAD_FLUSH_URL }}
+    steps:
+      - name: Check mirror sync configuration
+        id: config
+        run: |
+          if [[ -n "${COS_DOWNLOAD_SECRET_ID}" && -n "${COS_DOWNLOAD_SECRET_KEY}" && -n "${COS_DOWNLOAD_REGION}" && -n "${COS_DOWNLOAD_BUCKET}" ]]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "SiFli mirror sync is skipped because COS secrets are not fully configured."
+          fi
+
+      - name: Download workflow artifacts
+        if: ${{ steps.config.outputs.enabled == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p downloaded-artifacts
+          gh run download "${{ github.event.workflow_run.id }}" --dir downloaded-artifacts
+
+      - name: Merge dist release artifacts
+        if: ${{ steps.config.outputs.enabled == 'true' }}
+        run: |
+          mkdir -p artifacts
+
+          manifest_path="$(find downloaded-artifacts -name dist-manifest.json | head -n 1)"
+          if [[ -z "${manifest_path}" ]]; then
+            echo "Unable to find dist-manifest.json in downloaded artifacts"
+            exit 1
+          fi
+
+          tag_name="$(jq -r '.announcement_tag // empty' "${manifest_path}")"
+          if [[ -z "${tag_name}" ]]; then
+            echo "Unable to determine announcement tag from ${manifest_path}"
+            exit 1
+          fi
+          echo "TAG_NAME=${tag_name}" >> "$GITHUB_ENV"
+
+          while IFS= read -r file; do
+            name="$(basename "${file}")"
+            destination="artifacts/${name}"
+            if [[ -e "${destination}" ]]; then
+              echo "Duplicate artifact name detected: ${name}"
+              exit 1
+            fi
+            cp "${file}" "${destination}"
+          done < <(find downloaded-artifacts -type f ! -name 'dist-manifest.json' ! -name '*-dist-manifest.json')
+
+      - name: Upload release assets to SiFli CDN
+        if: ${{ steps.config.outputs.enabled == 'true' }}
+        uses: OpenSiFli/SiFliMirrorSync@v1
+        with:
+          secret_id: ${{ env.COS_DOWNLOAD_SECRET_ID }}
+          secret_key: ${{ env.COS_DOWNLOAD_SECRET_KEY }}
+          region: ${{ env.COS_DOWNLOAD_REGION }}
+          bucket: ${{ env.COS_DOWNLOAD_BUCKET }}
+          prefix: github_assets/OpenSiFli/probe-rs/releases/download/${{ env.TAG_NAME }}/
+          artifacts: artifacts/
+          delete_remote: true
+          flush_url: ${{ env.COS_DOWNLOAD_FLUSH_URL }}
