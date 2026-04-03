@@ -68,6 +68,7 @@ impl From<&TargetInfoRequest> for ProbeOptions {
             connect_under_reset: request.connect_under_reset,
             dry_run: request.dry_run,
             allow_erase_all: false,
+            allow_permanent_debug_lock: false,
         }
     }
 }

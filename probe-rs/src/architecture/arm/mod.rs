@@ -146,6 +146,9 @@ pub enum ArmError {
     /// Some required functionality is not implemented: {0}
     NotImplemented(&'static str),
 
+    /// The requested lock level is not supported by this device: {0}
+    UnknownLockLevel(String),
+
     /// Invalid data length error: {0}
     InvalidDataLength(#[from] InvalidDataLengthError),
 

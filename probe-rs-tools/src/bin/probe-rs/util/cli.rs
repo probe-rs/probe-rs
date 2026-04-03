@@ -86,6 +86,7 @@ pub async fn attach_probe(
             connect_under_reset: probe_options.connect_under_reset,
             dry_run: probe_options.dry_run,
             allow_erase_all: probe_options.allow_erase_all,
+            allow_permanent_debug_lock: probe_options.allow_permanent_debug_lock,
             resume_target,
         })
         .await?;

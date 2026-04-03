@@ -170,6 +170,7 @@ impl SessionConfig {
             connect_under_reset: self.connect_under_reset,
             dry_run: false,
             allow_erase_all: self.allow_erase_all,
+            allow_permanent_debug_lock: false,
         }
     }
 }
