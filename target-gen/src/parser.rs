@@ -1,9 +1,6 @@
 use crate::flash_device::FlashDevice;
 use anyhow::{Context, Result, anyhow};
-use probe_rs_target::{
-    FlashAlgorithmRelocationRange, FlashProperties, MemoryRange, RawFlashAlgorithm,
-    SectorDescription,
-};
+use probe_rs_target::{FlashAlgorithmRelocationRange, FlashProperties, MemoryRange, RawFlashAlgorithm, SectorDescription};
 
 /// Extract a chunk of data from an ELF binary.
 ///
@@ -79,14 +76,7 @@ pub fn extract_flash_algo(
     // Extract binary blob.
     let algorithm_binary = crate::algorithm_binary::AlgorithmBinary::new(&elf, buffer)?;
     algo.instructions = algorithm_binary.blob();
-    algo.address_relocation_ranges = algorithm_binary
-        .address_relocation_ranges
-        .iter()
-        .map(|range| FlashAlgorithmRelocationRange {
-            offset: range.offset.into(),
-            size: range.size.into(),
-        })
-        .collect();
+    algo.address_relocation_ranges = compact_relocation_ranges(&algorithm_binary.address_relocations);
 
     let code_section_offset = algorithm_binary.code_section.start;
 
@@ -119,6 +109,34 @@ pub fn extract_flash_algo(
         }
     }
 
+    apply_algorithm_binary_metadata(&mut algo, &algorithm_binary, fixed_load_address)?;
+
+    algo.description.clone_from(&flash_device.name);
+    algo.name = file_name
+        .file_stem()
+        .and_then(|f| f.to_str())
+        .unwrap()
+        .to_lowercase();
+    algo.default = default;
+    algo.flash_properties = FlashProperties::from(flash_device);
+    algo.big_endian = !elf.little_endian;
+
+    Ok(algo)
+}
+
+fn apply_algorithm_binary_metadata(
+    algo: &mut RawFlashAlgorithm,
+    algorithm_binary: &crate::algorithm_binary::AlgorithmBinary,
+    fixed_load_address: bool,
+) -> Result<()> {
+    let code_section_offset = algorithm_binary.code_section.start;
+    let data_section_offset = algorithm_binary.data_section.start - code_section_offset;
+    let static_base_offset = algorithm_binary.static_base - code_section_offset;
+
+    algo.data_section_offset = data_section_offset.into();
+    algo.static_base_offset =
+        (static_base_offset != data_section_offset).then_some(static_base_offset.into());
+
     if fixed_load_address {
         log::debug!(
             "Flash algorithm will be loaded at fixed address {:#010x}",
@@ -132,23 +150,49 @@ pub fn extract_flash_algo(
         );
 
         algo.load_address = Some(algorithm_binary.code_section.load_address as u64);
-        algo.data_section_offset =
-            (algorithm_binary.static_base - algorithm_binary.code_section.load_address) as u64;
+        algo.link_time_base_address = None;
+        algo.address_relocation_ranges.clear();
     } else {
-        algo.data_section_offset = algorithm_binary.static_base as u64;
+        algo.link_time_base_address = Some(algorithm_binary.link_time_base_address.into());
     }
 
-    algo.description.clone_from(&flash_device.name);
-    algo.name = file_name
-        .file_stem()
-        .and_then(|f| f.to_str())
-        .unwrap()
-        .to_lowercase();
-    algo.default = default;
-    algo.flash_properties = FlashProperties::from(flash_device);
-    algo.big_endian = !elf.little_endian;
+    Ok(())
+}
 
-    Ok(algo)
+fn compact_relocation_ranges(
+    relocations: &[crate::algorithm_binary::Relocation],
+) -> Vec<FlashAlgorithmRelocationRange> {
+    if relocations.is_empty() {
+        return Vec::new();
+    }
+
+    let mut offsets: Vec<_> = relocations.iter().map(|relocation| u64::from(relocation.offset)).collect();
+    offsets.sort_unstable();
+    offsets.dedup();
+
+    let mut ranges = Vec::new();
+    let mut start = offsets[0];
+    let mut end = start + 4;
+
+    for offset in offsets.into_iter().skip(1) {
+        if offset == end {
+            end += 4;
+        } else {
+            ranges.push(FlashAlgorithmRelocationRange {
+                offset: start,
+                size: end - start,
+            });
+            start = offset;
+            end = start + 4;
+        }
+    }
+
+    ranges.push(FlashAlgorithmRelocationRange {
+        offset: start,
+        size: end - start,
+    });
+
+    ranges
 }
 
 impl From<FlashDevice> for FlashProperties {
@@ -174,5 +218,128 @@ impl From<FlashDevice> for FlashProperties {
 
             sectors,
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use probe_rs_target::{FlashAlgorithmRelocationRange, FlashProperties, SectorDescription};
+
+    use crate::algorithm_binary::{AlgorithmBinary, Relocation, Section};
+
+    use super::apply_algorithm_binary_metadata;
+
+    fn algorithm_binary(
+        code_start: u32,
+        data_start: u32,
+        static_base: u32,
+        link_time_base_address: u32,
+        load_address: u32,
+        address_relocations: Vec<Relocation>,
+    ) -> AlgorithmBinary {
+        AlgorithmBinary {
+            code_section: Section {
+                start: code_start,
+                length: 0x20,
+                data: vec![0; 0x20],
+                load_address,
+            },
+            data_section: Section {
+                start: data_start,
+                length: 0x10,
+                data: vec![0; 0x10],
+                load_address: load_address + (data_start - code_start),
+            },
+            static_base,
+            link_time_base_address,
+            address_relocations,
+            runtime_sections: vec![],
+            runtime_start: code_start,
+            runtime_end: data_start + 0x10,
+        }
+    }
+
+    fn raw_algorithm() -> probe_rs_target::RawFlashAlgorithm {
+        probe_rs_target::RawFlashAlgorithm {
+            name: "algo".into(),
+            description: "algo".into(),
+            default: true,
+            instructions: vec![],
+            load_address: None,
+            data_load_address: None,
+            pc_init: Some(0),
+            pc_uninit: Some(0),
+            pc_program_page: 0,
+            pc_erase_sector: 0,
+            pc_erase_all: None,
+            pc_verify: None,
+            pc_blank_check: None,
+            pc_read: None,
+            pc_flash_size: None,
+            data_section_offset: 0,
+            static_base_offset: None,
+            link_time_base_address: None,
+            address_relocation_ranges: vec![],
+            rtt_location: None,
+            rtt_poll_interval: 20,
+            flash_properties: FlashProperties {
+                address_range: 0x0800_0000..0x0800_1000,
+                page_size: 0x100,
+                sectors: vec![SectorDescription {
+                    size: 0x1000,
+                    address: 0,
+                }],
+                ..Default::default()
+            },
+            cores: vec![],
+            stack_size: None,
+            stack_overflow_check: None,
+            transfer_encoding: None,
+            big_endian: false,
+        }
+    }
+
+    #[test]
+    fn extract_flash_algo_preserves_data_section_offset_and_sets_static_base_offset() {
+        let mut raw = raw_algorithm();
+        let algorithm_binary = algorithm_binary(
+            0x1000,
+            0x1040,
+            0x1060,
+            0x1000,
+            0x2000_0100,
+            vec![Relocation { offset: 0x8 }],
+        );
+
+        apply_algorithm_binary_metadata(&mut raw, &algorithm_binary, false).unwrap();
+
+        assert_eq!(raw.data_section_offset, 0x40);
+        assert_eq!(raw.static_base_offset, Some(0x60));
+        assert_eq!(raw.link_time_base_address, Some(0x1000));
+    }
+
+    #[test]
+    fn extract_flash_algo_sets_fixed_load_without_pic_base() {
+        let mut raw = raw_algorithm();
+        let algorithm_binary = algorithm_binary(
+            0x1000,
+            0x1040,
+            0x1040,
+            0x1000,
+            0x2000_0100,
+            vec![Relocation { offset: 0x8 }],
+        );
+        raw.address_relocation_ranges = vec![FlashAlgorithmRelocationRange {
+            offset: 0x8,
+            size: 0x4,
+        }];
+
+        apply_algorithm_binary_metadata(&mut raw, &algorithm_binary, true).unwrap();
+
+        assert_eq!(raw.load_address, Some(0x2000_0100));
+        assert_eq!(raw.data_section_offset, 0x40);
+        assert_eq!(raw.static_base_offset, None);
+        assert_eq!(raw.link_time_base_address, None);
+        assert!(raw.address_relocation_ranges.is_empty());
     }
 }

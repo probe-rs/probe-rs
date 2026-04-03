@@ -21,5 +21,8 @@ serde_with = { version = "3.8", default-features = false, features = [
     "indexmap_2",
 ] }
 
+[dev-dependencies]
+serde_yaml = "0.9"
+
 [lints]
 workspace = true

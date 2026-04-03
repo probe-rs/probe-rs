@@ -6,21 +6,27 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 0
+  - name: acpu
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 1
   memory_map:
-  - !Ram
-    name: Retention SRAM
+  - !Nvm
+    name: Flash3
     range:
-      start: 0x20000
-      end: 0x30000
+      start: 0x64000000
+      end: 0x68000000
     cores:
     - hcpu
+    - acpu
   - !Nvm
     name: Flash4
     range:
-      start: 0x18000000
-      end: 0x18f00000
+      start: 0x68000000
+      end: 0xA0000000
     cores:
     - hcpu
+    - acpu
   - !Ram
     name: SRAM
     range:
@@ -28,6 +34,7 @@ variants:
       end: 0x20200000
     cores:
     - hcpu
+    - acpu
     access:
       boot: true
   - !Ram
@@ -37,11 +44,12 @@ variants:
       end: 0x20280000
     cores:
     - hcpu
-  - !Nvm
-    name: Flash3
+    - acpu
+  - !Ram
+    name: Retention SRAM
     range:
-      start: 0x64000000
-      end: 0x68000000
+      start: 0x20000
+      end: 0x30000
     cores:
     - hcpu
   flash_algorithms:
@@ -56,11 +64,10 @@ flash_algorithms:
   pc_program_page: 0x1a7
   pc_erase_sector: 0x191
   data_section_offset: 0x3fcc
+  link_time_base_address: 0x0
   address_relocation_ranges:
   - offset: 0x3fcc
-    size: 0x54
-  - offset: 0x4020
-    size: 0xc
+    size: 0x60
   rtt_poll_interval: 20
   flash_properties:
     address_range:

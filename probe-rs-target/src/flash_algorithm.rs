@@ -87,8 +87,23 @@ pub struct RawFlashAlgorithm {
     /// The offset from the start of RAM to the data section.
     #[serde(serialize_with = "hex_u_int")]
     pub data_section_offset: u64,
-    /// Ranges inside `instructions` that contain absolute in-image addresses which
-    /// must be rebased to the runtime load address when the algorithm is position independent.
+    /// Offset from the start of RAM to the static base used for PIC data references.
+    #[serde(
+        default,
+        serialize_with = "hex_option"
+    )]
+    pub static_base_offset: Option<u64>,
+    /// Link-time base address of the runtime image for position independent algorithms.
+    #[serde(
+        default,
+        serialize_with = "hex_option"
+    )]
+    pub link_time_base_address: Option<u64>,
+    /// Relocation ranges inside `instructions` that must be rebased to the runtime load
+    /// address when the algorithm is position independent.
+    ///
+    /// Each range represents one or more contiguous 32-bit relocation slots. Gaps split the
+    /// relocations into separate ranges.
     #[serde(default)]
     pub address_relocation_ranges: Vec<FlashAlgorithmRelocationRange>,
     /// Location of the RTT control block in RAM.
@@ -131,6 +146,21 @@ impl RawFlashAlgorithm {
     /// Whether to check for stack overflows during flashing.
     pub fn stack_overflow_check(&self) -> bool {
         self.stack_overflow_check.unwrap_or(true)
+    }
+
+    /// Returns precise relocation slot offsets expanded from the compact range representation.
+    pub fn resolved_address_relocation_offsets(&self) -> Vec<u64> {
+        let mut relocations = Vec::new();
+        for range in &self.address_relocation_ranges {
+            let end = range.offset.saturating_add(range.size);
+            let mut offset = range.offset;
+            while offset < end {
+                relocations.push(offset);
+                offset = offset.saturating_add(4);
+            }
+        }
+
+        relocations
     }
 }
 
@@ -224,4 +254,77 @@ impl serde::de::Visitor<'_> for Bytes {
 
 fn default_rtt_poll_interval() -> u64 {
     20
+}
+
+#[cfg(test)]
+mod test {
+    use super::RawFlashAlgorithm;
+
+    #[test]
+    fn relocation_ranges_expand_to_precise_slot_offsets() {
+        let yaml = r#"
+name: algo
+description: algo
+default: true
+instructions: ""
+pc_program_page: 0x0
+pc_erase_sector: 0x0
+data_section_offset: 0x10
+address_relocation_ranges:
+  - offset: 0x4
+    size: 0x8
+flash_properties:
+  address_range:
+    start: 0x08000000
+    end: 0x08001000
+  page_size: 0x100
+  erased_byte_value: 0xff
+  program_page_timeout: 1
+  erase_sector_timeout: 1
+  sectors:
+    - size: 0x1000
+      address: 0x0
+"#;
+
+        let algo: RawFlashAlgorithm = serde_yaml::from_str(yaml).unwrap();
+
+        assert_eq!(algo.resolved_address_relocation_offsets(), vec![0x4, 0x8]);
+    }
+
+    #[test]
+    fn relocation_ranges_round_trip() {
+        let yaml = r#"
+name: algo
+description: algo
+default: true
+instructions: ""
+pc_program_page: 0x0
+pc_erase_sector: 0x0
+data_section_offset: 0x10
+static_base_offset: 0x20
+link_time_base_address: 0x1000
+address_relocation_ranges:
+  - offset: 0x4
+    size: 0x8
+flash_properties:
+  address_range:
+    start: 0x08000000
+    end: 0x08001000
+  page_size: 0x100
+  erased_byte_value: 0xff
+  program_page_timeout: 1
+  erase_sector_timeout: 1
+  sectors:
+    - size: 0x1000
+      address: 0x0
+"#;
+
+        let algo: RawFlashAlgorithm = serde_yaml::from_str(yaml).unwrap();
+        let serialized = serde_yaml::to_string(&algo).unwrap();
+
+        assert!(serialized.contains("static_base_offset: '0x20'"));
+        assert!(serialized.contains("link_time_base_address: '0x1000'"));
+        assert!(serialized.contains("address_relocation_ranges:"));
+        assert_eq!(algo.resolved_address_relocation_offsets(), vec![0x4, 0x8]);
+    }
 }

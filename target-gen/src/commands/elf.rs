@@ -361,7 +361,10 @@ pub fn serialize_to_yaml_string(family: &ChipFamily) -> Result<String> {
 
 #[cfg(test)]
 mod test {
-    use probe_rs_target::TargetDescriptionSource;
+    use probe_rs_target::{
+        FlashAlgorithmRelocationRange, FlashProperties, RawFlashAlgorithm, SectorDescription,
+        TargetDescriptionSource,
+    };
 
     use super::*;
 
@@ -406,5 +409,65 @@ mod test {
         };
         let yaml_string = serialize_to_yaml_string(&family).unwrap();
         insta::assert_snapshot!("serialization_cleanup", yaml_string);
+    }
+
+    #[test]
+    fn test_serialize_to_yaml_string_keeps_pic_metadata() {
+        let mut chip = Chip::generic_arm("Test Chip", CoreType::Armv8m);
+        chip.flash_algorithms.push("algo".to_owned());
+
+        let family = ChipFamily {
+            name: "Test Family".to_owned(),
+            manufacturer: None,
+            generated_from_pack: false,
+            chip_detection: vec![],
+            pack_file_release: None,
+            variants: vec![chip],
+            flash_algorithms: vec![RawFlashAlgorithm {
+                name: "algo".to_owned(),
+                description: "algo".to_owned(),
+                default: true,
+                instructions: vec![],
+                load_address: None,
+                data_load_address: None,
+                pc_init: Some(0),
+                pc_uninit: Some(0),
+                pc_program_page: 0,
+                pc_erase_sector: 0,
+                pc_erase_all: None,
+                pc_verify: None,
+                pc_blank_check: None,
+                pc_read: None,
+                pc_flash_size: None,
+                data_section_offset: 0x20,
+                static_base_offset: Some(0x40),
+                link_time_base_address: Some(0x1000),
+                address_relocation_ranges: vec![FlashAlgorithmRelocationRange {
+                    offset: 0x8,
+                    size: 0x4,
+                }],
+                rtt_location: None,
+                rtt_poll_interval: 20,
+                flash_properties: FlashProperties {
+                    address_range: 0x0800_0000..0x0800_1000,
+                    page_size: 0x100,
+                    sectors: vec![SectorDescription {
+                        size: 0x1000,
+                        address: 0,
+                    }],
+                    ..Default::default()
+                },
+                cores: vec!["main".to_owned()],
+                stack_size: None,
+                stack_overflow_check: None,
+                transfer_encoding: None,
+                big_endian: false,
+            }],
+            source: TargetDescriptionSource::BuiltIn,
+        };
+
+        let yaml_string = serialize_to_yaml_string(&family).unwrap();
+        assert!(yaml_string.contains("address_relocation_ranges:"));
+        insta::assert_snapshot!("pic_serialization_metadata", yaml_string);
     }
 }

@@ -302,7 +302,7 @@ impl FlashAlgorithm {
         let code_start = addr_load + header_size;
         let mut relocated_instructions = raw.instructions.clone();
         if raw.load_address.is_none() {
-            rebase_runtime_address_ranges(raw, &mut relocated_instructions, code_start)?;
+            rebase_runtime_addresses(raw, &mut relocated_instructions, code_start)?;
         }
 
         let assembled_instructions = relocated_instructions.chunks_exact(size_of::<u32>());
@@ -429,6 +429,7 @@ impl FlashAlgorithm {
         tracing::debug!("Page buffers: {:#010x?}", page_buffers);
 
         let name = raw.name.clone();
+        let static_base_offset = raw.static_base_offset.unwrap_or(raw.data_section_offset);
 
         tracing::info!(
             "code_start: {:#010x}, code_size: {:#x}, data_load_addr: {:#010x}",
@@ -441,10 +442,7 @@ impl FlashAlgorithm {
             stack_bottom,
             stack_top
         );
-        tracing::info!(
-            "static_base: {:#010x}",
-            code_start + raw.data_section_offset
-        );
+        tracing::info!("static_base: {:#010x}", code_start + static_base_offset);
 
         Ok(FlashAlgorithm {
             name,
@@ -460,7 +458,7 @@ impl FlashAlgorithm {
             pc_blank_check: raw.pc_blank_check.map(|v| code_start + v),
             pc_read: raw.pc_read.map(|v| code_start + v),
             pc_flash_size: raw.pc_flash_size.map(|v| code_start + v),
-            static_base: code_start + raw.data_section_offset,
+            static_base: code_start + static_base_offset,
             stack_top,
             stack_size,
             page_buffers,
@@ -516,68 +514,108 @@ impl FlashAlgorithm {
     }
 }
 
-fn rebase_runtime_address_ranges(
+fn rebase_runtime_addresses(
     raw: &RawFlashAlgorithm,
     instructions: &mut [u8],
     code_start: u64,
 ) -> Result<(), FlashError> {
-    if raw.address_relocation_ranges.is_empty() {
+    let relocations = raw.resolved_address_relocation_offsets();
+    if relocations.is_empty() {
         return Ok(());
     }
 
     let instruction_len = instructions.len() as u64;
-    let runtime_end = instruction_len;
+    let link_time_base_address = raw.link_time_base_address.unwrap_or(0);
+    let link_time_image_end = link_time_base_address.checked_add(instruction_len).ok_or(
+        FlashError::InvalidFlashAlgorithmRelocationValue {
+            offset: 0,
+            value: link_time_base_address,
+            link_time_base_address,
+            instruction_len,
+        },
+    )?;
 
-    for range in &raw.address_relocation_ranges {
-        let range_end = range.offset.saturating_add(range.size);
-        let in_bounds = range_end <= instruction_len;
-        let aligned = (range.offset % 4) == 0 && (range.size % 4) == 0;
-
-        if !in_bounds || !aligned {
-            return Err(FlashError::InvalidFlashAlgorithmRelocationRange {
-                offset: range.offset,
-                size: range.size,
-                instruction_len,
-            });
-        }
-
-        let start = range.offset as usize;
-        let end = range_end as usize;
-
-        for word in instructions[start..end].chunks_exact_mut(4) {
-            let value = if raw.big_endian {
-                u32::from_be_bytes(word.try_into().unwrap()) as u64
-            } else {
-                u32::from_le_bytes(word.try_into().unwrap()) as u64
-            };
-
-            if value == 0 || value >= runtime_end {
-                continue;
-            }
-
-            let rebased = value.checked_add(code_start).ok_or(
-                FlashError::InvalidFlashAlgorithmRelocationRange {
-                    offset: range.offset,
-                    size: range.size,
-                    instruction_len,
-                },
-            )?;
-            let rebased = u32::try_from(rebased).map_err(|_| {
-                FlashError::InvalidFlashAlgorithmRelocationRange {
-                    offset: range.offset,
-                    size: range.size,
-                    instruction_len,
-                }
-            })?;
-
-            let bytes = if raw.big_endian {
-                rebased.to_be_bytes()
-            } else {
-                rebased.to_le_bytes()
-            };
-            word.copy_from_slice(&bytes);
-        }
+    for offset in relocations {
+        rebase_runtime_address(
+            offset,
+            raw.big_endian,
+            instructions,
+            code_start,
+            link_time_base_address,
+            link_time_image_end,
+        )?;
     }
+
+    Ok(())
+}
+
+fn rebase_runtime_address(
+    offset: u64,
+    big_endian: bool,
+    instructions: &mut [u8],
+    code_start: u64,
+    link_time_base_address: u64,
+    link_time_image_end: u64,
+) -> Result<(), FlashError> {
+    let instruction_len = instructions.len() as u64;
+    let offset_end = offset.saturating_add(4);
+    let aligned = (offset % 4) == 0;
+    let in_bounds = offset_end <= instruction_len;
+
+    if !aligned || !in_bounds {
+        return Err(FlashError::InvalidFlashAlgorithmRelocationOffset {
+            offset,
+            instruction_len,
+        });
+    }
+
+    let start = offset as usize;
+    let word = &mut instructions[start..start + 4];
+    let value = if big_endian {
+        u32::from_be_bytes(word.try_into().unwrap()) as u64
+    } else {
+        u32::from_le_bytes(word.try_into().unwrap()) as u64
+    };
+
+    if !(link_time_base_address..link_time_image_end).contains(&value) {
+        return Err(FlashError::InvalidFlashAlgorithmRelocationValue {
+            offset,
+            value,
+            link_time_base_address,
+            instruction_len,
+        });
+    }
+
+    let rebased_offset = value.checked_sub(link_time_base_address).ok_or(
+        FlashError::InvalidFlashAlgorithmRelocationValue {
+            offset,
+            value,
+            link_time_base_address,
+            instruction_len,
+        },
+    )?;
+    let rebased = code_start.checked_add(rebased_offset).ok_or(
+        FlashError::InvalidFlashAlgorithmRelocationValue {
+            offset,
+            value,
+            link_time_base_address,
+            instruction_len,
+        },
+    )?;
+    let rebased =
+        u32::try_from(rebased).map_err(|_| FlashError::InvalidFlashAlgorithmRelocationValue {
+            offset,
+            value,
+            link_time_base_address,
+            instruction_len,
+        })?;
+
+    let bytes = if big_endian {
+        rebased.to_be_bytes()
+    } else {
+        rebased.to_le_bytes()
+    };
+    word.copy_from_slice(&bytes);
 
     Ok(())
 }
@@ -614,9 +652,90 @@ fn is_ram_suitable_for_data(ram: &RamRegion, load_address: u64) -> bool {
 
 #[cfg(test)]
 mod test {
-    use probe_rs_target::{FlashProperties, SectorDescription, SectorInfo};
+    use probe_rs_target::{
+        Chip, CoreType, FlashAlgorithmRelocationRange, FlashProperties, MemoryAccess,
+        SectorDescription, SectorInfo, TargetDescriptionSource,
+    };
 
-    use crate::flashing::FlashAlgorithm;
+    use crate::{
+        Target,
+        architecture::arm::sequences::DefaultArmSequence,
+        config::DebugSequence,
+        flashing::{FlashAlgorithm, FlashError},
+        rtt::ScanRegion,
+    };
+
+    use super::{rebase_runtime_address, rebase_runtime_addresses};
+
+    fn test_target() -> Target {
+        let chip = Chip::generic_arm("Test Chip", CoreType::Armv8m);
+
+        Target {
+            name: chip.name,
+            cores: chip.cores,
+            flash_algorithms: vec![],
+            memory_map: vec![],
+            source: TargetDescriptionSource::BuiltIn,
+            debug_sequence: DebugSequence::Arm(DefaultArmSequence::create()),
+            rtt_scan_regions: ScanRegion::Ram,
+            jtag: None,
+            default_format: None,
+        }
+    }
+
+    fn executable_ram() -> probe_rs_target::RamRegion {
+        probe_rs_target::RamRegion {
+            name: Some("RAM".to_owned()),
+            range: 0x2000_0000..0x2000_2000,
+            cores: vec!["main".to_owned()],
+            access: Some(MemoryAccess {
+                read: true,
+                write: true,
+                execute: true,
+                boot: false,
+            }),
+        }
+    }
+
+    fn raw_algorithm(instructions: Vec<u8>) -> probe_rs_target::RawFlashAlgorithm {
+        probe_rs_target::RawFlashAlgorithm {
+            name: "algo".to_owned(),
+            description: "algo".to_owned(),
+            default: true,
+            instructions,
+            load_address: None,
+            data_load_address: None,
+            pc_init: Some(0),
+            pc_uninit: Some(0),
+            pc_program_page: 0,
+            pc_erase_sector: 0,
+            pc_erase_all: None,
+            pc_verify: None,
+            pc_blank_check: None,
+            pc_read: None,
+            pc_flash_size: None,
+            data_section_offset: 0,
+            static_base_offset: None,
+            link_time_base_address: None,
+            address_relocation_ranges: vec![],
+            rtt_location: None,
+            rtt_poll_interval: 20,
+            flash_properties: FlashProperties {
+                address_range: 0x0800_0000..0x0800_1000,
+                page_size: 0x100,
+                sectors: vec![SectorDescription {
+                    size: 0x1000,
+                    address: 0,
+                }],
+                ..Default::default()
+            },
+            cores: vec![],
+            stack_size: Some(0x100),
+            stack_overflow_check: Some(true),
+            transfer_encoding: None,
+            big_endian: false,
+        }
+    }
 
     #[test]
     fn flash_sector_single_size() {
@@ -783,5 +902,202 @@ mod test {
             },
         ];
         assert_eq!(&got, expected);
+    }
+
+    #[test]
+    fn assemble_pic_algorithm_rebases_exact_slots_zero_base() {
+        let mut raw = raw_algorithm(
+            [
+                0x04u32.to_le_bytes(),
+                0x0000_0020u32.to_le_bytes(),
+                0x08u32.to_le_bytes(),
+            ]
+            .concat(),
+        );
+        raw.address_relocation_ranges = vec![FlashAlgorithmRelocationRange {
+            offset: 0,
+            size: 0x4,
+        }];
+
+        let mut relocated = raw.instructions.clone();
+        rebase_runtime_addresses(&raw, &mut relocated, 0x2000_0004).unwrap();
+
+        assert_eq!(
+            u32::from_le_bytes(relocated[0..4].try_into().unwrap()),
+            0x2000_0008
+        );
+        assert_eq!(
+            u32::from_le_bytes(relocated[4..8].try_into().unwrap()),
+            0x0000_0020
+        );
+        assert_eq!(
+            u32::from_le_bytes(relocated[8..12].try_into().unwrap()),
+            0x0000_0008
+        );
+    }
+
+    #[test]
+    fn assemble_pic_algorithm_rebases_exact_slots_nonzero_base() {
+        let mut raw = raw_algorithm(
+            [
+                0x1008u32.to_le_bytes(),
+                0x0000_0000u32.to_le_bytes(),
+                0x0000_0000u32.to_le_bytes(),
+            ]
+            .concat(),
+        );
+        raw.link_time_base_address = Some(0x1000);
+        raw.address_relocation_ranges = vec![FlashAlgorithmRelocationRange {
+            offset: 0,
+            size: 0x4,
+        }];
+
+        let mut relocated = raw.instructions.clone();
+        rebase_runtime_addresses(&raw, &mut relocated, 0x2000_0004).unwrap();
+
+        assert_eq!(
+            u32::from_le_bytes(relocated[0..4].try_into().unwrap()),
+            0x2000_000c
+        );
+    }
+
+    #[test]
+    fn assemble_uses_static_base_offset_when_present() {
+        let mut raw = raw_algorithm(vec![]);
+        raw.data_section_offset = 0x40;
+        raw.static_base_offset = Some(0x80);
+
+        let assembled = FlashAlgorithm::assemble_from_raw_with_data(
+            &raw,
+            &executable_ram(),
+            &executable_ram(),
+            &test_target(),
+        )
+        .unwrap();
+
+        assert_eq!(assembled.static_base, 0x2000_0004 + 0x80);
+    }
+
+    #[test]
+    fn assemble_legacy_yaml_uses_data_section_offset_without_static_base_offset() {
+        let mut raw = raw_algorithm(vec![]);
+        raw.data_section_offset = 0x40;
+
+        let assembled = FlashAlgorithm::assemble_from_raw_with_data(
+            &raw,
+            &executable_ram(),
+            &executable_ram(),
+            &test_target(),
+        )
+        .unwrap();
+
+        assert_eq!(assembled.static_base, 0x2000_0004 + 0x40);
+    }
+
+    #[test]
+    fn assemble_pic_algorithm_rejects_unaligned_relocation_offset() {
+        let mut raw = raw_algorithm(0u32.to_le_bytes().to_vec());
+        raw.address_relocation_ranges = vec![FlashAlgorithmRelocationRange {
+            offset: 2,
+            size: 0x4,
+        }];
+
+        let mut relocated = raw.instructions.clone();
+        let err = rebase_runtime_addresses(&raw, &mut relocated, 0x2000_0004).unwrap_err();
+
+        assert!(matches!(
+            err,
+            FlashError::InvalidFlashAlgorithmRelocationOffset {
+                offset: 2,
+                instruction_len: 4,
+            }
+        ));
+    }
+
+    #[test]
+    fn assemble_pic_algorithm_rejects_out_of_bounds_relocation_offset() {
+        let mut raw = raw_algorithm(0u32.to_le_bytes().to_vec());
+        raw.address_relocation_ranges = vec![FlashAlgorithmRelocationRange {
+            offset: 4,
+            size: 0x4,
+        }];
+
+        let mut relocated = raw.instructions.clone();
+        let err = rebase_runtime_addresses(&raw, &mut relocated, 0x2000_0004).unwrap_err();
+
+        assert!(matches!(
+            err,
+            FlashError::InvalidFlashAlgorithmRelocationOffset {
+                offset: 4,
+                instruction_len: 4,
+            }
+        ));
+    }
+
+    #[test]
+    fn assemble_pic_algorithm_rejects_slot_value_outside_image() {
+        let mut raw = raw_algorithm(0x40u32.to_le_bytes().to_vec());
+        raw.address_relocation_ranges = vec![FlashAlgorithmRelocationRange {
+            offset: 0,
+            size: 0x4,
+        }];
+
+        let mut relocated = raw.instructions.clone();
+        let err = rebase_runtime_addresses(&raw, &mut relocated, 0x2000_0004).unwrap_err();
+
+        assert!(matches!(
+            err,
+            FlashError::InvalidFlashAlgorithmRelocationValue {
+                offset: 0,
+                value: 0x40,
+                link_time_base_address: 0,
+                instruction_len: 4,
+            }
+        ));
+    }
+
+    #[test]
+    fn assemble_fixed_load_algorithm_skips_relocations() {
+        let mut raw = raw_algorithm(0u32.to_le_bytes().to_vec());
+        raw.load_address = Some(0x2000_0100);
+        raw.address_relocation_ranges = vec![FlashAlgorithmRelocationRange {
+            offset: 0,
+            size: 0x4,
+        }];
+
+        let assembled = FlashAlgorithm::assemble_from_raw_with_data(
+            &raw,
+            &executable_ram(),
+            &executable_ram(),
+            &test_target(),
+        )
+        .unwrap();
+
+        let header_word_count = 1usize;
+        assert_eq!(assembled.instructions[header_word_count], 0);
+    }
+
+    #[test]
+    fn rebase_runtime_address_rejects_slot_value_below_link_time_base() {
+        let mut bytes = 0x1000u32.to_le_bytes().to_vec();
+        let err = rebase_runtime_address(
+            0,
+            false,
+            &mut bytes,
+            0x2000_0004,
+            0x1010,
+            0x1020,
+        )
+        .unwrap_err();
+
+        assert!(matches!(
+            err,
+            FlashError::InvalidFlashAlgorithmRelocationValue {
+                offset: 0,
+                value: 0x1000,
+                link_time_base_address: 0x1010,
+                instruction_len: 4,
+            }
+        ));
     }
 }

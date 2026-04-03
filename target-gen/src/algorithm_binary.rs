@@ -37,17 +37,18 @@ pub(crate) struct Section {
 #[derive(Debug, Clone)]
 pub(crate) struct AlgorithmBinary {
     pub(crate) code_section: Section,
+    pub(crate) data_section: Section,
     pub(crate) static_base: u32,
-    pub(crate) address_relocation_ranges: Vec<RelocationRange>,
-    runtime_sections: Vec<Section>,
-    runtime_start: u32,
-    runtime_end: u32,
+    pub(crate) link_time_base_address: u32,
+    pub(crate) address_relocations: Vec<Relocation>,
+    pub(crate) runtime_sections: Vec<Section>,
+    pub(crate) runtime_start: u32,
+    pub(crate) runtime_end: u32,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct RelocationRange {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Relocation {
     pub(crate) offset: u32,
-    pub(crate) size: u32,
 }
 
 impl AlgorithmBinary {
@@ -57,7 +58,6 @@ impl AlgorithmBinary {
         let mut data_section = None;
         let mut bss_section = None;
         let mut got_section = None;
-        let mut relocation_sections = Vec::new();
         let mut runtime_sections = Vec::new();
 
         let mut suspicious_sections = Vec::new();
@@ -100,15 +100,8 @@ impl AlgorithmBinary {
                             BSS_SECTION_KEY => bss_section = section,
                             GOT_SECTION_KEY => {
                                 got_section = section.clone();
-                                if let Some(section) = section {
-                                    relocation_sections.push(section);
-                                }
                             }
-                            GOT_PLT_SECTION_KEY => {
-                                if let Some(section) = section {
-                                    relocation_sections.push(section);
-                                }
-                            }
+                            GOT_PLT_SECTION_KEY => got_section = got_section.or(section),
                             (name, _section_type) => {
                                 if SUSPICIOUS_SECTION_NAMES.contains(&name) {
                                     suspicious_sections.push(name);
@@ -176,18 +169,6 @@ impl AlgorithmBinary {
             .collect();
         runtime_sections.sort_by_key(|section| section.start);
 
-        let mut address_relocation_ranges: Vec<_> = relocation_sections
-            .into_iter()
-            .filter(|section| {
-                section.start >= runtime_start && section.start + section.length <= runtime_end
-            })
-            .map(|section| RelocationRange {
-                offset: section.start - runtime_start,
-                size: section.length,
-            })
-            .collect();
-        address_relocation_ranges.sort_by_key(|range| range.offset);
-
         if runtime_sections.is_empty() {
             return Err(anyhow!(
                 "No runtime sections found in the flash algorithm ELF between {runtime_start:#010x} and {runtime_end:#010x}."
@@ -207,10 +188,14 @@ impl AlgorithmBinary {
             );
         }
 
+        let address_relocations = collect_address_relocations(elf, runtime_start, runtime_end)?;
+
         Ok(Self {
             code_section,
+            data_section,
             static_base,
-            address_relocation_ranges,
+            link_time_base_address: runtime_start,
+            address_relocations,
             runtime_sections,
             runtime_start,
             runtime_end,
@@ -245,5 +230,108 @@ impl AlgorithmBinary {
                 && section.load_address - self.code_section.load_address
                     == section.start - self.runtime_start
         })
+    }
+}
+
+fn collect_address_relocations(
+    elf: &goblin::elf::Elf<'_>,
+    runtime_start: u32,
+    runtime_end: u32,
+) -> Result<Vec<Relocation>> {
+    let mut relocations = Vec::new();
+
+    for (_section_index, section_relocs) in &elf.shdr_relocs {
+        for reloc in section_relocs.iter() {
+            let Some(offset) = u32::try_from(reloc.r_offset).ok() else {
+                continue;
+            };
+
+            match relocation_offset(runtime_start, runtime_end, offset)? {
+                Some(offset) => relocations.push(Relocation { offset }),
+                None => continue,
+            }
+        }
+    }
+
+    relocations.sort_by_key(|reloc| reloc.offset);
+    relocations.dedup_by_key(|reloc| reloc.offset);
+
+    Ok(relocations)
+}
+
+fn relocation_offset(runtime_start: u32, runtime_end: u32, offset: u32) -> Result<Option<u32>> {
+    let in_bounds = offset >= runtime_start
+        && offset
+            .checked_add(4)
+            .is_some_and(|offset_end| offset_end <= runtime_end);
+
+    if !in_bounds {
+        return Ok(None);
+    }
+
+    anyhow::ensure!(
+        (offset % 4) == 0,
+        "Flash algorithm relocation slot {offset:#010x} is not 4-byte aligned."
+    );
+
+    Ok(Some(offset - runtime_start))
+}
+
+#[cfg(test)]
+mod test {
+    use goblin::elf::reloc::Reloc;
+
+    use super::{Relocation, relocation_offset};
+
+    #[test]
+    fn relocation_offset_converts_absolute_slot_to_runtime_relative_offset() {
+        assert_eq!(
+            relocation_offset(0x1000, 0x1100, 0x1008).unwrap(),
+            Some(0x8)
+        );
+    }
+
+    #[test]
+    fn relocation_offset_skips_slots_outside_runtime_image() {
+        assert_eq!(relocation_offset(0x1000, 0x1100, 0x0ffc).unwrap(), None);
+        assert_eq!(relocation_offset(0x1000, 0x1100, 0x1100).unwrap(), None);
+    }
+
+    #[test]
+    fn relocation_offset_rejects_unaligned_slots() {
+        let err = relocation_offset(0x1000, 0x1100, 0x1002).unwrap_err();
+        assert!(err.to_string().contains("not 4-byte aligned"));
+    }
+
+    #[test]
+    fn relocation_records_are_sortable_and_deduplicated() {
+        let mut relocations = [
+            Relocation { offset: 0x10 },
+            Relocation { offset: 0x4 },
+            Relocation { offset: 0x10 },
+        ]
+        .to_vec();
+        relocations.sort_by_key(|reloc| reloc.offset);
+        relocations.dedup_by_key(|reloc| reloc.offset);
+
+        assert_eq!(
+            relocations,
+            vec![Relocation { offset: 0x4 }, Relocation { offset: 0x10 }]
+        );
+    }
+
+    #[test]
+    fn goblin_reloc_offsets_match_helper_expectations() {
+        let reloc = Reloc {
+            r_offset: 0x100c,
+            r_addend: None,
+            r_sym: 0,
+            r_type: 0,
+        };
+
+        assert_eq!(
+            relocation_offset(0x1000, 0x1100, u32::try_from(reloc.r_offset).unwrap()).unwrap(),
+            Some(0xc)
+        );
     }
 }

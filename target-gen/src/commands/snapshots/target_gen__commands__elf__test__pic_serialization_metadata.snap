@@ -1,0 +1,43 @@
+---
+source: target-gen/src/commands/elf.rs
+expression: yaml_string
+---
+name: Test Family
+variants:
+- name: Test Chip
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  flash_algorithms:
+  - algo
+flash_algorithms:
+- name: algo
+  description: algo
+  default: true
+  instructions: ''
+  pc_init: 0x0
+  pc_uninit: 0x0
+  pc_program_page: 0x0
+  pc_erase_sector: 0x0
+  data_section_offset: 0x20
+  static_base_offset: 0x40
+  link_time_base_address: 0x1000
+  address_relocation_ranges:
+  - offset: 0x8
+    size: 0x4
+  rtt_poll_interval: 20
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8001000
+    page_size: 0x100
+    erased_byte_value: 0x0
+    program_page_timeout: 0
+    erase_sector_timeout: 0
+    sectors:
+    - size: 0x1000
+      address: 0x0
+  cores:
+  - main
