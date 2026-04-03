@@ -133,6 +133,18 @@ pub enum FlashError {
         /// The range of the data memory.
         data_ram: Range<u64>,
     },
+    /// Failed to apply a relocation range inside a position-independent flash algorithm image.
+    #[error(
+        "Flash algorithm relocation range offset={offset:#010x}, size={size:#010x} is invalid for image length {instruction_len:#010x}."
+    )]
+    InvalidFlashAlgorithmRelocationRange {
+        /// Byte offset from the start of the runtime image.
+        offset: u64,
+        /// Size of the relocation range in bytes.
+        size: u64,
+        /// Total length of the runtime image in bytes.
+        instruction_len: u64,
+    },
     // TODO: Warn at YAML parsing stage.
     // TODO: 1 Add information about flash (name, address)
     // TODO: 2 Add source of target definition (built-in, yaml)

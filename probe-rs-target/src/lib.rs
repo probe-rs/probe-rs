@@ -25,7 +25,9 @@ pub use chip::{
 pub use chip_family::{
     Architecture, ChipFamily, CoreType, Endian, InstructionSet, TargetDescriptionSource,
 };
-pub use flash_algorithm::{RawFlashAlgorithm, TransferEncoding};
+pub use flash_algorithm::{
+    FlashAlgorithmRelocationRange, RawFlashAlgorithm, TransferEncoding,
+};
 pub use flash_properties::FlashProperties;
 pub use memory::{
     GenericRegion, MemoryAccess, MemoryRange, MemoryRegion, NvmRegion, PageInfo, RamRegion,

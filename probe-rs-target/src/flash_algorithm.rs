@@ -19,6 +19,18 @@ pub enum TransferEncoding {
     Miniz,
 }
 
+/// A range within the flash algorithm image whose 32-bit words must be rebased
+/// to the runtime load address when the algorithm is loaded as PIC.
+#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct FlashAlgorithmRelocationRange {
+    /// Byte offset from the start of the runtime image, excluding the probe-rs header.
+    #[serde(serialize_with = "hex_u_int")]
+    pub offset: u64,
+    /// Size of the relocation range in bytes.
+    #[serde(serialize_with = "hex_u_int")]
+    pub size: u64,
+}
+
 /// The raw flash algorithm is the description of a flash algorithm,
 /// and is usually read from a target description file.
 ///
@@ -75,6 +87,10 @@ pub struct RawFlashAlgorithm {
     /// The offset from the start of RAM to the data section.
     #[serde(serialize_with = "hex_u_int")]
     pub data_section_offset: u64,
+    /// Ranges inside `instructions` that contain absolute in-image addresses which
+    /// must be rebased to the runtime load address when the algorithm is position independent.
+    #[serde(default)]
+    pub address_relocation_ranges: Vec<FlashAlgorithmRelocationRange>,
     /// Location of the RTT control block in RAM.
     ///
     /// If this is set, the flash algorithm supports RTT output

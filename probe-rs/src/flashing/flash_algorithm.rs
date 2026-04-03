@@ -270,26 +270,6 @@ impl FlashAlgorithm {
     ) -> Result<Self, FlashError> {
         use std::mem::size_of;
 
-        let assembled_instructions = raw.instructions.chunks_exact(size_of::<u32>());
-
-        let remainder = assembled_instructions.remainder();
-        let last_elem = if !remainder.is_empty() {
-            let word = u32::from_le_bytes(
-                remainder
-                    .iter()
-                    .cloned()
-                    // Pad with up to three bytes
-                    .chain([0u8, 0u8, 0u8])
-                    .take(4)
-                    .collect::<Vec<u8>>()
-                    .try_into()
-                    .unwrap(),
-            );
-            Some(word)
-        } else {
-            None
-        };
-
         let header = Self::algorithm_header(
             target.default_core().core_type,
             if raw.big_endian {
@@ -298,16 +278,6 @@ impl FlashAlgorithm {
                 Endian::Little
             },
         );
-
-        let instructions: Vec<u32> = header
-            .iter()
-            .copied()
-            .chain(
-                assembled_instructions.map(|bytes| u32::from_le_bytes(bytes.try_into().unwrap())),
-            )
-            .chain(last_elem)
-            .collect();
-
         let header_size = size_of_val(header) as u64;
 
         // The start address where we try to load the flash algorithm.
@@ -329,6 +299,41 @@ impl FlashAlgorithm {
             return Err(FlashError::InvalidFlashAlgorithmLoadAddress { address: addr_load });
         }
 
+        let code_start = addr_load + header_size;
+        let mut relocated_instructions = raw.instructions.clone();
+        if raw.load_address.is_none() {
+            rebase_runtime_address_ranges(raw, &mut relocated_instructions, code_start)?;
+        }
+
+        let assembled_instructions = relocated_instructions.chunks_exact(size_of::<u32>());
+
+        let remainder = assembled_instructions.remainder();
+        let last_elem = if !remainder.is_empty() {
+            let word = u32::from_le_bytes(
+                remainder
+                    .iter()
+                    .cloned()
+                    // Pad with up to three bytes
+                    .chain([0u8, 0u8, 0u8])
+                    .take(4)
+                    .collect::<Vec<u8>>()
+                    .try_into()
+                    .unwrap(),
+            );
+            Some(word)
+        } else {
+            None
+        };
+
+        let instructions: Vec<u32> = header
+            .iter()
+            .copied()
+            .chain(
+                assembled_instructions.map(|bytes| u32::from_le_bytes(bytes.try_into().unwrap())),
+            )
+            .chain(last_elem)
+            .collect();
+
         // Memory layout:
         // - Header
         // - Code
@@ -338,7 +343,6 @@ impl FlashAlgorithm {
         // between the code and the data, it will be placed there. Otherwise, it will be placed
         // after the data.
 
-        let code_start = addr_load + header_size;
         let code_size_bytes = (instructions.len() * size_of::<u32>()) as u64;
 
         let stack_align = Self::required_stack_alignment(target.architecture());
@@ -426,6 +430,22 @@ impl FlashAlgorithm {
 
         let name = raw.name.clone();
 
+        tracing::info!(
+            "code_start: {:#010x}, code_size: {:#x}, data_load_addr: {:#010x}",
+            code_start,
+            code_size_bytes,
+            data_load_addr
+        );
+        tracing::info!(
+            "stack_bottom: {:#010x}, stack_top: {:#010x}",
+            stack_bottom,
+            stack_top
+        );
+        tracing::info!(
+            "static_base: {:#010x}",
+            code_start + raw.data_section_offset
+        );
+
         Ok(FlashAlgorithm {
             name,
             default: raw.default,
@@ -494,6 +514,72 @@ impl FlashAlgorithm {
 
         Self::assemble_from_raw_with_data(algo, &ram, data_ram, target)
     }
+}
+
+fn rebase_runtime_address_ranges(
+    raw: &RawFlashAlgorithm,
+    instructions: &mut [u8],
+    code_start: u64,
+) -> Result<(), FlashError> {
+    if raw.address_relocation_ranges.is_empty() {
+        return Ok(());
+    }
+
+    let instruction_len = instructions.len() as u64;
+    let runtime_end = instruction_len;
+
+    for range in &raw.address_relocation_ranges {
+        let range_end = range.offset.saturating_add(range.size);
+        let in_bounds = range_end <= instruction_len;
+        let aligned = (range.offset % 4) == 0 && (range.size % 4) == 0;
+
+        if !in_bounds || !aligned {
+            return Err(FlashError::InvalidFlashAlgorithmRelocationRange {
+                offset: range.offset,
+                size: range.size,
+                instruction_len,
+            });
+        }
+
+        let start = range.offset as usize;
+        let end = range_end as usize;
+
+        for word in instructions[start..end].chunks_exact_mut(4) {
+            let value = if raw.big_endian {
+                u32::from_be_bytes(word.try_into().unwrap()) as u64
+            } else {
+                u32::from_le_bytes(word.try_into().unwrap()) as u64
+            };
+
+            if value == 0 || value >= runtime_end {
+                continue;
+            }
+
+            let rebased = value.checked_add(code_start).ok_or(
+                FlashError::InvalidFlashAlgorithmRelocationRange {
+                    offset: range.offset,
+                    size: range.size,
+                    instruction_len,
+                },
+            )?;
+            let rebased = u32::try_from(rebased).map_err(|_| {
+                FlashError::InvalidFlashAlgorithmRelocationRange {
+                    offset: range.offset,
+                    size: range.size,
+                    instruction_len,
+                }
+            })?;
+
+            let bytes = if raw.big_endian {
+                rebased.to_be_bytes()
+            } else {
+                rebased.to_le_bytes()
+            };
+            word.copy_from_slice(&bytes);
+        }
+    }
+
+    Ok(())
 }
 
 /// Returns whether the given RAM region is usable for downloading the flash algorithm.

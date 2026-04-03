@@ -1,6 +1,9 @@
 use crate::flash_device::FlashDevice;
 use anyhow::{Context, Result, anyhow};
-use probe_rs_target::{FlashProperties, MemoryRange, RawFlashAlgorithm, SectorDescription};
+use probe_rs_target::{
+    FlashAlgorithmRelocationRange, FlashProperties, MemoryRange, RawFlashAlgorithm,
+    SectorDescription,
+};
 
 /// Extract a chunk of data from an ELF binary.
 ///
@@ -76,6 +79,14 @@ pub fn extract_flash_algo(
     // Extract binary blob.
     let algorithm_binary = crate::algorithm_binary::AlgorithmBinary::new(&elf, buffer)?;
     algo.instructions = algorithm_binary.blob();
+    algo.address_relocation_ranges = algorithm_binary
+        .address_relocation_ranges
+        .iter()
+        .map(|range| FlashAlgorithmRelocationRange {
+            offset: range.offset.into(),
+            size: range.size.into(),
+        })
+        .collect();
 
     let code_section_offset = algorithm_binary.code_section.start;
 
@@ -121,10 +132,10 @@ pub fn extract_flash_algo(
         );
 
         algo.load_address = Some(algorithm_binary.code_section.load_address as u64);
-        algo.data_section_offset = (algorithm_binary.data_section.start
-            - algorithm_binary.code_section.load_address) as u64;
+        algo.data_section_offset =
+            (algorithm_binary.static_base - algorithm_binary.code_section.load_address) as u64;
     } else {
-        algo.data_section_offset = algorithm_binary.data_section.start as u64;
+        algo.data_section_offset = algorithm_binary.static_base as u64;
     }
 
     algo.description.clone_from(&flash_device.name);

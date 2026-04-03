@@ -9,6 +9,8 @@ use anyhow::{Result, anyhow};
 const CODE_SECTION_KEY: (&str, u32) = ("PrgCode", SHT_PROGBITS);
 const DATA_SECTION_KEY: (&str, u32) = ("PrgData", SHT_PROGBITS);
 const BSS_SECTION_KEY: (&str, u32) = ("PrgData", SHT_NOBITS);
+const GOT_SECTION_KEY: (&str, u32) = (".got", SHT_PROGBITS);
+const GOT_PLT_SECTION_KEY: (&str, u32) = (".got.plt", SHT_PROGBITS);
 
 /// List of "suspicious" section names
 ///
@@ -35,8 +37,17 @@ pub(crate) struct Section {
 #[derive(Debug, Clone)]
 pub(crate) struct AlgorithmBinary {
     pub(crate) code_section: Section,
-    pub(crate) data_section: Section,
-    pub(crate) bss_section: Section,
+    pub(crate) static_base: u32,
+    pub(crate) address_relocation_ranges: Vec<RelocationRange>,
+    runtime_sections: Vec<Section>,
+    runtime_start: u32,
+    runtime_end: u32,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct RelocationRange {
+    pub(crate) offset: u32,
+    pub(crate) size: u32,
 }
 
 impl AlgorithmBinary {
@@ -45,6 +56,9 @@ impl AlgorithmBinary {
         let mut code_section = None;
         let mut data_section = None;
         let mut bss_section = None;
+        let mut got_section = None;
+        let mut relocation_sections = Vec::new();
+        let mut runtime_sections = Vec::new();
 
         let mut suspicious_sections = Vec::new();
 
@@ -75,11 +89,26 @@ impl AlgorithmBinary {
                             load_address: (ph.p_vaddr + sh.sh_offset - ph.p_offset) as u32,
                         });
 
+                        if let Some(section) = &section {
+                            runtime_sections.push(section.clone());
+                        }
+
                         // Make sure we store the section contents under the right name.
                         match (&elf.shdr_strtab[sh.sh_name], sh.sh_type) {
                             CODE_SECTION_KEY => code_section = section,
                             DATA_SECTION_KEY => data_section = section,
                             BSS_SECTION_KEY => bss_section = section,
+                            GOT_SECTION_KEY => {
+                                got_section = section.clone();
+                                if let Some(section) = section {
+                                    relocation_sections.push(section);
+                                }
+                            }
+                            GOT_PLT_SECTION_KEY => {
+                                if let Some(section) = section {
+                                    relocation_sections.push(section);
+                                }
+                            }
                             (name, _section_type) => {
                                 if SUSPICIOUS_SECTION_NAMES.contains(&name) {
                                     suspicious_sections.push(name);
@@ -125,39 +154,96 @@ impl AlgorithmBinary {
         let zi_start = data_section.start + data_section.length;
         let zi_address = data_section.load_address + data_section.length;
 
+        let bss_section = bss_section.unwrap_or_else(|| Section {
+            start: zi_start,
+            length: 0,
+            data: Vec::new(),
+            load_address: zi_address,
+        });
+        let static_base = got_section
+            .as_ref()
+            .map(|got| got.start)
+            .unwrap_or(data_section.start);
+
+        let runtime_start = code_section.start;
+        let runtime_end = bss_section.start + bss_section.length;
+
+        let mut runtime_sections: Vec<_> = runtime_sections
+            .into_iter()
+            .filter(|section| {
+                section.start >= runtime_start && section.start + section.length <= runtime_end
+            })
+            .collect();
+        runtime_sections.sort_by_key(|section| section.start);
+
+        let mut address_relocation_ranges: Vec<_> = relocation_sections
+            .into_iter()
+            .filter(|section| {
+                section.start >= runtime_start && section.start + section.length <= runtime_end
+            })
+            .map(|section| RelocationRange {
+                offset: section.start - runtime_start,
+                size: section.length,
+            })
+            .collect();
+        address_relocation_ranges.sort_by_key(|range| range.offset);
+
+        if runtime_sections.is_empty() {
+            return Err(anyhow!(
+                "No runtime sections found in the flash algorithm ELF between {runtime_start:#010x} and {runtime_end:#010x}."
+            ));
+        }
+
+        for pair in runtime_sections.windows(2) {
+            let current = &pair[0];
+            let next = &pair[1];
+            anyhow::ensure!(
+                current.start + current.length <= next.start,
+                "Flash algorithm sections overlap in memory: {:#010x}..{:#010x} overlaps with {:#010x}..{:#010x}.",
+                current.start,
+                current.start + current.length,
+                next.start,
+                next.start + next.length,
+            );
+        }
+
         Ok(Self {
             code_section,
-            data_section,
-            bss_section: bss_section.unwrap_or_else(|| Section {
-                start: zi_start,
-                length: 0,
-                data: Vec::new(),
-                load_address: zi_address,
-            }),
+            static_base,
+            address_relocation_ranges,
+            runtime_sections,
+            runtime_start,
+            runtime_end,
         })
     }
 
-    /// Assembles one huge binary blob as u8 values to write to RAM from the three sections.
+    /// Assembles one contiguous runtime image to write to RAM.
+    ///
+    /// This preserves any auxiliary loadable sections that sit between `PrgCode` and `PrgData`,
+    /// such as `.got`, `.got.plt`, or vendor-specific retained text sections.
     pub(crate) fn blob(&self) -> Vec<u8> {
-        let mut blob = Vec::new();
+        let mut blob = vec![0; (self.runtime_end - self.runtime_start) as usize];
 
-        blob.extend(&self.code_section.data);
-        blob.extend(&self.data_section.data);
-        blob.extend(&vec![0; self.bss_section.length as usize]);
+        for section in &self.runtime_sections {
+            if section.data.is_empty() {
+                continue;
+            }
+
+            let offset = (section.start - self.runtime_start) as usize;
+            let end = offset + section.data.len();
+            blob[offset..end].copy_from_slice(&section.data);
+        }
 
         blob
     }
 
-    /// The current implementation assumes that all three sections follow each other
-    /// directly in RAM.
-    ///
-    /// This is especially important when the code is not position independent,
-    /// since it depends on the linker in this case. If the code *is* position independent,
-    /// it can be freely rearranged, and this is not an issue.
+    /// Returns whether the runtime image can be reconstructed by loading a single
+    /// contiguous blob at the code section load address.
     pub(crate) fn is_continuous_in_ram(&self) -> bool {
-        (self.code_section.load_address + self.code_section.length
-            == self.data_section.load_address)
-            && (self.data_section.load_address + self.data_section.length
-                == self.bss_section.load_address)
+        self.runtime_sections.iter().all(|section| {
+            section.load_address >= self.code_section.load_address
+                && section.load_address - self.code_section.load_address
+                    == section.start - self.runtime_start
+        })
     }
 }
