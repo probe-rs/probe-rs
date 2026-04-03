@@ -13,7 +13,7 @@ use crate::architecture::arm::{
 };
 
 mod root_memory_interface;
-use root_memory_interface::RootMemoryInterface;
+pub(crate) use root_memory_interface::RootMemoryInterface;
 
 /// Deeply scans the debug port and returns a list of the addresses the memory access points discovered.
 pub fn enumerate_access_ports<ADI: ArmDebugInterface>(
