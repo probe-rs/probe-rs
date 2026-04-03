@@ -78,7 +78,7 @@ flash_algorithms:
       end: 0x1000000
     page_size: 0x4000
     erased_byte_value: 0xff
-    program_page_timeout: 1000
+    program_page_timeout: 2000
     erase_sector_timeout: 2000
     sectors:
     - size: 0x10000
