@@ -206,6 +206,11 @@ pub struct FlashingConfig {
     #[serde(default)]
     pub(crate) flashing_enabled: bool,
 
+    /// Skip the resetting of the chip. This can be useful if there is other tooling in place which
+    /// performs this task before flashing. It currently only works for RAM flashing.
+    #[serde(default)]
+    pub(crate) skip_reset: bool,
+
     /// Halt the target after reset
     #[serde(default)]
     pub(crate) halt_after_reset: bool,
