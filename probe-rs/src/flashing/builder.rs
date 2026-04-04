@@ -394,6 +394,7 @@ mod tests {
             }),
             range: 0..1 << 16,
             cores: vec!["main".into()],
+            memory_ports: vec![],
             is_alias: false,
         };
 
@@ -426,6 +427,7 @@ mod tests {
             }),
             range: 0..1 << 16,
             cores: vec!["main".into()],
+            memory_ports: vec![],
             is_alias: false,
         };
 
