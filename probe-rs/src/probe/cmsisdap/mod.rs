@@ -504,6 +504,26 @@ impl CmsisDap {
         }
     }
 
+    // Reads the CTRL/STAT register, and clears the sticky error flag if is set (or if the read
+    // faults, which shouldn't happen, but is observed to happen on some PSOC devices).
+    fn handle_sticky_err(&mut self) -> Result<(), ArmError> {
+        let ctrl = self.read_ctrl_register();
+        tracing::trace!("Ctrl/Stat register value is: {:?}", ctrl);
+
+        match ctrl {
+            Ok(ctrl) if !ctrl.sticky_err() => Ok(()),
+            Ok(_) | Err(ArmError::Dap(DapError::FaultResponse)) => {
+                // Clear sticky error flags.
+                self.write_abort({
+                    let mut abort = Abort(0);
+                    abort.set_stkerrclr(true);
+                    abort
+                })
+            }
+            Err(e) => Err(e),
+        }
+    }
+
     /// Immediately send whatever is in our batch if it is not empty.
     ///
     /// If the last transfer was a read, result is Some with the read value.
@@ -597,18 +617,7 @@ impl CmsisDap {
                 // To avoid a potential endless recursion,
                 // call a separate function to read the ctrl register,
                 // which doesn't use the batch API.
-                let ctrl = self.read_ctrl_register()?;
-
-                tracing::trace!("Ctrl/Stat register value is: {:?}", ctrl);
-
-                if ctrl.sticky_err() {
-                    // Clear sticky error flags.
-                    self.write_abort({
-                        let mut abort = Abort(0);
-                        abort.set_stkerrclr(ctrl.sticky_err());
-                        abort
-                    })?;
-                }
+                self.handle_sticky_err()?;
 
                 Err(DapError::FaultResponse.into())
             }
@@ -846,18 +855,7 @@ impl CmsisDap {
                 // To avoid a potential endless recursion,
                 // call a separate function to read the ctrl register,
                 // which doesn't use the batch API.
-                let ctrl = self.read_ctrl_register()?;
-
-                tracing::debug!("Ctrl/Stat register value is: {:?}", ctrl);
-
-                if ctrl.sticky_err() {
-                    // Clear sticky error flags.
-                    self.write_abort({
-                        let mut abort = Abort(0);
-                        abort.set_stkerrclr(ctrl.sticky_err());
-                        abort
-                    })?;
-                }
+                self.handle_sticky_err()?;
 
                 Err(DapError::FaultResponse.into())
             }
