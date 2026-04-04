@@ -15,7 +15,7 @@ use probe_rs::{
     probe::{DebugProbeError, list::Lister},
 };
 use probe_rs_debug::DebugError;
-use server::startup::debug;
+use server::startup::{debug_stdio, debug_tcp};
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::Path,
@@ -71,9 +71,10 @@ pub enum DebuggerError {
 /// This only works as a [debug_adapter::protocol::DapAdapter] and uses Debug Adapter Protocol (DAP) commands (enables connections from clients such as Microsoft Visual Studio Code).
 #[derive(clap::Parser)]
 pub struct Cmd {
-    /// IP port number to listen for incoming DAP connections, e.g. "50000"
+    /// IP port number to listen for incoming DAP connections, e.g. "50000".
+    /// When omitted, the DAP server communicates over stdin/stdout.
     #[clap(long)]
-    port: u16,
+    port: Option<u16>,
 
     /// IP address to listen for incoming DAP connections, e.g. "127.0.0.1"
     #[clap(long, default_value_t = Ipv4Addr::LOCALHOST.into())]
@@ -85,6 +86,8 @@ pub struct Cmd {
     /// OTHERWISE probe-rs will persist and continue to listen for new DAP client connections
     /// ("multi-session" mode), and it becomes the user's responsibility to terminate the debug
     /// adapter process.
+    ///
+    /// Implied when `--port` is omitted (stdio mode).
     #[clap(long, alias("vscode"))]
     single_session: bool,
 }
@@ -95,6 +98,11 @@ pub async fn run(
     time_offset: UtcOffset,
     log_file: Option<&Path>,
 ) -> Result<()> {
-    let addr = SocketAddr::new(cmd.ip, cmd.port);
-    debug(lister, addr, cmd.single_session, log_file, time_offset).await
+    match cmd.port {
+        Some(port) => {
+            let addr = SocketAddr::new(cmd.ip, port);
+            debug_tcp(lister, addr, cmd.single_session, log_file, time_offset).await
+        }
+        None => debug_stdio(lister, log_file, time_offset).await,
+    }
 }
