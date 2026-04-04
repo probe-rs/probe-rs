@@ -182,6 +182,14 @@ fn read_frame_record_for_core(
                 |fr| AdjustedFrameRecord::new_from_frame_record_32(fr, instruction_set, last_pc),
             )
         }
+        InstructionSet::RV64 | InstructionSet::RV64C => {
+            // RV64 frame records are two 64-bit words: saved FP (fp-16) and saved RA (fp-8),
+            // using the same -16 byte offset convention as RISCV32 but 8-byte pointers.
+            const RISCV64_FRAME_RECORD_OFFSET: i64 = -16;
+            read_arm_riscv_64_frame_record(memory, frame_pointer, RISCV64_FRAME_RECORD_OFFSET).map(
+                |fr| AdjustedFrameRecord::new_from_frame_record_64(fr, instruction_set, last_pc),
+            )
+        }
         InstructionSet::Xtensa => {
             read_xtensa_frame_record(memory, frame_pointer, XTENSA_FRAME_RECORD_OFFSET).map(|fr| {
                 AdjustedFrameRecord::new_from_frame_record_32(fr, instruction_set, last_pc)
