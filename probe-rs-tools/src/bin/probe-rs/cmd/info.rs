@@ -52,7 +52,7 @@ impl Cmd {
         let protocols = if let Some(protocol) = self.common.protocol {
             vec![protocol]
         } else {
-            vec![WireProtocol::Jtag, WireProtocol::Swd]
+            vec![WireProtocol::Jtag, WireProtocol::Swd, WireProtocol::Updi]
         };
 
         let probe = select_probe(&client, self.common.probe.map(Into::into)).await?;
