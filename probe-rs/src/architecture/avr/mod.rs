@@ -5,7 +5,7 @@
 //! (halt, step, breakpoints, register reads).
 
 pub mod communication_interface;
-pub use communication_interface::UpdiInterface;
+pub use communication_interface::{AvrError, UpdiInterface};
 
 use crate::{
     CoreInterface, CoreRegister, CoreStatus, CoreType, Error, MemoryInterface,
@@ -196,11 +196,8 @@ impl<'probe> Avr<'probe> {
                         Some("Lock") => AvrMemoryRegion::Lock,
                         Some("UserRow") => AvrMemoryRegion::UserRow,
                         Some("ProdSig") => AvrMemoryRegion::ProdSig,
-                        other => {
-                            return Err(Error::Other(format!(
-                                "AVR address {address:#010x} in unsupported region {:?}",
-                                other
-                            )));
+                        _ => {
+                            return Err(Error::Avr(AvrError::AddressNotMapped { address }));
                         }
                     },
                     _ => continue,
@@ -209,9 +206,7 @@ impl<'probe> Avr<'probe> {
             }
         }
 
-        Err(Error::Other(format!(
-            "AVR address {address:#010x} does not map to any known memory region"
-        )))
+        Err(Error::Avr(AvrError::AddressNotMapped { address }))
     }
 
     /// Map an absolute data-space address to a (debug memtype, address) pair for
@@ -219,9 +214,8 @@ impl<'probe> Avr<'probe> {
     ///
     /// Uses the target's memory_map to determine the EDBG memory type.
     fn debug_address_to_memtype(&self, address: u64) -> Result<(u8, u32), Error> {
-        let addr = u32::try_from(address).map_err(|_| {
-            Error::Other(format!("AVR address {address:#010x} exceeds 32-bit range"))
-        })?;
+        let addr = u32::try_from(address)
+            .map_err(|_| Error::Avr(AvrError::AddressOutOfRange { address }))?;
 
         // GDB AVR address spaces:
         //   0x000000..          -> Program memory (flash), byte-addressed
@@ -251,10 +245,10 @@ impl<'probe> Avr<'probe> {
         // via SRAM memtype at the data-space address.
         let chip = self.interface.chip();
         if addr >= chip.flash_size {
-            return Err(Error::Other(format!(
-                "AVR program address {addr:#010x} exceeds flash size ({:#010x})",
-                chip.flash_size
-            )));
+            return Err(Error::Avr(AvrError::AddressBeyondFlash {
+                address: addr,
+                flash_size: chip.flash_size,
+            }));
         }
         Ok((DEBUG_MTYPE_SRAM, chip.flash_base + addr))
     }
@@ -311,20 +305,20 @@ impl MemoryInterface for Avr<'_> {
             let (memtype, addr) = self.debug_address_to_memtype(address)?;
             tracing::trace!("AVR read_8: memtype=0x{memtype:02x} mapped_addr=0x{addr:04x}");
             let length = u32::try_from(data.len())
-                .map_err(|_| Error::Other("AVR read length exceeds 32-bit range".to_string()))?;
+                .map_err(|_| Error::Avr(AvrError::AddressOutOfRange { address }))?;
             let bytes = match self.interface.read_memory(memtype, addr, length) {
                 Ok(b) => b,
                 Err(e) => {
                     tracing::debug!("AVR read_8: EDBG read failed: {e}");
-                    return Err(e.into());
+                    return Err(Error::Avr(AvrError::from(e)));
                 }
             };
             if bytes.len() < data.len() {
-                return Err(Error::Other(format!(
-                    "AVR debug read returned {} bytes, expected {}",
-                    bytes.len(),
-                    data.len()
-                )));
+                return Err(Error::Avr(AvrError::DataLengthMismatch {
+                    address,
+                    expected: data.len(),
+                    actual: bytes.len(),
+                }));
             }
             data.copy_from_slice(&bytes[..data.len()]);
             Ok(())
@@ -332,14 +326,14 @@ impl MemoryInterface for Avr<'_> {
             // Programming mode path
             let (region, offset) = self.address_to_region(address)?;
             let length = u32::try_from(data.len())
-                .map_err(|_| Error::Other("AVR read length exceeds 32-bit range".to_string()))?;
+                .map_err(|_| Error::Avr(AvrError::AddressOutOfRange { address }))?;
             let bytes = self.interface.read_region(region, offset, length)?;
             if bytes.len() < data.len() {
-                return Err(Error::Other(format!(
-                    "AVR read returned {} bytes, expected {}",
-                    bytes.len(),
-                    data.len()
-                )));
+                return Err(Error::Avr(AvrError::DataLengthMismatch {
+                    address,
+                    expected: data.len(),
+                    actual: bytes.len(),
+                }));
             }
             data.copy_from_slice(&bytes[..data.len()]);
             Ok(())
@@ -406,7 +400,7 @@ impl CoreInterface for Avr<'_> {
                     }
                     std::thread::sleep(Duration::from_millis(10));
                 }
-                Err(e) => return Err(Error::Probe(e)),
+                Err(e) => return Err(Error::Avr(AvrError::from(e))),
             }
         }
     }
@@ -419,14 +413,16 @@ impl CoreInterface for Avr<'_> {
             // halt attempt before the debug session is established.
             return Ok(true);
         }
-        self.interface.status().map_err(Error::Probe)
+        self.interface
+            .status()
+            .map_err(|e| Error::Avr(AvrError::from(e)))
     }
 
     fn status(&mut self) -> Result<CoreStatus, Error> {
         if !self.interface.debug_state().in_debug_mode {
             return Ok(CoreStatus::Unknown);
         }
-        let halted = self.interface.status().map_err(Error::Probe)?;
+        let halted = self.interface.status().map_err(AvrError::from)?;
         if halted {
             let reason = if self.interface.debug_state().hw_breakpoint.is_some() {
                 crate::HaltReason::Breakpoint(crate::BreakpointCause::Hardware)
@@ -440,19 +436,25 @@ impl CoreInterface for Avr<'_> {
     }
 
     fn halt(&mut self, _timeout: Duration) -> Result<CoreInformation, Error> {
-        let pc = self.interface.halt().map_err(Error::Probe)?;
+        let pc = self.interface.halt().map_err(AvrError::from)?;
         Ok(CoreInformation { pc: pc as u64 })
     }
 
     fn run(&mut self) -> Result<(), Error> {
-        self.interface.run().map_err(Error::Probe)
+        self.interface
+            .run()
+            .map_err(|e| Error::Avr(AvrError::from(e)))
     }
 
     fn reset(&mut self) -> Result<(), Error> {
         if self.interface.debug_state().in_debug_mode {
-            self.interface.reset().map_err(Error::Probe)
+            self.interface
+                .reset()
+                .map_err(|e| Error::Avr(AvrError::from(e)))
         } else {
-            self.interface.target_reset().map_err(Error::Probe)
+            self.interface
+                .target_reset()
+                .map_err(|e| Error::Avr(AvrError::from(e)))
         }
     }
 
@@ -460,16 +462,16 @@ impl CoreInterface for Avr<'_> {
         // Match the dispatch pattern in reset(): use OCD reset when in debug
         // mode, otherwise use the non-OCD target reset.
         if self.interface.debug_state().in_debug_mode {
-            self.interface.reset().map_err(Error::Probe)?;
+            self.interface.reset().map_err(AvrError::from)?;
         } else {
-            self.interface.target_reset().map_err(Error::Probe)?;
+            self.interface.target_reset().map_err(AvrError::from)?;
         }
-        let pc = self.interface.halt().map_err(Error::Probe)?;
+        let pc = self.interface.halt().map_err(AvrError::from)?;
         Ok(CoreInformation { pc: pc as u64 })
     }
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
-        let pc = self.interface.step().map_err(Error::Probe)?;
+        let pc = self.interface.step().map_err(AvrError::from)?;
         Ok(CoreInformation { pc: pc as u64 })
     }
 
@@ -477,22 +479,22 @@ impl CoreInterface for Avr<'_> {
         let id = address.0;
         match id {
             0..=31 => {
-                let regs = self.interface.read_registers().map_err(Error::Probe)?;
+                let regs = self.interface.read_registers().map_err(AvrError::from)?;
                 Ok(RegisterValue::U32(regs[id as usize] as u32))
             }
             32 => {
-                let sreg = self.interface.read_sreg().map_err(Error::Probe)?;
+                let sreg = self.interface.read_sreg().map_err(AvrError::from)?;
                 Ok(RegisterValue::U32(sreg as u32))
             }
             33 => {
-                let sp = self.interface.read_sp().map_err(Error::Probe)?;
+                let sp = self.interface.read_sp().map_err(AvrError::from)?;
                 Ok(RegisterValue::U32(sp as u32))
             }
             34 => {
-                let pc = self.interface.read_pc().map_err(Error::Probe)?;
+                let pc = self.interface.read_pc().map_err(AvrError::from)?;
                 Ok(RegisterValue::U32(pc))
             }
-            _ => Err(Error::Other(format!("AVR: unknown register id {}", id))),
+            _ => Err(Error::Avr(AvrError::UnknownRegister { id })),
         }
     }
 
@@ -516,33 +518,30 @@ impl CoreInterface for Avr<'_> {
 
     fn set_hw_breakpoint(&mut self, unit_index: usize, addr: u64) -> Result<(), Error> {
         if unit_index != 0 {
-            return Err(Error::Other(format!(
-                "AVR: breakpoint unit {} out of range (max 1)",
-                unit_index
-            )));
+            return Err(Error::Avr(AvrError::BreakpointUnitOutOfRange {
+                index: unit_index,
+                max: 0,
+            }));
         }
-        let addr32 = u32::try_from(addr).map_err(|_| {
-            Error::Other(format!(
-                "AVR breakpoint address {addr:#x} exceeds 32-bit range"
-            ))
-        })?;
+        let addr32 = u32::try_from(addr)
+            .map_err(|_| Error::Avr(AvrError::AddressOutOfRange { address: addr }))?;
         self.interface
             .hw_break_set(unit_index as u8, addr32)
-            .map_err(Error::Probe)?;
+            .map_err(AvrError::from)?;
         self.interface.debug_state_mut().hw_breakpoint = Some(addr);
         Ok(())
     }
 
     fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), Error> {
         if unit_index != 0 {
-            return Err(Error::Other(format!(
-                "AVR: breakpoint unit {} out of range (max 1)",
-                unit_index
-            )));
+            return Err(Error::Avr(AvrError::BreakpointUnitOutOfRange {
+                index: unit_index,
+                max: 0,
+            }));
         }
         self.interface
             .hw_break_clear(unit_index as u8)
-            .map_err(Error::Probe)?;
+            .map_err(AvrError::from)?;
         self.interface.debug_state_mut().hw_breakpoint = None;
         Ok(())
     }
@@ -600,6 +599,8 @@ impl CoreInterface for Avr<'_> {
     }
 
     fn debug_core_stop(&mut self) -> Result<(), Error> {
-        self.interface.cleanup().map_err(Error::Probe)
+        self.interface
+            .cleanup()
+            .map_err(|e| Error::Avr(AvrError::from(e)))
     }
 }
