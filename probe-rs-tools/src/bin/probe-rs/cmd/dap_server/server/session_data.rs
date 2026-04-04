@@ -16,7 +16,6 @@ use crate::{
                 },
                 protocol::ProtocolAdapter,
             },
-            server::startup::TargetSessionType,
         },
         run::EmbeddedTestElfInfo,
     },
@@ -27,7 +26,7 @@ use probe_rs::{
     BreakpointCause, CoreStatus, HaltReason, Session, VectorCatchCondition,
     config::{Registry, TargetSelector},
     probe::list::Lister,
-    rtt::{ScanRegion, find_rtt_control_block_in_raw_file},
+    rtt::{Rtt, ScanRegion, find_rtt_control_block_in_raw_file},
 };
 use probe_rs_debug::{
     DebugRegisters, SourceLocation, debug_info::DebugInfo, exception_handler_for_core,
@@ -83,7 +82,6 @@ impl SessionData {
         lister: &Lister,
         config: &mut configuration::SessionConfig,
         timestamp_offset: UtcOffset,
-        session_type: TargetSessionType,
     ) -> Result<Self, DebuggerError> {
         let target_selector = TargetSelector::from(config.chip.as_deref());
 
@@ -224,9 +222,6 @@ impl SessionData {
                 rtt_scan_ranges: ScanRegion::Ranges(vec![]),
                 rtt_connection: None,
                 rtt_client: None,
-                // For launch requests, always clear the RTT header, otherwise we may attach before the channel names are set.
-                clear_rtt_header: session_type == TargetSessionType::LaunchRequest,
-                rtt_header_cleared: false,
 
                 // We're abusing the RTT window machinery here for simplicity.
                 // Let's assume there are less than 1024 RTT channels.
@@ -294,6 +289,20 @@ impl SessionData {
             };
         }
 
+        Ok(())
+    }
+
+    /// Clear stale RTT control blocks for all cores.
+    ///
+    /// This should be called while the core is halted, before a reset, to wipe
+    /// stale RTT data from a previous debug session. After reset, the firmware
+    /// startup code will reinitialize the block from `.data`.
+    pub(crate) fn clear_rtt_blocks(&mut self) -> Result<(), DebuggerError> {
+        for core_data in self.core_data.iter() {
+            let mut core = self.session.core(core_data.core_index)?;
+            Rtt::clear_control_block(&mut core, &core_data.rtt_scan_ranges)
+                .map_err(|e| anyhow::anyhow!("Failed to clear RTT control block: {e}"))?;
+        }
         Ok(())
     }
 
