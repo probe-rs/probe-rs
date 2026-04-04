@@ -267,7 +267,8 @@ pub enum DebugSequence {
     Riscv(Arc<dyn RiscvDebugSequence>),
     /// An Xtensa debug sequence.
     Xtensa(Arc<dyn XtensaDebugSequence>),
-    /// An AVR debug sequence.
+    /// AVR debug sequence placeholder.
+    // AVR UPDI debug operations go through OCD via UpdiInterface, not debug sequences.
     Avr(()),
 }
 

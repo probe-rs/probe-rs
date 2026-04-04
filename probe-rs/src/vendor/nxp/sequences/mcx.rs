@@ -387,7 +387,11 @@ impl ArmDebugSequence for MCX {
                     abort.set_stkerrclr(true);
                     interface.write_dp_register(dp, abort)?;
                 }
-                _ => {} // Other protocols don't reach ARM debug sequences.
+                WireProtocol::Updi => {
+                    return Err(ArmError::Other(
+                        "MCX debug port setup not supported for UPDI protocol".to_string(),
+                    ));
+                }
             }
         }
 
