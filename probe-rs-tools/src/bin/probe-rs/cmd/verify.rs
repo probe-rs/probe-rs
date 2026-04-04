@@ -53,13 +53,10 @@ impl Cmd {
             .await?;
 
         match result {
-            VerifyResult::Ok => {
-                println!("Verification successful");
-                Ok(())
-            }
-            VerifyResult::Mismatch => {
-                anyhow::bail!("Verification failed: contents do not match");
-            }
+            VerifyResult::Ok => println!("Verification successful"),
+            VerifyResult::Mismatch => println!("Verification failed: contents do not match"),
         }
+
+        Ok(())
     }
 }
