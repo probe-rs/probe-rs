@@ -321,6 +321,7 @@ impl ExceptionInterface for ArmV7MExceptionHandler {
         &self,
         memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &DebugRegisters,
+        _callee_frame_registers: &DebugRegisters,
         _debug_info: &DebugInfo,
     ) -> Result<Option<ExceptionInfo>, DebugError> {
         armv6m_armv7m_shared::exception_details(self, memory_interface, stackframe_registers)
@@ -330,6 +331,7 @@ impl ExceptionInterface for ArmV7MExceptionHandler {
         &self,
         memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &crate::DebugRegisters,
+        _callee_frame_registers: &crate::DebugRegisters,
         raw_exception: u32,
     ) -> Result<crate::DebugRegisters, DebugError> {
         let exception_reason = ExceptionReason::from(raw_exception);
