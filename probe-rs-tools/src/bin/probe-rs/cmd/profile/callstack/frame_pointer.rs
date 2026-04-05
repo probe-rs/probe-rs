@@ -187,6 +187,10 @@ fn read_frame_record_for_core(
                 AdjustedFrameRecord::new_from_frame_record_32(fr, instruction_set, last_pc)
             })
         }
+        InstructionSet::Avr => {
+            // AVR frame pointer unwinding not yet implemented
+            Err(FramePointerStackWalkError::ReadAddressOverflow)
+        }
     }
 }
 

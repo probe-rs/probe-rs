@@ -1,3 +1,4 @@
+pub(crate) mod edbg_avr;
 pub mod general;
 pub mod jtag;
 pub mod swd;
