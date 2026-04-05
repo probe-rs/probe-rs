@@ -409,13 +409,8 @@ impl Debugger {
 
         self.config.validate_config_files()?;
 
-        let mut session_data = SessionData::new(
-            registry,
-            lister,
-            &mut self.config,
-            self.timestamp_offset,
-            requested_target_session_type,
-        )?;
+        let mut session_data =
+            SessionData::new(registry, lister, &mut self.config, self.timestamp_offset)?;
 
         debug_adapter.halt_after_reset = self.config.flashing_config.halt_after_reset;
 
@@ -474,8 +469,6 @@ impl Debugger {
 
         drop(target_core);
 
-        // Poll cores once while still halted. This will ensure that the RTT control block is
-        // cleared even when haltAfterReset = false.
         session_data.poll_cores(&self.config, debug_adapter)?;
 
         debug_adapter.send_response::<()>(launch_attach_request, Ok(None))?;
@@ -530,14 +523,14 @@ impl Debugger {
         // Immediately after attaching, halt the core, so that we can finish restart logic without bumping into user code.
         halt_core(&mut target_core.core)?;
 
-        // Reset RTT so that the link can be re-established and the control block cleared.
+        // Reset RTT so that the link can be re-established.
         target_core.core_data.rtt_connection = None;
 
         // We can't keep the reference for borrow checker reasons.
         drop(target_core);
 
-        // Poll cores once while still halted. This will ensure that the RTT control block is
-        // cleared even when haltAfterReset = false.
+        session_data.clear_rtt_blocks()?;
+
         session_data.poll_cores(&self.config, debug_adapter)?;
 
         // Re-attach
@@ -668,14 +661,7 @@ impl Debugger {
                     true
                 };
 
-                // If the RTT header was initialized by the loader (i.e. in some cases where we run
-                // from RAM), do not clear the RTT header as nothing will reinitialize it.
-                // The actual clearing will be done during attaching.
-                for core_data in session_data.core_data.iter_mut() {
-                    if let probe_rs::rtt::ScanRegion::Exact(address) = core_data.rtt_scan_ranges {
-                        core_data.clear_rtt_header = !loader.has_data_for_address(address);
-                    }
-                }
+                session_data.clear_rtt_blocks()?;
 
                 if do_flashing {
                     loader

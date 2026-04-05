@@ -56,8 +56,6 @@ pub struct CoreData {
     pub rtt_scan_ranges: ScanRegion,
     pub rtt_connection: Option<debug_rtt::RttConnection>,
     pub rtt_client: Option<RttClient>,
-    pub clear_rtt_header: bool,
-    pub rtt_header_cleared: bool,
     pub next_semihosting_handle: u32,
     pub semihosting_handles: HashMap<u32, SemihostingFile>,
     pub repl_commands: Vec<ReplCommand>,
@@ -205,7 +203,6 @@ impl CoreHandle<'_> {
         let client = if let Some(client) = self.core_data.rtt_client.as_mut() {
             client
         } else {
-            self.core_data.rtt_header_cleared = false;
             self.core_data.rtt_client.insert(RttClient::new(
                 rtt_config.clone(),
                 self.core_data.rtt_scan_ranges.clone(),
@@ -214,13 +211,6 @@ impl CoreHandle<'_> {
         };
 
         if client.core_id() != core_id {
-            return Ok(());
-        }
-
-        if self.core_data.clear_rtt_header && !self.core_data.rtt_header_cleared {
-            client.clear_control_block(&mut self.core)?;
-            self.core_data.rtt_header_cleared = true;
-            // Trigger a reattach
             return Ok(());
         }
 
