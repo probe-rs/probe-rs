@@ -1,0 +1,345 @@
+name: SAMG
+manufacturer:
+  id: 0x1f
+  cc: 0x0
+generated_from_pack: true
+pack_file_release: 3.9.204
+variants:
+- name: ATSAMG51G18
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x400000
+      end: 0x440000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x800000
+      end: 0xc00000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  flash_algorithms:
+  - atsamg_512
+- name: ATSAMG51N18
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x400000
+      end: 0x440000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x800000
+      end: 0xc00000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  flash_algorithms:
+  - atsamg_512
+- name: ATSAMG53G19
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x400000
+      end: 0x480000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x800000
+      end: 0xc00000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  flash_algorithms:
+  - atsamg_512
+- name: ATSAMG53N19
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x400000
+      end: 0x480000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x800000
+      end: 0xc00000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  flash_algorithms:
+  - atsamg_512
+- name: ATSAMG54G19
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x400000
+      end: 0x480000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x800000
+      end: 0xc00000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  flash_algorithms:
+  - atsamg_512
+- name: ATSAMG54J19
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x400000
+      end: 0x480000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x800000
+      end: 0xc00000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  flash_algorithms:
+  - atsamg_512
+- name: ATSAMG54N19
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x400000
+      end: 0x480000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x800000
+      end: 0xc00000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  flash_algorithms:
+  - atsamg_512
+- name: ATSAMG55G19
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x400000
+      end: 0x480000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x800000
+      end: 0xc00000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20028000
+    cores:
+    - main
+  flash_algorithms:
+  - atsamg_512
+- name: ATSAMG55J19
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x400000
+      end: 0x480000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IROM2
+    range:
+      start: 0x800000
+      end: 0xc00000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20028000
+    cores:
+    - main
+  flash_algorithms:
+  - atsamg_512
+flash_algorithms:
+- name: atsamg_512
+  description: ATSAMG 512kB Flash
+  default: true
+  instructions: MLVVSUlECGAPIFRJAAIIYAEgU0nAA0hhU0tSSFhiUkrAOhBrgAiAAEAcEGNOSIA4gWoJB/zVEWtwJKFDEWOBagkH/NURaklNKUMRYoFqiQP81RFqoUNFTBg0IUMRYhFq5AShQzckJAQhQxFigWrJA/zVEWuJCIkASRwRY4FqCQf81QEhEWOBagkH/NU1SEAcWGIAIDC9AigV0TBINElBYIFoyQf80MJokQcF1DBJ/jFBYIFoyQf80FEHBNUtSUFggWjJB/zQACBwRylJI0gIOUFggWjJB/zQACBwRx5KH0lKRBJogBpACoAIgACAHAAEAgofSAAfEENIYIhowAf80BtIgB8CQ0pgiGjAB/zQiGgAB0APANABIHBHMLUOTA9LTEQkaAQbyRxkCokIiQAC4CDKCR8gwAAp+tEgBAxJAAoMOQhDWGCYaMAH/NCYaAAHQA8A0AEgML0EAAAAAAoOQEAUDkAAQ01QwAQOQAgANwANAABaDAIAWgAAAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x97
+  pc_program_page: 0x11b
+  pc_erase_sector: 0xdd
+  pc_erase_all: 0xcb
+  data_section_offset: 0x178
+  rtt_poll_interval: 0
+  flash_properties:
+    address_range:
+      start: 0x400000
+      end: 0x480000
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x2000
+      address: 0x0
