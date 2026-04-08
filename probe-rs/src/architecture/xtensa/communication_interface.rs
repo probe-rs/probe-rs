@@ -799,6 +799,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             OperationKind::Read16(data) => Op::Read(data.as_mut_bytes()),
             OperationKind::Read32(data) => Op::Read(data.as_mut_bytes()),
             OperationKind::Read64(data) => Op::Read(data.as_mut_bytes()),
+            OperationKind::ReadMem32Bits(data) => Op::Read(data.as_mut_bytes()),
             OperationKind::Write(data) => Op::Write(data),
             OperationKind::Write8(data) => Op::Write(data),
             OperationKind::Write16(data) => Op::Write(data.as_bytes()),

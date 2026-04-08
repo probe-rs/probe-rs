@@ -159,10 +159,39 @@ where
             // Avoid heap allocation and copy if we don't need it.
             self.read_mem_32bit(address, data)?;
         } else {
-            let start_extra_count = (address % 4) as usize;
-            let mut buffer = vec![0u8; (start_extra_count + data.len()).div_ceil(4) * 4];
-            self.read_mem_32bit(address - start_extra_count as u64, &mut buffer)?;
-            data.copy_from_slice(&buffer[start_extra_count..start_extra_count + data.len()]);
+            let mut ops = Vec::with_capacity(3);
+            let mut current_address = address;
+            let bytes_to_align =
+                (address.next_multiple_of(4) - address).min(data.len() as u64) as usize;
+            let (unaligned_head, data) = data.split_at_mut(bytes_to_align.min(data.len()));
+            let unaligned_head_len = unaligned_head.len();
+            if unaligned_head_len > 0 {
+                ops.push(Operation::new(
+                    current_address,
+                    OperationKind::Read8(unaligned_head),
+                ));
+                current_address += unaligned_head_len as u64;
+            }
+
+            let (aligned_block, unaligned_tail) = data.split_at_mut(data.len() - (data.len() % 4));
+            let aligned_block_len = aligned_block.len();
+            if aligned_block_len > 0 {
+                ops.push(Operation::new(
+                    current_address,
+                    OperationKind::ReadMem32Bits(aligned_block),
+                ));
+                current_address += aligned_block_len as u64;
+            }
+
+            if !unaligned_tail.is_empty() {
+                ops.push(Operation::new(
+                    current_address,
+                    OperationKind::Read8(unaligned_tail),
+                ));
+            }
+            for op in ops {
+                self.execute_single_memory_operation(op)?;
+            }
         }
         Ok(())
     }
@@ -333,18 +362,15 @@ where
     /// Execute a single memory operation.
     ///
     /// This function is used to execute a single memory operation, such as reading or writing data.
-    fn execute_single_memory_operation(
-        &mut self,
-        mut operation: Operation<'_>,
-    ) -> Result<(), crate::Error>
-    where
-        Error: From<ERR>,
-    {
-        let result = match operation.operation {
+    fn execute_single_memory_operation(&mut self, mut operation: Operation<'_>) -> Result<(), ERR> {
+        match operation.operation {
             OperationKind::Read(ref mut data) => self.read(operation.address, data),
             OperationKind::Read8(ref mut data) => self.read_8(operation.address, data),
             OperationKind::Read16(ref mut data) => self.read_16(operation.address, data),
             OperationKind::Read32(ref mut data) => self.read_32(operation.address, data),
+            OperationKind::ReadMem32Bits(ref mut data) => {
+                self.read_mem_32bit(operation.address, data)
+            }
             OperationKind::Read64(ref mut data) => self.read_64(operation.address, data),
             OperationKind::Write(data) => self.write(operation.address, data),
             OperationKind::Write8(data) => self.write_8(operation.address, data),
@@ -355,8 +381,7 @@ where
             OperationKind::WriteWord16(data) => self.write_word_16(operation.address, data),
             OperationKind::WriteWord32(data) => self.write_word_32(operation.address, data),
             OperationKind::WriteWord64(data) => self.write_word_64(operation.address, data),
-        };
-        result.map_err(Error::from)
+        }
     }
 
     /// Execute a batch of operations.
@@ -373,7 +398,7 @@ where
         for operation in operations {
             let result = self.execute_single_memory_operation(operation.reborrow());
             let success = result.is_ok();
-            operation.result = Some(result);
+            operation.result = Some(result.map_err(Error::from));
             if !success {
                 break;
             }
@@ -526,6 +551,7 @@ pub enum OperationKind<'a> {
     Read8(&'a mut [u8]),
     Read16(&'a mut [u16]),
     Read32(&'a mut [u32]),
+    ReadMem32Bits(&'a mut [u8]),
     Read64(&'a mut [u64]),
     Write(&'a [u8]),
     Write8(&'a [u8]),
@@ -573,6 +599,7 @@ impl<'a> Operation<'a> {
                 OperationKind::Read16(ref mut data) => OperationKind::Read16(data),
                 OperationKind::Read32(ref mut data) => OperationKind::Read32(data),
                 OperationKind::Read64(ref mut data) => OperationKind::Read64(data),
+                OperationKind::ReadMem32Bits(ref mut data) => OperationKind::ReadMem32Bits(data),
                 OperationKind::Write(data) => OperationKind::Write(data),
                 OperationKind::Write8(data) => OperationKind::Write8(data),
                 OperationKind::Write16(data) => OperationKind::Write16(data),
