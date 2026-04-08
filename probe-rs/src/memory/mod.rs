@@ -1,7 +1,6 @@
 use crate::error::Error;
 
 use scroll::Pread;
-use zerocopy::IntoBytes as _;
 
 /// {function_name} was called with data length that is not a multiple of {alignment}
 #[derive(Debug, thiserror::Error, docsplay::Display)]
@@ -164,7 +163,7 @@ where
             let mut current_address = address;
 
             // First, we read any unaligned start bytes.
-            if !address.is_multiple_of(4) {
+            if !current_address.is_multiple_of(4) {
                 let start_aligned_up = address.next_multiple_of(4);
                 let num_unaligned_start_bytes = (start_aligned_up - address) as usize;
                 let head_len = num_unaligned_start_bytes.min(data.len());
@@ -191,7 +190,9 @@ where
 
             // Last, we read any unaligned end bytes.
             if !end_address.is_multiple_of(4) && !data.is_empty() {
-                self.read_8(current_address, &mut data[0..(end_address % 4) as usize])?;
+                let remaining_unaligned = (end_address % 4) as usize;
+                let to_read = remaining_unaligned.min(data.len());
+                self.read_8(current_address, &mut data[0..to_read])?;
             }
         }
         Ok(())
