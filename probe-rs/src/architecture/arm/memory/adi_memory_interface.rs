@@ -249,24 +249,47 @@ where
         Ok(())
     }
 
-    fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
+    fn read(&mut self, address: u64, mut data: &mut [u8]) -> Result<(), ArmError> {
         let len = data.len();
         if address.is_multiple_of(4) && len.is_multiple_of(4) {
             let mut buffer = vec![0u32; len / 4];
             self.read_32(address, &mut buffer)?;
-            for (bytes, value) in data.chunks_exact_mut(4).zip(buffer.iter()) {
-                bytes.copy_from_slice(&u32::to_le_bytes(*value));
-            }
+            data.copy_from_slice(buffer.as_bytes());
         } else {
-            let start_address = address & !3;
-            let end_address = address + (data.len() as u64);
-            let end_address = end_address + (4 - (end_address & 3));
-            let start_extra_count = address as usize % 4;
-            let mut buffer = vec![0u32; (end_address - start_address) as usize / 4];
-            self.read_32(start_address, &mut buffer)?;
-            data.copy_from_slice(
-                &buffer.as_bytes()[start_extra_count..start_extra_count + data.len()],
-            );
+            let mut current_address = address;
+
+            // First, we read any unaligned start bytes.
+            if !address.is_multiple_of(4) {
+                let start_aligned_up = address.next_multiple_of(4);
+                let num_unaligned_start_bytes = (start_aligned_up - address) as usize;
+                let head_len = num_unaligned_start_bytes.min(data.len());
+                if head_len > 0 {
+                    self.read_8(address, &mut data[0..head_len])?;
+                    data = &mut data[head_len..];
+                    current_address += head_len as u64;
+                }
+            }
+
+            if data.is_empty() {
+                return Ok(());
+            }
+
+            // Then, we read the portion that is fully aligned.
+            let end_address = address + (len as u64);
+            let end_aligned_down = end_address & !3;
+            if end_aligned_down > current_address {
+                let full_word_bytes = (end_aligned_down - current_address) as usize;
+                let mut word_buffer = vec![0u32; full_word_bytes / 4];
+                self.read_32(current_address, &mut word_buffer)?;
+                data[0..full_word_bytes].copy_from_slice(word_buffer.as_bytes());
+                data = &mut data[full_word_bytes..];
+                current_address += full_word_bytes as u64;
+            }
+
+            // Last, we read any unaligned end bytes.
+            if !end_address.is_multiple_of(4) && !data.is_empty() {
+                self.read_8(current_address, &mut data[0..(end_address % 4) as usize])?;
+            }
         }
         Ok(())
     }
