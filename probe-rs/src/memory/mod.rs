@@ -1,6 +1,7 @@
 use crate::error::Error;
 
 use scroll::Pread;
+use zerocopy::IntoBytes as _;
 
 /// {function_name} was called with data length that is not a multiple of {alignment}
 #[derive(Debug, thiserror::Error, docsplay::Display)]
@@ -151,7 +152,7 @@ where
     /// used.
     ///
     ///  Generally faster than `read_8`.
-    fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), ERR> {
+    fn read(&mut self, address: u64, mut data: &mut [u8]) -> Result<(), ERR> {
         if self.supports_native_64bit_access() {
             // Avoid heap allocation and copy if we don't need it.
             self.read_8(address, data)?;
@@ -159,10 +160,39 @@ where
             // Avoid heap allocation and copy if we don't need it.
             self.read_mem_32bit(address, data)?;
         } else {
-            let start_extra_count = (address % 4) as usize;
-            let mut buffer = vec![0u8; (start_extra_count + data.len()).div_ceil(4) * 4];
-            self.read_mem_32bit(address - start_extra_count as u64, &mut buffer)?;
-            data.copy_from_slice(&buffer[start_extra_count..start_extra_count + data.len()]);
+            let len = data.len();
+            let mut current_address = address;
+
+            // First, we read any unaligned start bytes.
+            if !address.is_multiple_of(4) {
+                let start_aligned_up = address.next_multiple_of(4);
+                let num_unaligned_start_bytes = (start_aligned_up - address) as usize;
+                let head_len = num_unaligned_start_bytes.min(data.len());
+                if head_len > 0 {
+                    self.read_8(address, &mut data[0..head_len])?;
+                    data = &mut data[head_len..];
+                    current_address += head_len as u64;
+                }
+            }
+
+            if data.is_empty() {
+                return Ok(());
+            }
+
+            // Then, we read the portion that is fully aligned.
+            let end_address = address + (len as u64);
+            let end_aligned_down = end_address & !3;
+            if end_aligned_down > current_address {
+                let full_word_bytes = (end_aligned_down - current_address) as usize;
+                self.read_mem_32bit(current_address, &mut data[0..full_word_bytes])?;
+                data = &mut data[full_word_bytes..];
+                current_address += full_word_bytes as u64;
+            }
+
+            // Last, we read any unaligned end bytes.
+            if !end_address.is_multiple_of(4) && !data.is_empty() {
+                self.read_8(current_address, &mut data[0..(end_address % 4) as usize])?;
+            }
         }
         Ok(())
     }
