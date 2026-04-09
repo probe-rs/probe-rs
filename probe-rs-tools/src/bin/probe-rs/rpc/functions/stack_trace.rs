@@ -1,4 +1,4 @@
-use std::fmt::Write as _;
+use std::fmt::{self, Display, Write as _};
 
 use crate::rpc::{
     Key,
@@ -7,18 +7,82 @@ use crate::rpc::{
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
 use probe_rs::{Error, Session};
-use probe_rs_debug::{DebugInfo, DebugRegisters, exception_handler_for_core};
+use probe_rs_debug::{DebugInfo, DebugRegisters, StackFrame, exception_handler_for_core};
 use serde::{Deserialize, Serialize};
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct StackTrace {
-    pub core: u32,
-    pub frames: Vec<String>,
-}
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct StackTraces {
     pub cores: Vec<StackTrace>,
+}
+
+#[derive(Serialize, Deserialize, Schema)]
+pub struct StackTrace {
+    pub core: u32,
+    pub frames: Vec<StackTraceFrame>,
+}
+
+#[derive(Serialize, Deserialize, Schema)]
+pub struct StackTraceFrame {
+    pub function_name: String,
+    pub program_counter: u64,
+    pub is_inlined: bool,
+    pub location: Option<SourceLocation>,
+}
+
+impl From<StackFrame> for StackTraceFrame {
+    fn from(frame: StackFrame) -> Self {
+        StackTraceFrame {
+            function_name: frame.function_name,
+            program_counter: frame.pc.try_into().unwrap_or(0),
+            is_inlined: frame.is_inlined,
+            location: frame.source_location.map(|location| SourceLocation {
+                file: location.path.to_path().display().to_string(),
+                line: location.line,
+                column: location.column.map(|col| match col {
+                    probe_rs_debug::ColumnType::LeftEdge => 1,
+                    probe_rs_debug::ColumnType::Column(c) => c,
+                }),
+            }),
+        }
+    }
+}
+
+impl Display for StackTraceFrame {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut output_stream = String::new();
+        write!(f, "{} @ {:x}", self.function_name, self.program_counter).unwrap();
+
+        if self.is_inlined {
+            write!(&mut output_stream, " inline").unwrap();
+        }
+        f.write_str("\n")?;
+
+        if let Some(location) = &self.location {
+            write!(f, "       {location}")?;
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Serialize, Deserialize, Schema)]
+pub struct SourceLocation {
+    pub file: String,
+    pub line: Option<u64>,
+    pub column: Option<u64>,
+}
+
+impl Display for SourceLocation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.file)?;
+        if let Some(line) = self.line {
+            write!(f, ":{line}")?;
+            if let Some(column) = self.column {
+                write!(f, ":{column}")?;
+            }
+        }
+        Ok(())
+    }
 }
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -54,55 +118,22 @@ pub async fn take_stack_trace(
                 let initial_registers = DebugRegisters::from_core(&mut core);
                 let exception_interface = exception_handler_for_core(core_type);
                 let instruction_set = core.instruction_set().ok();
-                let stack_frames = debug_info
-                    .unwind(
-                        &mut core,
-                        initial_registers,
-                        exception_interface.as_ref(),
-                        instruction_set,
-                        request.stack_frame_limit as usize,
-                    )
-                    .unwrap();
+                let stack_frames = debug_info.unwind(
+                    &mut core,
+                    initial_registers,
+                    exception_interface.as_ref(),
+                    instruction_set,
+                    request.stack_frame_limit as usize,
+                )?;
 
-                let mut frame_strings = vec![];
-                for (i, frame) in stack_frames.into_iter().enumerate() {
-                    let mut output_stream = String::new();
-                    write!(
-                        &mut output_stream,
-                        "Frame {}: {} @ {}",
-                        i, frame.function_name, frame.pc
-                    )
-                    .unwrap();
-
-                    if frame.is_inlined {
-                        write!(&mut output_stream, " inline").unwrap();
-                    }
-                    writeln!(&mut output_stream).unwrap();
-
-                    if let Some(location) = &frame.source_location {
-                        write!(&mut output_stream, "       ").unwrap();
-                        write!(&mut output_stream, "{}", location.path.to_path().display())
-                            .unwrap();
-
-                        if let Some(line) = location.line {
-                            write!(&mut output_stream, ":{line}").unwrap();
-
-                            if let Some(col) = location.column {
-                                let col = match col {
-                                    probe_rs_debug::ColumnType::LeftEdge => 1,
-                                    probe_rs_debug::ColumnType::Column(c) => c,
-                                };
-                                write!(&mut output_stream, ":{col}").unwrap();
-                            }
-                        }
-                    }
-
-                    frame_strings.push(output_stream);
+                let mut frames = vec![];
+                for frame in stack_frames.into_iter() {
+                    frames.push(StackTraceFrame::from(frame));
                 }
 
                 cores.push(StackTrace {
                     core: idx as u32,
-                    frames: frame_strings,
+                    frames,
                 });
             }
             Ok(StackTraces { cores })
