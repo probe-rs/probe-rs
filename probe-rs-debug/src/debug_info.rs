@@ -687,6 +687,33 @@ impl DebugInfo {
                         break 'unwind;
                     }
 
+                    // Check for exception frames, same as PART 3 below.
+                    // This is needed because the exception check in PART 3 only
+                    // runs after DWARF unwinding, but we may have no DWARF info
+                    // for the current frame (e.g., outlined functions in release builds).
+                    if unwind_registers
+                        .get_return_address()
+                        .is_some_and(|ra| ra.value.is_some())
+                    {
+                        match exception_handler.exception_details(memory, &unwind_registers, self) {
+                            Ok(Some(exception_info)) => {
+                                tracing::trace!(
+                                    "UNWIND: Stack unwind reached an exception handler {} (no debug info path)",
+                                    exception_info.description
+                                );
+                                unwind_registers = exception_info.handler_frame.registers.clone();
+                                stack_frames.push(exception_info.handler_frame);
+                                continue 'unwind;
+                            }
+                            Ok(None) => {}
+                            Err(e) => {
+                                tracing::warn!(
+                                    "UNWIND: Error checking exception context (no debug info path): {e:?}"
+                                );
+                            }
+                        }
+                    }
+
                     if callee_frame_registers == unwind_registers {
                         tracing::debug!("No change, preventing infinite loop");
                         break;
