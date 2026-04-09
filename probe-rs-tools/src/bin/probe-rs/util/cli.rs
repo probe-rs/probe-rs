@@ -989,8 +989,8 @@ async fn display_stack_trace(
 
     for StackTrace { core, frames } in stack_trace.cores.iter() {
         println!("Core {core}");
-        for frame in frames {
-            println!("    {frame}");
+        for (i, frame) in frames.iter().enumerate() {
+            println!("    Frame {i}: {frame}");
         }
         if frames.len() >= stack_frame_limit as usize {
             println!("Use `--stack-frame-limit` to increase the number of frames displayed.");
