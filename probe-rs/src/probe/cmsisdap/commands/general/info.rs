@@ -143,7 +143,7 @@ impl ParseFromResponse for Capabilities {
         // This response can contain two info bytes.
         // As described by https://arm-software.github.io/CMSIS-DAP/latest/group__DAP__Info.html
         if buffer[0] > 0 {
-            let capabilites = Capabilities {
+            let capabilities = Capabilities {
                 swd_implemented: buffer[1] & 0x01 > 0,
                 jtag_implemented: buffer[1] & 0x02 > 0,
                 swo_uart_implemented: buffer[1] & 0x04 > 0,
@@ -159,7 +159,7 @@ impl ParseFromResponse for Capabilities {
                 },
             };
 
-            Ok(capabilites)
+            Ok(capabilities)
         } else {
             Err(SendError::UnexpectedAnswer)
         }

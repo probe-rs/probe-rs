@@ -91,11 +91,17 @@ pub fn extract_flash_algo(
             "EraseSector" => algo.pc_erase_sector = sym.st_value - code_section_offset as u64,
             "ProgramPage" => algo.pc_program_page = sym.st_value - code_section_offset as u64,
             "Verify" => algo.pc_verify = Some(sym.st_value - code_section_offset as u64),
-            "ReadFlash" => algo.pc_read = Some(sym.st_value - code_section_offset as u64),
             "BlankCheck" => algo.pc_blank_check = Some(sym.st_value - code_section_offset as u64),
+            // probe-rs additions
+            "ReadFlash" => algo.pc_read = Some(sym.st_value - code_section_offset as u64),
+            "FlashSize" => algo.pc_flash_size = Some(sym.st_value - code_section_offset as u64),
             "_SEGGER_RTT" => {
                 algo.rtt_location = Some(sym.st_value);
                 log::debug!("Found RTT control block at address {:#010x}", sym.st_value);
+            }
+            "PAGE_BUFFER" => {
+                algo.data_load_address = Some(sym.st_value);
+                log::debug!("Found PAGE_BUFFER at address {:#010x}", sym.st_value);
             }
 
             _ => {}
@@ -115,6 +121,10 @@ pub fn extract_flash_algo(
         );
 
         algo.load_address = Some(algorithm_binary.code_section.load_address as u64);
+        algo.data_section_offset = (algorithm_binary.data_section.start
+            - algorithm_binary.code_section.load_address) as u64;
+    } else {
+        algo.data_section_offset = algorithm_binary.data_section.start as u64;
     }
 
     algo.description.clone_from(&flash_device.name);
@@ -124,7 +134,6 @@ pub fn extract_flash_algo(
         .unwrap()
         .to_lowercase();
     algo.default = default;
-    algo.data_section_offset = algorithm_binary.data_section.start as u64;
     algo.flash_properties = FlashProperties::from(flash_device);
     algo.big_endian = !elf.little_endian;
 

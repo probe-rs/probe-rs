@@ -174,7 +174,7 @@ fn get_stack_frame_return_address(stackframe_registers: &DebugRegisters) -> Resu
     Ok(frame_return_address)
 }
 
-pub(crate) fn raw_exception(stackframe_registers: &crate::DebugRegisters) -> Result<u32, Error> {
+pub(crate) fn raw_exception(stackframe_registers: &DebugRegisters) -> Result<u32, Error> {
     // Load the provided xPSR register as a bitfield.
     let mut exception_number = Xpsr(
         stackframe_registers.get_register_value_by_role(&RegisterRole::ProcessorStatus)? as u32,
@@ -207,8 +207,8 @@ pub(crate) fn raw_exception(stackframe_registers: &crate::DebugRegisters) -> Res
 // TODO: probe-rs does not currently do anything with the floating point registers. When support is added, please note that the list of registers to read is different for cores that have the floating point extension.
 pub(crate) fn calling_frame_registers(
     memory: &mut dyn MemoryInterface,
-    stackframe_registers: &crate::DebugRegisters,
-) -> Result<crate::DebugRegisters, probe_rs::Error> {
+    stackframe_registers: &DebugRegisters,
+) -> Result<DebugRegisters, Error> {
     let exception_context_address: u32 =
         stackframe_registers.get_register_value_by_role(&RegisterRole::StackPointer)? as u32;
 

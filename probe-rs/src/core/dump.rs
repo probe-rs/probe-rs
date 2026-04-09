@@ -86,7 +86,7 @@ impl Processor for XtensaProcessor {
                 match idx {
                     // First 8 registers are special registers.
                     0 => (idx, RegisterId::from(XtensaRegister::CurrentPc)),
-                    1 => (idx, RegisterId::from(SpecialRegister::Ps)),
+                    1 => (idx, RegisterId::from(XtensaRegister::CurrentPs)),
                     2 => (idx, RegisterId::from(SpecialRegister::Lbeg)),
                     3 => (idx, RegisterId::from(SpecialRegister::Lend)),
                     4 => (idx, RegisterId::from(SpecialRegister::Lcount)),
@@ -163,7 +163,9 @@ impl CoreDump {
     /// # Arguments
     /// * `core`: The core to dump.
     /// * `ranges`: Memory ranges that should be dumped.
-    pub fn dump_core(core: &mut Core, ranges: Vec<Range<u64>>) -> Result<Self, Error> {
+    pub fn dump_core(core: &mut Core<'_>, ranges: Vec<Range<u64>>) -> Result<Self, Error> {
+        core.spill_registers()?;
+
         let mut registers = HashMap::new();
         for register in core.registers().all_registers() {
             let value = core.read_core_reg(register.id())?;
@@ -353,7 +355,7 @@ impl CoreDump {
     pub fn registers(&self) -> &'static CoreRegisters {
         match self.core_type {
             CoreType::Armv6m => &CORTEX_M_CORE_REGISTERS,
-            CoreType::Armv7a => match self.floating_point_register_count {
+            CoreType::Armv7a | CoreType::Armv7r => match self.floating_point_register_count {
                 Some(16) => &AARCH32_WITH_FP_16_CORE_REGISTERS,
                 Some(32) => &AARCH32_WITH_FP_32_CORE_REGISTERS,
                 _ => &AARCH32_CORE_REGISTERS,

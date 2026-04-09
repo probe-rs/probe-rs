@@ -50,7 +50,7 @@ impl VerifiedBreakpoint {
         Err(DebugError::WarnAndContinue { message })
     }
 
-    /// Identifying the breakpoint location for a specific location (path, line, colunmn) is a bit more complex,
+    /// Identifying the breakpoint location for a specific location (path, line, column) is a bit more complex,
     /// compared to the `for_address()` method, due to a few factors:
     /// - The correct program instructions, may be in any of the compilation units of the current program.
     /// - The debug information may not contain data for the "specific source" location requested:

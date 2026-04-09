@@ -7,15 +7,15 @@
 use bitvec::{bitvec, field::BitField, slice::BitSlice, vec::BitVec};
 
 use crate::{
-    Error,
     architecture::arm::{
-        ArmError, DapError, FullyQualifiedApAddress, RawDapAccess, RegisterAddress,
-        ap::AccessPortError,
-        dp::{Abort, Ctrl, DPIDR, DebugPortError, DpRegister, RdBuff},
+        ArmError, DapError, RawDapAccess, RegisterAddress,
+        dp::{Abort, Ctrl, DPIDR, DpRegister, RdBuff},
     },
     probe::{
-        CommandQueue, CommandResult, DebugProbe, DebugProbeError, IoSequenceItem, JtagAccess,
-        JtagSequence, JtagWriteCommand, RawSwdIo, WireProtocol, common::bits_to_byte,
+        CommandResult, DebugProbe, DebugProbeError, IoSequenceItem, JtagAccess, JtagSequence,
+        JtagWriteCommand, JtagWriteData, RawSwdIo, WireProtocol,
+        common::bits_to_byte,
+        queue::{BatchError, Queue},
     },
 };
 
@@ -119,14 +119,12 @@ fn perform_jtag_transfers<P: JtagAccess + RawSwdIo>(
     probe: &mut P,
     transfers: &mut [DapTransfer],
 ) -> Result<(), DebugProbeError> {
-    // Set up the command queue.
-    let mut queue = CommandQueue::new();
+    let mut queue: Queue<DapError> = Queue::new();
 
-    let mut results = vec![];
-
-    for transfer in transfers.iter() {
-        results.push(queue.schedule(transfer.jtag_write()));
-    }
+    let mut results: Vec<_> = transfers
+        .iter()
+        .map(|t| queue.schedule(t.jtag_write()))
+        .collect();
 
     let last_is_abort = transfers[transfers.len() - 1].is_abort();
     let last_is_rdbuff = transfers[transfers.len() - 1].is_rdbuff();
@@ -153,10 +151,10 @@ fn perform_jtag_transfers<P: JtagAccess + RawSwdIo>(
     let idle_cycles = probe.idle_cycles();
     probe.set_idle_cycles(max_idle_cycles.min(255) as u8)?;
 
-    // Execute as much of the queue as we can. We'll handle the rest in a following iteration
+    // Execute as much of the batch as we can. We'll handle the rest in a following iteration
     // if we can.
     let mut jtag_results;
-    match probe.write_register_batch(&queue) {
+    match queue.execute(|queue| probe.write_register_batch(queue)) {
         Ok(r) => {
             status_responses.fill(TransferStatus::Ok);
             jtag_results = r;
@@ -167,16 +165,13 @@ fn perform_jtag_transfers<P: JtagAccess + RawSwdIo>(
             jtag_results = e.results;
 
             match e.error {
-                Error::Arm(ArmError::AccessPort {
-                    address: _,
-                    source: AccessPortError::DebugPort(DebugPortError::Dap(failure)),
-                }) => {
-                    // Mark all subsequent transactions with the same failure.
+                BatchError::Specific(failure) => {
                     status_responses[current_idx..].fill(TransferStatus::Failed(failure));
                     jtag_results.push(&results[current_idx], CommandResult::None);
                 }
-                Error::Probe(error) => return Err(error),
-                _other => unreachable!(),
+                BatchError::Probe(err) => {
+                    return Err(err);
+                }
             }
         }
     }
@@ -266,8 +261,6 @@ fn perform_swd_transfers<P: RawSwdIo>(
         // There are eight request bits, the response comes directly after.
         let response_offset = 8;
         let response = parse_swd_response(&result_bits[response_offset..], transfer.direction);
-
-        probe.probe_statistics().report_swd_response(&response);
 
         transfer.status = match response {
             Ok(response) => {
@@ -387,9 +380,8 @@ fn perform_transfers<P: DebugProbe + RawSwdIo + JtagAccess>(
 
             // Add a read from RDBUFF, this access will be stalled by the DebugPort if the write
             // buffer is not empty.
-            // This is an extra transfer, which doesn't have a reponse on it's own.
+            // This is an extra transfer, which doesn't have a response on it's own.
             final_transfers.push(DapTransfer::read(RdBuff::ADDRESS));
-            probe.probe_statistics().record_extra_transfer();
         }
     }
 
@@ -403,8 +395,6 @@ fn perform_transfers<P: DebugProbe + RawSwdIo + JtagAccess>(
         num_transfers,
         num_transfers - transfers.len()
     );
-
-    probe.probe_statistics().record_transfers(num_transfers);
 
     perform_raw_transfers_retry(probe, &mut final_transfers)?;
 
@@ -597,7 +587,7 @@ impl DapTransfer {
         seq
     }
 
-    fn jtag_write(&self) -> JtagWriteCommand {
+    fn jtag_write(&self) -> JtagWriteCommand<DapError> {
         let (payload, address) = if self.is_abort() {
             (JTAG_ABORT_VALUE, JTAG_ABORT_IR_VALUE)
         } else {
@@ -621,12 +611,14 @@ impl DapTransfer {
         };
 
         JtagWriteCommand {
-            address,
-            data: payload.to_le_bytes().to_vec(),
-            len: JTAG_DR_BIT_LENGTH,
-            transform: |command, response| {
+            data: JtagWriteData {
+                address,
+                data: payload.to_le_bytes().to_vec(),
+                len: JTAG_DR_BIT_LENGTH,
+            },
+            transform: |data, response| {
                 // No responses returned for aborts.
-                if command.address == JTAG_ABORT_IR_VALUE {
+                if data.address == JTAG_ABORT_IR_VALUE {
                     return Ok(CommandResult::None);
                 }
 
@@ -647,10 +639,7 @@ impl DapTransfer {
                     }
                 };
 
-                Err(Error::Arm(ArmError::AccessPort {
-                    address: FullyQualifiedApAddress::v1_with_default_dp(0), // Dummy value, unused
-                    source: AccessPortError::DebugPort(DebugPortError::Dap(error)),
-                }))
+                Err(error)
             },
         }
     }
@@ -906,7 +895,7 @@ fn build_swd_transfer(address: &RegisterAddress, direction: TransferType) -> IoS
 fn parse_swd_response(resp: &[bool], direction: TransferDirection) -> Result<u32, DapError> {
     // We need to discard the output bits that correspond to the part of the request
     // in which the probe is driving SWDIO. Additionally, there is a phase shift that
-    // happens when ownership of the SWDIO line is transfered to the device.
+    // happens when ownership of the SWDIO line is transferred to the device.
     // The device changes the value of SWDIO with the rising edge of the clock.
     //
     // It appears that the JLink probe samples this line with the falling edge of
@@ -939,7 +928,7 @@ fn parse_swd_response(resp: &[bool], direction: TransferDirection) -> Result<u32
         _ => {
             // Invalid response
             tracing::debug!(
-                "Unexpected response from target, does not conform to SWD specfication (ack={:?})",
+                "Unexpected response from target, does not conform to SWD specification (ack={:?})",
                 resp
             );
             Err(DapError::Protocol(WireProtocol::Swd))
@@ -970,7 +959,7 @@ impl<Probe: DebugProbe + RawSwdIo + JtagAccess + 'static> RawDapAccess for Probe
                     //  This is not necessarily the CTRL/STAT register, because the dpbanksel field in the SELECT register
                     //  might be set so that the read wasn't actually from the CTRL/STAT register.
                     tracing::debug!(
-                        "Read might have been from CTRL/STAT register, not reading it again to dermine fault reason"
+                        "Read might have been from CTRL/STAT register, not reading it again to determine fault reason"
                     );
 
                     // We still clear the sticky error, otherwise all future accesses will fail.
@@ -1216,8 +1205,8 @@ mod test {
         },
         error::Error,
         probe::{
-            DebugProbe, DebugProbeError, IoSequenceItem, JtagAccess, JtagSequence, ProbeStatistics,
-            RawSwdIo, SwdSettings, WireProtocol,
+            DebugProbe, DebugProbeError, IoSequenceItem, JtagAccess, JtagSequence, RawSwdIo,
+            SwdSettings, WireProtocol,
         },
     };
     use probe_rs_target::ScanChainElement;
@@ -1256,7 +1245,6 @@ mod test {
         performed_transfer_count: usize,
 
         swd_settings: SwdSettings,
-        probe_statistics: ProbeStatistics,
 
         protocol: WireProtocol,
 
@@ -1274,7 +1262,6 @@ mod test {
                 performed_transfer_count: 0,
 
                 swd_settings: SwdSettings::default(),
-                probe_statistics: ProbeStatistics::default(),
 
                 protocol: WireProtocol::Swd,
 
@@ -1298,15 +1285,15 @@ mod test {
 
             match acknowledge {
                 DapAcknowledge::Ok => {
-                    // Set acknowledege to OK
+                    // Set acknowledge to OK
                     response.set(8, true);
                 }
                 DapAcknowledge::Wait => {
-                    // Set acknowledege to WAIT
+                    // Set acknowledge to WAIT
                     response.set(9, true);
                 }
                 DapAcknowledge::Fault => {
-                    // Set acknowledege to FAULT
+                    // Set acknowledge to FAULT
                     response.set(10, true);
                 }
                 DapAcknowledge::NoAck => {
@@ -1335,7 +1322,7 @@ mod test {
             &mut self,
             address: P,
             read: bool,
-            acknowlege: DapAcknowledge,
+            acknowledge: DapAcknowledge,
             output_value: u32,
             input_value: u32,
         ) {
@@ -1343,7 +1330,7 @@ mod test {
             let address = port.lsb().into();
             let mut response = (output_value as u64) << 3;
 
-            let status = match acknowlege {
+            let status = match acknowledge {
                 DapAcknowledge::Ok => JTAG_STATUS_OK,
                 DapAcknowledge::Wait => JTAG_STATUS_WAIT,
                 _ => 0b111,
@@ -1383,15 +1370,15 @@ mod test {
 
             match acknowledge {
                 DapAcknowledge::Ok => {
-                    // Set acknowledege to OK
+                    // Set acknowledge to OK
                     response.set(8, true);
                 }
                 DapAcknowledge::Wait => {
-                    // Set acknowledege to WAIT
+                    // Set acknowledge to WAIT
                     response.set(9, true);
                 }
                 DapAcknowledge::Fault => {
-                    // Set acknowledege to FAULT
+                    // Set acknowledge to FAULT
                     response.set(10, true);
                 }
                 DapAcknowledge::NoAck => {
@@ -1424,6 +1411,13 @@ mod test {
 
     impl JtagAccess for MockJaylink {
         fn shift_raw_sequence(&mut self, _: JtagSequence) -> Result<BitVec, DebugProbeError> {
+            todo!()
+        }
+
+        fn set_expected_scan_chain(
+            &mut self,
+            _: &[ScanChainElement],
+        ) -> Result<(), DebugProbeError> {
             todo!()
         }
 
@@ -1535,10 +1529,6 @@ mod test {
 
         fn swd_settings(&self) -> &SwdSettings {
             &self.swd_settings
-        }
-
-        fn probe_statistics(&mut self) -> &mut ProbeStatistics {
-            &mut self.probe_statistics
         }
     }
 

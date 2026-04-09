@@ -1,115 +1,94 @@
-use std::cell::RefCell;
+use std::collections::HashMap;
+use std::io::Write;
 use std::path::PathBuf;
-use std::rc::Rc;
 
-use probe_rs::config::Registry;
+use anyhow::Context;
 use probe_rs::probe::list::Lister;
-use rustyline::{DefaultEditor, error::ReadlineError};
+use rustyline_async::SharedWriter;
+use rustyline_async::{Readline, ReadlineEvent};
 use time::UtcOffset;
+use tokio::runtime::Runtime;
+use tokio::sync::mpsc::{self, Receiver, Sender};
 
 use crate::cmd::dap_server::debug_adapter::dap::adapter::DebugAdapter;
-use crate::cmd::dap_server::debug_adapter::dap::dap_types::ErrorResponseBody;
-use crate::cmd::dap_server::debug_adapter::dap::dap_types::EvaluateArguments;
-use crate::cmd::dap_server::debug_adapter::dap::dap_types::EvaluateResponseBody;
+use crate::cmd::dap_server::debug_adapter::dap::dap_types;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::InitializeRequestArguments;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::OutputEventBody;
+use crate::cmd::dap_server::debug_adapter::dap::dap_types::ProgressStartEventBody;
+use crate::cmd::dap_server::debug_adapter::dap::dap_types::ProgressUpdateEventBody;
+use crate::cmd::dap_server::debug_adapter::dap::dap_types::{
+    CreatePromptEventBody, EvaluateResponseBody,
+};
+use crate::cmd::dap_server::debug_adapter::dap::dap_types::{
+    DisconnectArguments, EvaluateArguments, RttChannelEventBody, RttDataEventBody,
+    RttWindowOpenedArguments,
+};
+use crate::cmd::dap_server::debug_adapter::dap::dap_types::{
+    ErrorResponseBody, ShowMessageEventBody,
+};
 use crate::cmd::dap_server::debug_adapter::protocol::ProtocolAdapter;
 use crate::cmd::dap_server::server::configuration::ConsoleLog;
 use crate::cmd::dap_server::server::configuration::CoreConfig;
 use crate::cmd::dap_server::server::configuration::FlashingConfig;
 use crate::cmd::dap_server::server::configuration::SessionConfig;
 use crate::cmd::dap_server::server::debugger::Debugger;
+use crate::rpc::client::RpcClient;
+use crate::util::cli::Prompt;
 use crate::util::rtt::RttConfig;
 use crate::{CoreOptions, util::common_options::ProbeOptions};
 
 use super::dap_server::debug_adapter::dap::dap_types::Request;
 use super::dap_server::debug_adapter::dap::dap_types::Response;
 
-struct Shared {
-    stop: bool,
-    next_request: Option<Request>,
-    seq: i64,
-}
-
 /// A barebones adapter for the CLI "client".
 struct CliAdapter {
-    shared: Rc<RefCell<Shared>>,
+    req_receiver: Receiver<Request>,
+    msg_sender: Sender<(String, Option<serde_json::Value>)>,
     console_log_level: ConsoleLog,
+    seq: i64,
+    pending: HashMap<i64, Request>,
 }
+
+struct RttChannelInfo {
+    name: String,
+    prefix: String,
+}
+
 impl ProtocolAdapter for CliAdapter {
     fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>> {
-        Ok(self.shared.borrow().next_request.clone())
+        if let Ok(msg) = self.req_receiver.try_recv() {
+            self.pending.insert(msg.seq, msg.clone());
+            return Ok(Some(msg));
+        }
+
+        Ok(None)
     }
 
-    fn send_event<S: serde::Serialize>(
+    fn dyn_send_event(
         &mut self,
         event_type: &str,
-        event_body: Option<S>,
+        event_body: Option<serde_json::Value>,
     ) -> anyhow::Result<()> {
-        let serialized_body = event_body.as_ref().map(serde_json::to_string).transpose()?;
-
-        match event_type {
-            "probe-rs-show-message" | "output" => {
-                let Some(body) = serialized_body else {
-                    return Ok(());
-                };
-
-                let output = serde_json::from_str::<OutputEventBody>(&body)?;
-
-                print!("{}", output.output);
-            }
-            "terminated" => {
-                self.shared.borrow_mut().stop = true;
-            }
-            // Not interesting
-            "memory" => {}
-            "stopped" => {}
-            "breakpoint" => {}
-            // No RTT support (yet)
-            "probe-rs-rtt-channel-config" | "probe-rs-rtt-data" => {}
-            // No flashing support (yet)
-            "progressStart" | "progressEnd" | "progressUpdate" => {}
-            // We can safely ignore "exited"
-            "exited" => {}
-            _ => {
-                tracing::warn!("Unhandled event {event_type}: {serialized_body:?}");
-            }
-        }
+        self.msg_sender
+            .try_send((event_type.to_string(), event_body))
+            .unwrap();
 
         Ok(())
     }
 
     fn send_raw_response(&mut self, response: Response) -> anyhow::Result<()> {
-        if !response.success {
-            print_error(&response)?;
-            return Ok(());
-        }
-
-        match response.command.as_str() {
-            "evaluate" => {
-                let Some(body) = &response.body else {
-                    unreachable!();
-                };
-                let body = serde_json::from_value::<EvaluateResponseBody>(body.clone())?;
-
-                println!("{}", body.result);
-            }
-            "initialize" => {}
-            "attach" => {}
-            _ => println!("{response:?}"),
-        }
+        self.msg_sender
+            .try_send((
+                "response".to_string(),
+                Some(serde_json::to_value(response)?),
+            ))
+            .unwrap();
 
         Ok(())
     }
 
     fn remove_pending_request(&mut self, request_seq: i64) -> Option<String> {
-        self.shared.borrow_mut().next_request.take().and_then(|r| {
-            if request_seq == r.seq {
-                Some(r.command)
-            } else {
-                None
-            }
-        })
+        self.pending.remove(&request_seq).map(|r| r.command)
     }
 
     fn set_console_log_level(&mut self, log_level: ConsoleLog) {
@@ -121,44 +100,45 @@ impl ProtocolAdapter for CliAdapter {
     }
 
     fn get_next_seq(&mut self) -> i64 {
-        self.shared.borrow_mut().seq += 1;
-        self.shared.borrow().seq
+        self.seq += 1;
+        self.seq
     }
 }
 
-fn print_error(response: &Response) -> anyhow::Result<()> {
+fn error_response_to_string(response: Response) -> String {
     if response.message.as_deref() != Some("cancelled") {
         // `ProtocolHelper::send_response` sets `cancelled` as the message.
-        println!(
+        return format!(
             "Error while processing {} - unexpected response: {:?}",
             response.command, response.message
         );
-        return Ok(());
     }
 
     let Some(body) = response.body.clone() else {
         // `ProtocolHelper::send_response` sets an error body.
-        println!(
+        return format!(
             "Unspecified error while processing {} - response has no body",
             response.command
         );
-        return Ok(());
     };
 
-    let response_body = serde_json::from_value::<ErrorResponseBody>(body)?;
+    let Ok(response_body) = serde_json::from_value::<ErrorResponseBody>(body) else {
+        // `ProtocolHelper::send_response` sets an error body.
+        return format!(
+            "Unspecified error while processing {} - failed to deserialize response body",
+            response.command
+        );
+    };
 
     let Some(error) = response_body.error else {
         // `ProtocolHelper::send_response` returns some error to us.
-        println!(
+        return format!(
             "Unspecified error while processing {} - response body has no error.",
             response.command
         );
-        return Ok(());
     };
 
-    println!("Error while processing {}: {}", response.command, error);
-
-    Ok(())
+    format!("Error while processing {}: {}", response.command, error)
 }
 
 #[derive(clap::Parser)]
@@ -169,9 +149,13 @@ pub struct Cmd {
     #[clap(flatten)]
     common: ProbeOptions,
 
-    #[clap(long, value_parser)]
-    /// Binary to debug
-    exe: Option<PathBuf>,
+    /// Binary to debug (ELF file). If provided with --launch, the binary will be flashed to the target.
+    #[clap(value_parser)]
+    pub binary: Option<PathBuf>,
+
+    /// Launch instead of just attaching. This will reset the target and allow the binary to be flashed, if provided.
+    #[clap(long)]
+    pub launch: bool,
 
     /// Disable reset vector catch if its supported on the target.
     #[clap(long)]
@@ -180,143 +164,492 @@ pub struct Cmd {
     /// Disable hardfault vector catch if its supported on the target.
     #[clap(long)]
     pub no_catch_hardfault: bool,
+
+    /// Disable SVC vector catch (halts on SVC exception).
+    /// Only applies to ARMv7-A/R cores.
+    #[clap(long)]
+    pub no_catch_svc: bool,
+
+    /// Disable HLT vector catch (halts on UNDEF exception for HLT instruction).
+    /// Only applies to ARMv7-A/R cores.
+    #[clap(long)]
+    pub no_catch_hlt: bool,
+
+    /// Disable reading RTT data.
+    #[clap(long, help_heading = "LOG CONFIGURATION / RTT")]
+    pub no_rtt: bool,
+
+    // TODO: support all options in BinaryDownloadOptions
+    /// Before flashing, read back all the flashed data to skip flashing if the device is up to date.
+    #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    pub preverify: bool,
+
+    /// After flashing, read back all the flashed data to verify it has been written correctly.
+    #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    pub verify: bool,
 }
 
 impl Cmd {
-    pub async fn run(
-        self,
-        registry: &mut Registry,
-        lister: &Lister,
-        utc_offset: UtcOffset,
-    ) -> anyhow::Result<()> {
-        let shared = Rc::new(RefCell::new(Shared {
-            stop: false,
-            next_request: None,
-            seq: 0,
-        }));
-        let mut debug_adapter = DebugAdapter::new(CliAdapter {
-            shared: shared.clone(),
+    pub async fn run(self, client: RpcClient, utc_offset: UtcOffset) -> anyhow::Result<()> {
+        let (req_sender, req_receiver) = mpsc::channel(10);
+        let (msg_sender, mut msg_receiver) = mpsc::channel(10);
+
+        let debug_adapter = DebugAdapter::new(CliAdapter {
+            req_receiver,
+            msg_sender: msg_sender.clone(),
             console_log_level: ConsoleLog::Console,
-        });
-        let mut debugger = Debugger::new(utc_offset, None)?;
-
-        shared.borrow_mut().next_request = Some(Request {
-            command: "initialize".to_string(),
-            arguments: serde_json::to_value(&InitializeRequestArguments {
-                adapter_id: "probe-rs-cli".to_string(),
-                client_id: Some("probe-rs-cli".to_string()),
-                client_name: Some("probe-rs command-line debugger".to_string()),
-                columns_start_at_1: None,
-                lines_start_at_1: None,
-                locale: None,
-                path_format: None,
-                supports_args_can_be_interpreted_by_shell: None,
-                supports_invalidated_event: None,
-                supports_memory_event: None,
-                supports_memory_references: None,
-                supports_progress_reporting: None,
-                supports_run_in_terminal_request: None,
-                supports_start_debugging_request: None,
-                supports_variable_paging: None,
-                supports_variable_type: None,
-                supports_ansi_styling: None,
-            })
-            .ok(),
             seq: 0,
-            type_: "request".to_string(),
+            pending: HashMap::new(),
         });
-        debugger.handle_initialize(&mut debug_adapter)?;
 
-        let attach_request = Request {
-            command: "attach".to_string(),
-            arguments: serde_json::to_value(&SessionConfig {
-                console_log_level: None,
-                cwd: None,
-                probe: self.common.probe,
-                chip: self.common.chip,
-                chip_description_path: self.common.chip_description_path,
-                connect_under_reset: self.common.connect_under_reset,
-                speed: self.common.speed,
-                wire_protocol: self.common.protocol,
-                allow_erase_all: false,
-                flashing_config: FlashingConfig::default(),
-                core_configs: vec![CoreConfig {
-                    core_index: self.shared.core,
-                    program_binary: self.exe,
-                    svd_file: None,
-                    rtt_config: RttConfig {
-                        enabled: false,
-                        channels: vec![],
-                    },
-                    catch_hardfault: !self.no_catch_hardfault,
-                    catch_reset: !self.no_catch_reset,
-                }],
-            })
-            .ok(),
-            seq: 1,
-            type_: "request".to_string(),
+        let mut debug_client = Client {
+            writer: None,
+            rtt_channels: HashMap::new(),
+            req_sender,
+            seq: 0,
+            is_initialized: false,
+            is_terminated: false,
+
+            prompts: vec![PromptKind::Eval {
+                prompt: "Debug Console".to_string(),
+            }],
+            current_prompt: 0,
         };
 
-        // A bit weird since we need the request to be removable,
-        // but we also need to pass it directly.
-        shared.borrow_mut().next_request = Some(attach_request.clone());
-        let mut session_data = debugger
-            .handle_launch_attach(registry, &attach_request, &mut debug_adapter, lister)
-            .await?;
+        debug_client
+            .send(|seq| Request {
+                command: "initialize".to_string(),
+                arguments: serde_json::to_value(&InitializeRequestArguments {
+                    adapter_id: "probe-rs-cli".to_string(),
+                    client_id: Some("probe-rs-cli".to_string()),
+                    client_name: Some("probe-rs command-line debugger".to_string()),
+                    columns_start_at_1: None,
+                    lines_start_at_1: None,
+                    locale: None,
+                    path_format: None,
+                    supports_args_can_be_interpreted_by_shell: None,
+                    supports_invalidated_event: None,
+                    supports_memory_event: None,
+                    supports_memory_references: None,
+                    supports_progress_reporting: Some(true),
+                    supports_run_in_terminal_request: None,
+                    supports_start_debugging_request: None,
+                    supports_variable_paging: None,
+                    supports_variable_type: None,
+                    supports_ansi_styling: None,
+                })
+                .ok(),
+                seq,
+                type_: "request".to_string(),
+            })
+            .await;
 
-        shared.borrow_mut().next_request = Some(Request {
-            command: "configurationDone".to_string(),
-            arguments: serde_json::to_value(()).ok(),
-            seq: 2,
-            type_: "request".to_string(),
-        });
-        debugger
-            .process_next_request(&mut session_data, &mut debug_adapter)
-            .await?;
+        // Determine if this is a launch or attach session
+        let session_command = if self.launch { "launch" } else { "attach" };
 
-        let mut rl = DefaultEditor::new()?;
-
-        let mut seq = 3;
-        while !shared.borrow().stop {
-            match rl.readline(">> ") {
-                Ok(line) => {
-                    rl.add_history_entry(&line)?;
-
-                    let request = Request {
-                        command: "evaluate".to_string(),
-                        arguments: serde_json::to_value(&EvaluateArguments {
-                            context: Some("repl".to_string()),
-                            expression: line,
-                            format: None,
-                            frame_id: None,
-                            column: None,
-                            line: None,
-                            source: None,
-                        })
-                        .ok(),
-                        seq: {
-                            let s = seq;
-                            seq += 1;
-                            s
+        debug_client
+            .send(|seq| Request {
+                command: session_command.to_string(),
+                arguments: serde_json::to_value(&SessionConfig {
+                    console_log_level: None,
+                    cwd: None,
+                    probe: self.common.probe,
+                    chip: self.common.chip,
+                    chip_description_path: self.common.chip_description_path,
+                    connect_under_reset: self.common.connect_under_reset,
+                    speed: self.common.speed,
+                    wire_protocol: self.common.protocol,
+                    allow_erase_all: false,
+                    flashing_config: FlashingConfig {
+                        flashing_enabled: self.launch && self.binary.is_some(),
+                        verify_before_flashing: self.preverify,
+                        verify_after_flashing: self.verify,
+                        ..FlashingConfig::default()
+                    },
+                    core_configs: vec![CoreConfig {
+                        core_index: self.shared.core,
+                        program_binary: self.binary.clone(),
+                        svd_file: None,
+                        rtt_config: RttConfig {
+                            enabled: !self.no_rtt,
+                            channels: vec![],
+                            default_config: Default::default(),
                         },
-                        type_: "request".to_string(),
-                    };
+                        catch_hardfault: !self.no_catch_hardfault,
+                        catch_reset: !self.no_catch_reset,
+                        catch_svc: !self.no_catch_svc,
+                        catch_hlt: !self.no_catch_hlt,
+                    }],
+                })
+                .ok(),
+                seq,
+                type_: "request".to_string(),
+            })
+            .await;
 
-                    shared.borrow_mut().next_request = Some(request);
-                    debugger
-                        .process_next_request(&mut session_data, &mut debug_adapter)
-                        .await?;
-                }
-                // For end of file and ctrl-c, we just quit
-                Err(ReadlineError::Eof | ReadlineError::Interrupted) => return Ok(()),
-                Err(actual_error) => {
-                    // Show error message and quit
-                    println!("Error handling input: {actual_error:?}");
-                    break;
+        debug_client
+            .send(|seq| Request {
+                command: "configurationDone".to_string(),
+                arguments: serde_json::to_value(()).ok(),
+                seq,
+                type_: "request".to_string(),
+            })
+            .await;
+
+        // Run the debugger in a separate thread, otherwise longer processes like flashing can block the terminal.
+        let server = tokio::task::spawn_blocking(move || {
+            Runtime::new().unwrap().block_on(async move {
+                let registry = &mut *client.registry().await;
+                let mut debugger = Debugger::new(utc_offset, None)?;
+
+                let lister = Lister::new();
+                debugger
+                    .debug_session(registry, debug_adapter, &lister)
+                    .await
+            })
+        });
+
+        while !debug_client.is_initialized && debug_client.running() {
+            tokio::select! {
+                response = msg_receiver.recv() => {
+                    // Handle responses/events
+                    let Some((event, body)) = response else {
+                        // recv returns `None` if the channel has been closed
+                        break;
+                    };
+                    debug_client.process_event(&event, body)?;
                 }
             }
         }
 
+        // Prompt 0 is the default debug CLI prompt.
+        let mut current_prompt = debug_client.current_prompt;
+        let (mut rl, writer) =
+            Readline::new(Prompt(format!("{}> ", debug_client.current_prompt())).to_string())
+                .unwrap();
+        debug_client.writer = Some(writer);
+
+        let readline = async {
+            let mut result = Ok(());
+            while debug_client.running() {
+                // Update prompt if needed (a message created a new one, or closed the current one)
+                if debug_client.current_prompt != current_prompt {
+                    current_prompt = debug_client.current_prompt;
+                    debug_client.update_prompt(&mut rl);
+                }
+
+                tokio::select! {
+                    response = msg_receiver.recv() => {
+                        // Handle responses/events
+                        let Some((event, body)) = response else {
+                            // recv returns `None` if the channel has been closed
+                            break;
+                        };
+                        if let Err(error) = debug_client.process_event(&event, body) {
+                            result = Err(error);
+                            break;
+                        }
+                    },
+                    read_line = rl.readline() => {
+                        match read_line {
+                            Ok(ReadlineEvent::Line(line)) => {
+                                rl.add_history_entry(line.clone());
+                                debug_client.handle_prompt(line).await;
+                            }
+                            Ok(ReadlineEvent::Eof) => {
+                                // ctrl-d cycles through prompts
+                                debug_client.current_prompt = (current_prompt + 1) % debug_client.prompts.len();
+                            },
+                            // For ctrl-c, we just quit
+                            Ok(ReadlineEvent::Interrupted) => break,
+                            Err(actual_error) => {
+                                result = Err(actual_error).context("Error handling input");
+                                break;
+                            }
+                        }
+                    },
+                    _ = debug_client.req_sender.closed() => break,
+                }
+            }
+
+            debug_client
+                .send(|seq| Request {
+                    command: "disconnect".to_string(),
+                    arguments: serde_json::to_value(&DisconnectArguments {
+                        restart: None,
+                        suspend_debuggee: Some(true),
+                        terminate_debuggee: None,
+                    })
+                    .ok(),
+                    seq,
+                    type_: "request".to_string(),
+                })
+                .await;
+            result
+        };
+
+        let (readline_result, server_result) = tokio::join! {
+            readline,
+            server,
+        };
+
+        rl.flush()?;
+        server_result??;
+
+        readline_result
+    }
+}
+
+struct Client {
+    writer: Option<SharedWriter>,
+    rtt_channels: HashMap<u32, RttChannelInfo>,
+    req_sender: Sender<Request>,
+
+    is_initialized: bool,
+    is_terminated: bool,
+
+    prompts: Vec<PromptKind>,
+    current_prompt: usize,
+
+    /// Request sequence counter.
+    seq: i64,
+}
+
+impl Client {
+    async fn handle_prompt(&mut self, line: String) {
+        // Send a REPL RTT write command if the current prompt is an RTT channel.
+        let expression = match &self.prompts[self.current_prompt] {
+            PromptKind::Eval { .. } => line,
+            PromptKind::Rtt { channel, .. } => {
+                format!("rtt write {channel} {line}")
+            }
+        };
+
+        self.send(|seq| Request {
+            command: "evaluate".to_string(),
+            arguments: serde_json::to_value(&EvaluateArguments {
+                context: Some("repl".to_string()),
+                expression,
+                format: None,
+                frame_id: None,
+                column: None,
+                line: None,
+                source: None,
+            })
+            .ok(),
+            seq,
+            type_: "request".to_string(),
+        })
+        .await;
+    }
+
+    fn current_prompt(&self) -> &str {
+        match &self.prompts[self.current_prompt] {
+            PromptKind::Eval { prompt } => prompt,
+            PromptKind::Rtt { channel_name, .. } => channel_name,
+        }
+    }
+
+    fn update_prompt(&mut self, rl: &mut Readline) {
+        let prompt = format!("{}> ", self.current_prompt());
+        rl.update_prompt(&Prompt(prompt).to_string()).unwrap();
+    }
+
+    fn next_seq(&mut self) -> i64 {
+        let r = self.seq;
+        self.seq += 1;
+        r
+    }
+
+    async fn send(&mut self, cb: impl FnOnce(i64) -> Request) {
+        let next_seq = self.next_seq();
+        _ = self.req_sender.send(cb(next_seq)).await;
+    }
+
+    fn write_to_cli(&mut self, message: impl AsRef<str>) {
+        let trimmed = message.as_ref().trim_end();
+        if !trimmed.is_empty() {
+            // Shared writer only flushes whole lines
+            self.write_raw_to_cli(trimmed);
+            self.write_raw_to_cli("\n");
+        }
+    }
+
+    fn write_raw_to_cli(&mut self, message: impl AsRef<str>) {
+        if let Some(writer) = self.writer.as_mut() {
+            write!(writer, "{}", message.as_ref()).unwrap();
+        } else {
+            print!("{}", message.as_ref());
+        }
+    }
+
+    fn update_rtt_prefixes(&mut self) {
+        let channel_count = self.rtt_channels.len();
+        let max_width = self
+            .rtt_channels
+            .values()
+            .map(|info| info.name.len())
+            .max()
+            .unwrap_or(0);
+
+        for info in self.rtt_channels.values_mut() {
+            info.prefix = if channel_count > 1 {
+                format!("[{:width$}] ", info.name, width = max_width)
+            } else {
+                String::new()
+            };
+        }
+    }
+
+    fn process_event(
+        &mut self,
+        event_type: &str,
+        event_body: Option<serde_json::Value>,
+    ) -> anyhow::Result<()> {
+        match event_type {
+            "response" => {
+                let response = serde_json::from_value::<Response>(event_body.unwrap())?;
+                match response.command.as_str() {
+                    _ if !response.success => {
+                        anyhow::bail!("{}", error_response_to_string(response));
+                    }
+
+                    "evaluate" => {
+                        let Some(body) = response.body else {
+                            unreachable!();
+                        };
+                        let body = serde_json::from_value::<EvaluateResponseBody>(body)?;
+
+                        self.write_to_cli(body.result);
+                    }
+                    "initialize" => {}
+                    "configurationDone" => self.is_initialized = true,
+                    "attach" => {}
+                    _ => tracing::debug!("{response:?}"),
+                }
+            }
+
+            "output" => {
+                let Some(body) = event_body else {
+                    return Ok(());
+                };
+
+                let output = serde_json::from_value::<OutputEventBody>(body)?;
+
+                self.write_to_cli(output.output);
+            }
+            "probe-rs-show-message" => {
+                let Some(body) = event_body else {
+                    return Ok(());
+                };
+
+                let output = serde_json::from_value::<ShowMessageEventBody>(body)?;
+
+                self.write_to_cli(output.message);
+            }
+            // Sent for the "quit" command, exits the readline Future and triggers a disconnection.
+            "terminated" => self.is_terminated = true,
+            // Not interesting
+            "memory" => {}
+            "stopped" => {}
+            "breakpoint" => {}
+            "probe-rs-rtt-channel-config" => {
+                let Some(body) = event_body else {
+                    return Ok(());
+                };
+
+                let output = serde_json::from_value::<RttChannelEventBody>(body)?;
+                let entry = self
+                    .rtt_channels
+                    .entry(output.channel_number)
+                    .or_insert_with(|| RttChannelInfo {
+                        name: output.channel_name.clone(),
+                        prefix: String::new(),
+                    });
+                entry.name = output.channel_name;
+                self.update_rtt_prefixes();
+
+                let request = Request {
+                    command: "rttWindowOpened".to_string(),
+                    arguments: serde_json::to_value(&RttWindowOpenedArguments {
+                        channel_number: output.channel_number,
+                        window_is_open: true,
+                    })
+                    .ok(),
+                    seq: self.next_seq(),
+                    type_: "request".to_string(),
+                };
+
+                if let Err(error) = self.req_sender.try_send(request) {
+                    tracing::debug!("Failed to send rttWindowOpened request: {error}");
+                }
+            }
+            "probe-rs-create-prompt" => {
+                let Some(body) = event_body else {
+                    return Ok(());
+                };
+
+                let prompt = serde_json::from_value::<CreatePromptEventBody>(body)?;
+                if prompt.prompt_kind == dap_types::PromptKind::Rtt {
+                    self.prompts.push(PromptKind::Rtt {
+                        channel: prompt.prompt_handle,
+                        channel_name: prompt.prompt_name.clone(),
+                    });
+                    self.current_prompt = self.prompts.len() - 1;
+                }
+            }
+            // TODO: add close prompt message
+            "probe-rs-rtt-data" => {
+                let Some(body) = event_body else {
+                    return Ok(());
+                };
+
+                let output = serde_json::from_value::<RttDataEventBody>(body)?;
+                let prefix = self
+                    .rtt_channels
+                    .get(&output.channel_number)
+                    .map(|info| info.prefix.as_str())
+                    .unwrap_or("");
+                let message = format!("{prefix}{}", output.data);
+                self.write_raw_to_cli(message);
+            }
+            // TODO: print a progress bar
+            "progressStart" => {
+                let Some(body) = event_body else {
+                    return Ok(());
+                };
+                let event = serde_json::from_value::<ProgressStartEventBody>(body)?;
+
+                self.write_to_cli(&event.title);
+            }
+            "progressUpdate" => {
+                let Some(body) = event_body else {
+                    return Ok(());
+                };
+                let event = serde_json::from_value::<ProgressUpdateEventBody>(body)?;
+
+                if let Some(message) = event.message {
+                    self.write_to_cli(message);
+                }
+            }
+            "progressEnd" => {}
+            // We can safely ignore "exited"
+            "exited" => {}
+            _ => tracing::debug!("Unhandled event {event_type}: {event_body:?}"),
+        }
+
         Ok(())
     }
+
+    fn running(&self) -> bool {
+        !self.is_terminated
+    }
+}
+
+enum PromptKind {
+    /// The default debug CLI prompt.
+    Eval { prompt: String },
+
+    /// Represents an RTT down channel.
+    Rtt { channel_name: String, channel: u32 },
 }

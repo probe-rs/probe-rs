@@ -2,6 +2,15 @@ name: RA2E2 Series
 manufacturer:
   id: 0x23
   cc: 0x4
+chip_detection:
+- !RenesasPnr
+  target_id: 0x3d0
+  reverse_string: true
+  mcu_pn_base: 0x01001c10
+  variants:
+    - R7FA2E2A7
+    - R7FA2E2A5
+    - R7FA2E2A3
 generated_from_pack: true
 pack_file_release: 5.3.0
 variants:
@@ -21,7 +30,7 @@ variants:
     - main
     access:
       boot: true
-  - !Generic
+  - !Nvm
     name: ConfigROM
     range:
       start: 0x1010000
@@ -35,7 +44,7 @@ variants:
       end: 0x20006000
     cores:
     - main
-  - !Generic
+  - !Nvm
     name: DataFlash
     range:
       start: 0x40100000
@@ -62,7 +71,7 @@ variants:
     - main
     access:
       boot: true
-  - !Generic
+  - !Nvm
     name: ConfigROM
     range:
       start: 0x1010000
@@ -76,7 +85,7 @@ variants:
       end: 0x20006000
     cores:
     - main
-  - !Generic
+  - !Nvm
     name: DataFlash
     range:
       start: 0x40100000
@@ -103,7 +112,7 @@ variants:
     - main
     access:
       boot: true
-  - !Generic
+  - !Nvm
     name: ConfigROM
     range:
       start: 0x1010000
@@ -117,7 +126,7 @@ variants:
       end: 0x20006000
     cores:
     - main
-  - !Generic
+  - !Nvm
     name: DataFlash
     range:
       start: 0x40100000

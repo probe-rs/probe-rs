@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
 use super::memory::MemoryRegion;
-use crate::{CoreType, serialize::hex_option};
+use crate::{
+    CoreType,
+    serialize::{hex_option, hex_u_int},
+};
 use serde::{Deserialize, Serialize};
 
 /// Represents a DAP scan chain element.
@@ -43,6 +46,15 @@ pub struct Jtag {
     #[serde(default)]
     pub scan_chain: Option<Vec<ScanChainElement>>,
 
+    /// When set to `true`, the scan chain described in `scan_chain` is used as-is, bypassing
+    /// the JTAG auto-detection (DR/IR scan). This is required for targets whose JTAG TAP does
+    /// not respond to the standard IDCODE scan (e.g., some RISC-V cores during early power-up).
+    ///
+    /// When `false` (the default), `scan_chain` is treated as a hint for IR-length disambiguation
+    /// during the normal auto-detection scan.
+    #[serde(default)]
+    pub force_scan_chain: bool,
+
     /// Describes JTAG tunnel for Risc-V
     #[serde(default)]
     pub riscv_tunnel: Option<RiscvJtagTunnel>,
@@ -66,7 +78,7 @@ pub struct Chip {
     pub svd: Option<String>,
     /// Documentation URLs associated with this chip.
     #[serde(default)]
-    pub documentation: HashMap<String, url::Url>,
+    pub documentation: HashMap<String, String>,
     /// The package variants available for this chip.
     ///
     /// If empty, the chip is assumed to have only one package variant.
@@ -179,6 +191,7 @@ pub enum ApAddress {
     /// # Note
     /// This represents a base address within the root DP memory space.
     #[serde(rename = "v2")]
+    #[serde(serialize_with = "hex_u_int")]
     V2(u64),
 }
 

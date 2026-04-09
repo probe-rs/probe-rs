@@ -7,18 +7,21 @@ use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
-use std::str::FromStr;
 use std::{ffi::OsString, path::PathBuf};
 
 use anyhow::{Context, Result};
-use clap::{ArgMatches, CommandFactory, FromArgMatches};
+use clap::{ArgMatches, CommandFactory, FromArgMatches, ValueEnum};
 use colored::Colorize;
 use figment::Figment;
 use figment::providers::{Data, Format as _, Json, Toml, Yaml};
 use figment::value::Value;
 use itertools::Itertools;
 use postcard_schema::Schema;
+use probe_rs::flashing::{
+    BinLoader, BinOptions, ElfLoader, ElfOptions, HexLoader, ImageLoader, Uf2Loader,
+};
 use probe_rs::{Target, probe::list::Lister};
+use probe_rs_espressif::image_format::IdfLoader;
 use report::Report;
 use serde::{Deserialize, Serialize};
 use time::{OffsetDateTime, UtcOffset};
@@ -119,10 +122,7 @@ impl Cli {
             Subcommand::Info(cmd) => cmd.run(client).await,
             Subcommand::Gdb(cmd) => cmd.run(&mut *client.registry().await, &lister),
             Subcommand::Reset(cmd) => cmd.run(client).await,
-            Subcommand::Debug(cmd) => {
-                cmd.run(&mut *client.registry().await, &lister, utc_offset)
-                    .await
-            }
+            Subcommand::Debug(cmd) => cmd.run(client, utc_offset).await,
             Subcommand::Download(cmd) => cmd.run(client).await,
             Subcommand::Run(cmd) => cmd.run(client, utc_offset).await,
             Subcommand::Attach(cmd) => cmd.run(client, utc_offset).await,
@@ -143,8 +143,8 @@ impl Cli {
     fn elf(&self) -> Option<PathBuf> {
         match self.subcommand {
             Subcommand::Download(ref cmd) => Some(cmd.path.clone()),
-            Subcommand::Run(ref cmd) => Some(cmd.shared_options.path.clone()),
-            Subcommand::Attach(ref cmd) => Some(cmd.run.shared_options.path.clone()),
+            Subcommand::Run(ref cmd) => Some(cmd.path.clone()),
+            Subcommand::Attach(ref cmd) => cmd.path.clone(),
             Subcommand::Verify(ref cmd) => Some(cmd.path.clone()),
             _ => None,
         }
@@ -198,7 +198,6 @@ enum Subcommand {
 }
 
 impl Subcommand {
-    #[cfg(feature = "remote")]
     fn is_remote_cmd(&self) -> bool {
         // Commands that are implemented via a series of RPC calls.
         // TODO: refactor other commands
@@ -230,25 +229,121 @@ pub(crate) struct CoreOptions {
 #[serde(default)]
 pub struct BinaryCliOptions {
     /// The address in memory where the binary will be put at. This is only considered when `bin` is selected as the format.
-    #[clap(long, value_parser = parse_u64, help_heading = "DOWNLOAD CONFIGURATION")]
+    #[clap(long, value_parser = parse_u64, help_heading = "DOWNLOAD CONFIGURATION / BIN IMAGE")]
     base_address: Option<u64>,
     /// The number of bytes to skip at the start of the binary file. This is only considered when `bin` is selected as the format.
-    #[clap(long, value_parser = parse_u32, default_value = "0", help_heading = "DOWNLOAD CONFIGURATION")]
+    #[clap(long, value_parser = parse_u32, default_value = "0", help_heading = "DOWNLOAD CONFIGURATION / BIN IMAGE")]
     skip: u32,
+}
+
+/// Supported flash frequencies
+///
+/// Note that not all frequencies are supported by each target device.
+#[derive(
+    Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, ValueEnum, Schema,
+)]
+#[serde(rename_all = "lowercase")]
+pub enum EspFlashFrequency {
+    /// 12 MHz
+    #[serde(rename = "12MHz")]
+    _12Mhz,
+    /// 15 MHz
+    #[serde(rename = "15MHz")]
+    _15Mhz,
+    /// 16 MHz
+    #[serde(rename = "16MHz")]
+    _16Mhz,
+    /// 20 MHz
+    #[serde(rename = "20MHz")]
+    _20Mhz,
+    /// 24 MHz
+    #[serde(rename = "24MHz")]
+    _24Mhz,
+    /// 26 MHz
+    #[serde(rename = "26MHz")]
+    _26Mhz,
+    /// 30 MHz
+    #[serde(rename = "30MHz")]
+    _30Mhz,
+    /// 40 MHz
+    #[serde(rename = "40MHz")]
+    #[default]
+    _40Mhz,
+    /// 48 MHz
+    #[serde(rename = "48MHz")]
+    _48Mhz,
+    /// 60 MHz
+    #[serde(rename = "60MHz")]
+    _60Mhz,
+    /// 80 MHz
+    #[serde(rename = "80MHz")]
+    _80Mhz,
+}
+
+impl From<EspFlashFrequency> for espflash::flasher::FlashFrequency {
+    fn from(freq: EspFlashFrequency) -> Self {
+        match freq {
+            EspFlashFrequency::_12Mhz => espflash::flasher::FlashFrequency::_12Mhz,
+            EspFlashFrequency::_15Mhz => espflash::flasher::FlashFrequency::_15Mhz,
+            EspFlashFrequency::_16Mhz => espflash::flasher::FlashFrequency::_16Mhz,
+            EspFlashFrequency::_20Mhz => espflash::flasher::FlashFrequency::_20Mhz,
+            EspFlashFrequency::_24Mhz => espflash::flasher::FlashFrequency::_24Mhz,
+            EspFlashFrequency::_26Mhz => espflash::flasher::FlashFrequency::_26Mhz,
+            EspFlashFrequency::_30Mhz => espflash::flasher::FlashFrequency::_30Mhz,
+            EspFlashFrequency::_40Mhz => espflash::flasher::FlashFrequency::_40Mhz,
+            EspFlashFrequency::_48Mhz => espflash::flasher::FlashFrequency::_48Mhz,
+            EspFlashFrequency::_60Mhz => espflash::flasher::FlashFrequency::_60Mhz,
+            EspFlashFrequency::_80Mhz => espflash::flasher::FlashFrequency::_80Mhz,
+        }
+    }
+}
+
+/// Supported flash modes
+#[derive(
+    Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, ValueEnum, Schema,
+)]
+#[serde(rename_all = "lowercase")]
+pub enum EspFlashMode {
+    /// Quad I/O (4 pins used for address & data)
+    Qio,
+    /// Quad Output (4 pins used for data)
+    Qout,
+    /// Dual I/O (2 pins used for address & data)
+    #[default]
+    Dio,
+    /// Dual Output (2 pins used for data)
+    Dout,
+}
+
+impl From<EspFlashMode> for espflash::flasher::FlashMode {
+    fn from(mode: EspFlashMode) -> Self {
+        match mode {
+            EspFlashMode::Qio => espflash::flasher::FlashMode::Qio,
+            EspFlashMode::Qout => espflash::flasher::FlashMode::Qout,
+            EspFlashMode::Dio => espflash::flasher::FlashMode::Dio,
+            EspFlashMode::Dout => espflash::flasher::FlashMode::Dout,
+        }
+    }
 }
 
 #[derive(clap::Parser, Clone, Serialize, Deserialize, Debug, Default, Schema)]
 #[serde(default)]
 pub struct IdfCliOptions {
     /// The idf bootloader path
-    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION / ESP-IDF IMAGE")]
     idf_bootloader: Option<String>,
     /// The idf partition table path
-    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION / ESP-IDF IMAGE")]
     idf_partition_table: Option<String>,
     /// The idf target app partition
-    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION / ESP-IDF IMAGE")]
     idf_target_app_partition: Option<String>,
+    /// Flash SPI mode
+    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION / ESP-IDF IMAGE")]
+    idf_flash_mode: Option<EspFlashMode>,
+    /// Flash SPI frequency
+    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION / ESP-IDF IMAGE")]
+    idf_flash_freq: Option<EspFlashFrequency>,
 }
 
 #[derive(clap::Parser, Clone, Serialize, Deserialize, Debug, Default, Schema)]
@@ -256,50 +351,56 @@ pub struct IdfCliOptions {
 pub struct ElfCliOptions {
     /// Section name to skip flashing. This option may be specified multiple times, and is only
     /// considered when `elf` is selected as the format.
-    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION / ELF IMAGE")]
     skip_section: Vec<String>,
 }
 
 #[derive(clap::Parser, Clone, Serialize, Deserialize, Debug, Default, Schema)]
 #[serde(default)]
 pub struct FormatOptions {
-    /// If a format is provided, use it.
-    /// If a target has a preferred format, we use that.
-    /// Finally, if neither of the above cases are true, we default to ELF.
+    /// The format of the firmware image.
     #[clap(
         value_enum,
         ignore_case = true,
+        default_value_t = FormatKind::Target,
         long,
         help_heading = "DOWNLOAD CONFIGURATION"
     )]
-    binary_format: Option<FormatKind>,
+    pub binary_format: FormatKind,
 
     #[clap(flatten)]
-    bin_options: BinaryCliOptions,
+    pub bin_options: BinaryCliOptions,
 
     #[clap(flatten)]
-    idf_options: IdfCliOptions,
+    pub idf_options: IdfCliOptions,
 
     #[clap(flatten)]
-    elf_options: ElfCliOptions,
+    pub elf_options: ElfCliOptions,
 }
 
 /// A finite list of all the available binary formats probe-rs understands.
-#[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq, Clone, Copy, Schema)]
+#[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq, Clone, Copy, ValueEnum, Schema)]
 pub enum FormatKind {
-    /// Marks a file in binary format. This means that the file contains the contents of the flash 1:1.
-    /// [BinOptions] can be used to define the location in flash where the file contents should be put at.
-    /// Additionally using the same config struct, you can skip the first N bytes of the binary file to have them not put into the flash.
-    Bin,
-    /// Marks a file in [Intel HEX](https://en.wikipedia.org/wiki/Intel_HEX) format.
-    Hex,
-    /// Marks a file in the [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) format.
+    /// The image format is determined by the target chip's preference, which is usually ELF.
     #[default]
+    Target,
+
+    /// The image is in binary format. This means that the file contains the contents of the flash 1:1.
+    #[value(alias("binary"))]
+    Bin,
+
+    /// The image is in Intel HEX format. For more information, see https://en.wikipedia.org/wiki/Intel_HEX
+    #[value(aliases(["ihex", "intelhex"]))]
+    Hex,
+
+    /// The image is in the Executable and Linkable Format (ELF). For more information, see https://en.wikipedia.org/wiki/Executable_and_Linkable_Format
     Elf,
-    /// Marks a file in the [ESP-IDF bootloader](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/app_image_format.html#app-image-structures) format.
-    /// Use [IdfOptions] to configure flashing.
+
+    /// The image is an ELF file containing an ESP-IDF bootloader compatible application. For more information, see https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/app_image_format.html#app-image-structures
+    #[value(aliases(["esp-idf", "espidf"]))]
     Idf,
-    /// Marks a file in the [UF2](https://github.com/microsoft/uf2) format.
+
+    /// The image is in the Universal Flash Storage (UF2) format. For more information, see https://github.com/microsoft/uf2
     Uf2,
 }
 
@@ -309,35 +410,18 @@ impl FormatKind {
     /// If the string is `None`, the default format is returned.
     pub fn from_optional(s: Option<&str>) -> Result<Self, String> {
         match s {
-            Some(format) => Self::from_str(format),
-            None => Ok(Self::default()),
+            Some(format) => Self::from_str(format, true),
+            None => Ok(Self::Elf),
         }
     }
-}
 
-impl FromStr for FormatKind {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match &s.to_lowercase()[..] {
-            "bin" | "binary" => Ok(Self::Bin),
-            "hex" | "ihex" | "intelhex" => Ok(Self::Hex),
-            "elf" => Ok(Self::Elf),
-            "uf2" => Ok(Self::Uf2),
-            "idf" | "esp-idf" | "espidf" => Ok(Self::Idf),
-            _ => Err(format!("Format '{s}' is unknown.")),
-        }
-    }
-}
-
-impl From<FormatKind> for probe_rs::flashing::FormatKind {
-    fn from(kind: FormatKind) -> Self {
-        match kind {
-            FormatKind::Bin => probe_rs::flashing::FormatKind::Bin,
-            FormatKind::Hex => probe_rs::flashing::FormatKind::Hex,
-            FormatKind::Elf => probe_rs::flashing::FormatKind::Elf,
-            FormatKind::Uf2 => probe_rs::flashing::FormatKind::Uf2,
-            FormatKind::Idf => probe_rs::flashing::FormatKind::Idf,
+    /// Replaces `FormatKind::Target` with a default format based on the target.
+    pub fn resolve(self, target: &Target) -> FormatKind {
+        if self == FormatKind::Target {
+            FormatKind::from_optional(target.default_format.as_deref())
+                .expect("Failed to parse a default binary format. This shouldn't happen.")
+        } else {
+            self
         }
     }
 }
@@ -345,12 +429,33 @@ impl From<FormatKind> for probe_rs::flashing::FormatKind {
 impl FormatOptions {
     /// If a format is provided, use it.
     /// If a target has a preferred format, we use that.
-    /// Finally, if neither of the above cases are true, we default to [`Format::default()`].
-    pub fn to_format_kind(&self, target: &Target) -> FormatKind {
-        self.binary_format.unwrap_or_else(|| {
-            FormatKind::from_optional(target.default_format.as_deref())
-                .expect("Failed to parse a default binary format. This shouldn't happen.")
-        })
+    /// Finally, if neither of the above cases are true, we default to [`FormatKind::default()`].
+    fn image_loader(&self, target: &Target) -> Box<dyn ImageLoader> {
+        match self.binary_format.resolve(target) {
+            FormatKind::Target => unreachable!(),
+            FormatKind::Bin => Box::new(BinLoader(BinOptions {
+                base_address: self.bin_options.base_address,
+                skip: self.bin_options.skip,
+            })),
+
+            FormatKind::Hex => Box::new(HexLoader),
+            FormatKind::Elf => Box::new(ElfLoader(ElfOptions {
+                skip_sections: self.elf_options.skip_section.clone(),
+            })),
+            FormatKind::Uf2 => Box::new(Uf2Loader),
+
+            FormatKind::Idf => Box::new(IdfLoader {
+                bootloader: self.idf_options.idf_bootloader.as_ref().map(PathBuf::from),
+                partition_table: self
+                    .idf_options
+                    .idf_partition_table
+                    .as_ref()
+                    .map(PathBuf::from),
+                target_app_partition: self.idf_options.idf_target_app_partition.clone(),
+                flash_frequency: self.idf_options.idf_flash_freq.map(From::from),
+                flash_mode: self.idf_options.idf_flash_mode.map(From::from),
+            }),
+        }
     }
 }
 
@@ -410,18 +515,18 @@ fn prune_logs(directory: &Path) -> Result<(), anyhow::Error> {
 
 /// Returns the cleaned arguments for the handler of the respective end binary
 /// (cli, cargo-flash, cargo-embed, etc.)
-fn multicall_check<'list>(args: &'list [OsString], want: &str) -> Option<&'list [OsString]> {
+fn multicall_check(args: &[OsString], want: &str) -> Option<Vec<OsString>> {
     let argv0 = Path::new(&args[0]);
     if let Some(command) = argv0.file_stem().and_then(|f| f.to_str())
         && command == want
     {
-        return Some(args);
+        return Some(args.to_vec());
     }
 
     if let Some(command) = args.get(1).and_then(|f| f.to_str())
         && command == want
     {
-        return Some(&args[1..]);
+        return Some(args[1..].to_vec());
     }
 
     None
@@ -429,40 +534,28 @@ fn multicall_check<'list>(args: &'list [OsString], want: &str) -> Option<&'list 
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    probe_rs_espressif::register_plugin();
+
     // Determine the local offset as early as possible to avoid potential
     // issues with multiple threads and getting the offset.
     // FIXME: we should probably let the user know if we can't determine the offset. However,
     //        at this point we don't have a logger yet.
     let utc_offset = UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC);
 
-    let mut args: Vec<_> = std::env::args_os().collect();
-
-    // Special-case `cargo-embed` and `cargo-flash`.
-    if let Some(args) = multicall_check(&args, "cargo-flash") {
-        cmd::cargo_flash::main(args);
-        return Ok(());
-    }
-    if let Some(args) = multicall_check(&args, "cargo-embed") {
-        cmd::cargo_embed::main(args, utc_offset).await;
-        return Ok(());
-    }
+    let args: Vec<_> = std::env::args_os().collect();
 
     let config = load_config().context("Failed to load configuration.")?;
 
-    // Parse the commandline options.
-    let mut matches = Cli::command().get_matches_from(&args);
-
-    // Apply the configuration preset if one is specified.
-    if apply_config_preset(&config, &matches, &mut args)? {
-        // Re-parse the modified CLI input. Ignore errors so that users can specify
-        // options that are only valid for certain subcommands.
-        matches = Cli::command().ignore_errors(true).get_matches_from(args);
+    // Special-case `cargo-embed` and `cargo-flash`.
+    if let Some(args) = multicall_check(&args, "cargo-flash") {
+        return cmd::cargo_flash::main(args, config).await;
+    }
+    if let Some(args) = multicall_check(&args, "cargo-embed") {
+        cmd::cargo_embed::main(args, config, utc_offset).await;
+        return Ok(());
     }
 
-    let mut cli = match Cli::from_arg_matches(&matches) {
-        Ok(matches) => matches,
-        Err(err) => err.exit(),
-    };
+    let mut cli = parse_and_resolve_cli_args::<Cli>(args, &config)?;
 
     // If the user has not specified a log file, we will try to create one in the default location.
     if cli.log_file.is_none() && (cli.log_to_folder || cli.report.is_some()) {
@@ -489,18 +582,45 @@ async fn main() -> Result<()> {
     let report_path = cli.report.clone();
 
     #[cfg(feature = "remote")]
-    if let Some(host) = cli.host.as_deref() {
-        // Run the command remotely.
-        let client = rpc::client::connect(host, cli.token.clone()).await?;
+    let connection_params = cli
+        .host
+        .as_ref()
+        .map(|host| (host.clone(), cli.token.clone()));
 
+    #[cfg(not(feature = "remote"))]
+    let connection_params = None;
+
+    let is_local = connection_params.is_none();
+
+    let result = run_app(connection_params, async |client| {
         anyhow::ensure!(
-            cli.subcommand.is_remote_cmd(),
+            client.is_local_session() || cli.subcommand.is_remote_cmd(),
             "The subcommand is not supported in remote mode."
         );
 
-        cli.run(client, config, utc_offset).await?;
-        // TODO: handle the report
-        return Ok(());
+        cli.run(client, config, utc_offset).await
+    })
+    .await;
+
+    if is_local {
+        // TODO: do something with remote crashes
+        compile_report(result, report_path, elf, log_path.as_deref())
+    } else {
+        result
+    }
+}
+
+/// Runs the callback using either a local or remote RPC client.
+async fn run_app<R>(
+    _connection_params: Option<(String, Option<String>)>,
+    cb: impl AsyncFnOnce(RpcClient) -> Result<R>,
+) -> Result<R> {
+    #[cfg(feature = "remote")]
+    if let Some((host, token)) = _connection_params {
+        // Run the command remotely.
+        let client = rpc::client::connect(&host, token).await?;
+
+        return cb(client).await;
     }
 
     // Create a local server to run commands against.
@@ -509,12 +629,29 @@ async fn main() -> Result<()> {
 
     // Run the command locally.
     let client = RpcClient::new_local_from_wire(tx, rx);
-    let result = cli.run(client, config, utc_offset).await;
+    let result = cb(client).await;
 
     // Wait for the server to shut down
     _ = handle.await.unwrap();
 
-    compile_report(result, report_path, elf, log_path.as_deref())
+    result
+}
+
+fn parse_and_resolve_cli_args<T: FromArgMatches + CommandFactory>(
+    mut args: Vec<OsString>,
+    config: &Config,
+) -> Result<T> {
+    // Parse the commandline options.
+    let mut matches = T::command().get_matches_from(&args);
+
+    // Apply the configuration preset if one is specified.
+    if apply_config_preset(config, &matches, &mut args)? {
+        // Re-parse the modified CLI input. Ignore errors so that users can specify
+        // options that are only valid for certain subcommands.
+        matches = T::command().ignore_errors(true).get_matches_from(args);
+    }
+
+    Ok(T::from_arg_matches(&matches)?)
 }
 
 fn apply_config_preset(

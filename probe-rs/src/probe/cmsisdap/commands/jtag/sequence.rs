@@ -139,18 +139,25 @@ impl Request for SequenceRequest {
         let status = Status::from_byte(buffer[0])?;
 
         let mut bits = BitVec::new();
-        self.sequences
+
+        for sequence in self
+            .sequences
             .iter()
             .filter(|sequence| sequence.tdo_capture)
-            .for_each(|&sequence| {
-                // Clock pulse count has been checked by Sequence::new
-                let tck_cycles = sequence.tck_cycles as usize;
+        {
+            // Clock pulse count has been checked by Sequence::new
+            let tck_cycles = sequence.tck_cycles as usize;
 
-                let byte_count = tck_cycles.div_ceil(8);
-                let bytes = &buffer[received_len_bytes..][..byte_count];
-                bits.extend_from_bitslice(&bytes.view_bits::<Lsb0>()[..tck_cycles]);
-                received_len_bytes += byte_count;
-            });
+            let byte_count = tck_cycles.div_ceil(8);
+
+            if buffer.len() < received_len_bytes + byte_count {
+                return Err(SendError::NotEnoughData);
+            }
+
+            let bytes = &buffer[received_len_bytes..][..byte_count];
+            bits.extend_from_bitslice(&bytes.view_bits::<Lsb0>()[..tck_cycles]);
+            received_len_bytes += byte_count;
+        }
 
         Ok(SequenceResponse(status, bits))
     }

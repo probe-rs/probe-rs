@@ -1,0 +1,1 @@
+Fixed RTT control block clearing in the DAP server to happen eagerly before reset (while the core is halted) instead of being skipped when `haltAfterReset` is `false`. The previous workaround disabled clearing entirely, which could lead to attaching to stale RTT data from a previous session.

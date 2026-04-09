@@ -1,11 +1,10 @@
+use crate::FormatOptions;
 use crate::rpc::functions::flash::{FlashLayout, Operation, ProgressEvent};
-use crate::{FormatKind, FormatOptions};
 
 use super::common_options::{BinaryDownloadOptions, LoadedProbeOptions, OperationError};
 use super::logging;
 
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::time::Duration;
 use std::{path::Path, time::Instant};
 
@@ -13,7 +12,7 @@ use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use parking_lot::Mutex;
 use probe_rs::InstructionSet;
-use probe_rs::flashing::{BinOptions, ElfOptions, FlashProgress, Format, IdfOptions};
+use probe_rs::flashing::{FlashError, FlashProgress};
 use probe_rs::{
     Session,
     flashing::{DownloadOptions, FileDownloadError, FlashLoader},
@@ -66,14 +65,33 @@ pub fn run_flash_download(
     // Start timer.
     let flash_timer = Instant::now();
 
-    loader
-        .commit(session, options)
-        .map_err(|error| OperationError::FlashingFailed {
-            source: Box::new(error),
-            target: Box::new(session.target().clone()),
-            target_spec: probe_options.chip(),
-            path: path.as_ref().to_path_buf(),
-        })?;
+    let run_flash = if options.preverify {
+        match loader.verify(session, &mut options.progress) {
+            Ok(_) => false,
+            Err(FlashError::Verify) => true,
+            Err(error) => {
+                return Err(OperationError::FlashingFailed {
+                    source: Box::new(error),
+                    target: Box::new(session.target().clone()),
+                    target_spec: probe_options.chip(),
+                    path: path.as_ref().to_path_buf(),
+                });
+            }
+        }
+    } else {
+        true
+    };
+
+    if run_flash {
+        loader
+            .commit(session, options)
+            .map_err(|error| OperationError::FlashingFailed {
+                source: Box::new(error),
+                target: Box::new(session.target().clone()),
+                target_spec: probe_options.chip(),
+                path: path.as_ref().to_path_buf(),
+            })?;
+    }
 
     // If we don't do this, the progress bars disappear.
     logging::clear_progress_bar();
@@ -96,27 +114,8 @@ pub fn build_loader(
     format_options: FormatOptions,
     image_instruction_set: Option<InstructionSet>,
 ) -> Result<FlashLoader, FileDownloadError> {
-    let format = match format_options.to_format_kind(session.target()) {
-        FormatKind::Bin => Format::Bin(BinOptions {
-            base_address: format_options.bin_options.base_address,
-            skip: format_options.bin_options.skip,
-        }),
-        FormatKind::Hex => Format::Hex,
-        FormatKind::Elf => Format::Elf(ElfOptions {
-            skip_sections: format_options.elf_options.skip_section,
-        }),
-        FormatKind::Uf2 => Format::Uf2,
-        FormatKind::Idf => Format::Idf(IdfOptions {
-            bootloader: format_options.idf_options.idf_bootloader.map(PathBuf::from),
-            partition_table: format_options
-                .idf_options
-                .idf_partition_table
-                .map(PathBuf::from),
-            target_app_partition: format_options.idf_options.idf_target_app_partition,
-        }),
-    };
-
-    probe_rs::flashing::build_loader(session, path, format, image_instruction_set)
+    let loader = format_options.image_loader(session.target());
+    probe_rs::flashing::build_loader(session, path, loader, image_instruction_set)
 }
 
 #[derive(Default)]
@@ -287,7 +286,9 @@ impl CliProgressBars {
             ProgressEvent::Finished(operation) => {
                 progress_bars.get_mut(operation).finish();
             }
-            ProgressEvent::DiagnosticMessage { .. } => {}
+            ProgressEvent::DiagnosticMessage { message } => {
+                logging::println(message);
+            }
         }
     }
 }

@@ -177,7 +177,7 @@ impl DebugLogger {
                     r#"Log output for "{environment_filter}" will be written to the Debug Console."#
                 );
 
-                // If no log file desitination is specified, send logs via the buffer, to the DAP
+                // If no log file destination is specified, send logs via the buffer, to the DAP
                 // client's Debug Console.
                 let buffer_layer = tracing_subscriber::fmt::layer()
                     .compact()

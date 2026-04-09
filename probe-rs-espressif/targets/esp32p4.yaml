@@ -1,0 +1,100 @@
+name: esp32p4
+manufacturer:
+  id: 0x12
+  cc: 0xc
+chip_detection:
+- !Espressif
+  idcode: 0x12c25
+  variants:
+    0x0: esp32p4
+    0xaddbad0: esp32p4
+variants:
+- name: esp32p4
+  cores:
+  - name: cpu0
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      jtag_tap: 1
+  - name: cpu1
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 1
+      jtag_tap: 1
+  memory_map:
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x4000000
+    cores:
+    - cpu0
+    - cpu1
+    access:
+      boot: true
+      execute: false
+  - !Nvm
+    range:
+      start: 0x40000000
+      end: 0x44000000
+    cores:
+    - cpu0
+    - cpu1
+    is_alias: true
+  - !Ram
+    range:
+      start: 0x4ff00000
+      end: 0x4ffc0000
+    cores:
+    - cpu0
+    - cpu1
+  - !Ram
+    name: Uncached RAM
+    range:
+      start: 0x8ff00000
+      end: 0x8ffc0000
+    cores:
+    - cpu0
+    - cpu1
+  flash_algorithms:
+  - esp32p4-flashloader
+  jtag:
+    scan_chain:
+    - name: lpcpu
+      ir_len: 5
+    - name: hp
+      ir_len: 5
+  default_binary_format: idf
+flash_algorithms:
+- name: esp32p4-flashloader
+  description: A flash loader for the esp32p4.
+  default: true
+  instructions: BgAAAAYAAAAIAAAACAAAAAgAAAAIAAAACAAAAAgAAAAIAAAACAAAAAgAAABFUlJPUiBidWYgbm90IHdvcmQgYWxpZ25lZApWRVJJRlkgIGJ5dGVzIEAgClJFQUQgRkxBU0ggUFJPR1JBTSBFUkFTRSBAIElOSVQKSW5pdGlhbGl6aW5nIFJPTSBkYXRhIHRhYmxlCkNoaXAgcmV2aXNpb246IAAAAAAAAFRUUiBSRUdHRVNUZXJtaW5hbAAAAAAAyL7BT1TAwU9UwMFPVMHBTwEAAACcv8FPKMHBTyjBwU8owsFPZAAAAKjEwU80xsFPNMbBTzTHwU8sAQAAYMjBT+zJwU/sycFP7MrBTwAABAAAAAgAAAAQAAAAIAAAAEAAAACAAAAAAAEAAAACAAAABAAAAAgAAAAQ////////////////AAAABAAAAAgAAAAQ////////////////////////////////////////////////////////////////////////////////AAAEAAAACAAAABAAAAAgAAAAQAAAAIAAAAAAAQAAAAIAAAAEAAAIAAAAEAAAACAAAABAAAAAgAAAAAABFwMAAGcAgwABEQbOIswmykrITsZSxDKELWa3ifaPk4kJALOGyQCDxkbAocoqiQFKk9SFABP19Q8zNaAAqpQTBUawqpmpxDMFKgETBgAQzoWXAMu/54AA9A3tEwoKEP0UEwUAEM6Fed0DxgUAhQV9FeMLhv4TBVDBGaATBXDB8kBiRNJEQkmySSJKBWGCgAFF/bcTBWDB5bcXAwAAZwCDAC1lt4X2j5OFBQAulQNFRcAJxRcDy79nACPrEwVwwYKAFwMAAGcAgwCXEgAA54LClanFQREGxiLEKoQ3BfWPEwW1BqFFlwAAAOeAwH4ihZcAAADngCBRNwX1jxMFdQWFRZcAAADngAB9E1UEAbJAIkRBARcDy79nAGPnEwVwwYKAFwMAAGcAgwAtZbeF9o+ThQUALpUDRUXAOc031QhQEE23BgCQDFHRjhTNtwYAcJOG9gkU0d1GAUdYwRTVtwYEADjNFMEUQbYG484G/jRNEM0T9vYPfUcM0WMS5gLOBhPVtgFxFZlFY3u1AgoFtwX1j5OFBRsNoBMFcMGCgMGCuRYT9fYPkwWQAmN6tQAKBbcF9Y+ThcUQLpUIQYKA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
+  load_address: 0x8ff50000
+  data_load_address: 0x8ff60000
+  pc_init: 0x388
+  pc_uninit: 0x6bc
+  pc_program_page: 0x558
+  pc_erase_sector: 0x288
+  pc_erase_all: 0x260
+  pc_verify: 0x70e
+  pc_blank_check: 0x1c8
+  pc_read: 0x60e
+  pc_flash_size: 0x2e8
+  data_section_offset: 0xc00
+  rtt_location: 0x8ff72c08
+  rtt_poll_interval: 500
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x4000000
+    page_size: 0x4000
+    erased_byte_value: 0xff
+    program_page_timeout: 2000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x10000
+      address: 0x0
+  cores:
+  - cpu0
+  stack_overflow_check: false
+  transfer_encoding: miniz

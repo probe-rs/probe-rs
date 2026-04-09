@@ -21,6 +21,7 @@ struct FlasherWithRegions {
 pub fn erase_all(
     session: &mut Session,
     progress: &mut FlashProgress<'_>,
+    read_flasher_rtt: bool,
 ) -> Result<(), FlashError> {
     tracing::debug!("Erasing all...");
 
@@ -53,7 +54,7 @@ pub fn erase_all(
 
         let target = session.target();
         let core = target.core_index_by_name(core_name).unwrap();
-        let algo = FlashLoader::get_flash_algorithm_for_region(&region, target, core_name)?;
+        let algo = FlashLoader::get_flash_algorithm_for_region(&region, target, core_name, &[])?;
 
         tracing::debug!("     -- using algorithm: {}", algo.name);
         if let Some(entry) = algos.iter_mut().find(|entry| {
@@ -62,7 +63,11 @@ pub fn erase_all(
             entry.regions.push(region);
         } else {
             algos.push(FlasherWithRegions {
-                flasher: Flasher::new(session.target(), core, algo)?,
+                flasher: {
+                    let mut flasher = Flasher::new(session.target(), core, algo)?;
+                    flasher.read_rtt_output(read_flasher_rtt);
+                    flasher
+                },
                 regions: vec![region],
             });
         }
@@ -158,12 +163,13 @@ pub fn erase_all(
 }
 
 /// Erases flash address range `address_start..address_end`.
-// TODO: currently no progress is reported by anything in this function.
+// TODO: currently no progress other than RTT output is reported by anything in this function.
 pub fn erase(
     session: &mut Session,
     progress: &mut FlashProgress<'_>,
     address_start: u64,
     address_end: u64,
+    read_flasher_rtt: bool,
 ) -> Result<(), FlashError> {
     tracing::debug!("Erasing {address_start:08x}..{address_end:08x}");
 
@@ -199,7 +205,7 @@ pub fn erase(
             .ok_or_else(|| FlashError::NoNvmCoreAccess(region.clone()))?;
 
         let algo =
-            FlashLoader::get_flash_algorithm_for_region(region, session.target(), core_name)?;
+            FlashLoader::get_flash_algorithm_for_region(region, session.target(), core_name, &[])?;
 
         let entry = algos
             .entry((algo.name.clone(), core_name.clone()))
@@ -218,6 +224,8 @@ pub fn erase(
 
         let core_index = session.target().core_index_by_name(&core_name).unwrap();
         let mut flasher = Flasher::new(session.target(), core_index, algo)?;
+
+        flasher.read_rtt_output(read_flasher_rtt);
 
         let sectors = flasher
             .flash_algorithm()
@@ -258,6 +266,7 @@ pub fn run_blank_check(
     progress: &mut FlashProgress<'_>,
     address_start: u64,
     address_end: u64,
+    read_flasher_rtt: bool,
 ) -> Result<(), FlashError> {
     tracing::debug!("Blank-checking {address_start:08x}..{address_end:08x}");
 
@@ -293,7 +302,7 @@ pub fn run_blank_check(
             .ok_or_else(|| FlashError::NoNvmCoreAccess(region.clone()))?;
 
         let algo =
-            FlashLoader::get_flash_algorithm_for_region(region, session.target(), core_name)?;
+            FlashLoader::get_flash_algorithm_for_region(region, session.target(), core_name, &[])?;
 
         let entry = algos
             .entry((algo.name.clone(), core_name.clone()))
@@ -313,6 +322,8 @@ pub fn run_blank_check(
         let core_index = session.target().core_index_by_name(&core_name).unwrap();
         let mut flasher = Flasher::new(session.target(), core_index, algo)?;
 
+        flasher.read_rtt_output(read_flasher_rtt);
+
         let sectors = flasher
             .flash_algorithm()
             .iter_sectors()
@@ -323,7 +334,7 @@ pub fn run_blank_check(
             })
             .collect::<Vec<_>>();
 
-        flasher.run_blank_check(session, progress, |active, _| {
+        flasher.run_verify(session, progress, |active, _| {
             for info in sectors {
                 tracing::debug!(
                     "    sector: {:#010x}-{:#010x} ({} bytes)",

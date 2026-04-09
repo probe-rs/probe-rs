@@ -30,11 +30,6 @@ jobs:
           # this, see https://github.com/orgs/community/discussions/57484'
           token: ${{ secrets.GH_PAT }}
 
-      - name: Install libudev (linux)
-        run: |
-          sudo apt update
-          sudo apt install -y libudev-dev
-
       - uses: chainguard-dev/actions/setup-gitsign@main
 
       - name: install cargo-release

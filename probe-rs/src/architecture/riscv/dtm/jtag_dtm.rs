@@ -11,17 +11,16 @@ use std::time::{Duration, Instant};
 use crate::architecture::riscv::communication_interface::{
     RiscvCommunicationInterface, RiscvDebugInterfaceState, RiscvError, RiscvInterfaceBuilder,
 };
-use crate::architecture::riscv::dtm::dtm_access::DtmAccess;
-use crate::error::Error;
+use crate::architecture::riscv::dtm::DtmAccess;
+use crate::probe::DebugProbeError;
+use crate::probe::queue::{BatchError, DeferredResultIndex, DeferredResultSet, Queue};
 use crate::probe::{
-    CommandQueue, CommandResult, DeferredResultIndex, DeferredResultSet, JtagAccess, JtagCommand,
-    JtagWriteCommand,
+    CommandResult, JtagAccess, JtagWriteCommand, JtagWriteData, ShiftDrCommand, ShiftDrData,
 };
-use crate::probe::{DebugProbeError, ShiftDrCommand};
 
 #[derive(Debug, Default)]
 struct DtmState {
-    queued_commands: CommandQueue<JtagCommand>,
+    queued_commands: Queue<DmiOperationError>,
     jtag_results: DeferredResultSet<CommandResult>,
 
     /// Number of address bits in the DMI register
@@ -86,7 +85,7 @@ impl<'probe> RiscvInterfaceBuilder<'probe> for JtagDtmBuilder<'probe> {
 /// which is used to communicate with the RISC-V debug module.
 #[derive(Debug)]
 pub struct JtagDtm<'probe> {
-    pub probe: &'probe mut dyn JtagAccess,
+    probe: &'probe mut dyn JtagAccess,
     state: &'probe mut DtmState,
 }
 
@@ -95,18 +94,21 @@ impl<'probe> JtagDtm<'probe> {
         Self { probe, state }
     }
 
-    fn transform_dmi_result(response_bits: &BitSlice) -> Result<u32, DmiOperationStatus> {
+    fn transform_dmi_result(response_bits: &BitSlice) -> Result<u32, DmiOperationError> {
         let response_value = response_bits.load_le::<u128>();
 
         // Verify that the transfer was ok
         let op = (response_value & DMI_OP_MASK) as u8;
 
-        if op != 0 {
-            // We masked out two bits, parse(op) always works on values 0, 1, 2 and 3
-            return Err(DmiOperationStatus::parse(op).expect("INVALID DMI OP status"));
-        }
+        let status = DmiOperationStatus::parse(op).expect("INVALID DMI OP status");
 
-        Ok((response_value >> 2) as u32)
+        match status {
+            DmiOperationStatus::Ok => Ok((response_value >> 2) as u32),
+
+            DmiOperationStatus::Reserved => Err(DmiOperationError::Reserved),
+            DmiOperationStatus::RequestInProgress => Err(DmiOperationError::RequestInProgress),
+            DmiOperationStatus::OperationFailed => Err(DmiOperationError::OperationFailed),
+        }
     }
 
     /// Perform an access to the dmi register of the JTAG Transport module.
@@ -116,7 +118,7 @@ impl<'probe> JtagDtm<'probe> {
     fn dmi_register_access(
         &mut self,
         op: DmiOperation,
-    ) -> Result<Result<u32, DmiOperationStatus>, DebugProbeError> {
+    ) -> Result<Result<u32, DmiOperationError>, DebugProbeError> {
         let bytes = op.to_byte_batch();
 
         let bit_size = self.state.abits + DMI_ADDRESS_BIT_OFFSET;
@@ -135,14 +137,12 @@ impl<'probe> JtagDtm<'probe> {
         let bit_size = self.state.abits + DMI_ADDRESS_BIT_OFFSET;
 
         Ok(self.state.queued_commands.schedule(JtagWriteCommand {
-            address: DMI_ADDRESS,
-            data: bytes.to_vec(),
-            transform: |_, result| {
-                Self::transform_dmi_result(result)
-                    .map(CommandResult::U32)
-                    .map_err(|e| Error::Riscv(e.map_as_err().unwrap_err()))
+            data: JtagWriteData {
+                address: DMI_ADDRESS,
+                data: bytes.to_vec(),
+                len: bit_size,
             },
-            len: bit_size,
+            transform: |_, result| Self::transform_dmi_result(result).map(CommandResult::U32),
         }))
     }
 
@@ -158,13 +158,16 @@ impl<'probe> JtagDtm<'probe> {
         loop {
             match self.dmi_register_access(op)? {
                 Ok(result) => return Ok(result),
-                Err(DmiOperationStatus::RequestInProgress) => {
+                Err(DmiOperationError::RequestInProgress) => {
                     // Operation still in progress, reset dmi status and try again.
                     self.clear_error_state()?;
                     self.probe
                         .set_idle_cycles(self.probe.idle_cycles().saturating_add(1))?;
                 }
-                Err(e) => return Err(e.map_as_err().unwrap_err()),
+                Err(DmiOperationError::Reserved) => panic!("Reserved"),
+                Err(DmiOperationError::OperationFailed) => {
+                    return Err(RiscvError::DtmOperationFailed);
+                }
             };
 
             if start_time.elapsed() > timeout {
@@ -248,27 +251,51 @@ impl DtmAccess for JtagDtm<'_> {
     fn execute(&mut self) -> Result<(), RiscvError> {
         let mut cmds = std::mem::take(&mut self.state.queued_commands);
 
+        let mut started = Instant::now();
+        let mut previous_queue_len = cmds.len();
         while !cmds.is_empty() {
-            match self.probe.write_register_batch(&cmds) {
+            match cmds.execute(|queue| self.probe.write_register_batch(queue)) {
                 Ok(r) => {
                     self.state.jtag_results.merge_from(r);
                     return Ok(());
                 }
-                Err(e) => match e.error {
-                    Error::Riscv(RiscvError::DtmOperationInProcess) => {
-                        self.clear_error_state()?;
+                Err(e) => {
+                    match e.error {
+                        BatchError::Specific(error) => {
+                            // error is now DmiOperationError, not Box<dyn Error>
+                            match error {
+                                DmiOperationError::RequestInProgress => {
+                                    self.clear_error_state()?;
 
-                        // queue up the remaining commands when we retry
-                        cmds.consume(e.results.len());
-                        self.state.jtag_results.merge_from(e.results);
+                                    // queue up the remaining commands when we retry
+                                    cmds.consume(e.results.len());
+                                    self.state.jtag_results.merge_from(e.results);
 
-                        self.probe
-                            .set_idle_cycles(self.probe.idle_cycles().saturating_add(1))?;
+                                    self.probe.set_idle_cycles(
+                                        self.probe.idle_cycles().saturating_add(1),
+                                    )?;
+                                }
+                                DmiOperationError::Reserved => panic!("Reserved!"),
+                                DmiOperationError::OperationFailed => {
+                                    return Err(RiscvError::DtmOperationFailed);
+                                }
+                            }
+                        }
+                        BatchError::Probe(error) => {
+                            return Err(error.into());
+                        }
                     }
-                    Error::Riscv(error) => return Err(error),
-                    Error::Probe(error) => return Err(error.into()),
-                    _other => unreachable!(),
-                },
+                }
+            }
+
+            // If progress was made, reset the timeout.
+            if cmds.len() != previous_queue_len {
+                started = Instant::now();
+                previous_queue_len = cmds.len();
+            }
+
+            if started.elapsed() > Duration::from_millis(500) {
+                return Err(RiscvError::Timeout);
             }
         }
 
@@ -310,6 +337,12 @@ impl DtmAccess for JtagDtm<'_> {
     }
 
     fn read_idcode(&mut self) -> Result<Option<u32>, DebugProbeError> {
+        // Reset the JTAG state machine to Test-Logic-Reset before reading the IDCODE.
+        // This is required when read_idcode() is called without a prior dtm.init() (e.g.
+        // from `probe-rs info`), because the TAP state may be indeterminate after attach.
+        // After reset, the IDCODE instruction is automatically loaded into IR, and we then
+        // explicitly load it again via read_register(0x1, …) to be consistent with all paths.
+        self.probe.tap_reset()?;
         let value = self.probe.read_register(0x1, 32)?;
 
         Ok(Some(value.load_le::<u32>()))
@@ -329,10 +362,10 @@ impl DtmAccess for JtagDtm<'_> {
 /// 4. Set tunnel to idle: 3 zero bits
 #[derive(Debug)]
 pub struct TunneledJtagDtm<'probe> {
-    pub probe: &'probe mut dyn JtagAccess,
+    probe: &'probe mut dyn JtagAccess,
     state: &'probe mut DtmState,
-    select_dtmcs: JtagWriteCommand,
-    select_dmi: JtagWriteCommand,
+    select_dtmcs: JtagWriteData,
+    select_dmi: JtagWriteData,
 }
 
 impl<'probe> TunneledJtagDtm<'probe> {
@@ -345,8 +378,8 @@ impl<'probe> TunneledJtagDtm<'probe> {
         Self {
             probe,
             state,
-            select_dtmcs: tunnel_select_command(tunnel_ir_id, tunnel_ir_width, DTMCS_ADDRESS),
-            select_dmi: tunnel_select_command(tunnel_ir_id, tunnel_ir_width, DMI_ADDRESS),
+            select_dtmcs: tunnel_select_data(tunnel_ir_id, tunnel_ir_width, DTMCS_ADDRESS),
+            select_dmi: tunnel_select_data(tunnel_ir_id, tunnel_ir_width, DMI_ADDRESS),
         }
     }
 
@@ -356,15 +389,19 @@ impl<'probe> TunneledJtagDtm<'probe> {
             &self.select_dtmcs.data,
             self.select_dtmcs.len,
         )?;
-        let cmd = tunnel_dtmcs_command(data);
+        let cmd = tunnel_dtmcs_data(data);
         let result = self
             .probe
             .write_dr(&cmd.data, cmd.len)
-            .map(|r| (cmd.transform)(&cmd, &r))?;
+            .map(|r| tunnel_dtmcs_transform(&cmd, &r))?;
+
         match result {
             Ok(CommandResult::U32(d)) => Ok(d),
-            Err(crate::Error::Probe(e)) => Err(e.into()),
-            _ => Err(RiscvError::DtmOperationFailed),
+            _ => {
+                unreachable!(
+                    "The transform function of tunnel_dtmcs always returns Ok(CommandResult::U32)"
+                )
+            }
         }
     }
 
@@ -375,7 +412,7 @@ impl<'probe> TunneledJtagDtm<'probe> {
     fn dmi_register_access(
         &mut self,
         op: DmiOperation,
-    ) -> Result<Result<u32, DmiOperationStatus>, DebugProbeError> {
+    ) -> Result<Result<u32, DmiOperationError>, DebugProbeError> {
         self.probe.write_register(
             self.select_dmi.address,
             &self.select_dmi.data,
@@ -389,24 +426,33 @@ impl<'probe> TunneledJtagDtm<'probe> {
         Ok(JtagDtm::transform_dmi_result(tunneled_result))
     }
 
+    fn make_select_command(&self) -> JtagWriteCommand<DmiOperationError> {
+        JtagWriteCommand {
+            data: self.select_dmi.clone(),
+            transform: |_, _| Ok(CommandResult::None),
+        }
+    }
+
     fn schedule_dmi_register_access(
         &mut self,
         op: DmiOperation,
     ) -> Result<DeferredResultIndex, RiscvError> {
-        self.state.queued_commands.schedule(self.select_dmi.clone());
+        self.state
+            .queued_commands
+            .schedule(self.make_select_command());
 
         let dmi_bits = self.state.abits + DMI_ADDRESS_BIT_OFFSET;
         let (bit_size, bytes) = op.to_tunneled_byte_batch(dmi_bits);
 
         Ok(self.state.queued_commands.schedule(ShiftDrCommand {
-            data: bytes.to_vec(),
-            transform: |_, raw_result| {
-                let result = Self::transform_tunneled_dr_result(raw_result);
-                JtagDtm::transform_dmi_result(result)
-                    .map(CommandResult::U32)
-                    .map_err(|e| Error::Riscv(e.map_as_err().unwrap_err()))
+            inner: ShiftDrData {
+                data: bytes.to_vec(),
+                len: bit_size,
             },
-            len: bit_size,
+            transform: |_, raw_result| {
+                let result = TunneledJtagDtm::transform_tunneled_dr_result(raw_result);
+                JtagDtm::transform_dmi_result(result).map(CommandResult::U32)
+            },
         }))
     }
 
@@ -422,13 +468,16 @@ impl<'probe> TunneledJtagDtm<'probe> {
         loop {
             match self.dmi_register_access(op)? {
                 Ok(result) => return Ok(result),
-                Err(DmiOperationStatus::RequestInProgress) => {
+                Err(DmiOperationError::RequestInProgress) => {
                     // Operation still in progress, reset dmi status and try again.
                     self.clear_error_state()?;
                     self.probe
                         .set_idle_cycles(self.probe.idle_cycles().saturating_add(1))?;
                 }
-                Err(e) => return Err(e.map_as_err().unwrap_err()),
+                Err(DmiOperationError::Reserved) => panic!("Reserved"),
+                Err(DmiOperationError::OperationFailed) => {
+                    return Err(RiscvError::DtmOperationFailed);
+                }
             };
 
             if start_time.elapsed() > timeout {
@@ -507,27 +556,51 @@ impl DtmAccess for TunneledJtagDtm<'_> {
     fn execute(&mut self) -> Result<(), RiscvError> {
         let mut cmds = std::mem::take(&mut self.state.queued_commands);
 
+        let mut started = Instant::now();
+        let mut previous_queue_len = cmds.len();
         while !cmds.is_empty() {
-            match self.probe.write_register_batch(&cmds) {
+            match cmds.execute(|queue| self.probe.write_register_batch(queue)) {
                 Ok(r) => {
                     self.state.jtag_results.merge_from(r);
                     return Ok(());
                 }
-                Err(e) => match e.error {
-                    Error::Riscv(RiscvError::DtmOperationInProcess) => {
-                        self.clear_error_state()?;
+                Err(e) => {
+                    match e.error {
+                        BatchError::Specific(error) => {
+                            // error is now DmiOperationError, not Box<dyn Error>
+                            match error {
+                                DmiOperationError::RequestInProgress => {
+                                    self.clear_error_state()?;
 
-                        // queue up the remaining commands when we retry
-                        cmds.consume(e.results.len());
-                        self.state.jtag_results.merge_from(e.results);
+                                    // queue up the remaining commands when we retry
+                                    cmds.consume(e.results.len());
+                                    self.state.jtag_results.merge_from(e.results);
 
-                        self.probe
-                            .set_idle_cycles(self.probe.idle_cycles().saturating_add(1))?;
+                                    self.probe.set_idle_cycles(
+                                        self.probe.idle_cycles().saturating_add(1),
+                                    )?;
+                                }
+                                DmiOperationError::Reserved => panic!("Reserved error"),
+                                DmiOperationError::OperationFailed => {
+                                    return Err(RiscvError::DtmOperationFailed);
+                                }
+                            }
+                        }
+                        BatchError::Probe(debug_probe_error) => {
+                            return Err(RiscvError::DebugProbe(debug_probe_error));
+                        }
                     }
-                    Error::Riscv(error) => return Err(error),
-                    Error::Probe(error) => return Err(error.into()),
-                    _other => unreachable!(),
-                },
+                }
+            }
+
+            // If progress was made, reset the timeout.
+            if cmds.len() != previous_queue_len {
+                started = Instant::now();
+                previous_queue_len = cmds.len();
+            }
+
+            if started.elapsed() > Duration::from_millis(500) {
+                return Err(RiscvError::Timeout);
             }
         }
 
@@ -569,46 +642,64 @@ impl DtmAccess for TunneledJtagDtm<'_> {
     }
 
     fn read_idcode(&mut self) -> Result<Option<u32>, DebugProbeError> {
+        // Reset the JTAG state machine to Test-Logic-Reset before reading the IDCODE.
+        // This is required when read_idcode() is called without a prior dtm.init() (e.g.
+        // from `probe-rs info`), because the TAP state may be indeterminate after attach.
+        self.probe.tap_reset()?;
         let value = self.probe.read_register(0x1, 32)?;
         Ok(Some(value.load_le::<u32>()))
     }
 }
 
-fn tunnel_select_command(
-    tunnel_ir_id: u32,
-    tunnel_ir_width: u32,
-    address: u32,
-) -> JtagWriteCommand {
+fn tunnel_select_data(tunnel_ir_id: u32, tunnel_ir_width: u32, address: u32) -> JtagWriteData {
     let tunneled_ir: u32 = (tunnel_ir_width << (tunnel_ir_width + 3)) | (address << 3);
     let tunneled_ir_len = 1 + 7 + tunnel_ir_width + 3;
-    JtagWriteCommand {
+    JtagWriteData {
         address: tunnel_ir_id,
         data: tunneled_ir.to_le_bytes().into(),
         len: tunneled_ir_len,
-        transform: |_, _| Ok(CommandResult::None),
     }
 }
 
-fn tunnel_dtmcs_command(data: u32) -> ShiftDrCommand {
+fn tunnel_dtmcs_data(data: u32) -> ShiftDrData {
     let width_offset = 1 + (DTMCS_WIDTH as u128) + 3;
     let msb_offset = 7 + width_offset;
     let tunneled_dr: u128 =
         (1 << msb_offset) | ((DTMCS_WIDTH as u128) << width_offset) | ((data as u128) << 3);
-    ShiftDrCommand {
+    ShiftDrData {
         data: tunneled_dr.to_le_bytes().into(),
         len: (msb_offset as u32) + 1,
-        transform: |_, result| {
-            let response = result[4..].load_le::<u32>();
-            Ok(CommandResult::U32(response))
-        },
     }
 }
 
+fn tunnel_dtmcs_transform(
+    _data: &ShiftDrData,
+    result: &BitSlice,
+) -> Result<CommandResult, DmiOperationError> {
+    let response = result[4..36].load_le::<u32>();
+    Ok(CommandResult::U32(response))
+}
+
+/// DMI operation.
 #[derive(Copy, Clone, Debug)]
 pub enum DmiOperation {
+    /// No operation, usually to read back the response to the previous operation.
     NoOp,
-    Read { address: u64 },
-    Write { address: u64, value: u32 },
+
+    /// Read operation.
+    Read {
+        /// Address of the register to read.
+        address: u64,
+    },
+
+    /// Write operation.
+    Write {
+        /// Address of the register to write.
+        address: u64,
+
+        /// Value to write to the register.
+        value: u32,
+    },
 }
 
 impl DmiOperation {
@@ -631,10 +722,12 @@ impl DmiOperation {
         (address << DMI_ADDRESS_BIT_OFFSET) | (value << DMI_VALUE_BIT_OFFSET) | opcode
     }
 
+    /// Converts the DMI operation into a byte array.
     pub fn to_byte_batch(self) -> [u8; 16] {
         self.register_value().to_le_bytes()
     }
 
+    /// Converts the DMI operation into a byte array for tunneling.
     pub fn to_tunneled_byte_batch(self, dmi_bits: u32) -> (u32, [u8; 16]) {
         let width_offset = 1 + (dmi_bits) + 3;
         let msb_offset = 7 + width_offset;
@@ -645,25 +738,30 @@ impl DmiOperation {
     }
 }
 
-/// Possible return values in the op field of
-/// the dmi register.
+/// Possible return values in the op field of the dmi register.
 #[derive(Debug)]
 pub enum DmiOperationStatus {
+    /// OK
     Ok = 0,
+    /// Reserved
     Reserved = 1,
+    /// Operation failed
     OperationFailed = 2,
+    /// Request in progress
     RequestInProgress = 3,
 }
 
-impl DmiOperationStatus {
-    pub fn map_as_err(self) -> Result<(), RiscvError> {
-        match self {
-            Self::Ok => Ok(()),
-            Self::Reserved => unimplemented!("Reserved."),
-            Self::OperationFailed => Err(RiscvError::DtmOperationFailed),
-            Self::RequestInProgress => Err(RiscvError::DtmOperationInProcess),
-        }
-    }
+// TODO Better error names
+
+/// DMI operation error.
+#[derive(Debug, thiserror::Error, docsplay::Display)]
+pub enum DmiOperationError {
+    /// Reserved
+    Reserved,
+    /// Operation failed
+    OperationFailed,
+    /// Request in progress
+    RequestInProgress,
 }
 
 impl DmiOperationStatus {
@@ -702,10 +800,57 @@ bitfield! {
     pub struct Dtmcs(u32);
     impl Debug;
 
+
+    /// Hard-reset the DTM
+    ///
+    /// Writing 1 to this bit does a hard reset of the DTM,
+    /// causing the DTM to forget about any outstanding DMI
+    /// transactions. In general this should only be used
+    /// when the Debugger has reason to expect that the
+    /// outstanding DMI transaction will never complete
+    /// (e.g. a reset condition caused an inflight DMI
+    /// transaction to be cancelled).
     pub _, set_dmihardreset: 17;
+
+    /// Writing 1 to this bit clears the sticky error state
+    /// and allows the DTM to retry or complete the previous
+    /// outstanding transaction.
     pub _, set_dmireset: 16;
+
+    /// Idle cycles hint.
+    ///
+    /// This is a hint to the debugger of the minimum
+    /// number of cycles a debugger should spend in Run
+    /// Test/Idle after every DMI scan to avoid a ‘busy’
+    /// return code (dmistat of 3). A debugger must still
+    /// check dmistat when necessary.
+    ///
+    /// 0: It is not necessary to enter Run-Test/Idle at
+    ///    all.
+    /// 1: Enter Run-Test/Idle and leave it immediately.
+    /// 2: Enter Run-Test/Idle and stay there for 1 cycle
+    ///    before leaving.
+    ///
+    /// And so on.
     pub idle, _: 14, 12;
+
+    /// DMI status
+    ///
+    /// 0: No error.
+    /// 1: Reserved. Interpret the same as 2.
+    /// 2: An operation failed (resulted in op of 2).
+    /// 3: An operation was attempted while a DMI access was still
+    ///    in progress (resulted in op of 3).
     pub dmistat, _: 11,10;
+
+    /// The size of address in dmi.
     pub abits, _: 9,4;
+
+    /// Version of the implemented RISCV-V debug specification
+    ///
+    /// 0: Version described in spec version 0.11.
+    /// 1: Version described in spec version 0.13.
+    /// 15: Version not described in any available version
+    /// of this spec.
     pub version, _: 3,0;
 }

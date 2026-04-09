@@ -1,12 +1,13 @@
 use std::{any::Any, ops::DerefMut};
 use std::{convert::Infallible, future::Future};
 
+use crate::rpc::SessionState;
 use crate::rpc::functions::file::{
     AppendFileRequest, CreateFileResponse, append_temp_file, create_temp_file,
 };
 use crate::{
     rpc::{
-        Key, SessionState,
+        ConnectionState, Key,
         functions::{
             chip::{
                 ChipInfoRequest, ChipInfoResponse, ListFamiliesResponse, LoadChipFamilyRequest,
@@ -23,9 +24,12 @@ use crate::{
                 AttachRequest, AttachResponse, ListProbesRequest, ListProbesResponse,
                 SelectProbeRequest, SelectProbeResponse, attach, list_probes, select_probe,
             },
-            reset::{ResetCoreRequest, reset},
+            reset::{ResetCoreAndHaltRequest, ResetCoreRequest, reset, reset_and_halt},
             resume::{ResumeAllCoresRequest, resume_all_cores},
-            rtt_client::{CreateRttClientRequest, CreateRttClientResponse, create_rtt_client},
+            rtt_client::{
+                CreateRttClientRequest, CreateRttClientResponse, RttDownRequest, create_rtt_client,
+                write_rtt_down,
+            },
             stack_trace::{TakeStackTraceRequest, TakeStackTraceResponse, take_stack_trace},
             test::{
                 ListTestsRequest, ListTestsResponse, RunTestRequest, RunTestResponse, list_tests,
@@ -144,8 +148,7 @@ impl From<RpcError> for anyhow::Error {
 
 #[derive(Clone)]
 pub struct RpcSpawnContext {
-    state: SessionState,
-    token: CancellationToken,
+    state: ConnectionState,
     sender: PostcardSender<WireTxImpl>,
 }
 
@@ -210,11 +213,15 @@ where
 
 impl RpcSpawnContext {
     fn dry_run(&self, sessid: Key<Session>) -> bool {
-        self.state.dry_run(sessid)
+        self.shared_session(sessid).dry_run()
     }
 
     fn session_blocking(&self, sessid: Key<Session>) -> impl DerefMut<Target = Session> + use<> {
-        self.state.session_blocking(sessid)
+        self.shared_session(sessid).session_blocking()
+    }
+
+    fn shared_session(&self, sessid: Key<Session>) -> SessionState<'_> {
+        self.state.shared_session(sessid)
     }
 
     pub fn object_mut_blocking<T: Any + Send>(
@@ -225,7 +232,7 @@ impl RpcSpawnContext {
     }
 
     pub fn cancellation_token(&self) -> CancellationToken {
-        self.token.clone()
+        self.state.token.clone()
     }
 
     pub async fn run_blocking<T, F, REQ, RESP>(&mut self, request: REQ, task: F) -> RESP
@@ -315,8 +322,8 @@ pub(crate) enum ProbeAccess {
 }
 
 pub struct RpcContext {
-    state: SessionState,
-    token: CancellationToken,
+    /// State associated with a single connection.
+    state: ConnectionState,
     sender: Option<PostcardSender<WireTxImpl>>,
     probe_access: ProbeAccess,
 }
@@ -325,10 +332,9 @@ impl SpawnContext for RpcContext {
     type SpawnCtxt = RpcSpawnContext;
 
     fn spawn_ctxt(&mut self) -> Self::SpawnCtxt {
-        self.token = CancellationToken::new();
+        self.state.token = CancellationToken::new();
         RpcSpawnContext {
             state: self.state.clone(),
-            token: self.token.clone(),
             sender: self.sender.clone().unwrap(),
         }
     }
@@ -337,8 +343,7 @@ impl SpawnContext for RpcContext {
 impl RpcContext {
     pub fn new(probe_access: ProbeAccess) -> Self {
         Self {
-            state: SessionState::new(),
-            token: CancellationToken::new(),
+            state: ConnectionState::new(),
             sender: None,
             probe_access,
         }
@@ -413,7 +418,7 @@ async fn cancel_handler(
     _msg: (),
     _sender: &PostcardSender<WireTxImpl>,
 ) {
-    ctx.token.cancel();
+    ctx.state.token.cancel();
 }
 
 #[derive(Clone)]
@@ -453,43 +458,45 @@ type WriteMemory64Request = WriteMemoryRequest<u64>;
 
 endpoints! {
     list = ENDPOINT_LIST;
-    | EndpointTy                | RequestTy              | ResponseTy              | Path               |
-    | ----------                | ---------              | ----------              | ----               |
-    | ListProbesEndpoint        | ListProbesRequest      | ListProbesResponse      | "probe/list"       |
-    | SelectProbeEndpoint       | SelectProbeRequest     | SelectProbeResponse     | "probe/select"     |
-    | AttachEndpoint            | AttachRequest          | AttachResponse          | "probe/attach"     |
+    | EndpointTy                | RequestTy               | ResponseTy              | Path               |
+    | ----------                | ---------               | ----------              | ----               |
+    | ListProbesEndpoint        | ListProbesRequest       | ListProbesResponse      | "probe/list"       |
+    | SelectProbeEndpoint       | SelectProbeRequest      | SelectProbeResponse     | "probe/select"     |
+    | AttachEndpoint            | AttachRequest           | AttachResponse          | "probe/attach"     |
 
-    | ResumeAllCoresEndpoint    | ResumeAllCoresRequest  | NoResponse              | "resume"           |
-    | CreateRttClientEndpoint   | CreateRttClientRequest | CreateRttClientResponse | "create_rtt"       |
-    | TakeStackTraceEndpoint    | TakeStackTraceRequest  | TakeStackTraceResponse  | "stack_trace"      |
-    | BuildEndpoint             | BuildRequest           | BuildResponse           | "flash/build"      |
-    | FlashEndpoint             | FlashRequest           | NoResponse              | "flash/flash"      |
-    | EraseEndpoint             | EraseRequest           | NoResponse              | "flash/erase"      |
-    | VerifyEndpoint            | VerifyRequest          | VerifyResponse          | "flash/verify"     |
-    | MonitorEndpoint           | MonitorRequest         | MonitorResponse         | "monitor"          |
+    | ResumeAllCoresEndpoint    | ResumeAllCoresRequest   | NoResponse              | "resume"           |
+    | CreateRttClientEndpoint   | CreateRttClientRequest  | CreateRttClientResponse | "create_rtt"       |
+    | RttDownEndpoint           | RttDownRequest          | NoResponse              | "rtt/down"         |
+    | TakeStackTraceEndpoint    | TakeStackTraceRequest   | TakeStackTraceResponse  | "stack_trace"      |
+    | BuildEndpoint             | BuildRequest            | BuildResponse           | "flash/build"      |
+    | FlashEndpoint             | FlashRequest            | NoResponse              | "flash/flash"      |
+    | EraseEndpoint             | EraseRequest            | NoResponse              | "flash/erase"      |
+    | VerifyEndpoint            | VerifyRequest           | VerifyResponse          | "flash/verify"     |
+    | MonitorEndpoint           | MonitorRequest          | MonitorResponse         | "monitor"          |
 
-    | ListTestsEndpoint         | ListTestsRequest       | ListTestsResponse       | "tests/list"       |
-    | RunTestEndpoint           | RunTestRequest         | RunTestResponse         | "tests/run"        |
+    | ListTestsEndpoint         | ListTestsRequest        | ListTestsResponse       | "tests/list"       |
+    | RunTestEndpoint           | RunTestRequest          | RunTestResponse         | "tests/run"        |
 
-    | CreateTempFileEndpoint    | ()                     | CreateFileResponse      | "temp_file/new"    |
-    | TempFileDataEndpoint      | AppendFileRequest      | NoResponse              | "temp_file/append" |
+    | CreateTempFileEndpoint    | ()                      | CreateFileResponse      | "temp_file/new"    |
+    | TempFileDataEndpoint      | AppendFileRequest       | NoResponse              | "temp_file/append" |
 
-    | ListChipFamiliesEndpoint  | ()                     | ListFamiliesResponse    | "chips/list"       |
-    | ChipInfoEndpoint          | ChipInfoRequest        | ChipInfoResponse        | "chips/info"       |
-    | LoadChipFamilyEndpoint    | LoadChipFamilyRequest  | NoResponse              | "chips/load"       |
+    | ListChipFamiliesEndpoint  | ()                      | ListFamiliesResponse    | "chips/list"       |
+    | ChipInfoEndpoint          | ChipInfoRequest         | ChipInfoResponse        | "chips/info"       |
+    | LoadChipFamilyEndpoint    | LoadChipFamilyRequest   | NoResponse              | "chips/load"       |
 
-    | TargetInfoEndpoint        | TargetInfoRequest      | NoResponse              | "info"             |
-    | ResetCoreEndpoint         | ResetCoreRequest       | NoResponse              | "reset"            |
+    | TargetInfoEndpoint        | TargetInfoRequest       | NoResponse              | "info"             |
+    | ResetCoreEndpoint         | ResetCoreRequest        | NoResponse              | "reset"            |
+    | ResetCoreAndHaltEndpoint  | ResetCoreAndHaltRequest | NoResponse              | "reset_and_halt"   |
 
-    | ReadMemory8Endpoint       | ReadMemoryRequest      | ReadMemory8Response     | "memory/read8"     |
-    | ReadMemory16Endpoint      | ReadMemoryRequest      | ReadMemory16Response    | "memory/read16"    |
-    | ReadMemory32Endpoint      | ReadMemoryRequest      | ReadMemory32Response    | "memory/read32"    |
-    | ReadMemory64Endpoint      | ReadMemoryRequest      | ReadMemory64Response    | "memory/read64"    |
+    | ReadMemory8Endpoint       | ReadMemoryRequest       | ReadMemory8Response     | "memory/read8"     |
+    | ReadMemory16Endpoint      | ReadMemoryRequest       | ReadMemory16Response    | "memory/read16"    |
+    | ReadMemory32Endpoint      | ReadMemoryRequest       | ReadMemory32Response    | "memory/read32"    |
+    | ReadMemory64Endpoint      | ReadMemoryRequest       | ReadMemory64Response    | "memory/read64"    |
 
-    | WriteMemory8Endpoint      | WriteMemory8Request    | NoResponse              | "memory/write8"    |
-    | WriteMemory16Endpoint     | WriteMemory16Request   | NoResponse              | "memory/write16"   |
-    | WriteMemory32Endpoint     | WriteMemory32Request   | NoResponse              | "memory/write32"   |
-    | WriteMemory64Endpoint     | WriteMemory64Request   | NoResponse              | "memory/write64"   |
+    | WriteMemory8Endpoint      | WriteMemory8Request     | NoResponse              | "memory/write8"    |
+    | WriteMemory16Endpoint     | WriteMemory16Request    | NoResponse              | "memory/write16"   |
+    | WriteMemory32Endpoint     | WriteMemory32Request    | NoResponse              | "memory/write32"   |
+    | WriteMemory64Endpoint     | WriteMemory64Request    | NoResponse              | "memory/write64"   |
 }
 
 topics! {
@@ -535,6 +542,7 @@ postcard_rpc::define_dispatch! {
         | EraseEndpoint             | async     | erase             |
         | VerifyEndpoint            | async     | verify            |
         | MonitorEndpoint           | spawn     | monitor           |
+        | RttDownEndpoint           | async     | write_rtt_down    |
 
         | ListTestsEndpoint         | spawn     | list_tests        |
         | RunTestEndpoint           | spawn     | run_test          |
@@ -548,6 +556,7 @@ postcard_rpc::define_dispatch! {
 
         | TargetInfoEndpoint        | async     | target_info       |
         | ResetCoreEndpoint         | async     | reset             |
+        | ResetCoreAndHaltEndpoint  | async     | reset_and_halt    |
 
         | ReadMemory8Endpoint       | async     | read_memory       |
         | ReadMemory16Endpoint      | async     | read_memory       |

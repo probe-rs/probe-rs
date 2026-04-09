@@ -20,8 +20,8 @@ pub mod sequences;
 #[derive(docsplay::Display)]
 pub struct Infineon;
 
-const INFINEON: JEP106Code = JEP106Code { id: 0x41, cc: 0x00 };
-const CYPRESS: JEP106Code = JEP106Code { id: 0x34, cc: 0x00 };
+const JEP_INFINEON: JEP106Code = JEP106Code { id: 0x41, cc: 0x00 };
+const JEP_CYPRESS: JEP106Code = JEP106Code { id: 0x34, cc: 0x00 };
 
 impl Vendor for Infineon {
     fn try_create_debug_sequence(&self, chip: &Chip) -> Option<DebugSequence> {
@@ -53,7 +53,7 @@ fn try_detect_xmc4xxx(
     interface: &mut dyn ArmDebugInterface,
     chip_info: &ArmChipInfo,
 ) -> Result<Option<String>, Error> {
-    if chip_info.manufacturer != INFINEON {
+    if chip_info.manufacturer != JEP_INFINEON {
         return Ok(None);
     }
 
@@ -156,7 +156,7 @@ fn try_detect_psoc(
     interface: &mut dyn ArmDebugInterface,
     chip_info: &ArmChipInfo,
 ) -> Result<Option<String>, Error> {
-    if chip_info.manufacturer != INFINEON && chip_info.manufacturer != CYPRESS {
+    if chip_info.manufacturer != JEP_INFINEON && chip_info.manufacturer != JEP_CYPRESS {
         return Ok(None);
     }
 

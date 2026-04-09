@@ -1,5 +1,3 @@
-use zerocopy::IntoBytes;
-
 use crate::{
     CoreStatus, MemoryInterface,
     architecture::arm::{
@@ -249,28 +247,6 @@ where
         Ok(())
     }
 
-    fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
-        let len = data.len();
-        if address.is_multiple_of(4) && len.is_multiple_of(4) {
-            let mut buffer = vec![0u32; len / 4];
-            self.read_32(address, &mut buffer)?;
-            for (bytes, value) in data.chunks_exact_mut(4).zip(buffer.iter()) {
-                bytes.copy_from_slice(&u32::to_le_bytes(*value));
-            }
-        } else {
-            let start_address = address & !3;
-            let end_address = address + (data.len() as u64);
-            let end_address = end_address + (4 - (end_address & 3));
-            let start_extra_count = address as usize % 4;
-            let mut buffer = vec![0u32; (end_address - start_address) as usize / 4];
-            self.read_32(start_address, &mut buffer)?;
-            data.copy_from_slice(
-                &buffer.as_bytes()[start_extra_count..start_extra_count + data.len()],
-            );
-        }
-        Ok(())
-    }
-
     /// Write a block of 64 bit words at `address`.
     ///
     /// The number of words written is `data.len()`.
@@ -412,7 +388,7 @@ where
             );
 
             // The required shifting logic here is described in C2.2.6 Byte lanes of the ADI v5.2 specification.
-            // All bytes are transfered in their lane, so when we do an access at an address that is not divisible by 4,
+            // All bytes are transferred in their lane, so when we do an access at an address that is not divisible by 4,
             // we have to shift the word (one or two bytes) to it's correct position.
             let values = data[..chunk_size]
                 .iter()
@@ -466,7 +442,7 @@ where
             );
 
             // The required shifting logic here is described in C2.2.6 Byte lanes of the ADI v5.2 specification.
-            // All bytes are transfered in their lane, so when we do an access at an address that is not divisible by 4,
+            // All bytes are transferred in their lane, so when we do an access at an address that is not divisible by 4,
             // we have to shift the word (one or two bytes) to it's correct position.
             let values = data[..chunk_size]
                 .iter()

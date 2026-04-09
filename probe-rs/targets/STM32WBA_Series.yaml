@@ -864,6 +864,7 @@ variants:
   flash_algorithms:
   - stm32wbax_2m_0800
 - name: STM32WBA65RI
+  part: 0x4b0
   package_variants:
   - STM32WBA65RIVx
   cores:

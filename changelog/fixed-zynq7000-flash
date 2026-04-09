@@ -1,0 +1,1 @@
+Fixed a bug in Zynq-7000 flash algorithm that broke loads beyond 64kB

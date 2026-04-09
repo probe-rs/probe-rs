@@ -1,0 +1,1 @@
+Fixed spelling across the entire repository in comments and in code

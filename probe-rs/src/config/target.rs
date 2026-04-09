@@ -1,5 +1,4 @@
 use super::{Core, MemoryRegion, RawFlashAlgorithm, TargetDescriptionSource};
-use crate::flashing::FlashLoader;
 use crate::{
     architecture::{
         arm::{
@@ -24,7 +23,7 @@ pub struct Target {
     pub name: String,
     /// The cores of the target.
     pub cores: Vec<Core>,
-    /// The name of the flash algorithm.
+    /// The list of available flash algorithms.
     pub flash_algorithms: Vec<RawFlashAlgorithm>,
     /// The memory map of the target.
     pub memory_map: Vec<MemoryRegion>,
@@ -172,10 +171,10 @@ impl Target {
         &self.source
     }
 
-    /// Create a [FlashLoader] for this target, which can be used
+    /// Create a [FlashLoader](crate::flashing::FlashLoader) for this target, which can be used
     /// to program its non-volatile memory.
-    pub fn flash_loader(&self) -> FlashLoader {
-        FlashLoader::new(self.memory_map.clone(), self.source.clone())
+    pub fn flash_loader(&self) -> crate::flashing::FlashLoader {
+        crate::flashing::FlashLoader::new(self.memory_map.clone(), self.source.clone())
     }
 
     /// Returns a [RawFlashAlgorithm] by name.
@@ -258,7 +257,7 @@ impl From<Target> for TargetSelector {
 }
 
 /// This is the type to denote a general debug sequence.
-/// It can differentiate between ARM and RISC-V for now.
+/// It can differentiate between ARM, RISC-V and Xtensa for now.
 #[derive(Clone, Debug)]
 pub enum DebugSequence {
     /// An ARM debug sequence.

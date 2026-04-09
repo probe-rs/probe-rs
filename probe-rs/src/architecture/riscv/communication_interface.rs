@@ -4,10 +4,10 @@
 //! Debug Module, as described in the RISC-V debug
 //! specification v0.13.2 .
 
-use crate::architecture::riscv::dtm::dtm_access::DtmAccess;
+use crate::architecture::riscv::dtm::DtmAccess;
+use crate::probe::queue::DeferredResultIndex;
 use crate::{
     Error as ProbeRsError, architecture::riscv::*, config::Target, memory_mapped_bitfield_register,
-    probe::DeferredResultIndex,
 };
 use std::any::Any;
 use std::collections::HashMap;
@@ -328,6 +328,8 @@ pub struct RiscvCommunicationInterfaceState {
     current_dmcontrol: Dmcontrol,
 
     memory_access_config: MemoryAccessConfig,
+
+    sw_breakpoint_debug_enabled: bool,
 }
 
 /// Timeout for RISC-V operations.
@@ -362,7 +364,7 @@ impl RiscvCommunicationInterfaceState {
             // Assume maximum value, will be determined exactly alter.
             hartsellen: 20,
 
-            // We assume only a singe hart exisits initially
+            // We assume only a singe hart exists initially
             num_harts: 1,
 
             abstract_cmd_register_info: HashMap::new(),
@@ -377,6 +379,8 @@ impl RiscvCommunicationInterfaceState {
             current_dmcontrol: Dmcontrol(0),
 
             memory_access_config: MemoryAccessConfig::default(),
+
+            sw_breakpoint_debug_enabled: false,
         }
     }
 
@@ -769,8 +773,31 @@ impl<'state> RiscvCommunicationInterface<'state> {
     }
 
     /// Disable debugging on the target.
+    ///
+    /// Always attempts to deassert `dmcontrol.dmactive` even when earlier
+    /// cleanup steps (e.g. clearing software-breakpoint enable in DCSR)
+    /// fail.  Without this, a stuck DM (dmistat=3) caused by an abrupt
+    /// disconnect leaves the debug module active with no way to recover
+    /// short of a full power cycle.
     pub fn disable_debug_module(&mut self) -> Result<(), RiscvError> {
-        self.debug_on_sw_breakpoint(false)?;
+        // Best-effort: try to clear ebreak bits in DCSR, but do not let
+        // failure prevent us from deactivating the debug module below.
+        if let Err(e) = self.debug_on_sw_breakpoint(false) {
+            tracing::warn!(
+                "disable_debug_module: could not clear sw-breakpoint state: {:?}",
+                e
+            );
+        }
+
+        // Clear any sticky DMI errors (dmistat=3) that may have accumulated
+        // from timed-out operations, so the final dmactive=0 write can
+        // actually reach the debug module.
+        if let Err(e) = self.dtm.clear_error_state() {
+            tracing::warn!(
+                "disable_debug_module: could not clear DMI error state: {:?}",
+                e
+            );
+        }
 
         let mut control = Dmcontrol(0);
         control.set_dmactive(false);
@@ -820,6 +847,10 @@ impl<'state> RiscvCommunicationInterface<'state> {
         // clear the halt request
         dmcontrol.set_haltreq(false);
         self.write_dm_register(dmcontrol)?;
+
+        if !self.state.sw_breakpoint_debug_enabled {
+            self.debug_on_sw_breakpoint(true)?;
+        }
 
         Ok(())
     }
@@ -878,7 +909,8 @@ impl<'state> RiscvCommunicationInterface<'state> {
         Ok(())
     }
 
-    pub(crate) fn halted_access<R>(
+    /// Executes an operation while the core is halted.
+    pub fn halted_access<R>(
         &mut self,
         op: impl FnOnce(&mut Self) -> Result<R, RiscvError>,
     ) -> Result<R, RiscvError> {
@@ -1044,24 +1076,31 @@ impl<'state> RiscvCommunicationInterface<'state> {
         &mut self,
         address: u32,
     ) -> Result<V, RiscvError> {
-        let mut sbcs = Sbcs(0);
+        loop {
+            let mut sbcs = Sbcs(0);
 
-        sbcs.set_sbaccess(V::WIDTH as u32);
-        sbcs.set_sbreadonaddr(true);
+            // Reset the systembus busy error flag.
+            sbcs.set_sbbusyerror(true);
 
-        self.schedule_write_dm_register(sbcs)?;
-        self.schedule_write_dm_register(Sbaddress0(address))?;
+            sbcs.set_sbaccess(V::WIDTH as u32);
 
-        let mut results = vec![];
-        self.schedule_read_large_dtm_register::<V, Sbdata>(&mut results)?;
+            sbcs.set_sbreadonaddr(true);
 
-        // Check that the read was succesful
-        let sbcs = self.read_dm_register::<Sbcs>()?;
+            self.schedule_write_dm_register(sbcs)?;
+            self.schedule_write_dm_register(Sbaddress0(address))?;
 
-        if sbcs.sberror() != 0 {
-            Err(RiscvError::SystemBusAccess)
-        } else {
-            V::read_scheduled_result(self, &mut results)
+            let mut results = vec![];
+            self.schedule_read_large_dtm_register::<V, Sbdata>(&mut results)?;
+
+            // Check that the read was successful
+            let sbcs = self.read_dm_register::<Sbcs>()?;
+            if sbcs.sberror() != 0 {
+                break Err(RiscvError::SystemBusAccess);
+            }
+            if !sbcs.sbbusyerror() {
+                break V::read_scheduled_result(self, &mut results);
+            }
+            tracing::debug!("System bus was busy while reading, repeating operation");
         }
     }
 
@@ -1076,43 +1115,49 @@ impl<'state> RiscvCommunicationInterface<'state> {
         if data.is_empty() {
             return Ok(());
         }
+        loop {
+            let mut sbcs = Sbcs(0);
 
-        let mut sbcs = Sbcs(0);
+            // Reset the systembus busy error flag.
+            sbcs.set_sbbusyerror(true);
 
-        sbcs.set_sbaccess(V::WIDTH as u32);
+            sbcs.set_sbaccess(V::WIDTH as u32);
 
-        sbcs.set_sbreadonaddr(true);
+            sbcs.set_sbreadonaddr(true);
 
-        sbcs.set_sbreadondata(true);
-        sbcs.set_sbautoincrement(true);
+            sbcs.set_sbreadondata(true);
+            sbcs.set_sbautoincrement(true);
 
-        self.schedule_write_dm_register(sbcs)?;
+            self.schedule_write_dm_register(sbcs)?;
 
-        self.schedule_write_dm_register(Sbaddress0(address))?;
+            self.schedule_write_dm_register(Sbaddress0(address))?;
 
-        let data_len = data.len();
+            let data_len = data.len();
 
-        let mut read_results = Vec::with_capacity(data_len);
-        for _ in data[..data_len - 1].iter() {
+            let mut read_results = Vec::with_capacity(data_len);
+            for _ in data[..data_len - 1].iter() {
+                self.schedule_read_large_dtm_register::<V, Sbdata>(&mut read_results)?;
+            }
+
+            self.schedule_write_dm_register(Sbcs(0))?;
+
+            // Read last value
             self.schedule_read_large_dtm_register::<V, Sbdata>(&mut read_results)?;
-        }
 
-        self.schedule_write_dm_register(Sbcs(0))?;
+            let sbcs = self.read_dm_register::<Sbcs>()?;
 
-        // Read last value
-        self.schedule_read_large_dtm_register::<V, Sbdata>(&mut read_results)?;
+            for out in data.iter_mut() {
+                *out = V::read_scheduled_result(self, &mut read_results)?;
+            }
 
-        let sbcs = self.read_dm_register::<Sbcs>()?;
-
-        for out in data.iter_mut() {
-            *out = V::read_scheduled_result(self, &mut read_results)?;
-        }
-
-        // Check that the read was succesful
-        if sbcs.sberror() != 0 {
-            Err(RiscvError::SystemBusAccess)
-        } else {
-            Ok(())
+            // Check that the read was successful
+            if sbcs.sberror() != 0 {
+                break Err(RiscvError::SystemBusAccess);
+            }
+            if !sbcs.sbbusyerror() {
+                break Ok(());
+            }
+            tracing::debug!("System bus was busy while reading, repeating operation");
         }
     }
 
@@ -1286,27 +1331,31 @@ impl<'state> RiscvCommunicationInterface<'state> {
         if data.is_empty() {
             return Ok(());
         }
-        let mut sbcs = Sbcs(0);
 
-        // Set correct access width
-        sbcs.set_sbaccess(V::WIDTH as u32);
-        sbcs.set_sbautoincrement(true);
+        loop {
+            let mut sbcs = Sbcs(0);
+            // Reset busy error flag;
+            sbcs.set_sbbusyerror(true);
+            // Set correct access width
+            sbcs.set_sbaccess(V::WIDTH as u32);
+            sbcs.set_sbautoincrement(true);
 
-        self.schedule_write_dm_register(sbcs)?;
+            self.schedule_write_dm_register(sbcs)?;
 
-        self.schedule_write_dm_register(Sbaddress0(address))?;
+            self.schedule_write_dm_register(Sbaddress0(address))?;
+            for value in data {
+                self.schedule_write_large_dtm_register::<V, Sbdata>(*value)?;
+            }
 
-        for value in data {
-            self.schedule_write_large_dtm_register::<V, Sbdata>(*value)?;
-        }
-
-        // Check that the write was succesful
-        let sbcs = self.read_dm_register::<Sbcs>()?;
-
-        if sbcs.sberror() != 0 {
-            Err(RiscvError::SystemBusAccess)
-        } else {
-            Ok(())
+            // Check that the write was successful
+            let sbcs = self.read_dm_register::<Sbcs>()?;
+            if sbcs.sberror() != 0 {
+                break Err(RiscvError::SystemBusAccess);
+            }
+            if !sbcs.sbbusyerror() {
+                break Ok(());
+            }
+            tracing::debug!("System bus was busy while writing, repeating write");
         }
     }
 
@@ -1443,7 +1492,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
     }
 
     pub(crate) fn execute_abstract_command(&mut self, command: u32) -> Result<(), RiscvError> {
-        // ensure that preconditions are fullfileld
+        // ensure that preconditions are fulfilled
         // haltreq      = 0
         // resumereq    = 0
         // ackhavereset = 0
@@ -1689,12 +1738,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
             MemoryAccessMethod::WaitingProgramBuffer => {
                 self.perform_memory_read_progbuf(address, true)?
             }
-            MemoryAccessMethod::HaltedSystemBus => {
-                self.halted_access(|this| this.perform_memory_read_sysbus(address))?
-            }
             MemoryAccessMethod::SystemBus => self.perform_memory_read_sysbus(address)?,
             MemoryAccessMethod::AbstractCommand => {
-                unimplemented!("Memory access using abstract commands is not implemted")
+                unimplemented!("Memory access using abstract commands is not implemented")
             }
         };
 
@@ -1725,14 +1771,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
             MemoryAccessMethod::WaitingProgramBuffer => {
                 self.perform_memory_read_multiple_progbuf(address, data, true)?;
             }
-            MemoryAccessMethod::HaltedSystemBus => {
-                self.halted_access(|this| this.perform_memory_read_multiple_sysbus(address, data))?
-            }
             MemoryAccessMethod::SystemBus => {
                 self.perform_memory_read_multiple_sysbus(address, data)?;
             }
             MemoryAccessMethod::AbstractCommand => {
-                unimplemented!("Memory access using abstract commands is not implemted")
+                unimplemented!("Memory access using abstract commands is not implemented")
             }
         };
 
@@ -1747,12 +1790,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
             MemoryAccessMethod::WaitingProgramBuffer => {
                 self.perform_memory_write_progbuf(address, data, true)?
             }
-            MemoryAccessMethod::HaltedSystemBus => {
-                self.halted_access(|this| this.perform_memory_write_sysbus(address, &[data]))?
-            }
             MemoryAccessMethod::SystemBus => self.perform_memory_write_sysbus(address, &[data])?,
             MemoryAccessMethod::AbstractCommand => {
-                unimplemented!("Memory access using abstract commands is not implemted")
+                unimplemented!("Memory access using abstract commands is not implemented")
             }
         };
 
@@ -1770,9 +1810,6 @@ impl<'state> RiscvCommunicationInterface<'state> {
             .state
             .memory_range_access_method(V::WIDTH, address_range);
         match access_method {
-            MemoryAccessMethod::HaltedSystemBus => {
-                self.halted_access(|this| this.perform_memory_write_sysbus(address, data))?
-            }
             MemoryAccessMethod::SystemBus => self.perform_memory_write_sysbus(address, data)?,
             MemoryAccessMethod::ProgramBuffer => {
                 self.perform_memory_write_multiple_progbuf(address, data, false)?
@@ -1781,7 +1818,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 self.perform_memory_write_multiple_progbuf(address, data, true)?
             }
             MemoryAccessMethod::AbstractCommand => {
-                unimplemented!("Memory access using abstract commands is not implemted")
+                unimplemented!("Memory access using abstract commands is not implemented")
             }
         }
 
@@ -1888,7 +1925,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         dmcontrol.set_resumereq(true);
         self.schedule_write_dm_register(dmcontrol)?;
 
-        // check if request has been acknowleged.
+        // check if request has been acknowledge.
         let status_idx = self.schedule_read_dm_register::<Dmstatus>()?;
 
         // clear resume request.
@@ -1957,6 +1994,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             if start.elapsed() > timeout {
                 return Err(RiscvError::RequestNotAcknowledged);
             }
+            self.write_dm_register(dmcontrol)?;
         }
 
         // clear the reset request
@@ -1973,7 +2011,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         Ok(())
     }
 
-    pub(crate) fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), RiscvError> {
+    fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), RiscvError> {
         let mut dcsr = Dcsr(self.read_csr(0x7b0)?);
 
         dcsr.set_ebreakm(enabled);
@@ -1981,6 +2019,10 @@ impl<'state> RiscvCommunicationInterface<'state> {
         dcsr.set_ebreaku(enabled);
 
         match self.abstract_cmd_register_write(0x7b0, dcsr.0) {
+            Ok(()) => {
+                self.state.sw_breakpoint_debug_enabled = enabled;
+                Ok(())
+            }
             Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
                 tracing::debug!(
                     "Could not write core register {:#x} with abstract command, falling back to program buffer",
@@ -2206,7 +2248,7 @@ impl RiscvValue for u64 {
         let upper_bits = (value >> 32) as u32;
         let lower_bits = (value & 0xffff_ffff) as u32;
 
-        // R0 has to be written last, side effects are triggerd by writes from
+        // R0 has to be written last, side effects are triggered by writes from
         // this register.
 
         interface.schedule_write_dm_register_untyped(R::R1_ADDRESS as u64, upper_bits)?;
@@ -2258,7 +2300,7 @@ impl RiscvValue for u128 {
         let bits_1 = (value >> 32) as u32;
         let bits_0 = (value & 0xffff_ffff) as u32;
 
-        // R0 has to be written last, side effects are triggerd by writes from
+        // R0 has to be written last, side effects are triggered by writes from
         // this register.
 
         interface.schedule_write_dm_register_untyped(R::R3_ADDRESS as u64, bits_3)?;
@@ -2325,13 +2367,6 @@ impl MemoryInterface for RiscvCommunicationInterface<'_> {
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), crate::Error> {
         let address = valid_32bit_address(address)?;
         tracing::debug!("read_8 from {:#08x}", address);
-
-        self.read_multiple(address, data)
-    }
-
-    fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), crate::Error> {
-        let address = valid_32bit_address(address)?;
-        tracing::debug!("read from {:#08x}", address);
 
         self.read_multiple(address, data)
     }
@@ -2449,8 +2484,6 @@ pub enum MemoryAccessMethod {
     WaitingProgramBuffer,
     /// Memory access using the program buffer is supported
     ProgramBuffer,
-    /// Memory access using system bus access supported, but only when the core is halted
-    HaltedSystemBus,
     /// Memory access using system bus access supported
     SystemBus,
 }

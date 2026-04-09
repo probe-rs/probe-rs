@@ -113,6 +113,7 @@ pub fn read_chip_info_from_rom_table(
 }
 
 // TODO: Rename trait!
+/// Support for sending raw sequences via the probe.
 pub trait SwdSequence {
     /// Corresponds to the DAP_SWJ_Sequence function from the ARM Debug sequences
     fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError>;
@@ -227,6 +228,7 @@ impl ArmCommunicationInterface {
             }
         };
 
+        self.dps.clear();
         probe.raw_flush().ok();
     }
 }
@@ -246,6 +248,7 @@ impl ArmDebugInterface for ArmCommunicationInterface {
 
         // This should be set to None by the disconnect call above.
         assert!(self.current_dp.is_none());
+        assert!(self.dps.is_empty());
 
         // Reconnect to the DP again
         if let Some(dp) = current_dp {

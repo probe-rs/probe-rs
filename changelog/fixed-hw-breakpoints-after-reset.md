@@ -1,0 +1,1 @@
+Fixed hardware breakpoints being silently ignored after a chip reset. The cached `hw_breakpoints_enabled` state was not invalidated on reset, causing the breakpoint unit to remain globally disabled even though breakpoint comparator registers were programmed correctly.

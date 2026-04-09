@@ -89,7 +89,7 @@ impl RttClient {
         let location = if let Some(location) = self.last_control_block_address {
             location
         } else {
-            let location = match Rtt::find_contol_block(core, &self.scan_region) {
+            let location = match Rtt::find_control_block(core, &self.scan_region) {
                 Ok(location) => location,
                 Err(Error::ControlBlockNotFound) => {
                     tracing::debug!("Failed to attach - control block not found");
@@ -211,7 +211,7 @@ impl RttClient {
             return Ok(());
         }
 
-        self.try_attach(core)?;
+        self.try_attach_impl(core)?;
 
         tracing::debug!("Clearing RTT control block");
         if let Some(mut target) = self.target.take() {

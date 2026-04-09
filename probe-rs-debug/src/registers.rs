@@ -84,6 +84,9 @@ pub struct DebugRegisters(pub Vec<DebugRegister>);
 impl DebugRegisters {
     /// Read all registers defined in [`probe_rs::core::CoreRegisters`] from the given core.
     pub fn from_core(core: &mut impl CoreInterface) -> Self {
+        if let Err(error) = core.spill_registers() {
+            tracing::warn!("Failed to spill registers: {error}");
+        };
         Self::from_core_registers(core.registers(), |register_id| {
             core.read_core_reg(*register_id)
                 .inspect_err(|error| {

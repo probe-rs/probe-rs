@@ -51,9 +51,9 @@ pub(crate) struct FlashDevice {
     pub(crate) erased_default_value: u8,
     //  _pad: u24,
     // (MORE INFO REQUIRED)
-    pub(crate) program_page_timeout: u32, // in miliseconds
+    pub(crate) program_page_timeout: u32, // in milliseconds
     // (MORE INFO REQUIRED)
-    pub(crate) erase_sector_timeout: u32, // in miliseconds
+    pub(crate) erase_sector_timeout: u32, // in milliseconds
     // The available sectors of the flash.
     pub(crate) sectors: Vec<SectorInfo>,
 }
@@ -103,7 +103,7 @@ impl FlashDevice {
     ) -> Vec<SectorInfo> {
         let mut sectors = vec![];
         let mut offset = Self::INFO_SIZE;
-        // As long as we find new sectors, keep em comming.
+        // As long as we find new sectors, keep em coming.
         while let Some(data) =
             crate::parser::read_elf_bin_data(elf, buffer, address + offset, Self::SECTOR_INFO_SIZE)
         {

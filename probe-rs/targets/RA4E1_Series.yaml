@@ -2,6 +2,13 @@ name: RA4E1 Series
 manufacturer:
   id: 0x23
   cc: 0x4
+chip_detection:
+- !RenesasPnr
+  target_id: 0x340
+  mcu_pn_base: 0x010080f0
+  variants:
+    - R7FA4E10D
+    - R7FA4E10B
 generated_from_pack: true
 pack_file_release: 5.3.0
 variants:
@@ -21,14 +28,14 @@ variants:
     - main
     access:
       boot: true
-  - !Generic
+  - !Nvm
     name: ConfigROM
     range:
-      start: 0x100a000
+      start: 0x100a100
       end: 0x100a300
     cores:
     - main
-  - !Generic
+  - !Nvm
     name: DataFlash
     range:
       start: 0x8000000
@@ -62,14 +69,14 @@ variants:
     - main
     access:
       boot: true
-  - !Generic
+  - !Nvm
     name: ConfigROM
     range:
-      start: 0x100a000
+      start: 0x100a100
       end: 0x100a300
     cores:
     - main
-  - !Generic
+  - !Nvm
     name: DataFlash
     range:
       start: 0x8000000
@@ -147,7 +154,7 @@ flash_algorithms:
   data_section_offset: 0xd84
   flash_properties:
     address_range:
-      start: 0x100a000
+      start: 0x100a100
       end: 0x100a300
     page_size: 0x10
     erased_byte_value: 0xff

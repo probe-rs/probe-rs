@@ -30,6 +30,20 @@ pub trait ProtocolAdapter {
         &mut self,
         event_type: &str,
         event_body: Option<S>,
+    ) -> anyhow::Result<()>
+    where
+        Self: Sized,
+    {
+        self.dyn_send_event(
+            event_type,
+            event_body.map(|event_body| serde_json::to_value(event_body).unwrap_or_default()),
+        )
+    }
+
+    fn dyn_send_event(
+        &mut self,
+        event_type: &str,
+        event_body: Option<serde_json::Value>,
     ) -> anyhow::Result<()>;
 
     fn send_raw_response(&mut self, response: Response) -> anyhow::Result<()>;
@@ -45,41 +59,51 @@ pub trait ProtocolAdapter {
 }
 
 pub trait ProtocolHelper {
-    fn show_message(&mut self, severity: MessageSeverity, message: impl AsRef<str>) -> bool;
+    fn show_message(&mut self, severity: MessageSeverity, message: impl AsRef<str>) -> bool
+    where
+        Self: Sized,
+    {
+        self.dyn_show_message(severity, message.as_ref().to_string())
+    }
+
+    fn dyn_show_message(&mut self, severity: MessageSeverity, message: String) -> bool;
 
     /// Log a message to the console. Returns false if logging the message failed.
-    fn log_to_console(&mut self, message: impl AsRef<str>) -> bool;
+    fn log_to_console(&mut self, message: impl AsRef<str>) -> bool
+    where
+        Self: Sized;
 
     fn send_response<S: Serialize + std::fmt::Debug>(
         &mut self,
         request: &Request,
         response: Result<Option<S>, &DebuggerError>,
-    ) -> Result<(), anyhow::Error>;
+    ) -> Result<(), anyhow::Error>
+    where
+        Self: Sized;
 }
 
 impl<P> ProtocolHelper for P
 where
-    P: ProtocolAdapter,
+    P: ProtocolAdapter + ?Sized,
 {
-    fn show_message(&mut self, severity: MessageSeverity, message: impl AsRef<str>) -> bool {
-        let msg = message.as_ref();
+    fn dyn_show_message(&mut self, severity: MessageSeverity, message: String) -> bool {
+        tracing::debug!("show_message: {message}");
 
-        tracing::debug!("show_message: {msg}");
-
-        let event_body = match serde_json::to_value(ShowMessageEventBody {
+        match serde_json::to_value(ShowMessageEventBody {
             severity,
-            message: format!("{msg}\n"),
+            message: format!("{message}\n"),
         }) {
-            Ok(event_body) => event_body,
-            Err(_) => {
-                return false;
-            }
-        };
-        self.send_event("probe-rs-show-message", Some(event_body))
-            .is_ok()
+            Ok(event_body) => self
+                .dyn_send_event("probe-rs-show-message", Some(event_body))
+                .is_ok(),
+            Err(_) => false,
+        }
     }
 
-    fn log_to_console(&mut self, message: impl AsRef<str>) -> bool {
+    fn log_to_console(&mut self, message: impl AsRef<str>) -> bool
+    where
+        Self: Sized,
+    {
         let event_body = match serde_json::to_value(OutputEventBody {
             output: format!("{}\n", message.as_ref()),
             category: Some("console".to_owned()),
@@ -103,7 +127,10 @@ where
         &mut self,
         request: &Request,
         response: Result<Option<S>, &DebuggerError>,
-    ) -> Result<(), anyhow::Error> {
+    ) -> Result<(), anyhow::Error>
+    where
+        Self: Sized,
+    {
         let response_is_ok = response.is_ok();
 
         // The encoded response will be constructed from dap::Response for Ok, and dap::ErrorResponse for Err, to ensure VSCode doesn't lose the details of the error.
@@ -255,7 +282,7 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
                 ErrorKind::WouldBlock if self.input_buffer.is_empty() => return Ok(None),
                 // No new data is here but we have some buffered, so go to work the data and produce frames.
                 ErrorKind::WouldBlock if !self.input_buffer.is_empty() => {}
-                // An error ocurred, report it.
+                // An error occurred, report it.
                 _ => return Err(error.into()),
             },
         };
@@ -328,21 +355,17 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
     }
 
     #[instrument(level = "trace", skip_all)]
-    fn send_event<S: Serialize>(
+    fn dyn_send_event(
         &mut self,
         event_type: &str,
-        event_body: Option<S>,
+        event_body: Option<serde_json::Value>,
     ) -> anyhow::Result<()> {
         let new_event = Event {
             seq: self.get_next_seq(),
             type_: "event".to_string(),
             event: event_type.to_string(),
-            body: event_body.map(|event_body| serde_json::to_value(event_body).unwrap_or_default()),
+            body: event_body,
         };
-
-        let result = self
-            .send_data(Frame::new(new_event.clone().into()))
-            .context("Unexpected Error while sending event.");
 
         if event_type != "output" {
             // This would result in an endless loop.
@@ -357,7 +380,8 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
             }
         }
 
-        result
+        self.send_data(Frame::new(new_event.into()))
+            .context("Unexpected Error while sending event.")
     }
 
     fn set_console_log_level(&mut self, log_level: ConsoleLog) {

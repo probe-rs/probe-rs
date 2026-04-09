@@ -16,18 +16,12 @@ impl TryFrom<&str> for MemoryAddress {
     type Error = DebuggerError;
     /// Convert either a decimal or hexadecimal string into a `MemoryAddress(u64)`.
     fn try_from(string_address: &str) -> Result<Self, Self::Error> {
-        Ok(MemoryAddress(
-            if string_address[..2].eq_ignore_ascii_case("0x") {
-                u64::from_str_radix(&string_address[2..], 16)
-            } else {
-                string_address.parse()
-            }
-            .map_err(|error| {
-                DebuggerError::UserMessage(format!(
-                    "Invalid memory address: {string_address:?}: {error:?}"
-                ))
-            })?,
-        ))
+        let address = parse_int::parse(string_address).map_err(|error| {
+            DebuggerError::UserMessage(format!(
+                "Invalid memory address: {string_address:?}: {error:?}"
+            ))
+        })?;
+        Ok(MemoryAddress(address))
     }
 }
 
@@ -49,6 +43,20 @@ pub struct RttChannelEventBody {
     pub data_format: rtt::DataFormat,
 }
 
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PromptKind {
+    Rtt,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreatePromptEventBody {
+    pub prompt_kind: PromptKind,
+    pub prompt_name: String,
+    pub prompt_handle: u32,
+}
+
 #[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RttDataEventBody {
@@ -58,7 +66,7 @@ pub struct RttDataEventBody {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
-#[serde(rename_all(serialize = "lowercase", deserialize = "PascalCase"))]
+#[serde(rename_all = "lowercase")]
 pub enum MessageSeverity {
     Information,
     Warning,
@@ -211,5 +219,22 @@ impl Display for Message {
         }
 
         f.write_str(&formatted)
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, reason = "Test code")]
+mod test {
+    use crate::cmd::dap_server::debug_adapter::dap::dap_types::MemoryAddress;
+
+    #[test]
+    fn memory_address() {
+        assert!(MemoryAddress::try_from("").is_err());
+        assert!(MemoryAddress::try_from("0x").is_err());
+        assert!(MemoryAddress::try_from("0X").is_err());
+        assert_eq!(MemoryAddress::try_from("0").unwrap().0, 0);
+        assert_eq!(MemoryAddress::try_from("0x40001000").unwrap().0, 0x40001000);
+        assert_eq!(MemoryAddress::try_from("0X40001000").unwrap().0, 0x40001000);
+        assert_eq!(MemoryAddress::try_from("1073745920").unwrap().0, 0x40001000);
     }
 }

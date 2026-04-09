@@ -53,7 +53,8 @@ memory_mapped_bitfield_register! {
     impl From;
     pub _, set_regwnr: 16;
     // If the processor does not implement the FP extension the REGSEL field is bits `[4:0]`, and bits `[6:5]` are Reserved, SBZ.
-    pub _, set_regsel: 6,0;
+    // Increased to 7 bits on v8-M
+    pub _, set_regsel: 7,0;
 }
 
 memory_mapped_bitfield_register! {
@@ -67,12 +68,12 @@ memory_mapped_bitfield_register! {
     pub struct Cpacr(u32);
     0xE000_ED88, "CPACR",
     impl From;
-    pub fpu_privilige, _: 21,20;
+    pub fpu_privilege, _: 21,20;
 }
 
 impl Cpacr {
     pub fn fpu_present(&self) -> bool {
-        self.fpu_privilige() != 0
+        self.fpu_privilege() != 0
     }
 }
 
@@ -173,7 +174,7 @@ pub(crate) fn check_for_semihosting(
     cached_command: Option<SemihostingCommand>,
     core: &mut dyn CoreInterface,
 ) -> Result<Option<SemihostingCommand>, Error> {
-    // The Arm Semihosting Specification, specificies that the instruction
+    // The Arm Semihosting Specification, specifies that the instruction
     // "BKPT 0xAB" (encoded as 0xBEAB) triggers a semihosting call.
     // <https://github.com/ARM-software/abi-aa/blob/main/semihosting/semihosting.rst#the-semihosting-interface>
     const TRAP_INSTRUCTION: [u8; 2] = [

@@ -63,7 +63,7 @@ fn parse_int(src: &str) -> Result<u32, ParseIntError> {
 }
 
 fn parse_hex(src: &str) -> Result<u64, ParseIntError> {
-    u64::from_str_radix(src.trim_start_matches("0x"), 16)
+    parse_int::parse(src)
 }
 
 #[derive(Debug)]
@@ -197,7 +197,7 @@ impl Cmd {
                     iterations
                 )
             }
-            // Insert another blank line to visually seperate results
+            // Insert another blank line to visually separate results
             println!();
         } else {
             println!("failed to set speed {speed}");

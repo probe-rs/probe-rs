@@ -1,0 +1,1 @@
+Added support for the Microchip/Atmel ATSAMG family, verified on ATSAMG55J19 hardware.

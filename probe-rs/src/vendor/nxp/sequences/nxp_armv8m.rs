@@ -338,7 +338,7 @@ fn enable_debug_mailbox(interface: &mut dyn DapAccess, dp: DpAddress) -> Result<
 
     let _ = interface.read_raw_ap_register(&ap, 8)?;
 
-    tracing::info!("LPC55xx connect srcipt end");
+    tracing::info!("LPC55xx connect script end");
     Ok(())
 }
 
@@ -720,9 +720,9 @@ impl ArmDebugSequence for MIMXRT5xxS {
 
         if can_read_pins {
             let start = Instant::now();
-            let timeout_occured = || start.elapsed() > Duration::from_secs(1);
+            let timeout_occurred = || start.elapsed() > Duration::from_secs(1);
 
-            while assert_n_reset()? & n_reset == 0 && !timeout_occured() {
+            while assert_n_reset()? & n_reset == 0 && !timeout_occurred() {
                 // Block until either condition passes
             }
         } else {

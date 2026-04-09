@@ -35,11 +35,11 @@ use crate::{
             CreateTempFileEndpoint, EraseEndpoint, FlashEndpoint, ListChipFamiliesEndpoint,
             ListProbesEndpoint, ListTestsEndpoint, LoadChipFamilyEndpoint, MonitorEndpoint,
             ProgressEventTopic, ReadMemory8Endpoint, ReadMemory16Endpoint, ReadMemory32Endpoint,
-            ReadMemory64Endpoint, ResetCoreEndpoint, ResumeAllCoresEndpoint, RpcResult,
-            RunTestEndpoint, SelectProbeEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic,
-            TargetInfoEndpoint, TempFileDataEndpoint, TokioSpawner, VerifyEndpoint,
-            WriteMemory8Endpoint, WriteMemory16Endpoint, WriteMemory32Endpoint,
-            WriteMemory64Endpoint,
+            ReadMemory64Endpoint, ResetCoreAndHaltEndpoint, ResetCoreEndpoint,
+            ResumeAllCoresEndpoint, RpcResult, RttDownEndpoint, RunTestEndpoint,
+            SelectProbeEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint,
+            TempFileDataEndpoint, TokioSpawner, VerifyEndpoint, WriteMemory8Endpoint,
+            WriteMemory16Endpoint, WriteMemory32Endpoint, WriteMemory64Endpoint,
             chip::{ChipData, ChipFamily, ChipInfoRequest, LoadChipFamilyRequest},
             file::{AppendFileRequest, TempFile},
             flash::{
@@ -53,9 +53,9 @@ use crate::{
                 AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector,
                 ListProbesRequest, SelectProbeRequest, SelectProbeResult,
             },
-            reset::ResetCoreRequest,
+            reset::{ResetCoreAndHaltRequest, ResetCoreRequest},
             resume::ResumeAllCoresRequest,
-            rtt_client::{CreateRttClientRequest, RttClientData, ScanRegion},
+            rtt_client::{CreateRttClientRequest, RttClientData, RttDownRequest, ScanRegion},
             stack_trace::{StackTraces, TakeStackTraceRequest},
             test::{ListTestsRequest, RunTestRequest, Test, TestResult, Tests},
         },
@@ -83,11 +83,19 @@ pub async fn connect(host: &str, token: Option<String>) -> anyhow::Result<RpcCli
     };
     use tokio_util::bytes::Bytes;
 
+    #[cfg(unix)]
+    if let Some(path) = host.strip_prefix("socket://") {
+        tracing::debug!("Socket path detected, will connect via Unix socket.");
+
+        return connect_unix(path).await;
+    }
+
     let uri = Uri::from_str(&format!("{host}/worker")).context("Failed to parse server URI")?;
 
-    let is_localhost = uri
-        .host()
-        .is_some_and(|h| ["localhost", "127.0.0.1", "::1"].contains(&h));
+    // We could check the host address for localhost and then set the `is_localhost` option, but
+    // there are setups where the user uses port forwarding and the file actually needs to be
+    // uploaded for correct behavior. Therefore, this check is not performed.
+
     let req = ClientRequestBuilder::new(uri).with_header(
         "User-Agent",
         format!("probe-rs-tools {}", env!("PROBE_RS_LONG_VERSION")),
@@ -132,7 +140,7 @@ pub async fn connect(host: &str, token: Option<String>) -> anyhow::Result<RpcCli
         .await
         .map_err(|err| anyhow::anyhow!("Failed to send challenge response: {err:?}"))?;
 
-    let mut client = RpcClient::new_from_wire(
+    Ok(RpcClient::new_from_wire(
         tx,
         WebsocketRx::new(rx.map(|message| {
             message.map(|message| match message {
@@ -140,10 +148,25 @@ pub async fn connect(host: &str, token: Option<String>) -> anyhow::Result<RpcCli
                 _ => Bytes::new(),
             })
         })),
-    );
-    client.is_localhost = is_localhost;
+    ))
+}
 
-    Ok(client)
+#[cfg(all(feature = "remote", unix))]
+pub async fn connect_unix(path: &str) -> anyhow::Result<RpcClient> {
+    use crate::rpc::transport::unix::{UnixStreamRx, UnixStreamTx};
+    use anyhow::Context;
+    use tokio::net::UnixStream;
+
+    let stream = UnixStream::connect(path)
+        .await
+        .context("Failed to connect to Unix socket")?;
+
+    let (reader, writer) = stream.into_split();
+
+    let tx = UnixStreamTx::new(writer);
+    let rx = UnixStreamRx::new(reader);
+
+    Ok(RpcClient::new_from_wire(tx, rx))
 }
 
 #[cfg(feature = "remote")]
@@ -249,6 +272,10 @@ impl RpcClient {
             registry: Arc::new(Mutex::new(Registry::from_builtin_families())),
             is_localhost: false,
         }
+    }
+
+    pub fn is_local_session(&self) -> bool {
+        self.is_localhost
     }
 
     pub fn new_local_from_wire(
@@ -444,6 +471,8 @@ impl SessionInterface {
         &self,
         mut path: PathBuf,
         mut format: FormatOptions,
+        image_target: Option<String>,
+        read_flasher_rtt: bool,
     ) -> anyhow::Result<BuildResult> {
         path = self.client.upload_file(&path).await?;
 
@@ -470,6 +499,8 @@ impl SessionInterface {
                 sessid: self.sessid,
                 path: path.display().to_string(),
                 format,
+                image_target,
+                read_flasher_rtt,
             })
             .await
     }
@@ -497,6 +528,7 @@ impl SessionInterface {
     pub async fn erase(
         &self,
         command: EraseCommand,
+        read_flasher_rtt: bool,
         on_msg: impl AsyncFnMut(ProgressEvent),
     ) -> anyhow::Result<()> {
         self.client
@@ -504,6 +536,7 @@ impl SessionInterface {
                 &EraseRequest {
                     sessid: self.sessid,
                     command,
+                    read_flasher_rtt,
                 },
                 on_msg,
             )
@@ -525,6 +558,22 @@ impl SessionInterface {
                 },
                 on_msg,
             )
+            .await
+    }
+
+    pub async fn send_to_rtt(
+        &self,
+        rtt_client: Key<RttClient>,
+        channel: u32,
+        data: Vec<u8>,
+    ) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<RttDownEndpoint, _>(&RttDownRequest {
+                sessid: self.sessid,
+                rtt_client,
+                channel,
+                data,
+            })
             .await
     }
 
@@ -572,23 +621,30 @@ impl SessionInterface {
         &self,
         scan_regions: ScanRegion,
         config: Vec<RttChannelConfig>,
+        default_config: RttChannelConfig,
     ) -> anyhow::Result<RttClientData> {
         self.client
             .send_resp::<CreateRttClientEndpoint, _>(&CreateRttClientRequest {
                 sessid: self.sessid,
                 scan_regions,
                 config,
+                default_config,
             })
             .await
     }
 
-    pub async fn stack_trace(&self, path: PathBuf) -> anyhow::Result<StackTraces> {
+    pub async fn stack_trace(
+        &self,
+        path: PathBuf,
+        stack_frame_limit: u32,
+    ) -> anyhow::Result<StackTraces> {
         let path = self.client.upload_file(&path).await?;
 
         self.client
             .send_resp::<TakeStackTraceEndpoint, _>(&TakeStackTraceRequest {
                 sessid: self.sessid,
                 path: path.display().to_string(),
+                stack_frame_limit,
             })
             .await
     }
@@ -705,6 +761,16 @@ impl CoreInterface {
             .send_resp::<ResetCoreEndpoint, _>(&ResetCoreRequest {
                 sessid: self.sessid,
                 core: self.core,
+            })
+            .await
+    }
+
+    pub async fn reset_and_halt(&self, timeout: Duration) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<ResetCoreAndHaltEndpoint, _>(&ResetCoreAndHaltRequest {
+                sessid: self.sessid,
+                core: self.core,
+                timeout,
             })
             .await
     }

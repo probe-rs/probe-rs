@@ -76,7 +76,7 @@ impl Cmd {
             tokio::spawn(async move {
                 loop {
                     // Don't exit on ctrl-c as you need to use this key combination
-                    // to ask gdb to interrupt execution of the tracee.
+                    // to ask gdb to interrupt execution of the trace.
                     tokio::signal::ctrl_c().await.unwrap();
                 }
             });

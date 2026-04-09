@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, num::ParseIntError};
 
 use anyhow::Result;
 use jep106::JEP106Code;
@@ -34,17 +34,17 @@ pub struct Cmd {
     /// when connecting. This is required for targets using SWD multidrop
     #[arg(long, value_parser = parse_hex)]
     target_sel: Option<u32>,
+    /// Override JTAG scan chain IR lengths (bypasses auto-detection)
+    ///
+    /// Specify one or more IR lengths (in bits) for each TAP in the chain, in scan-chain order.
+    /// For example, `--scan-chain 5` for a single-TAP chain with IR length 5.
+    /// When set, the normal JTAG auto-detection DR/IR scan is skipped entirely.
+    #[arg(long, value_delimiter = ',', value_name = "IR_LEN")]
+    scan_chain: Vec<u8>,
 }
 
-// Clippy doesn't like `from_str_radix` with radix 10, but I prefer the symmetry`
-// with the hex case.
-#[expect(clippy::from_str_radix_10)]
-fn parse_hex(src: &str) -> Result<u32, std::num::ParseIntError> {
-    if src.starts_with("0x") {
-        u32::from_str_radix(src.trim_start_matches("0x"), 16)
-    } else {
-        u32::from_str_radix(src, 10)
-    }
+fn parse_hex(src: &str) -> Result<u32, ParseIntError> {
+    parse_int::parse(src)
 }
 
 impl Cmd {
@@ -74,6 +74,7 @@ impl Cmd {
                 speed: self.common.speed,
                 connect_under_reset: self.common.connect_under_reset,
                 dry_run: self.common.dry_run,
+                scan_chain: self.scan_chain.clone(),
             };
 
             let result = client

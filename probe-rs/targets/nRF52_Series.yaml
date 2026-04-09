@@ -121,6 +121,7 @@ variants:
     range:
       start: 0x20000000
       end: 0x20006000
+    is_alias: true
     cores:
     - main
   flash_algorithms:
@@ -156,6 +157,7 @@ variants:
     range:
       start: 0x20000000
       end: 0x20006000
+    is_alias: true
     cores:
     - main
   flash_algorithms:
@@ -191,6 +193,7 @@ variants:
     range:
       start: 0x20000000
       end: 0x20006000
+    is_alias: true
     cores:
     - main
   flash_algorithms:
@@ -226,6 +229,7 @@ variants:
     range:
       start: 0x20000000
       end: 0x20008000
+    is_alias: true
     cores:
     - main
   flash_algorithms:
@@ -261,6 +265,7 @@ variants:
     range:
       start: 0x20000000
       end: 0x20010000
+    is_alias: true
     cores:
     - main
   flash_algorithms:
@@ -296,6 +301,7 @@ variants:
     range:
       start: 0x20000000
       end: 0x20008000
+    is_alias: true
     cores:
     - main
   flash_algorithms:
@@ -331,6 +337,7 @@ variants:
     range:
       start: 0x20000000
       end: 0x20020000
+    is_alias: true
     cores:
     - main
   flash_algorithms:
@@ -366,6 +373,7 @@ variants:
     range:
       start: 0x20000000
       end: 0x20040000
+    is_alias: true
     cores:
     - main
   flash_algorithms:

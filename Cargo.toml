@@ -1,5 +1,5 @@
 [workspace.package]
-version = "0.30.0"
+version = "0.31.0"
 edition = "2024"
 
 documentation = "https://docs.rs/probe-rs/"
@@ -8,31 +8,40 @@ repository = "https://github.com/probe-rs/probe-rs"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 
+# If this is increased, also update the checked minimum Rust version in the justfile
+rust-version = "1.89"
+
 
 [workspace]
 resolver = "2"
 members = [
     "probe-rs",
     "probe-rs-target",
-    "rtthost",
     "smoke-tester",
+    "smoke-tester-macros",
     "xtask",
     "target-gen",
     "probe-rs-tools",
     "probe-rs-mi",
     "probe-rs-debug",
+    "probe-rs-espressif",
 ]
 exclude = ["probe-rs/tests/gpio-hal-blinky"]
 
 [workspace.dependencies]
-probe-rs = { path = "probe-rs", version = "0.30.0" }
-probe-rs-target = { path = "probe-rs-target", version = "0.30.0" }
+probe-rs = { path = "probe-rs", version = "0.31.0" }
+probe-rs-target = { path = "probe-rs-target", version = "0.31.0" }
 probe-rs-mi = { path = "probe-rs-mi", version = "0.1.0" }
+probe-rs-espressif = { path = "probe-rs-espressif", version = "0.31.0" }
 
 docsplay = "0.1.1"
 thiserror = "2.0.11"
 anyhow = "1.0.82"
 async-io = "2"
+nusb = "0.2.1"
+
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9"
 
 [workspace.metadata.release]
 shared-version = true

@@ -2,13 +2,13 @@ use std::time::Duration;
 
 use crate::{
     rpc::{
-        Key,
+        Key, ObjectStorage,
         functions::{
             MonitorEndpoint, MultiTopicPublisher, MultiTopicWriter, RpcResult, RpcSpawnContext,
             RttTopic, SemihostingTopic, WireTxImpl, flash::BootInfo,
         },
         utils::{
-            run_loop::{ReturnReason, RunLoop, RunLoopPoller},
+            run_loop::{ReturnReason, RunLoop, RunLoopPoller, VectorCatchConfig},
             semihosting::{SemihostingFileManager, SemihostingOptions},
         },
     },
@@ -51,6 +51,10 @@ pub struct MonitorOptions {
     pub catch_reset: bool,
     /// Enable hardfault vector catch if its supported on the target.
     pub catch_hardfault: bool,
+    /// Enable SVC vector catch (ARMv7-A/R only).
+    pub catch_svc: bool,
+    /// Enable HLT vector catch (ARMv7-A/R only).
+    pub catch_hlt: bool,
     /// RTT client if used.
     pub rtt_client: Option<Key<RttClient>>,
     /// Configure the support for semihosting.
@@ -104,11 +108,17 @@ pub async fn monitor(
         .unwrap();
 }
 
+#[derive(Serialize, Deserialize, Clone, Schema)]
+pub struct ChannelInfo {
+    pub name: String,
+    pub buffer_size: u64,
+}
+
 #[derive(Serialize, Deserialize, Schema)]
 pub enum RttEvent {
     Discovered {
-        up_channels: Vec<String>,
-        down_channels: Vec<String>,
+        up_channels: Vec<ChannelInfo>,
+        down_channels: Vec<ChannelInfo>,
     },
     Output {
         channel: u32,
@@ -178,36 +188,31 @@ fn monitor_impl(
     request: MonitorRequest,
     sender: MonitorSender,
 ) -> anyhow::Result<MonitorExitReason> {
-    let mut session = ctx.session_blocking(request.sessid);
+    let shared_session = ctx.shared_session(request.sessid);
 
     let mut semihosting_sink =
         MonitorEventHandler::new(request.options.semihosting_options, |event| {
             sender.send_semihosting_event(event).unwrap()
         });
 
-    let mut rtt_client = request
-        .options
-        .rtt_client
-        .map(|rtt_client| ctx.object_mut_blocking(rtt_client));
-
-    let core_id = rtt_client.as_ref().map(|rtt| rtt.core_id()).unwrap_or(0);
+    let client_key = request.options.rtt_client;
+    let core_id = client_key
+        .map(|rtt_client| ctx.object_mut_blocking(rtt_client).core_id())
+        .unwrap_or(0);
 
     let mut run_loop = RunLoop {
         core_id,
         cancellation_token: ctx.cancellation_token(),
     };
 
-    request.mode.prepare(&mut session, run_loop.core_id)?;
-
-    let mut core = session.core(run_loop.core_id)?;
-    if request.mode.should_clear_rtt_header()
-        && let Some(rtt_client) = rtt_client.as_mut()
     {
-        rtt_client.clear_control_block(&mut core)?;
+        let mut session = shared_session.session_blocking();
+        request.mode.prepare(&mut session, run_loop.core_id)?;
     }
 
-    let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
+    let poller = client_key.map(|client| RttPoller {
         rtt_client: client,
+        clear_control_block: request.mode.should_clear_rtt_header(),
         sender: |message| {
             sender
                 .send_rtt_event(message)
@@ -216,9 +221,13 @@ fn monitor_impl(
     });
 
     let exit_reason = run_loop.run_until(
-        &mut core,
-        request.options.catch_hardfault,
-        request.options.catch_reset,
+        &shared_session,
+        VectorCatchConfig {
+            catch_hardfault: request.options.catch_hardfault,
+            catch_reset: request.options.catch_reset,
+            catch_svc: request.options.catch_svc,
+            catch_hlt: request.options.catch_hlt,
+        },
         poller,
         None,
         |halt_reason, core| semihosting_sink.handle_halt(halt_reason, core),
@@ -232,38 +241,46 @@ fn monitor_impl(
     }
 }
 
-pub struct RttPoller<'c, S>
+pub struct RttPoller<S>
 where
     S: FnMut(RttEvent) -> anyhow::Result<()>,
-    S: 'c,
 {
-    pub rtt_client: &'c mut RttClient,
+    pub rtt_client: Key<RttClient>,
+    pub clear_control_block: bool,
     pub sender: S,
 }
 
-impl<'c, S> RunLoopPoller for RttPoller<'c, S>
+impl<S> RunLoopPoller for RttPoller<S>
 where
     S: FnMut(RttEvent) -> anyhow::Result<()>,
-    S: 'c,
 {
-    fn start(&mut self, _core: &mut Core<'_>) -> anyhow::Result<()> {
+    fn start(&mut self, objs: &ObjectStorage, core: &mut Core<'_>) -> anyhow::Result<()> {
+        if self.clear_control_block {
+            let mut rtt_client = objs.object_mut_blocking(self.rtt_client);
+            rtt_client.clear_control_block(core)?;
+        }
         Ok(())
     }
 
-    fn poll(&mut self, core: &mut Core<'_>) -> anyhow::Result<Duration> {
-        if !self.rtt_client.is_attached() && matches!(self.rtt_client.try_attach(core), Ok(true)) {
+    fn poll(&mut self, objs: &ObjectStorage, core: &mut Core<'_>) -> anyhow::Result<Duration> {
+        let mut rtt_client = objs.object_mut_blocking(self.rtt_client);
+        if !rtt_client.is_attached() && matches!(rtt_client.try_attach(core), Ok(true)) {
             tracing::debug!("Attached to RTT");
-            let up_channels = self
-                .rtt_client
+            let up_channels = rtt_client
                 .up_channels()
                 .iter()
-                .map(|c| c.channel_name())
+                .map(|c| ChannelInfo {
+                    name: c.channel_name(),
+                    buffer_size: c.buffer_size() as u64,
+                })
                 .collect::<Vec<_>>();
-            let down_channels = self
-                .rtt_client
+            let down_channels = rtt_client
                 .down_channels()
                 .iter()
-                .map(|c| c.channel_name())
+                .map(|c| ChannelInfo {
+                    name: c.channel_name(),
+                    buffer_size: c.buffer_size() as u64,
+                })
                 .collect::<Vec<_>>();
             (self.sender)(RttEvent::Discovered {
                 up_channels,
@@ -273,8 +290,8 @@ where
         }
 
         let mut next_poll = Duration::from_millis(100);
-        for channel in 0..self.rtt_client.up_channels().len() {
-            let bytes = self.rtt_client.poll_channel(core, channel as u32)?;
+        for channel in 0..rtt_client.up_channels().len() {
+            let bytes = rtt_client.poll_channel(core, channel as u32)?;
             if !bytes.is_empty() {
                 // Poll RTT with a frequency of 10 Hz if we do not receive any new data.
                 // Once we receive new data, we poll continuously while we have anything to read.
@@ -291,8 +308,9 @@ where
         Ok(next_poll)
     }
 
-    fn exit(&mut self, core: &mut Core<'_>) -> anyhow::Result<()> {
-        self.rtt_client.clean_up(core)?;
+    fn exit(&mut self, objs: &ObjectStorage, core: &mut Core<'_>) -> anyhow::Result<()> {
+        let mut rtt_client = objs.object_mut_blocking(self.rtt_client);
+        rtt_client.clean_up(core)?;
         Ok(())
     }
 }

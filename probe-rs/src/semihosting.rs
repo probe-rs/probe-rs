@@ -4,7 +4,7 @@
 
 use std::{num::NonZeroU32, time::SystemTime};
 
-use crate::{CoreInterface, Error, MemoryInterface, RegisterValue};
+use crate::{Core, CoreInterface, Error, MemoryInterface, RegisterValue};
 
 /// Indicates the operation the target would like the debugger to perform.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -74,10 +74,28 @@ pub struct ExitErrorDetails {
 
 impl std::fmt::Display for ExitErrorDetails {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "reason: {:#x}", self.reason)?;
-        if let Some(exit_status) = self.exit_status {
-            write!(f, ", exit_status: {exit_status}")?;
+        // <https://github.com/ARM-software/abi-aa/blob/main/semihosting/semihosting.rst#651entry-32-bit>
+        const REASON_APPLICATION_EXIT: u32 = 0x20026;
+
+        // exit() codes
+        const EXIT_SUCCESS: u32 = 0;
+        const EXIT_ABORTED: u32 = 134;
+
+        match self.reason {
+            REASON_APPLICATION_EXIT => match self.exit_status {
+                Some(EXIT_SUCCESS) => write!(f, "success")?,
+                Some(EXIT_ABORTED) => write!(f, "exit_status: aborted")?,
+                Some(other) => write!(f, "exit_status: {other:#x}")?,
+                None => write!(f, "exit_status: unknown")?,
+            },
+            reason => {
+                write!(f, "reason: {reason:#x}")?;
+                if let Some(exit_status) = self.exit_status {
+                    write!(f, ", exit_status: {exit_status}")?;
+                }
+            }
         }
+
         if let Some(subcode) = self.subcode {
             write!(f, ", subcode: {subcode:#x}")?;
         }
@@ -181,10 +199,15 @@ impl CloseRequest {
 
 /// A request to write to the console
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub struct WriteConsoleRequest(pub(crate) ZeroTerminatedString);
+pub struct WriteConsoleRequest(ZeroTerminatedString);
 impl WriteConsoleRequest {
+    /// Creates a new request to write to the console
+    pub fn new(address: u32, length: Option<u32>) -> Self {
+        Self(ZeroTerminatedString { address, length })
+    }
+
     /// Reads the string from the target
-    pub fn read(&self, core: &mut crate::Core<'_>) -> Result<String, Error> {
+    pub fn read(&self, core: &mut Core<'_>) -> Result<String, Error> {
         self.0.read(core)
     }
 }
@@ -204,7 +227,7 @@ impl WriteRequest {
     }
 
     /// Reads the buffer from the target
-    pub fn read(&self, core: &mut crate::Core<'_>) -> Result<Vec<u8>, Error> {
+    pub fn read(&self, core: &mut Core<'_>) -> Result<Vec<u8>, Error> {
         let mut buf = vec![0u8; self.len as usize];
         core.read(self.bytes as u64, &mut buf)?;
         Ok(buf)
@@ -236,11 +259,7 @@ impl ReadRequest {
     }
 
     /// Writes the buffer to the target
-    pub fn write_buffer_to_target(
-        &self,
-        core: &mut crate::Core<'_>,
-        buf: &[u8],
-    ) -> Result<(), Error> {
+    pub fn write_buffer_to_target(&self, core: &mut Core<'_>, buf: &[u8]) -> Result<(), Error> {
         assert!(buf.len() <= self.len as usize);
 
         if !buf.is_empty() {

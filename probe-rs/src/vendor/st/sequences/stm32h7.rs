@@ -218,7 +218,7 @@ impl ArmDebugSequence for Stm32h7 {
         }
 
         // The SWTF needs to be configured to route traffic to SWO. When not in use, it needs to be
-        // disabled so that the SWO peripheral does not propogate buffer overflows through the
+        // disabled so that the SWO peripheral does not propagate buffer overflows through the
         // trace bus via busy signalling.
         let mut swtf = TraceFunnel::new(
             interface,

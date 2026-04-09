@@ -42,6 +42,21 @@ pub struct BinaryDownloadOptions {
     /// Whether to erase the entire chip before downloading
     #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub chip_erase: bool,
+
+    /// Whether to read the RTT output from the flash loader, if available.
+    #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    pub read_flasher_rtt: bool,
+    /// The preferred flash algorithms for specific memory regions can be overridden.
+    ///
+    /// Multiple algorithms can be specified as a comma-separated list, e.g. --prefer-flash-algorithm=algo1,algo2
+    #[arg(
+        long,
+        env = "PROBE_RS_PREFER_FLASH_ALGO",
+        value_delimiter = ',',
+        num_args = 1..,
+        help_heading = "PROBE CONFIGURATION"
+    )]
+    pub prefer_flash_algorithm: Vec<String>,
 }
 
 /// Supported bit-widths for read/write commands (not every device may support each width).
@@ -97,7 +112,9 @@ pub struct ProbeOptions {
     /// Use this flag to select a specific probe in the list.
     ///
     /// Use '--probe VID:PID' or '--probe VID:PID:Serial' if you have more than one
-    /// probe with the same VID:PID.",
+    /// probe with the same VID:PID. For multi-channel FTDI probes (e.g. FT2232H),
+    /// use '--probe VID:PID-INTERFACE' to select the channel (0=A, 1=B, 2=C, 3=D).
+    /// Example: '--probe 0403:6010-1' selects Channel B.
     #[arg(long, env = "PROBE_RS_PROBE", help_heading = "PROBE CONFIGURATION")]
     pub probe: Option<DebugProbeSelector>,
     /// The protocol speed in kHz.
@@ -111,6 +128,7 @@ pub struct ProbeOptions {
         help_heading = "PROBE CONFIGURATION"
     )]
     pub connect_under_reset: bool,
+
     #[arg(long, env = "PROBE_RS_DRY_RUN", help_heading = "PROBE CONFIGURATION")]
     pub dry_run: bool,
     /// Use this flag to allow all memory, including security keys and 3rd party
@@ -251,7 +269,7 @@ impl<'r> LoadedProbeOptions<'r> {
             // If we got a probe selector as an argument, open the probe
             // matching the selector if possible.
             match &self.0.probe {
-                Some(selector) => lister.open(selector)?,
+                Some(selector) => lister.open(selector.clone())?,
                 None => Self::select_probe(lister, self.0.non_interactive)?,
             }
         };
@@ -527,12 +545,6 @@ pub enum OperationError {
     #[error("Failed to get a handle to the first core.")]
     AttachingToCoreFailed(#[source] probe_rs::Error),
 
-    #[error("The reset of the target failed.")]
-    TargetResetFailed(#[source] probe_rs::Error),
-
-    #[error("The target could not be reset and halted.")]
-    TargetResetHaltFailed(#[source] probe_rs::Error),
-
     #[error("Failed to write to file")]
     IOError(#[source] std::io::Error),
 
@@ -540,6 +552,9 @@ pub enum OperationError {
     CliArgument(#[from] clap::Error),
     #[error("Failed to parse interactive probe index selection")]
     ParseProbeIndex(#[source] std::num::ParseIntError),
+
+    #[error(transparent)]
+    Anyhow(#[from] anyhow::Error),
 }
 
 /// Used in errors it can print a list of items.

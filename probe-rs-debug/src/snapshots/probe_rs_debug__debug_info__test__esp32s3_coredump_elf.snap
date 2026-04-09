@@ -186,7 +186,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value: ~
+      value:
+        U32: 396576
   pc:
     U32: 1107314147
   frame_base: 1070449856
@@ -594,7 +595,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value: ~
+      value:
+        U32: 396576
   pc:
     U32: 1107318906
   frame_base: 1070449936
@@ -1044,7 +1046,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value: ~
+      value:
+        U32: 396576
   pc:
     U32: 1107300201
   frame_base: 1070449984
@@ -1291,7 +1294,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value: ~
+      value:
+        U32: 396576
   pc:
     U32: 1107299600
   frame_base: 1070450064
@@ -1577,7 +1581,7 @@ expression: stack_frames
                     Enum: Unit
                   value: "Unit::Unit0"
   canonical_frame_address: ~
-- function_name: "poll<coredump_c6::____embassy_main_task::{async_fn_env#0}>"
+- function_name: "TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}>::poll"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
     line: 214
@@ -1761,7 +1765,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value: ~
+      value:
+        U32: 396576
   pc:
     U64: 1107299479
   frame_base: 1070450064
@@ -2361,7 +2366,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value: ~
+      value:
+        U32: 396576
   pc:
     U32: 1107315790
   frame_base: 1070450240
@@ -2459,7 +2465,7 @@ expression: stack_frames
                   type_name: Unknown
                   value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
   canonical_frame_address: ~
-- function_name: "dequeue_all<embassy_executor::raw::{impl#9}::poll::{closure_env#0}>"
+- function_name: "RunQueue::dequeue_all<embassy_executor::raw::{impl#9}::poll::{closure_env#0}>"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\run_queue_atomics.rs"
     line: 85
@@ -2643,7 +2649,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value: ~
+      value:
+        U32: 396576
   pc:
     U64: 1107315785
   frame_base: 1070450240
@@ -2790,7 +2797,7 @@ expression: stack_frames
                           type_name: Unknown
                           value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
   canonical_frame_address: ~
-- function_name: poll
+- function_name: "SyncExecutor::poll"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
     line: 423
@@ -2974,7 +2981,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value: ~
+      value:
+        U32: 396576
   pc:
     U64: 1107315720
   frame_base: 1070450240
@@ -3064,7 +3072,7 @@ expression: stack_frames
                         Pointer: "*mut ()"
                       value: "*mut () @ 0x00000004"
   canonical_frame_address: ~
-- function_name: poll
+- function_name: "Executor::poll"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
     line: 533
@@ -3248,7 +3256,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value: ~
+      value:
+        U32: 396576
   pc:
     U64: 1107315720
   frame_base: 1070450240
@@ -3344,7 +3353,7 @@ expression: stack_frames
                             Pointer: "*mut ()"
                           value: "*mut () @ 0x00000004"
   canonical_frame_address: ~
-- function_name: "run<coredump_c6::__xtensa_lx_rt_main::{closure_env#0}>"
+- function_name: "Executor::run<coredump_c6::__xtensa_lx_rt_main::{closure_env#0}>"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-hal-embassy-0.7.0\\src\\executor\\thread.rs"
     line: 111
@@ -3528,7 +3537,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value: ~
+      value:
+        U32: 396576
   pc:
     U32: 1107299257
   frame_base: 1070450272
@@ -3819,7 +3829,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value: ~
+      value:
+        U32: 396576
   pc:
     U32: 1107300223
   frame_base: 1070450352
@@ -4185,7 +4196,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value: ~
+      value:
+        U32: 396576
   pc:
     U64: 1107300213
   frame_base: 1070450352
@@ -4380,7 +4392,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value: ~
+      value:
+        U32: 396576
   pc:
     U32: 1107313795
   frame_base: 1070450400

@@ -13,17 +13,17 @@ use crate::{
     },
     probe::{DebugProbe, DebugProbeError, Probe, WireProtocol},
 };
+
+#[cfg(any(test, feature = "test"))]
 use object::{
-    Endianness, Object, ObjectSection,
-    elf::{FileHeader32, FileHeader64, PT_LOAD},
+    Object, ObjectSection,
+    elf::PT_LOAD,
     read::elf::{ElfFile, FileHeader, ProgramHeader},
 };
-use probe_rs_target::MemoryRange;
 use std::{
     cell::RefCell,
     collections::{BTreeSet, VecDeque},
     fmt::Debug,
-    path::Path,
     sync::Arc,
 };
 
@@ -48,6 +48,24 @@ enum MockedAp {
     MemoryAp(MockMemoryAp),
     /// Mock an ARM core behind a memory AP
     Core(MockCore),
+}
+
+// Big endian is only used in tests
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Endianness {
+    Little,
+    Big,
+}
+
+#[cfg(test)]
+impl From<Endianness> for object::Endianness {
+    fn from(endianess: Endianness) -> Self {
+        match endianess {
+            Endianness::Little => object::Endianness::Little,
+            Endianness::Big => object::Endianness::Big,
+        }
+    }
 }
 
 struct LoadableSegment {
@@ -327,19 +345,24 @@ impl FakeProbe {
 
     /// Fake probe with a mocked core
     /// with access to an actual binary file.
-    pub fn with_mocked_core_and_binary(program_binary: &Path) -> Self {
+    #[cfg(any(test, feature = "test"))]
+    pub fn with_mocked_core_and_binary(program_binary: &std::path::Path) -> Self {
         let file_data = std::fs::read(program_binary).unwrap();
         let file_data_slice = file_data.as_slice();
 
         let file_kind = object::FileKind::parse(file_data.as_slice()).unwrap();
         let core = match file_kind {
             object::FileKind::Elf32 => core_with_binary(
-                object::read::elf::ElfFile::<FileHeader32<Endianness>>::parse(file_data_slice)
-                    .unwrap(),
+                object::read::elf::ElfFile::<object::elf::FileHeader32<object::Endianness>>::parse(
+                    file_data_slice,
+                )
+                .unwrap(),
             ),
             object::FileKind::Elf64 => core_with_binary(
-                object::read::elf::ElfFile::<FileHeader64<Endianness>>::parse(file_data_slice)
-                    .unwrap(),
+                object::read::elf::ElfFile::<object::elf::FileHeader64<object::Endianness>>::parse(
+                    file_data_slice,
+                )
+                .unwrap(),
             ),
             _ => {
                 unimplemented!("unsupported file format")
@@ -409,7 +432,10 @@ impl FakeProbe {
     }
 }
 
+#[cfg(any(test, feature = "test"))]
 fn core_with_binary<T: FileHeader>(elf_file: ElfFile<T>) -> MockCore {
+    use probe_rs_target::MemoryRange;
+
     let elf_header = elf_file.elf_header();
     let elf_data = elf_file.data();
     let endian = elf_header.endian().unwrap();

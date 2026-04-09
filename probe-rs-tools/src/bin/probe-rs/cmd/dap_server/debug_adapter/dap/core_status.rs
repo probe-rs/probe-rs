@@ -28,7 +28,7 @@ impl DapStatus for CoreStatus {
                 ),
                 HaltReason::Exception => (
                     "exception",
-                    "Core halted due to an exception, e.g. interupt handler".to_string(),
+                    "Core halted due to an exception, e.g. interrupt handler".to_string(),
                 ),
                 HaltReason::Watchpoint => (
                     "data breakpoint",

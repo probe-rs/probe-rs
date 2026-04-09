@@ -43,12 +43,6 @@ impl RawDutDefinition {
 }
 
 #[derive(Debug, Clone)]
-pub enum DefinitionSource {
-    File(PathBuf),
-    Cli,
-}
-
-#[derive(Debug, Clone)]
 pub struct DutDefinition {
     pub chip: Target,
 
@@ -73,45 +67,12 @@ pub struct DutDefinition {
     /// flashing for the DUT.
     pub flash_test_binary: Option<PathBuf>,
 
-    /// Source of the DUT definition.
-    pub source: DefinitionSource,
-
     /// Indicates if the probe can control the reset pin of the
     /// DUT.
     pub reset_connected: bool,
 }
 
 impl DutDefinition {
-    pub fn new(chip: &str, probe: &str) -> Result<Self> {
-        let target = lookup_unique_target(chip)?;
-
-        let selector: DebugProbeSelector = probe.parse()?;
-
-        Ok(DutDefinition {
-            chip: target,
-            probe_selector: Some(selector),
-            probe_speed: None,
-            protocol: None,
-            flash_test_binary: None,
-            source: DefinitionSource::Cli,
-            reset_connected: false,
-        })
-    }
-
-    pub fn autodetect_probe(chip: &str) -> Result<Self> {
-        let target = lookup_unique_target(chip)?;
-
-        Ok(DutDefinition {
-            chip: target,
-            probe_selector: None,
-            probe_speed: None,
-            protocol: None,
-            flash_test_binary: None,
-            source: DefinitionSource::Cli,
-            reset_connected: false,
-        })
-    }
-
     /// Collect all DUT definitions from a directory.
     ///
     /// This will try to parse all TOML files in the given directory
@@ -164,7 +125,7 @@ impl DutDefinition {
 
         let mut probe = match &self.probe_selector {
             Some(selector) => lister
-                .open(selector)
+                .open(selector.clone())
                 .with_context(|| format!("Failed to open probe with selector {selector}"))?,
             None => {
                 let probes = lister.list_all();
@@ -192,7 +153,7 @@ impl DutDefinition {
     }
 
     fn from_raw_definition(raw_definition: RawDutDefinition, source_file: &Path) -> Result<Self> {
-        let probe_selector = Some(raw_definition.probe_selector.try_into()?);
+        let probe_selector = Some(raw_definition.probe_selector.parse()?);
 
         let target = lookup_unique_target(&raw_definition.chip)?;
 
@@ -216,7 +177,6 @@ impl DutDefinition {
             protocol: raw_definition.protocol,
             probe_selector,
             flash_test_binary,
-            source: DefinitionSource::File(source_file.to_owned()),
             reset_connected: raw_definition.reset_connected,
         })
     }

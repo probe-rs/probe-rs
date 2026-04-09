@@ -159,15 +159,16 @@ impl FlashDataBlockSpan {
     }
 }
 
-/// A helper structure to build a flash layout from a set of data blocks.
+/// A helper structure which caches all the raw data that needs to be flashed and allows building
+/// a flash layout from a set of data blocks.
 #[derive(Default)]
-pub(super) struct FlashBuilder {
-    pub(super) data: BTreeMap<u64, Vec<u8>>,
+pub struct FlashBuilder {
+    pub data: BTreeMap<u64, Vec<u8>>,
 }
 
 impl FlashBuilder {
     /// Creates a new `FlashBuilder` with empty data.
-    pub(super) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             data: BTreeMap::new(),
         }

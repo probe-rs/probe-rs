@@ -63,12 +63,15 @@ pub struct RawFlashAlgorithm {
     /// Address of the `Verify()` entry point. Optional.
     #[serde(serialize_with = "hex_option")]
     pub pc_verify: Option<u64>,
-    /// Address of the (non-standard) `ReadFlash()` entry point. Optional.
-    #[serde(serialize_with = "hex_option")]
-    pub pc_read: Option<u64>,
     /// Address of the `BlankCheck()` entry point. Optional.
     #[serde(serialize_with = "hex_option")]
     pub pc_blank_check: Option<u64>,
+    /// Address of the (non-standard) `ReadFlash(adr: u32, sz: u32, buf: *mut u8)` entry point. Optional.
+    #[serde(serialize_with = "hex_option")]
+    pub pc_read: Option<u64>,
+    /// Address of the (non-standard) `FlashSize()` entry point. Optional.
+    #[serde(serialize_with = "hex_option")]
+    pub pc_flash_size: Option<u64>,
     /// The offset from the start of RAM to the data section.
     #[serde(serialize_with = "hex_u_int")]
     pub data_section_offset: u64,
@@ -78,6 +81,11 @@ pub struct RawFlashAlgorithm {
     /// and debug messages will be read over RTT.
     #[serde(serialize_with = "hex_option")]
     pub rtt_location: Option<u64>,
+    /// Milliseconds between RTT polls.
+    ///
+    /// Defaults to 20ms.
+    #[serde(default = "default_rtt_poll_interval")]
+    pub rtt_poll_interval: u64,
     /// The properties of the flash on the device.
     pub flash_properties: FlashProperties,
     /// List of cores that can use this algorithm
@@ -196,4 +204,8 @@ impl serde::de::Visitor<'_> for Bytes {
     {
         Ok(v.to_vec())
     }
+}
+
+fn default_rtt_poll_interval() -> u64 {
+    20
 }

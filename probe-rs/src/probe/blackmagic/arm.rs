@@ -382,7 +382,7 @@ impl ArmDebugInterface for BlackMagicProbeArmDebug {
         }
 
         if self.current_dp.is_none() {
-            // Set this first to prevent recursion, if this fucntion is called again
+            // Set this first to prevent recursion, if this function is called again
             self.current_dp = Some(dp);
 
             // Switch to the correct mode

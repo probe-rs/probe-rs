@@ -92,7 +92,7 @@ impl Serialize for VariableCache {
             let remaining = children.count();
             if remaining > 0 {
                 out.push(VariableTreeNode {
-                    name: &VariableName::Artifical,
+                    name: &VariableName::Artificial,
                     type_name: &VariableType::Unknown,
                     value: format!("... and {remaining} more"),
                     children: Vec::new(),

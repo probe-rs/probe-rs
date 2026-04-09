@@ -279,9 +279,9 @@ impl From<SpecialRegister> for RegisterId {
     }
 }
 
-#[expect(non_upper_case_globals)] // Aliasses have same style as other register names
+#[expect(non_upper_case_globals)] // Aliases have same style as other register names
 impl SpecialRegister {
-    // Aliasses
+    // Aliases
     pub const MpuEnB: Self = Self::RAsid;
     pub const MpuCfg: Self = Self::DTlbCfg;
     pub const Depc: Self = Self::IBreakC0;

@@ -473,7 +473,7 @@ impl ArmDebugSequence for MIMXRT11xx {
         // reset controller.
         self.clear_src_srmr_mask(probe)?;
 
-        // Affect a SYSRESETREQ throught the CM7 to reset the entire system.
+        // Affect a SYSRESETREQ through the CM7 to reset the entire system.
         //
         // For more information on the SYSRESETREQ response, consult the system
         // reset controller (SRC) section of the reference manual. This is a

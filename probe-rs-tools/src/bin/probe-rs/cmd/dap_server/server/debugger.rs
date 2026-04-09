@@ -1,5 +1,6 @@
 use super::{
     configuration::{self, ConsoleLog},
+    core_data::CoreHandle,
     logger::DebugLogger,
     session_data::SessionData,
     startup::{TargetSessionType, get_file_timestamp},
@@ -103,50 +104,33 @@ impl Debugger {
     ///   - If the [`super::core_data::CoreData::last_known_status`] is `Halted(_)`, then we stop polling the Probe until the next DAP-Client request attempts an action
     ///   - If the `new_status` is an Err, then the probe is no longer available, and we  end the debugging session
     ///   - If the `new_status` is `Running`, then we have to poll on a regular basis, until the Probe stops for good reasons like breakpoints, or bad reasons like panics.
-    pub(crate) async fn process_next_request<P: ProtocolAdapter>(
+    pub(crate) fn process_next_request<P: ProtocolAdapter>(
         &mut self,
         session_data: &mut SessionData,
         debug_adapter: &mut DebugAdapter<P>,
     ) -> Result<DebugSessionStatus, DebuggerError> {
         self.debug_logger.flush_to_dap(debug_adapter)?;
-        let Some(request) = debug_adapter.listen_for_request()? else {
-            let _poll_span = tracing::trace_span!("Polling for core status").entered();
-            let mut delay = Duration::ZERO;
-            if debug_adapter.all_cores_halted {
-                // Once all cores are halted, then we can skip polling the core for status, and just wait for the next DAP Client request.
-                tracing::trace!(
-                    "Sleeping (all cores are halted) for 100ms to reduce polling overheaads."
-                );
-                // Medium delay to reduce fast looping costs.
-                delay = Duration::from_millis(100);
-            } else {
-                // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
-                let (_, suggest_delay_required) =
-                    session_data.poll_cores(&self.config, debug_adapter).await?;
-                // If there are no requests from the DAP Client, and there was no RTT data in the last poll, then we can sleep for a short period of time to reduce CPU usage.
-                if debug_adapter.configuration_is_done() && suggest_delay_required {
-                    tracing::trace!(
-                        "Sleeping (core is running) for 50ms to reduce polling overheads."
-                    );
-                    // Small delay to reduce fast looping costs.
-                    delay = Duration::from_millis(50);
-                } else {
-                    tracing::trace!(
-                        "Retrieving data from the core, no delay required between iterations of polling the core."
-                    );
-                };
-            }
 
-            return Ok(DebugSessionStatus::Continue(delay));
-        };
+        if let Some(request) = debug_adapter.listen_for_request()? {
+            self.handle_request(session_data, debug_adapter, request)
+        } else {
+            self.no_request_poll(session_data, debug_adapter)
+        }
+    }
 
+    fn handle_request<P: ProtocolAdapter>(
+        &mut self,
+        session_data: &mut SessionData,
+        debug_adapter: &mut DebugAdapter<P>,
+        request: Request,
+    ) -> Result<DebugSessionStatus, DebuggerError> {
         let _req_span = tracing::info_span!("Handling request", request = ?request).entered();
 
         // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
-        let (core_statuses, _) = session_data.poll_cores(&self.config, debug_adapter).await?;
+        session_data.poll_cores(&self.config, debug_adapter)?;
 
         // Check if we have configured cores
-        if core_statuses.is_empty() {
+        if session_data.core_data.is_empty() {
             if debug_adapter.configuration_is_done() {
                 // We've passed `configuration_done` and still do not have at least one core configured.
                 return Err(DebuggerError::Other(anyhow!(
@@ -158,7 +142,8 @@ impl Debugger {
             return Ok(DebugSessionStatus::Continue(Duration::ZERO));
         }
 
-        // TODO: Currently, we only use `poll_cores()` results from the first core and need to expand to a multi-core implementation that understands which MS DAP requests are core specific.
+        // TODO: Currently, we only use `poll_cores()` results from the first core and need to expand
+        // to a multi-core implementation that understands which MS DAP requests are core specific.
         let core_id = 0;
 
         // Attach to the core. so that we have the handle available for processing the request.
@@ -169,11 +154,11 @@ impl Debugger {
             )));
         };
 
-        let new_status = core_statuses[core_id]; // Checked above
-
         let mut target_core = session_data
             .attach_core(target_core_config.core_index)
             .context("Unable to connect to target core")?;
+
+        let new_status = target_core.core_data.last_known_status;
 
         // For some operations, we need to make sure the core isn't sleeping, by calling `Core::halt()`.
         // When we do this, we need to flag it (`unhalt_me = true`), and later call `Core::run()` again.
@@ -193,95 +178,20 @@ impl Debugger {
             | "writeMemory"
             | "disassemble" => {
                 if new_status == CoreStatus::Sleeping {
-                    match target_core.core.halt(Duration::from_millis(100)) {
-                        Ok(_) => unhalt_me = true,
-                        Err(error) => {
-                            let err = DebuggerError::from(error);
-                            debug_adapter.send_response::<()>(&request, Err(&err))?;
-                            return Err(err);
-                        }
+                    if let Err(error) = target_core.core.halt(Duration::from_millis(100)) {
+                        let err = DebuggerError::from(error);
+                        debug_adapter.send_response::<()>(&request, Err(&err))?;
+                        return Err(err);
                     }
+                    unhalt_me = true;
                 }
             }
             _ => {}
         }
 
-        let mut debug_session = DebugSessionStatus::Continue(Duration::ZERO);
-
         // Now we are ready to execute supported commands, or return an error if it isn't supported.
-        let result = match request.command.as_ref() {
-            "rttWindowOpened" => {
-                if let Some(debugger_rtt_target) = target_core.core_data.rtt_connection.as_mut() {
-                    let arguments: RttWindowOpenedArguments =
-                        get_arguments(debug_adapter, &request)?;
-
-                    if let Some(rtt_channel) = debugger_rtt_target
-                        .debugger_rtt_channels
-                        .iter_mut()
-                        .find(|debugger_rtt_channel| {
-                            debugger_rtt_channel.channel_number == arguments.channel_number
-                        })
-                    {
-                        rtt_channel.has_client_window = arguments.window_is_open;
-                    }
-
-                    debug_adapter
-                        .send_response::<()>(&request, Ok(None))
-                        .map_err(|error| {
-                            DebuggerError::Other(anyhow!(
-                                "Could not deserialize arguments for RttWindowOpened : {error:?}."
-                            ))
-                        })?;
-                }
-                Ok(())
-            }
-            "disconnect" => {
-                let result = debug_adapter.disconnect(&mut target_core, &request);
-                debug_session = DebugSessionStatus::Terminate;
-                result
-            }
-            "next" => debug_adapter.next(&mut target_core, &request),
-            "stepIn" => debug_adapter.step_in(&mut target_core, &request),
-            "stepOut" => debug_adapter.step_out(&mut target_core, &request),
-            "pause" => debug_adapter.pause(&mut target_core, &request),
-            "readMemory" => debug_adapter.read_memory(&mut target_core, &request),
-            "writeMemory" => debug_adapter.write_memory(&mut target_core, &request),
-            "setVariable" => debug_adapter.set_variable(&mut target_core, &request),
-            "configurationDone" => debug_adapter.configuration_done(&mut target_core, &request),
-            "threads" => debug_adapter.threads(&mut target_core, &request),
-            "restart" => {
-                let result = target_core
-                    .core
-                    .halt(Duration::from_millis(500))
-                    .map_err(|error| anyhow!("Failed to halt core: {error:?}"))
-                    .and(Ok(()));
-
-                debug_session = DebugSessionStatus::Restart(request);
-                result
-            }
-            "setBreakpoints" => debug_adapter.set_breakpoints(&mut target_core, &request),
-            "setInstructionBreakpoints" => {
-                debug_adapter.set_instruction_breakpoints(&mut target_core, &request)
-            }
-            "stackTrace" => debug_adapter.stack_trace(&mut target_core, &request),
-            "scopes" => debug_adapter.scopes(&mut target_core, &request),
-            "disassemble" => debug_adapter.disassemble(&mut target_core, &request),
-            "variables" => debug_adapter.variables(&mut target_core, &request),
-            "continue" => debug_adapter.r#continue(&mut target_core, &request),
-            "evaluate" => debug_adapter.evaluate(&mut target_core, &request),
-            "completions" => debug_adapter.completions(&mut target_core, &request),
-            other_command => {
-                // Unimplemented command.
-                debug_adapter.send_response::<()>(
-                    &request,
-                    Err(&DebuggerError::Other(anyhow!(
-                        "Received request '{other_command}', which is not supported or not implemented yet"
-                    ))),
-                )
-            }
-        };
-
-        result.map_err(|e| DebuggerError::Other(e.context("Error executing request.")))?;
+        let debug_session = dispatch_request(debug_adapter, request, &mut target_core)
+            .context("Error executing request.")?;
 
         if unhalt_me && let Err(error) = target_core.core.run() {
             let error = DebuggerError::Other(anyhow!(error).context("Failed to resume target."));
@@ -292,16 +202,58 @@ impl Debugger {
         Ok(debug_session)
     }
 
+    fn no_request_poll<P: ProtocolAdapter>(
+        &mut self,
+        session_data: &mut SessionData,
+        debug_adapter: &mut DebugAdapter<P>,
+    ) -> Result<DebugSessionStatus, DebuggerError> {
+        let _poll_span = tracing::trace_span!("Polling for core status").entered();
+        let delay;
+
+        // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
+        // We do this even if the cores may be halted, as we need to handle RTT data from cores the debugger does not control.
+        let suggest_delay_required = session_data.poll_cores(&self.config, debug_adapter)?;
+
+        if debug_adapter.all_cores_halted {
+            // Medium delay to reduce fast looping costs.
+            delay = Duration::from_millis(100);
+
+            // Once all cores are halted, then we can skip polling the core for status, and just wait for the next DAP Client request.
+            tracing::trace!(
+                "Sleeping (all cores are halted) for {delay:?} to reduce polling overheads."
+            );
+        } else {
+            // If there are no requests from the DAP Client, and there was no
+            // RTT data in the last poll, then we can sleep for a short period of time to reduce CPU usage.
+            if debug_adapter.configuration_is_done() && suggest_delay_required {
+                // Small delay to reduce fast looping costs.
+                delay = Duration::from_millis(50);
+
+                tracing::trace!(
+                    "Sleeping (core is running) for {delay:?} to reduce polling overheads."
+                );
+            } else {
+                delay = Duration::ZERO;
+
+                tracing::trace!(
+                    "Retrieving data from the core, no delay required between iterations of polling the core."
+                );
+            };
+        }
+
+        Ok(DebugSessionStatus::Continue(delay))
+    }
+
     /// `debug_session` is where the primary _debug processing_ for the DAP (Debug Adapter Protocol) adapter happens.
     /// All requests are interpreted, actions taken, and responses formulated here.
     /// This function is self contained and returns only status data to control what happens after the session completes.
     /// The [`DebugAdapter`] takes care of _implementing the DAP Base Protocol_ and _communicating with the DAP client_ and _probe_.
-    pub(crate) async fn debug_session<P: ProtocolAdapter + 'static>(
+    pub(crate) async fn debug_session<P: ProtocolAdapter>(
         &mut self,
+        registry: &mut Registry,
         mut debug_adapter: DebugAdapter<P>,
         lister: &Lister,
     ) -> Result<(), DebuggerError> {
-        let mut registry = Registry::from_builtin_families();
         // The DapClient startup process has a specific sequence.
         // Handle it here before starting a probe-rs session and looping through user generated requests.
         // Handling the initialize, and Attach/Launch requests here in this method,
@@ -313,49 +265,10 @@ impl Debugger {
             return Ok(());
         }
 
-        let expected_commands = ["launch", "attach"];
-
-        let launch_attach_request = loop {
-            if let Some(request) = debug_adapter.listen_for_request()? {
-                if expected_commands.contains(&request.command.as_str()) {
-                    self.debug_logger.flush_to_dap(&mut debug_adapter)?;
-                    break request;
-                } else if request.command == "disconnect" {
-                    debug_adapter.send_response::<DisconnectResponse>(&request, Ok(None))?;
-
-                    return Ok(());
-                } else {
-                    debug_adapter.log_to_console(format!(
-                        "Ignoring request with command '{}', we can only handle 'launch' and 'attach' commands.", request.command
-                    ));
-
-                    let err = DebuggerError::Other(anyhow!(
-                        "Unable to process request with command {} before an attach or launch request is received",
-                        request.command
-                    ));
-
-                    debug_adapter.send_response::<()>(&request, Err(&err))?;
-
-                    // Continue listening for requests
-                }
-            }
-        };
-
-        // Process either the Launch or Attach request.
-        let mut session_data = match self
-            .handle_launch_attach(
-                &mut registry,
-                &launch_attach_request,
-                &mut debug_adapter,
-                lister,
-            )
-            .await
-        {
-            Ok(session_data) => session_data,
-            Err(error) => {
-                debug_adapter.send_response::<()>(&launch_attach_request, Err(&error))?;
-                return Ok(());
-            }
+        let Some(mut session_data) = self.start_session(registry, lister, &mut debug_adapter)?
+        else {
+            // We got no error, but no SessionData, either
+            return Ok(());
         };
 
         if debug_adapter
@@ -370,15 +283,13 @@ impl Debugger {
             return Err(error);
         }
 
-        // Loop through remaining (user generated) requests and send to the [processs_request] method until either the client or some unexpected behaviour termintates the process.
+        // Loop through remaining (user generated) requests and send to the [process_request] method until either the client or some unexpected behaviour terminates the process.
         let error = loop {
-            let debug_session_status = match self
-                .process_next_request(&mut session_data, &mut debug_adapter)
-                .await
-            {
-                Ok(status) => status,
-                Err(error) => break error,
-            };
+            let debug_session_status =
+                match self.process_next_request(&mut session_data, &mut debug_adapter) {
+                    Ok(status) => status,
+                    Err(error) => break error,
+                };
 
             match debug_session_status {
                 DebugSessionStatus::Continue(delay) => {
@@ -388,9 +299,8 @@ impl Debugger {
                     }
                 }
                 DebugSessionStatus::Restart(request) => {
-                    if let Err(error) = self
-                        .restart(&mut debug_adapter, &mut session_data, &request)
-                        .await
+                    if let Err(error) =
+                        self.restart(&mut debug_adapter, &mut session_data, &request)
                     {
                         debug_adapter.send_response::<()>(&request, Err(&error))?;
                         return Err(error);
@@ -409,33 +319,86 @@ impl Debugger {
         );
         debug_adapter.send_event("terminated", Some(TerminatedEventBody { restart: None }))?;
         debug_adapter.send_event("exited", Some(ExitedEventBody { exit_code: 1 }))?;
+
         // Keep the process alive for a bit, so that VSCode doesn't complain about broken pipes.
-        for _loop_count in 0..10 {
-            tokio::time::sleep(Duration::from_millis(50)).await;
-        }
+        tokio::time::sleep(Duration::from_millis(500)).await;
 
         Err(error)
     }
 
+    /// Waits for the debug adapter to start a session.
+    ///
+    /// A session is started by the debug adapter sending a `launch` or `attach` request.
+    /// This function then handles this request and returns the session data.
+    ///
+    /// The function exits with no session if a "disconnect" request is received.
+    fn start_session<P: ProtocolAdapter>(
+        &mut self,
+        registry: &mut Registry,
+        lister: &Lister,
+        debug_adapter: &mut DebugAdapter<P>,
+    ) -> Result<Option<SessionData>, DebuggerError> {
+        loop {
+            // Wait for a request
+            let Some(request) = debug_adapter.listen_for_request()? else {
+                continue;
+            };
+
+            let launch_attach_request = match request.command.as_str() {
+                "launch" => TargetSessionType::LaunchRequest,
+                "attach" => TargetSessionType::AttachRequest,
+                "disconnect" => {
+                    debug_adapter.send_response::<DisconnectResponse>(&request, Ok(None))?;
+                    return Ok(None);
+                }
+                _ => {
+                    debug_adapter.log_to_console(format!(
+                        "Ignoring request with command '{}', we can only handle 'launch' and 'attach' commands.", request.command
+                    ));
+
+                    let err = DebuggerError::Other(anyhow!(
+                        "Unable to process request with command {} before an attach or launch request is received",
+                        request.command
+                    ));
+
+                    debug_adapter.send_response::<()>(&request, Err(&err))?;
+
+                    // Continue listening for requests
+                    continue;
+                }
+            };
+
+            self.debug_logger.flush_to_dap(debug_adapter)?;
+
+            // Process either the Launch or Attach request.
+            let session = match self.handle_launch_attach(
+                registry,
+                &request,
+                launch_attach_request,
+                debug_adapter,
+                lister,
+            ) {
+                Ok(session_data) => Some(session_data),
+                Err(error) => {
+                    debug_adapter.send_response::<()>(&request, Err(&error))?;
+                    None
+                }
+            };
+
+            return Ok(session);
+        }
+    }
+
     /// Process launch or attach request
     #[tracing::instrument(skip_all, name = "Handle Launch/Attach Request")]
-    pub(crate) async fn handle_launch_attach<P: ProtocolAdapter + 'static>(
+    fn handle_launch_attach<P: ProtocolAdapter>(
         &mut self,
         registry: &mut Registry,
         launch_attach_request: &Request,
+        requested_target_session_type: TargetSessionType,
         debug_adapter: &mut DebugAdapter<P>,
         lister: &Lister,
     ) -> Result<SessionData, DebuggerError> {
-        let requested_target_session_type = match launch_attach_request.command.as_str() {
-            "attach" => TargetSessionType::AttachRequest,
-            "launch" => TargetSessionType::LaunchRequest,
-            other => {
-                return Err(DebuggerError::Other(anyhow!(
-                    "Expected request 'launch' or 'attach', but received '{other}'"
-                )));
-            }
-        };
-
         self.config = get_arguments(debug_adapter, launch_attach_request)?;
 
         self.config
@@ -479,7 +442,7 @@ impl Debugger {
         // First, attach to the core
         let mut target_core = session_data.attach_core(target_core_config.core_index)?;
 
-        // Immediately after attaching, halt the core, so that we can finish initalization without bumping into user code.
+        // Immediately after attaching, halt the core, so that we can finish initialization without bumping into user code.
         // Depending on supplied `config`, the core will be restarted at the end of initialization in the `configuration_done` request.
         halt_core(&mut target_core.core)?;
 
@@ -502,17 +465,11 @@ impl Debugger {
             debug_adapter
                 .restart(&mut target_core, None)
                 .context("Failed to restart core")?;
-        } else {
-            // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
-            // For LaunchRequest, this is done in the `restart` above.
-            target_core.core.debug_on_sw_breakpoint(true)?;
         }
 
         drop(target_core);
 
-        // Poll cores once while still halted. This will ensure that the RTT control block is
-        // cleared even when haltAfterReset = false.
-        session_data.poll_cores(&self.config, debug_adapter).await?;
+        session_data.poll_cores(&self.config, debug_adapter)?;
 
         debug_adapter.send_response::<()>(launch_attach_request, Ok(None))?;
         self.debug_logger.flush_to_dap(debug_adapter)?;
@@ -521,7 +478,7 @@ impl Debugger {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn restart<P: ProtocolAdapter + 'static>(
+    fn restart<P: ProtocolAdapter>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
         session_data: &mut SessionData,
@@ -566,15 +523,15 @@ impl Debugger {
         // Immediately after attaching, halt the core, so that we can finish restart logic without bumping into user code.
         halt_core(&mut target_core.core)?;
 
-        // Reset RTT so that the link can be re-established and the control block cleared.
+        // Reset RTT so that the link can be re-established.
         target_core.core_data.rtt_connection = None;
 
         // We can't keep the reference for borrow checker reasons.
         drop(target_core);
 
-        // Poll cores once while still halted. This will ensure that the RTT control block is
-        // cleared even when haltAfterReset = false.
-        session_data.poll_cores(&self.config, debug_adapter).await?;
+        session_data.clear_rtt_blocks()?;
+
+        session_data.poll_cores(&self.config, debug_adapter)?;
 
         // Re-attach
         let mut target_core = session_data.attach_core(target_core_config.core_index)?;
@@ -590,7 +547,7 @@ impl Debugger {
     /// Flash the given binary, and report the progress to the
     /// debug adapter.
     // Note: This function consumes the 'debug_adapter', so all error reporting via that handle must be done before returning from this function.
-    fn flash<P: ProtocolAdapter + 'static>(
+    fn flash<P: ProtocolAdapter>(
         config: &SessionConfig,
         path_to_elf: &Path,
         debug_adapter: &mut DebugAdapter<P>,
@@ -651,7 +608,11 @@ impl Debugger {
                                 pbar_state.size_done as f64 / pbar_state.total_size as f64;
 
                             debug_adapter
-                                .update_progress(Some(progress), Some(describe_op(operation)), id)
+                                .update_progress(
+                                    Some(progress.min(1.0)),
+                                    Some(describe_op(operation)),
+                                    id,
+                                )
                                 .ok();
                         }
                         ProgressEvent::Failed(operation) => {
@@ -700,14 +661,7 @@ impl Debugger {
                     true
                 };
 
-                // If the RTT header was initialized by the loader (i.e. in some cases where we run
-                // from RAM), do not clear the RTT header as nothing will reinitialize it.
-                // The actual clearing will be done during attaching.
-                for core_data in session_data.core_data.iter_mut() {
-                    if let probe_rs::rtt::ScanRegion::Exact(address) = core_data.rtt_scan_ranges {
-                        core_data.clear_rtt_header = !loader.has_data_for_address(address);
-                    }
-                }
+                session_data.clear_rtt_blocks()?;
 
                 if do_flashing {
                     loader
@@ -823,6 +777,78 @@ impl Debugger {
     }
 }
 
+// FIXME: why are we using anyhow internally, but an enum on the outside?
+fn dispatch_request<P: ProtocolAdapter>(
+    debug_adapter: &mut DebugAdapter<P>,
+    request: Request,
+    target_core: &mut CoreHandle<'_>,
+) -> anyhow::Result<DebugSessionStatus> {
+    match request.command.as_ref() {
+        "rttWindowOpened" => {
+            if let Some(debugger_rtt_target) = target_core.core_data.rtt_connection.as_mut() {
+                let arguments: RttWindowOpenedArguments = get_arguments(debug_adapter, &request)?;
+
+                if let Some(rtt_channel) = debugger_rtt_target
+                    .debugger_rtt_channels
+                    .iter_mut()
+                    .find(|debugger_rtt_channel| {
+                        debugger_rtt_channel.channel_number == arguments.channel_number
+                    })
+                {
+                    rtt_channel.has_client_window = arguments.window_is_open;
+                }
+
+                debug_adapter
+                    .send_response::<()>(&request, Ok(None))
+                    .context("Could not deserialize arguments for RttWindowOpened")?;
+            }
+        }
+        "disconnect" => {
+            debug_adapter.disconnect(target_core, &request)?;
+            return Ok(DebugSessionStatus::Terminate);
+        }
+        "next" => debug_adapter.next(target_core, &request)?,
+        "stepIn" => debug_adapter.step_in(target_core, &request)?,
+        "stepOut" => debug_adapter.step_out(target_core, &request)?,
+        "pause" => debug_adapter.pause(target_core, &request)?,
+        "readMemory" => debug_adapter.read_memory(target_core, &request)?,
+        "writeMemory" => debug_adapter.write_memory(target_core, &request)?,
+        "setVariable" => debug_adapter.set_variable(target_core, &request)?,
+        "configurationDone" => debug_adapter.configuration_done(target_core, &request)?,
+        "threads" => debug_adapter.threads(target_core, &request)?,
+        "restart" => {
+            target_core
+                .core
+                .halt(Duration::from_millis(500))
+                .context("Failed to halt core")?;
+
+            return Ok(DebugSessionStatus::Restart(request));
+        }
+        "setBreakpoints" => debug_adapter.set_breakpoints(target_core, &request)?,
+        "setInstructionBreakpoints" => {
+            debug_adapter.set_instruction_breakpoints(target_core, &request)?
+        }
+        "stackTrace" => debug_adapter.stack_trace(target_core, &request)?,
+        "scopes" => debug_adapter.scopes(target_core, &request)?,
+        "disassemble" => debug_adapter.disassemble(target_core, &request)?,
+        "variables" => debug_adapter.variables(target_core, &request)?,
+        "continue" => debug_adapter.r#continue(target_core, &request)?,
+        "evaluate" => debug_adapter.evaluate(target_core, &request)?,
+        "completions" => debug_adapter.completions(target_core, &request)?,
+
+        unimplemented_command => {
+            debug_adapter.send_response::<()>(
+                &request,
+                Err(&DebuggerError::Other(anyhow!(
+                    "Received request '{unimplemented_command}', which is not supported or not implemented yet"
+                ))),
+            )?;
+        }
+    }
+
+    Ok(DebugSessionStatus::Continue(Duration::ZERO))
+}
+
 pub(crate) fn is_file_newer(
     saved_binary_timestamp: &mut Option<Duration>,
     path_to_elf: &Path,
@@ -863,10 +889,10 @@ mod test {
             dap::{
                 adapter::DebugAdapter,
                 dap_types::{
-                    Capabilities, DisassembleArguments, DisassembleResponseBody,
-                    DisassembledInstruction, DisconnectArguments, ErrorResponseBody,
-                    InitializeRequestArguments, Message, Request, Response, Source, Thread,
-                    ThreadsResponseBody,
+                    Capabilities, ContinuedEventBody, DisassembleArguments,
+                    DisassembleResponseBody, DisassembledInstruction, DisconnectArguments,
+                    ErrorResponseBody, InitializeRequestArguments, Message, OutputEventBody,
+                    Request, Response, Source, Thread, ThreadsResponseBody,
                 },
             },
             protocol::ProtocolAdapter,
@@ -876,6 +902,7 @@ mod test {
     };
     use probe_rs::{
         architecture::arm::FullyQualifiedApAddress,
+        config::Registry,
         integration::{FakeProbe, Operation},
         probe::{
             DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory,
@@ -918,7 +945,7 @@ mod test {
     /// Helper function to get the expected capabilities for the debugger
     ///
     /// `Capabilities::default()` is not const, so this can't just be a constant.
-    fn expected_capabilites() -> Capabilities {
+    fn expected_capabilities() -> Capabilities {
         Capabilities {
             support_suspend_debuggee: Some(true),
             supports_clipboard_context: Some(true),
@@ -1132,13 +1159,11 @@ mod test {
             Ok(Some(next_request))
         }
 
-        fn send_event<S: serde::Serialize>(
+        fn dyn_send_event(
             &mut self,
             event_type: &str,
-            event_body: Option<S>,
+            event_body: Option<serde_json::Value>,
         ) -> anyhow::Result<()> {
-            let event_body = event_body.map(|s| serde_json::to_value(s).unwrap());
-
             if self.event_index >= self.expected_events.len() {
                 panic!(
                     "No more events expected, but got event_type={event_type:?}, event_body={event_body:?}"
@@ -1206,7 +1231,7 @@ mod test {
             .add_request("initialize")
             .with_arguments(default_initialize_args())
             .and_succesful_response()
-            .with_body(expected_capabilites());
+            .with_body(expected_capabilities());
 
         protocol_adapter.expect_output_event("probe-rs-debug: Log output for \"probe_rs=warn\" will be written to the Debug Console.\n");
         protocol_adapter
@@ -1265,6 +1290,7 @@ mod test {
             Some("mock_serial".to_owned()),
             &MockProbeFactory,
             None,
+            false,
         );
 
         let fake_probe = FakeProbe::with_mocked_core_and_binary(program_binary().as_path());
@@ -1291,12 +1317,15 @@ mod test {
         }
         let lister = Lister::with_lister(Box::new(lister));
 
+        let mut registry = Registry::from_builtin_families();
         let mut debugger = Debugger::new(UtcOffset::UTC, None)?;
-        debugger.debug_session(debug_adapter, &lister).await
+        debugger
+            .debug_session(&mut registry, debug_adapter, &lister)
+            .await
     }
 
     #[tokio::test]
-    async fn test_initalize_request() {
+    async fn test_initialize_request() {
         let protocol_adapter = initialized_protocol_adapter();
 
         // TODO: Check proper return value
@@ -1324,31 +1353,6 @@ mod test {
         let mut protocol_adapter = launched_protocol_adapter();
 
         disconnect_protocol_adapter(&mut protocol_adapter);
-
-        execute_test(protocol_adapter, true).await.unwrap();
-    }
-
-    #[tokio::test]
-    async fn launch_with_config_error() {
-        let mut protocol_adapter = initialized_protocol_adapter();
-
-        let invalid_launch_args = SessionConfig {
-            chip: Some(TEST_CHIP_NAME.to_owned()),
-            core_configs: vec![CoreConfig {
-                core_index: 0,
-                ..CoreConfig::default()
-            }],
-            ..SessionConfig::default()
-        };
-
-        let expected_error = "Please use the `program-binary` option to specify an executable for this target core. Other(Missing value for file.)";
-        protocol_adapter.expect_output_event(&format!("{expected_error}\n"));
-
-        protocol_adapter
-            .add_request("launch")
-            .with_arguments(invalid_launch_args)
-            .and_error_response()
-            .with_body(error_response_body(expected_error));
 
         execute_test(protocol_adapter, true).await.unwrap();
     }
@@ -1421,6 +1425,28 @@ mod test {
         protocol_adapter
             .add_request("configurationDone")
             .and_succesful_response();
+
+        protocol_adapter.expect_event(
+            "continued",
+            Some(ContinuedEventBody {
+                all_threads_continued: Some(true),
+                thread_id: 0,
+            }),
+        );
+        protocol_adapter.expect_event(
+            "output",
+            Some(OutputEventBody {
+                output: String::from("Core is running\n"),
+                category: Some("console".to_owned()),
+                variables_reference: None,
+                source: None,
+                line: None,
+                column: None,
+                data: None,
+                group: Some("probe-rs-debug".to_owned()),
+                location_reference: None,
+            }),
+        );
 
         protocol_adapter
             .add_request("threads")
@@ -1504,6 +1530,28 @@ mod test {
         protocol_adapter
             .add_request("configurationDone")
             .and_succesful_response();
+
+        protocol_adapter.expect_event(
+            "continued",
+            Some(ContinuedEventBody {
+                all_threads_continued: Some(true),
+                thread_id: 0,
+            }),
+        );
+        protocol_adapter.expect_event(
+            "output",
+            Some(OutputEventBody {
+                output: String::from("Core is running\n"),
+                category: Some("console".to_owned()),
+                variables_reference: None,
+                source: None,
+                line: None,
+                column: None,
+                data: None,
+                group: Some("probe-rs-debug".to_owned()),
+                location_reference: None,
+            }),
+        );
 
         let default_instruction_fields = DisassembledInstruction {
             address: "".to_string(),

@@ -3,7 +3,6 @@
 use std::{sync::Arc, time::Duration};
 
 use probe_rs_target::{Architecture, CoreType, InstructionSet};
-use zerocopy::IntoBytes;
 
 use crate::{
     CoreInformation, CoreInterface, CoreRegister, CoreStatus, Error, HaltReason, MemoryInterface,
@@ -23,16 +22,17 @@ use crate::{
         BreakpointCause,
         registers::{CoreRegisters, RegisterId, RegisterValue},
     },
+    memory::CoreMemoryInterface,
     semihosting::{SemihostingCommand, decode_semihosting_syscall},
 };
 
 pub(crate) mod arch;
-pub(crate) mod xdm;
+pub mod xdm;
 
 pub mod communication_interface;
 pub(crate) mod register_cache;
 pub mod registers;
-pub(crate) mod sequences;
+pub mod sequences;
 
 /// Xtensa core state.
 #[derive(Debug)]
@@ -54,9 +54,6 @@ pub struct XtensaCoreState {
 
     /// The semihosting command that was decoded at the current program counter
     semihosting_command: Option<SemihostingCommand>,
-
-    /// Whether the registers have been spilled to the stack.
-    spilled: bool,
 }
 
 impl XtensaCoreState {
@@ -68,7 +65,6 @@ impl XtensaCoreState {
             breakpoint_set: [false; 2],
             pc_written: false,
             semihosting_command: None,
-            spilled: false,
         }
     }
 
@@ -107,11 +103,6 @@ impl<'probe> Xtensa<'probe> {
         this.on_attach()?;
 
         Ok(this)
-    }
-
-    fn clear_cache(&mut self) {
-        self.state.spilled = false;
-        self.interface.clear_register_cache();
     }
 
     fn on_attach(&mut self) -> Result<(), Error> {
@@ -250,7 +241,9 @@ impl<'probe> Xtensa<'probe> {
 
     fn on_halted(&mut self) -> Result<(), Error> {
         self.state.pc_written = false;
-        self.clear_cache();
+
+        // NB: do not clear the register cache here. We clear it before resuming,
+        // and clearing here would interfere with instruction stepping.
 
         let status = self.status()?;
         tracing::debug!("Core halted: {:#?}", status);
@@ -300,11 +293,6 @@ impl<'probe> Xtensa<'probe> {
     }
 
     fn spill_registers(&mut self) -> Result<(), Error> {
-        if self.state.spilled {
-            return Ok(());
-        }
-        self.state.spilled = true;
-
         if self.current_ps()?.excm() {
             // We are in an exception, possibly WindowOverflowN or WindowUnderflowN.
             // We can't spill registers in this state.
@@ -340,107 +328,14 @@ impl<'probe> Xtensa<'probe> {
     }
 }
 
-// We can't use CoreMemoryInterface here, because we need to spill registers before reading.
-// This needs to be considerably cleaned up.
-impl MemoryInterface for Xtensa<'_> {
-    fn supports_native_64bit_access(&mut self) -> bool {
-        self.interface.supports_native_64bit_access()
+impl CoreMemoryInterface for Xtensa<'_> {
+    type ErrorType = Error;
+
+    fn memory(&self) -> &dyn MemoryInterface<Self::ErrorType> {
+        &self.interface
     }
-
-    fn read_word_64(&mut self, address: u64) -> Result<u64, Error> {
-        self.halted_access(|this| {
-            this.spill_registers()?;
-
-            this.interface.read_word_64(address)
-        })
-    }
-
-    fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
-        self.halted_access(|this| {
-            this.spill_registers()?;
-
-            this.interface.read_word_32(address)
-        })
-    }
-
-    fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
-        self.halted_access(|this| {
-            this.spill_registers()?;
-
-            this.interface.read_word_16(address)
-        })
-    }
-
-    fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
-        self.halted_access(|this| {
-            this.spill_registers()?;
-
-            this.interface.read_word_8(address)
-        })
-    }
-
-    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
-        self.read_8(address, data.as_mut_bytes())
-    }
-
-    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
-        self.read_8(address, data.as_mut_bytes())
-    }
-
-    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
-        self.read_8(address, data.as_mut_bytes())
-    }
-
-    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
-        self.halted_access(|this| {
-            this.spill_registers()?;
-
-            this.interface.read_8(address, data)
-        })
-    }
-
-    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
-        self.interface.write_word_64(address, data)
-    }
-
-    fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
-        self.interface.write_word_32(address, data)
-    }
-
-    fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
-        self.interface.write_word_16(address, data)
-    }
-
-    fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
-        self.interface.write_word_8(address, data)
-    }
-
-    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
-        self.interface.write_64(address, data)
-    }
-
-    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
-        self.interface.write_32(address, data)
-    }
-
-    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
-        self.interface.write_16(address, data)
-    }
-
-    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        self.interface.write_8(address, data)
-    }
-
-    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        self.interface.write(address, data)
-    }
-
-    fn supports_8bit_transfers(&self) -> Result<bool, Error> {
-        self.interface.supports_8bit_transfers()
-    }
-
-    fn flush(&mut self) -> Result<(), Error> {
-        self.interface.flush()
+    fn memory_mut(&mut self) -> &mut dyn MemoryInterface<Self::ErrorType> {
+        &mut self.interface
     }
 }
 
@@ -506,6 +401,7 @@ impl CoreInterface for Xtensa<'_> {
         self.state.semihosting_command = None;
         self.sequence
             .reset_system_and_halt(&mut self.interface, timeout)?;
+
         self.on_halted()?;
 
         // TODO: this may return that the core has gone away, which is fine but currently unexpected
@@ -681,6 +577,10 @@ impl CoreInterface for Xtensa<'_> {
         self.interface.leave_debug_mode()?;
         Ok(())
     }
+
+    fn spill_registers(&mut self) -> Result<(), Error> {
+        self.spill_registers()
+    }
 }
 
 struct RegisterFile {
@@ -698,13 +598,14 @@ impl RegisterFile {
         let window_base_result = interface.schedule_read_register(SpecialRegister::Windowbase)?;
         let window_start_result = interface.schedule_read_register(SpecialRegister::Windowstart)?;
 
-        let mut register_results = Vec::with_capacity(xtensa.num_aregs as usize);
+        let mut register_values = Vec::with_capacity(xtensa.num_aregs as usize);
 
         let ar0 = arch::CpuRegister::A0 as u8;
 
         // Restore registers before reading them, as reading a special
         // register overwrote scratch registers.
         interface.restore_registers()?;
+
         // The window registers alias each other, so we need to make sure we don't read
         // the cached values. We'll then use the registers we read here to prime the cache.
         for ar in ar0..ar0 + xtensa.window_regs {
@@ -712,13 +613,13 @@ impl RegisterFile {
             interface.state.register_cache.remove(reg.into());
         }
 
+        let mut regs = Vec::with_capacity(xtensa.window_regs as usize);
         for _ in 0..xtensa.num_aregs / xtensa.window_regs {
             // Read registers visible in the current window
             for ar in ar0..ar0 + xtensa.window_regs {
                 let reg = CpuRegister::try_from(ar)?;
-                let result = interface.schedule_read_register(reg)?;
-
-                register_results.push(result);
+                let deferred_result = interface.schedule_read_register(reg)?;
+                regs.push(deferred_result);
             }
 
             // Rotate window to see the next `window_regs` registers
@@ -726,6 +627,19 @@ impl RegisterFile {
             interface
                 .xdm
                 .schedule_execute_instruction(Instruction::Rotw(rotw_arg));
+
+            // Pull out values from cache before we clear the cache
+            for deferred in regs.drain(..) {
+                let result = interface.read_deferred_result(deferred)?;
+                register_values.push(result);
+            }
+
+            // The window registers alias each other, so we need to make sure we don't read
+            // the cached values. We'll then use the registers we read here to prime the cache.
+            for ar in ar0..ar0 + xtensa.window_regs {
+                let reg = CpuRegister::try_from(ar)?;
+                interface.state.register_cache.remove(reg.into());
+            }
         }
 
         // Now do the actual read.
@@ -733,11 +647,6 @@ impl RegisterFile {
             .xdm
             .execute()
             .expect("Failed to execute read. This shouldn't happen.");
-
-        let mut register_values = register_results
-            .into_iter()
-            .map(|result| interface.read_deferred_result(result))
-            .collect::<Result<Vec<_>, _>>()?;
 
         // WindowBase points to the first register of the current window in the register file.
         // In essence, it selects which 16 registers are visible out of the 64 physical registers.
@@ -900,21 +809,6 @@ impl<'a> RegisterWindow<'a> {
                 let sp = interface.read_word_32(self.read_register(CpuRegister::A1) as u64 - 12)?;
 
                 interface.write_32(self.read_register(CpuRegister::A9) as u64 - 16, &a0_a3)?;
-
-                // Enable check at INFO level to avoid spamming the logs.
-                if tracing::enabled!(tracing::Level::INFO) {
-                    // In some cases (spilling on each halt),
-                    // this readback comes back as 0 for some reason. This assertion is temporarily
-                    // meant to help me debug this.
-                    let written =
-                        interface.read_word_32(self.read_register(CpuRegister::A9) as u64 - 12)?;
-                    assert!(
-                        written == self.read_register(CpuRegister::A1),
-                        "Failed to spill A1. Expected {:#x}, got {:#x}",
-                        self.read_register(CpuRegister::A1),
-                        written
-                    );
-                }
 
                 let regs = [
                     self.read_register(CpuRegister::A4),

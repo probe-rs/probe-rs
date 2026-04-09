@@ -5,7 +5,7 @@ use anyhow::{Context, Result, anyhow};
 use clap::CommandFactory;
 use clap_complete::{
     Generator, Shell, generate,
-    shells::{Bash, PowerShell, Zsh},
+    shells::{Bash, Fish, PowerShell, Zsh},
 };
 use probe_rs::config::Registry;
 use probe_rs::probe::list::Lister;
@@ -70,6 +70,9 @@ impl Cmd {
         match shell {
             Shell::Zsh => {
                 Zsh.install(&file_name, &script)?;
+            }
+            Shell::Fish => {
+                Fish.install(&file_name, &script)?;
             }
             Shell::Bash => {
                 Bash.install(&file_name, &script)?;
@@ -290,6 +293,32 @@ export FPATH="$HOME/.zfunc:$FPATH"
         }
 
         Ok(())
+    }
+}
+
+impl ShellExt for Fish {
+    fn install(&self, file_name: &str, script: &str) -> Result<()> {
+        let xdg_config = match std::env::var("XDG_DATA_HOME") {
+            Ok(s) => PathBuf::from(s),
+            Err(_) => {
+                let Some(dir) = directories::UserDirs::new() else {
+                    println!("{script}");
+                    eprintln!("The user home directory could not be located.");
+                    eprintln!(
+                        "Write the script to ~/.local/share/fish/vendor_completions.d/{file_name}"
+                    );
+                    return Ok(());
+                };
+
+                dir.home_dir().join(".local").join("share")
+            }
+        };
+
+        let path = xdg_config
+            .join("fish")
+            .join("vendor_completions.d")
+            .join(file_name);
+        write_script(&path, script)
     }
 }
 

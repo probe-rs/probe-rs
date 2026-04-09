@@ -46,6 +46,8 @@
 
 mod channel;
 pub use channel::*;
+#[cfg(feature = "object")]
+use object::{Object as _, ObjectSymbol as _};
 
 use crate::Session;
 use crate::{Core, MemoryInterface, config::MemoryRegion};
@@ -54,6 +56,31 @@ use std::thread;
 use std::time::Duration;
 use std::time::Instant;
 use zerocopy::{FromBytes, IntoBytes};
+
+/// Extract the RTT control block from a raw file, usually an ELF file.
+#[cfg(feature = "object")]
+pub fn find_rtt_control_block_in_raw_file(raw_file: &[u8]) -> Result<Option<u64>, object::Error> {
+    let obj = object::File::parse(raw_file)?;
+    Ok(find_rtt_control_block_in_file(&obj))
+}
+
+/// Extract the RTT control block from a parsed [object::File] file, usually a parsed ELF file.
+#[cfg(feature = "object")]
+pub fn find_rtt_control_block_in_file(file: &object::File) -> Option<u64> {
+    for symbol in file.symbols() {
+        // Get the symbol name
+        if let Ok(name) = symbol.name()
+            && name == "_SEGGER_RTT"
+        {
+            // Ensure it is a defined symbol (not undefined). Symbols with a section index are
+            // defined in the binary.
+            if symbol.section_index().is_some() {
+                return Some(symbol.address());
+            }
+        }
+    }
+    None
+}
 
 /// The RTT interface.
 ///
@@ -315,7 +342,7 @@ impl Rtt {
     /// Attempts to detect an RTT control block in the specified RAM region(s) and returns an
     /// instance if a valid control block was found.
     pub fn attach_region(core: &mut Core, region: &ScanRegion) -> Result<Rtt, Error> {
-        let ptr = Self::find_contol_block(core, region)?;
+        let ptr = Self::find_control_block(core, region)?;
         Self::attach_at(core, ptr)
     }
 
@@ -327,7 +354,7 @@ impl Rtt {
 
     /// Attempts to detect an RTT control block in the specified RAM region(s) and returns an
     /// address if a valid control block location was found.
-    pub fn find_contol_block(core: &mut Core, region: &ScanRegion) -> Result<u64, Error> {
+    pub fn find_control_block(core: &mut Core, region: &ScanRegion) -> Result<u64, Error> {
         let ranges = match region.clone() {
             ScanRegion::Exact(addr) => {
                 tracing::debug!("Scanning at exact address: {:#010x}", addr);
@@ -339,6 +366,7 @@ impl Rtt {
 
                 core.memory_regions()
                     .filter_map(MemoryRegion::as_ram_region)
+                    .filter(|r| !r.is_alias)
                     .map(|r| r.range.clone())
                     .collect()
             }
@@ -385,6 +413,41 @@ impl Rtt {
             0 => Err(Error::ControlBlockNotFound),
             1 => Ok(instances.remove(0)),
             _ => Err(Error::MultipleControlBlocksFound(instances)),
+        }
+    }
+
+    /// Clear a potentially stale RTT control block at the given scan region.
+    ///
+    /// For `Exact` addresses, zeros the header directly. For `Ranges` / `Ram`,
+    /// scans for the magic bytes and clears if found. Does nothing if no control
+    /// block is found.
+    ///
+    /// This should be called while the core is halted, before a reset, to prevent
+    /// attaching to stale data from a previous session.
+    pub fn clear_control_block(core: &mut Core, region: &ScanRegion) -> Result<(), Error> {
+        match Self::find_control_block(core, region) {
+            Ok(address) => {
+                tracing::debug!("Clearing RTT control block at {:#010x}", address);
+                let clear_size = if matches!(region, ScanRegion::Exact(_)) {
+                    // Full header: 16 bytes magic + channel count fields
+                    if core.is_64_bit() {
+                        16 + 2 * 8
+                    } else {
+                        16 + 2 * 4
+                    }
+                } else {
+                    // Just the magic identifier (we haven't validated the full block)
+                    Self::RTT_ID.len()
+                };
+                let zeros = vec![0u8; clear_size];
+                core.write_8(address, &zeros)?;
+                Ok(())
+            }
+            Err(Error::ControlBlockNotFound | Error::NoControlBlockLocation) => {
+                tracing::debug!("No RTT control block found to clear");
+                Ok(())
+            }
+            Err(e) => Err(e),
         }
     }
 

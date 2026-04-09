@@ -1,22 +1,23 @@
 //! Probe drivers
 pub(crate) mod common;
-pub(crate) mod usb_util;
+pub mod usb_util;
 
 pub mod blackmagic;
 pub mod ch347usbjtag;
 pub mod cmsisdap;
-pub mod espusbjtag;
 pub mod fake_probe;
 pub mod ftdi;
 pub mod glasgow;
 pub mod jlink;
 pub mod list;
+pub(crate) mod queue;
+mod selector;
 pub mod sifliuart;
 pub mod stlink;
 pub mod wlink;
 
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
-use crate::architecture::arm::{ArmDebugInterface, ArmError, DapError};
+use crate::architecture::arm::{ArmDebugInterface, ArmError};
 use crate::architecture::arm::{RegisterAddress, SwoAccess, communication_interface::DapProbe};
 use crate::architecture::riscv::communication_interface::{RiscvError, RiscvInterfaceBuilder};
 use crate::architecture::xtensa::communication_interface::{
@@ -25,21 +26,43 @@ use crate::architecture::xtensa::communication_interface::{
 use crate::config::TargetSelector;
 use crate::config::registry::Registry;
 use crate::probe::common::JtagState;
+use crate::probe::queue::{BatchExecutionError, DeferredResultSet, ErasedQueue};
 use crate::{Error, Permissions, Session};
 use bitvec::slice::BitSlice;
 use bitvec::vec::BitVec;
 use common::ScanChainError;
-use nusb::DeviceInfo;
+use parking_lot::RwLock;
 use probe_rs_target::ScanChainElement;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use std::any::Any;
-use std::collections::HashMap;
 use std::fmt;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
+
+pub use selector::DebugProbeSelector;
 
 /// Used to log warnings when the measured target voltage is
 /// lower than 1.4V, if at all measurable.
 const LOW_TARGET_VOLTAGE_WARNING_THRESHOLD: f32 = 1.4;
+
+static DRIVERS: LazyLock<RwLock<Vec<&'static dyn ProbeFactory>>> = LazyLock::new(|| {
+    let probes: Vec<&'static dyn ProbeFactory> = vec![
+        &blackmagic::BlackMagicProbeFactory,
+        &cmsisdap::CmsisDapFactory,
+        &ftdi::FtdiProbeFactory,
+        &stlink::StLinkFactory,
+        &jlink::JLinkFactory,
+        &wlink::WchLinkFactory,
+        &sifliuart::SifliUartFactory,
+        &glasgow::GlasgowFactory,
+        &ch347usbjtag::Ch347UsbJtagFactory,
+    ];
+
+    RwLock::new(probes)
+});
+
+pub(crate) fn register_probe_factory(factory: &'static dyn ProbeFactory) {
+    DRIVERS.write().push(factory);
+}
 
 /// The protocol that is to be used by the probe when communicating with the target.
 ///
@@ -804,10 +827,11 @@ pub struct DebugProbeInfo {
     pub product_id: u16,
     /// The serial number of the debug probe.
     pub serial_number: Option<String>,
+    /// The interface index of the debug probe
+    pub interface: Option<u8>,
 
-    /// The USB HID interface which should be used.
-    /// This is necessary for composite HID devices.
-    pub hid_interface: Option<u8>,
+    /// This is a composite HID device.
+    pub is_hid_interface: bool,
 
     /// A reference to the [`ProbeFactory`] that created this info object.
     probe_factory: &'static dyn ProbeFactory,
@@ -817,12 +841,19 @@ impl std::fmt::Display for DebugProbeInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "{} -- {:04x}:{:04x}:{} ({})",
-            self.identifier,
-            self.vendor_id,
-            self.product_id,
+            "{} -- {:04x}:{:04x}",
+            self.identifier, self.vendor_id, self.product_id,
+        )?;
+
+        if let Some(interface) = self.interface {
+            write!(f, "-{}", interface)?;
+        }
+
+        write!(
+            f,
+            ":{} ({})",
             self.serial_number.as_deref().unwrap_or(""),
-            self.probe_factory,
+            self.probe_factory
         )
     }
 }
@@ -835,7 +866,8 @@ impl DebugProbeInfo {
         product_id: u16,
         serial_number: Option<String>,
         probe_factory: &'static dyn ProbeFactory,
-        hid_interface: Option<u8>,
+        interface: Option<u8>,
+        is_hid_interface: bool,
     ) -> Self {
         Self {
             identifier: identifier.into(),
@@ -843,7 +875,8 @@ impl DebugProbeInfo {
             product_id,
             serial_number,
             probe_factory,
-            hid_interface,
+            interface,
+            is_hid_interface,
         }
     }
 
@@ -868,178 +901,6 @@ impl DebugProbeInfo {
     }
 }
 
-/// An error which can occur while parsing a [`DebugProbeSelector`].
-#[derive(thiserror::Error, Debug, docsplay::Display)]
-pub enum DebugProbeSelectorParseError {
-    /// Could not parse VID or PID: {0}
-    ParseInt(#[from] std::num::ParseIntError),
-
-    /// The format of the selector is invalid. Please use a string in the form `VID:PID:<Serial>`, where Serial is optional.
-    Format,
-}
-
-/// A struct to describe the way a probe should be selected.
-///
-/// Construct this from a set of info or from a string. The
-/// string has to be in the format "VID:PID:SERIALNUMBER",
-/// where the serial number is optional, and VID and PID are
-/// parsed as hexadecimal numbers.
-///
-/// If SERIALNUMBER exists (i.e. the selector contains a second color) and is empty,
-/// probe-rs will select probes that have no serial number, or where the serial number is empty.
-///
-/// ## Example:
-///
-/// ```
-/// use std::convert::TryInto;
-/// let selector: probe_rs::probe::DebugProbeSelector = "1942:1337:SERIAL".try_into().unwrap();
-///
-/// assert_eq!(selector.vendor_id, 0x1942);
-/// assert_eq!(selector.product_id, 0x1337);
-/// ```
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DebugProbeSelector {
-    /// The the USB vendor id of the debug probe to be used.
-    pub vendor_id: u16,
-    /// The the USB product id of the debug probe to be used.
-    pub product_id: u16,
-    /// The the serial number of the debug probe to be used.
-    pub serial_number: Option<String>,
-}
-
-impl DebugProbeSelector {
-    pub(crate) fn matches(&self, info: &DeviceInfo) -> bool {
-        self.match_probe_selector(info.vendor_id(), info.product_id(), info.serial_number())
-    }
-
-    /// Check if the given probe info matches this selector.
-    pub fn matches_probe(&self, info: &DebugProbeInfo) -> bool {
-        self.match_probe_selector(
-            info.vendor_id,
-            info.product_id,
-            info.serial_number.as_deref(),
-        )
-    }
-
-    fn match_probe_selector(
-        &self,
-        vendor_id: u16,
-        product_id: u16,
-        serial_number: Option<&str>,
-    ) -> bool {
-        vendor_id == self.vendor_id
-            && product_id == self.product_id
-            && self
-                .serial_number
-                .as_ref()
-                .map(|s| {
-                    if let Some(serial_number) = serial_number {
-                        serial_number == s
-                    } else {
-                        // Match probes without serial number when the
-                        // selector has a third, empty part ("VID:PID:")
-                        s.is_empty()
-                    }
-                })
-                .unwrap_or(true)
-    }
-}
-
-impl TryFrom<&str> for DebugProbeSelector {
-    type Error = DebugProbeSelectorParseError;
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        // Split into at most 3 parts: VID, PID, Serial.
-        // We limit the number of splits to allow for colons in the
-        // serial number (EspJtag uses MAC address)
-        let mut split = value.splitn(3, ':');
-
-        let vendor_id = split.next().unwrap(); // First split is always successful
-        let product_id = split.next().ok_or(DebugProbeSelectorParseError::Format)?;
-        let serial_number = split.next().map(|s| s.to_string());
-
-        Ok(DebugProbeSelector {
-            vendor_id: u16::from_str_radix(vendor_id, 16)?,
-            product_id: u16::from_str_radix(product_id, 16)?,
-            serial_number,
-        })
-    }
-}
-
-impl TryFrom<String> for DebugProbeSelector {
-    type Error = DebugProbeSelectorParseError;
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        TryFrom::<&str>::try_from(&value)
-    }
-}
-
-impl std::str::FromStr for DebugProbeSelector {
-    type Err = DebugProbeSelectorParseError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::try_from(s)
-    }
-}
-
-impl From<DebugProbeInfo> for DebugProbeSelector {
-    fn from(selector: DebugProbeInfo) -> Self {
-        DebugProbeSelector {
-            vendor_id: selector.vendor_id,
-            product_id: selector.product_id,
-            serial_number: selector.serial_number,
-        }
-    }
-}
-
-impl From<&DebugProbeInfo> for DebugProbeSelector {
-    fn from(selector: &DebugProbeInfo) -> Self {
-        DebugProbeSelector {
-            vendor_id: selector.vendor_id,
-            product_id: selector.product_id,
-            serial_number: selector.serial_number.clone(),
-        }
-    }
-}
-
-impl From<&DebugProbeSelector> for DebugProbeSelector {
-    fn from(selector: &DebugProbeSelector) -> Self {
-        selector.clone()
-    }
-}
-
-impl fmt::Display for DebugProbeSelector {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:04x}:{:04x}", self.vendor_id, self.product_id)?;
-        if let Some(ref sn) = self.serial_number {
-            write!(f, ":{sn}")?;
-        }
-        Ok(())
-    }
-}
-
-impl From<DebugProbeSelector> for String {
-    fn from(value: DebugProbeSelector) -> String {
-        value.to_string()
-    }
-}
-
-impl Serialize for DebugProbeSelector {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.to_string())
-    }
-}
-
-impl<'a> Deserialize<'a> for DebugProbeSelector {
-    fn deserialize<D>(deserializer: D) -> Result<DebugProbeSelector, D::Error>
-    where
-        D: Deserializer<'a>,
-    {
-        let s = String::deserialize(deserializer)?;
-        s.parse().map_err(serde::de::Error::custom)
-    }
-}
-
 /// Bit-banging interface, ARM edition.
 ///
 /// This trait (and [RawJtagIo], [JtagAccess]) should not be used by architecture implementations
@@ -1052,7 +913,7 @@ impl<'a> Deserialize<'a> for DebugProbeSelector {
 /// is then implemented by [CmsisDap] or a fallback is provided by for
 /// any [RawSwdIo + JtagAccess](crate::architecture::arm::polyfill) probes.
 ///
-/// RISC-V is close with its [crate::architecture::riscv::dtm::dtm_access::DtmAccess] trait.
+/// RISC-V is close with its [crate::architecture::riscv::dtm::DtmAccess] trait.
 ///
 /// [CmsisDap]: crate::probe::cmsisdap::CmsisDap
 pub(crate) trait RawSwdIo: DebugProbe {
@@ -1068,12 +929,10 @@ pub(crate) trait RawSwdIo: DebugProbe {
     ) -> Result<u32, DebugProbeError>;
 
     fn swd_settings(&self) -> &SwdSettings;
-
-    fn probe_statistics(&mut self) -> &mut ProbeStatistics;
 }
 
 /// A trait for implementing low-level JTAG interface operations.
-pub(crate) trait RawJtagIo: DebugProbe {
+pub trait RawJtagIo: DebugProbe {
     /// Returns a mutable reference to the current state.
     fn state_mut(&mut self) -> &mut JtagDriverState;
 
@@ -1183,13 +1042,20 @@ impl Default for SwdSettings {
 /// This struct tracks the state of the JTAG state machine,  which TAP is currently selected, and
 /// contains information about the system (like scan chain).
 #[derive(Debug)]
-pub(crate) struct JtagDriverState {
+pub struct JtagDriverState {
+    /// The state of the JTAG state machine.
     pub state: JtagState,
+
+    /// The expected scan chain.
     pub expected_scan_chain: Option<Vec<ScanChainElement>>,
+
+    /// The actual scan chain.
     pub scan_chain: Vec<ScanChainElement>,
+
+    /// The parameters of the scan chain.
     pub chain_params: ChainParams,
-    /// Idle cycles necessary between consecutive
-    /// accesses to the DMI register
+
+    /// Idle cycles necessary between consecutive accesses to the DMI register.
     pub jtag_idle_cycles: usize,
 }
 impl JtagDriverState {
@@ -1210,64 +1076,11 @@ impl Default for JtagDriverState {
     }
 }
 
-#[derive(Default, Debug)]
-pub(crate) struct ProbeStatistics {
-    /// Number of protocol transfers performed.
-    ///
-    /// This includes repeated transfers, and transfers
-    /// which are automatically added to fulfill
-    /// protocol requirements, e.g. a read from a
-    /// DP register will result in two transfers,
-    /// because the read value is returned in the
-    /// second transfer
-    num_transfers: usize,
-
-    /// Number of extra transfers added to fullfil protocol
-    /// requirements. Ideally as low as possible.
-    num_extra_transfers: usize,
-
-    /// Number of calls to the probe IO function.
-    ///
-    /// A single call can perform multiple SWD transfers,
-    /// so this number is ideally a lot lower than then
-    /// number of SWD transfers.
-    num_io_calls: usize,
-
-    /// Number of SWD wait responses encountered.
-    num_wait_resp: usize,
-
-    /// Number of SWD FAULT responses encountered.
-    num_faults: usize,
-}
-
-impl ProbeStatistics {
-    pub fn record_extra_transfer(&mut self) {
-        self.num_extra_transfers += 1;
-    }
-
-    pub fn record_transfers(&mut self, num_transfers: usize) {
-        self.num_transfers += num_transfers;
-    }
-
-    pub fn report_io(&mut self) {
-        self.num_io_calls += 1;
-    }
-
-    pub fn report_swd_response<T>(&mut self, response: &Result<T, DapError>) {
-        match response {
-            Err(DapError::FaultResponse) => self.num_faults += 1,
-            Err(DapError::WaitResponse) => self.num_wait_resp += 1,
-            // Other errors are not counted right now.
-            _ => (),
-        }
-    }
-}
-
 /// Marker trait for bitbanging JTAG probes.
 ///
 /// This trait exists to control which probes implement [`JtagAccess`]. In some cases,
 /// a probe may implement [`RawJtagIo`] but does not want an auto-implemented [JtagAccess].
-pub(crate) trait AutoImplementJtagAccess: RawJtagIo + 'static {}
+pub trait AutoImplementJtagAccess: RawJtagIo + 'static {}
 
 /// Low-Level access to the JTAG protocol
 ///
@@ -1280,14 +1093,24 @@ pub trait JtagAccess: DebugProbe {
     /// position and IR lengths.
     ///
     /// If the scan chain is provided, and the selected protocol is JTAG, the
-    /// probe will automatically configure the JTAG interface to match the
-    /// scan chain configuration without trying to determine the chain at
-    /// runtime.
+    /// probe will use this information to validate that the scan chain is
+    /// what is expected.
     ///
     /// This is called by the `Session` when attaching to a target.
     /// So this does not need to be called manually, unless you want to
     /// modify the scan chain. You must be attached to a target to set the
     /// scan_chain since the scan chain only applies to the attached target.
+    fn set_expected_scan_chain(
+        &mut self,
+        scan_chain: &[ScanChainElement],
+    ) -> Result<(), DebugProbeError>;
+
+    /// Set the JTAG scan chain information for the target under debug.
+    ///
+    /// If the scan chain is provided, and the selected protocol is JTAG, the
+    /// probe will automatically configure the JTAG interface to match the
+    /// scan chain configuration without trying to determine the chain at
+    /// runtime.
     fn set_scan_chain(&mut self, scan_chain: &[ScanChainElement]) -> Result<(), DebugProbeError>;
 
     /// Scans `IDCODE` and `IR` length information about the devices on the JTAG chain.
@@ -1356,7 +1179,7 @@ pub trait JtagAccess: DebugProbe {
     /// Executes a sequence of JTAG commands.
     fn write_register_batch(
         &mut self,
-        writes: &CommandQueue<JtagCommand>,
+        writes: &ErasedQueue,
     ) -> Result<DeferredResultSet<CommandResult>, BatchExecutionError> {
         tracing::debug!(
             "Using default `JtagAccess::write_register_batch` hurts performance. Please implement proper batching for this probe."
@@ -1366,24 +1189,35 @@ pub trait JtagAccess: DebugProbe {
         for (idx, write) in writes.iter() {
             match write {
                 JtagCommand::WriteRegister(write) => {
-                    match self
-                        .write_register(write.address, &write.data, write.len)
-                        .map_err(crate::Error::Probe)
-                        .and_then(|response| (write.transform)(write, &response))
-                    {
+                    let response = match self.write_register(
+                        write.inner.address,
+                        &write.inner.data,
+                        write.inner.len,
+                    ) {
+                        Ok(response) => response,
+                        Err(e) => {
+                            return Err(BatchExecutionError::new_from_debug_probe(e, results));
+                        }
+                    };
+
+                    match (write.transform)(&write.inner, &response) {
                         Ok(res) => results.push(idx, res),
-                        Err(e) => return Err(BatchExecutionError::new(e, results)),
+                        Err(e) => {
+                            return Err(BatchExecutionError::new_specific(e, results));
+                        }
                     }
                 }
 
                 JtagCommand::ShiftDr(write) => {
-                    match self
-                        .write_dr(&write.data, write.len)
-                        .map_err(crate::Error::Probe)
-                        .and_then(|response| (write.transform)(write, &response))
-                    {
+                    let response = match self.write_dr(&write.inner.data, write.inner.len) {
+                        Ok(response) => response,
+                        Err(e) => {
+                            return Err(BatchExecutionError::new_from_debug_probe(e, results));
+                        }
+                    };
+                    match (write.transform)(&write.inner, &response) {
                         Ok(res) => results.push(idx, res),
-                        Err(e) => return Err(BatchExecutionError::new(e, results)),
+                        Err(e) => return Err(BatchExecutionError::new_specific(e, results)),
                     }
                 }
             }
@@ -1405,9 +1239,9 @@ pub struct JtagSequence {
     pub data: BitVec,
 }
 
-/// A low-level JTAG register write command.
+/// Data for a JTAG register write
 #[derive(Debug, Clone)]
-pub struct JtagWriteCommand {
+pub struct JtagWriteData {
     /// The IR register to write to.
     pub address: u32,
 
@@ -1416,59 +1250,144 @@ pub struct JtagWriteCommand {
 
     /// The number of bits in `data`
     pub len: u32,
-
-    /// A function to transform the raw response into a [`CommandResult`]
-    pub transform: fn(&JtagWriteCommand, &BitSlice) -> Result<CommandResult, crate::Error>,
 }
 
-/// A low-level JTAG register write command.
+/// Data for a DR shift - no transform, just the payload.
 #[derive(Debug, Clone)]
-pub struct ShiftDrCommand {
+pub struct ShiftDrData {
     /// The data to be written to DR.
     pub data: Vec<u8>,
 
     /// The number of bits in `data`
     pub len: u32,
+}
+
+/// A typed JTAG register write command with compile-time error type.
+#[derive(Debug, Clone)]
+pub struct JtagWriteCommand<E> {
+    /// The inner data for the write command.
+    pub data: JtagWriteData,
 
     /// A function to transform the raw response into a [`CommandResult`]
-    pub transform: fn(&ShiftDrCommand, &BitSlice) -> Result<CommandResult, crate::Error>,
+    pub transform: fn(&JtagWriteData, &BitSlice) -> Result<CommandResult, E>,
 }
 
-/// A low-level JTAG command.
+impl<E: std::error::Error + Send + Sync + 'static> From<JtagWriteCommand<E>> for JtagCommand {
+    fn from(value: JtagWriteCommand<E>) -> Self {
+        let typed_transform = value.transform;
+
+        let erased_command = ErasedCommand {
+            inner: value.data,
+            transform: Box::new(move |data, bits| {
+                (typed_transform)(data, bits)
+                    .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+            }),
+        };
+
+        JtagCommand::WriteRegister(erased_command)
+    }
+}
+
+/// A DR shift command
 #[derive(Debug, Clone)]
-pub enum JtagCommand {
-    /// Write a register.
-    WriteRegister(JtagWriteCommand),
-    /// Shift a value into the DR register.
-    ShiftDr(ShiftDrCommand),
+pub struct ShiftDrCommand<E> {
+    /// The inner data for the shift command.
+    pub inner: ShiftDrData,
+
+    /// A function to transform the raw response into a [`CommandResult`]
+    pub transform: fn(&ShiftDrData, &BitSlice) -> Result<CommandResult, E>,
 }
 
-impl From<JtagWriteCommand> for JtagCommand {
-    fn from(cmd: JtagWriteCommand) -> Self {
+impl<E: std::error::Error + Send + Sync + 'static> From<ShiftDrCommand<E>> for JtagCommand {
+    fn from(value: ShiftDrCommand<E>) -> Self {
+        let typed_transform = value.transform;
+
+        let erased_command = ErasedCommand {
+            inner: value.inner,
+            transform: Box::new(move |data, bits| {
+                (typed_transform)(data, bits)
+                    .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+            }),
+        };
+
+        JtagCommand::ShiftDr(erased_command)
+    }
+}
+
+/// Type alias for the erased transform function used in batched JTAG commands.
+pub(crate) type ErasedTransformFn<T> = Box<
+    dyn Fn(&T, &BitSlice) -> Result<CommandResult, Box<dyn std::error::Error + Send + Sync>>
+        + Send
+        + Sync,
+>;
+
+/// An erased JTAG register write command (internal use).
+pub(crate) struct ErasedCommand<T> {
+    /// The inner data for the write command.
+    pub inner: T,
+
+    /// A function to transform the raw response into a [`CommandResult`]
+    pub transform: ErasedTransformFn<T>,
+}
+
+impl<T: std::fmt::Debug> std::fmt::Debug for ErasedCommand<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ErasedCommand")
+            .field("inner", &self.inner)
+            .field("transform", &"<fn>")
+            .finish()
+    }
+}
+
+/// A low-level JTAG command (uses type-erased commands internally).
+#[derive(Debug)]
+pub(crate) enum JtagCommand {
+    /// Write a register.
+    WriteRegister(ErasedCommand<JtagWriteData>),
+    /// Shift a value into the DR register.
+    ShiftDr(ErasedCommand<ShiftDrData>),
+}
+
+impl From<ErasedCommand<JtagWriteData>> for JtagCommand {
+    fn from(cmd: ErasedCommand<JtagWriteData>) -> Self {
         JtagCommand::WriteRegister(cmd)
     }
 }
 
-impl From<ShiftDrCommand> for JtagCommand {
-    fn from(cmd: ShiftDrCommand) -> Self {
+impl From<ErasedCommand<ShiftDrData>> for JtagCommand {
+    fn from(cmd: ErasedCommand<ShiftDrData>) -> Self {
         JtagCommand::ShiftDr(cmd)
     }
 }
 
 /// Chain parameters to select a target tap within the chain.
 #[derive(Clone, Copy, Debug, Default)]
-pub(crate) struct ChainParams {
+pub struct ChainParams {
+    /// The TAP's position in the chain.
+    pub index: usize,
+
+    /// IR bits to shift before the TAP.
     pub irpre: usize,
+
+    /// IR bits to shift after the TAP.
     pub irpost: usize,
+
+    /// DR bits to shift before the TAP.
     pub drpre: usize,
+
+    /// DR bits to shift after the TAP.
     pub drpost: usize,
+
+    /// Length of the instruction register.
     pub irlen: usize,
 }
 
 impl ChainParams {
     fn from_jtag_chain(chain: &[ScanChainElement], selected: usize) -> Option<Self> {
-        let mut params = Self::default();
-
+        let mut params = Self {
+            index: selected,
+            ..Default::default()
+        };
         let mut found = false;
         for (index, tap) in chain.iter().enumerate() {
             let ir_len = tap.ir_len() as usize;
@@ -1485,37 +1404,6 @@ impl ChainParams {
         }
 
         found.then_some(params)
-    }
-}
-
-/// An error that occurred during batched command execution of JTAG commands.
-#[derive(thiserror::Error, Debug)]
-pub struct BatchExecutionError {
-    /// The error that occurred during execution.
-    #[source]
-    pub error: crate::Error,
-
-    /// The results of the commands that were executed before the error occurred.
-    pub results: DeferredResultSet<CommandResult>,
-}
-
-impl BatchExecutionError {
-    pub(crate) fn new(
-        error: crate::Error,
-        results: DeferredResultSet<CommandResult>,
-    ) -> BatchExecutionError {
-        BatchExecutionError { error, results }
-    }
-}
-
-impl std::fmt::Display for BatchExecutionError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "Error cause was {}. Successful command count {}",
-            self.error,
-            self.results.len()
-        )
     }
 }
 
@@ -1564,165 +1452,6 @@ impl CommandResult {
     }
 }
 
-/// A set of batched commands that will be executed all at once.
-///
-/// This list maintains which commands' results can be read by the issuing code, which then
-/// can be used to skip capturing or processing certain parts of the response.
-pub struct CommandQueue<T> {
-    commands: Vec<(DeferredResultIndex, T)>,
-}
-
-impl<T: std::fmt::Debug> std::fmt::Debug for CommandQueue<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("CommandQueue")
-            .field("commands", &self.commands)
-            .finish()
-    }
-}
-
-impl<T> Default for CommandQueue<T> {
-    fn default() -> Self {
-        Self {
-            commands: Vec::new(),
-        }
-    }
-}
-
-impl<T> CommandQueue<T> {
-    /// Creates a new empty queue.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Schedules a command for later execution.
-    ///
-    /// Returns a token value that can be used to retrieve the result of the command.
-    pub fn schedule(&mut self, command: impl Into<T>) -> DeferredResultIndex {
-        let index = DeferredResultIndex::new();
-        self.commands.push((index.clone(), command.into()));
-        index
-    }
-
-    /// Returns the number of commands in the queue.
-    pub fn len(&self) -> usize {
-        self.commands.len()
-    }
-
-    /// Returns whether the queue is empty.
-    pub fn is_empty(&self) -> bool {
-        self.commands.is_empty()
-    }
-
-    pub(crate) fn iter(&self) -> impl Iterator<Item = &(DeferredResultIndex, T)> {
-        self.commands.iter()
-    }
-
-    /// Removes the first `len` number of commands from the batch.
-    pub(crate) fn consume(&mut self, len: usize) {
-        self.commands.drain(..len);
-    }
-}
-
-/// The set of results returned by executing a batched command.
-pub struct DeferredResultSet<T>(HashMap<DeferredResultIndex, T>);
-
-impl<T: std::fmt::Debug> std::fmt::Debug for DeferredResultSet<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("DeferredResultSet").field(&self.0).finish()
-    }
-}
-
-impl<T> Default for DeferredResultSet<T> {
-    fn default() -> Self {
-        Self(HashMap::default())
-    }
-}
-
-impl<T> DeferredResultSet<T> {
-    /// Creates a new empty result set.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Creates a new empty result set with the given capacity.
-    pub fn with_capacity(capacity: usize) -> Self {
-        Self(HashMap::with_capacity(capacity))
-    }
-
-    pub(crate) fn push(&mut self, idx: &DeferredResultIndex, result: T) {
-        self.0.insert(idx.clone(), result);
-    }
-
-    /// Returns the number of results in the set.
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    /// Returns whether the set is empty.
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-
-    pub(crate) fn merge_from(&mut self, other: DeferredResultSet<T>) {
-        self.0.extend(other.0);
-        self.0.retain(|k, _| k.should_capture());
-    }
-
-    /// Takes a result from the set.
-    pub fn take(&mut self, index: DeferredResultIndex) -> Result<T, DeferredResultIndex> {
-        self.0.remove(&index).ok_or(index)
-    }
-}
-
-/// An index type used to retrieve the result of a deferred command.
-///
-/// This type can detect if the result of a command is not used.
-#[derive(Eq)]
-pub struct DeferredResultIndex(Arc<()>);
-
-impl PartialEq for DeferredResultIndex {
-    fn eq(&self, other: &Self) -> bool {
-        Arc::ptr_eq(&self.0, &other.0)
-    }
-}
-
-impl fmt::Debug for DeferredResultIndex {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("DeferredResultIndex")
-            .field(&self.id())
-            .finish()
-    }
-}
-
-impl DeferredResultIndex {
-    // Intentionally private. User code must not be able to create these.
-    fn new() -> Self {
-        Self(Arc::new(()))
-    }
-
-    fn id(&self) -> usize {
-        Arc::as_ptr(&self.0) as usize
-    }
-
-    pub(crate) fn should_capture(&self) -> bool {
-        // Both the queue and the user code may hold on to at most one of the references. The queue
-        // execution will be able to detect if the user dropped their read reference, meaning
-        // the read data would be inaccessible.
-        Arc::strong_count(&self.0) > 1
-    }
-
-    // Intentionally private. User code must not be able to clone these.
-    fn clone(&self) -> Self {
-        Self(self.0.clone())
-    }
-}
-
-impl std::hash::Hash for DeferredResultIndex {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.id().hash(state)
-    }
-}
-
 /// The method that should be used for attaching.
 #[derive(PartialEq, Eq, Debug, Copy, Clone, Default, Serialize, Deserialize)]
 pub enum AttachMethod {
@@ -1748,49 +1477,10 @@ mod test {
             Some("mock_serial".to_owned()),
             &ftdi::FtdiProbeFactory,
             None,
+            false,
         );
 
         assert!(probe_info.is_probe_type::<ftdi::FtdiProbeFactory>());
-        assert!(!probe_info.is_probe_type::<espusbjtag::EspUsbJtagFactory>());
-    }
-
-    #[test]
-    fn test_parsing_many_colons() {
-        let selector: DebugProbeSelector = "303a:1001:DC:DA:0C:D3:FE:D8".try_into().unwrap();
-
-        assert_eq!(selector.vendor_id, 0x303a);
-        assert_eq!(selector.product_id, 0x1001);
-        assert_eq!(
-            selector.serial_number,
-            Some("DC:DA:0C:D3:FE:D8".to_string())
-        );
-    }
-
-    #[test]
-    fn missing_serial_is_none() {
-        let selector: DebugProbeSelector = "303a:1001".try_into().unwrap();
-
-        assert_eq!(selector.vendor_id, 0x303a);
-        assert_eq!(selector.product_id, 0x1001);
-        assert_eq!(selector.serial_number, None);
-
-        let matches = selector.match_probe_selector(0x303a, 0x1001, None);
-        let matches_with_serial = selector.match_probe_selector(0x303a, 0x1001, Some("serial"));
-        assert!(matches);
-        assert!(matches_with_serial);
-    }
-
-    #[test]
-    fn empty_serial_is_some() {
-        let selector: DebugProbeSelector = "303a:1001:".try_into().unwrap();
-
-        assert_eq!(selector.vendor_id, 0x303a);
-        assert_eq!(selector.product_id, 0x1001);
-        assert_eq!(selector.serial_number, Some(String::new()));
-
-        let matches = selector.match_probe_selector(0x303a, 0x1001, None);
-        let matches_with_serial = selector.match_probe_selector(0x303a, 0x1001, Some("serial"));
-        assert!(matches);
-        assert!(!matches_with_serial);
+        assert!(!probe_info.is_probe_type::<jlink::JLinkFactory>());
     }
 }

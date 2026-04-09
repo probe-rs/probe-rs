@@ -1,6 +1,6 @@
 use super::{DebugError, VerifiedBreakpoint, debug_info::DebugInfo};
 use probe_rs::{
-    CoreInterface, CoreStatus, HaltReason,
+    CoreInterface, CoreStatus, Error, HaltReason,
     architecture::{
         arm::ArmError, riscv::communication_interface::RiscvError,
         xtensa::communication_interface::XtensaError,
@@ -39,7 +39,7 @@ impl SteppingMode {
     pub fn step(
         &self,
         core: &mut impl CoreInterface,
-        debug_info: &DebugInfo,
+        debug_info: Option<&DebugInfo>,
     ) -> Result<(CoreStatus, u64), DebugError> {
         let mut core_status = core.status()?;
         let mut program_counter = match core_status {
@@ -67,11 +67,21 @@ impl SteppingMode {
                     return Ok((core_status, program_counter));
                 }
                 SteppingMode::BreakPoint => {
+                    let Some(debug_info) = debug_info else {
+                        return Err(DebugError::Other(
+                            "Cannot compute halt location without debug information".to_string(),
+                        ));
+                    };
                     self.get_halt_location(core, debug_info, program_counter, None)
                 }
                 SteppingMode::IntoStatement
                 | SteppingMode::OverStatement
                 | SteppingMode::OutOfStatement => {
+                    let Some(debug_info) = debug_info else {
+                        return Err(DebugError::Other(
+                            "Cannot use statement stepping without debug information".to_string(),
+                        ));
+                    };
                     // The more complex cases, where specific handling is required.
                     self.get_halt_location(core, debug_info, program_counter, Some(return_address))
                 }
@@ -112,26 +122,35 @@ impl SteppingMode {
 
         (core_status, program_counter) = match target_address {
             Some(target_address) => {
-                tracing::debug!(
-                    "Preparing to step ({:20?}): \n\tfrom: {:?} @ {:#010X} \n\t  to: {:?} @ {:#010X}",
-                    self,
-                    debug_info
-                        .get_source_location(program_counter)
-                        .map(|source_location| (
-                            source_location.path,
-                            source_location.line,
-                            source_location.column
-                        )),
-                    origin_program_counter,
-                    debug_info
-                        .get_source_location(target_address)
-                        .map(|source_location| (
-                            source_location.path,
-                            source_location.line,
-                            source_location.column
-                        )),
-                    target_address,
-                );
+                if let Some(debug_info) = debug_info {
+                    tracing::debug!(
+                        "Preparing to step ({:20?}): \n\tfrom: {:?} @ {:#010X} \n\t  to: {:?} @ {:#010X}",
+                        self,
+                        debug_info
+                            .get_source_location(program_counter)
+                            .map(|source_location| (
+                                source_location.path,
+                                source_location.line,
+                                source_location.column
+                            )),
+                        origin_program_counter,
+                        debug_info
+                            .get_source_location(target_address)
+                            .map(|source_location| (
+                                source_location.path,
+                                source_location.line,
+                                source_location.column
+                            )),
+                        target_address,
+                    );
+                } else {
+                    tracing::debug!(
+                        "Preparing to step ({:20?}): \n\tfrom: {:#010X} \n\t  to: {:#010X}",
+                        self,
+                        origin_program_counter,
+                        target_address,
+                    );
+                }
 
                 run_to_address(program_counter, target_address, core)?
             }
@@ -178,7 +197,7 @@ impl SteppingMode {
             SteppingMode::OverStatement => {
                 // Find the "step over location"
                 // - The instructions in a sequence do not necessarily have contiguous addresses,
-                //   and the next instruction address may be affected by conditonal branching at runtime.
+                //   and the next instruction address may be affected by conditional branching at runtime.
                 // - Therefore, in order to find the correct "step over location", we iterate through the
                 //   instructions to find the starting address of the next halt location, ie. the address
                 //   is greater than the current program counter.
@@ -366,9 +385,9 @@ fn run_to_address(
                 program_counter = core.halt(Duration::from_millis(500))?.pc;
                 if matches!(
                     error,
-                    probe_rs::Error::Arm(ArmError::Timeout)
-                        | probe_rs::Error::Riscv(RiscvError::Timeout)
-                        | probe_rs::Error::Xtensa(XtensaError::Timeout)
+                    Error::Arm(ArmError::Timeout)
+                        | Error::Riscv(RiscvError::Timeout)
+                        | Error::Xtensa(XtensaError::Timeout)
                 ) {
                     // This is not a quick step and halt operation. Notify the user that we are not going to wait any longer, and then return the current program counter so that the debugger can show the user where the forced halt happened.
                     tracing::error!(
@@ -425,7 +444,7 @@ fn step_to_address(
                     });
                 }
             },
-            // This is not a recoverable error, and will result in the debug session ending (we have no predicatable way of successfully continuing the session)
+            // This is not a recoverable error, and will result in the debug session ending (we have no predictable way of successfully continuing the session)
             other_status => {
                 return Err(DebugError::Other(format!(
                     "Target failed to reach the destination address of a step operation: {other_status:?}"

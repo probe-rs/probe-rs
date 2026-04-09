@@ -294,7 +294,7 @@ impl AtSAM {
                             Re-run with granting the '{permission}' permission and connecting under reset"
                     ),
             )),
-            // TODO: This seems wrong? Currently preserves the bevaiour before the change of the error type.
+            // TODO: This seems wrong? Currently preserves the behaviour before the change of the error type.
             (false, false,Err(MissingPermissions(permission))) => Err(ArmError::MissingPermissions(permission)),
             (false, _, Ok(())) => Ok(()),
         }?;

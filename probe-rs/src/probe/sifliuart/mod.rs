@@ -19,9 +19,9 @@ use std::{env, fmt};
 
 const START_WORD: [u8; 2] = [0x7E, 0x79];
 
-const DEFUALT_RECV_TIMEOUT: Duration = Duration::from_secs(3);
+const DEFAULT_RECV_TIMEOUT: Duration = Duration::from_secs(3);
 
-const DEFUALT_UART_BAUD: u32 = 1000000;
+const DEFAULT_UART_BAUD: u32 = 1000000;
 
 #[derive(Debug)]
 pub(crate) enum SifliUartCommand<'a> {
@@ -136,7 +136,7 @@ impl SifliUart {
         let probe = SifliUart {
             reader,
             writer,
-            baud: DEFUALT_UART_BAUD,
+            baud: DEFAULT_UART_BAUD,
             _serial_port: port,
         };
         Ok(probe)
@@ -202,7 +202,7 @@ impl SifliUart {
         let mut recv_data = vec![];
 
         loop {
-            if start_time.elapsed() >= DEFUALT_RECV_TIMEOUT {
+            if start_time.elapsed() >= DEFAULT_RECV_TIMEOUT {
                 return Err(CommandError::ParameterError(std::io::Error::new(
                     std::io::ErrorKind::TimedOut,
                     "Timeout",
@@ -396,7 +396,7 @@ impl SifliUartFactory {
         let vendor_id = usb_info.vid;
         let product_id = usb_info.pid;
         let serial_number = Some(port_name.to_string()); //We set serial_number to the serial device number to make it easier to specify the
-        let hid_interface = usb_info.interface;
+        let interface = usb_info.interface;
         let identifier = "Sifli uart debug probe".to_string();
 
         Some(DebugProbeInfo {
@@ -405,12 +405,13 @@ impl SifliUartFactory {
             product_id,
             serial_number,
             probe_factory: &SifliUartFactory,
-            hid_interface,
+            interface,
+            is_hid_interface: false,
         })
     }
 
     fn open_port(&self, port_name: &str) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
-        let mut port = serialport::new(port_name, DEFUALT_UART_BAUD)
+        let mut port = serialport::new(port_name, DEFAULT_UART_BAUD)
             .dtr_on_open(false)
             .timeout(Duration::from_secs(3))
             .open()
@@ -450,8 +451,8 @@ impl ProbeFactory for SifliUartFactory {
             ));
         };
 
-        if selector.serial_number.is_some() {
-            return self.open_port(selector.serial_number.as_ref().unwrap());
+        if let Some(serial_number) = &selector.serial_number {
+            return self.open_port(serial_number);
         }
 
         for port in ports {

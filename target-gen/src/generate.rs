@@ -72,7 +72,7 @@ pub(crate) fn extract_families<T>(
     pdsc: Package,
     mut kind: Kind<T>,
     families: &mut Vec<ChipFamily>,
-    only_supported_familes: bool,
+    only_supported_families: bool,
 ) -> Result<()>
 where
     T: std::io::Seek + std::io::Read,
@@ -86,13 +86,13 @@ where
     let currently_supported_chip_families = registry.families();
 
     for (device_name, device) in devices {
-        if only_supported_familes
+        if only_supported_families
             && !currently_supported_chip_families
                 .iter()
                 .any(|supported_family| supported_family.name == device.family)
         {
             // We only want to continue if the chip family is already represented as supported probe_rs target chip family.
-            log::debug!("Unsupprted chip family {}. Skipping ...", device.family);
+            log::debug!("Unsupported chip family {}. Skipping ...", device.family);
             return Ok(());
         }
 
@@ -305,12 +305,12 @@ pub fn visit_file(path: &Path, families: &mut Vec<ChipFamily>) -> Result<()> {
 }
 
 pub async fn visit_arm_files(families: &mut Vec<ChipFamily>, filter: Option<String>) -> Result<()> {
-    //TODO: The multi-threaded logging makes it very difficult to track which errors/warnings belong where - needs some rework.
+    // TODO: The multi-threaded logging makes it very difficult to track which errors/warnings belong where - needs some rework.
     let packs = crate::fetch::get_vidx().await?;
 
     let mut stream =
         futures::stream::iter(packs.pdsc_index.iter().enumerate().filter_map(|(i, pack)| {
-            let only_supported_familes = if let Some(ref filter) = filter {
+            let only_supported_families = if let Some(ref filter) = filter {
                 // If we are filtering for specific filter patterns, then skip all the ones we don't want.
                 if !pack.name.contains(filter) {
                     log::debug!("Ignoring filtered {} ...", pack.name);
@@ -328,7 +328,7 @@ pub async fn visit_arm_files(families: &mut Vec<ChipFamily>, filter: Option<Stri
             if pack.deprecated.is_none() {
                 // We only want to download the pack if it is not deprecated.
                 log::info!("Working PACK {}/{} ...", i, packs.pdsc_index.len());
-                Some(visit_arm_file(pack, only_supported_familes))
+                Some(visit_arm_file(pack, only_supported_families))
             } else {
                 log::warn!("Ignoring deprecated {} ...", pack.name);
                 None
@@ -344,7 +344,7 @@ pub async fn visit_arm_files(families: &mut Vec<ChipFamily>, filter: Option<Stri
 
 pub(crate) async fn visit_arm_file(
     pack: &PdscRef,
-    only_supported_familes: bool,
+    only_supported_families: bool,
 ) -> Vec<ChipFamily> {
     let url = format!(
         "{url}/{vendor}.{name}.{version}.pack",
@@ -420,7 +420,7 @@ pub(crate) async fn visit_arm_file(
         package,
         Kind::Archive(&mut archive),
         &mut families,
-        only_supported_familes,
+        only_supported_families,
     ) {
         Ok(_) => log::info!("Processed package {pdsc_name}"),
         Err(error) => log::error!("Something went wrong while handling pack {url}: {error}"),
@@ -549,7 +549,7 @@ pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> V
 
     let is_multi_core = cores.len() > 1;
 
-    // Convert DeviceMemory's to MemoryRegion's, and assign cores to shared reqions.
+    // Convert DeviceMemory's to MemoryRegion's, and assign cores to shared regions.
     let mut mem_map = vec![];
     for region in device_memories {
         if is_multi_core && region.p_name.is_none() {
@@ -579,6 +579,7 @@ pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> V
                         name: Some(region.name),
                         range: region.memory_start..region.memory_end,
                         cores,
+                        is_alias: false,
                     }));
                 }
             },

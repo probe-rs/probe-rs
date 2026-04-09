@@ -1,0 +1,130 @@
+use std::time::Duration;
+
+use probe_rs::{BreakpointCause, CoreStatus, HaltReason, semihosting::SemihostingCommand};
+
+use crate::cmd::{
+    dap_server::{
+        DebuggerError,
+        debug_adapter::{
+            dap::{
+                adapter::DebugAdapter,
+                dap_types::EvaluateArguments,
+                repl_commands::{EvalResponse, EvalResult, ReplCommand, need_subcommand},
+                repl_types::ReplCommandArgs,
+            },
+            protocol::ProtocolAdapter,
+        },
+        server::core_data::CoreHandle,
+    },
+    run::EmbeddedTestElfInfo,
+};
+
+pub(crate) static EMBEDDED_TEST: ReplCommand = ReplCommand {
+    command: "test",
+    help_text: "Interact with embedded-test test cases",
+    requires_target_halted: false,
+    sub_commands: &[
+        ReplCommand {
+            command: "list",
+            help_text: "List all test cases.",
+            requires_target_halted: false,
+            sub_commands: &[],
+            args: &[],
+            handler: list_tests,
+        },
+        ReplCommand {
+            command: "run",
+            help_text: "Starts running a test case.",
+            requires_target_halted: false,
+            sub_commands: &[],
+            args: &[ReplCommandArgs::Required("test_name")],
+            handler: run_test,
+        },
+    ],
+    args: &[],
+    handler: need_subcommand,
+};
+
+fn list_tests(
+    target_core: &mut CoreHandle<'_>,
+    _: &str,
+    _: &EvaluateArguments,
+    _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
+) -> EvalResult {
+    let Some(test_data) = target_core
+        .core_data
+        .test_data
+        .downcast_ref::<EmbeddedTestElfInfo>()
+    else {
+        return Err(DebuggerError::UserMessage(
+            "Internal error while trying to access test data".to_string(),
+        ));
+    };
+
+    let mut tests = test_data
+        .tests
+        .iter()
+        .map(|t| t.name.as_str())
+        .collect::<Vec<&str>>();
+    tests.sort();
+
+    Ok(EvalResponse::Message(tests.join("\n")))
+}
+
+fn run_test(
+    target_core: &mut CoreHandle<'_>,
+    test_name: &str,
+    _: &EvaluateArguments,
+    adapter: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
+) -> EvalResult {
+    let Some(test_data) = target_core
+        .core_data
+        .test_data
+        .downcast_ref::<EmbeddedTestElfInfo>()
+    else {
+        return Err(DebuggerError::UserMessage(
+            "Internal error while trying to access test data".to_string(),
+        ));
+    };
+
+    let Some(test) = test_data.tests.iter().find(|test| test.name == test_name) else {
+        return Err(DebuggerError::UserMessage(format!(
+            "Test '{test_name}' not found"
+        )));
+    };
+
+    let Some(address) = test.address else {
+        return Err(DebuggerError::UserMessage(format!(
+            "Test '{test_name}' has no address"
+        )));
+    };
+
+    adapter.reset_and_halt_core(target_core)?;
+    target_core.core.run()?;
+    target_core
+        .core
+        .wait_for_core_halted(Duration::from_secs(1))?;
+
+    let CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
+        SemihostingCommand::GetCommandLine(request),
+    ))) = target_core.core.status()?
+    else {
+        return Err(DebuggerError::UserMessage(
+            "Could not start test".to_string(),
+        ));
+    };
+
+    // Select and start the test
+    request
+        .write_command_line_to_target(&mut target_core.core, &format!("run_addr {}", address))?;
+
+    // TODO: adapter.resume_core
+    target_core.core.run()?;
+    target_core.reset_core_status(adapter);
+
+    // TODO: wait for a bit (while polling RTT) for the test to either complete
+    // or the target to halt again? That way we could print the _actual_ test result
+    // based on the expectation.
+
+    Ok(EvalResponse::Message(String::new()))
+}

@@ -2,7 +2,6 @@
 
 #[macro_use]
 pub mod ap;
-pub(crate) mod assembly;
 pub(crate) mod communication_interface;
 pub mod component;
 // TODO: Check if this should be public.
@@ -13,13 +12,13 @@ pub mod sequences;
 pub mod swo;
 pub(crate) mod traits;
 
-pub use self::core::{Dump, armv6m, armv7a, armv7m, armv8a, armv8m};
+pub use self::core::{Dump, armv6m, armv7ar, armv7m, armv8a, armv8m};
 use self::{
     ap::AccessPortError,
     dp::DebugPortError,
     memory::romtable::RomTableError,
     sequences::ArmDebugSequenceError,
-    {armv7a::Armv7aError, armv8a::Armv8aError},
+    {armv7ar::Armv7arError, armv8a::Armv8aError},
 };
 use crate::{
     core::memory_mapped_registers::RegisterAddressOutOfBounds,
@@ -27,12 +26,12 @@ use crate::{
     probe::DebugProbeError,
 };
 pub use communication_interface::{
-    ArmChipInfo, ArmCommunicationInterface, ArmDebugInterface, DapError, DapProbe,
+    ArmChipInfo, ArmCommunicationInterface, ArmDebugInterface, DapError, DapProbe, SwdSequence,
 };
 pub use swo::{SwoAccess, SwoConfig, SwoMode, SwoReader};
 pub use traits::*;
 
-/// A error that occured while parsing a raw register value.
+/// A error that occurred while parsing a raw register value.
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to parse register {name} from {value:#010x}")]
 pub struct RegisterParseError {
@@ -120,8 +119,8 @@ pub enum ArmError {
     /// ARMv8a specific error occurred.
     Armv8a(#[from] Armv8aError),
 
-    /// ARMv7a specific error occurred.
-    Armv7a(#[from] Armv7aError),
+    /// ARMv7-A/R specific error occurred.
+    Armv7ar(#[from] Armv7arError),
 
     /// Error occurred in a debug sequence.
     DebugSequence(#[from] ArmDebugSequenceError),
@@ -155,7 +154,7 @@ pub enum ArmError {
 }
 
 impl ArmError {
-    /// Constructs [`ArmError::MemoryNotAligned`] from the address and the required alignment.
+    /// Constructs [`ArmError::AccessPort`] from the address and the source error.
     pub fn from_access_port(err: AccessPortError, ap_address: &FullyQualifiedApAddress) -> Self {
         ArmError::AccessPort {
             address: ap_address.clone(),

@@ -3,6 +3,10 @@
 use super::{
     CortexMState, Dfsr,
     cortex_m::{IdPfr1, Mvfr0},
+    registers::armv8m::{
+        V8M_BASE_SEC_FP_REGISTERS, V8M_BASE_SEC_REGISTERS, V8M_MAIN_FP_REGISTERS,
+        V8M_MAIN_REGISTERS, V8M_MAIN_SEC_FP_REGISTERS, V8M_MAIN_SEC_REGISTERS,
+    },
     registers::cortex_m::{
         CORTEX_M_CORE_REGISTERS, CORTEX_M_WITH_FP_CORE_REGISTERS, FP, PC, RA, SP,
     },
@@ -30,6 +34,9 @@ pub struct Armv8m<'probe> {
     memory: Box<dyn ArmMemoryInterface + 'probe>,
 
     state: &'probe mut CortexMState,
+
+    /// True if the core implements the security extension.
+    security: bool,
 
     sequence: Arc<dyn ArmDebugSequence>,
 }
@@ -72,9 +79,14 @@ impl<'probe> Armv8m<'probe> {
             state.initialize();
         }
 
+        // TODO is this stupid?
+        let idpfr1 = IdPfr1(memory.read_word_32(IdPfr1::get_mmio_address())?);
+        let security = idpfr1.security_present();
+
         Ok(Self {
             memory,
             state,
+            security,
             sequence,
         })
     }
@@ -153,7 +165,7 @@ impl CoreInterface for Armv8m<'_> {
             if self.state.current_state.is_halted() {
                 // There shouldn't be any bits set, otherwise it means
                 // that the reason for the halt has changed. No bits set
-                // means that we have an unkown HaltReason.
+                // means that we have an unknown HaltReason.
                 if reason == HaltReason::Unknown {
                     tracing::debug!("Cached halt reason: {:?}", self.state.current_state);
                     return Ok(self.state.current_state);
@@ -241,8 +253,9 @@ impl CoreInterface for Armv8m<'_> {
 
         self.sequence
             .reset_system(&mut *self.memory, crate::CoreType::Armv8m, None)?;
-        // Invalidate cached core status
+        // Invalidate cached state: chip reset clears FP_CTRL and core status
         self.set_core_status(CoreStatus::Unknown);
+        self.state.hw_breakpoints_enabled = false;
         Ok(())
     }
 
@@ -254,8 +267,9 @@ impl CoreInterface for Armv8m<'_> {
         self.sequence
             .reset_system(&mut *self.memory, crate::CoreType::Armv8m, None)?;
 
-        // Invalidate cached core status
+        // Invalidate cached state: chip reset clears FP_CTRL and core status
         self.set_core_status(CoreStatus::Unknown);
+        self.state.hw_breakpoints_enabled = false;
 
         // Some processors may not enter the halt state immediately after clearing the reset state.
         // Particularly: on PSOC 6, vector catch takes effect after the core's boot ROM finishes
@@ -447,10 +461,19 @@ impl CoreInterface for Armv8m<'_> {
     }
 
     fn registers(&self) -> &'static CoreRegisters {
-        if self.state.fp_present {
-            &CORTEX_M_WITH_FP_CORE_REGISTERS
-        } else {
-            &CORTEX_M_CORE_REGISTERS
+        let main = true; // TODO m33 is mainline, no one has m23 (baseline) yet
+        let security = self.security;
+        let fp = self.state.fp_present;
+
+        match (main, security, fp) {
+            (true, true, true) => &V8M_MAIN_SEC_FP_REGISTERS,
+            (true, true, false) => &V8M_MAIN_SEC_REGISTERS,
+            (true, false, true) => &V8M_MAIN_FP_REGISTERS,
+            (true, false, false) => &V8M_MAIN_REGISTERS,
+            (false, true, true) => &V8M_BASE_SEC_FP_REGISTERS,
+            (false, true, false) => &V8M_BASE_SEC_REGISTERS,
+            (false, false, true) => &CORTEX_M_WITH_FP_CORE_REGISTERS,
+            (false, false, false) => &CORTEX_M_CORE_REGISTERS,
         }
     }
 
@@ -543,6 +566,9 @@ impl CoreInterface for Armv8m<'_> {
                     demcr.set_vc_sferr(true);
                 }
             }
+            VectorCatchCondition::Svc | VectorCatchCondition::Hlt => {
+                return Err(Error::NotImplemented("vector catch condition Svc/Hlt"));
+            }
         };
 
         self.memory
@@ -568,6 +594,9 @@ impl CoreInterface for Armv8m<'_> {
                 if idpfr1.security_present() {
                     demcr.set_vc_sferr(false);
                 }
+            }
+            VectorCatchCondition::Svc | VectorCatchCondition::Hlt => {
+                return Err(Error::NotImplemented("vector catch condition Svc/Hlt"));
             }
         };
 

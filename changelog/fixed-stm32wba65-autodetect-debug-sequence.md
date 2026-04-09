@@ -1,0 +1,1 @@
+STM32WBA65RI can now be auto-detected without specifying `--chip` (part number 0x4b0 sourced from hardware). STM32WBA chips are also now correctly assigned the ARMv8-M debug sequence instead of ARMv7.

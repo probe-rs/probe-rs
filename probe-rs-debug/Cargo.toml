@@ -7,17 +7,18 @@ homepage.workspace = true
 repository.workspace = true
 readme.workspace = true
 license.workspace = true
+rust-version.workspace = true
 
-description = "Debugging functionlity built on top of the probe-rs crate"
+description = "Debugging functionality built on top of the probe-rs crate"
 
 exclude = ["tests/debug-unwind-tests"]
 
 [dependencies]
-addr2line = "0.25.0"
+addr2line = "0.26"
 bitfield = "0.19.0"
-gimli = "0.32.0"
+gimli = "0.33.0"
 itertools = "0.14.0"
-object = "0.37.0"
+object = "0.39"
 parse_int = "0.9.0"
 probe-rs = { workspace = true }
 probe-rs-target.workspace = true
@@ -33,5 +34,5 @@ workspace = true
 insta = { version = "1.41.1", features = ["yaml"] }
 pretty_assertions = "1.4.1"
 probe-rs = { workspace = true, features = ["test"] }
-termtree = "0.5.1"
+termtree = "1.0.0"
 test-case = "3.3.1"

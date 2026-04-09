@@ -1,6 +1,5 @@
 //! Debug sequences to operate special requirements RISC-V targets.
 
-use crate::Core;
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::riscv::{Dmcontrol, Riscv32};
 use crate::semihosting::{SemihostingCommand, UnknownCommandDetails};
@@ -22,11 +21,6 @@ pub trait RiscvDebugSequence: Send + Sync + Debug {
     /// Executed when the target is halted.
     fn on_halt(&self, _interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
         Ok(())
-    }
-
-    /// Detects the flash size of the target.
-    fn detect_flash_size(&self, _core: &mut Core<'_>) -> Result<Option<usize>, crate::Error> {
-        Ok(None)
     }
 
     /// Configure the target to stop code execution after a reset. After this, the core will halt when it comes
@@ -88,6 +82,21 @@ pub trait RiscvDebugSequence: Send + Sync + Debug {
         details: UnknownCommandDetails,
     ) -> Result<Option<SemihostingCommand>, crate::Error> {
         Ok(Some(SemihostingCommand::Unknown(details)))
+    }
+
+    /// This ARM sequence is called if an image was flashed to RAM directly. It should perform the
+    /// necessary preparation to run that image on the core with the ID passed to the function.
+    ///
+    /// The core should already be `reset_and_halt`ed right before this call.
+    fn prepare_running_on_ram(
+        &self,
+        _session: &mut crate::Session,
+        _vector_table_addr: u64,
+        _core_id: usize,
+    ) -> Result<(), crate::Error> {
+        Err(crate::Error::NotImplemented(
+            "RAM running on RISC-V targets",
+        ))
     }
 }
 

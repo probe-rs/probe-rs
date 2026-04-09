@@ -225,7 +225,7 @@ impl Session {
             && let Some(scan_chain) = jtag.scan_chain.clone()
             && let Some(probe) = probe.try_as_jtag_probe()
         {
-            probe.set_scan_chain(&scan_chain)?;
+            probe.set_expected_scan_chain(&scan_chain)?;
         }
 
         probe.attach_to_unspecified()?;
@@ -304,11 +304,18 @@ impl Session {
                 // means that the core should stop when coming out of reset.
 
                 for core_id in 0..session.cores.len() {
-                    let mut core = session.core(core_id)?;
+                    let mut core = session
+                        .core(core_id)
+                        .inspect_err(|e| tracing::error!("Unable to get core {core_id}: {e}"))?;
 
-                    core.wait_for_core_halted(Duration::from_millis(100))?;
+                    core.wait_for_core_halted(Duration::from_millis(100))
+                        .inspect_err(|e| {
+                            tracing::error!("Unable to wait for {core_id} halted: {e}")
+                        })?;
 
-                    core.reset_catch_clear()?;
+                    core.reset_catch_clear().inspect_err(|e| {
+                        tracing::error!("Unable to clear catch for {core_id} : {e}")
+                    })?;
                 }
             }
 
@@ -342,7 +349,14 @@ impl Session {
             && let Some(scan_chain) = jtag.scan_chain.clone()
             && let Some(probe) = probe.try_as_jtag_probe()
         {
-            probe.set_scan_chain(&scan_chain)?;
+            if jtag.force_scan_chain {
+                // Bypass JTAG auto-detection entirely; use the scan chain from the target YAML.
+                // This is required for targets whose TAP does not respond to the standard IDCODE
+                // DR scan (e.g., some RISC-V cores during early power-up).
+                probe.set_scan_chain(&scan_chain)?;
+            } else {
+                probe.set_expected_scan_chain(&scan_chain)?;
+            }
         }
 
         probe.attach_to_unspecified()?;
@@ -699,14 +713,21 @@ impl Session {
     }
 
     /// This function can be used to set up an application which was flashed to RAM.
-    pub fn prepare_running_on_ram(&mut self, vector_table_addr: u64) -> Result<(), crate::Error> {
-        match &self.target.debug_sequence.clone() {
-            crate::config::DebugSequence::Arm(arm) => {
-                arm.prepare_running_on_ram(vector_table_addr, self)
+    pub fn prepare_running_on_ram(
+        &mut self,
+        vector_table_addr: u64,
+        core_id: usize,
+    ) -> Result<(), crate::Error> {
+        match self.target.debug_sequence.clone() {
+            DebugSequence::Arm(arm_debug_sequence) => {
+                arm_debug_sequence.prepare_running_on_ram(self, vector_table_addr, core_id)
             }
-            _ => Err(crate::Error::NotImplemented(
-                "ram flash non-ARM architectures",
-            )),
+            DebugSequence::Riscv(riscv_debug_sequence) => {
+                riscv_debug_sequence.prepare_running_on_ram(self, vector_table_addr, core_id)
+            }
+            DebugSequence::Xtensa(xtensa_debug_sequence) => {
+                xtensa_debug_sequence.prepare_running_on_ram(self, vector_table_addr, core_id)
+            }
         }
     }
 

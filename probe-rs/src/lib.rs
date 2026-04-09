@@ -88,8 +88,8 @@ mod session;
 pub mod test;
 
 pub use crate::config::{CoreType, Endian, InstructionSet, Target};
-pub use crate::core::dump::CoreDump;
-pub use crate::core::dump::CoreDumpError;
+#[cfg(feature = "coredump")]
+pub use crate::core::dump::{CoreDump, CoreDumpError};
 pub use crate::core::registers::RegisterDataType;
 pub use crate::core::registers::UnwindRule;
 pub use crate::core::{
@@ -104,3 +104,5 @@ pub use crate::session::{Permissions, Session, SessionConfig};
 #[doc = include_str!("../../README.md")]
 #[cfg(doctest)]
 pub struct ReadmeDoctests;
+
+pub mod plugin;

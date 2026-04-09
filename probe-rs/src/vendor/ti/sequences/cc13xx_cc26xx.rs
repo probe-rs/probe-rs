@@ -10,7 +10,7 @@ use crate::architecture::arm::sequences::{ArmDebugSequence, ArmDebugSequenceErro
 use crate::architecture::arm::{ArmError, dp::DpAddress};
 use crate::probe::WireProtocol;
 
-use super::icepick::Icepick;
+use super::icepick::{DefaultProtocol, Icepick};
 
 /// Marker struct indicating initialization sequencing for cc13xx_cc26xx family parts.
 #[derive(Debug)]
@@ -108,15 +108,14 @@ impl ArmDebugSequence for CC13xxCC26xx {
 
         match interface.active_protocol() {
             Some(WireProtocol::Jtag) => {
-                let mut icepick = Icepick::new(interface)?;
-                icepick.ctag_to_jtag()?;
-                icepick.select_tap(0)?;
+                let mut icepick = Icepick::new(interface, DefaultProtocol::CJtag)?;
+                icepick.select_tap(0, &self.name)?;
 
                 // Call the configure JTAG function. We don't derive the scan chain at runtime
                 // for these devices, but regardless the scan chain must be told to the debug probe
                 // We avoid the live scan for the following reasons:
                 // 1. Only the ICEPICK is connected at boot so we need to manually the CPU to the scan chain
-                // 2. Entering test logic reset disconects the CPU again
+                // 2. Entering test logic reset disconnects the CPU again
                 interface.configure_jtag(true)?;
             }
             Some(WireProtocol::Swd) => {

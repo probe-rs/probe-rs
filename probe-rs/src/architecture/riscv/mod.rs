@@ -26,7 +26,7 @@ pub mod registers;
 pub use registers::PC;
 pub(crate) mod assembly;
 pub mod communication_interface;
-pub(crate) mod dtm;
+pub mod dtm;
 pub mod sequences;
 
 pub use dtm::jtag_dtm::JtagDtmBuilder;
@@ -41,21 +41,23 @@ pub struct Riscv32<'state> {
 impl<'state> Riscv32<'state> {
     /// Create a new RISC-V interface for a particular hart.
     pub fn new(
-        interface: RiscvCommunicationInterface<'state>,
+        mut interface: RiscvCommunicationInterface<'state>,
         state: &'state mut RiscvCoreState,
         sequence: Arc<dyn RiscvDebugSequence>,
     ) -> Result<Self, RiscvError> {
-        // Determine FPU presence from MISA extensions (F, D, or Q)
-        let mut tmp_interface = interface;
-        let misa_val = tmp_interface
-            .read_csr(Misa::get_mmio_address() as u16)
-            .unwrap_or(0);
-        let isa_extensions = Misa::from(misa_val).extensions();
-        let fp_mask = (1 << 3) | (1 << 5) | (1 << 16);
-        state.fp_present = isa_extensions & fp_mask != 0;
+        if !state.misa_read {
+            // Determine FPU presence from MISA extensions (F, D, or Q)
+            let misa_val = interface
+                .read_csr(Misa::get_mmio_address() as u16)
+                .unwrap_or(0);
+            let isa_extensions = Misa::from(misa_val).extensions();
+            let fp_mask = (1 << 3) | (1 << 5) | (1 << 16);
+            state.fp_present = isa_extensions & fp_mask != 0;
+            state.misa_read = true;
+        }
 
         Ok(Self {
-            interface: tmp_interface,
+            interface,
             state,
             sequence,
         })
@@ -90,7 +92,7 @@ impl<'state> Riscv32<'state> {
 
     /// Check if the current breakpoint is a semihosting call
     fn check_for_semihosting(&mut self) -> Result<Option<SemihostingCommand>, Error> {
-        // The Riscv Semihosting Specification, specificies the following sequence of instructions,
+        // The Riscv Semihosting Specification, specifies the following sequence of instructions,
         // to trigger a semihosting call:
         // <https://github.com/riscv-software-src/riscv-semihosting/blob/main/riscv-semihosting-spec.adoc>
 
@@ -301,6 +303,9 @@ impl CoreInterface for Riscv32<'_> {
     fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         self.sequence
             .reset_system_and_halt(&mut self.interface, timeout)?;
+
+        // Chip reset clears hardware breakpoint state
+        self.state.hw_breakpoints_enabled = false;
 
         self.on_halted()?;
         let pc = self.read_core_reg(RegisterId(0x7b1))?;
@@ -603,11 +608,6 @@ impl CoreInterface for Riscv32<'_> {
         self.state.hw_breakpoints_enabled
     }
 
-    fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), Error> {
-        self.interface.debug_on_sw_breakpoint(enabled)?;
-        Ok(())
-    }
-
     fn architecture(&self) -> Architecture {
         Architecture::Riscv
     }
@@ -684,6 +684,9 @@ pub struct RiscvCoreState {
 
     /// Whether the core has FPU support (F, D, or Q extensions present)
     fp_present: bool,
+
+    /// Whether the MISA CSR has been read.
+    misa_read: bool,
 }
 
 impl RiscvCoreState {
@@ -694,6 +697,7 @@ impl RiscvCoreState {
             pc_written: false,
             semihosting_command: None,
             fp_present: false,
+            misa_read: false,
         }
     }
 }
