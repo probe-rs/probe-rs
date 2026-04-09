@@ -108,6 +108,7 @@ pub(crate) fn exception_details(
     let mut registers = exception_interface.calling_frame_registers(
         memory_interface,
         stackframe_registers,
+        stackframe_registers,
         raw_exception,
     )?;
     let description = exception_interface.exception_description(raw_exception, memory_interface)?;
