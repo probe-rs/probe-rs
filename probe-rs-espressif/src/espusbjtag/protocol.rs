@@ -27,10 +27,17 @@ const USB_DEVICE_SUBCLASS: u8 = 0xFF;
 const USB_DEVICE_PROTOCOL: u8 = 0x01;
 
 const USB_VID: u16 = 0x303A;
-const USB_PID: u16 = 0x1001;
+const USB_PID_BUILTIN_JTAG: u16 = 0x1001;
+const USB_PID_BRIDGE: u16 = 0x1002;
+const USB_PIDS: &[u16] = &[USB_PID_BUILTIN_JTAG, USB_PID_BRIDGE];
 
-const DESCRIPTOR_JTAG_CAPABILITIES_TYPE: u8 = 0x20;
-const DESCRIPTOR_JTAG_CAPABILITIES_INDEX: u8 = 0x00;
+// Built-in USB JTAG uses a vendor-specific descriptor type.
+const BUILTIN_CAPS_DESCRIPTOR_TYPE: u8 = 0x20;
+const BUILTIN_CAPS_DESCRIPTOR_INDEX: u8 = 0x00;
+
+// ESP-USB-Bridge firmware stores capabilities in a string descriptor.
+const BRIDGE_CAPS_DESCRIPTOR_TYPE: u8 = 0x03;
+const BRIDGE_CAPS_DESCRIPTOR_INDEX: u8 = 0x0A;
 
 /// Errors that can occur when working with the ESP JTAG adapter.
 #[derive(Debug, thiserror::Error, docsplay::Display)]
@@ -92,6 +99,8 @@ impl ProtocolHandler {
             .filter(is_espjtag_device)
             .find(|device| selector.matches(device))
             .ok_or(ProbeCreationError::NotFound)?;
+
+        let is_bridge = device.product_id() == USB_PID_BRIDGE;
 
         let device_handle = device
             .open()
@@ -159,15 +168,16 @@ impl ProtocolHandler {
             .wait()
             .map_err(|e| ProbeCreationError::Usb(e.into()))?;
 
+        let (caps_type, caps_index) = if is_bridge {
+            (BRIDGE_CAPS_DESCRIPTOR_TYPE, BRIDGE_CAPS_DESCRIPTOR_INDEX)
+        } else {
+            (BUILTIN_CAPS_DESCRIPTOR_TYPE, BUILTIN_CAPS_DESCRIPTOR_INDEX)
+        };
+
         let start = Instant::now();
         let buffer = loop {
             let buffer = device_handle
-                .get_descriptor(
-                    DESCRIPTOR_JTAG_CAPABILITIES_TYPE,
-                    DESCRIPTOR_JTAG_CAPABILITIES_INDEX,
-                    0,
-                    USB_TIMEOUT,
-                )
+                .get_descriptor(caps_type, caps_index, 0, USB_TIMEOUT)
                 .wait()
                 .map_err(|e| ProbeCreationError::Usb(e.into()))?;
             if !buffer.is_empty() {
@@ -179,6 +189,10 @@ impl ProtocolHandler {
                 ));
             }
         };
+
+        // String descriptors include a 2-byte header (bLength, bDescriptorType)
+        // before the actual capabilities data.
+        let buffer = if is_bridge { &buffer[2..] } else { &buffer };
 
         let protocol_version = buffer[0];
         tracing::trace!("Descriptor bytes: {:02x?}", buffer);
@@ -546,7 +560,7 @@ impl From<Command> for u8 {
 
 pub(super) fn is_espjtag_device(device: &DeviceInfo) -> bool {
     // Check the VID/PID.
-    device.vendor_id() == USB_VID && device.product_id() == USB_PID
+    device.vendor_id() == USB_VID && USB_PIDS.contains(&device.product_id())
 }
 
 #[tracing::instrument(skip_all)]

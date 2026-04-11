@@ -22,6 +22,8 @@ use sha2::{Digest, Sha512};
 use tokio::task::LocalSet;
 use tokio_util::bytes::Bytes;
 
+#[cfg(unix)]
+use std::path::PathBuf;
 use std::{fmt::Write, sync::Arc};
 
 use crate::{
@@ -126,9 +128,7 @@ impl Cmd {
 
         #[cfg(unix)]
         if let Some(socket_path) = config.socket_path() {
-            return self
-                .run_unix(&std::path::PathBuf::from(socket_path), config)
-                .await;
+            return self.run_unix(&PathBuf::from(socket_path), config).await;
         }
 
         self.run_tcp(config).await
@@ -175,11 +175,7 @@ impl Cmd {
     }
 
     #[cfg(unix)]
-    async fn run_unix(
-        self,
-        socket_path: &std::path::PathBuf,
-        _config: ServerConfig,
-    ) -> anyhow::Result<()> {
+    async fn run_unix(self, socket_path: &PathBuf, _config: ServerConfig) -> anyhow::Result<()> {
         use std::fs::{metadata, set_permissions};
         use std::os::unix::fs::PermissionsExt;
         use tokio::net::UnixListener;
