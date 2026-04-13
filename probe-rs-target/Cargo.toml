@@ -21,7 +21,7 @@ serde_with = { version = "3.8", default-features = false, features = [
     "indexmap_2",
 ] }
 
-bincode = { version = "2", features = ["serde"], optional = true }
+bincode = { version = "3", features = ["serde"], optional = true }
 serde_yaml = { version = "0.9", optional = true }
 
 [features]

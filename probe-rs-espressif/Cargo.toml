@@ -13,7 +13,7 @@ rust-version.workspace = true
 probe-rs = { workspace = true, features = ["flate2"] }
 probe-rs-target.workspace = true
 
-bincode = { version = "2", features = ["serde"] }
+bincode = { version = "3", features = ["serde"] }
 bitvec = "1"
 docsplay.workspace = true
 nusb.workspace = true
