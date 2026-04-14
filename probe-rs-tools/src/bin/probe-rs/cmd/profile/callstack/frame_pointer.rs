@@ -164,6 +164,7 @@ fn read_frame_record_for_core(
     const ARM32_FRAME_RECORD_OFFSET: i64 = 0;
     const ARM64_FRAME_RECORD_OFFSET: i64 = 0;
     const RISCV32_FRAME_RECORD_OFFSET: i64 = -8;
+    const RISCV64_FRAME_RECORD_OFFSET: i64 = -16;
     const XTENSA_FRAME_RECORD_OFFSET: i64 = -16;
 
     match instruction_set {
@@ -183,9 +184,6 @@ fn read_frame_record_for_core(
             )
         }
         InstructionSet::RV64 | InstructionSet::RV64C => {
-            // RV64 frame records are two 64-bit words: saved FP (fp-16) and saved RA (fp-8),
-            // using the same -16 byte offset convention as RISCV32 but 8-byte pointers.
-            const RISCV64_FRAME_RECORD_OFFSET: i64 = -16;
             read_arm_riscv_64_frame_record(memory, frame_pointer, RISCV64_FRAME_RECORD_OFFSET).map(
                 |fr| AdjustedFrameRecord::new_from_frame_record_64(fr, instruction_set, last_pc),
             )
