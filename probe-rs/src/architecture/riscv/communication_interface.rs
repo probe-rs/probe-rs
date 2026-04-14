@@ -1034,46 +1034,25 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// Uses the correct aarsize for the target's XLEN so that strict DM
     /// implementations do not reject the access.
     fn read_dcsr_inline(&mut self) -> Result<u32, RiscvError> {
-        // Try abstract CSR access first (cheapest path).
-        let abstract_result: Result<u32, RiscvError> = if self.state.xlen_64 {
-            self.abstract_cmd_register_read_64(Self::DCSR_REGNO)
-                .map(|v| v as u32)
-        } else {
-            self.abstract_cmd_register_read(Self::DCSR_REGNO)
-        };
-        match abstract_result {
+        match self.abstract_cmd_csr_read(Self::DCSR_REGNO) {
             Ok(v) => return Ok(v),
-            Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
-                // Fall through to program-buffer path.
-            }
+            Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {}
             Err(e) => return Err(e),
         }
 
-        // Program-buffer fallback: csrr s0, dcsr; then read s0 via abstract GPR.
         let csrr_cmd = assembly::csrr(8, Self::DCSR_REGNO);
         self.schedule_setup_program_buffer(&[csrr_cmd])?;
 
         let mut postexec_cmd = AccessRegisterCommand(0);
         postexec_cmd.set_postexec(true);
 
-        if self.state.xlen_64 {
-            let s0_saved = self.save_s0_64()?;
-            let result = (|| {
-                self.execute_abstract_command(postexec_cmd.0)?;
-                self.abstract_cmd_register_read_64(&registers::S0)
-                    .map(|v| v as u32)
-            })();
-            self.restore_s0_64(s0_saved)?;
-            result
-        } else {
-            let s0_saved = self.save_s0()?;
-            let result = (|| {
-                self.execute_abstract_command(postexec_cmd.0)?;
-                self.abstract_cmd_register_read(&registers::S0)
-            })();
-            self.restore_s0(s0_saved)?;
-            result
-        }
+        let s0_saved = self.save_s0_xlen()?;
+        let result = (|| {
+            self.execute_abstract_command(postexec_cmd.0)?;
+            self.save_s0_xlen().map(|v| v as u32)
+        })();
+        let _ = self.restore_s0_xlen(s0_saved);
+        result
     }
 
     /// Write DCSR without recursing into `halted_access`.
@@ -1081,41 +1060,25 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// Same strategy as [`Self::read_dcsr_inline`]: abstract first, then
     /// inline progbuf.
     fn write_dcsr_inline(&mut self, value: u32) -> Result<(), RiscvError> {
-        let abstract_result = if self.state.xlen_64 {
-            self.abstract_cmd_register_write_64(Self::DCSR_REGNO, value as u64)
-        } else {
-            self.abstract_cmd_register_write(Self::DCSR_REGNO, value)
-        };
-        match abstract_result {
+        match self.abstract_cmd_csr_write(Self::DCSR_REGNO, value) {
             Ok(()) => return Ok(()),
             Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {}
             Err(e) => return Err(e),
         }
 
-        // Program-buffer fallback: write value to s0, then csrw dcsr, s0.
         let csrw_cmd = assembly::csrw(Self::DCSR_REGNO, 8);
         self.schedule_setup_program_buffer(&[csrw_cmd])?;
 
         let mut postexec_cmd = AccessRegisterCommand(0);
         postexec_cmd.set_postexec(true);
 
-        if self.state.xlen_64 {
-            let s0_saved = self.save_s0_64()?;
-            let result = (|| {
-                self.abstract_cmd_register_write_64(&registers::S0, value as u64)?;
-                self.execute_abstract_command(postexec_cmd.0)
-            })();
-            self.restore_s0_64(s0_saved)?;
-            result
-        } else {
-            let s0_saved = self.save_s0()?;
-            let result = (|| {
-                self.abstract_cmd_register_write(&registers::S0, value)?;
-                self.execute_abstract_command(postexec_cmd.0)
-            })();
-            self.restore_s0(s0_saved)?;
-            result
-        }
+        let s0_saved = self.save_s0_xlen()?;
+        let result = (|| {
+            self.restore_s0_xlen(value as u64)?;
+            self.execute_abstract_command(postexec_cmd.0)
+        })();
+        let _ = self.restore_s0_xlen(s0_saved);
+        result
     }
 
     pub(super) fn read_csr(&mut self, address: u16) -> Result<u32, RiscvError> {
@@ -1273,6 +1236,39 @@ impl<'state> RiscvCommunicationInterface<'state> {
             self.abstract_cmd_register_write_64(&registers::S0, s0)?;
         }
         Ok(())
+    }
+
+    fn abstract_cmd_csr_read(&mut self, csr: u16) -> Result<u32, RiscvError> {
+        if self.state.xlen_64 {
+            self.abstract_cmd_register_read_64(csr).map(|v| v as u32)
+        } else {
+            self.abstract_cmd_register_read(csr)
+        }
+    }
+
+    fn abstract_cmd_csr_write(&mut self, csr: u16, value: u32) -> Result<(), RiscvError> {
+        if self.state.xlen_64 {
+            self.abstract_cmd_register_write_64(csr, value as u64)
+        } else {
+            self.abstract_cmd_register_write(csr, value)
+        }
+    }
+
+    fn save_s0_xlen(&mut self) -> Result<u64, RiscvError> {
+        if self.state.xlen_64 {
+            self.abstract_cmd_register_read_64(&registers::S0)
+        } else {
+            self.abstract_cmd_register_read(&registers::S0)
+                .map(|v| v as u64)
+        }
+    }
+
+    fn restore_s0_xlen(&mut self, value: u64) -> Result<(), RiscvError> {
+        if self.state.xlen_64 {
+            self.abstract_cmd_register_write_64(&registers::S0, value)
+        } else {
+            self.abstract_cmd_register_write(&registers::S0, value as u32)
+        }
     }
 
     /// Mark this interface as operating in RV64 mode.
@@ -1663,6 +1659,175 @@ impl<'state> RiscvCommunicationInterface<'state> {
         Ok(())
     }
 
+    fn read_multiple_autoexec<V: RiscvValue32>(
+        &mut self,
+        address: u32,
+        data: &mut [V],
+    ) -> Result<(), RiscvError> {
+        let data_len = data.len();
+
+        // Follows OpenOCD's read_memory_progbuf_inner pattern.
+        //
+        // Prime the pipeline.  After this returns:
+        //   DATA0 = data[0], s1 = data[1], s0 = addr + 2*width
+        //   abstractauto enabled (DATA0 reads fire the command)
+        self.autoexec_prime_pipeline(address)?;
+
+        // Pipeline accounting (N = data_len):
+        //   After priming: DATA0 = data[0], s1 = data[1]
+        //   Bulk loop: N-2 DATA0 reads yield data[0..N-2]
+        //     Each read returns data[i] and triggers autoexec
+        //     which advances the pipeline by one position.
+        //   Teardown: read DATA0 -> data[N-2], read S1 -> data[N-1]
+        let loop_count = data_len.saturating_sub(2);
+        let chunk_size: usize = 256;
+        let mut out_idx = 0;
+
+        while out_idx < loop_count {
+            let batch_end = core::cmp::min(out_idx + chunk_size, loop_count);
+            let batch_len = batch_end - out_idx;
+
+            let mut result_idxs = Vec::with_capacity(batch_len);
+            for _ in 0..batch_len {
+                let idx = self.schedule_read_dm_register::<Data0>()?;
+                result_idxs.push(idx);
+            }
+
+            for (i, idx) in result_idxs.into_iter().enumerate() {
+                let value = self.dtm.read_deferred_result(idx)?.into_u32();
+                data[out_idx + i] = V::from_register_value(value);
+            }
+
+            match self.wait_for_abstract_idle(Duration::from_millis(100)) {
+                Ok(()) => {
+                    out_idx = batch_end;
+                }
+                Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::Busy)) => {
+                    let mut cs = Abstractcs(0);
+                    cs.set_cmderr(0x7);
+                    self.write_dm_register(cs)?;
+                    self.write_dm_register(Abstractauto(0))?;
+
+                    let current_addr = if self.state.xlen_64 {
+                        self.abstract_cmd_register_read_64(&registers::S0)?
+                    } else {
+                        self.abstract_cmd_register_read(&registers::S0)? as u64
+                    };
+                    let width = V::WIDTH.byte_width() as u64;
+                    let progress = ((current_addr - u64::from(address)) / width) as usize;
+                    let reliable = progress.saturating_sub(2);
+
+                    tracing::warn!(
+                        "Autoexec Busy during chunk [{}, {}). \
+                         S0={:#x}, progress={}, reliable={}",
+                        out_idx,
+                        batch_end,
+                        current_addr,
+                        progress,
+                        reliable,
+                    );
+
+                    if reliable <= out_idx {
+                        return Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::Busy));
+                    }
+
+                    let new_addr = (u64::from(address) + reliable as u64 * width) as u32;
+                    self.autoexec_prime_pipeline(new_addr)?;
+                    out_idx = reliable;
+                }
+                Err(e) => return Err(e),
+            }
+        }
+
+        // Teardown: disable autoexec, read final two values.
+        self.write_dm_register(Abstractauto(0))?;
+
+        let penult: Data0 = self.read_dm_register()?;
+        data[data_len - 2] = V::from_register_value(penult.0);
+
+        let last_val = if self.state.xlen_64 {
+            self.abstract_cmd_register_read_64(&registers::S1)? as u32
+        } else {
+            self.abstract_cmd_register_read(&registers::S1)?
+        };
+        data[data_len - 1] = V::from_register_value(last_val);
+
+        Ok(())
+    }
+
+    fn read_multiple_no_autoexec<V: RiscvValue32>(
+        &mut self,
+        address: u32,
+        data: &mut [V],
+        wait_for_idle: bool,
+    ) -> Result<(), RiscvError> {
+        let data_len = data.len();
+
+        if self.state.xlen_64 {
+            self.abstract_cmd_register_write_64(&registers::S0, u64::from(address))?;
+
+            let mut command = AccessRegisterCommand(0);
+            command.set_cmd_type(0);
+            command.set_transfer(false);
+            command.set_postexec(true);
+            command.set_regno((registers::S0).id.0 as u32);
+            self.schedule_write_dm_register(command)?;
+        } else {
+            self.schedule_write_dm_register(Data0(address))?;
+
+            let mut command = AccessRegisterCommand(0);
+            command.set_cmd_type(0);
+            command.set_transfer(true);
+            command.set_write(true);
+            command.set_aarsize(RiscvBusAccess::A32);
+            command.set_postexec(true);
+            command.set_regno((registers::S0).id.0 as u32);
+            self.schedule_write_dm_register(command)?;
+        }
+
+        if wait_for_idle {
+            self.wait_for_idle(Duration::from_millis(10))?;
+        }
+
+        let aarsize = if self.state.xlen_64 {
+            RiscvBusAccess::A64
+        } else {
+            RiscvBusAccess::A32
+        };
+        let mut result_idxs = Vec::with_capacity(data_len - 1);
+        for out_idx in 0..data_len - 1 {
+            let mut command = AccessRegisterCommand(0);
+            command.set_cmd_type(0);
+            command.set_transfer(true);
+            command.set_write(false);
+            command.set_aarsize(aarsize);
+            command.set_postexec(true);
+            command.set_regno((registers::S1).id.0 as u32);
+
+            self.schedule_write_dm_register(command)?;
+            let value_idx = self.schedule_read_dm_register::<Data0>()?;
+            result_idxs.push((out_idx, value_idx));
+
+            if wait_for_idle {
+                self.wait_for_idle(Duration::from_millis(10))?;
+            }
+        }
+
+        let last_value = if self.state.xlen_64 {
+            self.abstract_cmd_register_read_64(&registers::S1)? as u32
+        } else {
+            self.abstract_cmd_register_read(&registers::S1)?
+        };
+        data[data.len() - 1] = V::from_register_value(last_value);
+
+        for (out_idx, value_idx) in result_idxs {
+            let value = self.dtm.read_deferred_result(value_idx)?.into_u32();
+            data[out_idx] = V::from_register_value(value);
+        }
+
+        Ok(())
+    }
+
     fn perform_memory_read_multiple_progbuf<V: RiscvValue32>(
         &mut self,
         address: u32,
@@ -1679,11 +1844,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
         }
 
         self.halted_access(|core| {
-            // Backup registers s0 and s1
             let s0 = core.save_s0()?;
             let s1 = core.save_s1()?;
 
-            // Program buffer: load word from [s0] into s1, then increment s0.
             let lw_command: u32 = assembly::lw(0, 8, V::WIDTH as u8, 9);
 
             core.schedule_setup_program_buffer(&[
@@ -1691,195 +1854,14 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 assembly::addi(8, 8, V::WIDTH.byte_width() as i16),
             ])?;
 
-            let data_len = data.len();
-            // Use autoexec for bulk reads (>= 16 words).  Smaller reads don't
-            // benefit enough, and very small reads (e.g. 3 words for
-            // semihosting checks) can be triggered from within halted_access
-            // where the progbuf is needed for DCSR restore afterwards.
-            let use_autoexec = core.state.supports_autoexec && data_len >= 16;
+            let use_autoexec = core.state.supports_autoexec && data.len() >= 16;
 
-            // Inner closure captures errors from the read logic.  The `?`
-            // operator returns from this inner closure (not the outer
-            // halted_access closure), so the unconditional cleanup below
-            // always runs regardless of success or failure.
-            let read_result: Result<(), RiscvError> = (|| {
-                if use_autoexec {
-                    // === AUTOEXEC PATH ===
-                    // Follows OpenOCD's read_memory_progbuf_inner pattern.
-                    //
-                    // Prime the pipeline.  After this returns:
-                    //   DATA0 = data[0], s1 = data[1], s0 = addr + 2*width
-                    //   abstractauto enabled (DATA0 reads fire the command)
-                    core.autoexec_prime_pipeline(address)?;
+            let read_result: Result<(), RiscvError> = if use_autoexec {
+                core.read_multiple_autoexec(address, data)
+            } else {
+                core.read_multiple_no_autoexec(address, data, wait_for_idle)
+            };
 
-                    // Pipeline accounting (N = data_len):
-                    //   After priming: DATA0 = data[0], s1 = data[1]
-                    //   Bulk loop: N-2 DATA0 reads yield data[0..N-2]
-                    //     Each read returns data[i] and triggers autoexec
-                    //     which advances the pipeline by one position.
-                    //   Teardown: read DATA0 -> data[N-2], read S1 -> data[N-1]
-                    let loop_count = data_len.saturating_sub(2);
-                    let chunk_size: usize = 256;
-                    let mut out_idx = 0;
-
-                    while out_idx < loop_count {
-                        let batch_end = core::cmp::min(out_idx + chunk_size, loop_count);
-                        let batch_len = batch_end - out_idx;
-
-                        // Schedule batch of DATA0 reads (each triggers autoexec).
-                        let mut result_idxs = Vec::with_capacity(batch_len);
-                        for _ in 0..batch_len {
-                            let idx = core.schedule_read_dm_register::<Data0>()?;
-                            result_idxs.push(idx);
-                        }
-
-                        // Resolve batch (forces USB flush).
-                        for (i, idx) in result_idxs.into_iter().enumerate() {
-                            let value = core.dtm.read_deferred_result(idx)?.into_u32();
-                            data[out_idx + i] = V::from_register_value(value);
-                        }
-
-                        // Wait for the last autoexec command to truly finish
-                        // (checks busy bit, not just cmderr), then check for
-                        // errors.
-                        match core.wait_for_abstract_idle(Duration::from_millis(100)) {
-                            Ok(()) => {
-                                out_idx = batch_end;
-                            }
-                            Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::Busy)) => {
-                                // Pipeline stalled mid-batch.  Recover by
-                                // reading S0 to find how far the target got.
-                                let mut cs = Abstractcs(0);
-                                cs.set_cmderr(0x7);
-                                core.write_dm_register(cs)?;
-                                core.write_dm_register(Abstractauto(0))?;
-
-                                let current_addr = if core.state.xlen_64 {
-                                    core.abstract_cmd_register_read_64(&registers::S0)?
-                                } else {
-                                    core.abstract_cmd_register_read(&registers::S0)? as u64
-                                };
-                                let width = V::WIDTH.byte_width() as u64;
-                                let progress =
-                                    ((current_addr - u64::from(address)) / width) as usize;
-                                // Pipeline depth is 2 (DATA0 + S1).
-                                let reliable = progress.saturating_sub(2);
-
-                                tracing::warn!(
-                                    "Autoexec Busy during chunk [{}, {}). \
-                                     S0={:#x}, progress={}, reliable={}",
-                                    out_idx,
-                                    batch_end,
-                                    current_addr,
-                                    progress,
-                                    reliable,
-                                );
-
-                                if reliable <= out_idx {
-                                    // No forward progress — give up.
-                                    return Err(RiscvError::AbstractCommand(
-                                        AbstractCommandErrorKind::Busy,
-                                    ));
-                                }
-
-                                // Re-prime from the reliable index.
-                                let new_addr =
-                                    (u64::from(address) + reliable as u64 * width) as u32;
-                                core.autoexec_prime_pipeline(new_addr)?;
-                                out_idx = reliable;
-                            }
-                            Err(e) => return Err(e),
-                        }
-                    }
-
-                    // Teardown: disable autoexec, read final two values.
-                    core.write_dm_register(Abstractauto(0))?;
-
-                    // Penultimate value from DATA0 (autoexec is off, no trigger).
-                    let penult: Data0 = core.read_dm_register()?;
-                    data[data_len - 2] = V::from_register_value(penult.0);
-
-                    // Last value from S1 register.
-                    let last_val = if core.state.xlen_64 {
-                        core.abstract_cmd_register_read_64(&registers::S1)? as u32
-                    } else {
-                        core.abstract_cmd_register_read(&registers::S1)?
-                    };
-                    data[data_len - 1] = V::from_register_value(last_val);
-                } else {
-                    // === NON-AUTOEXEC PATH ===
-                    // Write address to S0 and execute first progbuf iteration.
-                    if core.state.xlen_64 {
-                        core.abstract_cmd_register_write_64(&registers::S0, u64::from(address))?;
-
-                        let mut command = AccessRegisterCommand(0);
-                        command.set_cmd_type(0);
-                        command.set_transfer(false);
-                        command.set_postexec(true);
-                        command.set_regno((registers::S0).id.0 as u32);
-                        core.schedule_write_dm_register(command)?;
-                    } else {
-                        core.schedule_write_dm_register(Data0(address))?;
-
-                        let mut command = AccessRegisterCommand(0);
-                        command.set_cmd_type(0);
-                        command.set_transfer(true);
-                        command.set_write(true);
-                        command.set_aarsize(RiscvBusAccess::A32);
-                        command.set_postexec(true);
-                        command.set_regno((registers::S0).id.0 as u32);
-                        core.schedule_write_dm_register(command)?;
-                    }
-
-                    if wait_for_idle {
-                        core.wait_for_idle(Duration::from_millis(10))?;
-                    }
-
-                    // Read all but last word via COMMAND + DATA0 per word.
-                    let aarsize = if core.state.xlen_64 {
-                        RiscvBusAccess::A64
-                    } else {
-                        RiscvBusAccess::A32
-                    };
-                    let mut result_idxs = Vec::with_capacity(data_len - 1);
-                    for out_idx in 0..data_len - 1 {
-                        let mut command = AccessRegisterCommand(0);
-                        command.set_cmd_type(0);
-                        command.set_transfer(true);
-                        command.set_write(false);
-                        command.set_aarsize(aarsize);
-                        command.set_postexec(true);
-                        command.set_regno((registers::S1).id.0 as u32);
-
-                        core.schedule_write_dm_register(command)?;
-                        let value_idx = core.schedule_read_dm_register::<Data0>()?;
-                        result_idxs.push((out_idx, value_idx));
-
-                        if wait_for_idle {
-                            core.wait_for_idle(Duration::from_millis(10))?;
-                        }
-                    }
-
-                    let last_value = if core.state.xlen_64 {
-                        core.abstract_cmd_register_read_64(&registers::S1)? as u32
-                    } else {
-                        core.abstract_cmd_register_read(&registers::S1)?
-                    };
-                    data[data.len() - 1] = V::from_register_value(last_value);
-
-                    for (out_idx, value_idx) in result_idxs {
-                        let value = core.dtm.read_deferred_result(value_idx)?.into_u32();
-                        data[out_idx] = V::from_register_value(value);
-                    }
-                }
-
-                Ok(())
-            })();
-
-            // Unconditional cleanup: ensure autoexec is disabled, cmderr is
-            // cleared, progbuf cache is invalidated, and registers are
-            // restored.  Best-effort (ignore errors) to avoid shadowing
-            // read_result.
             let _ = core.write_dm_register(Abstractauto(0));
             let mut cs_clear = Abstractcs(0);
             cs_clear.set_cmderr(0x7);
@@ -2982,17 +2964,6 @@ impl RiscvCommunicationInterface<'_> {
     /// 4 GiB on an RV64 target the caller must use the system-bus access path instead.
     fn resolve_address_32(&mut self, address: u64) -> Result<u32, crate::Error> {
         if self.state.xlen_64 {
-            // Allow the full 64-bit address space; truncate only for the progbuf path.
-            // The system-bus path passes the full 64-bit address to the sbaddress registers.
-            if address > u64::from(u32::MAX) {
-                // For addresses > 4 GiB, system-bus access is required. We signal this by
-                // returning an error here; the callers that need SBA will check xlen_64 and
-                // use the appropriate path. For now, return an error with a descriptive message.
-                return Err(crate::Error::Other(format!(
-                    "Address {:#x} exceeds 32-bit range; system bus access required for RV64",
-                    address
-                )));
-            }
             Ok(address as u32)
         } else {
             valid_32bit_address(address)
