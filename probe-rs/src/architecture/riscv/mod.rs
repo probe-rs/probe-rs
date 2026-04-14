@@ -15,10 +15,8 @@ use crate::{
 };
 use bitfield::bitfield;
 use communication_interface::{AbstractCommandErrorKind, RiscvCommunicationInterface, RiscvError};
-use registers::{
-    FP, FP64, PC64, RA, RA64, RISCV_CORE_REGISTERS, RISCV_WITH_FP_CORE_REGISTERS,
-    RISCV64_CORE_REGISTERS, RISCV64_WITH_FP_CORE_REGISTERS, SP, SP64,
-};
+use registers::{FP, RA, RISCV_CORE_REGISTERS, RISCV_WITH_FP_CORE_REGISTERS, SP};
+use registers64::{FP64, PC64, RA64, RISCV64_CORE_REGISTERS, RISCV64_WITH_FP_CORE_REGISTERS, SP64};
 use std::{
     sync::Arc,
     time::{Duration, Instant},
@@ -26,6 +24,7 @@ use std::{
 
 #[macro_use]
 pub mod registers;
+pub mod registers64;
 pub use registers::PC;
 pub(crate) mod assembly;
 pub mod communication_interface;
