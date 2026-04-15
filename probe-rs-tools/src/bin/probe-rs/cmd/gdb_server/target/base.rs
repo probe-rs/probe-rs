@@ -210,6 +210,7 @@ fn read_register_from_source(core: &mut Core, source: GdbRegisterSource) -> Resu
 
             Ok(val)
         }
+        GdbRegisterSource::Unavailable => Ok(0),
     }
 }
 
@@ -231,5 +232,6 @@ fn write_register_from_source(
             core.write_core_reg(low, low_word)?;
             core.write_core_reg(high, high_word)
         }
+        GdbRegisterSource::Unavailable => Ok(()),
     }
 }
