@@ -458,7 +458,13 @@ impl EmbeddedTestElfInfo {
         file.read_to_end(&mut buffer)?;
         let buffer = buffer.as_slice();
 
-        let elf = object::File::parse(buffer).context("Failed to parse ELF file")?;
+        let elf = match object::File::parse(buffer) {
+            Ok(elf) => elf,
+            Err(e) => {
+                tracing::debug!("Failed to parse ELF file: {e}");
+                return Ok(None);
+            }
+        };
 
         ElfReader { buffer, elf }
             .decode()
