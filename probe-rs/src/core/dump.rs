@@ -392,6 +392,7 @@ impl CoreDump {
                 }
             }
             CoreType::Xtensa => &XTENSA_CORE_REGISTERS,
+            CoreType::Avr => &crate::architecture::avr::AVR_CORE_REGISTERS,
         }
     }
 }

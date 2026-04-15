@@ -178,6 +178,8 @@ pub enum CoreAccessOptions {
     Riscv(RiscvCoreAccessOptions),
     /// Xtensa specific options
     Xtensa(XtensaCoreAccessOptions),
+    /// AVR specific options (UPDI, no debug interface)
+    Avr(AvrCoreAccessOptions),
 }
 
 /// An address for AP accesses
@@ -238,4 +240,65 @@ pub struct RiscvCoreAccessOptions {
 pub struct XtensaCoreAccessOptions {
     /// The JTAG TAP index of the core's debug module
     pub jtag_tap: Option<usize>,
+}
+
+/// The data required to access an AVR core via UPDI.
+///
+/// Contains the full UPDI device descriptor: memory layout (flash, EEPROM, fuses,
+/// etc.), NVM controller and OCD register base addresses, device signature for
+/// auto-detection, and EDBG transport parameters (address mode, HVUPDI variant).
+/// These fields are loaded from the target YAML file and replace the previously
+/// hardcoded `AvrChipDescriptor` constants.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AvrCoreAccessOptions {
+    /// Three-byte device signature read from production signature row.
+    pub signature: [u8; 3],
+    /// Flash memory base address in the data space.
+    #[serde(serialize_with = "hex_u_int")]
+    pub flash_base: u32,
+    /// Flash memory size in bytes.
+    #[serde(serialize_with = "hex_u_int")]
+    pub flash_size: u32,
+    /// Flash page size in bytes.
+    pub flash_page_size: u32,
+    /// EEPROM base address in the data space.
+    #[serde(serialize_with = "hex_u_int")]
+    pub eeprom_base: u32,
+    /// EEPROM size in bytes.
+    pub eeprom_size: u32,
+    /// EEPROM page size in bytes (for page-write granularity).
+    pub eeprom_page_size: u8,
+    /// Fuse region base address.
+    #[serde(serialize_with = "hex_u_int")]
+    pub fuses_base: u32,
+    /// Number of fuse bytes.
+    pub fuses_size: u32,
+    /// Lock bit region base address.
+    #[serde(serialize_with = "hex_u_int")]
+    pub lock_base: u32,
+    /// Lock region size in bytes.
+    pub lock_size: u32,
+    /// User row (USERROW) base address.
+    #[serde(serialize_with = "hex_u_int")]
+    pub userrow_base: u32,
+    /// User row size in bytes.
+    pub userrow_size: u32,
+    /// Signature / production signature row base address.
+    #[serde(serialize_with = "hex_u_int")]
+    pub signature_base: u32,
+    /// Production signature row size in bytes.
+    pub prodsig_size: u32,
+    /// NVM controller base address.
+    #[serde(serialize_with = "hex_u_int")]
+    pub nvm_base: u16,
+    /// OCD (on-chip debug) module base address.
+    #[serde(serialize_with = "hex_u_int")]
+    pub ocd_base: u16,
+    /// SYSCFG peripheral base address.
+    #[serde(serialize_with = "hex_u_int")]
+    pub syscfg_base: u32,
+    /// Address mode: 0 = 16-bit, 1 = 24-bit.
+    pub address_mode: u8,
+    /// HVUPDI variant identifier sent in the device descriptor.
+    pub hvupdi_variant: u8,
 }

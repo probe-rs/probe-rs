@@ -698,6 +698,7 @@ pub enum ResolvedCoreOptions {
         sequence: Arc<dyn XtensaDebugSequence>,
         options: XtensaCoreAccessOptions,
     },
+    Avr,
 }
 
 impl ResolvedCoreOptions {
@@ -712,6 +713,7 @@ impl ResolvedCoreOptions {
             (CoreAccessOptions::Xtensa(options), DebugSequence::Xtensa(sequence)) => {
                 Self::Xtensa { sequence, options }
             }
+            (CoreAccessOptions::Avr(_), DebugSequence::Avr(())) => Self::Avr,
             _ => unreachable!(
                 "Mismatch between core kind and access options. This is a bug, please report it."
             ),
@@ -723,6 +725,7 @@ impl ResolvedCoreOptions {
             Self::Arm { options, .. } => options.jtag_tap.unwrap_or(0),
             Self::Riscv { options, .. } => options.jtag_tap.unwrap_or(0),
             Self::Xtensa { options, .. } => options.jtag_tap.unwrap_or(0),
+            Self::Avr => 0,
         }
     }
 }
@@ -745,6 +748,7 @@ impl std::fmt::Debug for ResolvedCoreOptions {
                 .field("sequence", &"<XtensaDebugSequence>")
                 .field("options", options)
                 .finish(),
+            Self::Avr => f.debug_struct("Avr").finish(),
         }
     }
 }
