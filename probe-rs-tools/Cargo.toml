@@ -18,12 +18,7 @@ default-run = "probe-rs"
 [features]
 default = []
 # Include server/client functionality
-remote = [
-    "dep:tokio-tungstenite",
-    "dep:axum",
-    "dep:rustls",
-    "dep:tempfile",
-]
+remote = ["dep:tokio-tungstenite", "dep:axum", "dep:rustls", "dep:tempfile"]
 
 [dependencies]
 anyhow = { workspace = true }
@@ -146,3 +141,7 @@ formula = "probe-rs"
 
 [lints]
 workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+nusb.workspace = true
+rustix = { version = "1.1.4", features = ["fs"] }

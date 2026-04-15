@@ -101,6 +101,14 @@ pub struct ProbeOptions {
     #[arg(long, env = "PROBE_RS_PROTOCOL", help_heading = "PROBE CONFIGURATION")]
     pub protocol: Option<WireProtocol>,
 
+    /// Whether to cycle usb power before run.
+    #[arg(
+        long,
+        env = "PROBE_RS_CYCLE_POWER",
+        help_heading = "PROBE CONFIGURATION"
+    )]
+    pub cycle_power: bool,
+
     /// Disable interactive probe selection
     #[arg(
         long,

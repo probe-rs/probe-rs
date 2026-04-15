@@ -222,6 +222,7 @@ async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Res
         protocol: Some(config.probe.protocol),
         non_interactive: false,
         probe: selector,
+        cycle_power: false,
         speed: config.probe.speed,
         connect_under_reset: config.general.connect_under_reset,
         dry_run: false,
