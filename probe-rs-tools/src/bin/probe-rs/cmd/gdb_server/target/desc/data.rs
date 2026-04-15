@@ -350,6 +350,10 @@ fn build_cortex_m_registers(desc: &mut TargetDescription, regs: &CoreRegisters) 
     desc.update_register_type("PC", "code_ptr");
 }
 
-fn build_xtensa_registers(_desc: &mut TargetDescription, _regs: &CoreRegisters) {
-    todo!()
+fn build_xtensa_registers(desc: &mut TargetDescription, regs: &CoreRegisters) {
+    desc.add_gdb_feature("org.gnu.gdb.xtensa.core");
+    desc.add_registers(regs.core_registers());
+
+    desc.update_register_type("pc", "code_ptr");
+    desc.update_register_type("sp", "data_ptr");
 }
