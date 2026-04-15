@@ -42,8 +42,6 @@ impl CombinedCoreState {
     ) -> Result<Core<'probe>, Error> {
         let name = &target.cores[self.id].name;
 
-        let memory = arm_interface.memory_interface(&self.arm_memory_ap())?;
-
         let ResolvedCoreOptions::Arm { options, sequence } = &self.core_state.core_access_options
         else {
             unreachable!(
@@ -52,6 +50,13 @@ impl CombinedCoreState {
             );
         };
         let debug_sequence = sequence.clone();
+        debug_sequence.on_attach(
+            &mut **arm_interface,
+            &self.arm_memory_ap(),
+            self.specific_state.core_type(),
+        )?;
+
+        let memory = arm_interface.memory_interface(&self.arm_memory_ap())?;
 
         Ok(match &mut self.specific_state {
             SpecificCoreState::Armv6m(s) => Core::new(
