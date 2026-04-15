@@ -2,7 +2,7 @@ use std::fmt;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::probe::DebugProbeInfo;
+use crate::probe::{DebugProbeInfo, usb_util::to_hex};
 
 use nusb::DeviceInfo;
 
@@ -108,7 +108,7 @@ impl DebugProbeSelector {
                 .as_ref()
                 .map(|s| {
                     if let Some(serial_number) = serial_number {
-                        serial_number == s
+                        serial_number == s || to_hex(serial_number).as_str() == s
                     } else {
                         // Match probes without serial number when the
                         // selector has a third, empty part ("VID:PID:")

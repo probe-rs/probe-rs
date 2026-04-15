@@ -3,6 +3,7 @@
 use std::fmt::Display;
 use std::future::pending;
 use std::io::Write;
+use std::time::Duration;
 use std::{future::Future, ops::DerefMut, path::Path, time::Instant};
 
 use anyhow::Context;
@@ -26,7 +27,7 @@ use crate::rpc::Key;
 use crate::rpc::functions::monitor::{ChannelInfo, MonitorExitReason};
 use crate::rpc::utils::run_loop::VectorCatchConfig;
 use crate::rpc::utils::semihosting::SemihostingOptions;
-use crate::util::usb::power_reset;
+use crate::util::pwr::power_reset;
 use crate::{
     FormatOptions,
     rpc::{
@@ -76,16 +77,11 @@ pub async fn attach_probe(
         client.load_chip_family(file).await?;
     }
 
-    let probe = match probe_options.cycle_power {
-        false => select_probe(client, probe_options.probe.map(Into::into)).await?,
-        true => {
-            let probe = select_probe(client, probe_options.clone().probe.map(Into::into)).await?;
+    let probe = select_probe(client, probe_options.probe.map(Into::into)).await?;
 
-            power_reset(probe.serial_number.as_str(), 1.0).await?;
-
-            select_probe(client, probe_options.probe.map(Into::into)).await?
-        }
-    };
+    if probe_options.cycle_power {
+        power_reset(probe.selector().into(), Duration::from_secs(1)).await?;
+    }
 
     let result = client
         .attach_probe(AttachRequest {

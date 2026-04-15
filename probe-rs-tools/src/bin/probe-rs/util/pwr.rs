@@ -1,38 +1,30 @@
 //! Helpers for usb power control
 
+use std::time::Duration;
+
 use anyhow::Result;
+use anyhow::anyhow;
+use nusb::DeviceInfo;
+use probe_rs::probe::DebugProbeSelector;
 
-#[cfg(not(target_os = "linux"))]
 /// Reset power on a probe
-pub async fn power_reset(_probe_serial: &str, _cycle_delay_seconds: f64) -> Result<()> {
-    anyhow::bail!("USB power reset is only supported on linux")
-}
+pub async fn power_reset(selector: DebugProbeSelector, delay: Duration) -> Result<()> {
+    let dev = nusb::list_devices()
+        .await?
+        .find(|d| selector.matches(d))
+        .ok_or_else(|| anyhow!("device with selector {} not found", selector))?;
 
-#[cfg(all(feature = "remote", not(target_os = "linux")))]
-/// Enable power control on all attached hubs
-pub async fn power_enable() -> Result<()> {
-    anyhow::bail!("USB power reset is only supported on linux")
+    power_reset_impl(&dev, delay).await
 }
 
 #[cfg(target_os = "linux")]
 /// Reset power on a probe
-pub async fn power_reset(probe_serial: &str, cycle_delay_seconds: f64) -> Result<()> {
+async fn power_reset_impl(dev: &DeviceInfo, delay: Duration) -> Result<()> {
     use rustix::fd::OwnedFd;
     use rustix::fs::{Mode, OFlags};
     use std::fs::File;
     use std::io::Write;
-    use std::time::Duration;
-
-    use anyhow::anyhow;
     use tokio::time::sleep;
-
-    fn to_hex(s: &str) -> String {
-        use std::fmt::Write;
-        s.as_bytes().iter().fold(String::new(), |mut s, b| {
-            let _ = write!(s, "{b:02X}"); // Writing a String never fails
-            s
-        })
-    }
 
     fn disable_f(port_fd: &OwnedFd) -> rustix::io::Result<File> {
         Ok(rustix::fs::openat(
@@ -44,22 +36,11 @@ pub async fn power_reset(probe_serial: &str, cycle_delay_seconds: f64) -> Result
         .into())
     }
 
-    let dev = nusb::list_devices()
-        .await?
-        .find(|d| {
-            let serial = d.serial_number().unwrap_or_default();
-
-            serial == probe_serial || to_hex(serial) == probe_serial
-        })
-        .ok_or_else(|| anyhow!("device with serial {} not found", probe_serial))?;
-
-    let port_path = dev.sysfs_path().join("port");
-
     // The USB device goes away when we disable power to it.
     // If we open the port dir we can keep a "handle" to it even if the device goes away, so
     // we can write `disable=0` with openat() to reenable it.
     let port_fd = rustix::fs::open(
-        port_path,
+        dev.sysfs_path().join("port"),
         OFlags::DIRECTORY | OFlags::CLOEXEC,
         Mode::empty(),
     )?;
@@ -68,7 +49,7 @@ pub async fn power_reset(probe_serial: &str, cycle_delay_seconds: f64) -> Result
     disable_f(&port_fd)?.write_all(b"1")?;
 
     // sleep
-    sleep(Duration::from_secs_f64(cycle_delay_seconds)).await;
+    sleep(delay).await;
 
     // enable port power
     disable_f(&port_fd)?.write_all(b"0")?;
@@ -76,11 +57,21 @@ pub async fn power_reset(probe_serial: &str, cycle_delay_seconds: f64) -> Result
     Ok(())
 }
 
+#[cfg(not(target_os = "linux"))]
+async fn power_reset_impl(_dev: &DeviceInfo, _delay: Duration) -> Result<()> {
+    anyhow::bail!("USB power reset is only supported on linux")
+}
+
+#[cfg(all(feature = "remote", not(target_os = "linux")))]
+/// Enable power control on all attached hubs
+pub async fn power_enable() -> Result<()> {
+    anyhow::bail!("USB power reset is only supported on linux")
+}
+
 #[cfg(all(feature = "remote", target_os = "linux"))]
 /// Enable power control on all attached hubs
 pub async fn power_enable() -> Result<()> {
     use std::fs;
-    use std::time::Duration;
 
     use tokio::time::sleep;
     use tracing::{info, warn};
