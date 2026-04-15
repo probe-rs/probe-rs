@@ -26,6 +26,7 @@ use crate::rpc::Key;
 use crate::rpc::functions::monitor::{ChannelInfo, MonitorExitReason};
 use crate::rpc::utils::run_loop::VectorCatchConfig;
 use crate::rpc::utils::semihosting::SemihostingOptions;
+use crate::util::usb::power_reset;
 use crate::{
     FormatOptions,
     rpc::{
@@ -75,7 +76,16 @@ pub async fn attach_probe(
         client.load_chip_family(file).await?;
     }
 
-    let probe = select_probe(client, probe_options.probe.map(Into::into)).await?;
+    let probe = match probe_options.cycle_power {
+        false => select_probe(client, probe_options.probe.map(Into::into)).await?,
+        true => {
+            let probe = select_probe(client, probe_options.clone().probe.map(Into::into)).await?;
+
+            power_reset(probe.serial_number.as_str(), 1.0).await?;
+
+            select_probe(client, probe_options.probe.map(Into::into)).await?
+        }
+    };
 
     let result = client
         .attach_probe(AttachRequest {

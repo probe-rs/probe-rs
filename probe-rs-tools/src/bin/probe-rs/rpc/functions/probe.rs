@@ -245,6 +245,7 @@ impl From<&AttachRequest> for ProbeOptions {
             probe: Some(request.probe.selector().into()),
             speed: request.speed,
             connect_under_reset: request.connect_under_reset,
+            cycle_power: false,
             dry_run: request.dry_run,
             allow_erase_all: request.allow_erase_all,
         }
