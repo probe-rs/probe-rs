@@ -88,7 +88,7 @@ pub async fn power_enable() -> Result<()> {
     const USB_CLASS_HUB: u8 = 0x09;
     const MAX_ITERATIONS: usize = 5;
 
-    info!("enabling power to all hubs!");
+    info!("Enabling power to all hubs!");
 
     for iteration in 1..=MAX_ITERATIONS {
         info!(
