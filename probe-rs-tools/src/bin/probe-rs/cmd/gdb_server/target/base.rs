@@ -144,10 +144,13 @@ impl SingleRegisterAccess<Tid> for RuntimeTarget<'_> {
         reg_id: RuntimeRegId,
         buf: &mut [u8],
     ) -> TargetResult<usize, Self> {
+        let Some(reg) = self.target_desc.get_register(reg_id.into()) else {
+            return Err(TargetError::Errno(0));
+        };
+
         let mut session = self.session.lock();
         let mut core = session.core(tid.get() - 1).into_target_result()?;
 
-        let reg = self.target_desc.get_register(reg_id.into());
         let bytesize = reg.size_in_bytes();
 
         let mut value: u128 =
@@ -167,10 +170,13 @@ impl SingleRegisterAccess<Tid> for RuntimeTarget<'_> {
         reg_id: RuntimeRegId,
         val: &[u8],
     ) -> TargetResult<(), Self> {
+        let Some(reg) = self.target_desc.get_register(reg_id.into()) else {
+            return Err(TargetError::Errno(0));
+        };
+
         let mut session = self.session.lock();
         let mut core = session.core(tid.get() - 1).into_target_result()?;
 
-        let reg = self.target_desc.get_register(reg_id.into());
         let bytesize = reg.size_in_bytes();
 
         let mut value = 0;

@@ -80,8 +80,8 @@ impl TargetDescription {
     }
 
     /// Get a register by GDB number
-    pub fn get_register(&self, num: usize) -> &GdbRegister {
-        &self.regs[num]
+    pub fn get_register(&self, num: usize) -> Option<&GdbRegister> {
+        self.regs.get(num)
     }
 
     /// Get all registers in the main feature group
