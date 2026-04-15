@@ -402,7 +402,10 @@ fn build_xtensa_registers(desc: &mut TargetDescription, _regs: &CoreRegisters) {
     desc.add_register_from_details("sar", 32, sr(3));
 
     // Registers 69-70: window control
-    desc.add_register_from_details("windowbase", 32, sr(72));
+    // We report windowbase as 0 because we only have the current window's
+    // registers (placed at ar0-ar15). Reporting the real windowbase would
+    // cause GDB to look at ar[windowbase*4..] which are unavailable.
+    desc.add_unavailable_register("windowbase", 32);
     desc.add_register_from_details("windowstart", 32, sr(73));
 
     // Registers 71-72: config IDs (read-only silicon config, not available)
