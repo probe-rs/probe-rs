@@ -31,7 +31,7 @@ use crate::{
         functions::{ProbeAccess, RpcApp},
         transport::websocket::{AxumWebsocketTx, WebsocketRx},
     },
-    util::usb,
+    util::pwr,
 };
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -123,7 +123,7 @@ impl Cmd {
         }
 
         if config.cycle_power {
-            usb::power_enable().await?;
+            pwr::power_enable().await?;
         }
 
         #[cfg(unix)]
