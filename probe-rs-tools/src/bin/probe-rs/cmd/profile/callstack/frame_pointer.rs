@@ -164,6 +164,7 @@ fn read_frame_record_for_core(
     const ARM32_FRAME_RECORD_OFFSET: i64 = 0;
     const ARM64_FRAME_RECORD_OFFSET: i64 = 0;
     const RISCV32_FRAME_RECORD_OFFSET: i64 = -8;
+    const RISCV64_FRAME_RECORD_OFFSET: i64 = -16;
     const XTENSA_FRAME_RECORD_OFFSET: i64 = -16;
 
     match instruction_set {
@@ -180,6 +181,11 @@ fn read_frame_record_for_core(
         InstructionSet::RV32 | InstructionSet::RV32C => {
             read_arm_riscv_32_frame_record(memory, frame_pointer, RISCV32_FRAME_RECORD_OFFSET).map(
                 |fr| AdjustedFrameRecord::new_from_frame_record_32(fr, instruction_set, last_pc),
+            )
+        }
+        InstructionSet::RV64 | InstructionSet::RV64C => {
+            read_arm_riscv_64_frame_record(memory, frame_pointer, RISCV64_FRAME_RECORD_OFFSET).map(
+                |fr| AdjustedFrameRecord::new_from_frame_record_64(fr, instruction_set, last_pc),
             )
         }
         InstructionSet::Xtensa => {

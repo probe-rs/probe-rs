@@ -45,8 +45,10 @@ pub enum CoreType {
     Armv8a,
     /// ARMv8-M: Cortex M23, M33
     Armv8m,
-    /// RISC-V
+    /// RISC-V (32-bit)
     Riscv,
+    /// RISC-V (64-bit)
+    Riscv64,
     /// Xtensa - TODO: may need to split into NX, LX6 and LX7
     Xtensa,
 }
@@ -61,7 +63,7 @@ impl CoreType {
     }
 
     fn is_riscv(&self) -> bool {
-        matches!(self, CoreType::Riscv)
+        matches!(self, CoreType::Riscv | CoreType::Riscv64)
     }
 
     fn is_xtensa(&self) -> bool {
@@ -84,7 +86,7 @@ impl CoreType {
     /// Returns the parent architecture family of this core type.
     pub fn architecture(&self) -> Architecture {
         match self {
-            CoreType::Riscv => Architecture::Riscv,
+            CoreType::Riscv | CoreType::Riscv64 => Architecture::Riscv,
             CoreType::Xtensa => Architecture::Xtensa,
             _ => Architecture::Arm,
         }
@@ -115,6 +117,10 @@ pub enum InstructionSet {
     RV32,
     /// RISC-V 32-bit compressed instruction sets (RV32C) - covers all ISA variants that allow compressed 16-bit instructions.
     RV32C,
+    /// RISC-V 64-bit uncompressed instruction sets (RV64) - covers all ISA variants that use 32-bit instructions in 64-bit mode.
+    RV64,
+    /// RISC-V 64-bit compressed instruction sets (RV64C) - covers all ISA variants that allow compressed 16-bit instructions in 64-bit mode.
+    RV64C,
     /// Xtensa instruction set
     Xtensa,
 }
@@ -134,6 +140,12 @@ impl InstructionSet {
                     } else {
                         Some(InstructionSet::RV32)
                     }
+                } else if let Some(features) = other.strip_prefix("riscv64") {
+                    if features.contains('c') {
+                        Some(InstructionSet::RV64C)
+                    } else {
+                        Some(InstructionSet::RV64)
+                    }
                 } else {
                     None
                 }
@@ -152,6 +164,9 @@ impl InstructionSet {
             InstructionSet::A64 => 4,
             InstructionSet::RV32 => 4,
             InstructionSet::RV32C => 2,
+            // RV64 uses 32-bit base instructions; compressed mode allows 16-bit instructions
+            InstructionSet::RV64 => 4,
+            InstructionSet::RV64C => 2,
             InstructionSet::Xtensa => 2,
         }
     }
@@ -170,6 +185,7 @@ impl InstructionSet {
         matches!(
             (self, instr_set),
             (InstructionSet::RV32C, InstructionSet::RV32)
+                | (InstructionSet::RV64C, InstructionSet::RV64)
         )
     }
 }
