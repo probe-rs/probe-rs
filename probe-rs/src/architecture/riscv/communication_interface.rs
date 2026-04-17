@@ -5,6 +5,7 @@
 //! specification v0.13.2 .
 
 use crate::architecture::riscv::dtm::DtmAccess;
+use crate::memory::valid_32bit_address;
 use crate::probe::queue::DeferredResultIndex;
 use crate::{
     Error as ProbeRsError, architecture::riscv::*, config::Target, memory_mapped_bitfield_register,
@@ -1286,21 +1287,21 @@ impl<'state> RiscvCommunicationInterface<'state> {
         result
     }
 
-    /// Write a 32-bit address into S0 with XLEN-correct width.
+    /// Write an address into S0 with XLEN-correct width.
     ///
     /// On RV64 a narrow (A32) abstract write sign-extends the value, turning
     /// addresses with bit 31 set (e.g. 0x8000_0000) into large negative
     /// 64-bit values.  This helper always uses A64 on RV64 so that S0 holds
     /// the correctly zero-extended address.
-    fn write_address_to_s0(&mut self, address: u32) -> Result<(), RiscvError> {
+    fn write_address_to_s0(&mut self, address: u64) -> Result<(), RiscvError> {
         if self.state.xlen_64 {
-            self.abstract_cmd_register_write_64(registers::S0, u64::from(address))
+            self.abstract_cmd_register_write_64(registers::S0, address)
         } else {
-            self.abstract_cmd_register_write(registers::S0, address)
+            self.abstract_cmd_register_write(registers::S0, address as u32)
         }
     }
 
-    /// Write a 32-bit address into S0 and schedule a progbuf execution.
+    /// Write an address into S0 and schedule a progbuf execution.
     ///
     /// On RV64 the abstract command used for the write cannot set `postexec` at
     /// the same time as a 64-bit register transfer (the DM would interpret it as
@@ -1309,9 +1310,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
     ///
     /// On RV32 the write and execute are combined in a single `transfer=true,
     /// postexec=true` A32 command, matching the existing behaviour.
-    fn schedule_write_address_to_s0_and_exec(&mut self, address: u32) -> Result<(), RiscvError> {
+    fn schedule_write_address_to_s0_and_exec(&mut self, address: u64) -> Result<(), RiscvError> {
         if self.state.xlen_64 {
-            self.abstract_cmd_register_write_64(registers::S0, u64::from(address))?;
+            self.abstract_cmd_register_write_64(registers::S0, address)?;
             let mut command = AccessRegisterCommand(0);
             command.set_cmd_type(0);
             command.set_transfer(false);
@@ -1319,7 +1320,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             command.set_regno(registers::S0.id.0 as u32);
             self.schedule_write_dm_register(command)
         } else {
-            self.schedule_write_dm_register(Data0(address))?;
+            self.schedule_write_dm_register(Data0(address as u32))?;
             let mut command = AccessRegisterCommand(0);
             command.set_cmd_type(0);
             command.set_transfer(true);
@@ -1476,7 +1477,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// Perform a single read from a memory location, using system bus access.
     fn perform_memory_read_sysbus<V: RiscvValue32>(
         &mut self,
-        address: u32,
+        address: u64,
     ) -> Result<V, RiscvError> {
         loop {
             let mut sbcs = Sbcs(0);
@@ -1489,7 +1490,10 @@ impl<'state> RiscvCommunicationInterface<'state> {
             sbcs.set_sbreadonaddr(true);
 
             self.schedule_write_dm_register(sbcs)?;
-            self.schedule_write_dm_register(Sbaddress0(address))?;
+            if self.state.xlen_64 {
+                self.schedule_write_dm_register(Sbaddress1((address >> 32) as u32))?;
+            }
+            self.schedule_write_dm_register(Sbaddress0(address as u32))?;
 
             let mut results = vec![];
             self.schedule_read_large_dtm_register::<V, Sbdata>(&mut results)?;
@@ -1511,7 +1515,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// Only reads up to a width of 32 bits are currently supported.
     fn perform_memory_read_multiple_sysbus<V: RiscvValue32>(
         &mut self,
-        address: u32,
+        address: u64,
         data: &mut [V],
     ) -> Result<(), RiscvError> {
         if data.is_empty() {
@@ -1532,7 +1536,10 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
             self.schedule_write_dm_register(sbcs)?;
 
-            self.schedule_write_dm_register(Sbaddress0(address))?;
+            if self.state.xlen_64 {
+                self.schedule_write_dm_register(Sbaddress1((address >> 32) as u32))?;
+            }
+            self.schedule_write_dm_register(Sbaddress0(address as u32))?;
 
             let data_len = data.len();
 
@@ -1606,7 +1613,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// Only reads up to a width of 32 bits are currently supported.
     fn perform_memory_read_progbuf<V: RiscvValue32>(
         &mut self,
-        address: u32,
+        address: u64,
         wait_for_idle: bool,
     ) -> Result<V, RiscvError> {
         self.halted_access(|core| {
@@ -1647,7 +1654,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// - `abstractauto` is enabled (DATA0 reads trigger the command)
     ///
     /// Follows OpenOCD's `read_memory_progbuf_inner_startup` pattern.
-    fn autoexec_prime_pipeline(&mut self, address: u32) -> Result<(), RiscvError> {
+    fn autoexec_prime_pipeline(&mut self, address: u64) -> Result<(), RiscvError> {
         // Step 1: Write starting address into S0.
         self.write_address_to_s0(address)?;
 
@@ -1686,7 +1693,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
     fn read_multiple_autoexec<V: RiscvValue32>(
         &mut self,
-        address: u32,
+        address: u64,
         data: &mut [V],
     ) -> Result<(), RiscvError> {
         let data_len = data.len();
@@ -1739,7 +1746,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
                         self.abstract_cmd_register_read(registers::S0)? as u64
                     };
                     let width = V::WIDTH.byte_width() as u64;
-                    let progress = ((current_addr - u64::from(address)) / width) as usize;
+                    let progress = ((current_addr - address) / width) as usize;
                     let reliable = progress.saturating_sub(2);
 
                     tracing::warn!(
@@ -1756,7 +1763,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
                         return Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::Busy));
                     }
 
-                    let new_addr = (u64::from(address) + reliable as u64 * width) as u32;
+                    let new_addr = address + reliable as u64 * width;
                     self.autoexec_prime_pipeline(new_addr)?;
                     out_idx = reliable;
                 }
@@ -1782,7 +1789,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
     fn read_multiple_no_autoexec<V: RiscvValue32>(
         &mut self,
-        address: u32,
+        address: u64,
         data: &mut [V],
         wait_for_idle: bool,
     ) -> Result<(), RiscvError> {
@@ -1835,7 +1842,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
     fn perform_memory_read_multiple_progbuf<V: RiscvValue32>(
         &mut self,
-        address: u32,
+        address: u64,
         data: &mut [V],
         wait_for_idle: bool,
     ) -> Result<(), RiscvError> {
@@ -1882,7 +1889,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// Memory write using system bus
     fn perform_memory_write_sysbus<V: RiscvValue>(
         &mut self,
-        address: u32,
+        address: u64,
         data: &[V],
     ) -> Result<(), RiscvError> {
         if data.is_empty() {
@@ -1899,7 +1906,10 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
             self.schedule_write_dm_register(sbcs)?;
 
-            self.schedule_write_dm_register(Sbaddress0(address))?;
+            if self.state.xlen_64 {
+                self.schedule_write_dm_register(Sbaddress1((address >> 32) as u32))?;
+            }
+            self.schedule_write_dm_register(Sbaddress0(address as u32))?;
             for value in data {
                 self.schedule_write_large_dtm_register::<V, Sbdata>(*value)?;
             }
@@ -1920,7 +1930,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// Only writes up to a width of 32 bits are currently supported.
     fn perform_memory_write_progbuf<V: RiscvValue32>(
         &mut self,
-        address: u32,
+        address: u64,
         data: V,
         wait_for_idle: bool,
     ) -> Result<(), RiscvError> {
@@ -1981,7 +1991,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// Only writes up to a width of 32 bits are currently supported.
     fn perform_memory_write_multiple_progbuf<V: RiscvValue32>(
         &mut self,
-        address: u32,
+        address: u64,
         data: &[V],
         wait_for_idle: bool,
     ) -> Result<(), RiscvError> {
@@ -2261,8 +2271,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
         })
     }
 
-    fn read_word<V: RiscvValue32>(&mut self, address: u32) -> Result<V, crate::Error> {
-        let result = match self.state.memory_access_method(V::WIDTH, address as u64) {
+    fn read_word<V: RiscvValue32>(&mut self, address: u64) -> Result<V, crate::Error> {
+        if !self.state.xlen_64 {
+            valid_32bit_address(address)?;
+        }
+        let result = match self.state.memory_access_method(V::WIDTH, address) {
             MemoryAccessMethod::ProgramBuffer => {
                 self.perform_memory_read_progbuf(address, false)?
             }
@@ -2280,11 +2293,13 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
     fn read_multiple<V: RiscvValue32>(
         &mut self,
-        address: u32,
+        address: u64,
         data: &mut [V],
     ) -> Result<(), crate::Error> {
-        let start = address as u64;
-        let address_range = start..(start + (data.len() * V::WIDTH.byte_width()) as u64);
+        if !self.state.xlen_64 {
+            valid_32bit_address(address)?;
+        }
+        let address_range = address..(address + (data.len() * V::WIDTH.byte_width()) as u64);
         let access_method = self
             .state
             .memory_range_access_method(V::WIDTH, address_range);
@@ -2313,8 +2328,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
         Ok(())
     }
 
-    fn write_word<V: RiscvValue32>(&mut self, address: u32, data: V) -> Result<(), crate::Error> {
-        match self.state.memory_access_method(V::WIDTH, address as u64) {
+    fn write_word<V: RiscvValue32>(&mut self, address: u64, data: V) -> Result<(), crate::Error> {
+        if !self.state.xlen_64 {
+            valid_32bit_address(address)?;
+        }
+        match self.state.memory_access_method(V::WIDTH, address) {
             MemoryAccessMethod::ProgramBuffer => {
                 self.perform_memory_write_progbuf(address, data, false)?
             }
@@ -2332,11 +2350,13 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
     fn write_multiple<V: RiscvValue32>(
         &mut self,
-        address: u32,
+        address: u64,
         data: &[V],
     ) -> Result<(), crate::Error> {
-        let start = address as u64;
-        let address_range = start..(start + (data.len() * V::WIDTH.byte_width()) as u64);
+        if !self.state.xlen_64 {
+            valid_32bit_address(address)?;
+        }
+        let address_range = address..(address + (data.len() * V::WIDTH.byte_width()) as u64);
         let access_method = self
             .state
             .memory_range_access_method(V::WIDTH, address_range);
@@ -2842,32 +2862,12 @@ impl RiscvValue for u128 {
     }
 }
 
-impl RiscvCommunicationInterface<'_> {
-    /// Resolve a 64-bit address for memory access.
-    ///
-    /// In RV32 mode (default), addresses are restricted to 32 bits. In RV64 mode, the full
-    /// 64-bit address space is available and the address is returned as-is after being truncated
-    /// to a `u32` (lower 32 bits) for use with the program-buffer memory access helpers.
-    ///
-    /// Returns the address as a `u32` for compatibility with the existing `read_word` /
-    /// `write_word` helpers, which use the program buffer on a 32-bit DTM. For addresses above
-    /// 4 GiB on an RV64 target the caller must use the system-bus access path instead.
-    fn resolve_address_32(&mut self, address: u64) -> Result<u32, crate::Error> {
-        if self.state.xlen_64 {
-            Ok(address as u32)
-        } else {
-            valid_32bit_address(address)
-        }
-    }
-}
-
 impl MemoryInterface for RiscvCommunicationInterface<'_> {
     fn supports_native_64bit_access(&mut self) -> bool {
         self.state.xlen_64
     }
 
     fn read_word_64(&mut self, address: u64) -> Result<u64, crate::error::Error> {
-        let address = self.resolve_address_32(address)?;
         let mut ret = self.read_word::<u32>(address)? as u64;
         ret |= (self.read_word::<u32>(address + 4)? as u64) << 32;
 
@@ -2875,106 +2875,84 @@ impl MemoryInterface for RiscvCommunicationInterface<'_> {
     }
 
     fn read_word_32(&mut self, address: u64) -> Result<u32, crate::Error> {
-        let address = self.resolve_address_32(address)?;
         tracing::debug!("read_word_32 from {:#08x}", address);
         self.read_word(address)
     }
 
     fn read_word_16(&mut self, address: u64) -> Result<u16, crate::Error> {
-        let address = self.resolve_address_32(address)?;
         tracing::debug!("read_word_16 from {:#08x}", address);
         self.read_word(address)
     }
 
     fn read_word_8(&mut self, address: u64) -> Result<u8, crate::Error> {
-        let address = self.resolve_address_32(address)?;
         tracing::debug!("read_word_8 from {:#08x}", address);
         self.read_word(address)
     }
 
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), crate::error::Error> {
-        let address = self.resolve_address_32(address)?;
         tracing::debug!("read_64 from {:#08x}", address);
 
         for (i, d) in data.iter_mut().enumerate() {
-            *d = self.read_word_64((address + (i as u32 * 8)).into())?;
+            *d = self.read_word_64(address + i as u64 * 8)?;
         }
 
         Ok(())
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), crate::Error> {
-        let address = self.resolve_address_32(address)?;
         tracing::debug!("read_32 from {:#08x}", address);
         self.read_multiple(address, data)
     }
 
     fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), crate::Error> {
-        let address = self.resolve_address_32(address)?;
         tracing::debug!("read_16 from {:#08x}", address);
         self.read_multiple(address, data)
     }
 
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), crate::Error> {
-        let address = self.resolve_address_32(address)?;
         tracing::debug!("read_8 from {:#08x}", address);
-
         self.read_multiple(address, data)
     }
 
     fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), crate::error::Error> {
-        let address = self.resolve_address_32(address)?;
-        let low_word = data as u32;
-        let high_word = (data >> 32) as u32;
-
-        self.write_word(address, low_word)?;
-        self.write_word(address + 4, high_word)
+        self.write_word(address, data as u32)?;
+        self.write_word(address + 4, (data >> 32) as u32)
     }
 
     fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), crate::Error> {
-        let address = self.resolve_address_32(address)?;
         self.write_word(address, data)
     }
 
     fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), crate::Error> {
-        let address = self.resolve_address_32(address)?;
         self.write_word(address, data)
     }
 
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), crate::Error> {
-        let address = self.resolve_address_32(address)?;
         self.write_word(address, data)
     }
 
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), crate::error::Error> {
-        let address = self.resolve_address_32(address)?;
         tracing::debug!("write_64 to {:#08x}", address);
 
         for (i, d) in data.iter().enumerate() {
-            self.write_word_64((address + (i as u32 * 8)).into(), *d)?;
+            self.write_word_64(address + i as u64 * 8, *d)?;
         }
 
         Ok(())
     }
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), crate::Error> {
-        let address = self.resolve_address_32(address)?;
         tracing::debug!("write_32 to {:#08x}", address);
-
         self.write_multiple(address, data)
     }
 
     fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), crate::Error> {
-        let address = self.resolve_address_32(address)?;
         tracing::debug!("write_16 to {:#08x}", address);
-
         self.write_multiple(address, data)
     }
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), crate::Error> {
-        let address = self.resolve_address_32(address)?;
         tracing::debug!("write_8 to {:#08x}", address);
-
         self.write_multiple(address, data)
     }
 
