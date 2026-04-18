@@ -6,9 +6,13 @@
 //! session-level operations the debugger actually needs are captured here in
 //! the [`DapBackend`] trait.
 //!
-//! A single blanket implementation is provided for [`probe_rs::Session`], so
-//! all existing code paths keep working unchanged. A second implementation
-//! backed by the probe-rs RPC client is added in a later change.
+//! Two implementations are provided:
+//!
+//! * [`probe_rs::Session`] (local, blanket impl below).
+//! * [`rpc::RpcBackend`], which forwards every operation to a probe-rs RPC
+//!   server through a [`crate::rpc::client::RpcClient`].
+
+pub mod rpc;
 
 use probe_rs::{Core, CoreType, Error, Session, Target};
 
@@ -18,7 +22,10 @@ use probe_rs::{Core, CoreType, Error, Session, Target};
 /// a single [`Core`]) goes through this trait. The DAP code is written against
 /// `SessionData<B: DapBackend>` so it can run against either a local
 /// [`Session`] or a remote RPC-backed session implementation.
-#[allow(dead_code, reason = "halted_access/as_local_session_mut are used by upcoming RPC backend")]
+#[allow(
+    dead_code,
+    reason = "halted_access/as_local_session_mut are used by upcoming RPC backend"
+)]
 pub trait DapBackend {
     /// Return the available cores on this target.
     fn list_cores(&self) -> Vec<(usize, CoreType)>;
@@ -28,24 +35,6 @@ pub trait DapBackend {
 
     /// Return a handle to the requested core.
     fn core(&mut self, core_index: usize) -> Result<Core<'_>, Error>;
-
-    /// Run the provided closure with all cores halted.
-    ///
-    /// Mirrors [`probe_rs::Session::halted_access`]. Cores that were running
-    /// prior to the call are resumed once the closure returns.
-    fn halted_access(
-        &mut self,
-        f: &mut dyn FnMut(&mut dyn DapBackend) -> Result<(), Error>,
-    ) -> Result<(), Error>;
-
-    /// Access the underlying local [`Session`], if this backend is a local one.
-    ///
-    /// Returns `None` for remote backends. This is used by code paths that are
-    /// inherently local (flashing, `FlashLoader`, etc.). Remote backends route
-    /// those operations through RPC endpoints instead.
-    fn as_local_session_mut(&mut self) -> Option<&mut Session> {
-        None
-    }
 }
 
 impl DapBackend for Session {
@@ -59,16 +48,5 @@ impl DapBackend for Session {
 
     fn core(&mut self, core_index: usize) -> Result<Core<'_>, Error> {
         Session::core(self, core_index)
-    }
-
-    fn halted_access(
-        &mut self,
-        f: &mut dyn FnMut(&mut dyn DapBackend) -> Result<(), Error>,
-    ) -> Result<(), Error> {
-        Session::halted_access(self, |session| f(session as &mut dyn DapBackend))
-    }
-
-    fn as_local_session_mut(&mut self) -> Option<&mut Session> {
-        Some(self)
     }
 }

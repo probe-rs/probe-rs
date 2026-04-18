@@ -471,6 +471,72 @@ impl CoreRegisters {
         CoreRegisters(core_registers)
     }
 
+    /// Return the register file that applies to the given [`CoreType`].
+    ///
+    /// Use this when an architecture-specific register file is needed but no
+    /// live [`crate::Core`] handle is available (for example, to drive a
+    /// remote target through an RPC-backed `Core`). `fpu_support` and
+    /// `floating_point_register_count` should reflect the actual target
+    /// configuration, as some cores select different register files based on
+    /// FPU presence or the number of FP registers.
+    pub fn for_core_type(
+        core_type: crate::CoreType,
+        fpu_support: bool,
+        floating_point_register_count: Option<usize>,
+    ) -> &'static CoreRegisters {
+        use crate::CoreType;
+        use crate::architecture::arm::core::registers::aarch32::{
+            AARCH32_CORE_REGISTERS, AARCH32_WITH_FP_16_CORE_REGISTERS,
+            AARCH32_WITH_FP_32_CORE_REGISTERS,
+        };
+        use crate::architecture::arm::core::registers::aarch64::AARCH64_CORE_REGISTERS;
+        use crate::architecture::arm::core::registers::cortex_m::{
+            CORTEX_M_CORE_REGISTERS, CORTEX_M_WITH_FP_CORE_REGISTERS,
+        };
+        use crate::architecture::riscv::registers::{
+            RISCV_CORE_REGISTERS, RISCV_WITH_FP_CORE_REGISTERS,
+        };
+        use crate::architecture::riscv::registers64::{
+            RISCV64_CORE_REGISTERS, RISCV64_WITH_FP_CORE_REGISTERS,
+        };
+        use crate::architecture::xtensa::registers::XTENSA_CORE_REGISTERS;
+
+        match core_type {
+            CoreType::Armv6m => &CORTEX_M_CORE_REGISTERS,
+            CoreType::Armv7a | CoreType::Armv7r => match floating_point_register_count {
+                Some(16) => &AARCH32_WITH_FP_16_CORE_REGISTERS,
+                Some(32) => &AARCH32_WITH_FP_32_CORE_REGISTERS,
+                _ => &AARCH32_CORE_REGISTERS,
+            },
+            CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
+                if fpu_support {
+                    &CORTEX_M_WITH_FP_CORE_REGISTERS
+                } else {
+                    &CORTEX_M_CORE_REGISTERS
+                }
+            }
+            // TODO: This can be wrong if the CPU is 32 bit. For lack of better
+            // design at the time of writing this code this differentiation
+            // has been omitted.
+            CoreType::Armv8a => &AARCH64_CORE_REGISTERS,
+            CoreType::Riscv => {
+                if fpu_support {
+                    &RISCV_WITH_FP_CORE_REGISTERS
+                } else {
+                    &RISCV_CORE_REGISTERS
+                }
+            }
+            CoreType::Riscv64 => {
+                if fpu_support {
+                    &RISCV64_WITH_FP_CORE_REGISTERS
+                } else {
+                    &RISCV64_CORE_REGISTERS
+                }
+            }
+            CoreType::Xtensa => &XTENSA_CORE_REGISTERS,
+        }
+    }
+
     /// Returns an iterator over the descriptions of all the non-FPU registers of this core.
     pub fn core_registers(&self) -> impl Iterator<Item = &CoreRegister> {
         self.0

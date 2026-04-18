@@ -683,6 +683,20 @@ pub struct CoreInterface {
     client: RpcClient,
 }
 
+impl CoreInterface {
+    /// Create a client for a specific core on an attached session.
+    ///
+    /// This constructor is used by the RPC-backed DAP backend, which needs
+    /// to synthesize a core client on every access.
+    pub(crate) fn new_for_backend(client: RpcClient, sessid: Key<Session>, core: u32) -> Self {
+        Self {
+            sessid,
+            core,
+            client,
+        }
+    }
+}
+
 #[allow(
     dead_code,
     reason = "Core control methods are consumed by the upcoming RPC-backed DAP backend."
