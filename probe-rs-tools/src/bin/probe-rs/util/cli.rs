@@ -997,7 +997,7 @@ async fn display_stack_trace(
     for StackTrace { core, frames } in stack_trace.cores.iter() {
         println!("Core {core}");
         for (i, frame) in frames.iter().enumerate() {
-            println!("    Frame {i}: {}", colorize(frame));
+            println!("    Frame {i}: {}", format_stack_frame(frame, None));
         }
         if frames.len() >= stack_frame_limit as usize {
             println!("Use `--stack-frame-limit` to increase the number of frames displayed.");
@@ -1007,25 +1007,37 @@ async fn display_stack_trace(
     Ok(())
 }
 
-fn colorize(frame: &StackTraceFrame) -> String {
+/// Formats a single stack frame for display.
+///
+/// `colorize` controls ANSI styling: `None` uses the `PROBE_RS_COLOR` default,
+/// `Some(b)` forces a specific choice (used by DAP handlers that must honor the
+/// remote client's `supportsAnsiStyling` capability instead of the server env).
+pub(crate) fn format_stack_frame(frame: &StackTraceFrame, colorize: Option<bool>) -> String {
     use std::fmt::Write as _;
+
+    let color = colorize.unwrap_or_else(probe_rs_color_enabled);
 
     let mut s = String::new();
     write!(
         &mut s,
         "{} @ {}",
-        StackTraceFunction::new(frame.function_name.as_str()),
-        StackTraceAddress::new(format!("{:#x}", frame.program_counter)),
+        StackTraceFunction::new(frame.function_name.as_str()).colorize(color),
+        StackTraceAddress::new(format!("{:#x}", frame.program_counter)).colorize(color),
     )
     .unwrap();
     if frame.is_inlined {
-        write!(&mut s, " {}", StackTraceInlineMarker::new("inline")).unwrap();
+        write!(
+            &mut s,
+            " {}",
+            StackTraceInlineMarker::new("inline").colorize(color)
+        )
+        .unwrap();
     }
     if let Some(loc) = &frame.location {
         write!(
             &mut s,
-            "\n       {}",
-            StackTraceSourceLocation::new(format!("{loc}"))
+            "\n        {}",
+            StackTraceSourceLocation::new(format!("{loc}")).colorize(color)
         )
         .unwrap();
     }
@@ -1242,7 +1254,7 @@ pub(crate) fn probe_rs_color_enabled() -> bool {
 /// `probe_rs_color_enabled()` (i.e. the `PROBE_RS_COLOR` env var) when rendering.
 /// Call sites with a different rendering context — e.g. a DAP handler whose
 /// output is interpreted by a remote client — can override that decision with
-/// `.enabled(bool)` without having to know about `PROBE_RS_COLOR` at all.
+/// `.colorize(bool)` without having to know about `PROBE_RS_COLOR` at all.
 macro_rules! styled {
     ($name:ident($var:ident) => $style:expr) => {
         pub struct $name<S: AsRef<str>> {

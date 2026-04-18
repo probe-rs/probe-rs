@@ -325,10 +325,8 @@ impl Cmd {
         // Prompt 0 is the default debug CLI prompt.
         let mut current_prompt = debug_client.current_prompt;
         let (mut rl, writer) =
-            Readline::new(
-                Prompt::new(format!("{}> ", debug_client.current_prompt())).to_string(),
-            )
-            .unwrap();
+            Readline::new(Prompt::new(format!("{}> ", debug_client.current_prompt())).to_string())
+                .unwrap();
         debug_client.writer = Some(writer);
 
         let readline = async {
