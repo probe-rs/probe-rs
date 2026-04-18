@@ -1,0 +1,1 @@
+Added the ability to bypass RAM flash algorithms and flash from the host.
