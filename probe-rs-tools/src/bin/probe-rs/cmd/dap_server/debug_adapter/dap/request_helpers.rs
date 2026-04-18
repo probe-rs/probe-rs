@@ -95,11 +95,9 @@ pub(crate) fn disassemble_target_memory(
     memory_reference: u64,
     instruction_count: i64,
 ) -> Result<Vec<DisassembledInstruction>, DebuggerError> {
-    let Some(ref debug_info) = target_core.core_data.debug_info else {
-        return Err(DebuggerError::Other(anyhow!(
-            "Cannot disassemble target memory without debug information."
-        )));
-    };
+    use probe_rs::CoreInterface;
+
+    let debug_info = target_core.core_data.debug_info.as_ref();
 
     let instruction_set = target_core.core.instruction_set()?;
     match instruction_set {
@@ -151,7 +149,8 @@ pub(crate) fn disassemble_target_memory(
         // length instructions are not necessarily word-aligned, i.e.
         // in the case of ARM Thumbv2, instructions are embedded into
         // a 16-bit halfword stream.
-        if let Some(source_location) = debug_info.get_source_location(start_from_address)
+        if let Some(info) = debug_info
+            && let Some(source_location) = info.get_source_location(start_from_address)
             && let Some(source_address) = source_location.address
         {
             start_from_address = source_address;
@@ -169,7 +168,10 @@ pub(crate) fn disassemble_target_memory(
     let mut disassembled_instructions: Vec<DisassembledInstruction> = vec![];
     let mut maybe_previous_source_location = None;
     let mut maybe_reference_instruction_index = None;
-    let convert_endianness = debug_info.endianness() == RunTimeEndian::Big;
+    let convert_endianness = match debug_info {
+        Some(di) => di.endianness() == RunTimeEndian::Big,
+        None => target_core.core.endianness()? == probe_rs::Endian::Big,
+    };
 
     let mut instruction_pointer = start_from_address;
     'instruction_loop: while instruction_pointer < read_until_address {
@@ -297,8 +299,9 @@ pub(crate) fn disassemble_target_memory(
                 let mut location = None;
                 let mut line = None;
                 let mut column = None;
-                if let Some(current_source_location) =
-                    debug_info.get_source_location(instruction.address())
+                if let Some(di) = debug_info
+                    && let Some(current_source_location) =
+                        di.get_source_location(instruction.address())
                 {
                     if maybe_previous_source_location.is_none()
                         || maybe_previous_source_location.is_some_and(|previous_source_location| {
