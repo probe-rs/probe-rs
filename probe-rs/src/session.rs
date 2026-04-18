@@ -386,19 +386,20 @@ impl Session {
         interface: Box<dyn ArmDebugInterface + 'static>,
     ) -> Result<ArchitectureInterface, Error> {
         use probe_rs_target::Architecture;
-        let mut riscv_mem_ap_cores: Vec<Option<(FullyQualifiedApAddress, RiscvDebugInterfaceState)>> =
-            target
-                .cores
-                .iter()
-                .map(|core| {
-                    if core.core_type.architecture() == Architecture::Riscv {
-                        core.memory_ap()
-                            .map(|ap| (ap, RiscvDebugInterfaceState::new(Box::new(()))))
-                    } else {
-                        None
-                    }
-                })
-                .collect();
+        let mut riscv_mem_ap_cores: Vec<
+            Option<(FullyQualifiedApAddress, RiscvDebugInterfaceState)>,
+        > = target
+            .cores
+            .iter()
+            .map(|core| {
+                if core.core_type.architecture() == Architecture::Riscv {
+                    core.memory_ap()
+                        .map(|ap| (ap, RiscvDebugInterfaceState::new(Box::new(()))))
+                } else {
+                    None
+                }
+            })
+            .collect();
         let has_riscv_mem_ap = riscv_mem_ap_cores.iter().any(Option::is_some);
         if has_riscv_mem_ap {
             let mut arm = interface;
@@ -1010,8 +1011,12 @@ impl Session {
                 match session.core(core) {
                     Ok(mut core) => core.clear_all_hw_breakpoints(),
                     Err(Error::CoreDisabled(_)) => Ok(()),
-                    Err(Error::Riscv(crate::architecture::riscv::communication_interface::RiscvError::Timeout)) => {
-                        tracing::warn!("Core {core} attach or breakpoint clear timed out, skipping");
+                    Err(Error::Riscv(
+                        crate::architecture::riscv::communication_interface::RiscvError::Timeout,
+                    )) => {
+                        tracing::warn!(
+                            "Core {core} attach or breakpoint clear timed out, skipping"
+                        );
                         Ok(())
                     }
                     Err(err) => Err(err),

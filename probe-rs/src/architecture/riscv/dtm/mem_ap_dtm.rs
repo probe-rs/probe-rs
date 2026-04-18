@@ -1,7 +1,7 @@
 //! Memory-mapped DTM (Debug Transport Module) for RISC-V.
 //!
 //! When the RISC-V debug module is behind a CoreSight memory access port (for example RP2350),
-//! the chip exposes the DMI (Debug Module Interface) registers as offsets into the memory AP's 
+//! the chip exposes the DMI (Debug Module Interface) registers as offsets into the memory AP's
 //! address space.
 //! Each DMI register occupies 4 bytes, so address = register * 4
 

@@ -834,10 +834,7 @@ fn cpu_info_tree(scs: &mut Scs) -> anyhow::Result<ComponentTreeNode> {
     Ok(tree)
 }
 
-async fn show_riscv_info(
-    ctx: &mut RpcContext,
-    idcode: Option<u32>,
-) -> anyhow::Result<()> {
+async fn show_riscv_info(ctx: &mut RpcContext, idcode: Option<u32>) -> anyhow::Result<()> {
     ctx.publish::<TargetInfoDataTopic>(
         VarSeq::Seq2(0),
         &InfoEvent::Idcode {
