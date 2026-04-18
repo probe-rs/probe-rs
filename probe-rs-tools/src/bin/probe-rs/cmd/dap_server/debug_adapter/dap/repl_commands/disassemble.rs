@@ -2,7 +2,7 @@ use crate::cmd::dap_server::{
     DebuggerError,
     debug_adapter::{
         dap::{
-            dap_types::{/*DisassembleResponseBody,*/ EvaluateArguments, MemoryAddress},
+            dap_types::{EvaluateArguments, MemoryAddress},
             repl_commands::{DebugAdapter, EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand},
             repl_types::ReplCommandArgs,
         },
@@ -15,7 +15,7 @@ use linkme::distributed_slice;
 #[distributed_slice(REPL_COMMANDS)]
 static DISASSEMBLE: ReplCommand = ReplCommand {
     command: "disassemble",
-    help_text: "Disassembles the specified instruction count, beginning at the specified address.",
+    help_text: "Disassembles the specified instruction count, beginning at the specified address.  Address forms can be a literal number, with or without a * prefix, or $<register> where <register> is any of the target core's register names.  For example *0x1000 or $r15 or $pc.",
     requires_target_halted: true,
     sub_commands: &[],
     args: &[
