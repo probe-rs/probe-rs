@@ -339,8 +339,12 @@ impl Session {
                 // Wait for the core to be halted. The core should be
                 // halted because we set the `reset_catch` earlier, which
                 // means that the core should stop when coming out of reset.
+                // Non-ARM cores (e.g. RISC-V over mem-AP) did not use reset catch; skip this path.
 
                 for core_id in 0..session.cores.len() {
+                    if !session.cores[core_id].is_arm_core() {
+                        continue;
+                    }
                     let mut core = session
                         .core(core_id)
                         .inspect_err(|e| tracing::error!("Unable to get core {core_id}: {e}"))?;
