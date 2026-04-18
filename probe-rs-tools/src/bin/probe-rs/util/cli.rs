@@ -25,6 +25,7 @@ use tokio_util::sync::CancellationToken;
 use crate::cmd::run::{EmbeddedTestElfInfo, MonitoringOptions};
 use crate::rpc::Key;
 use crate::rpc::functions::monitor::{ChannelInfo, MonitorExitReason};
+use crate::rpc::functions::stack_trace::StackTraceFrame;
 use crate::rpc::utils::run_loop::VectorCatchConfig;
 use crate::rpc::utils::semihosting::SemihostingOptions;
 use crate::util::pwr::power_reset;
@@ -996,7 +997,7 @@ async fn display_stack_trace(
     for StackTrace { core, frames } in stack_trace.cores.iter() {
         println!("Core {core}");
         for (i, frame) in frames.iter().enumerate() {
-            println!("    Frame {i}: {frame}");
+            println!("    Frame {i}: {}", colorize(frame));
         }
         if frames.len() >= stack_frame_limit as usize {
             println!("Use `--stack-frame-limit` to increase the number of frames displayed.");
@@ -1004,6 +1005,31 @@ async fn display_stack_trace(
     }
 
     Ok(())
+}
+
+fn colorize(frame: &StackTraceFrame) -> String {
+    use std::fmt::Write as _;
+
+    let mut s = String::new();
+    write!(
+        &mut s,
+        "{} @ {}",
+        StackTraceFunction(frame.function_name.as_str()),
+        StackTraceAddress(format!("{:#x}", frame.program_counter)),
+    )
+    .unwrap();
+    if frame.is_inlined {
+        write!(&mut s, " {}", StackTraceInlineMarker("inline")).unwrap();
+    }
+    if let Some(loc) = &frame.location {
+        write!(
+            &mut s,
+            "\n       {}",
+            StackTraceSourceLocation(format!("{loc}"))
+        )
+        .unwrap();
+    }
+    s
 }
 
 /// Runs a future until completion, running another future when Ctrl+C is received.
@@ -1203,16 +1229,20 @@ impl Channel {
     }
 }
 
+fn probe_rs_color_enabled() -> bool {
+    matches!(
+        std::env::var("PROBE_RS_COLOR").as_deref(),
+        Err(VarError::NotPresent) | Ok("true" | "1" | "yes" | "on")
+    )
+}
+
 macro_rules! styled {
     ($name:ident($var:ident) => $style:expr) => {
         pub struct $name<S: AsRef<str>>(pub S);
 
         impl<S: AsRef<str>> Display for $name<S> {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                if matches!(
-                    std::env::var("PROBE_RS_COLOR").as_deref(),
-                    Err(VarError::NotPresent) | Ok("true" | "1" | "yes" | "on")
-                ) {
+                if probe_rs_color_enabled() {
                     let $var = self.0.as_ref();
                     write!(f, "{}", $style)
                 } else {
@@ -1223,4 +1253,8 @@ macro_rules! styled {
     };
 }
 
+styled!(StackTraceFunction(name) => name.bold().cyan());
+styled!(StackTraceAddress(addr) => addr.yellow());
+styled!(StackTraceInlineMarker(marker) => marker.italic().dark_yellow());
+styled!(StackTraceSourceLocation(loc) => loc.dim().grey());
 styled!(Prompt(prompt) => prompt.bold().dark_green());
