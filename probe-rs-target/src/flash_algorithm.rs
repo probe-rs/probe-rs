@@ -20,6 +20,24 @@ pub enum TransferEncoding {
     Miniz,
 }
 
+/// The type of flash loader to use for programming.
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[serde(rename_all = "snake_case")]
+pub enum FlashLoaderType {
+    /// Traditional RAM-based flash algorithm.
+    ///
+    /// Flash algorithm code is loaded into target RAM and executed by the target CPU.
+    /// This is the default and most common approach.
+    #[default]
+    RamBased,
+
+    /// Host-side flash programming via debug interface.
+    ///
+    /// Flash operations are performed by the host PC via debug interface commands
+    /// The target's debug sequence must implement `DebugFlashSequence` for this to work.
+    HostSide,
+}
+
 /// The raw flash algorithm is the description of a flash algorithm,
 /// and is usually read from a target description file.
 ///
@@ -37,8 +55,11 @@ pub struct RawFlashAlgorithm {
     #[serde(default)]
     pub default: bool,
     /// List of 32-bit words containing the code for the algo. If `load_address` is not specified, the code must be position independent (PIC).
+    ///
+    /// Not required when `flash_loader_type` is `HostSide`.
     #[serde(deserialize_with = "deserialize")]
     #[serde(serialize_with = "serialize")]
+    #[serde(default)]
     pub instructions: Vec<u8>,
     /// Address to load algo into RAM. Optional.
     #[serde(serialize_with = "hex_option")]
@@ -53,11 +74,15 @@ pub struct RawFlashAlgorithm {
     #[serde(serialize_with = "hex_option")]
     pub pc_uninit: Option<u64>,
     /// Address of the `ProgramPage()` entry point.
-    #[serde(serialize_with = "hex_u_int")]
-    pub pc_program_page: u64,
+    ///
+    /// Not required when `flash_loader_type` is `HostSide`.
+    #[serde(serialize_with = "hex_option")]
+    pub pc_program_page: Option<u64>,
     /// Address of the `EraseSector()` entry point.
-    #[serde(serialize_with = "hex_u_int")]
-    pub pc_erase_sector: u64,
+    ///
+    /// Not required when `flash_loader_type` is `HostSide`.
+    #[serde(serialize_with = "hex_option")]
+    pub pc_erase_sector: Option<u64>,
     /// Address of the `EraseAll()` entry point. Optional.
     #[serde(serialize_with = "hex_option")]
     pub pc_erase_all: Option<u64>,
@@ -86,8 +111,10 @@ pub struct RawFlashAlgorithm {
     )]
     pub vendor_functions: IndexMap<String, u64>,
     /// The offset from the start of RAM to the data section.
-    #[serde(serialize_with = "hex_u_int")]
-    pub data_section_offset: u64,
+    ///
+    /// Not required when `flash_loader_type` is `HostSide`.
+    #[serde(serialize_with = "hex_option")]
+    pub data_section_offset: Option<u64>,
     /// Location of the RTT control block in RAM.
     ///
     /// If this is set, the flash algorithm supports RTT output
@@ -122,6 +149,13 @@ pub struct RawFlashAlgorithm {
     /// `true` if the instructions are saved in Big Endian format
     #[serde(default)]
     pub big_endian: bool,
+
+    /// The type of flash loader to use.
+    ///
+    /// Defaults to `RamBased` for backward compatibility. Set to `HostSide` for
+    /// devices that require host-side flash programming via debug interface commands.
+    #[serde(default)]
+    pub flash_loader_type: FlashLoaderType,
 }
 
 impl Default for RawFlashAlgorithm {
