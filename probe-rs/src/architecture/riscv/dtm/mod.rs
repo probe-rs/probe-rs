@@ -10,7 +10,7 @@ use std::fmt;
 use std::time::Duration;
 
 /// Debug Transport Module (DTM) access abstraction
-pub trait DtmAccess: Send + fmt::Debug {
+pub trait DtmAccess: fmt::Debug {
     /// Perform interface-specific initialisation upon attaching.
     fn init(&mut self) -> Result<(), RiscvError> {
         Ok(())

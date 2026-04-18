@@ -18,7 +18,6 @@ use probe_rs::{
             },
             sequences::DefaultArmSequence,
         },
-        riscv::communication_interface::RiscvCommunicationInterface,
         xtensa::communication_interface::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState,
         },
@@ -410,11 +409,13 @@ async fn try_read_riscv_info(
 ) -> Result<(), anyhow::Error> {
     if probe.has_riscv_interface() && protocol == WireProtocol::Jtag {
         tracing::debug!("Trying to show RISC-V chip information");
-        let factory = probe.try_get_riscv_interface_builder()?;
-
-        let mut state = factory.create_state();
-        let mut interface = factory.attach(&mut state)?;
-        show_riscv_info(ctx, &mut interface).await?;
+        let idcode = {
+            let factory = probe.try_get_riscv_interface_builder()?;
+            let mut state = factory.create_state();
+            let mut interface = factory.attach(&mut state)?;
+            interface.read_idcode()?
+        };
+        show_riscv_info(ctx, idcode).await?;
     } else if protocol == WireProtocol::Swd {
         ctx.publish::<TargetInfoDataTopic>(
             VarSeq::Seq2(0),
@@ -835,10 +836,8 @@ fn cpu_info_tree(scs: &mut Scs) -> anyhow::Result<ComponentTreeNode> {
 
 async fn show_riscv_info(
     ctx: &mut RpcContext,
-    interface: &mut RiscvCommunicationInterface<'_>,
+    idcode: Option<u32>,
 ) -> anyhow::Result<()> {
-    let idcode = interface.read_idcode()?;
-
     ctx.publish::<TargetInfoDataTopic>(
         VarSeq::Seq2(0),
         &InfoEvent::Idcode {
