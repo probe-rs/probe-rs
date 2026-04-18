@@ -208,9 +208,6 @@ pub enum FlashError {
     /// No core can access this RAM region.
     #[error("No core can access the RAM region {0:?}.")]
     NoRamCoreAccess(RamRegion),
-    /// The register value supplied for this flash algorithm is out of the supported range.
-    #[error("The register value {0:#010x} is out of the supported range.")]
-    RegisterValueNotSupported(u64),
     /// Stack overflow while flashing.
     #[error("Stack overflow detected during {operation}.")]
     StackOverflowDetected {

@@ -218,6 +218,7 @@ impl FlashAlgorithm {
             Self::algorithm_header(CoreType::Armv8m, Endian::Big),
             Self::algorithm_header(CoreType::Armv8m, Endian::Little),
             Self::algorithm_header(CoreType::Riscv, Endian::Little),
+            Self::algorithm_header(CoreType::Riscv64, Endian::Little),
             Self::algorithm_header(CoreType::Xtensa, Endian::Big),
             Self::algorithm_header(CoreType::Xtensa, Endian::Little),
         ];
@@ -241,7 +242,7 @@ impl FlashAlgorithm {
                 Endian::Little => &Self::ARM_FLASH_BLOB_HEADER_HLT_LE,
                 Endian::Big => &Self::ARM_FLASH_BLOB_HEADER_HLT_BE,
             },
-            CoreType::Riscv => &Self::RISCV_FLASH_BLOB_HEADER,
+            CoreType::Riscv | CoreType::Riscv64 => &Self::RISCV_FLASH_BLOB_HEADER,
             CoreType::Xtensa => &Self::XTENSA_FLASH_BLOB_HEADER,
         }
     }
