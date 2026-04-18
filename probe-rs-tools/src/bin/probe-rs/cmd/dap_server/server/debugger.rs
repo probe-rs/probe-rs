@@ -641,14 +641,14 @@ impl Debugger {
             .unwrap_or_default();
 
         let result = match build_loader(
-            &mut session_data.session,
+            &mut session_data.backend,
             path_to_elf,
             config.flashing_config.format_options.clone(),
             None,
         ) {
             Ok(loader) => {
                 let do_flashing = if config.flashing_config.verify_before_flashing {
-                    match loader.verify(&mut session_data.session, &mut download_options.progress) {
+                    match loader.verify(&mut session_data.backend, &mut download_options.progress) {
                         Ok(_) => false,
                         Err(FlashError::Verify) => true,
                         Err(other) => {
@@ -665,7 +665,7 @@ impl Debugger {
 
                 if do_flashing {
                     loader
-                        .commit(&mut session_data.session, download_options)
+                        .commit(&mut session_data.backend, download_options)
                         .map_err(FileDownloadError::Flash)
                 } else {
                     drop(download_options);

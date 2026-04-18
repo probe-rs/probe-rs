@@ -7,6 +7,7 @@ use crate::{
     cmd::{
         dap_server::{
             DebuggerError,
+            backend::DapBackend,
             debug_adapter::{
                 dap::{
                     adapter::DebugAdapter,
@@ -65,8 +66,12 @@ pub struct ActiveBreakpoint {
 /// SessionData is designed to be similar to [probe_rs::Session], in as much that it provides handles to the [CoreHandle] instances for each of the available [probe_rs::Core] involved in the debug session.
 /// To get access to the [CoreHandle] for a specific [probe_rs::Core], the
 /// TODO: Adjust [SessionConfig] to allow multiple cores (and if appropriate, their binaries) to be specified.
-pub(crate) struct SessionData {
-    pub(crate) session: Session,
+///
+/// Generic over the [`DapBackend`] that provides access to the target. The default
+/// [`Session`] backend is the historical local-probe implementation; alternative
+/// backends (e.g. a probe-rs RPC client) plug in here.
+pub(crate) struct SessionData<B: DapBackend = Session> {
+    pub(crate) backend: B,
     /// [SessionData] will manage one [CoreData] per target core, that is also present in [SessionConfig::core_configs]
     pub(crate) core_data: Vec<CoreData>,
 
@@ -76,7 +81,7 @@ pub(crate) struct SessionData {
     timestamp_offset: UtcOffset,
 }
 
-impl SessionData {
+impl SessionData<Session> {
     pub(crate) fn new(
         registry: &mut Registry,
         lister: &Lister,
@@ -234,7 +239,7 @@ impl SessionData {
         }
 
         let mut this = SessionData {
-            session: target_session,
+            backend: target_session,
             core_data: core_data_vec,
             timestamp_offset,
         };
@@ -243,14 +248,16 @@ impl SessionData {
 
         Ok(this)
     }
+}
 
+impl<B: DapBackend> SessionData<B> {
     pub(crate) fn load_rtt_location(
         &mut self,
         config: &configuration::SessionConfig,
     ) -> Result<(), DebuggerError> {
         // Filter `CoreConfig` entries based on those that match an actual core on the target probe.
         let valid_core_configs = config.core_configs.iter().filter(|&core_config| {
-            self.session
+            self.backend
                 .list_cores()
                 .iter()
                 .any(|(target_core_index, _)| *target_core_index == core_config.core_index)
@@ -260,7 +267,7 @@ impl SessionData {
             .flashing_config
             .format_options
             .binary_format
-            .resolve(self.session.target());
+            .resolve(self.backend.target());
 
         for core_configuration in valid_core_configs {
             let Some(core_data) = self
@@ -299,7 +306,7 @@ impl SessionData {
     /// startup code will reinitialize the block from `.data`.
     pub(crate) fn clear_rtt_blocks(&mut self) -> Result<(), DebuggerError> {
         for core_data in self.core_data.iter() {
-            let mut core = self.session.core(core_data.core_index)?;
+            let mut core = self.backend.core(core_data.core_index)?;
             Rtt::clear_control_block(&mut core, &core_data.rtt_scan_ranges)
                 .map_err(|e| anyhow::anyhow!("Failed to clear RTT control block: {e}"))?;
         }
@@ -331,7 +338,7 @@ impl SessionData {
         core_index: usize,
     ) -> Result<CoreHandle<'_>, DebuggerError> {
         if let (Ok(target_core), Some(core_data)) = (
-            self.session.core(core_index),
+            self.backend.core(core_index),
             self.core_data
                 .iter_mut()
                 .find(|core_data| core_data.core_index == core_index),
