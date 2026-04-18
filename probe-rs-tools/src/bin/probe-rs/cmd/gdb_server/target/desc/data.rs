@@ -20,6 +20,8 @@ pub enum GdbRegisterSource {
         high: RegisterId,
         word_size: usize,
     },
+    /// Register exists in GDB's layout but cannot be read from the target
+    Unavailable,
 }
 
 /// Information about a register sent to GDB
@@ -81,8 +83,8 @@ impl TargetDescription {
     }
 
     /// Get a register by GDB number
-    pub fn get_register(&self, num: usize) -> &GdbRegister {
-        &self.regs[num]
+    pub fn get_register(&self, num: usize) -> Option<&GdbRegister> {
+        self.regs.get(num)
     }
 
     /// Get all registers in the main feature group
@@ -155,6 +157,18 @@ impl TargetDescription {
             size,
             _type: size_to_type(size),
             source: GdbRegisterSource::SingleRegister(id),
+        });
+
+        self.features.last_mut().unwrap().reg_count += 1;
+    }
+
+    /// Add a placeholder for a register that cannot be read from the target
+    pub fn add_unavailable_register(&mut self, name: impl Into<String>, size: usize) {
+        self.regs.push(GdbRegister {
+            name: name.into(),
+            size,
+            _type: size_to_type(size),
+            source: GdbRegisterSource::Unavailable,
         });
 
         self.features.last_mut().unwrap().reg_count += 1;
@@ -351,6 +365,163 @@ fn build_cortex_m_registers(desc: &mut TargetDescription, regs: &CoreRegisters) 
     desc.update_register_type("PC", "code_ptr");
 }
 
-fn build_xtensa_registers(_desc: &mut TargetDescription, _regs: &CoreRegisters) {
-    todo!()
+fn build_xtensa_registers(desc: &mut TargetDescription, _regs: &CoreRegisters) {
+    // Xtensa GDB uses a compiled-in register layout rather than XML target
+    // description features. We must match the exact register order and count
+    // that xtensa-*-elf-gdb expects. This layout is for ESP32-class cores
+    // (contiguous register format, 64 address registers).
+    //
+    // RegisterId encoding used by probe-rs for Xtensa:
+    //   CPU register N:     RegisterId(N)         where N = 0..15
+    //   Special register N: RegisterId(0x0100 | N)
+    //   Current PC:         RegisterId(0xFF00)
+    //   Current PS:         RegisterId(0xFF01)
+    let cpu = |n: u16| -> RegisterId { RegisterId(n) };
+    let sr = |n: u16| -> RegisterId { RegisterId(0x0100 | n) };
+    let pc_id = RegisterId(0xFF00);
+    let ps_id = RegisterId(0xFF01);
+
+    desc.add_gdb_feature("org.gnu.gdb.xtensa.core");
+
+    // Register 0: pc
+    desc.add_register_from_details("pc", 32, pc_id);
+
+    // Registers 1-16: ar0-ar15 (current window, mapped from CPU a0-a15)
+    for i in 0..16u16 {
+        desc.add_register_from_details(format!("ar{i}"), 32, cpu(i));
+    }
+
+    // Registers 17-64: ar16-ar63 (physical regs outside current window)
+    for i in 16..64 {
+        desc.add_unavailable_register(format!("ar{i}"), 32);
+    }
+
+    // Registers 65-68: loop and shift
+    desc.add_register_from_details("lbeg", 32, sr(0));
+    desc.add_register_from_details("lend", 32, sr(1));
+    desc.add_register_from_details("lcount", 32, sr(2));
+    desc.add_register_from_details("sar", 32, sr(3));
+
+    // Registers 69-70: window control
+    // We report windowbase as 0 because we only have the current window's
+    // registers (placed at ar0-ar15). Reporting the real windowbase would
+    // cause GDB to look at ar[windowbase*4..] which are unavailable.
+    desc.add_unavailable_register("windowbase", 32);
+    desc.add_register_from_details("windowstart", 32, sr(73));
+
+    // Registers 71-72: config IDs (read-only silicon config, not available)
+    desc.add_unavailable_register("configid0", 32);
+    desc.add_unavailable_register("configid1", 32);
+
+    // Register 73: processor status
+    desc.add_register_from_details("ps", 32, ps_id);
+
+    // Register 74: thread pointer (user register, not a standard SR)
+    desc.add_unavailable_register("threadptr", 32);
+
+    // Register 75: boolean register file
+    desc.add_register_from_details("br", 32, sr(4));
+
+    // Register 76: conditional store compare
+    desc.add_register_from_details("scompare1", 32, sr(12));
+
+    // Registers 77-78: MAC16 accumulator
+    desc.add_register_from_details("acclo", 32, sr(16));
+    desc.add_register_from_details("acchi", 32, sr(17));
+
+    // Registers 79-82: MAC16 operand registers
+    desc.add_register_from_details("m0", 32, sr(32));
+    desc.add_register_from_details("m1", 32, sr(33));
+    desc.add_register_from_details("m2", 32, sr(34));
+    desc.add_register_from_details("m3", 32, sr(35));
+
+    // Register 83: GPIO/trace state (Espressif-specific)
+    desc.add_unavailable_register("expstate", 32);
+
+    // Registers 84-86: double-precision FPU state
+    desc.add_unavailable_register("f64r_lo", 32);
+    desc.add_unavailable_register("f64r_hi", 32);
+    desc.add_unavailable_register("f64s", 32);
+
+    // Registers 87-102: single-precision FPU registers
+    for i in 0..16 {
+        desc.add_unavailable_register(format!("f{i}"), 32);
+    }
+
+    // Registers 103-104: FPU control/status
+    desc.add_unavailable_register("fcr", 32);
+    desc.add_unavailable_register("fsr", 32);
+
+    // Register 105: memory management ID
+    desc.add_unavailable_register("mmid", 32);
+
+    // Registers 106-109: debug/memory control
+    desc.add_register_from_details("ibreakenable", 32, sr(96));
+    desc.add_register_from_details("memctl", 32, sr(97));
+    desc.add_register_from_details("atomctl", 32, sr(99));
+    desc.add_register_from_details("ddr", 32, sr(104));
+
+    // Registers 110-111: instruction breakpoint addresses
+    desc.add_register_from_details("ibreaka0", 32, sr(128));
+    desc.add_register_from_details("ibreaka1", 32, sr(129));
+
+    // Registers 112-115: data breakpoint addresses and control
+    desc.add_register_from_details("dbreaka0", 32, sr(144));
+    desc.add_register_from_details("dbreaka1", 32, sr(145));
+    desc.add_register_from_details("dbreakc0", 32, sr(160));
+    desc.add_register_from_details("dbreakc1", 32, sr(161));
+
+    // Registers 116-122: exception program counters
+    for i in 1..=7u16 {
+        desc.add_register_from_details(format!("epc{i}"), 32, sr(176 + i));
+    }
+
+    // Register 123: double exception program counter
+    desc.add_register_from_details("depc", 32, sr(192));
+
+    // Registers 124-129: exception processor status
+    for i in 2..=7u16 {
+        desc.add_register_from_details(format!("eps{i}"), 32, sr(192 + i));
+    }
+
+    // Registers 130-136: exception save registers
+    for i in 1..=7u16 {
+        desc.add_register_from_details(format!("excsave{i}"), 32, sr(208 + i));
+    }
+
+    // Register 137: coprocessor enable
+    desc.add_register_from_details("cpenable", 32, sr(224));
+
+    // Registers 138-139: interrupt status (both read SR 226)
+    desc.add_register_from_details("interrupt", 32, sr(226));
+    desc.add_register_from_details("intset", 32, sr(226));
+
+    // Register 140: interrupt clear (write-only)
+    desc.add_unavailable_register("intclear", 32);
+
+    // Register 141: interrupt enable
+    desc.add_register_from_details("intenable", 32, sr(228));
+
+    // Registers 142-149: exception/debug state
+    desc.add_register_from_details("vecbase", 32, sr(231));
+    desc.add_register_from_details("exccause", 32, sr(232));
+    desc.add_register_from_details("debugcause", 32, sr(233));
+    desc.add_register_from_details("ccount", 32, sr(234));
+    desc.add_register_from_details("prid", 32, sr(235));
+    desc.add_register_from_details("icount", 32, sr(236));
+    desc.add_register_from_details("icountlevel", 32, sr(237));
+    desc.add_register_from_details("excvaddr", 32, sr(238));
+
+    // Registers 150-152: cycle comparators
+    desc.add_register_from_details("ccompare0", 32, sr(240));
+    desc.add_register_from_details("ccompare1", 32, sr(241));
+    desc.add_register_from_details("ccompare2", 32, sr(242));
+
+    // Registers 153-156: miscellaneous
+    desc.add_register_from_details("misc0", 32, sr(244));
+    desc.add_register_from_details("misc1", 32, sr(245));
+    desc.add_register_from_details("misc2", 32, sr(246));
+    desc.add_register_from_details("misc3", 32, sr(247));
+
+    desc.update_register_type("pc", "code_ptr");
 }

@@ -1,7 +1,6 @@
 pub(crate) fn copy_to_buf(data: &[u8], buf: &mut [u8]) -> usize {
-    let len = data.len();
-    let buf = &mut buf[..len];
-    buf.copy_from_slice(data);
+    let len = data.len().min(buf.len());
+    buf[..len].copy_from_slice(&data[..len]);
     len
 }
 
