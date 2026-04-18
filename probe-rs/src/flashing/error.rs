@@ -214,4 +214,16 @@ pub enum FlashError {
         /// The operation that caused the stack overflow.
         operation: &'static str,
     },
+    /// A required field for a RAM-based flash algorithm is missing.
+    ///
+    /// Fields such as `pc_program_page`, `pc_erase_sector`, `data_section_offset`, and
+    /// `instructions` are mandatory when `flash_loader_type` is `RamBased` but may be
+    /// omitted for `HostSide` algorithms.
+    #[error("Flash algorithm '{name}' is missing required field '{field}' for a RAM-based loader.")]
+    MissingRamAlgorithmField {
+        /// The name of the flash algorithm.
+        name: String,
+        /// The name of the missing field.
+        field: &'static str,
+    },
 }
