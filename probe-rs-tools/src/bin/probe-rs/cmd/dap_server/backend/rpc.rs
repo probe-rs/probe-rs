@@ -13,7 +13,11 @@
 //! into a synchronous one. A standard [`probe_rs::Core`] handle is built by
 //! [`probe_rs::Core::from_boxed`] around it.
 
-use std::{sync::Arc, time::Duration};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 use probe_rs::{
     Architecture, Core, CoreInformation, CoreInterface, CoreRegister, CoreRegisters, CoreStatus,
@@ -28,6 +32,13 @@ use crate::rpc::{
     client::{CoreInterface as RpcCoreClient, RpcClient},
     functions::core_ops::{WireCoreStatus, WireRegisterValue, WireVectorCatchCondition},
 };
+
+/// Per-core cache of register values populated on demand from the bulk
+/// `core/read_registers` endpoint. Shared across the short-lived
+/// [`RpcRemoteCore`] instances produced by [`RpcBackend::core`] so that the
+/// register dump that the DAP server performs on every halt becomes a
+/// single round trip after the first register read.
+type RegisterCache = Arc<Mutex<HashMap<usize, HashMap<RegisterId, RegisterValue>>>>;
 
 /// Run an async future to completion on the current tokio runtime, without
 /// actually blocking the runtime (by releasing the worker thread via
@@ -57,6 +68,8 @@ pub struct RpcBackend {
     /// methods that expect a synchronous answer (registers, is_64_bit, ...)
     /// can be served without a round trip.
     core_metadata: Vec<CoreMetadata>,
+    /// Per-core register dump cache. See [`RegisterCache`].
+    register_cache: RegisterCache,
 }
 
 #[derive(Clone)]
@@ -121,6 +134,7 @@ impl RpcBackend {
             cores,
             target: Arc::new(target),
             core_metadata,
+            register_cache: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 }
@@ -162,6 +176,8 @@ impl DapBackend for RpcBackend {
                 core_index as u32,
             ),
             metadata,
+            core_index,
+            register_cache: self.register_cache.clone(),
         };
 
         // The `Core` wraps a `Box<dyn CoreInterface + 'probe>`; we borrow the
@@ -178,11 +194,93 @@ pub struct RpcRemoteCore {
     handle: Handle,
     client: RpcCoreClient,
     metadata: CoreMetadata,
+    core_index: usize,
+    register_cache: RegisterCache,
+}
+
+impl RpcRemoteCore {
+    /// Invalidate this core's cached register dump. Called whenever an
+    /// operation is issued that could plausibly change register contents:
+    /// `run`, `step`, `halt`, any reset, or a register write.
+    fn invalidate_register_cache(&self) {
+        if let Ok(mut cache) = self.register_cache.lock() {
+            cache.remove(&self.core_index);
+        }
+    }
+
+    /// Look up a single register, refilling the cache with a batched
+    /// `core/read_registers` call on a miss.
+    fn cached_read_reg(&mut self, id: RegisterId) -> Result<RegisterValue, Error> {
+        if let Ok(cache) = self.register_cache.lock()
+            && let Some(entry) = cache.get(&self.core_index)
+            && let Some(value) = entry.get(&id)
+        {
+            return Ok(*value);
+        }
+
+        self.refill_register_cache()?;
+
+        if let Ok(cache) = self.register_cache.lock()
+            && let Some(entry) = cache.get(&self.core_index)
+            && let Some(value) = entry.get(&id)
+        {
+            return Ok(*value);
+        }
+
+        // The batched read did not return the requested register (either
+        // the target refused to read it, or it is not part of the static
+        // register file). Fall back to a direct single read so the caller
+        // still gets an authoritative answer / error.
+        let wire: WireRegisterValue =
+            block_on(&self.handle, self.client.read_core_reg(id.into())).map_err(rpc_err)?;
+        Ok(wire.into())
+    }
+
+    /// Issue a single `core/read_registers` call covering every register in
+    /// this core's static register file (including FP registers when
+    /// available) and populate the cache with whatever the server returns.
+    fn refill_register_cache(&self) -> Result<(), Error> {
+        let mut ids: Vec<RegisterId> = self
+            .metadata
+            .registers
+            .core_registers()
+            .map(|r| r.id())
+            .collect();
+        if self.metadata.fpu_support
+            && let Some(fpu) = self.metadata.registers.fpu_registers()
+        {
+            ids.extend(fpu.map(|r| r.id()));
+        }
+        let wire_ids = ids.iter().copied().map(Into::into).collect();
+
+        let results = block_on(&self.handle, self.client.read_registers(wire_ids))
+            .map_err(rpc_err)?;
+
+        let mut cache = self
+            .register_cache
+            .lock()
+            .map_err(|_| Error::Other("register cache poisoned".to_string()))?;
+        let entry = cache.entry(self.core_index).or_default();
+        for result in results {
+            if let Some(value) = result.value {
+                entry.insert(result.id.into(), value.into());
+            }
+        }
+        Ok(())
+    }
 }
 
 /// Helper that resolves a single [`CoreRegister`] from the static register
 /// table by role, or panics with a descriptive message if the target is
 /// misconfigured.
+///
+/// The panic on a missing register mirrors [`probe_rs::Core`]'s own
+/// assumption that every supported target has a stack pointer / frame
+/// pointer / return address / program counter in its register file.
+#[allow(
+    clippy::panic,
+    reason = "mirrors probe_rs::Core's invariants about the register file"
+)]
 fn register_with_role(
     registers: &'static CoreRegisters,
     role: RegisterRole,
@@ -370,19 +468,23 @@ impl CoreInterface for RpcRemoteCore {
     }
 
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
+        self.invalidate_register_cache();
         let info = block_on(&self.handle, self.client.halt(timeout)).map_err(rpc_err)?;
         Ok(info.into())
     }
 
     fn run(&mut self) -> Result<(), Error> {
+        self.invalidate_register_cache();
         block_on(&self.handle, self.client.run()).map_err(rpc_err)
     }
 
     fn reset(&mut self) -> Result<(), Error> {
+        self.invalidate_register_cache();
         block_on(&self.handle, self.client.reset()).map_err(rpc_err)
     }
 
     fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
+        self.invalidate_register_cache();
         block_on(&self.handle, self.client.reset_and_halt(timeout)).map_err(rpc_err)?;
         // The existing `reset_and_halt` endpoint only returns `()`; the PC
         // will be read by the next call anyway. Surface a zero-filled
@@ -391,17 +493,17 @@ impl CoreInterface for RpcRemoteCore {
     }
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
+        self.invalidate_register_cache();
         let info = block_on(&self.handle, self.client.step()).map_err(rpc_err)?;
         Ok(info.into())
     }
 
     fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, Error> {
-        let wire: WireRegisterValue =
-            block_on(&self.handle, self.client.read_core_reg(address.into())).map_err(rpc_err)?;
-        Ok(wire.into())
+        self.cached_read_reg(address)
     }
 
     fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error> {
+        self.invalidate_register_cache();
         block_on(
             &self.handle,
             self.client.write_core_reg(address.into(), value.into()),
@@ -453,6 +555,10 @@ impl CoreInterface for RpcRemoteCore {
     }
 
     fn program_counter(&self) -> &'static CoreRegister {
+        #[allow(
+            clippy::expect_used,
+            reason = "mirrors probe_rs::Core's invariant that every supported core has a PC"
+        )]
         self.metadata
             .registers
             .pc()

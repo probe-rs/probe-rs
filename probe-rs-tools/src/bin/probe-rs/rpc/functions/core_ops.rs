@@ -58,6 +58,25 @@ pub struct CoreWriteRegRequest {
 }
 
 #[derive(Serialize, Deserialize, Schema, Clone)]
+pub struct CoreReadRegistersRequest {
+    pub sessid: Key<Session>,
+    pub core: u32,
+    pub ids: Vec<WireRegisterId>,
+}
+
+/// One entry in a bulk-register-read response.
+///
+/// Per-register failures are surfaced as [`None`] so that a single
+/// unreadable register does not abort the whole request (reading "all"
+/// registers typically touches a few that are context-dependent, e.g.
+/// FP registers on a core without FPU enabled).
+#[derive(Serialize, Deserialize, Schema, Clone)]
+pub struct WireRegisterReadResult {
+    pub id: WireRegisterId,
+    pub value: Option<WireRegisterValue>,
+}
+
+#[derive(Serialize, Deserialize, Schema, Clone)]
 pub struct CoreBreakpointRequest {
     pub sessid: Key<Session>,
     pub core: u32,
@@ -368,7 +387,7 @@ macro_rules! with_core {
     ($ctx:expr, $req:expr, |$core:ident| $body:block) => {{
         let mut session = $ctx.session($req.sessid).await;
         let mut $core = session.core($req.core as usize)?;
-        let result: Result<_, probe_rs::Error> = (|| $body)();
+        let result: Result<_, probe_rs::Error> = $body;
         result
     }};
 }
@@ -378,7 +397,7 @@ pub async fn core_status(
     _header: VarHeader,
     request: CoreAccessRequest,
 ) -> RpcResult<WireCoreStatus> {
-    let status = with_core!(ctx, request, |core| { Ok(core.status()?) })?;
+    let status = with_core!(ctx, request, |core| { core.status() })?;
     Ok(status.into())
 }
 
@@ -387,7 +406,7 @@ pub async fn core_halted(
     _header: VarHeader,
     request: CoreAccessRequest,
 ) -> RpcResult<bool> {
-    let halted = with_core!(ctx, request, |core| { Ok(core.core_halted()?) })?;
+    let halted = with_core!(ctx, request, |core| { core.core_halted() })?;
     Ok(halted)
 }
 
@@ -402,7 +421,7 @@ pub async fn core_wait_halted(
             sessid: request.sessid,
             core: request.core,
         },
-        |core| { Ok(core.wait_for_core_halted(request.timeout)?) }
+        |core| { core.wait_for_core_halted(request.timeout) }
     )?;
     Ok(())
 }
@@ -418,7 +437,7 @@ pub async fn core_halt(
             sessid: request.sessid,
             core: request.core,
         },
-        |core| { Ok(core.halt(request.timeout)?) }
+        |core| { core.halt(request.timeout) }
     )?;
     Ok(info.into())
 }
@@ -428,7 +447,7 @@ pub async fn core_run(
     _header: VarHeader,
     request: CoreAccessRequest,
 ) -> NoResponse {
-    with_core!(ctx, request, |core| { Ok(core.run()?) })?;
+    with_core!(ctx, request, |core| { core.run() })?;
     Ok(())
 }
 
@@ -437,7 +456,7 @@ pub async fn core_step(
     _header: VarHeader,
     request: CoreAccessRequest,
 ) -> RpcResult<WireCoreInformation> {
-    let info = with_core!(ctx, request, |core| { Ok(core.step()?) })?;
+    let info = with_core!(ctx, request, |core| { core.step() })?;
     Ok(info.into())
 }
 
@@ -453,7 +472,7 @@ pub async fn core_read_reg(
             sessid: request.sessid,
             core: request.core,
         },
-        |core| { Ok(core.read_core_reg(id)?) }
+        |core| { core.read_core_reg::<RegisterValue>(id) }
     )?;
     Ok(value.into())
 }
@@ -522,7 +541,7 @@ pub async fn core_available_bp_units(
     _header: VarHeader,
     request: CoreAccessRequest,
 ) -> RpcResult<u32> {
-    let n = with_core!(ctx, request, |core| { Ok(core.available_breakpoint_units()?) })?;
+    let n = with_core!(ctx, request, |core| { core.available_breakpoint_units() })?;
     Ok(n)
 }
 
@@ -571,6 +590,50 @@ pub async fn core_instruction_set(
     _header: VarHeader,
     request: CoreAccessRequest,
 ) -> RpcResult<WireInstructionSet> {
-    let iset = with_core!(ctx, request, |core| { Ok(core.instruction_set()?) })?;
+    let iset = with_core!(ctx, request, |core| { core.instruction_set() })?;
     Ok(iset.into())
+}
+
+/// Bulk-read a set of registers in one request.
+///
+/// The primary caller is the RPC-backed DAP backend: on every halt the
+/// DAP server performs a register dump (one read per register, from
+/// PC/SP/FP/LR through every general-purpose and FP register), which
+/// otherwise costs one round-trip per register. Batching them behind a
+/// single RPC makes the halt-refresh O(1) round trips instead of
+/// O(N_registers).
+///
+/// Per-register errors are reported as `None` in the matching slot so
+/// that an unreadable register (e.g. an FP register on a core that has
+/// the FPU disabled) does not abort the whole batch.
+pub async fn core_read_registers(
+    ctx: &mut RpcContext,
+    _header: VarHeader,
+    request: CoreReadRegistersRequest,
+) -> RpcResult<Vec<WireRegisterReadResult>> {
+    let ids: Vec<RegisterId> = request.ids.iter().copied().map(Into::into).collect();
+    let values = with_core!(
+        ctx,
+        CoreAccessRequest {
+            sessid: request.sessid,
+            core: request.core,
+        },
+        |core| {
+            let mut out: Vec<Option<RegisterValue>> = Vec::with_capacity(ids.len());
+            for id in &ids {
+                out.push(core.read_core_reg::<RegisterValue>(*id).ok());
+            }
+            Ok(out)
+        }
+    )?;
+
+    Ok(request
+        .ids
+        .into_iter()
+        .zip(values)
+        .map(|(id, value)| WireRegisterReadResult {
+            id,
+            value: value.map(Into::into),
+        })
+        .collect())
 }

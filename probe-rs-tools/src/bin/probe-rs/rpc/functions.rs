@@ -18,12 +18,14 @@ use crate::{
                 VerifyRequest, VerifyResponse, build, erase, flash, verify,
             },
             core_ops::{
-                CoreAccessRequest, CoreBreakpointRequest, CoreHaltRequest, CoreReadRegRequest,
-                CoreVectorCatchRequest, CoreWaitHaltedRequest, CoreWriteRegRequest,
-                WireCoreInformation, WireCoreStatus, WireInstructionSet, WireRegisterValue,
+                CoreAccessRequest, CoreBreakpointRequest, CoreHaltRequest,
+                CoreReadRegRequest, CoreReadRegistersRequest, CoreVectorCatchRequest,
+                CoreWaitHaltedRequest, CoreWriteRegRequest, WireCoreInformation,
+                WireCoreStatus, WireInstructionSet, WireRegisterReadResult, WireRegisterValue,
                 core_available_bp_units, core_clear_hw_bp, core_disable_vc, core_enable_vc,
-                core_halt, core_halted, core_instruction_set, core_read_reg, core_run,
-                core_set_hw_bp, core_status, core_step, core_wait_halted, core_write_reg,
+                core_halt, core_halted, core_instruction_set, core_read_reg,
+                core_read_registers, core_run, core_set_hw_bp, core_status, core_step,
+                core_wait_halted, core_write_reg,
             },
             info::{InfoEvent, TargetInfoRequest, target_info},
             memory::{ReadMemoryRequest, WriteMemoryRequest, read_memory, write_memory},
@@ -471,6 +473,7 @@ type CoreInfoResponse = RpcResult<WireCoreInformation>;
 type CoreRegValueResponse = RpcResult<WireRegisterValue>;
 type CoreU32Response = RpcResult<u32>;
 type CoreInstructionSetResponse = RpcResult<WireInstructionSet>;
+type CoreReadRegistersResponse = RpcResult<Vec<WireRegisterReadResult>>;
 
 endpoints! {
     list = ENDPOINT_LIST;
@@ -518,6 +521,7 @@ endpoints! {
     | CoreEnableVcEndpoint      | CoreVectorCatchRequest  | NoResponse                    | "core/enable_vc"          |
     | CoreDisableVcEndpoint     | CoreVectorCatchRequest  | NoResponse                    | "core/disable_vc"         |
     | CoreInstructionSetEndpoint | CoreAccessRequest      | CoreInstructionSetResponse    | "core/instruction_set"    |
+    | CoreReadRegistersEndpoint | CoreReadRegistersRequest | CoreReadRegistersResponse     | "core/read_registers"     |
 
     | ReadMemory8Endpoint       | ReadMemoryRequest       | ReadMemory8Response     | "memory/read8"     |
     | ReadMemory16Endpoint      | ReadMemoryRequest       | ReadMemory16Response    | "memory/read16"    |
@@ -603,6 +607,7 @@ postcard_rpc::define_dispatch! {
         | CoreEnableVcEndpoint         | async | core_enable_vc         |
         | CoreDisableVcEndpoint        | async | core_disable_vc        |
         | CoreInstructionSetEndpoint   | async | core_instruction_set   |
+        | CoreReadRegistersEndpoint    | async | core_read_registers    |
 
         | ReadMemory8Endpoint       | async     | read_memory       |
         | ReadMemory16Endpoint      | async     | read_memory       |

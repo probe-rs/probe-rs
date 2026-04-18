@@ -33,9 +33,10 @@ use crate::{
         functions::{
             AttachEndpoint, BuildEndpoint, ChipInfoEndpoint, CoreAvailableBpUnitsEndpoint,
             CoreClearHwBpEndpoint, CoreDisableVcEndpoint, CoreEnableVcEndpoint, CoreHaltEndpoint,
-            CoreHaltedEndpoint, CoreInstructionSetEndpoint, CoreReadRegEndpoint, CoreRunEndpoint,
-            CoreSetHwBpEndpoint, CoreStatusEndpoint, CoreStepEndpoint, CoreWaitHaltedEndpoint,
-            CoreWriteRegEndpoint, CreateRttClientEndpoint, CreateTempFileEndpoint, EraseEndpoint,
+            CoreHaltedEndpoint, CoreInstructionSetEndpoint, CoreReadRegEndpoint,
+            CoreReadRegistersEndpoint, CoreRunEndpoint, CoreSetHwBpEndpoint, CoreStatusEndpoint,
+            CoreStepEndpoint, CoreWaitHaltedEndpoint, CoreWriteRegEndpoint,
+            CreateRttClientEndpoint, CreateTempFileEndpoint, EraseEndpoint,
             FlashEndpoint, ListChipFamiliesEndpoint, ListProbesEndpoint, ListTestsEndpoint,
             LoadChipFamilyEndpoint, MonitorEndpoint, ProgressEventTopic, ReadMemory8Endpoint,
             ReadMemory16Endpoint, ReadMemory32Endpoint, ReadMemory64Endpoint,
@@ -53,9 +54,10 @@ use crate::{
             info::{InfoEvent, TargetInfoRequest},
             core_ops::{
                 CoreAccessRequest, CoreBreakpointRequest, CoreHaltRequest, CoreReadRegRequest,
-                CoreVectorCatchRequest, CoreWaitHaltedRequest, CoreWriteRegRequest,
-                WireCoreInformation, WireCoreStatus, WireInstructionSet, WireRegisterId,
-                WireRegisterValue, WireVectorCatchCondition,
+                CoreReadRegistersRequest, CoreVectorCatchRequest, CoreWaitHaltedRequest,
+                CoreWriteRegRequest, WireCoreInformation, WireCoreStatus, WireInstructionSet,
+                WireRegisterId, WireRegisterReadResult, WireRegisterValue,
+                WireVectorCatchCondition,
             },
             memory::{ReadMemoryRequest, WriteMemoryRequest},
             monitor::{MonitorExitReason, MonitorMode, MonitorOptions, MonitorRequest},
@@ -934,6 +936,24 @@ impl CoreInterface {
     pub async fn instruction_set(&self) -> anyhow::Result<WireInstructionSet> {
         self.client
             .send_resp::<CoreInstructionSetEndpoint, _>(&self.access_request())
+            .await
+    }
+
+    /// Read the given set of registers in a single round-trip.
+    ///
+    /// Per-register failures are reported in place as `None`, in the same
+    /// order as `ids`. Callers that need strict "all-or-nothing" semantics
+    /// can inspect the returned slots themselves.
+    pub async fn read_registers(
+        &self,
+        ids: Vec<WireRegisterId>,
+    ) -> anyhow::Result<Vec<WireRegisterReadResult>> {
+        self.client
+            .send_resp::<CoreReadRegistersEndpoint, _>(&CoreReadRegistersRequest {
+                sessid: self.sessid,
+                core: self.core,
+                ids,
+            })
             .await
     }
 }
