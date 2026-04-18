@@ -25,6 +25,7 @@ use tokio_util::sync::CancellationToken;
 use crate::cmd::run::{EmbeddedTestElfInfo, MonitoringOptions};
 use crate::rpc::Key;
 use crate::rpc::functions::monitor::{ChannelInfo, MonitorExitReason};
+use crate::rpc::functions::stack_trace::StackTraceFrame;
 use crate::rpc::utils::run_loop::VectorCatchConfig;
 use crate::rpc::utils::semihosting::SemihostingOptions;
 use crate::util::pwr::power_reset;
@@ -633,7 +634,7 @@ pub async fn monitor(
         let mut selected_channel = data.selected_down_channel % channel_count;
 
         let prompt = |channel_idx| {
-            Prompt(format!(
+            Prompt::new(format!(
                 "{}> ",
                 &data.down_channels[channel_idx as usize].name
             ))
@@ -996,7 +997,7 @@ async fn display_stack_trace(
     for StackTrace { core, frames } in stack_trace.cores.iter() {
         println!("Core {core}");
         for (i, frame) in frames.iter().enumerate() {
-            println!("    Frame {i}: {frame}");
+            println!("    Frame {i}: {}", format_stack_frame(frame, None));
         }
         if frames.len() >= stack_frame_limit as usize {
             println!("Use `--stack-frame-limit` to increase the number of frames displayed.");
@@ -1004,6 +1005,43 @@ async fn display_stack_trace(
     }
 
     Ok(())
+}
+
+/// Formats a single stack frame for display.
+///
+/// `colorize` controls ANSI styling: `None` uses the `PROBE_RS_COLOR` default,
+/// `Some(b)` forces a specific choice (used by DAP handlers that must honor the
+/// remote client's `supportsAnsiStyling` capability instead of the server env).
+pub(crate) fn format_stack_frame(frame: &StackTraceFrame, colorize: Option<bool>) -> String {
+    use std::fmt::Write as _;
+
+    let color = colorize.unwrap_or_else(probe_rs_color_enabled);
+
+    let mut s = String::new();
+    write!(
+        &mut s,
+        "{} @ {}",
+        StackTraceFunction::new(frame.function_name.as_str()).colorize(color),
+        StackTraceAddress::new(format!("{:#x}", frame.program_counter)).colorize(color),
+    )
+    .unwrap();
+    if frame.is_inlined {
+        write!(
+            &mut s,
+            " {}",
+            StackTraceInlineMarker::new("inline").colorize(color)
+        )
+        .unwrap();
+    }
+    if let Some(loc) = &frame.location {
+        write!(
+            &mut s,
+            "\n        {}",
+            StackTraceSourceLocation::new(format!("{loc}")).colorize(color)
+        )
+        .unwrap();
+    }
+    s
 }
 
 /// Runs a future until completion, running another future when Ctrl+C is received.
@@ -1203,24 +1241,58 @@ impl Channel {
     }
 }
 
+pub(crate) fn probe_rs_color_enabled() -> bool {
+    matches!(
+        std::env::var("PROBE_RS_COLOR").as_deref(),
+        Err(VarError::NotPresent) | Ok("true" | "1" | "yes" | "on")
+    )
+}
+
+/// Defines a named style as a `Display` wrapper.
+///
+/// The style expression lives in one place. By default, each wrapper consults
+/// `probe_rs_color_enabled()` (i.e. the `PROBE_RS_COLOR` env var) when rendering.
+/// Call sites with a different rendering context — e.g. a DAP handler whose
+/// output is interpreted by a remote client — can override that decision with
+/// `.colorize(bool)` without having to know about `PROBE_RS_COLOR` at all.
 macro_rules! styled {
     ($name:ident($var:ident) => $style:expr) => {
-        pub struct $name<S: AsRef<str>>(pub S);
+        pub struct $name<S: AsRef<str>> {
+            value: S,
+            colorize: Option<bool>,
+        }
+
+        impl<S: AsRef<str>> $name<S> {
+            pub fn new(value: S) -> Self {
+                Self {
+                    value,
+                    colorize: None,
+                }
+            }
+
+            /// Explicitly turn ANSI styling on/off, bypassing the `PROBE_RS_COLOR` default.
+            #[allow(dead_code)]
+            pub fn colorize(mut self, colorize: bool) -> Self {
+                self.colorize = Some(colorize);
+                self
+            }
+        }
 
         impl<S: AsRef<str>> Display for $name<S> {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                if matches!(
-                    std::env::var("PROBE_RS_COLOR").as_deref(),
-                    Err(VarError::NotPresent) | Ok("true" | "1" | "yes" | "on")
-                ) {
-                    let $var = self.0.as_ref();
+                if self.colorize.unwrap_or_else(probe_rs_color_enabled) {
+                    let $var = self.value.as_ref();
                     write!(f, "{}", $style)
                 } else {
-                    f.write_str(self.0.as_ref())
+                    f.write_str(self.value.as_ref())
                 }
             }
         }
     };
 }
 
+styled!(StackTraceFunction(name) => name.bold().cyan());
+styled!(StackTraceAddress(addr) => addr.yellow());
+styled!(StackTraceInlineMarker(marker) => marker.italic().dark_yellow());
+styled!(StackTraceSourceLocation(loc) => loc.dim().grey());
 styled!(Prompt(prompt) => prompt.bold().dark_green());

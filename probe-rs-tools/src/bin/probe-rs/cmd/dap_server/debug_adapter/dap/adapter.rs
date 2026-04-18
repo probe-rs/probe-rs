@@ -60,6 +60,10 @@ pub struct DebugAdapter<P: ProtocolAdapter + ?Sized> {
     progress_id: ProgressId,
     /// Flag to indicate if the connected client supports progress reporting.
     pub(crate) supports_progress_reporting: bool,
+    /// Flag to indicate if the connected client can render ANSI escape sequences in
+    /// `OutputEvent.output` and evaluate responses. Populated from the
+    /// `supportsAnsiStyling` field of the `initialize` request.
+    pub(crate) supports_ansi_styling: bool,
     /// Flags to improve breakpoint accuracy.
     /// DWARF spec at Sect 2.14 uses 1 based numbering, with a 0 indicating not-specified. We will follow that standard,
     /// and translate incoming requests depending on the DAP Client treatment of 0 or 1 based numbering.
@@ -82,6 +86,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             all_cores_halted: true,
             progress_id: 0,
             supports_progress_reporting: false,
+            supports_ansi_styling: false,
             lines_start_at_1: true,
             columns_start_at_1: true,
             adapter,

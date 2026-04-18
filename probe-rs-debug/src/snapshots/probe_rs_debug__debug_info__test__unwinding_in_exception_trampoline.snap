@@ -29,12 +29,12 @@ Frame:
   column: Some(Column(1))
  frame_base:      Some(2001fff8)
 Frame:
- function:        Reset @ 0x0000013a>
+ function:        Reset
  source_location:
 None
  frame_base:      None
 Frame:
- function:        Reset @ 0x0000013a>
+ function:        Reset
  source_location:
 None
  frame_base:      None

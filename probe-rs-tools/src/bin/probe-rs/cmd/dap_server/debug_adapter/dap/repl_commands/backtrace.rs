@@ -1,10 +1,6 @@
-use std::{
-    fmt::{Display, Write},
-    path::Path,
-};
+use std::{fmt::Write, path::Path};
 
 use linkme::distributed_slice;
-use probe_rs_debug::{ColumnType, StackFrame};
 
 use crate::cmd::dap_server::{
     DebuggerError,
@@ -19,6 +15,8 @@ use crate::cmd::dap_server::{
     },
     server::core_data::CoreHandle,
 };
+use crate::rpc::functions::stack_trace::StackTraceFrame;
+use crate::util::cli::format_stack_frame;
 
 #[distributed_slice(REPL_COMMANDS)]
 static BACKTRACE: ReplCommand = ReplCommand {
@@ -38,26 +36,6 @@ static BACKTRACE: ReplCommand = ReplCommand {
     args: &[],
     handler: print_backtrace,
 };
-
-struct ReplStackFrame<'a>(&'a StackFrame);
-
-impl Display for ReplStackFrame<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // Header info for the StackFrame
-        write!(f, "{}", self.0.function_name)?;
-        if let Some(si) = &self.0.source_location {
-            write!(f, "\n\t{}", si.path.to_path().display())?;
-
-            if let (Some(column), Some(line)) = (si.column, si.line) {
-                match column {
-                    ColumnType::Column(c) => write!(f, ":{line}:{c}")?,
-                    ColumnType::LeftEdge => write!(f, ":{line}")?,
-                }
-            }
-        }
-        Ok(())
-    }
-}
 
 fn save_backtrace_to_yaml(
     target_core: &mut CoreHandle<'_>,
@@ -96,17 +74,21 @@ fn print_backtrace(
     target_core: &mut CoreHandle<'_>,
     _: &str,
     _: &EvaluateArguments,
-    _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
+    debug_adapter: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
 ) -> EvalResult {
-    let mut response_message = String::new();
+    // Color gating follows the DAP-negotiated `supportsAnsiStyling` capability,
+    // NOT the server's local `PROBE_RS_COLOR` env var, so the server never
+    // overrules what the client can render.
+    let colorize = Some(debug_adapter.supports_ansi_styling);
 
+    let mut response_message = String::new();
     for (i, frame) in target_core.core_data.stack_frames.iter().enumerate() {
         #[allow(clippy::unwrap_used, reason = "Writing to a string is infallible")]
         writeln!(
             &mut response_message,
-            "Frame #{}: {}",
+            "    Frame {}: {}",
             i + 1,
-            ReplStackFrame(frame)
+            format_stack_frame(&StackTraceFrame::from(frame), colorize)
         )
         .unwrap();
     }

@@ -349,10 +349,7 @@ impl DebugInfo {
 
         Ok(vec![StackFrame {
             id: get_object_reference(),
-            function_name: format!(
-                "{fn_name} @ {address:#0width$x}>",
-                width = (unwind_registers.get_address_size_bytes() * 2 + 2)
-            ),
+            function_name: fn_name,
             source_location: None,
             registers: unwind_registers.clone(),
             pc: RegisterValue::from(address),

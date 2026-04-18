@@ -739,6 +739,10 @@ impl Debugger {
             debug_adapter.supports_progress_reporting = progress_support;
         }
 
+        if let Some(ansi_styling) = initialize_arguments.supports_ansi_styling {
+            debug_adapter.supports_ansi_styling = ansi_styling;
+        }
+
         if let Some(lines_start_at_1) = initialize_arguments.lines_start_at_1 {
             debug_adapter.lines_start_at_1 = lines_start_at_1;
         }
