@@ -6,18 +6,22 @@ use std::{
 use linkme::distributed_slice;
 use probe_rs_debug::{ColumnType, StackFrame};
 
-use crate::cmd::dap_server::{
-    DebuggerError,
-    debug_adapter::{
-        dap::{
-            adapter::DebugAdapter,
-            dap_types::EvaluateArguments,
-            repl_commands::{EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand},
-            repl_types::ReplCommandArgs,
+use crate::util::cli::{StackTraceFunction, StackTraceSourceLocation};
+use crate::{
+    cmd::dap_server::{
+        DebuggerError,
+        debug_adapter::{
+            dap::{
+                adapter::DebugAdapter,
+                dap_types::EvaluateArguments,
+                repl_commands::{EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand},
+                repl_types::ReplCommandArgs,
+            },
+            protocol::ProtocolAdapter,
         },
-        protocol::ProtocolAdapter,
+        server::core_data::CoreHandle,
     },
-    server::core_data::CoreHandle,
+    util::cli::StackTraceInlineMarker,
 };
 
 #[distributed_slice(REPL_COMMANDS)]
@@ -39,21 +43,44 @@ static BACKTRACE: ReplCommand = ReplCommand {
     handler: print_backtrace,
 };
 
-struct ReplStackFrame<'a>(&'a StackFrame);
+struct ReplStackFrame<'a> {
+    frame: &'a StackFrame,
+    colorize: bool,
+}
 
 impl Display for ReplStackFrame<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // Header info for the StackFrame
-        write!(f, "{}", self.0.function_name)?;
-        if let Some(si) = &self.0.source_location {
-            write!(f, "\n\t{}", si.path.to_path().display())?;
+        // Color gating is driven purely by the DAP-negotiated `supportsAnsiStyling`
+        // capability (passed in as `self.colorize`), NOT by the server's local
+        // `PROBE_RS_COLOR` env var, so the server never overrules what the client
+        // can render. Styles themselves are defined centrally in `util::cli`.
+        write!(
+            f,
+            "{}",
+            StackTraceFunction::new(self.frame.function_name.as_str()).colorize(self.colorize)
+        )?;
+        if self.frame.is_inlined {
+            write!(
+                f,
+                " {}",
+                StackTraceInlineMarker::new("inline").colorize(self.colorize)
+            )
+            .unwrap();
+        }
 
+        if let Some(si) = &self.frame.source_location {
+            let mut location = format!("{}", si.path.to_path().display());
             if let (Some(column), Some(line)) = (si.column, si.line) {
                 match column {
-                    ColumnType::Column(c) => write!(f, ":{line}:{c}")?,
-                    ColumnType::LeftEdge => write!(f, ":{line}")?,
+                    ColumnType::Column(c) => write!(&mut location, ":{line}:{c}").unwrap(),
+                    ColumnType::LeftEdge => write!(&mut location, ":{line}").unwrap(),
                 }
             }
+            write!(
+                f,
+                "\n       {}",
+                StackTraceSourceLocation::new(location).colorize(self.colorize)
+            )?;
         }
         Ok(())
     }
@@ -96,9 +123,10 @@ fn print_backtrace(
     target_core: &mut CoreHandle<'_>,
     _: &str,
     _: &EvaluateArguments,
-    _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
+    debug_adapter: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
 ) -> EvalResult {
     let mut response_message = String::new();
+    let colorize = debug_adapter.supports_ansi_styling;
 
     for (i, frame) in target_core.core_data.stack_frames.iter().enumerate() {
         #[allow(clippy::unwrap_used, reason = "Writing to a string is infallible")]
@@ -106,7 +134,7 @@ fn print_backtrace(
             &mut response_message,
             "Frame #{}: {}",
             i + 1,
-            ReplStackFrame(frame)
+            ReplStackFrame { frame, colorize }
         )
         .unwrap();
     }

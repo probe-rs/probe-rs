@@ -33,7 +33,7 @@ use crate::cmd::dap_server::server::configuration::FlashingConfig;
 use crate::cmd::dap_server::server::configuration::SessionConfig;
 use crate::cmd::dap_server::server::debugger::Debugger;
 use crate::rpc::client::RpcClient;
-use crate::util::cli::Prompt;
+use crate::util::cli::{Prompt, probe_rs_color_enabled};
 use crate::util::rtt::RttConfig;
 use crate::{CoreOptions, util::common_options::ProbeOptions};
 
@@ -236,7 +236,7 @@ impl Cmd {
                     supports_start_debugging_request: None,
                     supports_variable_paging: None,
                     supports_variable_type: None,
-                    supports_ansi_styling: None,
+                    supports_ansi_styling: Some(probe_rs_color_enabled()),
                 })
                 .ok(),
                 seq,
@@ -325,8 +325,10 @@ impl Cmd {
         // Prompt 0 is the default debug CLI prompt.
         let mut current_prompt = debug_client.current_prompt;
         let (mut rl, writer) =
-            Readline::new(Prompt(format!("{}> ", debug_client.current_prompt())).to_string())
-                .unwrap();
+            Readline::new(
+                Prompt::new(format!("{}> ", debug_client.current_prompt())).to_string(),
+            )
+            .unwrap();
         debug_client.writer = Some(writer);
 
         let readline = async {
@@ -452,7 +454,7 @@ impl Client {
 
     fn update_prompt(&mut self, rl: &mut Readline) {
         let prompt = format!("{}> ", self.current_prompt());
-        rl.update_prompt(&Prompt(prompt).to_string()).unwrap();
+        rl.update_prompt(&Prompt::new(prompt).to_string()).unwrap();
     }
 
     fn next_seq(&mut self) -> i64 {
