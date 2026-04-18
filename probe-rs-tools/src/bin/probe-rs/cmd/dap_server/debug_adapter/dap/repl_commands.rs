@@ -16,6 +16,7 @@ use std::{fmt::Display, time::Duration};
 pub(crate) mod backtrace;
 pub(crate) mod breakpoint;
 pub(crate) mod cpu;
+pub(crate) mod disassemble;
 pub(crate) mod embedded_test;
 pub(crate) mod info;
 pub(crate) mod inspect;

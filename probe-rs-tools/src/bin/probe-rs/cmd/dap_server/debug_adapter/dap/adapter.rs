@@ -1178,36 +1178,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.send_response(request, Ok(Some(ScopesResponseBody { scopes: dap_scopes })))
     }
 
-    /// Attempt to extract disassembled source code to supply the instruction_count required.
-    pub(crate) fn get_disassembled_source(
-        &mut self,
-        target_core: &mut CoreHandle<'_>,
-        // The program_counter where our desired instruction range is based.
-        memory_reference: i64,
-        // The number of bytes offset from the memory reference. Can be zero.
-        byte_offset: i64,
-        // The number of instruction offset from the memory reference. Can be zero.
-        instruction_offset: i64,
-        // The EXACT number of instructions to return in the result.
-        instruction_count: i64,
-    ) -> Result<Vec<dap_types::DisassembledInstruction>, DebuggerError> {
-        let assembly_lines = disassemble_target_memory(
-            target_core,
-            instruction_offset,
-            byte_offset,
-            memory_reference as u64,
-            instruction_count,
-        )?;
-
-        if assembly_lines.is_empty() {
-            Err(DebuggerError::Other(anyhow::anyhow!(
-                "No valid instructions found at memory reference {memory_reference:#010x?}"
-            )))
-        } else {
-            Ok(assembly_lines)
-        }
-    }
-
     /// Implementing the MS DAP for `request Disassemble` has a number of problems:
     /// - The api requires that we return EXACTLY the instruction_count specified.
     ///   - From testing, if we provide slightly fewer or more instructions, the current versions of VSCode will behave in unpredictable ways (frequently causes runaway renderer processes).
@@ -1875,6 +1845,36 @@ impl<P: ProtocolAdapter + ?Sized> DebugAdapter<P> {
             self.dyn_send_event("stopped", serde_json::to_value(event_body).ok())?;
         }
         Ok(program_counter)
+    }
+
+    /// Attempt to extract disassembled source code to supply the instruction_count required.
+    pub(crate) fn get_disassembled_source(
+        &mut self,
+        target_core: &mut CoreHandle<'_>,
+        // The program_counter where our desired instruction range is based.
+        memory_reference: i64,
+        // The number of bytes offset from the memory reference. Can be zero.
+        byte_offset: i64,
+        // The number of instruction offset from the memory reference. Can be zero.
+        instruction_offset: i64,
+        // The EXACT number of instructions to return in the result.
+        instruction_count: i64,
+    ) -> Result<Vec<dap_types::DisassembledInstruction>, DebuggerError> {
+        let assembly_lines = disassemble_target_memory(
+            target_core,
+            instruction_offset,
+            byte_offset,
+            memory_reference as u64,
+            instruction_count,
+        )?;
+
+        if assembly_lines.is_empty() {
+            Err(DebuggerError::Other(anyhow::anyhow!(
+                "No valid instructions found at memory reference {memory_reference:#010x?}"
+            )))
+        } else {
+            Ok(assembly_lines)
+        }
     }
 
     #[tracing::instrument(level = "trace", skip_all)]
