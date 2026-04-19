@@ -12,7 +12,7 @@ use postcard_schema::Schema;
 use probe_rs::{
     CoreInformation, CoreStatus, HaltReason, InstructionSet, RegisterId, RegisterValue, Session,
     VectorCatchCondition,
-    semihosting::{SemihostingCommand, UnknownCommandDetails},
+    semihosting::{ExitErrorDetails, SemihostingCommand, UnknownCommandDetails},
 };
 use serde::{Deserialize, Serialize};
 
@@ -188,26 +188,72 @@ pub enum WireBreakpointCause {
     Semihosting(WireSemihostingCommand),
 }
 
-/// Coarse-grained classification of a semihosting command.
+/// Classification of a semihosting command carried over the wire.
 ///
 /// The full [`SemihostingCommand`] payload carries pointers into target
 /// memory and so cannot be meaningfully transported over RPC on its own.
-/// For the DAP backend, a coarse-grained "exit success / exit error /
-/// other" flag is sufficient to drive the UI; the server handles the full
-/// semihosting protocol locally and forwards any user-visible output
-/// through the existing semihosting event channel.
+/// We specialise the variants the DAP backend actually needs to drive on
+/// the client side:
+///
+/// * [`Self::ExitSuccess`] / [`Self::ExitError`] reproduce the
+///   user-visible "Application has exited with …" message.
+/// * [`Self::GetCommandLine`] carries the target address of the
+///   command-line block so the client can reconstruct a real
+///   [`probe_rs::semihosting::GetCommandLineRequest`] (via
+///   [`Buffer::from_block_at`](probe_rs::semihosting::Buffer::from_block_at))
+///   and drive the `write_command_line_to_target` handshake entirely
+///   through the regular [`probe_rs::CoreInterface`] / memory RPCs.
+///
+/// Everything else is surfaced as [`Self::Other`]; the server still
+/// handles its target-memory interactions locally.
 #[derive(Debug, Serialize, Deserialize, Schema, Copy, Clone, PartialEq, Eq)]
 pub enum WireSemihostingCommand {
     ExitSuccess,
-    ExitError,
+    ExitError(WireExitErrorDetails),
+    GetCommandLine { block_address: u32 },
     Other,
+}
+
+/// Plain-old-data copy of [`ExitErrorDetails`] for the wire.
+#[derive(Debug, Serialize, Deserialize, Schema, Copy, Clone, PartialEq, Eq)]
+pub struct WireExitErrorDetails {
+    pub reason: u32,
+    pub exit_status: Option<u32>,
+    pub subcode: Option<u32>,
+}
+
+impl From<&ExitErrorDetails> for WireExitErrorDetails {
+    fn from(value: &ExitErrorDetails) -> Self {
+        Self {
+            reason: value.reason,
+            exit_status: value.exit_status,
+            subcode: value.subcode,
+        }
+    }
+}
+
+impl From<WireExitErrorDetails> for ExitErrorDetails {
+    fn from(value: WireExitErrorDetails) -> Self {
+        Self {
+            reason: value.reason,
+            exit_status: value.exit_status,
+            subcode: value.subcode,
+        }
+    }
 }
 
 impl From<&SemihostingCommand> for WireSemihostingCommand {
     fn from(value: &SemihostingCommand) -> Self {
         match value {
             SemihostingCommand::ExitSuccess => WireSemihostingCommand::ExitSuccess,
-            SemihostingCommand::ExitError(_) => WireSemihostingCommand::ExitError,
+            SemihostingCommand::ExitError(details) => {
+                WireSemihostingCommand::ExitError(details.into())
+            }
+            SemihostingCommand::GetCommandLine(request) => {
+                WireSemihostingCommand::GetCommandLine {
+                    block_address: request.block_address(),
+                }
+            }
             _ => WireSemihostingCommand::Other,
         }
     }
@@ -248,26 +294,50 @@ impl From<HaltReason> for WireHaltReason {
     }
 }
 
-// `WireHaltReason` cannot be round-tripped back into a full `HaltReason`
-// because the `Semihosting` variant loses data on the way. The DAP backend
-// only needs to reason about `CoreStatus::is_halted` / `is_running` and a
-// coarse-grained breakpoint-cause, so an approximate reverse mapping is fine.
+// `WireHaltReason` cannot be round-tripped perfectly because the general
+// semihosting payload carries target-memory pointers. We do preserve the
+// exit / exit-error classification (and the exit status / reason codes)
+// though, so the DAP server can emit the same "Application has exited
+// with …" message on both the local and remote paths.
+//
+// The `GetCommandLine` variant is reconstructed with a zero-initialised
+// [`Buffer`] here; the client reissues [`Buffer::from_block_at`] against
+// its [`RpcRemoteCore`] in [`RpcRemoteCore::status`] so the request ends
+// up bound to the correct target addresses.
 impl From<WireBreakpointCause> for probe_rs::BreakpointCause {
     fn from(value: WireBreakpointCause) -> Self {
         match value {
             WireBreakpointCause::Hardware => probe_rs::BreakpointCause::Hardware,
             WireBreakpointCause::Software => probe_rs::BreakpointCause::Software,
             WireBreakpointCause::Unknown => probe_rs::BreakpointCause::Unknown,
-            // Intentionally mapped to `Unknown`: the server keeps the real
-            // command payload; the DAP backend surfaces semihosting halts
-            // through the dedicated event channel rather than reconstituting a
-            // full `SemihostingCommand` over RPC.
-            WireBreakpointCause::Semihosting(_) => probe_rs::BreakpointCause::Semihosting(
-                SemihostingCommand::Unknown(UnknownCommandDetails {
-                    operation: 0,
-                    parameter: 0,
-                }),
-            ),
+            WireBreakpointCause::Semihosting(cmd) => {
+                probe_rs::BreakpointCause::Semihosting(match cmd {
+                    WireSemihostingCommand::ExitSuccess => SemihostingCommand::ExitSuccess,
+                    WireSemihostingCommand::ExitError(details) => {
+                        SemihostingCommand::ExitError(details.into())
+                    }
+                    // Placeholder: callers that want a usable
+                    // `GetCommandLineRequest` rehydrate one against the
+                    // target via `Buffer::from_block_at`. See
+                    // `RpcRemoteCore::status`.
+                    WireSemihostingCommand::GetCommandLine { .. } => {
+                        SemihostingCommand::Unknown(UnknownCommandDetails {
+                            operation: 0,
+                            parameter: 0,
+                        })
+                    }
+                    // The server handles the real command payload; surface a
+                    // placeholder here so the DAP server recognizes the halt as
+                    // semihosting-induced without reconstituting the full
+                    // operation/parameter pair.
+                    WireSemihostingCommand::Other => {
+                        SemihostingCommand::Unknown(UnknownCommandDetails {
+                            operation: 0,
+                            parameter: 0,
+                        })
+                    }
+                })
+            }
         }
     }
 }

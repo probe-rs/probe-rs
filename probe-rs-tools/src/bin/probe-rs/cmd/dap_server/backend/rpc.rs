@@ -21,9 +21,11 @@ use std::{
 };
 
 use probe_rs::{
-    Architecture, Core, CoreInformation, CoreInterface, CoreRegister, CoreRegisters, CoreStatus,
-    CoreType, Endian, Error, InstructionSet, MemoryInterface, RegisterId, RegisterRole,
-    RegisterValue, Session, Target, VectorCatchCondition,
+    Architecture, BreakpointCause, Core, CoreInformation, CoreInterface, CoreRegister,
+    CoreRegisters, CoreStatus, CoreType, Endian, Error, HaltReason, InstructionSet,
+    MemoryInterface, RegisterId, RegisterRole, RegisterValue, Session, Target,
+    VectorCatchCondition,
+    semihosting::{Buffer, GetCommandLineRequest, SemihostingCommand},
 };
 use tokio::runtime::Handle;
 
@@ -34,7 +36,10 @@ use crate::rpc::{
     Key,
     client::{CoreInterface as RpcCoreClient, RpcClient, SessionInterface},
     functions::{
-        core_ops::{WireCoreStatus, WireRegisterValue, WireVectorCatchCondition},
+        core_ops::{
+            WireBreakpointCause, WireCoreStatus, WireHaltReason, WireRegisterValue,
+            WireSemihostingCommand, WireVectorCatchCondition,
+        },
         flash::{DownloadOptions as WireDownloadOptions, ProgressEvent as WireProgressEvent, VerifyResult},
     },
 };
@@ -398,6 +403,24 @@ impl CoreInterface for RpcRemoteCore {
 
     fn status(&mut self) -> Result<CoreStatus, Error> {
         let wire: WireCoreStatus = block_on(&self.handle, self.client.status()).map_err(rpc_err)?;
+        // For most variants, the canonical `From` conversion is lossless
+        // enough. The exception is `Semihosting(GetCommandLine { .. })`:
+        // the wire only carries the target block address, so we rebuild
+        // a real `GetCommandLineRequest` bound to this core — its
+        // subsequent `write_command_line_to_target` call will then flow
+        // through our `MemoryInterface` (i.e. over memory RPCs) and
+        // complete the handshake end-to-end.
+        if let WireCoreStatus::Halted(WireHaltReason::Breakpoint(WireBreakpointCause::Semihosting(
+            WireSemihostingCommand::GetCommandLine { block_address },
+        ))) = wire
+        {
+            let buffer = Buffer::from_block_at(self, block_address)?;
+            return Ok(CoreStatus::Halted(HaltReason::Breakpoint(
+                BreakpointCause::Semihosting(SemihostingCommand::GetCommandLine(
+                    GetCommandLineRequest::new(buffer),
+                )),
+            )));
+        }
         Ok(wire.into())
     }
 

@@ -130,6 +130,27 @@ impl UnknownCommandDetails {
 pub struct GetCommandLineRequest(Buffer);
 
 impl GetCommandLineRequest {
+    /// Construct a request from a previously-resolved target [`Buffer`].
+    ///
+    /// The normal way to obtain one of these is to observe a
+    /// `GetCommandLine` halt on the core, but alternate front-ends (such
+    /// as remote debuggers that transport semihosting metadata out of
+    /// band) may need to rebuild the request from its block address
+    /// using [`Buffer::from_block_at`].
+    pub fn new(buffer: Buffer) -> Self {
+        Self(buffer)
+    }
+
+    /// Address of the `block` argument the target passed to
+    /// `SYS_GET_CMDLINE`.
+    ///
+    /// This is the only piece of information needed to reconstruct the
+    /// request on another machine (given access to the core's memory):
+    /// pass it to [`Buffer::from_block_at`] and then to [`Self::new`].
+    pub fn block_address(&self) -> u32 {
+        self.0.buffer_location()
+    }
+
     /// Writes the command line to the target. You have to continue the core manually afterwards.
     pub fn write_command_line_to_target(
         &self,
@@ -407,6 +428,16 @@ pub struct Buffer {
 }
 
 impl Buffer {
+    /// The target address of the two-word block describing this buffer.
+    ///
+    /// This is the same value that was passed to [`Self::from_block_at`]
+    /// and is exposed so that debuggers can transport it out of band
+    /// (e.g. over RPC) and reconstruct the buffer on a machine without
+    /// direct access to the target.
+    pub fn buffer_location(&self) -> u32 {
+        self.buffer_location
+    }
+
     /// Constructs a new buffer, reading the address and length from the target.
     pub fn from_block_at(
         core: &mut dyn CoreInterface,
