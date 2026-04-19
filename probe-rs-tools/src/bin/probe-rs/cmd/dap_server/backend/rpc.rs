@@ -327,171 +327,56 @@ fn register_with_role(
         .unwrap_or_else(|| panic!("register set is missing the {name} register"))
 }
 
+// Generate the 4 `read_word_N` / `read_N` / `write_word_N` / `write_N`
+// methods for a given word width `$n`. The shape is identical across
+// sizes and only the RPC method names differ, so we stamp them out with
+// a macro instead of hand-writing 16 nearly-identical functions.
+macro_rules! rpc_mem_methods {
+    ($n:literal, $ty:ty, $read_word:ident, $read_many:ident, $write_word:ident,
+     $write_many:ident, $rpc_read:ident, $rpc_write:ident) => {
+        fn $read_word(&mut self, address: u64) -> Result<$ty, Error> {
+            let data =
+                block_on(&self.handle, self.client.$rpc_read(address, 1)).map_err(rpc_err)?;
+            data.into_iter().next().ok_or_else(|| {
+                Error::Other(concat!("empty response from memory/read", $n).to_string())
+            })
+        }
+
+        fn $read_many(&mut self, address: u64, data: &mut [$ty]) -> Result<(), Error> {
+            let result = block_on(&self.handle, self.client.$rpc_read(address, data.len()))
+                .map_err(rpc_err)?;
+            if result.len() != data.len() {
+                return Err(Error::Other(format!(
+                    "short read: requested {} units, got {}",
+                    data.len(),
+                    result.len()
+                )));
+            }
+            data.copy_from_slice(&result);
+            Ok(())
+        }
+
+        fn $write_word(&mut self, address: u64, data: $ty) -> Result<(), Error> {
+            block_on(&self.handle, self.client.$rpc_write(address, vec![data]))
+                .map_err(rpc_err)
+        }
+
+        fn $write_many(&mut self, address: u64, data: &[$ty]) -> Result<(), Error> {
+            block_on(&self.handle, self.client.$rpc_write(address, data.to_vec()))
+                .map_err(rpc_err)
+        }
+    };
+}
+
 impl MemoryInterface for RpcRemoteCore {
     fn supports_native_64bit_access(&mut self) -> bool {
         self.metadata.is_64_bit
     }
 
-    fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
-        let data =
-            block_on(&self.handle, self.client.read_memory_8(address, 1)).map_err(rpc_err)?;
-        data.into_iter()
-            .next()
-            .ok_or_else(|| Error::Other("empty response from memory/read8".to_string()))
-    }
-
-    fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
-        let data =
-            block_on(&self.handle, self.client.read_memory_16(address, 1)).map_err(rpc_err)?;
-        data.into_iter()
-            .next()
-            .ok_or_else(|| Error::Other("empty response from memory/read16".to_string()))
-    }
-
-    fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
-        let data =
-            block_on(&self.handle, self.client.read_memory_32(address, 1)).map_err(rpc_err)?;
-        data.into_iter()
-            .next()
-            .ok_or_else(|| Error::Other("empty response from memory/read32".to_string()))
-    }
-
-    fn read_word_64(&mut self, address: u64) -> Result<u64, Error> {
-        let data =
-            block_on(&self.handle, self.client.read_memory_64(address, 1)).map_err(rpc_err)?;
-        data.into_iter()
-            .next()
-            .ok_or_else(|| Error::Other("empty response from memory/read64".to_string()))
-    }
-
-    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
-        let result = block_on(&self.handle, self.client.read_memory_8(address, data.len()))
-            .map_err(rpc_err)?;
-        if result.len() != data.len() {
-            return Err(Error::Other(format!(
-                "short read: requested {} bytes, got {}",
-                data.len(),
-                result.len()
-            )));
-        }
-        data.copy_from_slice(&result);
-        Ok(())
-    }
-
-    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
-        let result = block_on(
-            &self.handle,
-            self.client.read_memory_16(address, data.len()),
-        )
-        .map_err(rpc_err)?;
-        if result.len() != data.len() {
-            return Err(Error::Other(format!(
-                "short read: requested {} words, got {}",
-                data.len(),
-                result.len()
-            )));
-        }
-        data.copy_from_slice(&result);
-        Ok(())
-    }
-
-    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
-        let result = block_on(
-            &self.handle,
-            self.client.read_memory_32(address, data.len()),
-        )
-        .map_err(rpc_err)?;
-        if result.len() != data.len() {
-            return Err(Error::Other(format!(
-                "short read: requested {} words, got {}",
-                data.len(),
-                result.len()
-            )));
-        }
-        data.copy_from_slice(&result);
-        Ok(())
-    }
-
-    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
-        let result = block_on(
-            &self.handle,
-            self.client.read_memory_64(address, data.len()),
-        )
-        .map_err(rpc_err)?;
-        if result.len() != data.len() {
-            return Err(Error::Other(format!(
-                "short read: requested {} words, got {}",
-                data.len(),
-                result.len()
-            )));
-        }
-        data.copy_from_slice(&result);
-        Ok(())
-    }
-
-    fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
-        block_on(
-            &self.handle,
-            self.client.write_memory_8(address, vec![data]),
-        )
-        .map_err(rpc_err)
-    }
-
-    fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
-        block_on(
-            &self.handle,
-            self.client.write_memory_16(address, vec![data]),
-        )
-        .map_err(rpc_err)
-    }
-
-    fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
-        block_on(
-            &self.handle,
-            self.client.write_memory_32(address, vec![data]),
-        )
-        .map_err(rpc_err)
-    }
-
-    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
-        block_on(
-            &self.handle,
-            self.client.write_memory_64(address, vec![data]),
-        )
-        .map_err(rpc_err)
-    }
-
-    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        block_on(
-            &self.handle,
-            self.client.write_memory_8(address, data.to_vec()),
-        )
-        .map_err(rpc_err)
-    }
-
-    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
-        block_on(
-            &self.handle,
-            self.client.write_memory_16(address, data.to_vec()),
-        )
-        .map_err(rpc_err)
-    }
-
-    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
-        block_on(
-            &self.handle,
-            self.client.write_memory_32(address, data.to_vec()),
-        )
-        .map_err(rpc_err)
-    }
-
-    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
-        block_on(
-            &self.handle,
-            self.client.write_memory_64(address, data.to_vec()),
-        )
-        .map_err(rpc_err)
-    }
+    rpc_mem_methods!(8,  u8,  read_word_8,  read_8,  write_word_8,  write_8,  read_memory_8,  write_memory_8);
+    rpc_mem_methods!(16, u16, read_word_16, read_16, write_word_16, write_16, read_memory_16, write_memory_16);
+    rpc_mem_methods!(32, u32, read_word_32, read_32, write_word_32, write_32, read_memory_32, write_memory_32);
+    rpc_mem_methods!(64, u64, read_word_64, read_64, write_word_64, write_64, read_memory_64, write_memory_64);
 
     fn supports_8bit_transfers(&self) -> Result<bool, Error> {
         Ok(true)

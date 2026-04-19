@@ -323,12 +323,12 @@ impl Cmd {
         // we drive the future inline via `select!` instead.
         let is_local = client.is_local_session();
         let server = async move {
+            let mut debugger = Debugger::new(utc_offset, None)?;
             if is_local {
                 let handle = Handle::current();
                 tokio::task::spawn_blocking(move || {
                     handle.block_on(async move {
                         let registry = &mut *client.registry().await;
-                        let mut debugger = Debugger::new(utc_offset, None)?;
 
                         let lister = Lister::new();
                         debugger
@@ -341,7 +341,6 @@ impl Cmd {
                 .map_err(anyhow::Error::from)
                 .and_then(std::convert::identity)
             } else {
-                let mut debugger = Debugger::new(utc_offset, None)?;
                 debugger
                     .debug_session_rpc(&client, debug_adapter)
                     .await
@@ -451,24 +450,18 @@ impl Cmd {
             };
             tokio::pin!(readline_fut);
 
-            let mut readline_result: anyhow::Result<()> = Ok(());
-            loop {
-                tokio::select! {
-                    res = &mut readline_fut => {
-                        readline_result = res;
-                        break;
-                    }
-                    res = &mut server => {
-                        // The debug session exited. Any trailing output
-                        // has already been rendered by the readline loop
-                        // via the `msg_receiver` arm above, so we just
-                        // record the result and break.
-                        server_result = Some(res);
-                        break;
-                    }
+            // Whichever future resolves first decides the readline
+            // result: either the readline loop exited normally or the
+            // debug session terminated. In the latter case any trailing
+            // output has already been rendered by the readline loop via
+            // its `msg_receiver` arm, so we just record the result.
+            tokio::select! {
+                res = &mut readline_fut => res,
+                res = &mut server => {
+                    server_result = Some(res);
+                    Ok(())
                 }
             }
-            readline_result
         };
 
         rl.flush()?;

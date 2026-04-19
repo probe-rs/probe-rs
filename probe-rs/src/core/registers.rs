@@ -1,6 +1,6 @@
 //! Core registers are represented by the `CoreRegister` struct, and collected in a `RegisterFile` for each of the supported architectures.
 
-use crate::Error;
+use crate::{CoreType, Error};
 use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
@@ -480,11 +480,10 @@ impl CoreRegisters {
     /// configuration, as some cores select different register files based on
     /// FPU presence or the number of FP registers.
     pub fn for_core_type(
-        core_type: crate::CoreType,
+        core_type: CoreType,
         fpu_support: bool,
         floating_point_register_count: Option<usize>,
     ) -> &'static CoreRegisters {
-        use crate::CoreType;
         use crate::architecture::arm::core::registers::aarch32::{
             AARCH32_CORE_REGISTERS, AARCH32_WITH_FP_16_CORE_REGISTERS,
             AARCH32_WITH_FP_32_CORE_REGISTERS,
