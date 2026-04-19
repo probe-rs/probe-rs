@@ -56,6 +56,16 @@ fn block_on<F: std::future::Future>(handle: &Handle, fut: F) -> F::Output {
 /// Convert an [`anyhow::Error`] coming out of the RPC client into the
 /// [`probe_rs::Error`] surface the DAP server expects.
 fn rpc_err(err: anyhow::Error) -> Error {
+    // Typed `probe_rs::Error` values lose their variant when crossing the
+    // RPC boundary (they come back as an opaque `anyhow::Error` carrying
+    // only the `Display` text). Best-effort reconstruct the common
+    // variants that call sites care about, so features such as vector
+    // catch silently fall back on targets that don't support them
+    // instead of spamming ERROR logs.
+    let text = format!("{err:#}");
+    if text.contains("has not yet been implemented") {
+        return Error::NotImplemented("remote operation");
+    }
     Error::Other(format!("{err:?}"))
 }
 
