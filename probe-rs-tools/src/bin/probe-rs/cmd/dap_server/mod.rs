@@ -23,6 +23,7 @@ use std::{
 };
 use time::UtcOffset;
 
+use crate::rpc::client::RpcClient;
 use crate::util::common_options::OperationError;
 
 #[derive(Debug, thiserror::Error)]
@@ -95,6 +96,7 @@ pub struct Cmd {
 
 pub async fn run(
     cmd: Cmd,
+    client: RpcClient,
     lister: &Lister,
     time_offset: UtcOffset,
     log_file: Option<&Path>,
@@ -102,8 +104,16 @@ pub async fn run(
     match cmd.port {
         Some(port) => {
             let addr = SocketAddr::new(cmd.ip, port);
-            debug_tcp(lister, addr, cmd.single_session, log_file, time_offset).await
+            debug_tcp(
+                client,
+                lister,
+                addr,
+                cmd.single_session,
+                log_file,
+                time_offset,
+            )
+            .await
         }
-        None => debug_stdio(lister, log_file, time_offset).await,
+        None => debug_stdio(client, lister, log_file, time_offset).await,
     }
 }

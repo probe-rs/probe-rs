@@ -15,6 +15,7 @@
 
 use std::{
     collections::HashMap,
+    path::Path,
     sync::{Arc, Mutex},
     time::Duration,
 };
@@ -26,11 +27,16 @@ use probe_rs::{
 };
 use tokio::runtime::Handle;
 
-use super::DapBackend;
+use super::{DapBackend, FlashingBackend};
+use crate::cmd::dap_server::DebuggerError;
+use crate::cmd::dap_server::server::configuration::FlashingConfig;
 use crate::rpc::{
     Key,
-    client::{CoreInterface as RpcCoreClient, RpcClient},
-    functions::core_ops::{WireCoreStatus, WireRegisterValue, WireVectorCatchCondition},
+    client::{CoreInterface as RpcCoreClient, RpcClient, SessionInterface},
+    functions::{
+        core_ops::{WireCoreStatus, WireRegisterValue, WireVectorCatchCondition},
+        flash::{DownloadOptions as WireDownloadOptions, ProgressEvent as WireProgressEvent, VerifyResult},
+    },
 };
 
 /// Per-core cache of register values populated on demand from the bulk
@@ -83,9 +89,28 @@ struct CoreMetadata {
     registers: &'static CoreRegisters,
 }
 
+impl RpcBackend {
+    /// The RPC client backing this session, used for session-level
+    /// operations that are not expressible through the [`DapBackend`] trait
+    /// (eg. uploading a binary and issuing a flash over the wire).
+    pub(crate) fn session_interface(&self) -> SessionInterface {
+        SessionInterface::new(self.client.clone(), self.sessid)
+    }
+
+    /// Access the tokio runtime handle used to drive async RPC calls from a
+    /// synchronous [`CoreInterface`] context.
+    #[allow(
+        dead_code,
+        reason = "Kept as a symmetric accessor alongside `session_interface`; consumed by future iterations of the backend glue."
+    )]
+    pub(crate) fn tokio_handle(&self) -> Handle {
+        self.handle.clone()
+    }
+}
+
 #[allow(
     dead_code,
-    reason = "RpcBackend is wired into the DAP startup in a separate commit."
+    reason = "new/session_interface helpers keep being invoked from later patches."
 )]
 impl RpcBackend {
     /// Build a new RPC backend.
@@ -657,5 +682,63 @@ impl CoreInterface for RpcRemoteCore {
 
     fn is_64_bit(&self) -> bool {
         self.metadata.is_64_bit
+    }
+}
+
+impl FlashingBackend for RpcBackend {
+    async fn flash_binary(
+        &mut self,
+        path_to_elf: &Path,
+        config: &FlashingConfig,
+        progress: &mut dyn FnMut(WireProgressEvent),
+    ) -> Result<(), DebuggerError> {
+        let session = self.session_interface();
+
+        let build_result = session
+            .build_flash_loader(
+                path_to_elf.to_path_buf(),
+                config.format_options.clone(),
+                None,
+                false,
+            )
+            .await
+            .map_err(|e| DebuggerError::Other(anyhow::anyhow!(e)))?;
+
+        let loader_key = build_result.loader;
+
+        let run_flash = if config.verify_before_flashing {
+            match session
+                .verify(loader_key, async |event| {
+                    progress(event);
+                })
+                .await
+                .map_err(|e| DebuggerError::Other(anyhow::anyhow!(e)))?
+            {
+                VerifyResult::Ok => false,
+                VerifyResult::Mismatch => true,
+            }
+        } else {
+            true
+        };
+
+        if run_flash {
+            let options = WireDownloadOptions {
+                keep_unwritten_bytes: config.restore_unwritten_bytes,
+                do_chip_erase: config.full_chip_erase,
+                skip_erase: false,
+                verify: config.verify_after_flashing,
+                disable_double_buffering: false,
+                preferred_algos: Vec::new(),
+            };
+
+            session
+                .flash(options, loader_key, None, async |event| {
+                    progress(event);
+                })
+                .await
+                .map_err(|e| DebuggerError::Other(anyhow::anyhow!(e)))?;
+        }
+
+        Ok(())
     }
 }

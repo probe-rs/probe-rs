@@ -7,7 +7,7 @@ use crate::{
     cmd::{
         dap_server::{
             DebuggerError,
-            backend::DapBackend,
+            backend::{DapBackend, rpc::RpcBackend},
             debug_adapter::{
                 dap::{
                     adapter::DebugAdapter,
@@ -20,7 +20,8 @@ use crate::{
         },
         run::EmbeddedTestElfInfo,
     },
-    util::common_options::OperationError,
+    rpc::client::RpcClient,
+    util::{cli::attach_probe as attach_probe_rpc, common_options::OperationError},
 };
 use anyhow::{Result, anyhow};
 use probe_rs::{
@@ -240,6 +241,220 @@ impl SessionData<Session> {
 
         let mut this = SessionData {
             backend: target_session,
+            core_data: core_data_vec,
+            timestamp_offset,
+        };
+
+        this.load_rtt_location(config)?;
+
+        Ok(this)
+    }
+}
+
+impl SessionData<RpcBackend> {
+    /// Build a [`SessionData`] backed by an [`RpcBackend`] against the
+    /// supplied [`RpcClient`].
+    ///
+    /// The server is expected to have its chip registry populated (either
+    /// through the builtin database or through a prior
+    /// `client.load_chip_family`). The `config.chip` field is required: it
+    /// is used both to drive the remote `probe/attach` RPC and to look up
+    /// the matching [`probe_rs::Target`] description locally so that the
+    /// DAP server can answer memory-map / RTT / SVD queries without extra
+    /// round trips.
+    pub(crate) async fn new_remote(
+        client: &RpcClient,
+        config: &mut configuration::SessionConfig,
+        timestamp_offset: UtcOffset,
+    ) -> Result<Self, DebuggerError> {
+        use crate::cmd::dap_server::backend::rpc::CorePerAttachInfo;
+        use probe_rs::{Architecture, Endian};
+
+        let chip_name = config
+            .chip
+            .clone()
+            .ok_or_else(|| anyhow!("A chip name is required when debugging over RPC."))?;
+
+        // Reuse the shared CLI helper: it uploads any user-supplied chip
+        // description, selects a probe, and performs the `probe/attach` RPC.
+        let probe_options = config.probe_options();
+        let session = attach_probe_rpc(client, probe_options, false).await?;
+        let sessid = session.session_key();
+
+        // The client has a local registry mirror: look up the target so we
+        // can serve memory-map / introspection locally. This assumes the
+        // client has loaded the same chip families the server has, which is
+        // how [`attach_probe_rpc`] already works.
+        let target = {
+            let registry = client.registry().await;
+            registry.get_target_by_name(&chip_name).map_err(|e| {
+                DebuggerError::Other(anyhow!(
+                    "Failed to resolve chip `{chip_name}` in the local registry: {e}"
+                ))
+            })?
+        };
+
+        if let Some(new_cwd) = config.cwd.clone() {
+            set_current_dir(new_cwd.as_path()).map_err(|err| {
+                anyhow!("Failed to set current working directory to: {new_cwd:?}, {err:?}")
+            })?;
+        }
+
+        if config.core_configs.len() != 1 {
+            return Err(DebuggerError::Other(anyhow!(
+                "probe-rs-debugger requires that one, and only one, core be configured for debugging."
+            )));
+        }
+
+        let cores: Vec<(usize, probe_rs::CoreType)> = target
+            .cores
+            .iter()
+            .enumerate()
+            .map(|(idx, core)| (idx, core.core_type))
+            .collect();
+
+        // Derive per-core defaults from the core type. Endianness is
+        // assumed little-endian (true for all currently supported cores);
+        // FPU support is assumed absent until the user needs it — the
+        // correct way to populate these fields is with an explicit RPC
+        // query once the core is halted, which we do not yet issue here.
+        let per_core: Vec<CorePerAttachInfo> = cores
+            .iter()
+            .map(|(_, core_type)| CorePerAttachInfo {
+                architecture: core_type.architecture(),
+                endian: Endian::Little,
+                is_64_bit: matches!(core_type, probe_rs::CoreType::Riscv64),
+                fpu_support: false,
+                fp_register_count: None,
+            })
+            .collect();
+
+        // Warn if we can't actually represent the core as little-endian;
+        // there are no BE cores in the wild today so this is mostly
+        // defensive for future targets.
+        for (arch,) in per_core.iter().map(|info| (info.architecture,)) {
+            if matches!(arch, Architecture::Xtensa) {
+                tracing::debug!(
+                    "Xtensa targets over RPC: FPU/endian info defaults may need adjustment."
+                );
+            }
+        }
+
+        let mut backend = RpcBackend::new(
+            tokio::runtime::Handle::current(),
+            client.clone(),
+            sessid,
+            target,
+            cores,
+            per_core,
+        );
+
+        // Filter core_configs to those present on the target, mirroring the
+        // local path.
+        let valid_core_configs = config
+            .core_configs
+            .iter()
+            .filter(|&core_config| {
+                backend
+                    .list_cores()
+                    .iter()
+                    .any(|(target_core_index, _)| *target_core_index == core_config.core_index)
+            })
+            .collect::<Vec<_>>();
+
+        let mut core_data_vec = vec![];
+
+        for core_configuration in valid_core_configs {
+            let needs_vector_catch = core_configuration.catch_hardfault
+                || core_configuration.catch_reset
+                || core_configuration.catch_svc
+                || core_configuration.catch_hlt;
+
+            if needs_vector_catch {
+                let mut core = backend.core(core_configuration.core_index)?;
+                let was_halted = core.core_halted()?;
+
+                if !was_halted {
+                    core.halt(Duration::from_millis(100))?;
+                }
+
+                if core_configuration.catch_hardfault {
+                    match core.enable_vector_catch(VectorCatchCondition::HardFault) {
+                        Ok(_) | Err(probe_rs::Error::NotImplemented(_)) => {}
+                        Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+                    }
+                }
+                if core_configuration.catch_reset {
+                    match core.enable_vector_catch(VectorCatchCondition::CoreReset) {
+                        Ok(_) | Err(probe_rs::Error::NotImplemented(_)) => {}
+                        Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+                    }
+                }
+                if core_configuration.catch_svc {
+                    match core.enable_vector_catch(VectorCatchCondition::Svc) {
+                        Ok(_) | Err(probe_rs::Error::NotImplemented(_)) => {}
+                        Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+                    }
+                }
+                if core_configuration.catch_hlt {
+                    match core.enable_vector_catch(VectorCatchCondition::Hlt) {
+                        Ok(_) | Err(probe_rs::Error::NotImplemented(_)) => {}
+                        Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+                    }
+                }
+
+                if was_halted {
+                    core.run()?;
+                }
+            }
+
+            let debug_info = debug_info_from_binary(core_configuration)?;
+
+            let mut repl_commands = REPL_COMMANDS.to_vec();
+            let mut test_data: Box<dyn Any> = Box::new(());
+            if let Some(path_to_elf) = core_configuration.program_binary.as_deref()
+                && let Some(elf_info) = EmbeddedTestElfInfo::from_elf(path_to_elf)?
+            {
+                tracing::debug!("Embedded Test Metadata: {:?}", elf_info);
+                if elf_info.version != 1 {
+                    tracing::info!("Detected unsupported embedded-test version in ELF file.");
+                } else {
+                    tracing::info!(
+                        "Detected embedded-test in ELF file. Adding `test` command to Debug Console."
+                    );
+
+                    repl_commands.push(EMBEDDED_TEST);
+                    test_data = Box::new(elf_info);
+                }
+            }
+
+            core_data_vec.push(CoreData {
+                core_index: core_configuration.core_index,
+                last_known_status: CoreStatus::Unknown,
+                target_name: format!(
+                    "{}-{}",
+                    core_configuration.core_index,
+                    backend.target().name
+                ),
+                debug_info,
+                static_variables: None,
+                core_peripherals: None,
+                stack_frames: vec![],
+                breakpoints: vec![],
+                rtt_scan_ranges: ScanRegion::Ranges(vec![]),
+                rtt_connection: None,
+                rtt_client: None,
+
+                next_semihosting_handle: 1024,
+                semihosting_handles: HashMap::new(),
+
+                repl_commands,
+                test_data,
+            })
+        }
+
+        let mut this = SessionData {
+            backend,
             core_data: core_data_vec,
             timestamp_offset,
         };

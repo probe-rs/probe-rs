@@ -1,5 +1,6 @@
 use super::debugger::Debugger;
 use crate::cmd::dap_server::debug_adapter::{dap::adapter::*, protocol::DapAdapter};
+use crate::rpc::client::RpcClient;
 use anyhow::{Context, Result};
 use probe_rs::{config::Registry, probe::list::Lister};
 use serde::Deserialize;
@@ -34,6 +35,7 @@ impl std::str::FromStr for TargetSessionType {
 }
 
 pub async fn debug_tcp(
+    client: RpcClient,
     lister: &Lister,
     addr: std::net::SocketAddr,
     single_session: bool,
@@ -86,9 +88,14 @@ pub async fn debug_tcp(
                 debugger.debug_logger.flush_to_dap(&mut debug_adapter)?;
 
                 let mut registry = Registry::from_builtin_families();
-                let end_message = match debugger
-                    .debug_session(&mut registry, debug_adapter, lister)
-                    .await
+                let end_message = match run_debug_session(
+                    &mut debugger,
+                    &client,
+                    &mut registry,
+                    debug_adapter,
+                    lister,
+                )
+                .await
                 {
                     // We no longer have a reference to the `debug_adapter`, so errors need
                     // special handling to ensure they are displayed to the user.
@@ -178,6 +185,7 @@ impl Read for ChannelReader {
 }
 
 pub async fn debug_stdio(
+    client: RpcClient,
     lister: &Lister,
     log_file: Option<&Path>,
     timestamp_offset: UtcOffset,
@@ -222,9 +230,14 @@ pub async fn debug_stdio(
     debugger.debug_logger.flush_to_dap(&mut debug_adapter)?;
 
     let mut registry = Registry::from_builtin_families();
-    match debugger
-        .debug_session(&mut registry, debug_adapter, lister)
-        .await
+    match run_debug_session(
+        &mut debugger,
+        &client,
+        &mut registry,
+        debug_adapter,
+        lister,
+    )
+    .await
     {
         Err(error) => {
             eprintln!("Session ended with error: {error:?}");
@@ -245,6 +258,32 @@ pub async fn debug_stdio(
     debugger.debug_logger.flush()?;
 
     Ok(())
+}
+
+/// Pick the correct [`Debugger`] entry point based on whether the provided
+/// [`RpcClient`] is backed by an in-process RPC server (local session) or a
+/// real remote connection.
+///
+/// In local mode the debugger keeps using the historical `Session` backend so
+/// that direct probe access stays available. In remote mode every operation
+/// is proxied through the RPC layer via [`crate::cmd::dap_server::backend::rpc::RpcBackend`].
+async fn run_debug_session<P>(
+    debugger: &mut Debugger,
+    client: &RpcClient,
+    registry: &mut Registry,
+    debug_adapter: DebugAdapter<P>,
+    lister: &Lister,
+) -> Result<(), crate::cmd::dap_server::DebuggerError>
+where
+    P: crate::cmd::dap_server::debug_adapter::protocol::ProtocolAdapter,
+{
+    if client.is_local_session() {
+        debugger
+            .debug_session(registry, debug_adapter, lister)
+            .await
+    } else {
+        debugger.debug_session_rpc(client, debug_adapter).await
+    }
 }
 
 /// Try to get the timestamp of a file.

@@ -463,6 +463,15 @@ impl SessionInterface {
         self.client.clone()
     }
 
+    /// The server-side [`Key`] identifying the attached [`Session`].
+    ///
+    /// Exposed so that alternate backends (e.g. the DAP server's RPC
+    /// backend) can reuse the same session identifier when building their
+    /// own client types.
+    pub fn session_key(&self) -> Key<Session> {
+        self.sessid
+    }
+
     pub fn core(&self, core: usize) -> CoreInterface {
         CoreInterface {
             sessid: self.sessid,
