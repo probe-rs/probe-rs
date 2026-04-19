@@ -253,8 +253,8 @@ impl RpcRemoteCore {
         }
         let wire_ids = ids.iter().copied().map(Into::into).collect();
 
-        let results = block_on(&self.handle, self.client.read_registers(wire_ids))
-            .map_err(rpc_err)?;
+        let results =
+            block_on(&self.handle, self.client.read_registers(wire_ids)).map_err(rpc_err)?;
 
         let mut cache = self
             .register_cache
@@ -298,34 +298,35 @@ impl MemoryInterface for RpcRemoteCore {
     }
 
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
-        let data = block_on(&self.handle, self.client.read_memory_8(address, 1)).map_err(rpc_err)?;
-        data.into_iter().next().ok_or_else(|| {
-            Error::Other("empty response from memory/read8".to_string())
-        })
+        let data =
+            block_on(&self.handle, self.client.read_memory_8(address, 1)).map_err(rpc_err)?;
+        data.into_iter()
+            .next()
+            .ok_or_else(|| Error::Other("empty response from memory/read8".to_string()))
     }
 
     fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
         let data =
             block_on(&self.handle, self.client.read_memory_16(address, 1)).map_err(rpc_err)?;
-        data.into_iter().next().ok_or_else(|| {
-            Error::Other("empty response from memory/read16".to_string())
-        })
+        data.into_iter()
+            .next()
+            .ok_or_else(|| Error::Other("empty response from memory/read16".to_string()))
     }
 
     fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
         let data =
             block_on(&self.handle, self.client.read_memory_32(address, 1)).map_err(rpc_err)?;
-        data.into_iter().next().ok_or_else(|| {
-            Error::Other("empty response from memory/read32".to_string())
-        })
+        data.into_iter()
+            .next()
+            .ok_or_else(|| Error::Other("empty response from memory/read32".to_string()))
     }
 
     fn read_word_64(&mut self, address: u64) -> Result<u64, Error> {
         let data =
             block_on(&self.handle, self.client.read_memory_64(address, 1)).map_err(rpc_err)?;
-        data.into_iter().next().ok_or_else(|| {
-            Error::Other("empty response from memory/read64".to_string())
-        })
+        data.into_iter()
+            .next()
+            .ok_or_else(|| Error::Other("empty response from memory/read64".to_string()))
     }
 
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
@@ -343,8 +344,11 @@ impl MemoryInterface for RpcRemoteCore {
     }
 
     fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
-        let result = block_on(&self.handle, self.client.read_memory_16(address, data.len()))
-            .map_err(rpc_err)?;
+        let result = block_on(
+            &self.handle,
+            self.client.read_memory_16(address, data.len()),
+        )
+        .map_err(rpc_err)?;
         if result.len() != data.len() {
             return Err(Error::Other(format!(
                 "short read: requested {} words, got {}",
@@ -357,8 +361,11 @@ impl MemoryInterface for RpcRemoteCore {
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
-        let result = block_on(&self.handle, self.client.read_memory_32(address, data.len()))
-            .map_err(rpc_err)?;
+        let result = block_on(
+            &self.handle,
+            self.client.read_memory_32(address, data.len()),
+        )
+        .map_err(rpc_err)?;
         if result.len() != data.len() {
             return Err(Error::Other(format!(
                 "short read: requested {} words, got {}",
@@ -371,8 +378,11 @@ impl MemoryInterface for RpcRemoteCore {
     }
 
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
-        let result = block_on(&self.handle, self.client.read_memory_64(address, data.len()))
-            .map_err(rpc_err)?;
+        let result = block_on(
+            &self.handle,
+            self.client.read_memory_64(address, data.len()),
+        )
+        .map_err(rpc_err)?;
         if result.len() != data.len() {
             return Err(Error::Other(format!(
                 "short read: requested {} words, got {}",
@@ -385,7 +395,11 @@ impl MemoryInterface for RpcRemoteCore {
     }
 
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
-        block_on(&self.handle, self.client.write_memory_8(address, vec![data])).map_err(rpc_err)
+        block_on(
+            &self.handle,
+            self.client.write_memory_8(address, vec![data]),
+        )
+        .map_err(rpc_err)
     }
 
     fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {

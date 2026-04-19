@@ -36,8 +36,8 @@ use crate::{
             CoreHaltedEndpoint, CoreInstructionSetEndpoint, CoreReadRegEndpoint,
             CoreReadRegistersEndpoint, CoreRunEndpoint, CoreSetHwBpEndpoint, CoreStatusEndpoint,
             CoreStepEndpoint, CoreWaitHaltedEndpoint, CoreWriteRegEndpoint,
-            CreateRttClientEndpoint, CreateTempFileEndpoint, EraseEndpoint,
-            FlashEndpoint, ListChipFamiliesEndpoint, ListProbesEndpoint, ListTestsEndpoint,
+            CreateRttClientEndpoint, CreateTempFileEndpoint, EraseEndpoint, FlashEndpoint,
+            ListChipFamiliesEndpoint, ListProbesEndpoint, ListTestsEndpoint,
             LoadChipFamilyEndpoint, MonitorEndpoint, ProgressEventTopic, ReadMemory8Endpoint,
             ReadMemory16Endpoint, ReadMemory32Endpoint, ReadMemory64Endpoint,
             ResetCoreAndHaltEndpoint, ResetCoreEndpoint, ResumeAllCoresEndpoint, RpcResult,
@@ -46,12 +46,6 @@ use crate::{
             VerifyEndpoint, WriteMemory8Endpoint, WriteMemory16Endpoint, WriteMemory32Endpoint,
             WriteMemory64Endpoint,
             chip::{ChipData, ChipFamily, ChipInfoRequest, LoadChipFamilyRequest},
-            file::{AppendFileRequest, TempFile},
-            flash::{
-                BootInfo, BuildRequest, BuildResult, DownloadOptions, EraseCommand, EraseRequest,
-                FlashRequest, ProgressEvent, VerifyRequest, VerifyResult,
-            },
-            info::{InfoEvent, TargetInfoRequest},
             core_ops::{
                 CoreAccessRequest, CoreBreakpointRequest, CoreHaltRequest, CoreReadRegRequest,
                 CoreReadRegistersRequest, CoreVectorCatchRequest, CoreWaitHaltedRequest,
@@ -59,6 +53,12 @@ use crate::{
                 WireRegisterId, WireRegisterReadResult, WireRegisterValue,
                 WireVectorCatchCondition,
             },
+            file::{AppendFileRequest, TempFile},
+            flash::{
+                BootInfo, BuildRequest, BuildResult, DownloadOptions, EraseCommand, EraseRequest,
+                FlashRequest, ProgressEvent, VerifyRequest, VerifyResult,
+            },
+            info::{InfoEvent, TargetInfoRequest},
             memory::{ReadMemoryRequest, WriteMemoryRequest},
             monitor::{MonitorExitReason, MonitorMode, MonitorOptions, MonitorRequest},
             probe::{

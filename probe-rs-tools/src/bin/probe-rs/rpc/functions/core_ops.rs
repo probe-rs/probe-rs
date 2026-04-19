@@ -230,16 +230,14 @@ impl From<HaltReason> for WireHaltReason {
         use probe_rs::BreakpointCause;
         match value {
             HaltReason::Multiple => WireHaltReason::Multiple,
-            HaltReason::Breakpoint(cause) => {
-                WireHaltReason::Breakpoint(match cause {
-                    BreakpointCause::Hardware => WireBreakpointCause::Hardware,
-                    BreakpointCause::Software => WireBreakpointCause::Software,
-                    BreakpointCause::Unknown => WireBreakpointCause::Unknown,
-                    BreakpointCause::Semihosting(ref cmd) => {
-                        WireBreakpointCause::Semihosting(cmd.into())
-                    }
-                })
-            }
+            HaltReason::Breakpoint(cause) => WireHaltReason::Breakpoint(match cause {
+                BreakpointCause::Hardware => WireBreakpointCause::Hardware,
+                BreakpointCause::Software => WireBreakpointCause::Software,
+                BreakpointCause::Unknown => WireBreakpointCause::Unknown,
+                BreakpointCause::Semihosting(ref cmd) => {
+                    WireBreakpointCause::Semihosting(cmd.into())
+                }
+            }),
             HaltReason::Exception => WireHaltReason::Exception,
             HaltReason::Watchpoint => WireHaltReason::Watchpoint,
             HaltReason::Step => WireHaltReason::Step,
@@ -264,14 +262,12 @@ impl From<WireBreakpointCause> for probe_rs::BreakpointCause {
             // command payload; the DAP backend surfaces semihosting halts
             // through the dedicated event channel rather than reconstituting a
             // full `SemihostingCommand` over RPC.
-            WireBreakpointCause::Semihosting(_) => {
-                probe_rs::BreakpointCause::Semihosting(SemihostingCommand::Unknown(
-                    UnknownCommandDetails {
-                        operation: 0,
-                        parameter: 0,
-                    },
-                ))
-            }
+            WireBreakpointCause::Semihosting(_) => probe_rs::BreakpointCause::Semihosting(
+                SemihostingCommand::Unknown(UnknownCommandDetails {
+                    operation: 0,
+                    parameter: 0,
+                }),
+            ),
         }
     }
 }
