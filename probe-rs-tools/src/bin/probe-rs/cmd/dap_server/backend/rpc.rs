@@ -13,12 +13,7 @@
 //! into a synchronous one. A standard [`probe_rs::Core`] handle is built by
 //! [`probe_rs::Core::from_boxed`] around it.
 
-use std::{
-    collections::HashMap,
-    path::Path,
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+use std::{collections::HashMap, path::Path, sync::Arc, time::Duration};
 
 use probe_rs::{
     Architecture, BreakpointCause, Core, CoreInformation, CoreInterface, CoreRegister,
@@ -52,7 +47,7 @@ use crate::rpc::{
 /// [`RpcRemoteCore`] instances produced by [`RpcBackend::core`] so that the
 /// register dump that the DAP server performs on every halt becomes a
 /// single round trip after the first register read.
-type RegisterCache = Arc<Mutex<HashMap<usize, HashMap<RegisterId, RegisterValue>>>>;
+type RegisterCache = HashMap<usize, HashMap<RegisterId, RegisterValue>>;
 
 /// Run an async future to completion on the current tokio runtime, without
 /// actually blocking the runtime (by releasing the worker thread via
@@ -177,7 +172,7 @@ impl RpcBackend {
             cores,
             target: Arc::new(target),
             core_metadata,
-            register_cache: Arc::new(Mutex::new(HashMap::new())),
+            register_cache: HashMap::new(),
         }
     }
 }
@@ -220,42 +215,39 @@ impl DapBackend for RpcBackend {
             ),
             metadata,
             core_index,
-            register_cache: self.register_cache.clone(),
+            register_cache: &mut self.register_cache,
         };
 
-        // The `Core` wraps a `Box<dyn CoreInterface + 'probe>`; we borrow the
-        // target description from `self` so that DAP code paths that ask for
-        // `core.target()` keep working.
-        let target: &Target = &self.target;
-        let name: &str = &self.target.name;
-        Ok(Core::from_boxed(core_index, name, target, Box::new(core)))
+        Ok(Core::from_boxed(
+            core_index,
+            &self.target.name,
+            &self.target,
+            Box::new(core),
+        ))
     }
 }
 
 /// Synchronous [`CoreInterface`] implementation backed by an async RPC client.
-pub struct RpcRemoteCore {
+pub struct RpcRemoteCore<'a> {
     handle: Handle,
     client: RpcCoreClient,
     metadata: CoreMetadata,
     core_index: usize,
-    register_cache: RegisterCache,
+    register_cache: &'a mut RegisterCache,
 }
 
-impl RpcRemoteCore {
+impl RpcRemoteCore<'_> {
     /// Invalidate this core's cached register dump. Called whenever an
     /// operation is issued that could plausibly change register contents:
     /// `run`, `step`, `halt`, any reset, or a register write.
-    fn invalidate_register_cache(&self) {
-        if let Ok(mut cache) = self.register_cache.lock() {
-            cache.remove(&self.core_index);
-        }
+    fn invalidate_register_cache(&mut self) {
+        self.register_cache.remove(&self.core_index);
     }
 
     /// Look up a single register, refilling the cache with a batched
     /// `core/read_registers` call on a miss.
     fn cached_read_reg(&mut self, id: RegisterId) -> Result<RegisterValue, Error> {
-        if let Ok(cache) = self.register_cache.lock()
-            && let Some(entry) = cache.get(&self.core_index)
+        if let Some(entry) = self.register_cache.get(&self.core_index)
             && let Some(value) = entry.get(&id)
         {
             return Ok(*value);
@@ -263,8 +255,7 @@ impl RpcRemoteCore {
 
         self.refill_register_cache()?;
 
-        if let Ok(cache) = self.register_cache.lock()
-            && let Some(entry) = cache.get(&self.core_index)
+        if let Some(entry) = self.register_cache.get(&self.core_index)
             && let Some(value) = entry.get(&id)
         {
             return Ok(*value);
@@ -282,7 +273,7 @@ impl RpcRemoteCore {
     /// Issue a single `core/read_registers` call covering every register in
     /// this core's static register file (including FP registers when
     /// available) and populate the cache with whatever the server returns.
-    fn refill_register_cache(&self) -> Result<(), Error> {
+    fn refill_register_cache(&mut self) -> Result<(), Error> {
         let mut ids: Vec<RegisterId> = self
             .metadata
             .registers
@@ -299,11 +290,7 @@ impl RpcRemoteCore {
         let results =
             block_on(&self.handle, self.client.read_registers(wire_ids)).map_err(rpc_err)?;
 
-        let mut cache = self
-            .register_cache
-            .lock()
-            .map_err(|_| Error::Other("register cache poisoned".to_string()))?;
-        let entry = cache.entry(self.core_index).or_default();
+        let entry = self.register_cache.entry(self.core_index).or_default();
         for result in results {
             if let Some(value) = result.value {
                 entry.insert(result.id.into(), value.into());
@@ -374,7 +361,7 @@ macro_rules! rpc_mem_methods {
     };
 }
 
-impl MemoryInterface for RpcRemoteCore {
+impl MemoryInterface for RpcRemoteCore<'_> {
     fn supports_native_64bit_access(&mut self) -> bool {
         self.metadata.is_64_bit
     }
@@ -429,7 +416,7 @@ impl MemoryInterface for RpcRemoteCore {
     }
 }
 
-impl CoreInterface for RpcRemoteCore {
+impl CoreInterface for RpcRemoteCore<'_> {
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
         block_on(&self.handle, self.client.wait_for_core_halted(timeout)).map_err(rpc_err)
     }
