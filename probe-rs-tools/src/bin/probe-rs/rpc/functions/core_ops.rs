@@ -249,11 +249,9 @@ impl From<&SemihostingCommand> for WireSemihostingCommand {
             SemihostingCommand::ExitError(details) => {
                 WireSemihostingCommand::ExitError(details.into())
             }
-            SemihostingCommand::GetCommandLine(request) => {
-                WireSemihostingCommand::GetCommandLine {
-                    block_address: request.block_address(),
-                }
-            }
+            SemihostingCommand::GetCommandLine(request) => WireSemihostingCommand::GetCommandLine {
+                block_address: request.block_address(),
+            },
             _ => WireSemihostingCommand::Other,
         }
     }

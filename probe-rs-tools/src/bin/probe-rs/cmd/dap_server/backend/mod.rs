@@ -105,9 +105,7 @@ impl FlashingBackend for Session {
                 Ok(_) => false,
                 Err(FlashError::Verify) => true,
                 Err(other) => {
-                    return Err(DebuggerError::FileDownload(FileDownloadError::Flash(
-                        other,
-                    )));
+                    return Err(DebuggerError::FileDownload(FileDownloadError::Flash(other)));
                 }
             }
         } else {

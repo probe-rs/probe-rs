@@ -230,15 +230,7 @@ pub async fn debug_stdio(
     debugger.debug_logger.flush_to_dap(&mut debug_adapter)?;
 
     let mut registry = Registry::from_builtin_families();
-    match run_debug_session(
-        &mut debugger,
-        &client,
-        &mut registry,
-        debug_adapter,
-        lister,
-    )
-    .await
-    {
+    match run_debug_session(&mut debugger, &client, &mut registry, debug_adapter, lister).await {
         Err(error) => {
             eprintln!("Session ended with error: {error:?}");
             debugger

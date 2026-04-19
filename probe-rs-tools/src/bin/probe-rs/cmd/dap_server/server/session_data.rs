@@ -535,8 +535,14 @@ fn apply_vector_catch(
     }
 
     let requested: &[(bool, VectorCatchCondition)] = &[
-        (core_configuration.catch_hardfault, VectorCatchCondition::HardFault),
-        (core_configuration.catch_reset, VectorCatchCondition::CoreReset),
+        (
+            core_configuration.catch_hardfault,
+            VectorCatchCondition::HardFault,
+        ),
+        (
+            core_configuration.catch_reset,
+            VectorCatchCondition::CoreReset,
+        ),
         (core_configuration.catch_svc, VectorCatchCondition::Svc),
         (core_configuration.catch_hlt, VectorCatchCondition::Hlt),
     ];

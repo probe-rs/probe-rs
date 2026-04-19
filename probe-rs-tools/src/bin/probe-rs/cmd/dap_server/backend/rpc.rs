@@ -40,7 +40,10 @@ use crate::rpc::{
             WireBreakpointCause, WireCoreStatus, WireHaltReason, WireRegisterValue,
             WireSemihostingCommand, WireVectorCatchCondition,
         },
-        flash::{DownloadOptions as WireDownloadOptions, ProgressEvent as WireProgressEvent, VerifyResult},
+        flash::{
+            DownloadOptions as WireDownloadOptions, ProgressEvent as WireProgressEvent,
+            VerifyResult,
+        },
     },
 };
 
@@ -362,13 +365,11 @@ macro_rules! rpc_mem_methods {
         }
 
         fn $write_word(&mut self, address: u64, data: $ty) -> Result<(), Error> {
-            block_on(&self.handle, self.client.$rpc_write(address, vec![data]))
-                .map_err(rpc_err)
+            block_on(&self.handle, self.client.$rpc_write(address, vec![data])).map_err(rpc_err)
         }
 
         fn $write_many(&mut self, address: u64, data: &[$ty]) -> Result<(), Error> {
-            block_on(&self.handle, self.client.$rpc_write(address, data.to_vec()))
-                .map_err(rpc_err)
+            block_on(&self.handle, self.client.$rpc_write(address, data.to_vec())).map_err(rpc_err)
         }
     };
 }
@@ -378,10 +379,46 @@ impl MemoryInterface for RpcRemoteCore {
         self.metadata.is_64_bit
     }
 
-    rpc_mem_methods!(8,  u8,  read_word_8,  read_8,  write_word_8,  write_8,  read_memory_8,  write_memory_8);
-    rpc_mem_methods!(16, u16, read_word_16, read_16, write_word_16, write_16, read_memory_16, write_memory_16);
-    rpc_mem_methods!(32, u32, read_word_32, read_32, write_word_32, write_32, read_memory_32, write_memory_32);
-    rpc_mem_methods!(64, u64, read_word_64, read_64, write_word_64, write_64, read_memory_64, write_memory_64);
+    rpc_mem_methods!(
+        8,
+        u8,
+        read_word_8,
+        read_8,
+        write_word_8,
+        write_8,
+        read_memory_8,
+        write_memory_8
+    );
+    rpc_mem_methods!(
+        16,
+        u16,
+        read_word_16,
+        read_16,
+        write_word_16,
+        write_16,
+        read_memory_16,
+        write_memory_16
+    );
+    rpc_mem_methods!(
+        32,
+        u32,
+        read_word_32,
+        read_32,
+        write_word_32,
+        write_32,
+        read_memory_32,
+        write_memory_32
+    );
+    rpc_mem_methods!(
+        64,
+        u64,
+        read_word_64,
+        read_64,
+        write_word_64,
+        write_64,
+        read_memory_64,
+        write_memory_64
+    );
 
     fn supports_8bit_transfers(&self) -> Result<bool, Error> {
         Ok(true)
@@ -410,9 +447,11 @@ impl CoreInterface for RpcRemoteCore {
         // subsequent `write_command_line_to_target` call will then flow
         // through our `MemoryInterface` (i.e. over memory RPCs) and
         // complete the handshake end-to-end.
-        if let WireCoreStatus::Halted(WireHaltReason::Breakpoint(WireBreakpointCause::Semihosting(
-            WireSemihostingCommand::GetCommandLine { block_address },
-        ))) = wire
+        if let WireCoreStatus::Halted(WireHaltReason::Breakpoint(
+            WireBreakpointCause::Semihosting(WireSemihostingCommand::GetCommandLine {
+                block_address,
+            }),
+        )) = wire
         {
             let buffer = Buffer::from_block_at(self, block_address)?;
             return Ok(CoreStatus::Halted(HaltReason::Breakpoint(

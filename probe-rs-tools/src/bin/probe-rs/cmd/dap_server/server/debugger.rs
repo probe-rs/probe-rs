@@ -641,63 +641,61 @@ impl Debugger {
         };
 
         let result = {
-            let mut on_event = |event: WireProgressEvent| {
-                match event {
-                    WireProgressEvent::AddProgressBar { operation, total } => {
-                        let pbar_state = flash_progress_state.entry(operation).or_default();
-                        if let Some(total) = total {
-                            pbar_state.total_size += total;
-                            pbar_state.size_done = 0;
-                        }
+            let mut on_event = |event: WireProgressEvent| match event {
+                WireProgressEvent::AddProgressBar { operation, total } => {
+                    let pbar_state = flash_progress_state.entry(operation).or_default();
+                    if let Some(total) = total {
+                        pbar_state.total_size += total;
+                        pbar_state.size_done = 0;
                     }
-                    WireProgressEvent::Started(operation) => {
-                        if let Some(id) = progress_id {
-                            debug_adapter
-                                .update_progress(None, Some(describe_op(operation)), id)
-                                .ok();
-                        }
-                    }
-                    WireProgressEvent::Progress { operation, size } => {
-                        let pbar_state = flash_progress_state.entry(operation).or_default();
-                        pbar_state.size_done += size;
-                        let progress =
-                            pbar_state.size_done as f64 / pbar_state.total_size.max(1) as f64;
-
-                        if let Some(id) = progress_id {
-                            debug_adapter
-                                .update_progress(
-                                    Some(progress.min(1.0)),
-                                    Some(describe_op(operation)),
-                                    id,
-                                )
-                                .ok();
-                        }
-                    }
-                    WireProgressEvent::Failed(operation) => {
-                        if let Some(id) = progress_id {
-                            debug_adapter
-                                .update_progress(
-                                    Some(1.0),
-                                    Some(format!("{} Failed!", describe_op(operation))),
-                                    id,
-                                )
-                                .ok();
-                        }
-                    }
-                    WireProgressEvent::Finished(operation) => {
-                        if let Some(id) = progress_id {
-                            debug_adapter
-                                .update_progress(
-                                    Some(1.0),
-                                    Some(format!("{} Complete!", describe_op(operation))),
-                                    id,
-                                )
-                                .ok();
-                        }
-                    }
-                    WireProgressEvent::FlashLayoutReady { .. } => {}
-                    WireProgressEvent::DiagnosticMessage { .. } => {}
                 }
+                WireProgressEvent::Started(operation) => {
+                    if let Some(id) = progress_id {
+                        debug_adapter
+                            .update_progress(None, Some(describe_op(operation)), id)
+                            .ok();
+                    }
+                }
+                WireProgressEvent::Progress { operation, size } => {
+                    let pbar_state = flash_progress_state.entry(operation).or_default();
+                    pbar_state.size_done += size;
+                    let progress =
+                        pbar_state.size_done as f64 / pbar_state.total_size.max(1) as f64;
+
+                    if let Some(id) = progress_id {
+                        debug_adapter
+                            .update_progress(
+                                Some(progress.min(1.0)),
+                                Some(describe_op(operation)),
+                                id,
+                            )
+                            .ok();
+                    }
+                }
+                WireProgressEvent::Failed(operation) => {
+                    if let Some(id) = progress_id {
+                        debug_adapter
+                            .update_progress(
+                                Some(1.0),
+                                Some(format!("{} Failed!", describe_op(operation))),
+                                id,
+                            )
+                            .ok();
+                    }
+                }
+                WireProgressEvent::Finished(operation) => {
+                    if let Some(id) = progress_id {
+                        debug_adapter
+                            .update_progress(
+                                Some(1.0),
+                                Some(format!("{} Complete!", describe_op(operation))),
+                                id,
+                            )
+                            .ok();
+                    }
+                }
+                WireProgressEvent::FlashLayoutReady { .. } => {}
+                WireProgressEvent::DiagnosticMessage { .. } => {}
             };
 
             session_data
