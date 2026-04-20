@@ -20,14 +20,17 @@ restore_unwritten_bytes = false
 # flash_layout_output_path = "out.svg"
 # Triggers a full chip erase instead of a page by page erase.
 do_chip_erase = false
-# Whether to disable double buffering
+# Whether to disable double buffering.
 disable_double_buffering = false
-# Whether to verify flash contents before downloading
+# Whether to verify flash contents before downloading.
 preverify = false
-# Whether to verify flash contents after downloading
+# Whether to verify flash contents after downloading.
 verify = false
-# Whether to read RTT output from the flash loader
+# Whether to read RTT output from the flash loader.
 read_flasher_rtt = false
+# Skip the resetting of the chip. This can be useful if there is other tooling in place which
+# performs this task before flashing. It currently only works for RAM flashing.
+skip_reset = false
 
 [default.reset]
 # Whether or not the target should be reset.
