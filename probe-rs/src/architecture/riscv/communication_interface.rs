@@ -1345,8 +1345,6 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// When set, `halted_access` writes `dcsr.prv = M` after every internal
     /// halt so that program-buffer instructions use physical addresses
     /// regardless of the privilege level at which the hart was interrupted.
-    // Used by vendor sequences (e.g. Nuclei, SiFive) not yet in this branch.
-    #[expect(dead_code)]
     pub(crate) fn set_force_machine_mode_progbuf(&mut self, force: bool) {
         self.state.force_machine_mode_progbuf = force;
     }
@@ -2251,6 +2249,25 @@ impl<'state> RiscvCommunicationInterface<'state> {
         })
     }
 
+    /// Read a CSR via the program buffer, forcing 64-bit abstract-command width.
+    ///
+    /// Unlike [`Self::read_csr_progbuf`], which uses the XLEN mode that has already been
+    /// detected, this method temporarily sets `xlen_64 = true` so that S0 is saved and
+    /// read back with 64-bit abstract commands.  This is necessary when reading CSRs
+    /// (such as MISA) before XLEN has been determined, e.g. in a vendor `on_connect`
+    /// sequence.
+    ///
+    /// On RV32 targets the underlying 64-bit abstract command will fail with
+    /// [`AbstractCommandErrorKind::NotSupported`], which is propagated as an error so that
+    /// callers can handle RV32/RV64 detection gracefully.
+    pub(crate) fn read_csr_progbuf_64(&mut self, address: u16) -> Result<u64, RiscvError> {
+        let saved_xlen = self.state.xlen_64;
+        self.state.xlen_64 = true;
+        let result = self.read_csr_progbuf(address);
+        self.state.xlen_64 = saved_xlen;
+        result
+    }
+
     /// Write a CSR value via the program buffer (fallback when abstract commands are unsupported).
     ///
     /// Writes `value` into S0 then executes `csrw addr, s0` in the program buffer. Width is
@@ -2589,6 +2606,25 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// Returns a mutable reference to the memory access configuration.
     pub fn memory_access_config(&mut self) -> &mut MemoryAccessConfig {
         &mut self.state.memory_access_config
+    }
+
+    /// Clear the abstractauto register to disable any auto-execution,
+    /// clear cmderr, and invalidate the progbuf cache.
+    ///
+    /// This should be called during session setup to prevent stale autoexec
+    /// state from a previous crashed session from interfering.
+    pub fn clear_abstractauto(&mut self) {
+        if let Err(e) = self.write_dm_register(Abstractauto(0)) {
+            tracing::debug!("Failed to clear abstractauto: {:?}", e);
+        }
+        // Clear any cmderr that may have been caused by stale autoexec.
+        let mut abstractcs_clear = Abstractcs(0);
+        abstractcs_clear.set_cmderr(0x7);
+        if let Err(e) = self.write_dm_register(abstractcs_clear) {
+            tracing::debug!("Failed to clear abstractcs cmderr: {:?}", e);
+        }
+        // Invalidate the progbuf cache so the next operation fully rewrites it.
+        self.state.progbuf_cache = [0u32; 16];
     }
 }
 

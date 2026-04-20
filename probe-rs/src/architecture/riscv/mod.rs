@@ -848,6 +848,10 @@ impl<X: XlenMode> CoreInterface for RiscvCore<'_, X> {
         X::core_type()
     }
 
+    fn is_64_bit(&self) -> bool {
+        matches!(X::core_type(), CoreType::Riscv64)
+    }
+
     fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
         // Check if the Bit at position 2 (signifies letter C, for compressed) is set.
         let misa_val = self.interface.read_csr(0x301)?;
