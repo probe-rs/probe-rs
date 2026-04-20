@@ -13,6 +13,15 @@ use crate::{
                 ChipInfoRequest, ChipInfoResponse, ListFamiliesResponse, LoadChipFamilyRequest,
                 chip_info, list_families, load_chip_family,
             },
+            core_ops::{
+                CoreAccessRequest, CoreBreakpointRequest, CoreHaltRequest, CoreReadRegRequest,
+                CoreReadRegistersRequest, CoreVectorCatchRequest, CoreWaitHaltedRequest,
+                CoreWriteRegRequest, WireCoreInformation, WireCoreStatus, WireInstructionSet,
+                WireRegisterReadResult, WireRegisterValue, core_available_bp_units,
+                core_clear_hw_bp, core_disable_vc, core_enable_vc, core_halt, core_halted,
+                core_instruction_set, core_read_reg, core_read_registers, core_run, core_set_hw_bp,
+                core_status, core_step, core_wait_halted, core_write_reg,
+            },
             flash::{
                 BuildRequest, BuildResponse, EraseRequest, FlashRequest, ProgressEvent,
                 VerifyRequest, VerifyResponse, build, erase, flash, verify,
@@ -60,6 +69,7 @@ use tokio::sync::mpsc::{Receiver, Sender, channel};
 use tokio_util::sync::CancellationToken;
 
 pub mod chip;
+pub mod core_ops;
 pub mod file;
 pub mod flash;
 pub mod info;
@@ -456,6 +466,14 @@ type WriteMemory16Request = WriteMemoryRequest<u16>;
 type WriteMemory32Request = WriteMemoryRequest<u32>;
 type WriteMemory64Request = WriteMemoryRequest<u64>;
 
+type CoreStatusResponse = RpcResult<WireCoreStatus>;
+type CoreHaltedResponse = RpcResult<bool>;
+type CoreInfoResponse = RpcResult<WireCoreInformation>;
+type CoreRegValueResponse = RpcResult<WireRegisterValue>;
+type CoreU32Response = RpcResult<u32>;
+type CoreInstructionSetResponse = RpcResult<WireInstructionSet>;
+type CoreReadRegistersResponse = RpcResult<Vec<WireRegisterReadResult>>;
+
 endpoints! {
     list = ENDPOINT_LIST;
     | EndpointTy                | RequestTy               | ResponseTy              | Path               |
@@ -487,6 +505,22 @@ endpoints! {
     | TargetInfoEndpoint        | TargetInfoRequest       | NoResponse              | "info"             |
     | ResetCoreEndpoint         | ResetCoreRequest        | NoResponse              | "reset"            |
     | ResetCoreAndHaltEndpoint  | ResetCoreAndHaltRequest | NoResponse              | "reset_and_halt"   |
+
+    | CoreStatusEndpoint        | CoreAccessRequest       | CoreStatusResponse            | "core/status"             |
+    | CoreHaltedEndpoint        | CoreAccessRequest       | CoreHaltedResponse            | "core/halted"             |
+    | CoreWaitHaltedEndpoint    | CoreWaitHaltedRequest   | NoResponse                    | "core/wait_halted"        |
+    | CoreHaltEndpoint          | CoreHaltRequest         | CoreInfoResponse              | "core/halt"               |
+    | CoreRunEndpoint           | CoreAccessRequest       | NoResponse                    | "core/run"                |
+    | CoreStepEndpoint          | CoreAccessRequest       | CoreInfoResponse              | "core/step"               |
+    | CoreReadRegEndpoint       | CoreReadRegRequest      | CoreRegValueResponse          | "core/read_reg"           |
+    | CoreWriteRegEndpoint      | CoreWriteRegRequest     | NoResponse                    | "core/write_reg"          |
+    | CoreSetHwBpEndpoint       | CoreBreakpointRequest   | NoResponse                    | "core/set_hw_bp"          |
+    | CoreClearHwBpEndpoint     | CoreBreakpointRequest   | NoResponse                    | "core/clear_hw_bp"        |
+    | CoreAvailableBpUnitsEndpoint | CoreAccessRequest    | CoreU32Response               | "core/available_bp_units" |
+    | CoreEnableVcEndpoint      | CoreVectorCatchRequest  | NoResponse                    | "core/enable_vc"          |
+    | CoreDisableVcEndpoint     | CoreVectorCatchRequest  | NoResponse                    | "core/disable_vc"         |
+    | CoreInstructionSetEndpoint | CoreAccessRequest      | CoreInstructionSetResponse    | "core/instruction_set"    |
+    | CoreReadRegistersEndpoint | CoreReadRegistersRequest | CoreReadRegistersResponse     | "core/read_registers"     |
 
     | ReadMemory8Endpoint       | ReadMemoryRequest       | ReadMemory8Response     | "memory/read8"     |
     | ReadMemory16Endpoint      | ReadMemoryRequest       | ReadMemory16Response    | "memory/read16"    |
@@ -557,6 +591,22 @@ postcard_rpc::define_dispatch! {
         | TargetInfoEndpoint        | async     | target_info       |
         | ResetCoreEndpoint         | async     | reset             |
         | ResetCoreAndHaltEndpoint  | async     | reset_and_halt    |
+
+        | CoreStatusEndpoint           | async | core_status            |
+        | CoreHaltedEndpoint           | async | core_halted            |
+        | CoreWaitHaltedEndpoint       | async | core_wait_halted       |
+        | CoreHaltEndpoint             | async | core_halt              |
+        | CoreRunEndpoint              | async | core_run               |
+        | CoreStepEndpoint             | async | core_step              |
+        | CoreReadRegEndpoint          | async | core_read_reg          |
+        | CoreWriteRegEndpoint         | async | core_write_reg         |
+        | CoreSetHwBpEndpoint          | async | core_set_hw_bp         |
+        | CoreClearHwBpEndpoint        | async | core_clear_hw_bp       |
+        | CoreAvailableBpUnitsEndpoint | async | core_available_bp_units |
+        | CoreEnableVcEndpoint         | async | core_enable_vc         |
+        | CoreDisableVcEndpoint        | async | core_disable_vc        |
+        | CoreInstructionSetEndpoint   | async | core_instruction_set   |
+        | CoreReadRegistersEndpoint    | async | core_read_registers    |
 
         | ReadMemory8Endpoint       | async     | read_memory       |
         | ReadMemory16Endpoint      | async     | read_memory       |

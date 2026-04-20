@@ -8,6 +8,7 @@ use super::{
 use crate::{
     cmd::dap_server::{
         DebuggerError,
+        backend::{DapBackend, FlashingBackend, rpc::RpcBackend},
         debug_adapter::{
             dap::{
                 adapter::{DebugAdapter, get_arguments},
@@ -23,16 +24,13 @@ use crate::{
         peripherals::svd_variables::SvdCache,
         server::configuration::SessionConfig,
     },
-    rpc::functions::flash::Operation,
-    util::flash::build_loader,
+    rpc::{
+        client::RpcClient,
+        functions::flash::{Operation, ProgressEvent as WireProgressEvent},
+    },
 };
 use anyhow::{Context, anyhow};
-use probe_rs::{
-    CoreStatus,
-    config::Registry,
-    flashing::{DownloadOptions, FileDownloadError, FlashError, FlashProgress, ProgressEvent},
-    probe::list::Lister,
-};
+use probe_rs::{CoreStatus, Session, config::Registry, probe::list::Lister};
 use std::{
     collections::HashMap,
     fs,
@@ -104,9 +102,9 @@ impl Debugger {
     ///   - If the [`super::core_data::CoreData::last_known_status`] is `Halted(_)`, then we stop polling the Probe until the next DAP-Client request attempts an action
     ///   - If the `new_status` is an Err, then the probe is no longer available, and we  end the debugging session
     ///   - If the `new_status` is `Running`, then we have to poll on a regular basis, until the Probe stops for good reasons like breakpoints, or bad reasons like panics.
-    pub(crate) fn process_next_request<P: ProtocolAdapter>(
+    pub(crate) fn process_next_request<P: ProtocolAdapter, B: DapBackend>(
         &mut self,
-        session_data: &mut SessionData,
+        session_data: &mut SessionData<B>,
         debug_adapter: &mut DebugAdapter<P>,
     ) -> Result<DebugSessionStatus, DebuggerError> {
         self.debug_logger.flush_to_dap(debug_adapter)?;
@@ -118,9 +116,9 @@ impl Debugger {
         }
     }
 
-    fn handle_request<P: ProtocolAdapter>(
+    fn handle_request<P: ProtocolAdapter, B: DapBackend>(
         &mut self,
-        session_data: &mut SessionData,
+        session_data: &mut SessionData<B>,
         debug_adapter: &mut DebugAdapter<P>,
         request: Request,
     ) -> Result<DebugSessionStatus, DebuggerError> {
@@ -202,9 +200,9 @@ impl Debugger {
         Ok(debug_session)
     }
 
-    fn no_request_poll<P: ProtocolAdapter>(
+    fn no_request_poll<P: ProtocolAdapter, B: DapBackend>(
         &mut self,
-        session_data: &mut SessionData,
+        session_data: &mut SessionData<B>,
         debug_adapter: &mut DebugAdapter<P>,
     ) -> Result<DebugSessionStatus, DebuggerError> {
         let _poll_span = tracing::trace_span!("Polling for core status").entered();
@@ -248,12 +246,58 @@ impl Debugger {
     /// All requests are interpreted, actions taken, and responses formulated here.
     /// This function is self contained and returns only status data to control what happens after the session completes.
     /// The [`DebugAdapter`] takes care of _implementing the DAP Base Protocol_ and _communicating with the DAP client_ and _probe_.
+    ///
+    /// Local/in-process entry point: the DAP session is driven against a
+    /// [`probe_rs::Session`] built from the local probe [`Lister`] and chip
+    /// registry.
     pub(crate) async fn debug_session<P: ProtocolAdapter>(
         &mut self,
         registry: &mut Registry,
-        mut debug_adapter: DebugAdapter<P>,
+        debug_adapter: DebugAdapter<P>,
         lister: &Lister,
     ) -> Result<(), DebuggerError> {
+        let timestamp_offset = self.timestamp_offset;
+        self.debug_session_impl::<P, Session, _>(
+            debug_adapter,
+            async move |config: &mut SessionConfig| {
+                SessionData::<Session>::new(registry, lister, config, timestamp_offset)
+            },
+        )
+        .await
+    }
+
+    /// RPC entry point for the DAP server. Drives the session against an
+    /// [`RpcBackend`] wired up around the provided [`RpcClient`] (and its
+    /// ambient tokio runtime). The local chip registry on `client` supplies
+    /// `Target` descriptions.
+    pub(crate) async fn debug_session_rpc<P: ProtocolAdapter>(
+        &mut self,
+        client: &RpcClient,
+        debug_adapter: DebugAdapter<P>,
+    ) -> Result<(), DebuggerError> {
+        let timestamp_offset = self.timestamp_offset;
+        self.debug_session_impl::<P, RpcBackend, _>(
+            debug_adapter,
+            async move |config: &mut SessionConfig| {
+                SessionData::<RpcBackend>::new_remote(client, config, timestamp_offset).await
+            },
+        )
+        .await
+    }
+
+    /// Generic driver for a DAP session. Both [`Self::debug_session`] and
+    /// [`Self::debug_session_rpc`] funnel through this method, supplying a
+    /// [`SessionData`] factory appropriate for their backend.
+    async fn debug_session_impl<P, B, F>(
+        &mut self,
+        mut debug_adapter: DebugAdapter<P>,
+        make_session: F,
+    ) -> Result<(), DebuggerError>
+    where
+        P: ProtocolAdapter,
+        B: FlashingBackend,
+        F: AsyncFnOnce(&mut SessionConfig) -> Result<SessionData<B>, DebuggerError>,
+    {
         // The DapClient startup process has a specific sequence.
         // Handle it here before starting a probe-rs session and looping through user generated requests.
         // Handling the initialize, and Attach/Launch requests here in this method,
@@ -265,7 +309,7 @@ impl Debugger {
             return Ok(());
         }
 
-        let Some(mut session_data) = self.start_session(registry, lister, &mut debug_adapter)?
+        let Some(mut session_data) = self.start_session(&mut debug_adapter, make_session).await?
         else {
             // We got no error, but no SessionData, either
             return Ok(());
@@ -299,8 +343,9 @@ impl Debugger {
                     }
                 }
                 DebugSessionStatus::Restart(request) => {
-                    if let Err(error) =
-                        self.restart(&mut debug_adapter, &mut session_data, &request)
+                    if let Err(error) = self
+                        .restart(&mut debug_adapter, &mut session_data, &request)
+                        .await
                     {
                         debug_adapter.send_response::<()>(&request, Err(&error))?;
                         return Err(error);
@@ -332,12 +377,16 @@ impl Debugger {
     /// This function then handles this request and returns the session data.
     ///
     /// The function exits with no session if a "disconnect" request is received.
-    fn start_session<P: ProtocolAdapter>(
+    async fn start_session<P, B, F>(
         &mut self,
-        registry: &mut Registry,
-        lister: &Lister,
         debug_adapter: &mut DebugAdapter<P>,
-    ) -> Result<Option<SessionData>, DebuggerError> {
+        make_session: F,
+    ) -> Result<Option<SessionData<B>>, DebuggerError>
+    where
+        P: ProtocolAdapter,
+        B: FlashingBackend,
+        F: AsyncFnOnce(&mut SessionConfig) -> Result<SessionData<B>, DebuggerError>,
+    {
         loop {
             // Wait for a request
             let Some(request) = debug_adapter.listen_for_request()? else {
@@ -371,13 +420,10 @@ impl Debugger {
             self.debug_logger.flush_to_dap(debug_adapter)?;
 
             // Process either the Launch or Attach request.
-            let session = match self.handle_launch_attach(
-                registry,
-                &request,
-                launch_attach_request,
-                debug_adapter,
-                lister,
-            ) {
+            let session = match self
+                .handle_launch_attach(&request, launch_attach_request, debug_adapter, make_session)
+                .await
+            {
                 Ok(session_data) => Some(session_data),
                 Err(error) => {
                     debug_adapter.send_response::<()>(&request, Err(&error))?;
@@ -391,14 +437,18 @@ impl Debugger {
 
     /// Process launch or attach request
     #[tracing::instrument(skip_all, name = "Handle Launch/Attach Request")]
-    fn handle_launch_attach<P: ProtocolAdapter>(
+    async fn handle_launch_attach<P, B, F>(
         &mut self,
-        registry: &mut Registry,
         launch_attach_request: &Request,
         requested_target_session_type: TargetSessionType,
         debug_adapter: &mut DebugAdapter<P>,
-        lister: &Lister,
-    ) -> Result<SessionData, DebuggerError> {
+        make_session: F,
+    ) -> Result<SessionData<B>, DebuggerError>
+    where
+        P: ProtocolAdapter,
+        B: FlashingBackend,
+        F: AsyncFnOnce(&mut SessionConfig) -> Result<SessionData<B>, DebuggerError>,
+    {
         self.config = get_arguments(debug_adapter, launch_attach_request)?;
 
         self.config
@@ -409,8 +459,7 @@ impl Debugger {
 
         self.config.validate_config_files()?;
 
-        let mut session_data =
-            SessionData::new(registry, lister, &mut self.config, self.timestamp_offset)?;
+        let mut session_data = make_session(&mut self.config).await?;
 
         debug_adapter.halt_after_reset = self.config.flashing_config.halt_after_reset;
 
@@ -421,22 +470,23 @@ impl Debugger {
         };
 
         if self.config.flashing_config.flashing_enabled {
-            let Some(path_to_elf) = &target_core_config.program_binary else {
+            let Some(path_to_elf) = target_core_config.program_binary.clone() else {
                 return Err(DebuggerError::Other(anyhow!(
                     "Please specify use the `program-binary` option in `launch.json` to specify an executable"
                 )));
             };
 
             // Store timestamp of flashed binary
-            self.binary_timestamp = get_file_timestamp(path_to_elf);
+            self.binary_timestamp = get_file_timestamp(&path_to_elf);
 
             Self::flash(
                 &self.config,
-                path_to_elf,
+                &path_to_elf,
                 debug_adapter,
                 launch_attach_request,
                 &mut session_data,
-            )?;
+            )
+            .await?;
         }
 
         // First, attach to the core
@@ -478,10 +528,10 @@ impl Debugger {
     }
 
     #[tracing::instrument(skip_all)]
-    fn restart<P: ProtocolAdapter>(
+    async fn restart<P: ProtocolAdapter, B: FlashingBackend>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
-        session_data: &mut SessionData,
+        session_data: &mut SessionData<B>,
         request: &Request,
     ) -> Result<(), DebuggerError> {
         let Some(target_core_config) = self.config.core_configs.first() else {
@@ -491,29 +541,35 @@ impl Debugger {
         };
 
         if self.config.flashing_config.flashing_enabled {
-            let Some(path_to_elf) = &target_core_config.program_binary else {
+            let Some(path_to_elf) = target_core_config.program_binary.clone() else {
                 return Err(DebuggerError::Other(anyhow!(
                     "Please specify use the `program-binary` option in `launch.json` to specify an executable"
                 )));
             };
 
-            if is_file_newer(&mut self.binary_timestamp, path_to_elf) {
+            if is_file_newer(&mut self.binary_timestamp, &path_to_elf) {
                 // If there is a new binary as part of a restart, there are some key things that
                 // need to be 'reset' for things to work properly.
-                session_data.load_debug_info_for_core(target_core_config)?;
+                let core_index = target_core_config.core_index;
+                // Reborrow `self.config.core_configs[0]` by cloning the
+                // relevant entry so we can call mutating methods on
+                // `session_data`.
+                let target_core_config = target_core_config.clone();
+                session_data.load_debug_info_for_core(&target_core_config)?;
                 session_data
-                    .attach_core(target_core_config.core_index)
+                    .attach_core(core_index)
                     .map(|mut target_core| target_core.recompute_breakpoints())??;
 
                 session_data.load_rtt_location(&self.config)?;
 
                 Self::flash(
                     &self.config,
-                    path_to_elf,
+                    &path_to_elf,
                     debug_adapter,
                     request,
                     session_data,
-                )?;
+                )
+                .await?;
             }
         }
 
@@ -546,13 +602,16 @@ impl Debugger {
 
     /// Flash the given binary, and report the progress to the
     /// debug adapter.
-    // Note: This function consumes the 'debug_adapter', so all error reporting via that handle must be done before returning from this function.
-    fn flash<P: ProtocolAdapter>(
+    //
+    // The actual flashing is delegated to [`FlashingBackend::flash_binary`] so
+    // that local `Session` and remote `RpcBackend` can share this DAP-level
+    // progress plumbing.
+    async fn flash<P: ProtocolAdapter, B: FlashingBackend>(
         config: &SessionConfig,
         path_to_elf: &Path,
         debug_adapter: &mut DebugAdapter<P>,
         launch_attach_request: &Request,
-        session_data: &mut SessionData,
+        session_data: &mut SessionData<B>,
     ) -> Result<(), DebuggerError> {
         debug_adapter.log_to_console(format!(
             "FLASHING: Starting write of {:?} to device memory",
@@ -562,120 +621,87 @@ impl Debugger {
             .start_progress("Flashing device", Some(launch_attach_request.seq))
             .ok();
 
-        let mut download_options = DownloadOptions::default();
-        download_options.keep_unwritten_bytes = config.flashing_config.restore_unwritten_bytes;
-        download_options.do_chip_erase = config.flashing_config.full_chip_erase;
-        download_options.verify = config.flashing_config.verify_after_flashing;
-
         #[derive(Default)]
         struct ProgressBarState {
             total_size: u64,
             size_done: u64,
         }
-
         type ProgressState = HashMap<Operation, ProgressBarState>;
 
-        download_options.progress = progress_id
-            .map(|id| {
-                let describe_op = |operation| match Operation::from(operation) {
-                    Operation::Fill => "Reading Old Pages",
-                    Operation::Erase => "Erasing Sectors",
-                    Operation::Program => "Programming Pages",
-                    Operation::Verify => "Verifying",
-                };
-                let mut flash_progress = ProgressState::default();
-                let debug_adapter = &mut *debug_adapter;
-                FlashProgress::new(move |event| {
-                    match event {
-                        ProgressEvent::AddProgressBar { operation, total } => {
-                            let pbar_state = flash_progress.entry(operation.into()).or_default();
-                            if let Some(total) = total {
-                                pbar_state.total_size += total; // should this be an assignment instead?
-                                pbar_state.size_done = 0;
-                            };
-                        }
-                        ProgressEvent::Started(operation) => {
-                            debug_adapter
-                                .update_progress(None, Some(describe_op(operation)), id)
-                                .ok();
-                        }
-                        ProgressEvent::Progress {
-                            operation, size, ..
-                        } => {
-                            let pbar_state = flash_progress.entry(operation.into()).or_default();
-                            pbar_state.size_done += size;
-                            let progress =
-                                pbar_state.size_done as f64 / pbar_state.total_size as f64;
+        // Clear stale RTT control blocks before reflashing so that the old
+        // control block header does not leak into the first poll cycle.
+        session_data.clear_rtt_blocks()?;
 
-                            debug_adapter
-                                .update_progress(
-                                    Some(progress.min(1.0)),
-                                    Some(describe_op(operation)),
-                                    id,
-                                )
-                                .ok();
-                        }
-                        ProgressEvent::Failed(operation) => {
-                            debug_adapter
-                                .update_progress(
-                                    Some(1.0),
-                                    Some(format!("{} Failed!", describe_op(operation))),
-                                    id,
-                                )
-                                .ok();
-                        }
-                        ProgressEvent::Finished(operation) => {
-                            debug_adapter
-                                .update_progress(
-                                    Some(1.0),
-                                    Some(format!("{} Complete!", describe_op(operation))),
-                                    id,
-                                )
-                                .ok();
-                        }
-                        ProgressEvent::FlashLayoutReady { .. } => {}
-                        ProgressEvent::DiagnosticMessage { .. } => {}
+        let mut flash_progress_state = ProgressState::default();
+        let describe_op = |operation| match operation {
+            Operation::Fill => "Reading Old Pages",
+            Operation::Erase => "Erasing Sectors",
+            Operation::Program => "Programming Pages",
+            Operation::Verify => "Verifying",
+        };
+
+        let result = {
+            let mut on_event = |event: WireProgressEvent| match event {
+                WireProgressEvent::AddProgressBar { operation, total } => {
+                    let pbar_state = flash_progress_state.entry(operation).or_default();
+                    if let Some(total) = total {
+                        pbar_state.total_size += total;
+                        pbar_state.size_done = 0;
                     }
-                })
-            })
-            .unwrap_or_default();
-
-        let result = match build_loader(
-            &mut session_data.session,
-            path_to_elf,
-            config.flashing_config.format_options.clone(),
-            None,
-        ) {
-            Ok(loader) => {
-                let do_flashing = if config.flashing_config.verify_before_flashing {
-                    match loader.verify(&mut session_data.session, &mut download_options.progress) {
-                        Ok(_) => false,
-                        Err(FlashError::Verify) => true,
-                        Err(other) => {
-                            return Err(DebuggerError::FileDownload(FileDownloadError::Flash(
-                                other,
-                            )));
-                        }
-                    }
-                } else {
-                    true
-                };
-
-                session_data.clear_rtt_blocks()?;
-
-                if do_flashing {
-                    loader
-                        .commit(&mut session_data.session, download_options)
-                        .map_err(FileDownloadError::Flash)
-                } else {
-                    drop(download_options);
-                    Ok(())
                 }
-            }
-            Err(error) => {
-                drop(download_options);
-                Err(error)
-            }
+                WireProgressEvent::Started(operation) => {
+                    if let Some(id) = progress_id {
+                        debug_adapter
+                            .update_progress(None, Some(describe_op(operation)), id)
+                            .ok();
+                    }
+                }
+                WireProgressEvent::Progress { operation, size } => {
+                    let pbar_state = flash_progress_state.entry(operation).or_default();
+                    pbar_state.size_done += size;
+                    let progress =
+                        pbar_state.size_done as f64 / pbar_state.total_size.max(1) as f64;
+
+                    if let Some(id) = progress_id {
+                        debug_adapter
+                            .update_progress(
+                                Some(progress.min(1.0)),
+                                Some(describe_op(operation)),
+                                id,
+                            )
+                            .ok();
+                    }
+                }
+                WireProgressEvent::Failed(operation) => {
+                    if let Some(id) = progress_id {
+                        debug_adapter
+                            .update_progress(
+                                Some(1.0),
+                                Some(format!("{} Failed!", describe_op(operation))),
+                                id,
+                            )
+                            .ok();
+                    }
+                }
+                WireProgressEvent::Finished(operation) => {
+                    if let Some(id) = progress_id {
+                        debug_adapter
+                            .update_progress(
+                                Some(1.0),
+                                Some(format!("{} Complete!", describe_op(operation))),
+                                id,
+                            )
+                            .ok();
+                    }
+                }
+                WireProgressEvent::FlashLayoutReady { .. } => {}
+                WireProgressEvent::DiagnosticMessage { .. } => {}
+            };
+
+            session_data
+                .backend
+                .flash_binary(path_to_elf, &config.flashing_config, &mut on_event)
+                .await
         };
 
         if let Some(id) = progress_id {
@@ -689,7 +715,7 @@ impl Debugger {
             ));
         }
 
-        result.map_err(DebuggerError::FileDownload)
+        result
     }
 
     #[tracing::instrument(skip_all, name = "Handling initialize request")]
