@@ -2,6 +2,7 @@
 pub(crate) mod common;
 pub mod usb_util;
 
+pub(crate) mod batch;
 pub mod blackmagic;
 pub mod ch347usbjtag;
 pub mod cmsisdap;
