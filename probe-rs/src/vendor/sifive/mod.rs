@@ -15,10 +15,12 @@ pub mod sequences;
 pub struct Sifive;
 
 impl Vendor for Sifive {
-    fn try_create_debug_sequence(&self, _chip: &Chip) -> Option<DebugSequence> {
-        // SiFive chips share the default RISC-V debug sequence for now.
-        // Chip-specific sequences will be added in a follow-up commit.
-        None
+    fn try_create_debug_sequence(&self, chip: &Chip) -> Option<DebugSequence> {
+        if chip.name.starts_with("FU740") {
+            Some(DebugSequence::Riscv(sequences::SifiveSequence::create()))
+        } else {
+            None
+        }
     }
 
     fn try_detect_riscv_chip(
