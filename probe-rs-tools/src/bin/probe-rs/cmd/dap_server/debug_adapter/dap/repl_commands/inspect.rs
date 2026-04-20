@@ -135,6 +135,17 @@ fn examine_memory(
                         "Format specifier : {}, is not valid here.\nPlease select one of the supported formats:\n{error}", gdb_nuf.format_specifier
                     ))
                 })?;
+        } else if let Some(reg) = input_argument.strip_prefix('$') {
+            let Some(register) = target_core.core.registers().all_registers().find(|r| {
+                std::iter::once(r.name().to_string())
+                    .chain(r.roles.iter().map(|role| role.to_string()))
+                    .any(|name| name.eq_ignore_ascii_case(reg))
+            }) else {
+                return Err(DebuggerError::UserMessage(format!(
+                    "Undefined register ${reg:?}."
+                )));
+            };
+            input_address = target_core.core.read_core_reg(register)?;
         } else {
             return Err(DebuggerError::UserMessage(
                 "Invalid parameters. See the `help` command for more information.".to_string(),
