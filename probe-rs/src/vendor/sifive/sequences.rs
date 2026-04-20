@@ -46,7 +46,11 @@ const FCTRL_EN: u32 = 1;
 /// # Program-buffer memory access
 ///
 /// The FU740 System Bus (SB) is absent (sbversion=0), so all memory
-/// accesses go through the program buffer.
+/// accesses go through the program buffer.  When Linux is running, halts
+/// occur in S-mode, and `dcsr.prv` reflects that.  The bootstrap also sets
+/// `prv=M`, and `on_connect` calls `set_force_machine_mode_progbuf(true)`
+/// so `halted_access` refreshes `prv=M` (via abstract GPR CSR access with
+/// the correct aarsize after xlen_64 is set) on every halt.
 ///
 /// # QSPI0 XIP re-enable
 ///
@@ -183,7 +187,37 @@ impl RiscvDebugSequence for SifiveSequence {
             );
         }
 
-        // Step 3: Re-enable QSPI0 XIP mode so that the flash window at
+        // Step 3: Detect XLEN from MISA *before* enabling force_machine_mode_progbuf.
+        //
+        // On RV64 the DM requires aarsize=3 (64-bit) for abstract CSR commands.
+        // `halted_access` reads DCSR to set prv=M; using A32 on an RV64 target
+        // causes cmderr=2.  We must set xlen_64 first so halted_access uses A64.
+        //
+        // Reading MISA via program buffer works because ebreakm is now 1 (from
+        // step 2) and hart 0 is in M-mode (OpenSBI WFI loop).
+        if let Ok(misa) = interface.read_csr_progbuf_64(0x301) {
+            let mxl = misa >> 62;
+            if mxl == 2 {
+                tracing::info!(
+                    "SifiveSequence: detected RV64 (MISA={:#018x}), setting xlen_64",
+                    misa
+                );
+                interface.set_xlen_64(true);
+            } else {
+                tracing::debug!("SifiveSequence: MISA={:#018x}, MXL={}", misa, mxl);
+            }
+        }
+
+        // Step 4: Enable force_machine_mode_progbuf.
+        //
+        // Now that xlen_64 is set, halted_access will use A64 when reading and
+        // writing DCSR, which the FU740 DM requires for abstract CSR commands.
+        // (Hart 0 is parked in OpenSBI's M-mode WFI loop, so prv is already M;
+        // this is a safety net for sessions where Linux halts a U74 core in S-mode.)
+        tracing::debug!("SifiveSequence: enabling force_machine_mode_progbuf");
+        interface.set_force_machine_mode_progbuf(true);
+
+        // Step 5: Re-enable QSPI0 XIP mode so that the flash window at
         // 0x20000000 is readable via program-buffer load instructions.
         //
         // Linux's SPI NOR driver clears fctrl[0] when it takes over QSPI0.
