@@ -1,0 +1,83 @@
+name: SiFive FU740
+# JEP106: SiFive, same as fe310
+manufacturer:
+  id: 0x9
+  cc: 0x9
+variants:
+- name: FU740-C000
+  cores:
+  # Hart 0: SiFive S7 M-mode monitor core.
+  # OpenSBI parks this hart in a WFI loop (M-mode), so it is always halted
+  # when JTAG connects.  Its DTIM (8 KB at 0x01000000) provides the work
+  # area for the flash algorithm.  U74 harts (1-4) run Linux in S-mode and
+  # are excluded here because their dcsr.ebreakm bootstrap would require
+  # halting live Linux cores; they can be added later for interactive debug.
+  - name: e51
+    type: riscv64
+    core_access_options: !Riscv
+      hart_id: 0
+  jtag:
+    # FU740 has a single RISC-V JTAG TAP with 5-bit IR (RISC-V Debug Spec default).
+    # IDCODE: 0x20000913 (SiFive, version 2).
+    # force_scan_chain bypasses the JTAG auto-detection DR scan, which can
+    # occasionally be unreliable on first connect after power-up.
+    scan_chain:
+    - ir_len: 5
+    force_scan_chain: true
+  memory_map:
+  # S7 DTIM — 8 KB, hart-0-private, always present.
+  # Used as work area for the flash algorithm (loads here before executing).
+  - !Ram
+    range:
+      start: 0x01000000
+      end: 0x01002000
+    cores:
+    - e51
+  # L2 LIM — up to 2 MB, software-configurable partition of the L2 cache.
+  # At Linux boot some portion (default 2 MB) is mapped as LIM.
+  - !Ram
+    range:
+      start: 0x08000000
+      end: 0x08200000
+    cores:
+    - e51
+  # QSPI0 XIP window — IS25WP256D SPI NOR flash, 32 MB.
+  # Primary boot device; holds FSBL, OpenSBI, U-Boot, and Linux fitImage.
+  - !Nvm
+    range:
+      start: 0x20000000
+      end: 0x22000000
+    cores:
+    - e51
+    access:
+      boot: true
+  flash_algorithms:
+  - fu740-qspi0-flasher
+flash_algorithms:
+- name: fu740-qspi0-flasher
+  description: >
+    SiFive FU740 QSPI0 flash algorithm for IS25WP256D (32 MB).
+    Native RV64 FESPI driver targeting the QSPI0 controller at 0x10040000.
+    Implements Init, EraseSector (4 KB), ProgramPage (256 B), and UnInit
+    with automatic XIP disable/re-enable.
+  default: true
+  instructions: FwUAAANFhSEZ4QVFgoAdZRMFBQ2CgJcFAACDxSUgpclBEQbktwUEELBF408G/hlGsMUD5kUHBYpt3glGkM2wReNPBv4TBgACsMWwReNPBv4TFoUCYZKwxbBF408G/hMWBQNhkrDFsEXjTwb+E3X1D6jFA+VFBwWJbd0jrAUAlwAAAOeAwBQBRaJgQQGCgAVFgoABEQbsIugm5BcFAAATBOUXg0UEADcFBBCJxUxAbNGFRSzRhUV9NpFGIwC0AGN01gRkUQNmBQZ5mjDRNwYEECzJjUUMwrcFCAChBSzBIywFAINlRQeFie3dlwAAAOeAAA4FRSMApABEwAFF4mBCZKJkBWGCgJcAAADngGAQlwYAAIPGphDJxkERBuS3BgQQuEbjTwf+GUe4xgPnRgcFi23fCUeYzrhG408H/glHuMa4RuNPB/4TF4UCYZO4xrhG408H/hMXBQNhk7jGuEbjTwf+E3X1D6jGkc2CFRPVBQIylYNFBgC4RuNPB/4FBqzG4xmm/gPlRgcFiW3dI6wGAJcAAADngKADAUWiYEEBgoAFRYKAFwUAAJMFRQcDxQUAGckBRdBBtwYEEPDSBUaw0iOABQCCgAVFgoA3BQQQg2UFBN2ZLMGJRQzNLEXjzwX+lUUsxWxF488F/ixF488F/iMkBQRsRePPBf6Fif31IywFACxBk+WFACzBgoBBEQbkIuAACAAAAAAAAAAAAAAAAA==
+  pc_init: 0x92
+  pc_uninit: 0x1a4
+  pc_program_page: 0x10e
+  pc_erase_sector: 0x16
+  pc_erase_all: 0x0
+  data_section_offset: 0x218
+  flash_properties:
+    address_range:
+      start: 0x20000000
+      end: 0x22000000
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 30000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+  cores:
+  - e51
