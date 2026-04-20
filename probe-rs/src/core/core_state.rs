@@ -35,6 +35,10 @@ impl CombinedCoreState {
         self.core_state.core_access_options.jtag_tap_index()
     }
 
+    pub(crate) fn is_arm_core(&self) -> bool {
+        self.core_state.is_arm()
+    }
+
     pub(crate) fn attach_arm<'probe>(
         &'probe mut self,
         target: &'probe Target,
@@ -263,6 +267,10 @@ impl CoreState {
         Self {
             core_access_options,
         }
+    }
+
+    pub(crate) fn is_arm(&self) -> bool {
+        matches!(&self.core_access_options, ResolvedCoreOptions::Arm { .. })
     }
 
     pub(crate) fn memory_ap(&self) -> FullyQualifiedApAddress {

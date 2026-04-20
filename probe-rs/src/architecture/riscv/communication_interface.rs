@@ -427,12 +427,12 @@ impl Default for RiscvCommunicationInterfaceState {
 
 /// The combined state of a RISC-V debug module and its transport interface.
 pub struct RiscvDebugInterfaceState {
-    pub(super) interface_state: RiscvCommunicationInterfaceState,
+    pub(crate) interface_state: RiscvCommunicationInterfaceState,
     pub(super) dtm_state: Box<dyn Any + Send>,
 }
 
 impl RiscvDebugInterfaceState {
-    pub(super) fn new(dtm_state: Box<dyn Any + Send>) -> Self {
+    pub(crate) fn new(dtm_state: Box<dyn Any + Send>) -> Self {
         Self {
             interface_state: RiscvCommunicationInterfaceState::new(),
             dtm_state,

@@ -262,9 +262,8 @@ impl ArmDebugInterface for ArmCommunicationInterface {
         &mut self,
         access_port_address: &FullyQualifiedApAddress,
     ) -> Result<Box<dyn ArmMemoryInterface + '_>, ArmError> {
-        let memory_interface = match access_port_address.ap() {
-            ApAddress::V1(_) => Box::new(ADIMemoryInterface::new(self, access_port_address)?)
-                as Box<dyn ArmMemoryInterface + '_>,
+        let memory_interface: Box<dyn ArmMemoryInterface + '_> = match access_port_address.ap() {
+            ApAddress::V1(_) => Box::new(ADIMemoryInterface::new(self, access_port_address)?),
             ApAddress::V2(_) => ap::v2::new_memory_interface(self, access_port_address)?,
         };
         Ok(memory_interface)
