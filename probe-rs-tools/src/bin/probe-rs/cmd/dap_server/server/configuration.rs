@@ -171,6 +171,7 @@ impl SessionConfig {
             cycle_power: false,
             dry_run: false,
             allow_erase_all: self.allow_erase_all,
+            allow_permanent_debug_lock: false,
         }
     }
 }
