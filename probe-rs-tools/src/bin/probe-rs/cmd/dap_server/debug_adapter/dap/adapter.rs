@@ -3,7 +3,7 @@ use super::{
     dap_types,
     repl_commands_helpers::{build_expanded_commands, command_completions},
     request_helpers::{
-        disassemble_target_memory, get_dap_source, get_svd_variable_reference,
+        DisassemblyAmount, disassemble_target_memory, get_dap_source, get_svd_variable_reference,
         get_variable_reference, set_instruction_breakpoint,
     },
 };
@@ -1196,7 +1196,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             instruction_offset,
             byte_offset,
             memory_reference as u64,
-            instruction_count,
+            DisassemblyAmount::Instructions(instruction_count),
         )?;
 
         if assembly_lines.is_empty() {

@@ -88,18 +88,22 @@ fn rustc_binary() -> std::ffi::OsString {
     rustc.to_os_string()
 }
 
+pub(crate) enum DisassemblyAmount {
+    Instructions(i64),
+    #[allow(unused)]
+    Bytes(u64),
+}
+
 pub(crate) fn disassemble_target_memory(
     target_core: &mut CoreHandle<'_>,
     instruction_offset: i64,
     byte_offset: i64,
     memory_reference: u64,
-    instruction_count: i64,
+    count: DisassemblyAmount,
 ) -> Result<Vec<DisassembledInstruction>, DebuggerError> {
-    let Some(ref debug_info) = target_core.core_data.debug_info else {
-        return Err(DebuggerError::Other(anyhow!(
-            "Cannot disassemble target memory without debug information."
-        )));
-    };
+    use probe_rs::CoreInterface;
+
+    let debug_info = target_core.core_data.debug_info.as_ref();
 
     let instruction_set = target_core.core.instruction_set()?;
     match instruction_set {
@@ -130,8 +134,6 @@ pub(crate) fn disassemble_target_memory(
     // 1. We ensure that we always have the requested memory address in range,
     //    so that we can identify exact instruction counts relative to this reference.
     let start_instruction_offset: u64 = i64::min(instruction_offset, 0).unsigned_abs();
-    let end_instruction_offset: u64 =
-        i64::max(0, instruction_offset + instruction_count).unsigned_abs();
 
     // 2. We calculate worst-case byte offsets to allow for the requested
     //    instruction offset and count, i.e. we read so far backwards and
@@ -139,7 +141,13 @@ pub(crate) fn disassemble_target_memory(
     //    offset and count of instructions even if all instructions happen
     //    to be max length instructions.
     let start_memory_offset = start_instruction_offset * max_instruction_size;
-    let end_memory_offset = (end_instruction_offset + 1) * max_instruction_size;
+    let end_memory_offset = match count {
+        DisassemblyAmount::Instructions(count) => {
+            let end_instruction_offset = i64::max(0, instruction_offset + count).unsigned_abs();
+            (end_instruction_offset + 1) * max_instruction_size
+        }
+        DisassemblyAmount::Bytes(count) => start_memory_offset + count + max_instruction_size,
+    };
     let mut start_from_address = adjusted_memory_reference.saturating_sub(start_memory_offset);
     let mut read_until_address = adjusted_memory_reference.saturating_add(end_memory_offset);
 
@@ -151,7 +159,8 @@ pub(crate) fn disassemble_target_memory(
         // length instructions are not necessarily word-aligned, i.e.
         // in the case of ARM Thumbv2, instructions are embedded into
         // a 16-bit halfword stream.
-        if let Some(source_location) = debug_info.get_source_location(start_from_address)
+        if let Some(di) = debug_info
+            && let Some(source_location) = di.get_source_location(start_from_address)
             && let Some(source_address) = source_location.address
         {
             start_from_address = source_address;
@@ -169,7 +178,10 @@ pub(crate) fn disassemble_target_memory(
     let mut disassembled_instructions: Vec<DisassembledInstruction> = vec![];
     let mut maybe_previous_source_location = None;
     let mut maybe_reference_instruction_index = None;
-    let convert_endianness = debug_info.endianness() == RunTimeEndian::Big;
+    let convert_endianness = match debug_info {
+        Some(di) => di.endianness() == RunTimeEndian::Big,
+        None => target_core.core.endianness()? == probe_rs::Endian::Big,
+    };
 
     let mut instruction_pointer = start_from_address;
     'instruction_loop: while instruction_pointer < read_until_address {
@@ -297,8 +309,9 @@ pub(crate) fn disassemble_target_memory(
                 let mut location = None;
                 let mut line = None;
                 let mut column = None;
-                if let Some(current_source_location) =
-                    debug_info.get_source_location(instruction.address())
+                if let Some(di) = debug_info
+                    && let Some(current_source_location) =
+                        di.get_source_location(instruction.address())
                 {
                     if maybe_previous_source_location.is_none()
                         || maybe_previous_source_location.is_some_and(|previous_source_location| {
@@ -379,7 +392,31 @@ pub(crate) fn disassemble_target_memory(
         )));
     };
     // ... and at the end of the list.
-    disassembled_instructions.truncate(instruction_count as usize);
+    let instructions = match count {
+        DisassemblyAmount::Instructions(count) => count as usize,
+        DisassemblyAmount::Bytes(count) => {
+            disassembled_instructions
+                .iter()
+                .scan(0, |total_bytes, insn| {
+                    // the byte count for this instruction is the count of spaces in the
+                    // instruction_bytes string, plus one -- unless it's None or empty,
+                    // when we want to use min_instruction_size.
+                    *total_bytes += insn
+                        .instruction_bytes
+                        .as_ref()
+                        .filter(|s| !s.is_empty())
+                        .map(|s| s.as_bytes().iter().filter(|&&c| c == b' ').count() + 1)
+                        .unwrap_or(min_instruction_size as usize);
+                    if *total_bytes > count as usize {
+                        None
+                    } else {
+                        Some(())
+                    }
+                })
+                .count()
+        }
+    };
+    disassembled_instructions.truncate(instructions);
 
     Ok(disassembled_instructions)
 }
