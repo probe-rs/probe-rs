@@ -76,94 +76,26 @@ impl FlashAlgorithm {
     /// If the `address` is not part of the flash, None will
     /// be returned.
     pub fn sector_info(&self, address: u64) -> Option<SectorInfo> {
-        if !self.flash_properties.address_range.contains(&address) {
+        if self.flash_properties.sector_info(address).is_none() {
             tracing::trace!("Address {:08x} not contained in this flash device", address);
-            return None;
         }
-
-        let offset_address = address - self.flash_properties.address_range.start;
-
-        let containing_sector = self
-            .flash_properties
-            .sectors
-            .iter()
-            .rfind(|s| s.address <= offset_address)?;
-
-        let sector_index = (offset_address - containing_sector.address) / containing_sector.size;
-
-        let sector_address = self.flash_properties.address_range.start
-            + containing_sector.address
-            + sector_index * containing_sector.size;
-
-        Some(SectorInfo {
-            base_address: sector_address,
-            size: containing_sector.size,
-        })
+        self.flash_properties.sector_info(address)
     }
 
     /// Returns the necessary information about the page which `address` resides in
     /// if the address is inside the flash region.
     pub fn page_info(&self, address: u64) -> Option<PageInfo> {
-        if !self.flash_properties.address_range.contains(&address) {
-            return None;
-        }
-
-        Some(PageInfo {
-            base_address: address - (address % self.flash_properties.page_size as u64),
-            size: self.flash_properties.page_size,
-        })
+        self.flash_properties.page_info(address)
     }
 
     /// Iterate over all the sectors of the flash.
     pub fn iter_sectors(&self) -> impl Iterator<Item = SectorInfo> + '_ {
-        let props = &self.flash_properties;
-
-        assert!(!props.sectors.is_empty());
-        assert!(props.sectors[0].address == 0);
-
-        let mut addr = props.address_range.start;
-        let mut desc_idx = 0;
-        std::iter::from_fn(move || {
-            if addr >= props.address_range.end {
-                return None;
-            }
-
-            // Advance desc_idx if needed
-            if let Some(next_desc) = props.sectors.get(desc_idx + 1)
-                && props.address_range.start + next_desc.address <= addr
-            {
-                desc_idx += 1;
-            }
-
-            let size = props.sectors[desc_idx].size;
-            let sector = SectorInfo {
-                base_address: addr,
-                size,
-            };
-            addr += size;
-
-            Some(sector)
-        })
+        self.flash_properties.iter_sectors()
     }
 
     /// Iterate over all the pages of the flash.
     pub fn iter_pages(&self) -> impl Iterator<Item = PageInfo> + '_ {
-        let props = &self.flash_properties;
-
-        let mut addr = props.address_range.start;
-        std::iter::from_fn(move || {
-            if addr >= props.address_range.end {
-                return None;
-            }
-
-            let page = PageInfo {
-                base_address: addr,
-                size: props.page_size,
-            };
-            addr += props.page_size as u64;
-
-            Some(page)
-        })
+        self.flash_properties.iter_pages()
     }
 
     /// Returns true if the entire contents of the argument array equal the erased byte value.
@@ -272,6 +204,32 @@ impl FlashAlgorithm {
         target: &Target,
     ) -> Result<Self, FlashError> {
         use std::mem::size_of;
+
+        // Validate that all fields required by a RAM-based flash algorithm are present.
+        if raw.instructions.is_empty() {
+            return Err(FlashError::MissingRamAlgorithmField {
+                name: raw.name.clone(),
+                field: "instructions",
+            });
+        }
+        let pc_program_page =
+            raw.pc_program_page
+                .ok_or_else(|| FlashError::MissingRamAlgorithmField {
+                    name: raw.name.clone(),
+                    field: "pc_program_page",
+                })?;
+        let pc_erase_sector =
+            raw.pc_erase_sector
+                .ok_or_else(|| FlashError::MissingRamAlgorithmField {
+                    name: raw.name.clone(),
+                    field: "pc_erase_sector",
+                })?;
+        let data_section_offset =
+            raw.data_section_offset
+                .ok_or_else(|| FlashError::MissingRamAlgorithmField {
+                    name: raw.name.clone(),
+                    field: "data_section_offset",
+                })?;
 
         let assembled_instructions = raw.instructions.chunks_exact(size_of::<u32>());
 
@@ -436,14 +394,14 @@ impl FlashAlgorithm {
             instructions,
             pc_init: raw.pc_init.map(|v| code_start + v),
             pc_uninit: raw.pc_uninit.map(|v| code_start + v),
-            pc_program_page: code_start + raw.pc_program_page,
-            pc_erase_sector: code_start + raw.pc_erase_sector,
+            pc_program_page: code_start + pc_program_page,
+            pc_erase_sector: code_start + pc_erase_sector,
             pc_erase_all: raw.pc_erase_all.map(|v| code_start + v),
             pc_verify: raw.pc_verify.map(|v| code_start + v),
             pc_blank_check: raw.pc_blank_check.map(|v| code_start + v),
             pc_read: raw.pc_read.map(|v| code_start + v),
             pc_flash_size: raw.pc_flash_size.map(|v| code_start + v),
-            static_base: code_start + raw.data_section_offset,
+            static_base: code_start + data_section_offset,
             stack_top,
             stack_size,
             page_buffers,
@@ -461,6 +419,21 @@ impl FlashAlgorithm {
         core_name: &str,
         target: &Target,
     ) -> Result<FlashAlgorithm, FlashError> {
+        use probe_rs_target::FlashLoaderType;
+
+        // HostSide algorithms are not assembled into RAM — they have no instructions,
+        // load address, or PC entry points.  Return a minimal stub so callers that
+        // iterate all algorithms (e.g. the validate_builtin test) don't need to
+        // special-case the loader type.
+        if algo.flash_loader_type == FlashLoaderType::HostSide {
+            return Ok(FlashAlgorithm {
+                name: algo.name.clone(),
+                default: algo.default,
+                flash_properties: algo.flash_properties.clone(),
+                ..Default::default()
+            });
+        }
+
         // Find a RAM region from which we can run the algo.
         let mm = &target.memory_map;
 

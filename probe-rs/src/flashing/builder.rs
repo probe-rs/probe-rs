@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::fmt::{Debug, Formatter};
 use std::ops::Range;
 
-use probe_rs_target::{MemoryRange, NvmRegion, PageInfo};
+use probe_rs_target::{FlashProperties, MemoryRange, NvmRegion, PageInfo};
 
 use super::{FlashAlgorithm, FlashError};
 
@@ -272,9 +272,41 @@ impl FlashBuilder {
         flash_algorithm: &FlashAlgorithm,
         include_empty_pages: bool,
     ) -> Result<FlashLayout, FlashError> {
+        self.build_layout(
+            region,
+            &flash_algorithm.flash_properties,
+            include_empty_pages,
+        )
+    }
+
+    /// Layouts the contents of flash memory using FlashProperties directly.
+    ///
+    /// This is used for host-side flash programming where we have FlashProperties
+    /// from a DebugFlashSequence rather than a full FlashAlgorithm.
+    pub(super) fn build_sectors_and_pages_from_properties(
+        &self,
+        region: &NvmRegion,
+        flash_properties: &FlashProperties,
+        include_empty_pages: bool,
+    ) -> Result<FlashLayout, FlashError> {
+        self.build_layout(region, flash_properties, include_empty_pages)
+    }
+
+    /// Core layout algorithm used by both RAM-based and host-side flash programming paths.
+    ///
+    /// Both [`build_sectors_and_pages`] (which has a full [`FlashAlgorithm`]) and
+    /// [`build_sectors_and_pages_from_properties`] (which only has [`FlashProperties`])
+    /// delegate here.  Iteration and lookup use the methods on [`FlashProperties`] directly,
+    /// eliminating any duplication.
+    fn build_layout(
+        &self,
+        region: &NvmRegion,
+        props: &FlashProperties,
+        include_empty_pages: bool,
+    ) -> Result<FlashLayout, FlashError> {
         let mut layout = FlashLayout::default();
 
-        for info in flash_algorithm.iter_sectors() {
+        for info in props.iter_sectors() {
             let range = info.address_range();
 
             // Ignore the sector if it's outside the NvmRegion.
@@ -282,8 +314,12 @@ impl FlashBuilder {
                 continue;
             }
 
-            let page = flash_algorithm.page_info(info.base_address).unwrap();
-            let page_range = page.address_range();
+            // The page containing the sector's base address is always valid here because
+            // iter_sectors() only yields addresses within props.address_range.
+            let page_range = props
+                .page_info(info.base_address)
+                .expect("sector base address is within flash range")
+                .address_range();
             let sector_has_data = self.has_data_in_range(&range);
             let page_has_data = self.has_data_in_range(&page_range);
 
@@ -298,7 +334,7 @@ impl FlashBuilder {
             })
         }
 
-        for info in flash_algorithm.iter_pages() {
+        for info in props.iter_pages() {
             let range = info.address_range();
 
             // Ignore the page if it's outside the NvmRegion.
@@ -306,18 +342,21 @@ impl FlashBuilder {
                 continue;
             }
 
-            let sector = flash_algorithm.sector_info(info.base_address).unwrap();
-            let sector_range = sector.address_range();
+            // The sector containing the page's base address is always valid here because
+            // iter_pages() only yields addresses within props.address_range.
+            let sector_range = props
+                .sector_info(info.base_address)
+                .expect("page base address is within flash range")
+                .address_range();
             let sector_has_data = self.has_data_in_range(&sector_range);
             let page_has_data = self.has_data_in_range(&range);
 
-            // If include_empty_pages, include the page if there's data in is sector, even if there's no data in the page.
+            // If include_empty_pages, include the page if there's data in its sector, even if there's no data in the page.
             if !page_has_data && (!include_empty_pages || !sector_has_data) {
                 continue;
             }
 
-            let mut page =
-                FlashPage::new(&info, flash_algorithm.flash_properties.erased_byte_value);
+            let mut page = FlashPage::new(&info, props.erased_byte_value);
 
             let mut fill_start_addr = info.base_address;
 
@@ -357,7 +396,6 @@ impl FlashBuilder {
             });
         }
 
-        // Return the finished flash layout.
         Ok(layout)
     }
 }
@@ -1144,5 +1182,125 @@ mod tests {
                 ],
             }
         )
+    }
+
+    // -------------------------------------------------------------------------
+    // Tests for FlashProperties methods (iter_sectors, iter_pages, sector_info,
+    // page_info).  These are device-independent and require no probe connection.
+    // -------------------------------------------------------------------------
+
+    fn uniform_props(start: u64, end: u64, page_size: u32, sector_size: u64) -> FlashProperties {
+        FlashProperties {
+            address_range: start..end,
+            page_size,
+            erased_byte_value: 0xFF,
+            program_page_timeout: 100,
+            erase_sector_timeout: 100,
+            sectors: vec![SectorDescription {
+                size: sector_size,
+                address: 0,
+            }],
+        }
+    }
+
+    #[test]
+    fn flash_properties_iter_sectors_uniform() {
+        // 4 uniform 4KB sectors spanning 16KB
+        let props = uniform_props(0x0000, 0x4000, 1024, 0x1000);
+        let sectors: Vec<_> = props.iter_sectors().collect();
+        assert_eq!(sectors.len(), 4);
+        assert_eq!(sectors[0].base_address, 0x0000);
+        assert_eq!(sectors[0].size, 0x1000);
+        assert_eq!(sectors[3].base_address, 0x3000);
+    }
+
+    #[test]
+    fn flash_properties_iter_pages_uniform() {
+        // 4 pages of 1KB inside 4KB flash
+        let props = uniform_props(0x0000, 0x1000, 0x400, 0x1000);
+        let pages: Vec<_> = props.iter_pages().collect();
+        assert_eq!(pages.len(), 4);
+        assert_eq!(pages[0].base_address, 0x0000);
+        assert_eq!(pages[0].size, 0x400);
+        assert_eq!(pages[3].base_address, 0x0C00);
+    }
+
+    #[test]
+    fn flash_properties_sector_info_in_range() {
+        let props = uniform_props(0x0800, 0x2800, 0x800, 0x1000);
+        // Address inside first sector
+        let info = props.sector_info(0x0900).unwrap();
+        assert_eq!(info.base_address, 0x0800);
+        assert_eq!(info.size, 0x1000);
+    }
+
+    #[test]
+    fn flash_properties_sector_info_out_of_range() {
+        let props = uniform_props(0x0000, 0x1000, 0x400, 0x1000);
+        assert!(props.sector_info(0x2000).is_none());
+    }
+
+    #[test]
+    fn flash_properties_page_info_in_range() {
+        let props = uniform_props(0x0000, 0x4000, 0x800, 0x2000);
+        let info = props.page_info(0x0900).unwrap();
+        assert_eq!(info.base_address, 0x0800);
+        assert_eq!(info.size, 0x800);
+    }
+
+    #[test]
+    fn flash_properties_page_info_out_of_range() {
+        let props = uniform_props(0x0000, 0x1000, 0x400, 0x1000);
+        assert!(props.page_info(0x5000).is_none());
+    }
+
+    #[test]
+    fn flash_properties_multi_sector_description() {
+        // First 4KB in 1KB sectors, then the next 4KB in 2KB sectors
+        let props = FlashProperties {
+            address_range: 0x0000..0x8000,
+            page_size: 0x400,
+            erased_byte_value: 0xFF,
+            program_page_timeout: 100,
+            erase_sector_timeout: 100,
+            sectors: vec![
+                SectorDescription {
+                    size: 0x1000,
+                    address: 0x0000,
+                },
+                SectorDescription {
+                    size: 0x2000,
+                    address: 0x4000,
+                },
+            ],
+        };
+        let sectors: Vec<_> = props.iter_sectors().collect();
+        // 4 sectors of 0x1000 + 2 sectors of 0x2000 = 6 total
+        assert_eq!(sectors.len(), 6);
+        assert_eq!(sectors[0].size, 0x1000);
+        assert_eq!(sectors[4].base_address, 0x4000);
+        assert_eq!(sectors[4].size, 0x2000);
+        assert_eq!(sectors[5].base_address, 0x6000);
+    }
+
+    #[test]
+    fn flash_algorithm_delegates_to_flash_properties() {
+        // Verify FlashAlgorithm methods produce the same results as FlashProperties methods
+        let props = uniform_props(0x0000, 0x4000, 0x800, 0x2000);
+        let algo = FlashAlgorithm {
+            flash_properties: props.clone(),
+            ..Default::default()
+        };
+
+        let props_sectors: Vec<_> = props.iter_sectors().collect();
+        let algo_sectors: Vec<_> = algo.iter_sectors().collect();
+        assert_eq!(props_sectors.len(), algo_sectors.len());
+        for (p, a) in props_sectors.iter().zip(algo_sectors.iter()) {
+            assert_eq!(p.base_address, a.base_address);
+            assert_eq!(p.size, a.size);
+        }
+
+        assert_eq!(props.sector_info(0x1500), algo.sector_info(0x1500));
+        assert_eq!(props.page_info(0x1500), algo.page_info(0x1500));
     }
 }
