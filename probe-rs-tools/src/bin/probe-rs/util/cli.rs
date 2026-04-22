@@ -1208,6 +1208,10 @@ struct Channel {
     channel: String,
     decoder: RttDecoder,
     printer_prefix: String,
+    /// Decoded output split on newlines, one entry per line. Incoming data
+    /// appends to the last entry until a newline is seen, at which point a
+    /// new empty entry is pushed.
+    lines: Vec<String>,
 }
 
 impl Channel {
@@ -1216,11 +1220,23 @@ impl Channel {
             channel,
             decoder,
             printer_prefix: String::new(),
+            lines: vec![String::new()],
         }
     }
 
     fn print_channel_name(&mut self, width: usize) {
         self.printer_prefix = format!("[{:width$}] ", self.channel, width = width);
+    }
+
+    /// Push new lines to the line buffer.
+    fn push_to_buffer(&mut self, message: &str) {
+        let mut parts = message.split('\n');
+        if let Some(first) = parts.next() {
+            self.lines.last_mut().unwrap().push_str(first);
+        }
+        for part in parts {
+            self.lines.push(part.to_string());
+        }
     }
 
     async fn process(
@@ -1232,6 +1248,7 @@ impl Channel {
         if let Some(data) = self.decoder.process(bytes).ok().flatten() {
             let data = data.to_string();
             let message = format!("{}{}", self.printer_prefix, data);
+            self.push_to_buffer(&message);
             shared_writer(&message).await;
             if let Some(copy_to) = copy_to {
                 // Silently discarding output file errors
