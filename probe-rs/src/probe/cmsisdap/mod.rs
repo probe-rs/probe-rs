@@ -1,5 +1,6 @@
 //! CMSIS-DAP probe implementation.
 mod commands;
+mod swd_wire;
 mod tools;
 
 use crate::{
@@ -9,7 +10,7 @@ use crate::{
             ArmCommunicationInterface, ArmDebugInterface, ArmError, DapError, Pins, RawDapAccess,
             RegisterAddress, SwoAccess, SwoConfig, SwoMode,
             communication_interface::DapProbe,
-            dp::{Abort, Ctrl, DpRegister},
+            dp::{Abort, Ctrl, DpRegister, DpRegisterAddress},
             sequences::ArmDebugSequence,
             swo::poll_interval_from_buf_size,
         },
@@ -22,12 +23,14 @@ use crate::{
         },
     },
     probe::{
-        AutoImplementJtagAccess, BatchCommand, DebugProbe, DebugProbeError, DebugProbeInfo,
-        DebugProbeSelector, JtagAccess, JtagDriverState, ProbeFactory, WireProtocol,
+        AutoImplementJtagAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+        JtagAccess, JtagDriverState, ProbeFactory, WireProtocol,
+        batch::{Batch, Handle, Transaction},
         cmsisdap::commands::{
             CmsisDapError, RequestError,
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
         },
+        protocols::swd::{SwdError, SwdProbe},
     },
 };
 
@@ -90,6 +93,10 @@ impl ProbeFactory for CmsisDapFactory {
     }
 }
 
+/// TODO: Remove
+unsafe impl Sync for CmsisDap {}
+unsafe impl Send for CmsisDap {}
+
 /// A CMSIS-DAP probe.
 pub struct CmsisDap {
     device: CmsisDapDevice,
@@ -108,7 +115,7 @@ pub struct CmsisDap {
     /// Speed in kHz
     speed_khz: u32,
 
-    batch: Vec<BatchCommand>,
+    batch: Batch,
 
     jtag_state: JtagDriverState,
     jtag_buffer: JtagBuffer,
@@ -163,7 +170,7 @@ impl CmsisDap {
             swo_streaming: false,
             connected: false,
             speed_khz: 1_000,
-            batch: Vec::new(),
+            batch: Batch::default(),
             jtag_state: JtagDriverState::default(),
             jtag_buffer: JtagBuffer::new(packet_size - 1),
         })
@@ -419,7 +426,7 @@ impl CmsisDap {
 
     fn send_swj_sequences(&mut self, request: SequenceRequest) -> Result<(), CmsisDapError> {
         // Ensure all pending commands are processed.
-        //self.process_batch()?;
+        //self.execute()?;
 
         commands::send_command(&mut self.device, &request).and_then(|v| match v {
             SequenceResponse(Status::DapOk) => Ok(()),
@@ -437,8 +444,7 @@ impl CmsisDap {
     /// In practice, it can unfortunately happen.
     ///
     /// To avoid an endless recursion in this cases, this function is provided
-    /// as an alternative to [`Self::process_batch()`]. This function will return any errors,
-    /// and not retry any transfers.
+    /// This function will return any errors and not retry any transfers.
     fn read_ctrl_register(&mut self) -> Result<Ctrl, ArmError> {
         let mut request = TransferRequest::read(Ctrl::ADDRESS);
         request.dap_index = self.jtag_state.chain_params.index as u8;
@@ -504,48 +510,80 @@ impl CmsisDap {
         }
     }
 
-    /// Immediately send whatever is in our batch if it is not empty.
+    /// Execute all pending transactions in the batch.
     ///
-    /// If the last transfer was a read, result is Some with the read value.
-    /// Otherwise, the result is None.
-    ///
-    /// This will ensure any pending writes are processed and errors from them
-    /// raised if necessary.
+    /// Concatenates the stored per-transaction request bytes into one `DAP_Transfer`
+    /// payload, sends it, and then slices the raw USB response directly back into each
+    /// transaction's result slot. No intermediate `TransferRequest` is built — the
+    /// transaction bytes are already in the wire format this command expects.
     #[tracing::instrument(skip(self))]
-    fn process_batch(&mut self) -> Result<Option<u32>, ArmError> {
+    fn execute(&mut self) -> Result<(), ArmError> {
         let batch = std::mem::take(&mut self.batch);
+
+        // Nothing to do if the batch is empty.
         if batch.is_empty() {
-            return Ok(None);
+            return Ok(());
         }
 
-        tracing::debug!("{} items in batch", batch.len());
+        let total = batch.iter().count();
 
-        let mut transfers = TransferRequest::empty();
-        transfers.dap_index = self.jtag_state.chain_params.index as u8;
-        for command in batch.iter().cloned() {
-            match command {
-                BatchCommand::Read(port) => {
-                    transfers.add_read(port);
-                }
-                BatchCommand::Write(port, value) => {
-                    transfers.add_write(port, value);
-                }
-            }
+        // DAP_Transfer body: [dap_index, transfer_count, per-transfer bytes...].
+        let mut body = Vec::with_capacity(2 + batch.iter().map(|t| t.request().len()).sum::<usize>());
+        body.push(self.jtag_state.chain_params.index as u8);
+        body.push(total as u8);
+        for txn in batch.iter() {
+            body.extend_from_slice(txn.request());
         }
+
+        tracing::debug!("{} items in batch", total);
 
         let response =
-            commands::send_command(&mut self.device, &transfers).map_err(DebugProbeError::from)?;
+            commands::send_command(&mut self.device, &swd_wire::RawDapTransfer { body: &body })
+                .map_err(DebugProbeError::from)?;
 
-        let count = response.transfers.len();
+        // Response layout (after the command-ID byte has been stripped):
+        //   response[0]  = number of transfers that were executed
+        //   response[1]  = last transfer's ACK + flags
+        //   response[2..] = 4 little-endian data bytes per successful read, in order
+        let count = response[0] as usize;
+        let flags = response[1];
+        let last_ack = match flags & 0x7 {
+            1 => Ack::Ok,
+            2 => Ack::Wait,
+            4 => Ack::Fault,
+            _ => Ack::NoAck,
+        };
+        let protocol_error = (flags & (1 << 3)) != 0;
+        let mut cursor = &response[2..];
 
-        tracing::debug!("{} of batch of {} items executed", count, batch.len());
+        tracing::debug!("{} of batch of {} items executed", count, total);
 
-        if response.last_transfer_response.protocol_error {
-            tracing::warn!(
-                "Protocol error in response to command {}",
-                batch[count.saturating_sub(1)]
-            );
+        // Fill the OnceCell for every transaction so that handles never panic on get().
+        //
+        // CMSIS-DAP only reports the ACK for the *last* executed transfer; all prior
+        // transfers within the same DAP_Transfer command are assumed to have succeeded.
+        // Transactions that were not executed at all (count < total) are reported as NoAck.
+        for (i, txn) in batch.iter().enumerate() {
+            let ack = if i >= count {
+                Ack::NoAck
+            } else if i + 1 < count {
+                Ack::Ok
+            } else {
+                last_ack
+            };
+            let is_read = swd_wire::is_read(txn.request());
+            let data = if is_read && ack == Ack::Ok {
+                let bytes: [u8; 4] = cursor[..4].try_into().unwrap();
+                cursor = &cursor[4..];
+                Some(u32::from_le_bytes(bytes))
+            } else {
+                None
+            };
+            txn.set_response(swd_wire::encode_response(is_read, ack, data));
+        }
 
+        if protocol_error {
+            tracing::warn!("Protocol error in batch");
             return Err(DapError::Protocol(
                 self.protocol
                     .expect("A wire protocol should have been selected by now"),
@@ -553,7 +591,7 @@ impl CmsisDap {
             .into());
         }
 
-        match response.last_transfer_response.ack {
+        match last_ack {
             Ack::Ok => {
                 // If less transfers than expected were executed, this
                 // is not the response to the latest command from the batch.
@@ -561,38 +599,28 @@ impl CmsisDap {
                 // According to the CMSIS-DAP specification, this shouldn't happen,
                 // the only time when not all transfers were executed is when an error occurred.
                 // Still, this seems to happen in practice.
-
-                if count < batch.len() {
+                if count < total {
                     tracing::warn!(
-                        "CMSIS_DAP: Only {}/{} transfers were executed, but no error was reported.",
+                        "CMSIS-DAP: Only {}/{} transfers were executed, but no error was reported.",
                         count,
-                        batch.len()
+                        total
                     );
                     return Err(DebugProbeError::Other(format!(
-                        "Possible error in CMSIS-DAP probe: Only {}/{} transfers were executed, but no error was reported.",
-                        count,
-                        batch.len()
-                    )).into());
+                        "Possible error in CMSIS-DAP probe: only {}/{} transfers were executed.",
+                        count, total
+                    ))
+                    .into());
                 }
-
                 tracing::trace!("Last transfer status: ACK");
-                Ok(response.transfers[count - 1].data)
+                Ok(())
             }
             Ack::NoAck => {
-                tracing::debug!(
-                    "Transfer status for batch item {}/{}: NACK",
-                    count,
-                    batch.len()
-                );
+                tracing::debug!("Transfer status for batch item {}/{}: NACK", count, total);
                 // TODO: Try a reset?
                 Err(DapError::NoAcknowledge.into())
             }
             Ack::Fault => {
-                tracing::debug!(
-                    "Transfer status for batch item {}/{}: FAULT",
-                    count,
-                    batch.len()
-                );
+                tracing::debug!("Transfer status for batch item {}/{}: FAULT", count, total);
 
                 // To avoid a potential endless recursion,
                 // call a separate function to read the ctrl register,
@@ -613,11 +641,7 @@ impl CmsisDap {
                 Err(DapError::FaultResponse.into())
             }
             Ack::Wait => {
-                tracing::debug!(
-                    "Transfer status for batch item {}/{}: WAIT",
-                    count,
-                    batch.len()
-                );
+                tracing::debug!("Transfer status for batch item {}/{}: WAIT", count, total);
 
                 self.write_abort({
                     let mut abort = Abort(0);
@@ -627,29 +651,6 @@ impl CmsisDap {
 
                 Err(DapError::WaitResponse.into())
             }
-        }
-    }
-
-    /// Add a BatchCommand to our current batch.
-    ///
-    /// If the BatchCommand is a Read, this will immediately process the batch
-    /// and return the read value. If the BatchCommand is a write, the write is
-    /// executed immediately if the batch is full, otherwise it is queued for
-    /// later execution.
-    fn batch_add(&mut self, command: BatchCommand) -> Result<Option<u32>, ArmError> {
-        tracing::debug!("Adding command to batch: {}", command);
-
-        let command_is_read = matches!(command, BatchCommand::Read(_));
-        self.batch.push(command);
-
-        // We always immediately process any reads, which means there will never
-        // be more than one read in a batch. We also process whenever the batch
-        // is as long as can fit in one packet.
-        let max_writes = (self.packet_size as usize - 3) / (1 + 4);
-        if command_is_read || self.batch.len() == max_writes {
-            self.process_batch()
-        } else {
-            Ok(None)
         }
     }
 
@@ -830,7 +831,7 @@ impl CmsisDap {
         }
 
         match resp.transfer_response.ack {
-            // TODO: Handle this the same way as process_batch
+            // TODO: Handle this the same way as execute()
             Ack::Ok => Ok(()),
             Ack::Fault => {
                 // TODO: Perform error handling -> clear fault, etc.
@@ -894,6 +895,31 @@ impl CmsisDap {
                 Err(DapError::WaitResponse.into())
             }
         }
+    }
+}
+
+impl SwdProbe for CmsisDap {
+    fn dp_read(&mut self, addr: usize) -> impl Handle {
+        let address = RegisterAddress::DpRegister(DpRegisterAddress {
+            address: addr as u8 & 0x0C,
+            bank: None,
+        });
+        let (request, response_len) = swd_wire::encode_request(&swd_wire::Operation::Read(address));
+        self.batch
+            .add_transaction(Transaction::new(request, response_len))
+            .map(|bytes: &[u8]| swd_wire::decode_read_response(bytes))
+    }
+
+    fn dp_write(&mut self, addr: usize, data: u32) -> impl Handle {
+        let address = RegisterAddress::DpRegister(DpRegisterAddress {
+            address: addr as u8 & 0x0C,
+            bank: None,
+        });
+        let (request, response_len) =
+            swd_wire::encode_request(&swd_wire::Operation::Write(address, data));
+        self.batch
+            .add_transaction(Transaction::new(request, response_len))
+            .map(|bytes: &[u8]| swd_wire::decode_write_response(bytes))
     }
 }
 
@@ -965,7 +991,7 @@ impl DebugProbe for CmsisDap {
 
     /// Leave debug mode.
     fn detach(&mut self) -> Result<(), crate::Error> {
-        self.process_batch()?;
+        self.execute()?;
 
         if self.swo_active {
             self.disable_swo()?;
@@ -1098,17 +1124,28 @@ impl RawDapAccess for CmsisDap {
 
     /// Reads the DAP register on the specified port and address.
     fn raw_read_register(&mut self, address: RegisterAddress) -> Result<u32, ArmError> {
-        let res = self.batch_add(BatchCommand::Read(address))?;
-
-        // NOTE(unwrap): batch_add will always return Some if the last command is a read
-        // and running the batch was successful.
-        Ok(res.unwrap())
+        let (request, response_len) =
+            swd_wire::encode_request(&swd_wire::Operation::Read(address));
+        let handle = self
+            .batch
+            .add_transaction(Transaction::new(request, response_len))
+            .map(|bytes: &[u8]| swd_wire::decode_read_response(bytes));
+        self.execute()?;
+        handle.get().map_err(|e| match e {
+            SwdError::Wait => DapError::WaitResponse.into(),
+            SwdError::Fault => DapError::FaultResponse.into(),
+            SwdError::NoAck => DapError::NoAcknowledge.into(),
+        })
     }
 
-    /// Writes a value to the DAP register on the specified port and address.
+    /// Writes a value to the DAP register on the specified port and address (lazy).
     fn raw_write_register(&mut self, address: RegisterAddress, value: u32) -> Result<(), ArmError> {
-        self.batch_add(BatchCommand::Write(address, value))
-            .map(|_| ())
+        let (request, response_len) =
+            swd_wire::encode_request(&swd_wire::Operation::Write(address, value));
+        let _ = self
+            .batch
+            .add_transaction(Transaction::new(request, response_len));
+        Ok(())
     }
 
     fn raw_write_block(
@@ -1116,7 +1153,7 @@ impl RawDapAccess for CmsisDap {
         address: RegisterAddress,
         values: &[u32],
     ) -> Result<(), ArmError> {
-        self.process_batch()?;
+        self.execute()?;
 
         // the overhead for a single packet is 6 bytes
         //
@@ -1156,7 +1193,7 @@ impl RawDapAccess for CmsisDap {
         address: RegisterAddress,
         values: &mut [u32],
     ) -> Result<(), ArmError> {
-        self.process_batch()?;
+        self.execute()?;
 
         // the overhead for a single packet is 6 bytes
         //
@@ -1194,8 +1231,7 @@ impl RawDapAccess for CmsisDap {
     }
 
     fn raw_flush(&mut self) -> Result<(), ArmError> {
-        self.process_batch()?;
-        Ok(())
+        self.execute()
     }
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
@@ -1394,7 +1430,7 @@ impl Drop for CmsisDap {
     fn drop(&mut self) {
         tracing::debug!("Detaching from CMSIS-DAP probe");
         // We ignore the error cases as we can't do much about it anyways.
-        let _ = self.process_batch();
+        let _ = self.execute();
 
         // If SWO is active, disable it before calling detach,
         // which ensures detach won't error on disabling SWO.

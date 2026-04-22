@@ -25,6 +25,11 @@ impl Batch {
         Response(transaction)
     }
 
+    /// Returns true if the batch contains no transactions.
+    pub(crate) fn is_empty(&self) -> bool {
+        self.transactions.is_empty()
+    }
+
     /// Iterate over all the transactions in the batch.
     pub(crate) fn iter(&self) -> impl Iterator<Item = &Transaction> {
         self.transactions.iter().map(|t| t.as_ref())
@@ -89,24 +94,27 @@ impl Transaction {
 ///
 /// The value becomes available once the batch of the underlying transaction
 /// has been executed.
-pub(crate) trait Handle<'a> {
-    /// The return type of the handle.
-    type T;
+pub(crate) trait Handle {
+    /// The return type of the handle, parameterised by the borrow lifetime.
+    type T<'a>
+    where
+        Self: 'a;
 
     /// Get the result of the transaction.
-    fn get(&'a self) -> Self::T {
+    fn get(&self) -> Self::T<'_> {
         self.get_at(0)
     }
 
     /// Access a specific index in the transaction.
     ///
     /// This can be used for repeated transactions.
-    fn get_at(&'a self, index: usize) -> Self::T;
+    fn get_at(&self, index: usize) -> Self::T<'_>;
 
     /// Takes a closure and creates a handle which calls that closure on the transaction result.
-    fn map<B, F: Fn(Self::T) -> B>(self, f: F) -> MappedHandle<F, Self>
+    fn map<B, F>(self, f: F) -> MappedHandle<F, Self>
     where
         Self: Sized,
+        F: for<'a> Fn(Self::T<'a>) -> B,
     {
         MappedHandle {
             inner: self,
@@ -115,7 +123,7 @@ pub(crate) trait Handle<'a> {
     }
 }
 
-/// Wraps another [`BatchResult`] and applies a transform function to its value.
+/// Wraps another [`Handle`] and applies a transform function to its value.
 /// This allows callers to compose handles without extra heap allocation.
 pub(crate) struct MappedHandle<F, R> {
     /// The handle that is underlying this map.
@@ -124,14 +132,17 @@ pub(crate) struct MappedHandle<F, R> {
     func: F,
 }
 
-impl<'a, A, B, F, R> Handle<'a> for MappedHandle<F, R>
+impl<B, F, R> Handle for MappedHandle<F, R>
 where
-    R: Handle<'a, T = A>,
-    F: Fn(A) -> B,
+    R: Handle,
+    F: for<'a> Fn(R::T<'a>) -> B,
 {
-    type T = B;
+    type T<'a>
+        = B
+    where
+        Self: 'a;
 
-    fn get_at(&'a self, index: usize) -> B {
+    fn get_at(&self, index: usize) -> B {
         let r = self.inner.get_at(index);
         (self.func)(r)
     }
@@ -140,10 +151,13 @@ where
 /// The response handle for a transaction.
 pub(crate) struct Response(Rc<Transaction>);
 
-impl<'a> Handle<'a> for Response {
-    type T = &'a [u8];
+impl Handle for Response {
+    type T<'a>
+        = &'a [u8]
+    where
+        Self: 'a;
 
-    fn get_at(&'a self, _index: usize) -> &'a [u8] {
-        &self.0.response.get().expect("execute batch first")[..]
+    fn get_at(&self, _index: usize) -> &[u8] {
+        self.0.response.get().expect("execute batch first")
     }
 }

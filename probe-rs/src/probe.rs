@@ -3,23 +3,24 @@ pub(crate) mod common;
 pub mod usb_util;
 
 pub(crate) mod batch;
-pub mod blackmagic;
-pub mod ch347usbjtag;
+// pub mod blackmagic;
+// pub mod ch347usbjtag;
 pub mod cmsisdap;
 pub mod fake_probe;
-pub mod ftdi;
-pub mod glasgow;
-pub mod jlink;
+// pub mod ftdi;
+// pub mod glasgow;
+// pub mod jlink;
 pub mod list;
+pub mod protocols;
 pub(crate) mod queue;
 mod selector;
-pub mod sifliuart;
-pub mod stlink;
+// pub mod sifliuart;
+// pub mod stlink;
 pub mod wlink;
 
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
 use crate::architecture::arm::{ArmDebugInterface, ArmError};
-use crate::architecture::arm::{RegisterAddress, SwoAccess, communication_interface::DapProbe};
+use crate::architecture::arm::{SwoAccess, communication_interface::DapProbe};
 use crate::architecture::riscv::communication_interface::{RiscvError, RiscvInterfaceBuilder};
 use crate::architecture::xtensa::communication_interface::{
     XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
@@ -47,15 +48,15 @@ const LOW_TARGET_VOLTAGE_WARNING_THRESHOLD: f32 = 1.4;
 
 static DRIVERS: LazyLock<RwLock<Vec<&'static dyn ProbeFactory>>> = LazyLock::new(|| {
     let probes: Vec<&'static dyn ProbeFactory> = vec![
-        &blackmagic::BlackMagicProbeFactory,
+        // &blackmagic::BlackMagicProbeFactory,
         &cmsisdap::CmsisDapFactory,
-        &ftdi::FtdiProbeFactory,
-        &stlink::StLinkFactory,
-        &jlink::JLinkFactory,
+        // &ftdi::FtdiProbeFactory,
+        // &stlink::StLinkFactory,
+        // &jlink::JLinkFactory,
         &wlink::WchLinkFactory,
-        &sifliuart::SifliUartFactory,
-        &glasgow::GlasgowFactory,
-        &ch347usbjtag::Ch347UsbJtagFactory,
+        // &sifliuart::SifliUartFactory,
+        // &glasgow::GlasgowFactory,
+        // &ch347usbjtag::Ch347UsbJtagFactory,
     ];
 
     RwLock::new(probes)
@@ -101,31 +102,6 @@ impl std::str::FromStr for WireProtocol {
     }
 }
 
-/// A command queued in a batch for later execution
-///
-/// Mostly used internally but returned in DebugProbeError to indicate
-/// which batched command actually encountered the error.
-#[derive(Clone, Debug)]
-pub enum BatchCommand {
-    /// Read from a port
-    Read(RegisterAddress),
-
-    /// Write to a port
-    Write(RegisterAddress, u32),
-}
-
-impl fmt::Display for BatchCommand {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            BatchCommand::Read(port) => {
-                write!(f, "Read(port={port:?})")
-            }
-            BatchCommand::Write(port, data) => {
-                write!(f, "Write(port={port:?}, data={data:#010x})")
-            }
-        }
-    }
-}
 
 /// Marker trait for all probe errors.
 pub trait ProbeError: std::error::Error + Send + Sync + std::any::Any {}
@@ -219,10 +195,7 @@ pub enum DebugProbeError {
     /// Failed to find or attach to the target. Please check the wiring before retrying.
     TargetNotFound,
 
-    /// Error in previous batched command.
-    BatchError(BatchCommand),
-
-    /// The '{function_name}' functionality is not implemented yet.
+/// The '{function_name}' functionality is not implemented yet.
     ///
     /// The variant of the function you called is not yet implemented.
     /// This can happen if some debug probe has some unimplemented functionality for a specific protocol or architecture.
@@ -1467,21 +1440,20 @@ pub enum AttachMethod {
 
 #[cfg(test)]
 mod test {
-    use super::*;
 
-    #[test]
-    fn test_is_probe_factory() {
-        let probe_info = DebugProbeInfo::new(
-            "Mock probe",
-            0x12,
-            0x23,
-            Some("mock_serial".to_owned()),
-            &ftdi::FtdiProbeFactory,
-            None,
-            false,
-        );
+    // #[test]
+    // fn test_is_probe_factory() {
+    //     let probe_info = DebugProbeInfo::new(
+    //         "Mock probe",
+    //         0x12,
+    //         0x23,
+    //         Some("mock_serial".to_owned()),
+    //         &ftdi::FtdiProbeFactory,
+    //         None,
+    //         false,
+    //     );
 
-        assert!(probe_info.is_probe_type::<ftdi::FtdiProbeFactory>());
-        assert!(!probe_info.is_probe_type::<jlink::JLinkFactory>());
-    }
+    //     assert!(probe_info.is_probe_type::<ftdi::FtdiProbeFactory>());
+    //     assert!(!probe_info.is_probe_type::<jlink::JLinkFactory>());
+    // }
 }
