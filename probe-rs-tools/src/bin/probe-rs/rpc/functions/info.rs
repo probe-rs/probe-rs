@@ -69,6 +69,7 @@ impl From<&TargetInfoRequest> for ProbeOptions {
             cycle_power: false,
             dry_run: request.dry_run,
             allow_erase_all: false,
+            allow_permanent_debug_lock: false,
         }
     }
 }
