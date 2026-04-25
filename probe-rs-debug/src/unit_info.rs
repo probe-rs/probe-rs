@@ -18,20 +18,32 @@ pub(crate) enum ExpressionResult {
     Location(VariableLocation),
 }
 
+#[derive(Clone)]
+struct ParentLink {
+    /// The offet of the *parent* DIE
+    offset: UnitOffset,
+    /// The partial name of the *child*
+    partial_name: String,
+}
+
 /// A struct containing information about a single compilation unit.
 pub struct UnitInfo {
     pub(crate) unit: gimli::Unit<GimliReader, usize>,
     dwarf_language: gimli::DwLang,
     language: Box<dyn language::ProgrammingLanguage>,
-    // A mapping from child die to parent die.
-    parents: HashMap<UnitOffset, UnitOffset>,
+    // A mapping from child die to parent die + parent partial name.
+    parents: HashMap<UnitOffset, ParentLink>,
     // Address => function DIE offset
     function_dies: Vec<(Range<u64>, UnitOffset)>,
 }
 
 impl UnitInfo {
     /// Create a new `UnitInfo` from a `gimli::Unit`.
-    pub fn new(unit: gimli::Unit<GimliReader, usize>, dwarf: &gimli::Dwarf<GimliReader>) -> Self {
+    pub fn new(
+        unit: gimli::Unit<GimliReader, usize>,
+        dwarf: &gimli::Dwarf<GimliReader>,
+        symbols: &mut HashMap<String, Symbol>,
+    ) -> Self {
         let dwarf_language = if let Some(AttributeValue::Language(unit_language)) = unit
             .entry(unit.root_offset())
             .ok()
@@ -51,12 +63,78 @@ impl UnitInfo {
             function_dies: Vec::new(),
         };
 
-        this.process_unit(dwarf);
+        this.process_unit(dwarf, symbols);
 
         this
     }
 
-    fn process_unit(&mut self, dwarf: &gimli::Dwarf<GimliReader>) {
+    fn process_variable(
+        &self,
+        dwarf: &gimli::Dwarf<GimliReader>,
+        entry: &DebuggingInformationEntry<GimliReader>,
+    ) -> Option<SymbolType> {
+        let addr = entry
+            .attr(gimli::DW_AT_location)
+            .and_then(|attr| {
+                if let AttributeValue::Exprloc(expression) = attr.value() {
+                    Some(expression)
+                } else {
+                    None
+                }
+            })
+            .and_then(|expr| {
+                let mut evaluation = expr.evaluation(self.unit.encoding());
+                let mut result = evaluation.evaluate().ok()?;
+                loop {
+                    match result {
+                        EvaluationResult::Complete => {
+                            return evaluation.value_result();
+                        }
+                        EvaluationResult::RequiresIndexedAddress { index, relocate: _ } => {
+                            let address = dwarf.address(&self.unit, index).ok()?;
+                            result = evaluation.resume_with_indexed_address(address).ok()?;
+                        }
+                        EvaluationResult::RequiresRelocatedAddress(address) => {
+                            // microcontroller binaries aren't relocated; we
+                            // very likely won't see this.
+                            result = evaluation.resume_with_relocated_address(address).ok()?;
+                        }
+                        _ => {
+                            return None;
+                        }
+                    }
+                }
+            })
+            .and_then(|value| value.to_u64(!0).ok())?;
+        let size = entry
+            .attr(gimli::DW_AT_type)
+            .and_then(|type_attr| {
+                if let AttributeValue::UnitRef(offset) = type_attr.value() {
+                    Some(offset)
+                } else {
+                    None
+                }
+            })
+            .and_then(|offset| {
+                self.unit
+                    .entry(offset)
+                    .ok()?
+                    .attr(gimli::DW_AT_byte_size)
+                    .and_then(|size_attr| size_attr.udata_value())
+            })?;
+        Some(SymbolType::Variable {
+            range: Range {
+                start: addr,
+                end: addr + size,
+            },
+        })
+    }
+
+    fn process_unit(
+        &mut self,
+        dwarf: &gimli::Dwarf<GimliReader>,
+        symbols: &mut HashMap<String, Symbol>,
+    ) {
         let mut entries_cursor = self.unit.entries();
 
         let mut prev_offset = None;
@@ -71,9 +149,11 @@ impl UnitInfo {
                     let walk_up = |mut levels| {
                         // If 0:  Previous die is a sibling, we have the same parent.
                         // If <0: Previous die is a child of one of our siblings. Trace back as many levels as needed, and grab the parent.
-                        let mut cursor = prev_offset.map(|off| self.parents.get(&off).copied())?;
+                        let mut cursor = prev_offset
+                            .map(|off| self.parents.get(&off).map(|link| link.offset))?;
                         while levels != 0 {
-                            cursor = cursor.map(|off| self.parents.get(&off).copied())?;
+                            cursor =
+                                cursor.map(|off| self.parents.get(&off).map(|link| link.offset))?;
                             levels += 1;
                         }
                         cursor
@@ -83,20 +163,105 @@ impl UnitInfo {
                 _ => unreachable!("DFS algorithms never jump down multiple levels in the graph"),
             };
 
+            let extract_name = |die: &DebuggingInformationEntry<GimliReader>| -> Option<String> {
+                use gimli::Reader;
+                let attr = die.attr_value(gimli::DW_AT_name)?;
+                let name_as_bytes = dwarf.attr_string(&self.unit, attr).ok()?;
+                name_as_bytes.to_string_lossy().ok().map(|s| s.into_owned())
+            };
+
             if let Some(offset) = parent_offset {
-                self.parents.insert(current.offset(), offset);
+                let parent_name = self
+                    .parents
+                    .get(&offset)
+                    .map(|link| link.partial_name.clone())
+                    .unwrap_or_default();
+
+                let name_opt = extract_name(current).unwrap_or_default();
+                let mut current_name =
+                    String::with_capacity(parent_name.len() + 2 + name_opt.len());
+                current_name.push_str(&parent_name);
+                current_name.push_str("::");
+                current_name.push_str(&name_opt);
+
+                self.parents.insert(
+                    current.offset(),
+                    ParentLink {
+                        offset,
+                        partial_name: current_name,
+                    },
+                );
             }
             previous_depth = current.depth();
             prev_offset = Some(current.offset());
 
-            // Cache the address ranges if this DIE is a function.
-            if current.tag() == gimli::DW_TAG_subprogram
-                && let Ok(Some(ranges)) = FunctionDie::function_ranges(current, self, dwarf)
-            {
-                for range in ranges {
-                    self.function_dies.push((range, current.offset()));
+            // Cache the address ranges if this DIE is a function, and add it to
+            // the symbols map if it's a function, inlined function, or variable
+            match current.tag() {
+                gimli::DW_TAG_subprogram => {
+                    let ranges = if let Ok(Some(ranges)) =
+                        FunctionDie::function_ranges(current, self, dwarf)
+                    {
+                        for range in &ranges {
+                            self.function_dies.push((range.clone(), current.offset()));
+                        }
+                        ranges
+                    } else {
+                        vec![]
+                    };
+                    Some(SymbolType::Function { ranges })
                 }
+                gimli::DW_TAG_inlined_subroutine => {
+                    let mut offset = current.offset();
+                    let mut concrete_partial_name = None;
+                    while let Some(link) = self.parents.get(&offset) {
+                        match self.unit.entry(link.offset).ok().and_then(|entry| {
+                            if entry.tag() == gimli::DW_TAG_subprogram {
+                                self.parents
+                                    .get(&entry.offset())
+                                    .map(|link| link.partial_name.clone())
+                            } else {
+                                None
+                            }
+                        }) {
+                            Some(concrete_name) => {
+                                concrete_partial_name = Some(concrete_name);
+                            }
+                            None => {
+                                offset = link.offset;
+                            }
+                        }
+                        if concrete_partial_name.is_some() {
+                            break;
+                        }
+                    }
+                    concrete_partial_name.map(|name| SymbolType::InlinedFunction {
+                        concrete_caller: name,
+                    })
+                }
+                gimli::DW_TAG_variable => self.process_variable(dwarf, current),
+                _ => None,
             }
+            .map(|symbol_type| {
+                let mut name = self.parents[&current.offset()].partial_name.clone();
+                if let SymbolType::InlinedFunction { concrete_caller: _ } = symbol_type
+                    && let Ok(Some(ranges)) = FunctionDie::function_ranges(current, self, dwarf)
+                    && ranges.len() > 0
+                {
+                    // Inlined functions aren't in the .symtab, so we don't need
+                    // to worry about matching the format of rustc_demangle.  We
+                    // just need to make sure the string is unique across all
+                    // instances of the inlined function.
+                    name = format!("{} @{:#010X}", name, ranges[0].start)
+                }
+                symbols.insert(
+                    name.clone(),
+                    Symbol {
+                        name: name,
+                        symbol_type,
+                    },
+                );
+            });
 
             // TODO: assuming the ranges don't overlap, sort function dies by start address
         }
@@ -2310,7 +2475,7 @@ impl UnitInfo {
     }
 
     pub(crate) fn parent_offset(&self, offset: UnitOffset) -> Option<UnitOffset> {
-        self.parents.get(&offset).copied()
+        self.parents.get(&offset).map(|link| link.offset)
     }
 }
 
