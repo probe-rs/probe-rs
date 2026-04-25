@@ -14,7 +14,14 @@ use gimli::{
 use object::read::{Object, ObjectSection};
 use probe_rs::{CoreRegister, Error, InstructionSet, MemoryInterface, RegisterRole, RegisterValue};
 use std::{
-    borrow, cmp::Ordering, num::NonZeroU64, ops::ControlFlow, path::Path, rc::Rc, str::from_utf8,
+    borrow,
+    cmp::Ordering,
+    collections::HashMap,
+    num::NonZeroU64,
+    ops::{ControlFlow, Range},
+    path::Path,
+    rc::Rc,
+    str::from_utf8,
 };
 use typed_path::{TypedPath, TypedPathBuf};
 
@@ -25,6 +32,25 @@ pub(crate) type GimliReaderOffset =
 pub(crate) type GimliAttribute = gimli::Attribute<GimliReader>;
 
 pub(crate) type DwarfReader = gimli::read::EndianRcSlice<RunTimeEndian>;
+
+pub enum SymbolType {
+    // Non-inlined functions can still be split across several byte ranges; a
+    // hot/cold code split is one reason.  So we need a set of ranges, not just
+    // a start and end.
+    Function { ranges: Vec<Range<u64>> },
+    // The value here is the concrete function that eventually calls this
+    // inlined function.
+    // If it's called by several others in a call stack, the value is the final
+    // (top level) concrete function; put another way, the symbol in here is not
+    // an inline function.
+    InlinedFunction { concrete_caller: String },
+    Variable { range: Range<u64> },
+}
+
+pub struct Symbol {
+    pub name: String,
+    pub symbol_type: SymbolType,
+}
 
 /// Debug information which is parsed from DWARF debugging information.
 pub struct DebugInfo {
@@ -38,6 +64,8 @@ pub struct DebugInfo {
     pub(crate) endianness: gimli::RunTimeEndian,
 
     pub(crate) addr2line: Option<addr2line::Loader>,
+
+    pub(crate) symbols: Vec<Symbol>,
 }
 
 impl DebugInfo {
@@ -52,7 +80,31 @@ impl DebugInfo {
 
     /// Parse debug information directly from a buffer containing an ELF file.
     pub fn from_raw(data: &[u8]) -> Result<Self, DebugError> {
+        use object::ObjectSymbol;
+
         let object = object::File::parse(data)?;
+
+        let mut sym_hash = HashMap::new();
+
+        // We add all the symbols from both the symtab and the debug info to the
+        // list that we'll use for disassembly.  Drop them into a hashmap at
+        // first, so we de-duplicate, then drop them into a sorted vector at the
+        // end.
+        for symbol in object.symbols() {
+            let name = rustc_demangle::demangle(symbol.name()?).to_string();
+            sym_hash.insert(
+                name.clone(),
+                Symbol {
+                    name: name,
+                    symbol_type: SymbolType::Function {
+                        ranges: vec![Range {
+                            start: symbol.address(),
+                            end: symbol.address() + symbol.size(),
+                        }],
+                    },
+                },
+            );
+        }
 
         let endianness = if object.is_little_endian() {
             RunTimeEndian::Little
@@ -98,9 +150,12 @@ impl DebugInfo {
                 // The frame section address size is only used for CIE versions before 4.
                 frame_section.set_address_size(unit.encoding().address_size);
 
-                unit_infos.push(UnitInfo::new(unit, &dwarf_cow));
+                unit_infos.push(UnitInfo::new(unit, &dwarf_cow, &mut sym_hash));
             };
         }
+
+        let sym_vec = sym_hash.into_values().collect::<Vec<_>>();
+        //sym_vec.sort_by(|sym| sym.name());
 
         Ok(DebugInfo {
             dwarf: dwarf_cow,
@@ -111,6 +166,7 @@ impl DebugInfo {
             unit_infos,
             endianness,
             addr2line: None,
+            symbols: sym_vec,
         })
     }
 

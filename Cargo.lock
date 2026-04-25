@@ -3049,6 +3049,7 @@ dependencies = [
  "pretty_assertions",
  "probe-rs",
  "probe-rs-target",
+ "rustc-demangle",
  "serde",
  "termtree",
  "test-case",
