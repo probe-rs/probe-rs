@@ -1,0 +1,82 @@
+name: Update DAP protocol schema
+
+on:
+  schedule:
+    # 04:00 UTC on the 1st of every month
+    - cron: "0 4 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  SCHEMA_PATH: probe-rs-tools/src/bin/probe-rs/cmd/dap_server/debug_adapter/dap/debugProtocol.json
+  SCHEMA_URL: https://microsoft.github.io/debug-adapter-protocol/debugAdapterProtocol.json
+  CHANGELOG_FRAGMENT: changelog/changed-dap-protocol-schema.md
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Fetch latest schema
+        id: fetch
+        run: |
+          curl -fLJs -D headers.txt "$SCHEMA_URL" -o "$SCHEMA_PATH"
+
+          # Extract the upstream Last-Modified header and reformat to YYYY-MM-DD.
+          # Falls back to today's date if the header is missing for any reason.
+          raw=$(grep -i '^last-modified:' headers.txt | head -n1 | sed 's/^[^:]*: *//' | tr -d '\r')
+          if [ -n "$raw" ] && upstream_date=$(date -u -d "$raw" +%Y-%m-%d 2>/dev/null); then
+            echo "upstream_date=$upstream_date" >> "$GITHUB_OUTPUT"
+            echo "upstream_date_source=Last-Modified header ($raw)" >> "$GITHUB_OUTPUT"
+          else
+            echo "upstream_date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+            echo "upstream_date_source=fallback (no Last-Modified header)" >> "$GITHUB_OUTPUT"
+          fi
+          rm headers.txt
+
+      - name: Check for changes
+        id: diff
+        run: |
+          if git diff --quiet -- "$SCHEMA_PATH"; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Write changelog fragment
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          echo "Updated the DAP \`debugProtocol.json\` schema to the upstream revision dated ${{ steps.fetch.outputs.upstream_date }}." > "$CHANGELOG_FRAGMENT"
+
+      - name: Build PR body
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          {
+            echo "Upstream: <$SCHEMA_URL>"
+            echo
+            echo "Upstream revision date: **${{ steps.fetch.outputs.upstream_date }}** _(source: ${{ steps.fetch.outputs.upstream_date_source }})_"
+            echo
+            echo "See the **Files changed** tab for the full diff."
+            echo
+            echo "---"
+            echo "Generated types live in \`dap_types.rs\` via the \`schemafy!\` macro."
+            echo "If CI fails, the upstream schema introduced a breaking change that needs manual reconciliation."
+          } > pr-body.md
+
+      - name: Open pull request
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: chore/update-dap-protocol
+          commit-message: "chore(dap): update debugProtocol.json"
+          title: "chore(dap): update debugProtocol.json"
+          body-path: pr-body.md
+          delete-branch: true
+          add-paths: |
+            ${{ env.SCHEMA_PATH }}
+            ${{ env.CHANGELOG_FRAGMENT }}
