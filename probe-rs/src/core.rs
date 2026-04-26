@@ -222,6 +222,27 @@ impl<'probe> Core<'probe> {
         }
     }
 
+    /// Create a new [`Core`] from an already-boxed [`CoreInterface`] implementation.
+    ///
+    /// This is intended for callers that need to build a `Core` wrapping a custom
+    /// [`CoreInterface`] backend (for example, a proxy that forwards operations
+    /// over a network link). Inside `probe-rs`, use [`Session::core`](crate::Session::core)
+    /// instead; this constructor exists for consumers such as the DAP server that
+    /// want to present a remote target through the same [`Core`] API as a local one.
+    pub fn from_boxed(
+        id: usize,
+        name: &'probe str,
+        target: &'probe Target,
+        inner: Box<dyn CoreInterface + 'probe>,
+    ) -> Core<'probe> {
+        Self {
+            id,
+            name,
+            target,
+            inner,
+        }
+    }
+
     /// Returns the memory regions associated with this core.
     pub fn memory_regions(&self) -> impl Iterator<Item = &MemoryRegion> {
         self.target

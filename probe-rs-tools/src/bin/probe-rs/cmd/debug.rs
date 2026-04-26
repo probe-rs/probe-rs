@@ -7,8 +7,8 @@ use probe_rs::probe::list::Lister;
 use rustyline_async::SharedWriter;
 use rustyline_async::{Readline, ReadlineEvent};
 use time::UtcOffset;
-use tokio::runtime::Runtime;
-use tokio::sync::mpsc::{self, Receiver, Sender};
+use tokio::runtime::Handle;
+use tokio::sync::mpsc::{self, Receiver, Sender, UnboundedSender};
 
 use crate::cmd::dap_server::debug_adapter::dap::adapter::DebugAdapter;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types;
@@ -43,7 +43,16 @@ use super::dap_server::debug_adapter::dap::dap_types::Response;
 /// A barebones adapter for the CLI "client".
 struct CliAdapter {
     req_receiver: Receiver<Request>,
-    msg_sender: Sender<(String, Option<serde_json::Value>)>,
+    // Unbounded because `ProtocolAdapter::dyn_send_event` and
+    // `send_raw_response` are synchronous and called from mixed
+    // contexts: on a `spawn_blocking` thread for local sessions and
+    // directly on a tokio worker for remote RPC sessions. A bounded
+    // channel forces us to choose between `try_send` (which panics on
+    // bursty output such as flash progress events) and `blocking_send`
+    // (which would deadlock a worker thread). The unbounded variant
+    // sidesteps both — events are small (a few hundred bytes) and
+    // naturally bounded by the session's request rate.
+    msg_sender: UnboundedSender<(String, Option<serde_json::Value>)>,
     console_log_level: ConsoleLog,
     seq: i64,
     pending: HashMap<i64, Request>,
@@ -70,19 +79,19 @@ impl ProtocolAdapter for CliAdapter {
         event_body: Option<serde_json::Value>,
     ) -> anyhow::Result<()> {
         self.msg_sender
-            .try_send((event_type.to_string(), event_body))
-            .unwrap();
+            .send((event_type.to_string(), event_body))
+            .map_err(|_| anyhow::anyhow!("CLI message channel closed"))?;
 
         Ok(())
     }
 
     fn send_raw_response(&mut self, response: Response) -> anyhow::Result<()> {
         self.msg_sender
-            .try_send((
+            .send((
                 "response".to_string(),
                 Some(serde_json::to_value(response)?),
             ))
-            .unwrap();
+            .map_err(|_| anyhow::anyhow!("CLI message channel closed"))?;
 
         Ok(())
     }
@@ -192,7 +201,7 @@ pub struct Cmd {
 impl Cmd {
     pub async fn run(self, client: RpcClient, utc_offset: UtcOffset) -> anyhow::Result<()> {
         let (req_sender, req_receiver) = mpsc::channel(10);
-        let (msg_sender, mut msg_receiver) = mpsc::channel(10);
+        let (msg_sender, mut msg_receiver) = mpsc::unbounded_channel();
 
         let debug_adapter = DebugAdapter::new(CliAdapter {
             req_receiver,
@@ -296,28 +305,80 @@ impl Cmd {
             })
             .await;
 
-        // Run the debugger in a separate thread, otherwise longer processes like flashing can block the terminal.
-        let server = tokio::task::spawn_blocking(move || {
-            Runtime::new().unwrap().block_on(async move {
-                let registry = &mut *client.registry().await;
-                let mut debugger = Debugger::new(utc_offset, None)?;
+        // Run the debugger concurrently with the CLI's read loop.
+        //
+        // For local sessions we keep the debugger on a dedicated blocking
+        // thread (the DAP server drives synchronous probe I/O), but we
+        // reuse the ambient tokio runtime handle instead of spinning up a
+        // brand-new one — otherwise the [`RpcClient`] (which is bound to
+        // the outer runtime) would deadlock on any of its async
+        // primitives.
+        //
+        // For remote (RPC) sessions the backend has to run on the outer
+        // runtime's worker threads, because its synchronous probe I/O is
+        // bridged through `block_in_place` + `handle.block_on` which
+        // requires being polled by a real multi-thread runtime worker.
+        // The session data also contains `!Send` state (gimli's `Rc<[u8]>`,
+        // `Box<dyn Any>` test data, ...), so we can't `tokio::spawn` it —
+        // we drive the future inline via `select!` instead.
+        let is_local = client.is_local_session();
+        let server = async move {
+            let mut debugger = Debugger::new(utc_offset, None)?;
+            if is_local {
+                let handle = Handle::current();
+                tokio::task::spawn_blocking(move || {
+                    handle.block_on(async move {
+                        let registry = &mut *client.registry().await;
 
-                let lister = Lister::new();
+                        let lister = Lister::new();
+                        debugger
+                            .debug_session(registry, debug_adapter, &lister)
+                            .await
+                            .map_err(anyhow::Error::from)
+                    })
+                })
+                .await
+                .map_err(anyhow::Error::from)
+                .and_then(std::convert::identity)
+            } else {
                 debugger
-                    .debug_session(registry, debug_adapter, &lister)
+                    .debug_session_rpc(&client, debug_adapter)
                     .await
-            })
-        });
+                    .map_err(anyhow::Error::from)
+            }
+        };
+        tokio::pin!(server);
 
+        // Drive the server concurrently with the pre-init message drain,
+        // then set up Readline and transition into the interactive loop.
+        // We need to poll `server` during the pre-init phase too: nothing
+        // else is driving it, and the CLI is waiting for the
+        // `configurationDone` response to arrive before showing a prompt.
+        let mut server_result: Option<anyhow::Result<()>> = None;
         while !debug_client.is_initialized && debug_client.running() {
             tokio::select! {
                 response = msg_receiver.recv() => {
-                    // Handle responses/events
                     let Some((event, body)) = response else {
-                        // recv returns `None` if the channel has been closed
                         break;
                     };
                     debug_client.process_event(&event, body)?;
+                }
+                res = &mut server => {
+                    // The debug session finished (or failed) before the
+                    // CLI reached steady state — surface the result and
+                    // stop waiting for `is_initialized`.
+                    //
+                    // Drain any already-queued messages before breaking:
+                    // in the common "launch/attach failed" path the
+                    // debug session sends an error response and then
+                    // returns `Ok(())` immediately, so without this
+                    // drain the error response would get discarded and
+                    // the CLI would look like it exited silently.
+                    server_result = Some(res);
+                    while let Ok((event, body)) = msg_receiver.try_recv() {
+                        debug_client.process_event(&event, body)?;
+                    }
+                    break;
                 }
             }
         }
@@ -329,72 +390,89 @@ impl Cmd {
                 .unwrap();
         debug_client.writer = Some(writer);
 
-        let readline = async {
-            let mut result = Ok(());
-            while debug_client.running() {
-                // Update prompt if needed (a message created a new one, or closed the current one)
-                if debug_client.current_prompt != current_prompt {
-                    current_prompt = debug_client.current_prompt;
-                    debug_client.update_prompt(&mut rl);
-                }
+        let readline_result = if server_result.is_some() {
+            // Server already finished; no point driving the readline loop.
+            Ok(())
+        } else {
+            let readline_fut = async {
+                let mut result = Ok(());
+                while debug_client.running() {
+                    if debug_client.current_prompt != current_prompt {
+                        current_prompt = debug_client.current_prompt;
+                        debug_client.update_prompt(&mut rl);
+                    }
 
-                tokio::select! {
-                    response = msg_receiver.recv() => {
-                        // Handle responses/events
-                        let Some((event, body)) = response else {
-                            // recv returns `None` if the channel has been closed
-                            break;
-                        };
-                        if let Err(error) = debug_client.process_event(&event, body) {
-                            result = Err(error);
-                            break;
-                        }
-                    },
-                    read_line = rl.readline() => {
-                        match read_line {
-                            Ok(ReadlineEvent::Line(line)) => {
-                                rl.add_history_entry(line.clone());
-                                debug_client.handle_prompt(line).await;
-                            }
-                            Ok(ReadlineEvent::Eof) => {
-                                // ctrl-d cycles through prompts
-                                debug_client.current_prompt = (current_prompt + 1) % debug_client.prompts.len();
-                            },
-                            // For ctrl-c, we just quit
-                            Ok(ReadlineEvent::Interrupted) => break,
-                            Err(actual_error) => {
-                                result = Err(actual_error).context("Error handling input");
+                    tokio::select! {
+                        response = msg_receiver.recv() => {
+                            let Some((event, body)) = response else {
+                                break;
+                            };
+                            if let Err(error) = debug_client.process_event(&event, body) {
+                                result = Err(error);
                                 break;
                             }
-                        }
-                    },
-                    _ = debug_client.req_sender.closed() => break,
+                        },
+                        read_line = rl.readline() => {
+                            match read_line {
+                                Ok(ReadlineEvent::Line(line)) => {
+                                    rl.add_history_entry(line.clone());
+                                    debug_client.handle_prompt(line).await;
+                                }
+                                Ok(ReadlineEvent::Eof) => {
+                                    // ctrl-d cycles through prompts
+                                    debug_client.current_prompt = (current_prompt + 1) % debug_client.prompts.len();
+                                },
+                                Ok(ReadlineEvent::Interrupted) => break,
+                                Err(actual_error) => {
+                                    result = Err(actual_error).context("Error handling input");
+                                    break;
+                                }
+                            }
+                        },
+                        _ = debug_client.req_sender.closed() => break,
+                    }
+                }
+
+                debug_client
+                    .send(|seq| Request {
+                        command: "disconnect".to_string(),
+                        arguments: serde_json::to_value(&DisconnectArguments {
+                            restart: None,
+                            suspend_debuggee: Some(true),
+                            terminate_debuggee: None,
+                        })
+                        .ok(),
+                        seq,
+                        type_: "request".to_string(),
+                    })
+                    .await;
+                result
+            };
+            tokio::pin!(readline_fut);
+
+            // Whichever future resolves first decides the readline
+            // result: either the readline loop exited normally or the
+            // debug session terminated. In the latter case any trailing
+            // output has already been rendered by the readline loop via
+            // its `msg_receiver` arm, so we just record the result.
+            tokio::select! {
+                res = &mut readline_fut => res,
+                res = &mut server => {
+                    server_result = Some(res);
+                    Ok(())
                 }
             }
-
-            debug_client
-                .send(|seq| Request {
-                    command: "disconnect".to_string(),
-                    arguments: serde_json::to_value(&DisconnectArguments {
-                        restart: None,
-                        suspend_debuggee: Some(true),
-                        terminate_debuggee: None,
-                    })
-                    .ok(),
-                    seq,
-                    type_: "request".to_string(),
-                })
-                .await;
-            result
-        };
-
-        let (readline_result, server_result) = tokio::join! {
-            readline,
-            server,
         };
 
         rl.flush()?;
-        server_result??;
+
+        // If the server is still running, wait for it to finish (the
+        // readline side has sent a `disconnect` request above).
+        if server_result.is_none() {
+            server_result = Some(server.await);
+        }
+
+        server_result.unwrap()?;
 
         readline_result
     }

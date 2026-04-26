@@ -7,6 +7,7 @@ use crate::{
     cmd::{
         dap_server::{
             DebuggerError,
+            backend::{DapBackend, rpc::RpcBackend},
             debug_adapter::{
                 dap::{
                     adapter::DebugAdapter,
@@ -19,7 +20,8 @@ use crate::{
         },
         run::EmbeddedTestElfInfo,
     },
-    util::common_options::OperationError,
+    rpc::client::RpcClient,
+    util::{cli::attach_probe as attach_probe_rpc, common_options::OperationError},
 };
 use anyhow::{Result, anyhow};
 use probe_rs::{
@@ -65,8 +67,12 @@ pub struct ActiveBreakpoint {
 /// SessionData is designed to be similar to [probe_rs::Session], in as much that it provides handles to the [CoreHandle] instances for each of the available [probe_rs::Core] involved in the debug session.
 /// To get access to the [CoreHandle] for a specific [probe_rs::Core], the
 /// TODO: Adjust [SessionConfig] to allow multiple cores (and if appropriate, their binaries) to be specified.
-pub(crate) struct SessionData {
-    pub(crate) session: Session,
+///
+/// Generic over the [`DapBackend`] that provides access to the target. The default
+/// [`Session`] backend is the historical local-probe implementation; alternative
+/// backends (e.g. a probe-rs RPC client) plug in here.
+pub(crate) struct SessionData<B: DapBackend = Session> {
+    pub(crate) backend: B,
     /// [SessionData] will manage one [CoreData] per target core, that is also present in [SessionConfig::core_configs]
     pub(crate) core_data: Vec<CoreData>,
 
@@ -76,7 +82,7 @@ pub(crate) struct SessionData {
     timestamp_offset: UtcOffset,
 }
 
-impl SessionData {
+impl SessionData<Session> {
     pub(crate) fn new(
         registry: &mut Registry,
         lister: &Lister,
@@ -110,131 +116,12 @@ impl SessionData {
                 }
             })?;
 
-        // Change the current working directory if `config.cwd` is `Some(T)`.
-        if let Some(new_cwd) = config.cwd.clone() {
-            set_current_dir(new_cwd.as_path()).map_err(|err| {
-                anyhow!("Failed to set current working directory to: {new_cwd:?}, {err:?}")
-            })?;
-        };
+        apply_session_cwd(config)?;
 
-        // `FlashingConfig` probe level initialization.
-
-        // `CoreConfig` probe level initialization.
-        if config.core_configs.len() != 1 {
-            // TODO: For multi-core, allow > 1.
-            return Err(DebuggerError::Other(anyhow!(
-                "probe-rs-debugger requires that one, and only one, core be configured for debugging."
-            )));
-        }
-
-        // Filter `CoreConfig` entries based on those that match an actual core on the target probe.
-        let valid_core_configs = config
-            .core_configs
-            .iter()
-            .filter(|&core_config| {
-                target_session
-                    .list_cores()
-                    .iter()
-                    .any(|(target_core_index, _)| *target_core_index == core_config.core_index)
-            })
-            .collect::<Vec<_>>();
-
-        let mut core_data_vec = vec![];
-
-        for core_configuration in valid_core_configs {
-            let needs_vector_catch = core_configuration.catch_hardfault
-                || core_configuration.catch_reset
-                || core_configuration.catch_svc
-                || core_configuration.catch_hlt;
-
-            if needs_vector_catch {
-                let mut core = target_session.core(core_configuration.core_index)?;
-                let was_halted = core.core_halted()?;
-
-                if !was_halted {
-                    core.halt(Duration::from_millis(100))?;
-                }
-
-                if core_configuration.catch_hardfault {
-                    match core.enable_vector_catch(VectorCatchCondition::HardFault) {
-                        Ok(_) | Err(probe_rs::Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
-                        Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
-                    }
-                }
-                if core_configuration.catch_reset {
-                    match core.enable_vector_catch(VectorCatchCondition::CoreReset) {
-                        Ok(_) | Err(probe_rs::Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
-                        Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
-                    }
-                }
-                if core_configuration.catch_svc {
-                    match core.enable_vector_catch(VectorCatchCondition::Svc) {
-                        Ok(_) | Err(probe_rs::Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
-                        Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
-                    }
-                }
-                if core_configuration.catch_hlt {
-                    match core.enable_vector_catch(VectorCatchCondition::Hlt) {
-                        Ok(_) | Err(probe_rs::Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
-                        Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
-                    }
-                }
-
-                if was_halted {
-                    core.run()?;
-                }
-            }
-
-            // Load debug info first, which also validates the accessibility of the elf.
-            let debug_info = debug_info_from_binary(core_configuration)?;
-
-            let mut repl_commands = REPL_COMMANDS.to_vec();
-            let mut test_data: Box<dyn Any> = Box::new(());
-            if let Some(path_to_elf) = core_configuration.program_binary.as_deref()
-                && let Some(elf_info) = EmbeddedTestElfInfo::from_elf(path_to_elf)?
-            {
-                tracing::debug!("Embedded Test Metadata: {:?}", elf_info);
-                if elf_info.version != 1 {
-                    tracing::info!("Detected unsupported embedded-test version in ELF file.");
-                } else {
-                    tracing::info!(
-                        "Detected embedded-test in ELF file. Adding `test` command to Debug Console."
-                    );
-
-                    repl_commands.push(EMBEDDED_TEST);
-                    test_data = Box::new(elf_info);
-                }
-            }
-
-            core_data_vec.push(CoreData {
-                core_index: core_configuration.core_index,
-                last_known_status: CoreStatus::Unknown,
-                target_name: format!(
-                    "{}-{}",
-                    core_configuration.core_index,
-                    target_session.target().name
-                ),
-                debug_info,
-                static_variables: None,
-                core_peripherals: None,
-                stack_frames: vec![],
-                breakpoints: vec![],
-                rtt_scan_ranges: ScanRegion::Ranges(vec![]),
-                rtt_connection: None,
-                rtt_client: None,
-
-                // We're abusing the RTT window machinery here for simplicity.
-                // Let's assume there are less than 1024 RTT channels.
-                next_semihosting_handle: 1024,
-                semihosting_handles: HashMap::new(),
-
-                repl_commands,
-                test_data,
-            })
-        }
+        let core_data_vec = initialize_core_data(&mut target_session, config)?;
 
         let mut this = SessionData {
-            session: target_session,
+            backend: target_session,
             core_data: core_data_vec,
             timestamp_offset,
         };
@@ -243,14 +130,107 @@ impl SessionData {
 
         Ok(this)
     }
+}
 
+impl SessionData<RpcBackend> {
+    /// Build a [`SessionData`] backed by an [`RpcBackend`] against the
+    /// supplied [`RpcClient`].
+    ///
+    /// The server is expected to have its chip registry populated (either
+    /// through the builtin database or through a prior
+    /// `client.load_chip_family`). The `config.chip` field is required: it
+    /// is used both to drive the remote `probe/attach` RPC and to look up
+    /// the matching [`probe_rs::Target`] description locally so that the
+    /// DAP server can answer memory-map / RTT / SVD queries without extra
+    /// round trips.
+    pub(crate) async fn new_remote(
+        client: &RpcClient,
+        config: &mut configuration::SessionConfig,
+        timestamp_offset: UtcOffset,
+    ) -> Result<Self, DebuggerError> {
+        use crate::cmd::dap_server::backend::rpc::CorePerAttachInfo;
+        use probe_rs::Endian;
+
+        let chip_name = config
+            .chip
+            .clone()
+            .ok_or_else(|| anyhow!("A chip name is required when debugging over RPC."))?;
+
+        // Reuse the shared CLI helper: it uploads any user-supplied chip
+        // description, selects a probe, and performs the `probe/attach` RPC.
+        let probe_options = config.probe_options();
+        let session = attach_probe_rpc(client, probe_options, false).await?;
+        let sessid = session.session_key();
+
+        // The client has a local registry mirror: look up the target so we
+        // can serve memory-map / introspection locally. This assumes the
+        // client has loaded the same chip families the server has, which is
+        // how [`attach_probe_rpc`] already works.
+        let target = {
+            let registry = client.registry().await;
+            registry.get_target_by_name(&chip_name).map_err(|e| {
+                DebuggerError::Other(anyhow!(
+                    "Failed to resolve chip `{chip_name}` in the local registry: {e}"
+                ))
+            })?
+        };
+
+        apply_session_cwd(config)?;
+
+        let cores: Vec<(usize, probe_rs::CoreType)> = target
+            .cores
+            .iter()
+            .enumerate()
+            .map(|(idx, core)| (idx, core.core_type))
+            .collect();
+
+        // Derive per-core defaults from the core type. Endianness is
+        // assumed little-endian (true for all currently supported cores);
+        // FPU support is assumed absent until the user needs it — the
+        // correct way to populate these fields is with an explicit RPC
+        // query once the core is halted, which we do not yet issue here.
+        let per_core: Vec<CorePerAttachInfo> = cores
+            .iter()
+            .map(|(_, core_type)| CorePerAttachInfo {
+                architecture: core_type.architecture(),
+                endian: Endian::Little,
+                is_64_bit: matches!(core_type, probe_rs::CoreType::Riscv64),
+                fpu_support: false,
+                fp_register_count: None,
+            })
+            .collect();
+
+        let mut backend = RpcBackend::new(
+            tokio::runtime::Handle::current(),
+            client.clone(),
+            sessid,
+            target,
+            cores,
+            per_core,
+        );
+
+        let core_data_vec = initialize_core_data(&mut backend, config)?;
+
+        let mut this = SessionData {
+            backend,
+            core_data: core_data_vec,
+            timestamp_offset,
+        };
+
+        this.load_rtt_location(config)?;
+
+        Ok(this)
+    }
+}
+
+impl<B: DapBackend> SessionData<B> {
     pub(crate) fn load_rtt_location(
         &mut self,
         config: &configuration::SessionConfig,
     ) -> Result<(), DebuggerError> {
         // Filter `CoreConfig` entries based on those that match an actual core on the target probe.
         let valid_core_configs = config.core_configs.iter().filter(|&core_config| {
-            self.session
+            self.backend
                 .list_cores()
                 .iter()
                 .any(|(target_core_index, _)| *target_core_index == core_config.core_index)
@@ -260,7 +240,7 @@ impl SessionData {
             .flashing_config
             .format_options
             .binary_format
-            .resolve(self.session.target());
+            .resolve(self.backend.target());
 
         for core_configuration in valid_core_configs {
             let Some(core_data) = self
@@ -299,7 +279,7 @@ impl SessionData {
     /// startup code will reinitialize the block from `.data`.
     pub(crate) fn clear_rtt_blocks(&mut self) -> Result<(), DebuggerError> {
         for core_data in self.core_data.iter() {
-            let mut core = self.session.core(core_data.core_index)?;
+            let mut core = self.backend.core(core_data.core_index)?;
             Rtt::clear_control_block(&mut core, &core_data.rtt_scan_ranges)
                 .map_err(|e| anyhow::anyhow!("Failed to clear RTT control block: {e}"))?;
         }
@@ -331,7 +311,7 @@ impl SessionData {
         core_index: usize,
     ) -> Result<CoreHandle<'_>, DebuggerError> {
         if let (Ok(target_core), Some(core_data)) = (
-            self.session.core(core_index),
+            self.backend.core(core_index),
             self.core_data
                 .iter_mut()
                 .find(|core_data| core_data.core_index == core_index),
@@ -519,4 +499,151 @@ fn debug_info_from_binary(core_configuration: &CoreConfig) -> anyhow::Result<Opt
     DebugInfo::from_file(binary_path)
         .map_err(|error| anyhow!(error))
         .map(Some)
+}
+
+/// Apply the session config's requested working directory if one was
+/// supplied. Shared between the local and RPC attach paths.
+fn apply_session_cwd(config: &configuration::SessionConfig) -> Result<(), DebuggerError> {
+    if let Some(new_cwd) = config.cwd.clone() {
+        set_current_dir(new_cwd.as_path()).map_err(|err| {
+            anyhow!("Failed to set current working directory to: {new_cwd:?}, {err:?}")
+        })?;
+    }
+    Ok(())
+}
+
+/// Best-effort install of any vector-catch conditions the user requested
+/// on this core. Targets that don't implement vector catch are silently
+/// ignored (a common case for RISC-V / Xtensa); any other failure is
+/// logged but otherwise non-fatal to the debug session.
+fn apply_vector_catch(
+    core: &mut probe_rs::Core<'_>,
+    core_configuration: &CoreConfig,
+) -> Result<(), DebuggerError> {
+    let needs_vector_catch = core_configuration.catch_hardfault
+        || core_configuration.catch_reset
+        || core_configuration.catch_svc
+        || core_configuration.catch_hlt;
+
+    if !needs_vector_catch {
+        return Ok(());
+    }
+
+    let was_halted = core.core_halted()?;
+    if !was_halted {
+        core.halt(Duration::from_millis(100))?;
+    }
+
+    let requested: &[(bool, VectorCatchCondition)] = &[
+        (
+            core_configuration.catch_hardfault,
+            VectorCatchCondition::HardFault,
+        ),
+        (
+            core_configuration.catch_reset,
+            VectorCatchCondition::CoreReset,
+        ),
+        (core_configuration.catch_svc, VectorCatchCondition::Svc),
+        (core_configuration.catch_hlt, VectorCatchCondition::Hlt),
+    ];
+
+    for (enabled, condition) in requested {
+        if !*enabled {
+            continue;
+        }
+        match core.enable_vector_catch(*condition) {
+            Ok(_) | Err(probe_rs::Error::NotImplemented(_)) => {}
+            Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+        }
+    }
+
+    if was_halted {
+        core.run()?;
+    }
+    Ok(())
+}
+
+/// Build the per-core [`CoreData`] record the DAP server uses to track a
+/// debug session. Called once per configured core by [`initialize_core_data`].
+fn build_core_data(
+    core_configuration: &CoreConfig,
+    target_name: &str,
+) -> Result<CoreData, DebuggerError> {
+    // Load debug info first, which also validates the accessibility of the elf.
+    let debug_info = debug_info_from_binary(core_configuration)?;
+
+    let mut repl_commands = REPL_COMMANDS.to_vec();
+    let mut test_data: Box<dyn Any> = Box::new(());
+    if let Some(path_to_elf) = core_configuration.program_binary.as_deref()
+        && let Some(elf_info) = EmbeddedTestElfInfo::from_elf(path_to_elf)?
+    {
+        tracing::debug!("Embedded Test Metadata: {:?}", elf_info);
+        if elf_info.version != 1 {
+            tracing::info!("Detected unsupported embedded-test version in ELF file.");
+        } else {
+            tracing::info!(
+                "Detected embedded-test in ELF file. Adding `test` command to Debug Console."
+            );
+
+            repl_commands.push(EMBEDDED_TEST);
+            test_data = Box::new(elf_info);
+        }
+    }
+
+    Ok(CoreData {
+        core_index: core_configuration.core_index,
+        last_known_status: CoreStatus::Unknown,
+        target_name: format!("{}-{}", core_configuration.core_index, target_name),
+        debug_info,
+        static_variables: None,
+        core_peripherals: None,
+        stack_frames: vec![],
+        breakpoints: vec![],
+        rtt_scan_ranges: ScanRegion::Ranges(vec![]),
+        rtt_connection: None,
+        rtt_client: None,
+
+        // We're abusing the RTT window machinery here for simplicity.
+        // Let's assume there are less than 1024 RTT channels.
+        next_semihosting_handle: 1024,
+        semihosting_handles: HashMap::new(),
+
+        repl_commands,
+        test_data,
+    })
+}
+
+/// Run the shared "post-attach" core initialization: enforce the
+/// single-core invariant, filter config entries down to cores that
+/// actually exist on the target, apply vector-catch settings, and build
+/// the [`CoreData`] vector.
+fn initialize_core_data<B: DapBackend>(
+    backend: &mut B,
+    config: &configuration::SessionConfig,
+) -> Result<Vec<CoreData>, DebuggerError> {
+    if config.core_configs.len() != 1 {
+        // TODO: For multi-core, allow > 1.
+        return Err(DebuggerError::Other(anyhow!(
+            "probe-rs-debugger requires that one, and only one, core be configured for debugging."
+        )));
+    }
+
+    let available_cores = backend.list_cores();
+    let target_name = backend.target().name.clone();
+
+    let valid_core_configs = config.core_configs.iter().filter(|&core_config| {
+        available_cores
+            .iter()
+            .any(|(target_core_index, _)| *target_core_index == core_config.core_index)
+    });
+
+    let mut core_data_vec = vec![];
+    for core_configuration in valid_core_configs {
+        {
+            let mut core = backend.core(core_configuration.core_index)?;
+            apply_vector_catch(&mut core, core_configuration)?;
+        }
+        core_data_vec.push(build_core_data(core_configuration, &target_name)?);
+    }
+    Ok(core_data_vec)
 }
