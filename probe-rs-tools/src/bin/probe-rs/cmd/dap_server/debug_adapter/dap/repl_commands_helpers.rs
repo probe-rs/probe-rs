@@ -103,22 +103,31 @@ pub(crate) fn get_local_variable(
 
 /// Read memory at the specified address (hex), using the [`GdbNuf`] specifiers to determine size and format.
 pub(crate) fn memory_read(
-    address: u64,
+    ranges: Vec<std::ops::Range<u64>>,
     gdb_nuf: GdbNuf,
     target_core: &mut CoreHandle<'_>,
 ) -> EvalResult {
     if gdb_nuf.format_specifier == GdbFormat::Instruction {
-        let assembly_lines = disassemble_target_memory(
-            target_core,
-            0_i64,
-            0_i64,
-            address,
-            DisassemblyAmount::Instructions(gdb_nuf.unit_count as i64),
-        )?;
-        if assembly_lines.is_empty() {
-            return Err(DebuggerError::UserMessage(format!(
-                "Cannot disassemble memory at address {address:#010x}"
-            )));
+        let mut assembly_lines = vec![];
+        for range in ranges {
+            let mut lines = disassemble_target_memory(
+                target_core,
+                0_i64,
+                0_i64,
+                range.start,
+                if gdb_nuf.count_was_default && range.end != 0 {
+                    DisassemblyAmount::Bytes(range.end - range.start)
+                } else {
+                    DisassemblyAmount::Instructions(gdb_nuf.unit_count as i64)
+                },
+            )?;
+            if lines.is_empty() {
+                return Err(DebuggerError::UserMessage(format!(
+                    "Cannot disassemble memory at address {:#010x}",
+                    range.start
+                )));
+            }
+            assembly_lines.append(&mut lines);
         }
         let mut formatted_output = "".to_string();
         for assembly_line in &assembly_lines {
@@ -128,7 +137,7 @@ pub(crate) fn memory_read(
         Ok(EvalResponse::Message(formatted_output))
     } else {
         let mut memory_result = vec![0u8; gdb_nuf.get_size()];
-        match target_core.core.read_8(address, &mut memory_result) {
+        match target_core.core.read_8(ranges[0].start, &mut memory_result) {
             Ok(()) => Ok(EvalResponse::Message(
                 GdbNufMemoryResult {
                     nuf: &gdb_nuf,
@@ -137,7 +146,8 @@ pub(crate) fn memory_read(
                 .to_string(),
             )),
             Err(err) => Err(DebuggerError::UserMessage(format!(
-                "Cannot read memory at address {address:#010x}: {err:?}"
+                "Cannot read memory at address {:#010x}: {err:?}",
+                ranges[0].start
             ))),
         }
     }

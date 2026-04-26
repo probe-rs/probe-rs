@@ -2,7 +2,7 @@ use std::{fmt::Write as _, ops::Range, path::Path, str::FromStr};
 
 use linkme::distributed_slice;
 use probe_rs::CoreDump;
-use probe_rs_debug::{ObjectRef, VariableName};
+use probe_rs_debug::{ObjectRef, SymbolType, VariableName};
 
 use crate::cmd::dap_server::{
     DebuggerError,
@@ -110,11 +110,14 @@ fn examine_memory(
     // 1. Specified address
     // 2. Frame address
     // 3. Program counter
-    let mut input_address = 0_u64;
+    let mut input_ranges = vec![Range {
+        start: 0_u64,
+        end: 0u64,
+    }];
 
     for input_argument in input_arguments {
         if let Ok(MemoryAddress(addr)) = MemoryAddress::try_from(input_argument) {
-            input_address = addr;
+            input_ranges[0].start = addr;
         } else if input_argument.starts_with('/') {
             let Some(gdb_nuf_string) = input_argument.strip_prefix('/') else {
                 return Err(DebuggerError::UserMessage(
@@ -145,19 +148,70 @@ fn examine_memory(
                     "Undefined register ${reg:?}."
                 )));
             };
-            input_address = target_core.core.read_core_reg(register)?;
+            input_ranges[0].start = target_core.core.read_core_reg(register)?;
         } else {
-            return Err(DebuggerError::UserMessage(
-                "Invalid parameters. See the `help` command for more information.".to_string(),
-            ));
+            // attempt to look up the string as a symbol
+            if let Some(ref debug_info) = target_core.core_data.debug_info {
+                let matches = debug_info.find_symbols(input_argument);
+                if matches.len() == 0 {
+                    return Err(DebuggerError::UserMessage(format!(
+                        "Symbol {} did not match any in the binary",
+                        input_argument
+                    )));
+                }
+                if matches.len() > 1 {
+                    return Err(DebuggerError::UserMessage(format!(
+                        "Symbol {} matched multiple from the binary, please disambiguate.  Found:\n  {}",
+                        input_argument,
+                        matches
+                            .iter()
+                            .map(|symbol| {
+                                if let SymbolType::InlinedFunction { concrete_caller } =
+                                    &symbol.symbol_type
+                                {
+                                    format!("{} called from {}", symbol.name, concrete_caller)
+                                } else {
+                                    symbol.name.clone()
+                                }
+                            })
+                            .collect::<Vec<_>>()
+                            .join("\n  ")
+                    )));
+                }
+                match &matches[0].symbol_type {
+                    SymbolType::Function { ranges } => {
+                        if ranges.len() > 0 {
+                            input_ranges = ranges.clone();
+                        } else {
+                            return Err(DebuggerError::UserMessage(format!(
+                                "Symbol {} matched an entry {} with no byte ranges, likely a \"template\", used to store the inlined fn args and return type but no code.",
+                                input_argument, matches[0].name
+                            )));
+                        }
+                    }
+                    SymbolType::InlinedFunction { concrete_caller } => {
+                        return Err(DebuggerError::UserMessage(format!(
+                            "Symbol {} matched an inline function {}, please use its container {}.",
+                            input_argument, matches[0].name, concrete_caller
+                        )));
+                    }
+                    SymbolType::Variable { range } => {
+                        input_ranges[0] = range.clone();
+                    }
+                }
+            } else {
+                return Err(DebuggerError::UserMessage(
+                    "No debug info loaded, so no symbol resolution is possible.".to_string(),
+                ));
+            }
         }
     }
-    if input_address == 0 {
+    if input_ranges[0].start == 0 {
         // No address was specified, so we'll use the frame address, if available.
 
         let frame_id = request_arguments.frame_id.map(ObjectRef::from);
 
-        input_address = if let Some(frame_pc) = frame_id
+        input_ranges[0].start = if let Some(frame_pc) = frame_id
             .and_then(|frame_id| {
                 target_core
                     .core_data
@@ -175,7 +229,7 @@ fn examine_memory(
         }
     }
 
-    memory_read(input_address, gdb_nuf, target_core)
+    memory_read(input_ranges, gdb_nuf, target_core)
 }
 
 fn dump_core(
