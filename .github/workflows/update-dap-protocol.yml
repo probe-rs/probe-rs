@@ -73,8 +73,8 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           branch: chore/update-dap-protocol
-          commit-message: "chore(dap): update debugAdapterProtocol.json"
-          title: "chore(dap): update debugAdapterProtocol.json"
+          commit-message: "chore(dap): update debugProtocol.json"
+          title: "chore(dap): update debugProtocol.json"
           body-path: pr-body.md
           delete-branch: true
           add-paths: |
