@@ -111,6 +111,7 @@ impl Display for GdbUnit {
 /// The term 'Nuf' is borrowed from gdb's `x` command arguments, and stands for N(umber or count of units), U(nit size), and F(ormat specifier).
 pub(crate) struct GdbNuf {
     pub(crate) unit_count: usize,
+    pub(crate) count_was_default: bool,
     pub(crate) unit_specifier: GdbUnit,
     pub(crate) format_specifier: GdbFormat,
 }
@@ -146,6 +147,7 @@ impl Default for GdbNuf {
     fn default() -> Self {
         Self {
             unit_count: 1,
+            count_was_default: true,
             unit_specifier: GdbUnit::Word,
             format_specifier: GdbFormat::Hex,
         }
@@ -208,6 +210,7 @@ impl FromStr for GdbNuf {
                     "Invalid unit count specifier: {value} - {error}"
                 ))
             })?;
+            result.count_was_default = false;
         }
 
         Ok(result)

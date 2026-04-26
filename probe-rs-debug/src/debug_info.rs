@@ -33,6 +33,7 @@ pub(crate) type GimliAttribute = gimli::Attribute<GimliReader>;
 
 pub(crate) type DwarfReader = gimli::read::EndianRcSlice<RunTimeEndian>;
 
+#[derive(Clone)]
 pub enum SymbolType {
     // Non-inlined functions can still be split across several byte ranges; a
     // hot/cold code split is one reason.  So we need a set of ranges, not just
@@ -47,6 +48,7 @@ pub enum SymbolType {
     Variable { range: Range<u64> },
 }
 
+#[derive(Clone)]
 pub struct Symbol {
     pub name: String,
     pub symbol_type: SymbolType,
@@ -1070,6 +1072,37 @@ impl DebugInfo {
                 "Unimplemented attribute value {other_attribute_value:?}"
             ))),
         }
+    }
+
+    pub fn find_symbols(&self, query: &str) -> Vec<Symbol> {
+        fn break_up<'a>(s: &'a str) -> impl Iterator<Item = &'a str> + Clone + 'a {
+            s.split(|c: char| !c.is_alphanumeric() && c != '_')
+                .filter(|s| !s.is_empty())
+        }
+        let query_iter = break_up(query);
+        if query_iter.clone().next().is_none() {
+            return vec![];
+        }
+
+        let mut matching = vec![];
+
+        for symbol in &self.symbols {
+            let mut query_iter = query_iter.clone();
+            let candidate = break_up(&symbol.name);
+            let mut query_term = query_iter.next();
+            // match terms in order, but potentially separated by identifiers in
+            // the candidate
+            for identifier in candidate {
+                if query_term.is_some() && identifier == query_term.unwrap() {
+                    query_term = query_iter.next();
+                }
+            }
+            if query_term.is_none() {
+                matching.push(symbol.clone());
+            }
+        }
+
+        matching
     }
 }
 
