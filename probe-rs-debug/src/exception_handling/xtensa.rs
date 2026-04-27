@@ -1,4 +1,4 @@
-use std::ops::ControlFlow;
+use std::{cell::RefCell, ops::ControlFlow};
 
 use crate::{
     DebugError, DebugRegisters, StackFrame, exception_handling::ExceptionInterface,
@@ -9,9 +9,43 @@ use probe_rs::{
     CoreRegister, InstructionSet, MemoryInterface, RegisterRole, RegisterValue, UnwindRule,
 };
 
-pub struct XtensaExceptionHandler;
+#[derive(Default)]
+pub struct XtensaExceptionHandler {
+    /// Single-entry cache of the most recent windowed-ABI unwind, keyed by the callee's stack
+    /// pointer. Avoids re-reading the spill area for each register when
+    /// [`Self::unwind_undefined_register`] is invoked repeatedly for the same frame.
+    cache: RefCell<Option<UnwindCache>>,
+}
+
+struct UnwindCache {
+    sp: u64,
+    unwound: DebugRegisters,
+}
 
 impl XtensaExceptionHandler {
+    /// Populate [`Self::cache`] with the windowed-ABI unwind result for `callee_frame_registers`,
+    /// reusing the previous result if the callee SP matches.
+    fn ensure_cached_unwind(
+        &self,
+        memory: &mut dyn MemoryInterface,
+        callee_frame_registers: &DebugRegisters,
+    ) -> Result<(), DebugError> {
+        let sp = callee_frame_registers.get_register_value_by_role(&RegisterRole::StackPointer)?;
+
+        if matches!(self.cache.borrow().as_ref(), Some(c) if c.sp == sp) {
+            return Ok(());
+        }
+
+        let mut scratch = callee_frame_registers.clone();
+        self.unwind_registers(memory, &mut scratch)?;
+        *self.cache.borrow_mut() = Some(UnwindCache {
+            sp,
+            unwound: scratch,
+        });
+
+        Ok(())
+    }
+
     fn unwind_registers(
         &self,
         memory: &mut dyn MemoryInterface,
@@ -146,10 +180,14 @@ impl ExceptionInterface for XtensaExceptionHandler {
             unreachable!("The program counter is handled separately")
         }
 
-        let mut scratch = callee_frame_registers.clone();
-        if self.unwind_registers(memory, &mut scratch).is_ok() {
-            let new = scratch
-                .get_register(debug_register.id)
+        if self
+            .ensure_cached_unwind(memory, callee_frame_registers)
+            .is_ok()
+        {
+            let cache = self.cache.borrow();
+            let new = cache
+                .as_ref()
+                .and_then(|c| c.unwound.get_register(debug_register.id))
                 .and_then(|r| r.value);
             let old = callee_frame_registers
                 .get_register(debug_register.id)
