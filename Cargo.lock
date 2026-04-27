@@ -22,7 +22,7 @@ dependencies = [
  "fallible-iterator",
  "gimli 0.33.0",
  "memmap2",
- "object 0.39.0",
+ "object 0.39.1",
  "rustc-demangle",
  "smallvec",
  "typed-arena",
@@ -656,7 +656,7 @@ version = "3.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "faf9468729b8cbcea668e36183cb69d317348c2e08e994829fb56ebfdfbaac34"
 dependencies = [
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1212,7 +1212,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1256,7 +1256,7 @@ dependencies = [
  "md-5 0.11.0",
  "miette",
  "nix 0.30.1",
- "object 0.39.0",
+ "object 0.39.1",
  "serde",
  "sha2 0.10.9",
  "strum 0.28.0",
@@ -2588,9 +2588,9 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.39.0"
+version = "0.39.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63944c133d03f44e75866bbd160b95af0ec3f6a13d936d69d31c81078cbc5baf"
+checksum = "2e5a6c098c7a3b6547378093f5cc30bc54fd361ce711e05293a5cc589562739b"
 dependencies = [
  "flate2",
  "memchr",
@@ -2912,7 +2912,7 @@ dependencies = [
  "itm",
  "jep106",
  "nusb",
- "object 0.39.0",
+ "object 0.39.1",
  "parking_lot",
  "pretty_assertions",
  "probe-rs-target",
@@ -2939,7 +2939,7 @@ dependencies = [
  "gimli 0.33.0",
  "insta",
  "itertools 0.14.0",
- "object 0.39.0",
+ "object 0.39.1",
  "parse_int",
  "pretty_assertions",
  "probe-rs",
@@ -3029,7 +3029,7 @@ dependencies = [
  "linkme",
  "num-traits",
  "nusb",
- "object 0.39.0",
+ "object 0.39.1",
  "parking_lot",
  "parse_int",
  "postcard",
@@ -3486,14 +3486,14 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
 name = "rustls"
-version = "0.23.38"
+version = "0.23.39"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69f9466fb2c14ea04357e91413efb882e2a6d4a406e625449bc0a5d360d53a21"
+checksum = "7c2c118cb077cca2822033836dfb1b975355dfb784b5e8da48f7b6c5db74e60e"
 dependencies = [
  "once_cell",
  "ring",
@@ -4200,7 +4200,7 @@ dependencies = [
  "getrandom 0.3.4",
  "once_cell",
  "rustix",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5099,7 +5099,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5423,9 +5423,9 @@ dependencies = [
 
 [[package]]
 name = "zip"
-version = "8.5.1"
+version = "8.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dcab981e19633ebcf0b001ddd37dd802996098bc1864f90b7c5d970ce76c1d59"
+checksum = "2d04a6b5381502aa6087c94c669499eb1602eb9c5e8198e534de571f7154809b"
 dependencies = [
  "crc32fast",
  "deflate64",
