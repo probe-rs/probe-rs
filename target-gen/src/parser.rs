@@ -88,8 +88,8 @@ pub fn extract_flash_algo(
             "Init" => algo.pc_init = Some(sym.st_value - code_section_offset as u64),
             "UnInit" => algo.pc_uninit = Some(sym.st_value - code_section_offset as u64),
             "EraseChip" => algo.pc_erase_all = Some(sym.st_value - code_section_offset as u64),
-            "EraseSector" => algo.pc_erase_sector = sym.st_value - code_section_offset as u64,
-            "ProgramPage" => algo.pc_program_page = sym.st_value - code_section_offset as u64,
+            "EraseSector" => algo.pc_erase_sector = Some(sym.st_value - code_section_offset as u64),
+            "ProgramPage" => algo.pc_program_page = Some(sym.st_value - code_section_offset as u64),
             "Verify" => algo.pc_verify = Some(sym.st_value - code_section_offset as u64),
             "BlankCheck" => algo.pc_blank_check = Some(sym.st_value - code_section_offset as u64),
             // probe-rs additions
@@ -121,10 +121,12 @@ pub fn extract_flash_algo(
         );
 
         algo.load_address = Some(algorithm_binary.code_section.load_address as u64);
-        algo.data_section_offset = (algorithm_binary.data_section.start
-            - algorithm_binary.code_section.load_address) as u64;
+        algo.data_section_offset = Some(
+            (algorithm_binary.data_section.start - algorithm_binary.code_section.load_address)
+                as u64,
+        );
     } else {
-        algo.data_section_offset = algorithm_binary.data_section.start as u64;
+        algo.data_section_offset = Some(algorithm_binary.data_section.start as u64);
     }
 
     algo.description.clone_from(&flash_device.name);
