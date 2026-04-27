@@ -12,10 +12,7 @@ use gimli::{
     read::RegisterRule,
 };
 use object::read::{Object, ObjectSection};
-use probe_rs::{
-    CoreRegister, Error, InstructionSet, MemoryInterface, RegisterDataType, RegisterRole,
-    RegisterValue, UnwindRule,
-};
+use probe_rs::{CoreRegister, Error, InstructionSet, MemoryInterface, RegisterRole, RegisterValue};
 use std::{
     borrow, cmp::Ordering, num::NonZeroU64, ops::ControlFlow, path::Path, rc::Rc, str::from_utf8,
 };
@@ -735,6 +732,7 @@ impl DebugInfo {
                     unwind_info,
                     cfa,
                     memory,
+                    exception_handler,
                 ) {
                     Err(error) => {
                         tracing::error!("{:?}", &error);
@@ -1151,6 +1149,7 @@ pub fn unwind_register(
     unwind_info: &gimli::UnwindTableRow<GimliReaderOffset>,
     unwind_cfa: Option<u64>,
     memory: &mut dyn MemoryInterface,
+    exception_handler: &dyn ExceptionInterface,
 ) -> Result<Option<RegisterValue>, Error> {
     // If we do not have unwind info, or there is no register rule, then use UnwindRule::Undefined.
     let register_rule = debug_register
@@ -1164,6 +1163,7 @@ pub fn unwind_register(
         unwind_cfa,
         memory,
         register_rule,
+        exception_handler,
     )
 }
 
@@ -1173,101 +1173,25 @@ fn unwind_register_using_rule(
     unwind_cfa: Option<u64>,
     memory: &mut dyn MemoryInterface,
     register_rule: gimli::RegisterRule<usize>,
+    exception_handler: &dyn ExceptionInterface,
 ) -> Result<Option<RegisterValue>, Error> {
     use gimli::read::RegisterRule;
 
     let mut register_rule_string = format!("{register_rule:?}");
 
     let new_value = match register_rule {
-        RegisterRule::Undefined => {
-            // In many cases, the DWARF has `Undefined` rules for variables like frame pointer, program counter, etc.,
-            // so we hard-code some rules here to make sure unwinding can continue. If there is a valid rule, it will bypass these hardcoded ones.
-            match &debug_register {
-                fp if fp.register_has_role(RegisterRole::FramePointer) => {
-                    register_rule_string = "FP=CFA (dwarf Undefined)".to_string();
-                    unwind_cfa.map(|unwind_cfa| {
-                        if fp.data_type == RegisterDataType::UnsignedInteger(32) {
-                            RegisterValue::U32(unwind_cfa as u32 & !0b11)
-                        } else {
-                            RegisterValue::U64(unwind_cfa & !0b11)
-                        }
-                    })
-                }
-                sp if sp.register_has_role(RegisterRole::StackPointer) => {
-                    // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section B.1.4.1: Treat bits [1:0] as `Should be Zero or Preserved`
-                    // - Applying this logic to RISC-V has no adverse effects, since all incoming addresses are already 32-bit aligned.
-                    register_rule_string = "SP=CFA (dwarf Undefined)".to_string();
-                    unwind_cfa.map(|unwind_cfa| {
-                        if sp.data_type == RegisterDataType::UnsignedInteger(32) {
-                            RegisterValue::U32(unwind_cfa as u32 & !0b11)
-                        } else {
-                            RegisterValue::U64(unwind_cfa & !0b11)
-                        }
-                    })
-                }
-                lr if lr.register_has_role(RegisterRole::ReturnAddress) => {
-                    let Ok(current_pc) = callee_frame_registers
-                        .get_register_value_by_role(&RegisterRole::ProgramCounter)
-                    else {
-                        return Err(
-                            Error::Other(
-                                "UNWIND: Tried to unwind return address value where current program counter is unknown.".to_string()
-                            )
-                        );
-                    };
-                    let Some(current_lr) = callee_frame_registers
-                        .get_register_by_role(&RegisterRole::ReturnAddress)
-                        .ok()
-                        .and_then(|lr| lr.value)
-                    else {
-                        return Err(
-                            Error::Other(
-                                "UNWIND: Tried to unwind return address value where current return address is unknown.".to_string()
-                            )
-                        );
-                    };
-
-                    let current_lr_value: u64 = current_lr.try_into()?;
-
-                    if current_pc == current_lr_value & !0b1 {
-                        // If the previous PC is the same as the half-word aligned current LR,
-                        // we have no way of inferring the previous frames LR until we have the PC.
-                        register_rule_string = "LR=Undefined (dwarf Undefined)".to_string();
-                        None
-                    } else {
-                        // We can attempt to continue unwinding with the current LR value, e.g. inlined code.
-                        register_rule_string = "LR=Current LR (dwarf Undefined)".to_string();
-                        Some(current_lr)
-                    }
-                }
-                pc if pc.register_has_role(RegisterRole::ProgramCounter) => {
-                    unreachable!("The program counter is handled separately")
-                }
-                other_register => {
-                    // If the the register rule was not specified, then we either carry the previous value forward,
-                    // or we clear the register value, depending on the architecture and register type.
-                    match other_register.unwind_rule {
-                        UnwindRule::Preserve => {
-                            register_rule_string = "Preserve".to_string();
-                            callee_frame_registers
-                                .get_register(other_register.id)
-                                .and_then(|reg| reg.value)
-                        }
-                        UnwindRule::Clear => {
-                            register_rule_string = "Clear".to_string();
-                            None
-                        }
-                        UnwindRule::SpecialRule => {
-                            // When no DWARF rules are available, and it is not a special register like PC, SP, FP, etc.,
-                            // we will clear the value. It is possible it might have its value set later if
-                            // exception frame information is available.
-                            register_rule_string = "Clear (no unwind rules specified)".to_string();
-                            None
-                        }
-                    }
-                }
-            }
-        }
+        RegisterRule::Undefined => exception_handler
+            .unwind_undefined_register(
+                debug_register,
+                callee_frame_registers,
+                unwind_cfa,
+                memory,
+                &mut register_rule_string,
+            )
+            .map_err(|e| match e {
+                crate::DebugError::Probe(err) => err,
+                other => Error::Other(other.to_string()),
+            })?,
 
         RegisterRule::SameValue => callee_frame_registers
             .get_register(debug_register.id)
@@ -2134,6 +2058,7 @@ mod test {
             None,
             &mut memory,
             rule,
+            &ArmV7MExceptionHandler,
         )
         .unwrap();
 
@@ -2174,6 +2099,7 @@ mod test {
             Some(cfa),
             &mut memory,
             rule,
+            &ArmV7MExceptionHandler,
         )
         .unwrap();
 
@@ -2206,6 +2132,7 @@ mod test {
             Some(cfa),
             &mut memory,
             RegisterRule::Undefined,
+            &ArmV7MExceptionHandler,
         )
         .unwrap();
 

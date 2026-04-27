@@ -5,7 +5,9 @@ use crate::{
     unwind_pc_without_debuginfo,
 };
 
-use probe_rs::{InstructionSet, MemoryInterface, RegisterRole, RegisterValue};
+use probe_rs::{
+    CoreRegister, InstructionSet, MemoryInterface, RegisterRole, RegisterValue, UnwindRule,
+};
 
 pub struct XtensaExceptionHandler;
 
@@ -130,5 +132,50 @@ impl ExceptionInterface for XtensaExceptionHandler {
             Ok(_) => ControlFlow::Continue(()),
             Err(error) => ControlFlow::Break(Some(error)),
         }
+    }
+
+    fn unwind_undefined_register(
+        &self,
+        debug_register: &CoreRegister,
+        callee_frame_registers: &DebugRegisters,
+        _unwind_cfa: Option<u64>,
+        memory: &mut dyn MemoryInterface,
+        register_rule: &mut String,
+    ) -> Result<Option<RegisterValue>, DebugError> {
+        if debug_register.register_has_role(RegisterRole::ProgramCounter) {
+            unreachable!("The program counter is handled separately")
+        }
+
+        let mut scratch = callee_frame_registers.clone();
+        if self.unwind_registers(memory, &mut scratch).is_ok() {
+            let new = scratch
+                .get_register(debug_register.id)
+                .and_then(|r| r.value);
+            let old = callee_frame_registers
+                .get_register(debug_register.id)
+                .and_then(|r| r.value);
+
+            if new != old {
+                *register_rule = "Xtensa window spill (dwarf Undefined)".to_string();
+                return Ok(new);
+            }
+        }
+
+        Ok(match debug_register.unwind_rule {
+            UnwindRule::Preserve => {
+                *register_rule = "Preserve (dwarf Undefined)".to_string();
+                callee_frame_registers
+                    .get_register(debug_register.id)
+                    .and_then(|reg| reg.value)
+            }
+            UnwindRule::Clear => {
+                *register_rule = "Clear (dwarf Undefined)".to_string();
+                None
+            }
+            UnwindRule::SpecialRule => {
+                *register_rule = "Clear (no unwind rules specified)".to_string();
+                None
+            }
+        })
     }
 }

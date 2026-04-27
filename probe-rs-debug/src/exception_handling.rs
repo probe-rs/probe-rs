@@ -6,7 +6,10 @@ use std::ops::ControlFlow;
 use probe_rs_target::CoreType;
 
 use crate::unwind_pc_without_debuginfo;
-use probe_rs::{InstructionSet, MemoryInterface};
+use probe_rs::{
+    CoreRegister, InstructionSet, MemoryInterface, RegisterDataType, RegisterRole, RegisterValue,
+    UnwindRule,
+};
 
 use super::{DebugError, DebugInfo, DebugRegisters, StackFrame};
 
@@ -115,4 +118,106 @@ pub trait ExceptionInterface {
     ) -> ControlFlow<Option<DebugError>> {
         unwind_pc_without_debuginfo(unwind_registers, frame_pc, instruction_set)
     }
+
+    /// Compute the caller-frame value of `debug_register` when DWARF has no rule for it.
+    ///
+    /// `register_rule` is updated with a short description of the rule that was applied,
+    /// for inclusion in unwind trace logs.
+    ///
+    /// In many cases, the DWARF has `Undefined` rules for variables like frame pointer, program counter, etc.,
+    /// so the default implementation hard-codes ARM/RISC-V style heuristics here to make sure unwinding can continue.
+    /// If there is a valid rule, it will bypass these hardcoded ones.
+    fn unwind_undefined_register(
+        &self,
+        debug_register: &CoreRegister,
+        callee_frame_registers: &DebugRegisters,
+        unwind_cfa: Option<u64>,
+        _memory: &mut dyn MemoryInterface,
+        register_rule: &mut String,
+    ) -> Result<Option<RegisterValue>, DebugError> {
+        if debug_register.register_has_role(RegisterRole::FramePointer) {
+            *register_rule = "FP=CFA (dwarf Undefined)".to_string();
+            return Ok(cfa_as_register(debug_register, unwind_cfa));
+        }
+
+        if debug_register.register_has_role(RegisterRole::StackPointer) {
+            // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section B.1.4.1: Treat bits [1:0] as `Should be Zero or Preserved`
+            // - Applying this logic to RISC-V has no adverse effects, since all incoming addresses are already 32-bit aligned.
+            *register_rule = "SP=CFA (dwarf Undefined)".to_string();
+            return Ok(cfa_as_register(debug_register, unwind_cfa));
+        }
+
+        if debug_register.register_has_role(RegisterRole::ReturnAddress) {
+            let current_pc = callee_frame_registers
+                .get_register_value_by_role(&RegisterRole::ProgramCounter)
+                .map_err(|_| {
+                    DebugError::Other(
+                        "UNWIND: Tried to unwind return address value where current program counter is unknown."
+                            .to_string(),
+                    )
+                })?;
+            let current_lr = callee_frame_registers
+                .get_register_by_role(&RegisterRole::ReturnAddress)
+                .ok()
+                .and_then(|lr| lr.value)
+                .ok_or_else(|| {
+                    DebugError::Other(
+                        "UNWIND: Tried to unwind return address value where current return address is unknown."
+                            .to_string(),
+                    )
+                })?;
+
+            let current_lr_value: u64 = current_lr.try_into()?;
+
+            return Ok(if current_pc == current_lr_value & !0b1 {
+                // If the previous PC is the same as the half-word aligned current LR,
+                // we have no way of inferring the previous frames LR until we have the PC.
+                *register_rule = "LR=Undefined (dwarf Undefined)".to_string();
+                None
+            } else {
+                // We can attempt to continue unwinding with the current LR value, e.g. inlined code.
+                *register_rule = "LR=Current LR (dwarf Undefined)".to_string();
+                Some(current_lr)
+            });
+        }
+
+        if debug_register.register_has_role(RegisterRole::ProgramCounter) {
+            unreachable!("The program counter is handled separately")
+        }
+
+        // If the register rule was not specified, then we either carry the previous value forward,
+        // or we clear the register value, depending on the architecture and register type.
+        Ok(match debug_register.unwind_rule {
+            UnwindRule::Preserve => {
+                *register_rule = "Preserve".to_string();
+                callee_frame_registers
+                    .get_register(debug_register.id)
+                    .and_then(|reg| reg.value)
+            }
+            UnwindRule::Clear => {
+                *register_rule = "Clear".to_string();
+                None
+            }
+            UnwindRule::SpecialRule => {
+                // When no DWARF rules are available, and it is not a special register like PC, SP, FP, etc.,
+                // we will clear the value. It is possible it might have its value set later if
+                // exception frame information is available.
+                *register_rule = "Clear (no unwind rules specified)".to_string();
+                None
+            }
+        })
+    }
+}
+
+fn cfa_as_register(
+    debug_register: &CoreRegister,
+    unwind_cfa: Option<u64>,
+) -> Option<RegisterValue> {
+    unwind_cfa.map(|cfa| {
+        if debug_register.data_type == RegisterDataType::UnsignedInteger(32) {
+            RegisterValue::U32(cfa as u32 & !0b11)
+        } else {
+            RegisterValue::U64(cfa & !0b11)
+        }
+    })
 }
