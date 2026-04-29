@@ -440,15 +440,24 @@ impl RpcClient {
 pub struct SessionInterface {
     sessid: Key<Session>,
     client: RpcClient,
+    target_name: String,
 }
 
 impl SessionInterface {
-    pub fn new(client: RpcClient, sessid: Key<Session>) -> Self {
-        Self { sessid, client }
+    pub fn new(client: RpcClient, sessid: Key<Session>, target_name: String) -> Self {
+        Self {
+            sessid,
+            client,
+            target_name,
+        }
     }
 
     pub fn client(&self) -> RpcClient {
         self.client.clone()
+    }
+
+    pub fn target_name(&self) -> &str {
+        &self.target_name
     }
 
     pub fn core(&self, core: usize) -> CoreInterface {

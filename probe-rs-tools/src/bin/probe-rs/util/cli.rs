@@ -98,7 +98,10 @@ pub async fn attach_probe(
         .await?;
 
     match result {
-        AttachResult::Success(sessid) => Ok(SessionInterface::new(client.clone(), sessid)),
+        AttachResult::Success {
+            session,
+            target_name,
+        } => Ok(SessionInterface::new(client.clone(), session, target_name)),
         AttachResult::ProbeNotFound => anyhow::bail!("Probe not found"),
         AttachResult::FailedToOpenProbe(error) => anyhow::bail!("Failed to open probe: {error}"),
         AttachResult::ProbeInUse => anyhow::bail!("Probe is already in use"),
