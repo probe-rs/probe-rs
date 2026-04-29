@@ -15,6 +15,7 @@ pub struct RttClient {
     /// The internal RTT handle, if we have successfully attached to the target.
     target: Option<RttConnection>,
     last_control_block_address: Option<u64>,
+    last_channel_signature: Option<Vec<String>>,
 
     /// If the control block is initialized by the flasher, this flag is used to prevent
     /// clearing the control block when the target is reset.
@@ -46,6 +47,7 @@ impl RttClient {
 
             target: None,
             last_control_block_address: None,
+            last_channel_signature: None,
             disallow_clearing_rtt_header: false,
             try_attaching: true,
             polled_data: false,
@@ -111,6 +113,7 @@ impl RttClient {
             Ok(rtt) => rtt,
             Err(Error::ControlBlockNotFound) => {
                 self.last_control_block_address = None;
+                self.last_channel_signature = None;
                 tracing::debug!("Failed to attach - control block not found");
                 return Ok(false);
             }
@@ -121,15 +124,32 @@ impl RttClient {
             Err(error) => return Err(error),
         };
 
+        let channel_signature = rtt
+            .up_channels
+            .iter()
+            .map(|channel| {
+                channel
+                    .name()
+                    .map(ToString::to_string)
+                    .unwrap_or_else(|| format!("Unnamed RTT up channel - {}", channel.number()))
+            })
+            .collect::<Vec<_>>();
+        let should_reconfigure = self.last_channel_signature.as_ref() != Some(&channel_signature);
+
         match RttConnection::new(rtt) {
-            Ok(rtt) => self.target = Some(rtt),
+            Ok(rtt) => {
+                self.last_channel_signature = Some(channel_signature);
+                self.target = Some(rtt);
+            }
             Err(Error::ControlBlockCorrupted(error)) => {
                 tracing::debug!("Failed to attach - control block corrupted: {}", error);
             }
             Err(error) => return Err(error),
         };
 
-        self.need_configure = true;
+        self.last_control_block_address = Some(location);
+        self.need_configure |= should_reconfigure;
+
         Ok(self.target.is_some())
     }
 
@@ -247,6 +267,8 @@ impl RttClient {
             // There's nothing we can do if we don't know where the control block is.
         }
 
+        self.last_channel_signature = None;
+
         Ok(())
     }
 
@@ -286,9 +308,8 @@ impl RttClient {
                         None
                     }
                 });
-
-            if let Some(mode) = channel_mode {
-                channel.change_mode(core, mode)?;
+            if let Some(channel_mode) = channel_mode {
+                channel.change_mode(core, channel_mode)?;
             }
         }
 
