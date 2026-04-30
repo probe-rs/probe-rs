@@ -123,7 +123,6 @@ impl Cli {
             Subcommand::Gdb(cmd) => cmd.run(&mut *client.registry().await, &lister),
             Subcommand::Reset(cmd) => cmd.run(client).await,
             Subcommand::Debug(cmd) => cmd.run(client, utc_offset).await,
-            Subcommand::Detect(cmd) => cmd.run(client).await,
             Subcommand::Download(cmd) => cmd.run(client).await,
             Subcommand::Run(cmd) => cmd.run(client, utc_offset).await,
             Subcommand::Attach(cmd) => cmd.run(client, utc_offset).await,
@@ -166,8 +165,6 @@ enum Subcommand {
     Gdb(cmd::gdb_server::Cmd),
     /// Basic command line debugger
     Debug(cmd::debug::Cmd),
-    /// Autodetect attached target
-    Detect(cmd::detect::Cmd),
     /// Download memory to attached target
     Download(cmd::download::Cmd),
     /// Compare memory to attached target
