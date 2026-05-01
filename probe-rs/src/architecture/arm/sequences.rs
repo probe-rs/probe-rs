@@ -673,34 +673,37 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                 ctrl.set_mask_lane(0b1111);
             }
 
-            match interface
+            let mut err = interface
                 .write_dp_register(dp, ctrl.clone())
-                .and_then(|_| interface.flush())
-            {
-                Ok(()) => {}
-                Err(e @ ArmError::Dap(DapError::NoAcknowledge)) => {
-                    // If we get a NACK from the power-up request, ignore the error & perform a line reset.
-                    // (CMSIS-DAP transports read DP.RDBUFF right after a write to DP.CTRL_STAT.
-                    //  This fails in some cases on PSOC 6, for example if the device is waking from DeepSleep.
-                    //  If something really went wrong, we'll hit an error or timeout in the polling loop below.)
-                    let Some(probe) = interface.try_dap_probe_mut() else {
-                        tracing::warn!(
-                            "Power-up request returned NACK, but we don't have a DapProbe, so we can't reconnect"
-                        );
-                        return Err(e);
-                    };
-                    tracing::info!("Power-up request returned NACK, reconnecting");
-                    self.debug_port_connect(probe, dp)?;
-                }
-                Err(e) => return Err(e),
-            }
+                .and_then(|_| interface.flush());
 
             let start = Instant::now();
             loop {
-                let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
-                if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
-                    break;
+                match std::mem::replace(&mut err, Ok(()))
+                    .and_then(|_| interface.read_dp_register::<Ctrl>(dp))
+                {
+                    Ok(ctrl) => {
+                        if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
+                            break;
+                        }
+                    }
+                    Err(e @ ArmError::Dap(DapError::NoAcknowledge)) => {
+                        // If we get a NACK from the power-up request, ignore the error & perform a
+                        // line reset. (On PSOC 6, the debug sometimes gives spurious NACKs while
+                        // the device is powering up. If something really went wrong, we'll hit
+                        // another error or timeout.)
+                        let Some(probe) = interface.try_dap_probe_mut() else {
+                            tracing::warn!(
+                                "Power-up request returned NACK, but we don't have a DapProbe, so we can't reconnect"
+                            );
+                            return Err(e);
+                        };
+                        tracing::info!("Power-up request returned NACK, reconnecting");
+                        self.debug_port_connect(probe, dp)?;
+                    }
+                    Err(e) => return Err(e),
                 }
+
                 if start.elapsed() >= Duration::from_secs(1) {
                     return Err(ArmError::Timeout);
                 }
