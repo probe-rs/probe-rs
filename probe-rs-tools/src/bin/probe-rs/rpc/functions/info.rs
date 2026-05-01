@@ -316,6 +316,7 @@ async fn try_show_info(
             })
             .collect::<Vec<_>>();
         jtag.set_scan_chain(&chain)?;
+        jtag.select_target(0)?;
     }
 
     if connect_under_reset {
