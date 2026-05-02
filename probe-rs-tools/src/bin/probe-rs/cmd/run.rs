@@ -239,13 +239,17 @@ pub(crate) struct MonitoringOptions {
 }
 
 impl Cmd {
-    pub async fn run(self, client: RpcClient, utc_offset: UtcOffset) -> anyhow::Result<()> {
+    pub async fn run(mut self, client: RpcClient, utc_offset: UtcOffset) -> anyhow::Result<()> {
         // Detect run mode based on ELF file
         let run_mode = detect_run_mode(&self)?;
 
         let file_meta = parse_metadata(&self.path).await?;
 
-        let _elf_meta = &file_meta.elf_meta;
+        if let Some(meta) = &file_meta.elf_meta
+            && let Some(chip) = &meta.chip
+        {
+            self.probe_options.chip = Some(chip.clone());
+        }
 
         // TODO: Skip attach_probe & flashing, if user only wants to list tests (only possible when using embedded_test with protocol version >= 1)
 
