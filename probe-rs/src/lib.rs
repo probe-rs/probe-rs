@@ -78,6 +78,8 @@ mod error;
 pub mod flashing;
 pub mod integration;
 mod memory;
+#[cfg(feature = "object")]
+pub mod meta;
 pub mod probe;
 pub mod rtt;
 pub mod semihosting;
