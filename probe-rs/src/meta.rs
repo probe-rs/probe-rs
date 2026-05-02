@@ -37,7 +37,7 @@ impl ElfMetadata {
             }
         }
 
-        if let Some(section) = file.section_by_name(".teleprobe.timeout") {
+        if let Some(section) = file.section_by_name(".probe-rs.timeout") {
             let data = section.data()?;
             if data.len() == 4 {
                 timeout = Some(u32::from_le_bytes(data.try_into().unwrap()) as u64)
