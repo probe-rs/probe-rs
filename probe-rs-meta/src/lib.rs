@@ -5,7 +5,7 @@
 /// Set the probe-rs chip.
 ///
 /// ```rust
-/// probe_rs_meta::chip!(b"rpi-pico");
+/// probe_rs_meta::chip!(b"rp2040");
 /// ```
 ///
 /// Note that you MUST use binary strings `b""`. Regular strings `""` will not work.
@@ -19,7 +19,7 @@ macro_rules! chip {
     };
 }
 
-/// Set the probe-rs timeout, in seconds.
+/// Set the maximum time that this program should be able to run until a breakpoint or fault is encountered.
 ///
 /// ```rust
 /// probe_rs_meta::timeout!(60);

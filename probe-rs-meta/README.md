@@ -9,7 +9,7 @@ any extra flags.
 You can specify metadata, for example:
 
 ```rust
-probe_rs_meta::chip!(b"rpi-pico");
+probe_rs_meta::chip!(b"rp2040");
 probe_rs_meta::timeout!(10);
 ```
 
