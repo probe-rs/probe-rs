@@ -1,9 +1,9 @@
 [package]
 name = "probe-rs-meta"
-version = "1.1.0"
+version = "0.1.0"
 edition = "2024"
-description = "Embed teleprobe metadata into ELF binaries"
-repository = "https://github.com/embassy-rs/teleprobe"
+description = "Embed probe-rs metadata into ELF binaries"
+repository = "https://github.com/probe-rs/probe-rs"
 license = "MIT OR Apache-2.0"
 categories = [
     "embedded",

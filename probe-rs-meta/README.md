@@ -6,30 +6,16 @@ any extra flags.
 
 ## Usage
 
-First, include the `probe-rs.x` linker script. Either via `build.rs` (recommended)
+You can specify metadata, for example:
 
 ```rust
-println!("cargo:rustc-link-arg-bins=-Tteleprobe.x");
-```
-
-or in `.cargo/config.toml` (older way, not recommended)
-
-```toml
-[target.'cfg(all(target_arch = "arm", target_os = "none"))']
-rustflags = [
-  "-C", "link-arg=-Tprobe-rs.x",
-]
-```
-
-Then, you can specify metadata, for example:
-
-```rust
-probe_rs_meta::target!(b"rpi-pico");
+probe_rs_meta::chip!(b"rpi-pico");
+probe_rs_meta::timeout!(10);
 ```
 
 ## Minimum supported Rust version (MSRV)
 
-`teleprobe-meta` is guaranteed to compile on the latest stable Rust version at the time of release. It might compile with older versions but that may change in any new patch release.
+`probe-rs-meta` is guaranteed to compile on the latest stable Rust version at the time of release. It might compile with older versions but that may change in any new patch release.
 
 ## License
 

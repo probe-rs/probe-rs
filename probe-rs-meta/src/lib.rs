@@ -2,23 +2,6 @@
 #![doc = include_str!("../README.md")]
 #![warn(missing_docs)]
 
-/// Set the probe-rs target.
-///
-/// ```rust
-/// probe_rs_meta::target!(b"rpi-pico");
-/// ```
-///
-/// Note that you MUST use binary strings `b""`. Regular strings `""` will not work.
-#[macro_export]
-macro_rules! target {
-    ($val:literal) => {
-        #[link_section = ".probe-rs.target"]
-        #[used]
-        #[no_mangle] // prevent invoking the macro multiple times
-        static _PROBE_RS_TARGET: [u8; $val.len()] = *$val;
-    };
-}
-
 /// Set the probe-rs chip.
 ///
 /// ```rust
