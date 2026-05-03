@@ -1,6 +1,7 @@
 use crate::MemoryInterface;
 use crate::architecture::arm::{
-    ArmDebugInterface, DapAccess, FullyQualifiedApAddress, RawDapAccess, SwoAccess,
+    ApAddress, ApV2Address, ArmDebugInterface, DapAccess, FullyQualifiedApAddress, RawDapAccess,
+    SwoAccess,
     ap::{
         self, AccessPortType, AddressIncrement, CSW, DataSize,
         memory_ap::{MemoryAp, MemoryApType},
@@ -14,7 +15,9 @@ use crate::architecture::arm::{
     memory::ArmMemoryInterface,
     sequences::ArmDebugSequence,
 };
-use crate::probe::blackmagic::{Align, BlackMagicProbe, ProtocolVersion, RemoteCommand};
+use crate::probe::blackmagic::{
+    Accelerators, Align, BlackMagicProbe, ProtocolVersion, RemoteCommand,
+};
 use crate::probe::{ArmError, DebugProbeError, Probe};
 use std::collections::BTreeSet;
 use std::collections::hash_map;
@@ -40,6 +43,9 @@ pub(crate) struct BlackMagicProbeArmDebug {
 
     /// Whether to enable a hardware feature to detect overruns
     use_overrun_detect: bool,
+
+    /// Accelerators supported by this probe.
+    accelerators: Accelerators,
 }
 
 #[derive(Debug)]
@@ -47,7 +53,6 @@ pub(crate) struct BlackMagicProbeMemoryInterface<'probe> {
     probe: &'probe mut BlackMagicProbeArmDebug,
     current_ap: MemoryAp,
     index: u8,
-    apsel: u8,
     csw: u32,
 }
 
@@ -55,6 +60,7 @@ impl BlackMagicProbeArmDebug {
     pub fn new(
         probe: Box<BlackMagicProbe>,
         sequence: Arc<dyn ArmDebugSequence>,
+        accelerators: Accelerators,
     ) -> Result<Self, (Box<BlackMagicProbe>, ArmError)> {
         Ok(Self {
             probe,
@@ -63,6 +69,7 @@ impl BlackMagicProbeArmDebug {
             current_dp: None,
             dps: HashMap::new(),
             use_overrun_detect: true,
+            accelerators,
         })
     }
 
@@ -188,17 +195,9 @@ impl BlackMagicProbeArmDebug {
         Ok(())
     }
 
-    fn select_ap(&mut self, ap: &FullyQualifiedApAddress) -> Result<u8, ArmError> {
-        let apsel = match ap.ap() {
-            crate::architecture::arm::ApAddress::V1(val) => *val,
-            crate::architecture::arm::ApAddress::V2(_) => {
-                return Err(ArmError::NotImplemented(
-                    "AP address v2 currently unsupported",
-                ));
-            }
-        };
+    fn select_ap(&mut self, ap: &FullyQualifiedApAddress) -> Result<(), ArmError> {
         self.select_dp(ap.dp())?;
-        Ok(apsel)
+        Ok(())
     }
 }
 
@@ -229,6 +228,11 @@ impl ArmDebugInterface for BlackMagicProbeArmDebug {
         &mut self,
         access_port: &FullyQualifiedApAddress,
     ) -> Result<Box<dyn crate::architecture::arm::memory::ArmMemoryInterface + '_>, ArmError> {
+        // The root port in APv2 is special.
+        if let ApAddress::V2(ApV2Address(None)) = access_port.ap() {
+            return Ok(Box::new(ap::v2::RootMemoryInterface::new(self, access_port.dp())?) as _);
+        }
+
         let mut current_ap = MemoryAp::new(self, access_port)?;
 
         // Construct a CSW to pass to the AP when accessing memory.
@@ -344,7 +348,6 @@ impl ArmDebugInterface for BlackMagicProbeArmDebug {
             probe: self,
             current_ap,
             index: 0,
-            apsel: 0,
             csw: csw.into(),
         }) as _)
     }
@@ -527,30 +530,41 @@ impl DapAccess for BlackMagicProbeArmDebug {
         ap: &FullyQualifiedApAddress,
         addr: u64,
     ) -> Result<u32, ArmError> {
-        // Currently, only APv1 is supported. As such, truncate the address to an 8-bit size.
-        if ap.ap().is_v2() {
-            return Err(ArmError::NotImplemented(
-                "BlackMagicProbe does not yet support APv2",
-            ));
-        }
-        let index = ((addr >> 8) & 0xFF) as u8;
-        let addr = (addr & 0xFF) as u8;
-        let apsel = self.select_ap(ap)?;
-
-        let command = match self.probe.remote_protocol {
-            ProtocolVersion::V0 => {
-                return Err(ArmError::Probe(
-                    DebugProbeError::CommandNotSupportedByProbe {
-                        command_name: "adiv5 raw ap read",
-                    },
-                ));
+        self.select_ap(ap)?;
+        let command = match ap.ap() {
+            ApAddress::V1(apsel) => {
+                let index = ((addr >> 8) & 0xFF) as u8;
+                let apsel = *apsel;
+                let addr = (addr & 0xFF) as u8;
+                match self.probe.remote_protocol {
+                    ProtocolVersion::V0 => {
+                        return Err(ArmError::Probe(
+                            DebugProbeError::CommandNotSupportedByProbe {
+                                command_name: "adiv5 raw ap read",
+                            },
+                        ));
+                    }
+                    ProtocolVersion::V0P => RemoteCommand::ReadApV0P { apsel, addr },
+                    ProtocolVersion::V1 | ProtocolVersion::V2 => {
+                        RemoteCommand::ReadApV1 { index, apsel, addr }
+                    }
+                    ProtocolVersion::V3 | ProtocolVersion::V4 => {
+                        RemoteCommand::ReadApV3 { index, apsel, addr }
+                    }
+                }
             }
-            ProtocolVersion::V0P => RemoteCommand::ReadApV0P { apsel, addr },
-            ProtocolVersion::V1 | ProtocolVersion::V2 => {
-                RemoteCommand::ReadApV1 { index, apsel, addr }
-            }
-            ProtocolVersion::V3 | ProtocolVersion::V4 => {
-                RemoteCommand::ReadApV3 { index, apsel, addr }
+            ApAddress::V2(ApV2Address(apsel)) => {
+                if !self.accelerators.has_adiv6() {
+                    return Err(ArmError::Probe(
+                        DebugProbeError::CommandNotSupportedByProbe {
+                            command_name: "adiv6 raw ap read",
+                        },
+                    ));
+                }
+                let index = 0;
+                let apsel = apsel.unwrap_or(0) | (addr & !0x0FFF);
+                let addr = (addr & 0x0FFF) as u16;
+                RemoteCommand::AdiV6ReadApV4 { index, apsel, addr }
             }
         };
         let result = u32::from_be(
@@ -571,37 +585,53 @@ impl DapAccess for BlackMagicProbeArmDebug {
         addr: u64,
         value: u32,
     ) -> Result<(), ArmError> {
-        // Currently, only APv1 is supported. As such, truncate the address to an 8-bit size.
-        if ap.ap().is_v2() {
-            return Err(ArmError::NotImplemented(
-                "BlackMagicProbe does not yet support APv2",
-            ));
-        }
-        let index = ((addr >> 8) & 0xFF) as u8;
-        let addr = (addr & 0xFF) as u8;
-
-        let apsel = self.select_ap(ap)?;
-        let command = match self.probe.remote_protocol {
-            ProtocolVersion::V0 => {
-                return Err(ArmError::Probe(
-                    DebugProbeError::CommandNotSupportedByProbe {
-                        command_name: "adiv5 raw ap write",
+        self.select_ap(ap)?;
+        let command = match ap.ap() {
+            ApAddress::V1(apsel) => {
+                let index = ((addr >> 8) & 0xFF) as u8;
+                let apsel = *apsel;
+                let addr = (addr & 0xFF) as u8;
+                match self.probe.remote_protocol {
+                    ProtocolVersion::V0 => {
+                        return Err(ArmError::Probe(
+                            DebugProbeError::CommandNotSupportedByProbe {
+                                command_name: "adiv5 raw ap write",
+                            },
+                        ));
+                    }
+                    ProtocolVersion::V0P => RemoteCommand::WriteApV0P { apsel, addr, value },
+                    ProtocolVersion::V1 | ProtocolVersion::V2 => RemoteCommand::WriteApV1 {
+                        index,
+                        apsel,
+                        addr,
+                        value,
                     },
-                ));
+                    ProtocolVersion::V3 | ProtocolVersion::V4 => RemoteCommand::WriteApV3 {
+                        index,
+                        apsel,
+                        addr,
+                        value,
+                    },
+                }
             }
-            ProtocolVersion::V0P => RemoteCommand::WriteApV0P { apsel, addr, value },
-            ProtocolVersion::V1 | ProtocolVersion::V2 => RemoteCommand::WriteApV1 {
-                index,
-                apsel,
-                addr,
-                value,
-            },
-            ProtocolVersion::V3 | ProtocolVersion::V4 => RemoteCommand::WriteApV3 {
-                index,
-                apsel,
-                addr,
-                value,
-            },
+            ApAddress::V2(ApV2Address(apsel)) => {
+                if !self.accelerators.has_adiv6() {
+                    return Err(ArmError::Probe(
+                        DebugProbeError::CommandNotSupportedByProbe {
+                            command_name: "adiv6 raw ap write",
+                        },
+                    ));
+                }
+                let index = 0;
+                let apsel = apsel.unwrap_or(0) | (addr & !0x0FFF);
+                let addr = (addr & 0x0FFF) as u16;
+                RemoteCommand::AdiV6WriteApV4 {
+                    index,
+                    apsel,
+                    addr,
+                    value,
+                }
+            }
         };
 
         let result = self
@@ -672,47 +702,66 @@ impl BlackMagicProbeMemoryInterface<'_> {
         if data.len() * 2 + 4 >= super::BLACK_MAGIC_REMOTE_SIZE_MAX {
             return Err(ArmError::OutOfBounds);
         }
-        let command = match self.probe.probe.remote_protocol {
-            ProtocolVersion::V0 => {
-                return Err(ArmError::Probe(
-                    DebugProbeError::CommandNotSupportedByProbe {
-                        command_name: "adiv5 memory read",
-                    },
-                ));
+        let command = match self.current_ap.ap_address().ap() {
+            ApAddress::V1(_) => match self.probe.probe.remote_protocol {
+                ProtocolVersion::V0 => {
+                    return Err(ArmError::Probe(
+                        DebugProbeError::CommandNotSupportedByProbe {
+                            command_name: "adiv5 memory read",
+                        },
+                    ));
+                }
+                ProtocolVersion::V0P => RemoteCommand::MemReadV0P {
+                    apsel: 0,
+                    csw: self.csw,
+                    offset: offset
+                        .try_into()
+                        .map_err(|_| ArmError::AddressOutOf32BitAddressSpace)?,
+                    data,
+                },
+                ProtocolVersion::V1 | ProtocolVersion::V2 => RemoteCommand::MemReadV1 {
+                    index: self.index,
+                    apsel: 0,
+                    csw: self.csw,
+                    offset: offset
+                        .try_into()
+                        .map_err(|_| ArmError::AddressOutOf32BitAddressSpace)?,
+                    data,
+                },
+                ProtocolVersion::V3 => RemoteCommand::MemReadV3 {
+                    index: self.index,
+                    apsel: 0,
+                    csw: self.csw,
+                    offset: offset
+                        .try_into()
+                        .map_err(|_| ArmError::AddressOutOf32BitAddressSpace)?,
+                    data,
+                },
+                ProtocolVersion::V4 => RemoteCommand::MemReadV4 {
+                    index: self.index,
+                    apsel: 0,
+                    csw: self.csw,
+                    offset,
+                    data,
+                },
+            },
+            ApAddress::V2(ApV2Address(apsel)) => {
+                if !self.probe.accelerators.has_adiv6() {
+                    return Err(ArmError::Probe(
+                        DebugProbeError::CommandNotSupportedByProbe {
+                            command_name: "adiv6 memory read",
+                        },
+                    ));
+                }
+                let apsel = apsel.unwrap_or(0);
+                RemoteCommand::AdiV6MemReadV4 {
+                    index: self.index,
+                    apsel,
+                    csw: self.csw,
+                    offset,
+                    data,
+                }
             }
-            ProtocolVersion::V0P => RemoteCommand::MemReadV0P {
-                apsel: self.apsel,
-                csw: self.csw,
-                offset: offset
-                    .try_into()
-                    .map_err(|_| ArmError::AddressOutOf32BitAddressSpace)?,
-                data,
-            },
-            ProtocolVersion::V1 | ProtocolVersion::V2 => RemoteCommand::MemReadV1 {
-                index: self.index,
-                apsel: self.apsel,
-                csw: self.csw,
-                offset: offset
-                    .try_into()
-                    .map_err(|_| ArmError::AddressOutOf32BitAddressSpace)?,
-                data,
-            },
-            ProtocolVersion::V3 => RemoteCommand::MemReadV3 {
-                index: self.index,
-                apsel: self.apsel,
-                csw: self.csw,
-                offset: offset
-                    .try_into()
-                    .map_err(|_| ArmError::AddressOutOf32BitAddressSpace)?,
-                data,
-            },
-            ProtocolVersion::V4 => RemoteCommand::MemReadV4 {
-                index: self.index,
-                apsel: self.apsel,
-                csw: self.csw,
-                offset,
-                data,
-            },
         };
         self.probe
             .probe
@@ -737,51 +786,71 @@ impl BlackMagicProbeMemoryInterface<'_> {
         if data.len() * 2 + 42 >= super::BLACK_MAGIC_REMOTE_SIZE_MAX {
             return Err(ArmError::OutOfBounds);
         }
-        let command = match self.probe.probe.remote_protocol {
-            ProtocolVersion::V0 => {
-                return Err(ArmError::Probe(
-                    DebugProbeError::CommandNotSupportedByProbe {
-                        command_name: "adiv5 memory write",
-                    },
-                ));
+        let command = match self.current_ap.ap_address().ap() {
+            ApAddress::V1(_) => match self.probe.probe.remote_protocol {
+                ProtocolVersion::V0 => {
+                    return Err(ArmError::Probe(
+                        DebugProbeError::CommandNotSupportedByProbe {
+                            command_name: "adiv5 memory write",
+                        },
+                    ));
+                }
+                ProtocolVersion::V0P => RemoteCommand::MemWriteV0P {
+                    apsel: 0,
+                    csw: self.csw,
+                    align,
+                    offset: offset
+                        .try_into()
+                        .map_err(|_| ArmError::AddressOutOf32BitAddressSpace)?,
+                    data,
+                },
+                ProtocolVersion::V1 | ProtocolVersion::V2 => RemoteCommand::MemWriteV1 {
+                    index: self.index,
+                    apsel: 0,
+                    csw: self.csw,
+                    align,
+                    offset: offset
+                        .try_into()
+                        .map_err(|_| ArmError::AddressOutOf32BitAddressSpace)?,
+                    data,
+                },
+                ProtocolVersion::V3 => RemoteCommand::MemWriteV3 {
+                    index: self.index,
+                    apsel: 0,
+                    csw: self.csw,
+                    align,
+                    offset: offset
+                        .try_into()
+                        .map_err(|_| ArmError::AddressOutOf32BitAddressSpace)?,
+                    data,
+                },
+                ProtocolVersion::V4 => RemoteCommand::MemWriteV4 {
+                    index: self.index,
+                    apsel: 0,
+                    csw: self.csw,
+                    align,
+                    offset,
+                    data,
+                },
+            },
+            ApAddress::V2(ApV2Address(apsel)) => {
+                if !self.probe.accelerators.has_adiv6() {
+                    return Err(ArmError::Probe(
+                        DebugProbeError::CommandNotSupportedByProbe {
+                            command_name: "adiv6 memory write",
+                        },
+                    ));
+                }
+                let apsel = apsel.unwrap_or(0);
+                RemoteCommand::AdiV6MemWriteV4 {
+                    index: self.index,
+                    apsel,
+                    csw: self.csw,
+                    align,
+                    offset,
+                    data,
+                }
             }
-            ProtocolVersion::V0P => RemoteCommand::MemWriteV0P {
-                apsel: self.apsel,
-                csw: self.csw,
-                align,
-                offset: offset
-                    .try_into()
-                    .map_err(|_| ArmError::AddressOutOf32BitAddressSpace)?,
-                data,
-            },
-            ProtocolVersion::V1 | ProtocolVersion::V2 => RemoteCommand::MemWriteV1 {
-                index: self.index,
-                apsel: self.apsel,
-                csw: self.csw,
-                align,
-                offset: offset
-                    .try_into()
-                    .map_err(|_| ArmError::AddressOutOf32BitAddressSpace)?,
-                data,
-            },
-            ProtocolVersion::V3 => RemoteCommand::MemWriteV3 {
-                index: self.index,
-                apsel: self.apsel,
-                csw: self.csw,
-                align,
-                offset: offset
-                    .try_into()
-                    .map_err(|_| ArmError::AddressOutOf32BitAddressSpace)?,
-                data,
-            },
-            ProtocolVersion::V4 => RemoteCommand::MemWriteV4 {
-                index: self.index,
-                apsel: self.apsel,
-                csw: self.csw,
-                align,
-                offset,
-                data,
-            },
         };
         let result = self
             .probe
