@@ -11,7 +11,7 @@ use libtest_mimic::{Failed, Trial};
 use postcard_rpc::host_client::HostClient;
 use postcard_schema::Schema;
 use probe_rs::meta::ElfMetadata;
-use probe_rs::rtt::find_rtt_control_block_in_file;
+use probe_rs::rtt::find_rtt_control_block_and_metadata_in_raw_file;
 use ratatui::crossterm::style::Stylize;
 use rustyline_async::{Readline, ReadlineError, ReadlineEvent, SharedWriter};
 use serde::de::DeserializeOwned;
@@ -304,10 +304,10 @@ pub async fn parse_metadata(path: &Path) -> anyhow::Result<FileMetadata> {
     let mut elf_meta = None;
     let mut scan_regions = None;
     let mut load_defmt_data = false;
-    if let Ok(file) = object::File::parse(&elf[..]) {
-        elf_meta = ElfMetadata::from_object(&file).ok();
 
-        match find_rtt_control_block_in_file(&file) {
+    if let Ok((rtt_block, meta)) = find_rtt_control_block_and_metadata_in_raw_file(&elf) {
+        elf_meta = Some(meta);
+        match rtt_block {
             Some(addr) => {
                 scan_regions = Some(ScanRegion::Exact(addr));
                 load_defmt_data = true;
