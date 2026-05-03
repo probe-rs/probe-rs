@@ -4,6 +4,7 @@ use super::{
     logger::DebugLogger,
     session_data::SessionData,
     startup::{TargetSessionType, get_file_timestamp},
+    uploaded_files::UploadedFiles,
 };
 use crate::{
     cmd::dap_server::{
@@ -75,6 +76,13 @@ pub struct Debugger {
     /// Used to capture the `tracing` messages that are generated during the DAP sessions,
     /// to be ultimately forwarded to the DAP client's Debug Console, or failing that, stderr.
     pub(crate) debug_logger: DebugLogger,
+
+    /// Session-scoped temporary directory holding files uploaded by the DAP client when running
+    /// in `remote_server_mode` (program binary, SVD file, chip description).
+    ///
+    /// Lazily created on first upload, and dropped (along with the temp directory) at the end of
+    /// the debug session.
+    uploaded_files: Option<UploadedFiles>,
 }
 
 impl Debugger {
@@ -88,6 +96,7 @@ impl Debugger {
             timestamp_offset,
             binary_timestamp: None,
             debug_logger: DebugLogger::new(log_file)?,
+            uploaded_files: None,
         };
 
         debugger
@@ -406,6 +415,18 @@ impl Debugger {
 
         debug_adapter
             .set_console_log_level(self.config.console_log_level.unwrap_or(ConsoleLog::Console));
+
+        // In `remote_server_mode`, decode any client-supplied file payloads (program binary, SVD,
+        // chip description) and rewrite the corresponding path fields to point at session-scoped
+        // temporary files. In local mode this is a no-op. Must run before `validate_config_files`
+        // so that the subsequent `is_file()` checks see the materialized paths.
+        if self.config.remote_server_mode {
+            let uploaded_files = match self.uploaded_files.as_mut() {
+                Some(uploaded_files) => uploaded_files,
+                None => self.uploaded_files.insert(UploadedFiles::new()?),
+            };
+            self.config.materialize_uploaded_files(uploaded_files)?;
+        }
 
         self.config.validate_config_files()?;
 
@@ -1493,12 +1514,17 @@ mod test {
                 ("0x0000078E", "add.w  r0, r0, r0, lsr #4", "00 EB 10 10"),
             ];
 
-            type TestLocation = (i64, i64, &'static str, &'static str, &'static str);
+            // The DAP server emits source paths from DWARF debug information verbatim. The path
+            // is the build-time path recorded by `rustc` (a synthetic `/rustc/<hash>/...` for
+            // precompiled rustlib sources), and `presentation_hint` is left unset. Mapping such
+            // synthetic paths to a usable on-disk location is the VSCode extension's job, not the
+            // server's.
+            type TestLocation = (i64, i64, &'static str, &'static str);
             const TEST_LOCATIONS: [TestLocation; 3] = [
-                // line, column, name, path, presentation_hint
-                (115, 5, "<unavailable>: ub_checks.rs", "/rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/ub_checks.rs", "deemphasize"),
-                (0, 5, "<unavailable>: ub_checks.rs", "/rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/ub_checks.rs", "deemphasize"),
-                (1244, 5, "<unavailable>: mod.rs", "/rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/num/mod.rs", "deemphasize"),
+                // line, column, name, path
+                (115, 5, "ub_checks.rs", "/rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/ub_checks.rs"),
+                (0, 5, "ub_checks.rs", "/rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/ub_checks.rs"),
+                (1244, 5, "mod.rs", "/rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/num/mod.rs"),
             ];
 
             type TestCase = (&'static str, i64, i64, i64, &'static [TestInstruction], HashMap<&'static str, &'static TestLocation>);
@@ -1604,13 +1630,12 @@ mod test {
                             instruction_bytes: Some((*instruction_bytes).to_owned()),
                             ..default_instruction_fields.clone()
                         };
-                        if let Some(&(line, column, name, path, hint)) = test_locs.get(address) {
+                        if let Some(&(line, column, name, path)) = test_locs.get(address) {
                             instruction.line = if *line == 0 { None } else { Some(*line) };
                             instruction.column = Some(*column);
                             instruction.location = Some(Source {
                                 name: Some(name.to_string()),
                                 path: Some(path.to_string()),
-                                presentation_hint: Some(hint.to_string()),
                                 ..default_source_fields.clone()
                             })
                         }
