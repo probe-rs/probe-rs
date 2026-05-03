@@ -1584,6 +1584,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "gpiocdev"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a6009ef6766dd62a7f5933d379d357ae89eaee4e9c2455b6596f359627660a1"
+dependencies = [
+ "gpiocdev-uapi",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "gpiocdev-uapi"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb1a3ace06ef708255a33e738ec7a5e7718fe8e53bd9a39299b4f1cd4b13e9a3"
+dependencies = [
+ "bitflags 2.10.0",
+ "ioctl-sys",
+ "libc",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "hash32"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2040,6 +2062,12 @@ dependencies = [
  "core-foundation-sys",
  "mach2 0.5.0",
 ]
+
+[[package]]
+name = "ioctl-sys"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8bd11f3a29434026f5ff98c730b668ba74b1033637b8817940b54d040696133c"
 
 [[package]]
 name = "ipnet"
@@ -2970,6 +2998,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "probe-rs-linux"
+version = "0.31.0"
+dependencies = [
+ "bitvec",
+ "docsplay",
+ "gpiocdev",
+ "probe-rs",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "probe-rs-mi"
 version = "0.1.0"
 dependencies = [
@@ -3039,6 +3078,7 @@ dependencies = [
  "probe-rs",
  "probe-rs-debug",
  "probe-rs-espressif",
+ "probe-rs-linux",
  "probe-rs-mi",
  "probe-rs-target",
  "ratatui",

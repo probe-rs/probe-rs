@@ -535,6 +535,8 @@ fn multicall_check(args: &[OsString], want: &str) -> Option<Vec<OsString>> {
 #[tokio::main]
 async fn main() -> Result<()> {
     probe_rs_espressif::register_plugin();
+    #[cfg(target_os = "linux")]
+    probe_rs_linux::register_plugin();
 
     // Determine the local offset as early as possible to avoid potential
     // issues with multiple threads and getting the offset.
