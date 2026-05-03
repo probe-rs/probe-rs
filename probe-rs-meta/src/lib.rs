@@ -12,7 +12,7 @@
 #[macro_export]
 macro_rules! chip {
     ($val:literal) => {
-        #[link_section = ".probe-rs.chip"]
+        #[unsafe(link_section = ".probe-rs.chip")]
         #[used]
         #[unsafe(no_mangle)] // prevent invoking the macro multiple times
         static _PROBE_RS_CHIP: [u8; $val.len()] = *$val;
@@ -27,7 +27,7 @@ macro_rules! chip {
 #[macro_export]
 macro_rules! timeout {
     ($val:literal) => {
-        #[link_section = ".probe-rs.timeout"]
+        #[unsafe(link_section = ".probe-rs.timeout")]
         #[used]
         #[unsafe(no_mangle)] // prevent invoking the macro multiple times
         static _PROBE_RS_TIMEOUT: u32 = $val;
