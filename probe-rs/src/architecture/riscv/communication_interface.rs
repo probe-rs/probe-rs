@@ -1345,8 +1345,6 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// When set, `halted_access` writes `dcsr.prv = M` after every internal
     /// halt so that program-buffer instructions use physical addresses
     /// regardless of the privilege level at which the hart was interrupted.
-    // Used by vendor sequences (e.g. Nuclei, SiFive) not yet in this branch.
-    #[expect(dead_code)]
     pub(crate) fn set_force_machine_mode_progbuf(&mut self, force: bool) {
         self.state.force_machine_mode_progbuf = force;
     }
@@ -2249,6 +2247,25 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 c.read_s0_xlen()
             })
         })
+    }
+
+    /// Read a CSR via the program buffer, forcing 64-bit abstract-command width.
+    ///
+    /// Unlike [`Self::read_csr_progbuf`], which uses the XLEN mode that has already been
+    /// detected, this method temporarily sets `xlen_64 = true` so that S0 is saved and
+    /// read back with 64-bit abstract commands.  This is necessary when reading CSRs
+    /// (such as MISA) before XLEN has been determined, e.g. in a vendor `on_connect`
+    /// sequence.
+    ///
+    /// On RV32 targets the underlying 64-bit abstract command will fail with
+    /// [`AbstractCommandErrorKind::NotSupported`], which is propagated as an error so that
+    /// callers can handle RV32/RV64 detection gracefully.
+    pub(crate) fn read_csr_progbuf_64(&mut self, address: u16) -> Result<u64, RiscvError> {
+        let saved_xlen = self.state.xlen_64;
+        self.state.xlen_64 = true;
+        let result = self.read_csr_progbuf(address);
+        self.state.xlen_64 = saved_xlen;
+        result
     }
 
     /// Write a CSR value via the program buffer (fallback when abstract commands are unsupported).
