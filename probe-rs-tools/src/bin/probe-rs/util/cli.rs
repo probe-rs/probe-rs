@@ -59,8 +59,11 @@ type TargetOutputFiles = std::collections::HashMap<ChannelIdentifier, tokio::fs:
 pub async fn attach_probe(
     client: &RpcClient,
     mut probe_options: ProbeOptions,
+    elf_meta: Option<ElfMetadata>,
     resume_target: bool,
 ) -> anyhow::Result<SessionInterface> {
+    let elf_meta = elf_meta.unwrap_or_default();
+
     // Load the chip description if provided.
     if let Some(chip_description) = probe_options.chip_description_path.take() {
         let file = tokio::fs::read_to_string(&chip_description)
@@ -87,7 +90,7 @@ pub async fn attach_probe(
 
     let result = client
         .attach_probe(AttachRequest {
-            chip: probe_options.chip,
+            chip: probe_options.chip.or(elf_meta.chip),
             protocol: probe_options.protocol.map(Into::into),
             probe,
             speed: probe_options.speed,
@@ -293,10 +296,9 @@ pub(crate) fn parse_semihosting_options(arg: &[String]) -> anyhow::Result<Semiho
 pub struct FileMetadata {
     pub defmt_data: Option<DefmtState>,
     pub scan_regions: Option<ScanRegion>,
-    pub elf_meta: Option<ElfMetadata>,
 }
 
-pub async fn parse_metadata(path: &Path) -> anyhow::Result<FileMetadata> {
+pub async fn parse_metadata(path: &Path) -> anyhow::Result<(FileMetadata, Option<ElfMetadata>)> {
     let elf = tokio::fs::read(path)
         .await
         .with_context(|| format!("Failed to read firmware from {}", path.display()))?;
@@ -322,28 +324,16 @@ pub async fn parse_metadata(path: &Path) -> anyhow::Result<FileMetadata> {
         None
     };
 
-    Ok(FileMetadata {
-        defmt_data,
-        scan_regions,
+    Ok((
+        FileMetadata {
+            defmt_data,
+            scan_regions,
+        },
         elf_meta,
-    })
+    ))
 }
 
 pub async fn rtt_client(
-    session: &SessionInterface,
-    path: Option<&Path>,
-    monitor_options: &MonitoringOptions,
-    timestamp_offset: Option<UtcOffset>,
-) -> anyhow::Result<CliRttClient> {
-    let meta = match path {
-        Some(path) => parse_metadata(path).await?,
-        None => FileMetadata::default(),
-    };
-
-    rtt_client_from_metadata(session, &meta, monitor_options, timestamp_offset).await
-}
-
-pub async fn rtt_client_from_metadata(
     session: &SessionInterface,
     meta: &FileMetadata,
     monitor_options: &MonitoringOptions,

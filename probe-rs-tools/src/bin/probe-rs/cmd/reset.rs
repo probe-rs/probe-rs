@@ -15,7 +15,7 @@ pub struct Cmd {
 
 impl Cmd {
     pub async fn run(self, client: RpcClient) -> anyhow::Result<()> {
-        let session = cli::attach_probe(&client, self.common, false).await?;
+        let session = cli::attach_probe(&client, self.common, None, false).await?;
         let core = session.core(self.shared.core);
 
         core.reset().await?;

@@ -2,6 +2,11 @@
 #![doc = include_str!("../README.md")]
 #![warn(missing_docs)]
 
+#[unsafe(link_section = ".probe-rs.version")]
+#[used]
+#[unsafe(no_mangle)] // prevent invoking the macro multiple times
+static _PROBE_RS_META_VERSION: [u8; env!("CARGO_PKG_VERSION").len()] = *env!("CARGO_PKG_VERSION");
+
 /// Set the probe-rs chip.
 ///
 /// ```rust

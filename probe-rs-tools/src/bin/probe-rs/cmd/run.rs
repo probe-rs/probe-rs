@@ -7,7 +7,7 @@ use crate::rpc::functions::test::{Test, TestDefinition};
 use crate::rpc::utils::run_loop::VectorCatchConfig;
 
 use crate::FormatOptions;
-use crate::util::cli::{self, parse_metadata, rtt_client_from_metadata};
+use crate::util::cli::{self, parse_metadata, rtt_client};
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
 use crate::util::rtt::ChannelMode;
 
@@ -239,23 +239,17 @@ pub(crate) struct MonitoringOptions {
 }
 
 impl Cmd {
-    pub async fn run(mut self, client: RpcClient, utc_offset: UtcOffset) -> anyhow::Result<()> {
+    pub async fn run(self, client: RpcClient, utc_offset: UtcOffset) -> anyhow::Result<()> {
         // Detect run mode based on ELF file
         let run_mode = detect_run_mode(&self)?;
 
-        let file_meta = parse_metadata(&self.path).await?;
-
-        if let Some(meta) = &file_meta.elf_meta
-            && let Some(chip) = &meta.chip
-        {
-            self.probe_options.chip = Some(chip.clone());
-        }
+        let (file_meta, elf_meta) = parse_metadata(&self.path).await?;
 
         // TODO: Skip attach_probe & flashing, if user only wants to list tests (only possible when using embedded_test with protocol version >= 1)
 
-        let session = cli::attach_probe(&client, self.probe_options, false).await?;
+        let session = cli::attach_probe(&client, self.probe_options, elf_meta, false).await?;
 
-        let mut rtt_client = rtt_client_from_metadata(
+        let mut rtt_client = rtt_client(
             &session,
             &file_meta,
             &self.monitor_options,
