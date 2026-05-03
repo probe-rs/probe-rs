@@ -1,1 +1,1 @@
-Added support for running `probe-rs dap-server` on a different host from the VSCode client. A new `remoteServerMode` flag (auto-detected from a non-loopback `server` field in `launch.json`, or set explicitly) tells the server to expect `programBinary`, `svdFile`, and `chipDescriptionPath` to arrive as base64 payloads alongside their path fields, and to materialize them to a session-scoped temporary directory rather than reading from the local filesystem.
+Added support for running `probe-rs dap-server` on a different host from the VSCode client.
