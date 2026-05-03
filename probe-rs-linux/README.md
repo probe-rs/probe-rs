@@ -4,8 +4,10 @@ This crate contains Linux-specific probe drivers for probe-rs:
 
 - `linuxgpiod` — bit-bangs SWD over the Linux GPIO character-device
   interface (`/dev/gpiochipN`).
+- `linuxspidevswd` — emulates SWD over a `spidev` SPI bus with PICO and
+  POCI tied together through a series resistor.
 
-Drivers are no-ops on non-Linux targets so the crate always compiles.
+Both drivers are no-ops on non-Linux targets so the crate always compiles.
 
 ## Usage
 

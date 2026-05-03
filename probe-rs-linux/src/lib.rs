@@ -2,6 +2,8 @@
 
 #[cfg(target_os = "linux")]
 mod linuxgpiod;
+#[cfg(target_os = "linux")]
+mod linuxspidevswd;
 
 /// Register the Linux probe drivers with probe-rs.
 ///
@@ -15,7 +17,10 @@ pub fn register_plugin() {
             vendors: &[],
             image_formats: &[],
             targets: &[],
-            probe_drivers: &[&linuxgpiod::LinuxGpiodFactory],
+            probe_drivers: &[
+                &linuxgpiod::LinuxGpiodFactory,
+                &linuxspidevswd::LinuxSpidevSwdFactory,
+            ],
         });
     }
 }
