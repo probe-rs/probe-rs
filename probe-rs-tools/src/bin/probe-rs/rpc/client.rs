@@ -38,15 +38,16 @@ use crate::{
             ReadMemory64Endpoint, ResetCoreAndHaltEndpoint, ResetCoreEndpoint,
             ResumeAllCoresEndpoint, RpcResult, RttDownEndpoint, RunTestEndpoint,
             SelectProbeEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint,
-            TempFileDataEndpoint, TokioSpawner, VerifyEndpoint, WriteMemory8Endpoint,
-            WriteMemory16Endpoint, WriteMemory32Endpoint, WriteMemory64Endpoint,
+            TargetNameEndpoint, TempFileDataEndpoint, TokioSpawner, VerifyEndpoint,
+            WriteMemory8Endpoint, WriteMemory16Endpoint, WriteMemory32Endpoint,
+            WriteMemory64Endpoint,
             chip::{ChipData, ChipFamily, ChipInfoRequest, LoadChipFamilyRequest},
             file::{AppendFileRequest, TempFile},
             flash::{
                 BootInfo, BuildRequest, BuildResult, DownloadOptions, EraseCommand, EraseRequest,
                 FlashRequest, ProgressEvent, VerifyRequest, VerifyResult,
             },
-            info::{InfoEvent, TargetInfoRequest},
+            info::{InfoEvent, TargetInfoRequest, TargetNameRequest},
             memory::{ReadMemoryRequest, WriteMemoryRequest},
             monitor::{MonitorExitReason, MonitorMode, MonitorOptions, MonitorRequest},
             probe::{
@@ -440,24 +441,23 @@ impl RpcClient {
 pub struct SessionInterface {
     sessid: Key<Session>,
     client: RpcClient,
-    target_name: String,
 }
 
 impl SessionInterface {
-    pub fn new(client: RpcClient, sessid: Key<Session>, target_name: String) -> Self {
-        Self {
-            sessid,
-            client,
-            target_name,
-        }
+    pub fn new(client: RpcClient, sessid: Key<Session>) -> Self {
+        Self { sessid, client }
     }
 
     pub fn client(&self) -> RpcClient {
         self.client.clone()
     }
 
-    pub fn target_name(&self) -> &str {
-        &self.target_name
+    pub async fn target_name(&self) -> anyhow::Result<String> {
+        self.client
+            .send_resp::<TargetNameEndpoint, _>(&TargetNameRequest {
+                sessid: self.sessid,
+            })
+            .await
     }
 
     pub fn core(&self, core: usize) -> CoreInterface {

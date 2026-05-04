@@ -157,10 +157,7 @@ pub async fn select_probe(
 
 #[derive(Serialize, Deserialize, Schema)]
 pub enum AttachResult {
-    Success {
-        session: Key<Session>,
-        target_name: String,
-    },
+    Success(Key<Session>),
     ProbeNotFound,
     FailedToOpenProbe(String),
     ProbeInUse,
@@ -278,7 +275,6 @@ pub async fn attach(
     };
 
     let mut session = common_options.attach_session(probe, target)?;
-    let target_name = session.target().name.clone();
 
     // attach_session halts the target, let's give the user the option
     // to resume it without a roundtrip
@@ -286,8 +282,5 @@ pub async fn attach(
         session.resume_all_cores()?;
     }
     let session_id = ctx.set_session(session, common_options.dry_run()).await;
-    Ok(AttachResult::Success {
-        session: session_id,
-        target_name,
-    })
+    Ok(AttachResult::Success(session_id))
 }

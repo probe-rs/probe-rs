@@ -134,7 +134,7 @@ impl Cmd {
                 common.chip = None;
             }
             match cli::attach_probe(&client, common, false).await {
-                Ok(session) => println!("{}", session.target_name()),
+                Ok(session) => println!("{}", session.target_name().await?),
                 Err(e) => {
                     eprintln!(
                         "Could not attach to target. Try running with --verbose for more information about the target."
