@@ -9,6 +9,7 @@ pub mod fake_probe;
 pub mod ftdi;
 pub mod glasgow;
 pub mod jlink;
+#[cfg(target_os = "linux")]
 pub mod linuxspidevswd;
 pub mod list;
 pub(crate) mod queue;
@@ -56,6 +57,8 @@ static DRIVERS: LazyLock<RwLock<Vec<&'static dyn ProbeFactory>>> = LazyLock::new
         &sifliuart::SifliUartFactory,
         &glasgow::GlasgowFactory,
         &ch347usbjtag::Ch347UsbJtagFactory,
+        #[cfg(target_os = "linux")]
+        &linuxspidevswd::LinuxSpidevSwdFactory,
     ];
 
     RwLock::new(probes)

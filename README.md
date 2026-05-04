@@ -54,6 +54,24 @@ The probe-rs website includes [VSCode configuration instructions](https://probe.
 
 ## Usage Examples
 
+### Using Linux spidev as an SWD probe
+
+On Linux, probe-rs can use a spidev device as an SWD probe through the built-in
+Linux spidev SWD backend (use a resistor between SPI MOSI and MISO to combine RX and TX).
+
+Select the device directly with a synthetic probe selector:
+
+```bash
+probe-rs info --probe 0:0:/dev/spidev0.0
+```
+
+The selector ignores VID:PID, and the serial portion carries the actual
+spidev path, such as [`/dev/spidev0.0`](probe-rs/src/probe/linuxspidevswd/mod.rs).
+
+For safety, [`probe-rs list`](probe-rs/src/probe/list.rs) only exposes explicit
+[`/dev/spidev_swd*`](probe-rs/src/probe/linuxspidevswd/mod.rs) udev links, so probe-rs does not
+implicitly try every SPI device on the system.
+
 ### Halting the attached chip
 
 ```rust,no_run
