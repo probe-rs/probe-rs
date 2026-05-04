@@ -847,7 +847,7 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
 
         if error_code != 0 {
             return Err(FlashError::RoutineCallFailed {
-                name: "init",
+                name: "init".to_string(),
                 error_code,
             });
         }
@@ -880,7 +880,7 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
 
         if error_code != 0 {
             return Err(FlashError::RoutineCallFailed {
-                name: "uninit",
+                name: "uninit".to_string(),
                 error_code,
             });
         }
@@ -906,9 +906,8 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
         let algo = &self.flash_algorithm;
 
         let Some(&pc) = algo.vendor_functions.get(function) else {
-            return Err(FlashError::FlashSizeFailed {
-                source: format!("Flash algorithm does not define vendor function '{function}'")
-                    .into(),
+            return Err(FlashError::VendorFunctionMissing {
+                name: function.to_string(),
             });
         };
 
@@ -930,7 +929,7 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
 
         if (retval as i32) < 0 {
             return Err(FlashError::RoutineCallFailed {
-                name: "vendor_function",
+                name: function.to_string(),
                 error_code: retval,
             });
         }
@@ -1172,7 +1171,7 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
                 if result != 0 {
                     return Err(FlashError::FlashReadFailed {
                         source: Box::new(FlashError::RoutineCallFailed {
-                            name: "read_flash",
+                            name: "read_flash".to_string(),
                             error_code: result,
                         }),
                     });
@@ -1294,7 +1293,7 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
 
             if error_code != 0 {
                 Err(FlashError::RoutineCallFailed {
-                    name: "blank_check",
+                    name: "blank_check".to_string(),
                     error_code,
                 })
             } else {
@@ -1350,7 +1349,7 @@ impl ActiveFlasher<'_, '_, Erase> {
         if result != 0 {
             Err(FlashError::ChipEraseFailed {
                 source: Box::new(FlashError::RoutineCallFailed {
-                    name: "chip_erase",
+                    name: "chip_erase".to_string(),
                     error_code: result,
                 }),
             })
@@ -1388,7 +1387,7 @@ impl ActiveFlasher<'_, '_, Erase> {
 
         if error_code != 0 {
             Err(FlashError::RoutineCallFailed {
-                name: "erase_sector",
+                name: "erase_sector".to_string(),
                 error_code,
             })
         } else {
@@ -1471,7 +1470,7 @@ impl ActiveFlasher<'_, '_, Program> {
                     Ok(())
                 } else {
                     Err(FlashError::RoutineCallFailed {
-                        name: "program_page",
+                        name: "program_page".to_string(),
                         error_code: result,
                     })
                 }
