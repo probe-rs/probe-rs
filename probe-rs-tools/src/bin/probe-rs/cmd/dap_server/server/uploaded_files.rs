@@ -8,7 +8,21 @@
 //! temporary directory that lives for the duration of the debug session, so the rest of the server
 //! code can continue treating them as ordinary on-disk files.
 //!
-//! The temporary directory is automatically removed when the [`UploadedFiles`] instance is dropped.
+//! ## Lifecycle
+//!
+//! A new [`UploadedFiles`] instance is created at the start of each remote-mode debug session and
+//! is dropped (which removes the temporary directory and all files within) at the end of that
+//! session — *not* at the end of the server process. In TCP multi-session mode this means each
+//! incoming client connection gets its own clean scratch area, and one client's uploaded firmware
+//! never lingers on disk while another client is connected.
+//!
+//! ## Naming
+//!
+//! Materialized files are named `<role>-<basename>` where `<role>` is a stable per-field
+//! identifier supplied by the caller (e.g. `chip-description`, `core-0-program-binary`,
+//! `core-0-svd`) and `<basename>` is the file name from the client's original path (so the temp
+//! file remains recognizable in log messages and tools like `ls /tmp/probe-rs-dap-*`). The role
+//! string is responsible for guaranteeing uniqueness within a session.
 
 use anyhow::anyhow;
 use base64::{Engine as _, engine::general_purpose as base64_engine};
@@ -21,14 +35,11 @@ use crate::cmd::dap_server::DebuggerError;
 ///
 /// Files are written under a unique sub-directory in the OS temporary directory, prefixed with
 /// `probe-rs-dap-`. The directory and its contents are removed automatically when this struct is
-/// dropped (i.e. at the end of the debug session, or when the [`super::debugger::Debugger`] is
-/// dropped in multi-session mode).
+/// dropped, which the [`super::debugger::Debugger`] arranges to happen at the end of each remote
+/// debug session.
 pub(crate) struct UploadedFiles {
     /// The owned temporary directory. Held by value so that it is removed on `Drop`.
     temp_dir: TempDir,
-    /// Monotonically incrementing counter used to make materialized file names unique within the
-    /// directory, even if two uploaded files share the same client-side `file_name`.
-    counter: usize,
 }
 
 impl UploadedFiles {
@@ -49,16 +60,18 @@ impl UploadedFiles {
             "Created temporary directory for client-uploaded files: {}",
             temp_dir.path().display()
         );
-        Ok(Self {
-            temp_dir,
-            counter: 0,
-        })
+        Ok(Self { temp_dir })
     }
 
     /// Decode the supplied base64 payload and write it to a fresh file in the temporary directory,
     /// returning the absolute path to the materialized file.
     ///
-    /// `client_path_hint` is used only as a hint to derive a meaningful filename for the
+    /// `role` is a stable per-field identifier (e.g. `chip-description`,
+    /// `core-0-program-binary`, `core-0-svd`) used as the filename prefix. It is the caller's
+    /// responsibility to choose role strings that are unique within a session — calling
+    /// `materialize` twice with the same `role` will silently overwrite the earlier file.
+    ///
+    /// `client_path_hint` is used only as a hint to derive a meaningful basename for the
     /// materialized file (so log messages, RTT scan errors, etc. remain recognizable). It is
     /// never opened or stat'd on the server.
     ///
@@ -67,38 +80,38 @@ impl UploadedFiles {
     /// method is intentionally narrow so callers do not need to change when that happens.
     pub(crate) fn materialize(
         &mut self,
+        role: &str,
         client_path_hint: &Path,
         data_base64: &str,
     ) -> Result<PathBuf, DebuggerError> {
         let bytes = base64_engine::STANDARD.decode(data_base64).map_err(|err| {
             DebuggerError::Other(anyhow!(
-                "Could not decode base64 for client-uploaded file (originally `{}`): {err}",
+                "Could not decode base64 for client-uploaded file (role `{role}`, originally `{}`): {err}",
                 client_path_hint.display()
             ))
         })?;
 
-        // Derive a recognizable filename from the client's hint, prefixed with a counter to avoid
-        // collisions across multiple cores or multiple uploaded artifacts.
-        let original_name = client_path_hint
+        // Compose `<role>-<basename>` for self-documenting temp dir listings. Falling back to
+        // just `<role>` when the client path has no usable file name (rare).
+        let basename = client_path_hint
             .file_name()
             .map(|name| name.to_string_lossy().to_string())
-            .unwrap_or_else(|| format!("upload-{}.bin", self.counter));
-        let dest = self
-            .temp_dir
-            .path()
-            .join(format!("{:03}-{original_name}", self.counter));
-        self.counter += 1;
+            .filter(|name| !name.is_empty());
+        let dest = match basename {
+            Some(basename) => self.temp_dir.path().join(format!("{role}-{basename}")),
+            None => self.temp_dir.path().join(role),
+        };
 
         std::fs::write(&dest, &bytes).map_err(|err| {
             DebuggerError::Other(anyhow!(
-                "Could not write client-uploaded file `{}` to temporary location `{}`: {err}",
+                "Could not write client-uploaded file (role `{role}`, originally `{}`) to temporary location `{}`: {err}",
                 client_path_hint.display(),
                 dest.display()
             ))
         })?;
 
         tracing::info!(
-            "Materialized client-uploaded file `{}` ({} bytes) to `{}`",
+            "Materialized client-uploaded file (role `{role}`, originally `{}`, {} bytes) to `{}`",
             client_path_hint.display(),
             bytes.len(),
             dest.display()

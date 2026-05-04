@@ -80,8 +80,9 @@ pub struct Debugger {
     /// Session-scoped temporary directory holding files uploaded by the DAP client when running
     /// in `remote_server_mode` (program binary, SVD file, chip description).
     ///
-    /// Lazily created on first upload, and dropped (along with the temp directory) at the end of
-    /// the debug session.
+    /// Created at the start of each remote-mode session (in [`Self::launch`]) and dropped at the
+    /// end of that session (in [`Self::debug_session`]); `None` in local mode and between
+    /// sessions in TCP multi-session mode.
     uploaded_files: Option<UploadedFiles>,
 }
 
@@ -260,6 +261,24 @@ impl Debugger {
     pub(crate) async fn debug_session<P: ProtocolAdapter>(
         &mut self,
         registry: &mut Registry,
+        debug_adapter: DebugAdapter<P>,
+        lister: &Lister,
+    ) -> Result<(), DebuggerError> {
+        let result = self
+            .run_debug_session(registry, debug_adapter, lister)
+            .await;
+        // Drop the session-scoped temporary directory holding any client-uploaded files
+        // (program binary, SVD, chip description). Done at session end rather than at
+        // [`Debugger`] drop so that, in TCP multi-session mode, one client's uploaded
+        // firmware does not linger on disk after they disconnect (and is not visible to
+        // the next client that connects).
+        self.uploaded_files = None;
+        result
+    }
+
+    async fn run_debug_session<P: ProtocolAdapter>(
+        &mut self,
+        registry: &mut Registry,
         mut debug_adapter: DebugAdapter<P>,
         lister: &Lister,
     ) -> Result<(), DebuggerError> {
@@ -416,15 +435,18 @@ impl Debugger {
         debug_adapter
             .set_console_log_level(self.config.console_log_level.unwrap_or(ConsoleLog::Console));
 
+        // Always start each session with a fresh upload area: drop any [`UploadedFiles`] left
+        // over from a previous session that did not unwind cleanly (e.g. one that panicked
+        // before [`Self::debug_session`] could run its end-of-session cleanup). In the normal
+        // case there is nothing to drop here — `debug_session` already cleared it.
+        self.uploaded_files = None;
+
         // In `remote_server_mode`, decode any client-supplied file payloads (program binary, SVD,
         // chip description) and rewrite the corresponding path fields to point at session-scoped
         // temporary files. In local mode this is a no-op. Must run before `validate_config_files`
         // so that the subsequent `is_file()` checks see the materialized paths.
         if self.config.remote_server_mode {
-            let uploaded_files = match self.uploaded_files.as_mut() {
-                Some(uploaded_files) => uploaded_files,
-                None => self.uploaded_files.insert(UploadedFiles::new()?),
-            };
+            let uploaded_files = self.uploaded_files.insert(UploadedFiles::new()?);
             self.config.materialize_uploaded_files(uploaded_files)?;
         }
 

@@ -125,21 +125,27 @@ impl SessionConfig {
                 .chip_description_path
                 .clone()
                 .unwrap_or_else(|| PathBuf::from("chip-description.yaml"));
-            self.chip_description_path = Some(uploaded_files.materialize(&hint, &data)?);
+            self.chip_description_path =
+                Some(uploaded_files.materialize("chip-description", &hint, &data)?);
         }
 
         for core_config in &mut self.core_configs {
+            let core_index = core_config.core_index;
             if let Some(data) = core_config.program_binary_data.take() {
-                let hint = core_config.program_binary.clone().unwrap_or_else(|| {
-                    PathBuf::from(format!("core-{}.elf", core_config.core_index))
-                });
-                core_config.program_binary = Some(uploaded_files.materialize(&hint, &data)?);
+                let hint = core_config
+                    .program_binary
+                    .clone()
+                    .unwrap_or_else(|| PathBuf::from(format!("core-{core_index}.elf")));
+                let role = format!("core-{core_index}-program-binary");
+                core_config.program_binary = Some(uploaded_files.materialize(&role, &hint, &data)?);
             }
             if let Some(data) = core_config.svd_file_data.take() {
-                let hint = core_config.svd_file.clone().unwrap_or_else(|| {
-                    PathBuf::from(format!("core-{}.svd", core_config.core_index))
-                });
-                core_config.svd_file = Some(uploaded_files.materialize(&hint, &data)?);
+                let hint = core_config
+                    .svd_file
+                    .clone()
+                    .unwrap_or_else(|| PathBuf::from(format!("core-{core_index}.svd")));
+                let role = format!("core-{core_index}-svd");
+                core_config.svd_file = Some(uploaded_files.materialize(&role, &hint, &data)?);
             }
         }
 
