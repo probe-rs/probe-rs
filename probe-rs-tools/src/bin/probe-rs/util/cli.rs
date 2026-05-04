@@ -10,7 +10,8 @@ use anyhow::Context;
 use libtest_mimic::{Failed, Trial};
 use postcard_rpc::host_client::HostClient;
 use postcard_schema::Schema;
-use probe_rs::rtt::find_rtt_control_block_in_raw_file;
+use probe_rs::meta::ElfMetadata;
+use probe_rs::rtt::find_rtt_control_block_and_metadata_in_raw_file;
 use ratatui::crossterm::style::Stylize;
 use rustyline_async::{Readline, ReadlineError, ReadlineEvent, SharedWriter};
 use serde::de::DeserializeOwned;
@@ -58,8 +59,11 @@ type TargetOutputFiles = std::collections::HashMap<ChannelIdentifier, tokio::fs:
 pub async fn attach_probe(
     client: &RpcClient,
     mut probe_options: ProbeOptions,
+    elf_meta: Option<ElfMetadata>,
     resume_target: bool,
 ) -> anyhow::Result<SessionInterface> {
+    let elf_meta = elf_meta.unwrap_or_default();
+
     // Load the chip description if provided.
     if let Some(chip_description) = probe_options.chip_description_path.take() {
         let file = tokio::fs::read_to_string(&chip_description)
@@ -86,7 +90,7 @@ pub async fn attach_probe(
 
     let result = client
         .attach_probe(AttachRequest {
-            chip: probe_options.chip,
+            chip: probe_options.chip.or(elf_meta.chip),
             protocol: probe_options.protocol.map(Into::into),
             probe,
             speed: probe_options.speed,
@@ -288,26 +292,26 @@ pub(crate) fn parse_semihosting_options(arg: &[String]) -> anyhow::Result<Semiho
     Ok(options)
 }
 
-pub async fn rtt_client(
-    session: &SessionInterface,
-    path: Option<&Path>,
-    monitor_options: &MonitoringOptions,
-    timestamp_offset: Option<UtcOffset>,
-) -> anyhow::Result<CliRttClient> {
-    let elf = if let Some(path) = path {
-        tokio::fs::read(path)
-            .await
-            .with_context(|| format!("Failed to read firmware from {}", path.display()))?
-    } else {
-        vec![]
-    };
+#[derive(Default)]
+pub struct FileMetadata {
+    pub defmt_data: Option<DefmtState>,
+    pub scan_regions: Option<ScanRegion>,
+}
 
-    let mut scan_regions = monitor_options.scan_region.clone();
+pub async fn parse_metadata(path: &Path) -> anyhow::Result<(FileMetadata, Option<ElfMetadata>)> {
+    let elf = tokio::fs::read(path)
+        .await
+        .with_context(|| format!("Failed to read firmware from {}", path.display()))?;
+
+    let mut elf_meta = None;
+    let mut scan_regions = None;
     let mut load_defmt_data = false;
-    if let Ok(opt_address) = find_rtt_control_block_in_raw_file(&elf) {
-        match opt_address {
+
+    if let Ok((rtt_block, meta)) = find_rtt_control_block_and_metadata_in_raw_file(&elf) {
+        elf_meta = Some(meta);
+        match rtt_block {
             Some(addr) => {
-                scan_regions = ScanRegion::Exact(addr);
+                scan_regions = Some(ScanRegion::Exact(addr));
                 load_defmt_data = true;
             }
             None => load_defmt_data = !elf.is_empty(),
@@ -318,6 +322,26 @@ pub async fn rtt_client(
         DefmtState::try_from_bytes(&elf)?
     } else {
         None
+    };
+
+    Ok((
+        FileMetadata {
+            defmt_data,
+            scan_regions,
+        },
+        elf_meta,
+    ))
+}
+
+pub async fn rtt_client(
+    session: &SessionInterface,
+    meta: &FileMetadata,
+    monitor_options: &MonitoringOptions,
+    timestamp_offset: Option<UtcOffset>,
+) -> anyhow::Result<CliRttClient> {
+    let scan_regions = match &meta.scan_regions {
+        Some(scan_regions) => scan_regions.clone(),
+        None => monitor_options.scan_region.clone(),
     };
 
     // We don't really know what to configure here, so we set a default configuration if we can, but that's it.
@@ -339,7 +363,7 @@ pub async fn rtt_client(
         show_timestamps: !monitor_options.no_timestamps,
         show_location: !monitor_options.no_location,
         channel_processors: vec![],
-        defmt_data,
+        defmt_data: meta.defmt_data.clone(),
         log_format: monitor_options.log_format.clone(),
     })
 }

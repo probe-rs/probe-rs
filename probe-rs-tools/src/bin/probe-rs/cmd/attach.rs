@@ -7,7 +7,7 @@ use crate::cmd::run::{MonitoringOptions, NormalRunOptions};
 use crate::rpc::client::RpcClient;
 use crate::rpc::functions::monitor::MonitorMode;
 use crate::rpc::utils::run_loop::VectorCatchConfig;
-use crate::util::cli::{self, rtt_client};
+use crate::util::cli::{self, FileMetadata, parse_metadata, rtt_client};
 use crate::util::common_options::ProbeOptions;
 
 #[derive(clap::Parser)]
@@ -33,11 +33,16 @@ pub struct Cmd {
 
 impl Cmd {
     pub async fn run(self, client: RpcClient, utc_offset: UtcOffset) -> anyhow::Result<()> {
-        let session = cli::attach_probe(&client, self.probe_options, true).await?;
+        let (file_meta, elf_meta) = match &self.path {
+            Some(path) => parse_metadata(&path).await?,
+            None => (FileMetadata::default(), None),
+        };
+
+        let session = cli::attach_probe(&client, self.probe_options, elf_meta, true).await?;
 
         let rtt_client = rtt_client(
             &session,
-            self.path.as_deref(),
+            &file_meta,
             &self.monitor_options,
             Some(utc_offset),
         )

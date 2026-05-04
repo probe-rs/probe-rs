@@ -7,7 +7,7 @@ use crate::rpc::functions::test::{Test, TestDefinition};
 use crate::rpc::utils::run_loop::VectorCatchConfig;
 
 use crate::FormatOptions;
-use crate::util::cli::{self, rtt_client};
+use crate::util::cli::{self, parse_metadata, rtt_client};
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
 use crate::util::rtt::ChannelMode;
 
@@ -243,13 +243,15 @@ impl Cmd {
         // Detect run mode based on ELF file
         let run_mode = detect_run_mode(&self)?;
 
+        let (file_meta, elf_meta) = parse_metadata(&self.path).await?;
+
         // TODO: Skip attach_probe & flashing, if user only wants to list tests (only possible when using embedded_test with protocol version >= 1)
 
-        let session = cli::attach_probe(&client, self.probe_options, false).await?;
+        let session = cli::attach_probe(&client, self.probe_options, elf_meta, false).await?;
 
         let mut rtt_client = rtt_client(
             &session,
-            Some(&self.path),
+            &file_meta,
             &self.monitor_options,
             Some(utc_offset),
         )
