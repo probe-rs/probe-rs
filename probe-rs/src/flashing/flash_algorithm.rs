@@ -4,7 +4,7 @@ use probe_rs_target::{
     CoreType, Endian, FlashProperties, MemoryRegion, PageInfo, RamRegion, RawFlashAlgorithm,
     RegionMergeIterator, SectorInfo, TransferEncoding,
 };
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::mem::size_of_val;
 
 /// A flash algorithm, which has been assembled for a specific
@@ -40,7 +40,7 @@ pub struct FlashAlgorithm {
     /// Address of the (non-standard) `ReadFlash()` entry point. Optional.
     pub pc_read: Option<u64>,
     /// Names and absolute addresses of optional, vendor-specific entry points.
-    pub vendor_functions: HashMap<String, u64>,
+    pub vendor_functions: BTreeMap<String, u64>,
     /// Initial value of the R9 register for calling flash algo entry points, which
     /// determines where the position-independent data resides.
     pub static_base: u64,

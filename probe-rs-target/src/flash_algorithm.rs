@@ -1,7 +1,7 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use super::flash_properties::FlashProperties;
-use crate::serialize::{hex_hashmap, hex_hashmap_deserialize, hex_option, hex_u_int};
+use crate::serialize::{hex_map, hex_map_deserialize, hex_option, hex_u_int};
 use base64::{Engine as _, engine::general_purpose as base64_engine};
 use serde::{Deserialize, Serialize};
 
@@ -82,10 +82,10 @@ pub struct RawFlashAlgorithm {
     /// key `FlashSize`.
     #[serde(
         default,
-        serialize_with = "hex_hashmap",
-        deserialize_with = "hex_hashmap_deserialize"
+        serialize_with = "hex_map",
+        deserialize_with = "hex_map_deserialize"
     )]
-    pub vendor_functions: HashMap<String, u64>,
+    pub vendor_functions: BTreeMap<String, u64>,
     /// The offset from the start of RAM to the data section.
     #[serde(serialize_with = "hex_u_int")]
     pub data_section_offset: u64,

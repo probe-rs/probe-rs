@@ -1,9 +1,11 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
-/// Serialize a `HashMap<String, u64>` with values as hex strings in human-readable formats
+/// Serialize a `BTreeMap<String, u64>` with values as hex strings in human-readable formats
 /// (e.g. YAML), and as plain integers in binary formats.
-pub(crate) fn serialize<S>(map: &HashMap<String, u64>, serializer: S) -> Result<S::Ok, S::Error>
+///
+/// `BTreeMap` is used instead of `HashMap` to guarantee deterministic key order in the output.
+pub(crate) fn serialize<S>(map: &BTreeMap<String, u64>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -19,11 +21,11 @@ where
     }
 }
 
-/// Deserialize a `HashMap<String, u64>`. In YAML, values may be written as hex literals
+/// Deserialize a `BTreeMap<String, u64>`. In YAML, values may be written as hex literals
 /// (`0x1234`) or plain decimal integers; `serde_yaml` handles both natively.
-pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<HashMap<String, u64>, D::Error>
+pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<BTreeMap<String, u64>, D::Error>
 where
     D: Deserializer<'de>,
 {
-    HashMap::<String, u64>::deserialize(deserializer)
+    BTreeMap::<String, u64>::deserialize(deserializer)
 }
