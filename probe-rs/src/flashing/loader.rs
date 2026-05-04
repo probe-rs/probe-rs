@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 use parking_lot::RwLock;
 use probe_rs_target::{
-    InstructionSet, MemoryRange, MemoryRegion, NvmRegion, RawFlashAlgorithm,
+    FlashLoaderType, InstructionSet, MemoryRange, MemoryRegion, NvmRegion, RawFlashAlgorithm,
     TargetDescriptionSource,
 };
 use serde_yaml::Value;
@@ -11,12 +11,210 @@ use std::sync::LazyLock;
 use std::time::Duration;
 
 use super::builder::FlashBuilder;
+use super::host_flasher::HostSideFlasher;
 use super::{DownloadOptions, FileDownloadError, FlashError, Flasher};
 use crate::Target;
 use crate::flashing::progress::ProgressOperation;
 use crate::flashing::{FlashLayout, FlashProgress};
 use crate::memory::MemoryInterface;
 use crate::session::Session;
+
+/// Common interface implemented by both the RAM-based [`Flasher`] and the
+/// host-side [`HostSideFlasher`].  Storing flashers behind `Box<dyn FlasherOps>`
+/// removes the need for the enum and all its match arms.
+trait FlasherOps {
+    fn algorithm_name(&self) -> &str;
+    fn core_index(&self) -> usize;
+    fn double_buffering_supported(&self) -> bool;
+    fn is_chip_erase_supported(&self, session: &Session) -> bool;
+    fn add_region(
+        &mut self,
+        region: NvmRegion,
+        builder: &FlashBuilder,
+        restore_unwritten_bytes: bool,
+    ) -> Result<(), FlashError>;
+    fn run_erase_all(
+        &mut self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+    ) -> Result<(), FlashError>;
+    fn program(
+        &mut self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+        restore_unwritten_bytes: bool,
+        enable_double_buffering: bool,
+        skip_erasing: bool,
+        verify: bool,
+    ) -> Result<(), FlashError>;
+    /// Returns `(phase_layout, fill_size, erase_size, program_size)`.
+    fn compute_init_sizes(&mut self, keep_unwritten_bytes: bool) -> (FlashLayout, u64, u64, u64);
+    fn compute_verify_size(&mut self) -> u64;
+    fn verify(
+        &mut self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+        ignore_filled: bool,
+    ) -> Result<bool, FlashError>;
+}
+
+impl FlasherOps for Flasher {
+    fn algorithm_name(&self) -> &str {
+        &self.flash_algorithm.name
+    }
+    fn core_index(&self) -> usize {
+        self.core_index
+    }
+    fn double_buffering_supported(&self) -> bool {
+        Flasher::double_buffering_supported(self)
+    }
+    fn is_chip_erase_supported(&self, session: &Session) -> bool {
+        Flasher::is_chip_erase_supported(self, session)
+    }
+    fn add_region(
+        &mut self,
+        region: NvmRegion,
+        builder: &FlashBuilder,
+        restore_unwritten_bytes: bool,
+    ) -> Result<(), FlashError> {
+        Flasher::add_region(self, region, builder, restore_unwritten_bytes)
+    }
+    fn run_erase_all(
+        &mut self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+    ) -> Result<(), FlashError> {
+        Flasher::run_erase_all(self, session, progress)
+    }
+    fn program(
+        &mut self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+        restore_unwritten_bytes: bool,
+        enable_double_buffering: bool,
+        skip_erasing: bool,
+        verify: bool,
+    ) -> Result<(), FlashError> {
+        Flasher::program(
+            self,
+            session,
+            progress,
+            restore_unwritten_bytes,
+            enable_double_buffering,
+            skip_erasing,
+            verify,
+        )
+    }
+    fn compute_init_sizes(&mut self, keep_unwritten_bytes: bool) -> (FlashLayout, u64, u64, u64) {
+        let encoding = self.flash_algorithm.transfer_encoding;
+        let mut phase_layout = FlashLayout::default();
+        let mut fill_size = 0;
+        let mut erase_size = 0;
+        let mut program_size = 0;
+        for region in self.regions.iter_mut() {
+            let layout = region.flash_layout();
+            phase_layout.merge_from(layout.clone());
+            erase_size += layout.sectors().iter().map(|s| s.size()).sum::<u64>();
+            fill_size += region.data.fill_size();
+            program_size += region
+                .data
+                .program_size_estimate(encoding, !keep_unwritten_bytes);
+        }
+        (phase_layout, fill_size, erase_size, program_size)
+    }
+    fn compute_verify_size(&mut self) -> u64 {
+        let encoding = self.flash_algorithm.transfer_encoding;
+        self.regions
+            .iter_mut()
+            .map(|r| r.data.program_size_estimate(encoding, true))
+            .sum()
+    }
+    fn verify(
+        &mut self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+        ignore_filled: bool,
+    ) -> Result<bool, FlashError> {
+        Flasher::verify(self, session, progress, ignore_filled)
+    }
+}
+
+impl FlasherOps for HostSideFlasher {
+    fn algorithm_name(&self) -> &str {
+        HostSideFlasher::algorithm_name(self)
+    }
+    fn core_index(&self) -> usize {
+        self.core_index
+    }
+    fn double_buffering_supported(&self) -> bool {
+        HostSideFlasher::double_buffering_supported(self)
+    }
+    fn is_chip_erase_supported(&self, session: &Session) -> bool {
+        HostSideFlasher::is_chip_erase_supported(self, session)
+    }
+    fn add_region(
+        &mut self,
+        region: NvmRegion,
+        builder: &FlashBuilder,
+        restore_unwritten_bytes: bool,
+    ) -> Result<(), FlashError> {
+        HostSideFlasher::add_region(self, region, builder, restore_unwritten_bytes)
+    }
+    fn run_erase_all(
+        &mut self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+    ) -> Result<(), FlashError> {
+        HostSideFlasher::run_erase_all(self, session, progress)
+    }
+    fn program(
+        &mut self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+        restore_unwritten_bytes: bool,
+        enable_double_buffering: bool,
+        skip_erasing: bool,
+        verify: bool,
+    ) -> Result<(), FlashError> {
+        HostSideFlasher::program(
+            self,
+            session,
+            progress,
+            restore_unwritten_bytes,
+            enable_double_buffering,
+            skip_erasing,
+            verify,
+        )
+    }
+    fn compute_init_sizes(&mut self, _keep_unwritten_bytes: bool) -> (FlashLayout, u64, u64, u64) {
+        // Host-side always sends raw pages — no fill operations, no encoding.
+        let mut phase_layout = FlashLayout::default();
+        let mut erase_size = 0;
+        let mut program_size = 0;
+        for region in &self.regions {
+            let layout = region.flash_layout();
+            phase_layout.merge_from(layout.clone());
+            erase_size += layout.sectors().iter().map(|s| s.size()).sum::<u64>();
+            program_size += layout.pages().iter().map(|p| p.size() as u64).sum::<u64>();
+        }
+        (phase_layout, 0, erase_size, program_size)
+    }
+    fn compute_verify_size(&mut self) -> u64 {
+        self.regions
+            .iter()
+            .flat_map(|r| r.flash_layout().pages())
+            .map(|p| p.size() as u64)
+            .sum()
+    }
+    fn verify(
+        &mut self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+        ignore_filled: bool,
+    ) -> Result<bool, FlashError> {
+        HostSideFlasher::verify(self, session, progress, ignore_filled)
+    }
+}
 
 /// A trait representing a firmware image format.
 ///
@@ -634,22 +832,13 @@ impl FlashLoader {
         let mut algos = self.prepare_plan(session, false, &[])?;
 
         for flasher in algos.iter_mut() {
-            let mut program_size = 0;
-            for region in flasher.regions.iter_mut() {
-                program_size += region
-                    .data
-                    .encoder(flasher.flash_algorithm.transfer_encoding, true)
-                    .program_size();
-            }
+            let program_size = flasher.compute_verify_size();
             progress.add_progress_bar(ProgressOperation::Verify, Some(program_size));
         }
 
-        // Iterate all flash algorithms we need to use and do the flashing.
+        // Iterate all flash algorithms we need to use and do the verification.
         for mut flasher in algos {
-            tracing::debug!(
-                "Verifying ranges for algo: {}",
-                flasher.flash_algorithm.name
-            );
+            tracing::debug!("Verifying ranges for algo: {}", flasher.algorithm_name());
 
             if !flasher.verify(session, progress, true)? {
                 return Err(FlashError::Verify);
@@ -693,7 +882,7 @@ impl FlashLoader {
 
         // Iterate all flash algorithms we need to use and do the flashing.
         for mut flasher in algos {
-            tracing::debug!("Flashing ranges for algo: {}", flasher.flash_algorithm.name);
+            tracing::debug!("Flashing ranges for algo: {}", flasher.algorithm_name());
 
             if do_chip_erase {
                 tracing::debug!("    Doing chip erase...");
@@ -810,7 +999,7 @@ impl FlashLoader {
         session: &mut Session,
         restore_unwritten_bytes: bool,
         opt_preferred_algos: &[String],
-    ) -> Result<Vec<Flasher>, FlashError> {
+    ) -> Result<Vec<Box<dyn FlasherOps>>, FlashError> {
         tracing::debug!("Contents of builder:");
         for (&address, data) in &self.builder.data {
             tracing::debug!(
@@ -826,11 +1015,12 @@ impl FlashLoader {
             let Range { start, end } = algorithm.flash_properties.address_range;
 
             tracing::debug!(
-                "    algo {}: {:#010X}..{:#010X} ({} bytes)",
+                "    algo {}: {:#010X}..{:#010X} ({} bytes), loader_type: {:?}",
                 algorithm.name,
                 start,
                 end,
-                end - start
+                end - start,
+                algorithm.flash_loader_type
             );
         }
 
@@ -840,7 +1030,7 @@ impl FlashLoader {
             tracing::warn!("Memory map of flash loader does not match memory map of target!");
         }
 
-        let mut algos = Vec::<Flasher>::new();
+        let mut algos: Vec<Box<dyn FlasherOps>> = Vec::new();
 
         // Commit NVM first
 
@@ -888,18 +1078,39 @@ impl FlashLoader {
             )?;
 
             // We don't usually have more than a handful of regions, linear search should be fine.
-            tracing::debug!("     -- using algorithm: {}", algo.name);
+            tracing::debug!(
+                "     -- using algorithm: {} (loader_type: {:?})",
+                algo.name,
+                algo.flash_loader_type
+            );
+
+            // Add region to existing flasher for this algorithm+core, or create a new one.
             if let Some(entry) = algos
                 .iter_mut()
-                .find(|entry| entry.flash_algorithm.name == algo.name && entry.core_index == core)
+                .find(|f| f.algorithm_name() == algo.name && f.core_index() == core)
             {
                 entry.add_region(region, &self.builder, restore_unwritten_bytes)?;
             } else {
-                let mut flasher = Flasher::new(target, core, algo)?;
+                let mut flasher: Box<dyn FlasherOps> =
+                    if algo.flash_loader_type == FlashLoaderType::HostSide {
+                        // Get the host-side flash sequence via the architecture-agnostic
+                        // DebugSequence::debug_flash_sequence() dispatcher.  This works for
+                        // ARM, RISC-V, and Xtensa targets uniformly.
+                        let flash_sequence = session
+                            .target()
+                            .debug_sequence
+                            .debug_flash_sequence()
+                            .ok_or_else(|| FlashError::NoFlashLoaderAlgorithmAttached {
+                                name: target.name.clone(),
+                                range: region.range.clone(),
+                            })?;
+                        Box::new(HostSideFlasher::new(flash_sequence, core, algo.clone()))
+                    } else {
+                        let mut f = Flasher::new(target, core, algo)?;
+                        f.read_rtt_output(self.read_flasher_rtt);
+                        Box::new(f)
+                    };
                 flasher.add_region(region, &self.builder, restore_unwritten_bytes)?;
-
-                flasher.read_rtt_output(self.read_flasher_rtt);
-
                 algos.push(flasher);
             }
         }
@@ -909,7 +1120,7 @@ impl FlashLoader {
 
     fn initialize(
         &self,
-        algos: &mut [Flasher],
+        algos: &mut [Box<dyn FlasherOps>],
         session: &mut Session,
         options: &mut DownloadOptions,
     ) -> Result<(), FlashError> {
@@ -935,28 +1146,10 @@ impl FlashLoader {
 
         // Iterate all flash algorithms to initialize a few things.
         for flasher in algos.iter_mut() {
-            let mut phase_layout = FlashLayout::default();
+            let (phase_layout, fill_size, erase_size, program_size) =
+                flasher.compute_init_sizes(options.keep_unwritten_bytes);
 
-            let mut fill_size = 0;
-            let mut erase_size = 0;
-            let mut program_size = 0;
-
-            for region in flasher.regions.iter_mut() {
-                let layout = region.flash_layout();
-                phase_layout.merge_from(layout.clone());
-
-                erase_size += layout.sectors().iter().map(|s| s.size()).sum::<u64>();
-                fill_size += layout.fills().iter().map(|s| s.size()).sum::<u64>();
-                program_size += region
-                    .data
-                    .encoder(
-                        flasher.flash_algorithm.transfer_encoding,
-                        !options.keep_unwritten_bytes,
-                    )
-                    .program_size();
-            }
-
-            if options.keep_unwritten_bytes {
+            if options.keep_unwritten_bytes && fill_size > 0 {
                 options
                     .progress
                     .add_progress_bar(ProgressOperation::Fill, Some(fill_size));
