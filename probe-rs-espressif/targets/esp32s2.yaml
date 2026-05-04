@@ -122,7 +122,8 @@ flash_algorithms:
   pc_verify: 0x3d8
   pc_blank_check: 0x350
   pc_read: 0x3b4
-  pc_flash_size: 0x380
+  vendor_functions:
+    FlashSize: 0x380
   data_section_offset: 0xc90
   rtt_location: 0x3ffdf110
   rtt_poll_interval: 500

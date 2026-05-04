@@ -888,18 +888,26 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
         Ok(())
     }
 
-    /// Runs the ESP32-specific `read_flash_size` routine.
-    // TODO: this function should not be defined in the probe-rs library.
-    // The target yaml should provide a way to define custom functions, and ActiveFlasher
-    // should provide a way to call any custom function without apriori knowledge.
-    pub fn read_flash_size(&mut self) -> Result<u32, FlashError> {
-        tracing::debug!("Reading flash size.");
+    /// Checks if the flash algorithm defines a vendor-specific entry point with the given name.
+    pub fn has_vendor_function(&self, function: &str) -> bool {
+        self.flash_algorithm.vendor_functions.contains_key(function)
+    }
+
+    /// Calls an optional, vendor-specific entry point defined in the flash algorithm's
+    /// `vendor_functions` map.
+    ///
+    /// `function` is the name of the entry point (the key in the YAML `vendor_functions` map).
+    /// `inputs` maps to registers r0–r3; pass `None` for unused arguments.
+    pub fn call_vendor_function(
+        &mut self,
+        function: &str,
+        inputs: [Option<u64>; 4],
+    ) -> Result<u32, FlashError> {
         let algo = &self.flash_algorithm;
 
-        // Fail routine if not present.
-        let Some(pc_flash_size) = algo.pc_flash_size else {
+        let Some(&pc) = algo.vendor_functions.get(function) else {
             return Err(FlashError::FlashSizeFailed {
-                source: String::from("Flash algorithm does not implement the FlashSize function")
+                source: format!("Flash algorithm does not define vendor function '{function}'")
                     .into(),
             });
         };
@@ -907,11 +915,11 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
         let retval = self
             .call_function_and_wait(
                 &Registers {
-                    pc: pc_flash_size,
-                    r0: None,
-                    r1: None,
-                    r2: None,
-                    r3: None,
+                    pc,
+                    r0: inputs[0],
+                    r1: inputs[1],
+                    r2: inputs[2],
+                    r3: inputs[3],
                 },
                 false,
                 INIT_TIMEOUT,
@@ -922,7 +930,7 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
 
         if (retval as i32) < 0 {
             return Err(FlashError::RoutineCallFailed {
-                name: "flash_size",
+                name: "vendor_function",
                 error_code: retval,
             });
         }

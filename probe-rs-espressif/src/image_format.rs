@@ -90,7 +90,8 @@ impl ImageLoader for IdfLoader {
 
         let flash_size_result = algo
             .run_verify(session, &mut FlashProgress::empty(), |flasher, _| {
-                flasher.read_flash_size()
+                tracing::debug!("Reading flash size.");
+                flasher.call_vendor_function("FlashSize", [None; 4])
             })
             .map_err(EspIdfFormatError::FlashSizeDetection)
             .map_err(|e| into_format_error("esp-idf", e))?;

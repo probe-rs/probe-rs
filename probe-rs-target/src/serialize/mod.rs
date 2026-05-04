@@ -1,3 +1,4 @@
+mod hex_hashmap;
 mod hex_jep106;
 mod hex_keys_indexmap;
 mod hex_option;
@@ -5,6 +6,7 @@ mod hex_range;
 mod hex_u_int;
 mod serialize_u_int;
 
+pub(crate) use hex_hashmap::{deserialize as hex_hashmap_deserialize, serialize as hex_hashmap};
 pub(crate) use hex_jep106::serialize_option as hex_jep106_option;
 pub(crate) use hex_keys_indexmap::serialize as hex_keys_indexmap;
 pub(crate) use hex_option::serialize as hex_option;
