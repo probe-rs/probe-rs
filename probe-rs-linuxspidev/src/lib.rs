@@ -1,3 +1,5 @@
+#![cfg(target_os = "linux")]
+
 //! A probe that uses Linux spidev to emulate SWD using full-duplex SPI transfers.
 //!
 //! This implementation is designed to be broadly compatible with different SPI peripherals,
@@ -35,7 +37,7 @@
 //! EOF
 //! ```
 
-use crate::{
+use probe_rs::{
     CoreStatus,
     architecture::arm::{
         ArmCommunicationInterface, ArmDebugInterface, ArmError, DapError, DapProbe, RawDapAccess,
@@ -67,6 +69,13 @@ const SWD_LINE_RESET_ONES: u64 = 0x0007_FFFF_FFFF_FFFF;
 /// A factory for creating [`LinuxSpidevSwdProbe`] instances.
 #[derive(Debug)]
 pub struct LinuxSpidevSwdFactory;
+
+pub fn register_plugin() {
+    probe_rs::plugin::register_plugin(probe_rs::plugin::Plugin {
+        probe_drivers: &[&LinuxSpidevSwdFactory],
+        ..Default::default()
+    });
+}
 
 impl std::fmt::Display for LinuxSpidevSwdFactory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -222,9 +231,9 @@ impl LinuxSpidevSwdProbe {
         // Each transfer adds `idle_bytes` at the end, and AP reads need one
         // extra RDBUFF packet per chunk. So the usable space for read packets
         // is MAX_QUEUE_BYTES minus those overheads.
-        let max_reads_per_chunk = ((MAX_QUEUE_BYTES.saturating_sub(
-            idle_bytes + extra_per_chunk * READ_PACKET_SIZE,
-        )) / READ_PACKET_SIZE)
+        let max_reads_per_chunk = ((MAX_QUEUE_BYTES
+            .saturating_sub(idle_bytes + extra_per_chunk * READ_PACKET_SIZE))
+            / READ_PACKET_SIZE)
             .max(1);
 
         let read_packet_bytes = SwdReadPacket::new(address).0.reverse_bits().to_be_bytes();
@@ -308,8 +317,7 @@ impl LinuxSpidevSwdProbe {
                 .extend_from_slice(&packet[0..WRITE_PACKET_SIZE]);
 
             // If there isn't space for another write packet plus idle cycles, flush the queue.
-            let available =
-                MAX_QUEUE_BYTES.saturating_sub(self.tx_buffer.len() + idle_bytes);
+            let available = MAX_QUEUE_BYTES.saturating_sub(self.tx_buffer.len() + idle_bytes);
             if available < WRITE_PACKET_SIZE {
                 self.flush_writes()?;
             }
@@ -344,7 +352,7 @@ impl DebugProbe for LinuxSpidevSwdProbe {
         self.configure_spidev()
     }
 
-    fn detach(&mut self) -> Result<(), crate::Error> {
+    fn detach(&mut self) -> Result<(), probe_rs::Error> {
         Ok(())
     }
 

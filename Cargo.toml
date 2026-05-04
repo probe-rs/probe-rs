@@ -25,6 +25,7 @@ members = [
     "probe-rs-mi",
     "probe-rs-debug",
     "probe-rs-espressif",
+    "probe-rs-linuxspidev",
 ]
 exclude = ["probe-rs/tests/gpio-hal-blinky"]
 
@@ -33,6 +34,7 @@ probe-rs = { path = "probe-rs", version = "0.31.0" }
 probe-rs-target = { path = "probe-rs-target", version = "0.31.0" }
 probe-rs-mi = { path = "probe-rs-mi", version = "0.1.0" }
 probe-rs-espressif = { path = "probe-rs-espressif", version = "0.31.0" }
+probe-rs-linuxspidev = { path = "probe-rs-linuxspidev", version = "0.1.0" }
 
 docsplay = "0.1.1"
 thiserror = "2.0.11"

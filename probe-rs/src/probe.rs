@@ -9,8 +9,6 @@ pub mod fake_probe;
 pub mod ftdi;
 pub mod glasgow;
 pub mod jlink;
-#[cfg(target_os = "linux")]
-pub mod linuxspidevswd;
 pub mod list;
 pub(crate) mod queue;
 mod selector;
@@ -57,8 +55,6 @@ static DRIVERS: LazyLock<RwLock<Vec<&'static dyn ProbeFactory>>> = LazyLock::new
         &sifliuart::SifliUartFactory,
         &glasgow::GlasgowFactory,
         &ch347usbjtag::Ch347UsbJtagFactory,
-        #[cfg(target_os = "linux")]
-        &linuxspidevswd::LinuxSpidevSwdFactory,
     ];
 
     RwLock::new(probes)
@@ -989,8 +985,9 @@ pub(crate) enum IoSequenceItem {
     Input,
 }
 
+/// Settings for SWD
 #[derive(Debug)]
-pub(crate) struct SwdSettings {
+pub struct SwdSettings {
     /// Initial number of idle cycles between consecutive writes.
     ///
     /// When a WAIT response is received, the number of idle cycles

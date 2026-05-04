@@ -2934,7 +2934,6 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "serialport",
- "spidev",
  "test-case",
  "test-log",
  "thiserror 2.0.18",
@@ -2978,6 +2977,18 @@ dependencies = [
  "probe-rs-target",
  "serde",
  "serde_yaml",
+ "thiserror 2.0.18",
+ "tracing",
+]
+
+[[package]]
+name = "probe-rs-linuxspidev"
+version = "0.1.0"
+dependencies = [
+ "bitfield",
+ "probe-rs",
+ "probe-rs-target",
+ "spidev",
  "thiserror 2.0.18",
  "tracing",
 ]
@@ -3052,6 +3063,7 @@ dependencies = [
  "probe-rs",
  "probe-rs-debug",
  "probe-rs-espressif",
+ "probe-rs-linuxspidev",
  "probe-rs-mi",
  "probe-rs-target",
  "ratatui",
