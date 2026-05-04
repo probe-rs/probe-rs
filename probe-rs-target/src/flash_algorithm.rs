@@ -76,9 +76,9 @@ pub struct RawFlashAlgorithm {
     /// Keys are arbitrary names (e.g. `"FlashSize"`); values are offsets from the start of
     /// the algorithm's code, written as hexadecimal integers in YAML (`0x1a`).
     ///
-    /// Functions that have the `VendorFunction_` prefix in the flash algorithm's code are
+    /// Functions that have the `VendorFunc_` prefix in the flash algorithm's code are
     /// automatically added to this map, with the prefix stripped from the key. For example,
-    /// a function named `VendorFunction_FlashSize` will be added to this map with the
+    /// a function named `VendorFunc_FlashSize` will be added to this map with the
     /// key `FlashSize`.
     #[serde(
         default,
