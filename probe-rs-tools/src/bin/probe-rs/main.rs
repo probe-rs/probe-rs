@@ -23,6 +23,7 @@ use probe_rs::flashing::{
 use probe_rs::{Target, probe::list::Lister};
 use probe_rs_espressif::image_format::IdfLoader;
 use report::Report;
+
 use serde::{Deserialize, Serialize};
 use time::{OffsetDateTime, UtcOffset};
 
@@ -535,6 +536,9 @@ fn multicall_check(args: &[OsString], want: &str) -> Option<Vec<OsString>> {
 #[tokio::main]
 async fn main() -> Result<()> {
     probe_rs_espressif::register_plugin();
+
+    #[cfg(target_os = "linux")]
+    probe_rs_linuxspidev::register_plugin();
 
     // Determine the local offset as early as possible to avoid potential
     // issues with multiple threads and getting the offset.

@@ -985,8 +985,9 @@ pub(crate) enum IoSequenceItem {
     Input,
 }
 
+/// Settings for SWD
 #[derive(Debug)]
-pub(crate) struct SwdSettings {
+pub struct SwdSettings {
     /// Initial number of idle cycles between consecutive writes.
     ///
     /// When a WAIT response is received, the number of idle cycles
