@@ -910,17 +910,19 @@ impl DebugProbeInfo {
 /// capability.
 ///
 /// Currently ARM implements this idea via [crate::architecture::arm::RawDapAccess], which
-/// is then implemented by [CmsisDap] or a fallback is provided by for
-/// any [RawSwdIo + JtagAccess](crate::architecture::arm::polyfill) probes.
+/// is then implemented by [CmsisDap] or a fallback is provided for any probe that
+/// implements both `RawSwdIo` and [JtagAccess].
 ///
 /// RISC-V is close with its [crate::architecture::riscv::dtm::DtmAccess] trait.
 ///
 /// [CmsisDap]: crate::probe::cmsisdap::CmsisDap
-pub(crate) trait RawSwdIo: DebugProbe {
+pub trait RawSwdIo: DebugProbe {
+    /// Drive a sequence of SWD I/O items and return the sampled bits.
     fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
         S: IntoIterator<Item = IoSequenceItem>;
 
+    /// Drive the CMSIS-DAP SWJ pins.
     fn swj_pins(
         &mut self,
         pin_out: u32,
@@ -928,6 +930,7 @@ pub(crate) trait RawSwdIo: DebugProbe {
         pin_wait: u32,
     ) -> Result<u32, DebugProbeError>;
 
+    /// Returns the SWD wire-protocol timing settings used by this probe.
     fn swd_settings(&self) -> &SwdSettings;
 }
 
@@ -979,14 +982,18 @@ pub trait RawJtagIo: DebugProbe {
     }
 }
 
+/// One step of a [`RawSwdIo::swd_io`] sequence.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) enum IoSequenceItem {
+pub enum IoSequenceItem {
+    /// Drive SWDIO to the given level for one clock.
     Output(bool),
+    /// Sample SWDIO for one clock.
     Input,
 }
 
+/// SWD wire-protocol timing settings used by [`RawSwdIo`] probes.
 #[derive(Debug)]
-pub(crate) struct SwdSettings {
+pub struct SwdSettings {
     /// Initial number of idle cycles between consecutive writes.
     ///
     /// When a WAIT response is received, the number of idle cycles
