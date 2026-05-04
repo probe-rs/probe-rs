@@ -31,16 +31,28 @@ use crate::{
     rpc::{
         Key,
         functions::{
-            AttachEndpoint, BuildEndpoint, ChipInfoEndpoint, CreateRttClientEndpoint,
-            CreateTempFileEndpoint, EraseEndpoint, FlashEndpoint, ListChipFamiliesEndpoint,
-            ListProbesEndpoint, ListTestsEndpoint, LoadChipFamilyEndpoint, MonitorEndpoint,
-            ProgressEventTopic, ReadMemory8Endpoint, ReadMemory16Endpoint, ReadMemory32Endpoint,
-            ReadMemory64Endpoint, ResetCoreAndHaltEndpoint, ResetCoreEndpoint,
-            ResumeAllCoresEndpoint, RpcResult, RttDownEndpoint, RunTestEndpoint,
-            SelectProbeEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint,
-            TempFileDataEndpoint, TokioSpawner, VerifyEndpoint, WriteMemory8Endpoint,
-            WriteMemory16Endpoint, WriteMemory32Endpoint, WriteMemory64Endpoint,
+            AttachEndpoint, BuildEndpoint, ChipInfoEndpoint, CoreAvailableBpUnitsEndpoint,
+            CoreClearHwBpEndpoint, CoreDisableVcEndpoint, CoreEnableVcEndpoint, CoreHaltEndpoint,
+            CoreHaltedEndpoint, CoreInstructionSetEndpoint, CoreReadRegEndpoint,
+            CoreReadRegistersEndpoint, CoreRunEndpoint, CoreSetHwBpEndpoint, CoreStatusEndpoint,
+            CoreStepEndpoint, CoreWaitHaltedEndpoint, CoreWriteRegEndpoint,
+            CreateRttClientEndpoint, CreateTempFileEndpoint, EraseEndpoint, FlashEndpoint,
+            ListChipFamiliesEndpoint, ListProbesEndpoint, ListTestsEndpoint,
+            LoadChipFamilyEndpoint, MonitorEndpoint, ProgressEventTopic, ReadMemory8Endpoint,
+            ReadMemory16Endpoint, ReadMemory32Endpoint, ReadMemory64Endpoint,
+            ResetCoreAndHaltEndpoint, ResetCoreEndpoint, ResumeAllCoresEndpoint, RpcResult,
+            RttDownEndpoint, RunTestEndpoint, SelectProbeEndpoint, TakeStackTraceEndpoint,
+            TargetInfoDataTopic, TargetInfoEndpoint, TempFileDataEndpoint, TokioSpawner,
+            VerifyEndpoint, WriteMemory8Endpoint, WriteMemory16Endpoint, WriteMemory32Endpoint,
+            WriteMemory64Endpoint,
             chip::{ChipData, ChipFamily, ChipInfoRequest, LoadChipFamilyRequest},
+            core_ops::{
+                CoreAccessRequest, CoreBreakpointRequest, CoreHaltRequest, CoreReadRegRequest,
+                CoreReadRegistersRequest, CoreVectorCatchRequest, CoreWaitHaltedRequest,
+                CoreWriteRegRequest, WireCoreInformation, WireCoreStatus, WireInstructionSet,
+                WireRegisterId, WireRegisterReadResult, WireRegisterValue,
+                WireVectorCatchCondition,
+            },
             file::{AppendFileRequest, TempFile},
             flash::{
                 BootInfo, BuildRequest, BuildResult, DownloadOptions, EraseCommand, EraseRequest,
@@ -451,6 +463,15 @@ impl SessionInterface {
         self.client.clone()
     }
 
+    /// The server-side [`Key`] identifying the attached [`Session`].
+    ///
+    /// Exposed so that alternate backends (e.g. the DAP server's RPC
+    /// backend) can reuse the same session identifier when building their
+    /// own client types.
+    pub fn session_key(&self) -> Key<Session> {
+        self.sessid
+    }
+
     pub fn core(&self, core: usize) -> CoreInterface {
         CoreInterface {
             sessid: self.sessid,
@@ -674,6 +695,24 @@ pub struct CoreInterface {
 }
 
 impl CoreInterface {
+    /// Create a client for a specific core on an attached session.
+    ///
+    /// This constructor is used by the RPC-backed DAP backend, which needs
+    /// to synthesize a core client on every access.
+    pub(crate) fn new_for_backend(client: RpcClient, sessid: Key<Session>, core: u32) -> Self {
+        Self {
+            sessid,
+            core,
+            client,
+        }
+    }
+}
+
+#[allow(
+    dead_code,
+    reason = "Core control methods are consumed by the upcoming RPC-backed DAP backend."
+)]
+impl CoreInterface {
     pub async fn read_memory_8(&self, address: u64, count: usize) -> anyhow::Result<Vec<u8>> {
         self.client
             .send_resp::<ReadMemory8Endpoint, _>(&ReadMemoryRequest {
@@ -771,6 +810,158 @@ impl CoreInterface {
                 sessid: self.sessid,
                 core: self.core,
                 timeout,
+            })
+            .await
+    }
+
+    fn access_request(&self) -> CoreAccessRequest {
+        CoreAccessRequest {
+            sessid: self.sessid,
+            core: self.core,
+        }
+    }
+
+    pub async fn status(&self) -> anyhow::Result<WireCoreStatus> {
+        self.client
+            .send_resp::<CoreStatusEndpoint, _>(&self.access_request())
+            .await
+    }
+
+    pub async fn core_halted(&self) -> anyhow::Result<bool> {
+        self.client
+            .send_resp::<CoreHaltedEndpoint, _>(&self.access_request())
+            .await
+    }
+
+    pub async fn wait_for_core_halted(&self, timeout: Duration) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<CoreWaitHaltedEndpoint, _>(&CoreWaitHaltedRequest {
+                sessid: self.sessid,
+                core: self.core,
+                timeout,
+            })
+            .await
+    }
+
+    pub async fn halt(&self, timeout: Duration) -> anyhow::Result<WireCoreInformation> {
+        self.client
+            .send_resp::<CoreHaltEndpoint, _>(&CoreHaltRequest {
+                sessid: self.sessid,
+                core: self.core,
+                timeout,
+            })
+            .await
+    }
+
+    pub async fn run(&self) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<CoreRunEndpoint, _>(&self.access_request())
+            .await
+    }
+
+    pub async fn step(&self) -> anyhow::Result<WireCoreInformation> {
+        self.client
+            .send_resp::<CoreStepEndpoint, _>(&self.access_request())
+            .await
+    }
+
+    pub async fn read_core_reg(&self, id: WireRegisterId) -> anyhow::Result<WireRegisterValue> {
+        self.client
+            .send_resp::<CoreReadRegEndpoint, _>(&CoreReadRegRequest {
+                sessid: self.sessid,
+                core: self.core,
+                id,
+            })
+            .await
+    }
+
+    pub async fn write_core_reg(
+        &self,
+        id: WireRegisterId,
+        value: WireRegisterValue,
+    ) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<CoreWriteRegEndpoint, _>(&CoreWriteRegRequest {
+                sessid: self.sessid,
+                core: self.core,
+                id,
+                value,
+            })
+            .await
+    }
+
+    pub async fn set_hw_breakpoint(&self, address: u64) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<CoreSetHwBpEndpoint, _>(&CoreBreakpointRequest {
+                sessid: self.sessid,
+                core: self.core,
+                address,
+            })
+            .await
+    }
+
+    pub async fn clear_hw_breakpoint(&self, address: u64) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<CoreClearHwBpEndpoint, _>(&CoreBreakpointRequest {
+                sessid: self.sessid,
+                core: self.core,
+                address,
+            })
+            .await
+    }
+
+    pub async fn available_breakpoint_units(&self) -> anyhow::Result<u32> {
+        self.client
+            .send_resp::<CoreAvailableBpUnitsEndpoint, _>(&self.access_request())
+            .await
+    }
+
+    pub async fn enable_vector_catch(
+        &self,
+        condition: WireVectorCatchCondition,
+    ) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<CoreEnableVcEndpoint, _>(&CoreVectorCatchRequest {
+                sessid: self.sessid,
+                core: self.core,
+                condition,
+            })
+            .await
+    }
+
+    pub async fn disable_vector_catch(
+        &self,
+        condition: WireVectorCatchCondition,
+    ) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<CoreDisableVcEndpoint, _>(&CoreVectorCatchRequest {
+                sessid: self.sessid,
+                core: self.core,
+                condition,
+            })
+            .await
+    }
+
+    pub async fn instruction_set(&self) -> anyhow::Result<WireInstructionSet> {
+        self.client
+            .send_resp::<CoreInstructionSetEndpoint, _>(&self.access_request())
+            .await
+    }
+
+    /// Read the given set of registers in a single round-trip.
+    ///
+    /// Per-register failures are reported in place as `None`, in the same
+    /// order as `ids`. Callers that need strict "all-or-nothing" semantics
+    /// can inspect the returned slots themselves.
+    pub async fn read_registers(
+        &self,
+        ids: Vec<WireRegisterId>,
+    ) -> anyhow::Result<Vec<WireRegisterReadResult>> {
+        self.client
+            .send_resp::<CoreReadRegistersEndpoint, _>(&CoreReadRegistersRequest {
+                sessid: self.sessid,
+                core: self.core,
+                ids,
             })
             .await
     }
