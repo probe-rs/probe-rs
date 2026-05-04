@@ -66,10 +66,9 @@ probe-rs info --probe 0:0:/dev/spidev0.0
 ```
 
 The selector ignores VID:PID, and the serial portion carries the actual
-spidev path, such as [`/dev/spidev0.0`](probe-rs/src/probe/linuxspidevswd/mod.rs).
+spidev path, such as `/dev/spidev0.0`.
 
-For safety, [`probe-rs list`](probe-rs/src/probe/list.rs) only exposes explicit
-[`/dev/spidev_swd*`](probe-rs/src/probe/linuxspidevswd/mod.rs) udev links, so probe-rs does not
+For safety, `probe-rs list` only exposes explicit `/dev/spidev_swd*` udev links, so probe-rs does not
 implicitly try every SPI device on the system.
 
 ### Halting the attached chip

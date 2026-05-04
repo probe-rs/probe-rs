@@ -213,45 +213,77 @@ impl LinuxSpidevSwdProbe {
         // Flush any queued writes.
         self.flush_writes()?;
 
+        // AP reads are pipelined: each chunk needs one extra RDBUFF packet so the
+        // last value is captured, and the first response of each chunk must be
+        // skipped (it carries data queued before the chunk started).
+        let idle_bytes = self.swd_settings.idle_cycles_after_transfer.div_ceil(8);
+        let extra_per_chunk = if address.is_ap() { 1 } else { 0 };
+        // Maximum number of read packets per SPI transfer (at least 1).
+        // Each transfer adds `idle_bytes` at the end, and AP reads need one
+        // extra RDBUFF packet per chunk. So the usable space for read packets
+        // is MAX_QUEUE_BYTES minus those overheads.
+        let max_reads_per_chunk = ((MAX_QUEUE_BYTES.saturating_sub(
+            idle_bytes + extra_per_chunk * READ_PACKET_SIZE,
+        )) / READ_PACKET_SIZE)
+            .max(1);
+
+        let read_packet_bytes = SwdReadPacket::new(address).0.reverse_bits().to_be_bytes();
+        let rdbuff_packet_bytes = if address.is_ap() {
+            Some(
+                SwdReadPacket::new(RegisterAddress::DpRegister(RdBuff::ADDRESS))
+                    .0
+                    .reverse_bits()
+                    .to_be_bytes(),
+            )
+        } else {
+            None
+        };
+
+        // Reserve capacity for the largest possible chunk up-front.
         self.tx_buffer
-            .reserve((values.len() + 1) * READ_PACKET_SIZE);
-        let packet = SwdReadPacket::new(address);
-        for _ in 0..values.len() {
-            let packet = packet.0.reverse_bits().to_be_bytes();
-            self.tx_buffer
-                .extend_from_slice(&packet[0..READ_PACKET_SIZE]);
-        }
+            .reserve((max_reads_per_chunk + extra_per_chunk) * READ_PACKET_SIZE);
 
-        if address.is_ap() {
-            // AP reads are pipelined. We need to insert a read to Dap:RDBUFF to get
-            // the actual return value for the final read.
-            let packet = SwdReadPacket::new(RegisterAddress::DpRegister(RdBuff::ADDRESS));
-            let packet = packet.0.reverse_bits().to_be_bytes();
-            self.tx_buffer
-                .extend_from_slice(&packet[0..READ_PACKET_SIZE]);
-        }
+        let mut offset = 0;
+        while offset < values.len() {
+            let chunk_len = (values.len() - offset).min(max_reads_per_chunk);
 
-        // Do the transfer and read results.
-        let mut i = 0;
-        let mut skip_packet = address.is_ap();
-        for packet in self.transfer(READ_PACKET_SIZE)? {
-            let response = SwdReadPacket(packet);
-            parse_swd_ack(response.ack())?;
-
-            // Check RDATA parity bit.
-            let parity = (response.data().count_ones() & 1) == 1;
-            if parity != response.parity2() {
-                return Err(ArmError::Dap(DapError::IncorrectParity));
+            // Build the TX buffer for this chunk.
+            for _ in 0..chunk_len {
+                self.tx_buffer
+                    .extend_from_slice(&read_packet_bytes[0..READ_PACKET_SIZE]);
+            }
+            if let Some(ref rdbuff_bytes) = rdbuff_packet_bytes {
+                // AP reads are pipelined. We need to insert a read to Dap:RDBUFF to get
+                // the actual return value for the final read.
+                self.tx_buffer
+                    .extend_from_slice(&rdbuff_bytes[0..READ_PACKET_SIZE]);
             }
 
-            // Possibly skip the first packet.
-            if skip_packet {
-                skip_packet = false;
-                continue;
+            // Do the transfer and collect results.
+            let mut i = 0;
+            let mut skip_first = address.is_ap();
+            for packet in self.transfer(READ_PACKET_SIZE)? {
+                let response = SwdReadPacket(packet);
+                parse_swd_ack(response.ack())?;
+
+                // Check RDATA parity bit.
+                let parity = (response.data().count_ones() & 1) == 1;
+                if parity != response.parity2() {
+                    return Err(ArmError::Dap(DapError::IncorrectParity));
+                }
+
+                // Skip the first response of each AP-read chunk: it carries
+                // data that was queued before this chunk started.
+                if skip_first {
+                    skip_first = false;
+                    continue;
+                }
+
+                values[offset + i] = response.data();
+                i += 1;
             }
 
-            values[i] = response.data();
-            i += 1;
+            offset += chunk_len;
         }
 
         Ok(())
@@ -262,6 +294,10 @@ impl LinuxSpidevSwdProbe {
         address: RegisterAddress,
         values: &[u32],
     ) -> Result<(), ArmError> {
+        // Idle bytes appended by transfer() must be accounted for in the
+        // flush threshold so that tx_buffer never exceeds MAX_QUEUE_BYTES.
+        let idle_bytes = self.swd_settings.idle_cycles_after_transfer.div_ceil(8);
+
         self.tx_buffer.reserve(values.len() * WRITE_PACKET_SIZE);
         let mut packet = SwdWritePacket::new(address, 0);
         for &value in values {
@@ -272,13 +308,16 @@ impl LinuxSpidevSwdProbe {
                 .extend_from_slice(&packet[0..WRITE_PACKET_SIZE]);
 
             // If there isn't space for another write packet plus idle cycles, flush the queue.
-            let available = MAX_QUEUE_BYTES - self.tx_buffer.len() - 1;
+            let available =
+                MAX_QUEUE_BYTES.saturating_sub(self.tx_buffer.len() + idle_bytes);
             if available < WRITE_PACKET_SIZE {
                 self.flush_writes()?;
             }
         }
 
-        Ok(())
+        // Flush remaining queued writes and parse ACKs so that WAIT responses
+        // are detected and the caller can retry.
+        self.flush_writes()
     }
 }
 
