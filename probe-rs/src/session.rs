@@ -769,7 +769,9 @@ impl Session {
         let interface = match &mut self.interfaces {
             ArchitectureInterface::Arm(state) => state.deref_mut(),
             ArchitectureInterface::ArmWithRiscv { arm, .. } => arm.deref_mut(),
-            ArchitectureInterface::Jtag(..) => return Err(ArmError::NoArmTarget),
+            ArchitectureInterface::Jtag(..) | ArchitectureInterface::Avr(_) => {
+                return Err(ArmError::NoArmTarget);
+            }
         };
 
         Ok(interface)
@@ -809,7 +811,9 @@ impl Session {
                     Err(RiscvError::NoRiscvTarget.into())
                 }
             }
-            ArchitectureInterface::Arm(_) => Err(RiscvError::NoRiscvTarget.into()),
+            ArchitectureInterface::Arm(_) | ArchitectureInterface::Avr(_) => {
+                Err(RiscvError::NoRiscvTarget.into())
+            }
         }
     }
 
@@ -911,7 +915,7 @@ impl Session {
         let interface_ref = match &mut self.interfaces {
             ArchitectureInterface::Arm(i) => i.deref_mut(),
             ArchitectureInterface::ArmWithRiscv { arm, .. } => arm.deref_mut(),
-            ArchitectureInterface::Jtag(..) => {
+            ArchitectureInterface::Jtag(..) | ArchitectureInterface::Avr(_) => {
                 return Err(Error::NotImplemented(
                     "Debug Erase Sequence is not implemented for non-ARM targets.",
                 ));
@@ -945,7 +949,7 @@ impl Session {
                         core_state.enable_arm_debug(arm.deref_mut())?;
                     }
                 }
-                ArchitectureInterface::Jtag(..) => {}
+                ArchitectureInterface::Jtag(..) | ArchitectureInterface::Avr(_) => {}
             },
             Err(e) => return Err(Error::Arm(e)),
         }
