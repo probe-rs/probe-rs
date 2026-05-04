@@ -2,6 +2,7 @@ use crate::{
     rpc::{client::RpcClient, functions::flash::EraseCommand},
     util::{cli, common_options::ProbeOptions, flash::CliProgressBars},
 };
+use probe_rs::probe::WireProtocol;
 
 #[derive(clap::Parser)]
 pub struct Cmd {
@@ -18,6 +19,10 @@ pub struct Cmd {
 
 impl Cmd {
     pub async fn run(self, client: RpcClient) -> anyhow::Result<()> {
+        if self.common.protocol == Some(WireProtocol::Updi) && self.read_flasher_rtt {
+            anyhow::bail!("'erase --protocol updi' does not support '--read-flasher-rtt'.");
+        }
+
         let session = cli::attach_probe(&client, self.common, false).await?;
 
         let pb = if self.disable_progressbars {

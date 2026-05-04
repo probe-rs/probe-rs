@@ -22,7 +22,10 @@ use probe_rs::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState,
         },
     },
-    probe::{Probe, WireProtocol as ProbeRsWireProtocol},
+    probe::{
+        Probe, WireProtocol as ProbeRsWireProtocol,
+        cmsisdap::{CmsisDap, query_attached_pkobn_updi},
+    },
 };
 use probe_rs_target::ScanChainElement;
 use serde::{Deserialize, Serialize};
@@ -60,6 +63,7 @@ impl From<&TargetInfoRequest> for ProbeOptions {
             protocol: match request.protocol {
                 WireProtocol::Jtag => Some(ProbeRsWireProtocol::Jtag),
                 WireProtocol::Swd => Some(ProbeRsWireProtocol::Swd),
+                WireProtocol::Updi => Some(ProbeRsWireProtocol::Updi),
             },
             non_interactive: true,
             probe: Some(request.probe.selector().into()),
@@ -89,6 +93,7 @@ pub async fn target_info(
         request.protocol,
         probe_options.connect_under_reset(),
         request.target_sel,
+        &registry,
     )
     .await
     {
@@ -301,6 +306,7 @@ async fn try_show_info(
     protocol: WireProtocol,
     connect_under_reset: bool,
     target_sel: Option<u32>,
+    registry: &probe_rs::config::Registry,
 ) -> anyhow::Result<()> {
     probe.select_protocol(ProbeRsWireProtocol::from(protocol))?;
 
@@ -323,7 +329,7 @@ async fn try_show_info(
         probe.attach_to_unspecified()?;
     }
 
-    if probe.has_arm_debug_interface() {
+    if probe.has_arm_debug_interface() && protocol != WireProtocol::Updi {
         let dp_addr = if let Some(target_sel) = target_sel {
             vec![dp::DpAddress::Multidrop(target_sel)]
         } else {
@@ -399,6 +405,17 @@ async fn try_show_info(
         .await?;
     }
 
+    if let Err(error) = try_read_avr_info(ctx, &mut probe, protocol, registry).await {
+        ctx.publish::<TargetInfoDataTopic>(
+            VarSeq::Seq2(0),
+            &InfoEvent::Error {
+                architecture: "AVR".to_string(),
+                error: format!("{error:?}"),
+            },
+        )
+        .await?;
+    }
+
     Ok(())
 }
 
@@ -468,6 +485,50 @@ async fn try_read_xtensa_info(
             },
         )
         .await?;
+    }
+
+    Ok(())
+}
+
+async fn try_read_avr_info(
+    ctx: &mut RpcContext,
+    probe: &mut Probe,
+    protocol: WireProtocol,
+    registry: &probe_rs::config::Registry,
+) -> Result<(), anyhow::Error> {
+    if protocol == WireProtocol::Updi {
+        tracing::debug!("Trying to show AVR chip information");
+        let avr_chips: Vec<probe_rs::probe::cmsisdap::AvrChipDescriptor> = registry
+            .families()
+            .iter()
+            .flat_map(|f| f.variants())
+            .filter_map(|chip| {
+                chip.cores
+                    .first()
+                    .and_then(|core| match &core.core_access_options {
+                        probe_rs_target::CoreAccessOptions::Avr(opts) => {
+                            let mut desc = probe_rs::probe::cmsisdap::AvrChipDescriptor::from(opts);
+                            desc.name = chip.name.clone();
+                            Some(desc)
+                        }
+                        _ => None,
+                    })
+            })
+            .collect();
+
+        let probe_name = probe.get_name();
+        let cmsis: &mut CmsisDap = Probe::try_into(probe)
+            .ok_or_else(|| anyhow::anyhow!("UPDI info requires a CMSIS-DAP probe"))?;
+        let info = query_attached_pkobn_updi(cmsis, &avr_chips)?;
+        ctx.publish::<TargetInfoDataTopic>(
+            VarSeq::Seq2(0),
+            &InfoEvent::Message(format!("Probe: {probe_name}")),
+        )
+        .await?;
+        for line in info.format_info_lines() {
+            ctx.publish::<TargetInfoDataTopic>(VarSeq::Seq2(0), &InfoEvent::Message(line))
+                .await?;
+        }
     }
 
     Ok(())
