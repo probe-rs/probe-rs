@@ -343,10 +343,14 @@ impl BootInfo {
                 session.prepare_running_on_ram(*vector_table_addr, core_id)?;
             }
             BootInfo::Other => {
-                // reset the core to leave it in a consistent state after flashing
-                session
-                    .core(core_id)?
-                    .reset_and_halt(Duration::from_millis(100))?;
+                // Probe-assisted flash (WCH-LinkE) already reset and started the
+                // core via the probe's built-in command.  Skip the generic RISC-V
+                // reset here to avoid DMI timeouts.
+                if !session.is_probe_assisted() {
+                    session
+                        .core(core_id)?
+                        .reset_and_halt(Duration::from_millis(100))?;
+                }
             }
         }
 
@@ -442,7 +446,22 @@ fn erase_impl(
 
     match request.command {
         EraseCommand::All => {
-            flashing::erase_all(&mut session, &mut progress, request.read_flasher_rtt)?
+            // Try probe-assisted erase first (e.g., WCH-Link firmware command)
+            match session.try_erase_flash_via_probe() {
+                Ok(true) => {
+                    tracing::info!("Chip erased via probe firmware command.");
+                }
+                Ok(false) => {
+                    flashing::erase_all(&mut session, &mut progress, request.read_flasher_rtt)?;
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "Probe-assisted erase failed: {:?}, falling back to normal path",
+                        e
+                    );
+                    flashing::erase_all(&mut session, &mut progress, request.read_flasher_rtt)?;
+                }
+            }
         }
     }
 

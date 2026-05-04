@@ -114,6 +114,8 @@ pub enum RiscvChip {
     CH32L103 = 0x0E, // 14
     /// CH641 Qingke-V2A series, USB-PD, fallback as CH32V003
     CH641 = 0x49,
+    /// CH32H415/CH32H416/CH32H417 Qingke-V5F+Qingke-V3F series
+    CH32H41X = 0xC6,
 }
 
 impl RiscvChip {
@@ -132,6 +134,7 @@ impl RiscvChip {
             0x0D => Some(RiscvChip::CH32X035),
             0x0E => Some(RiscvChip::CH32L103),
             0x49 => Some(RiscvChip::CH641),
+            0xC6 => Some(RiscvChip::CH32H41X),
             _ => None,
         }
     }
@@ -147,6 +150,7 @@ impl RiscvChip {
                 | RiscvChip::CH32L103
                 | RiscvChip::CH32X035
                 | RiscvChip::CH641
+                | RiscvChip::CH32H41X
         )
     }
 }
@@ -195,7 +199,7 @@ pub struct WchLink {
     v_major: u8,
     v_minor: u8,
     /// Chip family
-    chip_family: RiscvChip,
+    pub(crate) chip_family: RiscvChip,
     /// Chip id to identify the target chip variant
     chip_id: u32,
     // Hack to support NOP after READ
@@ -278,6 +282,297 @@ impl WchLink {
         let resp = self.device.send_command(commands::DmiOp::nop())?;
 
         Ok((resp.addr, resp.data, resp.op))
+    }
+
+    // ── Probe-assisted Flash Operations ──────────────────
+
+    /// Returns the raw chip ID as detected by the firmware (e.g. 0x4170052D).
+    pub fn chip_id(&self) -> u32 {
+        self.chip_id
+    }
+
+    /// Returns the chip family name (e.g. "CH32H41X") as detected by the firmware.
+    pub fn chip_family_name(&self) -> &str {
+        match self.chip_family {
+            RiscvChip::CH32V103 => "CH32V103",
+            RiscvChip::CH57X => "CH57X",
+            RiscvChip::CH56X => "CH56X",
+            RiscvChip::CH32V20X => "CH32V20X",
+            RiscvChip::CH32V30X => "CH32V30X",
+            RiscvChip::CH58X => "CH58X",
+            RiscvChip::CH32V003 => "CH32V003",
+            RiscvChip::CH8571 => "CH8571",
+            RiscvChip::CH59X => "CH59X",
+            RiscvChip::CH643 => "CH643",
+            RiscvChip::CH32X035 => "CH32X035",
+            RiscvChip::CH32L103 => "CH32L103",
+            RiscvChip::CH641 => "CH641",
+            RiscvChip::CH32H41X => "CH32H41X (CH32H415/CH32H416/CH32H417)",
+        }
+    }
+
+    /// Returns true if the currently attached chip supports probe-assisted
+    /// flash operations (erase + program + verify via firmware commands).
+    pub(crate) fn supports_probe_assisted_flash(&self) -> bool {
+        matches!(self.chip_family, RiscvChip::CH32H41X)
+    }
+
+    /// CH32H417 flash algorithm binary, taken from wlink flash_op::CH32H417.
+    /// This 618-byte binary is sent to the WCH-Link probe firmware,
+    /// which handles loading and executing it on the target.
+    const CH32H417_FLASH_OP: &'static [u8] = &[
+        0x01, 0x11, 0x02, 0xce, 0x93, 0x77, 0x15, 0x00, 0x99, 0xcf, 0xb7, 0x06, 0x67, 0x45, 0xb7,
+        0x27, 0x02, 0x40, 0x93, 0x86, 0x36, 0x12, 0x37, 0x97, 0xef, 0xcd, 0xd4, 0xc3, 0x13, 0x07,
+        0xb7, 0x9a, 0xd8, 0xc3, 0xd4, 0xd3, 0xd8, 0xd3, 0x93, 0x77, 0x25, 0x00, 0xc1, 0xe3, 0x93,
+        0x77, 0x45, 0x00, 0xed, 0xe7, 0x93, 0x77, 0x85, 0x00, 0x63, 0x8d, 0x07, 0x1c, 0x93, 0x07,
+        0xf6, 0x0f, 0x2e, 0xc6, 0xa1, 0x83, 0x3e, 0xca, 0x37, 0x27, 0x02, 0x40, 0x1c, 0x4b, 0xc1,
+        0x66, 0x41, 0x68, 0xd5, 0x8f, 0x1c, 0xcb, 0xb7, 0x16, 0x10, 0x20, 0xb7, 0x27, 0x02, 0x40,
+        0x93, 0x08, 0x00, 0x04, 0x37, 0x03, 0x20, 0x00, 0x98, 0x4b, 0x33, 0x67, 0x07, 0x01, 0x98,
+        0xcb, 0xd8, 0x47, 0x05, 0x8b, 0x75, 0xff, 0x32, 0x47, 0x3a, 0xc8, 0x46, 0xcc, 0x62, 0x47,
+        0x63, 0x1e, 0x07, 0x14, 0x98, 0x4b, 0x33, 0x67, 0x67, 0x00, 0x98, 0xcb, 0xd8, 0x47, 0x05,
+        0x8b, 0x75, 0xff, 0xd8, 0x47, 0x41, 0x8b, 0x63, 0x03, 0x07, 0x16, 0xd8, 0x47, 0xc1, 0x76,
+        0xfd, 0x16, 0x13, 0x67, 0x07, 0x01, 0xd8, 0xc7, 0x98, 0x4b, 0x21, 0x45, 0x75, 0x8f, 0x98,
+        0xcb, 0x05, 0x61, 0x02, 0x90, 0x85, 0x68, 0xad, 0x66, 0x37, 0x08, 0xfc, 0xff, 0x02, 0xca,
+        0x39, 0x43, 0xb7, 0x27, 0x02, 0x40, 0x13, 0x8e, 0x08, 0x80, 0xb7, 0x0e, 0x04, 0x00, 0x37,
+        0x3f, 0x00, 0x40, 0x93, 0x86, 0xa6, 0xaa, 0x7d, 0x18, 0x52, 0x47, 0xe3, 0x6f, 0xe3, 0xf4,
+        0xd8, 0x57, 0x93, 0x1f, 0x37, 0x00, 0x52, 0x47, 0x63, 0xda, 0x0f, 0x02, 0x72, 0x97, 0x42,
+        0x07, 0x3a, 0xc6, 0x98, 0x4b, 0x33, 0x67, 0xd7, 0x01, 0x98, 0xcb, 0x32, 0x47, 0xd8, 0xcb,
+        0x98, 0x4b, 0x13, 0x67, 0x07, 0x04, 0x98, 0xcb, 0xd8, 0x47, 0x05, 0x8b, 0x01, 0xef, 0x98,
+        0x4b, 0x33, 0x77, 0x07, 0x01, 0x98, 0xcb, 0x52, 0x47, 0x05, 0x07, 0x3a, 0xca, 0xc1, 0xb7,
+        0x46, 0x97, 0x3e, 0x07, 0xc1, 0xbf, 0x23, 0x20, 0xdf, 0x00, 0xc5, 0xb7, 0xb7, 0x27, 0x02,
+        0x40, 0xdc, 0x57, 0x13, 0x97, 0x37, 0x00, 0x63, 0x5f, 0x07, 0x04, 0x93, 0x97, 0x35, 0x01,
+        0xe3, 0xc3, 0x07, 0xf0, 0x85, 0x67, 0xfd, 0x17, 0xb2, 0x97, 0xb1, 0x83, 0x2e, 0xc6, 0xad,
+        0x66, 0x3e, 0xca, 0xb7, 0x38, 0x00, 0x40, 0xb7, 0x27, 0x02, 0x40, 0x93, 0x86, 0xa6, 0xaa,
+        0x05, 0x68, 0x98, 0x4b, 0x13, 0x67, 0x27, 0x00, 0x98, 0xcb, 0x32, 0x47, 0xd8, 0xcb, 0x98,
+        0x4b, 0x13, 0x67, 0x07, 0x04, 0x98, 0xcb, 0xd8, 0x47, 0x05, 0x8b, 0x01, 0xef, 0x98, 0x4b,
+        0x75, 0x9b, 0x98, 0xcb, 0x32, 0x47, 0x42, 0x97, 0x3a, 0xc6, 0x52, 0x47, 0x7d, 0x17, 0x3a,
+        0xca, 0x71, 0xfb, 0x65, 0xbd, 0x23, 0xa0, 0xd8, 0x00, 0xc5, 0xb7, 0x85, 0x67, 0xfd, 0x17,
+        0xb2, 0x97, 0xb1, 0x83, 0x2e, 0xc6, 0xad, 0x66, 0x3e, 0xca, 0xb7, 0x38, 0x00, 0x40, 0xb7,
+        0x27, 0x02, 0x40, 0x93, 0x86, 0xa6, 0xaa, 0x05, 0x68, 0x98, 0x4b, 0x13, 0x67, 0x27, 0x00,
+        0x98, 0xcb, 0x32, 0x47, 0xd8, 0xcb, 0x98, 0x4b, 0x13, 0x67, 0x07, 0x04, 0x98, 0xcb, 0xd8,
+        0x47, 0x05, 0x8b, 0x01, 0xef, 0x98, 0x4b, 0x75, 0x9b, 0x98, 0xcb, 0x32, 0x47, 0x42, 0x97,
+        0x3a, 0xc6, 0x52, 0x47, 0x7d, 0x17, 0x3a, 0xca, 0x71, 0xfb, 0x9d, 0xb5, 0x23, 0xa0, 0xd8,
+        0x00, 0xc5, 0xb7, 0x42, 0x47, 0x13, 0x8e, 0x46, 0x00, 0x94, 0x42, 0x14, 0xc3, 0x42, 0x47,
+        0x11, 0x07, 0x3a, 0xc8, 0x62, 0x47, 0x7d, 0x17, 0x3a, 0xcc, 0xd8, 0x47, 0x09, 0x8b, 0x75,
+        0xff, 0xf2, 0x86, 0x51, 0xb5, 0x32, 0x47, 0x13, 0x07, 0x07, 0x10, 0x3a, 0xc6, 0x52, 0x47,
+        0x7d, 0x17, 0x3a, 0xca, 0xe3, 0x10, 0x07, 0xe6, 0x98, 0x4b, 0xc1, 0x76, 0xfd, 0x16, 0x75,
+        0x8f, 0x98, 0xcb, 0x41, 0x89, 0x19, 0xe1, 0x01, 0x45, 0x41, 0xbd, 0x2e, 0xc6, 0x0d, 0x06,
+        0x02, 0xca, 0x09, 0x82, 0x32, 0xcc, 0xb7, 0x17, 0x10, 0x20, 0x98, 0x43, 0x13, 0x86, 0x47,
+        0x00, 0xd2, 0x47, 0xb2, 0x46, 0x8a, 0x07, 0xb6, 0x97, 0x9c, 0x43, 0x63, 0x18, 0xf7, 0x02,
+        0xd2, 0x47, 0x32, 0x47, 0x8a, 0x07, 0xba, 0x97, 0x98, 0x43, 0xf2, 0x47, 0xba, 0x97, 0x3e,
+        0xce, 0xd2, 0x47, 0x85, 0x07, 0x3e, 0xca, 0xd2, 0x46, 0x62, 0x47, 0xb2, 0x87, 0xe3, 0xe8,
+        0xe6, 0xfc, 0xb7, 0x27, 0x10, 0x20, 0x98, 0x4b, 0xf2, 0x47, 0xe3, 0x09, 0xf7, 0xfa, 0x41,
+        0x45, 0x3d, 0xbd,
+    ];
+
+    /// Erase the entire code flash using the WCH-Link firmware's built-in erase command.
+    /// This bypasses the normal probe-rs flash algorithm flow and uses the probe's
+    /// proprietary command instead, which is more reliable for WCH chips.
+    pub fn erase_flash(&mut self) -> Result<(), DebugProbeError> {
+        tracing::info!("Erasing chip flash via WCH-Link firmware command...");
+
+        let long_timeout = std::time::Duration::from_secs(10);
+
+        // Check and handle flash protection first
+        if self.chip_family.support_flash_protect() {
+            match self
+                .device
+                .send_command_with_timeout(commands::CheckFlashProtection, long_timeout)
+            {
+                Ok(0x01) => {
+                    tracing::info!("Flash is protected, unprotecting...");
+                    self.device
+                        .send_command_with_timeout(commands::UnprotectFlash, long_timeout)?;
+                    self.device
+                        .send_command_with_timeout(commands::AttachChip, long_timeout)?;
+                }
+                Ok(status) => {
+                    tracing::debug!("Flash protection status: {:#04x}", status);
+                }
+                Err(e) => {
+                    tracing::warn!("Could not check flash protection: {:?}", e);
+                }
+            }
+        }
+
+        // Send the EraseFlash command (0x02, 0x01)
+        self.device.send_command_with_timeout(
+            commands::FlashProgram::new(commands::ProgramCommand::EraseFlash),
+            long_timeout,
+        )?;
+
+        // Re-attach to the chip after erase
+        self.device
+            .send_command_with_timeout(commands::AttachChip, long_timeout)?;
+
+        tracing::info!("Chip erase completed.");
+        Ok(())
+    }
+
+    /// Write firmware data to flash using the WCH-Link firmware's programming commands.
+    /// `data` - the firmware binary data.
+    /// `address` - the target flash address (typically 0x08000000 for CH32H417).
+    pub fn program_flash(&mut self, data: &[u8], address: u32) -> Result<(), DebugProbeError> {
+        tracing::info!(
+            "Programming {} bytes to 0x{:08X} via WCH-Link firmware...",
+            data.len(),
+            address
+        );
+
+        // Unprotect flash if needed
+        if self.chip_family.support_flash_protect() {
+            let long_timeout = std::time::Duration::from_secs(10);
+            match self
+                .device
+                .send_command_with_timeout(commands::CheckFlashProtection, long_timeout)
+            {
+                Ok(0x01) => {
+                    self.device
+                        .send_command_with_timeout(commands::UnprotectFlash, long_timeout)?;
+                    self.device
+                        .send_command_with_timeout(commands::AttachChip, long_timeout)?;
+                }
+                Ok(_) => {}
+                Err(e) => {
+                    tracing::warn!("Could not check flash protection: {:?}", e);
+                }
+            }
+        }
+
+        let data_packet_size: usize = 256; // CH32H41x data packet size
+        let write_pack_size: usize = 4096; // CH32H41x write pack size (wlink default)
+        let timeout = std::time::Duration::from_secs(10);
+
+        // Step 1: Set write memory region (wlink does NOT send Prepare for CH32H41X)
+        self.device.send_command_with_timeout(
+            commands::FlashSetWriteRegion {
+                start_addr: address,
+                len: data.len() as u32,
+            },
+            timeout,
+        )?;
+
+        // Step 2: Write flash OP (algorithm binary)
+        self.device.send_command_with_timeout(
+            commands::FlashProgram::new(commands::ProgramCommand::WriteFlashOp),
+            timeout,
+        )?;
+
+        // Step 3: Send flash algorithm binary via data endpoint
+        self.device
+            .write_data_endpoint(Self::CH32H417_FLASH_OP, data_packet_size)?;
+
+        // Step 4: Acknowledge flash OP written
+        let ack = self.device.send_command_with_timeout(
+            commands::FlashProgram::new(commands::ProgramCommand::AckFlashOpWritten),
+            timeout,
+        )?;
+        if ack != 0x07 {
+            tracing::warn!("Unexpected Flash OP ack: {:#04x}", ack);
+        }
+
+        // Step 5: Start flash write
+        self.device.send_command_with_timeout(
+            commands::FlashProgram::new(commands::ProgramCommand::WriteFlash),
+            timeout,
+        )?;
+
+        // Step 6: Send data chunks via data endpoint, reading status after each
+        for chunk in data.chunks(write_pack_size) {
+            self.device.write_data_endpoint(chunk, data_packet_size)?;
+
+            let status = self.device.read_data_endpoint(4)?;
+            if status.len() >= 4 && status[3] != 0x04 {
+                return Err(DebugProbeError::Other(format!(
+                    "Flash write chunk failed: status {:02x?}",
+                    status
+                )));
+            }
+        }
+
+        // Step 7: End programming
+        self.device.send_command_with_timeout(
+            commands::FlashProgram::new(commands::ProgramCommand::End),
+            timeout,
+        )?;
+
+        tracing::info!("Flash programming completed.");
+        Ok(())
+    }
+
+    /// Reset the target via DMI ndmreset and let it run.
+    /// This is the proper reset sequence for RISC-V targets after flashing.
+    ///
+    /// `hart_ids` are the hart indices to reset.  On multi-hart systems
+    /// (e.g. CH32H41X with V5F+V3F), a single-hart ndmreset leaves the
+    /// other hart in whatever state the previous debug session left it,
+    /// causing attach failures on the next run.  The CH32H41X DM does not
+    /// support `hasel`, so we issue ndmreset to each hart individually.
+    pub fn reset_and_run(&mut self, hart_ids: &[u32]) -> Result<(), DebugProbeError> {
+        for &hart_id in hart_ids {
+            let hartsel = (hart_id & 0x3FF) << 16;
+
+            // Clear haltreq, keep dmactive
+            self.dmi_op_write(0x10, 0x00000001 | hartsel)?;
+            // Trigger ndmreset
+            self.dmi_op_write(0x10, 0x00000003 | hartsel)?;
+            // Hold reset for a few ms so it propagates through the chip
+            std::thread::sleep(std::time::Duration::from_millis(10));
+            // Release ndmreset, keep dmactive (core comes out of reset)
+            self.dmi_op_write(0x10, 0x00000001 | hartsel)?;
+            // Give the debug module time to re-initialise after ndmreset.
+            std::thread::sleep(std::time::Duration::from_millis(50));
+            // Acknowledge havereset
+            self.dmi_op_write(0x10, 0x10000001 | hartsel)?;
+
+            tracing::debug!("ndmreset issued to hart {}", hart_id);
+        }
+        Ok(())
+    }
+
+    /// Read flash memory contents via the WCH-Link firmware's read command.
+    /// The firmware returns data in big-endian word order; we convert to
+    /// little-endian and trim to the requested length.
+    pub fn read_flash(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
+        tracing::info!(
+            "Reading {} bytes from 0x{:08X} via WCH-Link firmware...",
+            len,
+            address
+        );
+
+        let timeout = std::time::Duration::from_secs(10);
+
+        // Align length to 4 bytes as required by the firmware
+        let read_len = if len % 4 == 0 { len } else { (len / 4 + 1) * 4 };
+
+        // Set read memory region
+        self.device.send_command_with_timeout(
+            commands::FlashSetReadRegion {
+                start_addr: address,
+                len: read_len,
+            },
+            timeout,
+        )?;
+
+        // Trigger read
+        self.device.send_command_with_timeout(
+            commands::FlashProgram::new(commands::ProgramCommand::ReadMemory),
+            timeout,
+        )?;
+
+        // Read data back from the data endpoint
+        let mut data = self.device.read_data_endpoint(read_len as usize)?;
+
+        // Fix endian: firmware returns big-endian words, reverse each 4-byte chunk
+        for chunk in data.chunks_exact_mut(4) {
+            chunk.reverse();
+        }
+
+        // Trim to requested length
+        data.truncate(len as usize);
+
+        tracing::info!("Flash read completed, got {} bytes.", data.len());
+        Ok(data)
     }
 }
 
