@@ -21,12 +21,13 @@ rust-version.workspace = true
 exclude = ["tests/"]
 
 [features]
-default = ["builtin-targets", "cmsisdap_v1", "builtin-formats", "coredump"]
+default = ["builtin-targets", "cmsisdap_v1", "builtin-formats", "coredump", "serialport"]
 flate2 = ["dep:flate2"]
 
 # Enable all built in targets.
 builtin-targets = ["dep:bincode", "dep:probe-rs-target"]
 cmsisdap_v1 = ["dep:hidapi"]
+serialport = ["dep:serialport"]
 
 # Enables the bin, hex, elf image formats
 builtin-formats = ["dep:uf2-decode", "object", "flate2", "dep:ihex"]
@@ -61,9 +62,10 @@ object = { version = "0.39", default-features = false, features = [
 nusb.workspace = true
 futures-lite = { version = "2", default-features = false }
 scroll = "0.13"
+# Optional for some targets
 serialport = { version = "4.7.0", default-features = false, features = [
     "usbportinfo-interface",
-] }
+], optional = true }
 tracing = "0.1"
 parking_lot = "0.12.2"
 zerocopy = { version = "0.8.0", features = ["derive"] }
