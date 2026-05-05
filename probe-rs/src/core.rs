@@ -1,8 +1,9 @@
 use crate::{
     CoreType, Endian, InstructionSet, MemoryInterface, Target,
     architecture::{
-        arm::sequences::ArmDebugSequence, riscv::sequences::RiscvDebugSequence,
-        xtensa::sequences::XtensaDebugSequence,
+        arm::sequences::{ArmDebugSequence, DefaultArmSequence},
+        riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
+        xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
     },
     config::DebugSequence,
     error::{BreakpointError, Error},
@@ -702,19 +703,31 @@ pub enum ResolvedCoreOptions {
 
 impl ResolvedCoreOptions {
     fn new(target: &Target, options: CoreAccessOptions) -> Self {
-        match (options, target.debug_sequence.clone()) {
-            (CoreAccessOptions::Arm(options), DebugSequence::Arm(sequence)) => {
+        // When the target's debug_sequence doesn't match this core's architecture (e.g.
+        // RP235x_riscv where the vendor returns Arm(Rp235x) for the family), use the default
+        // sequence for this core's architecture so attach still works.
+        match options {
+            CoreAccessOptions::Arm(options) => {
+                let sequence = match &target.debug_sequence {
+                    DebugSequence::Arm(s) => s.clone(),
+                    _ => DefaultArmSequence::create(),
+                };
                 Self::Arm { sequence, options }
             }
-            (CoreAccessOptions::Riscv(options), DebugSequence::Riscv(sequence)) => {
+            CoreAccessOptions::Riscv(options) => {
+                let sequence = match &target.debug_sequence {
+                    DebugSequence::Riscv(s) => s.clone(),
+                    _ => DefaultRiscvSequence::create(),
+                };
                 Self::Riscv { sequence, options }
             }
-            (CoreAccessOptions::Xtensa(options), DebugSequence::Xtensa(sequence)) => {
+            CoreAccessOptions::Xtensa(options) => {
+                let sequence = match &target.debug_sequence {
+                    DebugSequence::Xtensa(s) => s.clone(),
+                    _ => DefaultXtensaSequence::create(),
+                };
                 Self::Xtensa { sequence, options }
             }
-            _ => unreachable!(
-                "Mismatch between core kind and access options. This is a bug, please report it."
-            ),
         }
     }
 

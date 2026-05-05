@@ -12,3 +12,7 @@ pub(crate) mod logger;
 pub(crate) mod session_data;
 /// This is where the primary processing for the debugger is driven from.
 pub(crate) mod startup;
+/// Materialization of client-uploaded file content (program binary, SVD file, chip description)
+/// into a session-scoped temporary directory, used when running the DAP server on a different
+/// machine from the VSCode client (`remote_server_mode`).
+pub(crate) mod uploaded_files;

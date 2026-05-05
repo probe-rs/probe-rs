@@ -2,15 +2,18 @@ use crate::{
     Core, CoreType, Error,
     architecture::{
         arm::{
-            ArmError, SwoReader,
+            ArmError, FullyQualifiedApAddress, SwoReader,
             communication_interface::ArmDebugInterface,
             component::{TraceSink, get_arm_components},
             dp::DpAddress,
             memory::CoresightComponent,
             sequences::{ArmDebugSequence, DefaultArmSequence},
         },
-        riscv::communication_interface::{
-            RiscvCommunicationInterface, RiscvDebugInterfaceState, RiscvError,
+        riscv::{
+            communication_interface::{
+                RiscvCommunicationInterface, RiscvDebugInterfaceState, RiscvError,
+            },
+            dtm::mem_ap_dtm::MemApDtm,
         },
         xtensa::communication_interface::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
@@ -99,6 +102,12 @@ impl fmt::Debug for JtagInterface {
 // TODO: this is somewhat messy because I omitted separating the Probe out of the ARM interface.
 enum ArchitectureInterface {
     Arm(Box<dyn ArmDebugInterface + 'static>),
+    /// ARM DAP with RISC-V cores reachable via mem-AP (e.g. RP2350).
+    ArmWithRiscv {
+        arm: Box<dyn ArmDebugInterface + 'static>,
+        /// Per core_id: Some((ap, state)) for RISC-V cores over mem-AP, None otherwise.
+        riscv_mem_ap_cores: Vec<Option<(FullyQualifiedApAddress, RiscvDebugInterfaceState)>>,
+    },
     Jtag(Probe, Vec<JtagInterface>),
 }
 
@@ -106,6 +115,9 @@ impl fmt::Debug for ArchitectureInterface {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             ArchitectureInterface::Arm(_) => f.write_str("ArchitectureInterface::Arm(..)"),
+            ArchitectureInterface::ArmWithRiscv { .. } => {
+                f.write_str("ArchitectureInterface::ArmWithRiscv { .. }")
+            }
             ArchitectureInterface::Jtag(_, ifaces) => f
                 .debug_tuple("ArchitectureInterface::Jtag(..)")
                 .field(ifaces)
@@ -122,6 +134,21 @@ impl ArchitectureInterface {
     ) -> Result<Core<'probe>, Error> {
         match self {
             ArchitectureInterface::Arm(interface) => combined_state.attach_arm(target, interface),
+            ArchitectureInterface::ArmWithRiscv {
+                arm,
+                riscv_mem_ap_cores,
+            } => {
+                let core_id = combined_state.id();
+                if let Some(Some((ap, state))) = riscv_mem_ap_cores.get_mut(core_id) {
+                    let memory = arm.memory_interface(ap).map_err(Error::Arm)?;
+                    let dtm = MemApDtm::new(memory);
+                    let iface =
+                        RiscvCommunicationInterface::new(Box::new(dtm), &mut state.interface_state);
+                    combined_state.attach_riscv(target, iface)
+                } else {
+                    combined_state.attach_arm(target, arm)
+                }
+            }
             ArchitectureInterface::Jtag(probe, ifaces) => {
                 let idx = combined_state.jtag_tap_index();
                 if let Some(probe) = probe.try_as_jtag_probe() {
@@ -173,7 +200,9 @@ impl Session {
             })
             .collect();
 
-        let mut session = if let Architecture::Arm = target.architecture() {
+        // Use ARM DAP path when the target connects via SWD/DAP: either ARM cores or RISC-V cores
+        // over mem-AP (e.g. RP235x_riscv).
+        let mut session = if target.default_core().memory_ap().is_some() {
             Self::attach_arm_debug_interface(probe, target, attach_method, permissions, cores)?
         } else {
             Self::attach_jtag(probe, target, attach_method, permissions, cores)?
@@ -201,9 +230,12 @@ impl Session {
 
         let default_dp = default_memory_ap.dp();
 
+        // Use ARM sequence for DAP operations (unlock, reset). For RISC-V-over-mem-AP targets
+        // (e.g. RP235x_riscv) the target's debug_sequence is Riscv; use default ARM sequence.
         let sequence_handle = match &target.debug_sequence {
             DebugSequence::Arm(sequence) => sequence.clone(),
-            _ => unreachable!("Mismatch between architecture and sequence type!"),
+            DebugSequence::Riscv(_) => DefaultArmSequence::create(),
+            _ => unreachable!("DAP path only used for ARM or RISC-V-over-mem-AP targets"),
         };
 
         if AttachMethod::UnderReset == attach_method {
@@ -264,7 +296,9 @@ impl Session {
         if attach_method == AttachMethod::UnderReset {
             {
                 for core in &cores {
-                    core.arm_reset_catch_set(&mut *interface)?;
+                    if core.is_arm_core() {
+                        core.arm_reset_catch_set(&mut *interface)?;
+                    }
                 }
 
                 let reset_hardware_deassert =
@@ -288,12 +322,15 @@ impl Session {
             // Now that hardware reset is de-asserted, for each core, setup debugging.
             // (Some chips keep cores in power-down under hardware-reset.)
             for core in &cores {
-                core.enable_arm_debug(&mut *interface)?;
+                if core.is_arm_core() {
+                    core.enable_arm_debug(&mut *interface)?;
+                }
             }
 
+            let interfaces = Self::build_arm_interfaces(&target, interface)?;
             let mut session = Session {
                 target,
-                interfaces: ArchitectureInterface::Arm(interface),
+                interfaces,
                 cores,
                 configured_trace_sink: None,
             };
@@ -302,8 +339,12 @@ impl Session {
                 // Wait for the core to be halted. The core should be
                 // halted because we set the `reset_catch` earlier, which
                 // means that the core should stop when coming out of reset.
+                // Non-ARM cores (e.g. RISC-V over mem-AP) did not use reset catch; skip this path.
 
                 for core_id in 0..session.cores.len() {
+                    if !session.cores[core_id].is_arm_core() {
+                        continue;
+                    }
                     let mut core = session
                         .core(core_id)
                         .inspect_err(|e| tracing::error!("Unable to get core {core_id}: {e}"))?;
@@ -323,15 +364,58 @@ impl Session {
         } else {
             // For each core, setup debugging
             for core in &cores {
-                core.enable_arm_debug(&mut *interface)?;
+                if core.is_arm_core() {
+                    core.enable_arm_debug(&mut *interface)?;
+                }
             }
 
+            let interfaces = Self::build_arm_interfaces(&target, interface)?;
             Ok(Session {
                 target,
-                interfaces: ArchitectureInterface::Arm(interface),
+                interfaces,
                 cores,
                 configured_trace_sink: None,
             })
+        }
+    }
+
+    /// Returns `Arm(interface)` for a normal Arm system, or `ArmWithRiscv { .. }` if the target has
+    /// RISC-V cores reachable via mem-AP (like on RP235x).
+    fn build_arm_interfaces(
+        target: &Target,
+        interface: Box<dyn ArmDebugInterface + 'static>,
+    ) -> Result<ArchitectureInterface, Error> {
+        use probe_rs_target::Architecture;
+        let mut riscv_mem_ap_cores: Vec<
+            Option<(FullyQualifiedApAddress, RiscvDebugInterfaceState)>,
+        > = target
+            .cores
+            .iter()
+            .map(|core| {
+                if core.core_type.architecture() == Architecture::Riscv {
+                    core.memory_ap()
+                        .map(|ap| (ap, RiscvDebugInterfaceState::new(Box::new(()))))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let has_riscv_mem_ap = riscv_mem_ap_cores.iter().any(Option::is_some);
+        if has_riscv_mem_ap {
+            let mut arm = interface;
+            for (ap, state) in riscv_mem_ap_cores.iter_mut().flatten() {
+                let memory = arm.memory_interface(ap).map_err(Error::Arm)?;
+                let dtm = MemApDtm::new(memory);
+                let mut iface =
+                    RiscvCommunicationInterface::new(Box::new(dtm), &mut state.interface_state);
+                iface.enter_debug_mode().map_err(Error::Riscv)?;
+            }
+            Ok(ArchitectureInterface::ArmWithRiscv {
+                arm,
+                riscv_mem_ap_cores,
+            })
+        } else {
+            Ok(ArchitectureInterface::Arm(interface))
         }
     }
 
@@ -634,7 +718,8 @@ impl Session {
     pub fn get_arm_interface(&mut self) -> Result<&mut dyn ArmDebugInterface, ArmError> {
         let interface = match &mut self.interfaces {
             ArchitectureInterface::Arm(state) => state.deref_mut(),
-            _ => return Err(ArmError::NoArmTarget),
+            ArchitectureInterface::ArmWithRiscv { arm, .. } => arm.deref_mut(),
+            ArchitectureInterface::Jtag(..) => return Err(ArmError::NoArmTarget),
         };
 
         Ok(interface)
@@ -645,17 +730,37 @@ impl Session {
         &mut self,
         core_id: usize,
     ) -> Result<RiscvCommunicationInterface<'_>, Error> {
+        // Get tap_idx first so its borrow of self ends before we borrow self.interfaces.
         let tap_idx = self.interface_idx(core_id)?;
-        if let ArchitectureInterface::Jtag(probe, ifaces) = &mut self.interfaces {
-            if let Some(probe) = probe.try_as_jtag_probe() {
-                probe.select_target(tap_idx)?;
+        match &mut self.interfaces {
+            ArchitectureInterface::ArmWithRiscv {
+                arm,
+                riscv_mem_ap_cores,
+            } => {
+                if let Some(Some((ap, state))) = riscv_mem_ap_cores.get_mut(core_id) {
+                    let memory = arm.memory_interface(ap).map_err(Error::Arm)?;
+                    let dtm = MemApDtm::new(memory);
+                    Ok(RiscvCommunicationInterface::new(
+                        Box::new(dtm),
+                        &mut state.interface_state,
+                    ))
+                } else {
+                    Err(RiscvError::NoRiscvTarget.into())
+                }
             }
-            if let JtagInterface::Riscv(state) = &mut ifaces[tap_idx] {
-                let factory = probe.try_get_riscv_interface_builder()?;
-                return Ok(factory.attach_auto(&self.target, state)?);
+            ArchitectureInterface::Jtag(probe, ifaces) => {
+                if let Some(probe) = probe.try_as_jtag_probe() {
+                    probe.select_target(tap_idx)?;
+                }
+                if let JtagInterface::Riscv(state) = &mut ifaces[tap_idx] {
+                    let factory = probe.try_get_riscv_interface_builder()?;
+                    Ok(factory.attach_auto(&self.target, state)?)
+                } else {
+                    Err(RiscvError::NoRiscvTarget.into())
+                }
             }
+            ArchitectureInterface::Arm(_) => Err(RiscvError::NoRiscvTarget.into()),
         }
-        Err(RiscvError::NoRiscvTarget.into())
     }
 
     /// Get the Xtensa probe interface.
@@ -750,10 +855,14 @@ impl Session {
     /// NotImplemented if no custom erase sequence exists
     /// Err(e) if the custom erase sequence failed
     pub fn sequence_erase_all(&mut self) -> Result<(), Error> {
-        let ArchitectureInterface::Arm(ref mut interface) = self.interfaces else {
-            return Err(Error::NotImplemented(
-                "Debug Erase Sequence is not implemented for non-ARM targets.",
-            ));
+        let interface_ref = match &mut self.interfaces {
+            ArchitectureInterface::Arm(i) => i.deref_mut(),
+            ArchitectureInterface::ArmWithRiscv { arm, .. } => arm.deref_mut(),
+            ArchitectureInterface::Jtag(..) => {
+                return Err(Error::NotImplemented(
+                    "Debug Erase Sequence is not implemented for non-ARM targets.",
+                ));
+            }
         };
 
         let DebugSequence::Arm(ref debug_sequence) = self.target.debug_sequence else {
@@ -765,18 +874,26 @@ impl Session {
             .ok_or(Error::Arm(ArmError::NotImplemented("Debug Erase Sequence")))?;
 
         tracing::info!("Trying Debug Erase Sequence");
-        let erase_result = erase_sequence.erase_all(interface.deref_mut());
+        let erase_result = erase_sequence.erase_all(interface_ref);
 
         match erase_result {
             Ok(()) => (),
             // In case this happens after unlock. Try to re-attach the probe once.
-            Err(ArmError::ReAttachRequired) => {
-                Self::reattach_arm_interface(interface, debug_sequence)?;
-                // For re-setup debugging on all cores
-                for core_state in &self.cores {
-                    core_state.enable_arm_debug(interface.deref_mut())?;
+            Err(ArmError::ReAttachRequired) => match &mut self.interfaces {
+                ArchitectureInterface::Arm(interface) => {
+                    Self::reattach_arm_interface(interface, debug_sequence)?;
+                    for core_state in &self.cores {
+                        core_state.enable_arm_debug(interface.deref_mut())?;
+                    }
                 }
-            }
+                ArchitectureInterface::ArmWithRiscv { arm, .. } => {
+                    Self::reattach_arm_interface(arm, debug_sequence)?;
+                    for core_state in &self.cores {
+                        core_state.enable_arm_debug(arm.deref_mut())?;
+                    }
+                }
+                ArchitectureInterface::Jtag(..) => {}
+            },
             Err(e) => return Err(Error::Arm(e)),
         }
         tracing::info!("Device Erased Successfully");
@@ -867,9 +984,14 @@ impl Session {
     }
 
     /// Return the `Architecture` of the currently connected chip.
+    /// For ArmWithRiscv (e.g. RP235x_riscv), returns the first core's architecture
+    /// so that RISC-V-only targets report Riscv rather than Arm.
     pub fn architecture(&self) -> Architecture {
         match &self.interfaces {
             ArchitectureInterface::Arm(_) => Architecture::Arm,
+            ArchitectureInterface::ArmWithRiscv { .. } => {
+                self.target.cores[0].core_type.architecture()
+            }
             ArchitectureInterface::Jtag(_, ifaces) => {
                 if let JtagInterface::Riscv(_) = &ifaces[0] {
                     Architecture::Riscv
@@ -889,6 +1011,14 @@ impl Session {
                 match session.core(core) {
                     Ok(mut core) => core.clear_all_hw_breakpoints(),
                     Err(Error::CoreDisabled(_)) => Ok(()),
+                    Err(Error::Riscv(
+                        crate::architecture::riscv::communication_interface::RiscvError::Timeout,
+                    )) => {
+                        tracing::warn!(
+                            "Core {core} attach or breakpoint clear timed out, skipping"
+                        );
+                        Ok(())
+                    }
                     Err(err) => Err(err),
                 }
             })

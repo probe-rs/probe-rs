@@ -256,6 +256,8 @@ impl Cmd {
                     probe: self.common.probe,
                     chip: self.common.chip,
                     chip_description_path: self.common.chip_description_path,
+                    chip_description_data: None,
+                    remote_server_mode: false,
                     connect_under_reset: self.common.connect_under_reset,
                     speed: self.common.speed,
                     wire_protocol: self.common.protocol,
@@ -269,7 +271,9 @@ impl Cmd {
                     core_configs: vec![CoreConfig {
                         core_index: self.shared.core,
                         program_binary: self.binary.clone(),
+                        program_binary_data: None,
                         svd_file: None,
+                        svd_file_data: None,
                         rtt_config: RttConfig {
                             enabled: !self.no_rtt,
                             channels: vec![],

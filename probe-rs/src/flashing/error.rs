@@ -66,13 +66,19 @@ pub enum FlashError {
     /// This target does not support full chip flash erases.
     #[error("The chip erase routine is not supported with the given flash algorithm.")]
     ChipEraseNotSupported,
+    /// Attempted to call a vendor function that does not exist in the flash algorithm.
+    #[error("The '{name}' vendor-specific function does not exist in the flash algorithm.")]
+    VendorFunctionMissing {
+        /// The name of the routine that was called.
+        name: String,
+    },
     /// Calling the given routine returned the given error code.
     #[error(
         "The execution of '{name}' failed with code {error_code}. This might indicate a problem with the flash algorithm."
     )]
     RoutineCallFailed {
         /// The name of the routine that was called.
-        name: &'static str,
+        name: String,
         /// The error code the called routine returned.
         error_code: u32,
     },

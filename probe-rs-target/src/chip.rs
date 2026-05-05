@@ -231,6 +231,10 @@ pub struct RiscvCoreAccessOptions {
 
     /// The JTAG TAP index of the core's debug module
     pub jtag_tap: Option<usize>,
+
+    /// CoreSight/mem-AP to use as DTM. This is the method used for RP235x
+    #[serde(default)]
+    pub mem_ap: Option<ApAddress>,
 }
 
 /// The data required to access an Xtensa core

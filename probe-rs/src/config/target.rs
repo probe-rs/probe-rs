@@ -291,7 +291,19 @@ impl CoreExt for Core {
                     }
                 })
             }
-            probe_rs_target::CoreAccessOptions::Riscv(_) => None,
+            probe_rs_target::CoreAccessOptions::Riscv(options) => {
+                options.mem_ap.as_ref().map(|ap| {
+                    let dp = DpAddress::Default;
+                    match ap {
+                        probe_rs_target::ApAddress::V1(ap_num) => {
+                            FullyQualifiedApAddress::v1_with_dp(dp, *ap_num)
+                        }
+                        probe_rs_target::ApAddress::V2(ap_num) => {
+                            FullyQualifiedApAddress::v2_with_dp(dp, ApV2Address::new(*ap_num))
+                        }
+                    }
+                })
+            }
             probe_rs_target::CoreAccessOptions::Xtensa(_) => None,
         }
     }

@@ -101,6 +101,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                     core_access_options: CoreAccessOptions::Riscv(RiscvCoreAccessOptions {
                         hart_id: None,
                         jtag_tap: None,
+                        mem_ap: None,
                     }),
                 }],
                 memory_map: vec![],
@@ -130,6 +131,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                     core_access_options: CoreAccessOptions::Riscv(RiscvCoreAccessOptions {
                         hart_id: None,
                         jtag_tap: None,
+                        mem_ap: None,
                     }),
                 }],
                 memory_map: vec![],

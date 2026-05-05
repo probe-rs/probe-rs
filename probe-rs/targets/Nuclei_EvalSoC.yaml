@@ -1,0 +1,36 @@
+name: Nuclei EvalSoC
+variants:
+- name: Nuclei_EvalSoC_UX600
+  cores:
+  - name: main
+    type: riscv64
+    core_access_options: !Riscv
+  jtag:
+    # The RISC-V TAP uses a 5-bit IR register (RISC-V Debug Spec 0.13 default).
+    # force_scan_chain bypasses the JTAG auto-detection DR scan, which some
+    # Nuclei chips do not reliably respond to during early power-up.
+    scan_chain:
+    - ir_len: 5
+    force_scan_chain: true
+  memory_map:
+  # ILM (Instruction Local Memory) — primary RAM for code execution
+  - !Ram
+    range:
+      start: 0x80000000
+      end: 0x80010000
+    cores:
+    - main
+  # DLM (Data Local Memory)
+  - !Ram
+    range:
+      start: 0x90000000
+      end: 0x90010000
+    cores:
+    - main
+  # SPI Flash XIP region (NUSPI controller, read-only via XIP)
+  - !Nvm
+    range:
+      start: 0x20000000
+      end: 0x21000000
+    cores:
+    - main
