@@ -2,10 +2,24 @@
 #![doc = include_str!("../README.md")]
 #![warn(missing_docs)]
 
+const fn array<const N: usize>(slice: &[u8]) -> [u8; N] {
+    // Ensure the slice length matches at compile time (will fail to compile otherwise)
+    assert!(slice.len() == N, "Slice length must match array length");
+
+    let mut arr = [0u8; N];
+    let mut i = 0;
+    while i < N {
+        arr[i] = slice[i];
+        i += 1;
+    }
+    arr
+}
+
 #[unsafe(link_section = ".probe-rs.version")]
 #[used]
 #[unsafe(no_mangle)] // prevent invoking the macro multiple times
-static _PROBE_RS_META_VERSION: [u8; env!("CARGO_PKG_VERSION").len()] = *env!("CARGO_PKG_VERSION");
+static _PROBE_RS_META_VERSION: [u8; env!("CARGO_PKG_VERSION").as_bytes().len()] =
+    array(env!("CARGO_PKG_VERSION").as_bytes());
 
 /// Set the probe-rs chip.
 ///
