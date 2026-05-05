@@ -34,7 +34,7 @@ pub struct Cmd {
 impl Cmd {
     pub async fn run(self, client: RpcClient, utc_offset: UtcOffset) -> anyhow::Result<()> {
         let (file_meta, elf_meta) = match &self.path {
-            Some(path) => parse_metadata(&path).await?,
+            Some(path) => parse_metadata(path).await?,
             None => (FileMetadata::default(), None),
         };
 
