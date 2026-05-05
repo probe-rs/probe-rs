@@ -1,6 +1,7 @@
 //! Debug Transport Module (DTM) access abstraction
 
 pub mod jtag_dtm;
+pub(crate) mod mem_ap_dtm;
 
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::probe::queue::DeferredResultIndex;
@@ -9,7 +10,7 @@ use std::fmt;
 use std::time::Duration;
 
 /// Debug Transport Module (DTM) access abstraction
-pub trait DtmAccess: Send + fmt::Debug {
+pub trait DtmAccess: fmt::Debug {
     /// Perform interface-specific initialisation upon attaching.
     fn init(&mut self) -> Result<(), RiscvError> {
         Ok(())

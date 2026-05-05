@@ -6,6 +6,7 @@ use anyhow::anyhow;
 use postcard_rpc::header::{VarHeader, VarSeq};
 use postcard_schema::{Schema, schema};
 use probe_rs::{
+    Session,
     architecture::{
         arm::{
             self, ApAddress, ApV2Address, ArmDebugInterface,
@@ -18,7 +19,6 @@ use probe_rs::{
             },
             sequences::DefaultArmSequence,
         },
-        riscv::communication_interface::RiscvCommunicationInterface,
         xtensa::communication_interface::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState,
         },
@@ -29,13 +29,30 @@ use probe_rs_target::ScanChainElement;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    rpc::functions::{
-        NoResponse, RpcContext, TargetInfoDataTopic,
-        chip::JEP106Code,
-        probe::{DebugProbeEntry, WireProtocol},
+    rpc::{
+        Key,
+        functions::{
+            NoResponse, RpcContext, TargetInfoDataTopic, TargetNameResponse,
+            chip::JEP106Code,
+            probe::{DebugProbeEntry, WireProtocol},
+        },
     },
     util::common_options::ProbeOptions,
 };
+
+#[derive(Serialize, Deserialize, Schema)]
+pub struct TargetNameRequest {
+    pub sessid: Key<Session>,
+}
+
+pub async fn target_name(
+    ctx: &mut RpcContext,
+    _hdr: VarHeader,
+    request: TargetNameRequest,
+) -> TargetNameResponse {
+    let session = ctx.session(request.sessid).await;
+    Ok(session.target().name.clone())
+}
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct TargetInfoRequest {
@@ -410,11 +427,13 @@ async fn try_read_riscv_info(
 ) -> Result<(), anyhow::Error> {
     if probe.has_riscv_interface() && protocol == WireProtocol::Jtag {
         tracing::debug!("Trying to show RISC-V chip information");
-        let factory = probe.try_get_riscv_interface_builder()?;
-
-        let mut state = factory.create_state();
-        let mut interface = factory.attach(&mut state)?;
-        show_riscv_info(ctx, &mut interface).await?;
+        let idcode = {
+            let factory = probe.try_get_riscv_interface_builder()?;
+            let mut state = factory.create_state();
+            let mut interface = factory.attach(&mut state)?;
+            interface.read_idcode()?
+        };
+        show_riscv_info(ctx, idcode).await?;
     } else if protocol == WireProtocol::Swd {
         ctx.publish::<TargetInfoDataTopic>(
             VarSeq::Seq2(0),
@@ -833,12 +852,7 @@ fn cpu_info_tree(scs: &mut Scs) -> anyhow::Result<ComponentTreeNode> {
     Ok(tree)
 }
 
-async fn show_riscv_info(
-    ctx: &mut RpcContext,
-    interface: &mut RiscvCommunicationInterface<'_>,
-) -> anyhow::Result<()> {
-    let idcode = interface.read_idcode()?;
-
+async fn show_riscv_info(ctx: &mut RpcContext, idcode: Option<u32>) -> anyhow::Result<()> {
     ctx.publish::<TargetInfoDataTopic>(
         VarSeq::Seq2(0),
         &InfoEvent::Idcode {

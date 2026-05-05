@@ -56,7 +56,22 @@ fn extract_flash_device(elf: &goblin::elf::Elf, buffer: &[u8]) -> Result<FlashDe
     Err(anyhow!("Failed to find 'FlashDevice' symbol in ELF file."))
 }
 
+/// ELF symbol name prefix that marks a vendor-specific entry point.
+///
+/// Any public function symbol whose name starts with this prefix is automatically extracted into
+/// [`RawFlashAlgorithm::vendor_functions`]. The prefix itself is stripped when forming the map
+/// key, so `VendorFunc_read_flash_size` becomes the entry `read_flash_size`.
+pub const VENDOR_FUNCTION_PREFIX: &str = "VendorFunc_";
+
 /// Extracts a position & memory independent flash algorithm blob from the provided ELF file.
+///
+/// ELF symbols whose names start with [`VENDOR_FUNCTION_PREFIX`] are automatically extracted as
+/// vendor-specific entry points. Their code-section-relative offsets are inserted into
+/// [`RawFlashAlgorithm::vendor_functions`] with the prefix stripped from the key.
+///
+/// When `existing_algo` is `Some`, its `vendor_functions` map is used as the starting point;
+/// entries for symbols found in the ELF are overwritten, while any entries that were already in the
+/// map but whose symbols are absent from the ELF are left untouched.
 pub fn extract_flash_algo(
     existing_algo: Option<RawFlashAlgorithm>,
     buffer: &[u8],
@@ -94,7 +109,6 @@ pub fn extract_flash_algo(
             "BlankCheck" => algo.pc_blank_check = Some(sym.st_value - code_section_offset as u64),
             // probe-rs additions
             "ReadFlash" => algo.pc_read = Some(sym.st_value - code_section_offset as u64),
-            "FlashSize" => algo.pc_flash_size = Some(sym.st_value - code_section_offset as u64),
             "_SEGGER_RTT" => {
                 algo.rtt_location = Some(sym.st_value);
                 log::debug!("Found RTT control block at address {:#010x}", sym.st_value);
@@ -102,6 +116,15 @@ pub fn extract_flash_algo(
             "PAGE_BUFFER" => {
                 algo.data_load_address = Some(sym.st_value);
                 log::debug!("Found PAGE_BUFFER at address {:#010x}", sym.st_value);
+            }
+
+            other if other.starts_with(VENDOR_FUNCTION_PREFIX) => {
+                let key = other.trim_start_matches(VENDOR_FUNCTION_PREFIX).to_string();
+                let offset = sym.st_value - code_section_offset as u64;
+                log::debug!(
+                    "Found vendor function '{other}' → key '{key}' at offset {offset:#010x}"
+                );
+                algo.vendor_functions.insert(key, offset);
             }
 
             _ => {}

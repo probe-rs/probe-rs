@@ -19,7 +19,10 @@ use crate::{
             InfoEvent, MinDpSupport, TargetInfoRequest,
         },
     },
-    util::{cli::select_probe, common_options::ProbeOptions},
+    util::{
+        cli::{self, select_probe},
+        common_options::ProbeOptions,
+    },
 };
 
 const JEP_ARM: JEP106Code = JEP106Code::new(4, 0x3b);
@@ -28,18 +31,32 @@ const JEP_ARM: JEP106Code = JEP106Code::new(4, 0x3b);
 pub struct Cmd {
     #[clap(flatten)]
     common: ProbeOptions,
-    /// SWD Multidrop target selection value
+
+    #[arg(short, long)]
+    /// Enumerate all debug ports and components on the target.
+    ///
+    /// By default, the `info` subcommand attempts to autodetect the target device from the
+    /// registry of known chips. Use the `--verbose` flag to discover more information about the
+    /// chip, or to print information about chips that cannot be auto-detected.
+    verbose: bool,
+
+    /// SWD Multidrop target selection value for --verbose mode
     ///
     /// If provided, this value is written into the debug port TARGETSEL register
-    /// when connecting. This is required for targets using SWD multidrop
-    #[arg(long, value_parser = parse_hex)]
+    /// when connecting. This is required in --verbose mode for targets using SWD multidrop.
+    #[arg(long, value_parser = parse_hex, requires = "verbose")]
     target_sel: Option<u32>,
-    /// Override JTAG scan chain IR lengths (bypasses auto-detection)
+    /// Override JTAG scan chain IR lengths for --verbose mode (bypasses auto-detection)
     ///
     /// Specify one or more IR lengths (in bits) for each TAP in the chain, in scan-chain order.
     /// For example, `--scan-chain 5` for a single-TAP chain with IR length 5.
     /// When set, the normal JTAG auto-detection DR/IR scan is skipped entirely.
-    #[arg(long, value_delimiter = ',', value_name = "IR_LEN")]
+    #[arg(
+        long,
+        value_delimiter = ',',
+        value_name = "IR_LEN",
+        requires = "verbose"
+    )]
     scan_chain: Vec<u8>,
 }
 
@@ -49,65 +66,82 @@ fn parse_hex(src: &str) -> Result<u32, ParseIntError> {
 
 impl Cmd {
     pub async fn run(self, client: RpcClient) -> anyhow::Result<()> {
-        let protocols = if let Some(protocol) = self.common.protocol {
-            vec![protocol]
-        } else {
-            vec![WireProtocol::Jtag, WireProtocol::Swd]
-        };
-
-        let probe = select_probe(&client, self.common.probe.map(Into::into)).await?;
-
-        for protocol in protocols {
-            let msg = format!("Probing target via {protocol}");
-            println!("{msg}");
-            println!("{}", "-".repeat(msg.len()));
-            println!();
-
-            let mut successes = vec![];
-            let mut errors = vec![];
-
-            let req = TargetInfoRequest {
-                target_sel: self.target_sel,
-                protocol: protocol.into(),
-
-                probe: probe.clone(),
-                speed: self.common.speed,
-                connect_under_reset: self.common.connect_under_reset,
-                dry_run: self.common.dry_run,
-                scan_chain: self.scan_chain.clone(),
+        if self.verbose {
+            let protocols = if let Some(protocol) = self.common.protocol {
+                vec![protocol]
+            } else {
+                vec![WireProtocol::Jtag, WireProtocol::Swd]
             };
 
-            let result = client
-                .info(req, async |message| {
-                    let is_success =
-                        matches!(message, InfoEvent::Idcode { .. } | InfoEvent::ArmDp(_));
+            let probe = select_probe(&client, self.common.probe.map(Into::into)).await?;
 
-                    if matches!(message, InfoEvent::Message(_)) {
-                        successes.push(message.clone());
-                        errors.push(message.clone());
-                    }
+            for protocol in protocols {
+                let msg = format!("Probing target via {protocol}");
+                println!("{msg}");
+                println!("{}", "-".repeat(msg.len()));
+                println!();
 
-                    if is_success {
-                        successes.push(message);
-                    } else {
-                        errors.push(message);
-                    }
-                })
-                .await;
+                let mut successes = vec![];
+                let mut errors = vec![];
 
-            if let Err(error) = result {
-                println!("Error while probing target: {error}");
-            }
+                let req = TargetInfoRequest {
+                    target_sel: self.target_sel,
+                    protocol: protocol.into(),
 
-            if successes.is_empty() {
-                for message in errors {
-                    println!("{message}");
+                    probe: probe.clone(),
+                    speed: self.common.speed,
+                    connect_under_reset: self.common.connect_under_reset,
+                    dry_run: self.common.dry_run,
+                    scan_chain: self.scan_chain.clone(),
+                };
+
+                let result = client
+                    .info(req, async |message| {
+                        let is_success =
+                            matches!(message, InfoEvent::Idcode { .. } | InfoEvent::ArmDp(_));
+
+                        if matches!(message, InfoEvent::Message(_)) {
+                            successes.push(message.clone());
+                            errors.push(message.clone());
+                        }
+
+                        if is_success {
+                            successes.push(message);
+                        } else {
+                            errors.push(message);
+                        }
+                    })
+                    .await;
+
+                if let Err(error) = result {
+                    println!("Error while probing target: {error}");
                 }
-            } else {
-                for message in successes {
-                    println!("{message}");
+
+                if successes.is_empty() {
+                    for message in errors {
+                        println!("{message}");
+                    }
+                } else {
+                    for message in successes {
+                        println!("{message}");
+                    }
                 }
             }
+        } else {
+            let mut common = self.common;
+            if common.chip.is_some() {
+                tracing::warn!("ignoring --chip option");
+                common.chip = None;
+            }
+            match cli::attach_probe(&client, common, false).await {
+                Ok(session) => println!("{}", session.target_name().await?),
+                Err(e) => {
+                    eprintln!(
+                        "Could not attach to target. Try running with --verbose for more information about the target."
+                    );
+                    return Err(e);
+                }
+            };
         }
 
         Ok(())
