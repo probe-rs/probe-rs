@@ -64,6 +64,13 @@ pub async fn attach_probe(
 ) -> anyhow::Result<SessionInterface> {
     let elf_meta = elf_meta.unwrap_or_default();
 
+    if let Some(elf_chip) = &elf_meta.chip
+        && let Some(probe_chip) = &probe_options.chip
+        && elf_chip.to_lowercase() != probe_chip.to_lowercase()
+    {
+        anyhow::bail!("elf_chip does not match probe_chip");
+    }
+
     // Load the chip description if provided.
     if let Some(chip_description) = probe_options.chip_description_path.take() {
         let file = tokio::fs::read_to_string(&chip_description)
