@@ -6,7 +6,22 @@ any extra flags.
 
 ## Usage
 
-You can specify metadata, for example:
+First, include the `probe-rs.x` linker script. Either via `build.rs` (recommended)
+
+```rust
+println!("cargo:rustc-link-arg-bins=-Tprobe-rs.x");
+```
+
+or in `.cargo/config.toml` (older way, not recommended)
+
+```toml
+[target.'cfg(all(target_arch = "arm", target_os = "none"))']
+rustflags = [
+  "-C", "link-arg=-Tprobe-rs.x",
+]
+```
+
+Then, you can specify metadata, for example:
 
 ```rust
 probe_rs_meta::chip!(b"rp2040");
