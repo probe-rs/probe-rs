@@ -60,7 +60,6 @@ variants:
       start: 0x8000000
       end: 0x8078000
     cores:
-    - v3f_coprocessor
     - main
     access:
       boot: true
@@ -95,7 +94,6 @@ variants:
       start: 0x8000000
       end: 0x8078000
     cores:
-    - v3f_coprocessor
     - main
     access:
       boot: true

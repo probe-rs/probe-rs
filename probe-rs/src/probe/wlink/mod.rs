@@ -543,7 +543,11 @@ impl WchLink {
         let timeout = std::time::Duration::from_secs(10);
 
         // Align length to 4 bytes as required by the firmware
-        let read_len = if len % 4 == 0 { len } else { (len / 4 + 1) * 4 };
+        let read_len = if len.is_multiple_of(4) {
+            len
+        } else {
+            (len / 4 + 1) * 4
+        };
 
         // Set read memory region
         self.device.send_command_with_timeout(

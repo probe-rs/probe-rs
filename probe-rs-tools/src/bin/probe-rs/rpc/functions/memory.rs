@@ -167,10 +167,9 @@ pub async fn read_memory<W: Word>(
     let byte_len = request.count as usize * W::byte_size();
     if let Ok(Some(data)) =
         session.try_read_flash_via_probe(request.address as u32, byte_len as u32)
+        && data.len() == byte_len
     {
-        if data.len() == byte_len {
-            return Ok(W::from_bytes(&data));
-        }
+        return Ok(W::from_bytes(&data));
     }
 
     let mut core = session.core(request.core as usize)?;
