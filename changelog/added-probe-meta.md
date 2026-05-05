@@ -1,0 +1,1 @@
+Added probe-rs meta package to allow specifying metadata in elf and other binaries.
