@@ -134,7 +134,12 @@ impl Cmd {
                 common.chip = None;
             }
             match cli::attach_probe(&client, common, false).await {
-                Ok(session) => println!("{}", session.target_name().await?),
+                Ok(session) => {
+                    println!("Detected chip: {}", session.target_name().await?);
+                    println!(
+                        "For more detailed information about the target, run with the --verbose flag."
+                    );
+                }
                 Err(e) => {
                     eprintln!(
                         "Could not attach to target. Try running with --verbose for more information about the target."
