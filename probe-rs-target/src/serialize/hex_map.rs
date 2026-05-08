@@ -1,11 +1,11 @@
+use indexmap::IndexMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::collections::BTreeMap;
 
-/// Serialize a `BTreeMap<String, u64>` with values as hex strings in human-readable formats
+/// Serialize a `IndexMap<String, u64>` with values as hex strings in human-readable formats
 /// (e.g. YAML), and as plain integers in binary formats.
 ///
-/// `BTreeMap` is used instead of `HashMap` to guarantee deterministic key order in the output.
-pub(crate) fn serialize<S>(map: &BTreeMap<String, u64>, serializer: S) -> Result<S::Ok, S::Error>
+/// `IndexMap` is used instead of `HashMap` to guarantee deterministic key order in the output.
+pub(crate) fn serialize<S>(map: &IndexMap<String, u64>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -21,11 +21,11 @@ where
     }
 }
 
-/// Deserialize a `BTreeMap<String, u64>`. In YAML, values may be written as hex literals
+/// Deserialize a `IndexMap<String, u64>`. In YAML, values may be written as hex literals
 /// (`0x1234`) or plain decimal integers; `serde_yaml` handles both natively.
-pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<BTreeMap<String, u64>, D::Error>
+pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<IndexMap<String, u64>, D::Error>
 where
     D: Deserializer<'de>,
 {
-    BTreeMap::<String, u64>::deserialize(deserializer)
+    IndexMap::<String, u64>::deserialize(deserializer)
 }
