@@ -10,7 +10,8 @@ variants:
     # force_scan_chain bypasses the JTAG auto-detection DR scan, which some
     # Nuclei chips do not reliably respond to during early power-up.
     scan_chain:
-    - ir_len: 5
+    - name: main
+      ir_len: 5
     force_scan_chain: true
   memory_map:
   # ILM (Instruction Local Memory) — primary RAM for code execution
