@@ -111,7 +111,16 @@ impl SessionData {
             })?;
 
         // Change the current working directory if `config.cwd` is `Some(T)`.
-        if let Some(new_cwd) = config.cwd.clone() {
+        //
+        // Skipped in `remote_server_mode`: there `cwd` is a path on the *client's* filesystem
+        // (kept around as a display-only string for log messages), so calling `set_current_dir`
+        // with it on the server would fail. Relative-path resolution against `cwd` does not
+        // apply in remote mode — every client-supplied file path arrives either already absolute,
+        // or materialized by [`SessionConfig::materialize_uploaded_files`] to an absolute temp
+        // path — so the working directory does not need to change for downstream code to work.
+        if !config.remote_server_mode
+            && let Some(new_cwd) = config.cwd.clone()
+        {
             set_current_dir(new_cwd.as_path()).map_err(|err| {
                 anyhow!("Failed to set current working directory to: {new_cwd:?}, {err:?}")
             })?;

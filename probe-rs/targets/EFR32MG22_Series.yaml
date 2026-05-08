@@ -2,8 +2,10 @@ name: EFR32MG22 Series
 manufacturer:
   id: 0x21
   cc: 0x2
+generated_from_pack: true
+pack_file_release: 2025.12.1
 variants:
-- name: EFR32MG22A224F512
+- name: EFR32MG22A224F512IM40
   cores:
   - name: main
     type: armv8m
@@ -11,14 +13,17 @@ variants:
       ap: !v1 0
   memory_map:
   - !Nvm
+    name: IROM1
     range:
       start: 0x0
       end: 0x80000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20008000
@@ -26,7 +31,7 @@ variants:
     - main
   flash_algorithms:
   - geckos2
-- name: EFR32MG22C224F512
+- name: EFR32MG22C224F512GN32
   cores:
   - name: main
     type: armv8m
@@ -34,14 +39,121 @@ variants:
       ap: !v1 0
   memory_map:
   - !Nvm
+    name: IROM1
     range:
       start: 0x0
       end: 0x80000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2
+- name: EFR32MG22C224F512IM32
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2
+- name: EFR32MG22C224F512IM40
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2
+- name: EFR32MG22E224F512IM32
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2
+- name: EFR32MG22E224F512IM40
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
       end: 0x20008000
@@ -53,23 +165,23 @@ flash_algorithms:
 - name: geckos2
   description: EFM32/EFR32 Gecko S2
   default: true
-  instructions: DUgBaAH0fBGx9bAfBNELSQpoQvQAMgpgCUlB9nEyCmAAIkpggGgHSQHqgCEGSgAgSfgCEHBHAL8EgOAPaIAAQDwAA0AA/P8DBAAAAAVJQfZxMAhgBEgBIgJgACIAIApgcEcAvzwAA0AMIANAsLUJTQAkWfgFAIRCJL8AILC9IEYA8Ar4ACgE9QBUHL8BILC97+cAvwQAAAAPSQJGCMoBMwPRACkB8QQB+NGTsbC1C0wBJQtJJWBIYAIgCGABIAAhAPBe+E/0gFEAKGVQGL8BILC9ACBwRwC/BOD//wwQA0AQAANALenwTQVGyBySRiJKIk8g8AMEASAQYC7gBfUAUIhDoOsFC2keXEWh6wAAb+oEATi/o0bQRohCfWCIvwFGTh3Y+AAAAC64YArQCCAIIQjxBAgA8CT4ACgG8QQG8NAW4AQgOGABIAAhASYA8Bj4eLnaRF1EpOsLBEH2/3EALMzRT/SAUAEhA0oAJhFQAOABJjBGvejwjQwQA0AQAANAcLUQTg1KDkwzHQngBUCNQgS/ACBwvQE0BL9v8AIAcL0VaR1C8tAQaDVCIPABAW/wAQAIv0/w/zARYHC9DAADQIBpZ/8CAAEAAAAAAAAAAAA=
+  instructions: 8LU+ST5KSfgBABBowPMFQKDxFQQBIAwsAPJugEJLe0Tf6ATwDAkHBwcLCQcJaglqBwAgMwLgEDMA4DAz3WgJ6wEAtfH/P0NgJt1sCS1IBfAfBQnrAQZQ+CRw70AX8AEHt2Ad0ADrhAMBJAT6BfXD+IBQCesBA7/zT4+/82+PW2jdaAAtDNRuCQXwHwUA64YArEDA+IBBA+AJ6wEAACSEYFxoGUg8sRlNLGCFbiVCAr8XSARgF0gYTAnrAQYlaBxom2gdQBVLH0YEvwAnxfIDB/dgE04UsUHyaAfEUQAtQfZxMAi/M0ZJRNhjACAYZA1LkmgD6oIiCmHwvQC/BAAAAASA4A8A4QDgAIAAQGiQAEBokABQAIAAUGCAAEQAAANAAAADUAD8/wPSAgAAsLUXSAnrAAGJaOmxFUlP9IAyCmAJ6wABSmjTaAArE9RcCRFJA/AfBQEjAeuEBAP6BfXE+IBR0mgAKgXUAvAfBFIJo0BB+CIwSERB9nExASLAaMFjQvIMAUJQACCwvQC/BAAAAAygAEQA4QDgcLULTVn4BUAJ6wUGWfgFADFpCESEQiS/ACBwvSBGAPAJ+AT1AFQAKPDQASBwvQC/BAAAALC1EUkCRgjKA/EBAxGxBDEAK/jQs7ENSUHyDAIBJQnrAQThaI1QSGECIAhhASAAIQDwVPjhaELyDAIAKI1QGL8BILC9ACCwvQTg//8EAAAALenwTQVGIEiTRkHyDAIBIwnrAAf4aINQyBwg8AMETLMpRvho2kZv818xRWHB9QBYREU4v6BGyPEEBlr4BBuBYT6xCCAIIQDwIfh4ufhoBDbz5wQhASYBYQEgACEA8Bb4KLmk6wgERUTDRNjnASYwRr3o8I0ESAAmQvIMAQEiSETAaEJQ8+cAvwQAAABwtQ9KEEsPTB0dSkTSaNZpLkIK0QZAjkIEvwAgcL0BNCS/b/ACAHC98efQaB5CIPABANBgb/ABAAi/T/D/MHC9BAAAAIBpZ/8CAAEAAAAAAAAAAAAABAAAAwAAAAAAAgAAgAAAAAQAAAMAAAAAAAEAAEAAAAACAAAAAAAAAAABAABAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+  load_address: 0x20000008
   pc_init: 0x1
-  pc_uninit: 0x4d
-  pc_program_page: 0xe5
-  pc_erase_sector: 0x99
-  pc_erase_all: 0x6d
-  data_section_offset: 0x1c8
+  pc_uninit: 0x12d
+  pc_program_page: 0x21d
+  pc_erase_sector: 0x1cd
+  pc_erase_all: 0x199
+  data_section_offset: 0x334
+  rtt_poll_interval: 0
   flash_properties:
     address_range:
       start: 0x0
       end: 0x100000
-    page_size: 0x3000
+    page_size: 0x2000
     erased_byte_value: 0xff
     program_page_timeout: 260
     erase_sector_timeout: 200
     sectors:
     - size: 0x2000
       address: 0x0
-  cores:
-  - main

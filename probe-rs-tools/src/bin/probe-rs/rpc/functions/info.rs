@@ -6,6 +6,7 @@ use anyhow::anyhow;
 use postcard_rpc::header::{VarHeader, VarSeq};
 use postcard_schema::{Schema, schema};
 use probe_rs::{
+    Session,
     architecture::{
         arm::{
             self, ApAddress, ApV2Address, ArmDebugInterface,
@@ -31,13 +32,30 @@ use probe_rs_target::ScanChainElement;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    rpc::functions::{
-        NoResponse, RpcContext, TargetInfoDataTopic,
-        chip::JEP106Code,
-        probe::{DebugProbeEntry, WireProtocol},
+    rpc::{
+        Key,
+        functions::{
+            NoResponse, RpcContext, TargetInfoDataTopic, TargetNameResponse,
+            chip::JEP106Code,
+            probe::{DebugProbeEntry, WireProtocol},
+        },
     },
     util::common_options::ProbeOptions,
 };
+
+#[derive(Serialize, Deserialize, Schema)]
+pub struct TargetNameRequest {
+    pub sessid: Key<Session>,
+}
+
+pub async fn target_name(
+    ctx: &mut RpcContext,
+    _hdr: VarHeader,
+    request: TargetNameRequest,
+) -> TargetNameResponse {
+    let session = ctx.session(request.sessid).await;
+    Ok(session.target().name.clone())
+}
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct TargetInfoRequest {
