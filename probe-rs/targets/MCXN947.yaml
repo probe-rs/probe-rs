@@ -3,7 +3,7 @@ manufacturer:
   id: 0x15
   cc: 0x0
 generated_from_pack: true
-pack_file_release: 25.03.00
+pack_file_release: 26.03.00
 variants:
 - name: MCXN947
   cores:
@@ -42,7 +42,7 @@ variants:
       read: true
       execute: true
       boot: true
-  - !Generic
+  - !Nvm
     name: BootROM
     range:
       start: 0x3000000
@@ -65,7 +65,7 @@ variants:
     access:
       read: true
       write: true
-  - !Generic
+  - !Nvm
     name: PROGRAM_FLASH_alias0
     range:
       start: 0x10000000
@@ -76,7 +76,8 @@ variants:
     access:
       write: false
       read: true
-  - !Generic
+      execute: true
+  - !Nvm
     name: PROGRAM_FLASH_alias1
     range:
       start: 0x10100000
@@ -87,7 +88,8 @@ variants:
     access:
       write: false
       read: true
-  - !Generic
+      execute: true
+  - !Nvm
     name: BootROM_alias
     range:
       start: 0x13000000
@@ -99,7 +101,7 @@ variants:
       write: false
       read: true
       execute: true
-  - !Generic
+  - !Ram
     name: SRAMX_alias
     range:
       start: 0x14000000
@@ -109,6 +111,8 @@ variants:
     # - cm33_core1
     access:
       execute: false
+      read: true
+      write: true
   - !Ram
     name: SRAM
     range:
@@ -132,7 +136,7 @@ variants:
       read: true
       write: true
       execute: false
-  - !Generic
+  - !Ram
     name: SRAM_alias
     range:
       start: 0x30000000
@@ -144,7 +148,7 @@ variants:
       read: true
       write: true
       execute: false
-  - !Generic
+  - !Ram
     name: SRAMH_alias
     range:
       start: 0x30060000
@@ -168,7 +172,7 @@ variants:
       read: true
       write: true
       execute: false
-  - !Generic
+  - !Ram
     name: USB_RAM_alias
     range:
       start: 0x500ba000
