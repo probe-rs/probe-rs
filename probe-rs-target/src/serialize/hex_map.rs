@@ -22,7 +22,7 @@ where
 }
 
 /// Deserialize a `IndexMap<String, u64>`. In YAML, values may be written as hex literals
-/// (`0x1234`) or plain decimal integers; `serde_yaml` handles both natively.
+/// (`0x1234`) or plain decimal integers; `yaml_serde` handles both natively.
 pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<IndexMap<String, u64>, D::Error>
 where
     D: Deserializer<'de>,

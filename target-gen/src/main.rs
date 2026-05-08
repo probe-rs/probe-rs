@@ -292,7 +292,7 @@ fn refresh_yaml(yaml_path: &Path) -> Result<()> {
     let yaml = std::fs::read_to_string(yaml_path)
         .context(format!("Failed to read file '{}'.", yaml_path.display()))?;
 
-    let family = serde_yaml::from_str::<ChipFamily>(&yaml)
+    let family = yaml_serde::from_str::<ChipFamily>(&yaml)
         .context(format!("Failed to parse file '{}'.", yaml_path.display()))?;
 
     let yaml = serialize_to_yaml_string(&family)?;
