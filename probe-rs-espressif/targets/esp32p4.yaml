@@ -30,8 +30,8 @@ variants:
     - cpu0
     - cpu1
     access:
-      boot: true
       execute: false
+      boot: true
   - !Nvm
     range:
       start: 0x40000000

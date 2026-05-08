@@ -22,8 +22,8 @@ variants:
     cores:
     - main
     access:
-      boot: true
       execute: false
+      boot: true
   - !Generic
     name: ROM
     range:

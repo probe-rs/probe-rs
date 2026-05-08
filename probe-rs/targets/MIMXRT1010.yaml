@@ -11,6 +11,13 @@ variants:
       ap: !v1 0
   memory_map:
   - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -33,13 +40,6 @@ variants:
     - main
     access:
       boot: true
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x00000000
-      end:   0x00020000
-    cores:
-      - main
   flash_algorithms:
   - mimxrt1011_quadspi_4kb_sec
 flash_algorithms:

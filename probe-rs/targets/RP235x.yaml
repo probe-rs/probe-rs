@@ -4,16 +4,16 @@ manufacturer:
   cc: 0x4
 variants:
 - name: RP235x
-  part: 0x4c9
+  part: 1225
   cores:
-    - name: core0
-      type: armv8m
-      core_access_options: !Arm
-        ap: !v2 0x2000
-    - name: core1
-      type: armv8m
-      core_access_options: !Arm
-        ap: !v2 0x4000
+  - name: core0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0x2000
+  - name: core1
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0x4000
   memory_map:
   - !Nvm
     range:
@@ -34,7 +34,7 @@ variants:
   flash_algorithms:
   - algo
 - name: RP235x_riscv
-  part: 0x4c9
+  part: 1225
   cores:
   - name: rv0
     type: riscv
@@ -68,10 +68,10 @@ flash_algorithms:
   description: algo
   default: true
   instructions: 8LUDr4ewFEZaTX1EKHgAKAfQXkh4RABogEddSHhEAGiARwEmLnBgHgMoANON4EhIAPAO+QxGAChf0UZIgBwA8Af5ACgB0AxGV+AGlBAiEHhBTE0oUdERIxh4dShN0RIgApAAeAIoCtABKEbRA5MEkgWRFCAAiBghCog4SQjgA5MEkgWRAPDU+BYgAogzSAQhkEczTAAoIkYA0AJGACgFmQSYA5sp0AB4LkxNKCXRGHh1KCLRApgAeAIoBZEBkgfQASga0RQgAIgYIQqIJkkF4ADwrvgWIAKII0gEIZBHI0wAKCJGANACRgAoBtAEkiBIAPCu+AxGACgC0CBGB7DwvRRIAPCl+AAondEDkQaYACgZ0AaYgEcFmIBHF0h4RAGZAWAWSHhEBpkBYBVIeEQEmQFgFEh4RARgE0h4RAOZAWAucAAk2ecFnNfnAPCr+MBGSUYAAENYAABSRQAQUkUAAFJFACBSUAAQUlAAAFJQACBGQwAAngIAAJQBAACIAQAAiAEAAIQBAACCAQAApAIAAKACAADQtQKvCEx8RCB4ASgK0QdIeEQAaIBHBkh4RABogEcAICBw0L0BINC9DgEAABQBAAAQAQAA0LUCrwlJeUQJeAEpDNEPIQkHQBgGSXlEDGgBIhEDEgTYI6BHACDQvQEg0L3aAAAA0gAAANC1Aq8LRglJeUQJeAEpCtEPIQkHQBgGSXlEDGgRRhpGoEcAINC9ASDQvcBGpAAAAKAAAAAGSF/0QEEBYDDuEPcE1EDsgAdA7IEHQL9wRwAAiO0A4NC1Aq+EshAgAHhNKA/RESAAeHUoC9ESIAB4AigL0AEoBdEUIACIGCEKiCFGCeABIAEHYRjQvf/30/8WIAKIBCEgRpBHAUZAQkhBACny0QEhSQfu54C1AK8A3v7eANTU1AAAAAAAAAAAAAAAAAAAAAAAAAAA
-  pc_init: 1
-  pc_uninit: 405
-  pc_program_page: 509
-  pc_erase_sector: 457
+  pc_init: 0x1
+  pc_uninit: 0x195
+  pc_program_page: 0x1fd
+  pc_erase_sector: 0x1c9
   data_section_offset: 0x0
   flash_properties:
     address_range:

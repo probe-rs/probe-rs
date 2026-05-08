@@ -26,8 +26,6 @@ variants:
     # - cm33_core1
     access:
       write: false
-      read: true
-      execute: true
       boot: true
   - !Nvm
     name: PROGRAM_FLASH1
@@ -39,8 +37,6 @@ variants:
     # - cm33_core1
     access:
       write: false
-      read: true
-      execute: true
       boot: true
   - !Generic
     name: BootROM
@@ -62,9 +58,6 @@ variants:
     cores:
     - cm33_core0
     # - cm33_core1
-    access:
-      read: true
-      write: true
   - !Generic
     name: PROGRAM_FLASH_alias0
     range:
@@ -75,7 +68,6 @@ variants:
     # - cm33_core1
     access:
       write: false
-      read: true
   - !Generic
     name: PROGRAM_FLASH_alias1
     range:
@@ -86,7 +78,6 @@ variants:
     # - cm33_core1
     access:
       write: false
-      read: true
   - !Generic
     name: BootROM_alias
     range:
@@ -97,8 +88,6 @@ variants:
     # - cm33_core1
     access:
       write: false
-      read: true
-      execute: true
   - !Generic
     name: SRAMX_alias
     range:
@@ -117,9 +106,6 @@ variants:
     cores:
     - cm33_core0
     # - cm33_core1
-    access:
-      read: true
-      write: true
   - !Ram
     name: SRAMH
     range:
@@ -129,8 +115,6 @@ variants:
     - cm33_core0
     # - cm33_core1
     access:
-      read: true
-      write: true
       execute: false
   - !Generic
     name: SRAM_alias
@@ -141,8 +125,6 @@ variants:
     - cm33_core0
     # - cm33_core1
     access:
-      read: true
-      write: true
       execute: false
   - !Generic
     name: SRAMH_alias
@@ -153,8 +135,6 @@ variants:
     - cm33_core0
     # - cm33_core1
     access:
-      read: true
-      write: true
       execute: false
   - !Ram
     name: USB_RAM
@@ -165,8 +145,6 @@ variants:
     - cm33_core0
     # - cm33_core1
     access:
-      read: true
-      write: true
       execute: false
   - !Generic
     name: USB_RAM_alias
@@ -177,8 +155,6 @@ variants:
     - cm33_core0
     # - cm33_core1
     access:
-      read: true
-      write: true
       execute: false
   flash_algorithms:
   - mcxn9xx_2048
