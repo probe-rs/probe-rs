@@ -51,7 +51,7 @@ impl Cmd {
     pub async fn run(self, client: RpcClient) -> anyhow::Result<()> {
         ensure_data_in_range(&self.values, self.read_write_options.width)?;
 
-        let session = cli::attach_probe(&client, self.probe_options, false).await?;
+        let session = cli::attach_probe(&client, self.probe_options, None, false).await?;
         let core = session.core(self.shared.core);
 
         match self.read_write_options.width {
