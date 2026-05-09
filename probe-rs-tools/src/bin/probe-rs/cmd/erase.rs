@@ -23,7 +23,7 @@ impl Cmd {
             anyhow::bail!("'erase --protocol updi' does not support '--read-flasher-rtt'.");
         }
 
-        let session = cli::attach_probe(&client, self.common, false).await?;
+        let session = cli::attach_probe(&client, self.common, None, false).await?;
 
         let pb = if self.disable_progressbars {
             None
