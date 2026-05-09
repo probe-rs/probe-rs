@@ -234,7 +234,11 @@ impl Display for GdbNufMemoryResult<'_> {
 
         let byte_per_unit = self.nuf.unit_specifier.get_size();
         let width = 2 + byte_width * byte_per_unit;
-        let total_bytes = byte_per_unit * self.nuf.unit_count;
+        let total_bytes = if self.nuf.count_was_default {
+            self.memory.len()
+        } else {
+            byte_per_unit * self.nuf.unit_count
+        };
 
         for bytes in self.memory[..total_bytes].chunks_exact(byte_per_unit) {
             match self.nuf.format_specifier {
