@@ -108,9 +108,11 @@ pub(crate) fn memory_read(
     target_core: &mut CoreHandle<'_>,
 ) -> EvalResult {
     if gdb_nuf.format_specifier == GdbFormat::Instruction {
-        let mut assembly_lines = vec![];
+        use std::fmt::Write;
+
+        let mut formatted_output = "".to_string();
         for range in ranges {
-            let mut lines = disassemble_target_memory(
+            let instructions = disassemble_target_memory(
                 target_core,
                 0_i64,
                 0_i64,
@@ -121,22 +123,34 @@ pub(crate) fn memory_read(
                     DisassemblyAmount::Instructions(gdb_nuf.unit_count as i64)
                 },
             )?;
-            if lines.is_empty() {
+            if instructions.is_empty() {
                 return Err(DebuggerError::UserMessage(format!(
                     "Cannot disassemble memory at address {:#010x}",
                     range.start
                 )));
             }
-            assembly_lines.append(&mut lines);
-        }
-        let mut formatted_output = "".to_string();
-        for assembly_line in &assembly_lines {
-            formatted_output.push_str(&assembly_line.to_string());
+            for instruction in instructions {
+                write!(formatted_output, "{}", instruction).map_err(|err| {
+                    DebuggerError::UserMessage(format!("Formatting an instruction: {err:?}"))
+                })?
+            }
         }
 
         Ok(EvalResponse::Message(formatted_output))
     } else {
-        let mut memory_result = vec![0u8; gdb_nuf.get_size()];
+        let bytes: usize = if gdb_nuf.count_was_default {
+            (ranges[0].end - ranges[0].start)
+                .try_into()
+                .map_err(|err| {
+                    DebuggerError::UserMessage(format!(
+                        "Symbol size {} was bigger than a usize: {err:?}",
+                        ranges[0].end - ranges[0].start
+                    ))
+                })?
+        } else {
+            gdb_nuf.get_size()
+        };
+        let mut memory_result = vec![0u8; bytes];
         match target_core.core.read_8(ranges[0].start, &mut memory_result) {
             Ok(()) => Ok(EvalResponse::Message(
                 GdbNufMemoryResult {

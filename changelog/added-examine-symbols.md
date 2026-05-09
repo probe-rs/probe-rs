@@ -1,0 +1,1 @@
+Added syntax for examining memory described by an ELF symbol, e.g. `x/i main`, `x/b fmt::vtable`.  When the Nuf doesn't have an explicit count (like x/i), use the symbol's size.  Support both .symtab and DWARF symbols, both functions and global variables.
