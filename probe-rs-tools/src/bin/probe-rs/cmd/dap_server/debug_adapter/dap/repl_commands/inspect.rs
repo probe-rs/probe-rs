@@ -2,7 +2,7 @@ use std::{fmt::Write as _, ops::Range, path::Path, str::FromStr};
 
 use linkme::distributed_slice;
 use probe_rs::CoreDump;
-use probe_rs_debug::{ObjectRef, VariableName};
+use probe_rs_debug::{ObjectRef, SymbolKind, VariableName};
 
 use crate::cmd::dap_server::{
     DebuggerError,
@@ -96,6 +96,75 @@ fn print_variables(
     get_local_variable(evaluate_arguments, target_core, variable_name, gdb_nuf)
 }
 
+fn process_register(
+    reg: &str,
+    target_core: &mut CoreHandle<'_>,
+    input_ranges: &mut [Range<u64>],
+) -> Result<(), DebuggerError> {
+    let Some(register) = target_core.core.registers().all_registers().find(|r| {
+        std::iter::once(r.name().to_string())
+            .chain(r.roles.iter().map(std::string::ToString::to_string))
+            .any(|name| name.eq_ignore_ascii_case(reg))
+    }) else {
+        return Err(DebuggerError::UserMessage(format!(
+            "Undefined register ${reg:?}."
+        )));
+    };
+    input_ranges[0].start = target_core.core.read_core_reg(register)?;
+    Ok(())
+}
+
+fn process_symbol(
+    input_argument: &str,
+    target_core: &mut CoreHandle<'_>,
+    input_ranges: &mut Vec<Range<u64>>,
+) -> Result<(), DebuggerError> {
+    // attempt to look up the string as a symbol
+    if let Some(ref debug_info) = target_core.core_data.debug_info {
+        let matches = debug_info.find_symbols(input_argument);
+        if matches.is_empty() {
+            return Err(DebuggerError::UserMessage(format!(
+                "Symbol {input_argument} did not match any in the binary"
+            )));
+        }
+        if matches.len() > 1 {
+            return Err(DebuggerError::UserMessage(format!(
+                "Symbol {input_argument} matched multiple from the binary, please disambiguate.  Found:\n  {}",
+                matches
+                    .iter()
+                    .map(|symbol| symbol.name.to_string())
+                    .collect::<Vec<_>>()
+                    .join("\n  ")
+            )));
+        }
+        match &matches[0].kind {
+            SymbolKind::Function(ranges) => {
+                if ranges.is_empty() {
+                    return Err(DebuggerError::UserMessage(format!(
+                        "Symbol {input_argument} matched an entry {} with no byte ranges, which should not be possible.",
+                        matches[0].name
+                    )));
+                }
+                input_ranges.clone_from(ranges);
+            }
+            SymbolKind::InlinedFunction(_) => {
+                return Err(DebuggerError::UserMessage(format!(
+                    "Symbol {input_argument} matched an inline function {}; please use its container.",
+                    matches[0].name
+                )));
+            }
+            SymbolKind::Variable(range) => {
+                input_ranges[0].clone_from(range);
+            }
+        }
+    } else {
+        return Err(DebuggerError::UserMessage(
+            "No debug info loaded, so no symbol resolution is possible.".to_string(),
+        ));
+    }
+    Ok(())
+}
+
 fn examine_memory(
     target_core: &mut CoreHandle<'_>,
     command_arguments: &str,
@@ -110,11 +179,14 @@ fn examine_memory(
     // 1. Specified address
     // 2. Frame address
     // 3. Program counter
-    let mut input_address = 0_u64;
+    let mut input_ranges = vec![Range {
+        start: 0_u64,
+        end: 0u64,
+    }];
 
     for input_argument in input_arguments {
         if let Ok(MemoryAddress(addr)) = MemoryAddress::try_from(input_argument) {
-            input_address = addr;
+            input_ranges[0].start = addr;
         } else if input_argument.starts_with('/') {
             let Some(gdb_nuf_string) = input_argument.strip_prefix('/') else {
                 return Err(DebuggerError::UserMessage(
@@ -136,28 +208,17 @@ fn examine_memory(
                     ))
                 })?;
         } else if let Some(reg) = input_argument.strip_prefix('$') {
-            let Some(register) = target_core.core.registers().all_registers().find(|r| {
-                std::iter::once(r.name().to_string())
-                    .chain(r.roles.iter().map(|role| role.to_string()))
-                    .any(|name| name.eq_ignore_ascii_case(reg))
-            }) else {
-                return Err(DebuggerError::UserMessage(format!(
-                    "Undefined register ${reg:?}."
-                )));
-            };
-            input_address = target_core.core.read_core_reg(register)?;
+            process_register(reg, target_core, &mut input_ranges)?;
         } else {
-            return Err(DebuggerError::UserMessage(
-                "Invalid parameters. See the `help` command for more information.".to_string(),
-            ));
+            process_symbol(input_argument, target_core, &mut input_ranges)?;
         }
     }
-    if input_address == 0 {
+    if input_ranges[0].start == 0 {
         // No address was specified, so we'll use the frame address, if available.
 
         let frame_id = request_arguments.frame_id.map(ObjectRef::from);
 
-        input_address = if let Some(frame_pc) = frame_id
+        input_ranges[0].start = if let Some(frame_pc) = frame_id
             .and_then(|frame_id| {
                 target_core
                     .core_data
@@ -175,7 +236,7 @@ fn examine_memory(
         }
     }
 
-    memory_read(input_address, gdb_nuf, target_core)
+    memory_read(input_ranges, gdb_nuf, target_core)
 }
 
 fn dump_core(

@@ -22,6 +22,7 @@ object = "0.39"
 parse_int = "0.9.0"
 probe-rs = { workspace = true }
 probe-rs-target.workspace = true
+rustc-demangle = "0.1.26"
 serde = { version = "1.0.217", features = ["derive"] }
 thiserror.workspace = true
 tracing = "0.1.41"
