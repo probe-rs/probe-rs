@@ -1,0 +1,678 @@
+name: EFR32MG26 Series
+generated_from_pack: true
+pack_file_release: 2025.12.1
+variants:
+- name: EFR32MG26B211F2048IM68
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2c3
+- name: EFR32MG26B211F3200IM48
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8320000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2c3
+- name: EFR32MG26B221F2048IM68
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2c3
+- name: EFR32MG26B221F3200IM48
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8320000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2c3
+- name: EFR32MG26B311F3200IL136
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8320000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2c3
+- name: EFR32MG26B410F3200IM48
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8320000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2c3
+- name: EFR32MG26B410F3200IM68
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8320000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2c3
+- name: EFR32MG26B411F3200IM48
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8320000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2c3
+- name: EFR32MG26B411F3200IM68
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8320000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2c3
+- name: EFR32MG26B420F3200IM48
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8320000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2c3
+- name: EFR32MG26B420F3200IM68
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8320000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2c3
+- name: EFR32MG26B421F3200IM48
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8320000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2c3
+- name: EFR32MG26B421F3200IM68
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8320000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2c3
+- name: EFR32MG26B510F3200IL136
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8320000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2c3
+- name: EFR32MG26B510F3200IM48
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8320000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2c3
+- name: EFR32MG26B510F3200IM68
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8320000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2c3
+- name: EFR32MG26B511F3200IL136
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8320000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2c3
+- name: EFR32MG26B511F3200IM48
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8320000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2c3
+- name: EFR32MG26B511F3200IM68
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8320000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2c3
+- name: EFR32MG26B520F3200IM48
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8320000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2c3
+- name: EFR32MG26B520F3200IM68
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8320000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2c3
+- name: EFR32MG26B521F3200IM48
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8320000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2c3
+- name: EFR32MG26B521F3200IM68
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8320000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2c3
+- name: EFR32MG26B610F3200IM48
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8320000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2c3
+- name: EFR32MG26B611F2048IM48
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - main
+  flash_algorithms:
+  - geckos2c3
+flash_algorithms:
+- name: geckos2c3
+  description: EFM32/EFR32 Gecko S2C3
+  default: true
+  instructions: 8LU+ST5KSfgBABBowPMFQKDxFQQBIAwsAPJugEJLe0Tf6ATwDAkHBwcLCQcJaglqBwAgMwLgEDMA4DAz3WgJ6wEAtfH/P0NgJt1sCS1IBfAfBQnrAQZQ+CRw70AX8AEHt2Ad0ADrhAMBJAT6BfXD+IBQCesBA7/zT4+/82+PW2jdaAAtDNRuCQXwHwUA64YArEDA+IBBA+AJ6wEAACSEYFxoGUg8sRlNLGCFbiVCAr8XSARgF0gYTAnrAQYlaBxom2gdQBVLH0YEvwAnxfIDB/dgE04UsUHyaAfEUQAtQfZxMAi/M0ZJRNhjACAYZA1LkmgD6oIiCmHwvQC/BAAAAASA4A8A4QDgAIAAQGiQAEBokABQAIAAUGCAAEQAAANAAAADUAD8/wPSAgAAsLUXSAnrAAGJaOmxFUlP9IAyCmAJ6wABSmjTaAArE9RcCRFJA/AfBQEjAeuEBAP6BfXE+IBR0mgAKgXUAvAfBFIJo0BB+CIwSERB9nExASLAaMFjQvIMAUJQACCwvQC/BAAAAAygAEQA4QDgcLULTVn4BUAJ6wUGWfgFADFpCESEQiS/ACBwvSBGAPAJ+AT1AFQAKPDQASBwvQC/BAAAALC1EUkCRgjKA/EBAxGxBDEAK/jQs7ENSUHyDAIBJQnrAQThaI1QSGECIAhhASAAIQDwVPjhaELyDAIAKI1QGL8BILC9ACCwvQTg//8EAAAALenwTQVGIEiTRkHyDAIBIwnrAAf4aINQyBwg8AMETLMpRvho2kZv818xRWHB9QBYREU4v6BGyPEEBlr4BBuBYT6xCCAIIQDwIfh4ufhoBDbz5wQhASYBYQEgACEA8Bb4KLmk6wgERUTDRNjnASYwRr3o8I0ESAAmQvIMAQEiSETAaEJQ8+cAvwQAAABwtQ9KEEsPTB0dSkTSaNZpLkIK0QZAjkIEvwAgcL0BNCS/b/ACAHC98efQaB5CIPABANBgb/ABAAi/T/D/MHC9BAAAAIBpZ/8CAAEAAAAAAAAAAAAABAAAAwAAAAAAAgAAgAAAAAQAAAMAAAAAAAEAAEAAAAACAAAAAAAAAAABAABAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+  load_address: 0x20000008
+  pc_init: 0x1
+  pc_uninit: 0x12d
+  pc_program_page: 0x21d
+  pc_erase_sector: 0x1cd
+  pc_erase_all: 0x199
+  data_section_offset: 0x334
+  rtt_poll_interval: 0
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8320000
+    page_size: 0x2000
+    erased_byte_value: 0xff
+    program_page_timeout: 260
+    erase_sector_timeout: 200
+    sectors:
+    - size: 0x2000
+      address: 0x0
