@@ -414,9 +414,12 @@ pub struct EraseRequest {
     pub read_flasher_rtt: bool,
 }
 
+pub type EraseRange = std::ops::Range<u64>;
+
 #[derive(Serialize, Deserialize, Schema)]
 pub enum EraseCommand {
     All,
+    Range(EraseRange),
 }
 
 pub async fn erase(ctx: &mut RpcContext, _header: VarHeader, request: EraseRequest) -> NoResponse {
@@ -444,6 +447,13 @@ fn erase_impl(
         EraseCommand::All => {
             flashing::erase_all(&mut session, &mut progress, request.read_flasher_rtt)?
         }
+        EraseCommand::Range(range) => flashing::erase(
+            &mut session,
+            &mut progress,
+            range.start,
+            range.end,
+            request.read_flasher_rtt,
+        )?,
     }
 
     Ok(())
