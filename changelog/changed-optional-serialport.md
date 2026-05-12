@@ -1,0 +1,1 @@
+- `serialport` is now an optional dependency. Targets using `serialport` will be compiled out when the feature is missing.
