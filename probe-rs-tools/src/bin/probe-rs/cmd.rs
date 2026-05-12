@@ -12,6 +12,7 @@ pub mod gdb_server;
 pub mod info;
 pub mod itm;
 pub mod list;
+pub mod lock;
 pub mod mi;
 pub mod profile;
 pub mod read;
@@ -20,5 +21,6 @@ pub mod run;
 #[cfg(feature = "remote")]
 pub mod serve;
 pub mod trace;
+pub mod unlock;
 pub mod verify;
 pub mod write;

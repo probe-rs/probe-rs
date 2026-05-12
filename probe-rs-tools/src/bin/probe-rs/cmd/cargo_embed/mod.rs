@@ -227,6 +227,7 @@ async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Res
         connect_under_reset: config.general.connect_under_reset,
         dry_run: false,
         allow_erase_all: config.flashing.enabled || config.gdb.enabled,
+        allow_permanent_debug_lock: false,
     };
 
     let lister = Lister::new();

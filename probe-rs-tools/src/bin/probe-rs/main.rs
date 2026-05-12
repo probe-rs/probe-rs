@@ -137,6 +137,8 @@ impl Cli {
             Subcommand::Write(cmd) => cmd.run(client).await,
             Subcommand::Complete(cmd) => cmd.run(&lister),
             Subcommand::Mi(cmd) => cmd.run(),
+            Subcommand::Lock(cmd) => cmd.run(&mut *client.registry().await, &lister),
+            Subcommand::Unlock(cmd) => cmd.run(client).await,
         }
     }
 
@@ -195,6 +197,8 @@ enum Subcommand {
     Write(cmd::write::Cmd),
     Complete(cmd::complete::Cmd),
     Mi(cmd::mi::Cmd),
+    Lock(cmd::lock::Cmd),
+    Unlock(cmd::unlock::Cmd),
 }
 
 impl Subcommand {
@@ -214,6 +218,7 @@ impl Subcommand {
                 | Self::Run(_)
                 | Self::Erase(_)
                 | Self::Verify(_)
+                | Self::Unlock(_)
         )
     }
 }

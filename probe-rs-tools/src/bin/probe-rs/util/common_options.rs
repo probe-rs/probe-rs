@@ -147,6 +147,14 @@ pub struct ProbeOptions {
         help_heading = "PROBE CONFIGURATION"
     )]
     pub allow_erase_all: bool,
+    /// Use this flag to allow permanently locking the debug port of the target device.
+    /// This operation cannot be undone and debug access to the device is lost.
+    #[arg(
+        long,
+        env = "PROBE_RS_ALLOW_PERMANENT_DEBUG_LOCK",
+        help_heading = "PROBE CONFIGURATION"
+    )]
+    pub allow_permanent_debug_lock: bool,
 }
 
 impl ProbeOptions {
@@ -329,6 +337,9 @@ impl<'r> LoadedProbeOptions<'r> {
         let mut permissions = Permissions::new();
         if self.0.allow_erase_all {
             permissions = permissions.allow_erase_all();
+        }
+        if self.0.allow_permanent_debug_lock {
+            permissions = permissions.allow_permanent_debug_lock();
         }
 
         let session = if self.0.connect_under_reset {
