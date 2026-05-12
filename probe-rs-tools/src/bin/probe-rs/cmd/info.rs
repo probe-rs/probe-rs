@@ -133,7 +133,7 @@ impl Cmd {
                 tracing::warn!("ignoring --chip option");
                 common.chip = None;
             }
-            match cli::attach_probe(&client, common, false).await {
+            match cli::attach_probe(&client, common, None, false).await {
                 Ok(session) => println!("{}", session.target_name().await?),
                 Err(e) => {
                     eprintln!(

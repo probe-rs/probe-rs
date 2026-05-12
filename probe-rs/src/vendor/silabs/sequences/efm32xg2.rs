@@ -33,7 +33,8 @@ impl EFM32xG2 {
     pub fn create(chip: &Chip) -> Arc<dyn ArmDebugSequence> {
         let is_series_2c3 = chip.name.starts_with("EFR32FG23")
             || chip.name.starts_with("EFR32MG24")
-            || chip.name.starts_with("EFR32PG26");
+            || chip.name.starts_with("EFR32MG26")
+            || chip.name.starts_with("EFM32PG26");
 
         let flash_base_addr = if is_series_2c3 { 0x0800_0000 } else { 0 };
 

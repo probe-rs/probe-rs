@@ -50,6 +50,8 @@ pub use channel::*;
 use object::{Object as _, ObjectSymbol as _};
 
 use crate::Session;
+#[cfg(feature = "object")]
+use crate::meta::ElfMetadata;
 use crate::{Core, MemoryInterface, config::MemoryRegion};
 use std::ops::Range;
 use std::thread;
@@ -62,6 +64,18 @@ use zerocopy::{FromBytes, IntoBytes};
 pub fn find_rtt_control_block_in_raw_file(raw_file: &[u8]) -> Result<Option<u64>, object::Error> {
     let obj = object::File::parse(raw_file)?;
     Ok(find_rtt_control_block_in_file(&obj))
+}
+
+/// Extract the RTT control block and metadata from a raw file, usually an ELF file.
+#[cfg(feature = "object")]
+pub fn find_rtt_control_block_and_metadata_in_raw_file(
+    raw_file: &[u8],
+) -> Result<(Option<u64>, ElfMetadata), object::Error> {
+    let obj = object::File::parse(raw_file)?;
+    Ok((
+        find_rtt_control_block_in_file(&obj),
+        ElfMetadata::from_object(&obj)?,
+    ))
 }
 
 /// Extract the RTT control block from a parsed [object::File] file, usually a parsed ELF file.
