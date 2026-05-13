@@ -472,6 +472,11 @@ pub async fn flash(
         _ = visualizer.write_svg(visualizer_output);
     }
 
+    if download_options.reset {
+        let core = session.core(0);
+        core.reset().await?;
+    }
+
     logging::eprintln(format!(
         "     {} in {:.02}s",
         "Finished".green().bold(),
