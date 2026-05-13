@@ -1,7 +1,7 @@
 //! Listing probes of various types.
 
 use crate::probe::{
-    DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError,
+    DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError, ProbeSettings,
 };
 
 use super::DRIVERS;
@@ -51,7 +51,7 @@ impl Default for Lister {
 ///
 /// This trait can be used to implement custom probe listers.
 pub trait ProbeLister: std::fmt::Debug {
-    /// Try to open a probe using the given selector
+    /// Try to open a probe using the given selector, and default per-probe settings.
     fn open(&self, selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError>;
 
     /// List all probes found by the lister.
@@ -73,7 +73,7 @@ impl ProbeLister for AllProbesLister {
         let mut fallback_error = ProbeCreationError::NotFound;
 
         for probe_ctor in DRIVERS.read().iter() {
-            match probe_ctor.open(selector) {
+            match probe_ctor.open(selector, &ProbeSettings::default()) {
                 Ok(link) => return Ok(Probe::from_specific_probe(link)),
                 Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
                 Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)) => {

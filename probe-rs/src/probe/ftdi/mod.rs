@@ -15,8 +15,8 @@ use crate::{
     },
     probe::{
         AutoImplementJtagAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-        IoSequenceItem, JtagAccess, JtagDriverState, ProbeCreationError, ProbeFactory, RawJtagIo,
-        RawSwdIo, SwdSettings, WireProtocol,
+        IoSequenceItem, JtagAccess, JtagDriverState, ProbeCreationError, ProbeFactory,
+        ProbeSettings, RawJtagIo, RawSwdIo, SwdSettings, WireProtocol,
     },
 };
 use bitvec::prelude::*;
@@ -32,6 +32,29 @@ mod ftdaye;
 
 use command_compacter::Command;
 use ftdaye::{ChipType, error::FtdiError};
+
+/// Configuration for FTDI-based probes.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct FtdiProbeConfig {
+    /// FTDI GPIO wired to the target's reset signal, used for hard reset
+    pub reset_pin: Option<FtdiResetPin>,
+}
+
+/// A GPIO line on an FTDI chip used to drive the target's reset signal.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FtdiResetPin {
+    /// Pin identifier, e.g. `"ACBUS6"`, `"ADBUS7"`
+    pub pin: String,
+    /// Whether the reset signal is active-low
+    #[serde(default = "default_true")]
+    pub active_low: bool,
+}
+
+fn default_true() -> bool {
+    true
+}
 
 #[derive(Debug)]
 struct JtagAdapter {
@@ -297,7 +320,11 @@ impl std::fmt::Display for FtdiProbeFactory {
 }
 
 impl ProbeFactory for FtdiProbeFactory {
-    fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+    fn open(
+        &self,
+        selector: &DebugProbeSelector,
+        _settings: &ProbeSettings,
+    ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         // Only open FTDI-compatible probes
         let Some(ftdi) = FTDI_COMPAT_DEVICES
             .iter()
