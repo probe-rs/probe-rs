@@ -330,6 +330,8 @@ pub struct RpcContext {
     state: ConnectionState,
     sender: Option<PostcardSender<WireTxImpl>>,
     probe_access: ProbeAccess,
+    /// Probe-driver settings forwarded to each [`Lister`] this context builds.
+    probe_settings: ProbeSettings,
 }
 
 impl SpawnContext for RpcContext {
@@ -345,11 +347,12 @@ impl SpawnContext for RpcContext {
 }
 
 impl RpcContext {
-    pub fn new(probe_access: ProbeAccess) -> Self {
+    pub fn new(probe_access: ProbeAccess, probe_settings: ProbeSettings) -> Self {
         Self {
             state: ConnectionState::new(),
             sender: None,
             probe_access,
+            probe_settings,
         }
     }
 
@@ -394,7 +397,10 @@ impl RpcContext {
     }
 
     pub fn lister(&self) -> Lister {
-        Lister::with_lister(Box::new(LimitedLister::new(self.probe_access.clone())))
+        let mut lister =
+            Lister::with_lister(Box::new(LimitedLister::new(self.probe_access.clone())));
+        lister.set_settings(self.probe_settings.clone());
+        lister
     }
 
     pub async fn registry(&self) -> impl DerefMut<Target = Registry> + Send + use<> {
@@ -599,6 +605,7 @@ impl RpcApp {
     pub fn create_server(
         depth: usize,
         probe_access: ProbeAccess,
+        probe_settings: ProbeSettings,
     ) -> (ServerImpl, TxChannel, RxChannel) {
         let client_to_server = channel::<Result<Vec<u8>, WireRxErrorKind>>(depth);
         let server_to_client = channel::<Vec<u8>>(depth);
@@ -606,7 +613,8 @@ impl RpcApp {
         let client_to_server_rx = WireRx::new(client_to_server.1);
         let server_to_client_tx = WireTx::new(server_to_client.0);
 
-        let mut dispatcher = RpcApp::new(RpcContext::new(probe_access), TokioSpawner);
+        let mut dispatcher =
+            RpcApp::new(RpcContext::new(probe_access, probe_settings), TokioSpawner);
         let vkk = dispatcher.min_key_len();
         dispatcher
             .context

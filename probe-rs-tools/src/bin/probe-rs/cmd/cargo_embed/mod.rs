@@ -143,6 +143,8 @@ async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Res
         }
         configs.merge(config_file)?;
     }
+    // Capture before `config` is filtered by profile
+    let probe_settings = config.probe_settings.clone();
     let config = configs.select_defined(profile_name)?;
 
     let _log_guard = setup_logging(None, config.general.log_level);
@@ -229,7 +231,7 @@ async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Res
         allow_erase_all: config.flashing.enabled || config.gdb.enabled,
     };
 
-    let lister = Lister::new();
+    let lister = Lister::with_settings(probe_settings);
     let (mut session, probe_options) = match probe_options.simple_attach(&mut registry, &lister) {
         Ok((session, probe_options)) => (session, probe_options),
 

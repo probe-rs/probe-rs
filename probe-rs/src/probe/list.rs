@@ -38,6 +38,11 @@ impl Lister {
         }
     }
 
+    /// Override the settings the probes will be opened with
+    pub fn set_settings(&mut self, settings: ProbeSettings) {
+        self.settings = settings;
+    }
+
     /// Try to open a probe using the given selector. The lister's embedded
     /// [`ProbeSettings`] is forwarded to the matching driver.
     pub fn open(&self, selector: impl Into<DebugProbeSelector>) -> Result<Probe, DebugProbeError> {
