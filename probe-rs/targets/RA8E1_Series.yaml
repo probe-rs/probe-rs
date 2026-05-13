@@ -1,4 +1,13 @@
 name: RA8E1 Series
+manufacturer:
+  id: 0x23
+  cc: 0x4
+chip_detection:
+  - !RenesasPnr
+    target_id: 0x3b0
+    mcu_pn_base: 0x130080f0
+    variants:
+      - R7FA8E1AF
 generated_from_pack: true
 pack_file_release: 6.4.0
 variants:

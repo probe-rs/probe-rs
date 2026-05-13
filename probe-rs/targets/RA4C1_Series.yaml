@@ -1,4 +1,15 @@
 name: RA4C1 Series
+manufacturer:
+  id: 0x23
+  cc: 0x4
+chip_detection:
+  - !RenesasPnr
+    target_id: 0x6a0
+    mcu_pn_base: 0x010080F0
+    variants:
+      - R7FA4C1BB
+      - R7FA4C1BD
+      - R7FA4C1CD
 generated_from_pack: true
 pack_file_release: 6.4.0
 variants:

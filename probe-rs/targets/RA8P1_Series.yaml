@@ -1,4 +1,22 @@
 name: RA8P1 Series
+manufacturer:
+  id: 0x23
+  cc: 0x4
+chip_detection:
+  - !RenesasPnr
+    target_id: 0x500
+    mcu_pn_base: 0x02c1ec38
+    variants:
+      - R7JA8P1JR
+      - R7JA8P1JS
+      - R7JA8P1KR
+      - R7JA8P1KS
+      - R7KA8P1AD
+      - R7KA8P1AF
+      - R7KA8P1BD
+      - R7KA8P1BF
+      - R7KA8P1JF
+      - R7KA8P1KF
 generated_from_pack: true
 pack_file_release: 6.4.0
 variants:

@@ -1,4 +1,17 @@
 name: RA8M2 Series
+manufacturer:
+  id: 0x23
+  cc: 0x4
+chip_detection:
+  - !RenesasPnr
+    target_id: 0x500
+    mcu_pn_base: 0x02c1ec38
+    variants:
+      - R7JA8M2JR
+      - R7JA8M2JS
+      - R7KA8M2AD
+      - R7KA8M2AF
+      - R7KA8M2JF
 generated_from_pack: true
 pack_file_release: 6.4.0
 variants:

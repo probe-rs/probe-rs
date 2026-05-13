@@ -1,4 +1,14 @@
 name: RA2T1 Series
+manufacturer:
+  id: 0x23
+  cc: 0x4
+chip_detection:
+  - !RenesasPnr
+    target_id: 0x690
+    reverse_string: true
+    mcu_pn_base: 0x01001C10
+    variants:
+      - R7FA2T107
 generated_from_pack: true
 pack_file_release: 6.4.0
 variants:

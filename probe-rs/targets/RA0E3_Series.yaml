@@ -1,4 +1,14 @@
 name: RA0E3 Series
+manufacturer:
+  id: 0x23
+  cc: 0x4
+chip_detection:
+  - !RenesasPnr
+    target_id: 0x7c0
+    reverse_string: true
+    mcu_pn_base: 0x01011080
+    variants:
+      - R7FA0E303
 generated_from_pack: true
 pack_file_release: 6.4.0
 variants:
