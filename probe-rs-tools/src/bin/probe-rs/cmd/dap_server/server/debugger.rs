@@ -980,6 +980,7 @@ mod test {
         fn open(
             &self,
             _selector: &DebugProbeSelector,
+            _settings: &probe_rs::probe::ProbeSettings,
         ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
             todo!()
         }
