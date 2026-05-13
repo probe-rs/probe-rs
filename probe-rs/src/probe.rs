@@ -100,12 +100,8 @@ impl std::str::FromStr for WireProtocol {
     }
 }
 
+// To add support for a new probe, add it to this struct as optional
 /// Per-probe configuration supplied at open time.
-///
-///
-/// To add support for a new driver,
-/// define a `*ProbeConfig` struct alongside the driver and add an `Option` field
-/// here referencing it.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct ProbeSettings {
