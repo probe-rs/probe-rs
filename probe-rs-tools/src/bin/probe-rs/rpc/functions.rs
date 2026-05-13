@@ -52,7 +52,7 @@ use probe_rs::config::Registry;
 use probe_rs::integration::ProbeLister;
 use probe_rs::probe::list::AllProbesLister;
 use probe_rs::probe::{
-    DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError,
+    DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError, ProbeSettings,
 };
 use probe_rs::{Session, probe::list::Lister};
 use serde::{Deserialize, Serialize};
@@ -293,13 +293,17 @@ impl LimitedLister {
 }
 
 impl ProbeLister for LimitedLister {
-    fn open(&self, selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError> {
+    fn open(
+        &self,
+        selector: &DebugProbeSelector,
+        settings: &ProbeSettings,
+    ) -> Result<Probe, DebugProbeError> {
         if !self.is_allowed(selector) {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
                 ProbeCreationError::CouldNotOpen,
             ));
         }
-        self.all_probes.open(selector)
+        self.all_probes.open(selector, settings)
     }
 
     fn list(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {

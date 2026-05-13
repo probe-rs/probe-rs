@@ -20,7 +20,10 @@ use postcard_schema::Schema;
 use probe_rs::flashing::{
     BinLoader, BinOptions, ElfLoader, ElfOptions, HexLoader, ImageLoader, Uf2Loader,
 };
-use probe_rs::{Target, probe::list::Lister};
+use probe_rs::{
+    Target,
+    probe::{ProbeSettings, list::Lister},
+};
 use probe_rs_espressif::image_format::IdfLoader;
 use report::Report;
 use serde::{Deserialize, Serialize};
@@ -37,12 +40,17 @@ const MAX_LOG_FILES: usize = 20;
 type ConfigPreset = HashMap<String, Value>;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub(crate) struct Config {
     #[cfg(feature = "remote")]
     pub server: cmd::serve::ServerConfig,
 
     /// A named set of `--key=value` pairs.
     pub presets: HashMap<String, ConfigPreset>,
+
+    /// Per-probe configuration. Probes consult only their own section (e.g. `[probe_settings.ftdi]`).
+    /// See [`probe_rs::probe::ProbeSettings`] for the shape.
+    pub probe_settings: ProbeSettings,
 }
 
 #[derive(clap::Parser)]
@@ -110,7 +118,7 @@ struct Cli {
 
 impl Cli {
     async fn run(self, client: RpcClient, _config: Config, utc_offset: UtcOffset) -> Result<()> {
-        let lister = Lister::new();
+        let lister = Lister::with_settings(_config.probe_settings.clone());
         match self.subcommand {
             Subcommand::DapServer(cmd) => {
                 let log_path = self.log_file.as_deref();
