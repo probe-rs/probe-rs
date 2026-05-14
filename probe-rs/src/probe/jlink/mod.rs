@@ -44,7 +44,8 @@ use crate::{
     },
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
-        JtagDriverState, ProbeFactory, RawJtagIo, RawSwdIo, SwdSettings, WireProtocol,
+        JtagDriverState, ProbeFactory, ProbeSettings, RawJtagIo, RawSwdIo, SwdSettings,
+        WireProtocol,
     },
 };
 
@@ -62,7 +63,11 @@ impl std::fmt::Display for JLinkFactory {
 }
 
 impl ProbeFactory for JLinkFactory {
-    fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+    fn open(
+        &self,
+        selector: &DebugProbeSelector,
+        _settings: &ProbeSettings,
+    ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         fn open_error(e: std::io::Error, while_: &'static str) -> DebugProbeError {
             let help = if cfg!(windows) {
                 "(this error may be caused by not having the WinUSB driver installed; use Zadig (https://zadig.akeo.ie/) to install it for the J-Link device; this will replace the SEGGER J-Link driver)"

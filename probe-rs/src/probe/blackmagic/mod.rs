@@ -1494,6 +1494,7 @@ impl ProbeFactory for BlackMagicProbeFactory {
     fn open(
         &self,
         selector: &super::DebugProbeSelector,
+        _settings: &super::ProbeSettings,
     ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         // Ensure the VID and PID match Black Magic Probes
         if selector.vendor_id != BLACK_MAGIC_PROBE_VID

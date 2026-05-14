@@ -21,7 +21,7 @@ use crate::{
     },
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeError,
-        ProbeFactory, WireProtocol,
+        ProbeFactory, ProbeSettings, WireProtocol,
     },
 };
 
@@ -58,7 +58,11 @@ impl std::fmt::Display for StLinkFactory {
 }
 
 impl ProbeFactory for StLinkFactory {
-    fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+    fn open(
+        &self,
+        selector: &DebugProbeSelector,
+        _settings: &ProbeSettings,
+    ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         tracing::debug!("Opening ST-Link: {selector:?}");
         let device = StLinkUsbDevice::new_from_selector(selector)?;
         let mut stlink = StLink {
