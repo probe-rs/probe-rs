@@ -514,10 +514,6 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
     /// Select current hart
     pub fn select_hart(&mut self, hart: u32) -> Result<(), RiscvError> {
-        if !self.hart_enabled(hart) {
-            return Err(RiscvError::HartUnavailable);
-        }
-
         if self.state.last_selected_hart == hart {
             return Ok(());
         }
@@ -527,7 +523,30 @@ impl<'state> RiscvCommunicationInterface<'state> {
         control.set_dmactive(true);
         control.set_hartsel(hart);
         self.schedule_write_dm_register(control)?;
-        self.state.last_selected_hart = hart;
+
+        // Check if the current hart exists
+        let status: Dmstatus = self.read_dm_register()?;
+
+        if status.allunavail() {
+            // Re-select last hart
+            let mut control = Dmcontrol(0);
+            control.set_dmactive(true);
+            control.set_hartsel(self.state.last_selected_hart);
+            self.schedule_write_dm_register(control)?;
+
+            if self.state.enabled_harts & (1 << hart) != 0 {
+                tracing::warn!("Hart {hart} became unavailable");
+            }
+            self.state.enabled_harts &= !(1 << hart);
+
+            return Err(RiscvError::HartUnavailable);
+        } else {
+            // Mark as available and selected
+            self.state.enabled_harts |= 1 << hart;
+            self.state.last_selected_hart = hart;
+            tracing::debug!("Selected {hart}");
+        }
+
         Ok(())
     }
 
@@ -796,13 +815,17 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// disconnect leaves the debug module active with no way to recover
     /// short of a full power cycle.
     pub fn disable_debug_module(&mut self) -> Result<(), RiscvError> {
-        // Best-effort: try to clear ebreak bits in DCSR, but do not let
-        // failure prevent us from deactivating the debug module below.
-        if let Err(e) = self.debug_on_sw_breakpoint(false) {
-            tracing::warn!(
-                "disable_debug_module: could not clear sw-breakpoint state: {:?}",
-                e
-            );
+        for hart in 0..self.state.num_harts {
+            // Best-effort: try to clear ebreak bits in DCSR, but do not let
+            // failure prevent us from deactivating the debug module below.
+            if self.select_hart(hart).is_ok()
+                && let Err(e) = self.debug_on_sw_breakpoint(false)
+            {
+                tracing::warn!(
+                    "disable_debug_module: could not clear sw-breakpoint state: {:?}",
+                    e
+                );
+            }
         }
 
         // Clear any sticky DMI errors (dmistat=3) that may have accumulated
