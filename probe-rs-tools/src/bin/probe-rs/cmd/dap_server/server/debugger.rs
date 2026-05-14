@@ -953,7 +953,7 @@ mod test {
         integration::{FakeProbe, Operation},
         probe::{
             DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory,
-            list::Lister,
+            ProbeSettings, list::Lister,
         },
     };
     use serde_json::json;
@@ -980,7 +980,7 @@ mod test {
         fn open(
             &self,
             _selector: &DebugProbeSelector,
-            _settings: &probe_rs::probe::ProbeSettings,
+            _settings: &ProbeSettings,
         ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
             todo!()
         }
