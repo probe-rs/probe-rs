@@ -78,6 +78,7 @@ mod error;
 pub mod flashing;
 pub mod integration;
 mod memory;
+mod memory_port;
 #[cfg(feature = "object")]
 pub mod meta;
 pub mod probe;
@@ -101,6 +102,7 @@ pub use crate::core::{
 };
 pub use crate::error::{BreakpointError, Error};
 pub use crate::memory::MemoryInterface;
+pub use crate::memory_port::MemoryAccessPort;
 pub use crate::session::{Permissions, Session, SessionConfig};
 
 #[doc = include_str!("../../README.md")]

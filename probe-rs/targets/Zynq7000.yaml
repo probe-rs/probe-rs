@@ -46,6 +46,11 @@ variants:
         debug_base: 0x80092000
         cti_base: 0x80099000
         jtag_tap: 1
+  memory_ports:
+    - name: ahb-ap
+      memory_port_options: !Arm
+        ap: !v1 0
+        jtag_tap: 1
   jtag:
     scan_chain:
       - name: PL
@@ -64,6 +69,8 @@ variants:
       cores:
         - core0
         - core1
+      memory_ports:
+        - ahb-ap
     - !Ram
       name: DDR
       range:
@@ -72,6 +79,8 @@ variants:
       cores:
         - core0
         - core1
+      memory_ports:
+        - ahb-ap
     - !Nvm
       name: QSPI
       range:
