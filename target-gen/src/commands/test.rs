@@ -178,6 +178,7 @@ pub fn cmd_test(
     println!("{test}: Writing two pages ...");
 
     let mut loader = session.target().flash_loader();
+    loader.read_rtt_output(true);
     let data = (0..data_size).map(|n| (n % 256) as u8).collect::<Vec<_>>();
     loader.add_data(test_start_sector_address + 1, &data)?;
     run_flash_download(&mut session, loader, true)?;
@@ -203,6 +204,7 @@ pub fn cmd_test(
 
     println!("{test}: Writing two pages ...");
     let mut loader = session.target().flash_loader();
+    loader.read_rtt_output(true);
     let data = (0..data_size).map(|n| (n % 256) as u8).collect::<Vec<_>>();
     loader.add_data(test_start_sector_address + 1, &data)?;
     run_flash_download(&mut session, loader, true)?;
@@ -235,6 +237,7 @@ pub fn cmd_test(
 
     println!("{test}: Writing two pages ...");
     let mut loader = session.target().flash_loader();
+    loader.read_rtt_output(true);
     let data = (0..data_size).map(|n| (n % 256) as u8).collect::<Vec<_>>();
     loader.add_data(test_start_sector_address + 1, &data)?;
     run_flash_download(&mut session, loader, false)?;
