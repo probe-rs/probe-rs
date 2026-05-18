@@ -142,6 +142,7 @@ pub fn cmd_test(
     };
 
     let have_read = flash_algorithm.pc_read.is_some();
+    let have_verify = flash_algorithm.pc_verify.is_some();
 
     let flash_properties = &flash_algorithm.flash_properties;
     let start_address = flash_properties.address_range.start;
@@ -185,7 +186,7 @@ pub fn cmd_test(
     loader.read_rtt_output(true);
     let data = (0..data_size).map(|n| (n % 256) as u8).collect::<Vec<_>>();
     loader.add_data(test_start_sector_address + 1, &data)?;
-    run_flash_download(&mut session, loader, true)?;
+    run_flash_download(&mut session, &mut loader, true)?;
 
     println!("{test}: Write done");
 
@@ -219,7 +220,7 @@ pub fn cmd_test(
     loader.read_rtt_output(true);
     let data = (0..data_size).map(|n| (n % 256) as u8).collect::<Vec<_>>();
     loader.add_data(test_start_sector_address + 1, &data)?;
-    run_flash_download(&mut session, loader, true)?;
+    run_flash_download(&mut session, &mut loader, true)?;
 
     println!("{test}: Write done");
 
@@ -259,8 +260,15 @@ pub fn cmd_test(
     loader.read_rtt_output(true);
     let data = (0..data_size).map(|n| (n % 256) as u8).collect::<Vec<_>>();
     loader.add_data(test_start_sector_address + 1, &data)?;
-    run_flash_download(&mut session, loader, false)?;
+    run_flash_download(&mut session, &mut loader, false)?;
     println!("{test}: Write done");
+
+    if have_verify {
+        println!("{test}: Verifying");
+        let mut progress = progress_callbacks();
+        loader.verify(&mut session, &mut progress)?;
+        println!("{test}: verification done");
+    }
 
     let mut readback = vec![0; data_size as usize];
     if have_read {
@@ -324,7 +332,7 @@ fn ensure_is_file(file_path: &Path) -> Result<()> {
 /// This function also manages the update and display of progress bars.
 pub fn run_flash_download(
     session: &mut Session,
-    loader: FlashLoader,
+    loader: &mut FlashLoader,
     disable_double_buffering: bool,
 ) -> Result<()> {
     let mut download_option = DownloadOptions::default();
