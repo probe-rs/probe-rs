@@ -275,28 +275,31 @@ impl Channel {
                 )));
             }
 
-            let buffer_fully_in_memory_region = core
-                .target()
-                .memory_map
-                .iter()
-                .filter_map(|mr| mr.as_ram_region())
-                .merge_consecutive()
-                .any(|rr| {
-                    let start = self.info.buffer_start_pointer();
-                    let end = self.info.buffer_start_pointer() + self.info.size_of_buffer();
+            // We skip memory region check if target is a generic target without memory_map item
+            if !core.target().memory_map.is_empty() {
+                let buffer_fully_in_memory_region = core
+                    .target()
+                    .memory_map
+                    .iter()
+                    .filter_map(|mr| mr.as_ram_region())
+                    .merge_consecutive()
+                    .any(|rr| {
+                        let start = self.info.buffer_start_pointer();
+                        let end = self.info.buffer_start_pointer() + self.info.size_of_buffer();
 
-                    // `end` points at one beyond the last byte, and so does `rr.range.end`. Since
-                    // `rr.range` is exclusive, `contains` will return `false` if `end` is equal to
-                    // `rr.range.end`.
-                    rr.range.contains(&start) && end <= rr.range.end
-                });
+                        // `end` points at one beyond the last byte, and so does `rr.range.end`. Since
+                        // `rr.range` is exclusive, `contains` will return `false` if `end` is equal to
+                        // `rr.range.end`.
+                        rr.range.contains(&start) && end <= rr.range.end
+                    });
 
-            if !buffer_fully_in_memory_region {
-                return Err(Error::ControlBlockCorrupted(format!(
-                    "the {which} buffer doesn't fully fit in any known (consecutive) ram region according to its own pointers: (start_pointer: {:#X}, size: {})",
-                    self.info.buffer_start_pointer(),
-                    self.info.size_of_buffer(),
-                )));
+                if !buffer_fully_in_memory_region {
+                    return Err(Error::ControlBlockCorrupted(format!(
+                        "the {which} buffer doesn't fully fit in any known (consecutive) ram region according to its own pointers: (start_pointer: {:#X}, size: {})",
+                        self.info.buffer_start_pointer(),
+                        self.info.size_of_buffer(),
+                    )));
+                }
             }
 
             Ok(())
@@ -543,20 +546,38 @@ impl RttChannel for DownChannel {
 /// Reads a null-terminated string from target memory. Lossy UTF-8 decoding is used.
 fn read_c_string(core: &mut Core, ptr: NonZeroU64) -> Result<Option<String>, Error> {
     let ptr = ptr.get();
-    let Some(range) = core
-        .memory_regions()
-        .filter(|r| r.is_ram() || r.is_nvm())
-        .find_map(|r| r.contains(ptr).then_some(r.address_range()))
-    else {
-        return Err(Error::ControlBlockCorrupted(format!(
-            "The channel name pointer is not in a valid memory region: {ptr:#X}"
-        )));
-    };
 
-    tracing::trace!("read_c_string() ptr = {ptr:#X}");
-    // Read up to 128 bytes not going past the end of the region
-    let mut bytes = vec![0u8; min(128, (range.end - ptr) as usize)];
-    core.read(ptr, bytes.as_mut())?;
+    let mut bytes;
+
+    if core.target().memory_map.is_empty() {
+        // We read byte by byte if target is a generic target without memory_map item
+        bytes = Vec::with_capacity(128);
+
+        tracing::trace!("read_c_string() ptr = {ptr:#X}");
+
+        for i in 0..128 {
+            let byte = core.read_word_8(ptr + i)?;
+            bytes.push(byte);
+            if byte == 0 {
+                break;
+            }
+        }
+    } else {
+        let Some(range) = core
+            .memory_regions()
+            .filter(|r| r.is_ram() || r.is_nvm())
+            .find_map(|r| r.contains(ptr).then_some(r.address_range()))
+        else {
+            return Err(Error::ControlBlockCorrupted(format!(
+                "The channel name pointer is not in a valid memory region: {ptr:#X}"
+            )));
+        };
+
+        tracing::trace!("read_c_string() ptr = {ptr:#X}");
+        // Read up to 128 bytes not going past the end of the region
+        bytes = vec![0u8; min(128, (range.end - ptr) as usize)];
+        core.read(ptr, bytes.as_mut())?;
+    }
 
     // If the bytes read contain a null, return the preceding part as a string, otherwise None.
     let return_value = CStr::from_bytes_until_nul(&bytes)
