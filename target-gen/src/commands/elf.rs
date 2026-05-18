@@ -46,7 +46,7 @@ pub fn cmd_elf(
             )
         })?;
 
-        let mut family: ChipFamily = serde_yaml::from_reader(target_description)
+        let mut family: ChipFamily = yaml_serde::from_reader(target_description)
             .context("Failed to deserialize target description file")?;
 
         let Some(algorithm_to_update) = family
@@ -281,13 +281,13 @@ fn compact_flash_algos(out: &mut ChipFamily) {
     });
 }
 
-/// Some optimizations to improve the readability of the `serde_yaml` output:
+/// Some optimizations to improve the readability of the `yaml_serde` output:
 /// - If `Option<T>` is `None`, it is serialized as `null` ... we want to omit it.
 /// - If `Vec<T>` is empty, it is serialized as `[]` ... we want to omit it.
-/// - `serde_yaml` serializes hex formatted integers as single quoted strings, e.g. '0x1234' ... we need to remove the single quotes so that it round-trips properly.
+/// - `yaml_serde` serializes hex formatted integers as single quoted strings, e.g. '0x1234' ... we need to remove the single quotes so that it round-trips properly.
 pub fn serialize_to_yaml_string(family: &ChipFamily) -> Result<String> {
     let family = compact(family);
-    let raw_yaml_string = serde_yaml::to_string(&family)?;
+    let raw_yaml_string = yaml_serde::to_string(&family)?;
 
     let mut yaml_string = String::with_capacity(raw_yaml_string.len());
     for reader_line in raw_yaml_string.lines() {

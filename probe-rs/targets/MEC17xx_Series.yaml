@@ -16,13 +16,6 @@ variants:
       end: 0x118000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x50000000
-      end: 0x58000000
-    cores:
-    - main
   - !Generic
     name: IRAM2
     range:
@@ -42,6 +35,13 @@ variants:
     range:
       start: 0x40100000
       end: 0x40106000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
     cores:
     - main
 - name: MEC1701Q
@@ -58,13 +58,6 @@ variants:
       end: 0x118000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x50000000
-      end: 0x58000000
-    cores:
-    - main
   - !Generic
     name: IRAM2
     range:
@@ -86,6 +79,13 @@ variants:
       end: 0x40106000
     cores:
     - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
+    cores:
+    - main
 - name: MEC1703K
   cores:
   - name: main
@@ -98,13 +98,6 @@ variants:
     range:
       start: 0xd0000
       end: 0x118000
-    cores:
-    - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x50000000
-      end: 0x58000000
     cores:
     - main
   - !Generic
@@ -128,6 +121,13 @@ variants:
       end: 0x40106000
     cores:
     - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
+    cores:
+    - main
 - name: MEC1703Q
   cores:
   - name: main
@@ -140,13 +140,6 @@ variants:
     range:
       start: 0xb0000
       end: 0x118000
-    cores:
-    - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x50000000
-      end: 0x58000000
     cores:
     - main
   - !Generic
@@ -168,6 +161,13 @@ variants:
     range:
       start: 0x40100000
       end: 0x40106000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
     cores:
     - main
 - name: MEC1704Q
@@ -184,13 +184,6 @@ variants:
       end: 0x118000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x50000000
-      end: 0x58000000
-    cores:
-    - main
   - !Generic
     name: IRAM2
     range:
@@ -210,6 +203,13 @@ variants:
     range:
       start: 0x40100000
       end: 0x40106000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
     cores:
     - main
 - name: MEC1705Q
@@ -226,13 +226,6 @@ variants:
       end: 0x118000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x50000000
-      end: 0x58000000
-    cores:
-    - main
   - !Generic
     name: IRAM2
     range:
@@ -254,6 +247,13 @@ variants:
       end: 0x40106000
     cores:
     - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
+    cores:
+    - main
 - name: MEC1721N_B0_LJ
   cores:
   - name: main
@@ -266,13 +266,6 @@ variants:
     range:
       start: 0xc0000
       end: 0x118000
-    cores:
-    - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x50000000
-      end: 0x58000000
     cores:
     - main
   - !Generic
@@ -294,6 +287,13 @@ variants:
     range:
       start: 0x40100000
       end: 0x40106000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
     cores:
     - main
 - name: MEC1721N_B0_SZ
@@ -310,13 +310,6 @@ variants:
       end: 0x118000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x50000000
-      end: 0x58000000
-    cores:
-    - main
   - !Generic
     name: IRAM2
     range:
@@ -336,6 +329,13 @@ variants:
     range:
       start: 0x40100000
       end: 0x40106000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
     cores:
     - main
 - name: MEC1723N_B0_LJ
@@ -352,13 +352,6 @@ variants:
       end: 0x118000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x50000000
-      end: 0x58000000
-    cores:
-    - main
   - !Generic
     name: IRAM2
     range:
@@ -378,6 +371,13 @@ variants:
     range:
       start: 0x40100000
       end: 0x40106000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
     cores:
     - main
   flash_algorithms:
@@ -396,13 +396,6 @@ variants:
       end: 0x118000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x50000000
-      end: 0x58000000
-    cores:
-    - main
   - !Generic
     name: IRAM2
     range:
@@ -422,6 +415,13 @@ variants:
     range:
       start: 0x40100000
       end: 0x40106000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
     cores:
     - main
   flash_algorithms:
@@ -440,13 +440,6 @@ variants:
       end: 0x118000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x50000000
-      end: 0x58000000
-    cores:
-    - main
   - !Generic
     name: IRAM2
     range:
@@ -466,6 +459,13 @@ variants:
     range:
       start: 0x40100000
       end: 0x40106000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
     cores:
     - main
   flash_algorithms:
@@ -484,13 +484,6 @@ variants:
       end: 0x118000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x50000000
-      end: 0x58000000
-    cores:
-    - main
   - !Generic
     name: IRAM2
     range:
@@ -510,6 +503,13 @@ variants:
     range:
       start: 0x40100000
       end: 0x40106000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
     cores:
     - main
   flash_algorithms:
@@ -528,13 +528,6 @@ variants:
       end: 0x118000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x50000000
-      end: 0x58000000
-    cores:
-    - main
   - !Generic
     name: IRAM2
     range:
@@ -554,6 +547,13 @@ variants:
     range:
       start: 0x40100000
       end: 0x40106000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
     cores:
     - main
   flash_algorithms:
@@ -572,13 +572,6 @@ variants:
       end: 0x118000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x50000000
-      end: 0x58000000
-    cores:
-    - main
   - !Generic
     name: IRAM2
     range:
@@ -598,6 +591,13 @@ variants:
     range:
       start: 0x40100000
       end: 0x40106000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
     cores:
     - main
 - name: MEC1725N_B0_LJ
@@ -614,13 +614,6 @@ variants:
       end: 0x118000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x50000000
-      end: 0x58000000
-    cores:
-    - main
   - !Generic
     name: IRAM2
     range:
@@ -640,6 +633,13 @@ variants:
     range:
       start: 0x40100000
       end: 0x40106000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
     cores:
     - main
 - name: MEC1727N_B0_SZ
@@ -656,13 +656,6 @@ variants:
       end: 0x118000
     cores:
     - main
-  - !Nvm
-    name: IROM1
-    range:
-      start: 0x50000000
-      end: 0x58000000
-    cores:
-    - main
   - !Generic
     name: IRAM2
     range:
@@ -684,6 +677,13 @@ variants:
       end: 0x40106000
     cores:
     - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
+    cores:
+    - main
 flash_algorithms:
 - name: mec172x_w25m512
   description: MEC172x EVB Winbond W25M512 flash
@@ -691,8 +691,8 @@ flash_algorithms:
   instructions: CLUESxhgACAA8Dj4APBS+AAgCL28CQwAE7UAIwGTBksbaAxGg0IRRpi/wBoiRgGrAPDR+QKwEL28CQwAB7UAIwGTBUsbaINCmL/AGgGpAPD0+QOwXfgE+7wJDAAAIHBHBUnKaMtomkKIvwPx/zObGoNC99NwRwC/ABAAQAZKRyMTYCAjEWhJBwPVATubsgAr+NFDIxNgcEcAEABAALHf53BHgwID68Ajo+vAA6PrgAD/9/S/CLUBIg8hT/IVI5hHACIQRk/yJSMDIZhHAUsBIhpwCL0AJABALen4T934KJCARhxGFUZqswArP9AAIyNgH0tH9v93ufEADwi/mUaPQhxLKL8PRqCxQPIEQlpgT/SAe1poAutHQlpgObEBIt/4VKAacgAmt0IP0TlGIWABIAngT/SIYlpgT/QAW+nnyEcYsSZgACC96PiP2vgQMBPqCw/00bjxAA8E0KtdivggMAE24Oea+CQwq1X55xhG6uddBAwAAAAHQC3p/0Hd+CiAD0YVRh5GAUYIsQAvU9ANsQAuUtArTCNp2gNQ1LGxBCMjck/w/zMjYTpGzfgAgAOrASD/95H/SLljaEP0AHNjYAIjI3IFIASwvejwgbW5HUzJJSNpmwUC1AE9rbI1uyNpE/QAf2NoT/ACAkP0AHNjYAi/ByAichi/ACDk5xFMBCMjck/w/zMjYTJGzfgAgAOrKUYAIP/3YP8AKNjRY2hD9ABzY2ACIyNyBiDM50D29DD/9xb/zecBIMXnAiDD5wQgwecAvwAAB0D4tQVGyCRP8iEnKEa4RwZGQPb0MP/3AP8uuQE8pLIALPPRASD4vQAg/OcTtQAjAJPDaIJ4DEaBaACI//d5/yi5IEYCsL3oEED/99q/ASACsBC9f7UgI434BDADDI34BTADCo34BjABqwSTBCON+AcArfgIMAKoACMFk434CjD/99T/B7Bd+AT7f7UAIwGTBSON+AQwAasEkwWQASMCqK34CDCN+Aow//fA/wewXfgE+y3p90OZRgEjBkYNRpBGA3BJRg3xBwD/99//BEaQuZ34BzDbBwTUMHAgRgOwvejwg0VFL0Yov0dGOEb/97b+7Rvm0fHnASTv53+1ACMGIgGTjfgEIAGqAUYEkgKoASKt+AggBZON+Aow//eH/wewXfgE+3+1ACMEIgGTjfgEIGpEAUYEkgKoASKt+AggBZON+Aow//dy/wewXfgE+3C1xrAeRgIjjfgUMAMMFEaN+BUwjfgXAAMKBqiN+BYwBa0A8Gf4BDQAIzFGAagDla34BEAEk434BjD/91D/RrBwvfe1svWAfx1GT/AAAwZGD0YURo34BzAD2QEkIEYDsPC9KEb/96L/ACj20StGIkY5RjBG//fE/wAo7tFC9tBw//ck/itGASIEIQ3xBwD/92n/nfgHQARDFPD/BN3RKEb/95n/2uc3tQAjBUYIRgxGjfgHMP/3ev8QsQEgA7AwvSFGKEb/9x//ACj20QhI//f9/SNGCiJ4IQ3xBwD/90L/nfgHMBhDwLIAOBi/ASDl5yDeAQCERkHqAAMT8AMDbdFAOkHTUfgEO0D4BDtR+AQ7QPgEO1H4BDtA+AQ7UfgEO0D4BDtR+AQ7QPgEO1H4BDtA+AQ7UfgEO0D4BDtR+AQ7QPgEO1H4BDtA+AQ7UfgEO0D4BDtR+AQ7QPgEO1H4BDtA+AQ7UfgEO0D4BDtR+AQ7QPgEO1H4BDtA+AQ7UfgEO0D4BDtAOr3SMDIR01H4BDtA+AQ7UfgEO0D4BDtR+AQ7QPgEO1H4BDtA+AQ7EDrt0gwyBdNR+AQ7QPgEOwQ6+dIEMgjQ0gccvxH4ATsA+AE7AdMLiAOAYEZwRwC/CCoT04sHjdAQ8AMDitDD8QQD0hrbBxy/EfgBOwD4ATuA0zH4Ajsg+AI7e+cEOtnTAToR+AE7APgBO/nSC3gDcEt4Q3CLeINwYEZwRwAAAFA=
   load_address: 0xc0400
   pc_init: 0x1
-  pc_erase_sector: 0x3d
   pc_program_page: 0x19
+  pc_erase_sector: 0x3d
   data_section_offset: 0x9bc
   flash_properties:
     address_range:
@@ -703,5 +703,5 @@ flash_algorithms:
     program_page_timeout: 300
     erase_sector_timeout: 300
     sectors:
-      - size: 0x1000
-        address: 0x0
+    - size: 0x1000
+      address: 0x0

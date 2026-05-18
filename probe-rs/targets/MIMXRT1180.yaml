@@ -11,22 +11,21 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 3
-
   memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0xffc0000
+      end: 0x10000000
+    cores:
+    - cm33
   - !Ram
     name: DTCM
     range:
       start: 0x20000000
       end: 0x20040000
     cores:
-      - cm33
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0ffc0000
-      end: 0x10000000
-    cores:
-      - cm33
+    - cm33
   - !Ram
     name: OCRAM1
     range:
@@ -36,14 +35,14 @@ variants:
       start: 0x20484000
       end: 0x20500000
     cores:
-      - cm33
+    - cm33
   - !Ram
     name: OCRAM2
     range:
       start: 0x20500000
       end: 0x20540000
     cores:
-      - cm33
+    - cm33
   - !Nvm
     name: FlexSPI1
     range:

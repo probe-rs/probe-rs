@@ -331,7 +331,6 @@ flash_algorithms:
   pc_erase_sector: 0xdd
   pc_erase_all: 0xcb
   data_section_offset: 0x178
-  rtt_poll_interval: 0
   flash_properties:
     address_range:
       start: 0x400000

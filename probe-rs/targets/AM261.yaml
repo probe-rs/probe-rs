@@ -29,6 +29,13 @@ variants:
     cores:
     - core0
   - !Ram
+    name: HSM_MBOX_SRAM
+    range:
+      start: 0x44000000
+      end: 0x44000800
+    cores:
+    - core0
+  - !Ram
     name: L2OCRAM_BANK0
     range:
       start: 0x70000000
@@ -56,12 +63,4 @@ variants:
       end: 0x72004000
     cores:
     - core0
-  - !Ram
-    name: HSM_MBOX_SRAM
-    range:
-      start: 0x44000000
-      end: 0x44000800
-    cores:
-    - core0
   jtag:
-    scan_chain:
