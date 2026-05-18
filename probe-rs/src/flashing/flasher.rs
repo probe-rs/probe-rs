@@ -1165,6 +1165,7 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
         Ok(())
     }
 
+    /// Do not use, only exposed with `pub` visibility for target-gen.
     pub fn read_flash(&mut self, address: u64, data: &mut [u8]) -> Result<(), FlashError> {
         if let Some(read_flash) = self.flash_algorithm.pc_read {
             let page_size = self.flash_algorithm.flash_properties.page_size;
