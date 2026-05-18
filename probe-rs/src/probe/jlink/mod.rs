@@ -948,6 +948,7 @@ impl DebugProbe for JLink {
             let jlink_interface = match protocol {
                 WireProtocol::Swd => Interface::Swd,
                 WireProtocol::Jtag => Interface::Jtag,
+                WireProtocol::Updi => return Err(DebugProbeError::UnsupportedProtocol(protocol)),
             };
 
             if !self.interfaces.contains(jlink_interface) {
@@ -1011,6 +1012,9 @@ impl DebugProbe for JLink {
             let jlink_interface = match self.protocol {
                 WireProtocol::Swd => Interface::Swd,
                 WireProtocol::Jtag => Interface::Jtag,
+                WireProtocol::Updi => {
+                    return Err(DebugProbeError::UnsupportedProtocol(self.protocol));
+                }
             };
 
             self.select_interface(jlink_interface)?;
@@ -1049,6 +1053,9 @@ impl DebugProbe for JLink {
                 // Attaching is handled in sequence
 
                 // We are ready to debug.
+            }
+            WireProtocol::Updi => {
+                return Err(DebugProbeError::UnsupportedProtocol(self.protocol));
             }
         }
 

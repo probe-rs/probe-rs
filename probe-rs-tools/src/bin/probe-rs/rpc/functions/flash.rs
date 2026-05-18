@@ -3,7 +3,7 @@ use std::time::Duration;
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
 use probe_rs::{
-    InstructionSet, Session,
+    Architecture, InstructionSet, Session,
     flashing::{self, FileDownloadError, FlashLoader, FlashProgress},
 };
 use serde::{Deserialize, Serialize};
@@ -441,8 +441,18 @@ fn erase_impl(
     });
 
     match request.command {
+        EraseCommand::All if session.architecture() == Architecture::Avr => {
+            if request.read_flasher_rtt {
+                return Err(anyhow::anyhow!(
+                    "'erase --protocol updi' does not support '--read-flasher-rtt'."
+                )
+                .into());
+            }
+
+            session.erase_all()?;
+        }
         EraseCommand::All => {
-            flashing::erase_all(&mut session, &mut progress, request.read_flasher_rtt)?
+            flashing::erase_all(&mut session, &mut progress, request.read_flasher_rtt)?;
         }
     }
 

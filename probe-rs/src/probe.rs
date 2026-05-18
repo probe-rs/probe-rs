@@ -66,7 +66,8 @@ pub(crate) fn register_probe_factory(factory: &'static dyn ProbeFactory) {
 
 /// The protocol that is to be used by the probe when communicating with the target.
 ///
-/// For ARM select `Swd` or `Jtag`, for RISC-V select `Jtag`.
+/// For ARM select `Swd` or `Jtag`, for RISC-V select `Jtag`, and for AVR programmer-style
+/// connections select `Updi`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub enum WireProtocol {
     /// Serial Wire Debug is ARMs proprietary standard for communicating with ARM cores.
@@ -75,6 +76,8 @@ pub enum WireProtocol {
     /// JTAG is a standard which is supported by many chips independent of architecture.
     /// See [`Wikipedia`](https://en.wikipedia.org/wiki/JTAG) for more info.
     Jtag,
+    /// Unified Program and Debug Interface for supported AVR programmer-style paths.
+    Updi,
 }
 
 impl fmt::Display for WireProtocol {
@@ -82,6 +85,7 @@ impl fmt::Display for WireProtocol {
         match self {
             WireProtocol::Swd => f.write_str("SWD"),
             WireProtocol::Jtag => f.write_str("JTAG"),
+            WireProtocol::Updi => f.write_str("UPDI"),
         }
     }
 }
@@ -93,8 +97,9 @@ impl std::str::FromStr for WireProtocol {
         match &s.to_ascii_lowercase()[..] {
             "swd" => Ok(WireProtocol::Swd),
             "jtag" => Ok(WireProtocol::Jtag),
+            "updi" => Ok(WireProtocol::Updi),
             _ => Err(format!(
-                "'{s}' is not a valid protocol. Choose either 'swd' or 'jtag'."
+                "'{s}' is not a valid protocol. Choose either 'swd', 'jtag', or 'updi'."
             )),
         }
     }

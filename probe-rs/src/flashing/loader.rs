@@ -8,7 +8,7 @@ use serde_yaml::Value;
 use std::io::{Read, Seek};
 use std::ops::Range;
 use std::sync::LazyLock;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use super::builder::FlashBuilder;
 use super::{DownloadOptions, FileDownloadError, FlashError, Flasher};
@@ -472,6 +472,16 @@ pub enum BootInfo {
     Other,
 }
 
+/// The result of planning which NVM regions to flash and how.
+struct FlashPlan {
+    /// NVM regions with flash algorithms (standard algorithm-based path).
+    flashers: Vec<Flasher>,
+    /// NVM regions without flash algorithms (direct write via MemoryInterface).
+    /// Each entry is (core_index, region). Used by architectures like AVR UPDI
+    /// where flash programming is handled probe-side.
+    direct_regions: Vec<(usize, NvmRegion)>,
+}
+
 /// `FlashLoader` is a struct which manages the flashing of any chunks of data onto any sections of flash.
 ///
 /// Use [add_data()](FlashLoader::add_data) to add a chunk of data.
@@ -631,9 +641,9 @@ impl FlashLoader {
         session: &mut Session,
         progress: &mut FlashProgress<'_>,
     ) -> Result<(), FlashError> {
-        let mut algos = self.prepare_plan(session, false, &[])?;
+        let mut plan = self.prepare_plan(session, false, &[])?;
 
-        for flasher in algos.iter_mut() {
+        for flasher in plan.flashers.iter_mut() {
             let mut program_size = 0;
             for region in flasher.regions.iter_mut() {
                 program_size += region
@@ -644,8 +654,19 @@ impl FlashLoader {
             progress.add_progress_bar(ProgressOperation::Verify, Some(program_size));
         }
 
+        // Add progress bar for algorithm-less NVM regions.
+        let direct_verify_size: u64 = plan
+            .direct_regions
+            .iter()
+            .flat_map(|(_, region)| self.builder.data_in_range(&region.range))
+            .map(|(_, data)| data.len() as u64)
+            .sum();
+        if direct_verify_size > 0 {
+            progress.add_progress_bar(ProgressOperation::Verify, Some(direct_verify_size));
+        }
+
         // Iterate all flash algorithms we need to use and do the flashing.
-        for mut flasher in algos {
+        for mut flasher in plan.flashers {
             tracing::debug!(
                 "Verifying ranges for algo: {}",
                 flasher.flash_algorithm.name
@@ -654,6 +675,28 @@ impl FlashLoader {
             if !flasher.verify(session, progress, true)? {
                 return Err(FlashError::Verify);
             }
+        }
+
+        // Verify algorithm-less NVM regions via direct memory reads.
+        if !plan.direct_regions.is_empty() {
+            progress.started_verifying();
+            for (core_index, region) in &plan.direct_regions {
+                let mut core = session.core(*core_index).map_err(FlashError::Core)?;
+                for (address, data) in self.builder.data_in_range(&region.range) {
+                    let t = Instant::now();
+                    let mut readback = vec![0u8; data.len()];
+                    core.read_8(address, &mut readback).map_err(|e| {
+                        FlashError::FlashReadFailed {
+                            source: Box::new(e),
+                        }
+                    })?;
+                    if readback != *data {
+                        return Err(FlashError::Verify);
+                    }
+                    progress.page_verified(data.len() as u64, t.elapsed());
+                }
+            }
+            progress.finished_verifying();
         }
 
         self.verify_ram(session)?;
@@ -670,7 +713,7 @@ impl FlashLoader {
         mut options: DownloadOptions,
     ) -> Result<(), FlashError> {
         tracing::debug!("Committing FlashLoader!");
-        let mut algos = self.prepare_plan(
+        let plan = self.prepare_plan(
             session,
             options.keep_unwritten_bytes,
             &options.preferred_algos,
@@ -686,39 +729,133 @@ impl FlashLoader {
             return Ok(());
         }
 
-        self.initialize(&mut algos, session, &mut options)?;
-
-        let mut do_chip_erase = options.do_chip_erase;
         let mut did_chip_erase = false;
+        let has_flashers = !plan.flashers.is_empty();
 
-        // Iterate all flash algorithms we need to use and do the flashing.
-        for mut flasher in algos {
-            tracing::debug!("Flashing ranges for algo: {}", flasher.flash_algorithm.name);
+        // 1. Algorithm-based NVM regions (standard flash path).
+        if has_flashers {
+            let mut flashers = plan.flashers;
+            self.initialize(&mut flashers, session, &mut options)?;
 
-            if do_chip_erase {
-                tracing::debug!("    Doing chip erase...");
-                flasher.run_erase_all(session, &mut options.progress)?;
-                do_chip_erase = false;
-                did_chip_erase = true;
+            let mut do_chip_erase = options.do_chip_erase;
+
+            for mut flasher in flashers {
+                tracing::debug!("Flashing ranges for algo: {}", flasher.flash_algorithm.name);
+
+                if do_chip_erase {
+                    tracing::debug!("    Doing chip erase...");
+                    flasher.run_erase_all(session, &mut options.progress)?;
+                    do_chip_erase = false;
+                    did_chip_erase = true;
+                }
+
+                let mut do_use_double_buffering = flasher.double_buffering_supported();
+                if do_use_double_buffering && options.disable_double_buffering {
+                    tracing::info!(
+                        "Disabled double-buffering support for loader via passed option, though target supports it."
+                    );
+                    do_use_double_buffering = false;
+                }
+
+                flasher.program(
+                    session,
+                    &mut options.progress,
+                    options.keep_unwritten_bytes,
+                    do_use_double_buffering,
+                    options.skip_erase || did_chip_erase,
+                    options.verify,
+                )?;
+            }
+        }
+
+        // 2. Algorithm-less NVM regions (direct write via MemoryInterface).
+        //    Used by architectures like AVR UPDI where flash programming is
+        //    handled probe-side and write_8() routes to native flash commands.
+        if !plan.direct_regions.is_empty() {
+            let direct_program_size: u64 = plan
+                .direct_regions
+                .iter()
+                .flat_map(|(_, region)| self.builder.data_in_range(&region.range))
+                .map(|(_, data)| data.len() as u64)
+                .sum();
+
+            // Initialize progress for direct-only plans (algorithm-based plans
+            // are initialized via self.initialize() above).
+            if !has_flashers {
+                if options.do_chip_erase {
+                    options
+                        .progress
+                        .add_progress_bar(ProgressOperation::Erase, None);
+                }
+                options
+                    .progress
+                    .add_progress_bar(ProgressOperation::Program, Some(direct_program_size));
+                if options.verify {
+                    options
+                        .progress
+                        .add_progress_bar(ProgressOperation::Verify, Some(direct_program_size));
+                }
+                options.progress.initialized(vec![]);
             }
 
-            let mut do_use_double_buffering = flasher.double_buffering_supported();
-            if do_use_double_buffering && options.disable_double_buffering {
-                tracing::info!(
-                    "Disabled double-buffering support for loader via passed option, though target supports it."
-                );
-                do_use_double_buffering = false;
+            // Erase: architectures without algorithms use session-level erase.
+            if !options.skip_erase && options.do_chip_erase && !did_chip_erase {
+                options.progress.started_erasing();
+                session
+                    .erase_all()
+                    .map_err(|e| FlashError::ChipEraseFailed {
+                        source: Box::new(e),
+                    })?;
+                options.progress.finished_erasing();
             }
 
-            // Program the data.
-            flasher.program(
-                session,
-                &mut options.progress,
-                options.keep_unwritten_bytes,
-                do_use_double_buffering,
-                options.skip_erase || did_chip_erase,
-                options.verify,
-            )?;
+            // Program each region via MemoryInterface.
+            options.progress.started_programming();
+            for (core_index, region) in &plan.direct_regions {
+                let mut core = session.core(*core_index).map_err(FlashError::Core)?;
+                for (address, data) in self.builder.data_in_range(&region.range) {
+                    tracing::debug!(
+                        "  writing {:#010x}..{:#010x} ({} bytes)",
+                        address,
+                        address + data.len() as u64,
+                        data.len()
+                    );
+                    let t = Instant::now();
+                    core.write_8(address, data)
+                        .map_err(|e| FlashError::PageWrite {
+                            page_address: address,
+                            source: Box::new(e),
+                        })?;
+                    options
+                        .progress
+                        .page_programmed(data.len() as u64, t.elapsed());
+                }
+            }
+            options.progress.finished_programming();
+
+            // Verify direct-write regions.
+            if options.verify {
+                options.progress.started_verifying();
+                for (core_index, region) in &plan.direct_regions {
+                    let mut core = session.core(*core_index).map_err(FlashError::Core)?;
+                    for (address, data) in self.builder.data_in_range(&region.range) {
+                        let t = Instant::now();
+                        let mut readback = vec![0u8; data.len()];
+                        core.read_8(address, &mut readback).map_err(|e| {
+                            FlashError::FlashReadFailed {
+                                source: Box::new(e),
+                            }
+                        })?;
+                        if readback != *data {
+                            return Err(FlashError::Verify);
+                        }
+                        options
+                            .progress
+                            .page_verified(data.len() as u64, t.elapsed());
+                    }
+                }
+                options.progress.finished_verifying();
+            }
         }
 
         tracing::debug!("Committing RAM!");
@@ -810,7 +947,7 @@ impl FlashLoader {
         session: &mut Session,
         restore_unwritten_bytes: bool,
         opt_preferred_algos: &[String],
-    ) -> Result<Vec<Flasher>, FlashError> {
+    ) -> Result<FlashPlan, FlashError> {
         tracing::debug!("Contents of builder:");
         for (&address, data) in &self.builder.data {
             tracing::debug!(
@@ -840,7 +977,8 @@ impl FlashLoader {
             tracing::warn!("Memory map of flash loader does not match memory map of target!");
         }
 
-        let mut algos = Vec::<Flasher>::new();
+        let mut flashers = Vec::<Flasher>::new();
+        let mut direct_regions = Vec::new();
 
         // Commit NVM first
 
@@ -880,31 +1018,38 @@ impl FlashLoader {
 
             let target = session.target();
             let core = target.core_index_by_name(core_name).unwrap();
-            let algo = Self::get_flash_algorithm_for_region(
+
+            match Self::get_flash_algorithm_for_region(
                 &region,
                 target,
                 core_name,
                 opt_preferred_algos,
-            )?;
-
-            // We don't usually have more than a handful of regions, linear search should be fine.
-            tracing::debug!("     -- using algorithm: {}", algo.name);
-            if let Some(entry) = algos
-                .iter_mut()
-                .find(|entry| entry.flash_algorithm.name == algo.name && entry.core_index == core)
-            {
-                entry.add_region(region, &self.builder, restore_unwritten_bytes)?;
-            } else {
-                let mut flasher = Flasher::new(target, core, algo)?;
-                flasher.add_region(region, &self.builder, restore_unwritten_bytes)?;
-
-                flasher.read_rtt_output(self.read_flasher_rtt);
-
-                algos.push(flasher);
+            ) {
+                Ok(algo) => {
+                    tracing::debug!("     -- using algorithm: {}", algo.name);
+                    if let Some(entry) = flashers.iter_mut().find(|entry| {
+                        entry.flash_algorithm.name == algo.name && entry.core_index == core
+                    }) {
+                        entry.add_region(region, &self.builder, restore_unwritten_bytes)?;
+                    } else {
+                        let mut flasher = Flasher::new(target, core, algo)?;
+                        flasher.add_region(region, &self.builder, restore_unwritten_bytes)?;
+                        flasher.read_rtt_output(self.read_flasher_rtt);
+                        flashers.push(flasher);
+                    }
+                }
+                Err(FlashError::NoFlashLoaderAlgorithmAttached { .. }) => {
+                    tracing::debug!("     -- no algorithm, using direct memory writes");
+                    direct_regions.push((core, region));
+                }
+                Err(e) => return Err(e),
             }
         }
 
-        Ok(algos)
+        Ok(FlashPlan {
+            flashers,
+            direct_regions,
+        })
     }
 
     fn initialize(
