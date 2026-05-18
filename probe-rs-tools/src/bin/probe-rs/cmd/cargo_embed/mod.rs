@@ -48,7 +48,7 @@ struct CliOptions {
     ///
     /// When this is set, the default path is still considered, but the given file is considered
     /// with the highest priority.
-    #[arg(long)]
+    #[arg(long, env = "PROBE_RS_EMBED_CONFIG_FILE")]
     config_file: Option<String>,
     #[arg(long)]
     chip: Option<String>,
