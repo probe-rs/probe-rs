@@ -41,7 +41,7 @@ async-io = "2"
 nusb = "0.2.1"
 
 serde = { version = "1", features = ["derive"] }
-serde_yaml = "0.9"
+yaml_serde = "0.10"
 
 [workspace.metadata.release]
 shared-version = true

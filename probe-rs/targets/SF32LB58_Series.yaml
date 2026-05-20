@@ -11,22 +11,13 @@ variants:
     core_access_options: !Arm
       ap: !v1 1
   memory_map:
-  - !Nvm
-    name: Flash3
+  - !Ram
+    name: Retention SRAM
     range:
-      start: 0x64000000
-      end: 0x68000000
+      start: 0x20000
+      end: 0x30000
     cores:
     - hcpu
-    - acpu
-  - !Nvm
-    name: Flash4
-    range:
-      start: 0x68000000
-      end: 0xA0000000
-    cores:
-    - hcpu
-    - acpu
   - !Ram
     name: SRAM
     range:
@@ -45,13 +36,22 @@ variants:
     cores:
     - hcpu
     - acpu
-  - !Ram
-    name: Retention SRAM
+  - !Nvm
+    name: Flash3
     range:
-      start: 0x20000
-      end: 0x30000
+      start: 0x64000000
+      end: 0x68000000
     cores:
     - hcpu
+    - acpu
+  - !Nvm
+    name: Flash4
+    range:
+      start: 0x68000000
+      end: 0xa0000000
+    cores:
+    - hcpu
+    - acpu
   flash_algorithms:
   - sf32lb58x
 flash_algorithms:
