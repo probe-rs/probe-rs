@@ -476,8 +476,11 @@ fn send_command_inner<Req: Request>(
     let _ = device.write(&buffer[..size])?;
     trace_buffer("Transmit buffer", &buffer[..size]);
 
-    // Read back response.
-    let bytes_read = device.read(&mut buffer)?;
+    // Read back response. On failure, drain any response that the probe may still
+    // send for this command, so it cannot contaminate the next command's read.
+    let bytes_read = device.read(&mut buffer).inspect_err(|_| {
+        device.drain();
+    })?;
     let response_data = &buffer[..bytes_read];
     trace_buffer("Receive buffer", response_data);
 

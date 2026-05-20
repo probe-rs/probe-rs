@@ -1,0 +1,5 @@
+[default.general]
+chip = "RP2350"
+
+[default.probe]
+protocol = "Swd"

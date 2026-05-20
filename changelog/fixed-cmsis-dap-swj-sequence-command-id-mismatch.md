@@ -1,0 +1,1 @@
+Fixed a `CommandIdMismatch` error when sending `SwjSequence` commands on CMSIS-DAP probes. Stale USB responses left by a timed-out read in `send_command_inner` are now drained immediately at the point they are created, preventing them from contaminating subsequent command reads.

@@ -418,8 +418,9 @@ impl CmsisDap {
     }
 
     fn send_swj_sequences(&mut self, request: SequenceRequest) -> Result<(), CmsisDapError> {
-        // Ensure all pending commands are processed.
-        //self.process_batch()?;
+        // Flush any pending batch writes before the SwjSequence. SwjSequence is often
+        // used in error-recovery paths (line resets, mode switching), so ignore failures.
+        let _ = self.process_batch();
 
         commands::send_command(&mut self.device, &request).and_then(|v| match v {
             SequenceResponse(Status::DapOk) => Ok(()),
