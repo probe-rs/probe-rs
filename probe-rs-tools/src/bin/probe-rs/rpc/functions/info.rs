@@ -248,6 +248,8 @@ pub struct FullyQualifiedApAddress {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ComponentTreeNode {
     pub node: String,
+    pub address: Option<u64>,
+    pub kind: Option<String>,
     pub children: Vec<ComponentTreeNode>,
 }
 
@@ -258,6 +260,14 @@ impl postcard_schema::Schema for ComponentTreeNode {
             &schema::NamedValue {
                 name: "node",
                 ty: <String as ::postcard_schema::Schema>::SCHEMA,
+            },
+            &schema::NamedValue {
+                name: "address",
+                ty: <Option<u64> as ::postcard_schema::Schema>::SCHEMA,
+            },
+            &schema::NamedValue {
+                name: "kind",
+                ty: <Option<String> as ::postcard_schema::Schema>::SCHEMA,
             },
             &schema::NamedValue {
                 name: "children",
@@ -277,8 +287,20 @@ impl ComponentTreeNode {
     fn new(node: String) -> Self {
         Self {
             node,
+            address: None,
+            kind: None,
             children: vec![],
         }
+    }
+
+    fn with_address(mut self, addr: u64) -> Self {
+        self.address = Some(addr);
+        self
+    }
+
+    fn with_kind(mut self, kind: impl Into<String>) -> Self {
+        self.kind = Some(kind.into());
+        self
     }
 
     fn push(&mut self, child: impl Into<ComponentTreeNode>) {
@@ -531,7 +553,8 @@ async fn show_arm_info(
                             "{} MemoryAP ({:?})",
                             ap_address.ap_v1()?,
                             idr.TYPE
-                        ));
+                        ))
+                        .with_kind(format!("MemoryAP ({:?})", idr.TYPE));
                         if let Err(e) = handle_memory_ap(interface, &ap_address, &mut ap_nodes) {
                             ap_nodes.push(format!("Error during access: {e}"));
                         };
@@ -609,10 +632,11 @@ fn coresight_component_tree(
 ) -> anyhow::Result<()> {
     match &component {
         Component::GenericVerificationComponent(id) => {
-            parent.push(ComponentTreeNode::new(format!(
-                "{:#06x} Generic",
-                id.component_address()
-            )));
+            parent.push(
+                ComponentTreeNode::new(format!("{:#06x} Generic", id.component_address()))
+                    .with_address(id.component_address())
+                    .with_kind("Generic"),
+            );
         }
         Component::Class1RomTable(id, table) => {
             let peripheral_id = id.peripheral_id();
@@ -627,7 +651,9 @@ fn coresight_component_tree(
             };
 
             let mut tree =
-                ComponentTreeNode::new(format!("{:#06x} {}", id.component_address(), root));
+                ComponentTreeNode::new(format!("{:#06x} {}", id.component_address(), root))
+                    .with_address(id.component_address())
+                    .with_kind("ROM Table");
             process_vendor_rom_tables(interface, id, table, access_port, &mut tree)?;
             parent.push(tree);
 
@@ -640,6 +666,9 @@ fn coresight_component_tree(
         Component::CoresightComponent(id) => {
             let peripheral_id = id.peripheral_id();
             let part_info = peripheral_id.determine_part();
+            let kind = part_info
+                .map(|p| p.name().to_string())
+                .unwrap_or_else(|| "CoresightComponent".to_string());
 
             let component_description = if let Some(part_info) = part_info {
                 format!("{: <15} (Coresight Component)", part_info.name())
@@ -657,7 +686,9 @@ fn coresight_component_tree(
                 "{:#06x} {}",
                 id.component_address(),
                 component_description
-            ));
+            ))
+            .with_address(id.component_address())
+            .with_kind(kind);
             let is_rom = part_info
                 .map(|p| p.peripheral_type() == PeripheralType::Rom)
                 .unwrap_or(false);
@@ -672,37 +703,55 @@ fn coresight_component_tree(
         }
 
         Component::PeripheralTestBlock(id) => {
-            parent.push(ComponentTreeNode::new(format!(
-                "{:#06x} Peripheral test block",
-                id.component_address()
-            )));
+            parent.push(
+                ComponentTreeNode::new(format!(
+                    "{:#06x} Peripheral test block",
+                    id.component_address()
+                ))
+                .with_address(id.component_address())
+                .with_kind("PeripheralTestBlock"),
+            );
         }
         Component::GenericIPComponent(id) => {
             let peripheral_id = id.peripheral_id();
+            let part_desc = peripheral_id.determine_part();
+            let kind = part_desc
+                .map(|p| p.name().to_string())
+                .unwrap_or_else(|| "GenericIPComponent".to_string());
 
-            let desc = if let Some(part_desc) = peripheral_id.determine_part() {
+            let desc = if let Some(part_desc) = part_desc {
                 format!("{: <15} (Generic IP component)", part_desc.name())
             } else {
                 "Generic IP component".to_string()
             };
 
-            let mut tree = ComponentTreeNode::new(desc);
+            let mut tree = ComponentTreeNode::new(format!(
+                "{:#06x} {}",
+                id.component_address(),
+                desc
+            ))
+            .with_address(id.component_address())
+            .with_kind(kind);
             process_component_entry(&mut tree, interface, peripheral_id, &component, access_port)?;
         }
 
         Component::CoreLinkOrPrimeCellOrSystemComponent(id) => {
             let desc = "Core Link / Prime Cell / System component";
-            let desc = if let Some(part_desc) = id.peripheral_id().determine_part() {
+            let part_desc = id.peripheral_id().determine_part();
+            let kind = part_desc
+                .map(|p| p.name().to_string())
+                .unwrap_or_else(|| "CoreLink".to_string());
+            let desc = if let Some(part_desc) = part_desc {
                 format!("{: <15} ({})", part_desc.name(), desc)
             } else {
                 desc.to_string()
             };
 
-            parent.push(ComponentTreeNode::new(format!(
-                "{:#06x} {}",
-                id.component_address(),
-                desc
-            )));
+            parent.push(
+                ComponentTreeNode::new(format!("{:#06x} {}", id.component_address(), desc))
+                    .with_address(id.component_address())
+                    .with_kind(kind),
+            );
         }
     };
 

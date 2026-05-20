@@ -22,6 +22,22 @@ use crate::{
     util::{cli::select_probe, common_options::ProbeOptions},
 };
 
+fn component_tree_to_json(node: &ComponentTreeNode) -> serde_json::Value {
+    let mut obj = serde_json::json!({
+        "node": node.node,
+    });
+    if let Some(addr) = node.address {
+        obj["address"] = serde_json::json!(format!("{addr:#010x}"));
+    }
+    if let Some(kind) = &node.kind {
+        obj["kind"] = serde_json::json!(kind);
+    }
+    if !node.children.is_empty() {
+        obj["children"] = node.children.iter().map(component_tree_to_json).collect();
+    }
+    obj
+}
+
 const JEP_ARM: JEP106Code = JEP106Code::new(4, 0x3b);
 
 #[derive(clap::Parser)]
@@ -34,6 +50,9 @@ pub struct Cmd {
     /// when connecting. This is required for targets using SWD multidrop
     #[arg(long, value_parser = parse_hex)]
     target_sel: Option<u32>,
+    /// Output as JSON for programmatic consumption
+    #[arg(long)]
+    json: bool,
 }
 
 // Clippy doesn't like `from_str_radix` with radix 10, but I prefer the symmetry`
@@ -55,7 +74,11 @@ impl Cmd {
             vec![WireProtocol::Jtag, WireProtocol::Swd]
         };
 
-        let probe = select_probe(&client, self.common.probe.map(Into::into)).await?;
+        let probe = select_probe(&client, self.common.probe.clone().map(Into::into)).await?;
+
+        if self.json {
+            return self.run_json(client, probe, protocols).await;
+        }
 
         for protocol in protocols {
             let msg = format!("Probing target via {protocol}");
@@ -111,6 +134,105 @@ impl Cmd {
 
         Ok(())
     }
+
+    async fn run_json(
+        self,
+        client: RpcClient,
+        probe: crate::rpc::functions::probe::DebugProbeEntry,
+        protocols: Vec<WireProtocol>,
+    ) -> anyhow::Result<()> {
+        let mut results: Vec<serde_json::Value> = vec![];
+
+        for protocol in protocols {
+            let req = TargetInfoRequest {
+                target_sel: self.target_sel,
+                protocol: protocol.into(),
+                probe: probe.clone(),
+                speed: self.common.speed,
+                connect_under_reset: self.common.connect_under_reset,
+                dry_run: self.common.dry_run,
+            };
+
+            let mut arm_dps: Vec<serde_json::Value> = vec![];
+            let mut idcodes: Vec<serde_json::Value> = vec![];
+
+            let _ = client
+                .info(req, async |message| match message {
+                    InfoEvent::ArmDp(dp_info) => {
+                        arm_dps.push(dp_info_to_json(&dp_info));
+                    }
+                    InfoEvent::Idcode {
+                        architecture,
+                        idcode: Some(idcode),
+                    } => {
+                        idcodes.push(serde_json::json!({
+                            "arch": architecture,
+                            "idcode": format!("{idcode:#010x}"),
+                        }));
+                    }
+                    _ => {}
+                })
+                .await;
+
+            if !arm_dps.is_empty() || !idcodes.is_empty() {
+                let mut entry = serde_json::json!({ "protocol": protocol.to_string() });
+                if !arm_dps.is_empty() {
+                    entry["arm_dps"] = serde_json::Value::Array(arm_dps);
+                }
+                if !idcodes.is_empty() {
+                    entry["idcodes"] = serde_json::Value::Array(idcodes);
+                }
+                results.push(entry);
+            }
+        }
+
+        println!("{}", serde_json::to_string(&results)?);
+        Ok(())
+    }
+}
+
+fn dp_info_to_json(dp: &DebugPortInfo) -> serde_json::Value {
+    let dp_version = match dp.dp_info.dp_info.version {
+        DebugPortVersion::DPv0 => "DPv0",
+        DebugPortVersion::DPv1 => "DPv1",
+        DebugPortVersion::DPv2 => "DPv2",
+        DebugPortVersion::DPv3 => "DPv3",
+        DebugPortVersion::Unsupported(_) => "Unsupported",
+    };
+    let mindp = dp.dp_info.dp_info.min_dp_support == MinDpSupport::Implemented;
+    let designer: jep106::JEP106Code = dp.dp_info.dp_info.designer.into();
+    let designer_name = designer.get().unwrap_or("<unknown>").to_string();
+
+    let aps: Vec<serde_json::Value> = dp
+        .aps
+        .iter()
+        .map(|ap| match ap {
+            ApInfo::MemoryAp {
+                ap_addr,
+                component_tree,
+            } => serde_json::json!({
+                "type": "MemoryAP",
+                "ap": ap_addr.ap,
+                "tree": component_tree_to_json(component_tree),
+            }),
+            ApInfo::ApV2Root { component_tree } => serde_json::json!({
+                "type": "ApV2Root",
+                "children": component_tree.children.iter().map(component_tree_to_json).collect::<Vec<_>>(),
+            }),
+            ApInfo::Unknown { ap_addr, idr } => serde_json::json!({
+                "type": "Unknown",
+                "ap": ap_addr.ap,
+                "idr": format!("{idr:#010x}"),
+            }),
+        })
+        .collect();
+
+    serde_json::json!({
+        "dp": dp_version,
+        "mindp": mindp,
+        "designer": designer_name,
+        "aps": aps,
+    })
 }
 
 impl std::fmt::Display for InfoEvent {

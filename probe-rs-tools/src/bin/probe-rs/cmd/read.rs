@@ -52,6 +52,9 @@ pub struct Cmd {
     #[clap(value_enum, default_value_t=FileFormat::Hex)]
     #[arg(long, short, requires("output"))]
     format: FileFormat,
+    /// Output as JSON for programmatic consumption
+    #[arg(long, conflicts_with("output"))]
+    json: bool,
 }
 
 impl Cmd {
@@ -138,32 +141,75 @@ impl Cmd {
         Ok(())
     }
 
+    async fn read_to_json(
+        core: CoreInterface,
+        address: u64,
+        width: ReadWriteBitWidth,
+        nwords: usize,
+    ) -> anyhow::Result<()> {
+        let (width_bits, values) = match width {
+            ReadWriteBitWidth::B8 => {
+                let v = core.read_memory_8(address, nwords).await?;
+                (8u32, v.into_iter().map(|x| x as u64).collect::<Vec<_>>())
+            }
+            ReadWriteBitWidth::B16 => {
+                let v = core.read_memory_16(address, nwords).await?;
+                (16, v.into_iter().map(|x| x as u64).collect())
+            }
+            ReadWriteBitWidth::B32 => {
+                let v = core.read_memory_32(address, nwords).await?;
+                (32, v.into_iter().map(|x| x as u64).collect())
+            }
+            ReadWriteBitWidth::B64 => {
+                let v = core.read_memory_64(address, nwords).await?;
+                (64, v)
+            }
+        };
+        let out = serde_json::json!({
+            "addr": format!("{address:#010x}"),
+            "width": width_bits,
+            "values": values,
+        });
+        println!("{}", serde_json::to_string(&out)?);
+        Ok(())
+    }
+
     pub async fn run(self, client: RpcClient) -> anyhow::Result<()> {
         let session = cli::attach_probe(&client, self.probe_options, false).await?;
         let core = session.core(self.shared.core);
 
-        match self.output {
-            Some(path) => {
-                Cmd::read_to_file(
-                    core,
-                    self.read_write_options.address,
-                    self.read_write_options.width,
-                    self.words,
-                    path,
-                    self.format,
-                )
-                .await?
+        if self.json {
+            Cmd::read_to_json(
+                core,
+                self.read_write_options.address,
+                self.read_write_options.width,
+                self.words,
+            )
+            .await?;
+        } else {
+            match self.output {
+                Some(path) => {
+                    Cmd::read_to_file(
+                        core,
+                        self.read_write_options.address,
+                        self.read_write_options.width,
+                        self.words,
+                        path,
+                        self.format,
+                    )
+                    .await?
+                }
+                None => {
+                    Cmd::read_to_console(
+                        core,
+                        self.read_write_options.address,
+                        self.read_write_options.width,
+                        self.words,
+                    )
+                    .await?
+                }
             }
-            None => {
-                Cmd::read_to_console(
-                    core,
-                    self.read_write_options.address,
-                    self.read_write_options.width,
-                    self.words,
-                )
-                .await?
-            }
-        };
+        }
 
         session.resume_all_cores().await?;
 
