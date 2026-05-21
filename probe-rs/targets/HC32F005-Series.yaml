@@ -1,7 +1,7 @@
 name: HC32F005-Series
 manufacturer:
   id: 0x78
-  cc: 0xD
+  cc: 0xd
 variants:
 - name: HC32F005C6PA
   cores:

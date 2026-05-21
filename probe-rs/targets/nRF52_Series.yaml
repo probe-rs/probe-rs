@@ -121,9 +121,9 @@ variants:
     range:
       start: 0x20000000
       end: 0x20006000
-    is_alias: true
     cores:
     - main
+    is_alias: true
   flash_algorithms:
   - nrf52
 - name: nRF52810_xxAA
@@ -157,9 +157,9 @@ variants:
     range:
       start: 0x20000000
       end: 0x20006000
-    is_alias: true
     cores:
     - main
+    is_alias: true
   flash_algorithms:
   - nrf52
 - name: nRF52811_xxAA
@@ -193,9 +193,9 @@ variants:
     range:
       start: 0x20000000
       end: 0x20006000
-    is_alias: true
     cores:
     - main
+    is_alias: true
   flash_algorithms:
   - nrf52
 - name: nRF52820_xxAA
@@ -229,9 +229,9 @@ variants:
     range:
       start: 0x20000000
       end: 0x20008000
-    is_alias: true
     cores:
     - main
+    is_alias: true
   flash_algorithms:
   - nrf52
 - name: nRF52832_xxAA
@@ -265,9 +265,9 @@ variants:
     range:
       start: 0x20000000
       end: 0x20010000
-    is_alias: true
     cores:
     - main
+    is_alias: true
   flash_algorithms:
   - nrf52
 - name: nRF52832_xxAB
@@ -301,9 +301,9 @@ variants:
     range:
       start: 0x20000000
       end: 0x20008000
-    is_alias: true
     cores:
     - main
+    is_alias: true
   flash_algorithms:
   - nrf52
 - name: nRF52833_xxAA
@@ -337,9 +337,9 @@ variants:
     range:
       start: 0x20000000
       end: 0x20020000
-    is_alias: true
     cores:
     - main
+    is_alias: true
   flash_algorithms:
   - nrf52
 - name: nRF52840_xxAA
@@ -373,9 +373,9 @@ variants:
     range:
       start: 0x20000000
       end: 0x20040000
-    is_alias: true
     cores:
     - main
+    is_alias: true
   flash_algorithms:
   - nrf52
 flash_algorithms:

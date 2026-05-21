@@ -20,7 +20,7 @@ nusb.workspace = true
 thiserror.workspace = true
 tracing = "0.1"
 serde.workspace = true
-serde_yaml.workspace = true
+yaml_serde.workspace = true
 
 espflash = { version = "4", default-features = false }
 

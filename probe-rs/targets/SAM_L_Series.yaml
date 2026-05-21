@@ -922,46 +922,6 @@ flash_algorithms:
     sectors:
     - size: 0x800
       address: 0x0
-- name: atsaml21_32_eeprom
-  description: ATSAML21 1kB Data EEPROM
-  default: true
-  instructions: HElKBxFgHUobSVFgHElJRAhgACBwRwAgcEdBCBdIwWEYSQGAAX3JB/zQAH2ABwHVASBwRwAgcEcQtRJMD0sqNByAHH3kB/zQyRyJCIkAAuAQygkfEMAAKfrRCkiAHBiAGH3AB/zQGH2ABwHVASAQvQAgEL0iAAEAngAEAABAAEEEAAAAGqUAAAAAAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x17
-  pc_program_page: 0x39
-  pc_erase_sector: 0x1b
-  data_section_offset: 0x88
-  flash_properties:
-    address_range:
-      start: 0x400000
-      end: 0x400400
-    page_size: 0x40
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x100
-      address: 0x0
-- name: atsaml21_256_eeprom
-  description: ATSAML21 8kB Data EEPROM
-  default: true
-  instructions: HElKBxFgHUobSVFgHElJRAhgACBwRwAgcEdBCBdIwWEYSQGAAX3JB/zQAH2ABwHVASBwRwAgcEcQtRJMD0sqNByAHH3kB/zQyRyJCIkAAuAQygkfEMAAKfrRCkiAHBiAGH3AB/zQGH2ABwHVASAQvQAgEL0iAAEAngAEAABAAEEEAAAAGqUAAAAAAAAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x17
-  pc_program_page: 0x39
-  pc_erase_sector: 0x1b
-  data_section_offset: 0x88
-  flash_properties:
-    address_range:
-      start: 0x400000
-      end: 0x402000
-    page_size: 0x40
-    erased_byte_value: 0xff
-    program_page_timeout: 100
-    erase_sector_timeout: 1000
-    sectors:
-    - size: 0x100
-      address: 0x0
 - name: atsaml21_64
   description: ATSAML21 64kB Flash
   default: true

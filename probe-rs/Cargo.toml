@@ -43,7 +43,7 @@ docsplay.workspace = true
 thiserror.workspace = true
 probe-rs-target.workspace = true
 serde.workspace = true
-serde_yaml.workspace = true
+yaml_serde.workspace = true
 
 bincode = { version = "2", features = ["serde"], optional = true }
 bitfield = "0.19.0"
