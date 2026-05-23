@@ -20,6 +20,7 @@ use crate::cmd::dap_server::{
     },
     server::core_data::CoreHandle,
 };
+use probe_rs_debug::ColumnType;
 
 #[distributed_slice(REPL_COMMANDS)]
 static BREAK: ReplCommand = ReplCommand {
@@ -27,7 +28,7 @@ static BREAK: ReplCommand = ReplCommand {
     help_text: "Set a breakpoint at a location, or halt the target if unspecified.",
     requires_target_halted: false,
     sub_commands: &[],
-    args: &[ReplCommandArgs::Optional("*address | file.rs:line")],
+    args: &[ReplCommandArgs::Optional("*address | file:line[:column]")],
     handler: create_breakpoint,
 };
 
@@ -37,31 +38,55 @@ static CLEAR: ReplCommand = ReplCommand {
     help_text: "Clear a breakpoint.",
     requires_target_halted: false,
     sub_commands: &[],
-    args: &[ReplCommandArgs::Required("*address | file.rs:line")],
+    args: &[ReplCommandArgs::Required("*address | file:line[:column]")],
     handler: clear_breakpoint,
 };
 
 enum BreakpointLocation<'a> {
     Address(u64),
-    FileLine { path: &'a str, line: u64 },
+    FileLine {
+        path: &'a str,
+        line: u64,
+        column: Option<u64>,
+    },
 }
 
-/// Parse `*<address>` or `<file>:<line>` from a single REPL argument token.
+/// Parse `*<address>`, `<file>:<line>`, or `<file>:<line>:<column>` from a single REPL token.
+///
+/// Splitting is done from the right so that Windows drive letters
+/// (e.g. `C:\foo.rs:42` or `C:\foo.rs:42:5`) are handled correctly.
 fn parse_breakpoint_location(input: &str) -> Result<BreakpointLocation<'_>, DebuggerError> {
     if let Some(addr_str) = input.strip_prefix('*') {
         let MemoryAddress(address) = addr_str.try_into()?;
         return Ok(BreakpointLocation::Address(address));
     }
 
-    // Use rsplit so Windows drive letters (e.g. `C:\foo.rs:42`) are handled correctly.
-    if let Some((path, line_str)) = input.rsplit_once(':')
-        && let Ok(line) = line_str.parse::<u64>()
+    // Peel the rightmost colon-separated token.
+    if let Some((left, rightmost)) = input.rsplit_once(':')
+        && let Ok(rightmost_num) = rightmost.parse::<u64>()
     {
-        return Ok(BreakpointLocation::FileLine { path, line });
+        // Check whether the next token to the left is also a number — if so we have
+        // `<file>:<line>:<column>` (the rightmost is the column, the next is the line).
+        if let Some((path, middle)) = left.rsplit_once(':')
+            && let Ok(line) = middle.parse::<u64>()
+        {
+            return Ok(BreakpointLocation::FileLine {
+                path,
+                line,
+                column: Some(rightmost_num),
+            });
+        }
+
+        // Only one numeric suffix: `<file>:<line>`.
+        return Ok(BreakpointLocation::FileLine {
+            path: left,
+            line: rightmost_num,
+            column: None,
+        });
     }
 
     Err(DebuggerError::UserMessage(format!(
-        "Invalid argument {input:?}. Expected `*<address>` or `<file>:<line>`. See `help`."
+        "Invalid argument {input:?}. Expected `*<address>` or `<file>:<line>[:<column>]`. See `help`."
     )))
 }
 
@@ -116,10 +141,10 @@ fn create_breakpoint(
             })))
         }
 
-        BreakpointLocation::FileLine { path, line } => {
+        BreakpointLocation::FileLine { path, line, column } => {
             let source = source_from_path(path);
             let verified = target_core
-                .verify_and_set_breakpoint(TypedPath::derive(path), line, None, &source)
+                .verify_and_set_breakpoint(TypedPath::derive(path), line, column, &source)
                 .map_err(|e| DebuggerError::UserMessage(e.to_string()))?;
 
             let body = serde_json::to_value(BreakpointEventBody {
@@ -129,7 +154,10 @@ fn create_breakpoint(
                     line: verified.source_location.line.map(|l| l as i64),
                     source: Some(source),
                     message: Some(format!("Source breakpoint at {:#010X}", verified.address)),
-                    column: None,
+                    column: verified.source_location.column.map(|col| match col {
+                        ColumnType::LeftEdge => 0_i64,
+                        ColumnType::Column(c) => c as i64,
+                    }),
                     end_column: None,
                     end_line: None,
                     instruction_reference: None,
@@ -165,14 +193,14 @@ fn clear_breakpoint(
     let address = match parse_breakpoint_location(token)? {
         BreakpointLocation::Address(addr) => addr,
 
-        BreakpointLocation::FileLine { path, line } => {
+        BreakpointLocation::FileLine { path, line, column } => {
             let Some(ref debug_info) = target_core.core_data.debug_info else {
                 return Err(DebuggerError::UserMessage(
                     "Cannot resolve file:line without debug information.".to_string(),
                 ));
             };
             debug_info
-                .get_breakpoint_location(TypedPath::derive(path), line, None)
+                .get_breakpoint_location(TypedPath::derive(path), line, column)
                 .map_err(|e| {
                     DebuggerError::UserMessage(format!("Cannot resolve {path}:{line}: {e}"))
                 })?
@@ -211,10 +239,9 @@ fn clear_breakpoint(
 
 fn source_from_path(path: &str) -> Source {
     Source {
-        name: std::path::Path::new(path)
+        name: TypedPath::derive(path)
             .file_name()
-            .and_then(|n| n.to_str())
-            .map(str::to_owned),
+            .map(|b| String::from_utf8_lossy(b).to_string()),
         path: Some(path.to_string()),
         source_reference: None,
         presentation_hint: None,

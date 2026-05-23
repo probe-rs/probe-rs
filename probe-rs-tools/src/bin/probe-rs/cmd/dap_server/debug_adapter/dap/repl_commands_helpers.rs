@@ -334,7 +334,7 @@ mod test {
             &[
                 (
                     "break ",
-                    "break [*address | file:line]: Set a breakpoint at a location, or halt the target if unspecified.",
+                    "break [*address | file:line[:column]]: Set a breakpoint at a location, or halt the target if unspecified.",
                 ),
                 (
                     "bt ",
@@ -348,14 +348,14 @@ mod test {
             "br",
             &[(
                 "break ",
-                "break [*address | file:line]: Set a breakpoint at a location, or halt the target if unspecified.",
+                "break [*address | file:line[:column]]: Set a breakpoint at a location, or halt the target if unspecified.",
             )],
         );
         assert_completion_result(
             "break",
             &[(
                 "break ",
-                "break [*address | file:line]: Set a breakpoint at a location, or halt the target if unspecified.",
+                "break [*address | file:line[:column]]: Set a breakpoint at a location, or halt the target if unspecified.",
             )],
         );
         assert_completion_result(

@@ -1024,7 +1024,7 @@ pub(crate) fn canonical_path_eq(primary_path: TypedPath, secondary_path: TypedPa
 
 /// Returns `true` if `full_path` matches `partial_path`.
 ///
-/// When `partial_path` is absolute the comparison is normalized equality).
+/// When `partial_path` is absolute, the comparison is normalized equality).
 /// When `partial_path` is relative the function additionally accepts a suffix match at
 /// a component boundary, so that a caller can supply just a filename (`main.rs`) or a partial
 /// sub-path (`src/main.rs`) and still resolve to the correct compilation unit.
