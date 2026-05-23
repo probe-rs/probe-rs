@@ -27,19 +27,19 @@ variants:
     - cpu0
     - cpu1
     access:
-      boot: true
       execute: false
+      boot: true
   - !Nvm
     name: External data bus
     range:
       start: 0x3c000000
       end: 0x3e000000
-    access:
-      execute: false
     cores:
     - cpu0
     - cpu1
     is_alias: true
+    access:
+      execute: false
   - !Ram
     name: SRAM1 Data bus
     range:

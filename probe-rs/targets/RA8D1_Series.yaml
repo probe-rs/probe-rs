@@ -7,10 +7,10 @@ chip_detection:
   target_id: 0x3b0
   mcu_pn_base: 0x130080f0
   variants:
-    - R7FA8D1AH
-    - R7FA8D1BH
-    - R7FA8D1AF
-    - R7FA8D1BF
+  - R7FA8D1AH
+  - R7FA8D1BH
+  - R7FA8D1AF
+  - R7FA8D1BF
 generated_from_pack: true
 pack_file_release: 5.3.0
 variants:

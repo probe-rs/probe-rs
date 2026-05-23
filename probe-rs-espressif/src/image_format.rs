@@ -10,7 +10,7 @@ use probe_rs::flashing::{
     ImageReader, into_format_error,
 };
 use serde::{Deserialize, Serialize};
-use serde_yaml::Value;
+use yaml_serde::Value;
 
 pub(crate) struct IdfLoaderFactory;
 
@@ -21,7 +21,7 @@ impl ImageFormat for IdfLoaderFactory {
 
     fn create_loader(&self, options: Option<Value>) -> Box<dyn ImageLoader> {
         let options = options
-            .and_then(|value| serde_yaml::from_value::<IdfLoader>(value).ok())
+            .and_then(|value| yaml_serde::from_value::<IdfLoader>(value).ok())
             .unwrap_or_default();
         Box::new(options)
     }

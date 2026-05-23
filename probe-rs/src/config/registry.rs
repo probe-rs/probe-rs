@@ -23,7 +23,7 @@ pub enum RegistryError {
     /// An IO error occurred when trying to read a target description file.
     Io(#[from] std::io::Error),
     /// An error occurred while deserializing a YAML target description file.
-    Yaml(#[from] serde_yaml::Error),
+    Yaml(#[from] yaml_serde::Error),
     /// Invalid chip family definition ({0.name}): {1}
     InvalidChipFamilyDefinition(Box<ChipFamily>, String),
 }
@@ -442,7 +442,7 @@ impl Registry {
 
     /// Add a target family to the registry from a YAML-formatted string.
     pub fn add_target_family_from_yaml(&mut self, yaml: &str) -> Result<String, RegistryError> {
-        let family: ChipFamily = serde_yaml::from_str(yaml)?;
+        let family: ChipFamily = yaml_serde::from_str(yaml)?;
         self.add_target_family(family)
     }
 }

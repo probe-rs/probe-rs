@@ -4,11 +4,11 @@ use probe_rs_target::{
     InstructionSet, MemoryRange, MemoryRegion, NvmRegion, RawFlashAlgorithm,
     TargetDescriptionSource,
 };
-use serde_yaml::Value;
 use std::io::{Read, Seek};
 use std::ops::Range;
 use std::sync::LazyLock;
 use std::time::{Duration, Instant};
+use yaml_serde::Value;
 
 use super::builder::FlashBuilder;
 use super::{DownloadOptions, FileDownloadError, FlashError, Flasher};
@@ -103,8 +103,8 @@ pub(crate) fn register_image_format(factory: &'static dyn ImageFormat) {
 mod builtin {
     use ihex::Record;
     use probe_rs_target::MemoryRange;
-    use serde_yaml::Value;
     use std::io::SeekFrom;
+    use yaml_serde::Value;
 
     use object::{
         Endianness, Object, ObjectSection, elf::FileHeader32, elf::FileHeader64, elf::PT_LOAD,
@@ -127,7 +127,7 @@ mod builtin {
 
         fn create_loader(&self, options: Option<Value>) -> Box<dyn ImageLoader> {
             let options = options
-                .and_then(|value| serde_yaml::from_value(value).ok())
+                .and_then(|value| yaml_serde::from_value(value).ok())
                 .unwrap_or_default();
             Box::new(ElfLoader(options))
         }
@@ -139,7 +139,7 @@ mod builtin {
 
         fn create_loader(&self, options: Option<Value>) -> Box<dyn ImageLoader> {
             let options = options
-                .and_then(|value| serde_yaml::from_value(value).ok())
+                .and_then(|value| yaml_serde::from_value(value).ok())
                 .unwrap_or_default();
             Box::new(BinLoader(options))
         }

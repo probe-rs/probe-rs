@@ -51,7 +51,7 @@ mod builtin_targets {
                 )
             });
 
-            match serde_yaml::from_str::<ChipFamily>(&string) {
+            match yaml_serde::from_str::<ChipFamily>(&string) {
                 Ok(family) => families.push(family),
                 Err(error) => panic!(
                     "Failed to parse target file: {} because:\n{error}",

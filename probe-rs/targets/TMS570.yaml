@@ -21,8 +21,8 @@ variants:
       boot: true
   - !Ram
     range:
-      start: 0x08000000
-      end: 0x08080000
+      start: 0x8000000
+      end: 0x8080000
     cores:
     - core0
   jtag:
