@@ -54,6 +54,34 @@ The probe-rs website includes [VSCode configuration instructions](https://probe.
 
 ## Usage Examples
 
+### Using a Linux host as an SWD probe
+
+On Linux, probe-rs can drive SWD directly from the host through the
+[`probe-rs-linux`](probe-rs-linux/) plugin crate, which provides two
+backends:
+
+- `linuxgpiod` — bit-bangs SWD over the GPIO character-device interface
+  (`/dev/gpiochipN`).
+- `linuxspidevswd` — emulates SWD over a `spidev` bus by tying MOSI and
+  MISO together through a series resistor.
+
+Select the probe with a synthetic selector. The VID:PID portion is ignored;
+the serial portion carries the chip-and-pin map (gpiod) or the spidev path:
+
+```bash
+# bit-banged GPIO
+probe-rs run --probe 0:0:gpiochip1,swclk=26,swdio=25,srst=38 ...
+
+# spidev
+probe-rs info --probe 0:0:/dev/spidev0.0
+```
+
+For safety, `probe-rs list` only exposes explicit `/dev/spidev_swd*` udev
+links, so probe-rs does not implicitly try every SPI device on the system.
+
+See the [crate README](probe-rs-linux/README.md) for wiring diagrams,
+cross-compilation, and remote-server usage.
+
 ### Halting the attached chip
 
 ```rust,no_run
