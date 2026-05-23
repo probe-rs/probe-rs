@@ -119,7 +119,9 @@ sha2 = "0.11"
 nusb = { workspace = true, features = ["tokio"] }
 
 # gdb server
-gdbstub = "0.7.6"
+# 0.7.9 causes this regression:
+# https://github.com/probe-rs/probe-rs/issues/3805
+gdbstub = "=0.7.8"
 
 # profiling
 fxprof-processed-profile = { version = "0.8.1", default-features = false }
