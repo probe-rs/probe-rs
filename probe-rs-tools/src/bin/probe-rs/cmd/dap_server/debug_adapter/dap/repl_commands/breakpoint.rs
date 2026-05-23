@@ -27,7 +27,7 @@ static BREAK: ReplCommand = ReplCommand {
     help_text: "Set a breakpoint at a location, or halt the target if unspecified.",
     requires_target_halted: false,
     sub_commands: &[],
-    args: &[ReplCommandArgs::Optional("*address | file:line")],
+    args: &[ReplCommandArgs::Optional("*address | file.rs:line")],
     handler: create_breakpoint,
 };
 
@@ -37,7 +37,7 @@ static CLEAR: ReplCommand = ReplCommand {
     help_text: "Clear a breakpoint.",
     requires_target_halted: false,
     sub_commands: &[],
-    args: &[ReplCommandArgs::Required("*address | file:line")],
+    args: &[ReplCommandArgs::Required("*address | file.rs:line")],
     handler: clear_breakpoint,
 };
 
