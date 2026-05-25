@@ -20,7 +20,8 @@ pub struct Cmd {
     #[clap(flatten)]
     pub(crate) probe_options: ProbeOptions,
 
-    /// The path to the ELF file to flash and run.
+    /// The path to the ELF file used to locate the RTT control block and decode defmt frames.
+    /// The target is not flashed or reset.
     #[clap(index = 1)]
     pub(crate) path: Option<PathBuf>,
 
