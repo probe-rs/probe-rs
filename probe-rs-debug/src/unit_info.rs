@@ -25,13 +25,19 @@ pub struct UnitInfo {
     language: Box<dyn language::ProgrammingLanguage>,
     // A mapping from child die to parent die.
     parents: HashMap<UnitOffset, UnitOffset>,
+    // A mapping from die to its full name.
+    full_names: HashMap<UnitOffset, String>,
     // Address => function DIE offset
     function_dies: Vec<(Range<u64>, UnitOffset)>,
 }
 
 impl UnitInfo {
     /// Create a new `UnitInfo` from a `gimli::Unit`.
-    pub fn new(unit: gimli::Unit<GimliReader, usize>, dwarf: &gimli::Dwarf<GimliReader>) -> Self {
+    pub fn new(
+        unit: gimli::Unit<GimliReader, usize>,
+        dwarf: &gimli::Dwarf<GimliReader>,
+        symbols: &mut HashMap<String, Symbol>,
+    ) -> Self {
         let dwarf_language = if let Some(AttributeValue::Language(unit_language)) = unit
             .entry(unit.root_offset())
             .ok()
@@ -48,19 +54,189 @@ impl UnitInfo {
             dwarf_language,
             language: language::from_dwarf(dwarf_language),
             parents: HashMap::new(),
+            full_names: HashMap::new(),
             function_dies: Vec::new(),
         };
 
-        this.process_unit(dwarf);
+        this.process_unit(dwarf, symbols);
 
         this
     }
 
-    fn process_unit(&mut self, dwarf: &gimli::Dwarf<GimliReader>) {
+    fn process_subprogram(
+        &self,
+        dwarf: &gimli::Dwarf<GimliReader>,
+        entry: &DebuggingInformationEntry<GimliReader>,
+        function_dies: &mut Vec<(Range<u64>, UnitOffset)>,
+    ) -> Option<Symbol> {
+        let ranges = if let Ok(Some(ranges)) = FunctionDie::function_ranges(entry, self, dwarf) {
+            for range in &ranges {
+                function_dies.push((range.clone(), entry.offset()));
+            }
+            ranges
+        } else {
+            vec![]
+        };
+        if entry.has_attr(gimli::DW_AT_inline) {
+            None
+        } else {
+            Some(Symbol {
+                name: SymbolName::GenerateFromNameAttr,
+                kind: SymbolKind::Function(ranges),
+            })
+        }
+    }
+
+    fn process_inlined(
+        &self,
+        entry: &DebuggingInformationEntry<GimliReader>,
+        current_subprogram: Option<&(String, isize)>,
+    ) -> Option<Symbol> {
+        let origin = entry
+            .attr(gimli::DW_AT_abstract_origin)
+            .and_then(|origin_attr| {
+                if let gimli::AttributeValue::UnitRef(unit_ref_offset) = origin_attr.value() {
+                    self.full_names
+                        .get(&unit_ref_offset)
+                        .map(|name| SymbolName::Known(name.clone()))
+                        .or(Some(SymbolName::Deferred(unit_ref_offset)))
+                } else {
+                    None
+                }
+            })?;
+        Some(Symbol {
+            name: origin,
+            kind: SymbolKind::InlinedFunction(current_subprogram?.0.clone()),
+        })
+    }
+
+    fn process_variable(
+        &self,
+        dwarf: &gimli::Dwarf<GimliReader>,
+        entry: &DebuggingInformationEntry<GimliReader>,
+    ) -> Option<Symbol> {
+        let addr = entry
+            .attr(gimli::DW_AT_location)
+            .and_then(|attr| {
+                if let AttributeValue::Exprloc(expression) = attr.value() {
+                    Some(expression)
+                } else {
+                    None
+                }
+            })
+            .and_then(|expr| {
+                let mut evaluation = expr.evaluation(self.unit.encoding());
+                let mut result = evaluation.evaluate().ok()?;
+                loop {
+                    match result {
+                        EvaluationResult::Complete => {
+                            return evaluation.value_result();
+                        }
+                        EvaluationResult::RequiresIndexedAddress { index, relocate: _ } => {
+                            let address = dwarf.address(&self.unit, index).ok()?;
+                            result = evaluation.resume_with_indexed_address(address).ok()?;
+                        }
+                        EvaluationResult::RequiresRelocatedAddress(address) => {
+                            // microcontroller binaries aren't relocated; we
+                            // very likely won't see this.
+                            result = evaluation.resume_with_relocated_address(address).ok()?;
+                        }
+                        _ => {
+                            return None;
+                        }
+                    }
+                }
+            })
+            .and_then(|value| value.to_u64(!0).ok())?;
+        let size = entry
+            .attr(gimli::DW_AT_type)
+            .and_then(|type_attr| {
+                if let AttributeValue::UnitRef(offset) = type_attr.value() {
+                    Some(offset)
+                } else {
+                    None
+                }
+            })
+            .and_then(|offset| {
+                self.unit
+                    .entry(offset)
+                    .ok()?
+                    .attr(gimli::DW_AT_byte_size)
+                    .and_then(gimli::Attribute::udata_value)
+            })?;
+        Some(Symbol {
+            name: SymbolName::GenerateFromNameAttr,
+            kind: SymbolKind::Variable(Range {
+                start: addr,
+                end: addr + size,
+            }),
+        })
+    }
+
+    fn extract_name(
+        &self,
+        die: &DebuggingInformationEntry<GimliReader>,
+        dwarf: &gimli::Dwarf<GimliReader>,
+    ) -> Option<String> {
+        use gimli::Reader;
+        let attr = die.attr_value(gimli::DW_AT_name)?;
+        let name_as_bytes = dwarf.attr_string(&self.unit, attr).ok()?;
+        name_as_bytes
+            .to_string_lossy()
+            .ok()
+            .map(std::borrow::Cow::into_owned)
+    }
+
+    fn canonicalize_ranges(ranges: &mut Vec<Range<u64>>) {
+        ranges.sort_unstable_by_key(|r| r.start);
+        let mut merged_ranges = Vec::with_capacity(ranges.len());
+        let mut range_iter = ranges.iter_mut();
+        if let Some(prev) = range_iter.next() {
+            for r in range_iter {
+                if r.start <= prev.end {
+                    prev.end = prev.end.max(r.end);
+                } else {
+                    merged_ranges.push(r.clone());
+                    prev.clone_from(r);
+                }
+            }
+        }
+        ranges.clear();
+        ranges.extend_from_slice(&merged_ranges);
+    }
+
+    fn build_name(
+        &self,
+        offset: UnitOffset,
+        dwarf: &gimli::Dwarf<GimliReader>,
+        entry: &DebuggingInformationEntry<GimliReader>,
+    ) -> String {
+        let parent_name = self.full_names.get(&offset).cloned().unwrap_or_default();
+
+        let name_opt = self.extract_name(entry, dwarf).unwrap_or_default();
+        let mut current_name = String::with_capacity(parent_name.len() + 2 + name_opt.len());
+        if !parent_name.is_empty() {
+            current_name.push_str(&parent_name);
+        }
+        if !parent_name.is_empty() && !name_opt.is_empty() {
+            current_name.push_str("::");
+        }
+        if !name_opt.is_empty() {
+            current_name.push_str(&name_opt);
+        }
+        current_name
+    }
+
+    fn process_unit(
+        &mut self,
+        dwarf: &gimli::Dwarf<GimliReader>,
+        symbols: &mut HashMap<String, Symbol>,
+    ) {
         let mut entries_cursor = self.unit.entries();
 
         let mut prev_offset = None;
         let mut previous_depth = entries_cursor.depth();
+        let mut current_subprogram = None;
         while let Ok(Some(current)) = entries_cursor.next_dfs() {
             let parent_offset = match current.depth() - previous_depth {
                 1 => {
@@ -83,23 +259,99 @@ impl UnitInfo {
                 _ => unreachable!("DFS algorithms never jump down multiple levels in the graph"),
             };
 
+            if let Some((ref name, ref depth)) = current_subprogram
+                && *depth >= current.depth()
+            {
+                // We stepped back up out of the current_subprogram tree, so we
+                // need to merge all the ranges from called functions that might
+                // be inlined into this (full) subprogram
+                if let Some(sym) = symbols.get_mut(name)
+                    && let SymbolKind::Function(ref mut ranges) = sym.kind
+                {
+                    Self::canonicalize_ranges(ranges);
+                }
+                current_subprogram = None;
+            }
+
             if let Some(offset) = parent_offset {
+                let current_name = self.build_name(offset, dwarf, current);
+
                 self.parents.insert(current.offset(), offset);
+                self.full_names
+                    .insert(current.offset(), current_name.clone());
+
+                if current.tag() == gimli::DW_TAG_subprogram {
+                    current_subprogram = Some((current_name, current.depth()));
+                }
             }
             previous_depth = current.depth();
             prev_offset = Some(current.offset());
 
-            // Cache the address ranges if this DIE is a function.
-            if current.tag() == gimli::DW_TAG_subprogram
-                && let Ok(Some(ranges)) = FunctionDie::function_ranges(current, self, dwarf)
-            {
-                for range in ranges {
-                    self.function_dies.push((range, current.offset()));
+            // Cache the address ranges if this DIE is a function, and add it to
+            // the symbols map if it's a function, inlined function, or variable
+            if let Some(mut symbol) = match current.tag() {
+                gimli::DW_TAG_subprogram => {
+                    let mut function_dies = vec![];
+                    let sym = self.process_subprogram(dwarf, current, &mut function_dies);
+                    self.function_dies.extend_from_slice(&function_dies);
+                    sym
                 }
+                gimli::DW_TAG_inlined_subroutine => {
+                    self.process_inlined(current, current_subprogram.as_ref())
+                }
+                gimli::DW_TAG_variable => self.process_variable(dwarf, current),
+                _ => None,
+            } {
+                symbol.name = match symbol.name {
+                    SymbolName::GenerateFromNameAttr => {
+                        self.full_names
+                            .get(&current.offset())
+                            .map(|name| {
+                                if let SymbolKind::InlinedFunction(concrete_caller) = &symbol.kind {
+                                    // Inlined functions aren't in the .symtab, so we don't need
+                                    // to worry about matching the format of rustc_demangle.  We
+                                    // just need to make sure the string only points to one target
+                                    // concrete function.
+                                    format!("{name} (inlined into {concrete_caller})")
+                                } else {
+                                    name.clone()
+                                }
+                            })
+                            .map(SymbolName::Known)
+                            .unwrap_or(SymbolName::LinkNotFound(current.offset()))
+                    }
+                    other => other,
+                };
+                symbols.insert(symbol.name.to_string(), symbol);
             }
 
             // TODO: assuming the ranges don't overlap, sort function dies by start address
         }
+
+        // If the last tag in the DFS traversal was a child of a subprogram, we
+        // might not have postprocessed that subprogram on the way out of the
+        // loop, so do it now.
+        if let Some((ref name, _)) = current_subprogram
+            && let Some(sym) = symbols.get_mut(name)
+            && let SymbolKind::Function(ref mut ranges) = sym.kind
+        {
+            Self::canonicalize_ranges(ranges);
+        }
+
+        // Now postprocess to handle the Deferred names
+        for symbol in symbols.values_mut() {
+            symbol.name = match &symbol.name {
+                SymbolName::Deferred(offset) => self
+                    .full_names
+                    .get(offset)
+                    .map(|name| SymbolName::Known(name.clone()))
+                    .unwrap_or(SymbolName::LinkNotFound(*offset)),
+                other => other.clone(),
+            }
+        }
+
+        // Code in debug_info.rs will handle merging this DWARF data with the
+        // data from the .symtab ELF section
     }
 
     /// Retrieve the value of the `DW_AT_language` attribute of the compilation unit.

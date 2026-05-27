@@ -8,13 +8,20 @@ use super::{
 };
 use crate::{SourceLocation, VerifiedBreakpoint, stack_frame::StackFrameInfo, unit_info::RangeExt};
 use gimli::{
-    BaseAddresses, DebugFrame, RunTimeEndian, UnwindContext, UnwindSection, UnwindTableRow,
-    read::RegisterRule,
+    BaseAddresses, DebugFrame, RunTimeEndian, UnitOffset, UnwindContext, UnwindSection,
+    UnwindTableRow, read::RegisterRule,
 };
 use object::read::{Object, ObjectSection};
 use probe_rs::{CoreRegister, Error, InstructionSet, MemoryInterface, RegisterRole, RegisterValue};
 use std::{
-    borrow, cmp::Ordering, num::NonZeroU64, ops::ControlFlow, path::Path, rc::Rc, str::from_utf8,
+    borrow,
+    cmp::Ordering,
+    collections::{HashMap, HashSet},
+    num::NonZeroU64,
+    ops::{ControlFlow, Range},
+    path::Path,
+    rc::Rc,
+    str::from_utf8,
 };
 use typed_path::{TypedPath, TypedPathBuf};
 
@@ -25,6 +32,62 @@ pub(crate) type GimliReaderOffset =
 pub(crate) type GimliAttribute = gimli::Attribute<GimliReader>;
 
 pub(crate) type DwarfReader = gimli::read::EndianRcSlice<RunTimeEndian>;
+
+#[derive(Clone)]
+pub enum SymbolName {
+    // The name of this symbol is known: either present in the DIE directly, or
+    // contained in a DW_AT_abstract_origin whose target is present in the
+    // full_names map.
+    Known(String),
+    // This symbol's name is not known at DIE iteration time; instead, it can be
+    // looked up by finding the given offset in the full_names map after the DIE
+    // iteration has finished.
+    Deferred(UnitOffset),
+    // This symbol's name exists in the DIE's name attribute but we still need
+    // to calculate it.
+    GenerateFromNameAttr,
+    // This symbol had a name stored in another DIE, but we didn't have a DIE
+    // at that offset.
+    LinkNotFound(UnitOffset),
+}
+
+impl std::fmt::Display for SymbolName {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            SymbolName::Known(name) => {
+                f.write_str(name)?;
+            }
+            SymbolName::Deferred(offset) => {
+                write!(f, "deferred symbol @{offset:?}")?;
+            }
+            SymbolName::GenerateFromNameAttr => {
+                f.write_str("z_can't happen: could not find a name attribute")?;
+            }
+            SymbolName::LinkNotFound(offset) => {
+                write!(f, "z_symbol name link not found at offset {offset:?}")?;
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone)]
+pub enum SymbolKind {
+    // Non-inlined functions can still be split across several byte ranges; a
+    // hot/cold code split is one reason.  So we need a set of ranges, not just
+    // a start and end.
+    Function(Vec<Range<u64>>),
+    // The value here is the "concrete", as in "not inlined itself", caller.
+    // That symbol should show up as a Function() variant above.
+    InlinedFunction(String),
+    Variable(Range<u64>),
+}
+
+#[derive(Clone)]
+pub struct Symbol {
+    pub name: SymbolName,
+    pub kind: SymbolKind,
+}
 
 /// Debug information which is parsed from DWARF debugging information.
 pub struct DebugInfo {
@@ -38,6 +101,8 @@ pub struct DebugInfo {
     pub(crate) endianness: gimli::RunTimeEndian,
 
     pub(crate) addr2line: Option<addr2line::Loader>,
+
+    pub(crate) symbols: Vec<Symbol>,
 }
 
 impl DebugInfo {
@@ -50,9 +115,65 @@ impl DebugInfo {
         Ok(this)
     }
 
+    fn append_hash_if_present(
+        name: &mut SymbolName,
+        ranges: &[Range<u64>],
+        symtab_hash: &mut HashMap<u64, Symbol>,
+    ) {
+        if let SymbolName::Known(name) = name
+            && !ranges.is_empty()
+            && let Some(ref symtab_sym) = symtab_hash.remove(&ranges[0].start)
+            && let Some((_, suffix)) = symtab_sym.name.to_string().rsplit_once("::")
+            && suffix.starts_with('h')
+            && suffix[1..].chars().all(|c| c.is_ascii_hexdigit())
+        {
+            let symtab_name = symtab_sym.name.to_string();
+            let hash_with_colons = &symtab_name[symtab_name.len() - suffix.len() - 2..];
+            name.push_str(hash_with_colons);
+        }
+    }
+
+    fn get_symbol_kind(symbol: &object::Symbol) -> Option<SymbolKind> {
+        use object::ObjectSymbol;
+
+        match symbol.kind() {
+            object::SymbolKind::Text => Some(SymbolKind::Function(vec![Range {
+                start: symbol.address(),
+                end: symbol.address() + symbol.size(),
+            }])),
+            object::SymbolKind::Data => Some(SymbolKind::Variable(Range {
+                start: symbol.address(),
+                end: symbol.address() + symbol.size(),
+            })),
+            _ => None,
+        }
+    }
+
     /// Parse debug information directly from a buffer containing an ELF file.
     pub fn from_raw(data: &[u8]) -> Result<Self, DebugError> {
+        use object::ObjectSymbol;
+
         let object = object::File::parse(data)?;
+
+        let mut dwarf_symbols = HashMap::new();
+        let mut symtab_hash = HashMap::new();
+
+        // We add all the symbols from both the symtab and the debug info to the
+        // list that we'll use for disassembly.  Drop them into a hashmap at
+        // first, so we de-duplicate, then drop them into a sorted vector at the
+        // end.
+        for symbol in object.symbols() {
+            let name = rustc_demangle::demangle(symbol.name()?).to_string();
+            if let Some(kind) = Self::get_symbol_kind(&symbol) {
+                symtab_hash.insert(
+                    symbol.address(),
+                    Symbol {
+                        name: SymbolName::Known(name),
+                        kind,
+                    },
+                );
+            }
+        }
 
         let endianness = if object.is_little_endian() {
             RunTimeEndian::Little
@@ -98,9 +219,58 @@ impl DebugInfo {
                 // The frame section address size is only used for CIE versions before 4.
                 frame_section.set_address_size(unit.encoding().address_size);
 
-                unit_infos.push(UnitInfo::new(unit, &dwarf_cow));
-            };
+                unit_infos.push(UnitInfo::new(unit, &dwarf_cow, &mut dwarf_symbols));
+            }
         }
+
+        // Now merge symtab_hash and dwarf_symbols -- match them up by address, and
+        // pull the ::hXXXX disambiguator off the symtab version of the name, if
+        // present there.  Prefer all other name elements from the DWARF data.
+
+        let mut sym_vec = Vec::with_capacity(dwarf_symbols.len());
+        let mut inlined = Vec::with_capacity(dwarf_symbols.len());
+        let mut surviving_callers = HashSet::new();
+
+        for (sym_key, mut sym) in dwarf_symbols {
+            match sym.kind {
+                SymbolKind::Function(ref ranges) => {
+                    Self::append_hash_if_present(&mut sym.name, ranges, &mut symtab_hash);
+                    // If there are no ranges after all the processing we did in
+                    // unit_info.rs, then this must have been optimized all the
+                    // way out.  Don't emit an entry for it.
+                    if !ranges.is_empty() {
+                        sym_vec.push(sym);
+                        surviving_callers.insert(sym_key);
+                    }
+                }
+                SymbolKind::InlinedFunction(..) => {
+                    inlined.push(sym);
+                }
+                SymbolKind::Variable(_) => {
+                    sym_vec.push(sym);
+                }
+            }
+        }
+
+        sym_vec.extend_from_slice(
+            &inlined
+                .into_iter()
+                .filter(|sym| {
+                    if let SymbolKind::InlinedFunction(ref concrete_caller) = sym.kind {
+                        surviving_callers.contains(concrete_caller)
+                    } else {
+                        false
+                    }
+                })
+                .collect::<Vec<_>>(),
+        );
+
+        // If there's anything left in the symtab hash, add it to the output too
+        for sym in symtab_hash.into_values() {
+            sym_vec.push(sym);
+        }
+
+        sym_vec.sort_by_key(|sym| sym.name.to_string());
 
         Ok(DebugInfo {
             dwarf: dwarf_cow,
@@ -111,6 +281,7 @@ impl DebugInfo {
             unit_infos,
             endianness,
             addr2line: None,
+            symbols: sym_vec,
         })
     }
 
@@ -1014,6 +1185,42 @@ impl DebugInfo {
                 "Unimplemented attribute value {other_attribute_value:?}"
             ))),
         }
+    }
+
+    pub fn find_symbols(&self, query: &str) -> Vec<Symbol> {
+        fn break_up(s: &str) -> impl Iterator<Item = &str> + Clone + '_ {
+            s.split(|c: char| !c.is_alphanumeric() && c != '_')
+                .filter(|s| !s.is_empty())
+        }
+        let mut query_iter = break_up(query).peekable();
+        let mut matching = vec![];
+        if query_iter.peek().is_none() {
+            return matching;
+        }
+
+        for symbol in &self.symbols {
+            if symbol.name.to_string() == query {
+                // If there's a single full-match, return just it, even if its
+                // terms also match a sub-sequence of other symbols.
+                return vec![symbol.clone()];
+            }
+            let mut query_iter = query_iter.clone();
+            let name = &symbol.name.to_string();
+            let candidate = break_up(name);
+            let mut query_term = query_iter.next();
+            // Match terms in order, but potentially separated by identifiers in
+            // the candidate
+            for identifier in candidate {
+                if query_term.is_some_and(|t| t == identifier) {
+                    query_term = query_iter.next();
+                }
+            }
+            if query_term.is_none() {
+                matching.push(symbol.clone());
+            }
+        }
+
+        matching
     }
 }
 
