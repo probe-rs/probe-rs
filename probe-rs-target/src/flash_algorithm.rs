@@ -1,6 +1,7 @@
 use super::flash_properties::FlashProperties;
-use crate::serialize::{hex_option, hex_u_int};
+use crate::serialize::{hex_map, hex_map_deserialize, hex_option, hex_u_int};
 use base64::{Engine as _, engine::general_purpose as base64_engine};
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 /// Data encoding used by the flash algorithm.
@@ -25,7 +26,7 @@ pub enum TransferEncoding {
 /// Before it can be used for flashing, it has to be assembled for
 /// a specific chip, by determining the RAM addresses which are used when flashing.
 /// This process is done in the main `probe-rs` library.
-#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct RawFlashAlgorithm {
     /// The name of the flash algorithm.
@@ -69,9 +70,21 @@ pub struct RawFlashAlgorithm {
     /// Address of the (non-standard) `ReadFlash(adr: u32, sz: u32, buf: *mut u8)` entry point. Optional.
     #[serde(serialize_with = "hex_option")]
     pub pc_read: Option<u64>,
-    /// Address of the (non-standard) `FlashSize()` entry point. Optional.
-    #[serde(serialize_with = "hex_option")]
-    pub pc_flash_size: Option<u64>,
+    /// Addresses of optional, vendor-specific entry points defined by the flash algorithm.
+    ///
+    /// Keys are arbitrary names (e.g. `"FlashSize"`); values are offsets from the start of
+    /// the algorithm's code, written as hexadecimal integers in YAML (`0x1a`).
+    ///
+    /// Functions that have the `VendorFunc_` prefix in the flash algorithm's code are
+    /// automatically added to this map, with the prefix stripped from the key. For example,
+    /// a function named `VendorFunc_FlashSize` will be added to this map with the
+    /// key `FlashSize`.
+    #[serde(
+        default,
+        serialize_with = "hex_map",
+        deserialize_with = "hex_map_deserialize"
+    )]
+    pub vendor_functions: IndexMap<String, u64>,
     /// The offset from the start of RAM to the data section.
     #[serde(serialize_with = "hex_u_int")]
     pub data_section_offset: u64,
@@ -109,6 +122,38 @@ pub struct RawFlashAlgorithm {
     /// `true` if the instructions are saved in Big Endian format
     #[serde(default)]
     pub big_endian: bool,
+}
+
+impl Default for RawFlashAlgorithm {
+    fn default() -> Self {
+        Self {
+            rtt_poll_interval: default_rtt_poll_interval(),
+
+            name: Default::default(),
+            description: Default::default(),
+            default: Default::default(),
+            instructions: Default::default(),
+            load_address: Default::default(),
+            data_load_address: Default::default(),
+            pc_init: Default::default(),
+            pc_uninit: Default::default(),
+            pc_program_page: Default::default(),
+            pc_erase_sector: Default::default(),
+            pc_erase_all: Default::default(),
+            pc_verify: Default::default(),
+            pc_blank_check: Default::default(),
+            pc_read: Default::default(),
+            vendor_functions: Default::default(),
+            data_section_offset: Default::default(),
+            rtt_location: Default::default(),
+            flash_properties: Default::default(),
+            cores: Default::default(),
+            stack_size: Default::default(),
+            stack_overflow_check: Default::default(),
+            transfer_encoding: Default::default(),
+            big_endian: Default::default(),
+        }
+    }
 }
 
 impl RawFlashAlgorithm {

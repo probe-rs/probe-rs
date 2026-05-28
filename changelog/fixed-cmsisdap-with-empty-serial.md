@@ -1,0 +1,1 @@
+Fixed duplicates detection of devices with empty serial number when using cmsis-dap.

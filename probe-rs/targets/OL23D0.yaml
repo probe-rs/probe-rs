@@ -13,8 +13,8 @@ variants:
   memory_map:
   - !Nvm
     range:
-      start: 0x00200000
-      end: 0x00220000
+      start: 0x200000
+      end: 0x220000
     cores:
     - main
     access:
@@ -23,9 +23,9 @@ variants:
     name: RAM
     range:
       start: 0x20004000
-      end: 0x2000A000
+      end: 0x2000a000
     cores:
-      - main
+    - main
   flash_algorithms:
   - ol23d0_flash_driver
 flash_algorithms:

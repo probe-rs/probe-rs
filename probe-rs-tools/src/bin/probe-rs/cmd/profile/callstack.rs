@@ -3,9 +3,11 @@ use std::time::Duration;
 use std::time::Instant;
 
 use probe_rs::Session;
+use probe_rs_debug::DebugInfo;
 
 use anyhow::Context;
 use object::{Object, ObjectSymbol};
+mod dwarf;
 mod frame_pointer;
 mod fxprof;
 mod samply_object;
@@ -31,7 +33,9 @@ pub(crate) struct CallstackProfileArgs {
 
 #[derive(clap::Subcommand, Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum CallstackProfileMethod {
-    /// Naively (halt -> walk -> resume) walk call stack using frame pointers and frame record
+    /// Naively (halt -> walk -> resume) unwind callstack using DWARF debug information.
+    NaiveDwarf,
+    /// Naively (halt -> walk -> resume) walk callstack using frame pointers and frame record
     /// chain. You should ensure the program was compiled with frame pointers enabled.
     /// For rust, set the codegen option force-frame-pointers=yes.
     /// For C/C++ gcc/clang, set -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer.
@@ -128,6 +132,7 @@ pub(super) fn callstack_profile(
     let sampling_interval = Duration::from_nanos((1e9 / callstack_profile_args.rate) as u64);
 
     let object_bytes = std::fs::read(executable_location)?;
+    let debug_info = DebugInfo::from_raw(&object_bytes)?;
     let object = object::File::parse(object_bytes.as_slice())?;
     let entry_address_range = get_entry_point_address_range(&object)?;
 
@@ -150,6 +155,7 @@ pub(super) fn callstack_profile(
         // collect sample
         core.halt(Duration::from_millis(10))?;
         let callstack = match callstack_profile_args.method {
+            CallstackProfileMethod::NaiveDwarf => dwarf::dwarf_unwind(&mut core, &debug_info),
             CallstackProfileMethod::NaiveFramePointer => {
                 frame_pointer::frame_pointer_stack_walk(&mut core, &entry_address_range)
                     .context("Unwinding error, was the program compiled with frame pointers?")?
@@ -208,8 +214,27 @@ mod test {
         path.pop();
         path.push("probe-rs-debug");
         path.push("tests");
+        path.push("debug-unwind-tests");
         path.push(relative_file);
         path
+    }
+
+    /// Find core dump file path using name - either .elf or probe-rs's .coredump format
+    pub fn coredump_path(base: &str) -> PathBuf {
+        let possible_coredump_paths = [
+            get_path_for_test_files(format!("{base}.coredump").as_str()),
+            get_path_for_test_files(format!("{base}_coredump.elf").as_str()),
+        ];
+
+        possible_coredump_paths
+            .iter()
+            .find(|path| path.exists())
+            .unwrap_or_else(|| {
+                panic!(
+                    "No coredump found for chip {base}. Expected one of: {possible_coredump_paths:?}"
+                )
+            })
+            .clone()
     }
 
     /// Helper to convert slice of addresses to callstack Vec
@@ -242,7 +267,7 @@ mod test {
     fn test_get_entry_point_address_range() {
         let executable_name = "esp32c6_coredump_elf";
         let executable_location =
-            get_path_for_test_files(format!("debug-unwind-tests/{executable_name}.elf").as_str());
+            get_path_for_test_files(format!("{executable_name}.elf").as_str());
 
         let object_bytes = std::fs::read(&executable_location).unwrap();
         let obj = object::File::parse(object_bytes.as_slice()).unwrap();

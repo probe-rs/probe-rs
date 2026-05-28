@@ -143,16 +143,20 @@ pub enum CoreType {
     Armv6m,
     /// ARMv7-A: Cortex A7, A9, A15
     Armv7a,
+    /// ARMv7-R: Cortex R4, R5, R7, R8
+    Armv7r,
     /// ARMv7-M: Cortex M3
     Armv7m,
     /// ARMv7e-M: Cortex M4, M7
     Armv7em,
-    /// ARMv7-A: Cortex A35, A55, A72
+    /// ARMv8-A: Cortex A35, A55, A72
     Armv8a,
     /// ARMv8-M: Cortex M23, M33
     Armv8m,
-    /// RISC-V
+    /// RISC-V (32-bit)
     Riscv,
+    /// RISC-V (64-bit)
+    Riscv64,
     /// Xtensa - TODO: may need to split into NX, LX6 and LX7
     Xtensa,
 }
@@ -162,11 +166,13 @@ impl From<probe_rs_target::CoreType> for CoreType {
         match value {
             probe_rs_target::CoreType::Armv6m => CoreType::Armv6m,
             probe_rs_target::CoreType::Armv7a => CoreType::Armv7a,
+            probe_rs_target::CoreType::Armv7r => CoreType::Armv7r,
             probe_rs_target::CoreType::Armv7m => CoreType::Armv7m,
             probe_rs_target::CoreType::Armv7em => CoreType::Armv7em,
             probe_rs_target::CoreType::Armv8a => CoreType::Armv8a,
             probe_rs_target::CoreType::Armv8m => CoreType::Armv8m,
             probe_rs_target::CoreType::Riscv => CoreType::Riscv,
+            probe_rs_target::CoreType::Riscv64 => CoreType::Riscv64,
             probe_rs_target::CoreType::Xtensa => CoreType::Xtensa,
         }
     }

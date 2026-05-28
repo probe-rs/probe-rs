@@ -337,6 +337,12 @@ impl DtmAccess for JtagDtm<'_> {
     }
 
     fn read_idcode(&mut self) -> Result<Option<u32>, DebugProbeError> {
+        // Reset the JTAG state machine to Test-Logic-Reset before reading the IDCODE.
+        // This is required when read_idcode() is called without a prior dtm.init() (e.g.
+        // from `probe-rs info`), because the TAP state may be indeterminate after attach.
+        // After reset, the IDCODE instruction is automatically loaded into IR, and we then
+        // explicitly load it again via read_register(0x1, …) to be consistent with all paths.
+        self.probe.tap_reset()?;
         let value = self.probe.read_register(0x1, 32)?;
 
         Ok(Some(value.load_le::<u32>()))
@@ -636,6 +642,10 @@ impl DtmAccess for TunneledJtagDtm<'_> {
     }
 
     fn read_idcode(&mut self) -> Result<Option<u32>, DebugProbeError> {
+        // Reset the JTAG state machine to Test-Logic-Reset before reading the IDCODE.
+        // This is required when read_idcode() is called without a prior dtm.init() (e.g.
+        // from `probe-rs info`), because the TAP state may be indeterminate after attach.
+        self.probe.tap_reset()?;
         let value = self.probe.read_register(0x1, 32)?;
         Ok(Some(value.load_le::<u32>()))
     }

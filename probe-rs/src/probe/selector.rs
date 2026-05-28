@@ -2,7 +2,7 @@ use std::fmt;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::probe::DebugProbeInfo;
+use crate::probe::{DebugProbeInfo, usb_util::to_hex};
 
 use nusb::DeviceInfo;
 
@@ -108,7 +108,7 @@ impl DebugProbeSelector {
                 .as_ref()
                 .map(|s| {
                     if let Some(serial_number) = serial_number {
-                        serial_number == s
+                        serial_number == s || to_hex(serial_number).as_str() == s
                     } else {
                         // Match probes without serial number when the
                         // selector has a third, empty part ("VID:PID:")
@@ -176,6 +176,9 @@ impl From<&DebugProbeInfo> for DebugProbeSelector {
 impl fmt::Display for DebugProbeSelector {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:04x}:{:04x}", self.vendor_id, self.product_id)?;
+        if let Some(interface) = self.interface {
+            write!(f, "-{interface}")?;
+        }
         if let Some(ref sn) = self.serial_number {
             write!(f, ":{sn}")?;
         }
@@ -301,5 +304,41 @@ mod test {
         assert!(!no_match);
         assert!(matches_with_interface);
         assert!(!no_match_with_wrong_interface);
+    }
+
+    #[test]
+    fn display_round_trips_with_interface() {
+        let selector: DebugProbeSelector = "0403:6010-1".parse().unwrap();
+        assert_eq!(selector.interface, Some(1));
+        assert_eq!(selector.to_string(), "0403:6010-1");
+
+        // Display output must parse back to an equivalent selector.
+        let reparsed: DebugProbeSelector = selector.to_string().parse().unwrap();
+        assert_eq!(reparsed.vendor_id, selector.vendor_id);
+        assert_eq!(reparsed.product_id, selector.product_id);
+        assert_eq!(reparsed.interface, selector.interface);
+        assert_eq!(reparsed.serial_number, selector.serial_number);
+    }
+
+    #[test]
+    fn display_round_trips_with_interface_and_serial() {
+        let selector: DebugProbeSelector = "0403:6010-1:ABCD1234".parse().unwrap();
+        assert_eq!(selector.interface, Some(1));
+        assert_eq!(selector.serial_number, Some("ABCD1234".to_string()));
+        assert_eq!(selector.to_string(), "0403:6010-1:ABCD1234");
+
+        let reparsed: DebugProbeSelector = selector.to_string().parse().unwrap();
+        assert_eq!(reparsed.vendor_id, selector.vendor_id);
+        assert_eq!(reparsed.product_id, selector.product_id);
+        assert_eq!(reparsed.interface, selector.interface);
+        assert_eq!(reparsed.serial_number, selector.serial_number);
+    }
+
+    #[test]
+    fn display_without_interface_unchanged() {
+        // Selectors without interface must continue to display without a dash.
+        let selector: DebugProbeSelector = "0403:6010:ABCD1234".parse().unwrap();
+        assert_eq!(selector.interface, None);
+        assert_eq!(selector.to_string(), "0403:6010:ABCD1234");
     }
 }

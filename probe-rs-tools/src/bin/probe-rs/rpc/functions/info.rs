@@ -6,6 +6,7 @@ use anyhow::anyhow;
 use postcard_rpc::header::{VarHeader, VarSeq};
 use postcard_schema::{Schema, schema};
 use probe_rs::{
+    Session,
     architecture::{
         arm::{
             self, ApAddress, ApV2Address, ArmDebugInterface,
@@ -18,23 +19,40 @@ use probe_rs::{
             },
             sequences::DefaultArmSequence,
         },
-        riscv::communication_interface::RiscvCommunicationInterface,
         xtensa::communication_interface::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState,
         },
     },
     probe::{Probe, WireProtocol as ProbeRsWireProtocol},
 };
+use probe_rs_target::ScanChainElement;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    rpc::functions::{
-        NoResponse, RpcContext, TargetInfoDataTopic,
-        chip::JEP106Code,
-        probe::{DebugProbeEntry, WireProtocol},
+    rpc::{
+        Key,
+        functions::{
+            NoResponse, RpcContext, TargetInfoDataTopic, TargetNameResponse,
+            chip::JEP106Code,
+            probe::{DebugProbeEntry, WireProtocol},
+        },
     },
     util::common_options::ProbeOptions,
 };
+
+#[derive(Serialize, Deserialize, Schema)]
+pub struct TargetNameRequest {
+    pub sessid: Key<Session>,
+}
+
+pub async fn target_name(
+    ctx: &mut RpcContext,
+    _hdr: VarHeader,
+    request: TargetNameRequest,
+) -> TargetNameResponse {
+    let session = ctx.session(request.sessid).await;
+    Ok(session.target().name.clone())
+}
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct TargetInfoRequest {
@@ -44,6 +62,12 @@ pub struct TargetInfoRequest {
     pub dry_run: bool,
     pub target_sel: Option<u32>,
     pub protocol: WireProtocol,
+    /// IR lengths for each TAP in the scan chain, in scan-chain order.
+    ///
+    /// When non-empty, the JTAG auto-detection scan is bypassed and these values are used
+    /// directly. For example, `[5]` specifies a single-TAP chain with IR length 5.
+    #[serde(default)]
+    pub scan_chain: Vec<u8>,
 }
 
 impl From<&TargetInfoRequest> for ProbeOptions {
@@ -59,6 +83,7 @@ impl From<&TargetInfoRequest> for ProbeOptions {
             probe: Some(request.probe.selector().into()),
             speed: request.speed,
             connect_under_reset: request.connect_under_reset,
+            cycle_power: false,
             dry_run: request.dry_run,
             allow_erase_all: false,
         }
@@ -78,6 +103,7 @@ pub async fn target_info(
     if let Err(e) = try_show_info(
         ctx,
         probe,
+        request.scan_chain.clone(),
         request.protocol,
         probe_options.connect_under_reset(),
         request.target_sel,
@@ -289,11 +315,25 @@ impl ComponentTreeNode {
 async fn try_show_info(
     ctx: &mut RpcContext,
     mut probe: Probe,
+    scan_chain: Vec<u8>,
     protocol: WireProtocol,
     connect_under_reset: bool,
     target_sel: Option<u32>,
 ) -> anyhow::Result<()> {
     probe.select_protocol(ProbeRsWireProtocol::from(protocol))?;
+
+    if !scan_chain.is_empty()
+        && let Some(jtag) = probe.try_as_jtag_probe()
+    {
+        let chain = scan_chain
+            .iter()
+            .map(|&ir_len| ScanChainElement {
+                name: None,
+                ir_len: Some(ir_len),
+            })
+            .collect::<Vec<_>>();
+        jtag.set_scan_chain(&chain)?;
+    }
 
     if connect_under_reset {
         probe.attach_to_unspecified_under_reset()?;
@@ -387,11 +427,13 @@ async fn try_read_riscv_info(
 ) -> Result<(), anyhow::Error> {
     if probe.has_riscv_interface() && protocol == WireProtocol::Jtag {
         tracing::debug!("Trying to show RISC-V chip information");
-        let factory = probe.try_get_riscv_interface_builder()?;
-
-        let mut state = factory.create_state();
-        let mut interface = factory.attach(&mut state)?;
-        show_riscv_info(ctx, &mut interface).await?;
+        let idcode = {
+            let factory = probe.try_get_riscv_interface_builder()?;
+            let mut state = factory.create_state();
+            let mut interface = factory.attach(&mut state)?;
+            interface.read_idcode()?
+        };
+        show_riscv_info(ctx, idcode).await?;
     } else if protocol == WireProtocol::Swd {
         ctx.publish::<TargetInfoDataTopic>(
             VarSeq::Seq2(0),
@@ -810,12 +852,7 @@ fn cpu_info_tree(scs: &mut Scs) -> anyhow::Result<ComponentTreeNode> {
     Ok(tree)
 }
 
-async fn show_riscv_info(
-    ctx: &mut RpcContext,
-    interface: &mut RiscvCommunicationInterface<'_>,
-) -> anyhow::Result<()> {
-    let idcode = interface.read_idcode()?;
-
+async fn show_riscv_info(ctx: &mut RpcContext, idcode: Option<u32>) -> anyhow::Result<()> {
     ctx.publish::<TargetInfoDataTopic>(
         VarSeq::Seq2(0),
         &InfoEvent::Idcode {

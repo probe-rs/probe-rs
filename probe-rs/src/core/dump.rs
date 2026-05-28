@@ -6,6 +6,9 @@ use crate::architecture::arm::core::registers::cortex_m::{
     CORTEX_M_CORE_REGISTERS, CORTEX_M_WITH_FP_CORE_REGISTERS,
 };
 use crate::architecture::riscv::registers::{RISCV_CORE_REGISTERS, RISCV_WITH_FP_CORE_REGISTERS};
+use crate::architecture::riscv::registers64::{
+    RISCV64_CORE_REGISTERS, RISCV64_WITH_FP_CORE_REGISTERS,
+};
 use crate::architecture::xtensa::arch::{Register as XtensaRegister, SpecialRegister};
 use crate::architecture::xtensa::registers::XTENSA_CORE_REGISTERS;
 use crate::{Core, CoreRegisters, CoreType, Error, InstructionSet, MemoryInterface};
@@ -355,7 +358,7 @@ impl CoreDump {
     pub fn registers(&self) -> &'static CoreRegisters {
         match self.core_type {
             CoreType::Armv6m => &CORTEX_M_CORE_REGISTERS,
-            CoreType::Armv7a => match self.floating_point_register_count {
+            CoreType::Armv7a | CoreType::Armv7r => match self.floating_point_register_count {
                 Some(16) => &AARCH32_WITH_FP_16_CORE_REGISTERS,
                 Some(32) => &AARCH32_WITH_FP_32_CORE_REGISTERS,
                 _ => &AARCH32_CORE_REGISTERS,
@@ -389,6 +392,13 @@ impl CoreDump {
                     &RISCV_WITH_FP_CORE_REGISTERS
                 } else {
                     &RISCV_CORE_REGISTERS
+                }
+            }
+            CoreType::Riscv64 => {
+                if self.fpu_support {
+                    &RISCV64_WITH_FP_CORE_REGISTERS
+                } else {
+                    &RISCV64_CORE_REGISTERS
                 }
             }
             CoreType::Xtensa => &XTENSA_CORE_REGISTERS,

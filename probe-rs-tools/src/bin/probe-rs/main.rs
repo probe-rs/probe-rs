@@ -535,6 +535,8 @@ fn multicall_check(args: &[OsString], want: &str) -> Option<Vec<OsString>> {
 #[tokio::main]
 async fn main() -> Result<()> {
     probe_rs_espressif::register_plugin();
+    #[cfg(target_os = "linux")]
+    probe_rs_linux::register_plugin();
 
     // Determine the local offset as early as possible to avoid potential
     // issues with multiple threads and getting the offset.
@@ -604,9 +606,10 @@ async fn main() -> Result<()> {
 
     if is_local {
         // TODO: do something with remote crashes
-        compile_report(result, report_path, elf, log_path.as_deref())?;
+        compile_report(result, report_path, elf, log_path.as_deref())
+    } else {
+        result
     }
-    Ok(())
 }
 
 /// Runs the callback using either a local or remote RPC client.

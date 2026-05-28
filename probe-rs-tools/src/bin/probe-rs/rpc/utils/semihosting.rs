@@ -225,7 +225,11 @@ impl SemihostingFileManager {
     fn open_file(&self, path: &str, mode: &str) -> Option<FileHandle> {
         let mut options = File::options();
         match mode {
-            "r" | "rb" => options.read(true).write(false).truncate(true).create(false),
+            "r" | "rb" => options
+                .read(true)
+                .write(false)
+                .truncate(false)
+                .create(false),
             "r+" | "r+b" => options.read(true).write(true).truncate(true).create(false),
             "w" | "wb" => options.read(false).write(true).truncate(true).create(true),
             "w+" | "w+b" => options.read(true).write(true).truncate(true).create(true),

@@ -22,11 +22,16 @@ use sha2::{Digest, Sha512};
 use tokio::task::LocalSet;
 use tokio_util::bytes::Bytes;
 
-use std::{fmt::Write, path::PathBuf, sync::Arc};
+#[cfg(unix)]
+use std::path::PathBuf;
+use std::{fmt::Write, sync::Arc};
 
-use crate::rpc::{
-    functions::{ProbeAccess, RpcApp},
-    transport::websocket::{AxumWebsocketTx, WebsocketRx},
+use crate::{
+    rpc::{
+        functions::{ProbeAccess, RpcApp},
+        transport::websocket::{AxumWebsocketTx, WebsocketRx},
+    },
+    util::pwr,
 };
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -35,6 +40,7 @@ pub(crate) struct ServerConfig {
     pub users: Vec<ServerUser>,
     pub address: Option<String>,
     pub port: Option<u16>,
+    pub cycle_power: bool,
 }
 
 impl ServerConfig {
@@ -114,6 +120,10 @@ impl Cmd {
 
         if config.users.is_empty() {
             tracing::warn!("No users configured.");
+        }
+
+        if config.cycle_power {
+            pwr::power_enable().await?;
         }
 
         #[cfg(unix)]

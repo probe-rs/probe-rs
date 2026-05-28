@@ -3,10 +3,10 @@ use crate::{
     architecture::{
         arm::{
             ApV2Address, ArmDebugInterface, FullyQualifiedApAddress,
-            core::{CortexAState, CortexMState},
+            core::{CortexARState, CortexMState},
             dp::DpAddress,
         },
-        riscv::{RiscvCoreState, communication_interface::RiscvCommunicationInterface},
+        riscv::{Riscv64, RiscvCoreState, communication_interface::RiscvCommunicationInterface},
         xtensa::{XtensaCoreState, communication_interface::XtensaCommunicationInterface},
     },
 };
@@ -35,14 +35,16 @@ impl CombinedCoreState {
         self.core_state.core_access_options.jtag_tap_index()
     }
 
+    pub(crate) fn is_arm_core(&self) -> bool {
+        self.core_state.is_arm()
+    }
+
     pub(crate) fn attach_arm<'probe>(
         &'probe mut self,
         target: &'probe Target,
         arm_interface: &'probe mut Box<dyn ArmDebugInterface>,
     ) -> Result<Core<'probe>, Error> {
         let name = &target.cores[self.id].name;
-
-        let memory = arm_interface.memory_interface(&self.arm_memory_ap())?;
 
         let ResolvedCoreOptions::Arm { options, sequence } = &self.core_state.core_access_options
         else {
@@ -52,6 +54,13 @@ impl CombinedCoreState {
             );
         };
         let debug_sequence = sequence.clone();
+        debug_sequence.on_attach(
+            &mut **arm_interface,
+            &self.arm_memory_ap(),
+            self.specific_state.core_type(),
+        )?;
+
+        let memory = arm_interface.memory_interface(&self.arm_memory_ap())?;
 
         Ok(match &mut self.specific_state {
             SpecificCoreState::Armv6m(s) => Core::new(
@@ -64,11 +73,24 @@ impl CombinedCoreState {
                 self.id,
                 name,
                 target,
-                crate::architecture::arm::armv7a::Armv7a::new(
+                crate::architecture::arm::armv7ar::Armv7ar::new(
                     memory,
                     s,
                     options.debug_base.expect("base_address not specified"),
                     debug_sequence,
+                    CoreType::Armv7a,
+                )?,
+            ),
+            SpecificCoreState::Armv7r(s) => Core::new(
+                self.id,
+                name,
+                target,
+                crate::architecture::arm::armv7ar::Armv7ar::new(
+                    memory,
+                    s,
+                    options.debug_base.expect("base_address not specified"),
+                    debug_sequence,
+                    CoreType::Armv7r,
                 )?,
             ),
             SpecificCoreState::Armv7m(s) | SpecificCoreState::Armv7em(s) => Core::new(
@@ -168,22 +190,27 @@ impl CombinedCoreState {
         };
         let debug_sequence = sequence.clone();
 
-        let SpecificCoreState::Riscv(s) = &mut self.specific_state else {
-            unreachable!(
-                "The stored core state is not compatible with the RISC-V architecture. \
-                This should never happen. Please file a bug if it does."
-            );
-        };
-
         let hart = options.hart_id.unwrap_or_default();
         interface.select_hart(hart)?;
 
-        Ok(Core::new(
-            self.id,
-            name,
-            target,
-            crate::architecture::riscv::Riscv32::new(interface, s, debug_sequence)?,
-        ))
+        match &mut self.specific_state {
+            SpecificCoreState::Riscv(s) => Ok(Core::new(
+                self.id,
+                name,
+                target,
+                crate::architecture::riscv::Riscv32::new(interface, s, debug_sequence)?,
+            )),
+            SpecificCoreState::Riscv64(s) => Ok(Core::new(
+                self.id,
+                name,
+                target,
+                Riscv64::new(interface, s, debug_sequence)?,
+            )),
+            _ => unreachable!(
+                "The stored core state is not compatible with the RISC-V architecture. \
+                This should never happen. Please file a bug if it does."
+            ),
+        }
     }
 
     pub(crate) fn attach_xtensa<'probe>(
@@ -242,6 +269,10 @@ impl CoreState {
         }
     }
 
+    pub(crate) fn is_arm(&self) -> bool {
+        matches!(&self.core_access_options, ResolvedCoreOptions::Arm { .. })
+    }
+
     pub(crate) fn memory_ap(&self) -> FullyQualifiedApAddress {
         let ResolvedCoreOptions::Arm { options, .. } = &self.core_access_options else {
             unreachable!(
@@ -269,17 +300,21 @@ pub enum SpecificCoreState {
     /// The state of an ARMv6-M core.
     Armv6m(CortexMState),
     /// The state of an ARMv7-A core.
-    Armv7a(CortexAState),
+    Armv7a(CortexARState),
+    /// The state of an ARMv7-R core.
+    Armv7r(CortexARState),
     /// The state of an ARMv7-M core.
     Armv7m(CortexMState),
     /// The state of an ARMv7-EM core.
     Armv7em(CortexMState),
     /// The state of an ARMv8-A core.
-    Armv8a(CortexAState),
+    Armv8a(CortexARState),
     /// The state of an ARMv8-M core.
     Armv8m(CortexMState),
-    /// The state of an RISC-V core.
+    /// The state of a 32-bit RISC-V core.
     Riscv(RiscvCoreState),
+    /// The state of a 64-bit RISC-V core.
+    Riscv64(RiscvCoreState),
     /// The state of an Xtensa core.
     Xtensa(XtensaCoreState),
 }
@@ -288,12 +323,14 @@ impl SpecificCoreState {
     pub(crate) fn from_core_type(typ: CoreType) -> Self {
         match typ {
             CoreType::Armv6m => SpecificCoreState::Armv6m(CortexMState::new()),
-            CoreType::Armv7a => SpecificCoreState::Armv7a(CortexAState::new()),
+            CoreType::Armv7a => SpecificCoreState::Armv7a(CortexARState::new()),
+            CoreType::Armv7r => SpecificCoreState::Armv7r(CortexARState::new()),
             CoreType::Armv7m => SpecificCoreState::Armv7m(CortexMState::new()),
             CoreType::Armv7em => SpecificCoreState::Armv7m(CortexMState::new()),
-            CoreType::Armv8a => SpecificCoreState::Armv8a(CortexAState::new()),
+            CoreType::Armv8a => SpecificCoreState::Armv8a(CortexARState::new()),
             CoreType::Armv8m => SpecificCoreState::Armv8m(CortexMState::new()),
             CoreType::Riscv => SpecificCoreState::Riscv(RiscvCoreState::new()),
+            CoreType::Riscv64 => SpecificCoreState::Riscv64(RiscvCoreState::new()),
             CoreType::Xtensa => SpecificCoreState::Xtensa(XtensaCoreState::new()),
         }
     }
@@ -302,11 +339,13 @@ impl SpecificCoreState {
         match self {
             SpecificCoreState::Armv6m(_) => CoreType::Armv6m,
             SpecificCoreState::Armv7a(_) => CoreType::Armv7a,
+            SpecificCoreState::Armv7r(_) => CoreType::Armv7r,
             SpecificCoreState::Armv7m(_) => CoreType::Armv7m,
             SpecificCoreState::Armv7em(_) => CoreType::Armv7em,
             SpecificCoreState::Armv8a(_) => CoreType::Armv8a,
             SpecificCoreState::Armv8m(_) => CoreType::Armv8m,
             SpecificCoreState::Riscv(_) => CoreType::Riscv,
+            SpecificCoreState::Riscv64(_) => CoreType::Riscv64,
             SpecificCoreState::Xtensa(_) => CoreType::Xtensa,
         }
     }

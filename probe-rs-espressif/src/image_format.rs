@@ -10,7 +10,7 @@ use probe_rs::flashing::{
     ImageReader, into_format_error,
 };
 use serde::{Deserialize, Serialize};
-use serde_yaml::Value;
+use yaml_serde::Value;
 
 pub(crate) struct IdfLoaderFactory;
 
@@ -21,7 +21,7 @@ impl ImageFormat for IdfLoaderFactory {
 
     fn create_loader(&self, options: Option<Value>) -> Box<dyn ImageLoader> {
         let options = options
-            .and_then(|value| serde_yaml::from_value::<IdfLoader>(value).ok())
+            .and_then(|value| yaml_serde::from_value::<IdfLoader>(value).ok())
             .unwrap_or_default();
         Box::new(options)
     }
@@ -88,9 +88,23 @@ impl ImageLoader for IdfLoader {
             .map_err(EspIdfFormatError::FlashSizeDetection)
             .map_err(|e| into_format_error("esp-idf", e))?;
 
+        let mut chip_revision = 0;
         let flash_size_result = algo
             .run_verify(session, &mut FlashProgress::empty(), |flasher, _| {
-                flasher.read_flash_size()
+                if flasher.has_vendor_function("ChipRevision") {
+                    tracing::debug!("Reading chip revision.");
+                    let result = flasher.call_vendor_function("ChipRevision", [None; 4])?;
+                    if result < u16::MAX as u32 {
+                        chip_revision = result as u16;
+                    } else {
+                        tracing::warn!(
+                            "Unexpected chip revision value: {result}. Defaulting to 0."
+                        );
+                    }
+                }
+
+                tracing::debug!("Reading flash size.");
+                flasher.call_vendor_function("FlashSize", [None; 4])
             })
             .map_err(EspIdfFormatError::FlashSizeDetection)
             .map_err(|e| into_format_error("esp-idf", e))?;
@@ -122,7 +136,7 @@ impl ImageLoader for IdfLoader {
 
                 settings
             },
-            0,
+            chip_revision,
             None,
             chip,
             // TODO: auto-detect the crystal frequency.

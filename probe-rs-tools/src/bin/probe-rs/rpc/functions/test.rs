@@ -15,7 +15,7 @@ use crate::{
             monitor::{MonitorSender, RttPoller, SemihostingEvent},
         },
         utils::{
-            run_loop::{ReturnReason, RunLoop},
+            run_loop::{ReturnReason, RunLoop, VectorCatchConfig},
             semihosting::{SemihostingFileManager, SemihostingOptions},
         },
     },
@@ -166,8 +166,12 @@ fn list_tests_impl(
 
     match run_loop.run_until(
         &shared_session,
-        true,
-        true,
+        VectorCatchConfig {
+            catch_hardfault: true,
+            catch_reset: true,
+            catch_svc: true,
+            catch_hlt: true,
+        },
         poller,
         Some(Duration::from_secs(5)),
         |halt_reason, core| list_handler.handle_halt(halt_reason, core),
@@ -260,8 +264,12 @@ fn run_test_impl(
 
     match run_loop.run_until(
         &shared_session,
-        true,
-        true,
+        VectorCatchConfig {
+            catch_hardfault: true,
+            catch_reset: true,
+            catch_svc: true,
+            catch_hlt: true,
+        },
         poller,
         Some(timeout),
         |halt_reason, core| run_handler.handle_halt(halt_reason, core),

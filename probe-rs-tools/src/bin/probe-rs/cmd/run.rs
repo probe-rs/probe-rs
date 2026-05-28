@@ -4,9 +4,10 @@ use crate::rpc::client::RpcClient;
 use crate::rpc::functions::monitor::MonitorMode;
 use crate::rpc::functions::rtt_client::ScanRegion;
 use crate::rpc::functions::test::{Test, TestDefinition};
+use crate::rpc::utils::run_loop::VectorCatchConfig;
 
 use crate::FormatOptions;
-use crate::util::cli::{self, rtt_client};
+use crate::util::cli::{self, parse_metadata, rtt_client};
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
 use crate::util::rtt::ChannelMode;
 
@@ -33,6 +34,14 @@ pub struct NormalRunOptions {
     /// Disable hardfault vector catch if its supported on the target.
     #[clap(long, help_heading = "RUN OPTIONS")]
     pub no_catch_hardfault: bool,
+    /// Disable SVC vector catch (halts on SVC exception).
+    /// Only applies to ARMv7-A/R cores.
+    #[clap(long, help_heading = "RUN OPTIONS")]
+    pub no_catch_svc: bool,
+    /// Disable HLT vector catch (halts on UNDEF exception for HLT instruction).
+    /// Only applies to ARMv7-A/R cores.
+    #[clap(long, help_heading = "RUN OPTIONS")]
+    pub no_catch_hlt: bool,
 }
 
 /// Options only used when in test run mode
@@ -234,13 +243,15 @@ impl Cmd {
         // Detect run mode based on ELF file
         let run_mode = detect_run_mode(&self)?;
 
+        let (file_meta, elf_meta) = parse_metadata(&self.path).await?;
+
         // TODO: Skip attach_probe & flashing, if user only wants to list tests (only possible when using embedded_test with protocol version >= 1)
 
-        let session = cli::attach_probe(&client, self.probe_options, false).await?;
+        let session = cli::attach_probe(&client, self.probe_options, elf_meta, false).await?;
 
         let mut rtt_client = rtt_client(
             &session,
-            Some(&self.path),
+            &file_meta,
             &self.monitor_options,
             Some(utc_offset),
         )
@@ -291,8 +302,12 @@ impl Cmd {
                 Some(&self.path),
                 &self.monitor_options,
                 Some(rtt_client),
-                !self.run_options.no_catch_reset,
-                !self.run_options.no_catch_hardfault,
+                VectorCatchConfig {
+                    catch_hardfault: !self.run_options.no_catch_hardfault,
+                    catch_reset: !self.run_options.no_catch_reset,
+                    catch_svc: !self.run_options.no_catch_svc,
+                    catch_hlt: !self.run_options.no_catch_hlt,
+                },
             )
             .await
         }
@@ -445,7 +460,13 @@ impl EmbeddedTestElfInfo {
         file.read_to_end(&mut buffer)?;
         let buffer = buffer.as_slice();
 
-        let elf = object::File::parse(buffer).context("Failed to parse ELF file")?;
+        let elf = match object::File::parse(buffer) {
+            Ok(elf) => elf,
+            Err(e) => {
+                tracing::debug!("Failed to parse ELF file: {e}");
+                return Ok(None);
+            }
+        };
 
         ElfReader { buffer, elf }
             .decode()

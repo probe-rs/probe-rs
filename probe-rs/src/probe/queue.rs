@@ -241,7 +241,7 @@ impl fmt::Debug for DeferredResultIndex {
 
 impl DeferredResultIndex {
     // Intentionally private. User code must not be able to create these.
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self(Arc::new(()))
     }
 
@@ -255,10 +255,12 @@ impl DeferredResultIndex {
         // the read data would be inaccessible.
         Arc::strong_count(&self.0) > 1
     }
+}
 
-    // Intentionally private. User code must not be able to clone these.
+// Intentionally private. User code must not be able to clone these.
+impl Clone for DeferredResultIndex {
     fn clone(&self) -> Self {
-        Self(self.0.clone())
+        Self(Arc::clone(&self.0))
     }
 }
 

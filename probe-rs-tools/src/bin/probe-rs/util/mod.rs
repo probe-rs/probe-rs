@@ -4,6 +4,7 @@ pub mod common_options;
 pub mod flash;
 pub mod logging;
 pub mod meta;
+pub mod pwr;
 pub mod rtt;
 pub mod visualizer;
 

@@ -5,8 +5,10 @@ use probe_rs::{config::Registry, probe::list::Lister};
 use serde::Deserialize;
 use std::{
     fs,
+    io::{self, Read},
     net::TcpListener,
     path::Path,
+    sync::mpsc,
     time::{Duration, UNIX_EPOCH},
 };
 use time::UtcOffset;
@@ -31,7 +33,7 @@ impl std::str::FromStr for TargetSessionType {
     }
 }
 
-pub async fn debug(
+pub async fn debug_tcp(
     lister: &Lister,
     addr: std::net::SocketAddr,
     single_session: bool,
@@ -118,6 +120,128 @@ pub async fn debug(
         .debug_logger
         .log_to_console("DAP Protocol server exiting")?;
 
+    debugger.debug_logger.flush()?;
+
+    Ok(())
+}
+
+/// Non-blocking reader backed by an `mpsc::Receiver<Vec<u8>>`.
+///
+/// Returns `io::ErrorKind::WouldBlock` when the channel is empty (no data
+/// available yet) and `Ok(0)` when the sender has disconnected (EOF).
+pub(crate) struct ChannelReader {
+    rx: mpsc::Receiver<Vec<u8>>,
+    buf: Vec<u8>,
+    pos: usize,
+}
+
+impl ChannelReader {
+    pub(crate) fn new(rx: mpsc::Receiver<Vec<u8>>) -> Self {
+        Self {
+            rx,
+            buf: Vec::new(),
+            pos: 0,
+        }
+    }
+}
+
+impl Read for ChannelReader {
+    fn read(&mut self, out: &mut [u8]) -> io::Result<usize> {
+        // Drain any leftover buffered data first.
+        if self.pos < self.buf.len() {
+            let n = std::cmp::min(out.len(), self.buf.len() - self.pos);
+            out[..n].copy_from_slice(&self.buf[self.pos..self.pos + n]);
+            self.pos += n;
+            return Ok(n);
+        }
+
+        // Try to receive a new chunk from the channel.
+        match self.rx.try_recv() {
+            Ok(chunk) => {
+                let n = std::cmp::min(out.len(), chunk.len());
+                out[..n].copy_from_slice(&chunk[..n]);
+                if n < chunk.len() {
+                    self.buf = chunk;
+                    self.pos = n;
+                } else {
+                    self.buf.clear();
+                    self.pos = 0;
+                }
+                Ok(n)
+            }
+            Err(mpsc::TryRecvError::Empty) => {
+                Err(io::Error::new(io::ErrorKind::WouldBlock, "no data yet"))
+            }
+            Err(mpsc::TryRecvError::Disconnected) => Ok(0),
+        }
+    }
+}
+
+pub async fn debug_stdio(
+    lister: &Lister,
+    log_file: Option<&Path>,
+    timestamp_offset: UtcOffset,
+) -> Result<()> {
+    let mut debugger = Debugger::new(timestamp_offset, log_file)?;
+
+    let old_hook = std::panic::take_hook();
+    let logger = debugger.debug_logger.clone();
+    std::panic::set_hook(Box::new(move |panic_info| {
+        _ = logger.flush();
+        old_hook(panic_info);
+    }));
+
+    debugger
+        .debug_logger
+        .log_to_console("Starting stdio DAP session")?;
+
+    // Spawn a background thread to read stdin and forward chunks over a channel.
+    let (tx, rx) = mpsc::channel::<Vec<u8>>();
+    std::thread::spawn(move || {
+        let stdin = io::stdin();
+        let mut handle = stdin.lock();
+        let mut buf = [0u8; 4096];
+        loop {
+            match handle.read(&mut buf) {
+                Ok(0) | Err(_) => break,
+                Ok(n) => {
+                    if tx.send(buf[..n].to_vec()).is_err() {
+                        break;
+                    }
+                }
+            }
+        }
+    });
+
+    let reader = ChannelReader::new(rx);
+    let writer = io::stdout();
+
+    let dap_adapter = DapAdapter::new(reader, writer);
+    let mut debug_adapter = DebugAdapter::new(dap_adapter);
+
+    debugger.debug_logger.flush_to_dap(&mut debug_adapter)?;
+
+    let mut registry = Registry::from_builtin_families();
+    match debugger
+        .debug_session(&mut registry, debug_adapter, lister)
+        .await
+    {
+        Err(error) => {
+            eprintln!("Session ended with error: {error:?}");
+            debugger
+                .debug_logger
+                .log_to_console(&format!("Session ended: {error}"))?;
+        }
+        Ok(()) => {
+            debugger
+                .debug_logger
+                .log_to_console("Closing stdio DAP session")?;
+        }
+    }
+
+    debugger
+        .debug_logger
+        .log_to_console("DAP Protocol server exiting")?;
     debugger.debug_logger.flush()?;
 
     Ok(())

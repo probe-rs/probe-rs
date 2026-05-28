@@ -7,7 +7,7 @@ use probe_rs::rtt::Error;
 use time::{OffsetDateTime, UtcOffset, macros::format_description};
 
 use std::{
-    fmt::{self, Write},
+    fmt::{self, Display, Write},
     sync::Arc,
 };
 
@@ -65,18 +65,14 @@ impl RttDecoder {
         matches!(self, RttDecoder::BinaryLE)
     }
 
-    pub async fn process(
-        &mut self,
-        buffer: &[u8],
-        collector: &mut impl RttDataHandler,
-    ) -> Result<(), Error> {
+    pub fn process<'d>(&mut self, buffer: &'d [u8]) -> Result<Option<ProcessedRttData<'d>>, Error> {
         // Prevent the format processors generating empty strings.
         if buffer.is_empty() {
-            return Ok(());
+            return Ok(None);
         }
 
-        match self {
-            RttDecoder::BinaryLE => collector.on_binary_data(buffer).await,
+        let data = match self {
+            RttDecoder::BinaryLE => ProcessedRttData::Binary(buffer),
             RttDecoder::String {
                 timestamp_offset,
                 last_line_done,
@@ -88,13 +84,16 @@ impl RttDecoder {
                     last_line_done,
                     *show_timestamps,
                 )?;
-                collector.on_string_data(string).await
+                ProcessedRttData::String(string)
             }
             RttDecoder::Defmt { processor } => {
                 let string = processor.process(buffer)?;
-                collector.on_string_data(string).await
+
+                ProcessedRttData::String(string)
             }
-        }
+        };
+
+        Ok(Some(data))
     }
 
     fn process_string(
@@ -129,6 +128,26 @@ impl RttDecoder {
             *last_line_done = line.ends_with('\n');
         }
         Ok(formatted_data)
+    }
+}
+
+pub enum ProcessedRttData<'a> {
+    String(String),
+    Binary(&'a [u8]),
+}
+
+impl Display for ProcessedRttData<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ProcessedRttData::String(s) => f.write_str(s),
+            ProcessedRttData::Binary(data) => {
+                for element in *data {
+                    // Width of 4 allows 0xFF to be printed.
+                    write!(f, "{element:#04x}").expect("Writing to String cannot fail");
+                }
+                Ok(())
+            }
+        }
     }
 }
 

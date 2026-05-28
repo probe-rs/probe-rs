@@ -5,13 +5,22 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
-use probe_rs::{Core, Error, HaltReason, VectorCatchCondition};
+use probe_rs::{Core, CoreType, Error, HaltReason, VectorCatchCondition};
 
 use crate::rpc::{ObjectStorage, SessionState};
 
 pub struct RunLoop {
     pub core_id: usize,
     pub cancellation_token: CancellationToken,
+}
+
+/// Configuration for which vector catches to enable during the run loop.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct VectorCatchConfig {
+    pub catch_hardfault: bool,
+    pub catch_reset: bool,
+    pub catch_svc: bool,
+    pub catch_hlt: bool,
 }
 
 #[derive(PartialEq, Debug)]
@@ -38,8 +47,7 @@ impl RunLoop {
     pub fn run_until<F, R>(
         &mut self,
         shared_session: &SessionState<'_>,
-        catch_hardfault: bool,
-        catch_reset: bool,
+        vector_catch: VectorCatchConfig,
         mut poller: impl RunLoopPoller,
         timeout: Option<Duration>,
         mut predicate: F,
@@ -47,25 +55,57 @@ impl RunLoop {
     where
         F: FnMut(HaltReason, &mut Core) -> Result<Option<R>>,
     {
+        let VectorCatchConfig {
+            catch_hardfault,
+            catch_reset,
+            catch_svc,
+            catch_hlt,
+        } = vector_catch;
+
         // Prepare run loop
         {
             let mut session = shared_session.session_blocking();
             let mut core = session.core(self.core_id)?;
-            if catch_hardfault || catch_reset {
+            let needs_vector_catch = catch_hardfault || catch_reset || catch_svc || catch_hlt;
+
+            if needs_vector_catch {
                 if !core.core_halted()? {
                     core.halt(Duration::from_millis(100))?;
                 }
 
-                if catch_hardfault {
-                    match core.enable_vector_catch(VectorCatchCondition::HardFault) {
-                        Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
-                        Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+                // For ARMv7-A/R and ARMv8-A cores: if we're at the reset vector (PC = 0), step
+                // past it first. This happens after reset_and_halt - enabling the reset catch
+                // while at the reset vector causes an immediate halt.
+                if catch_reset
+                    && matches!(
+                        core.core_type(),
+                        CoreType::Armv7a | CoreType::Armv7r | CoreType::Armv8a
+                    )
+                {
+                    let pc: u64 = core.read_core_reg(core.program_counter())?;
+                    if pc == 0 {
+                        core.step()?;
                     }
                 }
-                if catch_reset {
-                    match core.enable_vector_catch(VectorCatchCondition::CoreReset) {
-                        Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
-                        Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+
+                let catches = [
+                    (catch_hardfault, VectorCatchCondition::HardFault),
+                    (catch_reset, VectorCatchCondition::CoreReset),
+                    (catch_svc, VectorCatchCondition::Svc),
+                    (catch_hlt, VectorCatchCondition::Hlt),
+                ];
+
+                for (enabled, condition) in catches {
+                    let result = if enabled {
+                        core.enable_vector_catch(condition)
+                    } else {
+                        core.disable_vector_catch(condition)
+                    };
+                    match result {
+                        Ok(_) | Err(Error::NotImplemented(_)) => {}
+                        Err(e) => {
+                            tracing::error!("Failed to set vector catch {:?}: {:?}", condition, e)
+                        }
                     }
                 }
             }

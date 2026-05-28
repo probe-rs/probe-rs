@@ -6,7 +6,8 @@ use crate::FormatOptions;
 use crate::cmd::run::{MonitoringOptions, NormalRunOptions};
 use crate::rpc::client::RpcClient;
 use crate::rpc::functions::monitor::MonitorMode;
-use crate::util::cli::{self, rtt_client};
+use crate::rpc::utils::run_loop::VectorCatchConfig;
+use crate::util::cli::{self, FileMetadata, parse_metadata, rtt_client};
 use crate::util::common_options::ProbeOptions;
 
 #[derive(clap::Parser)]
@@ -19,7 +20,8 @@ pub struct Cmd {
     #[clap(flatten)]
     pub(crate) probe_options: ProbeOptions,
 
-    /// The path to the ELF file to flash and run.
+    /// The path to the ELF file used to locate the RTT control block and decode defmt frames.
+    /// The target is not flashed or reset.
     #[clap(index = 1)]
     pub(crate) path: Option<PathBuf>,
 
@@ -32,11 +34,16 @@ pub struct Cmd {
 
 impl Cmd {
     pub async fn run(self, client: RpcClient, utc_offset: UtcOffset) -> anyhow::Result<()> {
-        let session = cli::attach_probe(&client, self.probe_options, true).await?;
+        let (file_meta, elf_meta) = match &self.path {
+            Some(path) => parse_metadata(path).await?,
+            None => (FileMetadata::default(), None),
+        };
+
+        let session = cli::attach_probe(&client, self.probe_options, elf_meta, true).await?;
 
         let rtt_client = rtt_client(
             &session,
-            self.path.as_deref(),
+            &file_meta,
             &self.monitor_options,
             Some(utc_offset),
         )
@@ -48,8 +55,12 @@ impl Cmd {
             self.path.as_deref(),
             &self.monitor_options,
             Some(rtt_client),
-            !self.run_options.no_catch_reset,
-            !self.run_options.no_catch_hardfault,
+            VectorCatchConfig {
+                catch_hardfault: !self.run_options.no_catch_hardfault,
+                catch_reset: !self.run_options.no_catch_reset,
+                catch_svc: !self.run_options.no_catch_svc,
+                catch_hlt: !self.run_options.no_catch_hlt,
+            },
         )
         .await?;
 

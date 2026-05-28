@@ -3,7 +3,7 @@ use super::{
     dap_types,
     repl_commands_helpers::{build_expanded_commands, command_completions},
     request_helpers::{
-        disassemble_target_memory, get_dap_source, get_svd_variable_reference,
+        DisassemblyAmount, disassemble_target_memory, get_dap_source, get_svd_variable_reference,
         get_variable_reference, set_instruction_breakpoint,
     },
 };
@@ -60,6 +60,10 @@ pub struct DebugAdapter<P: ProtocolAdapter + ?Sized> {
     progress_id: ProgressId,
     /// Flag to indicate if the connected client supports progress reporting.
     pub(crate) supports_progress_reporting: bool,
+    /// Flag to indicate if the connected client can render ANSI escape sequences in
+    /// `OutputEvent.output` and evaluate responses. Populated from the
+    /// `supportsAnsiStyling` field of the `initialize` request.
+    pub(crate) supports_ansi_styling: bool,
     /// Flags to improve breakpoint accuracy.
     /// DWARF spec at Sect 2.14 uses 1 based numbering, with a 0 indicating not-specified. We will follow that standard,
     /// and translate incoming requests depending on the DAP Client treatment of 0 or 1 based numbering.
@@ -82,6 +86,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             all_cores_halted: true,
             progress_id: 0,
             supports_progress_reporting: false,
+            supports_ansi_styling: false,
             lines_start_at_1: true,
             columns_start_at_1: true,
             adapter,
@@ -784,11 +789,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         self.configuration_done = true;
 
-        // We don't have time to clear the RTT header before firmware initializes it.
-        if !self.halt_after_reset {
-            target_core.core_data.clear_rtt_header = false;
-        }
-
         self.send_response::<()>(request, Ok(None))
     }
 
@@ -1196,7 +1196,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             instruction_offset,
             byte_offset,
             memory_reference as u64,
-            instruction_count,
+            DisassemblyAmount::Instructions(instruction_count),
         )?;
 
         if assembly_lines.is_empty() {
@@ -1657,6 +1657,20 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         };
 
         self.send_event("probe-rs-rtt-channel-config", Some(event_body))
+            .is_ok()
+    }
+
+    /// Send a custom `probe-rs-rtt-channel-config` event to the MS DAP Client, to create a window for a specific RTT channel.
+    pub fn open_prompt(&mut self, kind: PromptKind, name: &str, handle: u32) -> bool {
+        let Ok(event_body) = serde_json::to_value(CreatePromptEventBody {
+            prompt_kind: kind,
+            prompt_name: name.to_string(),
+            prompt_handle: handle,
+        }) else {
+            return false;
+        };
+
+        self.send_event("probe-rs-create-prompt", Some(event_body))
             .is_ok()
     }
 

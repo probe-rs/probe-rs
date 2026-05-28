@@ -262,9 +262,8 @@ impl ArmDebugInterface for ArmCommunicationInterface {
         &mut self,
         access_port_address: &FullyQualifiedApAddress,
     ) -> Result<Box<dyn ArmMemoryInterface + '_>, ArmError> {
-        let memory_interface = match access_port_address.ap() {
-            ApAddress::V1(_) => Box::new(ADIMemoryInterface::new(self, access_port_address)?)
-                as Box<dyn ArmMemoryInterface + '_>,
+        let memory_interface: Box<dyn ArmMemoryInterface + '_> = match access_port_address.ap() {
+            ApAddress::V1(_) => Box::new(ADIMemoryInterface::new(self, access_port_address)?),
             ApAddress::V2(_) => ap::v2::new_memory_interface(self, access_port_address)?,
         };
         Ok(memory_interface)
@@ -471,6 +470,22 @@ impl ArmCommunicationInterface {
                 let address = base.0.unwrap_or(0) + ap_register_address;
                 s.set_addr(((address >> 4) & 0xFFFF_FFFF) as u32);
                 s1.set_addr((address >> 32) as u32);
+            }
+            (ApAddress::V1(port), SelectCache::DPv3(s, s1)) if *port == 0 => {
+                // Some externally generated target descriptions still model the root APv2
+                // memory interface as legacy AP index 0. Treat that as base address 0x0
+                // so DPv3/MINDP targets remain usable.
+                tracing::warn!(
+                    "DPv3 target was configured with legacy AP index 0; treating it as APv2 base 0x0"
+                );
+                let address = ap_register_address;
+                s.set_addr(((address >> 4) & 0xFFFF_FFFF) as u32);
+                s1.set_addr((address >> 32) as u32);
+            }
+            (ApAddress::V1(port), SelectCache::DPv3(_, _)) => {
+                return Err(ArmError::Other(format!(
+                    "DPv3 targets require APv2 addresses in target descriptions; got legacy AP index {port}. Use `ap: !v2 0x...`."
+                )));
             }
             _ => unreachable!(
                 "Did not expect to be called with {ap:x?}. This is a bug, please report it."

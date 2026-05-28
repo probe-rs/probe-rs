@@ -11,12 +11,26 @@ variants:
       ap: !v1 0
   memory_map:
   - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - cm7
+  - !Ram
+    name: DTCM
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - cm7
+  - !Ram
     name: OCRAM
     range:
       # OCRAM1 and OCRAM2, plus the two ECC regions,
       # plus the FlexRAM allocation.
       start: 0x20240000
-      end:   0x20400000
+      end: 0x20400000
     cores:
     - cm7
   - !Nvm
@@ -24,20 +38,6 @@ variants:
     range:
       start: 0x30000000
       end: 0x31000000
-    cores:
-    - cm7
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x00000000
-      end:   0x00080000
-    cores:
-    - cm7
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end:   0x20080000
     cores:
     - cm7
   flash_algorithms:

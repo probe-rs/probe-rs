@@ -1,0 +1,1 @@
+Added stdin/stdout transport for the DAP server. When `--port` is omitted, the server communicates over stdin/stdout instead of TCP, enabling use with DAP clients that launch the debug adapter as a child process (e.g. CLion 2025.3).

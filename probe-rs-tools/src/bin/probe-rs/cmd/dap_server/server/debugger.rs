@@ -4,6 +4,7 @@ use super::{
     logger::DebugLogger,
     session_data::SessionData,
     startup::{TargetSessionType, get_file_timestamp},
+    uploaded_files::UploadedFiles,
 };
 use crate::{
     cmd::dap_server::{
@@ -75,6 +76,14 @@ pub struct Debugger {
     /// Used to capture the `tracing` messages that are generated during the DAP sessions,
     /// to be ultimately forwarded to the DAP client's Debug Console, or failing that, stderr.
     pub(crate) debug_logger: DebugLogger,
+
+    /// Session-scoped temporary directory holding files uploaded by the DAP client when running
+    /// in `remote_server_mode` (program binary, SVD file, chip description).
+    ///
+    /// Created at the start of each remote-mode session (in [`Self::launch`]) and dropped at the
+    /// end of that session (in [`Self::debug_session`]); `None` in local mode and between
+    /// sessions in TCP multi-session mode.
+    uploaded_files: Option<UploadedFiles>,
 }
 
 impl Debugger {
@@ -88,6 +97,7 @@ impl Debugger {
             timestamp_offset,
             binary_timestamp: None,
             debug_logger: DebugLogger::new(log_file)?,
+            uploaded_files: None,
         };
 
         debugger
@@ -104,7 +114,7 @@ impl Debugger {
     ///   - If the [`super::core_data::CoreData::last_known_status`] is `Halted(_)`, then we stop polling the Probe until the next DAP-Client request attempts an action
     ///   - If the `new_status` is an Err, then the probe is no longer available, and we  end the debugging session
     ///   - If the `new_status` is `Running`, then we have to poll on a regular basis, until the Probe stops for good reasons like breakpoints, or bad reasons like panics.
-    pub(crate) async fn process_next_request<P: ProtocolAdapter>(
+    pub(crate) fn process_next_request<P: ProtocolAdapter>(
         &mut self,
         session_data: &mut SessionData,
         debug_adapter: &mut DebugAdapter<P>,
@@ -113,13 +123,12 @@ impl Debugger {
 
         if let Some(request) = debug_adapter.listen_for_request()? {
             self.handle_request(session_data, debug_adapter, request)
-                .await
         } else {
-            self.no_request_poll(session_data, debug_adapter).await
+            self.no_request_poll(session_data, debug_adapter)
         }
     }
 
-    async fn handle_request<P: ProtocolAdapter>(
+    fn handle_request<P: ProtocolAdapter>(
         &mut self,
         session_data: &mut SessionData,
         debug_adapter: &mut DebugAdapter<P>,
@@ -128,7 +137,7 @@ impl Debugger {
         let _req_span = tracing::info_span!("Handling request", request = ?request).entered();
 
         // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
-        session_data.poll_cores(&self.config, debug_adapter).await?;
+        session_data.poll_cores(&self.config, debug_adapter)?;
 
         // Check if we have configured cores
         if session_data.core_data.is_empty() {
@@ -203,7 +212,7 @@ impl Debugger {
         Ok(debug_session)
     }
 
-    async fn no_request_poll<P: ProtocolAdapter>(
+    fn no_request_poll<P: ProtocolAdapter>(
         &mut self,
         session_data: &mut SessionData,
         debug_adapter: &mut DebugAdapter<P>,
@@ -213,7 +222,7 @@ impl Debugger {
 
         // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
         // We do this even if the cores may be halted, as we need to handle RTT data from cores the debugger does not control.
-        let suggest_delay_required = session_data.poll_cores(&self.config, debug_adapter).await?;
+        let suggest_delay_required = session_data.poll_cores(&self.config, debug_adapter)?;
 
         if debug_adapter.all_cores_halted {
             // Medium delay to reduce fast looping costs.
@@ -252,6 +261,24 @@ impl Debugger {
     pub(crate) async fn debug_session<P: ProtocolAdapter>(
         &mut self,
         registry: &mut Registry,
+        debug_adapter: DebugAdapter<P>,
+        lister: &Lister,
+    ) -> Result<(), DebuggerError> {
+        let result = self
+            .run_debug_session(registry, debug_adapter, lister)
+            .await;
+        // Drop the session-scoped temporary directory holding any client-uploaded files
+        // (program binary, SVD, chip description). Done at session end rather than at
+        // [`Debugger`] drop so that, in TCP multi-session mode, one client's uploaded
+        // firmware does not linger on disk after they disconnect (and is not visible to
+        // the next client that connects).
+        self.uploaded_files = None;
+        result
+    }
+
+    async fn run_debug_session<P: ProtocolAdapter>(
+        &mut self,
+        registry: &mut Registry,
         mut debug_adapter: DebugAdapter<P>,
         lister: &Lister,
     ) -> Result<(), DebuggerError> {
@@ -266,9 +293,7 @@ impl Debugger {
             return Ok(());
         }
 
-        let Some(mut session_data) = self
-            .start_session(registry, lister, &mut debug_adapter)
-            .await?
+        let Some(mut session_data) = self.start_session(registry, lister, &mut debug_adapter)?
         else {
             // We got no error, but no SessionData, either
             return Ok(());
@@ -288,13 +313,11 @@ impl Debugger {
 
         // Loop through remaining (user generated) requests and send to the [process_request] method until either the client or some unexpected behaviour terminates the process.
         let error = loop {
-            let debug_session_status = match self
-                .process_next_request(&mut session_data, &mut debug_adapter)
-                .await
-            {
-                Ok(status) => status,
-                Err(error) => break error,
-            };
+            let debug_session_status =
+                match self.process_next_request(&mut session_data, &mut debug_adapter) {
+                    Ok(status) => status,
+                    Err(error) => break error,
+                };
 
             match debug_session_status {
                 DebugSessionStatus::Continue(delay) => {
@@ -304,9 +327,8 @@ impl Debugger {
                     }
                 }
                 DebugSessionStatus::Restart(request) => {
-                    if let Err(error) = self
-                        .restart(&mut debug_adapter, &mut session_data, &request)
-                        .await
+                    if let Err(error) =
+                        self.restart(&mut debug_adapter, &mut session_data, &request)
                     {
                         debug_adapter.send_response::<()>(&request, Err(&error))?;
                         return Err(error);
@@ -338,7 +360,7 @@ impl Debugger {
     /// This function then handles this request and returns the session data.
     ///
     /// The function exits with no session if a "disconnect" request is received.
-    async fn start_session<P: ProtocolAdapter>(
+    fn start_session<P: ProtocolAdapter>(
         &mut self,
         registry: &mut Registry,
         lister: &Lister,
@@ -377,16 +399,13 @@ impl Debugger {
             self.debug_logger.flush_to_dap(debug_adapter)?;
 
             // Process either the Launch or Attach request.
-            let session = match self
-                .handle_launch_attach(
-                    registry,
-                    &request,
-                    launch_attach_request,
-                    debug_adapter,
-                    lister,
-                )
-                .await
-            {
+            let session = match self.handle_launch_attach(
+                registry,
+                &request,
+                launch_attach_request,
+                debug_adapter,
+                lister,
+            ) {
                 Ok(session_data) => Some(session_data),
                 Err(error) => {
                     debug_adapter.send_response::<()>(&request, Err(&error))?;
@@ -400,7 +419,7 @@ impl Debugger {
 
     /// Process launch or attach request
     #[tracing::instrument(skip_all, name = "Handle Launch/Attach Request")]
-    async fn handle_launch_attach<P: ProtocolAdapter>(
+    fn handle_launch_attach<P: ProtocolAdapter>(
         &mut self,
         registry: &mut Registry,
         launch_attach_request: &Request,
@@ -416,15 +435,25 @@ impl Debugger {
         debug_adapter
             .set_console_log_level(self.config.console_log_level.unwrap_or(ConsoleLog::Console));
 
+        // Always start each session with a fresh upload area: drop any [`UploadedFiles`] left
+        // over from a previous session that did not unwind cleanly (e.g. one that panicked
+        // before [`Self::debug_session`] could run its end-of-session cleanup). In the normal
+        // case there is nothing to drop here — `debug_session` already cleared it.
+        self.uploaded_files = None;
+
+        // In `remote_server_mode`, decode any client-supplied file payloads (program binary, SVD,
+        // chip description) and rewrite the corresponding path fields to point at session-scoped
+        // temporary files. In local mode this is a no-op. Must run before `validate_config_files`
+        // so that the subsequent `is_file()` checks see the materialized paths.
+        if self.config.remote_server_mode {
+            let uploaded_files = self.uploaded_files.insert(UploadedFiles::new()?);
+            self.config.materialize_uploaded_files(uploaded_files)?;
+        }
+
         self.config.validate_config_files()?;
 
-        let mut session_data = SessionData::new(
-            registry,
-            lister,
-            &mut self.config,
-            self.timestamp_offset,
-            requested_target_session_type,
-        )?;
+        let mut session_data =
+            SessionData::new(registry, lister, &mut self.config, self.timestamp_offset)?;
 
         debug_adapter.halt_after_reset = self.config.flashing_config.halt_after_reset;
 
@@ -483,9 +512,7 @@ impl Debugger {
 
         drop(target_core);
 
-        // Poll cores once while still halted. This will ensure that the RTT control block is
-        // cleared even when haltAfterReset = false.
-        session_data.poll_cores(&self.config, debug_adapter).await?;
+        session_data.poll_cores(&self.config, debug_adapter)?;
 
         debug_adapter.send_response::<()>(launch_attach_request, Ok(None))?;
         self.debug_logger.flush_to_dap(debug_adapter)?;
@@ -494,7 +521,7 @@ impl Debugger {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn restart<P: ProtocolAdapter>(
+    fn restart<P: ProtocolAdapter>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
         session_data: &mut SessionData,
@@ -539,15 +566,15 @@ impl Debugger {
         // Immediately after attaching, halt the core, so that we can finish restart logic without bumping into user code.
         halt_core(&mut target_core.core)?;
 
-        // Reset RTT so that the link can be re-established and the control block cleared.
+        // Reset RTT so that the link can be re-established.
         target_core.core_data.rtt_connection = None;
 
         // We can't keep the reference for borrow checker reasons.
         drop(target_core);
 
-        // Poll cores once while still halted. This will ensure that the RTT control block is
-        // cleared even when haltAfterReset = false.
-        session_data.poll_cores(&self.config, debug_adapter).await?;
+        session_data.clear_rtt_blocks()?;
+
+        session_data.poll_cores(&self.config, debug_adapter)?;
 
         // Re-attach
         let mut target_core = session_data.attach_core(target_core_config.core_index)?;
@@ -677,14 +704,7 @@ impl Debugger {
                     true
                 };
 
-                // If the RTT header was initialized by the loader (i.e. in some cases where we run
-                // from RAM), do not clear the RTT header as nothing will reinitialize it.
-                // The actual clearing will be done during attaching.
-                for core_data in session_data.core_data.iter_mut() {
-                    if let probe_rs::rtt::ScanRegion::Exact(address) = core_data.rtt_scan_ranges {
-                        core_data.clear_rtt_header = !loader.has_data_for_address(address);
-                    }
-                }
+                session_data.clear_rtt_blocks()?;
 
                 if do_flashing {
                     loader
@@ -760,6 +780,10 @@ impl Debugger {
 
         if let Some(progress_support) = initialize_arguments.supports_progress_reporting {
             debug_adapter.supports_progress_reporting = progress_support;
+        }
+
+        if let Some(ansi_styling) = initialize_arguments.supports_ansi_styling {
+            debug_adapter.supports_ansi_styling = ansi_styling;
         }
 
         if let Some(lines_start_at_1) = initialize_arguments.lines_start_at_1 {
@@ -1512,12 +1536,17 @@ mod test {
                 ("0x0000078E", "add.w  r0, r0, r0, lsr #4", "00 EB 10 10"),
             ];
 
-            type TestLocation = (i64, i64, &'static str, &'static str, &'static str);
+            // The DAP server emits source paths from DWARF debug information verbatim. The path
+            // is the build-time path recorded by `rustc` (a synthetic `/rustc/<hash>/...` for
+            // precompiled rustlib sources), and `presentation_hint` is left unset. Mapping such
+            // synthetic paths to a usable on-disk location is the VSCode extension's job, not the
+            // server's.
+            type TestLocation = (i64, i64, &'static str, &'static str);
             const TEST_LOCATIONS: [TestLocation; 3] = [
-                // line, column, name, path, presentation_hint
-                (115, 5, "<unavailable>: ub_checks.rs", "/rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/ub_checks.rs", "deemphasize"),
-                (0, 5, "<unavailable>: ub_checks.rs", "/rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/ub_checks.rs", "deemphasize"),
-                (1244, 5, "<unavailable>: mod.rs", "/rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/num/mod.rs", "deemphasize"),
+                // line, column, name, path
+                (115, 5, "ub_checks.rs", "/rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/ub_checks.rs"),
+                (0, 5, "ub_checks.rs", "/rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/ub_checks.rs"),
+                (1244, 5, "mod.rs", "/rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/num/mod.rs"),
             ];
 
             type TestCase = (&'static str, i64, i64, i64, &'static [TestInstruction], HashMap<&'static str, &'static TestLocation>);
@@ -1623,13 +1652,12 @@ mod test {
                             instruction_bytes: Some((*instruction_bytes).to_owned()),
                             ..default_instruction_fields.clone()
                         };
-                        if let Some(&(line, column, name, path, hint)) = test_locs.get(address) {
+                        if let Some(&(line, column, name, path)) = test_locs.get(address) {
                             instruction.line = if *line == 0 { None } else { Some(*line) };
                             instruction.column = Some(*column);
                             instruction.location = Some(Source {
                                 name: Some(name.to_string()),
                                 path: Some(path.to_string()),
-                                presentation_hint: Some(hint.to_string()),
                                 ..default_source_fields.clone()
                             })
                         }

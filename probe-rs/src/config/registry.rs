@@ -23,7 +23,7 @@ pub enum RegistryError {
     /// An IO error occurred when trying to read a target description file.
     Io(#[from] std::io::Error),
     /// An error occurred while deserializing a YAML target description file.
-    Yaml(#[from] serde_yaml::Error),
+    Yaml(#[from] yaml_serde::Error),
     /// Invalid chip family definition ({0.name}): {1}
     InvalidChipFamilyDefinition(Box<ChipFamily>, String),
 }
@@ -101,6 +101,37 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                     core_access_options: CoreAccessOptions::Riscv(RiscvCoreAccessOptions {
                         hart_id: None,
                         jtag_tap: None,
+                        mem_ap: None,
+                    }),
+                }],
+                memory_map: vec![],
+                flash_algorithms: vec![],
+                rtt_scan_ranges: None,
+                jtag: None,
+                default_binary_format: None,
+            }],
+            flash_algorithms: vec![],
+            source: TargetDescriptionSource::Generic,
+        },
+        ChipFamily {
+            name: "Generic RISC-V 64-bit".to_owned(),
+            manufacturer: None,
+            pack_file_release: None,
+            generated_from_pack: false,
+            chip_detection: vec![],
+            variants: vec![Chip {
+                name: "riscv64".to_owned(),
+                part: None,
+                svd: None,
+                documentation: HashMap::new(),
+                package_variants: vec![],
+                cores: vec![Core {
+                    name: "core".to_owned(),
+                    core_type: CoreType::Riscv64,
+                    core_access_options: CoreAccessOptions::Riscv(RiscvCoreAccessOptions {
+                        hart_id: None,
+                        jtag_tap: None,
+                        mem_ap: None,
                     }),
                 }],
                 memory_map: vec![],
@@ -384,7 +415,7 @@ impl Registry {
 
     /// Add a target family to the registry from a YAML-formatted string.
     pub fn add_target_family_from_yaml(&mut self, yaml: &str) -> Result<String, RegistryError> {
-        let family: ChipFamily = serde_yaml::from_str(yaml)?;
+        let family: ChipFamily = yaml_serde::from_str(yaml)?;
         self.add_target_family(family)
     }
 }

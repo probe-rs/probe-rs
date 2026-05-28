@@ -16,7 +16,6 @@ use crate::{
                 },
                 protocol::ProtocolAdapter,
             },
-            server::startup::TargetSessionType,
         },
         run::EmbeddedTestElfInfo,
     },
@@ -27,7 +26,7 @@ use probe_rs::{
     BreakpointCause, CoreStatus, HaltReason, Session, VectorCatchCondition,
     config::{Registry, TargetSelector},
     probe::list::Lister,
-    rtt::{ScanRegion, find_rtt_control_block_in_raw_file},
+    rtt::{Rtt, ScanRegion, find_rtt_control_block_in_raw_file},
 };
 use probe_rs_debug::{
     DebugRegisters, SourceLocation, debug_info::DebugInfo, exception_handler_for_core,
@@ -83,7 +82,6 @@ impl SessionData {
         lister: &Lister,
         config: &mut configuration::SessionConfig,
         timestamp_offset: UtcOffset,
-        session_type: TargetSessionType,
     ) -> Result<Self, DebuggerError> {
         let target_selector = TargetSelector::from(config.chip.as_deref());
 
@@ -113,7 +111,16 @@ impl SessionData {
             })?;
 
         // Change the current working directory if `config.cwd` is `Some(T)`.
-        if let Some(new_cwd) = config.cwd.clone() {
+        //
+        // Skipped in `remote_server_mode`: there `cwd` is a path on the *client's* filesystem
+        // (kept around as a display-only string for log messages), so calling `set_current_dir`
+        // with it on the server would fail. Relative-path resolution against `cwd` does not
+        // apply in remote mode — every client-supplied file path arrives either already absolute,
+        // or materialized by [`SessionConfig::materialize_uploaded_files`] to an absolute temp
+        // path — so the working directory does not need to change for downstream code to work.
+        if !config.remote_server_mode
+            && let Some(new_cwd) = config.cwd.clone()
+        {
             set_current_dir(new_cwd.as_path()).map_err(|err| {
                 anyhow!("Failed to set current working directory to: {new_cwd:?}, {err:?}")
             })?;
@@ -144,7 +151,12 @@ impl SessionData {
         let mut core_data_vec = vec![];
 
         for core_configuration in valid_core_configs {
-            if core_configuration.catch_hardfault || core_configuration.catch_reset {
+            let needs_vector_catch = core_configuration.catch_hardfault
+                || core_configuration.catch_reset
+                || core_configuration.catch_svc
+                || core_configuration.catch_hlt;
+
+            if needs_vector_catch {
                 let mut core = target_session.core(core_configuration.core_index)?;
                 let was_halted = core.core_halted()?;
 
@@ -160,6 +172,18 @@ impl SessionData {
                 }
                 if core_configuration.catch_reset {
                     match core.enable_vector_catch(VectorCatchCondition::CoreReset) {
+                        Ok(_) | Err(probe_rs::Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
+                        Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+                    }
+                }
+                if core_configuration.catch_svc {
+                    match core.enable_vector_catch(VectorCatchCondition::Svc) {
+                        Ok(_) | Err(probe_rs::Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
+                        Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+                    }
+                }
+                if core_configuration.catch_hlt {
+                    match core.enable_vector_catch(VectorCatchCondition::Hlt) {
                         Ok(_) | Err(probe_rs::Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
                         Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
                     }
@@ -207,9 +231,6 @@ impl SessionData {
                 rtt_scan_ranges: ScanRegion::Ranges(vec![]),
                 rtt_connection: None,
                 rtt_client: None,
-                // For launch requests, always clear the RTT header, otherwise we may attach before the channel names are set.
-                clear_rtt_header: session_type == TargetSessionType::LaunchRequest,
-                rtt_header_cleared: false,
 
                 // We're abusing the RTT window machinery here for simplicity.
                 // Let's assume there are less than 1024 RTT channels.
@@ -280,6 +301,20 @@ impl SessionData {
         Ok(())
     }
 
+    /// Clear stale RTT control blocks for all cores.
+    ///
+    /// This should be called while the core is halted, before a reset, to wipe
+    /// stale RTT data from a previous debug session. After reset, the firmware
+    /// startup code will reinitialize the block from `.data`.
+    pub(crate) fn clear_rtt_blocks(&mut self) -> Result<(), DebuggerError> {
+        for core_data in self.core_data.iter() {
+            let mut core = self.session.core(core_data.core_index)?;
+            Rtt::clear_control_block(&mut core, &core_data.rtt_scan_ranges)
+                .map_err(|e| anyhow::anyhow!("Failed to clear RTT control block: {e}"))?;
+        }
+        Ok(())
+    }
+
     /// Reload the a specific core's debug info from the binary file.
     pub(crate) fn load_debug_info_for_core(
         &mut self,
@@ -339,7 +374,7 @@ impl SessionData {
     ///
     /// Return a boolean indicating whether we should consider a short delay before the next poll.
     #[tracing::instrument(level = "trace", skip_all)]
-    pub(crate) async fn poll_cores<P: ProtocolAdapter>(
+    pub(crate) fn poll_cores<P: ProtocolAdapter>(
         &mut self,
         session_config: &SessionConfig,
         debug_adapter: &mut DebugAdapter<P>,
@@ -377,10 +412,7 @@ impl SessionData {
             if core_config.rtt_config.enabled {
                 if let Some(core_rtt) = &mut target_core.core_data.rtt_connection {
                     // We should poll the target for rtt data, and if any RTT data was processed, we clear the flag.
-                    if core_rtt
-                        .process_rtt_data(debug_adapter, &mut target_core.core)
-                        .await
-                    {
+                    if core_rtt.process_rtt_data(debug_adapter, &mut target_core.core) {
                         suggest_delay_required = false;
                     }
                 } else if debug_adapter.configuration_is_done() {

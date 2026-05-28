@@ -27,6 +27,7 @@ use crate::{
         RawJtagIo, RawSwdIo, SwdSettings, WireProtocol, blackmagic::arm::BlackMagicProbeArmDebug,
     },
 };
+use bitfield::bitfield;
 use bitvec::vec::BitVec;
 use serialport::{SerialPortType, available_ports};
 
@@ -76,6 +77,17 @@ impl core::fmt::Display for ProtocolVersion {
             }
         )
     }
+}
+
+bitfield! {
+    #[derive(Copy, Clone)]
+    struct Accelerators(u64);
+    impl Debug;
+
+    bool, has_adiv5, set_has_adiv5: 0;
+    bool, has_cortex_ar, _: 1;
+    bool, has_riscv, _: 2;
+    bool, has_adiv6, _: 3;
 }
 
 #[expect(dead_code)]
@@ -211,6 +223,32 @@ enum RemoteCommand<'a> {
         offset: u64,
         data: &'a [u8],
     },
+    AdiV6ReadApV4 {
+        index: u8,
+        apsel: u64,
+        addr: u16,
+    },
+    AdiV6WriteApV4 {
+        index: u8,
+        apsel: u64,
+        addr: u16,
+        value: u32,
+    },
+    AdiV6MemReadV4 {
+        index: u8,
+        apsel: u64,
+        csw: u32,
+        offset: u64,
+        data: &'a mut [u8],
+    },
+    AdiV6MemWriteV4 {
+        index: u8,
+        apsel: u64,
+        csw: u32,
+        align: Align,
+        offset: u64,
+        data: &'a [u8],
+    },
     JtagNext {
         tms: bool,
         tdi: bool,
@@ -262,6 +300,7 @@ impl RemoteCommand<'_> {
             RemoteCommand::MemReadV1 { data, .. } => Some(data),
             RemoteCommand::MemReadV3 { data, .. } => Some(data),
             RemoteCommand::MemReadV4 { data, .. } => Some(data),
+            RemoteCommand::AdiV6MemReadV4 { data, .. } => Some(data),
             _ => None,
         }
     }
@@ -274,6 +313,7 @@ impl RemoteCommand<'_> {
                 | RemoteCommand::MemReadV1 { .. }
                 | RemoteCommand::MemReadV3 { .. }
                 | RemoteCommand::MemReadV4 { .. }
+                | RemoteCommand::AdiV6MemReadV4 { .. }
         )
     }
 }
@@ -495,6 +535,59 @@ impl std::string::ToString for RemoteCommand<'_> {
             } => {
                 let mut s = format!(
                     "!AM{:02x}{:02x}{:08x}{:02x}{:016x}{:08x}",
+                    index,
+                    apsel,
+                    csw,
+                    *align as u8,
+                    offset,
+                    data.len()
+                );
+                for b in data.iter() {
+                    s.push_str(&format!("{b:02x}"));
+                }
+                s.push('#');
+                s
+            }
+
+            RemoteCommand::AdiV6ReadApV4 { index, apsel, addr } => {
+                format!("!A6a{:02x}{:016x}{:04x}#", index, apsel, 0x1000 | addr)
+            }
+            RemoteCommand::AdiV6WriteApV4 {
+                index,
+                apsel,
+                addr,
+                value,
+            } => format!(
+                "!A6A{:02x}{:016x}{:04x}{:08x}#",
+                index,
+                apsel,
+                0x1000 | addr,
+                value.to_be()
+            ),
+            RemoteCommand::AdiV6MemReadV4 {
+                index,
+                apsel,
+                csw,
+                offset,
+                data,
+            } => format!(
+                "!A6m{:02x}{:016x}{:08x}{:016x}{:08x}#",
+                index,
+                apsel,
+                csw,
+                offset,
+                data.len()
+            ),
+            RemoteCommand::AdiV6MemWriteV4 {
+                index,
+                apsel,
+                csw,
+                align,
+                offset,
+                data,
+            } => {
+                let mut s = format!(
+                    "!A6M{:02x}{:016x}{:08x}{:02x}{:016x}{:08x}",
                     index,
                     apsel,
                     csw,
@@ -1143,23 +1236,27 @@ impl DebugProbe for BlackMagicProbe {
         mut self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
-        let has_adiv5 = match self.remote_protocol {
-            ProtocolVersion::V0 => false,
+        let accelerators = match self.remote_protocol {
+            ProtocolVersion::V0 => Accelerators(0),
             ProtocolVersion::V0P
             | ProtocolVersion::V1
             | ProtocolVersion::V2
-            | ProtocolVersion::V3 => true,
+            | ProtocolVersion::V3 => {
+                let mut accelerators = Accelerators(0);
+                accelerators.set_has_adiv5(true);
+                accelerators
+            }
             ProtocolVersion::V4 => {
-                if let Ok(accelerators) = self.command(RemoteCommand::GetAccelerators) {
-                    accelerators.0 & 1 != 0
+                if let Ok(response) = self.command(RemoteCommand::GetAccelerators) {
+                    Accelerators(response.0)
                 } else {
-                    false
+                    Accelerators(0)
                 }
             }
         };
 
-        if has_adiv5 {
-            match BlackMagicProbeArmDebug::new(self, sequence) {
+        if accelerators.has_adiv5() {
+            match BlackMagicProbeArmDebug::new(self, sequence, accelerators) {
                 Ok(interface) => Ok(Box::new(interface)),
                 Err((probe, err)) => Err((probe.into_probe(), err)),
             }

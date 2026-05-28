@@ -50,6 +50,8 @@ pub use channel::*;
 use object::{Object as _, ObjectSymbol as _};
 
 use crate::Session;
+#[cfg(feature = "object")]
+use crate::meta::ElfMetadata;
 use crate::{Core, MemoryInterface, config::MemoryRegion};
 use std::ops::Range;
 use std::thread;
@@ -62,6 +64,18 @@ use zerocopy::{FromBytes, IntoBytes};
 pub fn find_rtt_control_block_in_raw_file(raw_file: &[u8]) -> Result<Option<u64>, object::Error> {
     let obj = object::File::parse(raw_file)?;
     Ok(find_rtt_control_block_in_file(&obj))
+}
+
+/// Extract the RTT control block and metadata from a raw file, usually an ELF file.
+#[cfg(feature = "object")]
+pub fn find_rtt_control_block_and_metadata_in_raw_file(
+    raw_file: &[u8],
+) -> Result<(Option<u64>, ElfMetadata), object::Error> {
+    let obj = object::File::parse(raw_file)?;
+    Ok((
+        find_rtt_control_block_in_file(&obj),
+        ElfMetadata::from_object(&obj)?,
+    ))
 }
 
 /// Extract the RTT control block from a parsed [object::File] file, usually a parsed ELF file.
@@ -413,6 +427,41 @@ impl Rtt {
             0 => Err(Error::ControlBlockNotFound),
             1 => Ok(instances.remove(0)),
             _ => Err(Error::MultipleControlBlocksFound(instances)),
+        }
+    }
+
+    /// Clear a potentially stale RTT control block at the given scan region.
+    ///
+    /// For `Exact` addresses, zeros the header directly. For `Ranges` / `Ram`,
+    /// scans for the magic bytes and clears if found. Does nothing if no control
+    /// block is found.
+    ///
+    /// This should be called while the core is halted, before a reset, to prevent
+    /// attaching to stale data from a previous session.
+    pub fn clear_control_block(core: &mut Core, region: &ScanRegion) -> Result<(), Error> {
+        match Self::find_control_block(core, region) {
+            Ok(address) => {
+                tracing::debug!("Clearing RTT control block at {:#010x}", address);
+                let clear_size = if matches!(region, ScanRegion::Exact(_)) {
+                    // Full header: 16 bytes magic + channel count fields
+                    if core.is_64_bit() {
+                        16 + 2 * 8
+                    } else {
+                        16 + 2 * 4
+                    }
+                } else {
+                    // Just the magic identifier (we haven't validated the full block)
+                    Self::RTT_ID.len()
+                };
+                let zeros = vec![0u8; clear_size];
+                core.write_8(address, &zeros)?;
+                Ok(())
+            }
+            Err(Error::ControlBlockNotFound | Error::NoControlBlockLocation) => {
+                tracing::debug!("No RTT control block found to clear");
+                Ok(())
+            }
+            Err(e) => Err(e),
         }
     }
 

@@ -1,0 +1,416 @@
+name: GD32E23x Series
+generated_from_pack: true
+pack_file_release: 1.0.2
+variants:
+- name: GD32E230C4
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e23x
+- name: GD32E230C6
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e23x
+- name: GD32E230C8
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e23x
+- name: GD32E230F4
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e23x
+- name: GD32E230F6
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e23x
+- name: GD32E230F8
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e23x
+- name: GD32E230G4
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e23x
+- name: GD32E230G6
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e23x
+- name: GD32E230G8
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e23x
+- name: GD32E230K4
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e23x
+- name: GD32E230K6
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e23x
+- name: GD32E230K8
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e23x
+- name: GD32E231C4
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e23x
+- name: GD32E231C6
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e23x
+- name: GD32E231C8
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e23x
+flash_algorithms:
+- name: gd32e23x
+  description: GD32E23x EFMC
+  default: true
+  instructions: sLWGsBNGDEYFRgWQBJEDkgWYEkkIQBJJSkZQUBFISPIAAQFgEEgRSQFgEUkBYBFIAGgEIQhCApMBlACVCtH/5w1IDkkBYA5IBiEBYA1IDkkBYP/nACAGsLC9wEYAAP7/BAAAAAAgAkAEIAJAIwFnRauJ780cIAJAADAAQFVVAAAEMABACDAAQP8PAACCsAFGAZAESAJogCMaQwJgACAAkQKwcEcQIAJADUgBaAQiEUMBYAFoQCIRQwFg/+cJSABoASEIQgTQ/+cHSAhJAWD15wNIAWgEIpFDAWAAIHBHwEYQIAJADCACQAAwAECqqgAAgrABRgGQEEgCaAIjGkMCYAGaDksaYAJoQCMaQwJgAJH/5wtIAGgBIQhCBND/5wlICUkBYPXnBEgBaAIikUMBYAAgArBwR8BGECACQBQgAkAMIAJAADAAQKqqAACwtYqwE0YMRgVGCJAHkQaSACAEkAaYB5lAGAOQB6gAeEAHACgCkwGUAJUH0P/nB5gHIQhACCEIGgSQ/+cAIAWQ/+cFmASZiEIK0v/nA5hBHAOR/yEBcP/nBZhAHAWQ8OcHmMAdByGIQweQCJgjSUpGUVgBIlIEiRiIQjjS/+f/5weYACgy0P/nHUgBaAEiEUMBYAaYAGgImQhgBphAaAiZSGD/5xdIAGgBIQhCAdD/5/jnE0gBaAEikUMBYBFIAGgUIQhCCND/5w5IAWgUIhFDAWABIAmQDeAImAgwCJAGmAgwBpAHmAg4B5DJ5//nACAJkP/nCZgKsLC9wEYEAAAAECACQAwgAkAAAAAAAAAAAA==
+  pc_init: 0x1
+  pc_uninit: 0x8d
+  pc_program_page: 0x14d
+  pc_erase_sector: 0xf1
+  pc_erase_all: 0xa9
+  data_section_offset: 0x254
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8010000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 7500
+    erase_sector_timeout: 50000
+    sectors:
+    - size: 0x400
+      address: 0x0

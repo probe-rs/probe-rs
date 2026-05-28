@@ -3,13 +3,15 @@
 use std::fmt::Display;
 use std::future::pending;
 use std::io::Write;
+use std::time::Duration;
 use std::{future::Future, ops::DerefMut, path::Path, time::Instant};
 
 use anyhow::Context;
 use libtest_mimic::{Failed, Trial};
 use postcard_rpc::host_client::HostClient;
 use postcard_schema::Schema;
-use probe_rs::rtt::{self, find_rtt_control_block_in_raw_file};
+use probe_rs::meta::ElfMetadata;
+use probe_rs::rtt::find_rtt_control_block_and_metadata_in_raw_file;
 use ratatui::crossterm::style::Stylize;
 use rustyline_async::{Readline, ReadlineError, ReadlineEvent, SharedWriter};
 use serde::de::DeserializeOwned;
@@ -24,7 +26,10 @@ use tokio_util::sync::CancellationToken;
 use crate::cmd::run::{EmbeddedTestElfInfo, MonitoringOptions};
 use crate::rpc::Key;
 use crate::rpc::functions::monitor::{ChannelInfo, MonitorExitReason};
+use crate::rpc::functions::stack_trace::StackTraceFrame;
+use crate::rpc::utils::run_loop::VectorCatchConfig;
 use crate::rpc::utils::semihosting::SemihostingOptions;
+use crate::util::pwr::power_reset;
 use crate::{
     FormatOptions,
     rpc::{
@@ -45,10 +50,7 @@ use crate::{
         common_options::{BinaryDownloadOptions, ProbeOptions},
         flash::CliProgressBars,
         logging,
-        rtt::{
-            DefmtProcessor, DefmtState, RttChannelConfig, RttDataHandler, RttDecoder,
-            client::RttClient,
-        },
+        rtt::{DefmtProcessor, DefmtState, RttChannelConfig, RttDecoder, client::RttClient},
     },
 };
 
@@ -57,8 +59,18 @@ type TargetOutputFiles = std::collections::HashMap<ChannelIdentifier, tokio::fs:
 pub async fn attach_probe(
     client: &RpcClient,
     mut probe_options: ProbeOptions,
+    elf_meta: Option<ElfMetadata>,
     resume_target: bool,
 ) -> anyhow::Result<SessionInterface> {
+    let elf_meta = elf_meta.unwrap_or_default();
+
+    if let Some(elf_chip) = &elf_meta.chip
+        && let Some(probe_chip) = &probe_options.chip
+        && elf_chip.to_lowercase() != probe_chip.to_lowercase()
+    {
+        anyhow::bail!("elf_chip does not match probe_chip");
+    }
+
     // Load the chip description if provided.
     if let Some(chip_description) = probe_options.chip_description_path.take() {
         let file = tokio::fs::read_to_string(&chip_description)
@@ -79,9 +91,13 @@ pub async fn attach_probe(
 
     let probe = select_probe(client, probe_options.probe.map(Into::into)).await?;
 
+    if probe_options.cycle_power {
+        power_reset(probe.selector().into(), Duration::from_secs(1)).await?;
+    }
+
     let result = client
         .attach_probe(AttachRequest {
-            chip: probe_options.chip,
+            chip: probe_options.chip.or(elf_meta.chip),
             protocol: probe_options.protocol.map(Into::into),
             probe,
             speed: probe_options.speed,
@@ -93,7 +109,7 @@ pub async fn attach_probe(
         .await?;
 
     match result {
-        AttachResult::Success(sessid) => Ok(SessionInterface::new(client.clone(), sessid)),
+        AttachResult::Success(session) => Ok(SessionInterface::new(client.clone(), session)),
         AttachResult::ProbeNotFound => anyhow::bail!("Probe not found"),
         AttachResult::FailedToOpenProbe(error) => anyhow::bail!("Failed to open probe: {error}"),
         AttachResult::ProbeInUse => anyhow::bail!("Probe is already in use"),
@@ -283,26 +299,26 @@ pub(crate) fn parse_semihosting_options(arg: &[String]) -> anyhow::Result<Semiho
     Ok(options)
 }
 
-pub async fn rtt_client(
-    session: &SessionInterface,
-    path: Option<&Path>,
-    monitor_options: &MonitoringOptions,
-    timestamp_offset: Option<UtcOffset>,
-) -> anyhow::Result<CliRttClient> {
-    let elf = if let Some(path) = path {
-        tokio::fs::read(path)
-            .await
-            .with_context(|| format!("Failed to read firmware from {}", path.display()))?
-    } else {
-        vec![]
-    };
+#[derive(Default)]
+pub struct FileMetadata {
+    pub defmt_data: Option<DefmtState>,
+    pub scan_regions: Option<ScanRegion>,
+}
 
-    let mut scan_regions = monitor_options.scan_region.clone();
+pub async fn parse_metadata(path: &Path) -> anyhow::Result<(FileMetadata, Option<ElfMetadata>)> {
+    let elf = tokio::fs::read(path)
+        .await
+        .with_context(|| format!("Failed to read firmware from {}", path.display()))?;
+
+    let mut elf_meta = None;
+    let mut scan_regions = None;
     let mut load_defmt_data = false;
-    if let Ok(opt_address) = find_rtt_control_block_in_raw_file(&elf) {
-        match opt_address {
+
+    if let Ok((rtt_block, meta)) = find_rtt_control_block_and_metadata_in_raw_file(&elf) {
+        elf_meta = Some(meta);
+        match rtt_block {
             Some(addr) => {
-                scan_regions = ScanRegion::Exact(addr);
+                scan_regions = Some(ScanRegion::Exact(addr));
                 load_defmt_data = true;
             }
             None => load_defmt_data = !elf.is_empty(),
@@ -313,6 +329,26 @@ pub async fn rtt_client(
         DefmtState::try_from_bytes(&elf)?
     } else {
         None
+    };
+
+    Ok((
+        FileMetadata {
+            defmt_data,
+            scan_regions,
+        },
+        elf_meta,
+    ))
+}
+
+pub async fn rtt_client(
+    session: &SessionInterface,
+    meta: &FileMetadata,
+    monitor_options: &MonitoringOptions,
+    timestamp_offset: Option<UtcOffset>,
+) -> anyhow::Result<CliRttClient> {
+    let scan_regions = match &meta.scan_regions {
+        Some(scan_regions) => scan_regions.clone(),
+        None => monitor_options.scan_region.clone(),
     };
 
     // We don't really know what to configure here, so we set a default configuration if we can, but that's it.
@@ -334,7 +370,7 @@ pub async fn rtt_client(
         show_timestamps: !monitor_options.no_timestamps,
         show_location: !monitor_options.no_location,
         channel_processors: vec![],
-        defmt_data,
+        defmt_data: meta.defmt_data.clone(),
         log_format: monitor_options.log_format.clone(),
     })
 }
@@ -560,16 +596,17 @@ pub async fn monitor(
     path: Option<&Path>,
     monitor_options: &MonitoringOptions,
     mut rtt_client: Option<CliRttClient>,
-    catch_reset: bool,
-    catch_hardfault: bool,
+    vector_catch: VectorCatchConfig,
 ) -> anyhow::Result<()> {
     let semihosting_options = parse_semihosting_options(&monitor_options.semihosting_file)?;
     let mut target_output_files =
         connect_target_output_files(&monitor_options.target_output_file).await?;
 
     let options = MonitorOptions {
-        catch_reset,
-        catch_hardfault,
+        catch_reset: vector_catch.catch_reset,
+        catch_hardfault: vector_catch.catch_hardfault,
+        catch_svc: vector_catch.catch_svc,
+        catch_hlt: vector_catch.catch_hlt,
         rtt_client: rtt_client.as_ref().map(|client| client.handle()),
         semihosting_options,
     };
@@ -628,7 +665,7 @@ pub async fn monitor(
         let mut selected_channel = data.selected_down_channel % channel_count;
 
         let prompt = |channel_idx| {
-            Prompt(format!(
+            Prompt::new(format!(
                 "{}> ",
                 &data.down_channels[channel_idx as usize].name
             ))
@@ -650,8 +687,9 @@ pub async fn monitor(
         rl.should_print_line_on(true, false);
         loop {
             match rl.readline().await {
-                Ok(ReadlineEvent::Line(line)) => {
+                Ok(ReadlineEvent::Line(mut line)) => {
                     rl.add_history_entry(line.clone());
+                    line.push('\n');
                     if let Some(client) = data.rtt_client
                         && let Err(error) = session
                             .send_to_rtt(client, selected_channel, line.into_bytes())
@@ -989,8 +1027,8 @@ async fn display_stack_trace(
 
     for StackTrace { core, frames } in stack_trace.cores.iter() {
         println!("Core {core}");
-        for frame in frames {
-            println!("    {frame}");
+        for (i, frame) in frames.iter().enumerate() {
+            println!("    Frame {i}: {}", format_stack_frame(frame, None));
         }
         if frames.len() >= stack_frame_limit as usize {
             println!("Use `--stack-frame-limit` to increase the number of frames displayed.");
@@ -998,6 +1036,43 @@ async fn display_stack_trace(
     }
 
     Ok(())
+}
+
+/// Formats a single stack frame for display.
+///
+/// `colorize` controls ANSI styling: `None` uses the `PROBE_RS_COLOR` default,
+/// `Some(b)` forces a specific choice (used by DAP handlers that must honor the
+/// remote client's `supportsAnsiStyling` capability instead of the server env).
+pub(crate) fn format_stack_frame(frame: &StackTraceFrame, colorize: Option<bool>) -> String {
+    use std::fmt::Write as _;
+
+    let color = colorize.unwrap_or_else(probe_rs_color_enabled);
+
+    let mut s = String::new();
+    write!(
+        &mut s,
+        "{} @ {}",
+        StackTraceFunction::new(frame.function_name.as_str()).colorize(color),
+        StackTraceAddress::new(format!("{:#x}", frame.program_counter)).colorize(color),
+    )
+    .unwrap();
+    if frame.is_inlined {
+        write!(
+            &mut s,
+            " {}",
+            StackTraceInlineMarker::new("inline").colorize(color)
+        )
+        .unwrap();
+    }
+    if let Some(loc) = &frame.location {
+        write!(
+            &mut s,
+            "\n        {}",
+            StackTraceSourceLocation::new(format!("{loc}")).colorize(color)
+        )
+        .unwrap();
+    }
+    s
 }
 
 /// Runs a future until completion, running another future when Ctrl+C is received.
@@ -1185,50 +1260,70 @@ impl Channel {
         shared_writer: &impl AsyncFn(&str),
         copy_to: Option<&mut tokio::fs::File>,
     ) {
-        let mut printer = Printer {
-            prefix: &self.printer_prefix,
-            copy_to,
-            shared_writer,
-        };
-        let _ = self.decoder.process(bytes, &mut printer).await;
-    }
-}
-
-struct Printer<'a, P: AsyncFn(&str)> {
-    prefix: &'a str,
-    copy_to: Option<&'a mut tokio::fs::File>,
-    shared_writer: &'a P,
-}
-impl<P: AsyncFn(&str)> RttDataHandler for Printer<'_, P> {
-    async fn on_string_data(&mut self, data: String) -> Result<(), rtt::Error> {
-        let message = format!("{}{}", self.prefix, data);
-        (self.shared_writer)(&message).await;
-        if let Some(copy_to) = &mut self.copy_to {
-            // Silently discarding output file errors
-            _ = copy_to.write_all(data.as_bytes()).await;
+        if let Some(data) = self.decoder.process(bytes).ok().flatten() {
+            let data = data.to_string();
+            let message = format!("{}{}", self.printer_prefix, data);
+            shared_writer(&message).await;
+            if let Some(copy_to) = copy_to {
+                // Silently discarding output file errors
+                _ = copy_to.write_all(data.as_bytes()).await;
+            }
         }
-        Ok(())
     }
 }
 
+pub(crate) fn probe_rs_color_enabled() -> bool {
+    matches!(
+        std::env::var("PROBE_RS_COLOR").as_deref(),
+        Err(VarError::NotPresent) | Ok("true" | "1" | "yes" | "on")
+    )
+}
+
+/// Defines a named style as a `Display` wrapper.
+///
+/// The style expression lives in one place. By default, each wrapper consults
+/// `probe_rs_color_enabled()` (i.e. the `PROBE_RS_COLOR` env var) when rendering.
+/// Call sites with a different rendering context — e.g. a DAP handler whose
+/// output is interpreted by a remote client — can override that decision with
+/// `.colorize(bool)` without having to know about `PROBE_RS_COLOR` at all.
 macro_rules! styled {
     ($name:ident($var:ident) => $style:expr) => {
-        pub struct $name<S: AsRef<str>>(pub S);
+        pub struct $name<S: AsRef<str>> {
+            value: S,
+            colorize: Option<bool>,
+        }
+
+        impl<S: AsRef<str>> $name<S> {
+            pub fn new(value: S) -> Self {
+                Self {
+                    value,
+                    colorize: None,
+                }
+            }
+
+            /// Explicitly turn ANSI styling on/off, bypassing the `PROBE_RS_COLOR` default.
+            #[allow(dead_code)]
+            pub fn colorize(mut self, colorize: bool) -> Self {
+                self.colorize = Some(colorize);
+                self
+            }
+        }
 
         impl<S: AsRef<str>> Display for $name<S> {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                if matches!(
-                    std::env::var("PROBE_RS_COLOR").as_deref(),
-                    Err(VarError::NotPresent) | Ok("true" | "1" | "yes" | "on")
-                ) {
-                    let $var = self.0.as_ref();
+                if self.colorize.unwrap_or_else(probe_rs_color_enabled) {
+                    let $var = self.value.as_ref();
                     write!(f, "{}", $style)
                 } else {
-                    f.write_str(self.0.as_ref())
+                    f.write_str(self.value.as_ref())
                 }
             }
         }
     };
 }
 
+styled!(StackTraceFunction(name) => name.bold().cyan());
+styled!(StackTraceAddress(addr) => addr.yellow());
+styled!(StackTraceInlineMarker(marker) => marker.italic().dark_yellow());
+styled!(StackTraceSourceLocation(loc) => loc.dim().grey());
 styled!(Prompt(prompt) => prompt.bold().dark_green());

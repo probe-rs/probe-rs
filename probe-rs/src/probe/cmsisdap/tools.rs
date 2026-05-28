@@ -44,7 +44,8 @@ pub fn list_cmsisdap_devices() -> Vec<DebugProbeInfo> {
                 if !probes.iter().any(|p| {
                     p.vendor_id == info.vendor_id
                         && p.product_id == info.product_id
-                        && p.serial_number == info.serial_number
+                        && p.serial_number.as_deref().unwrap_or("")
+                            == info.serial_number.as_deref().unwrap_or("")
                 }) {
                     tracing::trace!("Adding new HID-only probe {:?}", info);
                     probes.push(info)

@@ -164,6 +164,7 @@ fn read_frame_record_for_core(
     const ARM32_FRAME_RECORD_OFFSET: i64 = 0;
     const ARM64_FRAME_RECORD_OFFSET: i64 = 0;
     const RISCV32_FRAME_RECORD_OFFSET: i64 = -8;
+    const RISCV64_FRAME_RECORD_OFFSET: i64 = -16;
     const XTENSA_FRAME_RECORD_OFFSET: i64 = -16;
 
     match instruction_set {
@@ -182,6 +183,11 @@ fn read_frame_record_for_core(
                 |fr| AdjustedFrameRecord::new_from_frame_record_32(fr, instruction_set, last_pc),
             )
         }
+        InstructionSet::RV64 | InstructionSet::RV64C => {
+            read_arm_riscv_64_frame_record(memory, frame_pointer, RISCV64_FRAME_RECORD_OFFSET).map(
+                |fr| AdjustedFrameRecord::new_from_frame_record_64(fr, instruction_set, last_pc),
+            )
+        }
         InstructionSet::Xtensa => {
             read_xtensa_frame_record(memory, frame_pointer, XTENSA_FRAME_RECORD_OFFSET).map(|fr| {
                 AdjustedFrameRecord::new_from_frame_record_32(fr, instruction_set, last_pc)
@@ -191,7 +197,7 @@ fn read_frame_record_for_core(
 }
 
 /// Part of frame pointer stack walk that is generic for memory interface, used for
-/// frame_pointer_stack_walk implementationa and testing.
+/// frame_pointer_stack_walk implementation and testing.
 fn frame_pointer_stack_walk_memory_interface(
     memory: &mut impl MemoryInterface,
     instruction_set: InstructionSet,
@@ -229,7 +235,7 @@ fn frame_pointer_stack_walk_memory_interface(
             last_program_counter,
         )?;
 
-        // Stack grows down, so frame pointer should be increasing when walking up call stack
+        // Stack grows down, so frame pointer should be increasing when walking up callstack
         // Stop if the frame pointer has not increased
         if last_frame_pointer >= frame_pointer {
             break;
@@ -294,28 +300,9 @@ mod test {
     use probe_rs_debug::DebugRegisters;
 
     use probe_rs::{CoreDump, RegisterRole};
-    use std::path::PathBuf;
 
-    use super::super::test::{addresses_to_callstack, get_path_for_test_files};
+    use super::super::test::{addresses_to_callstack, coredump_path, get_path_for_test_files};
     use super::*;
-
-    /// Find core dump file path using name - either .elf or probe-rs's .coredump format
-    fn coredump_path(base: &str) -> PathBuf {
-        let possible_coredump_paths = [
-            get_path_for_test_files(format!("{base}.coredump").as_str()),
-            get_path_for_test_files(format!("{base}_coredump.elf").as_str()),
-        ];
-
-        possible_coredump_paths
-            .iter()
-            .find(|path| path.exists())
-            .unwrap_or_else(|| {
-                panic!(
-                    "No coredump found for chip {base}. Expected one of: {possible_coredump_paths:?}"
-                )
-            })
-            .clone()
-    }
 
     /// Like `frame_pointer_stack_walk` but for CoreDump rather than Core
     fn frame_pointer_stack_walk_core_dump(
@@ -352,9 +339,8 @@ mod test {
     }
 
     fn check_stack_walk(test_name: &str, expect: &Vec<FunctionAddress>) {
-        let executable_location =
-            get_path_for_test_files(format!("debug-unwind-tests/{test_name}.elf").as_str());
-        let coredump_path = coredump_path(&format!("debug-unwind-tests/{test_name}"));
+        let executable_location = get_path_for_test_files(format!("{test_name}.elf").as_str());
+        let coredump_path = coredump_path(test_name);
 
         let mut core_dump = CoreDump::load(&coredump_path).unwrap();
         let object_bytes = std::fs::read(&executable_location).unwrap();

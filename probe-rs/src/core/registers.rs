@@ -9,7 +9,7 @@ use std::{
 };
 
 /// The type of data stored in a register, with size in bits encapsulated in the enum.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum RegisterDataType {
     /// Unsigned integer data, with size in bits encapsulated.
     UnsignedInteger(usize),
@@ -102,7 +102,7 @@ pub enum UnwindRule {
 
 /// Describes a core (or CPU / hardware) register with its properties.
 /// Each architecture will have a set of general purpose registers, and potentially some special purpose registers. It also happens that some general purpose registers can be used for special purposes. For instance, some ARM variants allows the `LR` (link register / return address) to be used as general purpose register `R14`."
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct CoreRegister {
     /// Some architectures have multiple names for the same register, depending on the context and the role of the register.
     pub id: RegisterId,
@@ -161,7 +161,7 @@ impl CoreRegister {
 
     /// Get the type of data stored in this register
     pub fn data_type(&self) -> RegisterDataType {
-        self.data_type.clone()
+        self.data_type
     }
 
     /// Get the size, in bits, of this register

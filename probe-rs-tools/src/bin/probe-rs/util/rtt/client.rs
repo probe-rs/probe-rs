@@ -211,7 +211,7 @@ impl RttClient {
             return Ok(());
         }
 
-        self.try_attach(core)?;
+        self.try_attach_impl(core)?;
 
         tracing::debug!("Clearing RTT control block");
         if let Some(mut target) = self.target.take() {
