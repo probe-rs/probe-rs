@@ -180,7 +180,7 @@ impl JtagAdapter {
         }
 
         let mut t0 = Instant::now();
-        let timeout = Duration::from_millis(10);
+        let timeout = Duration::from_millis(100);
 
         let mut reply = Vec::with_capacity(self.in_bit_counts.len());
         while reply.len() < self.in_bit_counts.len() {
