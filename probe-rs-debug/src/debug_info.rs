@@ -1022,6 +1022,32 @@ pub(crate) fn canonical_path_eq(primary_path: TypedPath, secondary_path: TypedPa
     primary_path.normalize() == secondary_path.normalize()
 }
 
+/// Returns `true` if `full_path` matches `partial_path`.
+///
+/// When `partial_path` is absolute, the comparison is normalized equality).
+/// When `partial_path` is relative the function additionally accepts a suffix match at
+/// a component boundary, so that a caller can supply just a filename (`main.rs`) or a partial
+/// sub-path (`src/main.rs`) and still resolve to the correct compilation unit.
+///
+/// Separators are normalized to `/` before comparison so that cross-OS paths (e.g. DWARF info
+/// embedded by a Windows compiler, inspected on Linux) are handled correctly.
+pub(crate) fn path_matches(full_path: TypedPath, partial_path: TypedPath) -> bool {
+    if canonical_path_eq(full_path, partial_path) {
+        return true;
+    }
+    if partial_path.is_relative() {
+        let full_buf = full_path.normalize();
+        let full_str = full_buf.to_string_lossy().replace('\\', "/");
+        let partial_buf = partial_path.normalize();
+        let partial_str = partial_buf.to_string_lossy().replace('\\', "/");
+        full_str.ends_with(&*partial_str)
+            && (full_str.len() == partial_str.len()
+                || full_str[..full_str.len() - partial_str.len()].ends_with('/'))
+    } else {
+        false
+    }
+}
+
 /// Get a handle to the [`gimli::UnwindTableRow`] for this call frame, so that we can reference it to unwind register values.
 pub fn get_unwind_info<'a>(
     unwind_context: &'a mut UnwindContext<GimliReaderOffset>,

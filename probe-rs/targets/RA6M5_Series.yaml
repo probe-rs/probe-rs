@@ -5,7 +5,7 @@ manufacturer:
 chip_detection:
   - !RenesasPnr
     target_id: 0x360
-    mcu_pn_base: 0x010080f0
+  mcu_pn_base: 0x10080f0
     variants:
       - R7FA6M5AH
       - R7FA6M5AG
@@ -269,7 +269,6 @@ flash_algorithms:
     pc_verify: 0xb8d
     pc_blank_check: 0xa5
     data_section_offset: 0xcf4
-    rtt_poll_interval: 0
     flash_properties:
       address_range:
         start: 0x0
@@ -296,7 +295,6 @@ flash_algorithms:
     pc_verify: 0xb8d
     pc_blank_check: 0xa5
     data_section_offset: 0xcf4
-    rtt_poll_interval: 0
     flash_properties:
       address_range:
         start: 0x8000000
@@ -321,7 +319,6 @@ flash_algorithms:
     pc_verify: 0xa89
     pc_blank_check: 0xa5
     data_section_offset: 0xbf0
-    rtt_poll_interval: 0
     flash_properties:
       address_range:
         start: 0x100a100
@@ -346,7 +343,6 @@ flash_algorithms:
     pc_verify: 0xb8d
     pc_blank_check: 0xa5
     data_section_offset: 0xcf4
-    rtt_poll_interval: 0
     flash_properties:
       address_range:
         start: 0x0
@@ -373,7 +369,6 @@ flash_algorithms:
     pc_verify: 0xae9
     pc_blank_check: 0x4b9
     data_section_offset: 0xcf4
-    rtt_poll_interval: 0
     flash_properties:
       address_range:
         start: 0x8000000
@@ -398,7 +393,6 @@ flash_algorithms:
     pc_verify: 0xb8d
     pc_blank_check: 0xa5
     data_section_offset: 0xcf4
-    rtt_poll_interval: 0
     flash_properties:
       address_range:
         start: 0x0
@@ -425,7 +419,6 @@ flash_algorithms:
     pc_verify: 0xb8d
     pc_blank_check: 0xa5
     data_section_offset: 0xcf4
-    rtt_poll_interval: 0
     flash_properties:
       address_range:
         start: 0x8000000

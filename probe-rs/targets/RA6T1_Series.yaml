@@ -5,7 +5,7 @@ manufacturer:
 chip_detection:
   - !RenesasPnr
     target_id: 0x270
-    mcu_pn_base: 0x01007024
+  mcu_pn_base: 0x1007024
     variants:
       - R7FA6T1AD
       - R7FA6T1AB

@@ -22,10 +22,10 @@ serde_with = { version = "3.8", default-features = false, features = [
 ] }
 
 bincode = { version = "2", features = ["serde"], optional = true }
-serde_yaml = { version = "0.9", optional = true }
+yaml_serde = { version = "0.10", optional = true }
 
 [features]
-bincode = ["dep:bincode", "dep:serde_yaml"]
+bincode = ["dep:bincode", "dep:yaml_serde"]
 
 [lints]
 workspace = true
