@@ -136,7 +136,7 @@ impl Cli {
             Subcommand::Read(cmd) => cmd.run(client).await,
             Subcommand::Write(cmd) => cmd.run(client).await,
             Subcommand::Complete(cmd) => cmd.run(&lister),
-            Subcommand::Mi(cmd) => cmd.run(),
+            Subcommand::Mi(cmd) => cmd.run(client).await,
         }
     }
 
