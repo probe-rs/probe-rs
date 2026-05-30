@@ -201,20 +201,21 @@ impl Subcommand {
     fn is_remote_cmd(&self) -> bool {
         // Commands that are implemented via a series of RPC calls.
         // TODO: refactor other commands
-        matches!(
-            self,
+        match self {
             Self::List(_)
-                | Self::Read(_)
-                | Self::Write(_)
-                | Self::Reset(_)
-                | Self::Chip(_)
-                | Self::Info(_)
-                | Self::Download(_)
-                | Self::Attach(_)
-                | Self::Run(_)
-                | Self::Erase(_)
-                | Self::Verify(_)
-        )
+            | Self::Read(_)
+            | Self::Write(_)
+            | Self::Reset(_)
+            | Self::Chip(_)
+            | Self::Info(_)
+            | Self::Download(_)
+            | Self::Attach(_)
+            | Self::Run(_)
+            | Self::Erase(_)
+            | Self::Verify(_) => true,
+            Self::Mi(mi) => mi.is_remote_cmd(),
+            _ => false,
+        }
     }
 }
 

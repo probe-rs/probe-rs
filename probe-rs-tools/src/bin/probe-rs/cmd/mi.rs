@@ -21,6 +21,11 @@ pub enum Subcommand {
 }
 
 impl Cmd {
+    pub fn is_remote_cmd(&self) -> bool {
+        // meta is not (yet) allowed, it just prints the client's info
+        matches!(self.subcommand, Subcommand::Info(_))
+    }
+
     pub async fn run(self, client: RpcClient) -> anyhow::Result<()> {
         match self.subcommand {
             Subcommand::Meta => meta::run()?,
