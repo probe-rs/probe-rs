@@ -631,6 +631,33 @@ impl FlashLoader {
         session: &mut Session,
         progress: &mut FlashProgress<'_>,
     ) -> Result<(), FlashError> {
+        // Try probe-assisted verify first (e.g., WCH-Link firmware commands)
+        let nvm_data: Vec<(u32, &[u8])> = self
+            .memory_map
+            .iter()
+            .filter_map(|region| match region {
+                MemoryRegion::Nvm(nvm) => Some(&nvm.range),
+                _ => None,
+            })
+            .flat_map(|range| self.builder.data_in_range(&(range.start..range.end)))
+            .map(|(addr, data)| (addr as u32, data))
+            .collect();
+
+        if !nvm_data.is_empty() {
+            match session.try_verify_flash_via_probe(&nvm_data) {
+                Ok(true) => {
+                    tracing::info!("Verify completed via probe firmware commands.");
+                    progress.add_progress_bar(ProgressOperation::Verify, Some(0));
+                    progress.started_verifying();
+                    progress.finished_verifying();
+                    self.verify_ram(session)?;
+                    return Ok(());
+                }
+                Ok(false) => { /* fall through to normal path */ }
+                Err(e) => return Err(e),
+            }
+        }
+
         let mut algos = self.prepare_plan(session, false, &[])?;
 
         for flasher in algos.iter_mut() {
@@ -670,6 +697,60 @@ impl FlashLoader {
         mut options: DownloadOptions,
     ) -> Result<(), FlashError> {
         tracing::debug!("Committing FlashLoader!");
+
+        if !options.dry_run && !options.keep_unwritten_bytes {
+            // Collect NVM data blocks for probe-assisted flash path
+            let nvm_data: Vec<(u32, &[u8])> = self
+                .memory_map
+                .iter()
+                .filter_map(|region| match region {
+                    MemoryRegion::Nvm(nvm) => Some(&nvm.range),
+                    _ => None,
+                })
+                .flat_map(|range| self.builder.data_in_range(&(range.start..range.end)))
+                .map(|(addr, data)| (addr as u32, data))
+                .collect();
+
+            if !nvm_data.is_empty() {
+                match session.try_flash_via_probe(
+                    &nvm_data,
+                    options.do_chip_erase,
+                    options.skip_erase,
+                ) {
+                    Ok(true) => {
+                        tracing::info!("Flash completed via probe firmware commands.");
+                        options.progress.finished_erasing();
+                        options.progress.finished_programming();
+                        if options.verify {
+                            match session.try_verify_flash_via_probe(&nvm_data) {
+                                Ok(true) => {
+                                    tracing::info!("Probe-assisted verify passed.");
+                                    options.progress.finished_verifying();
+                                }
+                                Ok(false) => {
+                                    // Probe doesn't support standalone verify, skip.
+                                }
+                                Err(e) => {
+                                    tracing::warn!("Probe-assisted verify failed: {:?}", e);
+                                    return Err(e);
+                                }
+                            }
+                        }
+                        return Ok(());
+                    }
+                    Ok(false) => {
+                        // Probe doesn't support it, fall through to normal path
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            "Probe-assisted flash failed: {:?}, falling back to normal path",
+                            e
+                        );
+                    }
+                }
+            }
+        }
+
         let mut algos = self.prepare_plan(
             session,
             options.keep_unwritten_bytes,

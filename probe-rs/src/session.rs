@@ -53,6 +53,10 @@ pub struct Session {
     interfaces: ArchitectureInterface,
     cores: Vec<CombinedCoreState>,
     configured_trace_sink: Option<TraceSink>,
+    /// Set to true when a probe-assisted flash operation (erase/program) was performed.
+    /// During drop, we skip halt/cleanup to avoid errors since the probe may have
+    /// left the target in a state where standard debug operations fail.
+    probe_assisted_done: bool,
 }
 
 /// The `SessionConfig` struct is used to configure a new `Session` during auto-attach.
@@ -208,7 +212,12 @@ impl Session {
             Self::attach_jtag(probe, target, attach_method, permissions, cores)?
         };
 
-        session.clear_all_hw_breakpoints()?;
+        if let Err(e) = session.clear_all_hw_breakpoints() {
+            tracing::warn!(
+                "Could not clear all hardware breakpoints during attach: {:?}",
+                e
+            );
+        }
 
         Ok(session)
     }
@@ -333,6 +342,7 @@ impl Session {
                 interfaces,
                 cores,
                 configured_trace_sink: None,
+                probe_assisted_done: false,
             };
 
             {
@@ -375,6 +385,7 @@ impl Session {
                 interfaces,
                 cores,
                 configured_trace_sink: None,
+                probe_assisted_done: false,
             })
         }
     }
@@ -516,6 +527,7 @@ impl Session {
             interfaces,
             cores,
             configured_trace_sink: None,
+            probe_assisted_done: false,
         };
 
         // Connect to the cores
@@ -918,6 +930,217 @@ impl Session {
         &self.target
     }
 
+    /// Try to erase flash using the probe's built-in flash commands.
+    /// Currently only supported for WCH-Link probes.
+    /// Returns Ok(true) if the probe handled the erase, Ok(false) if not.
+    pub fn try_erase_flash_via_probe(&mut self) -> Result<bool, Error> {
+        // Check if the connected probe is a WCH-Link and use its firmware flash commands.
+        let ArchitectureInterface::Jtag(probe, _) = &mut self.interfaces else {
+            return Ok(false);
+        };
+        let inner = probe.inner_mut();
+
+        // Check if the probe is a WCH-Link by comparing TypeId
+        {
+            let any_ref: &dyn std::any::Any = inner;
+            if any_ref.type_id() != std::any::TypeId::of::<crate::probe::wlink::WchLink>() {
+                return Ok(false);
+            }
+        }
+
+        // Downcast mutably to access WchLink's erase_flash method
+        let any_mut: &mut dyn std::any::Any = inner;
+        let wlink = any_mut
+            .downcast_mut::<crate::probe::wlink::WchLink>()
+            .expect("TypeId matched but downcast failed");
+        tracing::info!("Using WCH-Link firmware erase command");
+        wlink.erase_flash()?;
+        self.probe_assisted_done = true;
+        Ok(true)
+    }
+
+    /// Try to program flash using the probe's built-in flash commands.
+    /// Currently only supported for WCH-Link probes.
+    /// Returns Ok(true) if the probe handled the programming, Ok(false) if not.
+    pub fn try_program_flash_via_probe(
+        &mut self,
+        data: &[u8],
+        address: u32,
+    ) -> Result<bool, Error> {
+        use std::any::Any;
+        if let ArchitectureInterface::Jtag(probe, _) = &mut self.interfaces {
+            let inner: &mut dyn crate::probe::DebugProbe = probe.inner_mut();
+            let any: &mut dyn Any = inner;
+            if let Some(wlink) = any.downcast_mut::<crate::probe::wlink::WchLink>() {
+                tracing::info!("Using WCH-Link firmware program command");
+                wlink.program_flash(data, address)?;
+                self.probe_assisted_done = true;
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+
+    /// Combined probe-assisted flash: erase then program all NVM data.
+    /// Returns Ok(true) if the probe handled everything, Ok(false) if not applicable.
+    pub fn try_flash_via_probe(
+        &mut self,
+        nvm_data: &[(u32, &[u8])],
+        do_chip_erase: bool,
+        skip_erase: bool,
+    ) -> Result<bool, Error> {
+        if nvm_data.is_empty() {
+            return Ok(false);
+        }
+
+        // Probe-assisted flash only works for CH32H41X via WCH-Link.
+        let ArchitectureInterface::Jtag(probe, _) = &mut self.interfaces else {
+            return Ok(false);
+        };
+        {
+            let inner = probe.inner_mut();
+            let any_ref: &dyn std::any::Any = inner;
+            if any_ref.type_id() != std::any::TypeId::of::<crate::probe::wlink::WchLink>() {
+                return Ok(false);
+            }
+            let wlink = any_ref
+                .downcast_ref::<crate::probe::wlink::WchLink>()
+                .expect("TypeId matched but downcast failed");
+            if !wlink.supports_probe_assisted_flash() {
+                tracing::info!(
+                    "Probe-assisted flash not supported for this chip ({:?}), using normal path",
+                    wlink.chip_family
+                );
+                return Ok(false);
+            }
+        }
+
+        // Erase
+        if !skip_erase {
+            if do_chip_erase {
+                self.try_erase_flash_via_probe()?;
+            } else {
+                // Sector erase not supported via probe yet; only chip erase.
+                // Fall back to normal path for sector-level erase.
+                return Ok(false);
+            }
+        }
+
+        // Program each data block
+        for &(address, data) in nvm_data {
+            if data.is_empty() {
+                continue;
+            }
+            self.try_program_flash_via_probe(data, address)?;
+        }
+
+        // Reset chip via DMI ndmreset so it boots the new firmware.
+        // probe.target_reset() sends a firmware-level reset which may not
+        // properly restart the RISC-V core; we need a DM-level reset.
+        // Collect all RISC-V hart_ids so we can reset every hart
+        // individually.  A single-hart ndmreset leaves other harts in
+        // whatever state the previous debug session left them, causing
+        // attach failures on the next run (e.g. CH32H417 V3F stays halted
+        // while V5F resets and boots).
+        tracing::info!("Resetting chip via DMI ndmreset after probe-assisted flash...");
+        {
+            let ArchitectureInterface::Jtag(probe, _) = &mut self.interfaces else {
+                return Ok(true);
+            };
+            use probe_rs_target::CoreAccessOptions;
+            let mut hart_ids: Vec<u32> = self
+                .target
+                .cores
+                .iter()
+                .filter_map(|core| {
+                    if let CoreAccessOptions::Riscv(opts) = &core.core_access_options {
+                        Some(opts.hart_id.unwrap_or(0))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            // Reset coprocessor harts first, then the boot core last.
+            // If we reset the boot core first, it may start loading the
+            // coprocessor while we are still resetting it.
+            hart_ids.sort();
+            let inner = probe.inner_mut();
+            let any: &mut dyn std::any::Any = inner;
+            if let Some(wlink) = any.downcast_mut::<crate::probe::wlink::WchLink>() {
+                wlink.reset_and_run(&hart_ids)?;
+            }
+        }
+
+        Ok(true)
+    }
+
+    /// Returns true if the probe handled flash operations (erase/program)
+    /// via built-in firmware commands and the target is already running.
+    pub fn is_probe_assisted(&self) -> bool {
+        self.probe_assisted_done
+    }
+
+    /// Try to read flash memory via the probe's built-in commands.
+    /// Currently only supported for WCH-Link probes.
+    /// Returns Ok(Some(data)) if the probe handled the read, Ok(None) if not.
+    pub fn try_read_flash_via_probe(
+        &mut self,
+        address: u32,
+        len: u32,
+    ) -> Result<Option<Vec<u8>>, Error> {
+        let ArchitectureInterface::Jtag(probe, _) = &mut self.interfaces else {
+            return Ok(None);
+        };
+        let inner = probe.inner_mut();
+        let any_ref: &dyn std::any::Any = inner;
+        if any_ref.type_id() != std::any::TypeId::of::<crate::probe::wlink::WchLink>() {
+            return Ok(None);
+        }
+        let any_mut: &mut dyn std::any::Any = inner;
+        let wlink = any_mut
+            .downcast_mut::<crate::probe::wlink::WchLink>()
+            .expect("TypeId matched but downcast failed");
+        wlink.read_flash(address, len).map(Some).map_err(Into::into)
+    }
+
+    /// Try to verify flash contents via the probe's built-in commands.
+    /// Currently only supported for WCH-Link probes.
+    /// Returns Ok(true) if the probe verified successfully, Ok(false) if not,
+    /// Err(FlashError::Verify) on mismatch or other flash errors.
+    pub fn try_verify_flash_via_probe(
+        &mut self,
+        expected: &[(u32, &[u8])],
+    ) -> Result<bool, crate::flashing::FlashError> {
+        if expected.is_empty() {
+            return Ok(false);
+        }
+
+        for &(address, data) in expected {
+            if data.is_empty() {
+                continue;
+            }
+            let actual = match self
+                .try_read_flash_via_probe(address, data.len() as u32)
+                .map_err(|e| crate::flashing::FlashError::ChipEraseFailed {
+                    source: Box::new(e),
+                })? {
+                Some(d) => d,
+                None => return Ok(false),
+            };
+            if actual != data {
+                tracing::warn!(
+                    "Verify mismatch at 0x{:08X}: expected {:02x?}, got {:02x?}",
+                    address,
+                    &data[..data.len().min(16)],
+                    &actual[..actual.len().min(16)]
+                );
+                return Err(crate::flashing::FlashError::Verify);
+            }
+        }
+
+        Ok(true)
+    }
+
     /// Configure the target and probe for serial wire view (SWV) tracing.
     pub fn setup_tracing(
         &mut self,
@@ -1054,6 +1277,13 @@ const _: fn() = || {
 impl Drop for Session {
     #[tracing::instrument(name = "session_drop", skip(self))]
     fn drop(&mut self) {
+        // After a probe-assisted flash operation, the target may be in a state
+        // where standard debug halt operations fail. Skip cleanup in that case.
+        if self.probe_assisted_done {
+            tracing::info!("Skipping session cleanup after probe-assisted flash operation");
+            return;
+        }
+
         if let Err(err) = self.clear_all_hw_breakpoints() {
             tracing::warn!(
                 "Could not clear all hardware breakpoints: {:?}",

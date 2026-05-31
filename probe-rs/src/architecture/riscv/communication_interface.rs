@@ -651,13 +651,27 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         let control = self.read_dm_register::<Dmcontrol>()?;
 
-        self.state.hartsellen = control.hartsel().count_ones() as u8;
+        let raw_hartsel = control.hartsel().count_ones() as u8;
+        // Guard against garbage reads from a stale DM.  If the previous
+        // session was killed mid-operation (Ctrl+C), the DM may return
+        // all-ones for hartsel, leading to 2^32 iterations below.
+        // The RISC-V Debug Spec defines hartsel as a 20-bit field at most.
+        self.state.hartsellen = if raw_hartsel > 20 {
+            tracing::debug!(
+                "HARTSELLEN out of range ({}), defaulting to 20",
+                raw_hartsel
+            );
+            20
+        } else {
+            raw_hartsel
+        };
 
         tracing::debug!("HARTSELLEN: {}", self.state.hartsellen);
 
         // Determine number of harts
-
-        let max_hart_index = 2u32.pow(self.state.hartsellen as u32);
+        // Cap the search to avoid excessive DMI traffic when the DM
+        // returns garbage hartsel values (e.g. after an unclean kill).
+        let max_hart_index = 2u32.pow(self.state.hartsellen as u32).min(1024);
 
         // Hart 0 exists on every chip
         let mut num_harts = 1;
@@ -948,6 +962,22 @@ impl<'state> RiscvCommunicationInterface<'state> {
     ) -> Result<R, RiscvError> {
         let was_running = self.halt_with_previous(Duration::from_millis(100))?;
 
+        // Clear any stale cmderr from a previous abstract command.
+        // Some targets (e.g. WCH-LinkE) may have a leftover error
+        // from earlier cleanup that poisons subsequent operations.
+        // Per RISC-V Debug Spec: writing the current cmderr value
+        // back to the field clears it to 0; writing a different
+        // value sets cmderr to that value.
+        {
+            let abstractcs = self.read_dm_register::<Abstractcs>()?;
+            let cmderr = abstractcs.cmderr();
+            if cmderr != 0 {
+                let mut clear = Abstractcs(0);
+                clear.set_cmderr(cmderr);
+                self.write_dm_register(clear)?;
+            }
+        }
+
         // If requested, force the program buffer privilege level to machine mode
         // so that memory accesses bypass the MMU and use physical addresses.
         //
@@ -1019,6 +1049,35 @@ impl<'state> RiscvCommunicationInterface<'state> {
                          Core may resume with incorrect privilege level."
                     );
                 }
+            }
+        }
+
+        // Clear the step bit in DCSR before resuming.  Some targets
+        // (e.g. CH32H417 via WCH-LinkE) enter debug mode with step=1
+        // set at the hardware level.  Without this the core only
+        // executes a single instruction after each resume.
+        //
+        // We are inside halted_access so the core is already halted —
+        // read_csr / write_csr are safe to call here (they use a
+        // nested halted_access that sees the core is already halted).
+        //
+        // This must run *before* the was_running check because the core
+        // may enter halted_access already halted (e.g. from a previous
+        // single-step trap), and we must clear step regardless.
+        match self.read_csr(0x7b0) {
+            Ok(raw) => {
+                let mut dcsr = Dcsr(raw as u32);
+                if dcsr.step() {
+                    tracing::debug!("Clearing stale step bit in DCSR (was {:#010x})", raw);
+                    dcsr.set_step(false);
+                    let _ = self.write_csr(0x7b0, u64::from(dcsr.0));
+                }
+            }
+            Err(e) => {
+                tracing::debug!(
+                    "Could not read DCSR to clear step bit: {e}. \
+                     Continuing anyway."
+                );
             }
         }
 

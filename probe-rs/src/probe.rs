@@ -518,6 +518,12 @@ impl Probe {
         self.inner.speed_khz()
     }
 
+    /// Provides mutable access to the inner probe for downcasting.
+    /// Used internally by probe-assisted flash operations (e.g., WCH-Link).
+    pub(crate) fn inner_mut(&mut self) -> &mut dyn DebugProbe {
+        self.inner.as_mut()
+    }
+
     /// Check if the probe has an interface to
     /// debug Xtensa chips.
     pub fn has_xtensa_interface(&self) -> bool {

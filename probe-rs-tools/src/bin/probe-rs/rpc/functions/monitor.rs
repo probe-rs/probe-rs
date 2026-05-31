@@ -205,14 +205,15 @@ fn monitor_impl(
         cancellation_token: ctx.cancellation_token(),
     };
 
-    {
+    let probe_assisted_done = {
         let mut session = shared_session.session_blocking();
         request.mode.prepare(&mut session, run_loop.core_id)?;
-    }
+        session.is_probe_assisted()
+    };
 
     let poller = client_key.map(|client| RttPoller {
         rtt_client: client,
-        clear_control_block: request.mode.should_clear_rtt_header(),
+        clear_control_block: request.mode.should_clear_rtt_header() && !probe_assisted_done,
         sender: |message| {
             sender
                 .send_rtt_event(message)

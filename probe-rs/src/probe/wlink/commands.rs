@@ -7,8 +7,8 @@ use super::{DMI_OP_NOP, DMI_OP_READ, DMI_OP_WRITE, RiscvChip, WchLinkError, WchL
 pub enum CommandId {
     /// Probe control
     Control = 0x0D,
-    /// Config chip, flash protection, etc
-    ConfigChip = 0x01,
+    /// Config chip, flash protection, etc (wlink protocol: command 0x06)
+    ConfigChip = 0x06,
     /// Chip reset
     Reset = 0x0b,
     /// Set chip type and connection speed
@@ -317,5 +317,114 @@ impl WchLinkCommand for UnprotectFlash {
 
     fn payload(&self) -> Vec<u8> {
         vec![0x02]
+    }
+}
+
+// ── Flash / Memory Programming Commands ────────────────────
+
+/// Sub-commands for the Program command (command ID 0x02).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum ProgramCommand {
+    /// Erase the entire code flash.
+    EraseFlash = 0x01,
+    /// Start flash write operation.
+    WriteFlash = 0x02,
+    /// Write flash algorithm binary to probe internal buffer.
+    WriteFlashOp = 0x05,
+    /// Acknowledge flash OP written (required after WriteFlashOp).
+    AckFlashOpWritten = 0x07,
+    /// End programming session.
+    End = 0x08,
+    /// Read memory section via probe.
+    ReadMemory = 0x0C,
+}
+
+/// Flash program command (command ID 0x02).
+#[derive(Debug)]
+pub struct FlashProgram {
+    sub_cmd: ProgramCommand,
+}
+
+impl FlashProgram {
+    pub fn new(cmd: ProgramCommand) -> Self {
+        Self { sub_cmd: cmd }
+    }
+}
+
+impl WchLinkCommand for FlashProgram {
+    const COMMAND_ID: CommandId = CommandId::ConfigChip; // overridden in to_bytes
+    type Response = u8;
+
+    fn payload(&self) -> Vec<u8> {
+        vec![self.sub_cmd as u8]
+    }
+
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, super::WchLinkError> {
+        let payload = self.payload();
+        let payload_len = payload.len();
+        buffer[0] = 0x81;
+        buffer[1] = 0x02; // Program command ID
+        buffer[2] = payload_len as u8;
+        buffer[3..payload_len + 3].copy_from_slice(&payload);
+        Ok(payload_len + 3)
+    }
+}
+
+/// Memory write region command (command ID 0x01).
+#[derive(Debug)]
+pub struct FlashSetWriteRegion {
+    pub start_addr: u32,
+    pub len: u32,
+}
+
+impl WchLinkCommand for FlashSetWriteRegion {
+    const COMMAND_ID: CommandId = CommandId::ConfigChip; // overridden in to_bytes
+    type Response = ();
+
+    fn payload(&self) -> Vec<u8> {
+        let mut bytes = Vec::with_capacity(8);
+        bytes.extend_from_slice(&self.start_addr.to_be_bytes());
+        bytes.extend_from_slice(&self.len.to_be_bytes());
+        bytes
+    }
+
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, super::WchLinkError> {
+        let payload = self.payload();
+        let payload_len = payload.len();
+        buffer[0] = 0x81;
+        buffer[1] = 0x01; // SetWriteMemoryRegion command ID
+        buffer[2] = payload_len as u8;
+        buffer[3..payload_len + 3].copy_from_slice(&payload);
+        Ok(payload_len + 3)
+    }
+}
+
+/// Memory read region command (command ID 0x03).
+#[derive(Debug)]
+pub struct FlashSetReadRegion {
+    pub start_addr: u32,
+    pub len: u32,
+}
+
+impl WchLinkCommand for FlashSetReadRegion {
+    const COMMAND_ID: CommandId = CommandId::ConfigChip; // overridden in to_bytes
+    type Response = ();
+
+    fn payload(&self) -> Vec<u8> {
+        let mut bytes = Vec::with_capacity(8);
+        bytes.extend_from_slice(&self.start_addr.to_be_bytes());
+        bytes.extend_from_slice(&self.len.to_be_bytes());
+        bytes
+    }
+
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, super::WchLinkError> {
+        let payload = self.payload();
+        let payload_len = payload.len();
+        buffer[0] = 0x81;
+        buffer[1] = 0x03; // SetReadMemoryRegion command ID
+        buffer[2] = payload_len as u8;
+        buffer[3..payload_len + 3].copy_from_slice(&payload);
+        Ok(payload_len + 3)
     }
 }
