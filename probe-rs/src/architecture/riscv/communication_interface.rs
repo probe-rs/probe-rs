@@ -2293,7 +2293,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
             }
             MemoryAccessMethod::SystemBus => self.perform_memory_read_sysbus(address)?,
             MemoryAccessMethod::AbstractCommand => {
-                unimplemented!("Memory access using abstract commands is not implemented")
+                return Err(crate::Error::NotImplemented(
+                    "Memory access using abstract commands is not implemented",
+                ));
             }
         };
 
@@ -2330,7 +2332,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 self.perform_memory_read_multiple_sysbus(address, data)?;
             }
             MemoryAccessMethod::AbstractCommand => {
-                unimplemented!("Memory access using abstract commands is not implemented")
+                return Err(crate::Error::NotImplemented(
+                    "Memory access using abstract commands is not implemented",
+                ));
             }
         };
 
@@ -2350,7 +2354,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
             }
             MemoryAccessMethod::SystemBus => self.perform_memory_write_sysbus(address, &[data])?,
             MemoryAccessMethod::AbstractCommand => {
-                unimplemented!("Memory access using abstract commands is not implemented")
+                return Err(crate::Error::NotImplemented(
+                    "Memory access using abstract commands is not implemented",
+                ));
             }
         };
 
@@ -2378,7 +2384,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 self.perform_memory_write_multiple_progbuf(address, data, true)?
             }
             MemoryAccessMethod::AbstractCommand => {
-                unimplemented!("Memory access using abstract commands is not implemented")
+                return Err(crate::Error::NotImplemented(
+                    "Memory access using abstract commands is not implemented",
+                ));
             }
         }
 
