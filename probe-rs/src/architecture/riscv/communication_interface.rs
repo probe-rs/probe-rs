@@ -206,6 +206,8 @@ impl ScratchState {
 /// Describes the method which should be used to access memory.
 #[derive(Default, Debug)]
 pub struct MemoryAccessConfig {
+    has_program_buffer: bool,
+
     /// Describes, which memory access method should be used for a given access width
     default_method: HashMap<RiscvBusAccess, MemoryAccessMethod>,
 
@@ -233,7 +235,11 @@ impl MemoryAccessConfig {
         self.default_method
             .get(&access)
             .copied()
-            .unwrap_or(MemoryAccessMethod::ProgramBuffer)
+            .unwrap_or(if self.has_program_buffer {
+                MemoryAccessMethod::ProgramBuffer
+            } else {
+                MemoryAccessMethod::AbstractCommand
+            })
     }
 
     /// Returns the memory access method for the given address and access width.
@@ -710,6 +716,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         let abstractcs: Abstractcs = self.read_dm_register()?;
 
         self.state.progbuf_size = abstractcs.progbufsize() as u8;
+        self.state.memory_access_config.has_program_buffer = self.state.progbuf_size != 0;
         tracing::debug!("Program buffer size: {}", self.state.progbuf_size);
 
         self.state.data_register_count = abstractcs.datacount() as u8;
@@ -1083,28 +1090,21 @@ impl<'state> RiscvCommunicationInterface<'state> {
         tracing::debug!("Reading CSR {:#x}", address);
         // Always try to read register with abstract command, fallback to
         // program buffer if not supported.
-        if self.state.xlen_64 {
-            match self.abstract_cmd_register_read_64(address) {
-                Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
-                    tracing::debug!(
-                        "Could not read CSR {:#x} with abstract command, falling back to program buffer",
-                        address
-                    );
-                    self.read_csr_progbuf(address)
-                }
-                other => other,
-            }
+        let result = if self.state.xlen_64 {
+            self.abstract_cmd_register_read_64(address)
         } else {
-            match self.abstract_cmd_register_read(address) {
-                Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
-                    tracing::debug!(
-                        "Could not read CSR {:#x} with abstract command, falling back to program buffer",
-                        address
-                    );
-                    self.read_csr_progbuf(address)
-                }
-                other => other.map(u64::from),
+            self.abstract_cmd_register_read(address).map(u64::from)
+        };
+
+        match result {
+            Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
+                tracing::debug!(
+                    "Could not read CSR {:#x} with abstract command, falling back to program buffer",
+                    address
+                );
+                self.read_csr_progbuf(address)
             }
+            other => other,
         }
     }
 
@@ -1114,28 +1114,20 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// program buffer if abstract commands are not supported.
     pub(super) fn write_csr(&mut self, address: u16, value: u64) -> Result<(), RiscvError> {
         tracing::debug!("Writing CSR {:#x}", address);
-        if self.state.xlen_64 {
-            match self.abstract_cmd_register_write_64(address, value) {
-                Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
-                    tracing::debug!(
-                        "Could not write CSR {:#x} with abstract command, falling back to program buffer",
-                        address
-                    );
-                    self.write_csr_progbuf(address, value)
-                }
-                other => other,
-            }
+        let result = if self.state.xlen_64 {
+            self.abstract_cmd_register_write_64(address, value)
         } else {
-            match self.abstract_cmd_register_write(address, value as u32) {
-                Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
-                    tracing::debug!(
-                        "Could not write CSR {:#x} with abstract command, falling back to program buffer",
-                        address
-                    );
-                    self.write_csr_progbuf(address, value)
-                }
-                other => other,
+            self.abstract_cmd_register_write(address, value as u32)
+        };
+        match result {
+            Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
+                tracing::debug!(
+                    "Could not write CSR {:#x} with abstract command, falling back to program buffer",
+                    address
+                );
+                self.write_csr_progbuf(address, value)
             }
+            other => other,
         }
     }
 
@@ -2301,7 +2293,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
             }
             MemoryAccessMethod::SystemBus => self.perform_memory_read_sysbus(address)?,
             MemoryAccessMethod::AbstractCommand => {
-                unimplemented!("Memory access using abstract commands is not implemented")
+                return Err(crate::Error::NotImplemented(
+                    "Memory access using abstract commands is not implemented",
+                ));
             }
         };
 
@@ -2338,7 +2332,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 self.perform_memory_read_multiple_sysbus(address, data)?;
             }
             MemoryAccessMethod::AbstractCommand => {
-                unimplemented!("Memory access using abstract commands is not implemented")
+                return Err(crate::Error::NotImplemented(
+                    "Memory access using abstract commands is not implemented",
+                ));
             }
         };
 
@@ -2358,7 +2354,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
             }
             MemoryAccessMethod::SystemBus => self.perform_memory_write_sysbus(address, &[data])?,
             MemoryAccessMethod::AbstractCommand => {
-                unimplemented!("Memory access using abstract commands is not implemented")
+                return Err(crate::Error::NotImplemented(
+                    "Memory access using abstract commands is not implemented",
+                ));
             }
         };
 
@@ -2386,7 +2384,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 self.perform_memory_write_multiple_progbuf(address, data, true)?
             }
             MemoryAccessMethod::AbstractCommand => {
-                unimplemented!("Memory access using abstract commands is not implemented")
+                return Err(crate::Error::NotImplemented(
+                    "Memory access using abstract commands is not implemented",
+                ));
             }
         }
 
