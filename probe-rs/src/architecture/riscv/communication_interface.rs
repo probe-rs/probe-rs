@@ -206,6 +206,8 @@ impl ScratchState {
 /// Describes the method which should be used to access memory.
 #[derive(Default, Debug)]
 pub struct MemoryAccessConfig {
+    has_program_buffer: bool,
+
     /// Describes, which memory access method should be used for a given access width
     default_method: HashMap<RiscvBusAccess, MemoryAccessMethod>,
 
@@ -233,7 +235,11 @@ impl MemoryAccessConfig {
         self.default_method
             .get(&access)
             .copied()
-            .unwrap_or(MemoryAccessMethod::ProgramBuffer)
+            .unwrap_or(if self.has_program_buffer {
+                MemoryAccessMethod::ProgramBuffer
+            } else {
+                MemoryAccessMethod::AbstractCommand
+            })
     }
 
     /// Returns the memory access method for the given address and access width.
@@ -710,6 +716,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         let abstractcs: Abstractcs = self.read_dm_register()?;
 
         self.state.progbuf_size = abstractcs.progbufsize() as u8;
+        self.state.memory_access_config.has_program_buffer = self.state.progbuf_size != 0;
         tracing::debug!("Program buffer size: {}", self.state.progbuf_size);
 
         self.state.data_register_count = abstractcs.datacount() as u8;
