@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crate::{
     rpc::{
-        Key, ObjectStorage,
+        Key, ObjectStorageSlot,
         functions::{
             MonitorEndpoint, MultiTopicPublisher, MultiTopicWriter, RpcResult, RpcSpawnContext,
             RttTopic, SemihostingTopic, WireTxImpl, flash::BootInfo,
@@ -211,7 +211,7 @@ fn monitor_impl(
     }
 
     let poller = client_key.map(|client| RttPoller {
-        rtt_client: client,
+        rtt_client: shared_session.object_storage().cell(client),
         clear_control_block: request.mode.should_clear_rtt_header(),
         sender: |message| {
             sender
@@ -245,7 +245,7 @@ pub struct RttPoller<S>
 where
     S: FnMut(RttEvent) -> anyhow::Result<()>,
 {
-    pub rtt_client: Key<RttClient>,
+    pub rtt_client: ObjectStorageSlot<RttClient>,
     pub clear_control_block: bool,
     pub sender: S,
 }
@@ -254,16 +254,16 @@ impl<S> RunLoopPoller for RttPoller<S>
 where
     S: FnMut(RttEvent) -> anyhow::Result<()>,
 {
-    fn start(&mut self, objs: &ObjectStorage, core: &mut Core<'_>) -> anyhow::Result<()> {
+    fn start(&mut self, core: &mut Core<'_>) -> anyhow::Result<()> {
         if self.clear_control_block {
-            let mut rtt_client = objs.object_mut_blocking(self.rtt_client);
+            let mut rtt_client = self.rtt_client.get_blocking();
             rtt_client.clear_control_block(core)?;
         }
         Ok(())
     }
 
-    fn poll(&mut self, objs: &ObjectStorage, core: &mut Core<'_>) -> anyhow::Result<Duration> {
-        let mut rtt_client = objs.object_mut_blocking(self.rtt_client);
+    fn poll(&mut self, core: &mut Core<'_>) -> anyhow::Result<Duration> {
+        let mut rtt_client = self.rtt_client.get_blocking();
         if !rtt_client.is_attached() && matches!(rtt_client.try_attach(core), Ok(true)) {
             tracing::debug!("Attached to RTT");
             let up_channels = rtt_client
@@ -308,8 +308,8 @@ where
         Ok(next_poll)
     }
 
-    fn exit(&mut self, objs: &ObjectStorage, core: &mut Core<'_>) -> anyhow::Result<()> {
-        let mut rtt_client = objs.object_mut_blocking(self.rtt_client);
+    fn exit(&mut self, core: &mut Core<'_>) -> anyhow::Result<()> {
+        let mut rtt_client = self.rtt_client.get_blocking();
         rtt_client.clean_up(core)?;
         Ok(())
     }
