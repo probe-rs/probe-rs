@@ -5,7 +5,7 @@ manufacturer:
 chip_detection:
   - !RenesasPnr
     target_id: 0x1b0
-  mcu_pn_base: 0x1003c24
+    mcu_pn_base: 0x1003c24
     variants:
       - R7FA2A1AB
 generated_from_pack: true

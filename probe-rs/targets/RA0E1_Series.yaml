@@ -6,7 +6,7 @@ chip_detection:
   - !RenesasPnr
     target_id: 0x600
     reverse_string: true
-  mcu_pn_base: 0x1011080
+    mcu_pn_base: 0x1011080
     variants:
       - R7FA0E107
       - R7FA0E105
