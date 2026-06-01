@@ -103,6 +103,8 @@ pub struct DownChannelConfig {
     pub channel: u32,
     #[serde(default)]
     pub mode: Option<ChannelMode>,
+    #[serde(default)]
+    pub socket: Option<SocketAddr>,
 }
 
 /// The rtt config struct holding all the possible rtt options.

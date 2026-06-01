@@ -85,8 +85,11 @@ up_channels = [
 # mode     (Optional) - RTT operation mode. Describes how the target handles RTT outputs that won't
 #                       fit in the buffer. If left unset, the firmware will determine the default
 #                       for each RTT down channel.
+# socket   (Optional) - Client socket address to connect to for TCP forwarding.
+#                       Data received from TCP will be forwarded to the RTT down channel.
+#                       For down-only channels, configure this and create a tab with only down_channel set.
 down_channels = [
-    # { channel = 0, mode = "BlockIfFull" }
+    # { channel = 0, mode = "BlockIfFull", socket = "127.0.0.1:12346" }
 ]
 
 # UI tab settings. All up channels are displayed, except when hidden here. You can specify how each

@@ -8,7 +8,7 @@ use probe_rs::Core;
 
 use crate::{cmd::cargo_embed::rttui::channel::ChannelData, util::rtt::client::RttClient};
 
-use super::channel::UpChannel;
+use super::channel::UpDownChannel;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TabConfig {
@@ -29,7 +29,7 @@ pub struct TabConfig {
 }
 
 pub struct Tab {
-    up_channel: Rc<RefCell<UpChannel>>,
+    channel: Rc<RefCell<UpDownChannel>>,
     down_channel: Option<(u32, String)>,
     name: String,
     scroll_offset: usize,
@@ -40,14 +40,17 @@ pub struct Tab {
 
 impl Tab {
     pub fn new(
-        up_channel: Rc<RefCell<UpChannel>>,
+        channel: Rc<RefCell<UpDownChannel>>,
         down_channel: Option<u32>,
         name: Option<String>,
     ) -> Self {
+        // Use the down channel from the unified channel if available, otherwise use the tab config
+        let effective_down_channel = channel.borrow().down_channel_number().or(down_channel);
+
         Self {
-            name: name.unwrap_or_else(|| up_channel.borrow().channel_name().to_string()),
-            up_channel,
-            down_channel: down_channel.map(|down| (down, String::new())),
+            name: name.unwrap_or_else(|| channel.borrow().channel_name().to_string()),
+            channel,
+            down_channel: effective_down_channel.map(|down| (down, String::new())),
             scroll_offset: 0,
             messages: Vec::new(),
             last_processed: 0,
@@ -63,8 +66,8 @@ impl Tab {
         self.scroll_offset = value;
     }
 
-    pub fn up_channel(&self) -> Ref<'_, UpChannel> {
-        self.up_channel.borrow()
+    pub fn up_channel(&self) -> Ref<'_, UpDownChannel> {
+        self.channel.borrow()
     }
 
     pub fn scroll_up(&mut self, lines: usize) {
@@ -119,7 +122,7 @@ impl Tab {
         }
 
         let old_message_count = self.messages.len();
-        match &self.up_channel.borrow().data {
+        match &self.channel.borrow().data {
             ChannelData::Strings { messages, .. } => {
                 // We strip ANSI sequences because they interfere with text wrapping.
                 //  - It's not obvious how we could tell defmt_parser to not emit ANSI sequences.
