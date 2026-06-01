@@ -2,7 +2,7 @@
 //!
 //! This module implements communication with a
 //! Debug Module, as described in the RISC-V debug
-//! specification v0.13.2 .
+//! specification v0.13 and v1.0.
 
 use crate::architecture::riscv::dtm::DtmAccess;
 use crate::memory::valid_32bit_address;
@@ -151,10 +151,21 @@ pub enum DebugModuleVersion {
     Version0_11,
     /// The debug module conforms to the version 0.13 of the RISC-V Debug Specification.
     Version0_13,
+    /// The debug module conforms to the version 1.0 of the RISC-V Debug Specification.
+    Version1_0,
     /// The debug module is present, but does not conform to any available version of the RISC-V Debug Specification.
     NonConforming,
     /// Unknown debug module version.
     Unknown(u8),
+}
+
+impl DebugModuleVersion {
+    fn is_implemented(self) -> bool {
+        matches!(
+            self,
+            DebugModuleVersion::Version0_13 | DebugModuleVersion::Version1_0
+        )
+    }
 }
 
 impl From<u8> for DebugModuleVersion {
@@ -163,6 +174,7 @@ impl From<u8> for DebugModuleVersion {
             0 => Self::NoModule,
             1 => Self::Version0_11,
             2 => Self::Version0_13,
+            3 => Self::Version1_0,
             15 => Self::NonConforming,
             other => Self::Unknown(other),
         }
@@ -615,8 +627,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         self.state.debug_version = DebugModuleVersion::from(status.version() as u8);
         self.state.is_halted = status.allhalted();
 
-        // Only version of 0.13 of the debug specification is currently supported.
-        if self.state.debug_version != DebugModuleVersion::Version0_13 {
+        if !self.state.debug_version.is_implemented() {
             return Err(RiscvError::UnsupportedDebugModuleVersion(
                 self.state.debug_version,
             ));
@@ -675,11 +686,19 @@ impl<'state> RiscvCommunicationInterface<'state> {
         // Check if the anynonexistent works
         let status: Dmstatus = self.read_dm_register()?;
 
+        // Spec 1.0: stickyunavail means allunavail/anyunavail stay set until
+        // the debugger writes ackunavail=1. Check once and apply throughout.
+        let sticky_unavail = status.stickyunavail();
+
         if status.anynonexistent() {
             for hart_index in 1..max_hart_index {
                 let mut control = Dmcontrol(0);
                 control.set_dmactive(true);
                 control.set_hartsel(hart_index);
+                // Clear any sticky unavail state so we read fresh availability.
+                if sticky_unavail {
+                    control.set_ackunavail(true);
+                }
 
                 self.schedule_write_dm_register(control)?;
 
@@ -704,10 +723,15 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         self.state.num_harts = num_harts;
 
-        // Select hart 0 again - assuming all harts are same in regards of discovered features
+        // Select hart 0 again - assuming all harts are same in regards of discovered features.
+        // For spec 1.0 DMs, set the keepalive hint to discourage the hart from
+        // entering a low-power state while we are attached.
         let mut control = Dmcontrol(0);
         control.set_dmactive(true);
         control.set_hartsel(0);
+        if self.state.debug_version == DebugModuleVersion::Version1_0 {
+            control.set_setkeepalive(true);
+        }
 
         self.schedule_write_dm_register(control)?;
 
@@ -2554,6 +2578,16 @@ impl<'state> RiscvCommunicationInterface<'state> {
         loop {
             // check that cores have reset
             let readback: Dmstatus = self.read_dm_register()?;
+
+            // Spec 1.0: poll ndmresetpending until the system finishes resetting.
+            if self.state.debug_version == DebugModuleVersion::Version1_0
+                && readback.ndmresetpending()
+            {
+                if start.elapsed() > timeout {
+                    return Err(RiscvError::RequestNotAcknowledged);
+                }
+                continue;
+            }
 
             if readback.allhavereset() && readback.allhalted() {
                 break;
