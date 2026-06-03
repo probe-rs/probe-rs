@@ -93,9 +93,12 @@ pub trait XlenMode: sealed::Sealed + 'static {
     /// Repack a mutated low-32 `mcontrol` value back into a full `tdata1`,
     /// preserving XLEN-specific upper bits from the original raw read.
     fn repack_tdata1(raw: u64, ctrl_low32: u32) -> u64;
-    /// Build a fresh `tdata1` value for a new execution breakpoint from the low-32
-    /// mcontrol fields.
-    fn build_new_exec_tdata1(ctrl_low32: u32) -> u64;
+    /// Build a fresh `tdata1` value for a new execution breakpoint.
+    ///
+    /// `trigger_type` must be 2 (mcontrol) or 6 (mcontrol6). `ctrl_low32`
+    /// holds the common lower-32 control bits (action, match, m, u, execute, …)
+    /// which are position-compatible between the two trigger types.
+    fn build_new_exec_tdata1(trigger_type: u32, ctrl_low32: u32) -> u64;
     /// Validate a breakpoint address for this XLEN. RV32 restricts to 32 bits.
     fn validate_bp_address(addr: u64) -> Result<u64, Error>;
     /// Handle an unknown semihosting command, potentially forwarding to the
@@ -175,9 +178,9 @@ impl XlenMode for Xlen32 {
         u64::from(ctrl_low32)
     }
 
-    fn build_new_exec_tdata1(ctrl_low32: u32) -> u64 {
+    fn build_new_exec_tdata1(trigger_type: u32, ctrl_low32: u32) -> u64 {
         let mut ctrl = Mcontrol(ctrl_low32);
-        ctrl.set_type(2);
+        ctrl.set_type(trigger_type);
         ctrl.set_dmode(true);
         u64::from(ctrl.0)
     }
@@ -250,8 +253,8 @@ impl XlenMode for Xlen64 {
         repack_mcontrol64(raw, Mcontrol(ctrl_low32))
     }
 
-    fn build_new_exec_tdata1(ctrl_low32: u32) -> u64 {
-        (2u64 << 60) | (1u64 << 59) | u64::from(ctrl_low32)
+    fn build_new_exec_tdata1(trigger_type: u32, ctrl_low32: u32) -> u64 {
+        (u64::from(trigger_type) << 60) | (1u64 << 59) | u64::from(ctrl_low32)
     }
 
     fn validate_bp_address(addr: u64) -> Result<u64, Error> {
@@ -692,7 +695,8 @@ impl<X: XlenMode> CoreInterface for RiscvCore<'_, X> {
                 tdata_value.execute() || tdata_value.store() || tdata_value.load();
 
             // Only return if the trigger is for an execution debug action in all modes.
-            if trigger_type == 0b10
+            // Accept both type 2 (mcontrol) and type 6 (mcontrol6, spec 1.0).
+            if (trigger_type == 2 || trigger_type == 6)
                 && tdata_value.action() == 1
                 && tdata_value.match_() == 0
                 && trigger_any_mode_active
@@ -727,8 +731,8 @@ impl<X: XlenMode> CoreInterface for RiscvCore<'_, X> {
 
             // Only modify the trigger if it is for an execution debug action
             // in all modes (probe-rs enabled it) or no modes (we previously
-            // disabled it).
-            if trigger_type == 2
+            // disabled it). Accept both type 2 (mcontrol) and type 6 (mcontrol6).
+            if (trigger_type == 2 || trigger_type == 6)
                 && tdata_value.action() == 1
                 && tdata_value.match_() == 0
                 && tdata_value.execute()
@@ -763,26 +767,28 @@ impl<X: XlenMode> CoreInterface for RiscvCore<'_, X> {
         // select requested trigger
         self.interface.write_csr(TSELECT, bp_unit_index as u64)?;
 
-        // verify the trigger has the correct type
+        // Verify the trigger is a supported type for execution breakpoints:
+        // type 2 = mcontrol (spec 0.13), type 6 = mcontrol6 (spec 1.0).
         let (trigger_type, _) = X::unpack_tdata1(self.interface.read_csr(TDATA1)?);
-        if trigger_type != 0b10 {
+        if trigger_type != 2 && trigger_type != 6 {
             return Err(RiscvError::UnexpectedTriggerType(trigger_type).into());
         }
 
-        // Setup the trigger
+        // Build the control word. Bits 0–15 are position-compatible between
+        // mcontrol and mcontrol6, so a single Mcontrol value covers both.
         let mut instruction_breakpoint = Mcontrol(0);
-        // Enter debug mode
+        // Enter debug mode on trigger fire
         instruction_breakpoint.set_action(1);
-        // Match exactly the value in tdata2
+        // Exact address match
         instruction_breakpoint.set_match(0);
         instruction_breakpoint.set_m(true);
         instruction_breakpoint.set_u(true);
-        // Trigger when instruction is executed
+        // Trigger on instruction fetch
         instruction_breakpoint.set_execute(true);
-        // Match address
+        // Match on address, not data value
         instruction_breakpoint.set_select(false);
 
-        let tdata1_val = X::build_new_exec_tdata1(instruction_breakpoint.0);
+        let tdata1_val = X::build_new_exec_tdata1(trigger_type, instruction_breakpoint.0);
 
         self.interface.write_csr(TDATA1, 0)?;
         self.interface.write_csr(TDATA2, addr)?;
@@ -951,6 +957,12 @@ memory_mapped_bitfield_register! {
     /// Writing 1 clears the `havereset` flag of selected harts.
     pub _, set_ackhavereset: 28;
 
+    /// Clears the `unavail` state for any selected harts that are currently
+    /// available. When `stickyunavail` is 1 in `dmstatus`, a hart's `unavail`
+    /// bit will not clear on its own; this bit must be written 1 to clear it.
+    /// Optional (spec 1.0).
+    pub _, set_ackunavail: 27;
+
     /// Selects the definition of currently selected harts. If 1, multiple harts may be selected.
     pub hasel, set_hasel: 26;
 
@@ -965,6 +977,15 @@ memory_mapped_bitfield_register! {
 
     /// Clears the halt-on-reset request bit for all currently selected harts. Optional.
     pub _, set_clrresethaltreq: 2;
+
+    /// Sets the `keepalive` hint for all currently selected harts. When set,
+    /// hardware should attempt to keep the hart powered and available for the
+    /// debugger (e.g. prevent entry into a low-power state). Optional (spec 1.0).
+    pub _, set_setkeepalive: 5;
+
+    /// Clears the `keepalive` hint for all currently selected harts. Optional
+    /// (spec 1.0).
+    pub _, set_clrkeepalive: 4;
 
     /// This bit controls the reset signal from the DM to the rest of the system.
     pub ndmreset, set_ndmreset: 1;
@@ -998,6 +1019,17 @@ memory_mapped_bitfield_register! {
     pub struct Dmstatus(u32);
     0x11, "dmstatus",
     impl From;
+
+    /// 1 when the Debug Module is in the process of performing an ndmreset.
+    /// Reads as 1 whenever `ndmreset` in `dmcontrol` is 1. Optional; hardwired
+    /// to 0 on implementations that do not support this field (spec 1.0).
+    pub ndmresetpending, _: 24;
+
+    /// When 1, the `allunavail` and `anyunavail` fields become sticky: once set
+    /// they remain set until explicitly cleared via `ackunavail` in `dmcontrol`.
+    /// Optional; hardwired to 0 on implementations that do not support this
+    /// field (spec 1.0).
+    pub stickyunavail, _: 23;
 
     /// If 1, then there is an implicit ebreak instruction
     /// at the non-existent word immediately after the
@@ -1070,7 +1102,12 @@ bitfield! {
     struct Dcsr(u32);
     impl Debug;
 
+    /// Debug module version. Value 4 indicates spec 1.0; value 3 indicates 0.13.
     xdebugver, _: 31, 28;
+    /// 1 causes ebreak in VS-mode to be redirected to Debug Mode (spec 1.0).
+    ebreakvs, set_ebreakvs: 17;
+    /// 1 causes ebreak in VU-mode to be redirected to Debug Mode (spec 1.0).
+    ebreakvu, set_ebreakvu: 16;
     ebreakm, set_ebreakm: 15;
     ebreaks, set_ebreaks: 13;
     ebreaku, set_ebreaku: 12;
@@ -1078,6 +1115,9 @@ bitfield! {
     stopcount, set_stopcount: 10;
     stoptime, set_stoptime: 9;
     cause, set_cause: 8, 6;
+    /// Virtualization mode (V) the hart was in when Debug Mode was entered.
+    /// 0 on harts that do not support the hypervisor extension (spec 1.0).
+    v, set_v: 5;
     mprven, set_mprven: 4;
     nmip, _: 3;
     step, set_step: 2;
@@ -1092,6 +1132,10 @@ memory_mapped_bitfield_register! {
 
     progbufsize, _: 28, 24;
     busy, _: 12;
+    /// When 1, abstract commands execute with the hart's current privilege level
+    /// and `mstatus.MPRV` setting instead of being forced to machine mode.
+    /// Optional; hardwired to 0 if not implemented (spec 1.0).
+    relaxedpriv, set_relaxedpriv: 11;
     cmderr, set_cmderr: 10, 8;
     datacount, _: 3, 0;
 }
@@ -1141,6 +1185,7 @@ memory_mapped_bitfield_register! { pub struct Progbuf14(u32); 0x2E, "progbuf14",
 memory_mapped_bitfield_register! { pub struct Progbuf15(u32); 0x2F, "progbuf15", impl From; }
 
 bitfield! {
+    /// Trigger type 2 — legacy address/data match control (mcontrol).
     struct Mcontrol(u32);
     impl Debug;
 
@@ -1151,6 +1196,41 @@ bitfield! {
     select, set_select: 19;
     timing, set_timing: 18;
     sizelo, set_sizelo: 17, 16;
+    action, set_action: 15, 12;
+    chain, set_chain: 11;
+    match_, set_match: 10, 7;
+    m, set_m: 6;
+    s, set_s: 4;
+    u, set_u: 3;
+    execute, set_execute: 2;
+    store, set_store: 1;
+    load, set_load: 0;
+}
+
+bitfield! {
+    /// Trigger type 6 — new address/data match control (mcontrol6, spec 1.0).
+    ///
+    /// Low bits 0–15 are position-compatible with `Mcontrol`. Differences start
+    /// at bit 16: a unified 4-bit `size` field replaces the split `sizelo`/`sizehi`
+    /// of the legacy type, and new `hit0`, `vu`, `vs`, and `hit1` bits are added.
+    struct Mcontrol6(u32);
+    impl Debug;
+
+    type_, set_type: 31, 28;
+    dmode, set_dmode: 27;
+    /// MSB of the 2-bit `{hit1, hit0}` field. Hardware sets this on a trigger
+    /// fire; the debugger should write 0 to clear after observing it.
+    hit1, set_hit1: 25;
+    /// When 1, the trigger is active in VS-mode (hypervisor guest supervisor).
+    vs, set_vs: 24;
+    /// When 1, the trigger is active in VU-mode (hypervisor guest user).
+    vu, set_vu: 23;
+    /// LSB of the 2-bit `{hit1, hit0}` field.
+    hit0, set_hit0: 22;
+    select, set_select: 21;
+    /// Unified size field (4 bits). Replaces the `sizelo`/`sizehi` split of
+    /// `mcontrol`. Values match those of `sizelo` from the legacy trigger.
+    size, set_size: 19, 16;
     action, set_action: 15, 12;
     chain, set_chain: 11;
     match_, set_match: 10, 7;
