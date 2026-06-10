@@ -1,5 +1,5 @@
-name: TLE98xx Series
-generated_from_pack: true
+name: TLE988x_9x Series
+generated_from_pack: false
 pack_file_release: 1.3.0
 variants:
 - name: TLE9881_2QTW60
