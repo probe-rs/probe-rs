@@ -1,5 +1,5 @@
-name: TLE98xx Series
-generated_from_pack: true
+name: TLE987x Series
+generated_from_pack: false
 pack_file_release: 1.6.2
 variants:
 - name: TLE9871QXA20
@@ -44,8 +44,6 @@ variants:
       end: 0x18000c00
     cores:
     - main
-    access:
-      execute: false
   flash_algorithms:
   - tle9871
   - tle9871_eep
@@ -91,8 +89,6 @@ variants:
       end: 0x18002000
     cores:
     - main
-    access:
-      execute: false
   flash_algorithms:
   - tle9872
   - tle9872_eep
@@ -138,8 +134,6 @@ variants:
       end: 0x18002000
     cores:
     - main
-    access:
-      execute: false
   flash_algorithms:
   - tle9872
   - tle9872_eep
@@ -185,8 +179,6 @@ variants:
       end: 0x18002000
     cores:
     - main
-    access:
-      execute: false
   flash_algorithms:
   - tle9872
   - tle9872_eep
@@ -232,8 +224,6 @@ variants:
       end: 0x18000c00
     cores:
     - main
-    access:
-      execute: false
   flash_algorithms:
   - tle9873
   - tle9873_eep
@@ -279,8 +269,6 @@ variants:
       end: 0x18001800
     cores:
     - main
-    access:
-      execute: false
   flash_algorithms:
   - tle9877
   - tle9877_eep
@@ -326,8 +314,6 @@ variants:
       end: 0x18001800
     cores:
     - main
-    access:
-      execute: false
   flash_algorithms:
   - tle9877
   - tle9877_eep
@@ -373,8 +359,6 @@ variants:
       end: 0x18001800
     cores:
     - main
-    access:
-      execute: false
   flash_algorithms:
   - tle9877
   - tle9877_eep
@@ -420,8 +404,6 @@ variants:
       end: 0x18001800
     cores:
     - main
-    access:
-      execute: false
   flash_algorithms:
   - tle9879
   - tle9879_eep
@@ -467,8 +449,6 @@ variants:
       end: 0x18001800
     cores:
     - main
-    access:
-      execute: false
   flash_algorithms:
   - tle9879
   - tle9879_eep
@@ -514,8 +494,6 @@ variants:
       end: 0x18001800
     cores:
     - main
-    access:
-      execute: false
   flash_algorithms:
   - tle9879
   - tle9879_eep
@@ -561,8 +539,6 @@ variants:
       end: 0x18001800
     cores:
     - main
-    access:
-      execute: false
   flash_algorithms:
   - tle9879
   - tle9879_eep
