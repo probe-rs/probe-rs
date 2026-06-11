@@ -506,6 +506,20 @@ mod tests {
         assert!(registry.get_target_by_name("nrf51822_Xxaa").is_ok());
     }
 
+    #[cfg(feature = "builtin-targets")]
+    #[test]
+    fn ws63_uses_hisilicon_arm_sequence() {
+        // The WS63 RISC-V core is reached via an ARM CoreSight DAP, so its vendor
+        // debug sequence must be an ARM one (it hooks the DAP-level bring-up).
+        let registry = Registry::from_builtin_families();
+        let target = registry.get_target_by_name("WS63").unwrap();
+        assert!(
+            matches!(target.debug_sequence, crate::config::DebugSequence::Arm(_)),
+            "WS63 should resolve to a HiSilicon ARM debug sequence, got {:?}",
+            target.debug_sequence
+        );
+    }
+
     #[test]
     fn validate_generic_targets() {
         let mut families = vec![];

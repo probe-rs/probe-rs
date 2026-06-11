@@ -1,14 +1,14 @@
 # Adding HiSilicon WS63 (Hi3863) and BS21/BS2X (Hi2821) to probe-rs
 
-Status: **WIP.** The core enabler — the mem-AP DTM `dm_base` change (item 1 below)
-— has **landed**, and **WS63 is now a built-in target** (`probe-rs/targets/
-HiSilicon_WS63.yaml`, debug-only). This wires the **DTM + target layer** (the DMI
-path can now address a DM at `0x80000000`); it is **not** an end-to-end "attach
-works" claim. Before attach succeeds on silicon you still need item 3 (a vendor
-`DebugSequence` for debug-port enable + CSR expose), AP0 enumeration to be
-verified, the external GPIO_04-high-at-power-on strap, and — for flashing — item
-4 (flash algorithm). All hardware-gated; see "probe-rs changes — status" and
-"Open items". BS21 stays a scaffold until its DM base is confirmed.
+Status: **WIP.** Items 1–3 have **landed**: the mem-AP DTM `dm_base` change, the
+**WS63 built-in target** (`probe-rs/targets/HiSilicon_WS63.yaml`, debug-only), and
+the **HiSilicon vendor `DebugSequence`** (`probe-rs/src/vendor/hisilicon/`) that
+hooks the ARM-DAP debug-port enable. This wires the full software attach path
+(DTM + target + DAP bring-up); it is still **not** validated on silicon. Attach
+additionally depends on the external **GPIO_04-high-at-power-on strap** (which
+probe-rs cannot perform) and on AP0 enumerating as expected. Flashing needs item
+4 (flash algorithm). All remaining gates are hardware. BS21 stays a scaffold until
+its DM base is confirmed. See "probe-rs changes — status" and "Open items".
 
 ## The chips
 
@@ -92,18 +92,24 @@ what stand between "wired" and "attach actually succeeds on a board".
    `validate_builtin` test. **BS21 stays a scaffold** (`BS21.wip.yaml`) until its
    DM base + AP index are confirmed on hardware.
 
-3. ⬜ **STILL NEEDED for hardware attach — debug sequence**
-   (`probe-rs/src/vendor/hisilicon/`, new + register in `probe-rs/src/vendor/mod.rs`).
-   WS63 currently falls back to the default RISC-V sequence, which does **no**
-   chip bring-up. A vendor `DebugSequence` must:
-   - run the debug-port enable (WS63: GPIO_04-debug path / `mww 0x40010260 1`
-     equivalent; BS21: `DAP_H2P_AUTOCG_BYPASS 0x52000190`),
-   - `expose_csrs` for the LOCI custom CSRs (932-943, 1984-1999, 2008),
-   - set `prefer_sba = false`.
-   Until this exists, items 1–2 make the DTM/target layer **wired but not
-   validated**: end-to-end attach on silicon will likely fail without it (and
-   without the external prerequisite that **GPIO_04 is high at power-on**, which
-   probe-rs cannot enforce — it's a board/strap concern).
+3. ✅ **DONE — vendor debug sequence** `probe-rs/src/vendor/hisilicon/`
+   (`HiSilicon` vendor + `Ws63` sequence; registered in `vendor/mod.rs`).
+   - Because WS63 is `ArmWithRiscv`, the chip bring-up must hook the **ARM** DAP
+     (a RISC-V `on_connect` runs too late — after `enter_debug_mode` first touches
+     the DM; and for `ArmWithRiscv` targets the DAP path uses the Arm sequence).
+     So the vendor returns `DebugSequence::Arm(Ws63)`.
+   - `Ws63::debug_device_unlock` performs the debug-port enable
+     (`0x40010260 = 1`, "enable coresight-swd mode") as a **best-effort** write:
+     if it fails it logs and continues, because on most boards the port is already
+     enabled by the external **GPIO_04-high-at-power-on** strap (which probe-rs
+     cannot do).
+   - End-to-end wiring is covered by the `ws63_uses_hisilicon_arm_sequence` test.
+   - `expose_csrs` for the LOCI CSRs has **no probe-rs equivalent** (register
+     lists are compile-time `static`; a sequence can read/write any 12-bit CSR but
+     can't add them to the debugger's register view) → **N/A**. `prefer_sba` is
+     **moot** on the mem-AP path: DMI/memory access for a mem-AP RISC-V core always
+     routes through the ARM AP regardless, so there is nothing to toggle.
+   - Still **unvalidated on silicon** (needs GPIO_04 strap + AP0 to enumerate).
 
 4. ⬜ **STILL NEEDED for flashing — flash algorithm** (hardware-gated). probe-rs
    flash algos are position-independent loader blobs (built via the

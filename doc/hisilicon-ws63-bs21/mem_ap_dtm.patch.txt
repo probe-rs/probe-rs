@@ -1,3 +1,10 @@
+STATUS: LANDED (commit 54eaa61). This was the design sketch; the actual change is
+in the tree (probe-rs-target RiscvCoreAccessOptions.dm_base + MemApDtm + session.rs)
+and matches this except `dm_base` is a plain `u64` (#[serde(default)] → 0), not an
+Option. Kept for historical/rationale reference.
+
+----
+
 Sketch of the ONE core change needed: let the RISC-V mem-AP DTM target a DM that
 is not at AP offset 0. RP2350's DM is at offset 0 (current behaviour); WS63's is at
 0x80000000. Optional field, default 0 → RP2350 and all existing targets unchanged.
