@@ -105,8 +105,9 @@ enum ArchitectureInterface {
     /// ARM DAP with RISC-V cores reachable via mem-AP (e.g. RP2350).
     ArmWithRiscv {
         arm: Box<dyn ArmDebugInterface + 'static>,
-        /// Per core_id: Some((ap, state)) for RISC-V cores over mem-AP, None otherwise.
-        riscv_mem_ap_cores: Vec<Option<(FullyQualifiedApAddress, RiscvDebugInterfaceState)>>,
+        /// Per core_id: Some((ap, dm_base, state)) for RISC-V cores over mem-AP,
+        /// None otherwise. `dm_base` is the Debug Module base within the AP.
+        riscv_mem_ap_cores: Vec<Option<(FullyQualifiedApAddress, u64, RiscvDebugInterfaceState)>>,
     },
     Jtag(Probe, Vec<JtagInterface>),
 }
@@ -139,9 +140,9 @@ impl ArchitectureInterface {
                 riscv_mem_ap_cores,
             } => {
                 let core_id = combined_state.id();
-                if let Some(Some((ap, state))) = riscv_mem_ap_cores.get_mut(core_id) {
+                if let Some(Some((ap, dm_base, state))) = riscv_mem_ap_cores.get_mut(core_id) {
                     let memory = arm.memory_interface(ap).map_err(Error::Arm)?;
-                    let dtm = MemApDtm::new(memory);
+                    let dtm = MemApDtm::new(memory, *dm_base);
                     let iface =
                         RiscvCommunicationInterface::new(Box::new(dtm), &mut state.interface_state);
                     combined_state.attach_riscv(target, iface)
@@ -385,16 +386,21 @@ impl Session {
         target: &Target,
         interface: Box<dyn ArmDebugInterface + 'static>,
     ) -> Result<ArchitectureInterface, Error> {
-        use probe_rs_target::Architecture;
+        use probe_rs_target::{Architecture, CoreAccessOptions};
         let mut riscv_mem_ap_cores: Vec<
-            Option<(FullyQualifiedApAddress, RiscvDebugInterfaceState)>,
+            Option<(FullyQualifiedApAddress, u64, RiscvDebugInterfaceState)>,
         > = target
             .cores
             .iter()
             .map(|core| {
                 if core.core_type.architecture() == Architecture::Riscv {
-                    core.memory_ap()
-                        .map(|ap| (ap, RiscvDebugInterfaceState::new(Box::new(()))))
+                    core.memory_ap().map(|ap| {
+                        let dm_base = match &core.core_access_options {
+                            CoreAccessOptions::Riscv(opts) => opts.dm_base,
+                            _ => 0,
+                        };
+                        (ap, dm_base, RiscvDebugInterfaceState::new(Box::new(())))
+                    })
                 } else {
                     None
                 }
@@ -403,9 +409,9 @@ impl Session {
         let has_riscv_mem_ap = riscv_mem_ap_cores.iter().any(Option::is_some);
         if has_riscv_mem_ap {
             let mut arm = interface;
-            for (ap, state) in riscv_mem_ap_cores.iter_mut().flatten() {
+            for (ap, dm_base, state) in riscv_mem_ap_cores.iter_mut().flatten() {
                 let memory = arm.memory_interface(ap).map_err(Error::Arm)?;
-                let dtm = MemApDtm::new(memory);
+                let dtm = MemApDtm::new(memory, *dm_base);
                 let mut iface =
                     RiscvCommunicationInterface::new(Box::new(dtm), &mut state.interface_state);
                 iface.enter_debug_mode().map_err(Error::Riscv)?;
@@ -737,9 +743,9 @@ impl Session {
                 arm,
                 riscv_mem_ap_cores,
             } => {
-                if let Some(Some((ap, state))) = riscv_mem_ap_cores.get_mut(core_id) {
+                if let Some(Some((ap, dm_base, state))) = riscv_mem_ap_cores.get_mut(core_id) {
                     let memory = arm.memory_interface(ap).map_err(Error::Arm)?;
-                    let dtm = MemApDtm::new(memory);
+                    let dtm = MemApDtm::new(memory, *dm_base);
                     Ok(RiscvCommunicationInterface::new(
                         Box::new(dtm),
                         &mut state.interface_state,

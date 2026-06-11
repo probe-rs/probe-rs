@@ -1,0 +1,44 @@
+# HiSilicon WS63 (Hi3863) — RISC-V "riscv31" core (RV32IMFC_Zicsr + custom CSRs)
+# whose Debug Module is reached through an ARM CoreSight DAP (AHB-AP 0, DM base
+# 0x80000000), the same topology probe-rs uses for RP235x (mem-AP DTM).
+#
+# Scope: DEBUG bring-up (attach / halt / run / memory / registers / breakpoints)
+# via the mem-AP DTM. Flashing is NOT yet supported — no flash algorithm is
+# defined for the WS63 SFC NOR controller (port from OpenOCD src/flash/nor/ws63.c).
+# Unvalidated on silicon; AP/DM values reverse-engineered from HiSpark Studio's
+# patched OpenOCD (tcl/target/vendorhm/WS63-*.cfg). See
+# doc/hisilicon-ws63-bs21/README.md.
+name: HiSilicon WS63
+variants:
+- name: WS63
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      # RISC-V DM behind CoreSight AP 0 (OpenOCD -apsel 0), DM @ 0x80000000.
+      mem_ap: !v1 0
+      dm_base: 0x80000000
+  memory_map:
+  - !Nvm                      # XIP SPI NOR flash (8 MB). No flash algo yet.
+    range:
+      start: 0x200000
+      end: 0xa00000
+    cores: [main]
+    access:
+      boot: true
+  - !Ram                      # L2 SRAM (576 K default)
+    range:
+      start: 0xa00000
+      end: 0xa90000
+    cores: [main]
+  - !Ram                      # ITCM
+    range:
+      start: 0x14c000
+      end: 0x150000
+    cores: [main]
+  - !Ram                      # DTCM
+    range:
+      start: 0x180000
+      end: 0x184000
+    cores: [main]

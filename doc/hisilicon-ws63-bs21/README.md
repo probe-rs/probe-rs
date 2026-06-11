@@ -1,8 +1,10 @@
 # Adding HiSilicon WS63 (Hi3863) and BS21/BS2X (Hi2821) to probe-rs
 
-Status: **WIP / design + scaffold.** Debug bring-up (attach/halt/memory/registers)
-is achievable with the changes below; flash programming and on-silicon validation
-are open and need hardware (see "Open items").
+Status: **WIP.** The core enabler — the mem-AP DTM `dm_base` change (item 1 below)
+— has **landed**, and **WS63 is now a built-in target** (`probe-rs/targets/
+HiSilicon_WS63.yaml`, debug-only). Debug bring-up (attach/halt/memory/registers)
+is wired; flash programming and on-silicon validation remain open and need
+hardware (see "Open items"). BS21 stays a scaffold until its DM base is confirmed.
 
 ## The chips
 

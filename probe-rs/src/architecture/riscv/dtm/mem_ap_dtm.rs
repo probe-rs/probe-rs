@@ -24,6 +24,9 @@ enum DmiOp {
 /// DTM that performs DMI accesses via a CoreSight memory access port.
 pub struct MemApDtm<'state> {
     memory: Box<dyn ArmMemoryInterface + 'state>,
+    /// Base address of the Debug Module within the mem-AP address space. The DMI
+    /// register window starts here (RP235x = 0; HiSilicon WS63 = 0x8000_0000).
+    dm_base: u64,
     pending: Vec<(DeferredResultIndex, DmiOp)>,
     results: DeferredResultSet<CommandResult>,
 }
@@ -45,9 +48,13 @@ fn arm_error_to_riscv(e: ArmError) -> RiscvError {
 
 impl<'state> MemApDtm<'state> {
     /// Creates a DTM that performs DMI accesses via the given memory interface.
-    pub fn new(memory: Box<dyn ArmMemoryInterface + 'state>) -> Self {
+    ///
+    /// `dm_base` is the address of the Debug Module within the mem-AP address
+    /// space (0 when the DM is at the AP base, as on RP235x).
+    pub fn new(memory: Box<dyn ArmMemoryInterface + 'state>, dm_base: u64) -> Self {
         Self {
             memory,
+            dm_base,
             pending: Vec::new(),
             results: DeferredResultSet::new(),
         }
@@ -55,7 +62,7 @@ impl<'state> MemApDtm<'state> {
 
     /// Calculate offset of DMI register.
     fn dmi_register_to_ap_address(&self, dmi_register: u64) -> u64 {
-        dmi_register * 4
+        self.dm_base + dmi_register * 4
     }
 }
 
