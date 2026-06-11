@@ -1,0 +1,57 @@
+Sketch of the ONE core change needed: let the RISC-V mem-AP DTM target a DM that
+is not at AP offset 0. RP2350's DM is at offset 0 (current behaviour); WS63's is at
+0x80000000. Optional field, default 0 → RP2350 and all existing targets unchanged.
+
+Not a final diff — line numbers are approximate against the fork at branch creation.
+
+--- probe-rs-target/src/chip.rs   (RiscvCoreAccessOptions, ~L228)
+@@
+ pub struct RiscvCoreAccessOptions {
+     pub hart_id: Option<u32>,
+     pub jtag_tap: Option<usize>,
+     #[serde(default)]
+     pub mem_ap: Option<ApAddress>,
++    /// Base address of the RISC-V Debug Module within the mem-AP address space.
++    /// Defaults to 0 (DM at the AP base, e.g. RP2350). HiSilicon WS63 = 0x80000000.
++    #[serde(default)]
++    pub dm_base: u64,
+ }
+
+--- probe-rs/src/architecture/riscv/dtm/mem_ap_dtm.rs
+@@ struct MemApDtm
+     memory: Box<dyn ArmMemoryInterface + 'state>,
++    dm_base: u64,
+     pending: Vec<...>,
+     results: DeferredResultSet<...>,
+@@ impl MemApDtm
+-    pub fn new(memory: Box<dyn ArmMemoryInterface + 'state>) -> Self {
+-        Self { memory, pending: Vec::new(), results: DeferredResultSet::new() }
++    pub fn new(memory: Box<dyn ArmMemoryInterface + 'state>, dm_base: u64) -> Self {
++        Self { memory, dm_base, pending: Vec::new(), results: DeferredResultSet::new() }
+     }
+     fn dmi_register_to_ap_address(&self, dmi_register: u64) -> u64 {
+-        dmi_register * 4
++        self.dm_base + dmi_register * 4
+     }
+
+--- probe-rs/src/session.rs   (the 3 MemApDtm::new call sites: ~L144, L408, L741)
+ The riscv_mem_ap_cores builder (~L389) already reads each core; also capture
+ dm_base from its core_access_options:
+
+   if core.core_type.architecture() == Architecture::Riscv {
+       core.memory_ap().map(|ap| {
+           let dm_base = match &core.core_access_options {
+               CoreAccessOptions::Riscv(o) => o.dm_base,
+               _ => 0,
+           };
+           (ap, dm_base, RiscvDebugInterfaceState::new(Box::new(())))
+       })
+   } else { None }
+
+ and at each construction site:
+-    let dtm = MemApDtm::new(memory);
++    let dtm = MemApDtm::new(memory, dm_base);
+
+After this, WS63.wip.yaml / BS21.wip.yaml can move into probe-rs/targets/ and the
+RISC-V core is reachable for attach/halt/memory/register debugging. Flashing still
+needs the flash algorithm (separate, hardware-gated work).

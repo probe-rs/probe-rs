@@ -1,0 +1,57 @@
+# WIP — HiSilicon BS21 / BS2X (Hi2821). Same caveats as WS63.wip.yaml, plus: the
+# DM base and AP index for BS21 are NOT yet confirmed (HiSpark ships only a J-Link
+# path for BS2X, whose script selects AHB-AP index 1). Values below are the best
+# current estimate and MUST be checked against silicon (ROM-table dump).
+name: HiSilicon BS21
+manufacturer:
+  id: 0x4b
+  cc: 0x6
+variants:
+- name: BS21E            # BS21E / BS22 (160 K L2RAM)
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      mem_ap: !v1 1       # J-Link script uses AHB-AP index 1 (CONFIRM on HW)
+      dm_base: 0x80000000 # ESTIMATE (same family as WS63; CONFIRM on HW)
+  memory_map:
+  - !Nvm                  # XIP NOR flash (1 MB)
+    range:
+      start: 0x10000000
+      end: 0x10100000
+    cores: [main]
+    access:
+      boot: true
+  - !Ram                  # L2 SRAM (160 K on BS21E/BS22; 128 K on BS20)
+    range:
+      start: 0x100000
+      end: 0x128000
+    cores: [main]
+  - !Ram                  # DTCM
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores: [main]
+  # flash_algorithms: []  TODO — BS2X SFC (XIP @ 0x90000000 control window).
+- name: BS20             # 128 K L2RAM variant
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      mem_ap: !v1 1
+      dm_base: 0x80000000
+  memory_map:
+  - !Nvm
+    range:
+      start: 0x10000000
+      end: 0x10100000
+    cores: [main]
+    access:
+      boot: true
+  - !Ram
+    range:
+      start: 0x100000
+      end: 0x120000     # 128 K
+    cores: [main]
