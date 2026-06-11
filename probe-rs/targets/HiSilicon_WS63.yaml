@@ -42,3 +42,4 @@ variants:
       start: 0x180000
       end: 0x184000
     cores: [main]
+  flash_algorithms: []        # debug-only: no SFC flash algorithm yet (see item 4)

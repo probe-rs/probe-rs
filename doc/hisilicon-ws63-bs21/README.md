@@ -2,9 +2,13 @@
 
 Status: **WIP.** The core enabler — the mem-AP DTM `dm_base` change (item 1 below)
 — has **landed**, and **WS63 is now a built-in target** (`probe-rs/targets/
-HiSilicon_WS63.yaml`, debug-only). Debug bring-up (attach/halt/memory/registers)
-is wired; flash programming and on-silicon validation remain open and need
-hardware (see "Open items"). BS21 stays a scaffold until its DM base is confirmed.
+HiSilicon_WS63.yaml`, debug-only). This wires the **DTM + target layer** (the DMI
+path can now address a DM at `0x80000000`); it is **not** an end-to-end "attach
+works" claim. Before attach succeeds on silicon you still need item 3 (a vendor
+`DebugSequence` for debug-port enable + CSR expose), AP0 enumeration to be
+verified, the external GPIO_04-high-at-power-on strap, and — for flashing — item
+4 (flash algorithm). All hardware-gated; see "probe-rs changes — status" and
+"Open items". BS21 stays a scaffold until its DM base is confirmed.
 
 ## The chips
 
@@ -67,39 +71,46 @@ From HiSpark Studio's bundled, patched OpenOCD (`tcl/target/vendorhm/WS63-*.cfg`
   - FLASH (XIP) `0x10000000`; SRAM (L2) `0x100000` (128 K BS20 / 160 K BS21E·BS22)
   - ITCM `0x80000`, DTCM `0x20000000`
 
-## Required probe-rs changes
+## probe-rs changes — status
 
-1. **DM-base offset on the mem-AP DTM** (small, the only core change).
-   `MemApDtm::dmi_register_to_ap_address` returns `dmi_register * 4`, i.e. it
-   assumes the DM sits at AP offset 0 (true for RP2350). WS63's DM is at
-   `0x80000000`. Add an optional base:
-   - `probe-rs-target` `RiscvCoreAccessOptions`: add `dm_base: Option<u64>`.
+Two of the four are landed; the remaining two (plus on-silicon validation) are
+what stand between "wired" and "attach actually succeeds on a board".
+
+1. ✅ **DONE — DM-base offset on the mem-AP DTM** (the core change).
+   `MemApDtm::dmi_register_to_ap_address` was `dmi_register * 4`, assuming the DM
+   sits at AP offset 0 (true for RP2350). WS63's DM is at `0x80000000`.
+   - `probe-rs-target` `RiscvCoreAccessOptions`: added `dm_base: u64`
+     (`#[serde(default)]` → 0; only meaningful with `mem_ap`).
    - `MemApDtm::new(memory, dm_base)`; address = `dm_base + dmi_register * 4`.
-   - thread `dm_base` from `core_access_options` in `session.rs` where `MemApDtm`
-     is constructed (~L144, L408, L741).
-   See `mem_ap_dtm.patch.txt` in this directory for a sketch.
+   - threaded `dm_base` from `core_access_options` through `riscv_mem_ap_cores`
+     (now a 3-tuple) at all three `MemApDtm::new` sites in `session.rs`.
+   Default 0 keeps RP235x and every existing target byte-identical.
 
-2. **Target definitions** (`WS63.wip.yaml`, `BS21.wip.yaml` here). Once change (1)
-   lands, move into `probe-rs/targets/` and regenerate the registry. They declare
-   the RISC-V core with `!Riscv { hart_id: 0, mem_ap: !v1 0, dm_base: 0x80000000 }`
-   and the memory map above. `flash_algorithms` is intentionally empty (see below).
+2. ✅ **DONE (WS63) — target definition** `probe-rs/targets/HiSilicon_WS63.yaml`:
+   RISC-V core `!Riscv { hart_id: 0, mem_ap: !v1 0, dm_base: 0x80000000 }` +
+   memory map. `flash_algorithms: []` (none yet — see item 4). Passes the
+   `validate_builtin` test. **BS21 stays a scaffold** (`BS21.wip.yaml`) until its
+   DM base + AP index are confirmed on hardware.
 
-3. **Debug sequence** (`probe-rs/src/vendor/hisilicon/`, new). A `DebugSequence`
-   hook to:
-   - run the debug-port enable (WS63: ensure GPIO_04 path / `mww 0x40010260 1`
+3. ⬜ **STILL NEEDED for hardware attach — debug sequence**
+   (`probe-rs/src/vendor/hisilicon/`, new + register in `probe-rs/src/vendor/mod.rs`).
+   WS63 currently falls back to the default RISC-V sequence, which does **no**
+   chip bring-up. A vendor `DebugSequence` must:
+   - run the debug-port enable (WS63: GPIO_04-debug path / `mww 0x40010260 1`
      equivalent; BS21: `DAP_H2P_AUTOCG_BYPASS 0x52000190`),
-   - `expose_csrs` for the LOCI custom CSRs,
+   - `expose_csrs` for the LOCI custom CSRs (932-943, 1984-1999, 2008),
    - set `prefer_sba = false`.
-   Register the vendor in `probe-rs/src/vendor/mod.rs`.
+   Until this exists, items 1–2 make the DTM/target layer **wired but not
+   validated**: end-to-end attach on silicon will likely fail without it (and
+   without the external prerequisite that **GPIO_04 is high at power-on**, which
+   probe-rs cannot enforce — it's a board/strap concern).
 
-4. **Flash algorithm** (the hard, hardware-gated part). probe-rs flash algos are
-   position-independent loader blobs (built via the `flash-algorithm` crate /
-   `target-gen`). Port the SFC programming sequence from OpenOCD's
-   `src/flash/nor/ws63.c` (erase/program-page against the WS63 flash controller)
-   into a RISC-V flash-algorithm crate, compile, and embed (`pc_init`,
-   `pc_program_page`, `pc_erase_sector`, `flash_properties`). Until then, the
-   targets support **attach / halt / run / memory / register / breakpoint**
-   debugging but **not** flashing.
+4. ⬜ **STILL NEEDED for flashing — flash algorithm** (hardware-gated). probe-rs
+   flash algos are position-independent loader blobs (built via the
+   `flash-algorithm` crate / `target-gen`). Port the SFC erase/program-page
+   sequence from OpenOCD's `src/flash/nor/ws63.c` into a RISC-V flash-algorithm
+   crate and embed it (`pc_init`, `pc_program_page`, `pc_erase_sector`,
+   `flash_properties`). Until then WS63 is debug-only (no flashing).
 
 ## Open items (need silicon)
 
