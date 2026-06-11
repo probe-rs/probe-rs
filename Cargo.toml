@@ -27,7 +27,11 @@ members = [
     "probe-rs-espressif",
     "probe-rs-linux",
 ]
-exclude = ["probe-rs/tests/gpio-hal-blinky"]
+exclude = [
+    "probe-rs/tests/gpio-hal-blinky",
+    # no_std riscv32 flash loader, built standalone (see its README); not a host crate.
+    "doc/hisilicon-ws63-bs21/flash-algorithm",
+]
 
 [workspace.dependencies]
 probe-rs = { path = "probe-rs", version = "0.31.0" }

@@ -111,12 +111,18 @@ what stand between "wired" and "attach actually succeeds on a board".
      routes through the ARM AP regardless, so there is nothing to toggle.
    - Still **unvalidated on silicon** (needs GPIO_04 strap + AP0 to enumerate).
 
-4. ⬜ **STILL NEEDED for flashing — flash algorithm** (hardware-gated). probe-rs
-   flash algos are position-independent loader blobs (built via the
-   `flash-algorithm` crate / `target-gen`). Port the SFC erase/program-page
-   sequence from OpenOCD's `src/flash/nor/ws63.c` into a RISC-V flash-algorithm
-   crate and embed it (`pc_init`, `pc_program_page`, `pc_erase_sector`,
-   `flash_properties`). Until then WS63 is debug-only (no flashing).
+4. 🟡 **SCAFFOLDED (builds + extracts), NOT embedded — flash algorithm.**
+   `flash-algorithm/` is a complete probe-rs flash loader crate that ports the SFC
+   v150 register/command sequence (WREN/RDSR/4K-erase/page-program) from `fbb_ws63`
+   `hal_sfc_v150` + OpenOCD `ws63.c`. It **builds** for `riscv32imc` and
+   `target-gen elf` extracts a well-formed algorithm (`pc_init`/`pc_uninit`/
+   `pc_program_page`/`pc_erase_sector`/`data_section_offset` + `flash_properties`)
+   — the full toolchain loop is proven. It is **deliberately NOT embedded** into
+   `HiSilicon_WS63.yaml` (which keeps `flash_algorithms: []`): an unvalidated
+   erase/program algorithm wired into the default flash path could corrupt a real
+   board on `probe-rs download`. Embed it (`target-gen ... --update`) only after
+   the hardware validation checklist in `flash-algorithm/README.md`. Until then
+   WS63 stays debug-only.
 
 ## Open items (need silicon)
 

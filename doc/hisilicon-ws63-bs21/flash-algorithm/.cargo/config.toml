@@ -1,0 +1,12 @@
+# WS63 has no atomics and probe-rs does not preserve FP across flash-algo calls,
+# so build for riscv32imc (a subset of the WS63 RV32IMFC ISA). The memory.x
+# (PrgCode/PrgData sections) is emitted by the flash-algorithm crate's build.rs.
+[target.riscv32imc-unknown-none-elf]
+rustflags = [
+  "-C", "link-arg=--nmagic",
+  "-C", "link-arg=-Tmemory.x",
+  "-C", "force-frame-pointers=no",
+]
+
+[build]
+target = "riscv32imc-unknown-none-elf"
