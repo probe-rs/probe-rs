@@ -141,6 +141,7 @@ impl CmsisDap {
 
         // Read remaining probe information.
         let packet_count = commands::send_command(&mut device, &PacketCountCommand {})?;
+        tracing::debug!("Probe reported packet count: {}", packet_count);
         let caps: Capabilities = commands::send_command(&mut device, &CapabilitiesCommand {})?;
         tracing::debug!("Detected probe capabilities: {:?}", caps);
         let mut swo_buffer_size = None;
@@ -662,6 +663,16 @@ impl CmsisDap {
         }
     }
 
+    /// Number of CMSIS-DAP commands to keep in flight on the bulk endpoints
+    /// when pipelining block transfers.
+    ///
+    /// Uses the probe's reported packet count so its internal command buffer is
+    /// not overrun; [`commands::send_commands_pipelined`] applies its own upper
+    /// bound on top of this.
+    fn pipeline_depth(&self) -> usize {
+        (self.packet_count as usize).max(1)
+    }
+
     /// Set SWO port to use requested transport.
     ///
     /// Check the probe capabilities to determine which transports are available.
@@ -1131,19 +1142,28 @@ impl RawDapAccess for CmsisDap {
         let data_chunk_len = max_packet_size_words as usize;
 
         let total_writes = values.len();
+        let dap_index = self.jtag_state.chain_params.index as u8;
 
-        for (i, chunk) in values.chunks(data_chunk_len).enumerate() {
-            let mut request = TransferBlockRequest::write_request(address, Vec::from(chunk));
-            request.dap_index = self.jtag_state.chain_params.index as u8;
+        // Build one TransferBlock request per chunk, then send them as a
+        // pipeline so several are in flight at once instead of paying a USB
+        // round-trip per chunk.
+        let requests = values
+            .chunks(data_chunk_len)
+            .map(|chunk| {
+                let mut request = TransferBlockRequest::write_request(address, Vec::from(chunk));
+                request.dap_index = dap_index;
+                request
+            })
+            .collect::<Vec<_>>();
 
-            tracing::debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
+        let depth = self.pipeline_depth();
+        let responses = commands::send_commands_pipelined(&mut self.device, &requests, depth)
+            .map_err(DebugProbeError::from)?;
 
-            let resp: TransferBlockResponse = commands::send_command(&mut self.device, &request)
-                .map_err(DebugProbeError::from)?;
-
+        for (i, resp) in responses.iter().enumerate() {
             let executed_writes = i * data_chunk_len + usize::from(resp.transfer_count);
 
-            self.handle_transfer_block_response(address, &resp, executed_writes, total_writes)?;
+            self.handle_transfer_block_response(address, resp, executed_writes, total_writes)?;
         }
 
         Ok(())
@@ -1171,19 +1191,32 @@ impl RawDapAccess for CmsisDap {
         let data_chunk_len = max_packet_size_words as usize;
 
         let total_num_reads = values.len();
+        let dap_index = self.jtag_state.chain_params.index as u8;
 
-        for (i, chunk) in values.chunks_mut(data_chunk_len).enumerate() {
-            let mut request = TransferBlockRequest::read_request(address, chunk.len() as u16);
-            request.dap_index = self.jtag_state.chain_params.index as u8;
+        // Build one TransferBlock request per chunk, then send them as a
+        // pipeline so several are in flight at once instead of paying a USB
+        // round-trip per chunk.
+        let requests = values
+            .chunks(data_chunk_len)
+            .map(|chunk| {
+                let mut request = TransferBlockRequest::read_request(address, chunk.len() as u16);
+                request.dap_index = dap_index;
+                request
+            })
+            .collect::<Vec<_>>();
 
-            tracing::debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
+        let depth = self.pipeline_depth();
+        let responses = commands::send_commands_pipelined(&mut self.device, &requests, depth)
+            .map_err(DebugProbeError::from)?;
 
-            let resp: TransferBlockResponse = commands::send_command(&mut self.device, &request)
-                .map_err(DebugProbeError::from)?;
-
+        for (i, (chunk, resp)) in values
+            .chunks_mut(data_chunk_len)
+            .zip(responses.iter())
+            .enumerate()
+        {
             let executed_reads = i * data_chunk_len + usize::from(resp.transfer_count);
 
-            self.handle_transfer_block_response(address, &resp, executed_reads, total_num_reads)?;
+            self.handle_transfer_block_response(address, resp, executed_reads, total_num_reads)?;
 
             chunk.clone_from_slice(&resp.transfer_data[..]);
         }
