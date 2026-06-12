@@ -6,8 +6,12 @@ pub mod swo;
 pub mod transfer;
 
 use crate::probe::cmsisdap::commands::general::info::PacketSizeCommand;
-use crate::probe::usb_util::InterfaceExt;
+use crate::probe::usb_util::{read_bulk_endpoint, write_bulk_endpoint};
 use crate::probe::{ProbeError, WireProtocol};
+use nusb::{
+    Endpoint,
+    transfer::{Bulk, In, Out},
+};
 use std::io::ErrorKind;
 use std::str::Utf8Error;
 use std::time::Duration;
@@ -168,14 +172,20 @@ pub enum CmsisDapDevice {
     },
 
     /// CMSIS-DAP v2 over WinUSB/Bulk.
-    /// Stores an usb device handle, out/in EP addresses, maximum DAP packet size,
-    /// and an optional SWO streaming EP address and SWO maximum packet size.
+    /// Stores the usb interface handle, persistent bulk out/in endpoints, the
+    /// maximum DAP packet size, and an optional persistent SWO streaming
+    /// endpoint.
+    ///
+    /// The endpoints are claimed once when the device is opened and reused for
+    /// every transfer, rather than being re-claimed per transfer. This both
+    /// removes per-transfer setup/teardown cost and provides a stable place to
+    /// keep multiple transfers in flight (see FAST_USB.md).
     V2 {
         handle: nusb::Interface,
-        out_ep: u8,
-        in_ep: u8,
+        out_ep: Endpoint<Bulk, Out>,
+        in_ep: Endpoint<Bulk, In>,
         max_packet_size: usize,
-        swo_ep: Option<(u8, usize)>,
+        swo_ep: Option<Endpoint<Bulk, In>>,
         usb_timeout: Duration,
     },
 }
@@ -198,30 +208,38 @@ impl CmsisDapDevice {
     }
 
     /// Read from the probe into `buf`, returning the number of bytes read on success.
-    fn read(&self, buf: &mut [u8]) -> Result<usize, SendError> {
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize, SendError> {
         match self {
             #[cfg(feature = "cmsisdap_v1")]
-            CmsisDapDevice::V1 { handle, .. } => {
-                match handle.read_timeout(buf, self.usb_timeout().as_millis() as i32)? {
+            CmsisDapDevice::V1 {
+                handle,
+                usb_timeout,
+                ..
+            } => {
+                match handle.read_timeout(buf, usb_timeout.as_millis() as i32)? {
                     // Timeout is not indicated by error, but by returning 0 read bytes
                     0 => Err(SendError::Timeout),
                     n => Ok(n),
                 }
             }
-            CmsisDapDevice::V2 { handle, in_ep, .. } => {
-                Ok(handle.read_bulk(*in_ep, buf, self.usb_timeout())?)
-            }
+            CmsisDapDevice::V2 {
+                in_ep, usb_timeout, ..
+            } => Ok(read_bulk_endpoint(in_ep, buf, *usb_timeout)?),
         }
     }
 
     /// Write `buf` to the probe, returning the number of bytes written on success.
-    fn write(&self, buf: &[u8]) -> Result<usize, SendError> {
+    fn write(&mut self, buf: &[u8]) -> Result<usize, SendError> {
         match self {
             #[cfg(feature = "cmsisdap_v1")]
             CmsisDapDevice::V1 { handle, .. } => Ok(handle.write(buf)?),
-            CmsisDapDevice::V2 { handle, out_ep, .. } => {
+            CmsisDapDevice::V2 {
+                out_ep,
+                usb_timeout,
+                ..
+            } => {
                 // Skip first byte as it's set to 0 for HID transfers
-                Ok(handle.write_bulk(*out_ep, &buf[1..], self.usb_timeout())?)
+                Ok(write_bulk_endpoint(out_ep, &buf[1..], *usb_timeout)?)
             }
         }
     }
@@ -229,7 +247,7 @@ impl CmsisDapDevice {
     /// Drain any pending data from the probe, ensuring future responses are
     /// synchronised to requests. Swallows any errors, which are expected if
     /// there is no pending data to read.
-    pub(super) fn drain(&self) {
+    pub(super) fn drain(&mut self) {
         tracing::debug!("Draining probe of any pending data.");
 
         match self {
@@ -239,7 +257,7 @@ impl CmsisDapDevice {
                 report_size,
                 ..
             } => loop {
-                let mut discard = vec![0u8; report_size + 1];
+                let mut discard = vec![0u8; *report_size + 1];
                 match handle.read_timeout(&mut discard, 1) {
                     Ok(n) if n != 0 => continue,
                     _ => break,
@@ -247,7 +265,6 @@ impl CmsisDapDevice {
             },
 
             CmsisDapDevice::V2 {
-                handle,
                 in_ep,
                 max_packet_size,
                 ..
@@ -255,7 +272,7 @@ impl CmsisDapDevice {
                 let timeout = Duration::from_millis(1);
                 let mut discard = vec![0u8; *max_packet_size];
                 loop {
-                    match handle.read_bulk(*in_ep, &mut discard, timeout) {
+                    match read_bulk_endpoint(in_ep, &mut discard, timeout) {
                         Ok(n) if n != 0 => continue,
                         _ => break,
                     }
@@ -335,14 +352,14 @@ impl CmsisDapDevice {
     /// Returns SWOModeNotAvailable if this device does not support SWO streaming.
     ///
     /// On timeout, returns a zero-length buffer.
-    pub(super) fn read_swo_stream(&self, timeout: Duration) -> Result<Vec<u8>, CmsisDapError> {
+    pub(super) fn read_swo_stream(&mut self, timeout: Duration) -> Result<Vec<u8>, CmsisDapError> {
         match self {
             #[cfg(feature = "cmsisdap_v1")]
             CmsisDapDevice::V1 { .. } => Err(CmsisDapError::SwoModeNotAvailable),
-            CmsisDapDevice::V2 { handle, swo_ep, .. } => match swo_ep {
-                Some((ep, len)) => {
-                    let mut buf = vec![0u8; *len];
-                    match handle.read_bulk(*ep, &mut buf, timeout) {
+            CmsisDapDevice::V2 { swo_ep, .. } => match swo_ep {
+                Some(ep) => {
+                    let mut buf = vec![0u8; ep.max_packet_size()];
+                    match read_bulk_endpoint(ep, &mut buf, timeout) {
                         Ok(n) => {
                             buf.truncate(n);
                             Ok(buf)
