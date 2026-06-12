@@ -122,6 +122,15 @@ pub struct RawFlashAlgorithm {
     /// `true` if the instructions are saved in Big Endian format
     #[serde(default)]
     pub big_endian: bool,
+
+    /// Disable double buffering even if there is enough RAM for two page
+    /// buffers.
+    ///
+    /// Set this for devices where memory accesses from the debug probe
+    /// interfere with the running flash algorithm (or vice versa), so the
+    /// page buffer must only be filled while the algorithm is not running.
+    #[serde(default)]
+    pub disable_double_buffering: bool,
 }
 
 impl Default for RawFlashAlgorithm {
@@ -152,6 +161,7 @@ impl Default for RawFlashAlgorithm {
             stack_overflow_check: Default::default(),
             transfer_encoding: Default::default(),
             big_endian: Default::default(),
+            disable_double_buffering: Default::default(),
         }
     }
 }

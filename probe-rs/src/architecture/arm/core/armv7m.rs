@@ -776,6 +776,24 @@ impl CoreInterface for Armv7m<'_> {
     }
 
     fn run(&mut self) -> Result<(), Error> {
+        let dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
+        if !dhcsr.s_halt() {
+            // The core is already running, e.g. after a reset without halt.
+            // There is no instruction to step over, and attempting the step
+            // below would time out. Just make sure interrupts aren't left
+            // masked by an earlier step.
+            if dhcsr.c_maskints() {
+                let mut dhcsr = dhcsr;
+                dhcsr.set_c_maskints(false);
+                dhcsr.enable_write();
+                self.memory
+                    .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
+                self.memory.flush()?;
+            }
+            self.set_core_status(CoreStatus::Running);
+            return Ok(());
+        }
+
         // Before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction.
         self.step()?;
 

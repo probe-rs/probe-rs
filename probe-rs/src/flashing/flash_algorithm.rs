@@ -381,19 +381,19 @@ impl FlashAlgorithm {
         }
 
         // To determine the stack bottom, we need to know if the data is double buffered.
-        let double_buffering = if ram_for_data >= 2 * buffer_page_size {
-            // The data may be double buffered
-            // TODO: maybe allow disabling in the target description?
-            true
-        } else if ram_for_data >= buffer_page_size {
-            // The data is not double buffered. Place the stack at the end of the RAM region.
-            false
-        } else {
-            // We can't place data and stack.
-            // TODO: this should probably be done in the target validation.
-            // TODO: make the errors a bit more meaningful.
-            return Err(FlashError::InvalidFlashAlgorithmStackSize { size: stack_size });
-        };
+        let double_buffering =
+            if ram_for_data >= 2 * buffer_page_size && !raw.disable_double_buffering {
+                // The data may be double buffered
+                true
+            } else if ram_for_data >= buffer_page_size {
+                // The data is not double buffered. Place the stack at the end of the RAM region.
+                false
+            } else {
+                // We can't place data and stack.
+                // TODO: this should probably be done in the target validation.
+                // TODO: make the errors a bit more meaningful.
+                return Err(FlashError::InvalidFlashAlgorithmStackSize { size: stack_size });
+            };
 
         // We need to make sure the blocks don't overlap and we have enough memory.
         let stack_bottom =
