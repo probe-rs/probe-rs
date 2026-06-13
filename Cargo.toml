@@ -29,8 +29,6 @@ members = [
 ]
 exclude = [
     "probe-rs/tests/gpio-hal-blinky",
-    # no_std riscv32 flash loader, built standalone (see its README); not a host crate.
-    "doc/hisilicon-ws63-bs21/flash-algorithm",
 ]
 
 [workspace.dependencies]

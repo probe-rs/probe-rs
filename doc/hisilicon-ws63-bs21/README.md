@@ -6,8 +6,9 @@ the **HiSilicon vendor `DebugSequence`** (`probe-rs/src/vendor/hisilicon/`) that
 hooks the ARM-DAP debug-port enable. This wires the full software attach path
 (DTM + target + DAP bring-up); it is still **not** validated on silicon. Attach
 additionally depends on the external **GPIO_04-high-at-power-on strap** (which
-probe-rs cannot perform) and on AP0 enumerating as expected. Flashing needs item
-4 (flash algorithm). All remaining gates are hardware. BS21 stays a scaffold until
+probe-rs cannot perform) and on AP0 enumerating as expected. The flash algorithm
+(item 4) is done and embedded — `probe-rs download` erase/program is
+hardware-verified. All remaining gates are hardware. BS21 stays a scaffold until
 its DM base is confirmed. See "probe-rs changes — status" and "Open items".
 
 ## The chips
@@ -88,7 +89,7 @@ what stand between "wired" and "attach actually succeeds on a board".
 
 2. ✅ **DONE (WS63) — target definition** `probe-rs/targets/HiSilicon_WS63.yaml`:
    RISC-V core `!Riscv { hart_id: 0, mem_ap: !v1 0, dm_base: 0x80000000 }` +
-   memory map. `flash_algorithms: []` (none yet — see item 4). Passes the
+   memory map, plus the embedded `ws63-sfc` flash algorithm (item 4). Passes the
    `validate_builtin` test. **BS21 stays a scaffold** (`BS21.wip.yaml`) until its
    DM base + AP index are confirmed on hardware.
 
@@ -111,18 +112,15 @@ what stand between "wired" and "attach actually succeeds on a board".
      routes through the ARM AP regardless, so there is nothing to toggle.
    - Still **unvalidated on silicon** (needs GPIO_04 strap + AP0 to enumerate).
 
-4. 🟡 **SCAFFOLDED (builds + extracts), NOT embedded — flash algorithm.**
-   `flash-algorithm/` is a complete probe-rs flash loader crate that ports the SFC
-   v150 register/command sequence (WREN/RDSR/4K-erase/page-program) from `fbb_ws63`
-   `hal_sfc_v150` + OpenOCD `ws63.c`. It **builds** for `riscv32imc` and
-   `target-gen elf` extracts a well-formed algorithm (`pc_init`/`pc_uninit`/
-   `pc_program_page`/`pc_erase_sector`/`data_section_offset` + `flash_properties`)
-   — the full toolchain loop is proven. It is **deliberately NOT embedded** into
-   `HiSilicon_WS63.yaml` (which keeps `flash_algorithms: []`): an unvalidated
-   erase/program algorithm wired into the default flash path could corrupt a real
-   board on `probe-rs download`. Embed it (`target-gen ... --update`) only after
-   the hardware validation checklist in `flash-algorithm/README.md`. Until then
-   WS63 stays debug-only.
+4. ✅ **LANDED — flash algorithm (embedded + hardware-verified).** The SFC v150
+   register/command loader (WREN/RDSR/4K-erase/page-program + Init clears
+   block-protect), ported from `fbb_ws63` `hal_sfc_v150` + OpenOCD `ws63.c`, is
+   **embedded** into `HiSilicon_WS63.yaml` (`flash_algorithms: [ws63-sfc]`).
+   `probe-rs download` erase/program is verified on a real board (GD25Q32). The
+   loader source now lives in its own repo —
+   **https://github.com/hispark-rs/hisi-flash-algorithm** (the `ws63` crate) — and
+   is extracted/embedded with `target-gen ... --update`. See
+   [`flash-algorithm.md`](./flash-algorithm.md) for the rebuild/re-embed workflow.
 
 ## Open items (need silicon)
 
@@ -130,7 +128,8 @@ what stand between "wired" and "attach actually succeeds on a board".
 - [ ] Verify WS63 AP0 / DM `0x80000000` enumerates via probe-rs's ARM backend
       (DAP IDCODE `0x5ba0_0477`).
 - [ ] Confirm the debug-enable sequence reaches a halted core from cold boot.
-- [ ] Author + validate the flash algorithm against a board.
+- [x] Author + validate the flash algorithm against a board. **Done** — embedded
+      as `ws63-sfc`; source at https://github.com/hispark-rs/hisi-flash-algorithm.
 - [ ] Validate against a known probe (CMSIS-DAP or FTDI FT2232H — the adapters
       HiSpark uses).
 
