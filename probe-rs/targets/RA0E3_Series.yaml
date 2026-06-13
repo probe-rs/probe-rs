@@ -3,100 +3,100 @@ manufacturer:
   id: 0x23
   cc: 0x4
 chip_detection:
-  - !RenesasPnr
-    target_id: 0x7c0
-    reverse_string: true
-    mcu_pn_base: 0x01011080
-    variants:
-      - R7FA0E303
+- !RenesasPnr
+  target_id: 0x7c0
+  reverse_string: true
+  mcu_pn_base: 0x1011080
+  variants:
+  - R7FA0E303
 generated_from_pack: true
 pack_file_release: 6.4.0
 variants:
-  - name: R7FA0E303
+- name: R7FA0E303
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x0
+      end: 0x4000
     cores:
-      - name: main
-        type: armv8m
-        core_access_options: !Arm
-          ap: !v1 0
-    memory_map:
-      - !Nvm
-        name: Flash
-        range:
-          start: 0x0
-          end: 0x4000
-        cores:
-          - main
-        access:
-          write: false
-          boot: true
-      - !Generic
-        name: ConfigROM
-        range:
-          start: 0x1010000
-          end: 0x1010034
-        cores:
-          - main
-        access:
-          write: false
-          execute: false
-      - !Ram
-        name: SRAM1
-        range:
-          start: 0x20004000
-          end: 0x20004800
-        cores:
-          - main
-    flash_algorithms:
-      - ra0e3_16k
-      - ra0e3_conf
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: ConfigROM
+    range:
+      start: 0x1010000
+      end: 0x1010034
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20004000
+      end: 0x20004800
+    cores:
+    - main
+  flash_algorithms:
+  - ra0e3_16k
+  - ra0e3_conf
 flash_algorithms:
-  - name: ra0e3_16k
-    description: RA0E3 16KB Flash
-    default: true
-    instructions: 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
-    load_address: 0x20004008
-    pc_init: 0x2b1
-    pc_uninit: 0x519
-    pc_program_page: 0x365
-    pc_erase_sector: 0x1ad
-    pc_erase_all: 0x155
-    pc_verify: 0x575
-    pc_blank_check: 0x55
-    data_section_offset: 0x6f4
-    rtt_poll_interval: 0
-    flash_properties:
-      address_range:
-        start: 0x0
-        end: 0x4000
-      page_size: 0x80
-      erased_byte_value: 0xff
-      program_page_timeout: 1000
-      erase_sector_timeout: 3000
-      sectors:
-        - size: 0x800
-          address: 0x0
-  - name: ra0e3_conf
-    description: RA0E3 Config Area
-    default: true
-    instructions: 0rIQtRMCmhgTBJoYAPAO+BC9AeAEwAkfBCn70osHAdUCgIAcyQcA0AJwcEcAKQvQwwcC0AJwQBxJHgIpBNODBwLVAoCAHIke4+cAIu7nACLf5wAgcEcAIHBHACBwRwAAcLWBsCRJJUoKgEr2ACILiDOxC4gjsQuIE7ELiAAr9tFTHAuAHkulJBxwHksCJBxw/SUdcBxwbEYEJSVwJHiMsQC/AJxkHm1GLHAseAAs99EI4AyIASwI0AyIASwF0AyIASwC0AyIASzz0Q9OASQAJbBCIEYA2ChGGHEMSAN4AyYeQwZwCksccB1wCoAAi8AGwA8BsHC9wEYawn5AAKr//4DBfkAAwX5A//8AAdjBfkAkwX5A8LWHsASSBkZ/KQbYBJhAGIAiURr/Iv/3af9eSEAeXkwggF5IIYgxsSGIIbEhiBGxIYgAKfbRIIBZSKUhAXBZSgIgEHD9IRFwEHAGqAQhAXAAeIixAL8GmEAeBqkIcAh4ACj30QjgIIgBKAjQIIgBKAXQIIgBKALQIIgBKPPRSkgAIoZCAdgRRgDgASFFSxlxRklxGAORQBwFkEVLgSACkCBGKjgFmY5CBNKRGT1NKYEJDCmCBJ2pXDdGrhh1eC0CaRiZgLF49Xg+Ri0CaRiZgQWZj0Ig0jNJAp0NdRl4SQYI1Bl4SQYF1Bl4SQYC1Bl4SQbz1QEhK00pdQAhKXUZeEkGMtUZeEkGL9UZeEkGLNUZeEkG89Qo4AOZiRgDJelBBCki2CZGPj6NHAGVfjkxcAAhXVYALQjUXVYALQXUXVYALQLUXVYALfLVAZ01cDFwPkZdVgAtCNVdVgAtBdVdVgAtAtVdVgAt89QBiMkGCdQBiIkHBtQRHXwqCkaS0wAgB7DwvQg7ASAYcAAhGXAHsPC9wEYBqv//GsJ+QAGqAACAwX5AAMF+QP//AAHw//7+LMF+QIGwE0ilIQFwEkgIIQFw9yICcAFwaEYEIQFwAHg4sQC/AJhAHmlGCHAIeAAo99EKSEr2ACEBgAGIMbEBiCGxAYgRsQGIACn20QAgAbBwR8BGgMF+QADBfkAawn5A8LWLsAKSD0YBkFpIpSEBcFlICCEBcPcjA3ABcAOoBCEBcAB4OLEAvwOYQB4DqQhwCHgAKPfRUUlK9gAgCIAIiDCxCIggsQiIELEIiAAo9tEALwDRhuAAIhNGAJcG4CNGIDLSsgCfukIA04Dg2bIBmERcA60scEYYcXhpcLF4qXDxeOlwMXkpcXF5aXGxealx8XnpcTF6KXJxemlysXqpcvF66XIxeylzcXtpc7F7qXPxe+lzMXwpdHF8aXSxfKl08XzpdDF9KXVxfWl1sX2pdfF96XUxfil2cX5pdrF+qXbxful2MX8pd3F/aXexf6l38X/pd5dCs9C9GiAtANMgJQAmA6/ZsgKYRFw4eKBCKtEBITFDXBypQqHSA6hAXOGyApxkXKBCHtECITFDnBypQpXSA6hAXOGyApxkXKBCEtEDITFD3BypQonSA6hAXOGyApxkXKBCBtE/HTYdGx2uQtDTfecAIQGYCBgLsPC9OUb558BGgMF+QADBfkAawn5AAAAAAA==
-    load_address: 0x20004008
-    pc_init: 0x61
-    pc_uninit: 0x2c9
-    pc_program_page: 0x115
-    pc_erase_sector: 0x5b
-    pc_erase_all: 0x57
-    pc_verify: 0x325
-    pc_blank_check: 0x53
-    data_section_offset: 0x4a4
-    rtt_poll_interval: 0
-    flash_properties:
-      address_range:
-        start: 0x1010000
-        end: 0x1010034
-      page_size: 0x4
-      erased_byte_value: 0xff
-      program_page_timeout: 1000
-      erase_sector_timeout: 3000
-      sectors:
-        - size: 0x4
-          address: 0x0
+- name: ra0e3_16k
+  description: RA0E3 16KB Flash
+  default: true
+  instructions: 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
+  load_address: 0x20004008
+  pc_init: 0x2b1
+  pc_uninit: 0x519
+  pc_program_page: 0x365
+  pc_erase_sector: 0x1ad
+  pc_erase_all: 0x155
+  pc_verify: 0x575
+  pc_blank_check: 0x55
+  data_section_offset: 0x6f4
+  rtt_poll_interval: 0
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x4000
+    page_size: 0x80
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x800
+      address: 0x0
+- name: ra0e3_conf
+  description: RA0E3 Config Area
+  default: true
+  instructions: 0rIQtRMCmhgTBJoYAPAO+BC9AeAEwAkfBCn70osHAdUCgIAcyQcA0AJwcEcAKQvQwwcC0AJwQBxJHgIpBNODBwLVAoCAHIke4+cAIu7nACLf5wAgcEcAIHBHACBwRwAAcLWBsCRJJUoKgEr2ACILiDOxC4gjsQuIE7ELiAAr9tFTHAuAHkulJBxwHksCJBxw/SUdcBxwbEYEJSVwJHiMsQC/AJxkHm1GLHAseAAs99EI4AyIASwI0AyIASwF0AyIASwC0AyIASzz0Q9OASQAJbBCIEYA2ChGGHEMSAN4AyYeQwZwCksccB1wCoAAi8AGwA8BsHC9wEYawn5AAKr//4DBfkAAwX5A//8AAdjBfkAkwX5A8LWHsASSBkZ/KQbYBJhAGIAiURr/Iv/3af9eSEAeXkwggF5IIYgxsSGIIbEhiBGxIYgAKfbRIIBZSKUhAXBZSgIgEHD9IRFwEHAGqAQhAXAAeIixAL8GmEAeBqkIcAh4ACj30QjgIIgBKAjQIIgBKAXQIIgBKALQIIgBKPPRSkgAIoZCAdgRRgDgASFFSxlxRklxGAORQBwFkEVLgSACkCBGKjgFmY5CBNKRGT1NKYEJDCmCBJ2pXDdGrhh1eC0CaRiZgLF49Xg+Ri0CaRiZgQWZj0Ig0jNJAp0NdRl4SQYI1Bl4SQYF1Bl4SQYC1Bl4SQbz1QEhK00pdQAhKXUZeEkGMtUZeEkGL9UZeEkGLNUZeEkG89Qo4AOZiRgDJelBBCki2CZGPj6NHAGVfjkxcAAhXVYALQjUXVYALQXUXVYALQLUXVYALfLVAZ01cDFwPkZdVgAtCNVdVgAtBdVdVgAtAtVdVgAt89QBiMkGCdQBiIkHBtQRHXwqCkaS0wAgB7DwvQg7ASAYcAAhGXAHsPC9wEYBqv//GsJ+QAGqAACAwX5AAMF+QP//AAHw//7+LMF+QIGwE0ilIQFwEkgIIQFw9yICcAFwaEYEIQFwAHg4sQC/AJhAHmlGCHAIeAAo99EKSEr2ACEBgAGIMbEBiCGxAYgRsQGIACn20QAgAbBwR8BGgMF+QADBfkAawn5A8LWLsAKSD0YBkFpIpSEBcFlICCEBcPcjA3ABcAOoBCEBcAB4OLEAvwOYQB4DqQhwCHgAKPfRUUlK9gAgCIAIiDCxCIggsQiIELEIiAAo9tEALwDRhuAAIhNGAJcG4CNGIDLSsgCfukIA04Dg2bIBmERcA60scEYYcXhpcLF4qXDxeOlwMXkpcXF5aXGxealx8XnpcTF6KXJxemlysXqpcvF66XIxeylzcXtpc7F7qXPxe+lzMXwpdHF8aXSxfKl08XzpdDF9KXVxfWl1sX2pdfF96XUxfil2cX5pdrF+qXbxful2MX8pd3F/aXexf6l38X/pd5dCs9C9GiAtANMgJQAmA6/ZsgKYRFw4eKBCKtEBITFDXBypQqHSA6hAXOGyApxkXKBCHtECITFDnBypQpXSA6hAXOGyApxkXKBCEtEDITFD3BypQonSA6hAXOGyApxkXKBCBtE/HTYdGx2uQtDTfecAIQGYCBgLsPC9OUb558BGgMF+QADBfkAawn5AAAAAAA==
+  load_address: 0x20004008
+  pc_init: 0x61
+  pc_uninit: 0x2c9
+  pc_program_page: 0x115
+  pc_erase_sector: 0x5b
+  pc_erase_all: 0x57
+  pc_verify: 0x325
+  pc_blank_check: 0x53
+  data_section_offset: 0x4a4
+  rtt_poll_interval: 0
+  flash_properties:
+    address_range:
+      start: 0x1010000
+      end: 0x1010034
+    page_size: 0x4
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x4
+      address: 0x0
