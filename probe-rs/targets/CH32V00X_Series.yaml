@@ -1,0 +1,2222 @@
+name: CH32V00X Series
+manufacturer: null
+chip_detection: []
+generated_from_pack: false
+pack_file_release: null
+variants:
+- name: CH32M007E8R6
+  part: null
+  svd: null
+  documentation: {}
+  package_variants: []
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      jtag_tap: null
+      mem_ap: null
+  memory_map:
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x800f800
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0xf800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: SYS
+    range:
+      start: 0x1fff0000
+      end: 0x1fff0d00
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff700
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: false
+      execute: false
+      boot: false
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: false
+      boot: false
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  flash_algorithms:
+  - ch32-v00x-usr
+  - ch32-v00x-usr-legacy
+  - ch32-v00x-sys
+  - ch32-v00x-opt
+  rtt_scan_ranges: null
+  jtag: null
+  default_binary_format: null
+- name: CH32M007E8U6
+  part: null
+  svd: null
+  documentation: {}
+  package_variants: []
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      jtag_tap: null
+      mem_ap: null
+  memory_map:
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x800f800
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0xf800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: SYS
+    range:
+      start: 0x1fff0000
+      end: 0x1fff0d00
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff700
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: false
+      execute: false
+      boot: false
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: false
+      boot: false
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  flash_algorithms:
+  - ch32-v00x-usr
+  - ch32-v00x-usr-legacy
+  - ch32-v00x-sys
+  - ch32-v00x-opt
+  rtt_scan_ranges: null
+  jtag: null
+  default_binary_format: null
+- name: CH32M007G8R6
+  part: null
+  svd: null
+  documentation: {}
+  package_variants: []
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      jtag_tap: null
+      mem_ap: null
+  memory_map:
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x800f800
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0xf800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: SYS
+    range:
+      start: 0x1fff0000
+      end: 0x1fff0d00
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff700
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: false
+      execute: false
+      boot: false
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: false
+      boot: false
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  flash_algorithms:
+  - ch32-v00x-usr
+  - ch32-v00x-usr-legacy
+  - ch32-v00x-sys
+  - ch32-v00x-opt
+  rtt_scan_ranges: null
+  jtag: null
+  default_binary_format: null
+- name: CH32M007K8U7
+  part: null
+  svd: null
+  documentation: {}
+  package_variants: []
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      jtag_tap: null
+      mem_ap: null
+  memory_map:
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x800f800
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0xf800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: SYS
+    range:
+      start: 0x1fff0000
+      end: 0x1fff0d00
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff700
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: false
+      execute: false
+      boot: false
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: false
+      boot: false
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  flash_algorithms:
+  - ch32-v00x-usr
+  - ch32-v00x-usr-legacy
+  - ch32-v00x-sys
+  - ch32-v00x-opt
+  rtt_scan_ranges: null
+  jtag: null
+  default_binary_format: null
+- name: CH32V002F4P6
+  part: null
+  svd: null
+  documentation: {}
+  package_variants: []
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      jtag_tap: null
+      mem_ap: null
+  memory_map:
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0x4000
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: SYS
+    range:
+      start: 0x1fff0000
+      end: 0x1fff0d00
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff700
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: false
+      execute: false
+      boot: false
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: false
+      boot: false
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  flash_algorithms:
+  - ch32-v00x-usr
+  - ch32-v00x-usr-legacy
+  - ch32-v00x-sys
+  - ch32-v00x-opt
+  rtt_scan_ranges: null
+  jtag: null
+  default_binary_format: null
+- name: CH32V002F4U6
+  part: null
+  svd: null
+  documentation: {}
+  package_variants: []
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      jtag_tap: null
+      mem_ap: null
+  memory_map:
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0x4000
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: SYS
+    range:
+      start: 0x1fff0000
+      end: 0x1fff0d00
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff700
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: false
+      execute: false
+      boot: false
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: false
+      boot: false
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  flash_algorithms:
+  - ch32-v00x-usr
+  - ch32-v00x-usr-legacy
+  - ch32-v00x-sys
+  - ch32-v00x-opt
+  rtt_scan_ranges: null
+  jtag: null
+  default_binary_format: null
+- name: CH32V002A4M6
+  part: null
+  svd: null
+  documentation: {}
+  package_variants: []
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      jtag_tap: null
+      mem_ap: null
+  memory_map:
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0x4000
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: SYS
+    range:
+      start: 0x1fff0000
+      end: 0x1fff0d00
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff700
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: false
+      execute: false
+      boot: false
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: false
+      boot: false
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  flash_algorithms:
+  - ch32-v00x-usr
+  - ch32-v00x-usr-legacy
+  - ch32-v00x-sys
+  - ch32-v00x-opt
+  rtt_scan_ranges: null
+  jtag: null
+  default_binary_format: null
+- name: CH32V002D4U6
+  part: null
+  svd: null
+  documentation: {}
+  package_variants: []
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      jtag_tap: null
+      mem_ap: null
+  memory_map:
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0x4000
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: SYS
+    range:
+      start: 0x1fff0000
+      end: 0x1fff0d00
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff700
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: false
+      execute: false
+      boot: false
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: false
+      boot: false
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  flash_algorithms:
+  - ch32-v00x-usr
+  - ch32-v00x-usr-legacy
+  - ch32-v00x-sys
+  - ch32-v00x-opt
+  rtt_scan_ranges: null
+  jtag: null
+  default_binary_format: null
+- name: CH32V002J4M6
+  part: null
+  svd: null
+  documentation: {}
+  package_variants: []
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      jtag_tap: null
+      mem_ap: null
+  memory_map:
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0x4000
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: SYS
+    range:
+      start: 0x1fff0000
+      end: 0x1fff0d00
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff700
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: false
+      execute: false
+      boot: false
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: false
+      boot: false
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  flash_algorithms:
+  - ch32-v00x-usr
+  - ch32-v00x-usr-legacy
+  - ch32-v00x-sys
+  - ch32-v00x-opt
+  rtt_scan_ranges: null
+  jtag: null
+  default_binary_format: null
+- name: CH32V004F6P1
+  part: null
+  svd: null
+  documentation: {}
+  package_variants: []
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      jtag_tap: null
+      mem_ap: null
+  memory_map:
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0x8000
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: SYS
+    range:
+      start: 0x1fff0000
+      end: 0x1fff0d00
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff700
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: false
+      execute: false
+      boot: false
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: false
+      boot: false
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  flash_algorithms:
+  - ch32-v00x-usr
+  - ch32-v00x-usr-legacy
+  - ch32-v00x-sys
+  - ch32-v00x-opt
+  rtt_scan_ranges: null
+  jtag: null
+  default_binary_format: null
+- name: CH32V004F6U1
+  part: null
+  svd: null
+  documentation: {}
+  package_variants: []
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      jtag_tap: null
+      mem_ap: null
+  memory_map:
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0x8000
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: SYS
+    range:
+      start: 0x1fff0000
+      end: 0x1fff0d00
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff700
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: false
+      execute: false
+      boot: false
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: false
+      boot: false
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  flash_algorithms:
+  - ch32-v00x-usr
+  - ch32-v00x-usr-legacy
+  - ch32-v00x-sys
+  - ch32-v00x-opt
+  rtt_scan_ranges: null
+  jtag: null
+  default_binary_format: null
+- name: CH32V005E6R6
+  part: null
+  svd: null
+  documentation: {}
+  package_variants: []
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      jtag_tap: null
+      mem_ap: null
+  memory_map:
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0x8000
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: SYS
+    range:
+      start: 0x1fff0000
+      end: 0x1fff0d00
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff700
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: false
+      execute: false
+      boot: false
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: false
+      boot: false
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  flash_algorithms:
+  - ch32-v00x-usr
+  - ch32-v00x-usr-legacy
+  - ch32-v00x-sys
+  - ch32-v00x-opt
+  rtt_scan_ranges: null
+  jtag: null
+  default_binary_format: null
+- name: CH32V005F6U6
+  part: null
+  svd: null
+  documentation: {}
+  package_variants: []
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      jtag_tap: null
+      mem_ap: null
+  memory_map:
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0x8000
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: SYS
+    range:
+      start: 0x1fff0000
+      end: 0x1fff0d00
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff700
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: false
+      execute: false
+      boot: false
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: false
+      boot: false
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  flash_algorithms:
+  - ch32-v00x-usr
+  - ch32-v00x-usr-legacy
+  - ch32-v00x-sys
+  - ch32-v00x-opt
+  rtt_scan_ranges: null
+  jtag: null
+  default_binary_format: null
+- name: CH32V005F6P6
+  part: null
+  svd: null
+  documentation: {}
+  package_variants: []
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      jtag_tap: null
+      mem_ap: null
+  memory_map:
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0x8000
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: SYS
+    range:
+      start: 0x1fff0000
+      end: 0x1fff0d00
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff700
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: false
+      execute: false
+      boot: false
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: false
+      boot: false
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  flash_algorithms:
+  - ch32-v00x-usr
+  - ch32-v00x-usr-legacy
+  - ch32-v00x-sys
+  - ch32-v00x-opt
+  rtt_scan_ranges: null
+  jtag: null
+  default_binary_format: null
+- name: CH32V005D6U6
+  part: null
+  svd: null
+  documentation: {}
+  package_variants: []
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      jtag_tap: null
+      mem_ap: null
+  memory_map:
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0x8000
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: SYS
+    range:
+      start: 0x1fff0000
+      end: 0x1fff0d00
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff700
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: false
+      execute: false
+      boot: false
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: false
+      boot: false
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  flash_algorithms:
+  - ch32-v00x-usr
+  - ch32-v00x-usr-legacy
+  - ch32-v00x-sys
+  - ch32-v00x-opt
+  rtt_scan_ranges: null
+  jtag: null
+  default_binary_format: null
+- name: CH32V006K8U6
+  part: null
+  svd: null
+  documentation: {}
+  package_variants: []
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      jtag_tap: null
+      mem_ap: null
+  memory_map:
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x800f800
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0xf800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: SYS
+    range:
+      start: 0x1fff0000
+      end: 0x1fff0d00
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff700
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: false
+      execute: false
+      boot: false
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: false
+      boot: false
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  flash_algorithms:
+  - ch32-v00x-usr
+  - ch32-v00x-usr-legacy
+  - ch32-v00x-sys
+  - ch32-v00x-opt
+  rtt_scan_ranges: null
+  jtag: null
+  default_binary_format: null
+- name: CH32V006E8R6
+  part: null
+  svd: null
+  documentation: {}
+  package_variants: []
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      jtag_tap: null
+      mem_ap: null
+  memory_map:
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x800f800
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0xf800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: SYS
+    range:
+      start: 0x1fff0000
+      end: 0x1fff0d00
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff700
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: false
+      execute: false
+      boot: false
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: false
+      boot: false
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  flash_algorithms:
+  - ch32-v00x-usr
+  - ch32-v00x-usr-legacy
+  - ch32-v00x-sys
+  - ch32-v00x-opt
+  rtt_scan_ranges: null
+  jtag: null
+  default_binary_format: null
+- name: CH32V006F8U6
+  part: null
+  svd: null
+  documentation: {}
+  package_variants: []
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      jtag_tap: null
+      mem_ap: null
+  memory_map:
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x800f800
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0xf800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: SYS
+    range:
+      start: 0x1fff0000
+      end: 0x1fff0d00
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff700
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: false
+      execute: false
+      boot: false
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: false
+      boot: false
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  flash_algorithms:
+  - ch32-v00x-usr
+  - ch32-v00x-usr-legacy
+  - ch32-v00x-sys
+  - ch32-v00x-opt
+  rtt_scan_ranges: null
+  jtag: null
+  default_binary_format: null
+- name: CH32V006F8P6
+  part: null
+  svd: null
+  documentation: {}
+  package_variants: []
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      jtag_tap: null
+      mem_ap: null
+  memory_map:
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x800f800
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0xf800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: SYS
+    range:
+      start: 0x1fff0000
+      end: 0x1fff0d00
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff700
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: false
+      execute: false
+      boot: false
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: false
+      boot: false
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  flash_algorithms:
+  - ch32-v00x-usr
+  - ch32-v00x-usr-legacy
+  - ch32-v00x-sys
+  - ch32-v00x-opt
+  rtt_scan_ranges: null
+  jtag: null
+  default_binary_format: null
+- name: CH32V007E8R6
+  part: null
+  svd: null
+  documentation: {}
+  package_variants: []
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      jtag_tap: null
+      mem_ap: null
+  memory_map:
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x800f800
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0xf800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: SYS
+    range:
+      start: 0x1fff0000
+      end: 0x1fff0d00
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff700
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: false
+      execute: false
+      boot: false
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: false
+      boot: false
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  flash_algorithms:
+  - ch32-v00x-usr
+  - ch32-v00x-usr-legacy
+  - ch32-v00x-sys
+  - ch32-v00x-opt
+  rtt_scan_ranges: null
+  jtag: null
+  default_binary_format: null
+- name: CH32V007K8U6
+  part: null
+  svd: null
+  documentation: {}
+  package_variants: []
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      jtag_tap: null
+      mem_ap: null
+  memory_map:
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x800f800
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0xf800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: SYS
+    range:
+      start: 0x1fff0000
+      end: 0x1fff0d00
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff700
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: false
+      execute: false
+      boot: false
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
+    access:
+      read: true
+      write: true
+      execute: false
+      boot: false
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+    is_alias: false
+    access:
+      read: true
+      write: true
+      execute: true
+      boot: false
+  flash_algorithms:
+  - ch32-v00x-usr
+  - ch32-v00x-usr-legacy
+  - ch32-v00x-sys
+  - ch32-v00x-opt
+  rtt_scan_ranges: null
+  jtag: null
+  default_binary_format: null
+flash_algorithms:
+- name: ch32-v00x-opt
+  description: ch32-v00x-opt
+  default: true
+  instructions: BUWCgDcFACADRQUXBc23JQJAyEUFiXX9EwUAAsjFiEkTZQUCiMmISRNlBQSIychFBYl1/RMGAALQxZBJE3b2/ZDJgoAFRYKAtwYAIIPFBhc3JQJAicWhZZOFBQgMyYVFfRYRRyOIthZjduYCNwZnRbeW780TBjYSk4a2mlDBVMFQ0VTREMU3BgAgFMUjCLYWAUWCgJcAAADngIALtwYAIAPHBheFRkHDM+elAA2LJe83JwJAVEeFivX+kwYAAlTHwWYUy7cGCQAUy1RHhYr1/pNyBfATAwACiYEjJmcAlcGBRrcDBQAcQhzBIyh3AFxHhYv1/4UGIyZnABEFEQbjlLb+IypXAEFlEwUFBAjLSEcFiXX9gUYTBQACSMcIS8F1/RVtjQjLNoWCgLcFACADxQUXGckBRSFmtyYCQBMGBgiQyiOIBRaCgAVFgoAAAAAAAAAAAA==
+  load_address: 0x20000020
+  data_load_address: null
+  pc_init: 0x48
+  pc_uninit: 0x12a
+  pc_program_page: 0x9c
+  pc_erase_sector: 0x4
+  pc_erase_all: 0x0
+  pc_verify: null
+  pc_blank_check: null
+  pc_read: null
+  vendor_functions: {}
+  data_section_offset: 0x154
+  rtt_location: null
+  rtt_poll_interval: 20
+  flash_properties:
+    address_range:
+      start: 0x1ffff800
+      end: 0x1ffff900
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x100
+      address: 0x0
+  cores: []
+  stack_size: null
+  stack_overflow_check: null
+  transfer_encoding: null
+  big_endian: false
+- name: ch32-v00x-sys
+  description: ch32-v00x-sys
+  default: true
+  instructions: BUWCgLcFACCDxVUahc23JQJA0EUFinX+EwYAAtDFNwYCAJDJyMkTBQYEiMnIRQWJdf0TBgAC0MWQSYF2/RZ1jpDJgoAFRYKAt5XvzTcFACATBUUag0cVAJOFtZo3B2dFEwc3ErcmAkCJz7cHACCDx0camNaM1roH3MahZ5OHBwicyoVCfRaRR6MAVQBjc/YC0EbYwszC2NLM0pjWjNaRZczGRgZ9giMAxQCjAFUAAUWCgJcAAADngOAMtwYAIIPGVhqlzrcmAkDYRgWLdf8TBwAC2MZBZ5jKNwcJAJjK2EYFi3X/k3IF8BMDAAKJgSOmZgCVwQFHtwMFABxCHMEjqHYA3EaFi/X/BQcjpmYAEQURBuMUt/4jqlYAQWUTBQUEiMrIRgWJdf2TBQACzMaMSkF2fRbxjYzKgoAFRYKAtwUAIJOFRRoDxRUADckBRQPGBQC3BmdFNycCQJOGNhIU17eW782ThraaFNc6BlDHIWYTBgYIEMujgAUAgoAFRYKAAAAAAAAAAAA=
+  load_address: 0x20000020
+  data_load_address: null
+  pc_init: 0x48
+  pc_uninit: 0x13e
+  pc_program_page: 0xba
+  pc_erase_sector: 0x4
+  pc_erase_all: null
+  pc_verify: null
+  pc_blank_check: null
+  pc_read: null
+  vendor_functions: {}
+  data_section_offset: 0x188
+  rtt_location: null
+  rtt_poll_interval: 20
+  flash_properties:
+    address_range:
+      start: 0x1fff0000
+      end: 0x1fff0d00
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x100
+      address: 0x0
+  cores: []
+  stack_size: null
+  stack_overflow_check: null
+  transfer_encoding: null
+  big_endian: false
+- name: ch32-v00x-usr
+  description: ch32-v00x-usr
+  default: true
+  instructions: NwUAIANFxRodybclAkDIRQWJdf0TBQACyMWISRNlRQCIyYhJE2UFBIjJyEUFiXX9EwYAAtDFkEltmpDJgoAFRYKAtwUAIIPFxRqdzbclAkDQRQWKdf43BgAIUY0TBgAC0MU3BgIAkMkTBgYEyMmQychFBYl1/RMGAALQxZBJgXb9FnWOkMmCgAVFgoC3BgAgg8XGGjclAkCJxaFlk4UFCAzJhUV9FhFHI4a2GmN05gI3BmdFt5bvzRMGNhKThraaUMFUwVDRNwYAIFTRIwa2GgFFgoCXAAAA54BAC7cGACCDxsYavc63JgJA2EYFi3X/EwcAAtjGQWeYyjcHCQCYythGBYt1/7cHAAgTAwACiYHJj5PyB/AjpmYAlcEBRbcDBQAYQpjDI6h2ANhGBYt1/wUFI6ZmAJEHEQbjFLX+I6pWAEFlEwUFBIjKyEYFiXX9kwUAAszGjEpBdn0W8Y2MyoKABUWCgLcFACADxcUaGckBRSFmtyYCQBMGBgiQyiOGBRqCgAVFgoAAAAAAAAAAAA==
+  load_address: 0x20000020
+  data_load_address: null
+  pc_init: 0x8c
+  pc_uninit: 0x166
+  pc_program_page: 0xdc
+  pc_erase_sector: 0x42
+  pc_erase_all: 0x0
+  pc_verify: null
+  pc_blank_check: null
+  pc_read: null
+  vendor_functions: {}
+  data_section_offset: 0x190
+  rtt_location: null
+  rtt_poll_interval: 20
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x800f800
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x100
+      address: 0x0
+  cores: []
+  stack_size: null
+  stack_overflow_check: null
+  transfer_encoding: null
+  big_endian: false
+- name: ch32-v00x-usr-legacy
+  description: ch32-v00x-usr-legacy
+  default: true
+  instructions: NwUAIANFxRodybclAkDIRQWJdf0TBQACyMWISRNlRQCIyYhJE2UFBIjJyEUFiXX9EwYAAtDFkEltmpDJgoAFRYKAtwUAIIPFxRqdzbclAkDQRQWKdf43BgAIUY0TBgAC0MU3BgIAkMkTBgYEyMmQychFBYl1/RMGAALQxZBJgXb9FnWOkMmCgAVFgoC3BgAgg8XGGjclAkCJxaFlk4UFCAzJhUV9FhFHI4a2GmN05gI3BmdFt5bvzRMGNhKThraaUMFUwVDRNwYAIFTRIwa2GgFFgoCXAAAA54BAC7cGACCDxsYavc63JgJA2EYFi3X/EwcAAtjGQWeYyjcHCQCYythGBYt1/7cHAAgTAwACiYHJj5PyB/AjpmYAlcEBRbcDBQAYQpjDI6h2ANhGBYt1/wUFI6ZmAJEHEQbjFLX+I6pWAEFlEwUFBIjKyEYFiXX9kwUAAszGjEpBdn0W8Y2MyoKABUWCgLcFACADxcUaGckBRSFmtyYCQBMGBgiQyiOGBRqCgAVFgoAAAAAAAAAAAA==
+  load_address: 0x20000020
+  data_load_address: null
+  pc_init: 0x8c
+  pc_uninit: 0x166
+  pc_program_page: 0xdc
+  pc_erase_sector: 0x42
+  pc_erase_all: 0x0
+  pc_verify: null
+  pc_blank_check: null
+  pc_read: null
+  vendor_functions: {}
+  data_section_offset: 0x190
+  rtt_location: null
+  rtt_poll_interval: 20
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0xf800
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x100
+      address: 0x0
+  cores: []
+  stack_size: null
+  stack_overflow_check: null
+  transfer_encoding: null
+  big_endian: false
