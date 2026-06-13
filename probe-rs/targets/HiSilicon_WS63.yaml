@@ -1,13 +1,3 @@
-# HiSilicon WS63 (Hi3863) — RISC-V "riscv31" core (RV32IMFC_Zicsr + custom CSRs)
-# whose Debug Module is reached through an ARM CoreSight DAP (AHB-AP 0, DM base
-# 0x80000000), the same topology probe-rs uses for RP235x (mem-AP DTM).
-#
-# Scope: DEBUG bring-up (attach / halt / run / memory / registers / breakpoints)
-# via the mem-AP DTM. Flashing is NOT yet supported — no flash algorithm is
-# defined for the WS63 SFC NOR controller (port from OpenOCD src/flash/nor/ws63.c).
-# Unvalidated on silicon; AP/DM values reverse-engineered from HiSpark Studio's
-# patched OpenOCD (tcl/target/vendorhm/WS63-*.cfg). See
-# doc/hisilicon-ws63-bs21/README.md.
 name: HiSilicon WS63
 variants:
 - name: WS63
@@ -16,30 +6,57 @@ variants:
     type: riscv
     core_access_options: !Riscv
       hart_id: 0
-      # RISC-V DM behind CoreSight AP 0 (OpenOCD -apsel 0), DM @ 0x80000000.
       mem_ap: !v1 0
-      dm_base: 0x80000000
+      dm_base: 2147483648
   memory_map:
-  - !Nvm                      # XIP SPI NOR flash (8 MB). No flash algo yet.
-    range:
-      start: 0x200000
-      end: 0xa00000
-    cores: [main]
-    access:
-      boot: true
-  - !Ram                      # L2 SRAM (576 K default)
-    range:
-      start: 0xa00000
-      end: 0xa90000
-    cores: [main]
-  - !Ram                      # ITCM
+  - !Ram
     range:
       start: 0x14c000
       end: 0x150000
-    cores: [main]
-  - !Ram                      # DTCM
+    cores:
+    - main
+  - !Ram
     range:
       start: 0x180000
       end: 0x184000
-    cores: [main]
-  flash_algorithms: []        # debug-only: no SFC flash algorithm yet (see item 4)
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x200000
+      end: 0xa00000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Ram
+    range:
+      start: 0xa00000
+      end: 0xa90000
+    cores:
+    - main
+  flash_algorithms:
+  - ws63-sfc
+flash_algorithms:
+- name: ws63-sfc
+  description: ws63
+  default: true
+  instructions: ApCXBQAAg8WFKq3FAUa3BQBImUYjpNUwjUYjoNUwt4YeAJOGBkgDpwUwk3cXAInHMocFBuNp1/4BRrcG4P82lZMGAAIjpNUwI6alMC1FI6ClMDeFHgATBQVIg6YFMBP3FgAJx7KGBQbj6ab+FwMAAGcAox4FRYKAQREGxiLEFwQAAAVFfRaRRSMGpCJje7YGgUU3BQBIGUYjJMUwDUYjIMUwN4YeABMGBkiDJgUwE/cWAAnHroaFBePpxv6BRSMgBUAFRiMkxTATBjAIIyDFMDeGHgATBgZIgyYFMBP3FgAJx66GhQXj6cb+lwAAAOeAwBYB5YVFIwa0IrJAIkRBAYKAlwAAAOeAwBk5cQbeItwm2krYTtZS1FbSWtBezmLMZspqyG7GroqXBQAAg8UlGOXJY4UKDjKKtwUASCFmtwvg/xlJjUmTDfAPkwQAAglLqps3hR4AE4wFMJMMBuATDQVIAUUjJCwBIyA8AYMlDAAT9hUACcaqhQUF4+ml/xMFAARWhGPkqgATBAAEgUKBQxMFNAATWCUAUoMBR5OYIwB9VhaFmoZjfIUAg8cGALOV7QCTxfX/8Y0zlucATY4hB4UGBQXjEZf+hQPimBEDI6DIEJEC45MD/QFFIyRsASMmfAGTFZQA5pWz9ZUBk4W1CCMgvACDJQwAE/YVAAnGqoUFBePppf+XAAAA54AABRHps4qKQCKaopvjlQr0AUURoAVF8lBiVNJUQlmyWSJakloCW/JLYkzSTEJNsk0hYYKAlwUAAAPFpQYJxQFFI4UFBoKABUWCgIFCNwYASDcFY1e3hh4AFUgFBROHBkiTCDAYY4biAoFHIyQGMSMgFjGDJgYwk/UWAInFvoaFB+Pp5v6DJQZAhYmFAuH9AUWCgEERBsYixAAIAAAAAAAA
+  pc_init: 0x78
+  pc_uninit: 0x240
+  pc_program_page: 0x10a
+  pc_erase_sector: 0x2
+  data_section_offset: 0x2ac
+  flash_properties:
+    address_range:
+      start: 0x200000
+      end: 0xa00000
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 5000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+  cores:
+  - main

@@ -4,8 +4,15 @@
 [target.riscv32imc-unknown-none-elf]
 rustflags = [
   "-C", "link-arg=--nmagic",
-  "-C", "link-arg=-Tmemory.x",
+  "-C", "link-arg=-Tlink.x",
   "-C", "force-frame-pointers=no",
+  # Position-independent data access. probe-rs loads the algo at a runtime-chosen
+  # RAM address, but the default medlow code model emits absolute `lui`+offset for
+  # statics (e.g. _IS_INIT at 0x26c), which points at the wrong place once loaded
+  # at e.g. 0xa00000 and makes the algo run off the rails. The RISC-V medany model
+  # (rustc spells it `medium`) uses PC-relative `auipc`, so the blob works wherever
+  # it is loaded.
+  "-C", "code-model=medium",
 ]
 
 [build]

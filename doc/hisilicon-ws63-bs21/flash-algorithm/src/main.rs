@@ -17,6 +17,20 @@
 use core::ptr::{read_volatile, write_volatile};
 use flash_algorithm::*;
 
+// Return trampoline. probe-rs sets `ra = load_address` and, per the CMSIS-Pack
+// convention, expects a routine's `ret` to self-trap there. The flash-algorithm
+// crate lays its functions out at `.entry` with no trap, so without this the core
+// runs off into whatever links at offset 0 (EraseSector) and the routine call
+// times out. link.x KEEPs `.trampoline` first in PrgCode, so this `ebreak` sits at
+// load_address; Init/EraseSector/ProgramPage/UnInit all `ret` here and halt.
+core::arch::global_asm!(
+    ".pushsection .trampoline, \"ax\"",
+    ".globl _flash_algo_return_trap",
+    "_flash_algo_return_trap:",
+    "ebreak",
+    ".popsection",
+);
+
 // ---- SFC v150 register map (base 0x4800_0000) ----
 const SFC_BASE: u32 = 0x4800_0000;
 const CMD_CONFIG: u32 = SFC_BASE + 0x300; // [0]start [1]sel_cs [3]addr_en [7]data_en
@@ -33,6 +47,7 @@ const OP_WREN: u32 = 0x06;
 const OP_RDSR: u32 = 0x05;
 const OP_SE_4K: u32 = 0x20; // 4 KiB sector erase
 const OP_PP: u32 = 0x02; // page program
+const OP_WRSR: u32 = 0x01; // write status register (used to clear block-protect)
 
 const RW_WRITE: u32 = 0;
 const RW_READ: u32 = 1;
@@ -69,9 +84,18 @@ fn cmd_config(addr_en: bool, data_en: bool, rw: u32, data_cnt: u32) -> u32 {
 }
 
 /// Poll the `start` bit until the controller finishes the transaction.
+///
+/// Bounded so a routine can never spin forever (e.g. if the SFC `start` bit is
+/// never cleared); it always returns to the trampoline and halts.
 #[inline(always)]
 fn wait_cmd_done() {
-    while rd(CMD_CONFIG) & 1 != 0 {}
+    let mut n: u32 = 0;
+    while rd(CMD_CONFIG) & 1 != 0 {
+        n = n.wrapping_add(1);
+        if n > WIP_POLL_LIMIT {
+            break;
+        }
+    }
 }
 
 /// Issue WREN (sets the flash WEL latch). Required before every erase/program.
@@ -115,6 +139,17 @@ impl FlashAlgorithm for Ws63Algo {
     fn new(_address: u32, _clock: u32, _function: Function) -> Result<Self, ErrorCode> {
         // The SFC is left as configured by the boot ROM / flashboot (XIP bus mode);
         // the register/command path used below operates alongside it.
+        //
+        // Clear the flash chip's block-protect bits (status register BP0..BP2). On
+        // this board (GD25Q32) they are set at power-on (RDSR=0x1e) and the chip
+        // silently rejects every erase/program until they are cleared. Hardware-
+        // verified: WREN + WRSR(status=0x00) is what unblocks SE/PP.
+        write_enable();
+        wr(CMD_DATABUF, 0x00); // status register value = 0 (BP cleared)
+        wr(CMD_INS, OP_WRSR);
+        wr(CMD_CONFIG, cmd_config(false, true, RW_WRITE, 0)); // write 1 status byte
+        wait_cmd_done();
+        wait_ready()?;
         Ok(Self)
     }
 

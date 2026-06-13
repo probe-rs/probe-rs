@@ -878,6 +878,13 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         if result_status.allhalted() {
             self.state.is_halted = true;
+            // Ensure software breakpoints (ebreak) trap to debug mode even when the
+            // core halts via this fast path. Otherwise an ebreak — e.g. a flash
+            // algorithm's return trampoline — would raise an exception instead of
+            // halting. The slow path below already does this.
+            if !self.state.sw_breakpoint_debug_enabled {
+                self.debug_on_sw_breakpoint(true)?;
+            }
             // Cores have halted, we have nothing else to do but return.
             return Ok(());
         }
