@@ -2560,6 +2560,25 @@ impl<'state> RiscvCommunicationInterface<'state> {
     pub fn reset_hart_and_halt(&mut self, timeout: Duration) -> Result<(), RiscvError> {
         tracing::debug!("Resetting core, setting hartreset bit");
 
+        // Prefer the DM's dedicated halt-on-reset request (`resethaltreq`) when the
+        // hardware advertises it (`dmstatus.hasresethaltreq`). It makes the hart halt
+        // at the FIRST instruction out of reset (the reset vector). The fallback below
+        // relies on a held `haltreq`, which on some targets lets the hart execute a
+        // handful of instructions before the halt actually lands — e.g. on the
+        // HiSilicon WS63 a plain `haltreq` reset ends up deep in the mask ROM with
+        // stale CSRs (mepc/mcause left over from a prior run) instead of at the reset
+        // vector, which is misleading when debugging. Arming `resethaltreq` before the
+        // reset pulse fixes that. Disarmed again once the hart is confirmed halted.
+        let halt_on_reset = self.supports_reset_halt_req().unwrap_or(false);
+        if halt_on_reset {
+            tracing::debug!("DM supports resethaltreq; arming halt-on-reset before reset");
+            let mut dmcontrol = self.state.current_dmcontrol;
+            dmcontrol.set_dmactive(true);
+            dmcontrol.set_resethaltreq(true);
+            dmcontrol.set_clrresethaltreq(false);
+            self.write_dm_register(dmcontrol)?;
+        }
+
         let mut dmcontrol = self.state.current_dmcontrol;
         dmcontrol.set_dmactive(true);
         dmcontrol.set_hartreset(true);
@@ -2628,6 +2647,13 @@ impl<'state> RiscvCommunicationInterface<'state> {
         dmcontrol.set_ackhavereset(true);
         dmcontrol.set_hartreset(false);
         dmcontrol.set_ndmreset(false);
+        if halt_on_reset {
+            // Disarm halt-on-reset: clear the (W1) setresethaltreq we kept asserting
+            // through the reset loop and pulse clrresethaltreq instead, so later plain
+            // resumes/resets aren't affected by a lingering halt-on-reset latch.
+            dmcontrol.set_resethaltreq(false);
+            dmcontrol.set_clrresethaltreq(true);
+        }
 
         self.write_dm_register(dmcontrol)?;
 
