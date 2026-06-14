@@ -1,6 +1,16 @@
 name: CH32L1 Series
 manufacturer: null
-chip_detection: []
+chip_detection:
+- !WchLink
+  mask: 0xffffff0f
+  variants:
+    0x10310700: CH32L103C8T6
+    0x10370700: CH32L103F7P6
+    0x103a0700: CH32L103F8P6
+    0x103d0700: CH32L103F8U6
+    0x103b0700: CH32L103G8R6
+    0x10320700: CH32L103K8U6
+  ob_code_ram_splits: {}
 generated_from_pack: false
 pack_file_release: null
 variants:

@@ -1,6 +1,181 @@
 name: CH32V2 / CH32V3 Series
 manufacturer: null
-chip_detection: []
+chip_detection:
+- !WchLink
+  mask: 0xffffff0f
+  variants:
+    0x20330500: CH32V203C6T6
+    0x20310500: CH32V203C8T6
+    0x20300500: CH32V203C8U6
+    0x20370500: CH32V203F6P6
+    0x203a0500: CH32V203F8P6
+    0x203d0500: CH32V203F8U6
+    0x20360500: CH32V203G6U6
+    0x203b0500: CH32V203G8R6
+    0x20350500: CH32V203K6T6
+    0x20320500: CH32V203K8T6
+    0x2034050c: CH32V203RBT6
+    0x2082050c: CH32V208CBU6
+    0x2083050c: CH32V208GBU6
+    0x2081050c: CH32V208RBT6
+    0x2080050c: CH32V208WBU6
+    0x30330504: CH32V303CBT6
+    0x30320504: CH32V303RBT6
+    0x30310504: CH32V303RCT6
+    0x30300504: CH32V303VCT6
+    0x30520508: CH32V305FBP6
+    0x305b0508: CH32V305GBU6
+    0x30500508: CH32V305RBT6
+    0x30710508: CH32V307RCT6
+    0x30700508: CH32V307VCT6
+    0x30730508: CH32V307WCU6
+    0x3170b508: CH32V317VCT6
+    0x3173b508: CH32V317WCU6
+  ob_code_ram_splits:
+    0x2034050c:
+      address: 0x1ffff802
+      mask: 0xe0
+      variants:
+        0x0: CH32V203RBT6
+        0x20: CH32V203RBT6
+        0x40: CH32V203RBT6_c144_r48
+        0x60: CH32V203RBT6_c144_r48
+        0x80: CH32V203RBT6_c160_r32
+        0xa0: CH32V203RBT6_c160_r32
+        0xc0: CH32V203RBT6
+        0xe0: CH32V203RBT6
+    0x2082050c:
+      address: 0x1ffff802
+      mask: 0xe0
+      variants:
+        0x0: CH32V208CBU6
+        0x20: CH32V208CBU6
+        0x40: CH32V208CBU6_c144_r48
+        0x60: CH32V208CBU6_c144_r48
+        0x80: CH32V208CBU6_c160_r32
+        0xa0: CH32V208CBU6_c160_r32
+        0xc0: CH32V208CBU6
+        0xe0: CH32V208CBU6
+    0x2083050c:
+      address: 0x1ffff802
+      mask: 0xe0
+      variants:
+        0x0: CH32V208GBU6
+        0x20: CH32V208GBU6
+        0x40: CH32V208GBU6_c144_r48
+        0x60: CH32V208GBU6_c144_r48
+        0x80: CH32V208GBU6_c160_r32
+        0xa0: CH32V208GBU6_c160_r32
+        0xc0: CH32V208GBU6
+        0xe0: CH32V208GBU6
+    0x2081050c:
+      address: 0x1ffff802
+      mask: 0xe0
+      variants:
+        0x0: CH32V208RBT6
+        0x20: CH32V208RBT6
+        0x40: CH32V208RBT6_c144_r48
+        0x60: CH32V208RBT6_c144_r48
+        0x80: CH32V208RBT6_c160_r32
+        0xa0: CH32V208RBT6_c160_r32
+        0xc0: CH32V208RBT6
+        0xe0: CH32V208RBT6
+    0x2080050c:
+      address: 0x1ffff802
+      mask: 0xe0
+      variants:
+        0x0: CH32V208WBU6
+        0x20: CH32V208WBU6
+        0x40: CH32V208WBU6_c144_r48
+        0x60: CH32V208WBU6_c144_r48
+        0x80: CH32V208WBU6_c160_r32
+        0xa0: CH32V208WBU6_c160_r32
+        0xc0: CH32V208WBU6
+        0xe0: CH32V208WBU6
+    0x30310504:
+      address: 0x1ffff802
+      mask: 0xe0
+      variants:
+        0x0: CH32V303RCT6_c192_r128
+        0x20: CH32V303RCT6_c192_r128
+        0x40: CH32V303RCT6_c224_r96
+        0x60: CH32V303RCT6_c224_r96
+        0x80: CH32V303RCT6
+        0xa0: CH32V303RCT6
+        0xc0: CH32V303RCT6_c128_r192
+        0xe0: CH32V303RCT6_c288_r32
+    0x30300504:
+      address: 0x1ffff802
+      mask: 0xe0
+      variants:
+        0x0: CH32V303VCT6_c192_r128
+        0x20: CH32V303VCT6_c192_r128
+        0x40: CH32V303VCT6_c224_r96
+        0x60: CH32V303VCT6_c224_r96
+        0x80: CH32V303VCT6
+        0xa0: CH32V303VCT6
+        0xc0: CH32V303VCT6_c128_r192
+        0xe0: CH32V303VCT6_c288_r32
+    0x30710508:
+      address: 0x1ffff802
+      mask: 0xe0
+      variants:
+        0x0: CH32V307RCT6_c192_r128
+        0x20: CH32V307RCT6_c192_r128
+        0x40: CH32V307RCT6_c224_r96
+        0x60: CH32V307RCT6_c224_r96
+        0x80: CH32V307RCT6
+        0xa0: CH32V307RCT6
+        0xc0: CH32V307RCT6_c128_r192
+        0xe0: CH32V307RCT6_c288_r32
+    0x30700508:
+      address: 0x1ffff802
+      mask: 0xe0
+      variants:
+        0x0: CH32V307VCT6_c192_r128
+        0x20: CH32V307VCT6_c192_r128
+        0x40: CH32V307VCT6_c224_r96
+        0x60: CH32V307VCT6_c224_r96
+        0x80: CH32V307VCT6
+        0xa0: CH32V307VCT6
+        0xc0: CH32V307VCT6_c128_r192
+        0xe0: CH32V307VCT6_c288_r32
+    0x30730508:
+      address: 0x1ffff802
+      mask: 0xe0
+      variants:
+        0x0: CH32V307WCU6_c192_r128
+        0x20: CH32V307WCU6_c192_r128
+        0x40: CH32V307WCU6_c224_r96
+        0x60: CH32V307WCU6_c224_r96
+        0x80: CH32V307WCU6
+        0xa0: CH32V307WCU6
+        0xc0: CH32V307WCU6_c128_r192
+        0xe0: CH32V307WCU6_c288_r32
+    0x3170b508:
+      address: 0x1ffff802
+      mask: 0xe0
+      variants:
+        0x0: CH32V317VCT6_c192_r128
+        0x20: CH32V317VCT6_c192_r128
+        0x40: CH32V317VCT6_c224_r96
+        0x60: CH32V317VCT6_c224_r96
+        0x80: CH32V317VCT6
+        0xa0: CH32V317VCT6
+        0xc0: CH32V317VCT6_c128_r192
+        0xe0: CH32V317VCT6_c288_r32
+    0x3173b508:
+      address: 0x1ffff802
+      mask: 0xe0
+      variants:
+        0x0: CH32V317WCU6_c192_r128
+        0x20: CH32V317WCU6_c192_r128
+        0x40: CH32V317WCU6_c224_r96
+        0x60: CH32V317WCU6_c224_r96
+        0x80: CH32V317WCU6
+        0xa0: CH32V317WCU6
+        0xc0: CH32V317WCU6_c128_r192
+        0xe0: CH32V317WCU6_c288_r32
 generated_from_pack: false
 pack_file_release: null
 variants:

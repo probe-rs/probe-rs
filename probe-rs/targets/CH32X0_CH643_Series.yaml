@@ -1,6 +1,25 @@
 name: CH32X0 / CH643 Series
 manufacturer: null
-chip_detection: []
+chip_detection:
+- !WchLink
+  mask: 0xffffff0f
+  variants:
+    0x35a0601: CH32X033F8P6
+    0x3510601: CH32X035C8T6
+    0x3570601: CH32X035F7P6
+    0x35e0601: CH32X035F8U6
+    0x35b0601: CH32X035G8R6
+    0x3560601: CH32X035G8U6
+    0x3500601: CH32X035R8T6
+  ob_code_ram_splits: {}
+- !WchLink
+  mask: 0xffffffff
+  variants:
+    0x64300601: CH643W
+    0x64310601: CH643Q
+    0x64330601: CH643L
+    0x64340601: CH643U
+  ob_code_ram_splits: {}
 generated_from_pack: false
 pack_file_release: null
 variants:
