@@ -1,0 +1,1 @@
+Allow double-buffering to be disabled on cores where the flashing algorithm interferes with double-buffering behavior
