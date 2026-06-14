@@ -1,43 +1,18 @@
 name: CH32F1 Series
-manufacturer: null
 chip_detection:
 - !WchLink
   mask: 0xffffff0f
   variants:
     0x20004102: CH32F103C8T6
     0x2000410f: CH32F103R8T6
-  ob_code_ram_splits: {}
-generated_from_pack: false
-pack_file_release: null
 variants:
 - name: CH32F103C6T6
-  part: null
-  svd: null
-  documentation: {}
-  package_variants: []
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
       ap: !v1 0
-      targetsel: null
-      debug_base: null
-      cti_base: null
-      jtag_tap: null
   memory_map:
-  - !Nvm
-    name: USR
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    cores:
-    - main
-    is_alias: false
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   - !Nvm
     name: USR_LEGACY
     range:
@@ -46,11 +21,13 @@ variants:
     cores:
     - main
     is_alias: true
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
   - !Nvm
     name: SYS_1
     range:
@@ -59,11 +36,6 @@ variants:
     cores:
     - main
     is_alias: true
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   - !Nvm
     name: OPT
     range:
@@ -73,10 +45,7 @@ variants:
     - main
     is_alias: true
     access:
-      read: true
-      write: true
       execute: false
-      boot: false
   - !Nvm
     name: VND
     range:
@@ -86,10 +55,8 @@ variants:
     - main
     is_alias: true
     access:
-      read: true
       write: false
       execute: false
-      boot: false
   - !Nvm
     name: SYS_2
     range:
@@ -98,11 +65,6 @@ variants:
     cores:
     - main
     is_alias: true
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   - !Ram
     name: RAM
     range:
@@ -110,49 +72,19 @@ variants:
       end: 0x20002800
     cores:
     - main
-    is_alias: false
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   flash_algorithms:
   - ch32-v1-usr
   - ch32-v1-usr-legacy
   - ch32-v1-sys-1
   - ch32-v1-opt
   - ch32-v1-sys-2
-  rtt_scan_ranges: null
-  jtag: null
-  default_binary_format: null
 - name: CH32F103C8T6
-  part: null
-  svd: null
-  documentation: {}
-  package_variants: []
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
       ap: !v1 0
-      targetsel: null
-      debug_base: null
-      cti_base: null
-      jtag_tap: null
   memory_map:
-  - !Nvm
-    name: USR
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    is_alias: false
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   - !Nvm
     name: USR_LEGACY
     range:
@@ -161,11 +93,13 @@ variants:
     cores:
     - main
     is_alias: true
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
   - !Nvm
     name: SYS_1
     range:
@@ -174,11 +108,6 @@ variants:
     cores:
     - main
     is_alias: true
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   - !Nvm
     name: OPT
     range:
@@ -188,10 +117,7 @@ variants:
     - main
     is_alias: true
     access:
-      read: true
-      write: true
       execute: false
-      boot: false
   - !Nvm
     name: VND
     range:
@@ -201,10 +127,8 @@ variants:
     - main
     is_alias: true
     access:
-      read: true
       write: false
       execute: false
-      boot: false
   - !Nvm
     name: SYS_2
     range:
@@ -213,11 +137,6 @@ variants:
     cores:
     - main
     is_alias: true
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   - !Ram
     name: RAM
     range:
@@ -225,49 +144,19 @@ variants:
       end: 0x20005000
     cores:
     - main
-    is_alias: false
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   flash_algorithms:
   - ch32-v1-usr
   - ch32-v1-usr-legacy
   - ch32-v1-sys-1
   - ch32-v1-opt
   - ch32-v1-sys-2
-  rtt_scan_ranges: null
-  jtag: null
-  default_binary_format: null
 - name: CH32F103R8T6
-  part: null
-  svd: null
-  documentation: {}
-  package_variants: []
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
       ap: !v1 0
-      targetsel: null
-      debug_base: null
-      cti_base: null
-      jtag_tap: null
   memory_map:
-  - !Nvm
-    name: USR
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    is_alias: false
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   - !Nvm
     name: USR_LEGACY
     range:
@@ -276,11 +165,13 @@ variants:
     cores:
     - main
     is_alias: true
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
   - !Nvm
     name: SYS_1
     range:
@@ -289,11 +180,6 @@ variants:
     cores:
     - main
     is_alias: true
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   - !Nvm
     name: OPT
     range:
@@ -303,10 +189,7 @@ variants:
     - main
     is_alias: true
     access:
-      read: true
-      write: true
       execute: false
-      boot: false
   - !Nvm
     name: VND
     range:
@@ -316,10 +199,8 @@ variants:
     - main
     is_alias: true
     access:
-      read: true
       write: false
       execute: false
-      boot: false
   - !Nvm
     name: SYS_2
     range:
@@ -328,11 +209,6 @@ variants:
     cores:
     - main
     is_alias: true
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   - !Ram
     name: RAM
     range:
@@ -340,40 +216,24 @@ variants:
       end: 0x20005000
     cores:
     - main
-    is_alias: false
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   flash_algorithms:
   - ch32-v1-usr
   - ch32-v1-usr-legacy
   - ch32-v1-sys-1
   - ch32-v1-opt
   - ch32-v1-sys-2
-  rtt_scan_ranges: null
-  jtag: null
-  default_binary_format: null
 flash_algorithms:
 - name: ch32-v1-opt
   description: ch32-v1-opt
   default: true
   instructions: gLVvRgEggL1A8nYQwvIAAAB4ASgcvwEgcEeAtW9GQvIMAMTyAgABaMkH/NEgIQFgQWhB8CABQWBBaEHwQAFBYAFoyQf80SAhAWBBaCHwIAFBYAAggL2AtW9GQPJ2HkLyBAHC8gAOxPICAZ74ADAzsdH4DMBI8oADQ+oMA8tgASMBOo74ADAEKj+/QPIjEsTyZ1IKYEj2qxA/v8z271AIYEpgjvgAMD6/SGAAIIC9APBO+EDydhPC8gADG3gBKwS/QeoAA1/qw3MB0AEgcEdf6lEMBL8AIHBHsLUCr0LyDAEAI8TyAgFP8CAOFIgNaO0H/NHB+ADgTWhF8BAFTWAEgAxo5Af80cH4AOABM0xoAjICMGNFJPAQBExg5tEAILC9QPJ2EcLyAAEIeAEoHL8BIHBHgLVvRgAgSPKAAwhwQvIQAcTyAgEKaBpDCmCAvYC1b0YA3v7eANQ=
   load_address: 0x20000020
-  data_load_address: null
   pc_init: 0x57
   pc_uninit: 0x121
   pc_program_page: 0xb3
   pc_erase_sector: 0x9
   pc_erase_all: 0x1
-  pc_verify: null
-  pc_blank_check: null
-  pc_read: null
-  vendor_functions: {}
   data_section_offset: 0x158
-  rtt_location: null
-  rtt_poll_interval: 20
   flash_properties:
     address_range:
       start: 0x1ffff800
@@ -385,29 +245,16 @@ flash_algorithms:
     sectors:
     - size: 0x80
       address: 0x0
-  cores: []
-  stack_size: null
-  stack_overflow_check: null
-  transfer_encoding: null
-  big_endian: false
 - name: ch32-v1-sys-1
   description: ch32-v1-sys-1
   default: true
   instructions: gLVvRgEggL1A8rgRwvIAAQl4ASkcvwEgcEeAtW9GQvIMAcTyAgEKaNIH/NEgIgpgT/QAMkpgQCLA8gICiGBKYApo0gf80SAigPSAUApgSmgi9AAySmAAaIhiACCAvYC1b0ZA8rgeQvIEAcLyAA7E8gIBnvgAMDOx0fgMwEjygAND6gwDy2ABIwE6jvgAMAQqP79A8iMSxPJnUgpgSParED+/zPbvUAhgCmKO+AAwPr8IYgAggL0A8Gv4QPK4E8LyAAMbeAErHL8BIHBH8LUDr034BI1C8gwDxPICAx5o9gf80SAmHmBP9IA2XmBP9BAmXmAeaPYH/NEg8H8MT/AgDokIw/gA4BXQACRP9KAoACZS+ARbBDRA+ARbFPAMDwbRw/gEgB1o7Qf80cP4AOABNo5C7dFAIMP4CMDA8gEAWGAYaMAH/NEgIBhgWGgg9IAwWGCM9IBQAGiYYgAgXfgEi/C9QPK4EcLyAAEIeAEoHL8BIHBHgLVvRgAgSPKAAwhwQvIQAcTyAgEKaBpDCmCAvYC1b0YA3v7eANTU1A==
   load_address: 0x20000020
-  data_load_address: null
   pc_init: 0x5f
   pc_uninit: 0x163
   pc_program_page: 0xbb
   pc_erase_sector: 0x9
-  pc_erase_all: null
-  pc_verify: null
-  pc_blank_check: null
-  pc_read: null
-  vendor_functions: {}
   data_section_offset: 0x19c
-  rtt_location: null
-  rtt_poll_interval: 20
   flash_properties:
     address_range:
       start: 0x1ffff000
@@ -419,29 +266,16 @@ flash_algorithms:
     sectors:
     - size: 0x80
       address: 0x0
-  cores: []
-  stack_size: null
-  stack_overflow_check: null
-  transfer_encoding: null
-  big_endian: false
 - name: ch32-v1-sys-2
   description: ch32-v1-sys-2
   default: true
   instructions: gLVvRgEggL1A8rgRwvIAAQl4ASkcvwEgcEeAtW9GQvIMAcTyAgEKaNIH/NEgIgpgT/QAMkpgQCLA8gICiGBKYApo0gf80SAigPSAUApgSmgi9AAySmAAaIhiACCAvYC1b0ZA8rgeQvIEAcLyAA7E8gIBnvgAMDOx0fgMwEjygAND6gwDy2ABIwE6jvgAMAQqP79A8iMSxPJnUgpgSParED+/zPbvUAhgCmKO+AAwPr8IYgAggL0A8Gv4QPK4E8LyAAMbeAErHL8BIHBH8LUDr034BI1C8gwDxPICAx5o9gf80SAmHmBP9IA2XmBP9BAmXmAeaPYH/NEg8H8MT/AgDokIw/gA4BXQACRP9KAoACZS+ARbBDRA+ARbFPAMDwbRw/gEgB1o7Qf80cP4AOABNo5C7dFAIMP4CMDA8gEAWGAYaMAH/NEgIBhgWGgg9IAwWGCM9IBQAGiYYgAgXfgEi/C9QPK4EcLyAAEIeAEoHL8BIHBHgLVvRgAgSPKAAwhwQvIQAcTyAgEKaBpDCmCAvYC1b0YA3v7eANTU1A==
   load_address: 0x20000020
-  data_load_address: null
   pc_init: 0x5f
   pc_uninit: 0x163
   pc_program_page: 0xbb
   pc_erase_sector: 0x9
-  pc_erase_all: null
-  pc_verify: null
-  pc_blank_check: null
-  pc_read: null
-  vendor_functions: {}
   data_section_offset: 0x19c
-  rtt_location: null
-  rtt_poll_interval: 20
   flash_properties:
     address_range:
       start: 0x1ffff900
@@ -453,29 +287,17 @@ flash_algorithms:
     sectors:
     - size: 0x80
       address: 0x0
-  cores: []
-  stack_size: null
-  stack_overflow_check: null
-  transfer_encoding: null
-  big_endian: false
 - name: ch32-v1-usr
   description: ch32-v1-usr
   default: true
   instructions: QPISIMLyAAAAeAEoHL8BIHBHgLVvRkLyDADE8gIAAWjJB/zRICEBYEFoQfAEAUFgQWhB8EABQWABaMkH/NEgIQFgQWgh8AQBQWBB8gABwPYAAQlogWIAIIC9QPISIcLyAAEJeAEpHL8BIHBHgLVvRkLyDAHE8gIBCmjSB/zRICJA8ABgCmBP9AAySmBAIsDyAgKIYEpgCmjSB/zRICKA9IBQCmBKaCL0ADJKYABoiGIAIIC9gLVvRkDyEi5C8gQBwvIADsTyAgGe+AAwM7HR+AzASPKAA0PqDAPLYAEjATqO+AAwBCo/v0DyIxLE8mdSCmBI9qsQP7/M9u9QCGAKYo74ADA+vwhiACCAvQDwbfhA8hIjwvIAAxt4ASscvwEgcEfwtQOvTfgEjULyDAPE8gIDHmj2B/zRICYeYE/0gDZeYE/0ECZeYB5o9gf80UDwAGBP8CAMIPB/DokIw/gAwBXQACRP9KAoACZS+ARbBDRA+ARbFPAMDwbRw/gEgB1o7Qf80cP4AMABNo5C7dFAIMP4CODA8gEAWGAYaMAH/NEgIBhgWGgg9IAwWGCO9IBQAGiYYgAgXfgEi/C9QPISIcLyAAEIeAEoHL8BIHBHgLVvRgAgSPKAAwhwQvIQAcTyAgEKaBpDCmCAvYC1b0YA3v7eANQ=
   load_address: 0x20000020
-  data_load_address: null
   pc_init: 0xb5
   pc_uninit: 0x1bd
   pc_program_page: 0x111
   pc_erase_sector: 0x5b
   pc_erase_all: 0x1
-  pc_verify: null
-  pc_blank_check: null
-  pc_read: null
-  vendor_functions: {}
   data_section_offset: 0x1f4
-  rtt_location: null
-  rtt_poll_interval: 20
   flash_properties:
     address_range:
       start: 0x8000000
@@ -487,29 +309,17 @@ flash_algorithms:
     sectors:
     - size: 0x80
       address: 0x0
-  cores: []
-  stack_size: null
-  stack_overflow_check: null
-  transfer_encoding: null
-  big_endian: false
 - name: ch32-v1-usr-legacy
   description: ch32-v1-usr-legacy
   default: true
   instructions: QPISIMLyAAAAeAEoHL8BIHBHgLVvRkLyDADE8gIAAWjJB/zRICEBYEFoQfAEAUFgQWhB8EABQWABaMkH/NEgIQFgQWgh8AQBQWBB8gABwPYAAQlogWIAIIC9QPISIcLyAAEJeAEpHL8BIHBHgLVvRkLyDAHE8gIBCmjSB/zRICJA8ABgCmBP9AAySmBAIsDyAgKIYEpgCmjSB/zRICKA9IBQCmBKaCL0ADJKYABoiGIAIIC9gLVvRkDyEi5C8gQBwvIADsTyAgGe+AAwM7HR+AzASPKAA0PqDAPLYAEjATqO+AAwBCo/v0DyIxLE8mdSCmBI9qsQP7/M9u9QCGAKYo74ADA+vwhiACCAvQDwbfhA8hIjwvIAAxt4ASscvwEgcEfwtQOvTfgEjULyDAPE8gIDHmj2B/zRICYeYE/0gDZeYE/0ECZeYB5o9gf80UDwAGBP8CAMIPB/DokIw/gAwBXQACRP9KAoACZS+ARbBDRA+ARbFPAMDwbRw/gEgB1o7Qf80cP4AMABNo5C7dFAIMP4CODA8gEAWGAYaMAH/NEgIBhgWGgg9IAwWGCO9IBQAGiYYgAgXfgEi/C9QPISIcLyAAEIeAEoHL8BIHBHgLVvRgAgSPKAAwhwQvIQAcTyAgEKaBpDCmCAvYC1b0YA3v7eANQ=
   load_address: 0x20000020
-  data_load_address: null
   pc_init: 0xb5
   pc_uninit: 0x1bd
   pc_program_page: 0x111
   pc_erase_sector: 0x5b
   pc_erase_all: 0x1
-  pc_verify: null
-  pc_blank_check: null
-  pc_read: null
-  vendor_functions: {}
   data_section_offset: 0x1f4
-  rtt_location: null
-  rtt_poll_interval: 20
   flash_properties:
     address_range:
       start: 0x0
@@ -521,8 +331,3 @@ flash_algorithms:
     sectors:
     - size: 0x80
       address: 0x0
-  cores: []
-  stack_size: null
-  stack_overflow_check: null
-  transfer_encoding: null
-  big_endian: false
