@@ -2525,11 +2525,26 @@ impl<'state> RiscvCommunicationInterface<'state> {
         self.write_dm_register(dmcontrol)?;
 
         let status = Dmstatus(self.dtm.read_deferred_result(status_idx)?.into_u32());
-        if !status.allresumeack() {
-            return Err(RiscvError::RequestNotAcknowledged);
+        if status.allresumeack() || status.allrunning() {
+            return Ok(());
         }
+        self.wait_for_resume_ack(Duration::from_millis(50))
+    }
 
-        Ok(())
+    /// Some cores (WCH Qingke) update dmstatus only after a brief delay; poll
+    /// for the ack bit or for the hart actually running.
+    fn wait_for_resume_ack(&mut self, timeout: Duration) -> Result<(), RiscvError> {
+        let start = Instant::now();
+        loop {
+            let dmstatus: Dmstatus = self.read_dm_register()?;
+            if dmstatus.allresumeack() || dmstatus.allrunning() {
+                return Ok(());
+            }
+            if start.elapsed() >= timeout {
+                return Err(RiscvError::RequestNotAcknowledged);
+            }
+            std::thread::sleep(Duration::from_millis(1));
+        }
     }
 
     /// Perform a reset of all harts on the target and halt them at the first instruction.
