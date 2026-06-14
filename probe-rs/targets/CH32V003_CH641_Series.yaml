@@ -1,6 +1,19 @@
 name: CH32V003 / CH641 Series
 manufacturer: null
-chip_detection: []
+chip_detection:
+- !WchLink
+  mask: 0xffffff0f
+  variants:
+    0x330500: CH32V003J4M6
+    0x320500: CH32V003A4M6
+    0x310500: CH32V003F4U6
+    0x300500: CH32V003F4P6
+    0x64100500: CH641F
+    0x64150500: CH641U
+    0x64110500: CH641D
+    0x64120500: CH641X
+    0x64160500: CH641P
+  ob_code_ram_splits: {}
 generated_from_pack: false
 pack_file_release: null
 variants:

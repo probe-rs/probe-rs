@@ -1,6 +1,15 @@
 name: CH32H4 Series
 manufacturer: null
-chip_detection: []
+chip_detection:
+- !WchLink
+  mask: 0xffffff0f
+  variants:
+    0x4150050d: CH32H415REU6
+    0x4160050d: CH32H416RDU6
+    0x4171050d: CH32H417MEU6
+    0x4170050d: CH32H417QEU6
+    0x4172050d: CH32H417WEU6
+  ob_code_ram_splits: {}
 generated_from_pack: false
 pack_file_release: null
 variants:

@@ -1,6 +1,12 @@
 name: CH32V1 Series
 manufacturer: null
-chip_detection: []
+chip_detection:
+- !WchLink
+  mask: 0xffffff0f
+  variants:
+    0x25004102: CH32V103C8T6
+    0x2500410f: CH32V103R8T6
+  ob_code_ram_splits: {}
 generated_from_pack: false
 pack_file_release: null
 variants:
