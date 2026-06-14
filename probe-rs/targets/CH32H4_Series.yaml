@@ -1,5 +1,4 @@
 name: CH32H4 Series
-manufacturer: null
 chip_detection:
 - !WchLink
   mask: 0xffffff0f
@@ -9,36 +8,14 @@ chip_detection:
     0x4171050d: CH32H417MEU6
     0x4170050d: CH32H417QEU6
     0x4172050d: CH32H417WEU6
-  ob_code_ram_splits: {}
-generated_from_pack: false
-pack_file_release: null
 variants:
 - name: CH32H415REU6
-  part: null
-  svd: null
-  documentation: {}
-  package_variants: []
   cores:
   - name: main
     type: riscv
     core_access_options: !Riscv
       hart_id: 0
-      jtag_tap: null
-      mem_ap: null
   memory_map:
-  - !Nvm
-    name: USR
-    range:
-      start: 0x8000000
-      end: 0x80f0000
-    cores:
-    - main
-    is_alias: false
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   - !Nvm
     name: USR_LEGACY
     range:
@@ -47,11 +24,13 @@ variants:
     cores:
     - main
     is_alias: true
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x80f0000
+    cores:
+    - main
   - !Nvm
     name: SYS
     range:
@@ -60,11 +39,6 @@ variants:
     cores:
     - main
     is_alias: true
-    access:
-      read: true
-      write: false
-      execute: true
-      boot: false
   - !Nvm
     name: VND
     range:
@@ -74,10 +48,8 @@ variants:
     - main
     is_alias: true
     access:
-      read: true
       write: false
       execute: false
-      boot: false
   - !Nvm
     name: OPT
     range:
@@ -87,10 +59,7 @@ variants:
     - main
     is_alias: true
     access:
-      read: true
-      write: true
       execute: false
-      boot: false
   - !Ram
     name: ITCM
     range:
@@ -98,12 +67,6 @@ variants:
       end: 0x200c0000
     cores:
     - main
-    is_alias: false
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   - !Ram
     name: DTCM
     range:
@@ -111,12 +74,6 @@ variants:
       end: 0x20100000
     cores:
     - main
-    is_alias: false
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   - !Ram
     name: SRAM_SHARED
     range:
@@ -124,45 +81,18 @@ variants:
       end: 0x20180000
     cores:
     - main
-    is_alias: false
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   flash_algorithms:
   - ch32-h4-usr
   - ch32-h4-usr-legacy
+  - ch32-h4-sys
   - ch32-h4-opt
-  rtt_scan_ranges: null
-  jtag: null
-  default_binary_format: null
 - name: CH32H416RDU6
-  part: null
-  svd: null
-  documentation: {}
-  package_variants: []
   cores:
   - name: main
     type: riscv
     core_access_options: !Riscv
       hart_id: 0
-      jtag_tap: null
-      mem_ap: null
   memory_map:
-  - !Nvm
-    name: USR
-    range:
-      start: 0x8000000
-      end: 0x8078000
-    cores:
-    - main
-    is_alias: false
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   - !Nvm
     name: USR_LEGACY
     range:
@@ -171,11 +101,13 @@ variants:
     cores:
     - main
     is_alias: true
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x8078000
+    cores:
+    - main
   - !Nvm
     name: SYS
     range:
@@ -184,11 +116,6 @@ variants:
     cores:
     - main
     is_alias: true
-    access:
-      read: true
-      write: false
-      execute: true
-      boot: false
   - !Nvm
     name: VND
     range:
@@ -198,10 +125,8 @@ variants:
     - main
     is_alias: true
     access:
-      read: true
       write: false
       execute: false
-      boot: false
   - !Nvm
     name: OPT
     range:
@@ -211,10 +136,7 @@ variants:
     - main
     is_alias: true
     access:
-      read: true
-      write: true
       execute: false
-      boot: false
   - !Ram
     name: ITCM
     range:
@@ -222,12 +144,6 @@ variants:
       end: 0x200c0000
     cores:
     - main
-    is_alias: false
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   - !Ram
     name: DTCM
     range:
@@ -235,12 +151,6 @@ variants:
       end: 0x20100000
     cores:
     - main
-    is_alias: false
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   - !Ram
     name: SRAM_SHARED
     range:
@@ -248,45 +158,18 @@ variants:
       end: 0x20180000
     cores:
     - main
-    is_alias: false
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   flash_algorithms:
   - ch32-h4-usr
   - ch32-h4-usr-legacy
+  - ch32-h4-sys
   - ch32-h4-opt
-  rtt_scan_ranges: null
-  jtag: null
-  default_binary_format: null
 - name: CH32H417MEU6
-  part: null
-  svd: null
-  documentation: {}
-  package_variants: []
   cores:
   - name: main
     type: riscv
     core_access_options: !Riscv
       hart_id: 0
-      jtag_tap: null
-      mem_ap: null
   memory_map:
-  - !Nvm
-    name: USR
-    range:
-      start: 0x8000000
-      end: 0x80f0000
-    cores:
-    - main
-    is_alias: false
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   - !Nvm
     name: USR_LEGACY
     range:
@@ -295,11 +178,13 @@ variants:
     cores:
     - main
     is_alias: true
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x80f0000
+    cores:
+    - main
   - !Nvm
     name: SYS
     range:
@@ -308,11 +193,6 @@ variants:
     cores:
     - main
     is_alias: true
-    access:
-      read: true
-      write: false
-      execute: true
-      boot: false
   - !Nvm
     name: VND
     range:
@@ -322,10 +202,8 @@ variants:
     - main
     is_alias: true
     access:
-      read: true
       write: false
       execute: false
-      boot: false
   - !Nvm
     name: OPT
     range:
@@ -335,10 +213,7 @@ variants:
     - main
     is_alias: true
     access:
-      read: true
-      write: true
       execute: false
-      boot: false
   - !Ram
     name: ITCM
     range:
@@ -346,12 +221,6 @@ variants:
       end: 0x200c0000
     cores:
     - main
-    is_alias: false
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   - !Ram
     name: DTCM
     range:
@@ -359,12 +228,6 @@ variants:
       end: 0x20100000
     cores:
     - main
-    is_alias: false
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   - !Ram
     name: SRAM_SHARED
     range:
@@ -372,45 +235,18 @@ variants:
       end: 0x20180000
     cores:
     - main
-    is_alias: false
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   flash_algorithms:
   - ch32-h4-usr
   - ch32-h4-usr-legacy
+  - ch32-h4-sys
   - ch32-h4-opt
-  rtt_scan_ranges: null
-  jtag: null
-  default_binary_format: null
 - name: CH32H417QEU6
-  part: null
-  svd: null
-  documentation: {}
-  package_variants: []
   cores:
   - name: main
     type: riscv
     core_access_options: !Riscv
       hart_id: 0
-      jtag_tap: null
-      mem_ap: null
   memory_map:
-  - !Nvm
-    name: USR
-    range:
-      start: 0x8000000
-      end: 0x80f0000
-    cores:
-    - main
-    is_alias: false
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   - !Nvm
     name: USR_LEGACY
     range:
@@ -419,11 +255,13 @@ variants:
     cores:
     - main
     is_alias: true
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x80f0000
+    cores:
+    - main
   - !Nvm
     name: SYS
     range:
@@ -432,11 +270,6 @@ variants:
     cores:
     - main
     is_alias: true
-    access:
-      read: true
-      write: false
-      execute: true
-      boot: false
   - !Nvm
     name: VND
     range:
@@ -446,10 +279,8 @@ variants:
     - main
     is_alias: true
     access:
-      read: true
       write: false
       execute: false
-      boot: false
   - !Nvm
     name: OPT
     range:
@@ -459,10 +290,7 @@ variants:
     - main
     is_alias: true
     access:
-      read: true
-      write: true
       execute: false
-      boot: false
   - !Ram
     name: ITCM
     range:
@@ -470,12 +298,6 @@ variants:
       end: 0x200c0000
     cores:
     - main
-    is_alias: false
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   - !Ram
     name: DTCM
     range:
@@ -483,12 +305,6 @@ variants:
       end: 0x20100000
     cores:
     - main
-    is_alias: false
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   - !Ram
     name: SRAM_SHARED
     range:
@@ -496,45 +312,18 @@ variants:
       end: 0x20180000
     cores:
     - main
-    is_alias: false
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   flash_algorithms:
   - ch32-h4-usr
   - ch32-h4-usr-legacy
+  - ch32-h4-sys
   - ch32-h4-opt
-  rtt_scan_ranges: null
-  jtag: null
-  default_binary_format: null
 - name: CH32H417WEU6
-  part: null
-  svd: null
-  documentation: {}
-  package_variants: []
   cores:
   - name: main
     type: riscv
     core_access_options: !Riscv
       hart_id: 0
-      jtag_tap: null
-      mem_ap: null
   memory_map:
-  - !Nvm
-    name: USR
-    range:
-      start: 0x8000000
-      end: 0x80f0000
-    cores:
-    - main
-    is_alias: false
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   - !Nvm
     name: USR_LEGACY
     range:
@@ -543,11 +332,13 @@ variants:
     cores:
     - main
     is_alias: true
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x80f0000
+    cores:
+    - main
   - !Nvm
     name: SYS
     range:
@@ -556,11 +347,6 @@ variants:
     cores:
     - main
     is_alias: true
-    access:
-      read: true
-      write: false
-      execute: true
-      boot: false
   - !Nvm
     name: VND
     range:
@@ -570,10 +356,8 @@ variants:
     - main
     is_alias: true
     access:
-      read: true
       write: false
       execute: false
-      boot: false
   - !Nvm
     name: OPT
     range:
@@ -583,10 +367,7 @@ variants:
     - main
     is_alias: true
     access:
-      read: true
-      write: true
       execute: false
-      boot: false
   - !Ram
     name: ITCM
     range:
@@ -594,12 +375,6 @@ variants:
       end: 0x200c0000
     cores:
     - main
-    is_alias: false
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   - !Ram
     name: DTCM
     range:
@@ -607,12 +382,6 @@ variants:
       end: 0x20100000
     cores:
     - main
-    is_alias: false
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   - !Ram
     name: SRAM_SHARED
     range:
@@ -620,38 +389,23 @@ variants:
       end: 0x20180000
     cores:
     - main
-    is_alias: false
-    access:
-      read: true
-      write: true
-      execute: true
-      boot: false
   flash_algorithms:
   - ch32-h4-usr
   - ch32-h4-usr-legacy
+  - ch32-h4-sys
   - ch32-h4-opt
-  rtt_scan_ranges: null
-  jtag: null
-  default_binary_format: null
 flash_algorithms:
 - name: ch32-h4-opt
   description: ch32-h4-opt
   default: true
   instructions: BUWCgDcFCiADRWUUBc23JQJAyEUFiXX9EwUAAsjFiEkTZQUCiMmISRNlBQSIychFBYl1/RMGAALQxZBJE3b2/ZDJgoAFRYKAtwYKIIPFZhQ3JQJAmcUMSSFnEwcHCNmNDMmFRX0WEUcjg7YUY3TmAjcGZ0W3lu/NEwY2EpOGtppQwVTBEMU3BgogFMUjA7YUAUWCgJcAAADngOAItwYKIAPHZhSFRinLM+elAAWLKecT2BUAYwEIBIFGNycCQJMIAAKDVQYAXEeFi/X/IyYXARxLk+cHARzLIxC1AExHhYn1/SMmFwEMS4UGCQW9mQzLCQbjmAb9gUY2hYKAtwUKIAPFZRQJzQFFNyYCQBRKIWcTBwcI2Y4UyiODBRSCgAVFgoAAAAAAAAA=
   load_address: 0x200a0020
-  data_load_address: null
   pc_init: 0x48
   pc_uninit: 0xfc
   pc_program_page: 0x9c
   pc_erase_sector: 0x4
   pc_erase_all: 0x0
-  pc_verify: null
-  pc_blank_check: null
-  pc_read: null
-  vendor_functions: {}
   data_section_offset: 0x128
-  rtt_location: null
-  rtt_poll_interval: 20
   flash_properties:
     address_range:
       start: 0x1ffff800
@@ -663,29 +417,38 @@ flash_algorithms:
     sectors:
     - size: 0x100
       address: 0x0
-  cores: []
-  stack_size: null
-  stack_overflow_check: null
-  transfer_encoding: null
-  big_endian: false
+- name: ch32-h4-sys
+  description: ch32-h4-sys
+  default: true
+  instructions: BUWCgLcFCiCDxYUVhc23JQJA0EUFinX+EwYAAtDFkEkTZiYAkMnIyYhJE2UFBIjJyEUFiXX9EwYAAtDFkEl1mpDJgoAFRYKAtwYKIIPFhhU3JQJAkclMRSFn2Y1MxQxJEwcHCNmNDMmFRX0WEUcjjLYUY3bmAjcGZ0W3lu/NEwY2EpOGtppQwVTBUNFU0RDVNwYKIBTVIwy2FAFFgoCXAAAA54BgCbcGCiCDxoYVucq3JgJA2EYFi3X/EwcAAtjGmErBZ12PiYGYyoHNAUccQhzB3EaJi/X/BQcRBREG4xi3/ohKtwUgAE2NiMrIRgWJdf2TBQACzMaMSkF2fRbxjYzKgoAFRYKAtwUKIAPFhRUFwQFFNyYCQFRGIWfZjlTGFEoTBwcI2Y4UyiOMBRSCgAVFgoAAAAAAAAAAAA==
+  load_address: 0x200a0020
+  pc_init: 0x48
+  pc_uninit: 0x108
+  pc_program_page: 0xa6
+  pc_erase_sector: 0x4
+  data_section_offset: 0x13c
+  flash_properties:
+    address_range:
+      start: 0x1fff0000
+      end: 0x1fffe000
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x2000
+      address: 0x0
 - name: ch32-h4-usr
   description: ch32-h4-usr
   default: true
   instructions: BUWCgLcFCiCDxUUVnc23JQJA0EUFinX+EwYAAtDFkEm3BgAIVY0TZiYAkMnIyYhJE2UFBIjJyEUFiXX9EwYAAtDFkEl1mpDJgoAFRYKAtwYKIIPFRhU3JQJAmcUMSSFnEwcHCNmNDMmFRX0WEUcjirYUY3TmAjcGZ0W3lu/NEwY2EpOGtppQwVTBUNE3BgogVNEjCrYUAUWCgJcAAADngGAJtwYKIIPGRhWxzrcmAkDYRgWLdf8TBwAC2MaYSsFnXY+JgZjKmc0BR7cHAAhdjRxCHMHcRomL9f8FBxEFEQbjGLf+iEq3BSAATY2IyshGBYl1/ZMFAALMxoxKQXZ9FvGNjMqCgAVFgoC3BQogA8VFFQnNAUU3JgJAFEohZxMHBwjZjhTKI4oFFIKABUWCgAAAAAAAAAAA
   load_address: 0x200a0020
-  data_load_address: null
   pc_init: 0x4e
   pc_uninit: 0x10a
   pc_program_page: 0xa2
   pc_erase_sector: 0x4
   pc_erase_all: 0x0
-  pc_verify: null
-  pc_blank_check: null
-  pc_read: null
-  vendor_functions: {}
   data_section_offset: 0x138
-  rtt_location: null
-  rtt_poll_interval: 20
   flash_properties:
     address_range:
       start: 0x8000000
@@ -697,29 +460,17 @@ flash_algorithms:
     sectors:
     - size: 0x2000
       address: 0x0
-  cores: []
-  stack_size: null
-  stack_overflow_check: null
-  transfer_encoding: null
-  big_endian: false
 - name: ch32-h4-usr-legacy
   description: ch32-h4-usr-legacy
   default: true
   instructions: BUWCgLcFCiCDxUUVnc23JQJA0EUFinX+EwYAAtDFkEm3BgAIVY0TZiYAkMnIyYhJE2UFBIjJyEUFiXX9EwYAAtDFkEl1mpDJgoAFRYKAtwYKIIPFRhU3JQJAmcUMSSFnEwcHCNmNDMmFRX0WEUcjirYUY3TmAjcGZ0W3lu/NEwY2EpOGtppQwVTBUNE3BgogVNEjCrYUAUWCgJcAAADngGAJtwYKIIPGRhWxzrcmAkDYRgWLdf8TBwAC2MaYSsFnXY+JgZjKmc0BR7cHAAhdjRxCHMHcRomL9f8FBxEFEQbjGLf+iEq3BSAATY2IyshGBYl1/ZMFAALMxoxKQXZ9FvGNjMqCgAVFgoC3BQogA8VFFQnNAUU3JgJAFEohZxMHBwjZjhTKI4oFFIKABUWCgAAAAAAAAAAA
   load_address: 0x200a0020
-  data_load_address: null
   pc_init: 0x4e
   pc_uninit: 0x10a
   pc_program_page: 0xa2
   pc_erase_sector: 0x4
   pc_erase_all: 0x0
-  pc_verify: null
-  pc_blank_check: null
-  pc_read: null
-  vendor_functions: {}
   data_section_offset: 0x138
-  rtt_location: null
-  rtt_poll_interval: 20
   flash_properties:
     address_range:
       start: 0x0
@@ -731,8 +482,3 @@ flash_algorithms:
     sectors:
     - size: 0x2000
       address: 0x0
-  cores: []
-  stack_size: null
-  stack_overflow_check: null
-  transfer_encoding: null
-  big_endian: false
