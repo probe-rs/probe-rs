@@ -1,17 +1,17 @@
-name: CH32F1 Series
+name: CH32V1 Series
 chip_detection:
 - !WchLink
   mask: 0xffffff0f
   variants:
-    0x20004102: CH32F103C8T6
-    0x2000410f: CH32F103R8T6
+    0x25004102: CH32V103C8T6
+    0x2500410f: CH32V103R8T6
 variants:
-- name: CH32F103C6T6
+- name: CH32V103C6T6
   cores:
   - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: !v1 0
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
   memory_map:
   - !Nvm
     name: USR_LEGACY
@@ -78,12 +78,12 @@ variants:
   - ch32-v1-sys-1
   - ch32-v1-opt
   - ch32-v1-sys-2
-- name: CH32F103C8T6
+- name: CH32V103C8T6
   cores:
   - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: !v1 0
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
   memory_map:
   - !Nvm
     name: USR_LEGACY
@@ -150,12 +150,84 @@ variants:
   - ch32-v1-sys-1
   - ch32-v1-opt
   - ch32-v1-sys-2
-- name: CH32F103R8T6
+- name: CH32V103C8U6
   cores:
   - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: !v1 0
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+  memory_map:
+  - !Nvm
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    is_alias: true
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+  - !Nvm
+    name: SYS_1
+    range:
+      start: 0x1ffff000
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff880
+    cores:
+    - main
+    is_alias: true
+    access:
+      execute: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff880
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
+    access:
+      write: false
+      execute: false
+  - !Nvm
+    name: SYS_2
+    range:
+      start: 0x1ffff900
+      end: 0x20000000
+    cores:
+    - main
+    is_alias: true
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  flash_algorithms:
+  - ch32-v1-usr
+  - ch32-v1-usr-legacy
+  - ch32-v1-sys-1
+  - ch32-v1-opt
+  - ch32-v1-sys-2
+- name: CH32V103R8T6
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
   memory_map:
   - !Nvm
     name: USR_LEGACY
@@ -226,14 +298,14 @@ flash_algorithms:
 - name: ch32-v1-opt
   description: ch32-v1-opt
   default: true
-  instructions: gLVvRgEggL1A8nYQwvIAAAB4ASgcvwEgcEeAtW9GQvIMAMTyAgABaMkH/NEgIQFgQWhB8CABQWBBaEHwQAFBYAFoyQf80SAhAWBBaCHwIAFBYAAggL2AtW9GQPJ2HkLyBAHC8gAOxPICAZ74ADAzsdH4DMBI8oADQ+oMA8tgASMBOo74ADAEKj+/QPIjEsTyZ1IKYEj2qxA/v8z271AIYEpgjvgAMD6/SGAAIIC9APBO+EDydhPC8gADG3gBKwS/QeoAA1/qw3MB0AEgcEdf6lEMBL8AIHBHsLUCr0LyDAEAI8TyAgFP8CAOFIgNaO0H/NHB+ADgTWhF8BAFTWAEgAxo5Af80cH4AOABM0xoAjICMGNFJPAQBExg5tEAILC9QPJ2EcLyAAEIeAEoHL8BIHBHgLVvRgAgSPKAAwhwQvIQAcTyAgEKaBpDCmCAvYC1b0YA3v7eANQ=
+  instructions: BUWCgDcFACADRWUUBc23JQJAyEUFiXX9EwUAAsjFiEkTZQUCiMmISRNlBQSIychFBYl1/RMGAALQxZBJE3b2/ZDJgoAFRYKAtwYAIIPFZhQ3JQJAmcUMSSFnEwcHCNmNDMmFRX0WEUcjg7YUY3TmAjcGZ0W3lu/NEwY2EpOGtppQwVTBEMU3BgAgFMUjA7YUAUWCgJcAAADngOAItwYAIAPHZhSFRinLM+elAAWLKecT2BUAYwEIBIFGNycCQJMIAAKDVQYAXEeFi/X/IyYXARxLk+cHARzLIxC1AExHhYn1/SMmFwEMS4UGCQW9mQzLCQbjmAb9gUY2hYKAtwUAIAPFZRQJzQFFNyYCQBRKIWcTBwcI2Y4UyiODBRSCgAVFgoAAAAAAAAA=
   load_address: 0x20000020
-  pc_init: 0x57
-  pc_uninit: 0x121
-  pc_program_page: 0xb3
-  pc_erase_sector: 0x9
-  pc_erase_all: 0x1
-  data_section_offset: 0x158
+  pc_init: 0x48
+  pc_uninit: 0xfc
+  pc_program_page: 0x9c
+  pc_erase_sector: 0x4
+  pc_erase_all: 0x0
+  data_section_offset: 0x128
   flash_properties:
     address_range:
       start: 0x1ffff800
@@ -248,13 +320,13 @@ flash_algorithms:
 - name: ch32-v1-sys-1
   description: ch32-v1-sys-1
   default: true
-  instructions: gLVvRgEggL1A8rgRwvIAAQl4ASkcvwEgcEeAtW9GQvIMAcTyAgEKaNIH/NEgIgpgT/QAMkpgQCLA8gICiGBKYApo0gf80SAigPSAUApgSmgi9AAySmAAaIhiACCAvYC1b0ZA8rgeQvIEAcLyAA7E8gIBnvgAMDOx0fgMwEjygAND6gwDy2ABIwE6jvgAMAQqP79A8iMSxPJnUgpgSParED+/zPbvUAhgCmKO+AAwPr8IYgAggL0A8Gv4QPK4E8LyAAMbeAErHL8BIHBH8LUDr034BI1C8gwDxPICAx5o9gf80SAmHmBP9IA2XmBP9BAmXmAeaPYH/NEg8H8MT/AgDokIw/gA4BXQACRP9KAoACZS+ARbBDRA+ARbFPAMDwbRw/gEgB1o7Qf80cP4AOABNo5C7dFAIMP4CMDA8gEAWGAYaMAH/NEgIBhgWGgg9IAwWGCM9IBQAGiYYgAgXfgEi/C9QPK4EcLyAAEIeAEoHL8BIHBHgLVvRgAgSPKAAwhwQvIQAcTyAgEKaBpDCmCAvYC1b0YA3v7eANTU1A==
+  instructions: BUWCgLcFACCDxcUYocE3JgJATEaFifX9kwUAAkzGtwUCAAzKSMqThQUEDMpMRoWJ9f2TBgACVMYUSgF3fRf5jhTKhWY1jQhBSNoRoIVFLoWCgLcGACCDxcYYNyUCQJnFDEkhZxMHBwjZjQzJhUV9FhFHI4a2GGN05gI3BmdFt5bvzRMGNhKThraaUMFUwVDRNwYAIFTRIwa2GAFFgoCXAAAA54CgDLcGACCDxsYYwcq3JgJA2EYFi3X/EwcAAtjGQWeYyjcHCQCYythGBYt1/xN4BfiTCAACE9MlACOmFgFjCAMCgUOBR7cCBQAMQpEDE/fDAAzBAesjqFYAzEaFifX9I6YWAYUHEQURBuOQZ/4jqgYBQWUTBQUEiMrIRgWJdf2TBQACzMaMSkF2fRbxjYzKhWWzRbgAjEHM2oKABUWCgLcFACADxcUYCc0BRTcmAkAUSiFnEwcHCNmOFMojhgUYgoAFRYKAAAAAAAAAAAA=
   load_address: 0x20000020
-  pc_init: 0x5f
-  pc_uninit: 0x163
-  pc_program_page: 0xbb
-  pc_erase_sector: 0x9
-  data_section_offset: 0x19c
+  pc_init: 0x52
+  pc_uninit: 0x142
+  pc_program_page: 0xa6
+  pc_erase_sector: 0x4
+  data_section_offset: 0x170
   flash_properties:
     address_range:
       start: 0x1ffff000
@@ -269,13 +341,13 @@ flash_algorithms:
 - name: ch32-v1-sys-2
   description: ch32-v1-sys-2
   default: true
-  instructions: gLVvRgEggL1A8rgRwvIAAQl4ASkcvwEgcEeAtW9GQvIMAcTyAgEKaNIH/NEgIgpgT/QAMkpgQCLA8gICiGBKYApo0gf80SAigPSAUApgSmgi9AAySmAAaIhiACCAvYC1b0ZA8rgeQvIEAcLyAA7E8gIBnvgAMDOx0fgMwEjygAND6gwDy2ABIwE6jvgAMAQqP79A8iMSxPJnUgpgSParED+/zPbvUAhgCmKO+AAwPr8IYgAggL0A8Gv4QPK4E8LyAAMbeAErHL8BIHBH8LUDr034BI1C8gwDxPICAx5o9gf80SAmHmBP9IA2XmBP9BAmXmAeaPYH/NEg8H8MT/AgDokIw/gA4BXQACRP9KAoACZS+ARbBDRA+ARbFPAMDwbRw/gEgB1o7Qf80cP4AOABNo5C7dFAIMP4CMDA8gEAWGAYaMAH/NEgIBhgWGgg9IAwWGCM9IBQAGiYYgAgXfgEi/C9QPK4EcLyAAEIeAEoHL8BIHBHgLVvRgAgSPKAAwhwQvIQAcTyAgEKaBpDCmCAvYC1b0YA3v7eANTU1A==
+  instructions: BUWCgLcFACCDxcUYocE3JgJATEaFifX9kwUAAkzGtwUCAAzKSMqThQUEDMpMRoWJ9f2TBgACVMYUSgF3fRf5jhTKhWY1jQhBSNoRoIVFLoWCgLcGACCDxcYYNyUCQJnFDEkhZxMHBwjZjQzJhUV9FhFHI4a2GGN05gI3BmdFt5bvzRMGNhKThraaUMFUwVDRNwYAIFTRIwa2GAFFgoCXAAAA54CgDLcGACCDxsYYwcq3JgJA2EYFi3X/EwcAAtjGQWeYyjcHCQCYythGBYt1/xN4BfiTCAACE9MlACOmFgFjCAMCgUOBR7cCBQAMQpEDE/fDAAzBAesjqFYAzEaFifX9I6YWAYUHEQURBuOQZ/4jqgYBQWUTBQUEiMrIRgWJdf2TBQACzMaMSkF2fRbxjYzKhWWzRbgAjEHM2oKABUWCgLcFACADxcUYCc0BRTcmAkAUSiFnEwcHCNmOFMojhgUYgoAFRYKAAAAAAAAAAAA=
   load_address: 0x20000020
-  pc_init: 0x5f
-  pc_uninit: 0x163
-  pc_program_page: 0xbb
-  pc_erase_sector: 0x9
-  data_section_offset: 0x19c
+  pc_init: 0x52
+  pc_uninit: 0x142
+  pc_program_page: 0xa6
+  pc_erase_sector: 0x4
+  data_section_offset: 0x170
   flash_properties:
     address_range:
       start: 0x1ffff900
@@ -290,14 +362,14 @@ flash_algorithms:
 - name: ch32-v1-usr
   description: ch32-v1-usr
   default: true
-  instructions: QPISIMLyAAAAeAEoHL8BIHBHgLVvRkLyDADE8gIAAWjJB/zRICEBYEFoQfAEAUFgQWhB8EABQWABaMkH/NEgIQFgQWgh8AQBQWBB8gABwPYAAQlogWIAIIC9QPISIcLyAAEJeAEpHL8BIHBHgLVvRkLyDAHE8gIBCmjSB/zRICJA8ABgCmBP9AAySmBAIsDyAgKIYEpgCmjSB/zRICKA9IBQCmBKaCL0ADJKYABoiGIAIIC9gLVvRkDyEi5C8gQBwvIADsTyAgGe+AAwM7HR+AzASPKAA0PqDAPLYAEjATqO+AAwBCo/v0DyIxLE8mdSCmBI9qsQP7/M9u9QCGAKYo74ADA+vwhiACCAvQDwbfhA8hIjwvIAAxt4ASscvwEgcEfwtQOvTfgEjULyDAPE8gIDHmj2B/zRICYeYE/0gDZeYE/0ECZeYB5o9gf80UDwAGBP8CAMIPB/DokIw/gAwBXQACRP9KAoACZS+ARbBDRA+ARbFPAMDwbRw/gEgB1o7Qf80cP4AMABNo5C7dFAIMP4CODA8gEAWGAYaMAH/NEgIBhgWGgg9IAwWGCO9IBQAGiYYgAgXfgEi/C9QPISIcLyAAEIeAEoHL8BIHBHgLVvRgAgSPKAAwhwQvIQAcTyAgEKaBpDCmCAvYC1b0YA3v7eANQ=
+  instructions: NwUAIANFxR0dzbclAkDIRQWJdf0TBQACyMWISRNlRQCIyYhJE2UFBIjJyEUFiXX9EwYAAtDFkEltmpDJNxYACBBC0NmCgAVFgoC3BQAgg8XFHbnBtyUCQNBFBYp1/jcGAAhJjhMFAALIxTcFAgCIyRMFBQTQyYjJyEUFiXX9kwYAAtTFlEkBd30X+Y6UyYVmNY4QQtDZgoAFRYKAtwYAIIPFxh03JQJAmcUMSSFnEwcHCNmNDMmFRX0WEUcjjrYcY3TmAjcGZ0W3lu/NEwY2EpOGtppQwVTBUNE3BgAgVNEjDrYcAUWCgJcAAADngAANtwYAIIPGxh3ZyrcmAkDYRgWLdf8TBwAC2MZBZ5jKNwcJAJjK2EYFi3X/NwcACJMIAAIT0yUAWY0TeAX4I6YWAWMIAwKBQwFHtwIFABxCkQOT9cMAHMGB6SOoVgDMRoWJ9f0jphYBBQcRBREG4xBn/iOqBgFBZRMFBQSIyshGBYl1/ZMFAALMxoxKQXZ9FvGNjMqFZbNFuACMQczagoAFRYKAtwUAIAPFxR0JzQFFNyYCQBRKIWcTBwcI2Y4UyiOOBRyCgAVFgoAAAAAAAAAAAA==
   load_address: 0x20000020
-  pc_init: 0xb5
-  pc_uninit: 0x1bd
-  pc_program_page: 0x111
-  pc_erase_sector: 0x5b
-  pc_erase_all: 0x1
-  data_section_offset: 0x1f4
+  pc_init: 0x9c
+  pc_uninit: 0x192
+  pc_program_page: 0xf0
+  pc_erase_sector: 0x4a
+  pc_erase_all: 0x0
+  data_section_offset: 0x1c0
   flash_properties:
     address_range:
       start: 0x8000000
@@ -312,14 +384,14 @@ flash_algorithms:
 - name: ch32-v1-usr-legacy
   description: ch32-v1-usr-legacy
   default: true
-  instructions: QPISIMLyAAAAeAEoHL8BIHBHgLVvRkLyDADE8gIAAWjJB/zRICEBYEFoQfAEAUFgQWhB8EABQWABaMkH/NEgIQFgQWgh8AQBQWBB8gABwPYAAQlogWIAIIC9QPISIcLyAAEJeAEpHL8BIHBHgLVvRkLyDAHE8gIBCmjSB/zRICJA8ABgCmBP9AAySmBAIsDyAgKIYEpgCmjSB/zRICKA9IBQCmBKaCL0ADJKYABoiGIAIIC9gLVvRkDyEi5C8gQBwvIADsTyAgGe+AAwM7HR+AzASPKAA0PqDAPLYAEjATqO+AAwBCo/v0DyIxLE8mdSCmBI9qsQP7/M9u9QCGAKYo74ADA+vwhiACCAvQDwbfhA8hIjwvIAAxt4ASscvwEgcEfwtQOvTfgEjULyDAPE8gIDHmj2B/zRICYeYE/0gDZeYE/0ECZeYB5o9gf80UDwAGBP8CAMIPB/DokIw/gAwBXQACRP9KAoACZS+ARbBDRA+ARbFPAMDwbRw/gEgB1o7Qf80cP4AMABNo5C7dFAIMP4CODA8gEAWGAYaMAH/NEgIBhgWGgg9IAwWGCO9IBQAGiYYgAgXfgEi/C9QPISIcLyAAEIeAEoHL8BIHBHgLVvRgAgSPKAAwhwQvIQAcTyAgEKaBpDCmCAvYC1b0YA3v7eANQ=
+  instructions: NwUAIANFxR0dzbclAkDIRQWJdf0TBQACyMWISRNlRQCIyYhJE2UFBIjJyEUFiXX9EwYAAtDFkEltmpDJNxYACBBC0NmCgAVFgoC3BQAgg8XFHbnBtyUCQNBFBYp1/jcGAAhJjhMFAALIxTcFAgCIyRMFBQTQyYjJyEUFiXX9kwYAAtTFlEkBd30X+Y6UyYVmNY4QQtDZgoAFRYKAtwYAIIPFxh03JQJAmcUMSSFnEwcHCNmNDMmFRX0WEUcjjrYcY3TmAjcGZ0W3lu/NEwY2EpOGtppQwVTBUNE3BgAgVNEjDrYcAUWCgJcAAADngAANtwYAIIPGxh3ZyrcmAkDYRgWLdf8TBwAC2MZBZ5jKNwcJAJjK2EYFi3X/NwcACJMIAAIT0yUAWY0TeAX4I6YWAWMIAwKBQwFHtwIFABxCkQOT9cMAHMGB6SOoVgDMRoWJ9f0jphYBBQcRBREG4xBn/iOqBgFBZRMFBQSIyshGBYl1/ZMFAALMxoxKQXZ9FvGNjMqFZbNFuACMQczagoAFRYKAtwUAIAPFxR0JzQFFNyYCQBRKIWcTBwcI2Y4UyiOOBRyCgAVFgoAAAAAAAAAAAA==
   load_address: 0x20000020
-  pc_init: 0xb5
-  pc_uninit: 0x1bd
-  pc_program_page: 0x111
-  pc_erase_sector: 0x5b
-  pc_erase_all: 0x1
-  data_section_offset: 0x1f4
+  pc_init: 0x9c
+  pc_uninit: 0x192
+  pc_program_page: 0xf0
+  pc_erase_sector: 0x4a
+  pc_erase_all: 0x0
+  data_section_offset: 0x1c0
   flash_properties:
     address_range:
       start: 0x0

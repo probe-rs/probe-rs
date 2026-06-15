@@ -681,6 +681,7 @@ impl CoreInterface for Armv7m<'_> {
                 "The core is in locked up status as a result of an unrecoverable exception"
             );
 
+            self.state.clear_pending_step();
             self.set_core_status(CoreStatus::LockedUp);
 
             return Ok(CoreStatus::LockedUp);
@@ -701,6 +702,7 @@ impl CoreInterface for Armv7m<'_> {
             let dfsr = Dfsr(self.memory.read_word_32(Dfsr::get_mmio_address())?);
 
             let mut reason = dfsr.halt_reason();
+            reason = self.state.resolve_halt_reason(reason);
 
             // Clear bits from Dfsr register
             self.memory
@@ -755,6 +757,7 @@ impl CoreInterface for Armv7m<'_> {
 
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         // TODO: Generic halt support
+        self.state.clear_pending_step();
 
         let mut value = Dhcsr(0);
         value.set_c_halt(true);
@@ -796,6 +799,7 @@ impl CoreInterface for Armv7m<'_> {
 
         // Before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction.
         self.step()?;
+        self.state.clear_pending_step();
 
         let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
 
@@ -824,6 +828,7 @@ impl CoreInterface for Armv7m<'_> {
 
     fn reset(&mut self) -> Result<(), Error> {
         self.state.semihosting_command = None;
+        self.state.clear_pending_step();
 
         self.sequence
             .reset_system(&mut *self.memory, crate::CoreType::Armv7m, None)?;
@@ -837,6 +842,7 @@ impl CoreInterface for Armv7m<'_> {
         // Set the vc_corereset bit in the DEMCR register.
         // This will halt the core after reset.
         self.reset_catch_set()?;
+        self.state.clear_pending_step();
 
         self.sequence
             .reset_system(&mut *self.memory, crate::CoreType::Armv7m, None)?;
@@ -908,6 +914,7 @@ impl CoreInterface for Armv7m<'_> {
 
         // Leave halted state.
         // Step one instruction.
+        self.state.begin_step();
         dhcsr.set_c_step(true);
         dhcsr.set_c_halt(false);
         dhcsr.enable_write();
@@ -918,9 +925,12 @@ impl CoreInterface for Armv7m<'_> {
         // The single-step might put the core in lockup state. Lockup isn't considered "halted"
         // so we can't use `wait_for_core_halted` here.
         // So we wait for halted OR lockup, and if we entered lockup we halt.
-        self.wait_for_status(Duration::from_millis(100), |s| {
+        if let Err(err) = self.wait_for_status(Duration::from_millis(100), |s| {
             matches!(s, CoreStatus::Halted(_) | CoreStatus::LockedUp)
-        })?;
+        }) {
+            self.state.clear_pending_step();
+            return Err(err);
+        }
         if self.status()? == CoreStatus::LockedUp {
             self.halt(Duration::from_millis(100))?;
         }

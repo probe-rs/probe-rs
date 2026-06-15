@@ -332,31 +332,20 @@ impl MIMXRT11xx {
         Ok(())
     }
 
-    /// Ensure that the program counter's contents match `expected`.
-    ///
-    /// Assumes that the core is halted.
-    fn check_pc(
-        &self,
-        probe: &mut dyn ArmMemoryInterface,
-        expected: u32,
-    ) -> Result<(), ArmDebugSequenceError> {
-        let pc = self
-            .read_core_reg(probe, PC)
-            .map_err(|err| ArmDebugSequenceError::SequenceSpecific(err.into()))?;
-        if pc != expected {
-            let err = format!(
-                "The Cortex M7 should be at address {expected:#010X} but it's at {pc:#010X}"
-            );
-            return Err(ArmDebugSequenceError::SequenceSpecific(err.into()));
-        }
-        Ok(())
-    }
-
     /// When the boot ROM detects a reset due to SYSRESETREQ, it spins
-    /// at this location. It appears that this spinning location is after
+    /// at this location in rev A silicon.
+    ///
+    /// It appears that this spinning location is after
     /// the boot ROM has done its useful work (like turn on clocks, prepare
     /// FlexSPI configuration blocks), but before it jumps into the program.
-    const BOOT_ROM_SPIN_ADDRESS: u32 = 0x00223104;
+    const BOOT_ROM_SPIN_ADDRESS_REV_A: u32 = 0x00223104;
+
+    /// The boot ROM spins at a different place for rev B silicon.
+    ///
+    /// See [`BOOT_ROM_SPIN_ADDRESS_REV_A`] for context. Documented in
+    /// AN14716, the silicon migration guide for 1170 MCUs.
+    /// <https://docs.nxp.com/bundle/AN14716/page/topics/7tool_changes.html>
+    const BOOT_ROM_SPIN_ADDRESS_REV_B: u32 = 0x002231FC;
 
     /// Returns the reset handler address contained in the NVM program image.
     ///
@@ -523,7 +512,18 @@ impl ArmDebugSequence for MIMXRT11xx {
 
         // When we reset into the boot ROM, it checks why we reset. If the boot ROM observes that
         // we reset due to SYSRESETREQ, it spins at a known address. Are we spinning there?
-        self.check_pc(probe, Self::BOOT_ROM_SPIN_ADDRESS)?;
+        let pc = self
+            .read_core_reg(probe, PC)
+            .map_err(|err| ArmDebugSequenceError::SequenceSpecific(err.into()))?;
+        if pc != Self::BOOT_ROM_SPIN_ADDRESS_REV_A && pc != Self::BOOT_ROM_SPIN_ADDRESS_REV_B {
+            let err = format!(
+                "The Cortex M7 PC should be at either {:#010X} or {:#010X}, but it's at {pc:#010X}",
+                Self::BOOT_ROM_SPIN_ADDRESS_REV_A,
+                Self::BOOT_ROM_SPIN_ADDRESS_REV_B,
+            );
+            return Err(ArmDebugSequenceError::SequenceSpecific(err.into()).into());
+        }
+        tracing::debug!("Boot ROM spinning at {pc:#010X}");
 
         // Why does the boot ROM spin? It wants us to set up the reset context! (And it wanted
         // to give us a chance to re-establish debugging after it took it away from us.)
