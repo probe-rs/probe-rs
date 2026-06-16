@@ -13,7 +13,7 @@ variants:
     name: IROM1
     range:
       start: 0x11000000
-      end: 0x11007ffc
+      end: 0x11008000
     cores:
     - main
     access:
@@ -22,7 +22,7 @@ variants:
   - !Nvm
     name: IROM2
     range:
-      start: 0x11007ffc
+      start: 0x11008000
       end: 0x11009000
     cores:
     - main
@@ -58,7 +58,7 @@ variants:
     name: IROM1
     range:
       start: 0x11000000
-      end: 0x1103effc
+      end: 0x1103f000
     cores:
     - main
     access:
@@ -67,7 +67,7 @@ variants:
   - !Nvm
     name: IROM2
     range:
-      start: 0x1103effc
+      start: 0x1103f000
       end: 0x11040000
     cores:
     - main
@@ -103,7 +103,7 @@ variants:
     name: IROM1
     range:
       start: 0x11000000
-      end: 0x1103effc
+      end: 0x1103f000
     cores:
     - main
     access:
@@ -112,7 +112,7 @@ variants:
   - !Nvm
     name: IROM2
     range:
-      start: 0x1103effc
+      start: 0x1103f000
       end: 0x11040000
     cores:
     - main
@@ -148,7 +148,7 @@ variants:
     name: IROM1
     range:
       start: 0x11000000
-      end: 0x1103effc
+      end: 0x1103f000
     cores:
     - main
     access:
@@ -157,7 +157,7 @@ variants:
   - !Nvm
     name: IROM2
     range:
-      start: 0x1103effc
+      start: 0x1103f000
       end: 0x11040000
     cores:
     - main
@@ -193,7 +193,7 @@ variants:
     name: IROM1
     range:
       start: 0x11000000
-      end: 0x1100affc
+      end: 0x1100b000
     cores:
     - main
     access:
@@ -202,7 +202,7 @@ variants:
   - !Nvm
     name: IROM2
     range:
-      start: 0x1100affc
+      start: 0x1100b000
       end: 0x1100c000
     cores:
     - main
@@ -238,7 +238,7 @@ variants:
     name: IROM1
     range:
       start: 0x11000000
-      end: 0x1100effc
+      end: 0x1100f000
     cores:
     - main
     access:
@@ -247,7 +247,7 @@ variants:
   - !Nvm
     name: IROM2
     range:
-      start: 0x1100effc
+      start: 0x1100f000
       end: 0x11010000
     cores:
     - main
@@ -283,7 +283,7 @@ variants:
     name: IROM1
     range:
       start: 0x11000000
-      end: 0x1100effc
+      end: 0x1100f000
     cores:
     - main
     access:
@@ -292,7 +292,7 @@ variants:
   - !Nvm
     name: IROM2
     range:
-      start: 0x1100effc
+      start: 0x1100f000
       end: 0x11010000
     cores:
     - main
@@ -328,7 +328,7 @@ variants:
     name: IROM1
     range:
       start: 0x11000000
-      end: 0x1100effc
+      end: 0x1100f000
     cores:
     - main
     access:
@@ -337,7 +337,7 @@ variants:
   - !Nvm
     name: IROM2
     range:
-      start: 0x1100effc
+      start: 0x1100f000
       end: 0x11010000
     cores:
     - main
@@ -373,7 +373,7 @@ variants:
     name: IROM1
     range:
       start: 0x11000000
-      end: 0x1101effc
+      end: 0x1101f000
     cores:
     - main
     access:
@@ -382,7 +382,7 @@ variants:
   - !Nvm
     name: IROM2
     range:
-      start: 0x1101effc
+      start: 0x1101f000
       end: 0x11020000
     cores:
     - main
@@ -418,7 +418,7 @@ variants:
     name: IROM1
     range:
       start: 0x11000000
-      end: 0x1101effc
+      end: 0x1101f000
     cores:
     - main
     access:
@@ -427,7 +427,7 @@ variants:
   - !Nvm
     name: IROM2
     range:
-      start: 0x1101effc
+      start: 0x1101f000
       end: 0x11020000
     cores:
     - main
@@ -463,7 +463,7 @@ variants:
     name: IROM1
     range:
       start: 0x11000000
-      end: 0x1101effc
+      end: 0x1101f000
     cores:
     - main
     access:
@@ -472,7 +472,7 @@ variants:
   - !Nvm
     name: IROM2
     range:
-      start: 0x1101effc
+      start: 0x1101f000
       end: 0x11020000
     cores:
     - main
@@ -508,7 +508,7 @@ variants:
     name: IROM1
     range:
       start: 0x11000000
-      end: 0x1101effc
+      end: 0x1101f000
     cores:
     - main
     access:
@@ -517,7 +517,7 @@ variants:
   - !Nvm
     name: IROM2
     range:
-      start: 0x1101effc
+      start: 0x1101f000
       end: 0x11020000
     cores:
     - main
