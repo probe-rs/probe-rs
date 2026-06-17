@@ -1,7 +1,7 @@
 //! Common functions and data types for Cortex-M core variants
 
 use crate::{
-    CoreInterface, Error, MemoryMappedRegister,
+    CoreInterface, CoreStatus, Error, MemoryMappedRegister,
     architecture::arm::{ArmError, memory::ArmMemoryInterface},
     core::RegisterId,
     memory_mapped_bitfield_register,
@@ -9,6 +9,8 @@ use crate::{
     semihosting::decode_semihosting_syscall,
 };
 use std::time::{Duration, Instant};
+
+use super::CortexMState;
 
 memory_mapped_bitfield_register! {
     pub struct Vtor(u32);
@@ -224,4 +226,114 @@ fn wait_for_core_register_transfer(
         }
     }
     Err(ArmError::Timeout)
+}
+
+/// Thumb `BKPT #imm` instructions use the `0xBE00` encoding prefix.
+pub(crate) const THUMB_BKPT_MASK: u16 = 0xFF00;
+pub(crate) const THUMB_BKPT_PREFIX: u16 = 0xBE00;
+/// Semihosting trap: `BKPT 0xAB` (little-endian `0xBEAB`).
+pub(crate) const THUMB_SEMIHOST_BKPT: u16 = 0xBEAB;
+
+/// Low-level [`CortexMState`] and memory accessors for shared Cortex-M helpers.
+pub(crate) trait CortexMStateAccess: CoreInterface {
+    fn cortex_m_state(&mut self) -> &mut CortexMState;
+
+    fn cortex_m_memory(&mut self) -> &mut dyn ArmMemoryInterface;
+}
+
+/// Skip past a breakpoint when continuing from a halt at a trap PC.
+pub(crate) fn skip_breakpoint<C: CortexMStateAccess>(core: &mut C) -> Result<(), Error> {
+    if !core.status()?.is_halted() {
+        return Ok(());
+    }
+
+    let pc = core.read_core_reg(core.program_counter().into())?;
+    let mut bytes = [0u8; 2];
+    core.read_8(pc.try_into()?, &mut bytes)?;
+    let insn = u16::from_le_bytes(bytes);
+
+    if insn == THUMB_SEMIHOST_BKPT {
+        return Ok(());
+    }
+
+    let pc_in_hw_breakpoints = core.hw_breakpoints()?.contains(&pc.try_into().ok());
+
+    if (insn & THUMB_BKPT_MASK) == THUMB_BKPT_PREFIX && !pc_in_hw_breakpoints {
+        core.cortex_m_state().clear_semihosting_command();
+        let mut pc = pc;
+        pc.increment_address(2)?;
+        core.write_core_reg(core.program_counter().into(), pc)?;
+        return Ok(());
+    }
+
+    let on_breakpoint = core.cortex_m_state().halted_on_breakpoint() || pc_in_hw_breakpoints;
+
+    if on_breakpoint {
+        core.cortex_m_state().clear_semihosting_command();
+        hardware_step_with_breakpoints_disabled(core)?;
+    }
+
+    Ok(())
+}
+
+/// Single-step with FPB disabled to step off a hardware breakpoint. Does not set `pending_step`.
+pub(crate) fn hardware_step_with_breakpoints_disabled<C: CortexMStateAccess>(
+    core: &mut C,
+) -> Result<(), Error> {
+    let pc_before_step = core.read_core_reg(core.program_counter().into())?;
+    core.enable_breakpoints(false)?;
+
+    let mut value = Dhcsr(0);
+    value.set_c_step(true);
+    value.set_c_halt(false);
+    value.set_c_debugen(true);
+    value.set_c_maskints(true);
+    value.enable_write();
+
+    core.cortex_m_memory()
+        .write_word_32(Dhcsr::get_mmio_address(), value.into())?;
+    core.cortex_m_memory().flush()?;
+
+    // The single-step might put the core in lockup state. Lockup isn't considered "halted"
+    // so we can't use `wait_for_core_halted` here.
+    // So we wait for halted OR lockup, and if we entered lockup we halt.
+    wait_for_halted_or_lockup(core, Duration::from_millis(100))?;
+
+    if core.status()? == CoreStatus::LockedUp {
+        core.halt(Duration::from_millis(100))?;
+    }
+
+    let mut pc_after_step = core.read_core_reg(core.program_counter().into())?;
+
+    if pc_before_step == pc_after_step
+        && !core
+            .hw_breakpoints()?
+            .contains(&pc_before_step.try_into().ok())
+    {
+        tracing::debug!(
+            "Encountered a breakpoint instruction @ {}. We need to manually advance the program counter to the next instruction.",
+            pc_after_step
+        );
+        pc_after_step.increment_address(2)?;
+        core.write_core_reg(core.program_counter().into(), pc_after_step)?;
+    }
+
+    core.enable_breakpoints(true)?;
+    Ok(())
+}
+
+fn wait_for_halted_or_lockup<C: CortexMStateAccess>(
+    core: &mut C,
+    timeout: Duration,
+) -> Result<(), Error> {
+    let start = Instant::now();
+
+    while !matches!(core.status()?, CoreStatus::Halted(_) | CoreStatus::LockedUp) {
+        if start.elapsed() >= timeout {
+            return Err(Error::Arm(ArmError::Timeout));
+        }
+        std::thread::sleep(Duration::from_millis(1));
+    }
+
+    Ok(())
 }
