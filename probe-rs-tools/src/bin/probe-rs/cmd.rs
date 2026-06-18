@@ -14,7 +14,6 @@ pub mod info;
 pub mod itm;
 pub mod list;
 pub mod mi;
-pub mod pmu;
 pub mod profile;
 pub mod read;
 pub mod reset;
