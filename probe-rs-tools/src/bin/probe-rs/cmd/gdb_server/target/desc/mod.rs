@@ -1,6 +1,7 @@
 use super::utils::copy_range_to_buf;
 use super::{GdbErrorExt, RuntimeTarget};
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
+use std::collections::btree_map::Entry;
 
 use anyhow::anyhow;
 
@@ -130,7 +131,7 @@ fn gdb_memory_map(session: &mut Session, primary_core_id: usize) -> Result<Strin
             blocksize: u64,
         }
 
-        let mut regions = BTreeSet::new();
+        let mut regions = BTreeMap::new();
         for algo in session.target().flash_algorithms.iter() {
             let start = algo.flash_properties.address_range.start;
             // Use the region end address (if possible) because it seems more correct
@@ -154,14 +155,22 @@ fn gdb_memory_map(session: &mut Session, primary_core_id: usize) -> Result<Strin
             // start address, which is the current one end address, to calculate the
             // sector size.
             for (current, next) in sectors.iter().zip(sectors.iter().skip(1)) {
-                let start = current.address + start;
-                let length = next.address - current.address;
-                let blocksize = current.size;
-                regions.insert(FlashRegion {
-                    start,
-                    length,
-                    blocksize,
-                });
+                let region = FlashRegion {
+                    start: current.address,
+                    length: next.address - current.address,
+                    blocksize: current.size,
+                };
+                // If we have duplicate regions, prefer the one with the smaller block size.
+                match regions.entry(region.start) {
+                    Entry::Vacant(e) => {
+                        e.insert(region);
+                    }
+                    Entry::Occupied(mut e) => {
+                        if region.blocksize < e.get().blocksize {
+                            e.insert(region);
+                        }
+                    }
+                }
             }
         }
 
@@ -171,7 +180,7 @@ fn gdb_memory_map(session: &mut Session, primary_core_id: usize) -> Result<Strin
             start,
             length,
             blocksize,
-        } in regions.iter()
+        } in regions.values()
         {
             let region_entry = format!(
                 r#"<memory type="flash" start="{start:#x}" length="{length:#x}"><property name="blocksize">{blocksize:#x}</property></memory>\n"#
