@@ -1,0 +1,1 @@
+Added CoreSight PMU (Performance Monitoring Unit) support for ARM Cortex-A cores, including a Cortex-A9 PMU driver, `Session::pmu_profile`, and the `pmu` CLI command for measuring CPU performance counters.

@@ -130,6 +130,7 @@ impl Cli {
             Subcommand::Erase(cmd) => cmd.run(client).await,
             Subcommand::Trace(cmd) => cmd.run(&mut *client.registry().await, &lister),
             Subcommand::Itm(cmd) => cmd.run(&mut *client.registry().await, &lister),
+            Subcommand::Pmu(cmd) => cmd.run(&mut *client.registry().await, &lister),
             Subcommand::Chip(cmd) => cmd.run(client).await,
             Subcommand::Benchmark(cmd) => cmd.run(&mut *client.registry().await, &lister),
             Subcommand::Profile(cmd) => cmd.run(&mut *client.registry().await, &lister),
@@ -183,6 +184,9 @@ enum Subcommand {
     /// Configure and monitor ITM trace packets from the target.
     #[clap(name = "itm")]
     Itm(cmd::itm::Cmd),
+    /// Measure performance counters on an ARM Cortex-A target.
+    #[clap(name = "pmu")]
+    Pmu(cmd::pmu::Cmd),
     Chip(cmd::chip::Cmd),
     /// Measure the throughput of the selected debug probe
     Benchmark(cmd::benchmark::Cmd),
