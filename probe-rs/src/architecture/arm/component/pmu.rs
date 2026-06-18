@@ -22,7 +22,7 @@ const PMCNTENCLR: u32 = 0xC20; // Counter enable clear
 const PMOVSR: u32 = 0xC80; // Overflow flag status (write 1 to clear)
 const PMCR: u32 = 0xE04; // PMU control register
 
-// PMCR bit fields 
+// PMCR bit fields
 const PMCR_E: u32 = 1 << 0; // Global enable
 const PMCR_P: u32 = 1 << 1; // Reset all event counters to 0
 const PMCR_C: u32 = 1 << 2; // Reset cycle counter to 0
