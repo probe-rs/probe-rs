@@ -231,8 +231,6 @@ fn wait_for_core_register_transfer(
 /// Thumb `BKPT #imm` instructions use the `0xBE00` encoding prefix.
 pub(crate) const THUMB_BKPT_MASK: u16 = 0xFF00;
 pub(crate) const THUMB_BKPT_PREFIX: u16 = 0xBE00;
-/// Semihosting trap: `BKPT 0xAB` (little-endian `0xBEAB`).
-pub(crate) const THUMB_SEMIHOST_BKPT: u16 = 0xBEAB;
 
 /// Low-level [`CortexMState`] and memory accessors for shared Cortex-M helpers.
 pub(crate) trait CortexMStateAccess: CoreInterface {
@@ -251,10 +249,6 @@ pub(crate) fn skip_breakpoint<C: CortexMStateAccess>(core: &mut C) -> Result<(),
     let mut bytes = [0u8; 2];
     core.read_8(pc.try_into()?, &mut bytes)?;
     let insn = u16::from_le_bytes(bytes);
-
-    if insn == THUMB_SEMIHOST_BKPT {
-        return Ok(());
-    }
 
     let pc_in_hw_breakpoints = core.hw_breakpoints()?.contains(&pc.try_into().ok());
 
