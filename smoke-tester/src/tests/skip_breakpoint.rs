@@ -12,6 +12,7 @@ const TEST_CODE: &[u8] = include_bytes!("test_arm.bin");
 
 const SW_BREAKPOINT_OFFSET: u64 = 0x6;
 const FINISH_BREAKPOINT_OFFSET: u64 = 0x10;
+const SPIN_LOOP_OFFSET: u64 = 0x12;
 
 fn executable_ram_start(core: &mut Core) -> Option<u64> {
     core.memory_regions()
@@ -107,6 +108,13 @@ fn test_run_on_running_core(_definition: &DutDefinition, core: &mut Core) -> Tes
 
     core.reset_and_halt(Duration::from_millis(100))?;
     load_test_code(core, code_load_address)?;
+
+    // Start at the spin loop so the core stays running.
+    let registers = core.registers();
+    core.write_core_reg(
+        registers.pc().unwrap(),
+        code_load_address + SPIN_LOOP_OFFSET,
+    )?;
 
     core.run()?;
 
