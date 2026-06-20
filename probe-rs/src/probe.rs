@@ -15,6 +15,7 @@ mod selector;
 pub mod sifliuart;
 pub mod stlink;
 pub mod wlink;
+pub mod xvc;
 
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
 use crate::architecture::arm::{ArmDebugInterface, ArmError};
@@ -55,6 +56,7 @@ static DRIVERS: LazyLock<RwLock<Vec<&'static dyn ProbeFactory>>> = LazyLock::new
         &sifliuart::SifliUartFactory,
         &glasgow::GlasgowFactory,
         &ch347usbjtag::Ch347UsbJtagFactory,
+        &xvc::XvcFactory,
     ];
 
     RwLock::new(probes)
