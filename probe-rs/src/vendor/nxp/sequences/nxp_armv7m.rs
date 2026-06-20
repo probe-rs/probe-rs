@@ -9,14 +9,18 @@ use std::{
     time::{Duration, Instant},
 };
 
+use probe_rs_target::Chip;
+
 use crate::{
     architecture::arm::{
-        ArmError,
+        ArmDebugInterface, ArmError, FullyQualifiedApAddress, Pins,
         armv7m::{Demcr, FpCtrl, FpRev2CompX},
+        communication_interface::DapProbe,
         core::{
             armv7m::{Aircr, Dhcsr},
             registers::cortex_m::PC,
         },
+        dp::DpAddress,
         memory::ArmMemoryInterface,
         sequences::{self, ArmDebugSequence, ArmDebugSequenceError},
     },
@@ -601,6 +605,413 @@ impl DebugCache {
                 FpRev2CompX::get_mmio_address_from_base(base as u64 * 4)?,
                 fp_comp.into(),
             )?;
+        }
+
+        Ok(())
+    }
+}
+
+/// Debug sequences for the S32K3xx family.
+///
+/// This is a port of the debug sequences in NXP's `S32K3xx_DFP` CMSIS pack. The
+/// family routes debug control through two non-memory access ports:
+///
+/// * `SDA_AP` (AP 7): the secure debug access port. Its `DBGENCTRL` register
+///   gates all core debugging, and its `SDAAPRSTCTRL` register holds or
+///   releases the cores when connecting under reset.
+/// * `MDM_AP` (AP 6): the debug/miscellaneous control port. Its `MDMAPCTL`
+///   register triggers functional resets and enables core register access
+///   while a core is held in reset.
+///
+/// The system SRAM and the TCMs are ECC protected and must be initialized with
+/// 64-bit writes before narrower accesses are reliable, which is required
+/// before probe-rs can load a flash loader into SRAM. Like the CMSIS pack,
+/// this sequence initializes them with a DMA transfer. Unlike the pack (which
+/// initializes on every debug connection), this is done after a reset with a
+/// reset catch armed — i.e. the reset-and-halt performed before flashing or
+/// downloading to RAM. A plain attach never touches memory or clocks, so
+/// attaching to a running system is non-invasive, and a plain reset leaves the
+/// RAM initialization to the application's startup code, preserving retained
+/// standby-RAM data.
+#[derive(Debug)]
+pub struct S32K3xx {
+    /// MC_ME partitions 0..=1 exist on every family member, but partition 2
+    /// only exists on parts larger than the S32K312.
+    has_clock_partition2: bool,
+    /// Bytes of standby/system SRAM starting at [`Self::SRAM_BASE`].
+    sram_size: u32,
+    /// Bytes of DTCM starting at 0x2000_0000, initialized through the
+    /// [`Self::DTCM_BACKDOOR`] alias.
+    dtcm_size: u32,
+    /// Set when connecting under reset; selects the `DebugFromFirstInstruction`
+    /// path of the pack's `DebugDeviceUnlock` sequence.
+    connect_under_reset: AtomicBool,
+}
+
+impl S32K3xx {
+    /// Secure debug access port.
+    const SDA_AP: u8 = 7;
+    /// SDA_AP debug enable control register.
+    const SDA_AP_DBGENCTRL: u64 = 0x80;
+    /// Enable global and CM7_0/CM7_1 debugging (GDBGEN, CM7_0_DBGEN, CM7_1_DBGEN, ...).
+    const SDA_AP_DBGENCTRL_ENABLE_M7: u32 = 0x3000_00F0;
+    /// SDA_AP reset release control register.
+    const SDA_AP_RSTCTRL: u64 = 0x90;
+    /// SDAAPRSTCTRL.RSTRELTLCM70: release CM7_0 from reset.
+    const SDA_AP_RSTCTRL_RELEASE_CM7_0: u32 = 1 << 25;
+    /// SDAAPRSTCTRL.RSTRELTLCM71: release CM7_1 from reset.
+    const SDA_AP_RSTCTRL_RELEASE_CM7_1: u32 = 1 << 26;
+
+    /// Debug/miscellaneous control access port.
+    const MDM_AP: u8 = 6;
+    /// MDM_AP control register (MDMAPCTL).
+    const MDM_AP_CTL: u64 = 0x04;
+    /// Keep RSTRELCM7/RSTRELTLn asserted.
+    const MDM_AP_CTL_RSTREL: u32 = 0x0040_0000;
+    /// RSTRELCM7/RSTRELTLn plus CMnDBGREQ.
+    const MDM_AP_CTL_RSTREL_DBGREQ: u32 = 0x0040_0B00;
+    /// RSTRELCM7/RSTRELTLn, CMnDBGREQ and SYSFUNCRST.
+    const MDM_AP_CTL_RSTREL_DBGREQ_FUNCRST: u32 = 0x0040_0B20;
+    /// CM7_0_CORE_ACCESS/CM7_1_CORE_ACCESS: allow core register access while
+    /// the cores are held in reset.
+    const MDM_AP_CTL_CORE_ACCESS: u32 = 0x0043_0000;
+
+    /// Mode entry module, used to enable the peripheral clocks.
+    const MC_ME: u64 = 0x402D_C000;
+
+    /// DMAMUX_0 CHCFG0 register.
+    const DMAMUX0_CHCFG0: u64 = 0x4028_0003;
+    /// eDMA channel 0 base (CH0_CSR at offset 0, TCD words at 0x20..=0x3C).
+    const EDMA_TCD0: u64 = 0x4021_0000;
+
+    /// Base address of the system SRAM.
+    const SRAM_BASE: u64 = 0x2040_0000;
+    /// Base address of the DTCM.
+    const DTCM_BASE: u64 = 0x2000_0000;
+    /// The DTCM is only visible to the DMA through this backdoor alias.
+    const DTCM_BACKDOOR: u32 = 0x2100_0000;
+
+    /// Create a sequence handle for an S32K3xx chip, deriving the RAM regions
+    /// that need ECC initialization from the target's memory map.
+    pub fn create(chip: &Chip) -> Arc<dyn ArmDebugSequence> {
+        // S32K310..S32K312 only have MC_ME partitions 0 and 1.
+        let has_clock_partition2 = !["S32K310", "S32K311", "S32K312"]
+            .iter()
+            .any(|smaller| chip.name.starts_with(smaller));
+
+        let mut dtcm_size = 0;
+        let mut sram_ranges = Vec::new();
+        for region in &chip.memory_map {
+            let range = region.address_range();
+            if range.start == Self::DTCM_BASE {
+                dtcm_size = (range.end - range.start) as u32;
+            } else if range.start >= Self::SRAM_BASE {
+                sram_ranges.push(range);
+            }
+        }
+
+        // The SRAM_n regions are contiguous, but the map may split them.
+        sram_ranges.sort_by_key(|range| range.start);
+        let mut sram_end = Self::SRAM_BASE;
+        for range in sram_ranges {
+            if range.start <= sram_end {
+                sram_end = sram_end.max(range.end);
+            }
+        }
+
+        Arc::new(Self {
+            has_clock_partition2,
+            sram_size: (sram_end - Self::SRAM_BASE) as u32,
+            dtcm_size,
+            connect_under_reset: AtomicBool::new(false),
+        })
+    }
+
+    fn sda_ap(dp: DpAddress) -> FullyQualifiedApAddress {
+        FullyQualifiedApAddress::v1_with_dp(dp, Self::SDA_AP)
+    }
+
+    fn mdm_ap(dp: DpAddress) -> FullyQualifiedApAddress {
+        FullyQualifiedApAddress::v1_with_dp(dp, Self::MDM_AP)
+    }
+
+    /// Enable M7 core debugging. This is the pack's `EnableM7Debug` sequence.
+    fn enable_m7_debug(
+        &self,
+        interface: &mut dyn ArmDebugInterface,
+        dp: DpAddress,
+    ) -> Result<(), ArmError> {
+        interface.write_raw_ap_register(
+            &Self::sda_ap(dp),
+            Self::SDA_AP_DBGENCTRL,
+            Self::SDA_AP_DBGENCTRL_ENABLE_M7,
+        )?;
+        interface.flush()
+    }
+
+    /// Enable debugging and initialize the ECC RAMs. This is the pack's
+    /// `DebugEnablement` sequence. Only used when connecting under reset,
+    /// where the core is freshly released from reset and halted by the reset
+    /// catch, so the memory and clock state can't belong to running code.
+    fn debug_enablement(
+        &self,
+        interface: &mut dyn ArmDebugInterface,
+        memory_ap: &FullyQualifiedApAddress,
+    ) -> Result<(), ArmError> {
+        self.enable_m7_debug(interface, memory_ap.dp())?;
+
+        let mut memory = interface.memory_interface(memory_ap)?;
+        self.enable_peripheral_clocks(&mut *memory)?;
+        self.ram_initialize(&mut *memory)
+    }
+
+    /// Enable the peripheral clocks through the mode entry module. This is the
+    /// pack's `EnablePeripheralClocks` sequence.
+    fn enable_peripheral_clocks(
+        &self,
+        memory: &mut dyn ArmMemoryInterface,
+    ) -> Result<(), ArmError> {
+        tracing::debug!("Enabling peripheral clocks");
+
+        let mut enable_partition = |partition: u64, cofb_clken: &[u32]| -> Result<(), ArmError> {
+            let prtn = Self::MC_ME + 0x100 + partition * 0x200;
+            for (block, &clken) in cofb_clken.iter().enumerate() {
+                if clken != 0 {
+                    // PRTNn_COFBm_CLKEN: enable the clock for the given blocks.
+                    memory.write_word_32(prtn + 0x30 + block as u64 * 4, clken)?;
+                }
+            }
+            // PRTNn_PCONF: enable clock to IPs.
+            memory.write_word_32(prtn, 1)?;
+            // PRTNn_PUPD: trigger the hardware process.
+            memory.write_word_32(prtn + 4, 1)?;
+            // MC_ME_CTL_KEY: start the hardware process.
+            memory.write_word_32(Self::MC_ME, 0x5AF0)?;
+            memory.write_word_32(Self::MC_ME, 0xA50F)?;
+            Ok(())
+        };
+
+        enable_partition(0, &[0, 0x0000_F7DF])?;
+        enable_partition(1, &[0xB1E0_FFF8, 0x812A_A407, 0xBBF3_FE7E, 0x0000_0141])?;
+        if self.has_clock_partition2 {
+            enable_partition(2, &[0x29FF_FFF0, 0xC489_87F9])?;
+        }
+
+        memory.flush()
+    }
+
+    /// Initialize the ECC RAMs via DMA. This is the pack's `RAMInitialize`
+    /// sequence.
+    fn ram_initialize(&self, memory: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
+        if self.sram_size != 0 {
+            tracing::debug!("Initializing {} bytes of SRAM via DMA", self.sram_size);
+            self.dma_fill(memory, Self::SRAM_BASE as u32, self.sram_size)?;
+        }
+        if self.dtcm_size != 0 {
+            tracing::debug!("Initializing {} bytes of DTCM via DMA", self.dtcm_size);
+            self.dma_fill(memory, Self::DTCM_BACKDOOR, self.dtcm_size)?;
+        }
+        Ok(())
+    }
+
+    /// Initialize `len` bytes of ECC RAM at `dest` with a single-major-loop
+    /// DMA transfer that repeatedly reads the first flash doubleword.
+    fn dma_fill(
+        &self,
+        memory: &mut dyn ArmMemoryInterface,
+        dest: u32,
+        len: u32,
+    ) -> Result<(), ArmError> {
+        const TCD: u64 = S32K3xx::EDMA_TCD0;
+        const CH0_CSR_DONE: u32 = 1 << 30;
+
+        // Enable DMA CH0 (DMAMUX_0 register CHCFG0).
+        memory.write_word_8(Self::DMAMUX0_CHCFG0, 0x80)?;
+        // Clear CH0_CSR.DONE from any earlier transfer (write-1-to-clear).
+        memory.write_word_32(TCD, CH0_CSR_DONE)?;
+        // TCD0_SADDR: read the program flash base over and over (SOFF = 0).
+        memory.write_word_32(TCD + 0x20, 0x0040_0000)?;
+        // TCD0_SOFF/TCD0_ATTR: source offset 0, 64-bit transfers.
+        memory.write_word_32(TCD + 0x24, 0x0303_0000)?;
+        // TCD0_NBYTES_MLOFFNO: transfer the whole region in one major iteration.
+        memory.write_word_32(TCD + 0x28, len)?;
+        // TCD0_SLAST_SDA: no source address adjustment.
+        memory.write_word_32(TCD + 0x2C, 0)?;
+        // TCD0_DADDR
+        memory.write_word_32(TCD + 0x30, dest)?;
+        // TCD0_DOFF/TCD0_CITER_ELINKNO: destination offset 8, major iteration count 1.
+        memory.write_word_32(TCD + 0x34, 0x0001_0008)?;
+        // TCD0_DLAST_SGA: rewind the destination address.
+        memory.write_word_32(TCD + 0x38, len.wrapping_neg())?;
+        // TCD0_CSR: start the transfer.
+        memory.write_word_32(TCD + 0x3C, 1)?;
+        memory.flush()?;
+
+        // Poll CH0_CSR.DONE until the transfer finishes. The DONE flag is
+        // sticky, unlike the ACTIVE flag the CMSIS pack polls, which may not
+        // be set yet on the first poll.
+        let start = Instant::now();
+        while memory.read_word_32(TCD)? & CH0_CSR_DONE == 0 {
+            if start.elapsed() > Duration::from_secs(1) {
+                tracing::warn!("Timed out waiting for the RAM initialization DMA transfer");
+                return Err(ArmError::Timeout);
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+
+        Ok(())
+    }
+
+    /// Release the nRESET pin and wait for the target to leave reset. This is
+    /// the pack's `ResetHardwareDeassert_Default` sequence (and matches the
+    /// default `reset_hardware_deassert`).
+    fn release_reset_pin(&self, probe: &mut dyn ArmDebugInterface) -> Result<(), ArmError> {
+        let mut n_reset = Pins(0);
+        n_reset.set_nreset(true);
+        let n_reset = n_reset.0 as u32;
+
+        let can_read_pins = probe.swj_pins(n_reset, n_reset, 0)? != 0xffff_ffff;
+
+        if can_read_pins {
+            let start = Instant::now();
+            loop {
+                if Pins(probe.swj_pins(n_reset, n_reset, 0)? as u8).nreset() {
+                    return Ok(());
+                }
+                if start.elapsed() >= Duration::from_secs(1) {
+                    return Err(ArmError::Timeout);
+                }
+                thread::sleep(Duration::from_millis(100));
+            }
+        } else {
+            thread::sleep(Duration::from_millis(100));
+            Ok(())
+        }
+    }
+}
+
+impl ArmDebugSequence for S32K3xx {
+    fn reset_hardware_assert(&self, interface: &mut dyn DapProbe) -> Result<(), ArmError> {
+        // This is only called when connecting under reset; remember it so that
+        // debug_device_unlock and reset_hardware_deassert can take the
+        // connect-under-reset paths of the pack's sequences.
+        self.connect_under_reset.store(true, Ordering::Relaxed);
+
+        let mut n_reset = Pins(0);
+        n_reset.set_nreset(true);
+        let _ = interface.swj_pins(0, n_reset.0 as u32, 0)?;
+
+        Ok(())
+    }
+
+    fn debug_device_unlock(
+        &self,
+        interface: &mut dyn ArmDebugInterface,
+        default_ap: &FullyQualifiedApAddress,
+        _permissions: &crate::Permissions,
+    ) -> Result<(), ArmError> {
+        let dp = default_ap.dp();
+
+        if self.connect_under_reset.load(Ordering::Relaxed) {
+            // The pack's `DebugFromFirstInstruction` sequence: keep the cores
+            // in reset but make them debuggable, then release the nRESET pin.
+            // The cores are individually released in reset_hardware_deassert,
+            // after the reset catch is in place.
+            self.enable_m7_debug(interface, dp)?;
+            interface.write_raw_ap_register(
+                &Self::mdm_ap(dp),
+                Self::MDM_AP_CTL,
+                Self::MDM_AP_CTL_CORE_ACCESS,
+            )?;
+            interface.write_raw_ap_register(&Self::sda_ap(dp), Self::SDA_AP_RSTCTRL, 0)?;
+            interface.flush()?;
+
+            self.release_reset_pin(interface)
+        } else {
+            // Unlike the pack's `DebugEnablement` sequence, only enable
+            // debugging here: the clock and ECC RAM initialization would
+            // destroy the memory and clock state of a running system. The
+            // RAMs are initialized in reset_system when a reset catch is
+            // armed, which covers flashing and RAM downloads.
+            self.enable_m7_debug(interface, default_ap.dp())
+        }
+    }
+
+    fn reset_hardware_deassert(
+        &self,
+        probe: &mut dyn ArmDebugInterface,
+        default_ap: &FullyQualifiedApAddress,
+    ) -> Result<(), ArmError> {
+        // Only called when connecting under reset. The nRESET pin was already
+        // released in debug_device_unlock; release the connected core from
+        // reset and enable debug. Like the pack (`__errorcontrol = 1`), ignore
+        // errors from the reset release and debug enablement.
+        let release = if default_ap.ap_v1()? == 5 {
+            Self::SDA_AP_RSTCTRL_RELEASE_CM7_1
+        } else {
+            Self::SDA_AP_RSTCTRL_RELEASE_CM7_0
+        };
+
+        let result = probe
+            .write_raw_ap_register(
+                &Self::sda_ap(default_ap.dp()),
+                Self::SDA_AP_RSTCTRL,
+                release,
+            )
+            .and_then(|_| probe.flush());
+        if let Err(error) = result {
+            tracing::warn!("Ignoring error while releasing the core from reset: {error}");
+        }
+
+        if let Err(error) = self.debug_enablement(probe, default_ap) {
+            tracing::warn!("Ignoring error during debug enablement: {error}");
+        }
+
+        self.connect_under_reset.store(false, Ordering::Relaxed);
+
+        Ok(())
+    }
+
+    fn reset_system(
+        &self,
+        interface: &mut dyn ArmMemoryInterface,
+        _core_type: probe_rs_target::CoreType,
+        _debug_base: Option<u64>,
+    ) -> Result<(), ArmError> {
+        // If a reset catch is armed, the core will halt before executing the
+        // first instruction, and we initialize the ECC RAMs afterwards so that
+        // code can be loaded into SRAM — this is the reset-and-halt performed
+        // before flashing. Without a catch the application boots and performs
+        // its own RAM initialization, like on a power-on, and touching the
+        // RAM here would race the running code.
+        let demcr = Demcr(interface.read_word_32(Demcr::get_mmio_address())?);
+
+        // The pack's `ResetSystem` sequence issues a functional reset through
+        // the MDM_AP (`FunctionalReset`) instead of using SYSRESETREQ. The
+        // debug domain (including the reset catch in DEMCR) survives it.
+        tracing::debug!("Initiating functional reset");
+
+        let dp = interface.fully_qualified_address().dp();
+        let mdm_ap = Self::mdm_ap(dp);
+        let probe = interface.get_arm_debug_interface()?;
+
+        probe.write_raw_ap_register(&mdm_ap, Self::MDM_AP_CTL, Self::MDM_AP_CTL_RSTREL_DBGREQ)?;
+        probe.write_raw_ap_register(
+            &mdm_ap,
+            Self::MDM_AP_CTL,
+            Self::MDM_AP_CTL_RSTREL_DBGREQ_FUNCRST,
+        )?;
+        probe.write_raw_ap_register(&mdm_ap, Self::MDM_AP_CTL, Self::MDM_AP_CTL_RSTREL_DBGREQ)?;
+        probe.write_raw_ap_register(&mdm_ap, Self::MDM_AP_CTL, Self::MDM_AP_CTL_RSTREL)?;
+        probe.flush()?;
+
+        sequences::cortex_m_wait_for_reset(interface)?;
+
+        if demcr.vc_corereset() {
+            // The functional reset gated the peripheral clocks again, so
+            // re-enable them before using the DMA.
+            self.enable_peripheral_clocks(interface)?;
+            self.ram_initialize(interface)?;
         }
 
         Ok(())

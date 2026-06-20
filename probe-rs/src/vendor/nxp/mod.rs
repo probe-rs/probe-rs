@@ -9,7 +9,7 @@ use crate::{
         nxp::sequences::{
             mcx::MCX,
             nxp_armv6m::LPC80x,
-            nxp_armv7m::{MIMXRT10xx, MIMXRT11xx},
+            nxp_armv7m::{MIMXRT10xx, MIMXRT11xx, S32K3xx},
             nxp_armv8m::{
                 LPC55Sxx, MIMXRT5xxS, MIMXRT118x,
                 MIMXRTFamily::{MIMXRT5, MIMXRT6},
@@ -45,6 +45,8 @@ impl Vendor for Nxp {
             DebugSequence::Arm(OL23D0::create())
         } else if chip.name.starts_with("MCX") {
             DebugSequence::Arm(MCX::create(chip.name.clone()))
+        } else if chip.name.starts_with("S32K3") {
+            DebugSequence::Arm(S32K3xx::create(chip))
         } else {
             return None;
         };
