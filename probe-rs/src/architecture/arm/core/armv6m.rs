@@ -600,15 +600,9 @@ impl CoreInterface for Armv6m<'_> {
     }
 
     fn run(&mut self) -> Result<(), Error> {
-        let dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
-        if dhcsr.s_halt() {
-            // Before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction.
-            self.step()?;
-            self.state.clear_pending_step();
-        }
-        // If the core is already running (e.g. after a reset without halt),
-        // there is no instruction to step over, and attempting the step would
-        // time out. The write below still clears a possibly stale C_MASKINTS.
+        // Before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction.
+        self.step()?;
+        self.state.clear_pending_step();
 
         let mut value = Dhcsr(0);
         value.set_c_halt(false);
