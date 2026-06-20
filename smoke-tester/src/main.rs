@@ -1,4 +1,9 @@
-use std::{path::PathBuf, process::ExitCode, time::Duration};
+use std::{
+    panic::{AssertUnwindSafe, catch_unwind},
+    path::PathBuf,
+    process::ExitCode,
+    time::Duration,
+};
 
 use crate::dut_definition::DutDefinition;
 
@@ -142,15 +147,31 @@ fn run_test(mut args: Arguments, definitions: &[DutDefinition]) -> Result<ExitCo
 
                     core.reset_and_halt(Duration::from_millis(500))?;
 
-                    let result = (test_struct.test_fn)(&definition, &mut core);
+                    // Catch panics early so we can reset the core before libtest reports the failure.
+                    // Otherwise a panic during a test can leave the target in a different state than on success.
+                    let test_outcome = catch_unwind(AssertUnwindSafe(|| {
+                        (test_struct.test_fn)(&definition, &mut core)
+                    }));
 
                     // Ensure core is not running anymore.
-                    core.reset_and_halt(Duration::from_millis(200))
+                    let reset_result = core
+                        .reset_and_halt(Duration::from_millis(200))
                         .with_context(|| {
                             format!("Failed to reset core with index {core_index} after test")
-                        })?;
+                        });
 
-                    result
+                    match test_outcome {
+                        Ok(test_result) => {
+                            reset_result?;
+                            test_result
+                        }
+                        Err(payload) => {
+                            if let Err(err) = &reset_result {
+                                eprintln!("Failed to reset core with index {core_index} after panic: {err:#}");
+                            }
+                            std::panic::resume_unwind(payload)
+                        }
+                    }
                 })
                 .with_kind(&chip_name);
 
