@@ -155,7 +155,7 @@ fn list_tests_impl(
     }
 
     let poller = request.rtt_client.map(|client| RttPoller {
-        rtt_client: client,
+        rtt_client: shared_session.object_storage().cell(client),
         clear_control_block: true,
         sender: |message| {
             sender
@@ -253,7 +253,7 @@ fn run_test_impl(
     };
 
     let poller = request.rtt_client.map(|client| RttPoller {
-        rtt_client: client,
+        rtt_client: shared_session.object_storage().cell(client),
         clear_control_block: true,
         sender: |message| {
             sender

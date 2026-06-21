@@ -1,0 +1,765 @@
+name: TLE987x Series
+generated_from_pack: false
+pack_file_release: 1.6.2
+variants:
+- name: TLE9871QXA20
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x11000000
+      end: 0x11008000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x11008000
+      end: 0x11009000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x18000000
+      end: 0x18000010
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x18000018
+      end: 0x18000c00
+    cores:
+    - main
+  flash_algorithms:
+  - tle9871
+  - tle9871_eep
+- name: TLE9872-2QXA40
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x11000000
+      end: 0x1103f000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x1103f000
+      end: 0x11040000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x18000000
+      end: 0x18000014
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x18000018
+      end: 0x18002000
+    cores:
+    - main
+  flash_algorithms:
+  - tle9872
+  - tle9872_eep
+- name: TLE9872QTW40
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x11000000
+      end: 0x1103f000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x1103f000
+      end: 0x11040000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x18000000
+      end: 0x18000014
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x18000018
+      end: 0x18002000
+    cores:
+    - main
+  flash_algorithms:
+  - tle9872
+  - tle9872_eep
+- name: TLE9872QXA40
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x11000000
+      end: 0x1103f000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x1103f000
+      end: 0x11040000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x18000000
+      end: 0x18000014
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x18000018
+      end: 0x18002000
+    cores:
+    - main
+  flash_algorithms:
+  - tle9872
+  - tle9872_eep
+- name: TLE9873QXW40
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x11000000
+      end: 0x1100b000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x1100b000
+      end: 0x1100c000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x18000000
+      end: 0x18000014
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x18000018
+      end: 0x18000c00
+    cores:
+    - main
+  flash_algorithms:
+  - tle9873
+  - tle9873_eep
+- name: TLE9877QTW40
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x11000000
+      end: 0x1100f000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x1100f000
+      end: 0x11010000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x18000000
+      end: 0x18000010
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x18000018
+      end: 0x18001800
+    cores:
+    - main
+  flash_algorithms:
+  - tle9877
+  - tle9877_eep
+- name: TLE9877QXA40
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x11000000
+      end: 0x1100f000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x1100f000
+      end: 0x11010000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x18000000
+      end: 0x18000010
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x18000018
+      end: 0x18001800
+    cores:
+    - main
+  flash_algorithms:
+  - tle9877
+  - tle9877_eep
+- name: TLE9877QXW40
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x11000000
+      end: 0x1100f000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x1100f000
+      end: 0x11010000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x18000000
+      end: 0x18000014
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x18000018
+      end: 0x18001800
+    cores:
+    - main
+  flash_algorithms:
+  - tle9877
+  - tle9877_eep
+- name: TLE9879-2QXA40
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x11000000
+      end: 0x1101f000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x1101f000
+      end: 0x11020000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x18000000
+      end: 0x18000014
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x18000018
+      end: 0x18001800
+    cores:
+    - main
+  flash_algorithms:
+  - tle9879
+  - tle9879_eep
+- name: TLE9879QTW40
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x11000000
+      end: 0x1101f000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x1101f000
+      end: 0x11020000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x18000000
+      end: 0x18000014
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x18000018
+      end: 0x18001800
+    cores:
+    - main
+  flash_algorithms:
+  - tle9879
+  - tle9879_eep
+- name: TLE9879QXA40
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x11000000
+      end: 0x1101f000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x1101f000
+      end: 0x11020000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x18000000
+      end: 0x18000010
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x18000018
+      end: 0x18001800
+    cores:
+    - main
+  flash_algorithms:
+  - tle9879
+  - tle9879_eep
+- name: TLE9879QXW40
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x11000000
+      end: 0x1101f000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x1101f000
+      end: 0x11020000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x18000000
+      end: 0x18000014
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x18000018
+      end: 0x18001800
+    cores:
+    - main
+  flash_algorithms:
+  - tle9879
+  - tle9879_eep
+flash_algorithms:
+- name: tle9871
+  description: Infineon TLE9871, 32kB Flash
+  default: true
+  instructions: ACBwRwAgcEdwtR9NQ/ZlAE1EACRP8IhWaGBpaAbrBDCIR2QcCCz403C9F0pD9mUBSkRRYAhHLenwQRNPFUZPREP21QIORvpgQ/blATlgQ/bdAgRGumCIRwAgAuApXCFUQBywQvrTuWi96PBBAiAIRwXgEPgBO5NCAdABIHBHSR730gAgcEcAAAQAAAAdOQAADTkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+  pc_init: 0x1
+  pc_uninit: 0x5
+  pc_program_page: 0x37
+  pc_erase_sector: 0x2b
+  pc_erase_all: 0x9
+  pc_blank_check: 0x71
+  data_section_offset: 0x94
+  flash_properties:
+    address_range:
+      start: 0x11000000
+      end: 0x11008000
+    page_size: 0x80
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: tle9871_eep
+  description: Infineon TLE9871, 4kB EEPROM
+  default: true
+  instructions: ACBwRwAgcEcaSEP2ZQFIREFgGUgIRxdKQ/ZlAUpEUWAIRy3p8EETTxVGT0RD9tUCDkb6YEP25QE5YEP23QIERrpgiEcAIALgKVwhVEAcsEL607lovejwQQIgCEcF4BD4ATuTQgHQASBwR0ke99IAIHBHAAAEAAAAAIAAER05AAANOQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x5
+  pc_program_page: 0x23
+  pc_erase_sector: 0x17
+  pc_erase_all: 0x9
+  pc_blank_check: 0x5d
+  data_section_offset: 0x84
+  flash_properties:
+    address_range:
+      start: 0x11008000
+      end: 0x11009000
+    page_size: 0x80
+    erased_byte_value: 0x0
+    program_page_timeout: 1000
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: tle9872
+  description: Infineon TLE9872, 252kB Flash
+  default: true
+  instructions: ACBwRwAgcEdwtR9NQ/ZlAE1EACRP8IhWaGBpaAbrBDCIR2QcPyz403C9F0pD9mUBSkRRYAhHLenwQRNPFUZPREP21QIORvpgQ/blATlgQ/bdAgRGumCIRwAgAuApXCFUQBywQvrTuWi96PBBAiAIRwXgEPgBO5NCAdABIHBHSR730gAgcEcAAAQAAAAdOQAADTkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+  pc_init: 0x1
+  pc_uninit: 0x5
+  pc_program_page: 0x37
+  pc_erase_sector: 0x2b
+  pc_erase_all: 0x9
+  pc_blank_check: 0x71
+  data_section_offset: 0x94
+  flash_properties:
+    address_range:
+      start: 0x11000000
+      end: 0x1103f000
+    page_size: 0x80
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: tle9872_eep
+  description: Infineon TLE9872, 4kB EEPROM
+  default: true
+  instructions: ACBwRwAgcEcaSEP2ZQFIREFgGUgIRxdKQ/ZlAUpEUWAIRy3p8EETTxVGT0RD9tUCDkb6YEP25QE5YEP23QIERrpgiEcAIALgKVwhVEAcsEL607lovejwQQIgCEcF4BD4ATuTQgHQASBwR0ke99IAIHBHAAAEAAAAAPADER05AAANOQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x5
+  pc_program_page: 0x23
+  pc_erase_sector: 0x17
+  pc_erase_all: 0x9
+  pc_blank_check: 0x5d
+  data_section_offset: 0x84
+  flash_properties:
+    address_range:
+      start: 0x1103f000
+      end: 0x11040000
+    page_size: 0x80
+    erased_byte_value: 0x0
+    program_page_timeout: 1000
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: tle9873
+  description: Infineon TLE9873, 44kB Flash
+  default: true
+  instructions: ACBwRwAgcEdwtR9NQ/ZlAE1EACRP8IhWaGBpaAbrBDCIR2QcCyz403C9F0pD9mUBSkRRYAhHLenwQRNPFUZPREP21QIORvpgQ/blATlgQ/bdAgRGumCIRwAgAuApXCFUQBywQvrTuWi96PBBAiAIRwXgEPgBO5NCAdABIHBHSR730gAgcEcAAAQAAAAdOQAADTkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+  pc_init: 0x1
+  pc_uninit: 0x5
+  pc_program_page: 0x37
+  pc_erase_sector: 0x2b
+  pc_erase_all: 0x9
+  pc_blank_check: 0x71
+  data_section_offset: 0x94
+  flash_properties:
+    address_range:
+      start: 0x11000000
+      end: 0x1100b000
+    page_size: 0x80
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: tle9873_eep
+  description: Infineon TLE9873, 4kB EEPROM
+  default: true
+  instructions: ACBwRwAgcEcaSEP2ZQFIREFgGUgIRxdKQ/ZlAUpEUWAIRy3p8EETTxVGT0RD9tUCDkb6YEP25QE5YEP23QIERrpgiEcAIALgKVwhVEAcsEL607lovejwQQIgCEcF4BD4ATuTQgHQASBwR0ke99IAIHBHAAAEAAAAALAAER05AAANOQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x5
+  pc_program_page: 0x23
+  pc_erase_sector: 0x17
+  pc_erase_all: 0x9
+  pc_blank_check: 0x5d
+  data_section_offset: 0x84
+  flash_properties:
+    address_range:
+      start: 0x1100b000
+      end: 0x1100c000
+    page_size: 0x80
+    erased_byte_value: 0x0
+    program_page_timeout: 1000
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: tle9877
+  description: Infineon TLE9877, 60kB Flash
+  default: true
+  instructions: ACBwRwAgcEdwtR9NQ/ZlAE1EACRP8IhWaGBpaAbrBDCIR2QcDyz403C9F0pD9mUBSkRRYAhHLenwQRNPFUZPREP21QIORvpgQ/blATlgQ/bdAgRGumCIRwAgAuApXCFUQBywQvrTuWi96PBBAiAIRwXgEPgBO5NCAdABIHBHSR730gAgcEcAAAQAAAAdOQAADTkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+  pc_init: 0x1
+  pc_uninit: 0x5
+  pc_program_page: 0x37
+  pc_erase_sector: 0x2b
+  pc_erase_all: 0x9
+  pc_blank_check: 0x71
+  data_section_offset: 0x94
+  flash_properties:
+    address_range:
+      start: 0x11000000
+      end: 0x1100f000
+    page_size: 0x80
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: tle9877_eep
+  description: Infineon TLE9877, 4kB EEPROM
+  default: true
+  instructions: ACBwRwAgcEcaSEP2ZQFIREFgGUgIRxdKQ/ZlAUpEUWAIRy3p8EETTxVGT0RD9tUCDkb6YEP25QE5YEP23QIERrpgiEcAIALgKVwhVEAcsEL607lovejwQQIgCEcF4BD4ATuTQgHQASBwR0ke99IAIHBHAAAEAAAAAOAAER05AAANOQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x5
+  pc_program_page: 0x23
+  pc_erase_sector: 0x17
+  pc_erase_all: 0x9
+  pc_blank_check: 0x5d
+  data_section_offset: 0x84
+  flash_properties:
+    address_range:
+      start: 0x1100f000
+      end: 0x11010000
+    page_size: 0x80
+    erased_byte_value: 0x0
+    program_page_timeout: 1000
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: tle9879
+  description: Infineon TLE9879, 124kB Flash
+  default: true
+  instructions: ACBwRwAgcEdwtR9NQ/ZlAE1EACRP8IhWaGBpaAbrBDCIR2QcHyz403C9F0pD9mUBSkRRYAhHLenwQRNPFUZPREP21QIORvpgQ/blATlgQ/bdAgRGumCIRwAgAuApXCFUQBywQvrTuWi96PBBAiAIRwXgEPgBO5NCAdABIHBHSR730gAgcEcAAAQAAAAdOQAADTkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+  pc_init: 0x1
+  pc_uninit: 0x5
+  pc_program_page: 0x37
+  pc_erase_sector: 0x2b
+  pc_erase_all: 0x9
+  pc_blank_check: 0x71
+  data_section_offset: 0x94
+  flash_properties:
+    address_range:
+      start: 0x11000000
+      end: 0x1101f000
+    page_size: 0x80
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: tle9879_eep
+  description: Infineon TLE9879, 4kB EEPROM
+  default: true
+  instructions: ACBwRwAgcEcaSEP2ZQFIREFgGUgIRxdKQ/ZlAUpEUWAIRy3p8EETTxVGT0RD9tUCDkb6YEP25QE5YEP23QIERrpgiEcAIALgKVwhVEAcsEL607lovejwQQIgCEcF4BD4ATuTQgHQASBwR0ke99IAIHBHAAAEAAAAAPABER05AAANOQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x5
+  pc_program_page: 0x23
+  pc_erase_sector: 0x17
+  pc_erase_all: 0x9
+  pc_blank_check: 0x5d
+  data_section_offset: 0x84
+  flash_properties:
+    address_range:
+      start: 0x1101f000
+      end: 0x11020000
+    page_size: 0x80
+    erased_byte_value: 0x0
+    program_page_timeout: 1000
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x1000
+      address: 0x0

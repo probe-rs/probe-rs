@@ -294,7 +294,15 @@ impl DtmAccess for JtagDtm<'_> {
                 previous_queue_len = cmds.len();
             }
 
-            if started.elapsed() > Duration::from_millis(500) {
+            // Observed with a HiFive Rev B Board: 1.4 sec to execute commands when a reset is involved.
+            const JTAG_COMMAND_TIMEOUT: Duration = Duration::from_secs(2);
+
+            let elapsed_time = started.elapsed();
+
+            if elapsed_time > JTAG_COMMAND_TIMEOUT {
+                tracing::error!(
+                    "Timeout ({JTAG_COMMAND_TIMEOUT:?}) exceeded executing RISCV commands (elpased: {elapsed_time:?})"
+                );
                 return Err(RiscvError::Timeout);
             }
         }

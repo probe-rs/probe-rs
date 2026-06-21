@@ -7,6 +7,7 @@ chip_detection:
   idcode: 0x14c25
   variants:
     0x2421606f: esp32c61
+    0x7211606f: esp32c61
 variants:
 - name: esp32c61
   cores:
