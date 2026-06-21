@@ -1,0 +1,1 @@
+Added support for some of the NXP S32K3 series

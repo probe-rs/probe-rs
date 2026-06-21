@@ -1,0 +1,51 @@
+name: Trident IoT
+variants:
+- name: T32CZ20
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    range:
+      start: 0x10008000
+      end: 0x10099000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Ram
+    range:
+      start: 0x30000000
+      end: 0x30030000
+    cores:
+    - main
+  flash_algorithms:
+  - t32cz20-flash-algorithm
+flash_algorithms:
+- name: t32cz20-flash-algorithm
+  description: A flash algorithm generated using flash-algorithm-template
+  default: true
+  instructions: QPL0EMPyAAABeAEgASkYv3BHsLUCr0nyAAEUI8XyAAGKawPrEkIC8B8CkEACOAEoFttE8lQsACLF8kEsT/AhDgEjACTB+ETAwfgA4Epgi2CNaO0F/NQBNAL1gFKEQvHRSCADIsTyAAABaGLzDyEBYAAgveiwQHBHQPL0EcPyAAEJeAEpHL8BIHBHQPLwESDwf0LD8gABCWiKQiS/R/LRAHBHgLVvRknyAAFE8lQixfIAAcXyQSJKZCEiCmBIYAEgiGCIaMAF/NRIIAMixPIAAAFoYvMPIQFgACCAvUDy9BABIcPyAAABcFEeAykf0k/woEFA8oRSCWiy6xFPHL9H8tAAcEdJ8hgBQPLvEsXyAAEKYAEiAnAIakDy8BHD8gABwPMEQAL6APAIYAAgcEeAtW9GAPBI+EDy9BPD8gADG3gBKxy/ASBwR/C1A69N+AS9QPLwEyDwf0XD8gADG2idQh/SX+oRLBrQSfIAAUTyVC4AI8XyAAHF8kEuGCQBJQDrAybB+ETgDGBOYALrAyZOYY1gjmj2BfzUATNjRe/RACAB4Efy0gBd+AS78L2AtW9GQPL0EcPyAAEIeAEoEr8BIAAgCHCAvYC1b0YA3v7e1NQAAAAAANTU1A==
+  load_address: 0x30000020
+  pc_init: 0xdd
+  pc_uninit: 0x1ad
+  pc_program_page: 0x137
+  pc_erase_sector: 0x79
+  pc_erase_all: 0x1
+  data_section_offset: 0x1d8
+  rtt_poll_interval: 20
+  flash_properties:
+    address_range:
+      start: 0x10008000
+      end: 0x10099000
+    page_size: 0x1000
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+  cores:
+  - main

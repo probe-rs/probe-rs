@@ -2,7 +2,7 @@
 //!
 //! This module implements communication with a
 //! Debug Module, as described in the RISC-V debug
-//! specification v0.13.2 .
+//! specification v0.13 and v1.0.
 
 use crate::architecture::riscv::dtm::DtmAccess;
 use crate::memory::valid_32bit_address;
@@ -151,10 +151,21 @@ pub enum DebugModuleVersion {
     Version0_11,
     /// The debug module conforms to the version 0.13 of the RISC-V Debug Specification.
     Version0_13,
+    /// The debug module conforms to the version 1.0 of the RISC-V Debug Specification.
+    Version1_0,
     /// The debug module is present, but does not conform to any available version of the RISC-V Debug Specification.
     NonConforming,
     /// Unknown debug module version.
     Unknown(u8),
+}
+
+impl DebugModuleVersion {
+    fn is_implemented(self) -> bool {
+        matches!(
+            self,
+            DebugModuleVersion::Version0_13 | DebugModuleVersion::Version1_0
+        )
+    }
 }
 
 impl From<u8> for DebugModuleVersion {
@@ -163,6 +174,7 @@ impl From<u8> for DebugModuleVersion {
             0 => Self::NoModule,
             1 => Self::Version0_11,
             2 => Self::Version0_13,
+            3 => Self::Version1_0,
             15 => Self::NonConforming,
             other => Self::Unknown(other),
         }
@@ -206,6 +218,8 @@ impl ScratchState {
 /// Describes the method which should be used to access memory.
 #[derive(Default, Debug)]
 pub struct MemoryAccessConfig {
+    has_program_buffer: bool,
+
     /// Describes, which memory access method should be used for a given access width
     default_method: HashMap<RiscvBusAccess, MemoryAccessMethod>,
 
@@ -233,7 +247,11 @@ impl MemoryAccessConfig {
         self.default_method
             .get(&access)
             .copied()
-            .unwrap_or(MemoryAccessMethod::ProgramBuffer)
+            .unwrap_or(if self.has_program_buffer {
+                MemoryAccessMethod::ProgramBuffer
+            } else {
+                MemoryAccessMethod::AbstractCommand
+            })
     }
 
     /// Returns the memory access method for the given address and access width.
@@ -609,8 +627,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         self.state.debug_version = DebugModuleVersion::from(status.version() as u8);
         self.state.is_halted = status.allhalted();
 
-        // Only version of 0.13 of the debug specification is currently supported.
-        if self.state.debug_version != DebugModuleVersion::Version0_13 {
+        if !self.state.debug_version.is_implemented() {
             return Err(RiscvError::UnsupportedDebugModuleVersion(
                 self.state.debug_version,
             ));
@@ -669,11 +686,19 @@ impl<'state> RiscvCommunicationInterface<'state> {
         // Check if the anynonexistent works
         let status: Dmstatus = self.read_dm_register()?;
 
+        // Spec 1.0: stickyunavail means allunavail/anyunavail stay set until
+        // the debugger writes ackunavail=1. Check once and apply throughout.
+        let sticky_unavail = status.stickyunavail();
+
         if status.anynonexistent() {
             for hart_index in 1..max_hart_index {
                 let mut control = Dmcontrol(0);
                 control.set_dmactive(true);
                 control.set_hartsel(hart_index);
+                // Clear any sticky unavail state so we read fresh availability.
+                if sticky_unavail {
+                    control.set_ackunavail(true);
+                }
 
                 self.schedule_write_dm_register(control)?;
 
@@ -698,10 +723,15 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         self.state.num_harts = num_harts;
 
-        // Select hart 0 again - assuming all harts are same in regards of discovered features
+        // Select hart 0 again - assuming all harts are same in regards of discovered features.
+        // For spec 1.0 DMs, set the keepalive hint to discourage the hart from
+        // entering a low-power state while we are attached.
         let mut control = Dmcontrol(0);
         control.set_dmactive(true);
         control.set_hartsel(0);
+        if self.state.debug_version == DebugModuleVersion::Version1_0 {
+            control.set_setkeepalive(true);
+        }
 
         self.schedule_write_dm_register(control)?;
 
@@ -710,6 +740,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         let abstractcs: Abstractcs = self.read_dm_register()?;
 
         self.state.progbuf_size = abstractcs.progbufsize() as u8;
+        self.state.memory_access_config.has_program_buffer = self.state.progbuf_size != 0;
         tracing::debug!("Program buffer size: {}", self.state.progbuf_size);
 
         self.state.data_register_count = abstractcs.datacount() as u8;
@@ -1083,28 +1114,21 @@ impl<'state> RiscvCommunicationInterface<'state> {
         tracing::debug!("Reading CSR {:#x}", address);
         // Always try to read register with abstract command, fallback to
         // program buffer if not supported.
-        if self.state.xlen_64 {
-            match self.abstract_cmd_register_read_64(address) {
-                Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
-                    tracing::debug!(
-                        "Could not read CSR {:#x} with abstract command, falling back to program buffer",
-                        address
-                    );
-                    self.read_csr_progbuf(address)
-                }
-                other => other,
-            }
+        let result = if self.state.xlen_64 {
+            self.abstract_cmd_register_read_64(address)
         } else {
-            match self.abstract_cmd_register_read(address) {
-                Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
-                    tracing::debug!(
-                        "Could not read CSR {:#x} with abstract command, falling back to program buffer",
-                        address
-                    );
-                    self.read_csr_progbuf(address)
-                }
-                other => other.map(u64::from),
+            self.abstract_cmd_register_read(address).map(u64::from)
+        };
+
+        match result {
+            Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
+                tracing::debug!(
+                    "Could not read CSR {:#x} with abstract command, falling back to program buffer",
+                    address
+                );
+                self.read_csr_progbuf(address)
             }
+            other => other,
         }
     }
 
@@ -1114,28 +1138,20 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// program buffer if abstract commands are not supported.
     pub(super) fn write_csr(&mut self, address: u16, value: u64) -> Result<(), RiscvError> {
         tracing::debug!("Writing CSR {:#x}", address);
-        if self.state.xlen_64 {
-            match self.abstract_cmd_register_write_64(address, value) {
-                Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
-                    tracing::debug!(
-                        "Could not write CSR {:#x} with abstract command, falling back to program buffer",
-                        address
-                    );
-                    self.write_csr_progbuf(address, value)
-                }
-                other => other,
-            }
+        let result = if self.state.xlen_64 {
+            self.abstract_cmd_register_write_64(address, value)
         } else {
-            match self.abstract_cmd_register_write(address, value as u32) {
-                Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
-                    tracing::debug!(
-                        "Could not write CSR {:#x} with abstract command, falling back to program buffer",
-                        address
-                    );
-                    self.write_csr_progbuf(address, value)
-                }
-                other => other,
+            self.abstract_cmd_register_write(address, value as u32)
+        };
+        match result {
+            Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
+                tracing::debug!(
+                    "Could not write CSR {:#x} with abstract command, falling back to program buffer",
+                    address
+                );
+                self.write_csr_progbuf(address, value)
             }
+            other => other,
         }
     }
 
@@ -2301,7 +2317,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
             }
             MemoryAccessMethod::SystemBus => self.perform_memory_read_sysbus(address)?,
             MemoryAccessMethod::AbstractCommand => {
-                unimplemented!("Memory access using abstract commands is not implemented")
+                return Err(crate::Error::NotImplemented(
+                    "Memory access using abstract commands is not implemented",
+                ));
             }
         };
 
@@ -2338,7 +2356,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 self.perform_memory_read_multiple_sysbus(address, data)?;
             }
             MemoryAccessMethod::AbstractCommand => {
-                unimplemented!("Memory access using abstract commands is not implemented")
+                return Err(crate::Error::NotImplemented(
+                    "Memory access using abstract commands is not implemented",
+                ));
             }
         };
 
@@ -2358,7 +2378,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
             }
             MemoryAccessMethod::SystemBus => self.perform_memory_write_sysbus(address, &[data])?,
             MemoryAccessMethod::AbstractCommand => {
-                unimplemented!("Memory access using abstract commands is not implemented")
+                return Err(crate::Error::NotImplemented(
+                    "Memory access using abstract commands is not implemented",
+                ));
             }
         };
 
@@ -2386,7 +2408,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 self.perform_memory_write_multiple_progbuf(address, data, true)?
             }
             MemoryAccessMethod::AbstractCommand => {
-                unimplemented!("Memory access using abstract commands is not implemented")
+                return Err(crate::Error::NotImplemented(
+                    "Memory access using abstract commands is not implemented",
+                ));
             }
         }
 
@@ -2501,11 +2525,26 @@ impl<'state> RiscvCommunicationInterface<'state> {
         self.write_dm_register(dmcontrol)?;
 
         let status = Dmstatus(self.dtm.read_deferred_result(status_idx)?.into_u32());
-        if !status.allresumeack() {
-            return Err(RiscvError::RequestNotAcknowledged);
+        if status.allresumeack() || status.allrunning() {
+            return Ok(());
         }
+        self.wait_for_resume_ack(Duration::from_millis(50))
+    }
 
-        Ok(())
+    /// Some cores (WCH Qingke) update dmstatus only after a brief delay; poll
+    /// for the ack bit or for the hart actually running.
+    fn wait_for_resume_ack(&mut self, timeout: Duration) -> Result<(), RiscvError> {
+        let start = Instant::now();
+        loop {
+            let dmstatus: Dmstatus = self.read_dm_register()?;
+            if dmstatus.allresumeack() || dmstatus.allrunning() {
+                return Ok(());
+            }
+            if start.elapsed() >= timeout {
+                return Err(RiscvError::RequestNotAcknowledged);
+            }
+            std::thread::sleep(Duration::from_millis(1));
+        }
     }
 
     /// Perform a reset of all harts on the target and halt them at the first instruction.
@@ -2554,6 +2593,16 @@ impl<'state> RiscvCommunicationInterface<'state> {
         loop {
             // check that cores have reset
             let readback: Dmstatus = self.read_dm_register()?;
+
+            // Spec 1.0: poll ndmresetpending until the system finishes resetting.
+            if self.state.debug_version == DebugModuleVersion::Version1_0
+                && readback.ndmresetpending()
+            {
+                if start.elapsed() > timeout {
+                    return Err(RiscvError::RequestNotAcknowledged);
+                }
+                continue;
+            }
 
             if readback.allhavereset() && readback.allhalted() {
                 break;

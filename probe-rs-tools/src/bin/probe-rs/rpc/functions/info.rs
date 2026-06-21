@@ -26,6 +26,7 @@ use probe_rs::{
     probe::{
         Probe, WireProtocol as ProbeRsWireProtocol,
         cmsisdap::{CmsisDap, query_attached_pkobn_updi},
+        wlink::WchLink,
     },
 };
 use probe_rs_target::ScanChainElement;
@@ -444,6 +445,25 @@ async fn try_read_riscv_info(
 ) -> Result<(), anyhow::Error> {
     if probe.has_riscv_interface() && protocol == WireProtocol::Jtag {
         tracing::debug!("Trying to show RISC-V chip information");
+
+        // WCH-Link probes don't expose a real JTAG IDCODE; report the chip
+        // family and ID from the probe's AttachChip response instead.
+        if let Some(wch_info) = probe
+            .try_into::<WchLink>()
+            .map(|wlink| (wlink.chip_family(), wlink.chip_id()))
+        {
+            let (family, chip_id) = wch_info;
+            ctx.publish::<TargetInfoDataTopic>(
+                VarSeq::Seq2(0),
+                &InfoEvent::Message(format!(
+                    "RISC-V Chip:\n  Family:  {:#04x} ({family:?})\n  Chip ID: {chip_id:#010x}",
+                    family as u8
+                )),
+            )
+            .await?;
+            return Ok(());
+        }
+
         let idcode = {
             let factory = probe.try_get_riscv_interface_builder()?;
             let mut state = factory.create_state();

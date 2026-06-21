@@ -1,6 +1,6 @@
 //! Used to provide meta information.
 //!
-//! Returned by `probe-rs meta`
+//! Returned by `probe-rs mi meta`
 
 use serde::{Deserialize, Serialize};
 

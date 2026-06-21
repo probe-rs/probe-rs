@@ -1,8 +1,12 @@
 name: CH32F1 Series
+chip_detection:
+- !WchLink
+  mask: 0xffffff0f
+  variants:
+    0x20004102: CH32F103C8T6
+    0x2000410f: CH32F103R8T6
 variants:
-- name: CH32F103C6
-  package_variants:
-  - CH32F103C6Tx
+- name: CH32F103C6T6
   cores:
   - name: main
     type: armv7m
@@ -10,29 +14,71 @@ variants:
       ap: !v1 0
   memory_map:
   - !Nvm
-    name: BANK_1
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0x8000
+    cores:
+    - main
+    is_alias: true
+  - !Nvm
+    name: USR
     range:
       start: 0x8000000
       end: 0x8008000
     cores:
     - main
+  - !Nvm
+    name: SYS_1
+    range:
+      start: 0x1ffff000
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff880
+    cores:
+    - main
+    is_alias: true
+    access:
+      execute: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff880
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
     access:
       write: false
-      boot: true
+      execute: false
+  - !Nvm
+    name: SYS_2
+    range:
+      start: 0x1ffff900
+      end: 0x20000000
+    cores:
+    - main
+    is_alias: true
   - !Ram
-    name: SRAM
+    name: RAM
     range:
       start: 0x20000000
       end: 0x20002800
     cores:
     - main
   flash_algorithms:
-  - ch32f10x_128
-  - ch32f10x_opt
-- name: CH32F103C8
-  package_variants:
-  - CH32F103C8Tx
-  - CH32F103C8Ux
+  - ch32-v1-usr
+  - ch32-v1-usr-legacy
+  - ch32-v1-sys-1
+  - ch32-v1-opt
+  - ch32-v1-sys-2
+- name: CH32F103C8T6
   cores:
   - name: main
     type: armv7m
@@ -40,28 +86,71 @@ variants:
       ap: !v1 0
   memory_map:
   - !Nvm
-    name: BANK_1
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    is_alias: true
+  - !Nvm
+    name: USR
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
+  - !Nvm
+    name: SYS_1
+    range:
+      start: 0x1ffff000
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff880
+    cores:
+    - main
+    is_alias: true
+    access:
+      execute: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff880
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
     access:
       write: false
-      boot: true
+      execute: false
+  - !Nvm
+    name: SYS_2
+    range:
+      start: 0x1ffff900
+      end: 0x20000000
+    cores:
+    - main
+    is_alias: true
   - !Ram
-    name: SRAM
+    name: RAM
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   flash_algorithms:
-  - ch32f10x_128
-  - ch32f10x_opt
-- name: CH32F103R8
-  package_variants:
-  - CH32F103R8Tx
+  - ch32-v1-usr
+  - ch32-v1-usr-legacy
+  - ch32-v1-sys-1
+  - ch32-v1-opt
+  - ch32-v1-sys-2
+- name: CH32F103R8T6
   cores:
   - name: main
     type: armv7m
@@ -69,64 +158,176 @@ variants:
       ap: !v1 0
   memory_map:
   - !Nvm
-    name: BANK_1
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    is_alias: true
+  - !Nvm
+    name: USR
     range:
       start: 0x8000000
       end: 0x8010000
     cores:
     - main
+  - !Nvm
+    name: SYS_1
+    range:
+      start: 0x1ffff000
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff880
+    cores:
+    - main
+    is_alias: true
+    access:
+      execute: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff880
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
     access:
       write: false
-      boot: true
+      execute: false
+  - !Nvm
+    name: SYS_2
+    range:
+      start: 0x1ffff900
+      end: 0x20000000
+    cores:
+    - main
+    is_alias: true
   - !Ram
-    name: SRAM
+    name: RAM
     range:
       start: 0x20000000
       end: 0x20005000
     cores:
     - main
   flash_algorithms:
-  - ch32f10x_128
-  - ch32f10x_opt
+  - ch32-v1-usr
+  - ch32-v1-usr-legacy
+  - ch32-v1-sys-1
+  - ch32-v1-opt
+  - ch32-v1-sys-2
 flash_algorithms:
-- name: ch32f10x_128
-  description: CH32F10x Med-density Flash
+- name: ch32-v1-opt
+  description: ch32-v1-opt
   default: true
-  instructions: ELUDRgAgREwgYERIYGBESGBgIEbAaRDwBA8I0UXyVVBATCBgBiBgYED2/3CgYAAgEL0BRjhIAGlA8IAANkoQYQAgcEc0SABpQPAEADJJCGEIRgBpQPBAAAhhA+BK9qogMEkIYCxIwGgQ8AEP9tEqSABpIPAEAChJCGEAIHBHAUYlSABpQPACACNKEGEQRkFhAGlA8EAAEGED4Er2qiAhShBgHUjAaBDwAQ/20RpIAGkg8AIAGEoQYQAgcEcQtQNGSBwg8AEBIuATSABpQPABABFMIGEQiBiAAL8PSMBoEPABD/rRDEgAaSDwAQAKTCBhIEbAaBDwFA8G0CBGwGhA8BQA4GABIBC9mxySHIkeACna0QAg9+cAAAAgAkAjAWdFq4nvzQAwAEAAAAAA
-  pc_init: 0x1
-  pc_uninit: 0x33
-  pc_program_page: 0xbd
-  pc_erase_sector: 0x7f
-  pc_erase_all: 0x45
-  data_section_offset: 0x128
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8020000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 2000
-    erase_sector_timeout: 500
-    sectors:
-    - size: 0x400
-      address: 0x0
-- name: ch32f10x_opt
-  description: CH32F10x Flash Options
-  instructions: ELUDRgAgXkwgYF5IYGBeSGBgXEigYFxIoGAgRsBpEPAEDwjRRfJVUFhMIGAGIGBgQPb/cKBgACAQvQFGUEgAaSD0gHBOShBhEEYAaUDwgAAQYQAgcEdKSABpQPAgAEhJCGEIRgBpQPBAAAhhA+BK9qogRkkIYEJIwGgQ8AEP9tE/SABpIPAgAD1JCGEIRgBpQPAQAAhhRfalID1JCIAD4Er2qiA5SQhgNUjAaBDwAQ/20TNIAGkg8BAAMUkIYQhGwGgQ8BQPBtAIRsBoQPAUAMhgASBwRwAg/OcBRihIAGlA8CAAJkoQYRBGAGlA8EAAEGED4Er2qiAkShBgIEjAaBDwAQ/20R5IAGkg8CAAHEoQYQAgcEcDRgEgcEcQtQNGSBwg8AEBJuAVSABpQPAQABNMIGEQiBiAA+BK9qogE0wgYA9IwGgQ8AEP9tEMSABpIPAQAApMIGEgRsBoEPAUDwbQIEbAaEDwFADgYAEgEL2bHJIciR4AKdbRACD35wAAACACQCMBZ0Wrie/NADAAQAD4/x8AAAAA
-  pc_init: 0x1
-  pc_uninit: 0x3b
-  pc_program_page: 0x11d
-  pc_erase_sector: 0xdb
-  pc_erase_all: 0x57
-  data_section_offset: 0x194
+  instructions: gLVvRgEggL1A8nYQwvIAAAB4ASgcvwEgcEeAtW9GQvIMAMTyAgABaMkH/NEgIQFgQWhB8CABQWBBaEHwQAFBYAFoyQf80SAhAWBBaCHwIAFBYAAggL2AtW9GQPJ2HkLyBAHC8gAOxPICAZ74ADAzsdH4DMBI8oADQ+oMA8tgASMBOo74ADAEKj+/QPIjEsTyZ1IKYEj2qxA/v8z271AIYEpgjvgAMD6/SGAAIIC9APBO+EDydhPC8gADG3gBKwS/QeoAA1/qw3MB0AEgcEdf6lEMBL8AIHBHsLUCr0LyDAEAI8TyAgFP8CAOFIgNaO0H/NHB+ADgTWhF8BAFTWAEgAxo5Af80cH4AOABM0xoAjICMGNFJPAQBExg5tEAILC9QPJ2EcLyAAEIeAEoHL8BIHBHgLVvRgAgSPKAAwhwQvIQAcTyAgEKaBpDCmCAvYC1b0YA3v7eANQ=
+  load_address: 0x20000020
+  pc_init: 0x57
+  pc_uninit: 0x121
+  pc_program_page: 0xb3
+  pc_erase_sector: 0x9
+  pc_erase_all: 0x1
+  data_section_offset: 0x158
   flash_properties:
     address_range:
       start: 0x1ffff800
-      end: 0x1ffff810
-    page_size: 0x10
+      end: 0x1ffff880
+    page_size: 0x80
     erased_byte_value: 0xff
-    program_page_timeout: 3000
-    erase_sector_timeout: 3000
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
     sectors:
-    - size: 0x10
+    - size: 0x80
+      address: 0x0
+- name: ch32-v1-sys-1
+  description: ch32-v1-sys-1
+  default: true
+  instructions: gLVvRgEggL1A8rgRwvIAAQl4ASkcvwEgcEeAtW9GQvIMAcTyAgEKaNIH/NEgIgpgT/QAMkpgQCLA8gICiGBKYApo0gf80SAigPSAUApgSmgi9AAySmAAaIhiACCAvYC1b0ZA8rgeQvIEAcLyAA7E8gIBnvgAMDOx0fgMwEjygAND6gwDy2ABIwE6jvgAMAQqP79A8iMSxPJnUgpgSParED+/zPbvUAhgCmKO+AAwPr8IYgAggL0A8Gv4QPK4E8LyAAMbeAErHL8BIHBH8LUDr034BI1C8gwDxPICAx5o9gf80SAmHmBP9IA2XmBP9BAmXmAeaPYH/NEg8H8MT/AgDokIw/gA4BXQACRP9KAoACZS+ARbBDRA+ARbFPAMDwbRw/gEgB1o7Qf80cP4AOABNo5C7dFAIMP4CMDA8gEAWGAYaMAH/NEgIBhgWGgg9IAwWGCM9IBQAGiYYgAgXfgEi/C9QPK4EcLyAAEIeAEoHL8BIHBHgLVvRgAgSPKAAwhwQvIQAcTyAgEKaBpDCmCAvYC1b0YA3v7eANTU1A==
+  load_address: 0x20000020
+  pc_init: 0x5f
+  pc_uninit: 0x163
+  pc_program_page: 0xbb
+  pc_erase_sector: 0x9
+  data_section_offset: 0x19c
+  flash_properties:
+    address_range:
+      start: 0x1ffff000
+      end: 0x1ffff800
+    page_size: 0x80
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x80
+      address: 0x0
+- name: ch32-v1-sys-2
+  description: ch32-v1-sys-2
+  default: true
+  instructions: gLVvRgEggL1A8rgRwvIAAQl4ASkcvwEgcEeAtW9GQvIMAcTyAgEKaNIH/NEgIgpgT/QAMkpgQCLA8gICiGBKYApo0gf80SAigPSAUApgSmgi9AAySmAAaIhiACCAvYC1b0ZA8rgeQvIEAcLyAA7E8gIBnvgAMDOx0fgMwEjygAND6gwDy2ABIwE6jvgAMAQqP79A8iMSxPJnUgpgSParED+/zPbvUAhgCmKO+AAwPr8IYgAggL0A8Gv4QPK4E8LyAAMbeAErHL8BIHBH8LUDr034BI1C8gwDxPICAx5o9gf80SAmHmBP9IA2XmBP9BAmXmAeaPYH/NEg8H8MT/AgDokIw/gA4BXQACRP9KAoACZS+ARbBDRA+ARbFPAMDwbRw/gEgB1o7Qf80cP4AOABNo5C7dFAIMP4CMDA8gEAWGAYaMAH/NEgIBhgWGgg9IAwWGCM9IBQAGiYYgAgXfgEi/C9QPK4EcLyAAEIeAEoHL8BIHBHgLVvRgAgSPKAAwhwQvIQAcTyAgEKaBpDCmCAvYC1b0YA3v7eANTU1A==
+  load_address: 0x20000020
+  pc_init: 0x5f
+  pc_uninit: 0x163
+  pc_program_page: 0xbb
+  pc_erase_sector: 0x9
+  data_section_offset: 0x19c
+  flash_properties:
+    address_range:
+      start: 0x1ffff900
+      end: 0x20000000
+    page_size: 0x80
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x80
+      address: 0x0
+- name: ch32-v1-usr
+  description: ch32-v1-usr
+  default: true
+  instructions: QPISIMLyAAAAeAEoHL8BIHBHgLVvRkLyDADE8gIAAWjJB/zRICEBYEFoQfAEAUFgQWhB8EABQWABaMkH/NEgIQFgQWgh8AQBQWBB8gABwPYAAQlogWIAIIC9QPISIcLyAAEJeAEpHL8BIHBHgLVvRkLyDAHE8gIBCmjSB/zRICJA8ABgCmBP9AAySmBAIsDyAgKIYEpgCmjSB/zRICKA9IBQCmBKaCL0ADJKYABoiGIAIIC9gLVvRkDyEi5C8gQBwvIADsTyAgGe+AAwM7HR+AzASPKAA0PqDAPLYAEjATqO+AAwBCo/v0DyIxLE8mdSCmBI9qsQP7/M9u9QCGAKYo74ADA+vwhiACCAvQDwbfhA8hIjwvIAAxt4ASscvwEgcEfwtQOvTfgEjULyDAPE8gIDHmj2B/zRICYeYE/0gDZeYE/0ECZeYB5o9gf80UDwAGBP8CAMIPB/DokIw/gAwBXQACRP9KAoACZS+ARbBDRA+ARbFPAMDwbRw/gEgB1o7Qf80cP4AMABNo5C7dFAIMP4CODA8gEAWGAYaMAH/NEgIBhgWGgg9IAwWGCO9IBQAGiYYgAgXfgEi/C9QPISIcLyAAEIeAEoHL8BIHBHgLVvRgAgSPKAAwhwQvIQAcTyAgEKaBpDCmCAvYC1b0YA3v7eANQ=
+  load_address: 0x20000020
+  pc_init: 0xb5
+  pc_uninit: 0x1bd
+  pc_program_page: 0x111
+  pc_erase_sector: 0x5b
+  pc_erase_all: 0x1
+  data_section_offset: 0x1f4
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8010000
+    page_size: 0x80
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x80
+      address: 0x0
+- name: ch32-v1-usr-legacy
+  description: ch32-v1-usr-legacy
+  default: true
+  instructions: QPISIMLyAAAAeAEoHL8BIHBHgLVvRkLyDADE8gIAAWjJB/zRICEBYEFoQfAEAUFgQWhB8EABQWABaMkH/NEgIQFgQWgh8AQBQWBB8gABwPYAAQlogWIAIIC9QPISIcLyAAEJeAEpHL8BIHBHgLVvRkLyDAHE8gIBCmjSB/zRICJA8ABgCmBP9AAySmBAIsDyAgKIYEpgCmjSB/zRICKA9IBQCmBKaCL0ADJKYABoiGIAIIC9gLVvRkDyEi5C8gQBwvIADsTyAgGe+AAwM7HR+AzASPKAA0PqDAPLYAEjATqO+AAwBCo/v0DyIxLE8mdSCmBI9qsQP7/M9u9QCGAKYo74ADA+vwhiACCAvQDwbfhA8hIjwvIAAxt4ASscvwEgcEfwtQOvTfgEjULyDAPE8gIDHmj2B/zRICYeYE/0gDZeYE/0ECZeYB5o9gf80UDwAGBP8CAMIPB/DokIw/gAwBXQACRP9KAoACZS+ARbBDRA+ARbFPAMDwbRw/gEgB1o7Qf80cP4AMABNo5C7dFAIMP4CODA8gEAWGAYaMAH/NEgIBhgWGgg9IAwWGCO9IBQAGiYYgAgXfgEi/C9QPISIcLyAAEIeAEoHL8BIHBHgLVvRgAgSPKAAwhwQvIQAcTyAgEKaBpDCmCAvYC1b0YA3v7eANQ=
+  load_address: 0x20000020
+  pc_init: 0xb5
+  pc_uninit: 0x1bd
+  pc_program_page: 0x111
+  pc_erase_sector: 0x5b
+  pc_erase_all: 0x1
+  data_section_offset: 0x1f4
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x10000
+    page_size: 0x80
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x80
       address: 0x0
