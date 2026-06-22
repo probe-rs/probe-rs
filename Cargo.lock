@@ -2175,6 +2175,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b4baf93f58d4425749ca49a51c50ebab072c5df6994d08fed93541c331481dc"
+dependencies = [
+ "either",
+]
+
+[[package]]
 name = "itm"
 version = "0.9.0-rc.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3053,7 +3062,7 @@ dependencies = [
  "hidapi",
  "ihex",
  "insta",
- "itertools 0.14.0",
+ "itertools 0.15.0",
  "itm",
  "jep106",
  "nusb",
@@ -3083,7 +3092,7 @@ dependencies = [
  "bitfield",
  "gimli 0.33.0",
  "insta",
- "itertools 0.14.0",
+ "itertools 0.15.0",
  "object 0.39.1",
  "parse_int",
  "pretty_assertions",
@@ -3181,7 +3190,7 @@ dependencies = [
  "ihex",
  "indicatif",
  "insta",
- "itertools 0.14.0",
+ "itertools 0.15.0",
  "itm",
  "jep106",
  "libtest-mimic",
@@ -3689,7 +3698,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

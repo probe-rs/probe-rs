@@ -33,7 +33,7 @@ tracing = "0.1"
 typed-path = "0.12"
 espflash = { version = "4", default-features = false }
 
-itertools = "0.14"
+itertools = "0.15"
 
 # CLI-only
 addr2line = "0.26"
