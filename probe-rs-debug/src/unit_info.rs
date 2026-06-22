@@ -156,7 +156,7 @@ impl UnitInfo {
                 address
             );
 
-            functions.extend(inlined_functions.into_iter());
+            functions.extend(inlined_functions);
             return Ok(functions);
         }
         Ok(vec![])
@@ -1644,14 +1644,9 @@ impl UnitInfo {
             .or_else(|| extract_byte_size(node_die))
             .or_else(|| {
                 if let VariableType::Array { count, .. } = parent_variable.type_name {
-                    parent_variable.byte_size.map(|byte_size| {
-                        let array_member_count = count as u64;
-                        if array_member_count > 0 {
-                            byte_size / array_member_count
-                        } else {
-                            byte_size
-                        }
-                    })
+                    parent_variable
+                        .byte_size
+                        .map(|byte_size| byte_size.checked_div(count as u64).unwrap_or(byte_size))
                 } else {
                     None
                 }

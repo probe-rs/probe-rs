@@ -494,14 +494,10 @@ impl VariableCache {
                     let string_length = match children.iter().find(|child_variable| {
                         matches!(child_variable.name, VariableName::Named(ref name) if name == "length")
                     }) {
-                        Some(string_length) => {
-                            if string_length.is_valid() {
-                                string_length.to_string(self).parse().unwrap_or(0_usize)
-                            } else {
-                                0_usize
-                            }
+                        Some(string_length) if string_length.is_valid() => {
+                            string_length.to_string(self).parse().unwrap_or(0_usize)
                         }
-                        None => 0_usize,
+                        _ => 0_usize,
                     };
                     let string_location = match children.iter().find(|child_variable| {
                         matches!(child_variable.name, VariableName::Named(ref name ) if name == "data_ptr")

@@ -143,7 +143,7 @@ pub(super) fn flat_profile(
 
     let mut v = Vec::from_iter(samples);
     // sort by frequency
-    v.sort_by(|&(_, a), &(_, b)| b.cmp(&a));
+    v.sort_by_key(|&(_, b)| std::cmp::Reverse(b));
 
     println!("Samples {reads}");
 

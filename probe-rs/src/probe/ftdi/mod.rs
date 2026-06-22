@@ -211,7 +211,7 @@ impl JtagAdapter {
             )));
         }
 
-        for (byte, count) in reply.into_iter().zip(expected_bits.into_iter()) {
+        for (byte, count) in reply.into_iter().zip(expected_bits) {
             let bits = byte >> (8 - count);
             self.in_bits
                 .extend_from_bitslice(&bits.view_bits::<Lsb0>()[..count]);
