@@ -17,7 +17,7 @@ use crate::session::Session;
 
 /// Host-side flash programming interface.
 ///
-/// Vendors implement this trait to support `flash_loader_type: host_side` in target YAML files.
+/// Vendors implement this trait for targets that support host-side flashing.
 /// The implementation is returned by the debug sequence via
 /// `ArmDebugSequence::debug_flash_sequence` (or the equivalent RISC-V/Xtensa method) and is
 /// called by [`HostSideFlasher`](super::HostSideFlasher) during the flash procedure.
