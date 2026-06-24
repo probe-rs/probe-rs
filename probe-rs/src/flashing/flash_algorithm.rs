@@ -425,13 +425,9 @@ impl FlashAlgorithm {
         core_name: &str,
         target: &Target,
     ) -> Result<FlashAlgorithm, FlashError> {
-        use probe_rs_target::FlashLoaderType;
-
-        // HostSide algorithms are not assembled into RAM — they have no instructions,
-        // load address, or PC entry points.  Return a minimal stub so callers that
-        // iterate all algorithms (e.g. the validate_builtin test) don't need to
-        // special-case the loader type.
-        if algo.flash_loader_type == FlashLoaderType::HostSide {
+        // Algorithms without instructions are host-side and do not load into RAM.
+        // Return a stub so callers iterating all algorithms do not need to handle them specially.
+        if algo.instructions.is_empty() {
             return Ok(FlashAlgorithm {
                 name: algo.name.clone(),
                 default: algo.default,

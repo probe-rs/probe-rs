@@ -80,7 +80,6 @@ flash_algorithms:
 - name: cc23xx-flash
   description: Host-side flash programming via SACI commands for CC23xx devices
   default: true
-  flash_loader_type: host_side
   flash_properties:
     address_range:
       start: 0x0
@@ -101,7 +100,6 @@ flash_algorithms:
 - name: cc27xx-flash
   description: Host-side flash programming via SACI commands for CC27xx devices
   default: true
-  flash_loader_type: host_side
   flash_properties:
     address_range:
       start: 0x0

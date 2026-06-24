@@ -64,8 +64,8 @@ pub trait XtensaDebugSequence: Send + Sync + Debug {
 
     /// Return the host-side flash sequence implementation, if any.
     ///
-    /// Override this to enable `flash_loader_type: host_side` for Xtensa targets.
-    /// The default returns `None` (no host-side flash support).
+    /// Override this to enable host-side flashing for Xtensa targets.
+    /// The default returns `None`.
     fn debug_flash_sequence(&self) -> Option<Arc<dyn DebugFlashSequence>> {
         None
     }

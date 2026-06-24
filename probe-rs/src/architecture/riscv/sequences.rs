@@ -88,8 +88,8 @@ pub trait RiscvDebugSequence: Send + Sync + Debug {
 
     /// Return the host-side flash sequence implementation, if any.
     ///
-    /// Override this to enable `flash_loader_type: host_side` for RISC-V targets.
-    /// The default returns `None` (no host-side flash support).
+    /// Override this to enable host-side flashing for RISC-V targets.
+    /// The default returns `None`.
     fn debug_flash_sequence(&self) -> Option<Arc<dyn DebugFlashSequence>> {
         None
     }

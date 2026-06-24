@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 use parking_lot::RwLock;
 use probe_rs_target::{
-    FlashLoaderType, InstructionSet, MemoryRange, MemoryRegion, NvmRegion, RawFlashAlgorithm,
+    InstructionSet, MemoryRange, MemoryRegion, NvmRegion, RawFlashAlgorithm,
     TargetDescriptionSource,
 };
 use std::io::{Read, Seek};
@@ -1015,12 +1015,11 @@ impl FlashLoader {
             let Range { start, end } = algorithm.flash_properties.address_range;
 
             tracing::debug!(
-                "    algo {}: {:#010X}..{:#010X} ({} bytes), loader_type: {:?}",
+                "    algo {}: {:#010X}..{:#010X} ({} bytes)",
                 algorithm.name,
                 start,
                 end,
                 end - start,
-                algorithm.flash_loader_type
             );
         }
 
@@ -1078,11 +1077,7 @@ impl FlashLoader {
             )?;
 
             // We don't usually have more than a handful of regions, linear search should be fine.
-            tracing::debug!(
-                "     -- using algorithm: {} (loader_type: {:?})",
-                algo.name,
-                algo.flash_loader_type
-            );
+            tracing::debug!("     -- using algorithm: {}", algo.name);
 
             // Add region to existing flasher for this algorithm+core, or create a new one.
             if let Some(entry) = algos
@@ -1091,25 +1086,15 @@ impl FlashLoader {
             {
                 entry.add_region(region, &self.builder, restore_unwritten_bytes)?;
             } else {
-                let mut flasher: Box<dyn FlasherOps> =
-                    if algo.flash_loader_type == FlashLoaderType::HostSide {
-                        // Get the host-side flash sequence via the architecture-agnostic
-                        // DebugSequence::debug_flash_sequence() dispatcher.  This works for
-                        // ARM, RISC-V, and Xtensa targets uniformly.
-                        let flash_sequence = session
-                            .target()
-                            .debug_sequence
-                            .debug_flash_sequence()
-                            .ok_or_else(|| FlashError::NoFlashLoaderAlgorithmAttached {
-                                name: target.name.clone(),
-                                range: region.range.clone(),
-                            })?;
-                        Box::new(HostSideFlasher::new(flash_sequence, core, algo.clone()))
-                    } else {
-                        let mut f = Flasher::new(target, core, algo)?;
-                        f.read_rtt_output(self.read_flasher_rtt);
-                        Box::new(f)
-                    };
+                let mut flasher: Box<dyn FlasherOps> = if let Some(flash_sequence) =
+                    session.target().debug_sequence.debug_flash_sequence()
+                {
+                    Box::new(HostSideFlasher::new(flash_sequence, core, algo.clone()))
+                } else {
+                    let mut f = Flasher::new(target, core, algo)?;
+                    f.read_rtt_output(self.read_flasher_rtt);
+                    Box::new(f)
+                };
                 flasher.add_region(region, &self.builder, restore_unwritten_bytes)?;
                 algos.push(flasher);
             }
