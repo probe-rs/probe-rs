@@ -401,7 +401,6 @@ impl FlashAlgorithm {
             pc_verify: raw.pc_verify.map(|v| code_start + v),
             pc_blank_check: raw.pc_blank_check.map(|v| code_start + v),
             pc_read: raw.pc_read.map(|v| code_start + v),
-            pc_flash_size: raw.pc_flash_size.map(|v| code_start + v),
             vendor_functions: raw
                 .vendor_functions
                 .iter()
