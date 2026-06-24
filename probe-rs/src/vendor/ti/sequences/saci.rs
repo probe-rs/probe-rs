@@ -257,7 +257,7 @@ pub fn send_command(interface: &mut dyn DapAccess, command: u32) -> Result<(), A
 ///
 /// Follows the OpenOCD cc_lpf3_saci_send_cmd protocol:
 ///   1. Poll TXD_FULL clear.
-///   2. Set CMD_START in TX_CTRL, write words[0].
+///   2. Set CMD_START in TX_CTRL, write words\[0\].
 ///   3. Clear CMD_START.
 ///   4. For each subsequent word: poll TXD_FULL clear, write word.
 ///   5. Final poll to confirm the last word was consumed.
@@ -339,8 +339,8 @@ pub fn read_device_status(interface: &mut dyn DapAccess) -> Result<DeviceStatusR
 
 /// Build the first parameter word (header) for a SACI command.
 ///
-/// Layout per ROM source: bits[7:0] = cmd_id, bits[15:8] = resp_seq_num (0),
-/// bits[31:16] = cmd_specific.
+/// Layout per ROM source: bits\[7:0\] = cmd_id, bits\[15:8\] = resp_seq_num (0),
+/// bits\[31:16\] = cmd_specific.
 pub fn make_header(cmd_id: u32, cmd_specific: u32) -> u32 {
     (cmd_specific << 16) | cmd_id
 }

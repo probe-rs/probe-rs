@@ -306,7 +306,7 @@ impl CC23xxCC27xxFlashSequence {
     /// Create a flash sequence sharing the saci_flash_mode flag with CC23xxCC27xx.
     ///
     /// The flag is set to true immediately. CC23xxCC27xx::debug_flash_sequence()
-    /// passes its own Arc<AtomicBool> here so that both structs observe the same
+    /// passes its own `Arc<AtomicBool>` here so that both structs observe the same
     /// flag. While true, debug_port_start skips EXIT_SACI_HALT so the ROM SACI
     /// handler stays active across reinitialize() calls during flash programming.
     /// Drop resets it to false so normal debug sessions are unaffected afterward.
