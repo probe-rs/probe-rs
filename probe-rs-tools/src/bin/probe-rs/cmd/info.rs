@@ -19,10 +19,7 @@ use crate::{
             InfoEvent, MinDpSupport, TargetInfoRequest,
         },
     },
-    util::{
-        cli::{self, select_probe},
-        common_options::ProbeOptions,
-    },
+    util::{cli::select_probe, common_options::ProbeOptions},
 };
 
 const JEP_ARM: JEP106Code = JEP106Code::new(4, 0x3b);
@@ -128,13 +125,13 @@ impl Cmd {
                 }
             }
         } else {
-            let mut common = self.common;
-            if common.chip.is_some() {
-                tracing::warn!("ignoring --chip option");
-                common.chip = None;
-            }
-            match cli::attach_probe(&client, common, None, false).await {
-                Ok(session) => println!("{}", session.target_name().await?),
+            match crate::cmd::common::info::basic_info(&client, self.common).await {
+                Ok(info) => {
+                    println!("Detected chip: {}", info.chip);
+                    println!(
+                        "For more detailed information about the target, run with the --verbose flag."
+                    );
+                }
                 Err(e) => {
                     eprintln!(
                         "Could not attach to target. Try running with --verbose for more information about the target."

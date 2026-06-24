@@ -31,11 +31,9 @@ variants:
     cores:
     - main
     access:
-      boot: false
       execute: false
   flash_algorithms:
   - cc23xx-flash
-
 flash_algorithms:
 # Flash algorithm taken from 2dec2a109925c3cad05cbdaf8ce10a76355adcd2 of https://github.com/seanmlyons22/cc23xx-flash
 - name: cc23xx-flash
@@ -53,7 +51,7 @@ flash_algorithms:
   flash_properties:
     address_range:
       start: 0x0
-      end: 0x4E020800
+      end: 0x4e020800
     page_size: 0x800
     erased_byte_value: 0xff
     program_page_timeout: 1000
@@ -62,6 +60,6 @@ flash_algorithms:
     - size: 0x800
       address: 0x0
     - size: 0x800
-      address: 0x4E020000
+      address: 0x4e020000
   cores:
   - main

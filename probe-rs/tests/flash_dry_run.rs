@@ -48,3 +48,35 @@ fn flash_dry_run_mimxrt1010() {
         .commit(&mut session, flash_options)
         .expect("Failed to flash in dry run mode.");
 }
+
+/// TLE987x: the Bootstrap Loader NAC/NAD word lives in the last 4 bytes of code
+/// flash (0x11007ffc). Regression test for the IROM1/IROM2 boundary, which used
+/// to sit at 0x11007ffc and so straddled the code-flash (`tle9871`) and EEPROM
+/// (`tle9871_eep`) algorithm ranges, leaving no single algorithm able to cover
+/// the region (`NoFlashLoaderAlgorithmAttached`).
+#[test]
+fn flash_dry_run_tle9871_nac_nad() {
+    let probe = Probe::from_specific_probe(Box::new(FakeProbe::with_mocked_core()));
+
+    let mut session = probe
+        .attach("TLE9871QXA20", Permissions::default())
+        .expect("Failed to attach with 'fake' probe.");
+
+    let mut flasher = session.target().flash_loader();
+
+    // Vector table at flash origin + the NAC/NAD word at the very top of code flash.
+    flasher
+        .add_data(0x11000000, &[0x1, 0x2, 0x3, 0x4])
+        .expect("Failed to add flash");
+    flasher
+        .add_data(0x11007ffc, &[0x1, 0xfe, 0x7f, 0x80])
+        .expect("Failed to add flash");
+
+    let mut flash_options = DownloadOptions::new();
+
+    flash_options.dry_run = true;
+
+    flasher
+        .commit(&mut session, flash_options)
+        .expect("Failed to flash in dry run mode.");
+}

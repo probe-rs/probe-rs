@@ -40,6 +40,8 @@ struct JtagAdapter {
 
     command: Command,
     commands: Vec<u8>,
+
+    /// For each command that captures bits, stores how many bits are captured.
     in_bit_counts: Vec<usize>,
     in_bits: BitVec,
     ftdi: FtdiProperties,
@@ -180,10 +182,12 @@ impl JtagAdapter {
         }
 
         let mut t0 = Instant::now();
-        let timeout = Duration::from_millis(10);
+        let timeout = Duration::from_millis(100);
 
-        let mut reply = Vec::with_capacity(self.in_bit_counts.len());
-        while reply.len() < self.in_bit_counts.len() {
+        let expected_bits = std::mem::take(&mut self.in_bit_counts);
+        let reply_slots = expected_bits.len();
+        let mut reply = Vec::with_capacity(reply_slots);
+        while reply.len() < reply_slots {
             let read = self
                 .device
                 .read_to_end(&mut reply)
@@ -194,24 +198,20 @@ impl JtagAdapter {
             }
 
             if t0.elapsed() > timeout {
-                tracing::warn!(
-                    "Read {} bytes, expected {}",
-                    reply.len(),
-                    self.in_bit_counts.len()
-                );
+                tracing::warn!("Read {} bytes, expected {}", reply.len(), reply_slots);
                 return Err(DebugProbeError::Timeout);
             }
         }
 
-        if reply.len() != self.in_bit_counts.len() {
+        if reply.len() != reply_slots {
             return Err(DebugProbeError::Other(format!(
                 "Read more data than expected. Expected {} bytes, got {} bytes",
-                self.in_bit_counts.len(),
+                reply_slots,
                 reply.len()
             )));
         }
 
-        for (byte, count) in reply.into_iter().zip(self.in_bit_counts.drain(..)) {
+        for (byte, count) in reply.into_iter().zip(expected_bits) {
             let bits = byte >> (8 - count);
             self.in_bits
                 .extend_from_bitslice(&bits.view_bits::<Lsb0>()[..count]);

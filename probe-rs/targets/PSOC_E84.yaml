@@ -731,7 +731,6 @@ flash_algorithms:
   pc_verify: 0xe1d
   pc_blank_check: 0x315
   data_section_offset: 0xe30
-  rtt_poll_interval: 0
   flash_properties:
     address_range:
       start: 0x22011000
@@ -755,7 +754,6 @@ flash_algorithms:
   pc_verify: 0xe1d
   pc_blank_check: 0x315
   data_section_offset: 0xe30
-  rtt_poll_interval: 0
   flash_properties:
     address_range:
       start: 0x32011000
@@ -779,7 +777,6 @@ flash_algorithms:
   pc_verify: 0x5d65
   pc_blank_check: 0x449
   data_section_offset: 0x60f4
-  rtt_poll_interval: 0
   flash_properties:
     address_range:
       start: 0x60000000
@@ -803,7 +800,6 @@ flash_algorithms:
   pc_verify: 0x5d65
   pc_blank_check: 0x449
   data_section_offset: 0x60f4
-  rtt_poll_interval: 0
   flash_properties:
     address_range:
       start: 0x70000000

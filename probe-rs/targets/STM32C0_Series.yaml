@@ -62,7 +62,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_16
+  - stm32c0x_32
 - name: STM32C011F6
   package_variants:
   - STM32C011F6Ux
@@ -120,7 +120,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_16
+  - stm32c0x_32
 - name: STM32C011J6
   package_variants:
   - STM32C011J6Mx
@@ -177,7 +177,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_16
+  - stm32c0x_32
 - name: STM32C031C6
   package_variants:
   - STM32C031C6Tx
@@ -234,7 +234,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_16
+  - stm32c0x_32
 - name: STM32C031F6
   package_variants:
   - STM32C031F6Px
@@ -290,7 +290,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_16
+  - stm32c0x_32
 - name: STM32C031G6
   package_variants:
   - STM32C031G6Ux
@@ -347,7 +347,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_16
+  - stm32c0x_32
 - name: STM32C031K6
   package_variants:
   - STM32C031K6Tx
@@ -434,7 +434,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_64
+  - stm32c0x_256
 - name: STM32C051D8
   package_variants:
   - STM32C051D8YxTR
@@ -462,7 +462,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_64
+  - stm32c0x_256
 - name: STM32C051F6
   package_variants:
   - STM32C051F6Px
@@ -518,7 +518,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_64
+  - stm32c0x_256
 - name: STM32C051G6
   package_variants:
   - STM32C051G6Ux
@@ -574,7 +574,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_64
+  - stm32c0x_256
 - name: STM32C051K6
   package_variants:
   - STM32C051K6Tx
@@ -631,7 +631,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_64
+  - stm32c0x_256
 - name: STM32C071C8
   package_variants:
   - STM32C071C8Tx
@@ -662,7 +662,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_64
+  - stm32c0x_256
 - name: STM32C071CB
   package_variants:
   - STM32C071CBTx
@@ -693,7 +693,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_128
+  - stm32c0x_256
 - name: STM32C071F8
   package_variants:
   - STM32C071F8Px
@@ -722,7 +722,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_64
+  - stm32c0x_256
 - name: STM32C071FB
   package_variants:
   - STM32C071FBPx
@@ -752,7 +752,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_128
+  - stm32c0x_256
 - name: STM32C071G8
   package_variants:
   - STM32C071G8Ux
@@ -781,7 +781,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_64
+  - stm32c0x_256
 - name: STM32C071GB
   package_variants:
   - STM32C071GBUx
@@ -810,7 +810,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_128
+  - stm32c0x_256
 - name: STM32C071K8
   package_variants:
   - STM32C071K8Tx
@@ -841,7 +841,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_64
+  - stm32c0x_256
 - name: STM32C071KB
   package_variants:
   - STM32C071KBTx
@@ -872,7 +872,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_128
+  - stm32c0x_256
 - name: STM32C071R8
   package_variants:
   - STM32C071R8Ix
@@ -903,7 +903,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_64
+  - stm32c0x_256
 - name: STM32C071RB
   package_variants:
   - STM32C071RBTx
@@ -933,7 +933,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_128
+  - stm32c0x_256
 - name: STM32C091CB
   package_variants:
   - STM32C091CBTx
@@ -962,7 +962,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_128
+  - stm32c0x_256
 - name: STM32C091CC
   package_variants:
   - STM32C091CCTx
@@ -1047,7 +1047,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_128
+  - stm32c0x_256
 - name: STM32C091FC
   package_variants:
   - STM32C091FCPx
@@ -1103,7 +1103,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_128
+  - stm32c0x_256
 - name: STM32C091GC
   package_variants:
   - STM32C091GCUx
@@ -1160,7 +1160,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_128
+  - stm32c0x_256
 - name: STM32C091KC
   package_variants:
   - STM32C091KCTx
@@ -1217,7 +1217,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_128
+  - stm32c0x_256
 - name: STM32C091RC
   package_variants:
   - STM32C091RCIx
@@ -1275,7 +1275,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_128
+  - stm32c0x_256
 - name: STM32C092CC
   package_variants:
   - STM32C092CCTx
@@ -1361,7 +1361,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_128
+  - stm32c0x_256
 - name: STM32C092FC
   package_variants:
   - STM32C092FCPx
@@ -1417,7 +1417,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_128
+  - stm32c0x_256
 - name: STM32C092GC
   package_variants:
   - STM32C092GCUx
@@ -1474,7 +1474,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_128
+  - stm32c0x_256
 - name: STM32C092KC
   package_variants:
   - STM32C092KCTx
@@ -1531,7 +1531,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_128
+  - stm32c0x_256
 - name: STM32C092RC
   package_variants:
   - STM32C092RCIx
@@ -1564,29 +1564,6 @@ variants:
   flash_algorithms:
   - stm32c0x_256
 flash_algorithms:
-- name: stm32c0x_16
-  description: STM32C0x_16
-  default: true
-  instructions: crYRSBFJgWCBackDBNXBaAApEtQAIHBHDUkOSgpgDkoKYAYiSmANSopgDUkNSkpgfyIKYMFoACns1QtJAWALSQFgACBwR8BGCCACQPrDAAAAMABAqqoAAFVVAAD/DwAAACwAQP8BAAAjAWdFq4nvzQEgwAcCSQpoAkMKYAAgcEcUIAJAASBwR3C1crYBIAMEHEkKaBpCCNAKaBpCBdAKaBpCAtAKaBpC89EXSgpghAQNaCVCCNANaCVCBdANaCVCAtANaCVC89FOaAQlLkNOYE5oHkNOYAtoI0II0AtoI0IF0AtoI0IC0AtoI0Lz0QtoE0IB0ApgcL1IaKhDSGAAIHC9wEYQIAJA+sMAAPC1AUZytgEgAgQsSxtoGwVeDStLHGgUQgjQHGgUQgXQHGgUQgLQHGgUQvPRJUwcYIUEH2gvQgjQH2gvQgXQH2gvQgLQH2gvQvPRX2h0HuYAt0NfYB8n/wbJGckKIUDJAFxoDEMCIQxDXGBcaBRDXGD2QxxoLEII0BxoLEIF0BxoLEIC0BxoLELz0RxoDU0sQgHQHWDwvVhoMEBYYFhoiENYYAEgwAYBaAAgSRwA0PC9EDsZaBFDGWDwvcBGoHX/HxAgAkD6wwAA8LWOsAZGcrbPHQEkIARmSQtoA0II0AtoA0IF0AtoA0IC0AtoA0Lz0WBICGAAlKUECGgoQgjQCGgoQgXQCGgoQgLQCGgoQvPRSGgAmxhDSGAHIDxGApCEQwaogDABkAngA5gwYAGYAGhwYAAkCGjABwDQk+AALADRgOAILBbTEGgwYFBocGAIMghoKEII0AhoKEIF0AhoKEIC0AhoKELz0Qg8CDYIaMAH5NB34BB4A5AGkAEsAdFSHCDgUHgHkAIsAdGSHBrgkHgIkAMsAdHSHBTg0HgJkAQsAdESHQ7gEHkKkAUsAdFSHQjgUHkLkAYsAdGSHQLgkHkMkNIdBJYFkgggABsjRgKaU0ADKwLSIkYAJA/gDCcHQCJGowAGrOMYACT/Jh5gXmCeYN5gEDMkHadC9tEDIxhADtCiGJMABqr/JNRQASgH0AaqmhhUYAIoAtAGqBgYhGAFmgSeCGgoQgDRfecIaChCANF55whoKEIA0XXnCGgoQvDRcedKaAEjmkNKYNoGEmgAIFIcBNAbBBA5CmiaQwpgDrDwvQNICGAAmA6w8L3ARhAgAkD6wwAAAAAAAA==
-  pc_init: 0x1
-  pc_uninit: 0x71
-  pc_program_page: 0x1d5
-  pc_erase_sector: 0x10d
-  pc_erase_all: 0x89
-  pc_blank_check: 0x85
-  data_section_offset: 0x384
-  rtt_poll_interval: 0
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8004000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x800
-      address: 0x0
 - name: stm32c0x_32
   description: STM32C0x_32
   default: true
@@ -1598,58 +1575,11 @@ flash_algorithms:
   pc_erase_all: 0x89
   pc_blank_check: 0x85
   data_section_offset: 0x384
-  rtt_poll_interval: 0
   flash_properties:
     address_range:
       start: 0x8000000
       end: 0x8008000
     page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x800
-      address: 0x0
-- name: stm32c0x_64
-  description: STM32C0x_64
-  default: true
-  instructions: crYRSBFJgWCBackDBNXBaAApEtQAIHBHDUkOSgpgDkoKYAYiSmANSopgDUkNSkpgfyIKYMFoACns1QtJAWALSQFgACBwR8BGCCACQPrDAAAAMABAqqoAAFVVAAD/DwAAACwAQP8BAAAjAWdFq4nvzQEgwAcCSQpoAkMKYAAgcEcUIAJAASBwR3C1crYBIAMEHEkKaBpCCNAKaBpCBdAKaBpCAtAKaBpC89EXSgpghAQNaCVCCNANaCVCBdANaCVCAtANaCVC89FOaAQlLkNOYE5oHkNOYAtoI0II0AtoI0IF0AtoI0IC0AtoI0Lz0QtoE0IB0ApgcL1IaKhDSGAAIHC9wEYQIAJA+sMAAPC1AUZytgEgAgQsSxtoGwVeDStLHGgUQgjQHGgUQgXQHGgUQgLQHGgUQvPRJUwcYIUEH2gvQgjQH2gvQgXQH2gvQgLQH2gvQvPRX2h0HuYAt0NfYB8n/wbJGckKIUDJAFxoDEMCIQxDXGBcaBRDXGD2QxxoLEII0BxoLEIF0BxoLEIC0BxoLELz0RxoDU0sQgHQHWDwvVhoMEBYYFhoiENYYAEgwAYBaAAgSRwA0PC9EDsZaBFDGWDwvcBGoHX/HxAgAkD6wwAA8LWOsAZGcrbPHQEkIARmSQtoA0II0AtoA0IF0AtoA0IC0AtoA0Lz0WBICGAAlKUECGgoQgjQCGgoQgXQCGgoQgLQCGgoQvPRSGgAmxhDSGAHIDxGApCEQwaogDABkAngA5gwYAGYAGhwYAAkCGjABwDQk+AALADRgOAILBbTEGgwYFBocGAIMghoKEII0AhoKEIF0AhoKEIC0AhoKELz0Qg8CDYIaMAH5NB34BB4A5AGkAEsAdFSHCDgUHgHkAIsAdGSHBrgkHgIkAMsAdHSHBTg0HgJkAQsAdESHQ7gEHkKkAUsAdFSHQjgUHkLkAYsAdGSHQLgkHkMkNIdBJYFkgggABsjRgKaU0ADKwLSIkYAJA/gDCcHQCJGowAGrOMYACT/Jh5gXmCeYN5gEDMkHadC9tEDIxhADtCiGJMABqr/JNRQASgH0AaqmhhUYAIoAtAGqBgYhGAFmgSeCGgoQgDRfecIaChCANF55whoKEIA0XXnCGgoQvDRcedKaAEjmkNKYNoGEmgAIFIcBNAbBBA5CmiaQwpgDrDwvQNICGAAmA6w8L3ARhAgAkD6wwAAAAAAAA==
-  pc_init: 0x1
-  pc_uninit: 0x71
-  pc_program_page: 0x1d5
-  pc_erase_sector: 0x10d
-  pc_erase_all: 0x89
-  pc_blank_check: 0x85
-  data_section_offset: 0x384
-  rtt_poll_interval: 0
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8010000
-    page_size: 0x800
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x800
-      address: 0x0
-- name: stm32c0x_128
-  description: STM32C0x_128
-  default: true
-  instructions: crYRSBFJgWCBackDBNXBaAApEtQAIHBHDUkOSgpgDkoKYAYiSmANSopgDUkNSkpgfyIKYMFoACns1QtJAWALSQFgACBwR8BGCCACQPrDAAAAMABAqqoAAFVVAAD/DwAAACwAQP8BAAAjAWdFq4nvzQEgwAcCSQpoAkMKYAAgcEcUIAJAASBwR3C1crYBIAMEHEkKaBpCCNAKaBpCBdAKaBpCAtAKaBpC89EXSgpghAQNaCVCCNANaCVCBdANaCVCAtANaCVC89FOaAQlLkNOYE5oHkNOYAtoI0II0AtoI0IF0AtoI0IC0AtoI0Lz0QtoE0IB0ApgcL1IaKhDSGAAIHC9wEYQIAJA+sMAAPC1AUZytgEgAgQsSxtoGwVeDStLHGgUQgjQHGgUQgXQHGgUQgLQHGgUQvPRJUwcYIUEH2gvQgjQH2gvQgXQH2gvQgLQH2gvQvPRX2h0HuYAt0NfYB8n/wbJGckKIUDJAFxoDEMCIQxDXGBcaBRDXGD2QxxoLEII0BxoLEIF0BxoLEIC0BxoLELz0RxoDU0sQgHQHWDwvVhoMEBYYFhoiENYYAEgwAYBaAAgSRwA0PC9EDsZaBFDGWDwvcBGoHX/HxAgAkD6wwAA8LWOsAZGcrbPHQEkIARmSQtoA0II0AtoA0IF0AtoA0IC0AtoA0Lz0WBICGAAlKUECGgoQgjQCGgoQgXQCGgoQgLQCGgoQvPRSGgAmxhDSGAHIDxGApCEQwaogDABkAngA5gwYAGYAGhwYAAkCGjABwDQk+AALADRgOAILBbTEGgwYFBocGAIMghoKEII0AhoKEIF0AhoKEIC0AhoKELz0Qg8CDYIaMAH5NB34BB4A5AGkAEsAdFSHCDgUHgHkAIsAdGSHBrgkHgIkAMsAdHSHBTg0HgJkAQsAdESHQ7gEHkKkAUsAdFSHQjgUHkLkAYsAdGSHQLgkHkMkNIdBJYFkgggABsjRgKaU0ADKwLSIkYAJA/gDCcHQCJGowAGrOMYACT/Jh5gXmCeYN5gEDMkHadC9tEDIxhADtCiGJMABqr/JNRQASgH0AaqmhhUYAIoAtAGqBgYhGAFmgSeCGgoQgDRfecIaChCANF55whoKEIA0XXnCGgoQvDRcedKaAEjmkNKYNoGEmgAIFIcBNAbBBA5CmiaQwpgDrDwvQNICGAAmA6w8L3ARhAgAkD6wwAAAAAAAA==
-  pc_init: 0x1
-  pc_uninit: 0x71
-  pc_program_page: 0x1d5
-  pc_erase_sector: 0x10d
-  pc_erase_all: 0x89
-  pc_blank_check: 0x85
-  data_section_offset: 0x384
-  rtt_poll_interval: 0
-  flash_properties:
-    address_range:
-      start: 0x8000000
-      end: 0x8020000
-    page_size: 0x800
     erased_byte_value: 0xff
     program_page_timeout: 400
     erase_sector_timeout: 400
@@ -1667,7 +1597,6 @@ flash_algorithms:
   pc_erase_all: 0x89
   pc_blank_check: 0x85
   data_section_offset: 0x384
-  rtt_poll_interval: 0
   flash_properties:
     address_range:
       start: 0x8000000

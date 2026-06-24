@@ -1,0 +1,621 @@
+name: TLE988x_9x Series
+generated_from_pack: false
+pack_file_release: 1.3.0
+variants:
+- name: TLE9881_2QTW60
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: Flash0
+    range:
+      start: 0x11000000
+      end: 0x11006000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: Flash1
+    range:
+      start: 0x12002000
+      end: 0x12020000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: PSRAM
+    range:
+      start: 0x18000000
+      end: 0x18002000
+    cores:
+    - main
+  - !Ram
+    name: DSRAM
+    range:
+      start: 0x18002000
+      end: 0x18004000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - tle9881_flash0_ubsl
+  - tle9881_flash0_dataflash
+  - tle9883_flash1
+- name: TLE9883QTA62
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: Flash0
+    range:
+      start: 0x11000000
+      end: 0x11006000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: Flash1
+    range:
+      start: 0x12002000
+      end: 0x12040000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: PSRAM
+    range:
+      start: 0x18000000
+      end: 0x18002000
+    cores:
+    - main
+  - !Ram
+    name: DSRAM
+    range:
+      start: 0x18002000
+      end: 0x18007c00
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - tle9881_flash0_ubsl
+  - tle9881_flash0_dataflash
+  - tle9883_flash1
+- name: TLE9883_2QTW62S
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: Flash0
+    range:
+      start: 0x11000000
+      end: 0x11006000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: Flash1
+    range:
+      start: 0x12002000
+      end: 0x12040000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: PSRAM
+    range:
+      start: 0x18000000
+      end: 0x18002000
+    cores:
+    - main
+  - !Ram
+    name: DSRAM
+    range:
+      start: 0x18002000
+      end: 0x18007c00
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - tle9881_flash0_ubsl
+  - tle9881_flash0_dataflash
+  - tle9883_flash1
+- name: TLE9891QTA61
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: Flash0
+    range:
+      start: 0x11000000
+      end: 0x11006000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: Flash1
+    range:
+      start: 0x12002000
+      end: 0x12020000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: PSRAM
+    range:
+      start: 0x18000000
+      end: 0x18002000
+    cores:
+    - main
+  - !Ram
+    name: DSRAM
+    range:
+      start: 0x18002000
+      end: 0x18004000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - tle9881_flash0_ubsl
+  - tle9881_flash0_dataflash
+  - tle9891_flash1
+- name: TLE9891_2QTW60
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: Flash0
+    range:
+      start: 0x11000000
+      end: 0x11006000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: Flash1
+    range:
+      start: 0x12002000
+      end: 0x12020000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: PSRAM
+    range:
+      start: 0x18000000
+      end: 0x18002000
+    cores:
+    - main
+  - !Ram
+    name: DSRAM
+    range:
+      start: 0x18002000
+      end: 0x18004000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - tle9881_flash0_ubsl
+  - tle9881_flash0_dataflash
+  - tle9891_flash1
+- name: TLE9891_2QTW61
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: Flash0
+    range:
+      start: 0x11000000
+      end: 0x11006000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: Flash1
+    range:
+      start: 0x12002000
+      end: 0x12020000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: PSRAM
+    range:
+      start: 0x18000000
+      end: 0x18002000
+    cores:
+    - main
+  - !Ram
+    name: DSRAM
+    range:
+      start: 0x18002000
+      end: 0x18004000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - tle9881_flash0_ubsl
+  - tle9881_flash0_dataflash
+  - tle9891_flash1
+- name: TLE9893QKW62S
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: Flash0
+    range:
+      start: 0x11000000
+      end: 0x11006000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: Flash1
+    range:
+      start: 0x12002000
+      end: 0x12040000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: PSRAM
+    range:
+      start: 0x18000000
+      end: 0x18002000
+    cores:
+    - main
+  - !Ram
+    name: DSRAM
+    range:
+      start: 0x18002000
+      end: 0x18007c00
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - tle9881_flash0_ubsl
+  - tle9893_flash0_dataflash
+  - tle9883_flash1
+- name: TLE9893_2QKW62S
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: Flash0
+    range:
+      start: 0x11000000
+      end: 0x11006000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: Flash1
+    range:
+      start: 0x12002000
+      end: 0x12040000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: PSRAM
+    range:
+      start: 0x18000000
+      end: 0x18002000
+    cores:
+    - main
+  - !Ram
+    name: DSRAM
+    range:
+      start: 0x18002000
+      end: 0x18007c00
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - tle9881_flash0_ubsl
+  - tle9893_flash0_dataflash
+  - tle9883_flash1
+- name: TLE9893_2QTA62
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: Flash0
+    range:
+      start: 0x11000000
+      end: 0x11006000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: Flash1
+    range:
+      start: 0x12002000
+      end: 0x12040000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: PSRAM
+    range:
+      start: 0x18000000
+      end: 0x18002000
+    cores:
+    - main
+  - !Ram
+    name: DSRAM
+    range:
+      start: 0x18002000
+      end: 0x18007c00
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - tle9881_flash0_ubsl
+  - tle9893_flash0_dataflash
+  - tle9883_flash1
+- name: TLE9893_2QTA62S
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: Flash0
+    range:
+      start: 0x11000000
+      end: 0x11006000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: Flash1
+    range:
+      start: 0x12002000
+      end: 0x12040000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: PSRAM
+    range:
+      start: 0x18000000
+      end: 0x18002000
+    cores:
+    - main
+  - !Ram
+    name: DSRAM
+    range:
+      start: 0x18002000
+      end: 0x18007c00
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - tle9881_flash0_ubsl
+  - tle9893_flash0_dataflash
+  - tle9883_flash1
+- name: TLE9893_2QTW62S
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: Flash0
+    range:
+      start: 0x11000000
+      end: 0x11006000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: Flash1
+    range:
+      start: 0x12002000
+      end: 0x12040000
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: PSRAM
+    range:
+      start: 0x18000000
+      end: 0x18002000
+    cores:
+    - main
+  - !Ram
+    name: DSRAM
+    range:
+      start: 0x18002000
+      end: 0x18007c00
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - tle9881_flash0_ubsl
+  - tle9893_flash0_dataflash
+  - tle9883_flash1
+flash_algorithms:
+- name: tle9881_flash0_ubsl
+  description: Infineon TLE988x/TLE989x Flash0 UBSL, V0.7.1
+  default: true
+  instructions: QLpwR8C6cEdP6jAAcEcAAAAgQWg2SKH1uEJIRBE6CND5IQFgQPIBEUFgCR2BYAAgcEdA8hURAWBA8iERQWCJHfTnACBwRwAgcEf+tf/34P/IuSdOAqpORAGpcGgwYTNoaEbzYJhHBUYAJE/wiFcG4DJpB+sEMAEhkEcFQ2QcAJiEQvXTBbEBJShG/r0QtQNG//e+/0C5FkgBIUhEQmgCYRhGkEcAKADQASAQvf61FUYORgdG//es/2C5DUwDIExEaUajaGNhAJXN6QFgOEaYRwAoANABIP69BeAQ+AE7k0IB0AEgcEdJHvfSACBwRwAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  pc_init: 0x43
+  pc_uninit: 0x47
+  pc_program_page: 0xad
+  pc_erase_sector: 0x8d
+  pc_erase_all: 0x4b
+  pc_blank_check: 0xd9
+  data_section_offset: 0xf4
+  flash_properties:
+    address_range:
+      start: 0x11000000
+      end: 0x11006000
+    page_size: 0x80
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: tle9881_flash0_dataflash
+  description: Infineon TLE988x/TLE989x Flash0 Dataflash, V0.7.1
+  default: true
+  instructions: QLpwR8C6cEdP6jAAcEcAAAAgQWg1SKH1uEJIRBE6CND5IQFgQPIBEUFgCR2BYAAgcEdA8hURAWBA8iERQWCJHfTnACBwRwAgcEf+tf/34P/AuSZOakZORAKpcGgwYTNoAajzYJhHBUYAJCFPBuAyaQfrBDABIZBHBUNkHACYhEL10wWxASUoRv69ELUDRv/3v/9AuRVIASFIREJoAmEYRpBHACgA0AEgEL3+tRVGDkYHRv/3rf9guQxMAyBMRGlGo2hjYQCVzekBYDhGmEcAKADQASD+vQXgEPgBO5NCAdABIHBHSR730gAgcEcEAAAAAGAAEQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  pc_init: 0x43
+  pc_uninit: 0x47
+  pc_program_page: 0xab
+  pc_erase_sector: 0x8b
+  pc_erase_all: 0x4b
+  pc_blank_check: 0xd7
+  data_section_offset: 0xf4
+  flash_properties:
+    address_range:
+      start: 0x11006000
+      end: 0x11008000
+    page_size: 0x80
+    erased_byte_value: 0x0
+    program_page_timeout: 1000
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: tle9883_flash1
+  description: Infineon TLE988x/TLE989x Flash1, 248K, V0.7.1
+  default: true
+  instructions: QLpwR8C6cEdP6jAAcEcAAAAgQWg1SKH1uEJIRBE6CND5IQFgQPIBEUFgCR2BYAAgcEdA8hURAWBA8iERQWCJHfTnACBwRwAgcEf+tf/34P/AuSZOAqpORGlGcGgwYTNoAajzYJhHBUYAJCFPBuAyaQfrBDABIZBHBUNkHACYhEL10wWxASUoRv69ELUDRv/3v/9AuRVIASFIREJoAmEYRpBHACgA0AEgEL3+tRVGDkYHRv/3rf9guQxMAyBMRGlGo2hjYQCVzekBYDhGmEcAKADQASD+vQXgEPgBO5NCAdABIHBHSR730gAgcEcEAAAAACAAEgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  pc_init: 0x43
+  pc_uninit: 0x47
+  pc_program_page: 0xab
+  pc_erase_sector: 0x8b
+  pc_erase_all: 0x4b
+  pc_blank_check: 0xd7
+  data_section_offset: 0xf4
+  flash_properties:
+    address_range:
+      start: 0x12002000
+      end: 0x12040000
+    page_size: 0x80
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: tle9891_flash1
+  description: Infineon TLE988x/TLE989x Flash1, 120K, V0.7.1
+  default: true
+  instructions: QLpwR8C6cEdP6jAAcEcAAAAgQWg1SKH1uEJIRBE6CND5IQFgQPIBEUFgCR2BYAAgcEdA8hURAWBA8iERQWCJHfTnACBwRwAgcEf+tf/34P/AuSZOakZORAKpcGgwYTNoAajzYJhHBUYAJCFPBuAyaQfrBDABIZBHBUNkHACYhEL10wWxASUoRv69ELUDRv/3v/9AuRVIASFIREJoAmEYRpBHACgA0AEgEL3+tRVGDkYHRv/3rf9guQxMAyBMRGlGo2hjYQCVzekBYDhGmEcAKADQASD+vQXgEPgBO5NCAdABIHBHSR730gAgcEcEAAAAAGAAEQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  pc_init: 0x43
+  pc_uninit: 0x47
+  pc_program_page: 0xab
+  pc_erase_sector: 0x8b
+  pc_erase_all: 0x4b
+  pc_blank_check: 0xd7
+  data_section_offset: 0xf4
+  flash_properties:
+    address_range:
+      start: 0x12002000
+      end: 0x12020000
+    page_size: 0x80
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: tle9893_flash0_dataflash
+  description: Infineon TLE988x/TLE989x Flash0 Dataflash, V0.7.1
+  default: true
+  instructions: QLpwR8C6cEdP6jAAcEcAAAAgQWg2SKH1uEJIRBE6CND5IQFgQPIBEUFgCR2BYAAgcEdA8hURAWBA8iERQWCJHfTnACBwRwAgcEf+tf/34P/IuSdOAqpORAGpcGgwYTNoaEbzYJhHBUYAJE/wiFcG4DJpB+sEMAEhkEcFQ2QcAJiEQvXTBbEBJShG/r0QtQNG//e+/0C5FkgBIUhEQmgCYRhGkEcAKADQASAQvf61FUYORgdG//es/2C5DUwDIExEaUajaGNhAJXN6QFgOEaYRwAoANABIP69BeAQ+AE7k0IB0AEgcEdJHvfSACBwRwAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  pc_init: 0x43
+  pc_uninit: 0x47
+  pc_program_page: 0xad
+  pc_erase_sector: 0x8d
+  pc_erase_all: 0x4b
+  pc_blank_check: 0xd9
+  data_section_offset: 0xf4
+  flash_properties:
+    address_range:
+      start: 0x11006000
+      end: 0x11008000
+    page_size: 0x80
+    erased_byte_value: 0x0
+    program_page_timeout: 1000
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x1000
+      address: 0x0

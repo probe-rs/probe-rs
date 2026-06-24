@@ -186,15 +186,15 @@ impl Debugger {
             | "variables"
             | "readMemory"
             | "writeMemory"
-            | "disassemble" => {
-                if new_status == CoreStatus::Sleeping {
-                    if let Err(error) = target_core.core.halt(Duration::from_millis(100)) {
-                        let err = DebuggerError::from(error);
-                        debug_adapter.send_response::<()>(&request, Err(&err))?;
-                        return Err(err);
-                    }
-                    unhalt_me = true;
+            | "disassemble"
+                if new_status == CoreStatus::Sleeping =>
+            {
+                if let Err(error) = target_core.core.halt(Duration::from_millis(100)) {
+                    let err = DebuggerError::from(error);
+                    debug_adapter.send_response::<()>(&request, Err(&err))?;
+                    return Err(err);
                 }
+                unhalt_me = true;
             }
             _ => {}
         }

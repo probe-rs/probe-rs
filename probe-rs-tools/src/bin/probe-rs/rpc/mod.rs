@@ -97,6 +97,32 @@ pub(crate) struct ObjectStorage {
     storage: HashMap<u64, Arc<Mutex<dyn Any + Send>>>,
 }
 
+/// A reference to an object in ObjectStorage.
+pub(crate) struct ObjectStorageSlot<T: Any + Send> {
+    obj: Arc<Mutex<dyn Any + Send>>,
+    _type: PhantomData<fn() -> T>,
+}
+
+impl<T: Any + Send> ObjectStorageSlot<T> {
+    /// Returns a mutable reference to the object.
+    pub async fn get(&self) -> impl DerefMut<Target = T> + Send + use<T> {
+        let guard = self.obj.clone().lock_owned().await;
+        tokio::sync::OwnedMutexGuard::map(guard, |e: &mut (dyn Any + Send)| {
+            e.downcast_mut::<T>().unwrap()
+        })
+    }
+
+    /// Returns a mutable reference to the object.
+    ///
+    /// This is a blocking operation and should only be used in synchronous contexts.
+    pub fn get_blocking(&self) -> impl DerefMut<Target = T> + Send + use<T> {
+        let guard = self.obj.clone().blocking_lock_owned();
+        tokio::sync::OwnedMutexGuard::map(guard, |e: &mut (dyn Any + Send)| {
+            e.downcast_mut::<T>().unwrap()
+        })
+    }
+}
+
 impl ObjectStorage {
     fn new() -> Self {
         Self {
@@ -110,26 +136,15 @@ impl ObjectStorage {
         key
     }
 
-    pub async fn object_mut<T: Any + Send>(
-        &self,
-        key: Key<T>,
-    ) -> impl DerefMut<Target = T> + Send + use<T> {
+    /// Returns an [`ObjectStorageSlot`] for the given key.
+    ///
+    /// This function is intended to ensure that locks on ObjectStorage are held for as short a time as possible.
+    pub fn cell<T: Any + Send>(&self, key: Key<T>) -> ObjectStorageSlot<T> {
         let obj = self.storage.get(&key.key).unwrap();
-        let guard = obj.clone().lock_owned().await;
-        tokio::sync::OwnedMutexGuard::map(guard, |e: &mut (dyn Any + Send)| {
-            e.downcast_mut::<T>().unwrap()
-        })
-    }
-
-    pub fn object_mut_blocking<T: Any + Send>(
-        &self,
-        key: Key<T>,
-    ) -> impl DerefMut<Target = T> + Send + use<T> {
-        let obj = self.storage.get(&key.key).unwrap();
-        let guard = obj.clone().blocking_lock_owned();
-        tokio::sync::OwnedMutexGuard::map(guard, |e: &mut (dyn Any + Send)| {
-            e.downcast_mut::<T>().unwrap()
-        })
+        ObjectStorageSlot {
+            obj: obj.clone(),
+            _type: PhantomData,
+        }
     }
 }
 
@@ -161,14 +176,18 @@ impl ConnectionState {
         &self,
         key: Key<T>,
     ) -> impl DerefMut<Target = T> + Send + use<T> {
-        self.object_storage.lock().await.object_mut(key).await
+        // MUST be two separate statements so that the lock is released.
+        let locked_cell = self.object_storage.lock().await.cell(key);
+        locked_cell.get().await
     }
 
     pub fn object_mut_blocking<T: Any + Send>(
         &self,
         key: Key<T>,
     ) -> impl DerefMut<Target = T> + Send + use<T> {
-        self.object_storage.blocking_lock().object_mut_blocking(key)
+        // MUST be two separate statements so that the lock is released.
+        let locked_cell = self.object_storage.blocking_lock().cell(key);
+        locked_cell.get_blocking()
     }
 
     pub async fn set_session(&mut self, session: Session, dry_run: bool) -> Key<Session> {
@@ -208,7 +227,9 @@ impl SessionState<'_> {
     ///
     /// This function blocks while other users hold the session.
     pub fn session_blocking(&self) -> impl DerefMut<Target = Session> + Send + use<> {
-        self.object_storage().object_mut_blocking(self.session)
+        // MUST be two separate statements so that the lock is released.
+        let obj_cell = self.object_storage().cell(self.session);
+        obj_cell.get_blocking()
     }
 
     /// Returns whether the session is in dry-run mode.

@@ -136,7 +136,7 @@ impl Cli {
             Subcommand::Read(cmd) => cmd.run(client).await,
             Subcommand::Write(cmd) => cmd.run(client).await,
             Subcommand::Complete(cmd) => cmd.run(&lister),
-            Subcommand::Mi(cmd) => cmd.run(),
+            Subcommand::Mi(cmd) => cmd.run(client).await,
         }
     }
 
@@ -201,20 +201,21 @@ impl Subcommand {
     fn is_remote_cmd(&self) -> bool {
         // Commands that are implemented via a series of RPC calls.
         // TODO: refactor other commands
-        matches!(
-            self,
+        match self {
             Self::List(_)
-                | Self::Read(_)
-                | Self::Write(_)
-                | Self::Reset(_)
-                | Self::Chip(_)
-                | Self::Info(_)
-                | Self::Download(_)
-                | Self::Attach(_)
-                | Self::Run(_)
-                | Self::Erase(_)
-                | Self::Verify(_)
-        )
+            | Self::Read(_)
+            | Self::Write(_)
+            | Self::Reset(_)
+            | Self::Chip(_)
+            | Self::Info(_)
+            | Self::Download(_)
+            | Self::Attach(_)
+            | Self::Run(_)
+            | Self::Erase(_)
+            | Self::Verify(_) => true,
+            Self::Mi(mi) => mi.is_remote_cmd(),
+            _ => false,
+        }
     }
 }
 
@@ -535,6 +536,8 @@ fn multicall_check(args: &[OsString], want: &str) -> Option<Vec<OsString>> {
 #[tokio::main]
 async fn main() -> Result<()> {
     probe_rs_espressif::register_plugin();
+    #[cfg(target_os = "linux")]
+    probe_rs_linux::register_plugin();
 
     // Determine the local offset as early as possible to avoid potential
     // issues with multiple threads and getting the offset.

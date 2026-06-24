@@ -383,7 +383,7 @@ impl<'probe> Xdm<'probe> {
             }
 
             // If progress was made, reset the timeout.
-            if queue.len() != previous_queue_len {
+            if queue.len() < previous_queue_len {
                 started = Instant::now();
                 previous_queue_len = queue.len();
             }
