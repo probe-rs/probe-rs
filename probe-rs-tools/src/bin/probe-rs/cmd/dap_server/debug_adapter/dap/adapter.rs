@@ -24,9 +24,14 @@ use anyhow::{Context, Result, anyhow};
 use base64::{Engine as _, engine::general_purpose as base64_engine};
 use dap_types::*;
 use parse_int::parse;
-use probe_rs::{CoreInformation, CoreStatus, HaltReason};
+use probe_rs::{
+    CoreInformation, CoreRegister, CoreStatus, HaltReason, RegisterDataType, RegisterRole,
+    RegisterValue, UnwindRule,
+};
 use probe_rs_debug::{
     ColumnType, ObjectRef, SteppingMode, VariableName, VerifiedBreakpoint,
+    exception_handler_for_core,
+    registers::{DebugRegister, DebugRegisters},
     stack_frame::StackFrameInfo,
 };
 use serde::{Serialize, de::DeserializeOwned};
@@ -585,7 +590,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         };
 
         // The arguments.variables_reference contains the reference of the variable container. This can be:
-        // - The `StackFrame.id` for register variables - we will warn the user that updating these are not yet supported.
+        // - The `StackFrame.id` for register variables.
         // - The `Variable.parent_key` for a local or static variable - If these are base data types, we will attempt to update their value, otherwise we will warn the user that updating complex / structure variables are not yet supported.
         let parent_key: ObjectRef = arguments.variables_reference.into();
         let new_value = &arguments.value;
@@ -595,24 +600,129 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         match target_core
             .core_data
             .stack_frames
-            .iter_mut()
-            .find(|stack_frame| stack_frame.id == parent_key)
+            .iter()
+            .position(|stack_frame| stack_frame.id == parent_key)
         {
-            Some(stack_frame) => {
-                // The variable is a register value in this StackFrame
-                if let Some(_register_value) = stack_frame
-                    .registers
-                    .get_register_by_name(arguments.name.as_str())
-                    .and_then(|reg| reg.value)
-                {
-                    // TODO: Does it make sense for us to consider implementing an update of platform registers?
+            Some(stack_frame_index) => {
+                // The variable is a register value in this StackFrame. Only the top frame maps to
+                // actual core registers; older frames are reconstructed by unwinding.
+                let is_top_stack_frame = target_core
+                    .core_data
+                    .stack_frames
+                    .first()
+                    .is_some_and(|stack_frame| stack_frame.id == parent_key);
+                if !is_top_stack_frame {
                     return self.send_response::<SetVariableResponseBody>(
                         request,
                         Err(&DebuggerError::Other(anyhow!(
-                            "Set Register values is not yet supported."
+                            "Register writes are only supported for the top stack frame."
                         ))),
                     );
                 }
+
+                let Some(register) = find_register_by_dap_name(
+                    &target_core.core_data.stack_frames[stack_frame_index].registers,
+                    arguments.name.as_str(),
+                ) else {
+                    return self.send_response::<SetVariableResponseBody>(
+                        request,
+                        Err(&DebuggerError::Other(anyhow!(
+                            "Register '{}' was not found in this stack frame.",
+                            arguments.name
+                        ))),
+                    );
+                };
+
+                let register_name = register.get_register_name();
+                let register_id = register.core_register.id;
+
+                let register_value = match parse_register_value(new_value, register.core_register) {
+                    Ok(register_value) => register_value,
+                    Err(error) => {
+                        return self.send_response::<SetVariableResponseBody>(
+                            request,
+                            Err(&DebuggerError::Other(anyhow!(
+                                "Failed to parse value for register {register_name}: {error}"
+                            ))),
+                        );
+                    }
+                };
+
+                match target_core.core.core_halted() {
+                    Ok(true) => {}
+                    Ok(false) => {
+                        return self.send_response::<SetVariableResponseBody>(
+                            request,
+                            Err(&DebuggerError::Other(anyhow!(
+                                "Register writes require the target core to be halted."
+                            ))),
+                        );
+                    }
+                    Err(error) => {
+                        return self.send_response::<SetVariableResponseBody>(
+                            request,
+                            Err(&DebuggerError::Other(anyhow!(
+                                "Failed to read core status before writing register {register_name}: {error}"
+                            ))),
+                        );
+                    }
+                }
+
+                if let Err(error) = target_core.core.write_core_reg(register_id, register_value) {
+                    return self.send_response::<SetVariableResponseBody>(
+                        request,
+                        Err(&DebuggerError::Other(anyhow!(
+                            "Failed to write register {register_name}: {error}"
+                        ))),
+                    );
+                }
+
+                let written_register_value = match target_core.core.read_core_reg(register_id) {
+                    Ok(written_register_value) => written_register_value,
+                    Err(error) => {
+                        return self.send_response::<SetVariableResponseBody>(
+                            request,
+                            Err(&DebuggerError::Other(anyhow!(
+                                "Failed to read register {register_name} after writing it: {error}"
+                            ))),
+                        );
+                    }
+                };
+
+                if register_requires_exact_readback(register.core_register)
+                    && written_register_value != register_value
+                {
+                    return self.send_response::<SetVariableResponseBody>(
+                        request,
+                        Err(&DebuggerError::Other(anyhow!(
+                            "Register {register_name} read back as {written_register_value} after writing {register_value}."
+                        ))),
+                    );
+                }
+
+                if register_write_requires_stack_frame_refresh(register.core_register) {
+                    if let Err(error) = refresh_stack_frames(target_core, parent_key) {
+                        let message = format!(
+                            "Register {register_name} was written, but stack frames could not be refreshed: {error}"
+                        );
+                        tracing::warn!("{message}");
+                        target_core.core_data.stack_frames.clear();
+                        self.show_message(MessageSeverity::Warning, message);
+                    }
+                } else {
+                    let stack_frame = &mut target_core.core_data.stack_frames[stack_frame_index];
+                    if let Some(cached_register) =
+                        stack_frame.registers.get_register_mut(register_id)
+                    {
+                        cached_register.value = Some(written_register_value);
+                    }
+                }
+
+                response_body.indexed_variables = Some(0);
+                response_body.named_variables = Some(0);
+                response_body.type_ = Some(format!("{:?}", register.core_register.data_type()));
+                response_body.value = written_register_value.to_string();
+                response_body.variables_reference = Some(0);
             }
             None => {
                 let variable_name = VariableName::Named(arguments.name.clone());
@@ -1890,6 +2000,125 @@ impl<P: ProtocolAdapter + ?Sized> DebugAdapter<P> {
     }
 }
 
+fn find_register_by_dap_name(
+    registers: &DebugRegisters,
+    register_name: &str,
+) -> Option<DebugRegister> {
+    registers
+        .0
+        .iter()
+        .find(|register| register.get_register_name() == register_name)
+        .cloned()
+        .or_else(|| registers.get_register_by_name(register_name))
+}
+
+fn parse_register_value(value: &str, register: &CoreRegister) -> Result<RegisterValue> {
+    let RegisterDataType::UnsignedInteger(size_in_bits) = register.data_type() else {
+        return Err(anyhow!(
+            "Writing non-integer register {} is not supported.",
+            register
+        ));
+    };
+
+    anyhow::ensure!(
+        (1..=128).contains(&size_in_bits),
+        "Register {} has unsupported width {size_in_bits} bits.",
+        register
+    );
+
+    let parsed_value = parse_unsigned_register_value(value)?;
+    let max_value = if size_in_bits == 128 {
+        u128::MAX
+    } else {
+        (1_u128 << size_in_bits) - 1
+    };
+
+    anyhow::ensure!(
+        parsed_value <= max_value,
+        "Value {value:?} does not fit in {}-bit register {}.",
+        size_in_bits,
+        register
+    );
+
+    Ok(match size_in_bits {
+        1..=32 => RegisterValue::U32(parsed_value as u32),
+        33..=64 => RegisterValue::U64(parsed_value as u64),
+        65..=128 => RegisterValue::U128(parsed_value),
+        _ => unreachable!("register width was checked above"),
+    })
+}
+
+fn parse_unsigned_register_value(value: &str) -> Result<u128> {
+    let trimmed_value = value.trim();
+    anyhow::ensure!(!trimmed_value.is_empty(), "Register value cannot be empty.");
+    anyhow::ensure!(
+        !trimmed_value.starts_with('-'),
+        "Register value must be unsigned."
+    );
+
+    let trimmed_value = trimmed_value.strip_prefix('+').unwrap_or(trimmed_value);
+    let normalized_value = trimmed_value.replace('_', "");
+    anyhow::ensure!(
+        !normalized_value.is_empty(),
+        "Register value cannot be empty."
+    );
+
+    let (digits, radix) = normalized_value
+        .strip_prefix("0x")
+        .or_else(|| normalized_value.strip_prefix("0X"))
+        .map(|digits| (digits, 16))
+        .unwrap_or((normalized_value.as_str(), 10));
+
+    anyhow::ensure!(!digits.is_empty(), "Register value cannot be empty.");
+
+    u128::from_str_radix(digits, radix).with_context(|| format!("Invalid register value {value:?}"))
+}
+
+fn register_requires_exact_readback(register: &CoreRegister) -> bool {
+    !register.register_has_role(RegisterRole::ProgramCounter)
+        && !register.register_has_role(RegisterRole::ProcessorStatus)
+        && !register.register_has_role(RegisterRole::FloatingPointStatus)
+}
+
+fn register_write_requires_stack_frame_refresh(register: &CoreRegister) -> bool {
+    register.unwind_rule != UnwindRule::Clear
+        || register.register_has_role(RegisterRole::ProgramCounter)
+        || register.register_has_role(RegisterRole::FramePointer)
+        || register.register_has_role(RegisterRole::StackPointer)
+        || register.register_has_role(RegisterRole::MainStackPointer)
+        || register.register_has_role(RegisterRole::ProcessStackPointer)
+        || register.register_has_role(RegisterRole::ReturnAddress)
+}
+
+fn refresh_stack_frames(
+    target_core: &mut CoreHandle<'_>,
+    preserved_top_frame_id: ObjectRef,
+) -> Result<()> {
+    let Some(debug_info) = target_core.core_data.debug_info.as_ref() else {
+        target_core.core_data.stack_frames.clear();
+        return Ok(());
+    };
+
+    let initial_registers = DebugRegisters::from_core(&mut target_core.core);
+    let exception_interface = exception_handler_for_core(target_core.core.core_type());
+    let instruction_set = target_core.core.instruction_set().ok();
+
+    let mut stack_frames = debug_info.unwind(
+        &mut target_core.core,
+        initial_registers,
+        exception_interface.as_ref(),
+        instruction_set,
+        500,
+    )?;
+
+    if let Some(top_frame) = stack_frames.first_mut() {
+        top_frame.id = preserved_top_frame_id;
+    }
+
+    target_core.core_data.stack_frames = stack_frames;
+    Ok(())
+}
+
 pub fn get_arguments<T: DeserializeOwned, P: ProtocolAdapter>(
     debug_adapter: &mut DebugAdapter<P>,
     req: &Request,
@@ -1915,5 +2144,201 @@ pub fn get_arguments<T: DeserializeOwned, P: ProtocolAdapter>(
             debug_adapter.send_response::<()>(req, Err(&e.into()))?;
             Err(DebuggerError::Other(err))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use probe_rs::{RegisterId, UnwindRule};
+
+    static U32_ROLES: [RegisterRole; 1] = [RegisterRole::Core("r0")];
+    static U32_REGISTER: CoreRegister = CoreRegister {
+        id: RegisterId(0),
+        roles: &U32_ROLES,
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Clear,
+    };
+
+    static U64_ROLES: [RegisterRole; 1] = [RegisterRole::Core("x0")];
+    static U64_REGISTER: CoreRegister = CoreRegister {
+        id: RegisterId(1),
+        roles: &U64_ROLES,
+        data_type: RegisterDataType::UnsignedInteger(64),
+        unwind_rule: UnwindRule::Clear,
+    };
+
+    static U128_ROLES: [RegisterRole; 1] = [RegisterRole::Core("v0")];
+    static U128_REGISTER: CoreRegister = CoreRegister {
+        id: RegisterId(2),
+        roles: &U128_ROLES,
+        data_type: RegisterDataType::UnsignedInteger(128),
+        unwind_rule: UnwindRule::Clear,
+    };
+
+    static FP_ROLES: [RegisterRole; 1] = [RegisterRole::Core("f0")];
+    static FP_REGISTER: CoreRegister = CoreRegister {
+        id: RegisterId(3),
+        roles: &FP_ROLES,
+        data_type: RegisterDataType::FloatingPoint(32),
+        unwind_rule: UnwindRule::Clear,
+    };
+
+    static PC_ROLES: [RegisterRole; 2] = [RegisterRole::Core("pc"), RegisterRole::ProgramCounter];
+    static PC_REGISTER: CoreRegister = CoreRegister {
+        id: RegisterId(4),
+        roles: &PC_ROLES,
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Clear,
+    };
+
+    static A0_ROLES: [RegisterRole; 2] = [RegisterRole::Core("a0"), RegisterRole::Other("x10")];
+    static A0_REGISTER: CoreRegister = CoreRegister {
+        id: RegisterId(10),
+        roles: &A0_ROLES,
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Clear,
+    };
+
+    static STATUS_ROLES: [RegisterRole; 2] =
+        [RegisterRole::Core("xpsr"), RegisterRole::ProcessorStatus];
+    static STATUS_REGISTER: CoreRegister = CoreRegister {
+        id: RegisterId(16),
+        roles: &STATUS_ROLES,
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Clear,
+    };
+
+    static SP_ROLES: [RegisterRole; 2] = [RegisterRole::Core("sp"), RegisterRole::StackPointer];
+    static SP_REGISTER: CoreRegister = CoreRegister {
+        id: RegisterId(17),
+        roles: &SP_ROLES,
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Clear,
+    };
+
+    static LR_ROLES: [RegisterRole; 2] = [RegisterRole::Core("lr"), RegisterRole::ReturnAddress];
+    static LR_REGISTER: CoreRegister = CoreRegister {
+        id: RegisterId(18),
+        roles: &LR_ROLES,
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Clear,
+    };
+
+    static PRESERVED_ROLES: [RegisterRole; 1] = [RegisterRole::Core("r4")];
+    static PRESERVED_REGISTER: CoreRegister = CoreRegister {
+        id: RegisterId(19),
+        roles: &PRESERVED_ROLES,
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Preserve,
+    };
+
+    #[test]
+    fn parse_register_value_supports_decimal_hex_and_separators() -> Result<()> {
+        assert_eq!(
+            parse_register_value("4660", &U32_REGISTER)?,
+            RegisterValue::U32(0x1234)
+        );
+        assert_eq!(
+            parse_register_value("0x1234", &U32_REGISTER)?,
+            RegisterValue::U32(0x1234)
+        );
+        assert_eq!(
+            parse_register_value("0X1234", &U32_REGISTER)?,
+            RegisterValue::U32(0x1234)
+        );
+        assert_eq!(
+            parse_register_value("0x1_0000", &U32_REGISTER)?,
+            RegisterValue::U32(0x1_0000)
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn parse_register_value_selects_storage_width() -> Result<()> {
+        assert_eq!(
+            parse_register_value("0xffff_ffff", &U32_REGISTER)?,
+            RegisterValue::U32(u32::MAX)
+        );
+        assert_eq!(
+            parse_register_value("0xffff_ffff_ffff_ffff", &U64_REGISTER)?,
+            RegisterValue::U64(u64::MAX)
+        );
+        assert_eq!(
+            parse_register_value("0xffff_ffff_ffff_ffff_ffff_ffff_ffff_ffff", &U128_REGISTER)?,
+            RegisterValue::U128(u128::MAX)
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn parse_register_value_rejects_invalid_input() {
+        assert!(parse_register_value("", &U32_REGISTER).is_err());
+        assert!(parse_register_value("-1", &U32_REGISTER).is_err());
+        assert!(parse_register_value("0xnot_hex", &U32_REGISTER).is_err());
+        assert!(parse_register_value("0x1_0000_0000", &U32_REGISTER).is_err());
+        assert!(parse_register_value("1", &FP_REGISTER).is_err());
+    }
+
+    #[test]
+    fn find_register_by_dap_name_matches_display_name_first() -> Result<()> {
+        let registers = DebugRegisters(vec![
+            DebugRegister {
+                core_register: &PC_REGISTER,
+                dwarf_id: Some(0),
+                value: Some(RegisterValue::U32(0x1000)),
+            },
+            DebugRegister {
+                core_register: &A0_REGISTER,
+                dwarf_id: Some(10),
+                value: Some(RegisterValue::U32(1)),
+            },
+        ]);
+
+        let pc_register = find_register_by_dap_name(&registers, "pc/PC")
+            .ok_or_else(|| anyhow::anyhow!("pc/PC register not found"))?;
+        assert_eq!(pc_register.core_register.id, PC_REGISTER.id);
+        let a0_register = find_register_by_dap_name(&registers, "a0/x10")
+            .ok_or_else(|| anyhow::anyhow!("a0/x10 register not found"))?;
+        assert_eq!(a0_register.core_register.id, A0_REGISTER.id);
+
+        Ok(())
+    }
+
+    #[test]
+    fn find_register_by_dap_name_falls_back_to_role_names() -> Result<()> {
+        let registers = DebugRegisters(vec![DebugRegister {
+            core_register: &A0_REGISTER,
+            dwarf_id: Some(10),
+            value: Some(RegisterValue::U32(1)),
+        }]);
+
+        let a0_register = find_register_by_dap_name(&registers, "x10")
+            .ok_or_else(|| anyhow::anyhow!("x10 register not found"))?;
+        assert_eq!(a0_register.core_register.id, A0_REGISTER.id);
+        assert!(find_register_by_dap_name(&registers, "x11").is_none());
+
+        Ok(())
+    }
+
+    #[test]
+    fn exact_readback_is_not_required_for_hardware_normalized_registers() {
+        assert!(register_requires_exact_readback(&U32_REGISTER));
+        assert!(register_requires_exact_readback(&A0_REGISTER));
+        assert!(!register_requires_exact_readback(&PC_REGISTER));
+        assert!(!register_requires_exact_readback(&STATUS_REGISTER));
+    }
+
+    #[test]
+    fn stack_frame_refresh_is_required_for_unwind_sensitive_registers() {
+        assert!(!register_write_requires_stack_frame_refresh(&U32_REGISTER));
+        assert!(register_write_requires_stack_frame_refresh(&PC_REGISTER));
+        assert!(register_write_requires_stack_frame_refresh(&SP_REGISTER));
+        assert!(register_write_requires_stack_frame_refresh(&LR_REGISTER));
+        assert!(register_write_requires_stack_frame_refresh(
+            &PRESERVED_REGISTER
+        ));
     }
 }

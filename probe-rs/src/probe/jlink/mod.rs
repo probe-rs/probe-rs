@@ -337,6 +337,8 @@ enum Command {
     ResetTarget = 0x03,
     HwReleaseResetStopEx = 0xD0,
     HwReleaseResetStopTimed = 0xD1,
+    HwTck0 = 0xDA,
+    HwTck1 = 0xDB,
     HwReset0 = 0xDC,
     HwReset1 = 0xDD,
     GetCpuCaps = 0xE9,
@@ -657,6 +659,32 @@ impl JLink {
             Command::HwReset1
         } else {
             Command::HwReset0
+        };
+        self.write_cmd(&[cmd as u8])
+    }
+
+    /// Changes the state of the TMS pin (pin 7).
+    ///
+    /// **Note**: Some embedded J-Link probes may not expose this pin or may not allow controlling
+    /// it using this function.
+    fn set_tms(&mut self, tms: bool) -> Result<(), JlinkError> {
+        let cmd = if tms {
+            Command::HwTms1
+        } else {
+            Command::HwTms0
+        };
+        self.write_cmd(&[cmd as u8])
+    }
+
+    /// Changes the state of the TCK pin (pin 9).
+    ///
+    /// **Note**: Some embedded J-Link probes may not expose this pin or may not allow controlling
+    /// it using this function.
+    fn set_tck(&mut self, tck: bool) -> Result<(), JlinkError> {
+        let cmd = if tck {
+            Command::HwTck1
+        } else {
+            Command::HwTck0
         };
         self.write_cmd(&[cmd as u8])
     }
@@ -1172,17 +1200,32 @@ impl RawSwdIo for JLink {
         pin_select: u32,
         pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
-        let mut nreset = Pins(0);
-        nreset.set_nreset(true);
-        let nreset_mask = nreset.0 as u32;
+        let mut unsupported_pins = Pins(0);
+        unsupported_pins.set_ntrst(true);
+        unsupported_pins.set_tdi(true);
+        unsupported_pins.set_tdo(true);
+        let unsupported_pins_mask = unsupported_pins.0 as u32;
 
-        // If only the reset pin is selected we perform the reset.
-        // If something else is selected return an error as this is not supported on J-Links.
-        if pin_select == nreset_mask {
-            if Pins(pin_out as u8).nreset() {
-                self.target_reset_deassert()?;
-            } else {
-                self.target_reset_assert()?;
+        // Only RESET, TCK and TMS are supported at the moment
+        if pin_select & unsupported_pins_mask == 0 {
+            let pin_select = Pins(pin_select as u8);
+            let pin_out = Pins(pin_out as u8);
+
+            if pin_select.swclk_tck() {
+                self.set_tck(pin_out.swclk_tck())?;
+            }
+
+            if pin_select.swdio_tms() {
+                self.set_tms(pin_out.swdio_tms())?;
+            }
+
+            // Set reset as last of the pins as some chips might sample tms and tck on release of reset
+            if pin_select.nreset() {
+                if pin_out.nreset() {
+                    self.target_reset_deassert()?;
+                } else {
+                    self.target_reset_assert()?;
+                }
             }
 
             // Normally this would be the timeout we pass to the probe to settle the pins.

@@ -1,4 +1,5 @@
 //! Infineon debug sequences.
 
 pub mod psoc_edge;
+pub mod tle;
 pub mod xmc4000;

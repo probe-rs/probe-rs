@@ -949,7 +949,7 @@ pub trait RawJtagIo: DebugProbe {
         tdi: impl IntoIterator<Item = bool>,
         cap: impl IntoIterator<Item = bool>,
     ) -> Result<(), DebugProbeError> {
-        for ((tms, tdi), cap) in tms.into_iter().zip(tdi.into_iter()).zip(cap.into_iter()) {
+        for ((tms, tdi), cap) in tms.into_iter().zip(tdi).zip(cap) {
             self.shift_bit(tms, tdi, cap)?;
         }
 

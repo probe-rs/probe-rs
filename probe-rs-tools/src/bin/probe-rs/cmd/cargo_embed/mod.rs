@@ -48,7 +48,7 @@ struct CliOptions {
     ///
     /// When this is set, the default path is still considered, but the given file is considered
     /// with the highest priority.
-    #[arg(long)]
+    #[arg(long, env = "PROBE_RS_EMBED_CONFIG_FILE")]
     config_file: Option<String>,
     #[arg(long)]
     chip: Option<String>,
@@ -307,6 +307,7 @@ async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Res
             chip_erase: config.flashing.do_chip_erase,
             read_flasher_rtt: config.flashing.read_flasher_rtt,
             prefer_flash_algorithm: Vec::new(),
+            reset: false,
         };
         let loader = build_loader(&mut session, &path, format_options, image_instr_set)?;
 
