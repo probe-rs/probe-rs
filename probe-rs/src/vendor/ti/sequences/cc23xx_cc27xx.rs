@@ -5,6 +5,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use super::saci;
+use super::saci::{
+    BOOT_STATUS_APP_WAITLOOP_DBGPROBE, BOOT_STATUS_BLDR_WAITLOOP_DBGPROBE,
+    BOOT_STATUS_BOOT_WAITLOOP_DBGPROBE, SaciResult,
+};
 use crate::MemoryMappedRegister;
 use crate::Session;
 use crate::architecture::arm::ArmDebugInterface;
@@ -18,13 +23,6 @@ use crate::architecture::arm::sequences::{ArmDebugSequence, cortex_m_core_start}
 use crate::architecture::arm::{ArmError, FullyQualifiedApAddress};
 use crate::flashing::DebugFlashSequence;
 use probe_rs_target::CoreType;
-use super::saci;
-use super::saci::{
-    SaciResult,
-    BOOT_STATUS_APP_WAITLOOP_DBGPROBE,
-    BOOT_STATUS_BLDR_WAITLOOP_DBGPROBE,
-    BOOT_STATUS_BOOT_WAITLOOP_DBGPROBE,
-};
 
 /// Marker struct for debug and flash sequencing on CC23xx/CC27xx family parts.
 #[derive(Debug)]

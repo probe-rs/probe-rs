@@ -1,5 +1,5 @@
 use super::flash_properties::FlashProperties;
-use crate::serialize::{hex_map, hex_map_deserialize, hex_option, hex_u_int};
+use crate::serialize::{hex_map, hex_map_deserialize, hex_option};
 use base64::{Engine as _, engine::general_purpose as base64_engine};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
@@ -181,6 +181,7 @@ impl Default for RawFlashAlgorithm {
             data_section_offset: Default::default(),
             rtt_location: Default::default(),
             flash_properties: Default::default(),
+            flash_loader_type: Default::default(),
             cores: Default::default(),
             stack_size: Default::default(),
             stack_overflow_check: Default::default(),

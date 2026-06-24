@@ -395,19 +395,18 @@ impl FlashAlgorithm {
             instructions,
             pc_init: raw.pc_init.map(|v| code_start + v),
             pc_uninit: raw.pc_uninit.map(|v| code_start + v),
-            pc_program_page: code_start + raw.pc_program_page,
-            pc_erase_sector: code_start + raw.pc_erase_sector,
+            pc_program_page: code_start + pc_program_page,
+            pc_erase_sector: code_start + pc_erase_sector,
             pc_erase_all: raw.pc_erase_all.map(|v| code_start + v),
             pc_verify: raw.pc_verify.map(|v| code_start + v),
             pc_blank_check: raw.pc_blank_check.map(|v| code_start + v),
             pc_read: raw.pc_read.map(|v| code_start + v),
-            pc_flash_size: raw.pc_flash_size.map(|v| code_start + v),
             vendor_functions: raw
                 .vendor_functions
                 .iter()
                 .map(|(name, addr)| (name.clone(), code_start + addr))
                 .collect(),
-            static_base: code_start + raw.data_section_offset,
+            static_base: code_start + data_section_offset,
 
             stack_top,
             stack_size,
