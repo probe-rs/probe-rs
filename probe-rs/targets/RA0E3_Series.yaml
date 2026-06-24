@@ -75,6 +75,7 @@ flash_algorithms:
     sectors:
     - size: 0x800
       address: 0x0
+  stack_size: 120
 - name: ra0e3_conf
   description: RA0E3 Config Area
   default: true
@@ -100,3 +101,4 @@ flash_algorithms:
     sectors:
     - size: 0x4
       address: 0x0
+  stack_size: 120
