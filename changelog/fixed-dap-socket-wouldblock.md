@@ -1,0 +1,1 @@
+Fixed the DAP server intermittently tearing down a debug session when a burst of events (e.g. flashing progress) filled the kernel send buffer. Writes to the non-blocking DAP socket now retry on `WouldBlock`/`Interrupted` instead of treating them as fatal.

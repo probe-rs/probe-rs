@@ -262,9 +262,42 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
     fn send_data(&mut self, item: Frame<Message>) -> Result<(), std::io::Error> {
         let mut buf = BytesMut::with_capacity(4096);
         self.codec.encode(item, &mut buf)?;
-        self.output.write_all(&buf)?;
-        self.output.flush()?;
-        Ok(())
+
+        // The DAP socket is set non-blocking so `receive_data` can poll without
+        // blocking. That also makes writes non-blocking: a burst of events (e.g.
+        // flashing progress) can fill the kernel send buffer and make a write
+        // return `WouldBlock`. That is NOT a fatal error — it just means "retry
+        // once the client drains". The previous bare `write_all` treated it as
+        // fatal, which intermittently killed the session (e.g. the `initialized`
+        // event failing right after the flash progress flood). Retry instead.
+        let mut written = 0;
+        while written < buf.len() {
+            match self.output.write(&buf[written..]) {
+                Ok(0) => {
+                    return Err(std::io::Error::new(
+                        ErrorKind::WriteZero,
+                        "failed to write frame to DAP socket",
+                    ));
+                }
+                Ok(n) => written += n,
+                Err(e) if e.kind() == ErrorKind::WouldBlock => {
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                }
+                Err(e) if e.kind() == ErrorKind::Interrupted => {}
+                Err(e) => return Err(e),
+            }
+        }
+
+        loop {
+            match self.output.flush() {
+                Ok(()) => return Ok(()),
+                Err(e) if e.kind() == ErrorKind::WouldBlock => {
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                }
+                Err(e) if e.kind() == ErrorKind::Interrupted => {}
+                Err(e) => return Err(e),
+            }
+        }
     }
 
     /// Receive data from `self.input`. Data has to be in the format specified by the Debug Adapter Protocol (DAP).
