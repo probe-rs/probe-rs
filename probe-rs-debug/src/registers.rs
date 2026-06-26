@@ -12,7 +12,7 @@ use serde::Serialize;
 pub struct DebugRegister {
     /// To lookup platform specific details of core register definitions.
     pub core_register: &'static CoreRegister,
-    /// [DWARF](https://dwarfstd.org) specification, section 2.6.1.1.3.1 "... operations encode the names of up to 32 registers, numbered from 0 through 31, inclusive ..."
+    /// The DWARF register ID, which maps to the register number in DWARF debugging information.
     pub dwarf_id: Option<u16>,
     /// The value of the register is read from the target memory and updated as needed.
     pub value: Option<RegisterValue>,
@@ -121,12 +121,7 @@ impl DebugRegisters {
             {
                 debug_registers.push(DebugRegister {
                     core_register,
-                    // The DWARF register ID is only valid for the first 32 registers.
-                    dwarf_id: if dwarf_id < 32 {
-                        Some(dwarf_id as u16)
-                    } else {
-                        None
-                    },
+                    dwarf_id: Some(dwarf_id as u16),
                     value: reg_value(&core_register.id()),
                 });
             } else {
@@ -208,8 +203,7 @@ impl DebugRegisters {
             .find(|debug_register| debug_register.core_register.id == register_id)
     }
 
-    /// Get the register value using the positional index into core registers.
-    /// [DWARF](https://dwarfstd.org) specification, section 2.6.1.1.3.1 "... operations encode the names of up to 32 registers, numbered from 0 through 31, inclusive ..."
+    /// Get the register value using the DWARF register ID.
     pub fn get_register_by_dwarf_id(&self, dwarf_id: u16) -> Option<&DebugRegister> {
         self.0
             .iter()

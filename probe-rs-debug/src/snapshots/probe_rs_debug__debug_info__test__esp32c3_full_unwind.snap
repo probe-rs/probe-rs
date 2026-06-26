@@ -1,6 +1,5 @@
 ---
 source: probe-rs-debug/src/debug_info.rs
-assertion_line: 1999
 expression: stack_frames
 ---
 - function_name: test_deep_stack
@@ -341,7 +340,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: ~
+      dwarf_id: 32
       value:
         U32: 1107350494
   pc:
@@ -684,7 +683,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: ~
+      dwarf_id: 32
       value:
         U32: 1107350506
   pc:
@@ -1027,7 +1026,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: ~
+      dwarf_id: 32
       value:
         U32: 1107350506
   pc:
@@ -1370,7 +1369,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: ~
+      dwarf_id: 32
       value:
         U32: 1107350506
   pc:
@@ -1713,7 +1712,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: ~
+      dwarf_id: 32
       value:
         U32: 1107350506
   pc:
@@ -2056,7 +2055,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: ~
+      dwarf_id: 32
       value:
         U32: 1107350506
   pc:
@@ -2399,7 +2398,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: ~
+      dwarf_id: 32
       value:
         U32: 1107350302
   pc:
@@ -5660,7 +5659,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: ~
+      dwarf_id: 32
       value:
         U32: 1107297626
   pc:
@@ -6593,7 +6592,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: ~
+      dwarf_id: 32
       value:
         U32: 1107304766
   pc:
@@ -6962,7 +6961,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: ~
+      dwarf_id: 32
       value:
         U32: 1107296514
   pc:
