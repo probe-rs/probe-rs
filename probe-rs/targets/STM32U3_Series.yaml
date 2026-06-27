@@ -3,7 +3,7 @@ manufacturer:
   id: 0x20
   cc: 0x0
 generated_from_pack: true
-pack_file_release: 1.1.0
+pack_file_release: 1.2.0
 variants:
 - name: STM32U375CE
   package_variants:
@@ -31,8 +31,8 @@ variants:
   - !Nvm
     name: BANK_2
     range:
-      start: 0x8010000
-      end: 0x8050000
+      start: 0x8040000
+      end: 0x8080000
     cores:
     - main
     access:
@@ -63,8 +63,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
+  - stm32u3xx_512k_0800
+  - stm32u3xx_512k_0c00
 - name: STM32U375CG
   package_variants:
   - STM32U375CGTx
@@ -91,8 +91,8 @@ variants:
   - !Nvm
     name: BANK_2
     range:
-      start: 0x8010000
-      end: 0x8090000
+      start: 0x8080000
+      end: 0x8100000
     cores:
     - main
     access:
@@ -125,6 +125,8 @@ variants:
   flash_algorithms:
   - stm32u3xx_1m_0800
   - stm32u3xx_1m_0c00
+  - stm32u3xx_512k_0800
+  - stm32u3xx_512k_0c00
 - name: STM32U375KE
   package_variants:
   - STM32U375KEUx
@@ -147,8 +149,8 @@ variants:
   - !Nvm
     name: BANK_2
     range:
-      start: 0x8010000
-      end: 0x8050000
+      start: 0x8040000
+      end: 0x8080000
     cores:
     - main
     access:
@@ -179,8 +181,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
+  - stm32u3xx_512k_0800
+  - stm32u3xx_512k_0c00
 - name: STM32U375KG
   package_variants:
   - STM32U375KGUx
@@ -203,8 +205,8 @@ variants:
   - !Nvm
     name: BANK_2
     range:
-      start: 0x8010000
-      end: 0x8090000
+      start: 0x8080000
+      end: 0x8100000
     cores:
     - main
     access:
@@ -237,6 +239,8 @@ variants:
   flash_algorithms:
   - stm32u3xx_1m_0800
   - stm32u3xx_1m_0c00
+  - stm32u3xx_512k_0800
+  - stm32u3xx_512k_0c00
 - name: STM32U375RE
   package_variants:
   - STM32U375REIx
@@ -264,8 +268,8 @@ variants:
   - !Nvm
     name: BANK_2
     range:
-      start: 0x8010000
-      end: 0x8050000
+      start: 0x8040000
+      end: 0x8080000
     cores:
     - main
     access:
@@ -296,8 +300,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
+  - stm32u3xx_512k_0800
+  - stm32u3xx_512k_0c00
 - name: STM32U375RG
   package_variants:
   - STM32U375RGIx
@@ -325,8 +329,8 @@ variants:
   - !Nvm
     name: BANK_2
     range:
-      start: 0x8010000
-      end: 0x8090000
+      start: 0x8080000
+      end: 0x8100000
     cores:
     - main
     access:
@@ -359,6 +363,8 @@ variants:
   flash_algorithms:
   - stm32u3xx_1m_0800
   - stm32u3xx_1m_0c00
+  - stm32u3xx_512k_0800
+  - stm32u3xx_512k_0c00
 - name: STM32U375VE
   package_variants:
   - STM32U375VEIx
@@ -384,8 +390,8 @@ variants:
   - !Nvm
     name: BANK_2
     range:
-      start: 0x8010000
-      end: 0x8050000
+      start: 0x8040000
+      end: 0x8080000
     cores:
     - main
     access:
@@ -416,8 +422,8 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
+  - stm32u3xx_512k_0800
+  - stm32u3xx_512k_0c00
 - name: STM32U375VG
   package_variants:
   - STM32U375VGIx
@@ -443,8 +449,8 @@ variants:
   - !Nvm
     name: BANK_2
     range:
-      start: 0x8010000
-      end: 0x8090000
+      start: 0x8080000
+      end: 0x8100000
     cores:
     - main
     access:
@@ -477,6 +483,8 @@ variants:
   flash_algorithms:
   - stm32u3xx_1m_0800
   - stm32u3xx_1m_0c00
+  - stm32u3xx_512k_0800
+  - stm32u3xx_512k_0c00
 - name: STM32U385CG
   package_variants:
   - STM32U385CGTx
@@ -503,8 +511,8 @@ variants:
   - !Nvm
     name: BANK_2
     range:
-      start: 0x8010000
-      end: 0x8090000
+      start: 0x8080000
+      end: 0x8100000
     cores:
     - main
     access:
@@ -537,6 +545,8 @@ variants:
   flash_algorithms:
   - stm32u3xx_1m_0800
   - stm32u3xx_1m_0c00
+  - stm32u3xx_512k_0800
+  - stm32u3xx_512k_0c00
 - name: STM32U385KG
   package_variants:
   - STM32U385KGUx
@@ -559,8 +569,8 @@ variants:
   - !Nvm
     name: BANK_2
     range:
-      start: 0x8010000
-      end: 0x8090000
+      start: 0x8080000
+      end: 0x8100000
     cores:
     - main
     access:
@@ -593,6 +603,8 @@ variants:
   flash_algorithms:
   - stm32u3xx_1m_0800
   - stm32u3xx_1m_0c00
+  - stm32u3xx_512k_0800
+  - stm32u3xx_512k_0c00
 - name: STM32U385RG
   package_variants:
   - STM32U385RGIx
@@ -620,8 +632,8 @@ variants:
   - !Nvm
     name: BANK_2
     range:
-      start: 0x8010000
-      end: 0x8090000
+      start: 0x8080000
+      end: 0x8100000
     cores:
     - main
     access:
@@ -654,6 +666,8 @@ variants:
   flash_algorithms:
   - stm32u3xx_1m_0800
   - stm32u3xx_1m_0c00
+  - stm32u3xx_512k_0800
+  - stm32u3xx_512k_0c00
 - name: STM32U385VG
   package_variants:
   - STM32U385VGIx
@@ -679,8 +693,8 @@ variants:
   - !Nvm
     name: BANK_2
     range:
-      start: 0x8010000
-      end: 0x8090000
+      start: 0x8080000
+      end: 0x8100000
     cores:
     - main
     access:
@@ -713,7 +727,1591 @@ variants:
   flash_algorithms:
   - stm32u3xx_1m_0800
   - stm32u3xx_1m_0c00
+  - stm32u3xx_512k_0800
+  - stm32u3xx_512k_0c00
+- name: STM32U3B5CG
+  package_variants:
+  - STM32U3B5CGTx
+  - STM32U3B5CGTxQ
+  - STM32U3B5CGUx
+  - STM32U3B5CGUxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8080000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20040000
+      end: 0x20090000
+    cores:
+    - main
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x20090000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u3xx_1m_0800
+  - stm32u3xx_1m_0c00
+  - stm32u3xx_512k_0800
+  - stm32u3xx_512k_0c00
+- name: STM32U3B5CI
+  package_variants:
+  - STM32U3B5CITx
+  - STM32U3B5CITxQ
+  - STM32U3B5CIUx
+  - STM32U3B5CIUxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20040000
+      end: 0x20090000
+    cores:
+    - main
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x20090000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u3xx_2m_0800
+  - stm32u3xx_2m_0c00
+  - stm32u3xx_1m_0800
+  - stm32u3xx_1m_0c00
+- name: STM32U3B5JG
+  package_variants:
+  - STM32U3B5JGYxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8080000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20040000
+      end: 0x20090000
+    cores:
+    - main
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x20090000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u3xx_1m_0800
+  - stm32u3xx_1m_0c00
+  - stm32u3xx_512k_0800
+  - stm32u3xx_512k_0c00
+- name: STM32U3B5JI
+  package_variants:
+  - STM32U3B5JIYxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20040000
+      end: 0x20090000
+    cores:
+    - main
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x20090000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u3xx_2m_0800
+  - stm32u3xx_2m_0c00
+  - stm32u3xx_1m_0800
+  - stm32u3xx_1m_0c00
+- name: STM32U3B5QG
+  package_variants:
+  - STM32U3B5QGIx
+  - STM32U3B5QGIxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8080000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20040000
+      end: 0x20090000
+    cores:
+    - main
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x20090000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u3xx_1m_0800
+  - stm32u3xx_1m_0c00
+  - stm32u3xx_512k_0800
+  - stm32u3xx_512k_0c00
+- name: STM32U3B5QI
+  package_variants:
+  - STM32U3B5QIIx
+  - STM32U3B5QIIxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20040000
+      end: 0x20090000
+    cores:
+    - main
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x20090000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u3xx_2m_0800
+  - stm32u3xx_2m_0c00
+  - stm32u3xx_1m_0800
+  - stm32u3xx_1m_0c00
+- name: STM32U3B5RG
+  package_variants:
+  - STM32U3B5RGTx
+  - STM32U3B5RGTxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8080000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20040000
+      end: 0x20090000
+    cores:
+    - main
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x20090000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u3xx_1m_0800
+  - stm32u3xx_1m_0c00
+  - stm32u3xx_512k_0800
+  - stm32u3xx_512k_0c00
+- name: STM32U3B5RI
+  package_variants:
+  - STM32U3B5RITx
+  - STM32U3B5RITxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20040000
+      end: 0x20090000
+    cores:
+    - main
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x20090000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u3xx_2m_0800
+  - stm32u3xx_2m_0c00
+  - stm32u3xx_1m_0800
+  - stm32u3xx_1m_0c00
+- name: STM32U3B5VG
+  package_variants:
+  - STM32U3B5VGTx
+  - STM32U3B5VGTxQ
+  - STM32U3B5VGYxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8080000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20040000
+      end: 0x20090000
+    cores:
+    - main
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x20090000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u3xx_1m_0800
+  - stm32u3xx_1m_0c00
+  - stm32u3xx_512k_0800
+  - stm32u3xx_512k_0c00
+- name: STM32U3B5VI
+  package_variants:
+  - STM32U3B5VITx
+  - STM32U3B5VITxQ
+  - STM32U3B5VIYxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20040000
+      end: 0x20090000
+    cores:
+    - main
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x20090000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u3xx_2m_0800
+  - stm32u3xx_2m_0c00
+  - stm32u3xx_1m_0800
+  - stm32u3xx_1m_0c00
+- name: STM32U3B5WG
+  package_variants:
+  - STM32U3B5WGYxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8080000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20040000
+      end: 0x20090000
+    cores:
+    - main
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x20090000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u3xx_1m_0800
+  - stm32u3xx_1m_0c00
+  - stm32u3xx_512k_0800
+  - stm32u3xx_512k_0c00
+- name: STM32U3B5WI
+  package_variants:
+  - STM32U3B5WIYxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20040000
+      end: 0x20090000
+    cores:
+    - main
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x20090000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u3xx_2m_0800
+  - stm32u3xx_2m_0c00
+  - stm32u3xx_1m_0800
+  - stm32u3xx_1m_0c00
+- name: STM32U3B5ZG
+  package_variants:
+  - STM32U3B5ZGTx
+  - STM32U3B5ZGTxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8080000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20040000
+      end: 0x20090000
+    cores:
+    - main
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x20090000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u3xx_1m_0800
+  - stm32u3xx_1m_0c00
+  - stm32u3xx_512k_0800
+  - stm32u3xx_512k_0c00
+- name: STM32U3B5ZI
+  package_variants:
+  - STM32U3B5ZITx
+  - STM32U3B5ZITxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20040000
+      end: 0x20090000
+    cores:
+    - main
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x20090000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u3xx_2m_0800
+  - stm32u3xx_2m_0c00
+  - stm32u3xx_1m_0800
+  - stm32u3xx_1m_0c00
+- name: STM32U3C5CI
+  package_variants:
+  - STM32U3C5CITx
+  - STM32U3C5CITxQ
+  - STM32U3C5CIUx
+  - STM32U3C5CIUxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20040000
+      end: 0x20090000
+    cores:
+    - main
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x20090000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u3xx_2m_0800
+  - stm32u3xx_2m_0c00
+  - stm32u3xx_1m_0800
+  - stm32u3xx_1m_0c00
+- name: STM32U3C5JI
+  package_variants:
+  - STM32U3C5JIYxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20040000
+      end: 0x20090000
+    cores:
+    - main
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x20090000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u3xx_2m_0800
+  - stm32u3xx_2m_0c00
+  - stm32u3xx_1m_0800
+  - stm32u3xx_1m_0c00
+- name: STM32U3C5QI
+  package_variants:
+  - STM32U3C5QIIx
+  - STM32U3C5QIIxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20040000
+      end: 0x20090000
+    cores:
+    - main
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x20090000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u3xx_2m_0800
+  - stm32u3xx_2m_0c00
+  - stm32u3xx_1m_0800
+  - stm32u3xx_1m_0c00
+- name: STM32U3C5RI
+  package_variants:
+  - STM32U3C5RITx
+  - STM32U3C5RITxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20040000
+      end: 0x20090000
+    cores:
+    - main
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x20090000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u3xx_2m_0800
+  - stm32u3xx_2m_0c00
+  - stm32u3xx_1m_0800
+  - stm32u3xx_1m_0c00
+- name: STM32U3C5VI
+  package_variants:
+  - STM32U3C5VITx
+  - STM32U3C5VITxQ
+  - STM32U3C5VIYxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20040000
+      end: 0x20090000
+    cores:
+    - main
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x20090000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u3xx_2m_0800
+  - stm32u3xx_2m_0c00
+  - stm32u3xx_1m_0800
+  - stm32u3xx_1m_0c00
+- name: STM32U3C5WI
+  package_variants:
+  - STM32U3C5WIYxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20040000
+      end: 0x20090000
+    cores:
+    - main
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x20090000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u3xx_2m_0800
+  - stm32u3xx_2m_0c00
+  - stm32u3xx_1m_0800
+  - stm32u3xx_1m_0c00
+- name: STM32U3C5ZI
+  package_variants:
+  - STM32U3C5ZITx
+  - STM32U3C5ZITxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x20040000
+      end: 0x20090000
+    cores:
+    - main
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x20090000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u3xx_2m_0800
+  - stm32u3xx_2m_0c00
+  - stm32u3xx_1m_0800
+  - stm32u3xx_1m_0c00
 flash_algorithms:
+- name: stm32u3xx_512k_0800
+  description: STM32U3xx 512K NSecure Flash
+  default: true
+  instructions: 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
+  load_address: 0x20000008
+  pc_init: 0xc9
+  pc_uninit: 0x245
+  pc_program_page: 0x4bd
+  pc_erase_sector: 0x2fd
+  pc_erase_all: 0x279
+  data_section_offset: 0x77c
+  rtt_poll_interval: 0
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8080000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 400
+    erase_sector_timeout: 400
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: stm32u3xx_512k_0c00
+  description: STM32U3xx 512K Secure Flash
+  default: true
+  instructions: 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
+  load_address: 0x30000008
+  pc_init: 0xc9
+  pc_uninit: 0x245
+  pc_program_page: 0x4bd
+  pc_erase_sector: 0x2fd
+  pc_erase_all: 0x279
+  data_section_offset: 0x77c
+  rtt_poll_interval: 0
+  flash_properties:
+    address_range:
+      start: 0xc000000
+      end: 0xc080000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 400
+    erase_sector_timeout: 400
+    sectors:
+    - size: 0x1000
+      address: 0x0
 - name: stm32u3xx_1m_0800
   description: STM32U3xx 1M NSecure Flash
   default: true
@@ -725,6 +2323,7 @@ flash_algorithms:
   pc_erase_sector: 0x309
   pc_erase_all: 0x285
   data_section_offset: 0x75c
+  rtt_poll_interval: 0
   flash_properties:
     address_range:
       start: 0x8000000
@@ -740,7 +2339,29 @@ flash_algorithms:
   description: STM32U3xx 1M Secure Flash
   default: true
   instructions: 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
-  # Updated load address for Secure Flash algorithm from 0x3000008 to 0x20000008
+  load_address: 0x30000008
+  pc_init: 0xc9
+  pc_uninit: 0x251
+  pc_program_page: 0x489
+  pc_erase_sector: 0x309
+  pc_erase_all: 0x285
+  data_section_offset: 0x75c
+  rtt_poll_interval: 0
+  flash_properties:
+    address_range:
+      start: 0xc000000
+      end: 0xc100000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 400
+    erase_sector_timeout: 400
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: stm32u3xx_2m_0800
+  description: STM32U3xx 2M NSecure Flash
+  default: true
+  instructions: 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
   load_address: 0x20000008
   pc_init: 0xc9
   pc_uninit: 0x251
@@ -748,10 +2369,34 @@ flash_algorithms:
   pc_erase_sector: 0x309
   pc_erase_all: 0x285
   data_section_offset: 0x75c
+  rtt_poll_interval: 0
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8200000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 400
+    erase_sector_timeout: 400
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: stm32u3xx_2m_0c00
+  description: STM32U3xx 2M Secure Flash
+  default: true
+  instructions: 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
+  load_address: 0x30000008
+  pc_init: 0xc9
+  pc_uninit: 0x251
+  pc_program_page: 0x489
+  pc_erase_sector: 0x309
+  pc_erase_all: 0x285
+  data_section_offset: 0x75c
+  rtt_poll_interval: 0
   flash_properties:
     address_range:
       start: 0xc000000
-      end: 0xc100000
+      end: 0xc200000
     page_size: 0x400
     erased_byte_value: 0xff
     program_page_timeout: 400
