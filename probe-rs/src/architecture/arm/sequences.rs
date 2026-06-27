@@ -10,6 +10,8 @@ use std::{
 
 use probe_rs_target::CoreType;
 
+pub use crate::flashing::DebugFlashSequence;
+
 use crate::{
     MemoryInterface, MemoryMappedRegister,
     architecture::arm::{
@@ -1138,6 +1140,15 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
 
     /// Return the Debug Erase Sequence implementation if it exists
     fn debug_erase_sequence(&self) -> Option<Arc<dyn DebugEraseSequence>> {
+        None
+    }
+
+    /// Return the Debug Flash Sequence implementation if it exists.
+    ///
+    /// This is used for host-side flash programming where the flash
+    /// operations are performed from the host via debug interface commands
+    /// rather than a RAM-based flash algorithm.
+    fn debug_flash_sequence(&self) -> Option<Arc<dyn DebugFlashSequence>> {
         None
     }
 
