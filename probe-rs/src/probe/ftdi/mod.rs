@@ -15,8 +15,8 @@ use crate::{
     },
     probe::{
         AutoImplementJtagAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-        IoSequenceItem, JtagAccess, JtagDriverState, ProbeCreationError, ProbeFactory, RawJtagIo,
-        RawSwdIo, SwdSettings, WireProtocol,
+        IoSequenceItem, JtagAccess, JtagDriverState, ProbeCreationError, ProbeFactory,
+        ProbeSettings, RawJtagIo, RawSwdIo, SwdSettings, WireProtocol,
     },
 };
 use bitvec::prelude::*;
@@ -33,6 +33,59 @@ mod ftdaye;
 use command_compacter::Command;
 use ftdaye::{ChipType, error::FtdiError};
 
+/// Configuration for FTDI-based probes.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct FtdiProbeConfig {
+    /// GPIO wired to the target's reset signal, used for hard reset.
+    pub reset: Option<ExtraFtdiPin>,
+}
+
+/// A single GPIO line on an FTDI chip.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExtraFtdiPin {
+    /// Pin identifier, e.g. `"ACBUS6"`, `"ADBUS7"`
+    pub pin: String,
+    /// Whether the signal is active-low.
+    #[serde(default = "default_true")]
+    pub active_low: bool,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+impl ExtraFtdiPin {
+    /// Resolve the pin name to a bit index 0..15 in the FTDI GPIO mask.
+    fn bit_index(&self) -> Result<u8, FtdiError> {
+        let name = self.pin.trim().to_ascii_uppercase();
+        let (port_offset, suffix) = if let Some(rest) = name.strip_prefix("ADBUS") {
+            (0u8, rest)
+        } else if let Some(rest) = name.strip_prefix("ACBUS") {
+            (8u8, rest)
+        } else {
+            return Err(FtdiError::InvalidPinSetting(self.pin.clone()));
+        };
+        let bit: u8 = suffix
+            .parse()
+            .map_err(|_| FtdiError::InvalidPinSetting(self.pin.clone()))?;
+        let idx = port_offset
+            .checked_add(bit)
+            .filter(|i| *i < 16 && bit < 8)
+            .ok_or_else(|| FtdiError::InvalidPinSetting(self.pin.clone()))?;
+        if idx < 4 {
+            return Err(FtdiError::InvalidPinSetting(self.pin.clone()));
+        }
+        Ok(idx)
+    }
+
+    /// Physical pin level (true = high) for the given logical state.
+    fn physical_level(&self, asserted: bool) -> bool {
+        asserted ^ self.active_low
+    }
+}
+
 #[derive(Debug)]
 struct JtagAdapter {
     device: ftdaye::Device,
@@ -45,6 +98,16 @@ struct JtagAdapter {
     in_bit_counts: Vec<usize>,
     in_bits: BitVec,
     ftdi: FtdiProperties,
+    config: FtdiProbeConfig,
+
+    /// Resolved bit index of `config.reset`
+    reset_bit: Option<u8>,
+
+    /// Current FTDI GPIO output mask, mirrored so we can flip individual bits
+    /// without losing other state.
+    pin_output: u16,
+    /// Current FTDI GPIO direction mask (1 = output).
+    pin_direction: u16,
 }
 
 impl JtagAdapter {
@@ -73,6 +136,7 @@ impl JtagAdapter {
         ftdi: FtdiDevice,
         usb_device: DeviceInfo,
         usb_interface: Option<u8>,
+        config: FtdiProbeConfig,
     ) -> Result<Self, DebugProbeError> {
         let interface = Self::map_interface(usb_interface);
         let device = ftdaye::Builder::new()
@@ -83,6 +147,9 @@ impl JtagAdapter {
 
         let ftdi = FtdiProperties::try_from((ftdi, device.chip_type()))?;
 
+        // parse extra gpio pins
+        let reset_bit = config.reset.as_ref().map(|p| p.bit_index()).transpose()?;
+
         Ok(Self {
             device,
             speed_khz: 1000,
@@ -91,7 +158,17 @@ impl JtagAdapter {
             in_bit_counts: vec![],
             in_bits: BitVec::new(),
             ftdi,
+            config,
+            reset_bit,
+            pin_output: 0,
+            pin_direction: 0,
         })
+    }
+
+    /// Yields each configured extra GPIO paired with its resolved bit index.
+    /// If adding new pins you MUST manually add them to here
+    fn extra_pins(&self) -> impl Iterator<Item = (&ExtraFtdiPin, u8)> {
+        self.config.reset.as_ref().zip(self.reset_bit).into_iter()
     }
 
     pub fn attach(&mut self) -> Result<(), FtdiError> {
@@ -104,13 +181,50 @@ impl JtagAdapter {
         let mut junk = vec![];
         let _ = self.device.read_to_end(&mut junk);
 
-        let (output, direction) = self.pin_layout();
+        let (mut output, mut direction) = self.pin_layout();
+        // Assume each configured extra GPIO is an output, initialized to its deasserted level.
+        for (pin, bit) in self.extra_pins() {
+            let mask = 1u16 << bit;
+            direction |= mask;
+            if pin.physical_level(false) {
+                output |= mask;
+            } else {
+                output &= !mask;
+            }
+        }
+
+        self.pin_output = output;
+        self.pin_direction = direction;
         self.device.set_pins(output, direction)?;
 
         self.apply_clock_speed(self.speed_khz)?;
 
         self.device.disable_loopback()?;
 
+        Ok(())
+    }
+
+    /// Drive a single GPIO bit to `level`
+    fn write_pin(&mut self, bit: u8, level: bool) -> Result<(), FtdiError> {
+        let mask = 1u16 << bit;
+        if level {
+            self.pin_output |= mask;
+        } else {
+            self.pin_output &= !mask;
+        }
+        self.device.set_pins(self.pin_output, self.pin_direction)
+    }
+
+    /// Drive the configured reset pin to the given logical state.
+    /// Returns `NotImplemented` if the reset pin is not specified
+    fn drive_reset(&mut self, asserted: bool) -> Result<(), DebugProbeError> {
+        let (Some(pin), Some(bit)) = (self.config.reset.as_ref(), self.reset_bit) else {
+            return Err(DebugProbeError::NotImplemented {
+                function_name: "target_reset_*",
+            });
+        };
+        let high = pin.physical_level(asserted);
+        self.write_pin(bit, high).map_err(DebugProbeError::from)?;
         Ok(())
     }
 
@@ -297,7 +411,11 @@ impl std::fmt::Display for FtdiProbeFactory {
 }
 
 impl ProbeFactory for FtdiProbeFactory {
-    fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+    fn open(
+        &self,
+        selector: &DebugProbeSelector,
+        settings: &ProbeSettings,
+    ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         // Only open FTDI-compatible probes
         let Some(ftdi) = FTDI_COMPAT_DEVICES
             .iter()
@@ -326,7 +444,12 @@ impl ProbeFactory for FtdiProbeFactory {
         }
 
         let probe = FtdiProbe {
-            adapter: JtagAdapter::open(ftdi, probes.pop().unwrap(), selector.interface)?,
+            adapter: JtagAdapter::open(
+                ftdi,
+                probes.pop().unwrap(),
+                selector.interface,
+                settings.ftdi.clone().unwrap_or_default(),
+            )?,
             jtag_state: JtagDriverState::default(),
             swd_settings: SwdSettings::default(),
         };
@@ -399,23 +522,17 @@ impl DebugProbe for FtdiProbe {
     }
 
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        // TODO we could add this by using a GPIO. However, different probes may connect
-        // different pins (if any) to the reset line, so we would need to make this configurable.
-        Err(DebugProbeError::NotImplemented {
-            function_name: "target_reset",
-        })
+        self.adapter.drive_reset(true)?;
+        std::thread::sleep(Duration::from_millis(100));
+        self.adapter.drive_reset(false)
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::NotImplemented {
-            function_name: "target_reset_assert",
-        })
+        self.adapter.drive_reset(true)
     }
 
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::NotImplemented {
-            function_name: "target_reset_deassert",
-        })
+        self.adapter.drive_reset(false)
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {

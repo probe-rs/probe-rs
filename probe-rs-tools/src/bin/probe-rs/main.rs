@@ -20,7 +20,10 @@ use postcard_schema::Schema;
 use probe_rs::flashing::{
     BinLoader, BinOptions, ElfLoader, ElfOptions, HexLoader, ImageLoader, Uf2Loader,
 };
-use probe_rs::{Target, probe::list::Lister};
+use probe_rs::{
+    Target,
+    probe::{ProbeSettings, list::Lister},
+};
 use probe_rs_espressif::image_format::IdfLoader;
 use report::Report;
 use serde::{Deserialize, Serialize};
@@ -37,12 +40,17 @@ const MAX_LOG_FILES: usize = 20;
 type ConfigPreset = HashMap<String, Value>;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub(crate) struct Config {
     #[cfg(feature = "remote")]
     pub server: cmd::serve::ServerConfig,
 
     /// A named set of `--key=value` pairs.
     pub presets: HashMap<String, ConfigPreset>,
+
+    /// Per-probe configuration. Probes consult only their own section (e.g. `[probe_settings.ftdi]`).
+    /// See [`probe_rs::probe::ProbeSettings`] for the shape.
+    pub probe_settings: ProbeSettings,
 }
 
 #[derive(clap::Parser)]
@@ -110,19 +118,25 @@ struct Cli {
 
 impl Cli {
     async fn run(self, client: RpcClient, _config: Config, utc_offset: UtcOffset) -> Result<()> {
-        let lister = Lister::new();
+        let lister = Lister::with_settings(_config.probe_settings.clone());
         match self.subcommand {
             Subcommand::DapServer(cmd) => {
                 let log_path = self.log_file.as_deref();
                 cmd::dap_server::run(cmd, &lister, utc_offset, log_path).await
             }
             #[cfg(feature = "remote")]
-            Subcommand::Serve(cmd) => cmd.run(_config.server).await,
+            Subcommand::Serve(cmd) => {
+                cmd.run(_config.server, _config.probe_settings.clone())
+                    .await
+            }
             Subcommand::List(cmd) => cmd.run(client).await,
             Subcommand::Info(cmd) => cmd.run(client).await,
             Subcommand::Gdb(cmd) => cmd.run(&mut *client.registry().await, &lister),
             Subcommand::Reset(cmd) => cmd.run(client).await,
-            Subcommand::Debug(cmd) => cmd.run(client, utc_offset).await,
+            Subcommand::Debug(cmd) => {
+                cmd.run(client, _config.probe_settings.clone(), utc_offset)
+                    .await
+            }
             Subcommand::Download(cmd) => cmd.run(client).await,
             Subcommand::Run(cmd) => cmd.run(client, utc_offset).await,
             Subcommand::Attach(cmd) => cmd.run(client, utc_offset).await,
@@ -595,7 +609,8 @@ async fn main() -> Result<()> {
 
     let is_local = connection_params.is_none();
 
-    let result = run_app(connection_params, async |client| {
+    let probe_settings = config.probe_settings.clone();
+    let result = run_app(connection_params, probe_settings, async |client| {
         anyhow::ensure!(
             client.is_local_session() || cli.subcommand.is_remote_cmd(),
             "The subcommand is not supported in remote mode."
@@ -613,9 +628,13 @@ async fn main() -> Result<()> {
     }
 }
 
-/// Runs the callback using either a local or remote RPC client.
+/// Runs the callback using either a local or remote RPC client. `probe_settings`
+/// is forwarded to the in-process server when running locally; when running
+/// against a remote server, the remote's own configuration takes effect, so the
+/// value is ignored.
 async fn run_app<R>(
     _connection_params: Option<(String, Option<String>)>,
+    probe_settings: ProbeSettings,
     cb: impl AsyncFnOnce(RpcClient) -> Result<R>,
 ) -> Result<R> {
     #[cfg(feature = "remote")]
@@ -627,7 +646,8 @@ async fn run_app<R>(
     }
 
     // Create a local server to run commands against.
-    let (mut local_server, tx, rx) = RpcApp::create_server(16, rpc::functions::ProbeAccess::All);
+    let (mut local_server, tx, rx) =
+        RpcApp::create_server(16, rpc::functions::ProbeAccess::All, probe_settings);
     let handle = tokio::spawn(async move { local_server.run().await });
 
     // Run the command locally.

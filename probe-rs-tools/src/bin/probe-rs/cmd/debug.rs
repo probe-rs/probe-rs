@@ -190,7 +190,12 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub async fn run(self, client: RpcClient, utc_offset: UtcOffset) -> anyhow::Result<()> {
+    pub async fn run(
+        self,
+        client: RpcClient,
+        probe_settings: probe_rs::probe::ProbeSettings,
+        utc_offset: UtcOffset,
+    ) -> anyhow::Result<()> {
         let (req_sender, req_receiver) = mpsc::channel(10);
         let (msg_sender, mut msg_receiver) = mpsc::channel(10);
 
@@ -306,7 +311,7 @@ impl Cmd {
                 let registry = &mut *client.registry().await;
                 let mut debugger = Debugger::new(utc_offset, None)?;
 
-                let lister = Lister::new();
+                let lister = Lister::with_settings(probe_settings);
                 debugger
                     .debug_session(registry, debug_adapter, &lister)
                     .await

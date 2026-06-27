@@ -23,7 +23,7 @@ use crate::{
     },
     probe::{
         AutoImplementJtagAccess, BatchCommand, DebugProbe, DebugProbeError, DebugProbeInfo,
-        DebugProbeSelector, JtagAccess, JtagDriverState, ProbeFactory, WireProtocol,
+        DebugProbeSelector, JtagAccess, JtagDriverState, ProbeFactory, ProbeSettings, WireProtocol,
         cmsisdap::commands::{
             CmsisDapError, RequestError,
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
@@ -79,7 +79,11 @@ impl std::fmt::Display for CmsisDapFactory {
 }
 
 impl ProbeFactory for CmsisDapFactory {
-    fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+    fn open(
+        &self,
+        selector: &DebugProbeSelector,
+        _settings: &ProbeSettings,
+    ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         CmsisDap::new_from_device(tools::open_device_from_selector(selector)?)
             .map(Box::new)
             .map(DebugProbe::into_probe)

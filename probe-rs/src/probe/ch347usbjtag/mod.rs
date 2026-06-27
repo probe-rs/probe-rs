@@ -39,6 +39,7 @@ impl ProbeFactory for Ch347UsbJtagFactory {
     fn open(
         &self,
         selector: &super::DebugProbeSelector,
+        _settings: &super::ProbeSettings,
     ) -> Result<Box<dyn super::DebugProbe>, super::DebugProbeError> {
         let ch347 = Ch347UsbJtagDevice::new_from_selector(selector)?;
 
