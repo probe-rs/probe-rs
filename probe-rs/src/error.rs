@@ -1,4 +1,5 @@
 use crate::architecture::arm::ArmError;
+use crate::architecture::avr::communication_interface::AvrError;
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::xtensa::communication_interface::XtensaError;
 use crate::config::RegistryError;
@@ -17,6 +18,8 @@ pub enum Error {
     Riscv(#[source] RiscvError),
     /// An Xtensa specific error occurred.
     Xtensa(#[source] XtensaError),
+    /// An AVR specific error occurred.
+    Avr(#[from] AvrError),
     /// Core {0} is not enabled.
     CoreDisabled(usize),
     /// Core {0} does not exist.

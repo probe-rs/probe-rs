@@ -1,0 +1,829 @@
+# AVR UPDI target definitions
+# GDB AVR address spaces: program=0x0.., data=0x800000..
+# All memory regions except Flash and SRAM are mapped at 0x800000+base.
+name: AVR
+variants:
+
+# ---- tinyAVR (avr8x_tiny family) ----
+# Shared: fuses 10B@0x1280, lock 1B@0x128A, userrow 32B@0x1300,
+#         prodsig 64B@0x1100, address_mode=0, hvupdi_variant=0
+
+- name: ATtiny1607
+  cores:
+  - name: main
+    type: avr
+    core_access_options: !Avr
+      signature: [0x1e, 0x94, 0x23]
+      flash_base: 0x8000
+      flash_size: 0x4000
+      flash_page_size: 64
+      eeprom_base: 0x1400
+      eeprom_size: 256
+      eeprom_page_size: 32
+      fuses_base: 0x1280
+      fuses_size: 10
+      lock_base: 0x128A
+      lock_size: 1
+      userrow_base: 0x1300
+      userrow_size: 32
+      signature_base: 0x1100
+      prodsig_size: 64
+      nvm_base: 0x1000
+      ocd_base: 0x0F80
+      syscfg_base: 0x0F00
+      address_mode: 0
+      hvupdi_variant: 0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x0
+      end: 0x4000
+    cores: [main]
+    access:
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x803C00
+      end: 0x804000
+    cores: [main]
+  - !Nvm
+    name: EEPROM
+    range:
+      start: 0x801400
+      end: 0x801500
+    cores: [main]
+  - !Generic
+    name: Fuses
+    range:
+      start: 0x801280
+      end: 0x80128A
+    cores: [main]
+  - !Generic
+    name: Lock
+    range:
+      start: 0x80128A
+      end: 0x80128B
+    cores: [main]
+  - !Generic
+    name: UserRow
+    range:
+      start: 0x801300
+      end: 0x801320
+    cores: [main]
+  - !Generic
+    name: ProdSig
+    range:
+      start: 0x801100
+      end: 0x801140
+    cores: [main]
+  flash_algorithms: []
+
+- name: ATtiny3217
+  cores:
+  - name: main
+    type: avr
+    core_access_options: !Avr
+      signature: [0x1e, 0x95, 0x22]
+      flash_base: 0x8000
+      flash_size: 0x8000
+      flash_page_size: 128
+      eeprom_base: 0x1400
+      eeprom_size: 256
+      eeprom_page_size: 64
+      fuses_base: 0x1280
+      fuses_size: 10
+      lock_base: 0x128A
+      lock_size: 1
+      userrow_base: 0x1300
+      userrow_size: 32
+      signature_base: 0x1100
+      prodsig_size: 64
+      nvm_base: 0x1000
+      ocd_base: 0x0F80
+      syscfg_base: 0x0F00
+      address_mode: 0
+      hvupdi_variant: 0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x0
+      end: 0x8000
+    cores: [main]
+    access:
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x803800
+      end: 0x804000
+    cores: [main]
+  - !Nvm
+    name: EEPROM
+    range:
+      start: 0x801400
+      end: 0x801500
+    cores: [main]
+  - !Generic
+    name: Fuses
+    range:
+      start: 0x801280
+      end: 0x80128A
+    cores: [main]
+  - !Generic
+    name: Lock
+    range:
+      start: 0x80128A
+      end: 0x80128B
+    cores: [main]
+  - !Generic
+    name: UserRow
+    range:
+      start: 0x801300
+      end: 0x801320
+    cores: [main]
+  - !Generic
+    name: ProdSig
+    range:
+      start: 0x801100
+      end: 0x801140
+    cores: [main]
+  flash_algorithms: []
+
+- name: ATtiny3227
+  cores:
+  - name: main
+    type: avr
+    core_access_options: !Avr
+      signature: [0x1e, 0x95, 0x26]
+      flash_base: 0x8000
+      flash_size: 0x8000
+      flash_page_size: 128
+      eeprom_base: 0x1400
+      eeprom_size: 256
+      eeprom_page_size: 64
+      fuses_base: 0x1280
+      fuses_size: 10
+      lock_base: 0x128A
+      lock_size: 1
+      userrow_base: 0x1300
+      userrow_size: 32
+      signature_base: 0x1100
+      prodsig_size: 64
+      nvm_base: 0x1000
+      ocd_base: 0x0F80
+      syscfg_base: 0x0F00
+      address_mode: 0
+      hvupdi_variant: 0
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x0
+      end: 0x8000
+    cores: [main]
+    access:
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x803400
+      end: 0x804000
+    cores: [main]
+  - !Nvm
+    name: EEPROM
+    range:
+      start: 0x801400
+      end: 0x801500
+    cores: [main]
+  - !Generic
+    name: Fuses
+    range:
+      start: 0x801280
+      end: 0x80128A
+    cores: [main]
+  - !Generic
+    name: Lock
+    range:
+      start: 0x80128A
+      end: 0x80128B
+    cores: [main]
+  - !Generic
+    name: UserRow
+    range:
+      start: 0x801300
+      end: 0x801320
+    cores: [main]
+  - !Generic
+    name: ProdSig
+    range:
+      start: 0x801100
+      end: 0x801140
+    cores: [main]
+  flash_algorithms: []
+
+# ---- megaAVR (avr8x_mega family) ----
+# Shared: fuses 10B@0x1280, lock 1B@0x128A, userrow 64B@0x1300,
+#         prodsig 128B@0x1100, address_mode=0, hvupdi_variant=1
+
+- name: ATmega4809
+  cores:
+  - name: main
+    type: avr
+    core_access_options: !Avr
+      signature: [0x1e, 0x96, 0x51]
+      flash_base: 0x4000
+      flash_size: 0xC000
+      flash_page_size: 128
+      eeprom_base: 0x1400
+      eeprom_size: 256
+      eeprom_page_size: 64
+      fuses_base: 0x1280
+      fuses_size: 10
+      lock_base: 0x128A
+      lock_size: 1
+      userrow_base: 0x1300
+      userrow_size: 64
+      signature_base: 0x1100
+      prodsig_size: 128
+      nvm_base: 0x1000
+      ocd_base: 0x0F80
+      syscfg_base: 0x0F00
+      address_mode: 0
+      hvupdi_variant: 1
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x0
+      end: 0xC000
+    cores: [main]
+    access:
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x803C00
+      end: 0x804000
+    cores: [main]
+  - !Nvm
+    name: EEPROM
+    range:
+      start: 0x801400
+      end: 0x801500
+    cores: [main]
+  - !Generic
+    name: Fuses
+    range:
+      start: 0x801280
+      end: 0x80128A
+    cores: [main]
+  - !Generic
+    name: Lock
+    range:
+      start: 0x80128A
+      end: 0x80128B
+    cores: [main]
+  - !Generic
+    name: UserRow
+    range:
+      start: 0x801300
+      end: 0x801340
+    cores: [main]
+  - !Generic
+    name: ProdSig
+    range:
+      start: 0x801100
+      end: 0x801180
+    cores: [main]
+  flash_algorithms: []
+
+# ---- AVR DA/DB (avr-da-db family) ----
+# Shared: fuses 16B@0x1050, lock 4B@0x1040, userrow 32B@0x1080,
+#         prodsig 128B@0x1100, address_mode=1, hvupdi_variant=1
+
+- name: AVR128DA48
+  cores:
+  - name: main
+    type: avr
+    core_access_options: !Avr
+      signature: [0x1e, 0x97, 0x08]
+      flash_base: 0x800000
+      flash_size: 0x20000
+      flash_page_size: 512
+      eeprom_base: 0x1400
+      eeprom_size: 512
+      eeprom_page_size: 1
+      fuses_base: 0x1050
+      fuses_size: 16
+      lock_base: 0x1040
+      lock_size: 4
+      userrow_base: 0x1080
+      userrow_size: 32
+      signature_base: 0x1100
+      prodsig_size: 128
+      nvm_base: 0x1000
+      ocd_base: 0x0F80
+      syscfg_base: 0x0F00
+      address_mode: 1
+      hvupdi_variant: 1
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x0
+      end: 0x20000
+    cores: [main]
+    access:
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x804000
+      end: 0x808000
+    cores: [main]
+  - !Nvm
+    name: EEPROM
+    range:
+      start: 0x801400
+      end: 0x801600
+    cores: [main]
+  - !Generic
+    name: Fuses
+    range:
+      start: 0x801050
+      end: 0x801060
+    cores: [main]
+  - !Generic
+    name: Lock
+    range:
+      start: 0x801040
+      end: 0x801044
+    cores: [main]
+  - !Generic
+    name: UserRow
+    range:
+      start: 0x801080
+      end: 0x8010A0
+    cores: [main]
+  - !Generic
+    name: ProdSig
+    range:
+      start: 0x801100
+      end: 0x801180
+    cores: [main]
+  flash_algorithms: []
+
+- name: AVR128DB48
+  cores:
+  - name: main
+    type: avr
+    core_access_options: !Avr
+      signature: [0x1e, 0x97, 0x0c]
+      flash_base: 0x800000
+      flash_size: 0x20000
+      flash_page_size: 512
+      eeprom_base: 0x1400
+      eeprom_size: 512
+      eeprom_page_size: 1
+      fuses_base: 0x1050
+      fuses_size: 16
+      lock_base: 0x1040
+      lock_size: 4
+      userrow_base: 0x1080
+      userrow_size: 32
+      signature_base: 0x1100
+      prodsig_size: 128
+      nvm_base: 0x1000
+      ocd_base: 0x0F80
+      syscfg_base: 0x0F00
+      address_mode: 1
+      hvupdi_variant: 1
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x0
+      end: 0x20000
+    cores: [main]
+    access:
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x806000
+      end: 0x80A000
+    cores: [main]
+  - !Nvm
+    name: EEPROM
+    range:
+      start: 0x801400
+      end: 0x801600
+    cores: [main]
+  - !Generic
+    name: Fuses
+    range:
+      start: 0x801050
+      end: 0x801060
+    cores: [main]
+  - !Generic
+    name: Lock
+    range:
+      start: 0x801040
+      end: 0x801044
+    cores: [main]
+  - !Generic
+    name: UserRow
+    range:
+      start: 0x801080
+      end: 0x8010A0
+    cores: [main]
+  - !Generic
+    name: ProdSig
+    range:
+      start: 0x801100
+      end: 0x801180
+    cores: [main]
+  flash_algorithms: []
+
+# ---- AVR DD (avr-dd-du family) ----
+# Shared: fuses 16B@0x1050, lock 4B@0x1040, userrow 32B@0x1080,
+#         prodsig 128B@0x1100, address_mode=1, hvupdi_variant=2
+
+- name: AVR64DD32
+  cores:
+  - name: main
+    type: avr
+    core_access_options: !Avr
+      signature: [0x1e, 0x96, 0x1a]
+      flash_base: 0x800000
+      flash_size: 0x10000
+      flash_page_size: 512
+      eeprom_base: 0x1400
+      eeprom_size: 256
+      eeprom_page_size: 1
+      fuses_base: 0x1050
+      fuses_size: 16
+      lock_base: 0x1040
+      lock_size: 4
+      userrow_base: 0x1080
+      userrow_size: 32
+      signature_base: 0x1100
+      prodsig_size: 128
+      nvm_base: 0x1000
+      ocd_base: 0x0F80
+      syscfg_base: 0x0F00
+      address_mode: 1
+      hvupdi_variant: 2
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x0
+      end: 0x10000
+    cores: [main]
+    access:
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x806000
+      end: 0x808000
+    cores: [main]
+  - !Nvm
+    name: EEPROM
+    range:
+      start: 0x801400
+      end: 0x801500
+    cores: [main]
+  - !Generic
+    name: Fuses
+    range:
+      start: 0x801050
+      end: 0x801060
+    cores: [main]
+  - !Generic
+    name: Lock
+    range:
+      start: 0x801040
+      end: 0x801044
+    cores: [main]
+  - !Generic
+    name: UserRow
+    range:
+      start: 0x801080
+      end: 0x8010A0
+    cores: [main]
+  - !Generic
+    name: ProdSig
+    range:
+      start: 0x801100
+      end: 0x801180
+    cores: [main]
+  flash_algorithms: []
+
+# ---- AVR DU (avr-dd-du family, USB) ----
+# Differs from DD: fuses 12B, userrow 512B@0x1200, signature_base=0x1080,
+#                  prodsig 64B
+
+- name: AVR64DU32
+  cores:
+  - name: main
+    type: avr
+    core_access_options: !Avr
+      signature: [0x1e, 0x96, 0x21]
+      flash_base: 0x800000
+      flash_size: 0x10000
+      flash_page_size: 512
+      eeprom_base: 0x1400
+      eeprom_size: 256
+      eeprom_page_size: 1
+      fuses_base: 0x1050
+      fuses_size: 12
+      lock_base: 0x1040
+      lock_size: 4
+      userrow_base: 0x1200
+      userrow_size: 512
+      signature_base: 0x1080
+      prodsig_size: 64
+      nvm_base: 0x1000
+      ocd_base: 0x0F80
+      syscfg_base: 0x0F00
+      address_mode: 1
+      hvupdi_variant: 2
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x0
+      end: 0x10000
+    cores: [main]
+    access:
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x806000
+      end: 0x808000
+    cores: [main]
+  - !Nvm
+    name: EEPROM
+    range:
+      start: 0x801400
+      end: 0x801500
+    cores: [main]
+  - !Generic
+    name: Fuses
+    range:
+      start: 0x801050
+      end: 0x80105C
+    cores: [main]
+  - !Generic
+    name: Lock
+    range:
+      start: 0x801040
+      end: 0x801044
+    cores: [main]
+  - !Generic
+    name: UserRow
+    range:
+      start: 0x801200
+      end: 0x801400
+    cores: [main]
+  - !Generic
+    name: ProdSig
+    range:
+      start: 0x801080
+      end: 0x8010C0
+    cores: [main]
+  flash_algorithms: []
+
+# ---- AVR EA (avr-ex family) ----
+# Shared: fuses 16B@0x1050, lock 4B@0x1040, userrow 32B@0x1080,
+#         prodsig 128B@0x1100, address_mode=1, hvupdi_variant=2
+
+- name: AVR64EA48
+  cores:
+  - name: main
+    type: avr
+    core_access_options: !Avr
+      signature: [0x1e, 0x96, 0x1e]
+      flash_base: 0x800000
+      flash_size: 0x10000
+      flash_page_size: 128
+      eeprom_base: 0x1400
+      eeprom_size: 256
+      eeprom_page_size: 8
+      fuses_base: 0x1050
+      fuses_size: 16
+      lock_base: 0x1040
+      lock_size: 4
+      userrow_base: 0x1080
+      userrow_size: 32
+      signature_base: 0x1100
+      prodsig_size: 128
+      nvm_base: 0x1000
+      ocd_base: 0x0F80
+      syscfg_base: 0x0F00
+      address_mode: 1
+      hvupdi_variant: 2
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x0
+      end: 0x10000
+    cores: [main]
+    access:
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x807000
+      end: 0x809000
+    cores: [main]
+  - !Nvm
+    name: EEPROM
+    range:
+      start: 0x801400
+      end: 0x801500
+    cores: [main]
+  - !Generic
+    name: Fuses
+    range:
+      start: 0x801050
+      end: 0x801060
+    cores: [main]
+  - !Generic
+    name: Lock
+    range:
+      start: 0x801040
+      end: 0x801044
+    cores: [main]
+  - !Generic
+    name: UserRow
+    range:
+      start: 0x801080
+      end: 0x8010A0
+    cores: [main]
+  - !Generic
+    name: ProdSig
+    range:
+      start: 0x801100
+      end: 0x801180
+    cores: [main]
+  flash_algorithms: []
+
+# ---- AVR EB (avr-ex family) ----
+# Differs from EA: eeprom 512B page 8, userrow 512B@0x1200,
+#                  signature_base=0x1080
+
+- name: AVR16EB32
+  cores:
+  - name: main
+    type: avr
+    core_access_options: !Avr
+      signature: [0x1e, 0x94, 0x3e]
+      flash_base: 0x800000
+      flash_size: 0x4000
+      flash_page_size: 64
+      eeprom_base: 0x1400
+      eeprom_size: 512
+      eeprom_page_size: 8
+      fuses_base: 0x1050
+      fuses_size: 16
+      lock_base: 0x1040
+      lock_size: 4
+      userrow_base: 0x1200
+      userrow_size: 512
+      signature_base: 0x1080
+      prodsig_size: 128
+      nvm_base: 0x1000
+      ocd_base: 0x0F80
+      syscfg_base: 0x0F00
+      address_mode: 1
+      hvupdi_variant: 2
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x0
+      end: 0x4000
+    cores: [main]
+    access:
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x807800
+      end: 0x808000
+    cores: [main]
+  - !Nvm
+    name: EEPROM
+    range:
+      start: 0x801400
+      end: 0x801600
+    cores: [main]
+  - !Generic
+    name: Fuses
+    range:
+      start: 0x801050
+      end: 0x801060
+    cores: [main]
+  - !Generic
+    name: Lock
+    range:
+      start: 0x801040
+      end: 0x801044
+    cores: [main]
+  - !Generic
+    name: UserRow
+    range:
+      start: 0x801200
+      end: 0x801400
+    cores: [main]
+  - !Generic
+    name: ProdSig
+    range:
+      start: 0x801080
+      end: 0x801100
+    cores: [main]
+  flash_algorithms: []
+
+# ---- AVR SD (avr-sx family, Security) ----
+# Shared: fuses 16B@0x1050, lock 4B@0x1040, userrow 512B@0x1200,
+#         prodsig 128B@0x1080, address_mode=1, hvupdi_variant=3
+
+- name: AVR32SD32
+  cores:
+  - name: main
+    type: avr
+    core_access_options: !Avr
+      signature: [0x1e, 0x95, 0x52]
+      flash_base: 0x800000
+      flash_size: 0x8000
+      flash_page_size: 512
+      eeprom_base: 0x1400
+      eeprom_size: 256
+      eeprom_page_size: 1
+      fuses_base: 0x1050
+      fuses_size: 16
+      lock_base: 0x1040
+      lock_size: 4
+      userrow_base: 0x1200
+      userrow_size: 512
+      signature_base: 0x1080
+      prodsig_size: 128
+      nvm_base: 0x1000
+      ocd_base: 0x0F80
+      syscfg_base: 0x0F00
+      address_mode: 1
+      hvupdi_variant: 3
+  memory_map:
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x0
+      end: 0x8000
+    cores: [main]
+    access:
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x807000
+      end: 0x808000
+    cores: [main]
+  - !Nvm
+    name: EEPROM
+    range:
+      start: 0x801400
+      end: 0x801500
+    cores: [main]
+  - !Generic
+    name: Fuses
+    range:
+      start: 0x801050
+      end: 0x801060
+    cores: [main]
+  - !Generic
+    name: Lock
+    range:
+      start: 0x801040
+      end: 0x801044
+    cores: [main]
+  - !Generic
+    name: UserRow
+    range:
+      start: 0x801200
+      end: 0x801400
+    cores: [main]
+  - !Generic
+    name: ProdSig
+    range:
+      start: 0x801080
+      end: 0x801100
+    cores: [main]
+  flash_algorithms: []
