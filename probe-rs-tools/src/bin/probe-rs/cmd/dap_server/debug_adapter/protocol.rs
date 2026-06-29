@@ -601,9 +601,7 @@ mod test {
             // Once the script is exhausted, drain whatever remains so the retry
             // loop can make progress and terminate.
             match self.writes.pop_front() {
-                Some(WriteStep::Block) => {
-                    Err(io::Error::new(ErrorKind::WouldBlock, "would block"))
-                }
+                Some(WriteStep::Block) => Err(io::Error::new(ErrorKind::WouldBlock, "would block")),
                 Some(WriteStep::Interrupt) => {
                     Err(io::Error::new(ErrorKind::Interrupted, "interrupted"))
                 }
@@ -623,9 +621,7 @@ mod test {
 
         fn flush(&mut self) -> io::Result<()> {
             match self.flushes.pop_front() {
-                Some(FlushStep::Block) => {
-                    Err(io::Error::new(ErrorKind::WouldBlock, "would block"))
-                }
+                Some(FlushStep::Block) => Err(io::Error::new(ErrorKind::WouldBlock, "would block")),
                 Some(FlushStep::Interrupt) => {
                     Err(io::Error::new(ErrorKind::Interrupted, "interrupted"))
                 }
@@ -668,10 +664,7 @@ mod test {
     /// fatal.
     #[test]
     fn flush_retries_on_would_block() {
-        let writer = ScriptedWriter::new(
-            vec![],
-            vec![FlushStep::Block, FlushStep::Block],
-        );
+        let writer = ScriptedWriter::new(vec![], vec![FlushStep::Block, FlushStep::Block]);
         let mut adapter = DapAdapter::new(io::empty(), writer);
 
         adapter
@@ -723,7 +716,10 @@ mod test {
 
         let result = adapter.send_event("probe-rs-test", Some(()));
 
-        assert!(result.is_err(), "Ok(0) must be reported, not retried forever");
+        assert!(
+            result.is_err(),
+            "Ok(0) must be reported, not retried forever"
+        );
     }
 
     /// Non-retryable write errors must still propagate (we must not have turned
