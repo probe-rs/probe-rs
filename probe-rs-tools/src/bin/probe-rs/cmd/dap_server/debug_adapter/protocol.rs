@@ -651,9 +651,8 @@ mod test {
         );
         let mut adapter = DapAdapter::new(io::empty(), writer);
 
-        adapter
-            .send_event("probe-rs-test", Some(()))
-            .expect("WouldBlock during write must be retried, not fatal");
+        // WouldBlock during write must be retried, not treated as fatal.
+        adapter.send_event("probe-rs-test", Some(())).unwrap();
 
         // The whole frame must arrive intact — retrying must not drop or
         // duplicate any bytes.
@@ -667,9 +666,8 @@ mod test {
         let writer = ScriptedWriter::new(vec![], vec![FlushStep::Block, FlushStep::Block]);
         let mut adapter = DapAdapter::new(io::empty(), writer);
 
-        adapter
-            .send_event("probe-rs-test", Some(()))
-            .expect("WouldBlock during flush must be retried, not fatal");
+        // WouldBlock during flush must be retried, not treated as fatal.
+        adapter.send_event("probe-rs-test", Some(())).unwrap();
 
         assert_eq!(adapter.output.sink, reference_event_bytes());
     }
