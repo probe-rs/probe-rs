@@ -434,49 +434,61 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
         stackframe_registers: &DebugRegisters,
         _raw_exception: u32,
     ) -> Result<DebugRegisters, DebugError> {
-        // TODO v8m has additional optional stacked registers
         let mut calling_stack_registers = vec![0u32; EXCEPTION_STACK_REGISTERS.len()];
         let stack_frame_return_address: u32 = get_stack_frame_return_address(stackframe_registers)?;
         let exc_return = ExcReturn(stack_frame_return_address);
         let idpfr1 = IdPfr1(memory_interface.read_word_32(IdPfr1::get_mmio_address())?);
         let secure = idpfr1.security_present();
 
-        let sp_value = if exc_return.is_exception_flag() == 0xFF {
-            // EXC_RETURN, returning from an exception
-            let sp_reg_id = if secure {
-                let stack_info = (
-                    exc_return.use_secure_stack(),
-                    exc_return.stack_pointer_selection(),
-                );
+        let sp_value: u64 = if exc_return.is_exception_flag() == 0xFF {
+            // EXC_RETURN, returning from an exception.
+            //
+            // We need the SP that points at the *base* of the exception frame.
+            // Which stack the exception frame lives on depends on SPSEL:
+            //
+            // - SPSEL=1 (PSP): the exception frame is on the process stack, a
+            //   different stack from the handler (which runs on MSP). The handler
+            //   does not modify PSP, so the hardware PSP register still points at
+            //   the frame.
+            //
+            // - SPSEL=0 (MSP): the exception frame is on the main stack, the same
+            //   stack the handler runs on. The hardware MSP register has since
+            //   moved (it includes the handler's own pushes, and for nested
+            //   exceptions any inner exception frames too), so it does NOT point
+            //   at this frame. Instead we use the DWARF-unwound generic SP, which
+            //   is the handler's entry SP = the base of the exception frame.
+            if exc_return.stack_pointer_selection() {
+                // SPSEL=1: read the frame base from the hardware PSP register.
+                let sp_reg_id: u16 = if secure {
+                    if exc_return.use_secure_stack() {
+                        0b00011011 // PSP_S
+                    } else {
+                        0b00011001 // PSP_NS
+                    }
+                } else {
+                    0b00010010 // PSP
+                };
 
-                match stack_info {
-                    (false, false) => 0b00011000, // non-secure, main stack pointer
-                    (false, true) => 0b00011001,  // non-secure, process stack pointer
-                    (true, false) => 0b00011010,  // secure, main stack pointer
-                    (true, true) => 0b00011011,   // secure, process stack pointer
-                }
+                stackframe_registers
+                    .get_register(sp_reg_id.into())
+                    .ok_or_else(|| {
+                        Error::Register(format!(
+                            "No Stack Pointer register with id {sp_reg_id:#04x}. Please report this as a bug."
+                        ))
+                    })?
+                    .value
+                    .ok_or_else(|| {
+                        Error::Register(
+                            "No value for Stack Pointer register. Please report this as a bug."
+                                .to_string(),
+                        )
+                    })?
+                    .try_into()?
             } else {
-                match exc_return.stack_pointer_selection() {
-                    false => 0b00010001, // main stack pointer
-                    true => 0b00010010,  // process stack pointer
-                }
-            };
-
-            stackframe_registers
-                .get_register(sp_reg_id.into())
-                .ok_or_else(|| {
-                    Error::Register(
-                        "No Stack Pointer register. Please report this as a bug.".to_string(),
-                    )
-                })?
-                .value
-                .ok_or_else(|| {
-                    Error::Register(
-                        "No value for Stack Pointer register. Please report this as a bug."
-                            .to_string(),
-                    )
-                })?
-                .try_into()?
+                // SPSEL=0: the frame is on the same (main) stack as the handler;
+                // the DWARF-unwound generic SP is its base.
+                stackframe_registers.get_register_value_by_role(&RegisterRole::StackPointer)?
+            }
         } else if exc_return.is_exception_flag() == 0xFE {
             // FNC_RETURN, returning from a secure -> non-secure function call
             // get SPSEL from CONTROL_S, unstack ReturnAddress (and retpsr?)
@@ -485,15 +497,30 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
             stackframe_registers.get_register_value_by_role(&RegisterRole::StackPointer)?
         };
 
-        memory_interface.read_32(sp_value, &mut calling_stack_registers)?;
+        // The state context (R0-R3, R12, LR, ReturnAddress, RETPSR) sits above the
+        // additional state context (integrity signature + R4-R11), if the latter
+        // was stacked (DCRS=0). Skip past it to read the state-context registers.
+        let additional_state_size: u64 = if exc_return.use_default_register_stacking() {
+            0
+        } else {
+            0x28
+        };
+        let state_context_addr = sp_value + additional_state_size;
+
+        memory_interface.read_32(state_context_addr, &mut calling_stack_registers)?;
         let mut calling_frame_registers = stackframe_registers.clone();
-        // TODO: v8m has "Additional State Context" registers that may be stacked
-        // not handled yet. don't think they're needed for unwind
         for (i, register_role) in EXCEPTION_STACK_REGISTERS.iter().enumerate() {
             calling_frame_registers
                 .get_register_mut_by_role(register_role)?
                 .value = Some(RegisterValue::U32(calling_stack_registers[i]));
         }
+
+        // Set the generic SP to the base of the exception frame. `exception_details`
+        // then advances it past the whole frame for the next unwind iteration.
+        calling_frame_registers
+            .get_register_mut_by_role(&RegisterRole::StackPointer)?
+            .value = Some(RegisterValue::U32(sp_value as u32));
+
         Ok(calling_frame_registers)
     }
 

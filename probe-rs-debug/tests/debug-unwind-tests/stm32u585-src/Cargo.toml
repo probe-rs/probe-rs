@@ -1,0 +1,20 @@
+# Standalone crate: kept out of the probe-rs workspace so it builds on its own.
+[workspace]
+
+[package]
+name = "armv8m-unwind-tests"
+edition = "2021"
+version = "0.1.0"
+publish = false
+
+[dependencies]
+# No HAL: the unwind tests only need to run instructions on the core, so we use
+# cortex-m-rt's generic vector table (the `device` feature is off by default)
+# instead of pulling in a whole device crate.
+cortex-m = "0.7.7"
+cortex-m-rt = "0.7.5"
+panic-halt = "1.0"
+
+[profile.release]
+debug = 2
+opt-level = "s"
