@@ -30,12 +30,22 @@ checked-in ELFs small. It was flashed and run on an `iot-stm32u585ai` board.
   path deterministically, the checked-in `.elf` for this fixture has its
   `.debug_frame` section stripped (see below).
 
+- `psp_exception.rs` — switches thread mode to the **process stack (PSP)**, runs a
+  call chain there, then takes an SVCall (`main → switch to PSP → psp_a → psp_b →
+  SVCall → loop`). The handler runs on MSP while the exception frame is stacked on
+  PSP (EXC_RETURN has SPSEL=1), so the unwinder must read the frame from the
+  hardware PSP register, not the handler's MSP, to recover the `psp_b → psp_a`
+  chain. The process stack lives at the bottom of RAM, so its dump range differs
+  from the others (see below).
+
 ## Reproducing the fixtures
 
 1. Build (the `.cargo/config.toml` here selects `thumbv8m.main-none-eabihf`):
 
    ```
-   cargo build --release --bin nested_exceptions --bin hardfault_fp --bin exception_no_debuginfo
+   cargo build --release \
+       --bin nested_exceptions --bin hardfault_fp \
+       --bin exception_no_debuginfo --bin psp_exception
    ```
 
 2. Flash + run on hardware, let the firmware fault and spin in the (innermost)
@@ -45,6 +55,12 @@ checked-in ELFs small. It was flashed and run on an `iot-stm32u585ai` board.
 
    ```
    dump 0x200BE000 0x2000  0xE000E000 0x1000  coredump
+   ```
+
+   For `psp_exception`, also dump the process stack at the bottom of RAM:
+
+   ```
+   dump 0x20000000 0x1000  0x200BE000 0x2000  0xE000E000 0x1000  coredump
    ```
 
    (`probe-rs debug` REPL `dump` command, or `CoreDump::dump_core`.)
