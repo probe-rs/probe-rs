@@ -2182,8 +2182,10 @@ mod test {
         )
         .unwrap();
 
-        // If there is no rule defined for the frame pointer,
-        // we assume that it is the same as the canonical frame address.
-        assert_eq!(value, Some(RegisterValue::U32(0x200)));
+        // R7/FP is callee-saved and has `UnwindRule::Preserve`, so when DWARF has
+        // no rule for it the caller's value is the callee value (0x100) carried
+        // forward, NOT the canonical frame address. Overwriting it with the CFA
+        // would corrupt the frame pointer when unwinding handlers that don't save R7.
+        assert_eq!(value, Some(RegisterValue::U32(0x100)));
     }
 }
