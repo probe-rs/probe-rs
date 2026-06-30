@@ -522,43 +522,80 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
         _debug_info: &DebugInfo,
     ) -> Result<Option<ExceptionInfo>, DebugError> {
         let stack_frame_return_address: u32 = get_stack_frame_return_address(stackframe_registers)?;
-        if ExcReturn(stack_frame_return_address).is_exception_flag() == 0xFF {
-            // This is an exception frame.
-
-            let raw_exception = self.raw_exception(stackframe_registers)?;
-            let description = self.exception_description(raw_exception, memory_interface)?;
-            let registers = self.calling_frame_registers(
-                memory_interface,
-                stackframe_registers,
-                raw_exception,
-            )?;
-
-            let exception_frame_pc =
-                registers.get_register_value_by_role(&RegisterRole::ProgramCounter)?;
-
-            let handler_frame = StackFrame {
-                id: get_object_reference(),
-                function_name: description.clone(),
-                source_location: None,
-                registers,
-                pc: RegisterValue::U32(exception_frame_pc as u32),
-                frame_base: None,
-                is_inlined: false,
-                local_variables: None,
-                canonical_frame_address: None,
-            };
-
-            // TODO update SP as in v6m+v7m?
-
-            Ok(Some(ExceptionInfo {
-                raw_exception,
-                description,
-                handler_frame,
-            }))
-        } else {
+        let exc_return = ExcReturn(stack_frame_return_address);
+        if exc_return.is_exception_flag() != 0xFF {
             // This is a normal function return.
-            Ok(None)
+            return Ok(None);
         }
+
+        // This is an exception frame.
+        let raw_exception = self.raw_exception(stackframe_registers)?;
+        let description = self.exception_description(raw_exception, memory_interface)?;
+        let mut registers =
+            self.calling_frame_registers(memory_interface, stackframe_registers, raw_exception)?;
+
+        let exception_frame_pc =
+            registers.get_register_value_by_role(&RegisterRole::ProgramCounter)?;
+
+        // Advance the stack pointer past the exception frame, so the next unwind
+        // iteration sees the pre-exception SP. `calling_frame_registers` set the SP
+        // to the base (lowest address) of the exception frame, so we add the frame
+        // size on top of it.
+        //
+        // The exception frame layout from the base SP upward is (ARMv8-M ARM B3.19):
+        //   [additional state context: integrity sig + reserved + R4-R11 = 0x28]  (if DCRS=0)
+        //   [state context:            R0-R3, R12, LR, ReturnAddress, RETPSR = 0x20]  (always)
+        //   [FP caller context:        S0-S15, FPSCR, VPR = 0x48]  (if FType=0)
+        // plus 4 bytes of padding if the stack was realigned (RETPSR.SPREALIGN).
+        let additional_state_size = if exc_return.use_default_register_stacking() {
+            0
+        } else {
+            // DCRS=0: additional state context (integrity sig + reserved + R4-R11).
+            0x28
+        };
+        let state_context_size = 0x20;
+        let fp_context_size = if exc_return.use_standard_stackframe() {
+            0
+        } else {
+            // FType=0: extended frame with FP registers (S0-S15, FPSCR, VPR).
+            0x48
+        };
+
+        // RETPSR.SPREALIGN (bit 9): the stack was realigned to an 8-byte boundary
+        // on exception entry, adding 4 bytes of padding.
+        let stacked_xpsr =
+            registers.get_register_value_by_role(&RegisterRole::ProcessorStatus)? as u32;
+        let alignment_padding = if Xpsr(stacked_xpsr).stack_was_realigned() {
+            4
+        } else {
+            0
+        };
+
+        let frame_size =
+            additional_state_size + state_context_size + fp_context_size + alignment_padding;
+
+        let sp = registers.get_register_mut_by_role(&RegisterRole::StackPointer)?;
+        if let Some(sp_value) = sp.value.as_mut() {
+            sp_value.increment_address(frame_size)?;
+        }
+
+        let handler_frame = StackFrame {
+            id: get_object_reference(),
+            function_name: description.clone(),
+            source_location: None,
+            registers,
+            pc: RegisterValue::U32(exception_frame_pc as u32),
+            frame_base: None,
+            is_inlined: false,
+            local_variables: None,
+            canonical_frame_address: None,
+        };
+
+        Ok(Some(ExceptionInfo {
+            raw_exception,
+            description,
+            handler_frame,
+        }))
     }
 }
 
