@@ -225,10 +225,10 @@ impl ProgrammingLanguage for Rust {
         debug_info: &super::DebugInfo,
     ) -> String {
         let parent = function_die.parent_offset();
-        if let Some(parent_offset) = parent
-            && let Ok(die) = function_die.unit_info.unit.entry(parent_offset)
+        if let Some((parent_unit, parent_offset)) = parent
+            && let Ok(die) = parent_unit.unit.entry(parent_offset)
             && is_datatype(&die)
-            && let Ok(Some(typename)) = function_die.unit_info.extract_type_name(debug_info, &die)
+            && let Ok(Some(typename)) = parent_unit.extract_type_name(debug_info, &die)
         {
             // TODO: apply better heuristics to clean up the final function name
             if let Some((_, type_generic)) = typename.split_once('<')

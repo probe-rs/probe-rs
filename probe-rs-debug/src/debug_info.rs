@@ -965,11 +965,29 @@ impl DebugInfo {
     where
         'unit_info: 'debug_info,
     {
+        self.resolve_die_reference_with_unit_info(attribute, die, unit_info)
+            .map(|(_, die)| die)
+    }
+
+    /// Look up the DIE reference for the given attribute, returning both the resolved DIE
+    /// and the compilation unit it belongs to.
+    ///
+    /// The resolved unit can differ from `unit_info` when the reference crosses a compilation
+    /// unit boundary (`DW_FORM_ref_addr`). Callers that subsequently follow *unit-relative*
+    /// references (e.g. `DW_AT_specification`) from the resolved DIE must use the returned unit,
+    /// not the unit the reference originated from.
+    pub(crate) fn resolve_die_reference_with_unit_info<'debug_info, 'unit_info>(
+        &'debug_info self,
+        attribute: gimli::DwAt,
+        die: &Die,
+        unit_info: &'unit_info UnitInfo,
+    ) -> Option<(&'debug_info UnitInfo, Die)>
+    where
+        'unit_info: 'debug_info,
+    {
         let attr = die.attr(attribute)?;
 
-        self.resolve_die_reference_with_unit(attr, unit_info)
-            .ok()
-            .map(|(_, die)| die)
+        self.resolve_die_reference_with_unit(attr, unit_info).ok()
     }
 
     /// The program binary's (and core's) endianness.
