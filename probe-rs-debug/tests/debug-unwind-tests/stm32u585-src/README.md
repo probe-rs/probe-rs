@@ -1,8 +1,9 @@
 # ARMv8-M (Cortex-M33) exception-unwind test firmware
 
-Source for the `stm32u585_nested_exceptions` and `stm32u585_hardfault_fp` test
-fixtures. These exercise stack unwinding *through* exception handlers on
-ARMv8-M, which has its own exception-frame layout and EXC_RETURN semantics.
+Source for the `stm32u585_nested_exceptions`, `stm32u585_hardfault_fp` and
+`stm32u585_exception_no_debuginfo` test fixtures. These exercise stack unwinding
+*through* exception handlers on ARMv8-M, which has its own exception-frame layout
+and EXC_RETURN semantics.
 
 The firmware is a minimal `no_std` crate that depends only on `cortex-m`,
 `cortex-m-rt` and `panic-halt` — **no HAL**. The unwind tests only need to run
@@ -21,12 +22,20 @@ checked-in ELFs small. It was flashed and run on an `iot-stm32u585ai` board.
   frame pointer R7 (callee-saved, not in the hardware exception frame) must be
   preserved across the exception boundary rather than overwritten with the CFA.
 
+- `exception_no_debuginfo.rs` — triggers SVCall into a **naked-assembly** handler
+  that spins (`main → nodbg_a → nodbg_b → SVCall → loop`). When unwinding hits a
+  frame with no DWARF unwind info, the unwinder must still recognise an exception
+  boundary (LR = EXC_RETURN) and continue into the interrupted code, rather than
+  computing a bogus PC from the EXC_RETURN value. To force the "no unwind info"
+  path deterministically, the checked-in `.elf` for this fixture has its
+  `.debug_frame` section stripped (see below).
+
 ## Reproducing the fixtures
 
 1. Build (the `.cargo/config.toml` here selects `thumbv8m.main-none-eabihf`):
 
    ```
-   cargo build --release --bin nested_exceptions --bin hardfault_fp
+   cargo build --release --bin nested_exceptions --bin hardfault_fp --bin exception_no_debuginfo
    ```
 
 2. Flash + run on hardware, let the firmware fault and spin in the (innermost)
@@ -39,6 +48,15 @@ checked-in ELFs small. It was flashed and run on an `iot-stm32u585ai` board.
    ```
 
    (`probe-rs debug` REPL `dump` command, or `CoreDump::dump_core`.)
+
+3. For `exception_no_debuginfo`, strip the DWARF call-frame info from the ELF so
+   the unwinder is forced down the "no unwind info" path for every frame (the
+   function-name info in `.debug_info` / `.debug_line` is kept):
+
+   ```
+   arm-none-eabi-objcopy --remove-section .debug_frame \
+       exception_no_debuginfo exception_no_debuginfo
+   ```
 
 The resulting `*.elf` and `*.coredump` are checked in next to this directory and
 referenced by the `full_unwind` tests in `probe-rs-debug/src/debug_info.rs`.
