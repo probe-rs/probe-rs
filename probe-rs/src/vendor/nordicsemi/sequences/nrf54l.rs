@@ -1,5 +1,8 @@
 //! Sequences for the nRF54L family of devices.
-use std::{sync::Arc, time::Instant};
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use crate::{
     architecture::arm::{
@@ -10,12 +13,24 @@ use crate::{
     session::MissingPermissions,
 };
 
-const RESET: u64 = 0;
+/// CTRL-AP register offsets.
+const RESET: u64 = 0x00;
 const ERASEALL: u64 = 0x04;
 const ERASEALLSTATUS: u64 = 0x08;
 
-/// The sequence handle for the nRF5340.
+/// `CTRLAP.RESET` register values.
+const RESET_NONE: u32 = 0; // NoReset
+const RESET_HARD: u32 = 2; // HardReset
+const RESET_PIN: u32 = 4; // PinReset
 
+/// `CTRLAP.ERASEALLSTATUS` register values.
+const ERASEALLSTATUS_READY_TO_RESET: u32 = 1;
+const ERASEALLSTATUS_BUSY: u32 = 2;
+
+/// How many times to retry the erase-all (each retry is preceded by a pin reset) before giving up.
+const MAX_ERASE_ALL_ATTEMPTS: usize = 3;
+
+/// The sequence handle for the nRF54L family.
 #[derive(Debug)]
 pub struct Nrf54L(());
 
@@ -50,46 +65,53 @@ impl ArmDebugSequence for Nrf54L {
 
         let ctrl_ap = FullyQualifiedApAddress::v1_with_dp(default_ap.dp(), 2);
 
-        interface.write_raw_ap_register(&ctrl_ap, ERASEALL, 1)?;
+        // Disable access port protection via a CTRL-AP ERASEALL, following the "Disabling
+        // APPROTECT" procedure from the nRF54L documentation.
+        for attempt in 1..=MAX_ERASE_ALL_ATTEMPTS {
+            // Start the erase.
+            interface.write_raw_ap_register(&ctrl_ap, ERASEALL, 1)?;
 
-        let start = Instant::now();
+            // Wait for ERASEALLSTATUS to change from Busy.
+            let start = Instant::now();
+            let erase_all_status = loop {
+                let erase_all_status = interface.read_raw_ap_register(&ctrl_ap, ERASEALLSTATUS)?;
 
-        let erase_all_status = loop {
-            let erase_all_status = interface.read_raw_ap_register(&ctrl_ap, ERASEALLSTATUS)?;
+                if erase_all_status != ERASEALLSTATUS_BUSY {
+                    break erase_all_status;
+                }
 
-            if erase_all_status != 2 {
-                break erase_all_status;
+                std::thread::sleep(Duration::from_millis(1));
+
+                if start.elapsed().as_secs() > 5 {
+                    return Err(ArmError::Timeout);
+                }
+            };
+
+            tracing::debug!("Erase all finished with status {erase_all_status}");
+
+            if erase_all_status == ERASEALLSTATUS_READY_TO_RESET {
+                // The erase succeeded. Apply it with a hard reset to complete unlocking.
+                interface.write_raw_ap_register(&ctrl_ap, RESET, RESET_HARD)?;
+                interface.write_raw_ap_register(&ctrl_ap, RESET, RESET_NONE)?;
+
+                return Ok(());
             }
 
-            std::thread::sleep(std::time::Duration::from_millis(1));
-
-            if start.elapsed().as_secs() > 5 {
-                return Err(ArmError::Timeout);
-            }
-        };
-
-        tracing::debug!("Erase all finished with status {erase_all_status}");
-
-        match erase_all_status {
-            // Ready to reset
-            1 => {
-                // Trigger soft reset
-                interface.write_raw_ap_register(&ctrl_ap, RESET, 2)?;
-
-                // Release reset
-                interface.write_raw_ap_register(&ctrl_ap, RESET, 0)?;
-            }
-            // Error
-            3 => {
-                return Err(ArmError::Other("Erase all failed".to_string()));
-            }
-            status => {
-                return Err(ArmError::Other(format!(
-                    "Erase all failed with unexpected status code {status}"
-                )));
-            }
+            // Any other status means the erase failed. The documented recovery is to do a pin
+            // reset and retry the whole procedure.
+            // NOTE: Nordic's "nRF54L Series Production Programming" docs say any *non-zero* status
+            // is an error and should be recovered by pin reset, but doesn't say what to do if status is zero.
+            // We treat zero as an error here.
+            tracing::warn!(
+                "Erase all failed with status {erase_all_status}, \
+                 doing a pin reset and retrying (attempt {attempt}/{MAX_ERASE_ALL_ATTEMPTS})"
+            );
+            interface.write_raw_ap_register(&ctrl_ap, RESET, RESET_PIN)?;
+            interface.write_raw_ap_register(&ctrl_ap, RESET, RESET_NONE)?;
         }
 
-        Ok(())
+        Err(ArmError::Other(
+            "Erase all failed: could not unlock the device".to_string(),
+        ))
     }
 }

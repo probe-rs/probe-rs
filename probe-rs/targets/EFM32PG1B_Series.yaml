@@ -1,3 +1,6 @@
+# This file has been changed compared to the version as generated from the cmsispack.
+# * changed flash algorithm page_size to 8K to speed up flashing.
+
 name: EFM32PG1B Series
 manufacturer:
   id: 0x21
@@ -296,7 +299,7 @@ flash_algorithms:
     address_range:
       start: 0x0
       end: 0x40000
-    page_size: 0x400
+    page_size: 0x2000 # Changed to 8K from 1K to speed up flashing (J-Link/SWD, ~120kB download+verify: 14.6s -> 9.5s, -35%)
     erased_byte_value: 0xff
     program_page_timeout: 260
     erase_sector_timeout: 200
