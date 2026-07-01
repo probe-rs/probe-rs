@@ -378,7 +378,8 @@ impl RawDapAccess for Glasgow {
             } else {
                 self.device.clear_reset()?;
             }
-            Ok(0)
+            // Signal that we cannot read the pin state.
+            Ok(0xFFFF_FFFF)
         }
     }
 
