@@ -417,7 +417,7 @@ expression: stack_frames
       value:
         U32: 0
   pc:
-    U64: 1266
+    U32: 1266
   frame_base: 536887040
   is_inlined: false
   local_variables:
@@ -1265,7 +1265,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U64: 1370
+    U32: 1370
   frame_base: 536887104
   is_inlined: false
   local_variables:

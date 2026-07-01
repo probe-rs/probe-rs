@@ -146,6 +146,17 @@ impl DebugRegisters {
             .unwrap_or(0)
     }
 
+    /// Wraps a program address in a [`RegisterValue`] of the target's address size, so that its
+    /// printed width is consistent across all stack frames. A plain `RegisterValue::from(u64)`
+    /// would always yield a `U64`, printing 16 hex digits on 32-bit targets.
+    pub fn address_to_register_value(&self, address: u64) -> RegisterValue {
+        match self.get_address_size_bytes() {
+            4 => RegisterValue::U32(address as u32),
+            8 => RegisterValue::U64(address),
+            _ => RegisterValue::from(address),
+        }
+    }
+
     /// Get the canonical frame address, as specified in the [DWARF](https://dwarfstd.org) specification, section 6.4.
     /// [DWARF](https://dwarfstd.org)
     ///

@@ -833,7 +833,7 @@ expression: stack_frames
       value:
         U32: 0
   pc:
-    U64: 134219912
+    U32: 134219912
   frame_base: 537657312
   is_inlined: false
   local_variables:
