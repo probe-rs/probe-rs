@@ -349,7 +349,7 @@ impl DebugInfo {
             function_name: fn_name,
             source_location: None,
             registers: unwind_registers.clone(),
-            pc: RegisterValue::from(address),
+            pc: unwind_registers.address_to_register_value(address),
             frame_base: None,
             is_inlined: false,
             local_variables: None,
@@ -429,8 +429,9 @@ impl DebugInfo {
                 continue;
             }
 
-            // The first instruction of the inlined function is used as the call site
-            let inlined_call_site = RegisterValue::from(next_function_low_pc);
+            // The first instruction of the inlined function is used as the call site.
+            let inlined_call_site =
+                unwind_registers.address_to_register_value(next_function_low_pc);
 
             tracing::debug!(
                 "UNWIND: Callsite for inlined function {:?}",
@@ -494,11 +495,7 @@ impl DebugInfo {
             function_name,
             source_location: function_location,
             registers: unwind_registers.clone(),
-            pc: match unwind_registers.get_address_size_bytes() {
-                4 => RegisterValue::U32(address as u32),
-                8 => RegisterValue::U64(address),
-                _ => RegisterValue::from(address),
-            },
+            pc: unwind_registers.address_to_register_value(address),
             frame_base,
             is_inlined: last_function.is_inline(),
             local_variables,
