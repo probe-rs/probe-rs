@@ -19,6 +19,10 @@ pub enum FtdiError {
     #[error("Failed to get active configuration")]
     ActiveConfigurationError(#[source] ActiveConfigurationError),
 
+    /// The a pin identifier in the probe config could not be parsed
+    #[error("Invalid FTDI pin specified: '{0}'")]
+    InvalidPinSetting(String),
+
     #[error("{0}")]
     /// An unspecified error occurred.
     Other(String),
