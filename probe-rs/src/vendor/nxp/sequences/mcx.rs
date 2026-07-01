@@ -97,7 +97,7 @@ impl MCX {
     const VARIANT_A2: [&str; 6] = ["MCXA16", "MCXA17", "MCXA18", "MCXA25", "MCXA26", "MCXA27"];
     const VARIANT_A5: [&str; 6] = ["MCXA28", "MCXA45", "MCXA53", "MCXA55", "MCXA56", "MCXA57"];
     const VARIANT_N: [&str; 1] = ["MCXN"];
-    const VARIANT_N0: [&str; 1] = ["MCXN947"];
+    const VARIANT_N0: [&str; 2] = ["MCXN947", "MCXN526"];
 
     fn is_variant<'a, V>(&self, v: V) -> bool
     where
