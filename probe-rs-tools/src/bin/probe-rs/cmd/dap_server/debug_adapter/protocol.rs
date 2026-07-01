@@ -262,9 +262,42 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
     fn send_data(&mut self, item: Frame<Message>) -> Result<(), std::io::Error> {
         let mut buf = BytesMut::with_capacity(4096);
         self.codec.encode(item, &mut buf)?;
-        self.output.write_all(&buf)?;
-        self.output.flush()?;
-        Ok(())
+
+        // The DAP socket is set non-blocking so `receive_data` can poll without
+        // blocking. That also makes writes non-blocking: a burst of events (e.g.
+        // flashing progress) can fill the kernel send buffer and make a write
+        // return `WouldBlock`. That is NOT a fatal error — it just means "retry
+        // once the client drains". The previous bare `write_all` treated it as
+        // fatal, which intermittently killed the session (e.g. the `initialized`
+        // event failing right after the flash progress flood). Retry instead.
+        let mut written = 0;
+        while written < buf.len() {
+            match self.output.write(&buf[written..]) {
+                Ok(0) => {
+                    return Err(std::io::Error::new(
+                        ErrorKind::WriteZero,
+                        "failed to write frame to DAP socket",
+                    ));
+                }
+                Ok(n) => written += n,
+                Err(e) if e.kind() == ErrorKind::WouldBlock => {
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                }
+                Err(e) if e.kind() == ErrorKind::Interrupted => {}
+                Err(e) => return Err(e),
+            }
+        }
+
+        loop {
+            match self.output.flush() {
+                Ok(()) => return Ok(()),
+                Err(e) if e.kind() == ErrorKind::WouldBlock => {
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                }
+                Err(e) if e.kind() == ErrorKind::Interrupted => {}
+                Err(e) => return Err(e),
+            }
+        }
     }
 
     /// Receive data from `self.input`. Data has to be in the format specified by the Debug Adapter Protocol (DAP).
@@ -519,5 +552,190 @@ mod test {
         let result = adapter.show_message(MessageSeverity::Error, "probe-rs-test");
 
         assert!(!result);
+    }
+
+    /// A `Write` whose every `write`/`flush` call is driven by a programmed
+    /// script, so we can deterministically reproduce the non-blocking-socket
+    /// conditions (`WouldBlock`, `Interrupted`, partial writes, zero writes)
+    /// that the retry loop in `send_data` is meant to survive — no real socket
+    /// or real timing required.
+    #[derive(Clone)]
+    enum WriteStep {
+        /// Return `WouldBlock` without consuming any bytes.
+        Block,
+        /// Return `Interrupted` without consuming any bytes.
+        Interrupt,
+        /// Return `Ok(0)` without consuming any bytes (a stuck writer).
+        Zero,
+        /// Accept up to `n` bytes of the current slice into the sink.
+        Bytes(usize),
+        /// Return a non-retryable error.
+        Hard,
+    }
+
+    enum FlushStep {
+        Block,
+        Interrupt,
+        Hard,
+    }
+
+    struct ScriptedWriter {
+        writes: std::collections::VecDeque<WriteStep>,
+        flushes: std::collections::VecDeque<FlushStep>,
+        /// Everything the writer actually accepted, in order.
+        sink: Vec<u8>,
+    }
+
+    impl ScriptedWriter {
+        fn new(writes: Vec<WriteStep>, flushes: Vec<FlushStep>) -> Self {
+            Self {
+                writes: writes.into(),
+                flushes: flushes.into(),
+                sink: Vec::new(),
+            }
+        }
+    }
+
+    impl Write for ScriptedWriter {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            // Once the script is exhausted, drain whatever remains so the retry
+            // loop can make progress and terminate.
+            match self.writes.pop_front() {
+                Some(WriteStep::Block) => Err(io::Error::new(ErrorKind::WouldBlock, "would block")),
+                Some(WriteStep::Interrupt) => {
+                    Err(io::Error::new(ErrorKind::Interrupted, "interrupted"))
+                }
+                Some(WriteStep::Zero) => Ok(0),
+                Some(WriteStep::Hard) => Err(io::Error::other("hard write error")),
+                Some(WriteStep::Bytes(n)) => {
+                    let n = n.min(buf.len());
+                    self.sink.extend_from_slice(&buf[..n]);
+                    Ok(n)
+                }
+                None => {
+                    self.sink.extend_from_slice(buf);
+                    Ok(buf.len())
+                }
+            }
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            match self.flushes.pop_front() {
+                Some(FlushStep::Block) => Err(io::Error::new(ErrorKind::WouldBlock, "would block")),
+                Some(FlushStep::Interrupt) => {
+                    Err(io::Error::new(ErrorKind::Interrupted, "interrupted"))
+                }
+                Some(FlushStep::Hard) => Err(io::Error::other("hard flush error")),
+                None => Ok(()),
+            }
+        }
+    }
+
+    /// Reference encoding of an event: what a plain, always-succeeding writer
+    /// receives. Used to prove the retry loop delivers the exact same bytes.
+    fn reference_event_bytes() -> Vec<u8> {
+        let mut output = Vec::new();
+        let mut adapter = DapAdapter::new(io::empty(), &mut output);
+        adapter.send_event("probe-rs-test", Some(())).unwrap();
+        output
+    }
+
+    /// A non-blocking write that returns `WouldBlock` a few times before
+    /// succeeding must NOT kill the session. The pre-fix `write_all` propagated
+    /// the first `WouldBlock` as a fatal error.
+    #[test]
+    fn write_retries_on_would_block() {
+        let writer = ScriptedWriter::new(
+            vec![WriteStep::Block, WriteStep::Block, WriteStep::Block],
+            vec![],
+        );
+        let mut adapter = DapAdapter::new(io::empty(), writer);
+
+        // WouldBlock during write must be retried, not treated as fatal.
+        adapter.send_event("probe-rs-test", Some(())).unwrap();
+
+        // The whole frame must arrive intact — retrying must not drop or
+        // duplicate any bytes.
+        assert_eq!(adapter.output.sink, reference_event_bytes());
+    }
+
+    /// The same condition during `flush` must also be retried, not treated as
+    /// fatal.
+    #[test]
+    fn flush_retries_on_would_block() {
+        let writer = ScriptedWriter::new(vec![], vec![FlushStep::Block, FlushStep::Block]);
+        let mut adapter = DapAdapter::new(io::empty(), writer);
+
+        // WouldBlock during flush must be retried, not treated as fatal.
+        adapter.send_event("probe-rs-test", Some(())).unwrap();
+
+        assert_eq!(adapter.output.sink, reference_event_bytes());
+    }
+
+    /// A non-blocking socket may accept only part of the buffer per call. The
+    /// loop must accumulate `written` and deliver the complete frame in order.
+    #[test]
+    fn partial_writes_accumulate() {
+        let writer = ScriptedWriter::new(
+            vec![
+                WriteStep::Bytes(3),
+                WriteStep::Block,
+                WriteStep::Bytes(7),
+                WriteStep::Interrupt,
+                WriteStep::Bytes(1),
+            ],
+            vec![],
+        );
+        let mut adapter = DapAdapter::new(io::empty(), writer);
+
+        adapter.send_event("probe-rs-test", Some(())).unwrap();
+
+        assert_eq!(adapter.output.sink, reference_event_bytes());
+    }
+
+    /// `Interrupted` is retryable (the pre-fix `write_all` already handled this
+    /// for writes; we pin it so it can't regress).
+    #[test]
+    fn interrupted_is_retried() {
+        let writer = ScriptedWriter::new(vec![WriteStep::Interrupt], vec![FlushStep::Interrupt]);
+        let mut adapter = DapAdapter::new(io::empty(), writer);
+
+        adapter.send_event("probe-rs-test", Some(())).unwrap();
+
+        assert_eq!(adapter.output.sink, reference_event_bytes());
+    }
+
+    /// A writer stuck at `Ok(0)` must fail with `WriteZero` rather than spin
+    /// forever — the only guard that bounds the otherwise-unbounded retry loop.
+    #[test]
+    fn write_zero_is_fatal() {
+        let writer = ScriptedWriter::new(vec![WriteStep::Zero], vec![]);
+        let mut adapter = DapAdapter::new(io::empty(), writer);
+
+        let result = adapter.send_event("probe-rs-test", Some(()));
+
+        assert!(
+            result.is_err(),
+            "Ok(0) must be reported, not retried forever"
+        );
+    }
+
+    /// Non-retryable write errors must still propagate (we must not have turned
+    /// every error into an infinite retry).
+    #[test]
+    fn hard_write_error_propagates() {
+        let writer = ScriptedWriter::new(vec![WriteStep::Hard], vec![]);
+        let mut adapter = DapAdapter::new(io::empty(), writer);
+
+        assert!(adapter.send_event("probe-rs-test", Some(())).is_err());
+    }
+
+    /// Non-retryable flush errors must still propagate.
+    #[test]
+    fn hard_flush_error_propagates() {
+        let writer = ScriptedWriter::new(vec![], vec![FlushStep::Hard]);
+        let mut adapter = DapAdapter::new(io::empty(), writer);
+
+        assert!(adapter.send_event("probe-rs-test", Some(())).is_err());
     }
 }
