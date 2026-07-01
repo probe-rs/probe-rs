@@ -93,6 +93,27 @@ impl FlashData {
         }
     }
 
+    /// Returns the number of bytes that will be transferred during programming.
+    ///
+    /// For RAM-based data this delegates to the encoder so compression (e.g. `Miniz`)
+    /// is accounted for.  For raw host-side data (`Raw` variant with `Raw` encoding)
+    /// this sums the page sizes directly, which is both correct and avoids constructing
+    /// a redundant encoder.
+    pub fn program_size_estimate(&mut self, encoding: TransferEncoding, ignore_fills: bool) -> u64 {
+        self.encoder(encoding, ignore_fills).program_size()
+    }
+
+    /// Returns the fill size for progress bar setup.
+    ///
+    /// For data that has not yet been encoded (`Raw`) the fills are reported from
+    /// the layout.  This is used by the RAM-based flasher to set up the Fill
+    /// progress bar.  Host-side callers pass `TransferEncoding::Raw` / `false`
+    /// and obtain the same layout-based value; the host-side flasher then ignores
+    /// it (fill operations are implicit in page programming, not separate steps).
+    pub fn fill_size(&self) -> u64 {
+        self.layout().fills().iter().map(|f| f.size()).sum::<u64>()
+    }
+
     /// Returns the encoded data.
     pub fn encoder(&mut self, encoding: TransferEncoding, ignore_fills: bool) -> &FlashEncoder {
         if let FlashData::Loaded {
