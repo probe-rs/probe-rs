@@ -1,0 +1,1 @@
+Fix cortex-m stepping once before resume without checking if halted on a breakpoint.

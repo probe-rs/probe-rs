@@ -172,6 +172,17 @@ impl CortexMState {
         self.pending_step = false;
     }
 
+    pub(crate) fn halted_on_breakpoint(&self) -> bool {
+        matches!(
+            self.current_state,
+            CoreStatus::Halted(HaltReason::Breakpoint(_))
+        )
+    }
+
+    pub(crate) fn clear_semihosting_command(&mut self) {
+        self.semihosting_command = None;
+    }
+
     /// Apply step context to a halt reason read from DFSR.
     pub(crate) fn resolve_halt_reason(&mut self, reason: HaltReason) -> HaltReason {
         if !self.pending_step {
