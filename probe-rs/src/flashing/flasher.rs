@@ -172,6 +172,12 @@ impl Flasher {
         })
     }
 
+    /// Builder method to enable RTT.
+    pub fn with_rtt(mut self) -> Self {
+        self.read_rtt_output(true);
+        self
+    }
+
     fn ensure_loaded(&mut self, session: &mut Session) -> Result<(), FlashError> {
         if !self.loaded {
             self.load(session)?;
