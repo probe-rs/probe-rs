@@ -169,6 +169,8 @@ pub enum WireProtocol {
     Jtag,
     /// SWD
     Swd,
+    /// UPDI
+    Updi,
 }
 
 impl From<WireProtocol> for probe_rs::probe::WireProtocol {
@@ -176,6 +178,7 @@ impl From<WireProtocol> for probe_rs::probe::WireProtocol {
         match protocol {
             WireProtocol::Jtag => probe_rs::probe::WireProtocol::Jtag,
             WireProtocol::Swd => probe_rs::probe::WireProtocol::Swd,
+            WireProtocol::Updi => probe_rs::probe::WireProtocol::Updi,
         }
     }
 }
@@ -185,6 +188,7 @@ impl From<probe_rs::probe::WireProtocol> for WireProtocol {
         match protocol {
             probe_rs::probe::WireProtocol::Jtag => WireProtocol::Jtag,
             probe_rs::probe::WireProtocol::Swd => WireProtocol::Swd,
+            probe_rs::probe::WireProtocol::Updi => WireProtocol::Updi,
         }
     }
 }
