@@ -2,6 +2,7 @@
 
 mod dwt;
 mod itm;
+mod pmu;
 mod scs;
 mod swo;
 mod tmc;
@@ -20,6 +21,7 @@ use crate::{
 
 pub use self::itm::Itm;
 pub use dwt::Dwt;
+pub use pmu::{PerformanceMonitoringUnit, PmuEvent, PmuSnapshot};
 pub use scs::Scs;
 pub use swo::Swo;
 pub use tmc::TraceMemoryController;
@@ -383,4 +385,32 @@ pub fn disable_swv(core: &mut Core) -> Result<(), Error> {
     demcr.set_dwtena(false);
     core.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
     Ok(())
+}
+
+/// Configure the PMU to count the given events and enable it.
+///
+/// Call this while the core is halted.  After returning, resume the core and
+/// let it run.  Later, halt the core again and call [`snapshot_pmu`] to read
+/// the accumulated counts.
+pub(crate) fn configure_pmu(
+    interface: &mut dyn ArmDebugInterface,
+    components: &[CoresightComponent],
+    events: &[PmuEvent],
+) -> Result<(), ArmError> {
+    let mut pmu =
+        PerformanceMonitoringUnit::new(interface, find_component(components, PeripheralType::Pmu)?);
+    pmu.configure(events)
+}
+
+/// Read a snapshot of PMU counter values.
+///
+/// Call this while the core is halted (typically after `configure_pmu` + run).
+pub(crate) fn snapshot_pmu(
+    interface: &mut dyn ArmDebugInterface,
+    components: &[CoresightComponent],
+    events: &[PmuEvent],
+) -> Result<PmuSnapshot, ArmError> {
+    let mut pmu =
+        PerformanceMonitoringUnit::new(interface, find_component(components, PeripheralType::Pmu)?);
+    pmu.read_results(events)
 }
