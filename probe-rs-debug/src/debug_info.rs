@@ -1974,6 +1974,10 @@ mod test {
     #[test_case("nRF52833_xxAA_hardfault_from_usagefault"; "hardfault_from_usagefault Armv7-m using nRF52833_xxAA")]
     #[test_case("nRF52833_xxAA_hardfault_from_busfault"; "hardfault_from_busfault Armv7-m using nRF52833_xxAA")]
     #[test_case("nRF52833_xxAA_hardfault_in_systick"; "hardfault_in_systick Armv7-m using nRF52833_xxAA")]
+    #[test_case("stm32u585_nested_exceptions"; "nested exceptions Armv8-m using STM32U585")]
+    #[test_case("stm32u585_hardfault_fp"; "hardfault frame pointer Armv8-m using STM32U585")]
+    #[test_case("stm32u585_exception_no_debuginfo"; "exception handler without unwind info Armv8-m using STM32U585")]
+    #[test_case("stm32u585_psp_exception"; "exception through a PSP->MSP transition Armv8-m using STM32U585")]
     #[test_case("atsamd51p19a"; "Armv7-em from C source code")]
     #[test_case("esp32c3_full_unwind"; "full_unwind RISC-V32E using esp32c3")]
     #[test_case("esp32s3_esp_hal_panic"; "Xtensa unwinding on an esp32s3 in a panic handler")]
@@ -2180,8 +2184,10 @@ mod test {
         )
         .unwrap();
 
-        // If there is no rule defined for the frame pointer,
-        // we assume that it is the same as the canonical frame address.
-        assert_eq!(value, Some(RegisterValue::U32(0x200)));
+        // R7/FP is callee-saved and has `UnwindRule::Preserve`, so when DWARF has
+        // no rule for it the caller's value is the callee value (0x100) carried
+        // forward, NOT the canonical frame address. Overwriting it with the CFA
+        // would corrupt the frame pointer when unwinding handlers that don't save R7.
+        assert_eq!(value, Some(RegisterValue::U32(0x100)));
     }
 }
