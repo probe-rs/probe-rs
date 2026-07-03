@@ -339,10 +339,10 @@ pub(crate) fn auto_determine_target(
 
     type DetectFn = fn(&Registry, Probe) -> Result<(Probe, Option<Target>), Error>;
     const ARCHITECTURES: &[DetectFn] = &[
+        try_detect_from_probe_wrapper,
         try_detect_arm_chip,
         try_detect_riscv_chip_wrapper,
         try_detect_xtensa_chip_wrapper,
-        try_detect_from_probe_wrapper,
     ];
 
     for architecture in ARCHITECTURES {

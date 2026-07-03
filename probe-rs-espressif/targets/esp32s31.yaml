@@ -1,0 +1,108 @@
+name: esp32s31
+manufacturer:
+  id: 0x12
+  cc: 0xc
+chip_detection:
+- !Espressif
+  idcode: 0x20c25
+  variants:
+    0x0: esp32s31
+variants:
+- name: esp32s31
+  cores:
+  - name: cpu0
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      jtag_tap: 1
+  - name: cpu1
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 1
+      jtag_tap: 1
+  memory_map:
+  - !Nvm
+    name: 256 MB Max addressable Flash
+    range:
+      start: 0x0
+      end: 0x10000000
+    cores:
+    - cpu0
+    - cpu1
+    access:
+      execute: false
+      boot: true
+  - !Nvm
+    name: External flash (IROM, Read Only)
+    range:
+      start: 0x40000000
+      end: 0x50000000
+    cores:
+    - cpu0
+    - cpu1
+    is_alias: true
+  - !Ram
+    name: LP SRAM
+    range:
+      start: 0x2e000000
+      end: 0x2e008000
+    cores:
+    - cpu0
+    - cpu1
+  - !Ram
+    name: Internal HP DRAM
+    range:
+      start: 0x2f000000
+      end: 0x2f080000
+    cores:
+    - cpu0
+    - cpu1
+  - !Generic
+    name: HP ROM
+    range:
+      start: 0x2f800000
+      end: 0x2f850000
+    cores:
+    - cpu0
+    - cpu1
+  flash_algorithms:
+  - esp32s31-flashloader
+  jtag:
+    scan_chain:
+    - name: lpcpu
+      ir_len: 5
+    - name: hpcpu
+      ir_len: 5
+  default_binary_format: idf
+flash_algorithms:
+- name: esp32s31-flashloader
+  description: A flash loader for the esp32s31.
+  default: true
+  instructions: FwMAAGcAgwA3BQYvCEG3BcGquRVjFrUAFwOAAGcAAxITBXDBgoAXAwAAZwCDALcFBi+MQTcGwao5FmOXxQBBgRcDgABnAMMREwVwwYKAQREGxgLEKACTBfAJlwCAAOeA4BGqhQFFie0DRaEAhUUTBlX/EzYGATOVpQCzBcBAbY0XAwAAZwDjOkERBsaXAAAA54AgAQFFFwMAAGcAgzlBEQbGAUWBRZcAgADngCAVNwUGL7e1Bi99VrcGwaojIgUAI6oFriOsxa4jrgWuI6AFsLkWFMEBRRcDAABnAIM1FwMAAGcAgwAuh7cFBi+MQbcGwaq5FmOY1QCTdTYAmcUTBTDBgoATBXDBgoC3BgAvk4ZGK7KFOoYXAwAAZwDDGxcDAABnAIMAroa3BQYvjEE3B8GqORdjmOUAk3U2AJnFEwUwwYKAEwVwwYKAsoU2hhcDAABnACMtFwMAAGcAgwBBEQbGNwYGLxRCtwXBqhOH5f5jl+YCqoUBRYlGIyAGAGOS1QIFRSrEA0WBAAWJGckoAJVFlwCAAOeAYP511RmgEwVwwRcDAABnAMMoFwMAAGcAgwBBEQbGIsQmwi6EtwUGL4xBtwbBqrkWY5nVAKqEE3U2ABnFEwUwwSWgEwVwwQ2gtwYAL5OGJiEmhbKFIoaXAAAA54BADjM1oAB9FWGNJpWyQCJEkkRBAYKALXEUAiOuFgCAzsTKI6gmASOmNgGyia6EKokBRRMGBfAByhMGFQCjBaEQqoUyhf23owWxAGOLCQQTBQAQToRj5KkAEwQAEJMFsQBKhSKGlwAAAOeAgByqhX1VY8kFArOFhACziYlAEwaxAKKGmcoDxwQAg0cGAIUEBQb9FuMI9/4xoCKZroTjmQn6AUUMAoOgxQGATcRJA6kFAYOpxQAVYYKADcJBEQbGlwCAAOeA4OqTBQWAk4UFhn2FbY0XAwAAZwCDFgFFgoA5cQbeItwm2krYTtZS1FbSWtBezmLMZso2ia6KN7sGL4Mli69jhKUEkUVjdbYAEwVAwQmig8UKAIPGGgADxyoAg8c6AJEKcRaiBtWNtwYGL+IHQgddj9mNIyyrriMuC64jILuwI6IGACMqC64DJQuwEc2yjGNjpgCqjLMFlUEjILuwhURjZ6YAhUkpoBMFUMFVoI1JIWw3NQYvNwoGL5MLRa8RCmOEDAhjUpAIZsYDJUuvMwWsQCrIAydLr16XcAAcCFKF1oXehk6IlwCAAOeAwNWyRWP1vACTBGDBIaiqhEJFAyZLr7OMvECumjKVIyqrrpnEAyVLryFm4xXF+hmgAyZLrwMli6+DJcuvIyoLri6VM4TFAN6FApkjLouu41MF+BMFBYATBQWGKaAThQSD/YRljfJQYlTSVEJZslkiWpJaAlvyS2JM0kwhYYKACcYXA4AAZwAj1AFFgoCyQEEBgoA=
+  load_address: 0x2f000008
+  data_load_address: 0x2f070000
+  pc_init: 0x88
+  pc_uninit: 0x156
+  pc_program_page: 0xde
+  pc_erase_sector: 0x26
+  pc_erase_all: 0x0
+  pc_verify: 0x1aa
+  pc_read: 0x11e
+  data_section_offset: 0x434
+  vendor_functions:
+    FlashSize: 0x4e
+  transfer_encoding: miniz
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x10000000
+    page_size: 0x4000
+    erased_byte_value: 0xff
+    program_page_timeout: 2000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x10000
+      address: 0x0
+  cores:
+  - cpu0
+  - cpu1

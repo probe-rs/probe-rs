@@ -1,6 +1,6 @@
 //! Espressif device support for probe-rs
 
-use probe_rs::plugin;
+use probe_rs::{plugin, probe::JtagAccess};
 
 use probe_rs_target::{
     Chip, ChipFamily,
@@ -14,11 +14,13 @@ use probe_rs::{
         xtensa::communication_interface::XtensaCommunicationInterface,
     },
     config::{DebugSequence, Registry},
+    probe::Probe,
     vendor::Vendor,
 };
 use sequences::{
     esp32::ESP32, esp32c2::ESP32C2, esp32c3::ESP32C3, esp32c5::ESP32C5, esp32c6::ESP32C6,
     esp32c61::ESP32C61, esp32h2::ESP32H2, esp32p4::ESP32P4, esp32s2::ESP32S2, esp32s3::ESP32S3,
+    esp32s31::ESP32S31,
 };
 
 use crate::{espusbjtag::EspUsbJtagFactory, image_format::IdfLoaderFactory};
@@ -63,11 +65,13 @@ fn get_target_by_magic(info: &EspressifDetection, read_magic: u32) -> Option<Str
     None
 }
 
+/// Identify using an established debug connection.
 fn try_detect_espressif_chip(
     registry: &Registry,
     mut read_magic: impl FnMut(u64) -> Option<u32>,
     idcode: u32,
 ) -> Option<String> {
+    tracing::debug!("Identifying chip via magic value");
     for family in registry.families() {
         for info in family
             .chip_detection
@@ -77,18 +81,13 @@ fn try_detect_espressif_chip(
             if info.idcode != idcode {
                 continue;
             }
-            if let Some(target) = get_target_by_magic(info, 0) {
-                // C5/P4 workaround - CPU is on TAP 1. We can infer this from the family,
-                // but we can't use it in the detection process.
+
+            let Some(read_magic) = read_magic(MAGIC_VALUE_ADDRESS) else {
+                continue;
+            };
+            tracing::debug!("Read magic value: {read_magic:#010x}");
+            if let Some(target) = get_target_by_magic(info, read_magic) {
                 return Some(target);
-            } else {
-                let Some(read_magic) = read_magic(MAGIC_VALUE_ADDRESS) else {
-                    continue;
-                };
-                tracing::debug!("Read magic value: {read_magic:#010x}");
-                if let Some(target) = get_target_by_magic(info, read_magic) {
-                    return Some(target);
-                }
             }
         }
     }
@@ -120,6 +119,8 @@ impl Vendor for Espressif {
             DebugSequence::Riscv(ESP32H2::create())
         } else if chip.name.eq_ignore_ascii_case("esp32p4") {
             DebugSequence::Riscv(ESP32P4::create())
+        } else if chip.name.eq_ignore_ascii_case("esp32s31") {
+            DebugSequence::Riscv(ESP32S31::create())
         } else if chip.name.starts_with("esp32") {
             DebugSequence::Xtensa(ESP32::create())
         } else {
@@ -127,6 +128,25 @@ impl Vendor for Espressif {
         };
 
         Some(sequence)
+    }
+
+    fn try_detect_chip_from_probe(
+        &self,
+        registry: &Registry,
+        probe: &mut Probe,
+    ) -> Result<Option<String>, Error> {
+        // Identify from JTAG IDCODE only. This works for RISC-V chips,
+        // where we set a magic value of 0.
+        if let Some(jtag) = probe.try_as_jtag_probe() {
+            let r = identify_by_idcode(registry, jtag);
+
+            // Ensure TAP 0 is selected before returning.
+            jtag.select_target(0)?;
+
+            r
+        } else {
+            Ok(None)
+        }
     }
 
     fn try_detect_riscv_chip(
@@ -158,6 +178,40 @@ impl Vendor for Espressif {
             idcode,
         ))
     }
+}
+
+fn identify_by_idcode(
+    registry: &Registry,
+    jtag: &mut dyn JtagAccess,
+) -> Result<Option<String>, Error> {
+    tracing::debug!("Identifying chip via JTAG IDCODE");
+    use bitvec::field::BitField;
+    for tap in 0..jtag.scan_chain()?.len() {
+        jtag.select_target(tap)?;
+
+        let Ok(idcode) = jtag.read_register(1, 32) else {
+            return Ok(None);
+        };
+
+        let idcode = idcode.load_le::<u32>();
+        tracing::debug!("JTAG IDCODE: 0x{:08x}", idcode);
+
+        for family in registry.families() {
+            for info in family
+                .chip_detection
+                .iter()
+                .filter_map(ChipDetectionMethod::as_espressif)
+            {
+                if info.idcode == idcode
+                    && let Some(target) = get_target_by_magic(info, 0)
+                {
+                    return Ok(Some(target));
+                }
+            }
+        }
+    }
+
+    Ok(None)
 }
 
 #[cfg(test)]
