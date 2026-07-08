@@ -31,9 +31,7 @@ serde = { version = "1", features = ["derive"] }
 thiserror = { workspace = true }
 tracing = "0.1"
 typed-path = "0.12"
-# Temporary: latest release of espflash lacks full C61 support — use a needed rev until merged
-espflash = { git = "https://github.com/esp-rs/espflash", rev = "b985936", default-features = false }
-# espflash = { version = "4", default-features = false }
+espflash = { version = "4.4", default-features = false }
 
 itertools = "0.15"
 
