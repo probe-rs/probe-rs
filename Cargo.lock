@@ -1302,9 +1302,9 @@ dependencies = [
 
 [[package]]
 name = "espflash"
-version = "4.4.0"
+version = "4.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6d6712ab7c4bd91d8ff9e09bcb1356e25bf19d191177eaac264db8632707236"
+checksum = "f5651fc2710ac2e1b1d0f26e19cb68899d05832bf82974acab04e37805499132"
 dependencies = [
  "base64",
  "bitflags 2.13.0",
@@ -1316,10 +1316,10 @@ dependencies = [
  "log",
  "md-5 0.11.0",
  "miette",
- "nix 0.30.1",
+ "nix 0.31.3",
  "object 0.39.1",
  "serde",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "strum 0.28.0",
  "thiserror 2.0.18",
 ]
@@ -2343,9 +2343,9 @@ checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
 name = "libc"
-version = "0.2.185"
+version = "0.2.186"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "52ff2c0fe9bc6cb6b14a0592c2ff4fa9ceb83eea9db979b0487cd054946a2b8f"
+checksum = "68ab91017fe16c622486840e4c83c9a37afeff978bd239b5293d61ece587de66"
 
 [[package]]
 name = "libm"
@@ -2668,6 +2668,18 @@ name = "nix"
 version = "0.30.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "74523f3a35e05aba87a1d978330aef40f67b0304ac79c1c00b294c9830543db6"
+dependencies = [
+ "bitflags 2.13.0",
+ "cfg-if",
+ "cfg_aliases",
+ "libc",
+]
+
+[[package]]
+name = "nix"
+version = "0.31.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cf20d2fde8ff38632c426f1165ed7436270b44f199fc55284c38276f9db47c3d"
 dependencies = [
  "bitflags 2.13.0",
  "cfg-if",
