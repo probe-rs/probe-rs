@@ -1,6 +1,9 @@
 //! Sequence for the ESP32C3.
 
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use crate::sequences::esp::EspBreakpointHandler;
 use probe_rs::{
@@ -114,11 +117,16 @@ impl RiscvDebugSequence for ESP32C3 {
         interface.write_word_32(0x6001_F068, 0)?;
 
         // Wait for the reset to take effect.
+        let start = Instant::now();
         loop {
             let dmstatus = interface.read_dm_register::<Dmstatus>()?;
             if dmstatus.allhavereset() && dmstatus.allhalted() {
                 break;
             }
+            if start.elapsed() > timeout {
+                return Err(Error::Timeout);
+            }
+            std::thread::sleep(Duration::from_millis(1));
         }
 
         // Clear allhavereset and anyhavereset
