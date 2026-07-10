@@ -876,24 +876,23 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         let result_status = Dmstatus(self.dtm.read_deferred_result(result_status_idx)?.into_u32());
 
-        if result_status.allhalted() {
-            self.state.is_halted = true;
-            // Cores have halted, we have nothing else to do but return.
-            return Ok(());
+        if !result_status.allhalted() {
+            // Not every core has halted in time. Let's do things slowly.
+
+            // set the halt request again
+            dmcontrol.set_haltreq(true);
+            self.write_dm_register(dmcontrol)?;
+
+            // Wait until halted state is active again.
+            self.wait_for_core_halted(timeout)?;
+
+            // clear the halt request
+            dmcontrol.set_haltreq(false);
+            self.write_dm_register(dmcontrol)?;
         }
 
-        // Not every core has halted in time. Let's do things slowly.
-
-        // set the halt request again
-        dmcontrol.set_haltreq(true);
-        self.write_dm_register(dmcontrol)?;
-
-        // Wait until halted state is active again.
-        self.wait_for_core_halted(timeout)?;
-
-        // clear the halt request
-        dmcontrol.set_haltreq(false);
-        self.write_dm_register(dmcontrol)?;
+        // Both paths above guarantee the core is halted here.
+        self.state.is_halted = true;
 
         if !self.state.sw_breakpoint_debug_enabled {
             self.debug_on_sw_breakpoint(true)?;
@@ -2121,6 +2120,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         match do_execute_abstract_command(self, Command(command)) {
             err @ Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::HaltResume)) => {
+                // Re-query the hardware; cached `is_halted` may be stale after
+                // a self-reboot (e.g. watchdog reset).
+                self.state.is_halted = false;
                 if !self.core_halted()? {
                     // This command requires the core to be halted.
                     // We can do that, so let's try again.
