@@ -97,18 +97,39 @@ fn print_registers(
     });
 
     let mut results = vec![];
+    let mut failures = vec![];
+    let mut any_matched = false;
     for reg in regs {
-        let reg_value: RegisterValue = target_core.core.read_core_reg(reg.id())?;
-        results.push((format!("{reg}:"), reg_value.to_string()));
+        any_matched = true;
+        match target_core.core.read_core_reg::<RegisterValue>(reg.id()) {
+            Ok(reg_value) => results.push((format!("{reg}:"), reg_value.to_string())),
+            Err(error) => failures.push((reg.to_string(), error)),
+        }
     }
 
-    if results.is_empty() {
+    if !any_matched {
         return Err(DebuggerError::UserMessage(format!(
             "No registers found matching {register_name:?}. See the `help` command for more information."
         )));
     }
 
-    Ok(EvalResponse::Message(reg_table(&results, 80)))
+    let mut response_message = String::new();
+
+    if !failures.is_empty() {
+        response_message.push_str("Failed to read the following registers:");
+        for (reg_name, error) in &failures {
+            #[expect(clippy::unwrap_used, reason = "Writing to a string is infallible")]
+            writeln!(&mut response_message, "{reg_name}: {error}").unwrap();
+        }
+    }
+    if !results.is_empty() {
+        if !response_message.is_empty() {
+            response_message.push('\n');
+        }
+        response_message.push_str(&reg_table(&results, 80));
+    }
+
+    Ok(EvalResponse::Message(response_message))
 }
 
 fn print_breakpoints(
