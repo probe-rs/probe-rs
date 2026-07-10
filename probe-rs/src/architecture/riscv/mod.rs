@@ -34,6 +34,9 @@ pub mod sequences;
 
 pub use dtm::jtag_dtm::JtagDtmBuilder;
 
+/// Time to wait for the core to re-halt after a single instruction step.
+const SINGLE_STEP_TIMEOUT: Duration = Duration::from_millis(100);
+
 // ── Trigger-type helpers (RV64 bit layout) ───────────────────────────────────
 
 /// Unpack a 64-bit `tdata1` register value into `(trigger_type, Mcontrol)`.
@@ -605,11 +608,18 @@ impl<X: XlenMode> CoreInterface for RiscvCore<'_, X> {
 
         // Now we can resume the core for the single step.
         self.resume_core()?;
-        self.wait_for_core_halted(Duration::from_millis(100))?;
+        let step_result = self.wait_for_core_halted(SINGLE_STEP_TIMEOUT);
 
-        let pc = self.read_core_reg(RegisterId(0x7b1))?;
+        // On timeout, force a halt so the restore below can run; otherwise
+        // `dcsr.step` stays set and hardware breakpoints stay disabled.
+        if step_result.is_err() {
+            tracing::warn!("Single step did not halt within {SINGLE_STEP_TIMEOUT:?}; forcing halt");
+            if let Err(e) = self.interface.halt(Duration::from_millis(100)) {
+                tracing::warn!("Could not force halt after failed single step: {:?}", e);
+            }
+        }
 
-        // clear step request
+        // Restore step configuration unconditionally, even after a failed step.
         let mut dcsr = Dcsr(self.interface.read_csr(0x7b0)? as u32);
         dcsr.set_step(false);
         //Re-enable interrupts for single step.
@@ -625,6 +635,10 @@ impl<X: XlenMode> CoreInterface for RiscvCore<'_, X> {
             // If we are halted on a hardware breakpoint.
             self.enable_breakpoints(true)?;
         }
+
+        step_result?;
+
+        let pc = self.read_core_reg(RegisterId(0x7b1))?;
 
         self.on_halted()?;
         self.state.pc_written = false;
