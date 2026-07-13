@@ -235,6 +235,14 @@ pub struct RiscvCoreAccessOptions {
     /// CoreSight/mem-AP to use as DTM. This is the method used for RP235x
     #[serde(default)]
     pub mem_ap: Option<ApAddress>,
+
+    /// Base address of the RISC-V Debug Module within the `mem_ap` address space.
+    ///
+    /// Only meaningful together with [`Self::mem_ap`]. Defaults to 0, i.e. the DM
+    /// sits at the base of the AP's address space (e.g. RP235x). Devices whose DM
+    /// is mapped at a fixed offset set this — e.g. HiSilicon WS63 (`0x8000_0000`).
+    #[serde(default)]
+    pub dm_base: u64,
 }
 
 /// The data required to access an Xtensa core
