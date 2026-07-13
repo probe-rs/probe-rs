@@ -1,11 +1,3 @@
-# HiSilicon WS63 (Hi3863) — RISC-V "riscv31" core (RV32IMFC_Zicsr + custom CSRs)
-# whose Debug Module is reached through an ARM CoreSight DAP (AHB-AP 0, DM base
-# 0x80000000), the same topology probe-rs uses for RP235x (mem-AP DTM).
-#
-# Scope: debug access through the mem-AP DTM. Attach, halt, and SRAM reads were
-# validated on WS63 silicon with a J-Link probe. The AP/DM mapping was
-# cross-checked against HiSpark Studio's patched OpenOCD configuration.
-# Flashing is intentionally added by a follow-up change.
 name: HiSilicon WS63
 variants:
 - name: WS63
@@ -14,29 +6,62 @@ variants:
     type: riscv
     core_access_options: !Riscv
       hart_id: 0
-      # RISC-V DM behind CoreSight AP 0 (OpenOCD -apsel 0), DM @ 0x80000000.
       mem_ap: !v1 0
-      dm_base: 0x80000000
+      dm_base: 2147483648
   memory_map:
-  - !Nvm                      # XIP SPI NOR flash (8 MB). No flash algo yet.
-    range:
-      start: 0x200000
-      end: 0xa00000
-    cores: [main]
-    access:
-      boot: true
-  - !Ram                      # L2 SRAM (576 K default)
-    range:
-      start: 0xa00000
-      end: 0xa90000
-    cores: [main]
-  - !Ram                      # ITCM
+  - !Ram
     range:
       start: 0x14c000
       end: 0x150000
-    cores: [main]
-  - !Ram                      # DTCM
+    cores:
+    - main
+  - !Ram
     range:
       start: 0x180000
       end: 0x184000
-    cores: [main]
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x200000
+      end: 0xa00000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Ram
+    range:
+      start: 0xa00000
+      end: 0xa90000
+    cores:
+    - main
+  flash_algorithms:
+  - ws63-sfc
+flash_algorithms:
+- name: ws63-sfc
+  description: ws63
+  default: true
+  instructions: ApCXBQAAg8W1QpnNtwUASDcG3f8qlkmCPUe3BuD/Y2fmABMGAAIpoAVFgoATBoANqpYZRQ1HI6SlMDFlI6DlMLcHY1cTBxU1E4VHAIOnBTCFi4HHfRd9+yWgI6TFMCOm1TAtRTFmI6ClMDcFY1cTBhY1EQWDpgUwhYqBxn0WffqCgBcDAABnAEMxAREGziLMJspKyE7GlwQAAJOEZDkDxRQAMoQJxZcAAADngAAZhUUTBvT/CUWjgLQAY2emAnUUY3qkDjcFAEiDKQUgAykFJYFFAUUFRiOAtACjgMQAI6I0ASOkJAF1qDcEAEg3BQGAgykEILcFgEATBgAFfRUz9akATY0DKQQlIyCkIA1FIyTEMLFlIyCkMDcFY1eThRU1EQUDJgQwBYoBxv0V/fmVqCMgBEAFRZMFMAgjJKQwMWUjILQwNwZjV5MFFTUTBUYAAyYEMAWKAcb9Ff35maCXAAAA54CAIxXtFUWTBTAYIySkMDFlIyC0MDcGY1eTBRU1EwVGAAMmBDAFigHG/RX9+QmoAyUEQBN1xQcZyTcFY1cNBfJAYkTSREJJskkFYYKAhUUFt5cAAADngKAmlwYAAIPGFiedyrXFNwfg/7cGAEiZRzMI5QANRSOk9jCxZyOgpjA3BWNXk4cXNREFA6cGMAWLEcf9F/37goAFRYKAI6QGJSOixiT9FR1FRUYjprYkt/X6AiOopiQ3BWNXI6DGJJOFFQgJBf0V4dkDpgYkBYp9+gFFgoBBEQbGIsQmwhcEAAATBOQeA0UUACXJA0UEAD3FAUW3BABIsWWThQU1A6YEMJN2FgCJxiqGBQXjabb+N/X6AhMFFQh9FQnFg6UEJIWJ/fkjoAQkCEQjqKQkSEAjoKQgEwVgBiOgBDAjpKQwDUUjoKQwMWUTBRU1g6UEMIWJjcF9FX35maAFRUmgMUWRRXMQNXwPADADc5AlfA8QAACdoBMFkAkjpKQwDUUjoKQwMWUTBRU1g6UEMIWJgcV9FX35KaCXAAAA54AACoFFMWUTBQU1A6YEMJN2FgCJxi6GhQXjaab+I6AEMJcAAADngKAHMUWRRXMQNXwPADADc5AlfA8QAAABRaMABACyQCJEkkRBAYKAlwYAAIPGVg6dygXOsUYRR3OQNnwPADADcxAnfA8QAAABR2OC5QKzB+YAswblAAPIBwCDxwYABQdjmQcB3beFRimgqoYZoLOGpQA2hYKABUa3BQBIMWWVQhMDMBgTCMAHkwfQBzcHY1eTDgU1kwMVNZMIFwATBUcAYxTWAXaOGaATDhYAI6RVMCOgZTAeh4OmBTCFioHGfRd9+x2og6YFQIWKhcpzJwCw8yYAsJmOnYJjatgADwAAAfMmALCZjp2C4+r2/mMF1gFyhuP3zvtGhYKAAUWCgEERBsYixAAIAAAAAAAAAAAAAAAAAAAAAAAA
+  pc_init: 0x8a
+  pc_uninit: 0x236
+  pc_program_page: 0x1bc
+  pc_erase_sector: 0x2
+  pc_verify: 0x348
+  data_section_offset: 0x438
+  flash_properties:
+    address_range:
+      start: 0x200000
+      end: 0xa00000
+    page_size: 0x10000
+    erased_byte_value: 0xff
+    program_page_timeout: 30000
+    erase_sector_timeout: 30000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+    - size: 0x10000
+      address: 0x30000
+    - size: 0x1000
+      address: 0x3f0000
+  cores:
+  - main
