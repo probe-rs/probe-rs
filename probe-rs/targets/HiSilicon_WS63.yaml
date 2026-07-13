@@ -2,12 +2,10 @@
 # whose Debug Module is reached through an ARM CoreSight DAP (AHB-AP 0, DM base
 # 0x80000000), the same topology probe-rs uses for RP235x (mem-AP DTM).
 #
-# Scope: DEBUG bring-up (attach / halt / run / memory / registers / breakpoints)
-# via the mem-AP DTM. Flashing is NOT yet supported — no flash algorithm is
-# defined for the WS63 SFC NOR controller (port from OpenOCD src/flash/nor/ws63.c).
-# Unvalidated on silicon; AP/DM values reverse-engineered from HiSpark Studio's
-# patched OpenOCD (tcl/target/vendorhm/WS63-*.cfg). See
-# doc/hisilicon-ws63-bs21/README.md.
+# Scope: debug access through the mem-AP DTM. Attach, halt, and SRAM reads were
+# validated on WS63 silicon with a J-Link probe. The AP/DM mapping was
+# cross-checked against HiSpark Studio's patched OpenOCD configuration.
+# Flashing is intentionally added by a follow-up change.
 name: HiSilicon WS63
 variants:
 - name: WS63
