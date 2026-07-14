@@ -1,0 +1,1 @@
+Added `wreg name value` REPL command to set the value of a core or peripheral register.
