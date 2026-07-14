@@ -185,6 +185,20 @@ impl ArmDebugSequence for MIMXRT10xx {
         tracing::debug!("Waiting for watchpoint to hit");
         self.wait_for_halt(interface, true)?;
 
+        // The boot ROM enables the MPU while it runs, and we catch it before
+        // it gets a chance to clean that up. The debug port is not subject to
+        // the MPU, so downloading code to FlexRAM works fine, but the core
+        // faults as soon as it touches memory the ROM's MPU setup does not
+        // allow (e.g. the flash algorithm pushing to its stack). Disable the
+        // MPU while the core is halted so downloaded code can run.
+        const MPU_CTRL: u64 = 0xE000_ED94;
+        let mpu_ctrl = interface.read_word_32(MPU_CTRL)?;
+        tracing::debug!("MPU_CTRL at boot ROM catch: {mpu_ctrl:#010x}");
+        if mpu_ctrl & 1 != 0 {
+            interface.write_word_32(MPU_CTRL, 0)?;
+            interface.flush()?;
+        }
+
         // Clean up after ourselves.
         tracing::debug!("Cleaning up watchpoints");
         interface.write_word_32(DWT_COMP0, 0)?;
