@@ -1070,8 +1070,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         let csrr_cmd = assembly::csrr(8, Self::DCSR_REGNO);
         self.schedule_setup_program_buffer(&[csrr_cmd])?;
 
-        let mut postexec_cmd = AccessRegisterCommand(0);
-        postexec_cmd.set_postexec(true);
+        let postexec_cmd = self.postexec_command();
 
         self.run_with_s0_saved(|core| {
             core.execute_abstract_command(postexec_cmd.0)?;
@@ -1093,8 +1092,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         let csrw_cmd = assembly::csrw(Self::DCSR_REGNO, 8);
         self.schedule_setup_program_buffer(&[csrw_cmd])?;
 
-        let mut postexec_cmd = AccessRegisterCommand(0);
-        postexec_cmd.set_postexec(true);
+        let postexec_cmd = self.postexec_command();
 
         self.run_with_s0_saved(|core| {
             core.restore_s0_xlen(value as u64)?;
@@ -2070,6 +2068,27 @@ impl<'state> RiscvCommunicationInterface<'state> {
         })
     }
 
+    /// Build a postexec-only abstract command (run the program buffer without a
+    /// register transfer) that strict DM implementations accept.
+    ///
+    /// A `postexec=1, transfer=0` command with `aarsize=0` is rejected as
+    /// `NotSupported` (abstractcs.cmderr=2) by some DMs — notably the HiSilicon
+    /// WS63. Set a valid `aarsize` and `regno=x0` explicitly so the program
+    /// buffer can be executed on those implementations.
+    fn postexec_command(&self) -> AccessRegisterCommand {
+        let mut cmd = AccessRegisterCommand(0);
+        cmd.set_cmd_type(0);
+        cmd.set_postexec(true);
+        cmd.set_transfer(false);
+        cmd.set_aarsize(if self.state.xlen_64 {
+            RiscvBusAccess::A64
+        } else {
+            RiscvBusAccess::A32
+        });
+        cmd.set_regno(0x1000); // x0
+        cmd
+    }
+
     pub(crate) fn execute_abstract_command(&mut self, command: u32) -> Result<(), RiscvError> {
         // ensure that preconditions are fulfilled
         // haltreq      = 0
@@ -2258,8 +2277,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             // Read CSR value into register 8 (s0)
             let csrr_cmd = assembly::csrr(8, address);
             core.schedule_setup_program_buffer(&[csrr_cmd])?;
-            let mut postexec_cmd = AccessRegisterCommand(0);
-            postexec_cmd.set_postexec(true);
+            let postexec_cmd = core.postexec_command();
             core.run_with_s0_saved(|c| {
                 c.execute_abstract_command(postexec_cmd.0)?;
                 c.read_s0_xlen()
@@ -2297,8 +2315,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             }
             let csrw_cmd = assembly::csrw(address, 8);
             core.schedule_setup_program_buffer(&[csrw_cmd])?;
-            let mut postexec_cmd = AccessRegisterCommand(0);
-            postexec_cmd.set_postexec(true);
+            let postexec_cmd = core.postexec_command();
             core.run_with_s0_saved(|c| {
                 c.write_s0_xlen(value)?;
                 c.execute_abstract_command(postexec_cmd.0)

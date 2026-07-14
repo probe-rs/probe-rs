@@ -107,7 +107,7 @@ rustls = { version = "0.23", default-features = false, features = [
     "std",
     "ring",
 ], optional = true }
-tokio-tungstenite = { version = "0.29", features = [
+tokio-tungstenite = { version = "0.30", features = [
     "rustls-tls-webpki-roots",
 ], optional = true }
 axum = { version = "0.8", features = ["ws"], optional = true }
