@@ -2073,8 +2073,8 @@ impl<'state> RiscvCommunicationInterface<'state> {
     ///
     /// A `postexec=1, transfer=0` command with `aarsize=0` is rejected as
     /// `NotSupported` (abstractcs.cmderr=2) by some DMs — notably the HiSilicon
-    /// WS63. OpenOCD always issues such commands with a valid `aarsize` and
-    /// `regno=x0`; we match that so the program buffer can be executed.
+    /// WS63. Set a valid `aarsize` and `regno=x0` explicitly so the program
+    /// buffer can be executed on those implementations.
     fn postexec_command(&self) -> AccessRegisterCommand {
         let mut cmd = AccessRegisterCommand(0);
         cmd.set_cmd_type(0);
