@@ -1,0 +1,1 @@
+Fixed MIMXRT1015 flashing: disable the MPU left enabled by the boot ROM after reset catch.

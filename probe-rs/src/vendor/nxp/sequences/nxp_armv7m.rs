@@ -14,7 +14,7 @@ use probe_rs_target::Chip;
 use crate::{
     architecture::arm::{
         ArmDebugInterface, ArmError, FullyQualifiedApAddress, Pins,
-        armv7m::{Demcr, FpCtrl, FpRev2CompX},
+        armv7m::{Demcr, FpCtrl, FpRev2CompX, MpuCtrl},
         communication_interface::DapProbe,
         core::{
             armv7m::{Aircr, Dhcsr},
@@ -184,6 +184,19 @@ impl ArmDebugSequence for MIMXRT10xx {
         // Wait for that watchpoint to hit.
         tracing::debug!("Waiting for watchpoint to hit");
         self.wait_for_halt(interface, true)?;
+
+        // The boot ROM enables the MPU while it runs, and we catch it before
+        // it gets a chance to clean that up. The debug port is not subject to
+        // the MPU, so downloading code to FlexRAM works fine, but the core
+        // faults as soon as it touches memory the ROM's MPU setup does not
+        // allow (e.g. the flash algorithm pushing to its stack). Disable the
+        // MPU while the core is halted so downloaded code can run.
+        let mpu_ctrl = MpuCtrl(interface.read_word_32(MpuCtrl::get_mmio_address())?);
+        tracing::debug!("MPU_CTRL at boot ROM catch: {mpu_ctrl:?}");
+        if mpu_ctrl.enable() {
+            interface.write_word_32(MpuCtrl::get_mmio_address(), MpuCtrl(0).into())?;
+            interface.flush()?;
+        }
 
         // Clean up after ourselves.
         tracing::debug!("Cleaning up watchpoints");

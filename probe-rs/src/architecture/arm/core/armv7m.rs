@@ -371,6 +371,50 @@ impl MemoryMappedRegister<u32> for Demcr {
 }
 
 bitfield! {
+    /// MPU Control Register, MPU_CTRL (see armv7-M Architecture Reference Manual B3.5.3)
+    #[derive(Copy, Clone)]
+    pub struct MpuCtrl(u32);
+    impl Debug;
+    /// When the ENABLE bit is set to `1`, controls whether privileged software
+    /// access to the default memory map is enabled:
+    ///
+    /// `0`: Disabled. Any privileged access to an address not covered by an
+    /// enabled MPU region generates a fault.\
+    /// `1`: Enabled. Privileged accesses to addresses not covered by an
+    /// enabled MPU region use the default memory map.
+    pub privdefena, set_privdefena: 2;
+    /// Controls whether handlers executing with priority less than 0 access
+    /// memory with the MPU enabled or disabled (HardFault, NMI, and
+    /// FAULTMASK escalated handlers):
+    ///
+    /// `0`: MPU disabled for these handlers.\
+    /// `1`: MPU enabled for these handlers.
+    pub hfnmiena, set_hfnmiena: 1;
+    /// Enables the MPU:
+    ///
+    /// `0`: MPU disabled.\
+    /// `1`: MPU enabled.
+    pub enable, set_enable: 0;
+}
+
+impl From<u32> for MpuCtrl {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<MpuCtrl> for u32 {
+    fn from(value: MpuCtrl) -> Self {
+        value.0
+    }
+}
+
+impl MemoryMappedRegister<u32> for MpuCtrl {
+    const ADDRESS_OFFSET: u64 = 0xE000_ED94;
+    const NAME: &'static str = "MPU_CTRL";
+}
+
+bitfield! {
     /// Flash Patch Control Register, FP_CTRL (see armv7-M Architecture Reference Manual C1.11.3)
     #[derive(Copy,Clone)]
     pub struct FpCtrl(u32);
