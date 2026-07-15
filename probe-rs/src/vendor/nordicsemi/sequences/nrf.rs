@@ -116,6 +116,13 @@ impl<T: Nrf> ArmDebugSequence for T {
     ) -> Result<(), ArmError> {
         let aps = self.core_aps(&default_ap.dp());
 
+        if aps.is_empty() {
+            return Err(ArmDebugSequenceError::custom(
+                "Target does not declare a supported Nordic core access port",
+            )
+            .into());
+        }
+
         // TODO: Eraseprotect is not considered. If enabled, the debugger must set up the same keys as the firmware does
         // TODO: Approtect and Secure Approtect are not considered. If enabled, the debugger must set up the same keys as the firmware does
         // These keys should be queried from the user if required and once that mechanism is implemented
