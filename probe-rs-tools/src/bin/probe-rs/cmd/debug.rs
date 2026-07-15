@@ -157,6 +157,11 @@ pub struct Cmd {
     #[clap(long)]
     pub launch: bool,
 
+    /// Execute a debug console command before entering the interactive console.
+    /// May be specified multiple times; the commands are executed in order.
+    #[clap(short = 'c', long = "command", value_name = "COMMAND")]
+    pub commands: Vec<String>,
+
     /// Disable reset vector catch if its supported on the target.
     #[clap(long)]
     pub no_catch_reset: bool,
@@ -209,6 +214,7 @@ impl Cmd {
             seq: 0,
             is_initialized: false,
             is_terminated: false,
+            pending_evaluates: 0,
 
             prompts: vec![PromptKind::Eval {
                 prompt: "Debug Console".to_string(),
@@ -326,6 +332,34 @@ impl Cmd {
             }
         }
 
+        // Execute the commands given with `-c` in order, then drop into the interactive
+        // console. A `quit` command (e.g. `-c q`) terminates the session, in which case
+        // the interactive console is skipped.
+        let mut command_result = Ok(());
+        'commands: for command in self.commands {
+            if !debug_client.running() {
+                break;
+            }
+
+            debug_client.eval(command).await;
+
+            // Wait for the response before sending the next command.
+            while debug_client.pending_evaluates > 0 && debug_client.running() {
+                tokio::select! {
+                    response = msg_receiver.recv() => {
+                        let Some((event, body)) = response else {
+                            break 'commands;
+                        };
+                        if let Err(error) = debug_client.process_event(&event, body) {
+                            command_result = Err(error);
+                            break 'commands;
+                        }
+                    },
+                    _ = debug_client.req_sender.closed() => break 'commands,
+                }
+            }
+        }
+
         // Prompt 0 is the default debug CLI prompt.
         let mut current_prompt = debug_client.current_prompt;
         let (mut rl, writer) =
@@ -334,8 +368,8 @@ impl Cmd {
         debug_client.writer = Some(writer);
 
         let readline = async {
-            let mut result = Ok(());
-            while debug_client.running() {
+            let mut result = command_result;
+            while result.is_ok() && debug_client.running() {
                 // Update prompt if needed (a message created a new one, or closed the current one)
                 if debug_client.current_prompt != current_prompt {
                     current_prompt = debug_client.current_prompt;
@@ -376,19 +410,7 @@ impl Cmd {
                 }
             }
 
-            debug_client
-                .send(|seq| Request {
-                    command: "disconnect".to_string(),
-                    arguments: serde_json::to_value(&DisconnectArguments {
-                        restart: None,
-                        suspend_debuggee: Some(true),
-                        terminate_debuggee: None,
-                    })
-                    .ok(),
-                    seq,
-                    type_: "request".to_string(),
-                })
-                .await;
+            debug_client.disconnect(true).await;
             result
         };
 
@@ -412,6 +434,9 @@ struct Client {
     is_initialized: bool,
     is_terminated: bool,
 
+    /// Number of `evaluate` requests that have not been answered yet.
+    pending_evaluates: usize,
+
     prompts: Vec<PromptKind>,
     current_prompt: usize,
 
@@ -429,6 +454,12 @@ impl Client {
             }
         };
 
+        self.eval(expression).await;
+    }
+
+    /// Sends an expression to the debug console, regardless of the current prompt.
+    async fn eval(&mut self, expression: String) {
+        self.pending_evaluates += 1;
         self.send(|seq| Request {
             command: "evaluate".to_string(),
             arguments: serde_json::to_value(&EvaluateArguments {
@@ -439,6 +470,21 @@ impl Client {
                 column: None,
                 line: None,
                 source: None,
+            })
+            .ok(),
+            seq,
+            type_: "request".to_string(),
+        })
+        .await;
+    }
+
+    async fn disconnect(&mut self, suspend_debuggee: bool) {
+        self.send(|seq| Request {
+            command: "disconnect".to_string(),
+            arguments: serde_json::to_value(&DisconnectArguments {
+                restart: None,
+                suspend_debuggee: Some(suspend_debuggee),
+                terminate_debuggee: None,
             })
             .ok(),
             seq,
@@ -519,6 +565,8 @@ impl Client {
                     }
 
                     "evaluate" => {
+                        self.pending_evaluates = self.pending_evaluates.saturating_sub(1);
+
                         let Some(body) = response.body else {
                             unreachable!();
                         };
