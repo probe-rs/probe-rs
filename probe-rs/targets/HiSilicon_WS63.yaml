@@ -3,8 +3,7 @@
 # 0x80000000), the same topology probe-rs uses for RP235x (mem-AP DTM).
 #
 # Scope: debug access through the mem-AP DTM. Attach, halt, and SRAM reads were
-# validated on WS63 silicon with a J-Link probe. The AP/DM mapping was
-# cross-checked against HiSpark Studio's patched OpenOCD configuration.
+# validated on WS63 silicon with a J-Link probe.
 # Flashing is intentionally added by a follow-up change.
 name: HiSilicon WS63
 variants:
@@ -14,7 +13,7 @@ variants:
     type: riscv
     core_access_options: !Riscv
       hart_id: 0
-      # RISC-V DM behind CoreSight AP 0 (OpenOCD -apsel 0), DM @ 0x80000000.
+      # RISC-V Debug Module behind CoreSight AP 0 at 0x80000000.
       mem_ap: !v1 0
       dm_base: 0x80000000
   memory_map:
