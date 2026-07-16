@@ -5,7 +5,9 @@ use crate::{
         ArmDebugInterface, ArmError, FullyQualifiedApAddress,
         dp::DpAddress,
         memory::ArmMemoryInterface,
-        sequences::{ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence},
+        sequences::{
+            ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence, cortex_m_wait_for_reset,
+        },
     },
     session::MissingPermissions,
 };
@@ -29,6 +31,14 @@ pub trait Nrf: Sync + Send + Debug {
 
     /// Returns true if a network core is present
     fn has_network_core(&self) -> bool;
+
+    /// Returns the CTRL-AP used to reset `core_ap`, or `None` to use the generic Cortex-M reset.
+    fn ctrl_ap_for_core(
+        &self,
+        _core_ap: &FullyQualifiedApAddress,
+    ) -> Result<Option<FullyQualifiedApAddress>, ArmError> {
+        Ok(None)
+    }
 
     /// Returns true if the chip must be soft-reset after an erase-all operation (ie to unlock APPROTECT).
     ///
@@ -109,6 +119,28 @@ fn set_network_core_running(interface: &mut dyn ArmMemoryInterface) -> Result<()
 }
 
 impl<T: Nrf> ArmDebugSequence for T {
+    fn reset_system(
+        &self,
+        interface: &mut dyn ArmMemoryInterface,
+        _core_type: crate::CoreType,
+        _debug_base: Option<u64>,
+    ) -> Result<(), ArmError> {
+        // Every current `Nrf` implementor is Cortex-M. A target without a
+        // CTRL-AP override therefore retains the existing Cortex-M reset path.
+        let core_ap = interface.fully_qualified_address();
+        let Some(ctrl_ap) = self.ctrl_ap_for_core(&core_ap)? else {
+            return crate::architecture::arm::sequences::cortex_m_reset_system(interface);
+        };
+
+        let arm_interface = interface.get_arm_debug_interface()?;
+        tracing::debug!(?core_ap, ?ctrl_ap, "Asserting core reset through CTRL-AP");
+        arm_interface.write_raw_ap_register(&ctrl_ap, RESET, 1)?;
+        arm_interface.write_raw_ap_register(&ctrl_ap, RESET, 0)?;
+        arm_interface.flush()?;
+
+        cortex_m_wait_for_reset(interface)
+    }
+
     fn debug_device_unlock(
         &self,
         interface: &mut dyn ArmDebugInterface,
