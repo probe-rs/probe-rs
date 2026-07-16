@@ -2,11 +2,11 @@
 
 use std::sync::Arc;
 
-use super::nrf::Nrf;
+use super::nrf::{Nrf, reset_affects_network, set_network_core_running, wait_for_core_accessible};
 use crate::architecture::arm::sequences::ArmDebugSequenceError;
 use crate::architecture::arm::{
     ApAddress as ArmApAddress, ArmDebugInterface, ArmError, FullyQualifiedApAddress, ap::CSW,
-    dp::DpAddress, sequences::ArmDebugSequence,
+    dp::DpAddress, memory::ArmMemoryInterface, sequences::ArmDebugSequence,
 };
 use probe_rs_target::{ApAddress as TargetApAddress, Chip, CoreAccessOptions};
 
@@ -119,6 +119,39 @@ impl Nrf for Nrf5340 {
             Ok(None)
         }
     }
+
+    fn post_reset(&self, interface: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
+        let core_ap = interface.fully_qualified_address();
+        if !reset_affects_network(self, &core_ap) {
+            return Ok(());
+        }
+
+        // An application reset asserts NETWORK.FORCEOFF. A session using the
+        // stock dual-core target owns AP1 as well as AP0, so restore AP1 before
+        // returning. Run-control remains core-specific; AP0 reset state does not
+        // imply that AP1 should be halted. The application-only target never
+        // enters this path.
+        let (network_ahb_ap, network_ctrl_ap) = self
+            .core_aps(&core_ap.dp())
+            .into_iter()
+            .find(|(ahb_ap, _)| ahb_ap.ap() == &ArmApAddress::V1(1))
+            .ok_or_else(|| {
+                ArmError::from(ArmDebugSequenceError::custom(
+                    "Dual-core nRF5340 target has no network AP mapping",
+                ))
+            })?;
+
+        let _ = set_network_core_running(interface)?;
+        let arm_interface = interface.get_arm_debug_interface()?;
+        if !wait_for_core_accessible(self, arm_interface, &network_ahb_ap, &network_ctrl_ap)? {
+            return Err(ArmDebugSequenceError::custom(
+                "Network core did not become accessible after application reset",
+            )
+            .into());
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -226,6 +259,22 @@ mod tests {
                 .iter()
                 .all(|region| region.cores() == ["application"])
         );
+    }
+
+    #[test]
+    fn only_dual_target_application_reset_affects_network() {
+        let dual = Nrf5340 {
+            core_aps: vec![(0, 2), (1, 3)],
+        };
+        let app_only = Nrf5340 {
+            core_aps: vec![(0, 2)],
+        };
+        let application_ap = FullyQualifiedApAddress::v1_with_default_dp(0);
+        let network_ap = FullyQualifiedApAddress::v1_with_default_dp(1);
+
+        assert!(reset_affects_network(&dual, &application_ap));
+        assert!(!reset_affects_network(&dual, &network_ap));
+        assert!(!reset_affects_network(&app_only, &application_ap));
     }
 
     #[test]
