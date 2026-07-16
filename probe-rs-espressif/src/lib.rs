@@ -14,7 +14,7 @@ use probe_rs::{
         xtensa::communication_interface::XtensaCommunicationInterface,
     },
     config::{DebugSequence, Registry},
-    probe::Probe,
+    probe::{Probe, WireProtocol},
     vendor::Vendor,
 };
 use sequences::{
@@ -135,6 +135,11 @@ impl Vendor for Espressif {
         registry: &Registry,
         probe: &mut Probe,
     ) -> Result<Option<String>, Error> {
+        // JTAG capability does not imply that the probe is currently using JTAG.
+        if probe.protocol() != Some(WireProtocol::Jtag) {
+            return Ok(None);
+        }
+
         // Identify from JTAG IDCODE only. This works for RISC-V chips,
         // where we set a magic value of 0.
         if let Some(jtag) = probe.try_as_jtag_probe() {
@@ -216,10 +221,151 @@ fn identify_by_idcode(
 
 #[cfg(test)]
 mod tests {
+    use std::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    };
+
+    use bitvec::vec::BitVec;
     use probe_rs::{
+        Error,
         config::{Registry, RegistryError},
         flashing::FlashAlgorithm,
+        probe::{DebugProbe, DebugProbeError, JtagAccess, JtagSequence, Probe, WireProtocol},
     };
+    use probe_rs_target::ScanChainElement;
+
+    use super::{Espressif, Vendor};
+
+    #[derive(Debug)]
+    struct ProtocolProbe {
+        protocol: WireProtocol,
+        scans: Arc<AtomicUsize>,
+    }
+
+    impl DebugProbe for ProtocolProbe {
+        fn get_name(&self) -> &str {
+            "protocol test probe"
+        }
+
+        fn speed_khz(&self) -> u32 {
+            1_000
+        }
+
+        fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
+            Ok(speed_khz)
+        }
+
+        fn attach(&mut self) -> Result<(), DebugProbeError> {
+            Ok(())
+        }
+
+        fn detach(&mut self) -> Result<(), Error> {
+            Ok(())
+        }
+
+        fn target_reset(&mut self) -> Result<(), DebugProbeError> {
+            unreachable!()
+        }
+
+        fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+            unreachable!()
+        }
+
+        fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+            unreachable!()
+        }
+
+        fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
+            self.protocol = protocol;
+            Ok(())
+        }
+
+        fn active_protocol(&self) -> Option<WireProtocol> {
+            Some(self.protocol)
+        }
+
+        fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JtagAccess> {
+            Some(self)
+        }
+
+        fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+            self
+        }
+    }
+
+    impl JtagAccess for ProtocolProbe {
+        fn set_expected_scan_chain(
+            &mut self,
+            _scan_chain: &[ScanChainElement],
+        ) -> Result<(), DebugProbeError> {
+            unreachable!()
+        }
+
+        fn set_scan_chain(
+            &mut self,
+            _scan_chain: &[ScanChainElement],
+        ) -> Result<(), DebugProbeError> {
+            unreachable!()
+        }
+
+        fn scan_chain(&mut self) -> Result<&[ScanChainElement], DebugProbeError> {
+            self.scans.fetch_add(1, Ordering::Relaxed);
+            Ok(&[])
+        }
+
+        fn shift_raw_sequence(
+            &mut self,
+            _sequence: JtagSequence,
+        ) -> Result<BitVec, DebugProbeError> {
+            unreachable!()
+        }
+
+        fn tap_reset(&mut self) -> Result<(), DebugProbeError> {
+            unreachable!()
+        }
+
+        fn set_idle_cycles(&mut self, _idle_cycles: u8) -> Result<(), DebugProbeError> {
+            unreachable!()
+        }
+
+        fn idle_cycles(&self) -> u8 {
+            unreachable!()
+        }
+
+        fn write_register(
+            &mut self,
+            _address: u32,
+            _data: &[u8],
+            _len: u32,
+        ) -> Result<BitVec, DebugProbeError> {
+            unreachable!()
+        }
+
+        fn write_dr(&mut self, _data: &[u8], _len: u32) -> Result<BitVec, DebugProbeError> {
+            unreachable!()
+        }
+    }
+
+    #[test]
+    fn probe_side_detection_only_scans_active_jtag_probes() {
+        let registry = Registry::new();
+
+        for (protocol, expected_scans) in [(WireProtocol::Swd, 0), (WireProtocol::Jtag, 1)] {
+            let scans = Arc::new(AtomicUsize::new(0));
+            let mut probe = Probe::new(ProtocolProbe {
+                protocol,
+                scans: scans.clone(),
+            });
+
+            let detected = Espressif
+                .try_detect_chip_from_probe(&registry, &mut probe)
+                .unwrap();
+
+            assert_eq!(detected, None);
+            assert_eq!(scans.load(Ordering::Relaxed), expected_scans);
+        }
+    }
 
     #[test]
     fn validate_builtin() {
