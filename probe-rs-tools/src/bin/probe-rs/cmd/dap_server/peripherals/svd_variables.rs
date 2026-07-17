@@ -37,7 +37,14 @@ impl SvdCache {
 
         let svd_cache = match svd_parser::parse_with_config(
             svd_xml,
-            &Config::default().expand(true).ignore_enums(true),
+            // `expand_properties` pushes each peripheral's / the device's
+            // `defaultRegisterProperties` (including `access`) down onto the individual
+            // registers, so a register whose `access` is still `None` afterwards is one
+            // that is genuinely unspecified anywhere in the SVD tree.
+            &Config::default()
+                .expand(true)
+                .expand_properties(true)
+                .ignore_enums(true),
         ) {
             Ok(peripheral_device) => {
                 debug_adapter
@@ -135,13 +142,19 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
         for register in peripheral.all_registers() {
             let register_address = peripheral.base_address + register.address_offset as u64;
 
+            // After property expansion above, a `None` access means no `<access>` was
+            // declared anywhere in the tree (register, peripheral or device). Treat such
+            // registers as readable: many recent SVDs (e.g. STM32H5) omit `<access>`
+            // entirely, and defaulting to restricted made every register unviewable in
+            // the debugger. Registers with a `read_action` are still restricted, so
+            // side-effecting reads remain protected.
             let mut register_has_restricted_read = register.read_action.is_some()
                 || register
                     .properties
                     .access
                     .map(|a| !a.can_read())
                     .or_else(|| device_default_access.map(|a| !a.can_read()))
-                    .unwrap_or(true);
+                    .unwrap_or(false);
 
             let register_name = format!("{peripheral_name}.{}", register.name);
 

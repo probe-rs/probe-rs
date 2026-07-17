@@ -1,0 +1,1 @@
+dap-server: SVD registers without an `<access>` tag are now readable in the debugger instead of being marked restricted. This makes peripheral registers viewable for chips whose SVDs omit `<access>` (e.g. STM32H5).
