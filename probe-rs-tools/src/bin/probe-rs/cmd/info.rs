@@ -148,9 +148,6 @@ impl Cmd {
                     eprintln!(
                         "Could not attach to target. Try running with --verbose for more information about the target."
                     );
-                    eprintln!(
-                        "A failed `info` command does not necessarily mean the chip or your wiring is broken - flashing and debugging may still work fine."
-                    );
                     return Err(e);
                 }
             };
