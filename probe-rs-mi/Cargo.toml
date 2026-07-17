@@ -17,3 +17,9 @@ serde = { version = "1", features = ["derive"] }
 
 [lints]
 workspace = true
+
+# probe-rs-mi is versioned independently, so it needs its own tag name.
+# Without this, it inherits the workspace tag-name ("v{{version}}") and
+# produces ambiguous tags like `v0.1.0` (see #3116).
+[package.metadata.release]
+tag-name = "probe-rs-mi-v{{version}}"
