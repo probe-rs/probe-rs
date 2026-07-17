@@ -12,7 +12,7 @@ Additionally the project offers a variety of tools to be used directly for flash
 
 ## Functionality
 
-As of version 0.27.0 this library can:
+This library can:
 
 - Connect to a DAPLink, STLink, JLink, FTDI probes, ESP32 devices with USB JTAG, WLink and the Blackmagic probe.
 - Talk to ARM, Risc-V and Xtensa cores via SWD or JTAG.
