@@ -1,32 +1,43 @@
-use crate::architecture::arm::{
-    RegisterParseError,
-    ap::{AddressIncrement, ApClass, ApType, BaseAddrFormat, DataSize},
-};
+// bitfield! generates accessor methods named after the register fields, which
+// use the ADI register casing (e.g. `DbgSwEnable`, `SIZE`) rather than snake_case.
+#![allow(non_snake_case)]
+
+use crate::architecture::arm::ap::{AddressIncrement, ApClass, ApType, BaseAddrFormat, DataSize};
 
 /// Defines a new typed access port register for a specific access port.
+///
+/// The register is a thin `bitfield!` newtype over the raw `u32`, so the field
+/// list is given directly in [`bitfield::bitfield!`] syntax. Bits that are not
+/// listed are preserved verbatim on a read/modify/write round-trip.
+///
 /// Takes
-/// - type: The type of the port.
 /// - name: The name of the constructed type for the register. Also accepts a doc comment to be added to the type.
 /// - address: The address relative to the base address of the access port.
-/// - fields: A list of fields of the register type.
-/// - from: a closure to transform from an `u32` to the typed register.
-/// - to: A closure to transform from they typed register to an `u32`.
+/// - fields: The register fields in `bitfield!` syntax. Enum-backed fields use
+///   `pub u8, from into EnumType, getter, setter: msb, lsb;`; an unknown encoding
+///   is preserved as the enum's `Unknown(bits)` variant rather than erroring.
 macro_rules! define_ap_register {
     (
         $(#[$outer:meta])*
         name: $name:ident,
         address: $address_v1:expr,
-        fields: [$($(#[$inner:meta])*$field:ident: $type:ty$(,)?)*],
-        from: $from_param:ident => $from:expr,
-        to: $to_param:ident => $to:expr
-    )
-    => {
-        $(#[$outer])*
-        #[allow(non_snake_case)]
-        #[allow(clippy::upper_case_acronyms)]
-        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-        pub struct $name {
-            $($(#[$inner])*pub $field: $type,)*
+        fields: [ $($fields:tt)* ]
+        $(,)?
+    ) => {
+        bitfield::bitfield! {
+            $(#[$outer])*
+            #[derive(Copy, Clone, PartialEq, Eq)]
+            #[allow(clippy::upper_case_acronyms)]
+            pub struct $name(u32);
+            impl Debug;
+            $($fields)*
+        }
+
+        impl $name {
+            /// Creates the register from its raw value.
+            pub const fn from_raw(value: u32) -> Self {
+                $name(value)
+            }
         }
 
         impl $crate::architecture::arm::ap::ApRegister for $name {
@@ -40,14 +51,16 @@ macro_rules! define_ap_register {
         impl TryFrom<u32> for $name {
             type Error = $crate::architecture::arm::RegisterParseError;
 
-            fn try_from($from_param: u32) -> Result<$name, Self::Error> {
-                $from
+            // Registers parse infallibly: unknown enum encodings are preserved as the
+            // enum's `Unknown` variant. `TryFrom` is kept because `ApRegister` requires it.
+            fn try_from(value: u32) -> Result<$name, Self::Error> {
+                Ok($name(value))
             }
         }
 
         impl From<$name> for u32 {
-            fn from($to_param: $name) -> u32 {
-                $to
+            fn from(register: $name) -> u32 {
+                register.0
             }
         }
     }
@@ -64,11 +77,11 @@ define_ap_register!(
     address: 0x00,
     fields: [
         /// Is debug software access enabled.
-        DbgSwEnable: bool,           // 1 bit
+        pub DbgSwEnable, set_DbgSwEnable: 31;
         /// Used with the Type field to define the bus access protection protocol.
         ///
         /// This field is implementation defined. See the memory ap specific definition for details.
-        Prot: u8,                  // 7 bits
+        pub u8, Prot, set_Prot: 30, 24;
         /// Secure Debug Enabled.
         ///
         /// This field has one of the following values:
@@ -84,7 +97,7 @@ define_ap_register!(
         /// position as CSW.SDeviceEn, and has the same meaning. From ADIv6, the name SDeviceEn is
         /// used to avoid confusion between this field and the SPIDEN signal on the authentication
         /// interface.
-        SDeviceEn: bool,                // 1 bit
+        pub SDeviceEn, set_SDeviceEn: 23;
         /// Realm and root access status.
         ///
         /// # Note
@@ -96,10 +109,7 @@ define_ap_register!(
         /// * 0b01 - Realm access is enabled. Root access is enabled.
         ///
         /// This field is read-only.
-        RMEEN: u8, //2 bits
-        /// Reserved.
-        _RES0: u8,                 // 7 bits
-
+        pub u8, RMEEN, set_RMEEN: 22, 21;
         /// Errors prevent future memory accesses.
         ///
         /// # Note
@@ -110,8 +120,7 @@ define_ap_register!(
         /// - 0b1 - Memory access errors prevent future memory accesses.
         ///
         /// CFG.ERR indicates whether this field is implemented.
-        ERRSTOP: bool,
-
+        pub ERRSTOP, set_ERRSTOP: 17;
         /// Errors are not passed upstream.
         ///
         /// # Note
@@ -122,59 +131,25 @@ define_ap_register!(
         /// - 0b1 - Errors are not passed upstream.
         ///
         /// CFG.ERR indicates whether this field is implemented.
-        ERRNPASS: bool,
+        pub ERRNPASS, set_ERRNPASS: 16;
         /// `1` if memory tagging access is enabled.
-        MTE: bool,                   // 1 bits
+        pub MTE, set_MTE: 15;
         /// Memory tagging type. Implementation defined.
-        Type: u8,                  // 3 bits
+        pub u8, Type, set_Type: 14, 12;
         /// Mode of operation. Is set to `0b0000` normally.
-        Mode: u8,                  // 4 bits
+        pub u8, Mode, set_Mode: 11, 8;
         /// A transfer is in progress.
         /// Can be used to poll whether an aborted transaction has completed.
         /// Read only.
-        TrInProg: bool,              // 1 bit
+        pub TrInProg, set_TrInProg: 7;
         /// `1` if transactions can be issued through this access port at the moment.
         /// Read only.
-        DeviceEn: bool,              // 1 bit
+        pub DeviceEn, set_DeviceEn: 6;
         /// The address increment on DRW access.
-        AddrInc: AddressIncrement, // 2 bits
-        /// Reserved
-        _RES1: u8,                 // 1 bit
+        pub u8, from into AddressIncrement, AddrInc, set_AddrInc: 5, 4;
         /// The access size of this memory AP.
-        SIZE: DataSize,            // 3 bits
-    ],
-    from: value => Ok(CSW {
-        DbgSwEnable: ((value >> 31) & 0x01) != 0,
-        Prot: ((value >> 24) & 0x7F) as u8,
-        SDeviceEn: ((value >> 23) & 0x01) != 0,
-        RMEEN: ((value >> 21) & 0x3) as u8,
-        _RES0: ((value >> 18) & 0x07) as u8,
-        ERRSTOP: ((value >> 17) & 0b1) != 0,
-        ERRNPASS: ((value >> 16) & 0b1) != 0,
-        MTE: ((value >> 15) & 0x01) != 0,
-        Type: ((value >> 12) & 0x07) as u8,
-        Mode: ((value >> 8) & 0x0F) as u8,
-        TrInProg: ((value >> 7) & 0x01) != 0,
-        DeviceEn: ((value >> 6) & 0x01) != 0,
-        AddrInc: AddressIncrement::from_u8(((value >> 4) & 0x03) as u8).ok_or_else(|| RegisterParseError::new("CSW", value))?,
-        _RES1: ((value >> 3) & 1) as u8,
-        SIZE: DataSize::try_from((value & 0x07) as u8).map_err(|_| RegisterParseError::new("CSW", value))?,
-    }),
-    to: value => (u32::from(value.DbgSwEnable) << 31)
-    | (u32::from(value.Prot         ) << 24)
-    | (u32::from(value.SDeviceEn    ) << 23)
-    | (u32::from(value.RMEEN        ) << 21)
-    | (u32::from(value._RES0        ) << 18)
-    | (u32::from(value.ERRSTOP as u8) << 17)
-    | (u32::from(value.ERRNPASS as u8) << 16)
-    | (u32::from(value.MTE          ) << 15)
-    | (u32::from(value.Type         ) << 12)
-    | (u32::from(value.Mode         ) <<  8)
-    | (u32::from(value.TrInProg     ) <<  7)
-    | (u32::from(value.DeviceEn     ) <<  6)
-    | (u32::from(value.AddrInc as u8) << 4)
-    | (u32::from(value._RES1        ) <<  1)
-    | (value.SIZE as u32)
+        pub u8, from into DataSize, SIZE, set_SIZE: 2, 0;
+    ]
 );
 
 define_ap_register!(
@@ -187,10 +162,8 @@ define_ap_register!(
     address: 0x04,
     fields: [
         /// The register address to be used for the next access to DRW.
-        address: u32,
-    ],
-    from: value => Ok(TAR { address: value }),
-    to: value => value.address
+        pub u32, address, set_address: 31, 0;
+    ]
 );
 
 define_ap_register!(
@@ -203,10 +176,8 @@ define_ap_register!(
     address: 0x08,
     fields: [
         /// The upper 32-bits of the register address to be used for the next access to DRW.
-        address: u32,
-    ],
-    from: value => Ok(TAR2 { address: value }),
-    to: value => value.address
+        pub u32, address, set_address: 31, 0;
+    ]
 );
 
 define_ap_register!(
@@ -223,10 +194,8 @@ define_ap_register!(
     address: 0x0C,
     fields: [
         /// The data held in the DRW corresponding to the address held in TAR.
-        data: u32,
-    ],
-    from: value => Ok(DRW { data: value }),
-    to: value => value.data
+        pub u32, data, set_data: 31, 0;
+    ]
 );
 
 define_ap_register!(
@@ -235,10 +204,8 @@ define_ap_register!(
     address: 0x10,
     fields: [
         /// The data held in this bank.
-        data: u32,
-    ],
-    from: value => Ok(BD0 { data: value }),
-    to: value => value.data
+        pub u32, data, set_data: 31, 0;
+    ]
 );
 
 define_ap_register!(
@@ -247,10 +214,8 @@ define_ap_register!(
     address: 0x14,
     fields: [
         /// The data held in this bank.
-        data: u32,
-    ],
-    from: value => Ok(BD1 { data: value }),
-    to: value => value.data
+        pub u32, data, set_data: 31, 0;
+    ]
 );
 
 define_ap_register!(
@@ -259,10 +224,8 @@ define_ap_register!(
     address: 0x18,
     fields: [
         /// The data held in this bank.
-        data: u32,
-    ],
-    from: value => Ok(BD2 { data: value }),
-    to: value => value.data
+        pub u32, data, set_data: 31, 0;
+    ]
 );
 
 define_ap_register!(
@@ -271,10 +234,8 @@ define_ap_register!(
     address: 0x1C,
     fields: [
         /// The data held in this bank.
-        data: u32,
-    ],
-    from: value => Ok(BD3 { data: value }),
-    to: value => value.data
+        pub u32, data, set_data: 31, 0;
+    ]
 );
 
 define_ap_register!(
@@ -290,10 +251,8 @@ define_ap_register!(
     address: 0x20,
     fields: [
         /// This value is implementation defined and the ADIv5.2 spec does not explain what it does for targets with the Barrier Operations Extension implemented.
-        data: u32,
-    ],
-    from: value => Ok(MBT { data: value }),
-    to: value => value.data
+        pub u32, data, set_data: 31, 0;
+    ]
 );
 
 define_ap_register!(
@@ -302,10 +261,8 @@ define_ap_register!(
     address: 0xF0,
     fields: [
         /// The second part of the base address of this access point if required.
-        BASEADDR: u32
-    ],
-    from: value => Ok(BASE2 { BASEADDR: value }),
-    to: value => value.BASEADDR
+        pub u32, BASEADDR, set_BASEADDR: 31, 0;
+    ]
 );
 
 define_ap_register!(
@@ -317,18 +274,12 @@ define_ap_register!(
     address: 0xF4,
     fields: [
         /// Specifies whether this access port includes the large data extension (access larger than 32 bits).
-        LD: bool,
+        pub LD, set_LD: 2;
         /// Specifies whether this access port includes the large address extension (64 bit addressing).
-        LA: bool,
+        pub LA, set_LA: 1;
         /// Specifies whether this architecture uses big endian. Must always be zero for modern chips as the ADI v5.2 deprecates big endian.
-        BE: bool,
-    ],
-    from: value => Ok(CFG {
-        LD: ((value >> 2) & 0x01) != 0,
-        LA: ((value >> 1) & 0x01) != 0,
-        BE: (value & 0x01) != 0,
-    }),
-    to: value => ((value.LD as u32) << 2) | ((value.LA as u32) << 1) | (value.BE as u32)
+        pub BE, set_BE: 0;
+    ]
 );
 
 define_ap_register!(
@@ -337,34 +288,13 @@ define_ap_register!(
     address: 0xF8,
     fields: [
         /// The base address of this access point.
-        BASEADDR: u32,
-        /// Reserved.
-        _RES0: u8,
+        pub u32, BASEADDR, set_BASEADDR: 31, 12;
         /// The base address format of this access point.
-        Format: BaseAddrFormat,
+        pub u8, from into BaseAddrFormat, Format, set_Format: 1, 1;
         /// Does this access point exists?
-        /// This field can be used to detect access points by iterating over all possible ones until one is found which has `exists == false`.
-        present: bool,
-    ],
-    from: value => Ok(BASE {
-        BASEADDR: (value & 0xFFFF_F000) >> 12,
-        _RES0: 0,
-        Format: match ((value >> 1) & 0x01) as u8 {
-            0 => BaseAddrFormat::Legacy,
-            1 => BaseAddrFormat::ADIv5,
-            _ => panic!("This is a bug. Please report it."),
-        },
-        present: match (value & 0x01) as u8 {
-            0 => false,
-            1 => true,
-            _ => panic!("This is a bug. Please report it."),
-        },
-    }),
-   to: value =>
-        (value.BASEADDR << 12)
-        // _RES0
-        | (u32::from(value.Format as u8) << 1)
-        | u32::from(value.present)
+        /// This field can be used to detect access points by iterating over all possible ones until one is found which has `present == false`.
+        pub present, set_present: 0;
+    ]
 );
 
 define_ap_register!(
@@ -378,35 +308,92 @@ define_ap_register!(
     address: 0x0FC,
     fields: [
         /// The revision of this access point.
-        REVISION: u8,
-        /// The JEP106 code of the designer of this access point.
-        DESIGNER: jep106::JEP106Code,
+        pub u8, REVISION, set_REVISION: 31, 28;
+        /// The raw JEP106 designer bits. Use [`IDR::DESIGNER`] for the decoded value.
+        u16, designer_bits, set_designer_bits: 27, 17;
         /// The class of this access point.
-        CLASS: ApClass,
-        #[doc(hidden)]
-        _RES0: u8,
+        pub u8, from into ApClass, CLASS, set_CLASS: 16, 13;
         /// The variant of this access port.
-        VARIANT: u8,
+        pub u8, VARIANT, set_VARIANT: 7, 4;
         /// The type of this access port.
-        TYPE: ApType,
-    ],
-    from: value => Ok(IDR {
-        REVISION: ((value >> 28) & 0x0F) as u8,
-        DESIGNER: {
-            let designer = ((value >> 17) & 0x7FF) as u16;
-            let cc = (designer >> 7) as u8;
-            let id = (designer & 0x7f) as u8;
-
-            jep106::JEP106Code::new(cc, id)
-        },
-        CLASS: ApClass::from_u8(((value >> 13) & 0x0F) as u8).ok_or_else(|| RegisterParseError::new("IDR", value))?,
-        _RES0: 0,
-        VARIANT: ((value >> 4) & 0x0F) as u8,
-        TYPE: ApType::from_u8((value & 0x0F) as u8).ok_or_else(|| RegisterParseError::new("IDR", value))?
-    }),
-    to: value => (u32::from(value.REVISION) << 28)
-        | (((u32::from(value.DESIGNER.cc) << 7) | u32::from(value.DESIGNER.id)) << 17)
-        | ((value.CLASS as u32) << 13)
-        | (u32::from(value.VARIANT) << 4)
-        | (value.TYPE as u32)
+        pub u8, from into ApType, TYPE, set_TYPE: 3, 0;
+    ]
 );
+
+impl IDR {
+    /// The JEP106 code of the designer of this access point.
+    pub fn DESIGNER(&self) -> jep106::JEP106Code {
+        let designer = self.designer_bits();
+        let cc = (designer >> 7) as u8;
+        let id = (designer & 0x7f) as u8;
+        jep106::JEP106Code::new(cc, id)
+    }
+
+    /// Sets the JEP106 code of the designer of this access point.
+    pub fn set_DESIGNER(&mut self, designer: jep106::JEP106Code) {
+        self.set_designer_bits((u16::from(designer.cc) << 7) | u16::from(designer.id));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::architecture::arm::ap::{AddressIncrement, ApClass, DataSize};
+
+    #[test]
+    fn csw_field_positions_and_roundtrip() {
+        let mut csw = CSW::try_from(0).unwrap();
+        csw.set_DbgSwEnable(true); // bit 31
+        csw.set_AddrInc(AddressIncrement::Packed); // bits 5:4 = 0b10
+        csw.set_SIZE(DataSize::U256); // bits 2:0 = 0b101
+
+        let raw: u32 = csw.into();
+        assert_eq!(raw & (1 << 31), 1 << 31, "DbgSwEnable must be bit 31");
+        assert_eq!(raw & (0b11 << 4), 0b10 << 4, "AddrInc must be bits 5:4");
+        assert_eq!(raw & 0b111, 0b101, "SIZE must be bits 2:0");
+
+        let csw = CSW::try_from(raw).unwrap();
+        assert!(csw.DbgSwEnable());
+        assert_eq!(csw.AddrInc(), AddressIncrement::Packed);
+        assert_eq!(csw.SIZE(), DataSize::U256);
+    }
+
+    #[test]
+    fn base_baseaddr_is_shifted() {
+        let mut base = BASE::try_from(0).unwrap();
+        base.set_BASEADDR(0xA_BCDE); // 20-bit value lives in bits 31:12
+        base.set_present(true);
+
+        let raw: u32 = base.into();
+        assert_eq!(raw & 0xFFFF_F000, 0xA_BCDE << 12);
+        assert_eq!(raw & 1, 1);
+        assert_eq!(BASE::try_from(raw).unwrap().BASEADDR(), 0xA_BCDE);
+    }
+
+    #[test]
+    fn idr_designer_splits_cc_and_id() {
+        let mut idr = IDR::try_from(0).unwrap();
+        idr.set_DESIGNER(jep106::JEP106Code::new(4, 0x3b));
+        idr.set_CLASS(ApClass::MemAp);
+
+        let idr = IDR::try_from(u32::from(idr)).unwrap();
+        assert_eq!(idr.DESIGNER(), jep106::JEP106Code::new(4, 0x3b));
+        assert_eq!(idr.CLASS(), ApClass::MemAp);
+    }
+
+    #[test]
+    fn unknown_enum_encoding_is_preserved() {
+        use crate::architecture::arm::ap::ApType;
+
+        // SIZE = 0b111 is not a defined DataSize; it round-trips as Unknown(7).
+        let csw = CSW::from_raw(0b111);
+        assert_eq!(csw.SIZE(), DataSize::Unknown(0b111));
+        assert_eq!(u32::from(csw) & 0b111, 0b111);
+
+        // TYPE = 0x3 is a gap in ApType.
+        assert_eq!(IDR::from_raw(0x3).TYPE(), ApType::Unknown(0x3));
+
+        // A defined encoding still decodes to its variant.
+        assert_eq!(CSW::from_raw(0b010).SIZE(), DataSize::U32);
+    }
+}

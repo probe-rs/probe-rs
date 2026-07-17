@@ -46,7 +46,7 @@ impl Nrf for Nrf5340 {
         let csw: CSW = arm_interface
             .read_raw_ap_register(ahb_ap_address, 0x00)?
             .try_into()?;
-        Ok(csw.DeviceEn)
+        Ok(csw.DeviceEn())
     }
 
     fn has_network_core(&self) -> bool {

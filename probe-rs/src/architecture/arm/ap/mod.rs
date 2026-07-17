@@ -213,18 +213,20 @@ impl<T: DapAccess> ApAccess for T {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum DataSize {
     /// 1 byte transfers are supported.
-    U8 = 0b000,
+    U8,
     /// 2 byte transfers are supported.
-    U16 = 0b001,
+    U16,
     /// 4 byte transfers are supported.
     #[default]
-    U32 = 0b010,
+    U32,
     /// 8 byte transfers are supported.
-    U64 = 0b011,
+    U64,
     /// 16 byte transfers are supported.
-    U128 = 0b100,
+    U128,
     /// 32 byte transfers are supported.
-    U256 = 0b101,
+    U256,
+    /// An unknown/reserved encoding read from the target. Holds the raw field bits.
+    Unknown(u8),
 }
 
 impl DataSize {
@@ -236,24 +238,38 @@ impl DataSize {
             DataSize::U64 => 8,
             DataSize::U128 => 16,
             DataSize::U256 => 32,
+            // Only ever queried for a size probe-rs itself selected, never a raw read-back.
+            DataSize::Unknown(bits) => {
+                unreachable!("byte count requested for unknown data size {bits:#x}")
+            }
         }
     }
 }
 
-/// Invalid data size.
-pub struct InvalidDataSizeError;
-
-impl TryFrom<u8> for DataSize {
-    type Error = InvalidDataSizeError;
-    fn try_from(value: u8) -> Result<Self, InvalidDataSizeError> {
+impl From<DataSize> for u8 {
+    fn from(value: DataSize) -> u8 {
         match value {
-            0b000 => Ok(DataSize::U8),
-            0b001 => Ok(DataSize::U16),
-            0b010 => Ok(DataSize::U32),
-            0b011 => Ok(DataSize::U64),
-            0b100 => Ok(DataSize::U128),
-            0b101 => Ok(DataSize::U256),
-            _ => Err(InvalidDataSizeError),
+            DataSize::U8 => 0b000,
+            DataSize::U16 => 0b001,
+            DataSize::U32 => 0b010,
+            DataSize::U64 => 0b011,
+            DataSize::U128 => 0b100,
+            DataSize::U256 => 0b101,
+            DataSize::Unknown(bits) => bits,
+        }
+    }
+}
+
+impl From<u8> for DataSize {
+    fn from(value: u8) -> Self {
+        match value {
+            0b000 => DataSize::U8,
+            0b001 => DataSize::U16,
+            0b010 => DataSize::U32,
+            0b011 => DataSize::U64,
+            0b100 => DataSize::U128,
+            0b101 => DataSize::U256,
+            bits => DataSize::Unknown(bits),
         }
     }
 }
@@ -268,24 +284,36 @@ impl TryFrom<u8> for DataSize {
 pub enum AddressIncrement {
     /// No increments are happening after the DRW access. TAR always stays the same.
     /// Always supported.
-    Off = 0b00,
+    Off,
     /// Increments the TAR by the size of the access after each DRW access.
     /// Always supported.
     #[default]
-    Single = 0b01,
+    Single,
     /// Enables packed access to the DRW (see C2.2.7).
     /// Only available if sub-word access is supported by the core.
-    Packed = 0b10,
+    Packed,
+    /// An unknown/reserved encoding read from the target. Holds the raw field bits.
+    Unknown(u8),
 }
 
-impl AddressIncrement {
-    /// Create a new `AddressIncrement` from a u8.
-    pub fn from_u8(value: u8) -> Option<Self> {
+impl From<AddressIncrement> for u8 {
+    fn from(value: AddressIncrement) -> u8 {
         match value {
-            0b00 => Some(AddressIncrement::Off),
-            0b01 => Some(AddressIncrement::Single),
-            0b10 => Some(AddressIncrement::Packed),
-            _ => None,
+            AddressIncrement::Off => 0b00,
+            AddressIncrement::Single => 0b01,
+            AddressIncrement::Packed => 0b10,
+            AddressIncrement::Unknown(bits) => bits,
+        }
+    }
+}
+
+impl From<u8> for AddressIncrement {
+    fn from(value: u8) -> Self {
+        match value {
+            0b00 => AddressIncrement::Off,
+            0b01 => AddressIncrement::Single,
+            0b10 => AddressIncrement::Packed,
+            bits => AddressIncrement::Unknown(bits),
         }
     }
 }
@@ -295,9 +323,31 @@ impl AddressIncrement {
 pub enum BaseAddrFormat {
     /// The legacy format of very old cores. Very little cores use this.
     #[default]
-    Legacy = 0,
+    Legacy,
     /// The format all newer MCUs use.
-    ADIv5 = 1,
+    ADIv5,
+    /// An unknown/reserved encoding read from the target. Holds the raw field bits.
+    Unknown(u8),
+}
+
+impl From<BaseAddrFormat> for u8 {
+    fn from(value: BaseAddrFormat) -> u8 {
+        match value {
+            BaseAddrFormat::Legacy => 0,
+            BaseAddrFormat::ADIv5 => 1,
+            BaseAddrFormat::Unknown(bits) => bits,
+        }
+    }
+}
+
+impl From<u8> for BaseAddrFormat {
+    fn from(value: u8) -> Self {
+        match value {
+            0 => BaseAddrFormat::Legacy,
+            1 => BaseAddrFormat::ADIv5,
+            bits => BaseAddrFormat::Unknown(bits),
+        }
+    }
 }
 
 /// Describes the class of an access port defined in the [`ARM Debug Interface v5.2`](https://developer.arm.com/documentation/ihi0031/f/?lang=en) specification.
@@ -305,21 +355,33 @@ pub enum BaseAddrFormat {
 pub enum ApClass {
     /// This describes a custom AP that is vendor defined and not defined by ARM
     #[default]
-    Undefined = 0b0000,
+    Undefined,
     /// The standard ARM COM-AP defined in the [`ARM Debug Interface v5.2`](https://developer.arm.com/documentation/ihi0031/f/?lang=en) specification.
-    ComAp = 0b0001,
+    ComAp,
     /// The standard ARM MEM-AP defined  in the [`ARM Debug Interface v5.2`](https://developer.arm.com/documentation/ihi0031/f/?lang=en) specification
-    MemAp = 0b1000,
+    MemAp,
+    /// An unknown/reserved encoding read from the target. Holds the raw field bits.
+    Unknown(u8),
 }
 
-impl ApClass {
-    /// Tries to create an `ApClass` from a given `u8`.
-    pub fn from_u8(value: u8) -> Option<Self> {
+impl From<ApClass> for u8 {
+    fn from(value: ApClass) -> u8 {
         match value {
-            0b0000 => Some(ApClass::Undefined),
-            0b0001 => Some(ApClass::ComAp),
-            0b1000 => Some(ApClass::MemAp),
-            _ => None,
+            ApClass::Undefined => 0b0000,
+            ApClass::ComAp => 0b0001,
+            ApClass::MemAp => 0b1000,
+            ApClass::Unknown(bits) => bits,
+        }
+    }
+}
+
+impl From<u8> for ApClass {
+    fn from(value: u8) -> Self {
+        match value {
+            0b0000 => ApClass::Undefined,
+            0b0001 => ApClass::ComAp,
+            0b1000 => ApClass::MemAp,
+            bits => ApClass::Unknown(bits),
         }
     }
 }
@@ -331,39 +393,57 @@ impl ApClass {
 pub enum ApType {
     /// This is the most basic AP that is included in most MCUs and uses SWD or JTAG as an access bus.
     #[default]
-    JtagComAp = 0x0,
+    JtagComAp,
     /// A AMBA based AHB3 AP (see E1.5).
-    AmbaAhb3 = 0x1,
+    AmbaAhb3,
     /// A AMBA based APB2 and APB3 AP (see E1.8).
-    AmbaApb2Apb3 = 0x2,
+    AmbaApb2Apb3,
     /// A AMBA based AXI3 and AXI4 AP (see E1.2).
-    AmbaAxi3Axi4 = 0x4,
+    AmbaAxi3Axi4,
     /// A AMBA based AHB5 AP (see E1.6).
-    AmbaAhb5 = 0x5,
+    AmbaAhb5,
     /// A AMBA based APB4 and APB5 AP (see E1.9).
-    AmbaApb4Apb5 = 0x6,
+    AmbaApb4Apb5,
     /// A AMBA based AXI5 AP (see E1.4).
-    AmbaAxi5 = 0x7,
+    AmbaAxi5,
     /// A AMBA based AHB5 AP with enhanced HPROT (see E1.7).
-    AmbaAhb5Hprot = 0x8,
+    AmbaAhb5Hprot,
+    /// An unknown/reserved encoding read from the target. Holds the raw field bits.
+    Unknown(u8),
 }
 
-impl ApType {
-    /// Tries to create an `ApType` from a given `u8`.
-    pub fn from_u8(value: u8) -> Option<Self> {
+impl From<ApType> for u8 {
+    fn from(value: ApType) -> u8 {
         match value {
-            0x0 => Some(ApType::JtagComAp),
-            0x1 => Some(ApType::AmbaAhb3),
-            0x2 => Some(ApType::AmbaApb2Apb3),
-            0x4 => Some(ApType::AmbaAxi3Axi4),
-            0x5 => Some(ApType::AmbaAhb5),
-            0x6 => Some(ApType::AmbaApb4Apb5),
-            0x7 => Some(ApType::AmbaAxi5),
-            0x8 => Some(ApType::AmbaAhb5Hprot),
-            _ => None,
+            ApType::JtagComAp => 0x0,
+            ApType::AmbaAhb3 => 0x1,
+            ApType::AmbaApb2Apb3 => 0x2,
+            ApType::AmbaAxi3Axi4 => 0x4,
+            ApType::AmbaAhb5 => 0x5,
+            ApType::AmbaApb4Apb5 => 0x6,
+            ApType::AmbaAxi5 => 0x7,
+            ApType::AmbaAhb5Hprot => 0x8,
+            ApType::Unknown(bits) => bits,
         }
     }
 }
+
+impl From<u8> for ApType {
+    fn from(value: u8) -> Self {
+        match value {
+            0x0 => ApType::JtagComAp,
+            0x1 => ApType::AmbaAhb3,
+            0x2 => ApType::AmbaApb2Apb3,
+            0x4 => ApType::AmbaAxi3Axi4,
+            0x5 => ApType::AmbaAhb5,
+            0x6 => ApType::AmbaApb4Apb5,
+            0x7 => ApType::AmbaAxi5,
+            0x8 => ApType::AmbaAhb5Hprot,
+            bits => ApType::Unknown(bits),
+        }
+    }
+}
+
 /// Base trait for all versions of access port registers
 pub trait ApRegister:
     Clone + TryFrom<u32, Error = RegisterParseError> + Into<u32> + Sized + std::fmt::Debug

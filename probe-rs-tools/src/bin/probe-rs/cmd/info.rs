@@ -299,23 +299,23 @@ impl Display for DebugPortInfo {
                         }
                     }
                     ApInfo::Unknown { ap_addr, idr } => {
-                        let idr = IDR::try_from(*idr).unwrap();
-                        let jep = idr.DESIGNER;
+                        let idr = IDR::from_raw(*idr);
+                        let jep = idr.DESIGNER();
 
-                        let ap_type = if idr.DESIGNER == JEP_ARM {
-                            format!("{:?}", idr.TYPE)
+                        let ap_type = if jep == JEP_ARM {
+                            format!("{:?}", idr.TYPE())
                         } else {
-                            format!("{:#x}", idr.TYPE as u8)
+                            format!("{:#x}", u32::from(idr) & 0xF)
                         };
 
                         let ap_node = Tree::new(format!(
                             "{} Unknown AP (Designer: {}, Class: {:?}, Type: {}, Variant: {:#x}, Revision: {:#x})",
                             ap_addr.ap,
                             jep.get().unwrap_or("<unknown>"),
-                            idr.CLASS,
+                            idr.CLASS(),
                             ap_type,
-                            idr.VARIANT,
-                            idr.REVISION
+                            idr.VARIANT(),
+                            idr.REVISION()
                         ));
 
                         tree.push(ap_node);

@@ -240,105 +240,105 @@ impl ArmDebugInterface for BlackMagicProbeArmDebug {
             MemoryAp::AmbaAhb3(ap) => {
                 let mut csw = ap.status(self)?;
 
-                csw.DbgSwEnable = true;
-                csw.AddrInc = AddressIncrement::Off;
-                csw.Size = DataSize::U8;
+                csw.set_DbgSwEnable(true);
+                csw.set_AddrInc(AddressIncrement::Off);
+                csw.set_Size(DataSize::U8);
 
-                csw.MasterType = true;
-                csw.Privileged = true;
-                csw.Data = true;
+                csw.set_MasterType(true);
+                csw.set_Privileged(true);
+                csw.set_Data(true);
 
-                csw.Allocate = false;
-                csw.Cacheable = false;
-                csw.Bufferable = false;
+                csw.set_Allocate(false);
+                csw.set_Cacheable(false);
+                csw.set_Bufferable(false);
 
                 // Enable secure access if it's allowed
-                csw.HNONSEC = !csw.SPIDEN;
+                csw.set_HNONSEC(!csw.SPIDEN());
 
                 CSW::try_from(Into::<u32>::into(csw))?
             }
             MemoryAp::AmbaAhb5(ap) => {
                 let mut csw = ap.status(self)?;
 
-                csw.DbgSwEnable = true;
-                csw.AddrInc = AddressIncrement::Off;
-                csw.Size = DataSize::U8;
+                csw.set_DbgSwEnable(true);
+                csw.set_AddrInc(AddressIncrement::Off);
+                csw.set_Size(DataSize::U8);
 
-                csw.MasterType = true;
-                csw.Data = true;
-                csw.Privileged = true;
+                csw.set_MasterType(true);
+                csw.set_Data(true);
+                csw.set_Privileged(true);
 
                 // Enable secure access if it's allowed
-                csw.HNONSEC = !csw.SPIDEN;
+                csw.set_HNONSEC(!csw.SPIDEN());
 
                 CSW::try_from(Into::<u32>::into(csw))?
             }
             MemoryAp::AmbaAhb5Hprot(ap) => {
                 let mut csw = ap.status(self)?;
 
-                csw.DbgSwEnable = true;
-                csw.AddrInc = AddressIncrement::Off;
-                csw.Size = DataSize::U8;
+                csw.set_DbgSwEnable(true);
+                csw.set_AddrInc(AddressIncrement::Off);
+                csw.set_Size(DataSize::U8);
 
-                csw.MasterType = true;
-                csw.Data = true;
-                csw.Privileged = true;
+                csw.set_MasterType(true);
+                csw.set_Data(true);
+                csw.set_Privileged(true);
 
                 // Enable secure access if it's allowed
-                csw.HNONSEC = !csw.SPIDEN;
+                csw.set_HNONSEC(!csw.SPIDEN());
 
                 CSW::try_from(Into::<u32>::into(csw))?
             }
             MemoryAp::AmbaApb2Apb3(ap) => {
                 let mut csw = ap.status(self)?;
 
-                csw.DbgSwEnable = true;
-                csw.AddrInc = AddressIncrement::Off;
-                csw.Size = DataSize::U8;
+                csw.set_DbgSwEnable(true);
+                csw.set_AddrInc(AddressIncrement::Off);
+                csw.set_Size(DataSize::U8);
 
                 CSW::try_from(Into::<u32>::into(csw))?
             }
             MemoryAp::AmbaApb4Apb5(ap) => {
                 let mut csw = ap.status(self)?;
 
-                csw.DbgSwEnable = true;
-                csw.AddrInc = AddressIncrement::Off;
-                csw.Size = DataSize::U8;
+                csw.set_DbgSwEnable(true);
+                csw.set_AddrInc(AddressIncrement::Off);
+                csw.set_Size(DataSize::U8);
 
                 // Enable secure access if it's allowed
-                csw.NonSecure = !csw.SPIDEN;
-                csw.Privileged = true;
+                csw.set_NonSecure(!csw.SPIDEN());
+                csw.set_Privileged(true);
 
                 CSW::try_from(Into::<u32>::into(csw))?
             }
             MemoryAp::AmbaAxi3Axi4(ap) => {
                 let mut csw = ap.status(self)?;
 
-                csw.DbgSwEnable = true;
-                csw.AddrInc = AddressIncrement::Off;
-                csw.Size = DataSize::U8;
+                csw.set_DbgSwEnable(true);
+                csw.set_AddrInc(AddressIncrement::Off);
+                csw.set_Size(DataSize::U8);
 
-                csw.Instruction = false;
+                csw.set_Instruction(false);
                 // Enable secure access if it's allowed
-                csw.NonSecure = !csw.SPIDEN;
-                csw.Privileged = true;
-                csw.CACHE = 0;
+                csw.set_NonSecure(!csw.SPIDEN());
+                csw.set_Privileged(true);
+                csw.set_CACHE(0);
 
                 CSW::try_from(Into::<u32>::into(csw))?
             }
             MemoryAp::AmbaAxi5(ap) => {
                 let mut csw = ap.status(self)?;
 
-                csw.DbgSwEnable = true;
-                csw.AddrInc = AddressIncrement::Off;
-                csw.Size = DataSize::U8;
+                csw.set_DbgSwEnable(true);
+                csw.set_AddrInc(AddressIncrement::Off);
+                csw.set_Size(DataSize::U8);
 
-                csw.Instruction = false;
+                csw.set_Instruction(false);
                 // Enable secure access if it's allowed
-                csw.NonSecure = !csw.SPIDEN;
-                csw.Privileged = true;
-                csw.CACHE = 0;
-                csw.MTE = false;
+                csw.set_NonSecure(!csw.SPIDEN());
+                csw.set_Privileged(true);
+                csw.set_CACHE(0);
+                csw.set_MTE(false);
 
                 CSW::try_from(Into::<u32>::into(csw))?
             }

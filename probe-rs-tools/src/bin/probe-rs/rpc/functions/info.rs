@@ -587,11 +587,11 @@ async fn show_arm_info(
                     let raw_idr = interface.read_raw_ap_register(&ap_address, IDR::ADDRESS)?;
                     let idr: IDR = raw_idr.try_into()?;
 
-                    let ap_info = if idr.CLASS == ApClass::MemAp {
+                    let ap_info = if idr.CLASS() == ApClass::MemAp {
                         let mut ap_nodes = ComponentTreeNode::new(format!(
                             "{} MemoryAP ({:?})",
                             ap_address.ap_v1()?,
-                            idr.TYPE
+                            idr.TYPE()
                         ));
                         if let Err(e) = handle_memory_ap(interface, &ap_address, &mut ap_nodes) {
                             ap_nodes.push(format!("Error during access: {e}"));
@@ -649,7 +649,7 @@ fn handle_memory_ap(
 
         // Check if the AP is accessible
         let csw = memory.generic_status()?;
-        if !csw.DeviceEn {
+        if !csw.DeviceEn() {
             *parent = ComponentTreeNode::new(
                 "Memory AP is not accessible, DeviceEn bit not set".to_string(),
             );

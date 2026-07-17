@@ -23,57 +23,36 @@ use crate::{
 };
 
 mod debugmailbox {
+    #![allow(non_snake_case)]
     use crate::architecture::arm::ap::define_ap_register;
 
     define_ap_register!(
         name: DMCSW,
         address: 0x00,
         fields: [
-            ResynchReq: bool,
-            ReqPending: bool,
-            DbgOrErr: bool,
-            AhbOrErr: bool,
-            SoftReset: bool,
-            ChipResetReq: bool,
-        ],
-        from: value => Ok(DMCSW {
-            ResynchReq: ((value >> 31) & 0x01) != 0,
-            ReqPending: ((value >> 30) & 0x01) != 0,
-            DbgOrErr: ((value >> 29) & 0x01) != 0,
-            AhbOrErr: ((value >> 28) & 0x01) != 0,
-            SoftReset: ((value >> 27) & 0x01) != 0,
-            ChipResetReq: ((value >> 26) & 0x01) != 0,
-        }),
-        to: value => (u32::from(value.ResynchReq) << 31)
-        | (u32::from(value.ReqPending) << 30)
-        | (u32::from(value.DbgOrErr) << 29)
-        | (u32::from(value.AhbOrErr) << 28)
-        | (u32::from(value.SoftReset) << 27)
-        | (u32::from(value.ChipResetReq) << 26)
+            pub ResynchReq, set_ResynchReq: 31;
+            pub ReqPending, set_ReqPending: 30;
+            pub DbgOrErr, set_DbgOrErr: 29;
+            pub AhbOrErr, set_AhbOrErr: 28;
+            pub SoftReset, set_SoftReset: 27;
+            pub ChipResetReq, set_ChipResetReq: 26;
+        ]
     );
 
     define_ap_register!(
         name: DMREQUEST,
         address: 0x04,
         fields: [
-            Request: u32
-        ],
-        from: value => Ok(DMREQUEST {
-            Request: value
-        }),
-        to: value => value.Request
+            pub u32, Request, set_Request: 31, 0;
+        ]
     );
 
     define_ap_register!(
         name: DMRETURN,
         address: 0x08,
         fields: [
-            Return: u32
-        ],
-        from: value => Ok(DMRETURN {
-            Return: value
-        }),
-        to: value => value.Return
+            pub u32, Return, set_Return: 31, 0;
+        ]
     );
 }
 
@@ -120,7 +99,7 @@ impl MCX {
         let csw: CSW = interface
             .read_raw_ap_register(mem_ap, CSW::ADDRESS)?
             .try_into()?;
-        Ok(csw.DeviceEn)
+        Ok(csw.DeviceEn())
     }
 
     fn debug_mailbox_ap(&self, dp: DpAddress) -> Result<FullyQualifiedApAddress, ArmError> {

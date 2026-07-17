@@ -53,7 +53,7 @@ impl ArmDebugSequence for Nrf54L {
             .read_raw_ap_register(default_ap, CSW::ADDRESS)?
             .try_into()?;
 
-        if csw.DeviceEn {
+        if csw.DeviceEn() {
             tracing::debug!("Core is already unlocked");
             return Ok(());
         }

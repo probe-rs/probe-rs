@@ -61,7 +61,7 @@ impl Mec172x {
 
         loop {
             match memory.generic_status() {
-                Ok(csw) if csw.DeviceEn => {
+                Ok(csw) if csw.DeviceEn() => {
                     tracing::debug!(
                         "Device enabled after {}ms with {errors} errors and {disables} invalid statuses",
                         start.elapsed().as_millis()
