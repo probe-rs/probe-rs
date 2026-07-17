@@ -178,7 +178,7 @@ where
             self.memory_ap.read_data(self.interface, &mut values)?;
 
             // The required shifting logic here is described in C2.2.6 Byte lanes of the ADI v5.2 specification.
-            // All bytes are transfered in their lane, so when we do an access at an address that is not divisible by 4,
+            // All bytes are transferred in their lane, so when we do an access at an address that is not divisible by 4,
             // we have to shift the word (one or two bytes) to it's correct position.
             for (target, (i, source)) in
                 data[..chunk_size].iter_mut().zip(values.iter().enumerate())
@@ -228,7 +228,7 @@ where
             self.memory_ap.read_data(self.interface, &mut values)?;
 
             // The required shifting logic here is described in C2.2.6 Byte lanes of the ADI v5.2 specification.
-            // All bytes are transfered in their lane, so when we do an access at an address that is not divisible by 4,
+            // All bytes are transferred in their lane, so when we do an access at an address that is not divisible by 4,
             // we have to shift the word (one or two bytes) to it's correct position.
             for (target, (i, source)) in
                 data[..chunk_size].iter_mut().zip(values.iter().enumerate())

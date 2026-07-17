@@ -143,7 +143,7 @@ fn main() -> Result<()> {
         );
         eprintln!("Verification failed!");
     } else {
-        println!("Verification succesful.");
+        println!("Verification successful.");
     }
 
     Ok(())

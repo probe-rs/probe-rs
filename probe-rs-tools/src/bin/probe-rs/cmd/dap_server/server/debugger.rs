@@ -1066,7 +1066,7 @@ mod test {
             self
         }
 
-        fn and_succesful_response(self) -> ResponseBuilder<'r> {
+        fn and_successful_response(self) -> ResponseBuilder<'r> {
             let req = self.adapter.requests.back_mut().unwrap();
 
             let response = Response {
@@ -1162,7 +1162,7 @@ mod test {
         fn expect_response(&mut self, response: Response) -> ResponseBuilder<'_> {
             assert!(
                 response.success,
-                "success field must be true for succesful response"
+                "success field must be true for successful response"
             );
             self.expected_responses.push(response);
             ResponseBuilder { adapter: self }
@@ -1277,7 +1277,7 @@ mod test {
         protocol_adapter
             .add_request("initialize")
             .with_arguments(default_initialize_args())
-            .and_succesful_response()
+            .and_successful_response()
             .with_body(expected_capabilities());
 
         protocol_adapter.expect_output_event("probe-rs-debug: Log output for \"probe_rs=warn\" will be written to the Debug Console.\n");
@@ -1311,7 +1311,7 @@ mod test {
         protocol_adapter
             .add_request("launch")
             .with_arguments(launch_args)
-            .and_succesful_response();
+            .and_successful_response();
 
         protocol_adapter.expect_event("initialized", None::<u32>);
 
@@ -1326,7 +1326,7 @@ mod test {
                 suspend_debuggee: Some(false),
                 terminate_debuggee: Some(false),
             })
-            .and_succesful_response();
+            .and_successful_response();
     }
 
     fn fake_probe() -> (DebugProbeInfo, FakeProbe) {
@@ -1431,7 +1431,7 @@ mod test {
         protocol_adapter
             .add_request("attach")
             .with_arguments(attach_args)
-            .and_succesful_response();
+            .and_successful_response();
 
         protocol_adapter.expect_event("initialized", None::<u32>);
 
@@ -1471,7 +1471,7 @@ mod test {
 
         protocol_adapter
             .add_request("configurationDone")
-            .and_succesful_response();
+            .and_successful_response();
 
         protocol_adapter.expect_event(
             "continued",
@@ -1497,7 +1497,7 @@ mod test {
 
         protocol_adapter
             .add_request("threads")
-            .and_succesful_response()
+            .and_successful_response()
             .with_body(ThreadsResponseBody {
                 threads: vec![Thread {
                     id: 0,
@@ -1581,7 +1581,7 @@ mod test {
 
         protocol_adapter
             .add_request("configurationDone")
-            .and_succesful_response();
+            .and_successful_response();
 
         protocol_adapter.expect_event(
             "continued",
@@ -1641,7 +1641,7 @@ mod test {
                 instruction_count: *inst_cnt,
                 resolve_symbols: None,
             })
-            .and_succesful_response()
+            .and_successful_response()
             .with_body(DisassembleResponseBody {
                 instructions: test_instrs
                     .iter()

@@ -1345,7 +1345,7 @@ impl DapAccess for StlinkArmDebug {
 
         tracing::Span::current().record("value", result);
 
-        tracing::debug!("Read succesful");
+        tracing::debug!("Read successful");
 
         Ok(result)
     }
