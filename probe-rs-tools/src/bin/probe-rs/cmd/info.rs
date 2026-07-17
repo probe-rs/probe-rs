@@ -72,6 +72,8 @@ impl Cmd {
 
             let probe = select_probe(&client, self.common.probe.map(Into::into)).await?;
 
+            let mut any_success = false;
+
             for protocol in protocols {
                 let msg = format!("Probing target via {protocol}");
                 println!("{msg}");
@@ -119,10 +121,20 @@ impl Cmd {
                         println!("{message}");
                     }
                 } else {
+                    any_success = true;
                     for message in successes {
                         println!("{message}");
                     }
                 }
+            }
+
+            if !any_success {
+                println!();
+                println!(
+                    "Note: `info` only tries to identify the debug port and its components. \
+                     A failed or incomplete result does not necessarily mean the chip or your \
+                     wiring is broken - flashing and debugging may still work fine."
+                );
             }
         } else {
             match crate::cmd::common::info::basic_info(&client, self.common).await {
@@ -135,6 +147,9 @@ impl Cmd {
                 Err(e) => {
                     eprintln!(
                         "Could not attach to target. Try running with --verbose for more information about the target."
+                    );
+                    eprintln!(
+                        "A failed `info` command does not necessarily mean the chip or your wiring is broken - flashing and debugging may still work fine."
                     );
                     return Err(e);
                 }
