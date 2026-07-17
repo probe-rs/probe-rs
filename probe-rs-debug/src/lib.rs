@@ -261,7 +261,7 @@ pub(crate) fn _print_all_attributes(
 
                 let result = evaluation.result();
 
-                println!("Expression: {:x?}", &result[0]);
+                println!("Expression: {:x?}", result[0]);
             }
             AttributeValue::LocationListsRef(_) => println!("LocationList"),
             AttributeValue::DebugLocListsBase(_) => println!(" LocationList"),

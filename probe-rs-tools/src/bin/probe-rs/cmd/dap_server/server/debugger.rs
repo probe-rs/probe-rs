@@ -598,8 +598,8 @@ impl Debugger {
         session_data: &mut SessionData,
     ) -> Result<(), DebuggerError> {
         debug_adapter.log_to_console(format!(
-            "FLASHING: Starting write of {:?} to device memory",
-            &path_to_elf
+            "FLASHING: Starting write of {} to device memory",
+            path_to_elf.display()
         ));
         let progress_id = debug_adapter
             .start_progress("Flashing device", Some(launch_attach_request.seq))
@@ -727,8 +727,8 @@ impl Debugger {
 
         if result.is_ok() {
             debug_adapter.log_to_console(format!(
-                "FLASHING: Completed write of {:?} to device memory",
-                &path_to_elf
+                "FLASHING: Completed write of {} to device memory",
+                path_to_elf.display()
             ));
         }
 

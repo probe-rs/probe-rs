@@ -143,7 +143,7 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                     .or_else(|| device_default_access.map(|a| !a.can_read()))
                     .unwrap_or(true);
 
-            let register_name = format!("{}.{}", &peripheral_name, register.name);
+            let register_name = format!("{peripheral_name}.{}", register.name);
 
             let mut field_variables = Vec::new();
 
@@ -175,7 +175,7 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
 
             let register_variable_key = svd_cache.add_variable(
                 peripheral_key,
-                format!("{}.{}", &peripheral_name, register.name),
+                format!("{peripheral_name}.{}", register.name),
                 SvdVariable::SvdRegister {
                     address: register_address,
                     restricted_read: register_has_restricted_read,

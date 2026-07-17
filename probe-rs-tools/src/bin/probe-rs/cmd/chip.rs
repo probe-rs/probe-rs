@@ -41,7 +41,7 @@ pub async fn print_families(client: &RpcClient, mut output: impl Write) -> anyho
     writeln!(output, "Available chips:")?;
     let families = client.list_chip_families().await?;
     for family in families {
-        writeln!(output, "{}", &family.name)?;
+        writeln!(output, "{}", family.name)?;
         writeln!(output, "    Variants:")?;
         for variant in family.variants {
             writeln!(output, "        {}", variant.name)?;

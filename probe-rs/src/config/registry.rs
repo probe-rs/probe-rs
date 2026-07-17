@@ -544,8 +544,8 @@ mod tests {
                         )
                         .unwrap_or_else(|error| {
                             panic!(
-                                "Failed to initialize flash algorithm ({}, {}, {core}): {}",
-                                &target.name, &raw_flash_algo.name, error
+                                "Failed to initialize flash algorithm ({}, {}, {core}): {error}",
+                                target.name, raw_flash_algo.name
                             )
                         });
                     }

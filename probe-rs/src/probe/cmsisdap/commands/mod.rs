@@ -348,7 +348,7 @@ impl CmsisDapDevice {
                             Ok(buf)
                         }
                         Err(e) if e.kind() == ErrorKind::TimedOut => {
-                            buf.truncate(0);
+                            buf.clear();
                             Ok(buf)
                         }
                         Err(e) => Err(CmsisDapError::SwoReadError(e)),

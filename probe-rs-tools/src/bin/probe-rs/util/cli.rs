@@ -672,7 +672,7 @@ pub async fn monitor(
         let prompt = |channel_idx| {
             Prompt::new(format!(
                 "{}> ",
-                &data.down_channels[channel_idx as usize].name
+                data.down_channels[channel_idx as usize].name
             ))
             .to_string()
         };

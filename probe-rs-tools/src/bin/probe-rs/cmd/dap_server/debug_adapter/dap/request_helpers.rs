@@ -550,7 +550,7 @@ pub(crate) fn set_instruction_breakpoint(
                         });
                         breakpoint_response.message = Some(format!(
                             "Instruction breakpoint set @:{memory_reference:#010x}. File: {}: Line: {}, Column: {}",
-                            &source_location
+                            source_location
                                 .file_name()
                                 .unwrap_or_else(|| "<unknown source file>".to_string()),
                             breakpoint_response.line.unwrap_or(0),

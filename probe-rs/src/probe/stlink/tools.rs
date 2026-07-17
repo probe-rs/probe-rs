@@ -27,7 +27,7 @@ pub(super) fn list_stlink_devices() -> Vec<DebugProbeInfo> {
             DebugProbeInfo::new(
                 format!(
                     "STLink {}",
-                    &USB_PID_EP_MAP[&device.product_id()].version_name
+                    USB_PID_EP_MAP[&device.product_id()].version_name
                 ),
                 device.vendor_id(),
                 device.product_id(),

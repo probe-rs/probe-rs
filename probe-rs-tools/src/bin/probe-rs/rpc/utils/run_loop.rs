@@ -209,10 +209,7 @@ impl RunLoop {
         if self.cancellation_token.is_cancelled() {
             return Ok(ControlFlow::Break(ReturnReason::Cancelled));
         }
-        match poller_result {
-            Ok(delay) => next_poll = next_poll.min(delay),
-            Err(error) => return Err(error),
-        }
+        next_poll = next_poll.min(poller_result?);
 
         Ok(ControlFlow::Continue(next_poll))
     }

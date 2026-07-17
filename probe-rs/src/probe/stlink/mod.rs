@@ -62,7 +62,7 @@ impl ProbeFactory for StLinkFactory {
         tracing::debug!("Opening ST-Link: {selector:?}");
         let device = StLinkUsbDevice::new_from_selector(selector)?;
         let mut stlink = StLink {
-            name: format!("ST-Link {}", &device.info.version_name),
+            name: format!("ST-Link {}", device.info.version_name),
             device,
             hw_version: 0,
             jtag_version: 0,
