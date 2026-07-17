@@ -21,7 +21,7 @@ As of version 0.27.0 this library can:
 - Download ELF, BIN and IHEX binaries using standard CMSIS-Pack flash algorithms.
 - Debug a target via the CLI, VSCode (MS-DAP) and GDB.
 
-To see what new functionality gets added every release, have a look at the [CHANGELOG](https://github.com/probe-rs/probe-rs/blob/master/CHANGELOG.md)
+To see what new functionality gets added every release, have a look at the [CHANGELOG](https://github.com/probe-rs/probe-rs/blob/master/CHANGELOG.md). Changes that haven't been released yet live as individual fragments in the [`changelog/`](https://github.com/probe-rs/probe-rs/tree/master/changelog) directory.
 
 ## Support
 
