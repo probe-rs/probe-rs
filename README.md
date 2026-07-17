@@ -31,6 +31,16 @@ If you think probe-rs makes your embedded journey more enjoyable or even earns y
 
 In addition to being a library, probe-rs also includes a suite of tools which can be used for flashing and debugging.
 
+### Which tool should I use?
+
+The tools share a lot of functionality (flashing, running, RTT, ...) but target different workflows:
+
+- **`probe-rs`** is the standalone CLI. It works with any ELF/BIN/IHEX binary regardless of language or build system, and exposes lower-level operations (`info`, `read`, `write`, `erase`, ...). Reach for it when you are not building a Cargo project, or when you need fine-grained control.
+- **`cargo-flash`** is a cargo subcommand that builds your Rust project and flashes the resulting binary in one step. Use it when you just want to flash a Cargo project.
+- **`cargo-embed`** builds and flashes like `cargo-flash`, but additionally offers a richer, config-file-driven experience with RTT, GDB and multiple views. Use it when you want a more complete debugging session for a Cargo project.
+
+If in doubt, start with `cargo-embed` for Rust projects and `probe-rs` for everything else.
+
 ### Installation
 
 The recommended way to install the tools is to download a precompiled version, using one of the methods below.
