@@ -1009,7 +1009,11 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                 Err(z) => {
                     if guard.elapsed() > RESET_RECOVERY_TIMEOUT {
                         tracing::debug!("DPIDR didn't become readable within guard time");
-                        return Err(z);
+                        // The debug port never acknowledged the initial read, which usually
+                        // means nothing is listening on the wire.
+                        return Err(ArmError::NoTargetResponse {
+                            source: Box::new(z),
+                        });
                     }
                 }
             }

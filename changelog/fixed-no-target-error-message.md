@@ -1,0 +1,1 @@
+Reading the debug port when no target is connected (or the target is unpowered) now returns a clear "no target responded" error that points at connection/power/wiring, instead of a cryptic SWD protocol error.
