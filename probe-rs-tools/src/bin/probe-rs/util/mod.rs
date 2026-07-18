@@ -6,6 +6,7 @@ pub mod logging;
 pub mod meta;
 pub mod pwr;
 pub mod rtt;
+pub mod setup_hints;
 pub mod visualizer;
 
 use std::num::ParseIntError;

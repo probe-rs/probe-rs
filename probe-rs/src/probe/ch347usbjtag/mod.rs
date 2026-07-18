@@ -50,7 +50,7 @@ impl ProbeFactory for Ch347UsbJtagFactory {
         }))
     }
 
-    fn list_probes(&self) -> Vec<super::DebugProbeInfo> {
+    fn list_probes(&self) -> Vec<super::list::ProbeListItem> {
         protocol::list_ch347usbjtag_devices()
     }
 }

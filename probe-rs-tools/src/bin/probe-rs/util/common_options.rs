@@ -8,7 +8,8 @@ use probe_rs::{
     flashing::{FileDownloadError, FlashError},
     integration::FakeProbe,
     probe::{
-        DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, WireProtocol, list::Lister,
+        DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, WireProtocol,
+        list::{Accessibility, Lister},
     },
 };
 use serde::{Deserialize, Serialize};
@@ -280,9 +281,18 @@ impl<'r> LoadedProbeOptions<'r> {
         } else {
             // If we got a probe selector as an argument, open the probe
             // matching the selector if possible.
-            match &self.0.probe {
-                Some(selector) => lister.open(selector.clone())?,
-                None => Self::select_probe(lister, self.0.non_interactive)?,
+            let result = match &self.0.probe {
+                Some(selector) => lister.open(selector.clone()).map_err(OperationError::from),
+                None => Self::select_probe(lister, self.0.non_interactive),
+            };
+            match result {
+                Ok(probe) => probe,
+                Err(error) => {
+                    if setup_hint_warranted(&error, lister) {
+                        crate::util::setup_hints::print_setup_hints();
+                    }
+                    return Err(error);
+                }
             }
         };
 
@@ -567,6 +577,21 @@ pub enum OperationError {
 
     #[error(transparent)]
     Anyhow(#[from] anyhow::Error),
+}
+
+/// Whether to nudge the user about probe setup after a failed attach.
+///
+/// We key this off the accessibility signal from listing, not the open error: a
+/// permission problem can surface as several different error variants (or get
+/// swallowed into "no probe found"), while a busy device (EBUSY) is fully
+/// accessible and shouldn't trigger it. So we show the hint when no probe was
+/// found at all, or when the lister reports a probe the current user can't access.
+fn setup_hint_warranted(error: &OperationError, lister: &Lister) -> bool {
+    matches!(error, OperationError::NoProbesFound)
+        || lister
+            .list_all_with_access()
+            .iter()
+            .any(|probe| probe.accessibility != Accessibility::Accessible)
 }
 
 /// Used in errors it can print a list of items.

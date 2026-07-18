@@ -3152,6 +3152,7 @@ dependencies = [
  "itertools 0.15.0",
  "itm",
  "jep106",
+ "nix 0.31.3",
  "nusb",
  "object 0.39.1",
  "parking_lot",

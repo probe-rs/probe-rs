@@ -984,7 +984,7 @@ mod test {
             todo!()
         }
 
-        fn list_probes(&self) -> Vec<DebugProbeInfo> {
+        fn list_probes(&self) -> Vec<probe_rs::probe::list::ProbeListItem> {
             todo!()
         }
     }

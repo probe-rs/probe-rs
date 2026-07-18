@@ -45,7 +45,7 @@ use probe_rs::{
     },
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
-        ProbeError, ProbeFactory, SwdSettings, WireProtocol,
+        ProbeError, ProbeFactory, SwdSettings, WireProtocol, list::ProbeListItem,
     },
 };
 use spidev::{SpiModeFlags, SpidevOptions, SpidevTransfer};
@@ -87,14 +87,14 @@ impl ProbeFactory for LinuxSpidevSwdFactory {
         Ok(Box::new(LinuxSpidevSwdProbe::new(spidev)))
     }
 
-    fn list_probes(&self) -> Vec<DebugProbeInfo> {
+    fn list_probes(&self) -> Vec<ProbeListItem> {
         list_spidev_links()
             .into_iter()
-            .map(|path| probe_info_for_path(&path))
+            .map(|path| ProbeListItem::accessible(probe_info_for_path(&path)))
             .collect()
     }
 
-    fn list_probes_filtered(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
+    fn list_probes_filtered(&self, selector: Option<&DebugProbeSelector>) -> Vec<ProbeListItem> {
         let Some(selector) = selector else {
             return self.list_probes();
         };
@@ -104,14 +104,14 @@ impl ProbeFactory for LinuxSpidevSwdFactory {
             .as_deref()
             .is_some_and(|serial| is_valid_spidev_path(Path::new(serial)))
         {
-            return vec![probe_info_for_path(Path::new(
+            return vec![ProbeListItem::accessible(probe_info_for_path(Path::new(
                 selector.serial_number.as_deref().unwrap(),
-            ))];
+            )))];
         }
 
         self.list_probes()
             .into_iter()
-            .filter(|probe| selector.matches_probe(probe))
+            .filter(|probe| selector.matches_probe(&probe.info))
             .collect()
     }
 }
@@ -699,7 +699,10 @@ mod tests {
         let probes = LinuxSpidevSwdFactory.list_probes_filtered(Some(&selector));
 
         assert_eq!(probes.len(), 1);
-        assert_eq!(probes[0].serial_number.as_deref(), Some("/dev/spidev0.0"));
+        assert_eq!(
+            probes[0].info.serial_number.as_deref(),
+            Some("/dev/spidev0.0")
+        );
     }
 
     #[test]

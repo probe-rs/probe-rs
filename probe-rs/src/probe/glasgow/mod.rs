@@ -15,6 +15,7 @@ use crate::architecture::arm::{
 
 use super::{
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory, WireProtocol,
+    list::ProbeListItem,
 };
 
 mod mux;
@@ -43,14 +44,14 @@ impl ProbeFactory for GlasgowFactory {
             .map(DebugProbe::into_probe)
     }
 
-    fn list_probes(&self) -> Vec<DebugProbeInfo> {
+    fn list_probes(&self) -> Vec<ProbeListItem> {
         // Don't return anything; we don't know whether any given device is running a compatible
         // bitstream, and there is no way for us to know which interfaces are bound to the probe-rs
         // applet. These parameters must be specified by the user.
         Vec::new()
     }
 
-    fn list_probes_filtered(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
+    fn list_probes_filtered(&self, selector: Option<&DebugProbeSelector>) -> Vec<ProbeListItem> {
         // Return exactly the specified probe, if it has the option string (which is referred to
         // here as the serial number).
         if let Some(DebugProbeSelector {
@@ -62,7 +63,9 @@ impl ProbeFactory for GlasgowFactory {
             && *vendor_id == usb::VID_QIHW
             && *product_id == usb::PID_GLASGOW
         {
-            return vec![DebugProbeInfo {
+            // The probe is built from the selector, so there is no enumerated device to check
+            // accessibility against here.
+            return vec![ProbeListItem::accessible(DebugProbeInfo {
                 identifier: "Glasgow".to_owned(),
                 vendor_id: *vendor_id,
                 product_id: *product_id,
@@ -70,7 +73,7 @@ impl ProbeFactory for GlasgowFactory {
                 is_hid_interface: false,
                 probe_factory: &Self,
                 interface: *interface,
-            }];
+            })];
         }
 
         vec![]

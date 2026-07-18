@@ -70,6 +70,18 @@ fn run_test(mut args: Arguments, definitions: &[DutDefinition]) -> Result<ExitCo
 
         let chip_name = definition.chip.name.clone();
 
+        // Verify the probe shows up when listing, and is reported as accessible.
+        {
+            let definition = definition.clone();
+            let trial = Trial::test("List probe", move || {
+                definition.assert_listed()?;
+                Ok(())
+            })
+            .with_kind(&chip_name);
+
+            trials.push(trial);
+        }
+
         for test in SESSION_TESTS {
             let session_definition = definition.clone();
 

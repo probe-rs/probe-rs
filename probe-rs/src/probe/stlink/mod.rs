@@ -20,8 +20,8 @@ use crate::{
         valid_32bit_arm_address,
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeError,
-        ProbeFactory, WireProtocol,
+        DebugProbe, DebugProbeError, DebugProbeSelector, Probe, ProbeError, ProbeFactory,
+        WireProtocol,
     },
 };
 
@@ -79,7 +79,7 @@ impl ProbeFactory for StLinkFactory {
         Ok(Box::new(stlink))
     }
 
-    fn list_probes(&self) -> Vec<DebugProbeInfo> {
+    fn list_probes(&self) -> Vec<crate::probe::list::ProbeListItem> {
         tools::list_stlink_devices()
     }
 }

@@ -13,8 +13,8 @@ use probe_rs::{
         },
     },
     probe::{
-        AutoImplementJtagAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-        JtagAccess, JtagDriverState, ProbeFactory, RawJtagIo, WireProtocol,
+        AutoImplementJtagAccess, DebugProbe, DebugProbeError, DebugProbeSelector, JtagAccess,
+        JtagDriverState, ProbeFactory, RawJtagIo, WireProtocol, list::ProbeListItem,
     },
 };
 
@@ -40,7 +40,7 @@ impl ProbeFactory for EspUsbJtagFactory {
         }))
     }
 
-    fn list_probes(&self) -> Vec<DebugProbeInfo> {
+    fn list_probes(&self) -> Vec<ProbeListItem> {
         protocol::list_espjtag_devices()
     }
 }

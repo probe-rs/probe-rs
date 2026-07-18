@@ -1,0 +1,1 @@
+On Linux, probes that are detected but can't be opened due to missing permissions (e.g. no udev rule) are now listed and flagged as inaccessible instead of silently disappearing, and the setup hint only fires when it's actually relevant.

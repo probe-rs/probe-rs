@@ -7,6 +7,7 @@ use std::{
 
 use probe_rs::probe::{
     DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError, ProbeError,
+    list::{ProbeListItem, usb_probe_accessibility},
     usb_util::InterfaceExt,
 };
 
@@ -564,12 +565,13 @@ pub(super) fn is_espjtag_device(device: &DeviceInfo) -> bool {
 }
 
 #[tracing::instrument(skip_all)]
-pub(super) fn list_espjtag_devices() -> Vec<DebugProbeInfo> {
+pub(super) fn list_espjtag_devices() -> Vec<ProbeListItem> {
     match nusb::list_devices().wait() {
         Ok(devices) => devices
             .filter(is_espjtag_device)
-            .map(|device| {
-                DebugProbeInfo::new(
+            .map(|device| ProbeListItem {
+                accessibility: usb_probe_accessibility(&device),
+                info: DebugProbeInfo::new(
                     "ESP JTAG".to_string(),
                     device.vendor_id(),
                     device.product_id(),
@@ -577,7 +579,7 @@ pub(super) fn list_espjtag_devices() -> Vec<DebugProbeInfo> {
                     &EspUsbJtagFactory,
                     None,
                     false,
-                )
+                ),
             })
             .collect(),
         Err(e) => {
