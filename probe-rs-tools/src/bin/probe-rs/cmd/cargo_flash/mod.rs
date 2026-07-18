@@ -103,7 +103,8 @@ pub async fn main(args: Vec<OsString>, config: Config) -> anyhow::Result<()> {
     #[cfg(not(feature = "remote"))]
     let connection_params = None;
 
-    let terminate = run_app(connection_params, async |mut client| {
+    let probe_settings = config.probe_settings.clone();
+    let terminate = run_app(connection_params, probe_settings, async |mut client| {
         let main_result = main_try(&mut client, opt).await;
 
         let r = client.registry().await;

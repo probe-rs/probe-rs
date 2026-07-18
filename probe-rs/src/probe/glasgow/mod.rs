@@ -14,7 +14,8 @@ use crate::architecture::arm::{
 };
 
 use super::{
-    DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory, WireProtocol,
+    DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory, ProbeSettings,
+    WireProtocol,
 };
 
 mod mux;
@@ -36,7 +37,11 @@ impl std::fmt::Display for GlasgowFactory {
 }
 
 impl ProbeFactory for GlasgowFactory {
-    fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+    fn open(
+        &self,
+        selector: &DebugProbeSelector,
+        _settings: &ProbeSettings,
+    ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         tracing::debug!("open({selector:?}");
         Glasgow::new_from_device(GlasgowDevice::new_from_selector(selector)?)
             .map(Box::new)

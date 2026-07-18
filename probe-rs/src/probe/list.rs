@@ -1,7 +1,7 @@
 //! Listing probes of various types.
 
 use crate::probe::{
-    DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError,
+    DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError, ProbeSettings,
 };
 
 use super::DRIVERS;
@@ -10,24 +10,43 @@ use super::DRIVERS;
 #[derive(Debug)]
 pub struct Lister {
     lister: Box<dyn ProbeLister>,
+    settings: ProbeSettings,
 }
 
 impl Lister {
-    /// Create a new lister with the default lister implementation.
+    /// Create a new lister with the default lister implementation and default
+    /// per-probe settings.
     pub fn new() -> Self {
+        Self::with_settings(ProbeSettings::default())
+    }
+
+    /// Create a new lister with the default lister implementation and the given
+    /// per-probe settings. Settings are consulted by the matching driver each
+    /// time [`Self::open`] is called.
+    pub fn with_settings(settings: ProbeSettings) -> Self {
         Self {
             lister: Box::new(AllProbesLister::new()),
+            settings,
         }
     }
 
     /// Create a new lister with a custom lister implementation.
     pub fn with_lister(lister: Box<dyn ProbeLister>) -> Self {
-        Self { lister }
+        Self {
+            lister,
+            settings: ProbeSettings::default(),
+        }
     }
 
-    /// Try to open a probe using the given selector
+    /// Override the settings the probes will be opened with
+    pub fn set_settings(&mut self, settings: ProbeSettings) {
+        self.settings = settings;
+    }
+
+    /// Try to open a probe using the given selector. The lister's embedded
+    /// [`ProbeSettings`] is forwarded to the matching driver.
     pub fn open(&self, selector: impl Into<DebugProbeSelector>) -> Result<Probe, DebugProbeError> {
-        self.lister.open(&selector.into())
+        self.lister.open(&selector.into(), &self.settings)
     }
 
     /// List all available debug probes
@@ -51,8 +70,12 @@ impl Default for Lister {
 ///
 /// This trait can be used to implement custom probe listers.
 pub trait ProbeLister: std::fmt::Debug {
-    /// Try to open a probe using the given selector
-    fn open(&self, selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError>;
+    /// Try to open a probe using the given selector and per-probe settings.
+    fn open(
+        &self,
+        selector: &DebugProbeSelector,
+        settings: &ProbeSettings,
+    ) -> Result<Probe, DebugProbeError>;
 
     /// List all probes found by the lister.
     fn list_all(&self) -> Vec<DebugProbeInfo> {
@@ -68,12 +91,16 @@ pub trait ProbeLister: std::fmt::Debug {
 pub struct AllProbesLister;
 
 impl ProbeLister for AllProbesLister {
-    fn open(&self, selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError> {
+    fn open(
+        &self,
+        selector: &DebugProbeSelector,
+        settings: &ProbeSettings,
+    ) -> Result<Probe, DebugProbeError> {
         let mut open_error = None;
         let mut fallback_error = ProbeCreationError::NotFound;
 
         for probe_ctor in DRIVERS.read().iter() {
-            match probe_ctor.open(selector) {
+            match probe_ctor.open(selector, settings) {
                 Ok(link) => return Ok(Probe::from_specific_probe(link)),
                 Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
                 Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)) => {

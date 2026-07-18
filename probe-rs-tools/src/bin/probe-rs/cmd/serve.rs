@@ -16,7 +16,7 @@ use axum::{
 use base64::{Engine, engine::general_purpose::STANDARD};
 use futures_util::{SinkExt, StreamExt};
 use postcard_rpc::server::WireRxErrorKind;
-use probe_rs::probe::list::Lister;
+use probe_rs::probe::{ProbeSettings, list::Lister};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha512};
 use tokio::task::LocalSet;
@@ -72,12 +72,21 @@ pub(crate) struct ServerUser {
 
 struct ServerState {
     config: ServerConfig,
+    probe_settings: ProbeSettings,
     requests: tokio::sync::mpsc::Sender<(WebSocket, String)>,
 }
 
 impl ServerState {
-    fn new(config: ServerConfig, requests: tokio::sync::mpsc::Sender<(WebSocket, String)>) -> Self {
-        Self { config, requests }
+    fn new(
+        config: ServerConfig,
+        probe_settings: ProbeSettings,
+        requests: tokio::sync::mpsc::Sender<(WebSocket, String)>,
+    ) -> Self {
+        Self {
+            config,
+            probe_settings,
+            requests,
+        }
     }
 }
 
@@ -115,7 +124,11 @@ async fn server_info() -> Html<String> {
 pub struct Cmd {}
 
 impl Cmd {
-    pub async fn run(self, config: ServerConfig) -> anyhow::Result<()> {
+    pub async fn run(
+        self,
+        config: ServerConfig,
+        probe_settings: ProbeSettings,
+    ) -> anyhow::Result<()> {
         config.validate()?;
 
         if config.users.is_empty() {
@@ -128,13 +141,19 @@ impl Cmd {
 
         #[cfg(unix)]
         if let Some(socket_path) = config.socket_path() {
-            return self.run_unix(&PathBuf::from(socket_path), config).await;
+            return self
+                .run_unix(&PathBuf::from(socket_path), config, probe_settings)
+                .await;
         }
 
-        self.run_tcp(config).await
+        self.run_tcp(config, probe_settings).await
     }
 
-    async fn run_tcp(self, config: ServerConfig) -> anyhow::Result<()> {
+    async fn run_tcp(
+        self,
+        config: ServerConfig,
+        probe_settings: ProbeSettings,
+    ) -> anyhow::Result<()> {
         let address = config.address.as_deref().unwrap_or("0.0.0.0");
         let port = config.port.unwrap_or(3000);
 
@@ -145,7 +164,7 @@ impl Cmd {
         let (request_tx, mut request_rx) = tokio::sync::mpsc::channel(64);
 
         let set = LocalSet::new();
-        let state = Arc::new(ServerState::new(config, request_tx));
+        let state = Arc::new(ServerState::new(config, probe_settings, request_tx));
 
         set.spawn_local({
             let state = state.clone();
@@ -175,7 +194,12 @@ impl Cmd {
     }
 
     #[cfg(unix)]
-    async fn run_unix(self, socket_path: &PathBuf, _config: ServerConfig) -> anyhow::Result<()> {
+    async fn run_unix(
+        self,
+        socket_path: &PathBuf,
+        _config: ServerConfig,
+        probe_settings: ProbeSettings,
+    ) -> anyhow::Result<()> {
         use std::fs::{metadata, set_permissions};
         use std::os::unix::fs::PermissionsExt;
         use tokio::net::UnixListener;
@@ -197,7 +221,7 @@ impl Cmd {
             let (stream, _) = listener.accept().await?;
 
             // Spawn a new task for each connection
-            tokio::spawn(handle_unix_rpc(stream));
+            tokio::spawn(handle_unix_rpc(stream, probe_settings.clone()));
         }
     }
 }
@@ -267,7 +291,11 @@ async fn handle_socket(socket: WebSocket, challenge: String, state: Arc<ServerSt
 
     tracing::info!("User {} connected", user.name);
 
-    let (mut server, tx, mut rx) = RpcApp::create_server(SERVER_DEPTH, user.access.clone());
+    let (mut server, tx, mut rx) = RpcApp::create_server(
+        SERVER_DEPTH,
+        user.access.clone(),
+        state.probe_settings.clone(),
+    );
 
     // Connect the server's channels to the websocket connection
     let sender = async {
@@ -295,14 +323,15 @@ async fn handle_socket(socket: WebSocket, challenge: String, state: Arc<ServerSt
 }
 
 #[cfg(unix)]
-async fn handle_unix_rpc(stream: tokio::net::UnixStream) {
+async fn handle_unix_rpc(stream: tokio::net::UnixStream, probe_settings: ProbeSettings) {
     use crate::rpc::transport::memory::{PostcardReceiver, PostcardSender};
     use crate::rpc::transport::unix::{UnixStreamRx, UnixStreamTx};
 
     tracing::info!("Unix socket client connected");
 
     let (reader, writer) = stream.into_split();
-    let (mut server, tx, mut rx) = RpcApp::create_server(SERVER_DEPTH, ProbeAccess::All);
+    let (mut server, tx, mut rx) =
+        RpcApp::create_server(SERVER_DEPTH, ProbeAccess::All, probe_settings);
 
     // Connect the server's channels to the unix socket connection
     let sender = async {

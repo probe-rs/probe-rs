@@ -2,7 +2,10 @@ use std::cell::RefCell;
 
 use probe_rs::{
     integration::{FakeProbe, ProbeLister},
-    probe::{DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError},
+    probe::{
+        DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError,
+        ProbeSettings,
+    },
 };
 
 #[derive(Debug)]
@@ -19,7 +22,11 @@ impl TestLister {
 }
 
 impl ProbeLister for TestLister {
-    fn open(&self, selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError> {
+    fn open(
+        &self,
+        selector: &DebugProbeSelector,
+        _settings: &ProbeSettings,
+    ) -> Result<Probe, DebugProbeError> {
         let probe_index = self.probes.borrow().iter().position(|(info, _)| {
             info.product_id == selector.product_id
                 && info.vendor_id == selector.vendor_id

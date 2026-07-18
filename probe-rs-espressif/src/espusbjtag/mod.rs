@@ -14,7 +14,7 @@ use probe_rs::{
     },
     probe::{
         AutoImplementJtagAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-        JtagAccess, JtagDriverState, ProbeFactory, RawJtagIo, WireProtocol,
+        JtagAccess, JtagDriverState, ProbeFactory, ProbeSettings, RawJtagIo, WireProtocol,
     },
 };
 
@@ -31,7 +31,11 @@ impl std::fmt::Display for EspUsbJtagFactory {
 }
 
 impl ProbeFactory for EspUsbJtagFactory {
-    fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+    fn open(
+        &self,
+        selector: &DebugProbeSelector,
+        _settings: &ProbeSettings,
+    ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         let protocol = ProtocolHandler::new_from_selector(selector)?;
 
         Ok(Box::new(EspUsbJtag {

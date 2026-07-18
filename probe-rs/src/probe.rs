@@ -100,6 +100,15 @@ impl std::str::FromStr for WireProtocol {
     }
 }
 
+// To add support for a new probe, add it to this struct as optional
+/// Per-probe configuration supplied at open time.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
+pub struct ProbeSettings {
+    /// Configuration consumed by FTDI-based probes. See [`ftdi::FtdiProbeConfig`].
+    pub ftdi: Option<ftdi::FtdiProbeConfig>,
+}
+
 /// A command queued in a batch for later execution
 ///
 /// Mostly used internally but returned in DebugProbeError to indicate
@@ -635,9 +644,16 @@ impl Probe {
 /// and should return a human-readable name for the probe type.
 pub trait ProbeFactory: std::any::Any + std::fmt::Display + std::fmt::Debug + Sync {
     /// Creates a new boxed [`DebugProbe`] from a given [`DebugProbeSelector`].
+    ///
     /// This will be called for all available debug drivers when discovering probes.
     /// When opening, it will open the first probe which succeeds during this call.
-    fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError>;
+    ///
+    /// `settings` carries optional per-driver configuration (see [`ProbeSettings`]).
+    fn open(
+        &self,
+        selector: &DebugProbeSelector,
+        settings: &ProbeSettings,
+    ) -> Result<Box<dyn DebugProbe>, DebugProbeError>;
 
     /// Returns a list of all available debug probes of the current type.
     fn list_probes(&self) -> Vec<DebugProbeInfo>;
@@ -880,11 +896,16 @@ impl DebugProbeInfo {
         }
     }
 
-    /// Open the probe described by this `DebugProbeInfo`.
+    /// Open the probe described by this `DebugProbeInfo` with default settings.
     pub fn open(&self) -> Result<Probe, DebugProbeError> {
+        self.open_with_settings(&ProbeSettings::default())
+    }
+
+    /// Open the probe described by this `DebugProbeInfo`, supplying per-driver settings.
+    pub fn open_with_settings(&self, settings: &ProbeSettings) -> Result<Probe, DebugProbeError> {
         let selector = DebugProbeSelector::from(self);
         self.probe_factory
-            .open(&selector)
+            .open(&selector, settings)
             .map(Probe::from_specific_probe)
     }
 

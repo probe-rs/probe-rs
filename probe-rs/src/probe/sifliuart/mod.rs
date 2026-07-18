@@ -9,7 +9,7 @@ use crate::architecture::arm::{ArmDebugInterface, ArmError};
 use crate::probe::sifliuart::arm::SifliUartArmDebug;
 use crate::probe::{
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
-    ProbeFactory, WireProtocol,
+    ProbeFactory, ProbeSettings, WireProtocol,
 };
 use serialport::{SerialPort, SerialPortType, available_ports};
 use std::io::{BufReader, BufWriter, Read, Write};
@@ -444,7 +444,11 @@ impl std::fmt::Display for SifliUartFactory {
 }
 
 impl ProbeFactory for SifliUartFactory {
-    fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+    fn open(
+        &self,
+        selector: &DebugProbeSelector,
+        _settings: &ProbeSettings,
+    ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         let Ok(ports) = available_ports() else {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
                 ProbeCreationError::CouldNotOpen,
