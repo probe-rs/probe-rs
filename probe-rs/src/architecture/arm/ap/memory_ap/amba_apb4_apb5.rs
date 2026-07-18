@@ -55,7 +55,9 @@ impl super::MemoryApType for AmbaApb4Apb5 {
     ) -> Result<(), ArmError> {
         match data_size {
             DataSize::U32 => Ok(()),
-            _ => Err(ArmError::UnsupportedTransferWidth(data_size as usize * 8)),
+            _ => Err(ArmError::UnsupportedTransferWidth(
+                data_size.to_byte_count() * 8,
+            )),
         }
     }
 

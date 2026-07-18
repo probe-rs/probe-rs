@@ -1,0 +1,1 @@
+Fixed the reported transfer width when an APB4/APB5 memory AP rejects a non-32-bit access: it used the `DataSize` discriminant instead of the byte count, so e.g. a 64-bit access was reported as "24 bits" instead of 64.
