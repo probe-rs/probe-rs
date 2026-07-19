@@ -1098,9 +1098,12 @@ impl RawDapAccess for CmsisDap {
     fn raw_read_register(&mut self, address: RegisterAddress) -> Result<u32, ArmError> {
         let res = self.batch_add(BatchCommand::Read(address))?;
 
-        // NOTE(unwrap): batch_add will always return Some if the last command is a read
-        // and running the batch was successful.
-        Ok(res.unwrap())
+        // batch_add processes the batch immediately for a read, so a successful call
+        // returns the read value. A None here means the probe returned a response that
+        // didn't contain the read data - report it instead of panicking.
+        res.ok_or_else(|| {
+            DebugProbeError::Other("CMSIS-DAP read did not return any data".to_string()).into()
+        })
     }
 
     /// Writes a value to the DAP register on the specified port and address.
