@@ -487,9 +487,11 @@ impl ArmCommunicationInterface {
                     "DPv3 targets require APv2 addresses in target descriptions; got legacy AP index {port}. Use `ap: !v2 0x...`."
                 )));
             }
-            _ => unreachable!(
-                "Did not expect to be called with {ap:x?}. This is a bug, please report it."
-            ),
+            (ApAddress::V2(_), SelectCache::DPv1(_)) => {
+                return Err(ArmError::Other(format!(
+                    "The selected target uses an APv2 address ({ap:x?}), but the connected debug port only supports the ADIv5 SELECT register. This usually means the wrong chip was selected for the attached target."
+                )));
+            }
         }
 
         if previous_select != dp_state.current_select {
