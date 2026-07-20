@@ -19,14 +19,14 @@ pub struct Maxim;
 
 impl Vendor for Maxim {
     fn try_create_debug_sequence(&self, chip: &Chip) -> Option<DebugSequence> {
-        // Use VECTRESET for MAX32690, while other MAX32xxx chips (MAX32650, MAX32660,
-        // MAX32665) work with the default SYSRESETREQ-based sequence.
-        let needs_vectreset = matches!(chip.name.as_str(), "MAX32690");
+        // Map chip names to ROM breakpoint addresses.  Add new entries here
+        // when adding support for additional MAX32xxx variants.
+        let rom_bp = match chip.name.as_str() {
+            "MAX32690" => Some(0x0000_FFF4),
+            "MAX32670" | "MAX32675" => Some(0x0000_2174),
+            _ => None,
+        };
 
-        if needs_vectreset {
-            Some(DebugSequence::Arm(Max32::create()))
-        } else {
-            None
-        }
+        rom_bp.map(|addr| DebugSequence::Arm(Max32::create(addr)))
     }
 }
