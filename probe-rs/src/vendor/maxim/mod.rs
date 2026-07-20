@@ -4,10 +4,7 @@ use probe_rs_target::Chip;
 
 use crate::{
     config::DebugSequence,
-    vendor::{
-        Vendor,
-        maxim::sequences::max32::Max32,
-    },
+    vendor::{Vendor, maxim::sequences::max32::Max32},
 };
 
 /// Debug sequences for Maxim chips.
@@ -23,7 +20,6 @@ impl Vendor for Maxim {
         // when adding support for additional MAX32xxx variants.
         let rom_bp = match chip.name.as_str() {
             "MAX32690" => Some(0x0000_FFF4),
-            "MAX32670" | "MAX32675" => Some(0x0000_2174),
             _ => None,
         };
 
