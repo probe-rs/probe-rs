@@ -14,7 +14,7 @@ variants:
     name: IROM1
     range:
       start: 0x10000000
-      end: 0x10100000
+      end: 0x10340000
     cores:
     - main
     access:
@@ -27,28 +27,475 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - max32665
+  - max32690
 flash_algorithms:
-- name: max32665
-  description: MAX32665 1MB Flash
+- name: max32690
+  description: MAX32690 3MB Flash
   default: true
-  instructions: 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
-  pc_init: 0x31
-  pc_uninit: 0x8b
-  pc_program_page: 0xa3
-  pc_erase_sector: 0x99
-  pc_erase_all: 0x8f
-  data_section_offset: 0xae8
+  instructions: QPIYQMLyAAAAeAEoHL8BIHBH0LUCr4SwSfIABAGoxPICBAGUAPB5+QAoSNGgaKohYfMPIAOQA5igYKBoQPACAAOQA5igYAGoAPDC+WBqgAcx1KBoIPBwQAOQA5igYAT1gGACkAKoAPBY+UC71PgIBKohYfMPIAOQA5jE+AgE1PgIBEDwAgADkAOYxPgIBAKoAPCe+UnyJEDE8gIAAWiJBxDU1PgIBCDwcEADkAOYxPgIBAAgBOAAIAOQA5hgYgEgBLDQvQAhA5EDmQFg9+ewtQKvgrAFRkDyGEDC8gAAAHgBKEbRKEYA8E/5AShB0WhGDEYAkQDwEfnYu6BoVSEqRmHzDyABkAGYb/MRAqBgACDP9vxwAPVwMbLxhF8KRhi/APV4MgXxcECw9UAfOL8KRgLqBQAgYKBoQPAEAAGQAZigYGhGAPBE+WBqgAcH1KBoIPBwQAGQAZigYAAgCuAAIAGQAZhgYqBoIPBwQAGQAZigYAEgArCwvbC1Aq+CsEDyGEUURsLyAAUoeAixAPCj+AEgKHBgHgQoF9JJ8gAAxPICAACQAPWAYAGQaEYA8LX4CLEBIAfgAagA8K/4AUYBIAm5KHAAIAKwsL0A8Ar58LUDry3pAA+JsAZGQPIYQMLyAABP8AEIAHgCkgEoadEwRgxGAPDJ+A1GwQdP8AEBGL8pRgEoAZFc0QOoA5UA8IX4AChW0ahoIPAQAASQBJioYNyzDfEQCU/wAAijRgCUT/D/MAAhzekGANpGzekEALTrCAA4vwhGu/EQDyi/T/AQCgKZACJBRJBCONCLXAn4AjABMpJF99EEqwGcD8smYChjaWOqY+tjqGhA8AEACJAImKhgA6gA8KT4aGqABw3UAJxWRNBEu+sKC8nRqGhP8AAIIPBwQASQBJgK4AAgT/ABCAiQCJhoYqhoIPBwQAiQCJioYEBGCbC96AAP8L0AmQjrAgAA8Ir4QPIYQcLyAAEIeAEoHL8BIHBHgLVvRoKwSfIIAMTyAgACaCLwcEIAkgCaAmDQ+AAkIvBwQgGSAZrA+AAkACAIcAKwgL0AaIFoSQccvwEgcEcIIcTyAAEJaMHzghEBOQQpBthA8gRCwvIAAlL4IRAA4DwhgLVvRoOwQWAAIQCRASMAmcDyAgNBYtD4cBHKQxpCAb8h8AEBAZEBmcD4cBECIoFoYvMfcQKRApmBYAAgA7CAvYC1b0ZJ8gBMAPFwQ8TyAgys9YBhAkYBILP1QB8R02/zEQKy8YRfDNAAIcHyMAGKQgjQACHB8oQBikJhRgi/gL0AIIC9YUaAvYC1b0YAaIFoSQcIv4C9EL/554C1b0YA3v7egLVvRv/3+P/U1AgAAAABAAAAYAAAACAAAABkAAAAANTU1A==
+  load_address: 0x20000010
+  pc_init: 0x179
+  pc_uninit: 0x2d7
+  pc_program_page: 0x1cf
+  pc_erase_sector: 0xcf
+  pc_erase_all: 0x1
+  data_section_offset: 0x40c
   flash_properties:
     address_range:
       start: 0x10000000
-      end: 0x10100000
+      end: 0x10340000
     page_size: 0x400
     erased_byte_value: 0xff
     program_page_timeout: 1000
     erase_sector_timeout: 5000
     sectors:
-    - size: 0x2000
+    - size: 0x4000
       address: 0x0
+    - size: 0x4000
+      address: 0x4000
+    - size: 0x4000
+      address: 0x8000
+    - size: 0x4000
+      address: 0xc000
+    - size: 0x4000
+      address: 0x10000
+    - size: 0x4000
+      address: 0x14000
+    - size: 0x4000
+      address: 0x18000
+    - size: 0x4000
+      address: 0x1c000
+    - size: 0x4000
+      address: 0x20000
+    - size: 0x4000
+      address: 0x24000
+    - size: 0x4000
+      address: 0x28000
+    - size: 0x4000
+      address: 0x2c000
+    - size: 0x4000
+      address: 0x30000
+    - size: 0x4000
+      address: 0x34000
+    - size: 0x4000
+      address: 0x38000
+    - size: 0x4000
+      address: 0x3c000
+    - size: 0x4000
+      address: 0x40000
+    - size: 0x4000
+      address: 0x44000
+    - size: 0x4000
+      address: 0x48000
+    - size: 0x4000
+      address: 0x4c000
+    - size: 0x4000
+      address: 0x50000
+    - size: 0x4000
+      address: 0x54000
+    - size: 0x4000
+      address: 0x58000
+    - size: 0x4000
+      address: 0x5c000
+    - size: 0x4000
+      address: 0x60000
+    - size: 0x4000
+      address: 0x64000
+    - size: 0x4000
+      address: 0x68000
+    - size: 0x4000
+      address: 0x6c000
+    - size: 0x4000
+      address: 0x70000
+    - size: 0x4000
+      address: 0x74000
+    - size: 0x4000
+      address: 0x78000
+    - size: 0x4000
+      address: 0x7c000
+    - size: 0x4000
+      address: 0x80000
+    - size: 0x4000
+      address: 0x84000
+    - size: 0x4000
+      address: 0x88000
+    - size: 0x4000
+      address: 0x8c000
+    - size: 0x4000
+      address: 0x90000
+    - size: 0x4000
+      address: 0x94000
+    - size: 0x4000
+      address: 0x98000
+    - size: 0x4000
+      address: 0x9c000
+    - size: 0x4000
+      address: 0xa0000
+    - size: 0x4000
+      address: 0xa4000
+    - size: 0x4000
+      address: 0xa8000
+    - size: 0x4000
+      address: 0xac000
+    - size: 0x4000
+      address: 0xb0000
+    - size: 0x4000
+      address: 0xb4000
+    - size: 0x4000
+      address: 0xb8000
+    - size: 0x4000
+      address: 0xbc000
+    - size: 0x4000
+      address: 0xc0000
+    - size: 0x4000
+      address: 0xc4000
+    - size: 0x4000
+      address: 0xc8000
+    - size: 0x4000
+      address: 0xcc000
+    - size: 0x4000
+      address: 0xd0000
+    - size: 0x4000
+      address: 0xd4000
+    - size: 0x4000
+      address: 0xd8000
+    - size: 0x4000
+      address: 0xdc000
+    - size: 0x4000
+      address: 0xe0000
+    - size: 0x4000
+      address: 0xe4000
+    - size: 0x4000
+      address: 0xe8000
+    - size: 0x4000
+      address: 0xec000
+    - size: 0x4000
+      address: 0xf0000
+    - size: 0x4000
+      address: 0xf4000
+    - size: 0x4000
+      address: 0xf8000
+    - size: 0x4000
+      address: 0xfc000
+    - size: 0x4000
+      address: 0x100000
+    - size: 0x4000
+      address: 0x104000
+    - size: 0x4000
+      address: 0x108000
+    - size: 0x4000
+      address: 0x10c000
+    - size: 0x4000
+      address: 0x110000
+    - size: 0x4000
+      address: 0x114000
+    - size: 0x4000
+      address: 0x118000
+    - size: 0x4000
+      address: 0x11c000
+    - size: 0x4000
+      address: 0x120000
+    - size: 0x4000
+      address: 0x124000
+    - size: 0x4000
+      address: 0x128000
+    - size: 0x4000
+      address: 0x12c000
+    - size: 0x4000
+      address: 0x130000
+    - size: 0x4000
+      address: 0x134000
+    - size: 0x4000
+      address: 0x138000
+    - size: 0x4000
+      address: 0x13c000
+    - size: 0x4000
+      address: 0x140000
+    - size: 0x4000
+      address: 0x144000
+    - size: 0x4000
+      address: 0x148000
+    - size: 0x4000
+      address: 0x14c000
+    - size: 0x4000
+      address: 0x150000
+    - size: 0x4000
+      address: 0x154000
+    - size: 0x4000
+      address: 0x158000
+    - size: 0x4000
+      address: 0x15c000
+    - size: 0x4000
+      address: 0x160000
+    - size: 0x4000
+      address: 0x164000
+    - size: 0x4000
+      address: 0x168000
+    - size: 0x4000
+      address: 0x16c000
+    - size: 0x4000
+      address: 0x170000
+    - size: 0x4000
+      address: 0x174000
+    - size: 0x4000
+      address: 0x178000
+    - size: 0x4000
+      address: 0x17c000
+    - size: 0x4000
+      address: 0x180000
+    - size: 0x4000
+      address: 0x184000
+    - size: 0x4000
+      address: 0x188000
+    - size: 0x4000
+      address: 0x18c000
+    - size: 0x4000
+      address: 0x190000
+    - size: 0x4000
+      address: 0x194000
+    - size: 0x4000
+      address: 0x198000
+    - size: 0x4000
+      address: 0x19c000
+    - size: 0x4000
+      address: 0x1a0000
+    - size: 0x4000
+      address: 0x1a4000
+    - size: 0x4000
+      address: 0x1a8000
+    - size: 0x4000
+      address: 0x1ac000
+    - size: 0x4000
+      address: 0x1b0000
+    - size: 0x4000
+      address: 0x1b4000
+    - size: 0x4000
+      address: 0x1b8000
+    - size: 0x4000
+      address: 0x1bc000
+    - size: 0x4000
+      address: 0x1c0000
+    - size: 0x4000
+      address: 0x1c4000
+    - size: 0x4000
+      address: 0x1c8000
+    - size: 0x4000
+      address: 0x1cc000
+    - size: 0x4000
+      address: 0x1d0000
+    - size: 0x4000
+      address: 0x1d4000
+    - size: 0x4000
+      address: 0x1d8000
+    - size: 0x4000
+      address: 0x1dc000
+    - size: 0x4000
+      address: 0x1e0000
+    - size: 0x4000
+      address: 0x1e4000
+    - size: 0x4000
+      address: 0x1e8000
+    - size: 0x4000
+      address: 0x1ec000
+    - size: 0x4000
+      address: 0x1f0000
+    - size: 0x4000
+      address: 0x1f4000
+    - size: 0x4000
+      address: 0x1f8000
+    - size: 0x4000
+      address: 0x1fc000
+    - size: 0x4000
+      address: 0x200000
+    - size: 0x4000
+      address: 0x204000
+    - size: 0x4000
+      address: 0x208000
+    - size: 0x4000
+      address: 0x20c000
+    - size: 0x4000
+      address: 0x210000
+    - size: 0x4000
+      address: 0x214000
+    - size: 0x4000
+      address: 0x218000
+    - size: 0x4000
+      address: 0x21c000
+    - size: 0x4000
+      address: 0x220000
+    - size: 0x4000
+      address: 0x224000
+    - size: 0x4000
+      address: 0x228000
+    - size: 0x4000
+      address: 0x22c000
+    - size: 0x4000
+      address: 0x230000
+    - size: 0x4000
+      address: 0x234000
+    - size: 0x4000
+      address: 0x238000
+    - size: 0x4000
+      address: 0x23c000
+    - size: 0x4000
+      address: 0x240000
+    - size: 0x4000
+      address: 0x244000
+    - size: 0x4000
+      address: 0x248000
+    - size: 0x4000
+      address: 0x24c000
+    - size: 0x4000
+      address: 0x250000
+    - size: 0x4000
+      address: 0x254000
+    - size: 0x4000
+      address: 0x258000
+    - size: 0x4000
+      address: 0x25c000
+    - size: 0x4000
+      address: 0x260000
+    - size: 0x4000
+      address: 0x264000
+    - size: 0x4000
+      address: 0x268000
+    - size: 0x4000
+      address: 0x26c000
+    - size: 0x4000
+      address: 0x270000
+    - size: 0x4000
+      address: 0x274000
+    - size: 0x4000
+      address: 0x278000
+    - size: 0x4000
+      address: 0x27c000
+    - size: 0x4000
+      address: 0x280000
+    - size: 0x4000
+      address: 0x284000
+    - size: 0x4000
+      address: 0x288000
+    - size: 0x4000
+      address: 0x28c000
+    - size: 0x4000
+      address: 0x290000
+    - size: 0x4000
+      address: 0x294000
+    - size: 0x4000
+      address: 0x298000
+    - size: 0x4000
+      address: 0x29c000
+    - size: 0x4000
+      address: 0x2a0000
+    - size: 0x4000
+      address: 0x2a4000
+    - size: 0x4000
+      address: 0x2a8000
+    - size: 0x4000
+      address: 0x2ac000
+    - size: 0x4000
+      address: 0x2b0000
+    - size: 0x4000
+      address: 0x2b4000
+    - size: 0x4000
+      address: 0x2b8000
+    - size: 0x4000
+      address: 0x2bc000
+    - size: 0x4000
+      address: 0x2c0000
+    - size: 0x4000
+      address: 0x2c4000
+    - size: 0x4000
+      address: 0x2c8000
+    - size: 0x4000
+      address: 0x2cc000
+    - size: 0x4000
+      address: 0x2d0000
+    - size: 0x4000
+      address: 0x2d4000
+    - size: 0x4000
+      address: 0x2d8000
+    - size: 0x4000
+      address: 0x2dc000
+    - size: 0x4000
+      address: 0x2e0000
+    - size: 0x4000
+      address: 0x2e4000
+    - size: 0x4000
+      address: 0x2e8000
+    - size: 0x4000
+      address: 0x2ec000
+    - size: 0x4000
+      address: 0x2f0000
+    - size: 0x4000
+      address: 0x2f4000
+    - size: 0x4000
+      address: 0x2f8000
+    - size: 0x4000
+      address: 0x2fc000
+    - size: 0x2000
+      address: 0x300000
+    - size: 0x2000
+      address: 0x302000
+    - size: 0x2000
+      address: 0x304000
+    - size: 0x2000
+      address: 0x306000
+    - size: 0x2000
+      address: 0x308000
+    - size: 0x2000
+      address: 0x30a000
+    - size: 0x2000
+      address: 0x30c000
+    - size: 0x2000
+      address: 0x30e000
+    - size: 0x2000
+      address: 0x310000
+    - size: 0x2000
+      address: 0x312000
+    - size: 0x2000
+      address: 0x314000
+    - size: 0x2000
+      address: 0x316000
+    - size: 0x2000
+      address: 0x318000
+    - size: 0x2000
+      address: 0x31a000
+    - size: 0x2000
+      address: 0x31c000
+    - size: 0x2000
+      address: 0x31e000
+    - size: 0x2000
+      address: 0x320000
+    - size: 0x2000
+      address: 0x322000
+    - size: 0x2000
+      address: 0x324000
+    - size: 0x2000
+      address: 0x326000
+    - size: 0x2000
+      address: 0x328000
+    - size: 0x2000
+      address: 0x32a000
+    - size: 0x2000
+      address: 0x32c000
+    - size: 0x2000
+      address: 0x32e000
+    - size: 0x2000
+      address: 0x330000
+    - size: 0x2000
+      address: 0x332000
+    - size: 0x2000
+      address: 0x334000
+    - size: 0x2000
+      address: 0x336000
+    - size: 0x2000
+      address: 0x338000
+    - size: 0x2000
+      address: 0x33a000
+    - size: 0x2000
+      address: 0x33c000
+    - size: 0x2000
+      address: 0x33e000
   cores:
   - main
