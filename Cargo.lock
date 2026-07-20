@@ -994,7 +994,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8d162beedaa69905488a8da94f5ac3edb4dd4788b732fadb7bd120b2625c1976"
 dependencies = [
  "data-encoding",
- "syn 1.0.109",
+ "syn 2.0.119",
 ]
 
 [[package]]
@@ -1636,8 +1636,17 @@ version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0bf7f043f89559805f8c7cacc432749b2fa0d0a0a9ee46ce47164ed5ba7f126c"
 dependencies = [
+ "stable_deref_trait",
+]
+
+[[package]]
+name = "gimli"
+version = "0.34.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1033caf0b349c518623b5396bfb2cf0bddf44f0306d543a250e5743297aafd10"
+dependencies = [
  "fnv",
- "hashbrown 0.16.1",
+ "hashbrown 0.17.0",
  "indexmap",
  "stable_deref_trait",
 ]
@@ -3177,7 +3186,7 @@ version = "0.31.0"
 dependencies = [
  "addr2line",
  "bitfield",
- "gimli 0.33.0",
+ "gimli 0.34.0",
  "insta",
  "itertools 0.15.0",
  "object 0.39.1",
