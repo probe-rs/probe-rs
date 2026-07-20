@@ -36,7 +36,7 @@ espflash = { version = "4.5", default-features = false }
 itertools = "0.15"
 
 # CLI-only
-addr2line = "0.26"
+addr2line = "0.27"
 bytesize = "2"
 capstone = "0.14"
 cargo_metadata = "0.23"
