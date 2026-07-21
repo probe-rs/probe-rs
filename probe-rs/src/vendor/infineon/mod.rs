@@ -13,7 +13,10 @@ use crate::{
     error::Error,
     vendor::{
         Vendor,
-        infineon::sequences::{psoc_c3::PsocC3, psoc_edge, tle::InfineonTle, xmc4000::XMC4000},
+        infineon::sequences::{
+            psoc_c3::PsocC3, psoc_c3_x7x8::PsocC3X7X8, psoc_edge, tle::InfineonTle,
+            xmc4000::XMC4000,
+        },
     },
 };
 
@@ -42,6 +45,12 @@ impl Vendor for Infineon {
             || chip.name.starts_with("PSC3P5")
         {
             DebugSequence::Arm(PsocC3::create())
+        } else if chip.name.starts_with("PSC3M7")
+            || chip.name.starts_with("PSC3M8")
+            || chip.name.starts_with("PSC3P7")
+            || chip.name.starts_with("PSC3P8")
+        {
+            DebugSequence::Arm(PsocC3X7X8::create(chip))
         } else {
             return None;
         };
