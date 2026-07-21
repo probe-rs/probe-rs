@@ -1,0 +1,1 @@
+The GDB server now tolerates cores that firmware has not enabled yet (e.g. a secondary core still held in reset): such cores are skipped when halting and reporting stop reasons, and accesses to them return `EIO` instead of aborting the session, so debugging the remaining cores keeps working.
