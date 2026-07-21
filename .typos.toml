@@ -1,3 +1,10 @@
+[default]
+# Chip part numbers (e.g. PSC3P7GES3PAFQ1, STM32H747XI) are single caps+digit
+# tokens whose substrings keep tripping the checker (GES, ...). Ignore any
+# identifier containing a digit; real prose typos don't have one. This covers
+# every current and future part number so they don't each need an entry below.
+extend-ignore-identifiers-re = ["[A-Za-z]*[0-9][A-Za-z0-9]*"]
+
 # Domain terms and abbreviations that look like typos but aren't.
 [default.extend-words]
 pn = "pn"           # Renesas register/field name
