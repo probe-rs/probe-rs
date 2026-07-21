@@ -6,8 +6,7 @@ use gdbstub::target::ext::base::multithread::MultiThreadSingleStepOps;
 use gdbstub::target::ext::base::multithread::{MultiThreadResume, MultiThreadSingleStep};
 use probe_rs::CoreStatus;
 
-/// How long to wait for a core to actually leave the halted state after resuming it
-/// before we hand back to the poll loop. See the note in `resume`.
+/// Max time to wait for a core to leave halt after resuming before we poll it.
 const RESUME_SETTLE_TIMEOUT: Duration = Duration::from_millis(100);
 
 impl MultiThreadResume for RuntimeTarget<'_> {
@@ -20,13 +19,8 @@ impl MultiThreadResume for RuntimeTarget<'_> {
                     let mut core = session.core(*core_id)?;
                     core.run()?;
 
-                    // `run()` returns as soon as it clears the halt bit, but the core can
-                    // still report halted for a moment afterwards. If the running-poll reads
-                    // that stale halted state it looks like an unexpected stop and GDB gets a
-                    // spurious SIGINT (#3965). Wait for the core to actually leave halt before
-                    // handing back to the poll loop. If it stays halted past the timeout it has
-                    // genuinely re-halted (e.g. a breakpoint on the next instruction), so we
-                    // give up and let the poll loop report that stop normally.
+                    // `run()` clears the halt bit but the core may still read halted briefly;
+                    // wait for it to resume so the poll loop doesn't misread that as a stop (#3965).
                     let start = Instant::now();
                     while matches!(core.status()?, CoreStatus::Halted(_)) {
                         if start.elapsed() >= RESUME_SETTLE_TIMEOUT {
