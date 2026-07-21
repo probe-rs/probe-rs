@@ -1,6 +1,7 @@
-# Dry-runs the crates.io publish on open release PRs (label 'release'), so
-# build/packaging/version problems surface on the PR instead of only when the
-# real release runs on merge. Never publishes, tags or pushes anything.
+# Dry-runs a release on PRs labelled 'release': a crates.io publish dry-run, plus
+# the full dist build (dispatched as a dry-run of the release workflow). Catches
+# publish/build/runner problems on the release PR instead of when we cut the
+# release. Nothing is published, tagged or pushed.
 
 on:
   pull_request:
@@ -11,11 +12,35 @@ on:
 name: Release dry-run
 
 jobs:
-  dry-run:
+  publish:
     name: Dry-run publish
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'release')
-
     steps:
       - uses: actions/checkout@v6
       - run: cargo publish --workspace --dry-run
+
+  # Run the real dist build (all targets) as a dry-run without copying dist's
+  # workflow: dispatch it against this PR's branch and watch it, so this job's
+  # pass/fail mirrors the build and shows up as a check on the PR.
+  build:
+    name: Dry-run build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'release')
+    steps:
+      - name: Dispatch and watch the dist dry-run build
+        run: |
+          before=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow=v-release.yml --branch "$HEAD" --limit 1 --json databaseId --jq '.[0].databaseId // 0')
+          gh workflow run v-release.yml --repo "$GITHUB_REPOSITORY" --ref "$HEAD" -f tag=dry-run
+
+          # Wait for the new run to appear, then mirror its result.
+          for _ in $(seq 1 30); do
+            run_id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow=v-release.yml --branch "$HEAD" --limit 1 --json databaseId --jq '.[0].databaseId // 0')
+            [ "$run_id" != "$before" ] && break
+            sleep 5
+          done
+          echo "Watching run $run_id"
+          gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --exit-status
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          HEAD: ${{ github.head_ref }}
