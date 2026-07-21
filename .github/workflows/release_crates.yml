@@ -94,3 +94,12 @@ jobs:
           echo "::endgroup::"
         env:
           SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+
+      # dist releases run on workflow_dispatch (dispatch-releases), so kick off
+      # the build for the tag we just pushed.
+      - name: Trigger the release build
+        run: gh workflow run v-release.yml --ref "$RELEASE_BRANCH" -f tag="v$VERSION"
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          RELEASE_BRANCH: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.ref || github.ref_name }}
+          VERSION: ${{ steps.crate_version.outputs.version }}

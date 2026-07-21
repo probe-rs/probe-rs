@@ -16,7 +16,9 @@ unix-archive = ".tar.xz"
 # The installers to generate for each app
 installers = ["shell", "powershell", "homebrew"]
 # Which actions to run on pull requests
-pr-run-mode = "upload"
+pr-run-mode = "skip"
+# Trigger releases via workflow_dispatch (with a dry-run option) instead of tag push
+dispatch-releases = true
 # A GitHub repo to push Homebrew formulas to
 tap = "probe-rs/homebrew-probe-rs"
 # A prefix git tags must include for dist to care about them

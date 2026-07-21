@@ -1,6 +1,7 @@
-# Dry-runs the crates.io publish on open release PRs (label 'release'), so
-# build/packaging/version problems surface on the PR instead of only when the
-# real release runs on merge. Never publishes, tags or pushes anything.
+# Dry-runs a release on PRs labelled 'release': a crates.io publish dry-run, plus
+# the full dist build (dispatched as a dry-run of the release workflow). Catches
+# publish/build/runner problems on the release PR instead of when we cut the
+# release. Nothing is published, tagged or pushed.
 
 on:
   pull_request:
@@ -11,11 +12,23 @@ on:
 name: Release dry-run
 
 jobs:
-  dry-run:
+  publish:
     name: Dry-run publish
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'release')
-
     steps:
       - uses: actions/checkout@v6
       - run: cargo publish --workspace --dry-run
+
+  # Dispatch the release workflow in dry-run mode against this PR's branch, so
+  # the real dist build (all targets) runs without publishing. Result shows up
+  # as a separate run under the Release workflow, not as a check on this PR.
+  build:
+    name: Dispatch dry-run build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'release')
+    steps:
+      - run: gh workflow run v-release.yml --repo "$GITHUB_REPOSITORY" --ref "$HEAD" -f tag=dry-run
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          HEAD: ${{ github.head_ref }}
