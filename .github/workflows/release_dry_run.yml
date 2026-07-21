@@ -1,0 +1,21 @@
+# Dry-runs the crates.io publish on open release PRs (label 'release'), so
+# build/packaging/version problems surface on the PR instead of only when the
+# real release runs on merge. Never publishes, tags or pushes anything.
+
+on:
+  pull_request:
+    branches: [master, release/**]
+    types: [opened, reopened, synchronize, labeled]
+  workflow_dispatch:
+
+name: Release dry-run
+
+jobs:
+  dry-run:
+    name: Dry-run publish
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'release')
+
+    steps:
+      - uses: actions/checkout@v6
+      - run: cargo publish --workspace --dry-run
