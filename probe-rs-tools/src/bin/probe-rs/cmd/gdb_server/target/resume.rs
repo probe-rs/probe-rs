@@ -2,6 +2,7 @@ use super::{ResumeAction, RuntimeTarget};
 
 use gdbstub::target::ext::base::multithread::MultiThreadSingleStepOps;
 use gdbstub::target::ext::base::multithread::{MultiThreadResume, MultiThreadSingleStep};
+use probe_rs::CoreStatus;
 
 impl MultiThreadResume for RuntimeTarget<'_> {
     fn resume(&mut self) -> Result<(), Self::Error> {
@@ -12,6 +13,19 @@ impl MultiThreadResume for RuntimeTarget<'_> {
                 for core_id in self.cores.iter() {
                     let mut core = session.core(*core_id)?;
                     core.run()?;
+
+                    // `run()` returns as soon as it clears the halt bit, but the core can
+                    // still report halted for a moment afterwards. If the running-poll reads
+                    // that stale halted state it looks like an unexpected stop and GDB gets a
+                    // spurious SIGINT (#3965). Give the core a few reads to actually get going
+                    // before we hand control back to the poll loop. Bounded, so a core that
+                    // genuinely re-halts immediately (e.g. a breakpoint on the next
+                    // instruction) still falls through and gets reported normally.
+                    for _ in 0..10 {
+                        if !matches!(core.status()?, CoreStatus::Halted(_)) {
+                            break;
+                        }
+                    }
                 }
             }
             (core_id, ResumeAction::Step) => {
