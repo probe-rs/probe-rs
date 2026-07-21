@@ -663,7 +663,7 @@ enum RemoteError {
 impl core::fmt::Display for RemoteError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::ParameterError(e) => write!(f, "Remote paramater error with result {:016x}", *e),
+            Self::ParameterError(e) => write!(f, "Remote parameter error with result {:016x}", *e),
             Self::Error(e) => write!(f, "Remote error with result {:016x}", *e),
             Self::Unsupported(e) => write!(f, "Remote command unsupported with result {:016x}", *e),
             Self::ProbeError(e) => write!(f, "Probe error {e}"),

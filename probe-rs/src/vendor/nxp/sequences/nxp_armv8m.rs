@@ -441,7 +441,7 @@ impl MIMXRT5xxS {
         let enabled_mailbox =
             self.enable_debug_mailbox(memory.get_arm_debug_interface()?, dp, &ap)?;
 
-        // Halt the core in case it didn't stop at a breakpiont.
+        // Halt the core in case it didn't stop at a breakpoint.
         tracing::trace!("halting MIMXRT5xxS Cortex-M33 core");
         let mut dhcsr = Dhcsr(0);
         dhcsr.set_c_halt(true);

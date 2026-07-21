@@ -1546,7 +1546,7 @@ impl MemoryInterface<ArmError> for StLinkMemoryInterface<'_> {
             return Ok(());
         }
 
-        // Read needs to be chunked into chunks with appropiate max length (see STLINK_MAX_READ_LEN).
+        // Read needs to be chunked into chunks with appropriate max length (see STLINK_MAX_READ_LEN).
         for (index, chunk) in data.chunks_mut(STLINK_MAX_READ_LEN / 4).enumerate() {
             let mut buff = vec![0u8; 4 * chunk.len()];
 

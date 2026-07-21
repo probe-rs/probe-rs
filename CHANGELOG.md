@@ -137,7 +137,7 @@ Released 2025-10-31
 - add MCXN947 specific sequence taken from CMSIS pack .pdsc file (#3386) by @BKSalman
 - Added support for the gdb load command (#3394) by @eulerdisk
 - Added `--semihosting-file` command line option. (#3534) by @paroga
-- Added a target entry for the STM32C092RC (copying STM32C092CC). (#3591) by @AdinAck
+- Added a target entry for the STM32C092RC (copying STM32C092CC). (#3591) by @AdminAck
 - Added an export of `riscv::dtm::JtagDtmBuilder` so external software can implement `DebugProbe::try_get_riscv_interface_builder()` (#3416) by @xobs
 - Added support for STM32C092CC device (#3434) by @brett-carpenter
 - Added a Sequence to reset a Raspberry Pi RP235x using the Rescue DP. (#3497) by @xobs
@@ -524,7 +524,7 @@ Released 2024-12-16
 - The `semihosting` module is now public, and the reexports have been removed from `probe_rs`. (#2740) by @bugadani
 - Updated memory maps for most of STM32 chips. (#2556) by @bugadani
 - Derive `PartialOrd`/`Ord` & `Hash` on addresses (#2683) by @ithinuel
-- `Rtt::{up, down}_channels` now return an immutable slice of chanels. (#2580) by @bugadani
+- `Rtt::{up, down}_channels` now return an immutable slice of channels. (#2580) by @bugadani
 - Removed the `memory_map` argument from `Rtt::attach` and `Rtt::attach_region`. (#2595) by @bugadani
 - Upgrade `defmt-decoder` to `v0.4.0` (#2809) by @Urhengulas
 - Increased the potential throughput of J-Link and FTDI probes when communicating with ARM chips using JTAG. (#2681) by @bugadani
@@ -569,7 +569,7 @@ Released 2024-12-16
 - Fixed a problem with semihosting on ARM targets affecting embedded-test. (#2604) by @t-moe
 - The debug stack unwind will continue attempting an unwind when encountering a 0(zero) value for the Link Register (LR). (#2509) by @noppej
 - Passing `--protocol jtag` when using an ST-Link probe will now actually use JTAG. (#2675) by @bugadani
-- Fixed probe-rs-tools compilation panicing when "git" is not installed. (#2492) by @newAM
+- Fixed probe-rs-tools compilation panicking when "git" is not installed. (#2492) by @newAM
 - Fixed a problem where CMSIS-DAP probes may cause a panic. (#2539) by @bugadani
 - Fixed writing short unaligned data using `MemoryInterface::write` (#2873) by @bugadani
 - Fixed an issue where some low-level JTAG commands may have been incorrectly rerun.
@@ -582,7 +582,7 @@ Released 2024-12-16
 - Fixed flashing AT32F4 devices (#2561) by @bugadani
 - Fixed an issue that could cause the chip to be erased in the middle of the flashing process. (#2495) by @bugadani
 - NRF91 and NRF52 debug sequence has been fixed for Black Magic Probe (#2948) by @mfiumara
-- Added guard to DPIDR read after reset to accomodate slow recovering chips. (#2900) by @mubes
+- Added guard to DPIDR read after reset to accommodate slow recovering chips. (#2900) by @mubes
 - Fixed an error where running a non-elf firmware results in a defmt parse error. (#2825) by @bugadani
 - Fixed an issue using JTAG with FTDI and J-Link probes (#2674) by @bugadani
 
@@ -680,7 +680,7 @@ Released 2024-05-22
 - Fixed the most frequent `RTT: Control block corrupted` errors (#2340) by @bugadani
 - Improved error reporting for CMSIS-DAP probes. (#2479) by @gtsiam
 - - Add support for disabling debug power in the debug port when disconnecting. This fixes an issue with the RP2040 where it was stuck in reset, due to the Rescue DP. (#2282) by @Tiwalun
-- The process of finding function DIE's assigned the `low_pc` and `high_pc` values based on only the last processed `gimli::Range` for the funciton DIE. (#2258) by @noppej
+- The process of finding function DIE's assigned the `low_pc` and `high_pc` values based on only the last processed `gimli::Range` for the function DIE. (#2258) by @noppej
 - The debugger can now handle nested arrays in C code (#2268) by @bugadani
 - Fixed cargo-embed not processing defmt data correctly (#2323) by @bugadani
 - Fixed selecting one of multiple ESP USB JTAG probes (#2382) by @bugadani
@@ -802,14 +802,14 @@ Released 2024-01-03
 - Custom debug sequences for ATSAMD1x, D2x, DAx micros. Enables DSU-based chip erase. (#1855) by @ianrrees
 - Add support for the esp32h2 target (#1862) (#1862) by @MabezDev
 - Add scan chain support for the esp32\* targets and the espusbjtag driver. (#1878) by @MabezDev
-- The rtthost gets the ability to reset the targert after the RTT session is established. (#1900) by @Sh3Rm4n
+- The rtthost gets the ability to reset the target after the RTT session is established. (#1900) by @Sh3Rm4n
 - Added support for PAC52XX series microcontroller. (#1868) by @liamkinne
 - Added experimental support for WCH-Link probe in RV mode. (#1437) by @andelf
 - Xtensa: detect flash size (#1976) by @bugadani
 
 ### Changed
 
-- Continue running the core if an unsupported semihosting call occured.<br>
+- Continue running the core if an unsupported semihosting call occurred.<br>
   Previously, `probe-rs run` would exit with "the CPU halted unexpectedly", whenever an unknown semihosting operation occurred.
   With this change, `probe-rs run` will print a warning and then automatically continue the core. (#1901) by @t-moe
 - `dap-server`: Move initial check of core state from `threads` request to `configuration_done` request. (#1903) by @Andrew-Collins
@@ -824,7 +824,7 @@ Released 2024-01-03
 - Hide vector catch errors when it hasn't been implemented for the target. (#1885) by @MabezDev
 - Logging to file is now off by default. Use `--log-to-folder` or `--log-file` to enable. (#1946) by @bugadani
 - Improved RISC-V IO utilisation by batching more operations (#1932) by @bugadani
-- The read operations from the `MemoryInterface` trait are moved into a separte `ReadOnlyMemoryInterface` trait, so that it is clear which code actually changes memory. (#1853) by @Tiwalun
+- The read operations from the `MemoryInterface` trait are moved into a separate `ReadOnlyMemoryInterface` trait, so that it is clear which code actually changes memory. (#1853) by @Tiwalun
 - Updated ESP32 targets to tune flashing speed (#1936) by @bugadani
 - Move the stack refresh functionality to poll_cores, and trigger a refresh when the state changes from 'running' to 'halted'. (#1902) by @Andrew-Collins
 - Rewrote benchmark cli tool, removing report submission and adding multiple speed/size/stride options (#1837) by @9names
@@ -849,7 +849,7 @@ Released 2024-01-03
 - Added missing SRAM entries for STM32L4 microcontrollers. (#1856) by @VilNeo
 - cli/run: Fix a bug where the last messages printed by the code before crashing (like a panic message) did not get printed. (#1890) by @Dirbaio
 - Fixed cases where probe attachment were inconsistent. (#1929) by @MabezDev
-- Fix minor bugs of WCH-Link implementation, add new probe varient. (#1875) by @andelf
+- Fix minor bugs of WCH-Link implementation, add new probe variant. (#1875) by @andelf
 - Flash loader will now properly flash all bytes (#1951) by @bugadani
 - Update debug sequence for LPC55S69 with newest from pack, fixes an issue where the chip would not reset properly. (#1832) by @Tiwalun
 - Change from openSSL to rustls.<br>
@@ -960,7 +960,7 @@ Released 2023-07-19
 
 ### Changed
 
-- `cli`: more descriptive error messages for ambigous chips (#1671).
+- `cli`: more descriptive error messages for ambiguous chips (#1671).
 - `cli`: When using `memory` as the trace sink for an ITM trace, the trace is now read
   out through the debug registers (#1688)
 - `target-gen`: RTT is enabled by default now in the `test` command (#1690).
@@ -996,7 +996,7 @@ Released 2023-06-27
 ### Fixed
 
 - probe-rs: recognize `CMSIS-DAP` probes with device strings containing `CMSIS_DAP`
-- probe-rs-debugger: Show errors that happen before VSCode/DAP Client session initializion has completed (#1581).
+- probe-rs-debugger: Show errors that happen before VSCode/DAP Client session initialization has completed (#1581).
 - probe-rs-cli-util: replace unwanted instance of `println` with `eprintln` (#1595, fixes #1593).
 - stlink: exit JTAG mode on idle to tristate debug interface (#1615).
 - probe-rs-debugger: The MS DAP Request `setBreapoints` clears existing breakpoints for the specified `Source`, and not for all `Source`'s (#1630)
@@ -1053,11 +1053,11 @@ Released 2023-03-31
 - Added STM32H5xx targets (#1575)
 - Added custom sequence support to STM32L0, L1, L4, G0, G4, F0, F3, WB, WL,
   enabling debug clocks during sleep modes (#1521)
-- Add default sequence 'debug_core_stop', which disables debugging when disconneting from ARM cores by default. (#1525)
+- Add default sequence 'debug_core_stop', which disables debugging when disconnecting from ARM cores by default. (#1525)
 - probe-rs-debugger: Initial support for 'gdb-like' commands to be typed into VSCode Debug Console REPL. (#1552)<br>
   - The `help` command will list available commands, and arguments.
   - Command completions are supported for the individual commands, but not for the arguments.
-  - Additional commands can be added in the future, as required, but will benefit from some refactoring to share code with functionality that is already implementated in `dap_adapter.rs` for MS DAP requests.
+  - Additional commands can be added in the future, as required, but will benefit from some refactoring to share code with functionality that is already implemented in `dap_adapter.rs` for MS DAP requests.
 - debug: Enable debug experimental support for binaries compiled from C files (GNU C99/11/17). (#1558)
 - Added support for `monitor reset` and `monitor reset halt` commands in `gdb-server` (#1565)
 
@@ -1075,7 +1075,7 @@ Released 2023-02-06
 - probe-rs: Emit chip erase started and finished/failed events correctly (#1470, #1496)<br>
   The finished/failed event would only be emitted when a sectorwise erase would be performed.
   Now the events are correctly emitted.
-- probe-rs: Fixed a race condition when reseting NXP chips under JTAG (#1482)<br>
+- probe-rs: Fixed a race condition when resetting NXP chips under JTAG (#1482)<br>
   As an example, this makes flashing the Teensy 4.1 (which has an i.MX RT1062) reliable.
 - probe-rs: jlink: fix WAIT retries on AP reads. Fixes flashing on nrf91. (#1489)
 - Add flashing and debugging support for the ESP32C6 (#1476)
@@ -1204,7 +1204,7 @@ Released 2023-01-13
 - (#1351) Warning messages about duplicate packages when using `probe-rs` as a library
 - (#1269) Error message in case of FTDI device access issues.
 - (#350) Flashing and debugging on STM32 chips using WFI instructions should now be stable (fixed in #1177)
-- Fixed rtthost --scan-region to properly support memory range scannig. (#1192)
+- Fixed rtthost --scan-region to properly support memory range scanning. (#1192)
 - Debug: Improve logic for halt locations used by breakpoints and stepping. (#1156)
 - Debug: Some in-scope variables are excluded from stack_trace. (#1156)
 - Debug: Ensure RTT buffer on target is reported to DAP client in 'timely' manner. (#1208)
@@ -1407,7 +1407,7 @@ Released 2023-01-13
 - When reading from a HID device, check number of bytes returned to detect USB HID timeouts.
 - Fix connecting to EDBG and similar probes on MacOS (#681, #721)
 - Fixed incorrect flash range in `fe310` causing flashing to fail (#732).
-- Multiple default algorithims would silently select the first, now errors intead (#744).
+- Multiple default algorithms would silently select the first, now errors instead (#744).
 - Fixed STM32WL targets getting a HardFault when flashing binaries larger than 64K (#762).
 - Use a more reliable JTAG IR length detection when there's only a single target in the chain. Fixes an issue with the esp32c3. (#796, #823).
 - Replaced `unreachable!` induced panic with logic to fix `probe-rs-debugger` failures. (#847)
@@ -1437,7 +1437,7 @@ Released 2023-01-13
 - Support for double buffering in the flash loader, which increased flashing speed (#107).
 - Determine location of debug components by parsing ROM table (#431).
 - Support for "flashing" data to RAM in the flash loader (#480).
-- Added FTDI C232HM-DDHSL-0 to comaptible USB list for FTDI backend (#485).
+- Added FTDI C232HM-DDHSL-0 to compatible USB list for FTDI backend (#485).
 - Added `--list-probes` and `-n`option to built-in GDB server binary (#486).
 - Added RISC-V support to GDB server (#493).
 - Added `Session::target()` to access the target of a session (#497).
@@ -1514,7 +1514,7 @@ Released 2023-01-13
 
 - Fixed `M33` breakpoints (#543).
 - Fixed a bug where ST-Link v3 is not able to read 8 bit data chunks with more than 255 bytes. Currently we set the chunking to 128 bytes. This might be a bug in the ST-Link v3 firmware and might change in the future (#553, #609).
-- Errors occuring while trying to open J-Link probes do not prevent other probes from working anymore (#401).
+- Errors occurring while trying to open J-Link probes do not prevent other probes from working anymore (#401).
 - CMSIS-DAPv1 probes with a HID report size different than 64 bytes are now supported (fixes #282).
 - CMSIS-DAPv2 devices are now drained when attaching (fixes #424).
 - Improved SWO speed on CMSIS-DAPv2 (fix #448).
@@ -1574,7 +1574,7 @@ Released 2023-01-13
 - Fixed support for the nRF91 (#403).
 - Fixed a bug on Windows where paths were not canonicalized properly (#416).
 - Fixed a bug where a target fault during AP scans would not be cleared and result in failure on some cores even tho there was no actual issue other than the scan being aborted due to an AP not being present (which is perfectly okay) (#419).
-- Use the correct bit mask for the breakpoint comperator on Cortex-M0(+) devices (#434).
+- Use the correct bit mask for the breakpoint comparator on Cortex-M0(+) devices (#434).
 - Fixed a bug where breakpoints on M0 would always match the full word even if half word would have been correct (#368).
 
 ### Known issues
@@ -1647,7 +1647,7 @@ Released 2023-01-13
 ### Changed
 
 - The probe-rs API was changed that no internal `Rc<RefCell<T>>`s are present anymore to enable multithreading and make the API cleaner (see https://github.com/probe-rs/probe-rs/pull/240 for the changes).
-- Cleaned up the gernal GDB server code.
+- Cleaned up the general GDB server code.
 - Make some parts of the API public such that custom APs can be implemented and used for ARM targets (see https://github.com/probe-rs/probe-rs/pull/249, https://github.com/probe-rs/probe-rs/pull/253)
 - Removed a great deal of (non-panicking) unwraps inside the code.
 - Improved erroring by a great deal. Removed error stacking and started using anyhow for upper-level errors. This allows for nicer error printing!

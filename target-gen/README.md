@@ -29,7 +29,7 @@ Arguments:
     <INPUT>   A Pack file or the unzipped Pack directory.
     <OUTPUT>  An output directory where all the generated .yaml files are put in.
 
-This wil generate YAML files containing the target descriptions, which can be used with probe-rs.
+This will generate YAML files containing the target descriptions, which can be used with probe-rs.
 
 ## Usage with ELF files
 

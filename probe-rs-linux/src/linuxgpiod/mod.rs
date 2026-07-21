@@ -308,7 +308,7 @@ mod tests {
     }
 
     #[test]
-    fn list_filtered_rejects_unparseable_serial() {
+    fn list_filtered_rejects_unparsable_serial() {
         let s = sel("0:0:not-a-valid-pin-map");
         assert!(LinuxGpiodFactory.list_probes_filtered(Some(&s)).is_empty());
     }

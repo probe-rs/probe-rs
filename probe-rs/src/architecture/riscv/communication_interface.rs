@@ -674,7 +674,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         let mut num_harts = 1;
         self.state.enabled_harts = 1;
 
-        // Check if anynonexistent is avaliable.
+        // Check if anynonexistent is available.
         // Some chips that have only one hart do not implement anynonexistent and allnonexistent.
         // So let's check max hart index to see if we can use it reliably,
         // or else we will assume only one hart exists.
@@ -1474,7 +1474,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         // Add manual ebreak if necessary.
         //
         // This is necessary when we either don't need the full program buffer,
-        // or if there is no implict ebreak after the last program buffer word.
+        // or if there is no implicit ebreak after the last program buffer word.
         if !self.state.implicit_ebreak || data.len() < self.state.progbuf_size as usize {
             self.schedule_write_progbuf(data.len(), assembly::EBREAK)?;
         }

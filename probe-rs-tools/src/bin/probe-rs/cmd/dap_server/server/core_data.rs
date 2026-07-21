@@ -529,7 +529,7 @@ impl CoreHandle<'_> {
                 }
             }
         }
-        // Consolidating all memory ranges that are withing 0x400 bytes of each other.
+        // Consolidating all memory ranges that are within 0x400 bytes of each other.
         consolidate_memory_ranges(all_discrete_memory_ranges, 0x400)
     }
 

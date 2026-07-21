@@ -1,0 +1,17 @@
+# Domain terms and abbreviations that look like typos but aren't.
+[default.extend-words]
+pn = "pn"           # Renesas register/field name
+fram = "fram"       # ferroelectric RAM
+dout = "dout"       # data out signal
+intack = "intack"   # interrupt acknowledge
+unstall = "unstall" # un-stall a core (Espressif)
+ue = "ue"           # register bit
+tge = "tge"         # ARM HCR.TGE bit
+wronly = "wronly"   # O_WRONLY
+hpe = "hpe"         # SAM "Hot-Plugging Enable" register bit
+ative = "ative"     # "n(ative)" REPL format hint
+ariable = "ariable" # "v(ariable)" REPL format hint
+
+[default.extend-identifiers]
+# variable name baked into the debug-unwind test binaries
+stuct_with_one_variant_pointer = "stuct_with_one_variant_pointer"
