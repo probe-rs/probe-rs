@@ -20,15 +20,27 @@ jobs:
       - uses: actions/checkout@v6
       - run: cargo publish --workspace --dry-run
 
-  # Dispatch the release workflow in dry-run mode against this PR's branch, so
-  # the real dist build (all targets) runs without publishing. Result shows up
-  # as a separate run under the Release workflow, not as a check on this PR.
+  # Run the real dist build (all targets) as a dry-run without copying dist's
+  # workflow: dispatch it against this PR's branch and watch it, so this job's
+  # pass/fail mirrors the build and shows up as a check on the PR.
   build:
-    name: Dispatch dry-run build
+    name: Dry-run build
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'release')
     steps:
-      - run: gh workflow run v-release.yml --repo "$GITHUB_REPOSITORY" --ref "$HEAD" -f tag=dry-run
+      - name: Dispatch and watch the dist dry-run build
+        run: |
+          before=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow=v-release.yml --branch "$HEAD" --limit 1 --json databaseId --jq '.[0].databaseId // 0')
+          gh workflow run v-release.yml --repo "$GITHUB_REPOSITORY" --ref "$HEAD" -f tag=dry-run
+
+          # Wait for the new run to appear, then mirror its result.
+          for _ in $(seq 1 30); do
+            run_id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow=v-release.yml --branch "$HEAD" --limit 1 --json databaseId --jq '.[0].databaseId // 0')
+            [ "$run_id" != "$before" ] && break
+            sleep 5
+          done
+          echo "Watching run $run_id"
+          gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --exit-status
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
           HEAD: ${{ github.head_ref }}
