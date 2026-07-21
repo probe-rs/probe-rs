@@ -14,3 +14,7 @@ cortex-m = { version = "0.7", features = [
 ] }
 panic-halt = "1.0.0"
 microbit = "0.16.0"
+
+# panic-halt is only linked for its #[panic_handler], so it looks unused
+[package.metadata.cargo-machete]
+ignored = ["panic-halt"]
