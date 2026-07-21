@@ -25,6 +25,7 @@ use crate::{
 
 use super::super::config;
 use super::channel::UpChannel;
+use super::tcp::TcpSubscriber;
 use super::{event::Events, tab::Tab};
 
 use event::KeyModifiers;
@@ -45,6 +46,9 @@ pub struct App {
     // than RefCell because the cargo-embed main loop runs the `.render()` step and the
     // `.poll_rtt()` step in alternation.
     up_channels: Vec<Rc<RefCell<UpChannel>>>,
+
+    // Down channels that are fed from a TCP socket instead of (or in addition to) keyboard input.
+    down_channel_sockets: Vec<(u32, TcpSubscriber)>,
 
     client: RttClient,
 }
@@ -68,6 +72,7 @@ impl App {
         // Create channel states
         let mut up_channels = Vec::new();
         let mut down_channels = Vec::new();
+        let mut down_channel_sockets = Vec::new();
 
         // Create tab config based on detected channels
         for up in client.up_channels() {
@@ -155,6 +160,16 @@ impl App {
                 });
             }
 
+            if let Some(socket) = config
+                .rtt
+                .down_channels
+                .iter()
+                .find(|down_config| down_config.channel == number)
+                .and_then(|down_config| down_config.socket)
+            {
+                down_channel_sockets.push((number, TcpSubscriber::new(socket)));
+            }
+
             down_channels.push(Rc::new(RefCell::new(down)));
         }
 
@@ -216,6 +231,7 @@ impl App {
             current_height: 0,
 
             up_channels,
+            down_channel_sockets,
             client,
         })
     }
@@ -308,6 +324,14 @@ impl App {
                 .borrow_mut()
                 .poll_rtt(core, &mut self.client)
                 .await?;
+        }
+
+        // Forward anything received on a down-channel socket to the target.
+        for (number, subscriber) in self.down_channel_sockets.iter_mut() {
+            let bytes = subscriber.recv();
+            if !bytes.is_empty() {
+                self.client.write_down_channel(core, *number, &bytes)?;
+            }
         }
 
         Ok(())

@@ -1,0 +1,1 @@
+`cargo-embed` down channels now accept a `socket` option. When set, cargo-embed listens on that TCP address and forwards anything a connected client sends to the target's RTT down channel, mirroring the existing up-channel `socket` option for host input.
