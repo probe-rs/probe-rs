@@ -71,7 +71,9 @@ impl ProtocolAdapter for CliAdapter {
     ) -> anyhow::Result<()> {
         self.msg_sender
             .try_send((event_type.to_string(), event_body))
-            .unwrap();
+            .map_err(|e| {
+                anyhow::anyhow!("Failed to send event '{event_type}': channel full ({e})")
+            })?;
 
         Ok(())
     }
@@ -82,7 +84,7 @@ impl ProtocolAdapter for CliAdapter {
                 "response".to_string(),
                 Some(serde_json::to_value(response)?),
             ))
-            .unwrap();
+            .map_err(|e| anyhow::anyhow!("Failed to send response: channel full ({e})"))?;
 
         Ok(())
     }
@@ -196,8 +198,8 @@ pub struct Cmd {
 
 impl Cmd {
     pub async fn run(self, client: RpcClient, utc_offset: UtcOffset) -> anyhow::Result<()> {
-        let (req_sender, req_receiver) = mpsc::channel(10);
-        let (msg_sender, mut msg_receiver) = mpsc::channel(10);
+        let (req_sender, req_receiver) = mpsc::channel(100);
+        let (msg_sender, mut msg_receiver) = mpsc::channel(100);
 
         let debug_adapter = DebugAdapter::new(CliAdapter {
             req_receiver,
