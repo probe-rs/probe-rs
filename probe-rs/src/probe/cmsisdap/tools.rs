@@ -6,7 +6,12 @@ use crate::probe::{
 };
 #[cfg(feature = "cmsisdap_v1")]
 use hidapi::HidApi;
-use nusb::{DeviceInfo, MaybeFuture, descriptors::TransferType, transfer::Direction};
+use nusb::{
+    DeviceInfo, MaybeFuture,
+    descriptors::TransferType,
+    transfer::{Bulk, Direction, In, Out},
+};
+use std::io;
 
 const USB_CLASS_HID: u8 = 0x03;
 const USB_CMSIS_DAP_CLASS: u8 = 0xFF;
@@ -288,14 +293,19 @@ pub fn open_v2_device(
             }
 
             // Detect a third bulk EP which will be for SWO streaming
-            let mut swo_ep = None;
+            let mut swo_ep_addr = None;
 
             if eps.len() > 2
                 && eps[2].transfer_type() == TransferType::Bulk
                 && eps[2].direction() == Direction::In
             {
-                swo_ep = Some((eps[2].address(), eps[2].max_packet_size()));
+                swo_ep_addr = Some(eps[2].address());
             }
+
+            let out_ep_addr = eps[0].address();
+            let in_ep_addr = eps[1].address();
+            let max_packet_size = eps[1].max_packet_size();
+
             // Attempt to claim this interface
             match device.claim_interface(interface.interface_number()).wait() {
                 Ok(handle) => {
@@ -305,12 +315,31 @@ pub fn open_v2_device(
                         device_info.product_id(),
                         device_info.device_version(),
                     )?;
+
+                    // Claim the bulk endpoints once and keep them for the
+                    // lifetime of the device, so transfers don't pay the
+                    // per-call endpoint setup/teardown cost.
+                    let out_ep = handle
+                        .endpoint::<Bulk, Out>(out_ep_addr)
+                        .map_err(|e| ProbeCreationError::Usb(io::Error::from(e)))?;
+                    let in_ep = handle
+                        .endpoint::<Bulk, In>(in_ep_addr)
+                        .map_err(|e| ProbeCreationError::Usb(io::Error::from(e)))?;
+                    let swo_ep = match swo_ep_addr {
+                        Some(addr) => Some(
+                            handle
+                                .endpoint::<Bulk, In>(addr)
+                                .map_err(|e| ProbeCreationError::Usb(io::Error::from(e)))?,
+                        ),
+                        None => None,
+                    };
+
                     return Ok(Some(CmsisDapDevice::V2 {
                         handle,
-                        out_ep: eps[0].address(),
-                        in_ep: eps[1].address(),
+                        out_ep,
+                        in_ep,
                         swo_ep,
-                        max_packet_size: eps[1].max_packet_size(),
+                        max_packet_size,
                         usb_timeout: DEFAULT_USB_TIMEOUT,
                     }));
                 }
