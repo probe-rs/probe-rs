@@ -1,1 +1,0 @@
-Fixed the GDB `load` command failing immediately with "Load failed" on targets whose flash does not start at address 0. The GDB memory map advertised flash regions using the flash algorithm's region-relative sector offset instead of the absolute address, so `vFlashErase`/`vFlashWrite` targeted the wrong addresses. The region base is now added back to the advertised flash start.

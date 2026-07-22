@@ -1,1 +1,0 @@
-Stopped logging a spurious "Failed to switch to DP" warning on multidrop targets (e.g. RP2040) when the quick DP connect fails but the full setup sequence succeeds. The failed quick connect is now logged at debug level, and a genuine failure is still surfaced as an error.

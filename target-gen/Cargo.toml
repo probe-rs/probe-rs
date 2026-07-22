@@ -18,7 +18,7 @@ rust-version.workspace = true
 [dependencies]
 probe-rs.workspace = true
 probe-rs-espressif.workspace = true
-probe-rs-target = { path = "../probe-rs-target", version = "0.31.0", default-features = false }
+probe-rs-target = { path = "../probe-rs-target", version = "0.32.0", default-features = false }
 cmsis-pack = "0.7.1"
 jep106 = "0.3.0"
 goblin = { version = "0.10.0", default-features = false, features = [
