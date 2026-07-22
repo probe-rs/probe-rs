@@ -1,1 +1,0 @@
-Changed `JtagAccess::set_scan_chain()` to set the scan chain, rather than the expected scan chain.

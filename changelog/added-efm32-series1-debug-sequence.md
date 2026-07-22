@@ -1,1 +1,0 @@
-Added an ARM debug sequence for Silicon Labs EFM32 Series 1 Geckos (EFM32PG1/JG1, EFR32xG1x) that catches reset via a hardware breakpoint on the reset vector, so probe-rs can reliably halt the core out of reset and attach to these devices.
