@@ -57,7 +57,11 @@ impl ProfileCmd {
 
         if self.reset {
             for (core_idx, _) in session.list_cores() {
-                let mut core = session.core(core_idx)?;
+                let mut core = match session.core(core_idx) {
+                    Ok(core) => core,
+                    Err(probe_rs::Error::CoreDisabled(_)) => continue,
+                    Err(e) => return Err(e.into()),
+                };
                 core.reset()?;
             }
         }
