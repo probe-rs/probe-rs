@@ -18,7 +18,12 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'release')
     steps:
       - uses: actions/checkout@v6
-      - run: cargo publish --workspace --dry-run
+      - uses: taiki-e/install-action@cargo-release
+      # Use cargo-release (not `cargo publish --dry-run`) so the dry-run runs the
+      # exact checks the real release does: metadata validation (missing
+      # description etc.) plus the verification build. --allow-branch lets it run
+      # on the release PR branch; leaving off --execute keeps it a dry-run.
+      - run: cargo release publish --no-confirm --allow-branch '*'
 
   # Run the real dist build (all targets) as a dry-run without copying dist's
   # workflow: dispatch it against this PR's branch and watch it, so this job's
