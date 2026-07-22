@@ -17,7 +17,7 @@ use probe_rs::architecture::arm::{
 use probe_rs::probe::{
     AutoImplementJtagAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
     IoSequenceItem, JtagDriverState, ProbeCreationError, ProbeFactory, RawJtagIo, RawSwdIo,
-    SwdSettings, WireProtocol,
+    SwdSettings, WireProtocol, list::ProbeListItem,
 };
 
 use self::error::LinuxGpiodError;
@@ -244,12 +244,12 @@ impl ProbeFactory for LinuxGpiodFactory {
         Ok(Box::new(probe))
     }
 
-    fn list_probes(&self) -> Vec<DebugProbeInfo> {
+    fn list_probes(&self) -> Vec<ProbeListItem> {
         // Pin assignments are board-specific; auto-discovery is not meaningful.
         Vec::new()
     }
 
-    fn list_probes_filtered(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
+    fn list_probes_filtered(&self, selector: Option<&DebugProbeSelector>) -> Vec<ProbeListItem> {
         // Synthesise an entry for any well-formed gpiod selector — the CLI
         // resolves `--probe` via this method before calling open().
         let Some(selector) = selector else {
@@ -264,7 +264,7 @@ impl ProbeFactory for LinuxGpiodFactory {
         if serial.parse::<PinMap>().is_err() {
             return Vec::new();
         }
-        vec![DebugProbeInfo::new(
+        vec![ProbeListItem::accessible(DebugProbeInfo::new(
             format!("Linux GPIO bit-bang SWD ({serial})"),
             0,
             0,
@@ -272,7 +272,7 @@ impl ProbeFactory for LinuxGpiodFactory {
             &LinuxGpiodFactory,
             None,
             false,
-        )]
+        ))]
     }
 }
 
@@ -319,8 +319,8 @@ mod tests {
         let s = sel(&format!("0:0:{serial}"));
         let entries = LinuxGpiodFactory.list_probes_filtered(Some(&s));
         assert_eq!(entries.len(), 1);
-        assert_eq!(entries[0].vendor_id, 0);
-        assert_eq!(entries[0].product_id, 0);
-        assert_eq!(entries[0].serial_number.as_deref(), Some(serial));
+        assert_eq!(entries[0].info.vendor_id, 0);
+        assert_eq!(entries[0].info.product_id, 0);
+        assert_eq!(entries[0].info.serial_number.as_deref(), Some(serial));
     }
 }

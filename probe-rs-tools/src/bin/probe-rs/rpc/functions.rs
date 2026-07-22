@@ -50,10 +50,8 @@ use postcard_rpc::{Topic, TopicDirection, endpoints, host_client, server, topics
 use postcard_schema::Schema;
 use probe_rs::config::Registry;
 use probe_rs::integration::ProbeLister;
-use probe_rs::probe::list::AllProbesLister;
-use probe_rs::probe::{
-    DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError,
-};
+use probe_rs::probe::list::{AllProbesLister, ProbeListItem};
+use probe_rs::probe::{DebugProbeError, DebugProbeSelector, Probe, ProbeCreationError};
 use probe_rs::{Session, probe::list::Lister};
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::{Receiver, Sender, channel};
@@ -302,11 +300,11 @@ impl ProbeLister for LimitedLister {
         self.all_probes.open(selector)
     }
 
-    fn list(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
+    fn list_with_access(&self, selector: Option<&DebugProbeSelector>) -> Vec<ProbeListItem> {
         self.all_probes
-            .list(selector)
+            .list_with_access(selector)
             .into_iter()
-            .filter(|info| self.is_allowed(&DebugProbeSelector::from(info)))
+            .filter(|item| self.is_allowed(&DebugProbeSelector::from(&item.info)))
             .collect()
     }
 }

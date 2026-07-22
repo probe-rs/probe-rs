@@ -89,7 +89,13 @@ pub async fn attach_probe(
         client.load_chip_family(file).await?;
     }
 
-    let probe = select_probe(client, probe_options.probe.map(Into::into)).await?;
+    let probe = match select_probe(client, probe_options.probe.map(Into::into)).await {
+        Ok(probe) => probe,
+        Err(error) => {
+            print_setup_hints_if_relevant(client).await;
+            return Err(error);
+        }
+    };
 
     if probe_options.cycle_power {
         power_reset(probe.selector().into(), Duration::from_secs(1)).await?;
@@ -110,9 +116,32 @@ pub async fn attach_probe(
 
     match result {
         AttachResult::Success(session) => Ok(SessionInterface::new(client.clone(), session)),
-        AttachResult::ProbeNotFound => anyhow::bail!("Probe not found"),
-        AttachResult::FailedToOpenProbe(error) => anyhow::bail!("Failed to open probe: {error}"),
+        AttachResult::ProbeNotFound => {
+            print_setup_hints_if_relevant(client).await;
+            anyhow::bail!("Probe not found")
+        }
+        AttachResult::FailedToOpenProbe(error) => {
+            print_setup_hints_if_relevant(client).await;
+            anyhow::bail!("Failed to open probe: {error}")
+        }
+        // A busy probe is accessible, so no setup hint here.
         AttachResult::ProbeInUse => anyhow::bail!("Probe is already in use"),
+    }
+}
+
+/// Nudge the user about probe setup after a failed attach over the RPC client.
+///
+/// Mirrors the direct-attach path: we key off the accessibility reported by
+/// listing, not the specific error, so a probe that is present but blocked (or a
+/// missing probe) prints the hint, while a busy-but-accessible probe does not.
+async fn print_setup_hints_if_relevant(client: &RpcClient) {
+    let relevant = match client.list_probes().await {
+        Ok(probes) => probes.is_empty() || probes.iter().any(|probe| probe.inaccessible),
+        // If we can't even list, something setup-related is plausible.
+        Err(_) => true,
+    };
+    if relevant {
+        crate::util::setup_hints::print_setup_hints();
     }
 }
 

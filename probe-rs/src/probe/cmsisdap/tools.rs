@@ -2,6 +2,7 @@ use super::CmsisDapDevice;
 use crate::probe::{
     BoxedProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
     cmsisdap::{CmsisDapFactory, commands::CmsisDapError, commands::DEFAULT_USB_TIMEOUT},
+    list::{ProbeListItem, usb_probe_accessibility},
 };
 #[cfg(feature = "cmsisdap_v1")]
 use hidapi::HidApi;
@@ -17,13 +18,23 @@ const USB_CMSIS_DAP_SUBCLASS: u8 = 0;
 /// to permission or driver errors, so it falls back to listing only
 /// HID devices if it does not find any suitable devices.
 #[tracing::instrument(skip_all)]
-pub fn list_cmsisdap_devices() -> Vec<DebugProbeInfo> {
+pub fn list_cmsisdap_devices() -> Vec<ProbeListItem> {
     tracing::debug!("Searching for CMSIS-DAP probes using nusb");
 
     #[cfg_attr(not(feature = "cmsisdap_v1"), expect(unused_mut))]
-    let mut probes = match nusb::list_devices().wait() {
+    let mut probes: Vec<ProbeListItem> = match nusb::list_devices().wait() {
         Ok(devices) => devices
-            .flat_map(|device| get_cmsisdap_info(&device, false))
+            .flat_map(|device| {
+                // A single USB device can yield multiple entries (v1/v2 interfaces); give each
+                // entry the same accessibility for that device.
+                let accessibility = usb_probe_accessibility(&device);
+                get_cmsisdap_info(&device, false)
+                    .into_iter()
+                    .map(move |info| ProbeListItem {
+                        info,
+                        accessibility,
+                    })
+            })
             .collect(),
         Err(e) => {
             tracing::warn!("error listing devices with nusb: {e}");
@@ -42,13 +53,14 @@ pub fn list_cmsisdap_devices() -> Vec<DebugProbeInfo> {
         for device in api.device_list() {
             if let Some(info) = get_cmsisdap_hid_info(device) {
                 if !probes.iter().any(|p| {
-                    p.vendor_id == info.vendor_id
-                        && p.product_id == info.product_id
-                        && p.serial_number.as_deref().unwrap_or("")
+                    p.info.vendor_id == info.vendor_id
+                        && p.info.product_id == info.product_id
+                        && p.info.serial_number.as_deref().unwrap_or("")
                             == info.serial_number.as_deref().unwrap_or("")
                 }) {
                     tracing::trace!("Adding new HID-only probe {:?}", info);
-                    probes.push(info)
+                    // HID-only probes are not opened over usbfs, so the access check doesn't apply.
+                    probes.push(ProbeListItem::accessible(info))
                 } else {
                     tracing::trace!("Ignoring duplicate {:?}", info);
                 }

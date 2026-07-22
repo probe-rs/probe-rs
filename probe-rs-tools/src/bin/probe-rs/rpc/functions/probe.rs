@@ -1,6 +1,9 @@
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
-use probe_rs::{Session, probe::DebugProbeInfo};
+use probe_rs::{
+    Session,
+    probe::list::{Accessibility, ProbeListItem},
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -28,6 +31,10 @@ pub struct DebugProbeEntry {
     pub serial_number: String,
 
     pub probe_type: String,
+
+    /// The probe was found but the current user cannot access its device
+    /// (e.g. a missing udev rule on Linux).
+    pub inaccessible: bool,
 }
 
 impl Display for DebugProbeEntry {
@@ -42,14 +49,19 @@ impl Display for DebugProbeEntry {
             write!(f, "-{}", interface)?;
         }
 
-        write!(f, ":{} ({})", self.serial_number, self.probe_type)
+        write!(f, ":{} ({})", self.serial_number, self.probe_type)?;
+
+        Ok(())
     }
 }
 
-impl From<DebugProbeInfo> for DebugProbeEntry {
-    fn from(probe: DebugProbeInfo) -> DebugProbeEntry {
+impl From<ProbeListItem> for DebugProbeEntry {
+    fn from(item: ProbeListItem) -> DebugProbeEntry {
+        let inaccessible = item.accessibility == Accessibility::PermissionDenied;
+        let probe = item.info;
         DebugProbeEntry {
             probe_type: probe.probe_type(),
+            inaccessible,
             identifier: probe.identifier,
             vendor_id: probe.vendor_id,
             product_id: probe.product_id,
@@ -95,7 +107,7 @@ pub fn list_probes(
     _request: ListProbesRequest,
 ) -> ListProbesResponse {
     let lister = ctx.lister();
-    let probes = lister.list_all();
+    let probes = lister.list_all_with_access();
 
     Ok(probes
         .into_iter()
@@ -131,7 +143,7 @@ pub async fn select_probe(
     // attach() call opens the correct channel.
     let requested_interface = request.probe.as_ref().and_then(|s| s.interface);
 
-    let mut list = lister.list(request.probe.map(|sel| sel.into()).as_ref());
+    let mut list = lister.list_with_access(request.probe.map(|sel| sel.into()).as_ref());
 
     // If the probe entry does not carry an interface (common for FTDI probes)
     // but the caller requested one, copy it from the original selector.

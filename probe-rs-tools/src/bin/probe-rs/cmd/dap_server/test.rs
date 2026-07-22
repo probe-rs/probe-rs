@@ -2,7 +2,10 @@ use std::cell::RefCell;
 
 use probe_rs::{
     integration::{FakeProbe, ProbeLister},
-    probe::{DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError},
+    probe::{
+        DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError,
+        list::ProbeListItem,
+    },
 };
 
 #[derive(Debug)]
@@ -37,7 +40,7 @@ impl ProbeLister for TestLister {
         }
     }
 
-    fn list(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
+    fn list_with_access(&self, selector: Option<&DebugProbeSelector>) -> Vec<ProbeListItem> {
         self.probes
             .borrow()
             .iter()
@@ -46,7 +49,7 @@ impl ProbeLister for TestLister {
                     .as_ref()
                     .is_none_or(|selector| selector.matches_probe(info))
                 {
-                    Some(info.clone())
+                    Some(ProbeListItem::accessible(info.clone()))
                 } else {
                     None
                 }

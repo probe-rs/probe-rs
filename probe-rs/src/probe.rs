@@ -639,18 +639,26 @@ pub trait ProbeFactory: std::any::Any + std::fmt::Display + std::fmt::Debug + Sy
     /// When opening, it will open the first probe which succeeds during this call.
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError>;
 
-    /// Returns a list of all available debug probes of the current type.
-    fn list_probes(&self) -> Vec<DebugProbeInfo>;
+    /// Returns a list of all available debug probes of the current type, each annotated with
+    /// whether the current process can access it.
+    fn list_probes(&self) -> Vec<list::ProbeListItem>;
 
     /// Returns a list of probes that match the optional selector.
     ///
     /// If the selector is `None`, all available probes are returned.
-    fn list_probes_filtered(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
+    fn list_probes_filtered(
+        &self,
+        selector: Option<&DebugProbeSelector>,
+    ) -> Vec<list::ProbeListItem> {
         // The default implementation falls back to listing all probes so that drivers don't need
         // to deal with the common filtering logic.
         self.list_probes()
             .into_iter()
-            .filter(|probe| selector.as_ref().is_none_or(|s| s.matches_probe(probe)))
+            .filter(|probe| {
+                selector
+                    .as_ref()
+                    .is_none_or(|s| s.matches_probe(&probe.info))
+            })
             .collect()
     }
 }

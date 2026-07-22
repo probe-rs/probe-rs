@@ -45,6 +45,7 @@ use crate::{
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
         JtagDriverState, ProbeFactory, RawJtagIo, RawSwdIo, SwdSettings, WireProtocol,
+        list::{ProbeListItem, usb_probe_accessibility},
     },
 };
 
@@ -273,7 +274,7 @@ impl ProbeFactory for JLinkFactory {
         Ok(Box::new(this))
     }
 
-    fn list_probes(&self) -> Vec<DebugProbeInfo> {
+    fn list_probes(&self) -> Vec<ProbeListItem> {
         list_jlink_devices()
     }
 }
@@ -1309,7 +1310,7 @@ impl SwoAccess for JLink {
 }
 
 #[tracing::instrument]
-fn list_jlink_devices() -> Vec<DebugProbeInfo> {
+fn list_jlink_devices() -> Vec<ProbeListItem> {
     let devices = match nusb::list_devices().wait() {
         Ok(devices) => devices,
         Err(e) => {
@@ -1321,7 +1322,7 @@ fn list_jlink_devices() -> Vec<DebugProbeInfo> {
     devices
         .filter(is_jlink)
         .map(|info| {
-            DebugProbeInfo::new(
+            let debug_probe_info = DebugProbeInfo::new(
                 info.product_string().unwrap_or("J-Link").to_string(),
                 info.vendor_id(),
                 info.product_id(),
@@ -1329,7 +1330,11 @@ fn list_jlink_devices() -> Vec<DebugProbeInfo> {
                 &JLinkFactory,
                 None,
                 false,
-            )
+            );
+            ProbeListItem {
+                info: debug_probe_info,
+                accessibility: usb_probe_accessibility(&info),
+            }
         })
         .collect()
 }

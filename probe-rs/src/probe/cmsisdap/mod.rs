@@ -22,8 +22,8 @@ use crate::{
         },
     },
     probe::{
-        AutoImplementJtagAccess, BatchCommand, DebugProbe, DebugProbeError, DebugProbeInfo,
-        DebugProbeSelector, JtagAccess, JtagDriverState, ProbeFactory, WireProtocol,
+        AutoImplementJtagAccess, BatchCommand, DebugProbe, DebugProbeError, DebugProbeSelector,
+        JtagAccess, JtagDriverState, ProbeFactory, WireProtocol,
         cmsisdap::commands::{
             CmsisDapError, RequestError,
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
@@ -85,7 +85,7 @@ impl ProbeFactory for CmsisDapFactory {
             .map(DebugProbe::into_probe)
     }
 
-    fn list_probes(&self) -> Vec<DebugProbeInfo> {
+    fn list_probes(&self) -> Vec<crate::probe::list::ProbeListItem> {
         tools::list_cmsisdap_devices()
     }
 }

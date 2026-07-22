@@ -20,6 +20,7 @@ use crate::{
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JtagSequence, ProbeError,
         ProbeFactory, WireProtocol,
+        list::{ProbeListItem, usb_probe_accessibility},
     },
 };
 
@@ -197,7 +198,7 @@ impl ProbeFactory for WchLinkFactory {
         Ok(Box::new(wlink))
     }
 
-    fn list_probes(&self) -> Vec<DebugProbeInfo> {
+    fn list_probes(&self) -> Vec<ProbeListItem> {
         list_wlink_devices()
     }
 }
@@ -553,9 +554,9 @@ impl JtagAccess for WchLink {
     }
 }
 
-fn get_wlink_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
+fn get_wlink_info(device: &DeviceInfo) -> Option<ProbeListItem> {
     if matches!(device.product_string(), Some("WCH-Link") | Some("WCH_Link")) {
-        Some(DebugProbeInfo::new(
+        let info = DebugProbeInfo::new(
             "WCH-Link",
             VENDOR_ID,
             PRODUCT_ID,
@@ -563,14 +564,18 @@ fn get_wlink_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
             &WchLinkFactory,
             None,
             false,
-        ))
+        );
+        Some(ProbeListItem {
+            info,
+            accessibility: usb_probe_accessibility(device),
+        })
     } else {
         None
     }
 }
 
 #[tracing::instrument(skip_all)]
-fn list_wlink_devices() -> Vec<DebugProbeInfo> {
+fn list_wlink_devices() -> Vec<ProbeListItem> {
     tracing::debug!("Searching for WCH-Link(RV) probes");
     let devices = match nusb::list_devices().wait() {
         Ok(devices) => devices,

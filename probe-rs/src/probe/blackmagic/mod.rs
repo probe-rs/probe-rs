@@ -25,6 +25,7 @@ use crate::{
         AutoImplementJtagAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
         IoSequenceItem, JtagAccess, JtagDriverState, ProbeCreationError, ProbeError, ProbeFactory,
         RawJtagIo, RawSwdIo, SwdSettings, WireProtocol, blackmagic::arm::BlackMagicProbeArmDebug,
+        list::ProbeListItem,
     },
 };
 use bitfield::bitfield;
@@ -1578,7 +1579,7 @@ impl ProbeFactory for BlackMagicProbeFactory {
         ))
     }
 
-    fn list_probes(&self) -> Vec<super::DebugProbeInfo> {
+    fn list_probes(&self) -> Vec<ProbeListItem> {
         let mut probes = vec![];
         let ports = match available_ports() {
             Ok(ports) => ports,
@@ -1592,12 +1593,17 @@ impl ProbeFactory for BlackMagicProbeFactory {
             let Some(info) = black_magic_debug_port_info(port.port_type, &port.port_name) else {
                 continue;
             };
-            probes.push(info);
+            // Black Magic probes are accessed over a serial port; check that node, not usbfs.
+            let accessibility = crate::probe::list::device_node_accessibility(&port.port_name);
+            probes.push(ProbeListItem {
+                info,
+                accessibility,
+            });
         }
         probes
     }
 
-    fn list_probes_filtered(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
+    fn list_probes_filtered(&self, selector: Option<&DebugProbeSelector>) -> Vec<ProbeListItem> {
         // No selector - list probes as usual
         let Some(selector) = selector else {
             return self.list_probes();
@@ -1624,7 +1630,7 @@ impl ProbeFactory for BlackMagicProbeFactory {
             return self
                 .list_probes()
                 .into_iter()
-                .filter(|probe| selector.matches_probe(probe))
+                .filter(|probe| selector.matches_probe(&probe.info))
                 .collect();
         };
 
@@ -1634,7 +1640,7 @@ impl ProbeFactory for BlackMagicProbeFactory {
         }
 
         // Filter is a valid probe, and VID:PID is either a BMP or the "not specified" convention.
-        vec![DebugProbeInfo {
+        vec![ProbeListItem::accessible(DebugProbeInfo {
             identifier: format!("{}:{}", ip_port.ip(), ip_port.port()),
             vendor_id: BLACK_MAGIC_PROBE_VID,
             product_id: BLACK_MAGIC_PROBE_PID,
@@ -1642,6 +1648,6 @@ impl ProbeFactory for BlackMagicProbeFactory {
             probe_factory: &BlackMagicProbeFactory,
             interface: None,
             is_hid_interface: false,
-        }]
+        })]
     }
 }
