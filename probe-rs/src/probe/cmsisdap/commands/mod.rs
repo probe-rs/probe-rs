@@ -6,8 +6,12 @@ pub mod swo;
 pub mod transfer;
 
 use crate::probe::cmsisdap::commands::general::info::PacketSizeCommand;
-use crate::probe::usb_util::InterfaceExt;
+use crate::probe::usb_util::{read_bulk_endpoint, write_bulk_endpoint};
 use crate::probe::{ProbeError, WireProtocol};
+use nusb::{
+    Endpoint,
+    transfer::{Buffer, Bulk, BulkOrInterrupt, EndpointDirection, In, Out},
+};
 use std::io::ErrorKind;
 use std::str::Utf8Error;
 use std::time::Duration;
@@ -168,14 +172,20 @@ pub enum CmsisDapDevice {
     },
 
     /// CMSIS-DAP v2 over WinUSB/Bulk.
-    /// Stores an usb device handle, out/in EP addresses, maximum DAP packet size,
-    /// and an optional SWO streaming EP address and SWO maximum packet size.
+    /// Stores the usb interface handle, persistent bulk out/in endpoints, the
+    /// maximum DAP packet size, and an optional persistent SWO streaming
+    /// endpoint.
+    ///
+    /// The endpoints are claimed once when the device is opened and reused for
+    /// every transfer, rather than being re-claimed per transfer. This both
+    /// removes per-transfer setup/teardown cost and provides a stable place to
+    /// keep multiple transfers in flight.
     V2 {
         handle: nusb::Interface,
-        out_ep: u8,
-        in_ep: u8,
+        out_ep: Endpoint<Bulk, Out>,
+        in_ep: Endpoint<Bulk, In>,
         max_packet_size: usize,
-        swo_ep: Option<(u8, usize)>,
+        swo_ep: Option<Endpoint<Bulk, In>>,
         usb_timeout: Duration,
     },
 }
@@ -198,30 +208,40 @@ impl CmsisDapDevice {
     }
 
     /// Read from the probe into `buf`, returning the number of bytes read on success.
-    fn read(&self, buf: &mut [u8]) -> Result<usize, SendError> {
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize, SendError> {
         match self {
             #[cfg(feature = "cmsisdap_v1")]
-            CmsisDapDevice::V1 { handle, .. } => {
-                match handle.read_timeout(buf, self.usb_timeout().as_millis() as i32)? {
+            CmsisDapDevice::V1 {
+                handle,
+                usb_timeout,
+                ..
+            } => {
+                match handle.read_timeout(buf, usb_timeout.as_millis() as i32)? {
                     // Timeout is not indicated by error, but by returning 0 read bytes
                     0 => Err(SendError::Timeout),
                     n => Ok(n),
                 }
             }
-            CmsisDapDevice::V2 { handle, in_ep, .. } => {
-                Ok(handle.read_bulk(*in_ep, buf, self.usb_timeout())?)
-            }
+            CmsisDapDevice::V2 {
+                in_ep,
+                usb_timeout,
+                ..
+            } => Ok(read_bulk_endpoint(in_ep, buf, *usb_timeout)?),
         }
     }
 
     /// Write `buf` to the probe, returning the number of bytes written on success.
-    fn write(&self, buf: &[u8]) -> Result<usize, SendError> {
+    fn write(&mut self, buf: &[u8]) -> Result<usize, SendError> {
         match self {
             #[cfg(feature = "cmsisdap_v1")]
             CmsisDapDevice::V1 { handle, .. } => Ok(handle.write(buf)?),
-            CmsisDapDevice::V2 { handle, out_ep, .. } => {
+            CmsisDapDevice::V2 {
+                out_ep,
+                usb_timeout,
+                ..
+            } => {
                 // Skip first byte as it's set to 0 for HID transfers
-                Ok(handle.write_bulk(*out_ep, &buf[1..], self.usb_timeout())?)
+                Ok(write_bulk_endpoint(out_ep, &buf[1..], *usb_timeout)?)
             }
         }
     }
@@ -229,7 +249,7 @@ impl CmsisDapDevice {
     /// Drain any pending data from the probe, ensuring future responses are
     /// synchronised to requests. Swallows any errors, which are expected if
     /// there is no pending data to read.
-    pub(super) fn drain(&self) {
+    pub(super) fn drain(&mut self) {
         tracing::debug!("Draining probe of any pending data.");
 
         match self {
@@ -239,7 +259,7 @@ impl CmsisDapDevice {
                 report_size,
                 ..
             } => loop {
-                let mut discard = vec![0u8; report_size + 1];
+                let mut discard = vec![0u8; *report_size + 1];
                 match handle.read_timeout(&mut discard, 1) {
                     Ok(n) if n != 0 => continue,
                     _ => break,
@@ -247,7 +267,6 @@ impl CmsisDapDevice {
             },
 
             CmsisDapDevice::V2 {
-                handle,
                 in_ep,
                 max_packet_size,
                 ..
@@ -255,7 +274,7 @@ impl CmsisDapDevice {
                 let timeout = Duration::from_millis(1);
                 let mut discard = vec![0u8; *max_packet_size];
                 loop {
-                    match handle.read_bulk(*in_ep, &mut discard, timeout) {
+                    match read_bulk_endpoint(in_ep, &mut discard, timeout) {
                         Ok(n) if n != 0 => continue,
                         _ => break,
                     }
@@ -335,14 +354,14 @@ impl CmsisDapDevice {
     /// Returns SWOModeNotAvailable if this device does not support SWO streaming.
     ///
     /// On timeout, returns a zero-length buffer.
-    pub(super) fn read_swo_stream(&self, timeout: Duration) -> Result<Vec<u8>, CmsisDapError> {
+    pub(super) fn read_swo_stream(&mut self, timeout: Duration) -> Result<Vec<u8>, CmsisDapError> {
         match self {
             #[cfg(feature = "cmsisdap_v1")]
             CmsisDapDevice::V1 { .. } => Err(CmsisDapError::SwoModeNotAvailable),
-            CmsisDapDevice::V2 { handle, swo_ep, .. } => match swo_ep {
-                Some((ep, len)) => {
-                    let mut buf = vec![0u8; *len];
-                    match handle.read_bulk(*ep, &mut buf, timeout) {
+            CmsisDapDevice::V2 { swo_ep, .. } => match swo_ep {
+                Some(ep) => {
+                    let mut buf = vec![0u8; ep.max_packet_size()];
+                    match read_bulk_endpoint(ep, &mut buf, timeout) {
                         Ok(n) => {
                             buf.truncate(n);
                             Ok(buf)
@@ -492,6 +511,153 @@ fn send_command_inner<Req: Request>(
             response_data[0],
             Req::COMMAND_ID,
         ))
+    }
+}
+
+/// Send a batch of same-typed commands, keeping up to `depth` of them in flight
+/// on the probe's bulk endpoints, and return the parsed responses in order.
+///
+/// This hides USB round-trip latency: instead of waiting for each response
+/// before sending the next request, up to `depth` requests are outstanding at
+/// once. CMSIS-DAP guarantees responses are returned in the order commands were
+/// sent, so a simple FIFO of in-flight transfers is sufficient.
+///
+/// Only v2 (bulk) probes can pipeline; v1 (HID) probes fall back to sending one
+/// command at a time. The caller should pass the probe's reported packet count
+/// so the probe's command buffer is never overrun.
+pub(crate) fn send_commands_pipelined<Req: Request>(
+    device: &mut CmsisDapDevice,
+    requests: &[Req],
+    depth: usize,
+) -> Result<Vec<Req::Response>, CmsisDapError> {
+    send_commands_pipelined_inner(device, requests, depth).map_err(|e| CmsisDapError::Send {
+        command_id: Req::COMMAND_ID,
+        source: e,
+    })
+}
+
+fn send_commands_pipelined_inner<Req: Request>(
+    device: &mut CmsisDapDevice,
+    requests: &[Req],
+    depth: usize,
+) -> Result<Vec<Req::Response>, SendError> {
+    if requests.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    // Extract the persistent v2 endpoints. HID probes can't pipeline, so send
+    // them serially through the existing single-command path.
+    let (out_ep, in_ep, max_packet_size, usb_timeout) = match device {
+        #[cfg(feature = "cmsisdap_v1")]
+        CmsisDapDevice::V1 { .. } => {
+            return requests
+                .iter()
+                .map(|req| send_command_inner(device, req))
+                .collect();
+        }
+        CmsisDapDevice::V2 {
+            out_ep,
+            in_ep,
+            max_packet_size,
+            usb_timeout,
+            ..
+        } => (out_ep, in_ep, *max_packet_size, *usb_timeout),
+    };
+
+    let n = requests.len();
+    let depth = depth.max(1).min(n);
+
+    // Pre-encode every request into its on-the-wire bytes (command id + body).
+    let mut request_bytes: Vec<Vec<u8>> = Vec::with_capacity(n);
+    for req in requests {
+        let mut buf = vec![0u8; max_packet_size];
+        buf[0] = Req::COMMAND_ID as u8;
+        let size = req.to_bytes(&mut buf[1..])? + 1;
+        buf.truncate(size);
+        request_bytes.push(buf);
+    }
+
+    // Each IN buffer holds one full DAP packet, rounded up to the endpoint's USB
+    // max packet size as required by nusb.
+    let in_packet = in_ep.max_packet_size().max(1);
+    let in_len = max_packet_size.div_ceil(in_packet) * in_packet;
+
+    // Submit the initial window of `depth` commands and matching read buffers.
+    for bytes in request_bytes.iter().take(depth) {
+        submit_out(out_ep, bytes);
+        in_ep.submit(Buffer::new(in_len));
+    }
+
+    let mut responses = Vec::with_capacity(n);
+    let mut next = depth;
+
+    for req in requests {
+        // Reclaim the OUT transfer for this command (it completes before the
+        // probe can produce its response, so this returns promptly) and read
+        // the response.
+        let out_done = reap(out_ep, usb_timeout);
+        let in_done = reap(in_ep, usb_timeout);
+
+        let parsed = (|| {
+            out_done?.status.map_err(std::io::Error::from)?;
+            let completion = in_done?;
+            completion.status.map_err(std::io::Error::from)?;
+
+            let data = &completion.buffer[..completion.actual_len];
+            if data.is_empty() {
+                return Err(SendError::NotEnoughData);
+            }
+            if data[0] != Req::COMMAND_ID as u8 {
+                return Err(SendError::CommandIdMismatch(data[0], Req::COMMAND_ID));
+            }
+            req.parse_response(&data[1..])
+        })();
+
+        match parsed {
+            Ok(response) => responses.push(response),
+            Err(e) => {
+                // Abort: stop submitting and discard anything still in flight so
+                // the endpoints are left clean for the next command.
+                drain_pending(out_ep);
+                drain_pending(in_ep);
+                return Err(e);
+            }
+        }
+
+        // Keep the pipeline full by submitting the next command, if any.
+        if next < n {
+            submit_out(out_ep, &request_bytes[next]);
+            in_ep.submit(Buffer::new(in_len));
+            next += 1;
+        }
+    }
+
+    Ok(responses)
+}
+
+/// Submit `bytes` as a single transfer on a bulk OUT endpoint.
+fn submit_out(ep: &mut Endpoint<Bulk, Out>, bytes: &[u8]) {
+    let mut buffer = Buffer::new(bytes.len());
+    buffer.extend_from_slice(bytes);
+    ep.submit(buffer);
+}
+
+/// Wait for the next completion on `ep`, mapping a timeout to [`SendError::Timeout`].
+fn reap<E: BulkOrInterrupt, D: EndpointDirection>(
+    ep: &mut Endpoint<E, D>,
+    timeout: Duration,
+) -> Result<nusb::transfer::Completion, SendError> {
+    ep.wait_next_complete(timeout).ok_or(SendError::Timeout)
+}
+
+/// Cancel and reap all outstanding transfers on `ep`, leaving it with no
+/// pending transfers.
+fn drain_pending<E: BulkOrInterrupt, D: EndpointDirection>(ep: &mut Endpoint<E, D>) {
+    ep.cancel_all();
+    while ep.pending() > 0 {
+        if ep.wait_next_complete(Duration::from_millis(100)).is_none() {
+            break;
+        }
     }
 }
 
