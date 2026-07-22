@@ -155,13 +155,13 @@ pub async fn select_probe(
     match client.select_probe(probe).await? {
         SelectProbeResult::Success(probe) => Ok(probe),
         SelectProbeResult::MultipleProbes(list) => {
-            println!("Available Probes:");
+            eprintln!("Available Probes:");
             for (i, probe_info) in list.iter().enumerate() {
-                println!("{i}: {probe_info}");
+                eprintln!("{i}: {probe_info}");
             }
 
-            print!("Selection: ");
-            std::io::stdout().flush().unwrap();
+            eprint!("Selection: ");
+            std::io::stderr().flush().unwrap();
 
             let mut input = String::new();
             std::io::stdin()

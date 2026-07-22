@@ -238,13 +238,13 @@ impl<'r> LoadedProbeOptions<'r> {
     fn interactive_probe_select(
         list: &[DebugProbeInfo],
     ) -> Result<&DebugProbeInfo, OperationError> {
-        println!("Available Probes:");
+        eprintln!("Available Probes:");
         for (i, probe_info) in list.iter().enumerate() {
-            println!("{i}: {probe_info}");
+            eprintln!("{i}: {probe_info}");
         }
 
-        print!("Selection: ");
-        std::io::stdout().flush().unwrap();
+        eprint!("Selection: ");
+        std::io::stderr().flush().unwrap();
 
         let mut input = String::new();
         std::io::stdin()
