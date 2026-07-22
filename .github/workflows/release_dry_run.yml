@@ -33,14 +33,38 @@ jobs:
           before=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow=v-release.yml --branch "$HEAD" --limit 1 --json databaseId --jq '.[0].databaseId // 0')
           gh workflow run v-release.yml --repo "$GITHUB_REPOSITORY" --ref "$HEAD" -f tag=dry-run
 
-          # Wait for the new run to appear, then mirror its result.
+          # Wait for the new run to appear.
+          run_id=0
           for _ in $(seq 1 30); do
             run_id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow=v-release.yml --branch "$HEAD" --limit 1 --json databaseId --jq '.[0].databaseId // 0')
             [ "$run_id" != "$before" ] && break
             sleep 5
           done
           echo "Watching run $run_id"
-          gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --exit-status
+
+          # Poll until the run finishes. The build jobs sit "queued" while `plan`
+          # runs (they need it), so only start the runner clock once plan is done:
+          # a healthy runner attaches within a minute, so if a build job is still
+          # queued 1 min after that, no runner is coming -> abort.
+          # Judging by the final conclusion means an API hiccup can't fail a green build.
+          plan_done=0
+          while :; do
+            info=$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --json status,jobs)
+            if [ "$(jq -r .status <<<"$info")" = "completed" ]; then break; fi
+            plan_status=$(jq -r '.jobs[] | select(.name == "plan") | .status' <<<"$info")
+            if [ "$plan_status" = "completed" ] && [ "$plan_done" = 0 ]; then plan_done=$(date +%s); fi
+            stuck=$(jq '[.jobs[] | select(.name != "plan" and .status == "queued")] | length' <<<"$info")
+            if [ "$plan_done" != 0 ] && [ "$stuck" -gt 0 ] && [ "$(( $(date +%s) - plan_done ))" -gt 60 ]; then
+              echo "::error::a dist build job got no runner within 1 min of plan completing:"
+              jq -r '.jobs[] | select(.name != "plan" and .status == "queued") | "  - " + .name' <<<"$info"
+              gh run cancel "$run_id" --repo "$GITHUB_REPOSITORY" || true
+              exit 1
+            fi
+            sleep 20
+          done
+          result=$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)
+          echo "dist dry-run build: $result"
+          [ "$result" = "success" ]
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
           HEAD: ${{ github.head_ref }}
