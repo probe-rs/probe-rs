@@ -1,5 +1,6 @@
 [package]
 name = "probe-rs-linux"
+description = "Linux debug probe backends built on top of the probe-rs crate"
 version.workspace = true
 edition.workspace = true
 documentation.workspace = true
