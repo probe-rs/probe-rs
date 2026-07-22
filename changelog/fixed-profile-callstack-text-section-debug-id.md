@@ -1,0 +1,1 @@
+Fixed `profile callstack` failing to compute a debug ID for ELF files whose code section is named `text` instead of `.text`.
