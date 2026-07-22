@@ -316,25 +316,44 @@ pub(crate) fn auto_determine_target(
     // Xtensa and RISC-V interfaces don't need moving the probe. For clarity, their
     // handlers work with the borrowed probe, and we use these wrappers to adapt to the
     // ARM way of moving in and out of the probe.
+    //
+    // Detection is a best-effort operation (see comment on `TargetSelector::Auto` above), so
+    // an error from one architecture's detection logic (e.g. a probe/board combination that
+    // physically cannot perform JTAG signaling, like an SWD-only connection) must not abort
+    // the whole auto-detection sequence. The probe itself is only borrowed by the inner
+    // functions, so it's still valid to keep using after an error and try the next
+    // architecture.
     fn try_detect_from_probe_wrapper(
         registry: &Registry,
         mut probe: Probe,
     ) -> Result<(Probe, Option<Target>), Error> {
-        try_detect_from_probe(registry, &mut probe).map(|found_target| (probe, found_target))
+        let found_target = try_detect_from_probe(registry, &mut probe).unwrap_or_else(|error| {
+            tracing::debug!("Error during chip auto-detection: {error}");
+            None
+        });
+        Ok((probe, found_target))
     }
 
     fn try_detect_riscv_chip_wrapper(
         registry: &Registry,
         mut probe: Probe,
     ) -> Result<(Probe, Option<Target>), Error> {
-        try_detect_riscv_chip(registry, &mut probe).map(|found_target| (probe, found_target))
+        let found_target = try_detect_riscv_chip(registry, &mut probe).unwrap_or_else(|error| {
+            tracing::debug!("Error during RISC-V chip auto-detection: {error}");
+            None
+        });
+        Ok((probe, found_target))
     }
 
     fn try_detect_xtensa_chip_wrapper(
         registry: &Registry,
         mut probe: Probe,
     ) -> Result<(Probe, Option<Target>), Error> {
-        try_detect_xtensa_chip(registry, &mut probe).map(|found_target| (probe, found_target))
+        let found_target = try_detect_xtensa_chip(registry, &mut probe).unwrap_or_else(|error| {
+            tracing::debug!("Error during Xtensa chip auto-detection: {error}");
+            None
+        });
+        Ok((probe, found_target))
     }
 
     type DetectFn = fn(&Registry, Probe) -> Result<(Probe, Option<Target>), Error>;
