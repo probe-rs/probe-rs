@@ -42,21 +42,25 @@ jobs:
           done
           echo "Watching run $run_id"
 
-          # Poll until the run finishes. Abort if a build job can't get a runner
-          # (stuck in "queued"), instead of watching a never-starting job forever.
+          # Poll until the run finishes. The build jobs sit "queued" while `plan`
+          # runs (they need it), so only start the runner clock once plan is done:
+          # a healthy runner attaches within a minute, so if a build job is still
+          # queued 1 min after that, no runner is coming -> abort.
           # Judging by the final conclusion means an API hiccup can't fail a green build.
-          start=$(date +%s)
+          plan_done=0
           while :; do
             info=$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --json status,jobs)
-            [ "$(jq -r .status <<<"$info")" = "completed" ] && break
-            queued=$(jq -r '[.jobs[] | select(.status == "queued")] | length' <<<"$info")
-            if [ "$queued" -gt 0 ] && [ $(( $(date +%s) - start )) -gt 600 ]; then
-              echo "::error::dist build has jobs stuck with no runner for >10min:"
-              jq -r '.jobs[] | select(.status == "queued") | "  - " + .name' <<<"$info"
+            if [ "$(jq -r .status <<<"$info")" = "completed" ]; then break; fi
+            plan_status=$(jq -r '.jobs[] | select(.name == "plan") | .status' <<<"$info")
+            if [ "$plan_status" = "completed" ] && [ "$plan_done" = 0 ]; then plan_done=$(date +%s); fi
+            stuck=$(jq '[.jobs[] | select(.name != "plan" and .status == "queued")] | length' <<<"$info")
+            if [ "$plan_done" != 0 ] && [ "$stuck" -gt 0 ] && [ "$(( $(date +%s) - plan_done ))" -gt 60 ]; then
+              echo "::error::a dist build job got no runner within 1 min of plan completing:"
+              jq -r '.jobs[] | select(.name != "plan" and .status == "queued") | "  - " + .name' <<<"$info"
               gh run cancel "$run_id" --repo "$GITHUB_REPOSITORY" || true
               exit 1
             fi
-            sleep 60
+            sleep 20
           done
           result=$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)
           echo "dist dry-run build: $result"
