@@ -39,9 +39,15 @@ impl Flash for RuntimeTarget<'_> {
             .flash_loader
             .get_or_insert_with(|| self.session.lock().target().flash_loader());
 
-        flash_loader
-            .add_data(start_addr, data)
-            .map_err(|_e| TargetError::NonFatal)?;
+        flash_loader.add_data(start_addr, data).map_err(|e| {
+            tracing::error!(
+                "GDB flash_write failed to stage {} bytes at {:#010x}: {:#}",
+                data.len(),
+                start_addr,
+                e
+            );
+            TargetError::NonFatal
+        })?;
         Ok(())
     }
 
@@ -50,7 +56,10 @@ impl Flash for RuntimeTarget<'_> {
         let mut session = self.session.lock();
         flash_loader
             .commit(&mut session, DownloadOptions::default())
-            .map_err(|_e| TargetError::NonFatal)?;
+            .map_err(|e| {
+                tracing::error!("GDB flash_done failed to commit flash programming: {:#}", e);
+                TargetError::NonFatal
+            })?;
 
         let _drop = self.flash_loader.take();
         Ok(())

@@ -156,7 +156,10 @@ fn gdb_memory_map(session: &mut Session, primary_core_id: usize) -> Result<Strin
             // sector size.
             for (current, next) in sectors.iter().zip(sectors.iter().skip(1)) {
                 let region = FlashRegion {
-                    start: current.address,
+                    // Sector addresses in the flash algorithm are relative to
+                    // the region base, so add `start` to advertise the
+                    // absolute address GDB expects for vFlashErase/vFlashWrite.
+                    start: start + current.address,
                     length: next.address - current.address,
                     blocksize: current.size,
                 };
