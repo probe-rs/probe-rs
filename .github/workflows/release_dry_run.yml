@@ -33,14 +33,34 @@ jobs:
           before=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow=v-release.yml --branch "$HEAD" --limit 1 --json databaseId --jq '.[0].databaseId // 0')
           gh workflow run v-release.yml --repo "$GITHUB_REPOSITORY" --ref "$HEAD" -f tag=dry-run
 
-          # Wait for the new run to appear, then mirror its result.
+          # Wait for the new run to appear.
+          run_id=0
           for _ in $(seq 1 30); do
             run_id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow=v-release.yml --branch "$HEAD" --limit 1 --json databaseId --jq '.[0].databaseId // 0')
             [ "$run_id" != "$before" ] && break
             sleep 5
           done
           echo "Watching run $run_id"
-          gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --exit-status
+
+          # Poll until the run finishes. Abort if a build job can't get a runner
+          # (stuck in "queued"), instead of watching a never-starting job forever.
+          # Judging by the final conclusion means an API hiccup can't fail a green build.
+          start=$(date +%s)
+          while :; do
+            info=$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --json status,jobs)
+            [ "$(jq -r .status <<<"$info")" = "completed" ] && break
+            queued=$(jq -r '[.jobs[] | select(.status == "queued")] | length' <<<"$info")
+            if [ "$queued" -gt 0 ] && [ $(( $(date +%s) - start )) -gt 600 ]; then
+              echo "::error::dist build has jobs stuck with no runner for >10min:"
+              jq -r '.jobs[] | select(.status == "queued") | "  - " + .name' <<<"$info"
+              gh run cancel "$run_id" --repo "$GITHUB_REPOSITORY" || true
+              exit 1
+            fi
+            sleep 60
+          done
+          result=$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)
+          echo "dist dry-run build: $result"
+          [ "$result" = "success" ]
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
           HEAD: ${{ github.head_ref }}

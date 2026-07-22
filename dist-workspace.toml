@@ -32,8 +32,8 @@ install-path = "CARGO_HOME"
 # Whether to enable GitHub Attestations
 github-attestations = true
 
-# Select custom runner for ARM Linux
+# Select custom runner for ARM Linux (GitHub-hosted ARM runners)
 [dist.github-custom-runners]
 global = "ubuntu-22.04"
-aarch64-unknown-linux-gnu = "buildjet-2vcpu-ubuntu-2204-arm"
-aarch64-unknown-linux-musl = "buildjet-2vcpu-ubuntu-2204-arm"
+aarch64-unknown-linux-gnu = "ubuntu-24.04-arm"
+aarch64-unknown-linux-musl = "ubuntu-24.04-arm"

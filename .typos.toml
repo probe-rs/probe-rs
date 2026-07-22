@@ -5,6 +5,9 @@
 # every current and future part number so they don't each need an entry below.
 extend-ignore-identifiers-re = ["[A-Za-z]*[0-9][A-Za-z0-9]*"]
 
+# GitHub @handles in changelog credits aren't words (e.g. @bastien-buil).
+extend-ignore-re = ["@[A-Za-z0-9-]+"]
+
 # Domain terms and abbreviations that look like typos but aren't.
 [default.extend-words]
 pn = "pn"           # Renesas register/field name
