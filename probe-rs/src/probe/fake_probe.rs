@@ -60,8 +60,8 @@ enum Endianness {
 
 #[cfg(test)]
 impl From<Endianness> for object::Endianness {
-    fn from(endianess: Endianness) -> Self {
-        match endianess {
+    fn from(endianness: Endianness) -> Self {
+        match endianness {
             Endianness::Little => object::Endianness::Little,
             Endianness::Big => object::Endianness::Big,
         }
