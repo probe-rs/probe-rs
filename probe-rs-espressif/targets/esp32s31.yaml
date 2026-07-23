@@ -92,7 +92,6 @@ flash_algorithms:
   data_section_offset: 0xcf4
   rtt_location: 0x2f022c08
   vendor_functions:
-    ChipRevision: 0x608
     FlashSize: 0x610
   transfer_encoding: miniz
   flash_properties:

@@ -520,6 +520,11 @@ impl<X: XlenMode> CoreInterface for RiscvCore<'_, X> {
             Ok(CoreStatus::Halted(reason))
         } else if status.allrunning() {
             Ok(CoreStatus::Running)
+        } else if status.allunavail() {
+            // A hart can be temporarily unavailable while its clock or reset
+            // state changes. Report an unknown state and let the caller poll
+            // again instead of treating this as a mixed running/halted state.
+            Ok(CoreStatus::Unknown)
         } else {
             Err(Error::Other(
                 "Some cores are running while some are halted, this should not happen.".to_string(),

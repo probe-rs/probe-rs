@@ -1129,6 +1129,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
         }
     }
 
+    /// Set the address at which the selected hart resumes from debug mode.
+    pub fn write_program_counter(&mut self, value: u64) -> Result<(), RiscvError> {
+        self.write_csr(0x7b1, value)
+    }
+
     /// Write a CSR register.
     ///
     /// Dispatches to a 32- or 64-bit abstract command based on the XLEN mode.  Falls back to the
