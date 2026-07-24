@@ -48,13 +48,19 @@ impl GdbInstanceConfiguration {
         // Build a grouped list of cores by core type
         // GDB only supports one architecture per stub so if we have two core types,
         // such as ARMv7-a + ARMv7-m, we must create two stubs to connect to.
-        let groups = session
+        let mut groups: Vec<_> = session
             .target()
             .cores
             .iter()
             .enumerate()
             .map(|(i, core)| (core.core_type, i))
-            .into_group_map();
+            .into_group_map()
+            .into_iter()
+            .collect();
+
+        // Sort core groups deterministically by the index of their first appearance
+        // in target core definitions (ascending APSEL discovery order).
+        groups.sort_by_key(|(_, cores)| cores.first().copied().unwrap_or(usize::MAX));
 
         // Create a GDB instance for each group, starting at the specified connection and adding one to the port each time
         // For example - consider two groups computed above and an input of localhost:1337.
