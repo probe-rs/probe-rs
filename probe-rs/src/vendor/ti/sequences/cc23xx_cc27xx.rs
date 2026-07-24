@@ -11,7 +11,7 @@ use crate::architecture::arm::ArmDebugInterface;
 use crate::architecture::arm::DapAccess;
 use crate::architecture::arm::armv6m::{Aircr, BpCtrl, Demcr, Dhcsr};
 use crate::architecture::arm::core::cortex_m;
-use crate::architecture::arm::dp::{Abort, Ctrl, DebugPortError, DpAccess, DpAddress, SelectV1};
+use crate::architecture::arm::dp::DpAddress;
 use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::sequences::{ArmDebugSequence, cortex_m_core_start};
 use crate::architecture::arm::{ArmError, FullyQualifiedApAddress};
@@ -254,60 +254,7 @@ impl ArmDebugSequence for CC23xxCC27xx {
         interface: &mut dyn DapAccess,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
-        // TODO:
-        // Copy-pasted from the default Trait implementation, but we need to add
-        // the cc23xx_cc27xx specific parts at the end
-        // This code is from `debug_port_start` in `probe-rs/src/architecture/arm/sequences.rs`
-
-        let mut abort = Abort(0);
-        abort.set_dapabort(true);
-        abort.set_orunerrclr(true);
-        abort.set_wderrclr(true);
-        abort.set_stkerrclr(true);
-        abort.set_stkcmpclr(true);
-        interface.write_dp_register(dp, abort)?;
-
-        interface.write_dp_register(dp, SelectV1(0))?;
-
-        let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
-
-        let powered_down = !(ctrl.csyspwrupack() && ctrl.cdbgpwrupack());
-
-        if powered_down {
-            tracing::info!("Debug port {dp:x?} is powered down, powering up");
-            let mut ctrl = Ctrl(0);
-            ctrl.set_cdbgpwrupreq(true);
-            ctrl.set_csyspwrupreq(true);
-            interface.write_dp_register(dp, ctrl)?;
-
-            let start = Instant::now();
-            loop {
-                let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
-                if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
-                    break;
-                }
-                if start.elapsed() >= Duration::from_secs(1) {
-                    return Err(ArmError::Timeout);
-                }
-            }
-
-            // Init AP Transfer Mode, Transaction Counter, and Lane Mask (Normal Transfer Mode, Include all Byte Lanes)
-            let mut ctrl = Ctrl(0);
-            ctrl.set_cdbgpwrupreq(true);
-            ctrl.set_csyspwrupreq(true);
-            ctrl.set_mask_lane(0b1111);
-            interface.write_dp_register(dp, ctrl)?;
-
-            let ctrl_reg: Ctrl = interface.read_dp_register(dp)?;
-            if !(ctrl_reg.csyspwrupack() && ctrl_reg.cdbgpwrupack()) {
-                tracing::error!("Debug power request failed");
-                return Err(DebugPortError::TargetPowerUpFailed.into());
-            }
-
-            // According to CMSIS docs, here's where we would clear errors
-            // in ABORT, but we do that above instead.
-        }
-        // End of copy paste from `debug_port_start` in `probe-rs/src/architecture/arm/sequences.rs`
+        self.debug_port_start_default(interface, dp)?;
 
         // This code is unique to the cc23xx_cc27xx family
         // First connect to the config AP to read the device status register
