@@ -4,6 +4,8 @@
 # It's a Mac Thing
 **/.DS_Store
 
+.cursor/
+
 # IDE settings
 .vscode/settings.json
 .idea/

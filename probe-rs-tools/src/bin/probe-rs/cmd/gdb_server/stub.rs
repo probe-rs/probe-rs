@@ -1,12 +1,11 @@
 use anyhow::bail;
+use indexmap::IndexMap;
 use parking_lot::FairMutex;
 use probe_rs::{CoreType, Session};
 
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::process::Child;
 use std::time::Duration;
-
-use itertools::Itertools;
 
 use super::target;
 
@@ -48,13 +47,13 @@ impl GdbInstanceConfiguration {
         // Build a grouped list of cores by core type
         // GDB only supports one architecture per stub so if we have two core types,
         // such as ARMv7-a + ARMv7-m, we must create two stubs to connect to.
-        let groups = session
-            .target()
-            .cores
-            .iter()
-            .enumerate()
-            .map(|(i, core)| (core.core_type, i))
-            .into_group_map();
+        let mut groups = IndexMap::new();
+        for (i, core) in session.target().cores.iter().enumerate() {
+            groups
+                .entry(core.core_type)
+                .or_insert_with(Vec::new)
+                .push(i);
+        }
 
         // Create a GDB instance for each group, starting at the specified connection and adding one to the port each time
         // For example - consider two groups computed above and an input of localhost:1337.
