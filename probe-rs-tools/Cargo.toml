@@ -34,6 +34,7 @@ typed-path = "0.12"
 espflash = { version = "4.5", default-features = false }
 
 itertools = "0.15"
+indexmap = "2.14"
 
 # CLI-only
 addr2line = "0.27"

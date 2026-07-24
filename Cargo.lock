@@ -3276,6 +3276,7 @@ dependencies = [
  "gdbstub",
  "git-version",
  "ihex",
+ "indexmap",
  "indicatif",
  "insta",
  "itertools 0.15.0",
