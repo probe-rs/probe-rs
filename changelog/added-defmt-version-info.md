@@ -1,0 +1,1 @@
+`probe-rs --version` (and `cargo embed`/`cargo flash`) now report the defmt wire formats the built-in decoder supports, and a failure to parse defmt data now says that a defmt version mismatch is the likely cause instead of surfacing a bare `missing field` error.

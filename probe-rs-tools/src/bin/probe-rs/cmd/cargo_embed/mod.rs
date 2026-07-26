@@ -37,7 +37,7 @@ use crate::{Config, FormatKind, FormatOptions, parse_and_resolve_cli_args};
     name = "cargo embed",
     bin_name = "cargo embed",
     version = env!("PROBE_RS_VERSION"),
-    long_version = env!("PROBE_RS_LONG_VERSION"),
+    long_version = crate::util::long_version(),
     after_long_help = CargoOptions::help_message("cargo embed")
 )]
 struct CliOptions {
