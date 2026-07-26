@@ -8,12 +8,11 @@ pub(crate) use stub::{GdbInstanceConfiguration, run};
 
 use std::path::PathBuf;
 use std::process::Command;
-use std::time::Duration;
 
 use parking_lot::FairMutex;
 use probe_rs::{config::Registry, probe::list::Lister};
 
-use crate::util::common_options::ProbeOptions;
+use crate::util::common_options::{ProbeOptions, RESET_HALT_TIMEOUT, ResetHaltOptions};
 
 #[derive(clap::Parser)]
 pub struct Cmd {
@@ -23,12 +22,8 @@ pub struct Cmd {
     )]
     gdb_connection_string: Option<String>,
 
-    #[clap(
-        name = "reset-halt",
-        long = "reset-halt",
-        help = "Use this flag to reset and halt (instead of just a halt) the attached core after attaching to the target."
-    )]
-    reset_halt: bool,
+    #[clap(flatten)]
+    reset: ResetHaltOptions,
 
     #[clap(long, help = "Spawn gdb after starting the gdbserver.")]
     gdb: Option<String>,
@@ -50,10 +45,8 @@ impl Cmd {
     pub fn run(self, registry: &mut Registry, lister: &Lister) -> anyhow::Result<()> {
         let (mut session, _probe_options) = self.common.simple_attach(registry, lister)?;
 
-        if self.reset_halt {
-            session
-                .core(0)?
-                .reset_and_halt(Duration::from_millis(100))?;
+        if self.reset.reset_halt {
+            session.core(0)?.reset_and_halt(RESET_HALT_TIMEOUT)?;
         }
 
         let gdb_connection_string = self

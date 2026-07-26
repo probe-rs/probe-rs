@@ -10,7 +10,8 @@ use crate::rpc::client::RpcClient;
 use crate::util::cargo::build_artifact;
 use crate::util::cargo::cargo_target;
 use crate::util::common_options::{
-    BinaryDownloadOptions, CargoOptions, OperationError, ProbeOptions,
+    BinaryDownloadOptions, CargoOptions, OperationError, ProbeOptions, RESET_HALT_TIMEOUT,
+    ResetHaltOptions,
 };
 use crate::util::logging::{LevelFilter, setup_logging};
 use crate::util::{cli, logging};
@@ -26,9 +27,8 @@ use crate::{Config, parse_and_resolve_cli_args, run_app};
     after_long_help = CargoOptions::help_message("cargo flash")
 )]
 struct CliOptions {
-    /// Use this flag to reset and halt (instead of just a reset) the attached core after flashing the target.
-    #[arg(long)]
-    pub reset_halt: bool,
+    #[clap(flatten)]
+    pub reset: ResetHaltOptions,
     /// Use this flag to set the log level.
     ///
     /// Configurable via the `RUST_LOG` environment variable.
@@ -192,8 +192,8 @@ async fn main_try(client: &mut RpcClient, opt: CliOptions) -> Result<(), Operati
     // Reset target according to CLI options
     let core = session.core(0);
 
-    if opt.reset_halt {
-        core.reset_and_halt(std::time::Duration::from_millis(500))
+    if opt.reset.reset_halt {
+        core.reset_and_halt(RESET_HALT_TIMEOUT)
             .await
             .context("Failed to reset and halt target")?;
     } else {
