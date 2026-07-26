@@ -876,12 +876,23 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     .core
                     .read_core_reg(target_core.core.program_counter())
                     .ok();
+                let (reason, description) = current_core_status.short_long_status(program_counter);
+
+                // reset_and_halt arms DEMCR.VC_CORERESET, so we come up with DFSR.VCATCH set,
+                // which is an Exception as far as HaltReason is concerned. Reporting that
+                // verbatim makes the client throw up its exception UI on every session start.
+                let reason = if matches!(
+                    current_core_status,
+                    CoreStatus::Halted(HaltReason::Breakpoint(_))
+                ) {
+                    reason
+                } else {
+                    "entry"
+                };
+
                 let event_body = Some(StoppedEventBody {
-                    reason: current_core_status
-                        .short_long_status(program_counter)
-                        .0
-                        .to_owned(),
-                    description: Some(current_core_status.short_long_status(program_counter).1),
+                    reason: reason.to_owned(),
+                    description: Some(description),
                     thread_id: Some(target_core.id() as i64),
                     preserve_focus_hint: None,
                     text: None,
@@ -889,6 +900,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     hit_breakpoint_ids: None,
                 });
                 self.send_event("stopped", event_body)?;
+
+                // Polling starts once configuration_done is set and would otherwise see a
+                // status different from last_known_status and announce this same halt again,
+                // with the raw reason, undoing the above.
+                target_core.core_data.last_known_status = current_core_status;
             } else {
                 tracing::debug!(
                     "Core is halted, but not due to a breakpoint and halt_after_reset is not set. Continuing."

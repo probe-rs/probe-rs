@@ -1465,6 +1465,51 @@ mod test {
         execute_test(protocol_adapter, true).await.unwrap();
     }
 
+    /// The entry halt is a vector catch, reported as [`probe_rs::HaltReason::Exception`].
+    ///
+    /// Expects a single stopped event with reason `entry`: [`CoreHandle::poll_core`] used to
+    /// re-announce the same halt with the raw reason.
+    ///
+    /// [`CoreHandle::poll_core`]: crate::cmd::dap_server::server::core_data::CoreHandle::poll_core
+    #[tokio::test]
+    async fn session_entry_is_not_reported_as_exception() {
+        let mut protocol_adapter = initialized_protocol_adapter();
+
+        let launch_args = SessionConfig {
+            flashing_config: FlashingConfig {
+                halt_after_reset: true,
+                ..Default::default()
+            },
+            ..valid_session_config()
+        };
+
+        protocol_adapter
+            .add_request("launch")
+            .with_arguments(launch_args)
+            .and_successful_response();
+        protocol_adapter.expect_event("initialized", None::<u32>);
+
+        protocol_adapter
+            .add_request("configurationDone")
+            .and_successful_response();
+
+        // Mocked core has no real halt cause, hence the generic description. It's `reason`
+        // we care about here.
+        protocol_adapter.expect_event(
+            "stopped",
+            Some(json!({
+                "reason": "entry",
+                "description": "Core halted: unrecognized cause",
+                "threadId": 0,
+                "allThreadsStopped": false,
+            })),
+        );
+
+        disconnect_protocol_adapter(&mut protocol_adapter);
+
+        execute_test(protocol_adapter, true).await.unwrap();
+    }
+
     #[tokio::test]
     async fn launch_and_threads() {
         let mut protocol_adapter = launched_protocol_adapter();
