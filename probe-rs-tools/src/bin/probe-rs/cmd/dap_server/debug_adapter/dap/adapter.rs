@@ -881,17 +881,17 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 // reset_and_halt arms DEMCR.VC_CORERESET, so we come up with DFSR.VCATCH set,
                 // which is an Exception as far as HaltReason is concerned. Reporting that
                 // verbatim makes the client throw up its exception UI on every session start.
-                let reason = if matches!(
+                let (reason, description) = if matches!(
                     current_core_status,
                     CoreStatus::Halted(HaltReason::Breakpoint(_))
                 ) {
-                    reason
+                    (reason, description)
                 } else {
-                    "entry"
+                    ("entry", "Core halted at entry".to_string())
                 };
 
                 let event_body = Some(StoppedEventBody {
-                    reason: reason.to_owned(),
+                    reason: reason.to_string(),
                     description: Some(description),
                     thread_id: Some(target_core.id() as i64),
                     preserve_focus_hint: None,

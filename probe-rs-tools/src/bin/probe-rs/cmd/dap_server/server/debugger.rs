@@ -1467,10 +1467,7 @@ mod test {
 
     /// The entry halt is a vector catch, reported as [`probe_rs::HaltReason::Exception`].
     ///
-    /// Expects a single stopped event with reason `entry`: [`CoreHandle::poll_core`] used to
-    /// re-announce the same halt with the raw reason.
-    ///
-    /// [`CoreHandle::poll_core`]: crate::cmd::dap_server::server::core_data::CoreHandle::poll_core
+    /// Expects a single stopped event with reason `entry`.
     #[tokio::test]
     async fn session_entry_is_not_reported_as_exception() {
         let mut protocol_adapter = initialized_protocol_adapter();
@@ -1493,13 +1490,11 @@ mod test {
             .add_request("configurationDone")
             .and_successful_response();
 
-        // Mocked core has no real halt cause, hence the generic description. It's `reason`
-        // we care about here.
         protocol_adapter.expect_event(
             "stopped",
             Some(json!({
                 "reason": "entry",
-                "description": "Core halted: unrecognized cause",
+                "description": "Core halted at entry",
                 "threadId": 0,
                 "allThreadsStopped": false,
             })),
