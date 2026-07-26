@@ -6,7 +6,7 @@ pub mod swo;
 pub mod transfer;
 
 use crate::probe::cmsisdap::commands::general::info::PacketSizeCommand;
-use crate::probe::usb_util::{read_bulk_endpoint, write_bulk_endpoint};
+use crate::probe::usb_util::{BulkReadExt, BulkWriteExt};
 use crate::probe::{ProbeError, WireProtocol};
 use nusb::{
     Endpoint,
@@ -224,7 +224,7 @@ impl CmsisDapDevice {
             }
             CmsisDapDevice::V2 {
                 in_ep, usb_timeout, ..
-            } => Ok(read_bulk_endpoint(in_ep, buf, *usb_timeout)?),
+            } => Ok(in_ep.read_bulk(buf, *usb_timeout)?),
         }
     }
 
@@ -239,7 +239,7 @@ impl CmsisDapDevice {
                 ..
             } => {
                 // Skip first byte as it's set to 0 for HID transfers
-                Ok(write_bulk_endpoint(out_ep, &buf[1..], *usb_timeout)?)
+                Ok(out_ep.write_bulk(&buf[1..], *usb_timeout)?)
             }
         }
     }
@@ -272,7 +272,7 @@ impl CmsisDapDevice {
                 let timeout = Duration::from_millis(1);
                 let mut discard = vec![0u8; *max_packet_size];
                 loop {
-                    match read_bulk_endpoint(in_ep, &mut discard, timeout) {
+                    match in_ep.read_bulk(&mut discard, timeout) {
                         Ok(n) if n != 0 => continue,
                         _ => break,
                     }
@@ -359,7 +359,7 @@ impl CmsisDapDevice {
             CmsisDapDevice::V2 { swo_ep, .. } => match swo_ep {
                 Some(ep) => {
                     let mut buf = vec![0u8; ep.max_packet_size()];
-                    match read_bulk_endpoint(ep, &mut buf, timeout) {
+                    match ep.read_bulk(&mut buf, timeout) {
                         Ok(n) => {
                             buf.truncate(n);
                             Ok(buf)
