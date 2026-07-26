@@ -6,11 +6,7 @@
 //!
 //! nSRST (hardware pin reset) is available via `--connect-under-reset`.
 
-use std::{
-    sync::Arc,
-    thread,
-    time::Duration,
-};
+use std::{sync::Arc, thread, time::Duration};
 
 use probe_rs_target::CoreType;
 
