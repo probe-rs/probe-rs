@@ -1,0 +1,501 @@
+name: MAX32690
+manufacturer:
+  id: 0x65
+  cc: 0x0
+variants:
+- name: MAX32690
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x10000000
+      end: 0x10340000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - max32690
+flash_algorithms:
+- name: max32690
+  description: MAX32690 3MB Flash
+  default: true
+  instructions: QPIYQMLyAAAAeAEoHL8BIHBH0LUCr4SwSfIABAGoxPICBAGUAPB5+QAoSNGgaKohYfMPIAOQA5igYKBoQPACAAOQA5igYAGoAPDC+WBqgAcx1KBoIPBwQAOQA5igYAT1gGACkAKoAPBY+UC71PgIBKohYfMPIAOQA5jE+AgE1PgIBEDwAgADkAOYxPgIBAKoAPCe+UnyJEDE8gIAAWiJBxDU1PgIBCDwcEADkAOYxPgIBAAgBOAAIAOQA5hgYgEgBLDQvQAhA5EDmQFg9+ewtQKvgrAFRkDyGEDC8gAAAHgBKEbRKEYA8E/5AShB0WhGDEYAkQDwEfnYu6BoVSEqRmHzDyABkAGYb/MRAqBgACDP9vxwAPVwMbLxhF8KRhi/APV4MgXxcECw9UAfOL8KRgLqBQAgYKBoQPAEAAGQAZigYGhGAPBE+WBqgAcH1KBoIPBwQAGQAZigYAAgCuAAIAGQAZhgYqBoIPBwQAGQAZigYAEgArCwvbC1Aq+CsEDyGEUURsLyAAUoeAixAPCj+AEgKHBgHgQoF9JJ8gAAxPICAACQAPWAYAGQaEYA8LX4CLEBIAfgAagA8K/4AUYBIAm5KHAAIAKwsL0A8Ar58LUDry3pAA+JsAZGQPIYQMLyAABP8AEIAHgCkgEoadEwRgxGAPDJ+A1GwQdP8AEBGL8pRgEoAZFc0QOoA5UA8IX4AChW0ahoIPAQAASQBJioYNyzDfEQCU/wAAijRgCUT/D/MAAhzekGANpGzekEALTrCAA4vwhGu/EQDyi/T/AQCgKZACJBRJBCONCLXAn4AjABMpJF99EEqwGcD8smYChjaWOqY+tjqGhA8AEACJAImKhgA6gA8KT4aGqABw3UAJxWRNBEu+sKC8nRqGhP8AAIIPBwQASQBJgK4AAgT/ABCAiQCJhoYqhoIPBwQAiQCJioYEBGCbC96AAP8L0AmQjrAgAA8Ir4QPIYQcLyAAEIeAEoHL8BIHBHgLVvRoKwSfIIAMTyAgACaCLwcEIAkgCaAmDQ+AAkIvBwQgGSAZrA+AAkACAIcAKwgL0AaIFoSQccvwEgcEcIIcTyAAEJaMHzghEBOQQpBthA8gRCwvIAAlL4IRAA4DwhgLVvRoOwQWAAIQCRASMAmcDyAgNBYtD4cBHKQxpCAb8h8AEBAZEBmcD4cBECIoFoYvMfcQKRApmBYAAgA7CAvYC1b0ZJ8gBMAPFwQ8TyAgys9YBhAkYBILP1QB8R02/zEQKy8YRfDNAAIcHyMAGKQgjQACHB8oQBikJhRgi/gL0AIIC9YUaAvYC1b0YAaIFoSQcIv4C9EL/554C1b0YA3v7egLVvRv/3+P/U1AgAAAABAAAAYAAAACAAAABkAAAAANTU1A==
+  load_address: 0x20000010
+  pc_init: 0x179
+  pc_uninit: 0x2d7
+  pc_program_page: 0x1cf
+  pc_erase_sector: 0xcf
+  pc_erase_all: 0x1
+  data_section_offset: 0x40c
+  flash_properties:
+    address_range:
+      start: 0x10000000
+      end: 0x10340000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 5000
+    sectors:
+    - size: 0x4000
+      address: 0x0
+    - size: 0x4000
+      address: 0x4000
+    - size: 0x4000
+      address: 0x8000
+    - size: 0x4000
+      address: 0xc000
+    - size: 0x4000
+      address: 0x10000
+    - size: 0x4000
+      address: 0x14000
+    - size: 0x4000
+      address: 0x18000
+    - size: 0x4000
+      address: 0x1c000
+    - size: 0x4000
+      address: 0x20000
+    - size: 0x4000
+      address: 0x24000
+    - size: 0x4000
+      address: 0x28000
+    - size: 0x4000
+      address: 0x2c000
+    - size: 0x4000
+      address: 0x30000
+    - size: 0x4000
+      address: 0x34000
+    - size: 0x4000
+      address: 0x38000
+    - size: 0x4000
+      address: 0x3c000
+    - size: 0x4000
+      address: 0x40000
+    - size: 0x4000
+      address: 0x44000
+    - size: 0x4000
+      address: 0x48000
+    - size: 0x4000
+      address: 0x4c000
+    - size: 0x4000
+      address: 0x50000
+    - size: 0x4000
+      address: 0x54000
+    - size: 0x4000
+      address: 0x58000
+    - size: 0x4000
+      address: 0x5c000
+    - size: 0x4000
+      address: 0x60000
+    - size: 0x4000
+      address: 0x64000
+    - size: 0x4000
+      address: 0x68000
+    - size: 0x4000
+      address: 0x6c000
+    - size: 0x4000
+      address: 0x70000
+    - size: 0x4000
+      address: 0x74000
+    - size: 0x4000
+      address: 0x78000
+    - size: 0x4000
+      address: 0x7c000
+    - size: 0x4000
+      address: 0x80000
+    - size: 0x4000
+      address: 0x84000
+    - size: 0x4000
+      address: 0x88000
+    - size: 0x4000
+      address: 0x8c000
+    - size: 0x4000
+      address: 0x90000
+    - size: 0x4000
+      address: 0x94000
+    - size: 0x4000
+      address: 0x98000
+    - size: 0x4000
+      address: 0x9c000
+    - size: 0x4000
+      address: 0xa0000
+    - size: 0x4000
+      address: 0xa4000
+    - size: 0x4000
+      address: 0xa8000
+    - size: 0x4000
+      address: 0xac000
+    - size: 0x4000
+      address: 0xb0000
+    - size: 0x4000
+      address: 0xb4000
+    - size: 0x4000
+      address: 0xb8000
+    - size: 0x4000
+      address: 0xbc000
+    - size: 0x4000
+      address: 0xc0000
+    - size: 0x4000
+      address: 0xc4000
+    - size: 0x4000
+      address: 0xc8000
+    - size: 0x4000
+      address: 0xcc000
+    - size: 0x4000
+      address: 0xd0000
+    - size: 0x4000
+      address: 0xd4000
+    - size: 0x4000
+      address: 0xd8000
+    - size: 0x4000
+      address: 0xdc000
+    - size: 0x4000
+      address: 0xe0000
+    - size: 0x4000
+      address: 0xe4000
+    - size: 0x4000
+      address: 0xe8000
+    - size: 0x4000
+      address: 0xec000
+    - size: 0x4000
+      address: 0xf0000
+    - size: 0x4000
+      address: 0xf4000
+    - size: 0x4000
+      address: 0xf8000
+    - size: 0x4000
+      address: 0xfc000
+    - size: 0x4000
+      address: 0x100000
+    - size: 0x4000
+      address: 0x104000
+    - size: 0x4000
+      address: 0x108000
+    - size: 0x4000
+      address: 0x10c000
+    - size: 0x4000
+      address: 0x110000
+    - size: 0x4000
+      address: 0x114000
+    - size: 0x4000
+      address: 0x118000
+    - size: 0x4000
+      address: 0x11c000
+    - size: 0x4000
+      address: 0x120000
+    - size: 0x4000
+      address: 0x124000
+    - size: 0x4000
+      address: 0x128000
+    - size: 0x4000
+      address: 0x12c000
+    - size: 0x4000
+      address: 0x130000
+    - size: 0x4000
+      address: 0x134000
+    - size: 0x4000
+      address: 0x138000
+    - size: 0x4000
+      address: 0x13c000
+    - size: 0x4000
+      address: 0x140000
+    - size: 0x4000
+      address: 0x144000
+    - size: 0x4000
+      address: 0x148000
+    - size: 0x4000
+      address: 0x14c000
+    - size: 0x4000
+      address: 0x150000
+    - size: 0x4000
+      address: 0x154000
+    - size: 0x4000
+      address: 0x158000
+    - size: 0x4000
+      address: 0x15c000
+    - size: 0x4000
+      address: 0x160000
+    - size: 0x4000
+      address: 0x164000
+    - size: 0x4000
+      address: 0x168000
+    - size: 0x4000
+      address: 0x16c000
+    - size: 0x4000
+      address: 0x170000
+    - size: 0x4000
+      address: 0x174000
+    - size: 0x4000
+      address: 0x178000
+    - size: 0x4000
+      address: 0x17c000
+    - size: 0x4000
+      address: 0x180000
+    - size: 0x4000
+      address: 0x184000
+    - size: 0x4000
+      address: 0x188000
+    - size: 0x4000
+      address: 0x18c000
+    - size: 0x4000
+      address: 0x190000
+    - size: 0x4000
+      address: 0x194000
+    - size: 0x4000
+      address: 0x198000
+    - size: 0x4000
+      address: 0x19c000
+    - size: 0x4000
+      address: 0x1a0000
+    - size: 0x4000
+      address: 0x1a4000
+    - size: 0x4000
+      address: 0x1a8000
+    - size: 0x4000
+      address: 0x1ac000
+    - size: 0x4000
+      address: 0x1b0000
+    - size: 0x4000
+      address: 0x1b4000
+    - size: 0x4000
+      address: 0x1b8000
+    - size: 0x4000
+      address: 0x1bc000
+    - size: 0x4000
+      address: 0x1c0000
+    - size: 0x4000
+      address: 0x1c4000
+    - size: 0x4000
+      address: 0x1c8000
+    - size: 0x4000
+      address: 0x1cc000
+    - size: 0x4000
+      address: 0x1d0000
+    - size: 0x4000
+      address: 0x1d4000
+    - size: 0x4000
+      address: 0x1d8000
+    - size: 0x4000
+      address: 0x1dc000
+    - size: 0x4000
+      address: 0x1e0000
+    - size: 0x4000
+      address: 0x1e4000
+    - size: 0x4000
+      address: 0x1e8000
+    - size: 0x4000
+      address: 0x1ec000
+    - size: 0x4000
+      address: 0x1f0000
+    - size: 0x4000
+      address: 0x1f4000
+    - size: 0x4000
+      address: 0x1f8000
+    - size: 0x4000
+      address: 0x1fc000
+    - size: 0x4000
+      address: 0x200000
+    - size: 0x4000
+      address: 0x204000
+    - size: 0x4000
+      address: 0x208000
+    - size: 0x4000
+      address: 0x20c000
+    - size: 0x4000
+      address: 0x210000
+    - size: 0x4000
+      address: 0x214000
+    - size: 0x4000
+      address: 0x218000
+    - size: 0x4000
+      address: 0x21c000
+    - size: 0x4000
+      address: 0x220000
+    - size: 0x4000
+      address: 0x224000
+    - size: 0x4000
+      address: 0x228000
+    - size: 0x4000
+      address: 0x22c000
+    - size: 0x4000
+      address: 0x230000
+    - size: 0x4000
+      address: 0x234000
+    - size: 0x4000
+      address: 0x238000
+    - size: 0x4000
+      address: 0x23c000
+    - size: 0x4000
+      address: 0x240000
+    - size: 0x4000
+      address: 0x244000
+    - size: 0x4000
+      address: 0x248000
+    - size: 0x4000
+      address: 0x24c000
+    - size: 0x4000
+      address: 0x250000
+    - size: 0x4000
+      address: 0x254000
+    - size: 0x4000
+      address: 0x258000
+    - size: 0x4000
+      address: 0x25c000
+    - size: 0x4000
+      address: 0x260000
+    - size: 0x4000
+      address: 0x264000
+    - size: 0x4000
+      address: 0x268000
+    - size: 0x4000
+      address: 0x26c000
+    - size: 0x4000
+      address: 0x270000
+    - size: 0x4000
+      address: 0x274000
+    - size: 0x4000
+      address: 0x278000
+    - size: 0x4000
+      address: 0x27c000
+    - size: 0x4000
+      address: 0x280000
+    - size: 0x4000
+      address: 0x284000
+    - size: 0x4000
+      address: 0x288000
+    - size: 0x4000
+      address: 0x28c000
+    - size: 0x4000
+      address: 0x290000
+    - size: 0x4000
+      address: 0x294000
+    - size: 0x4000
+      address: 0x298000
+    - size: 0x4000
+      address: 0x29c000
+    - size: 0x4000
+      address: 0x2a0000
+    - size: 0x4000
+      address: 0x2a4000
+    - size: 0x4000
+      address: 0x2a8000
+    - size: 0x4000
+      address: 0x2ac000
+    - size: 0x4000
+      address: 0x2b0000
+    - size: 0x4000
+      address: 0x2b4000
+    - size: 0x4000
+      address: 0x2b8000
+    - size: 0x4000
+      address: 0x2bc000
+    - size: 0x4000
+      address: 0x2c0000
+    - size: 0x4000
+      address: 0x2c4000
+    - size: 0x4000
+      address: 0x2c8000
+    - size: 0x4000
+      address: 0x2cc000
+    - size: 0x4000
+      address: 0x2d0000
+    - size: 0x4000
+      address: 0x2d4000
+    - size: 0x4000
+      address: 0x2d8000
+    - size: 0x4000
+      address: 0x2dc000
+    - size: 0x4000
+      address: 0x2e0000
+    - size: 0x4000
+      address: 0x2e4000
+    - size: 0x4000
+      address: 0x2e8000
+    - size: 0x4000
+      address: 0x2ec000
+    - size: 0x4000
+      address: 0x2f0000
+    - size: 0x4000
+      address: 0x2f4000
+    - size: 0x4000
+      address: 0x2f8000
+    - size: 0x4000
+      address: 0x2fc000
+    - size: 0x2000
+      address: 0x300000
+    - size: 0x2000
+      address: 0x302000
+    - size: 0x2000
+      address: 0x304000
+    - size: 0x2000
+      address: 0x306000
+    - size: 0x2000
+      address: 0x308000
+    - size: 0x2000
+      address: 0x30a000
+    - size: 0x2000
+      address: 0x30c000
+    - size: 0x2000
+      address: 0x30e000
+    - size: 0x2000
+      address: 0x310000
+    - size: 0x2000
+      address: 0x312000
+    - size: 0x2000
+      address: 0x314000
+    - size: 0x2000
+      address: 0x316000
+    - size: 0x2000
+      address: 0x318000
+    - size: 0x2000
+      address: 0x31a000
+    - size: 0x2000
+      address: 0x31c000
+    - size: 0x2000
+      address: 0x31e000
+    - size: 0x2000
+      address: 0x320000
+    - size: 0x2000
+      address: 0x322000
+    - size: 0x2000
+      address: 0x324000
+    - size: 0x2000
+      address: 0x326000
+    - size: 0x2000
+      address: 0x328000
+    - size: 0x2000
+      address: 0x32a000
+    - size: 0x2000
+      address: 0x32c000
+    - size: 0x2000
+      address: 0x32e000
+    - size: 0x2000
+      address: 0x330000
+    - size: 0x2000
+      address: 0x332000
+    - size: 0x2000
+      address: 0x334000
+    - size: 0x2000
+      address: 0x336000
+    - size: 0x2000
+      address: 0x338000
+    - size: 0x2000
+      address: 0x33a000
+    - size: 0x2000
+      address: 0x33c000
+    - size: 0x2000
+      address: 0x33e000
+  cores:
+  - main
