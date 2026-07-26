@@ -22,7 +22,7 @@ use crate::{Config, parse_and_resolve_cli_args, run_app};
     name = "cargo flash",
     bin_name = "cargo flash",
     version = env!("PROBE_RS_VERSION"),
-    long_version = env!("PROBE_RS_LONG_VERSION"),
+    long_version = crate::util::long_version(),
     after_long_help = CargoOptions::help_message("cargo flash")
 )]
 struct CliOptions {

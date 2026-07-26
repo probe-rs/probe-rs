@@ -50,7 +50,7 @@ pub(crate) struct Config {
     name = "probe-rs",
     about = "The probe-rs CLI",
     version = env!("PROBE_RS_VERSION"),
-    long_version = env!("PROBE_RS_LONG_VERSION")
+    long_version = crate::util::long_version()
 )]
 struct Cli {
     /// Location for log file for probe-rs's own debug output

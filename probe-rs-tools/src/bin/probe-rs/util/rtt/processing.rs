@@ -169,17 +169,33 @@ pub struct DefmtStateInner {
     pub locs: Option<defmt_decoder::Locations>,
 }
 
+/// Context for a failed defmt table parse.
+///
+/// The underlying errors are unhelpfully low-level (a defmt 0.3 firmware trips a bare
+/// `missing field crate_name` serde error, because its symbol payload shape differs even
+/// though it still reports a wire format this decoder claims to support). Name the likely
+/// cause so users know to compare versions rather than chase a serde message.
+fn defmt_parse_error_hint() -> String {
+    format!(
+        "Failed to parse defmt data. The `defmt` version used to build the firmware is likely \
+         incompatible with the decoder in this build of probe-rs, which supports defmt wire \
+         formats {}. Check that the `defmt` version in your firmware matches the one reported \
+         by `probe-rs --version`.",
+        defmt_decoder::DEFMT_VERSIONS.join(", ")
+    )
+}
+
 impl DefmtStateInner {
     pub fn try_from_bytes(buffer: &[u8]) -> Result<Option<Self>, Error> {
         let Some(table) =
-            defmt_decoder::Table::parse(buffer).with_context(|| "Failed to parse defmt data")?
+            defmt_decoder::Table::parse(buffer).with_context(defmt_parse_error_hint)?
         else {
             return Ok(None);
         };
 
         let locs = table
             .get_locations(buffer)
-            .with_context(|| "Failed to parse defmt data")?;
+            .with_context(defmt_parse_error_hint)?;
 
         let locs = if !table.is_empty() && locs.is_empty() {
             tracing::warn!(
