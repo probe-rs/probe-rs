@@ -219,7 +219,7 @@ async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Res
     let probe_options = ProbeOptions {
         chip,
         chip_description_path: None,
-        protocol: Some(config.probe.protocol),
+        protocol: config.probe.protocol,
         non_interactive: false,
         probe: selector,
         cycle_power: false,

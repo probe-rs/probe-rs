@@ -40,7 +40,10 @@ pub struct Probe {
     pub usb_pid: Option<String>,
     pub interface: Option<u8>,
     pub serial: Option<String>,
-    pub protocol: WireProtocol,
+    /// Wire protocol to talk to the target with.
+    ///
+    /// Falls back to the probe default.
+    pub protocol: Option<WireProtocol>,
     pub speed: Option<u32>,
 }
 
@@ -282,6 +285,9 @@ impl Configs {
 
 #[cfg(test)]
 mod test {
+    use figment::providers::{Format, Toml};
+    use probe_rs::probe::WireProtocol;
+
     use super::Configs;
 
     #[test]
@@ -289,6 +295,23 @@ mod test {
         // Ensure the default config can be parsed.
         let configs = Configs::new(std::env::current_dir().unwrap());
         let _config = configs.select_defined("default").unwrap();
+    }
+    /// An explicitly configured protocol still reaches the config.
+    #[test]
+    fn explicit_protocol_is_preserved() {
+        let mut configs = Configs::new(std::env::current_dir().unwrap());
+        configs.figment = configs.figment.merge(
+            Toml::string(
+                r#"
+                [default.probe]
+                protocol = "Jtag"
+                "#,
+            )
+            .nested(),
+        );
+        let config = configs.select_defined("default").unwrap();
+
+        assert_eq!(config.probe.protocol, Some(WireProtocol::Jtag));
     }
     #[test]
     fn non_existent_profile_is_error() {
