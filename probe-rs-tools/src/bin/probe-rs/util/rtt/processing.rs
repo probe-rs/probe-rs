@@ -171,11 +171,8 @@ pub struct DefmtStateInner {
 
 /// Context attached to a failed [`defmt_decoder::Table::parse`].
 ///
-/// The bare error is unhelpfully low level: a defmt 0.3 firmware trips a
-/// `missing field crate_name` serde error, because its symbol payload changed shape even
-/// though it still advertises a wire format listed in [`defmt_decoder::DEFMT_VERSIONS`].
-/// Upstream's own version check therefore never fires, and the user is left with a serde
-/// message that gives no hint the two defmt versions disagree.
+/// A defmt 0.3 firmware still advertises a wire format we support but changed its symbol
+/// payload, so upstream's version check never fires and the user only sees a serde error.
 fn defmt_parse_error_hint() -> String {
     format!(
         "Failed to parse defmt data. The `defmt` version used to build the firmware is likely \
