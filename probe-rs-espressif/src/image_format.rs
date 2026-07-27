@@ -126,6 +126,14 @@ impl ImageLoader for IdfLoader {
 
         tracing::info!("Detected flash size: {:?}", flash_size);
 
+        // FlashData expects the minimum revision supported by the image, not the
+        // revision of the connected chip. P4 is the exception for now: espflash
+        // also uses this value to select the correct bundled bootloader.
+        let min_chip_revision = match chip {
+            espflash::target::Chip::Esp32p4 => chip_revision,
+            _ => 0,
+        };
+
         let flash_data = FlashData::new(
             {
                 let mut settings = FlashSettings::default();
@@ -136,7 +144,7 @@ impl ImageLoader for IdfLoader {
 
                 settings
             },
-            chip_revision,
+            min_chip_revision,
             None,
             chip,
             // TODO: auto-detect the crystal frequency.
