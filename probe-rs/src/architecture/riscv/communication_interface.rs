@@ -1133,7 +1133,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
     ///
     /// Dispatches to a 32- or 64-bit abstract command based on the XLEN mode.  Falls back to the
     /// program buffer if abstract commands are not supported.
-    pub(super) fn write_csr(&mut self, address: u16, value: u64) -> Result<(), RiscvError> {
+    pub fn write_csr(&mut self, address: u16, value: u64) -> Result<(), RiscvError> {
         tracing::debug!("Writing CSR {:#x}", address);
         let result = if self.state.xlen_64 {
             self.abstract_cmd_register_write_64(address, value)

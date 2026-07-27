@@ -6,7 +6,7 @@ use crate::sequences::esp::EspBreakpointHandler;
 use probe_rs::{
     Error, MemoryInterface,
     architecture::riscv::{
-        Dmcontrol, Riscv32,
+        Dmcontrol, PC, Riscv32,
         communication_interface::{
             MemoryAccessMethod, RiscvBusAccess, RiscvCommunicationInterface, Sbaddress0, Sbcs,
             Sbdata0,
@@ -183,6 +183,14 @@ impl RiscvDebugSequence for ESP32S31 {
         interface.write_dm_register(dmcontrol)?;
 
         interface.enter_debug_mode()?;
+        interface.reset_hart_and_halt(timeout)?;
+
+        // HARTRESET leaves DPC at reset vector + 4 on the S31. That points at
+        // zero-filled ROM rather than the jump at the actual reset vector.
+        interface.write_csr(PC.id.0, 0x2f80_0000)?;
+
+        // HARTRESET is reported as an HP JTAG reset and restores peripheral
+        // state, so target setup must happen after it.
         self.on_connect(interface)?;
 
         const ECC_MEM_LP_CTRL: u64 = 0x2058_6218;
@@ -190,7 +198,11 @@ impl RiscvDebugSequence for ESP32S31 {
         // clear HP_SYSTEM_ECC_MEM_LP_EN (bit 2), set HP_SYSTEM_ECC_MEM_LP_FORCE_CTRL (bit 3)
         interface.write_word_32(ECC_MEM_LP_CTRL, (val & !(1 << 2)) | (1 << 3))?;
 
-        interface.reset_hart_and_halt(timeout)?;
+        // The ROM prints boot messages through UART0. Force its FIFO memory on;
+        // otherwise the ROM sees an invalid TX FIFO count and loops forever.
+        const UART0_MEM_LP_CTRL: u64 = 0x2058_628c;
+        let val = interface.read_word_32(UART0_MEM_LP_CTRL)?;
+        interface.write_word_32(UART0_MEM_LP_CTRL, (val & !(1 << 2)) | (1 << 3))?;
 
         Ok(())
     }
