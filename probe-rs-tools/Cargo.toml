@@ -22,7 +22,7 @@ remote = ["dep:tokio-tungstenite", "dep:axum", "dep:rustls"]
 
 [dependencies]
 anyhow = { workspace = true }
-base64 = "0.22"
+base64 = "0.23"
 docsplay = { workspace = true }
 jep106 = "0.3"
 num-traits = "0.2"
