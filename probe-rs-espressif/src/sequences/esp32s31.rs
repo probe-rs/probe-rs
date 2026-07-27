@@ -6,7 +6,7 @@ use crate::sequences::esp::EspBreakpointHandler;
 use probe_rs::{
     Error, MemoryInterface,
     architecture::riscv::{
-        Dmcontrol, Riscv32,
+        Dmcontrol, PC, Riscv32,
         communication_interface::{
             MemoryAccessMethod, RiscvBusAccess, RiscvCommunicationInterface, Sbaddress0, Sbcs,
             Sbdata0,
@@ -187,7 +187,7 @@ impl RiscvDebugSequence for ESP32S31 {
 
         // HARTRESET leaves DPC at reset vector + 4 on the S31. That points at
         // zero-filled ROM rather than the jump at the actual reset vector.
-        interface.write_program_counter(0x2f80_0000)?;
+        interface.write_csr(PC.id.0, 0x2f80_0000)?;
 
         // HARTRESET is reported as an HP JTAG reset and restores peripheral
         // state, so target setup must happen after it.
