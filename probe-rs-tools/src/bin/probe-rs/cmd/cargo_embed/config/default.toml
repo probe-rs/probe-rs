@@ -6,7 +6,8 @@
 # Serial number
 # serial = "12345678"
 # The protocol to be used for communicating with the target.
-protocol = "Swd"
+# If unset, the probe decides.
+# protocol = "Swd"
 # The speed in kHz of the data link to the target.
 # speed = 1337
 
