@@ -36,5 +36,5 @@ pub use registry::{Registry, RegistryError};
 pub use target::{DebugSequence, Target, TargetSelector};
 
 // Crate-internal API
-pub(crate) use chip_info::ChipInfo;
+pub(crate) use chip_info::{AvrChipInfo, ChipInfo};
 pub(crate) use target::CoreExt;

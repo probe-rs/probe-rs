@@ -699,6 +699,7 @@ pub enum ResolvedCoreOptions {
         sequence: Arc<dyn XtensaDebugSequence>,
         options: XtensaCoreAccessOptions,
     },
+    Avr,
 }
 
 impl ResolvedCoreOptions {
@@ -728,6 +729,7 @@ impl ResolvedCoreOptions {
                 };
                 Self::Xtensa { sequence, options }
             }
+            CoreAccessOptions::Avr(_) => Self::Avr,
         }
     }
 
@@ -736,6 +738,7 @@ impl ResolvedCoreOptions {
             Self::Arm { options, .. } => options.jtag_tap.unwrap_or(0),
             Self::Riscv { options, .. } => options.jtag_tap.unwrap_or(0),
             Self::Xtensa { options, .. } => options.jtag_tap.unwrap_or(0),
+            Self::Avr => 0,
         }
     }
 }
@@ -758,6 +761,7 @@ impl std::fmt::Debug for ResolvedCoreOptions {
                 .field("sequence", &"<XtensaDebugSequence>")
                 .field("options", options)
                 .finish(),
+            Self::Avr => f.debug_struct("Avr").finish(),
         }
     }
 }

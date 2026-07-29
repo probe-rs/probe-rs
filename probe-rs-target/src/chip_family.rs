@@ -51,6 +51,8 @@ pub enum CoreType {
     Riscv64,
     /// Xtensa - TODO: may need to split into NX, LX6 and LX7
     Xtensa,
+    /// AVR (megaAVR, AVR Dx, AVR Ex series with UPDI)
+    Avr,
 }
 
 impl CoreType {
@@ -68,6 +70,10 @@ impl CoreType {
 
     fn is_xtensa(&self) -> bool {
         matches!(self, CoreType::Xtensa)
+    }
+
+    fn is_avr(&self) -> bool {
+        matches!(self, CoreType::Avr)
     }
 
     fn is_arm(&self) -> bool {
@@ -88,6 +94,7 @@ impl CoreType {
         match self {
             CoreType::Riscv | CoreType::Riscv64 => Architecture::Riscv,
             CoreType::Xtensa => Architecture::Xtensa,
+            CoreType::Avr => Architecture::Avr,
             _ => Architecture::Arm,
         }
     }
@@ -102,6 +109,8 @@ pub enum Architecture {
     Riscv,
     /// An Xtensa core.
     Xtensa,
+    /// An AVR core.
+    Avr,
 }
 
 /// Instruction set used by a core
@@ -123,6 +132,8 @@ pub enum InstructionSet {
     RV64C,
     /// Xtensa instruction set
     Xtensa,
+    /// AVR instruction set (16-bit, variable-length)
+    Avr,
 }
 
 impl InstructionSet {
@@ -133,6 +144,7 @@ impl InstructionSet {
             "arm" => Some(InstructionSet::A32),
             "aarch64" => Some(InstructionSet::A64),
             "xtensa" => Some(InstructionSet::Xtensa),
+            "avr" => Some(InstructionSet::Avr),
             other => {
                 if let Some(features) = other.strip_prefix("riscv32") {
                     if features.contains('c') {
@@ -168,6 +180,7 @@ impl InstructionSet {
             InstructionSet::RV64 => 4,
             InstructionSet::RV64C => 2,
             InstructionSet::Xtensa => 2,
+            InstructionSet::Avr => 2, // AVR instructions are 16-bit (2 bytes) or 32-bit (4 bytes)
         }
     }
     /// Get the maximum instruction size in bytes. All supported architectures have a maximum instruction size of 4 bytes.
@@ -345,6 +358,12 @@ impl ChipFamily {
                     CoreAccessOptions::Xtensa(_) if !core.core_type.is_xtensa() => {
                         return Err(format!(
                             "Xtensa options don't match core type {:?} on core {}",
+                            core.core_type, core.name
+                        ));
+                    }
+                    CoreAccessOptions::Avr(_) if !core.core_type.is_avr() => {
+                        return Err(format!(
+                            "Avr options don't match core type {:?} on core {}",
                             core.core_type, core.name
                         ));
                     }

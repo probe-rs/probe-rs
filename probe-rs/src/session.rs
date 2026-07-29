@@ -23,7 +23,7 @@ use crate::{
     core::{Architecture, CombinedCoreState},
     probe::{
         AttachMethod, DebugProbeError, Probe, ProbeCreationError, WireProtocol,
-        fake_probe::FakeProbe, list::Lister,
+        cmsisdap::AvrChipDescriptor, fake_probe::FakeProbe, list::Lister,
     },
 };
 use std::ops::DerefMut;
@@ -109,6 +109,7 @@ enum ArchitectureInterface {
         riscv_mem_ap_cores: Vec<Option<(FullyQualifiedApAddress, RiscvDebugInterfaceState)>>,
     },
     Jtag(Probe, Vec<JtagInterface>),
+    Avr(Box<dyn crate::architecture::avr::UpdiInterface>),
 }
 
 impl fmt::Debug for ArchitectureInterface {
@@ -122,6 +123,7 @@ impl fmt::Debug for ArchitectureInterface {
                 .debug_tuple("ArchitectureInterface::Jtag(..)")
                 .field(ifaces)
                 .finish(),
+            ArchitectureInterface::Avr(_) => f.write_str("ArchitectureInterface::Avr(..)"),
         }
     }
 }
@@ -171,6 +173,9 @@ impl ArchitectureInterface {
                     }
                 }
             }
+            ArchitectureInterface::Avr(interface) => {
+                combined_state.attach_avr(target, interface.as_mut())
+            }
         }
     }
 }
@@ -185,6 +190,7 @@ impl Session {
         registry: &Registry,
     ) -> Result<Self, Error> {
         let (probe, target) = get_target_from_selector(target, attach_method, probe, registry)?;
+        let architecture = target.architecture();
 
         let cores = target
             .cores
@@ -200,9 +206,14 @@ impl Session {
             })
             .collect();
 
-        // Use ARM DAP path when the target connects via SWD/DAP: either ARM cores or RISC-V cores
-        // over mem-AP (e.g. RP235x_riscv).
-        let mut session = if target.default_core().memory_ap().is_some() {
+        let mut session = if architecture == Architecture::Avr {
+            if attach_method == AttachMethod::UnderReset {
+                tracing::warn!("--connect-under-reset has no effect for AVR UPDI targets");
+            }
+            Self::attach_avr_stub(probe, target, cores)?
+        } else if target.default_core().memory_ap().is_some() {
+            // Use ARM DAP path when the target connects via SWD/DAP: either ARM cores or RISC-V cores
+            // over mem-AP (e.g. RP235x_riscv).
             Self::attach_arm_debug_interface(probe, target, attach_method, permissions, cores)?
         } else {
             Self::attach_jtag(probe, target, attach_method, permissions, cores)?
@@ -211,6 +222,45 @@ impl Session {
         session.clear_all_hw_breakpoints()?;
 
         Ok(session)
+    }
+
+    /// Create an AVR stub session.
+    ///
+    /// Unlike ARM/RISC-V, no SWD/JTAG-level attach is performed here — the probe
+    /// is already connected at the CMSIS-DAP level (opened during probe selection).
+    /// The EDBG/JTAG3 sign-on and programming-mode entry happen lazily on the first
+    /// memory operation (e.g. `enter_programming_session`), so storing the probe
+    /// without an explicit attach step is intentional.
+    fn attach_avr_stub(
+        probe: Probe,
+        target: Target,
+        cores: Vec<CombinedCoreState>,
+    ) -> Result<Self, Error> {
+        // Extract AvrCoreAccessOptions from the target's first core.
+        let avr_opts = target
+            .cores
+            .first()
+            .and_then(|core| match &core.core_access_options {
+                probe_rs_target::CoreAccessOptions::Avr(opts) => Some(opts),
+                _ => None,
+            })
+            .ok_or_else(|| {
+                Error::Other(format!(
+                    "no AVR core access options found for chip '{}'",
+                    target.name,
+                ))
+            })?;
+        let chip = AvrChipDescriptor::from(avr_opts);
+        // Extract a mutable CmsisDap reference from the probe for the UPDI interface.
+        // The Probe is moved into the Session and the CmsisDap is accessed via downcast.
+        let interface =
+            crate::probe::cmsisdap::avr_interface::OwnedCmsisDapUpdi::from_probe(probe, chip)?;
+        Ok(Session {
+            target,
+            interfaces: ArchitectureInterface::Avr(Box::new(interface)),
+            cores,
+            configured_trace_sink: None,
+        })
     }
 
     fn attach_arm_debug_interface(
@@ -719,7 +769,9 @@ impl Session {
         let interface = match &mut self.interfaces {
             ArchitectureInterface::Arm(state) => state.deref_mut(),
             ArchitectureInterface::ArmWithRiscv { arm, .. } => arm.deref_mut(),
-            ArchitectureInterface::Jtag(..) => return Err(ArmError::NoArmTarget),
+            ArchitectureInterface::Jtag(..) | ArchitectureInterface::Avr(_) => {
+                return Err(ArmError::NoArmTarget);
+            }
         };
 
         Ok(interface)
@@ -759,7 +811,9 @@ impl Session {
                     Err(RiscvError::NoRiscvTarget.into())
                 }
             }
-            ArchitectureInterface::Arm(_) => Err(RiscvError::NoRiscvTarget.into()),
+            ArchitectureInterface::Arm(_) | ArchitectureInterface::Avr(_) => {
+                Err(RiscvError::NoRiscvTarget.into())
+            }
         }
     }
 
@@ -834,6 +888,9 @@ impl Session {
             DebugSequence::Xtensa(xtensa_debug_sequence) => {
                 xtensa_debug_sequence.prepare_running_on_ram(self, vector_table_addr, core_id)
             }
+            DebugSequence::Avr(_) => Err(Error::Other(
+                "Debug sequence for AVR does not support prepare_running_on_ram".to_string(),
+            )),
         }
     }
 
@@ -858,7 +915,7 @@ impl Session {
         let interface_ref = match &mut self.interfaces {
             ArchitectureInterface::Arm(i) => i.deref_mut(),
             ArchitectureInterface::ArmWithRiscv { arm, .. } => arm.deref_mut(),
-            ArchitectureInterface::Jtag(..) => {
+            ArchitectureInterface::Jtag(..) | ArchitectureInterface::Avr(_) => {
                 return Err(Error::NotImplemented(
                     "Debug Erase Sequence is not implemented for non-ARM targets.",
                 ));
@@ -892,12 +949,24 @@ impl Session {
                         core_state.enable_arm_debug(arm.deref_mut())?;
                     }
                 }
-                ArchitectureInterface::Jtag(..) => {}
+                ArchitectureInterface::Jtag(..) | ArchitectureInterface::Avr(_) => {}
             },
             Err(e) => return Err(Error::Arm(e)),
         }
         tracing::info!("Device Erased Successfully");
         Ok(())
+    }
+
+    /// Erase all target flash memory using the narrow AVR programmer-style chip erase.
+    ///
+    /// The caller is responsible for checking permissions before calling this method.
+    pub fn erase_all(&mut self) -> Result<(), Error> {
+        match &mut self.interfaces {
+            ArchitectureInterface::Avr(interface) => interface.erase_chip().map_err(Error::from),
+            _ => Err(Error::NotImplemented(
+                "Session erase-all is only implemented for AVR local sessions.",
+            )),
+        }
     }
 
     /// Reads all the available ARM CoresightComponents of the currently attached target.
@@ -999,6 +1068,7 @@ impl Session {
                     Architecture::Xtensa
                 }
             }
+            ArchitectureInterface::Avr(_) => Architecture::Avr,
         }
     }
 
