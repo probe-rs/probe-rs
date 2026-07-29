@@ -32,26 +32,54 @@ use crate::{
     rpc::{
         Key,
         functions::{
-            NoResponse, RpcContext, TargetInfoDataTopic, TargetNameResponse,
+            NoResponse, RpcContext, TargetInfoDataTopic, TargetMetadataResponse,
             chip::JEP106Code,
+            core_ops::WireCoreType,
             probe::{DebugProbeEntry, WireProtocol},
         },
     },
     util::common_options::ProbeOptions,
 };
 
+/// Session-scoped target description fields the DAP RPC client needs without
+/// mirroring the full server [`probe_rs::Target`] in its local registry.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Schema)]
+pub struct WireSessionTargetMetadata {
+    pub target_name: String,
+    pub default_format: Option<String>,
+    pub cores: Vec<WireSessionCore>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Schema)]
+pub struct WireSessionCore {
+    pub index: u32,
+    pub core_type: WireCoreType,
+}
+
 #[derive(Serialize, Deserialize, Schema)]
-pub struct TargetNameRequest {
+pub struct TargetMetadataRequest {
     pub sessid: Key<Session>,
 }
 
-pub async fn target_name(
+pub async fn target_metadata(
     ctx: &mut RpcContext,
     _hdr: VarHeader,
-    request: TargetNameRequest,
-) -> TargetNameResponse {
+    request: TargetMetadataRequest,
+) -> TargetMetadataResponse {
     let session = ctx.session(request.sessid).await;
-    Ok(session.target().name.clone())
+    let target = session.target();
+    Ok(WireSessionTargetMetadata {
+        target_name: target.name.clone(),
+        default_format: target.default_format.clone(),
+        cores: session
+            .list_cores()
+            .into_iter()
+            .map(|(index, core_type)| WireSessionCore {
+                index: index as u32,
+                core_type: core_type.into(),
+            })
+            .collect(),
+    })
 }
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -896,4 +924,26 @@ async fn show_xtensa_info(
         },
     )
     .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::rpc::functions::core_ops::WireCoreType;
+
+    #[test]
+    fn wire_session_target_metadata_roundtrip() {
+        let metadata = WireSessionTargetMetadata {
+            target_name: "nrf52840_xxAA".to_string(),
+            default_format: Some("elf".to_string()),
+            cores: vec![WireSessionCore {
+                index: 0,
+                core_type: WireCoreType::Armv7em,
+            }],
+        };
+
+        let encoded = postcard::to_allocvec(&metadata).unwrap();
+        let decoded: WireSessionTargetMetadata = postcard::from_bytes(&encoded).unwrap();
+        assert_eq!(decoded, metadata);
+    }
 }

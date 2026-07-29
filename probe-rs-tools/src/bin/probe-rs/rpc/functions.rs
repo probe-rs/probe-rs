@@ -17,7 +17,9 @@ use crate::{
                 BuildRequest, BuildResponse, EraseRequest, FlashRequest, ProgressEvent,
                 VerifyRequest, VerifyResponse, build, erase, flash, verify,
             },
-            info::{InfoEvent, TargetInfoRequest, TargetNameRequest, target_info, target_name},
+            info::{
+                InfoEvent, TargetInfoRequest, TargetMetadataRequest, target_info, target_metadata,
+            },
             memory::{ReadMemoryRequest, WriteMemoryRequest, read_memory, write_memory},
             monitor::{MonitorRequest, MonitorResponse, RttEvent, SemihostingEvent, monitor},
             probe::{
@@ -58,6 +60,7 @@ use tokio::sync::mpsc::{Receiver, Sender, channel};
 use tokio_util::sync::CancellationToken;
 
 pub mod chip;
+pub mod core_ops;
 pub mod file;
 pub mod flash;
 pub mod info;
@@ -444,7 +447,8 @@ pub fn spawn_fn(
     Ok(())
 }
 
-type TargetNameResponse = RpcResult<String>;
+type TargetMetadataResponse = RpcResult<info::WireSessionTargetMetadata>;
+type ResetAndHaltResponse = RpcResult<core_ops::WireCoreInformation>;
 
 type ReadMemory8Response = RpcResult<Vec<u8>>;
 type ReadMemory16Response = RpcResult<Vec<u16>>;
@@ -484,10 +488,10 @@ endpoints! {
     | ChipInfoEndpoint          | ChipInfoRequest         | ChipInfoResponse        | "chips/info"       |
     | LoadChipFamilyEndpoint    | LoadChipFamilyRequest   | NoResponse              | "chips/load"       |
 
-    | TargetNameEndpoint        | TargetNameRequest       | TargetNameResponse      | "target"      |
+    | TargetMetadataEndpoint    | TargetMetadataRequest   | TargetMetadataResponse  | "target/metadata"  |
     | TargetInfoEndpoint        | TargetInfoRequest       | NoResponse              | "info"             |
     | ResetCoreEndpoint         | ResetCoreRequest        | NoResponse              | "reset"            |
-    | ResetCoreAndHaltEndpoint  | ResetCoreAndHaltRequest | NoResponse              | "reset_and_halt"   |
+    | ResetCoreAndHaltEndpoint  | ResetCoreAndHaltRequest | ResetAndHaltResponse    | "reset_and_halt"   |
 
     | ReadMemory8Endpoint       | ReadMemoryRequest       | ReadMemory8Response     | "memory/read8"     |
     | ReadMemory16Endpoint      | ReadMemoryRequest       | ReadMemory16Response    | "memory/read16"    |
@@ -555,7 +559,7 @@ postcard_rpc::define_dispatch! {
         | ChipInfoEndpoint          | async     | chip_info         |
         | LoadChipFamilyEndpoint    | async     | load_chip_family  |
 
-        | TargetNameEndpoint        | async     | target_name       |
+        | TargetMetadataEndpoint    | async     | target_metadata   |
         | TargetInfoEndpoint        | async     | target_info       |
         | ResetCoreEndpoint         | async     | reset             |
         | ResetCoreAndHaltEndpoint  | async     | reset_and_halt    |

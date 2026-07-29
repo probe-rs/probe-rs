@@ -29,6 +29,19 @@ pub struct StackTraceFrame {
     pub location: Option<SourceLocation>,
 }
 
+impl From<&probe_rs_debug::SourceLocation> for SourceLocation {
+    fn from(location: &probe_rs_debug::SourceLocation) -> Self {
+        SourceLocation {
+            file: location.path.to_path().display().to_string(),
+            line: location.line,
+            column: location.column.map(|col| match col {
+                probe_rs_debug::ColumnType::LeftEdge => 1,
+                probe_rs_debug::ColumnType::Column(c) => c,
+            }),
+        }
+    }
+}
+
 impl From<StackFrame> for StackTraceFrame {
     fn from(frame: StackFrame) -> Self {
         StackTraceFrame::from(&frame)
@@ -41,17 +54,7 @@ impl From<&StackFrame> for StackTraceFrame {
             function_name: frame.function_name.clone(),
             program_counter: frame.pc.try_into().unwrap_or(0),
             is_inlined: frame.is_inlined,
-            location: frame
-                .source_location
-                .as_ref()
-                .map(|location| SourceLocation {
-                    file: location.path.to_path().display().to_string(),
-                    line: location.line,
-                    column: location.column.map(|col| match col {
-                        probe_rs_debug::ColumnType::LeftEdge => 1,
-                        probe_rs_debug::ColumnType::Column(c) => c,
-                    }),
-                }),
+            location: frame.source_location.as_ref().map(SourceLocation::from),
         }
     }
 }
@@ -74,7 +77,7 @@ impl Display for StackTraceFrame {
     }
 }
 
-#[derive(Serialize, Deserialize, Schema)]
+#[derive(Serialize, Deserialize, Schema, Clone)]
 pub struct SourceLocation {
     pub file: String,
     pub line: Option<u64>,
