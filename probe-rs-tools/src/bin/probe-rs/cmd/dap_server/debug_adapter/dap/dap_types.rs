@@ -6,8 +6,11 @@ use parse_int::parse;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 
-// Convert the MSDAP `debugAdaptor.json` file into Rust types.
-schemafy::schemafy!(root: debugserver_types "src/bin/probe-rs/cmd/dap_server/debug_adapter/dap/debugProtocol.json");
+// Convert the MSDAP `debugProtocol.json` file into Rust types.
+// Regenerate with `cargo xtask update-dap-schema`.
+#[path = "debugProtocol.rs"]
+mod debug_protocol;
+pub use debug_protocol::*;
 
 /// Memory addresses come in as strings, but we want to use them as u64s.
 pub struct MemoryAddress(pub u64);
