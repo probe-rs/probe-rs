@@ -92,7 +92,7 @@ ansi-parser = "0.9.0"
 linkme = "0.3.25"
 
 parking_lot = "0.12.2"
-cargo-config2 = "0.1.26"
+toml = "1.0"
 clap_complete = "4.5.2"
 regex = "1.10.4"
 zip = { version = "8.0.0", default-features = false, features = [

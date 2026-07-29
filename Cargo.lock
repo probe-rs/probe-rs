@@ -503,17 +503,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cargo-config2"
-version = "0.1.44"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25ada53f7339c78084fb37d7e17f34e76537541c4fbb02fa3a2baa14b8faad37"
-dependencies = [
- "serde",
- "serde_derive",
- "toml 1.1.3+spec-1.1.0",
-]
-
-[[package]]
 name = "cargo-platform"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3263,7 +3252,6 @@ dependencies = [
  "base64 0.23.0",
  "bytesize",
  "capstone",
- "cargo-config2",
  "cargo_metadata",
  "clap",
  "clap_complete",
@@ -3327,6 +3315,7 @@ dependencies = [
  "tokio",
  "tokio-tungstenite 0.30.0",
  "tokio-util",
+ "toml 1.1.3+spec-1.1.0",
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
