@@ -26,7 +26,7 @@ use report::Report;
 use serde::{Deserialize, Serialize};
 use time::{OffsetDateTime, UtcOffset};
 
-use crate::rpc::client::RpcClient;
+use crate::rpc::client::{RemoteParams, RpcClient};
 use crate::rpc::functions::RpcApp;
 use crate::util::logging::setup_logging;
 use crate::util::parse_u32;
@@ -114,7 +114,7 @@ impl Cli {
         match self.subcommand {
             Subcommand::DapServer(cmd) => {
                 let log_path = self.log_file.as_deref();
-                cmd::dap_server::run(cmd, &lister, utc_offset, log_path).await
+                cmd::dap_server::run(cmd, Some(client), None, utc_offset, log_path).await
             }
             #[cfg(feature = "remote")]
             Subcommand::Serve(cmd) => cmd.run(_config.server).await,
@@ -212,7 +212,9 @@ impl Subcommand {
             | Self::Attach(_)
             | Self::Run(_)
             | Self::Erase(_)
-            | Self::Verify(_) => true,
+            | Self::Verify(_)
+            | Self::Debug(_)
+            | Self::DapServer(_) => true,
             Self::Mi(mi) => mi.is_remote_cmd(),
             _ => false,
         }
@@ -418,8 +420,13 @@ impl FormatKind {
 
     /// Replaces `FormatKind::Target` with a default format based on the target.
     pub fn resolve(self, target: &Target) -> FormatKind {
+        self.resolve_default_format(target.default_format.as_deref())
+    }
+
+    /// Replaces `FormatKind::Target` using a server-provided default format string.
+    pub fn resolve_default_format(self, default_format: Option<&str>) -> FormatKind {
         if self == FormatKind::Target {
-            FormatKind::from_optional(target.default_format.as_deref())
+            FormatKind::from_optional(default_format)
                 .expect("Failed to parse a default binary format. This shouldn't happen.")
         } else {
             self
@@ -585,25 +592,35 @@ async fn main() -> Result<()> {
     let report_path = cli.report.clone();
 
     #[cfg(feature = "remote")]
-    let connection_params = cli
+    let connection_params: RemoteParams = cli
         .host
         .as_ref()
         .map(|host| (host.clone(), cli.token.clone()));
 
     #[cfg(not(feature = "remote"))]
-    let connection_params = None;
+    let connection_params: RemoteParams = None;
 
     let is_local = connection_params.is_none();
 
-    let result = run_app(connection_params, async |client| {
-        anyhow::ensure!(
-            client.is_local_session() || cli.subcommand.is_remote_cmd(),
-            "The subcommand is not supported in remote mode."
-        );
+    let is_tcp_dap = matches!(&cli.subcommand, Subcommand::DapServer(cmd) if cmd.is_tcp_mode());
 
-        cli.run(client, config, utc_offset).await
-    })
-    .await;
+    let result = if is_tcp_dap {
+        let Subcommand::DapServer(cmd) = cli.subcommand else {
+            unreachable!("checked DapServer above");
+        };
+        let log_path = log_path.as_deref();
+        cmd::dap_server::run(cmd, None, connection_params, utc_offset, log_path).await
+    } else {
+        run_app(connection_params, async |client| {
+            anyhow::ensure!(
+                client.is_local_session() || cli.subcommand.is_remote_cmd(),
+                "The subcommand is not supported in remote mode."
+            );
+
+            cli.run(client, config, utc_offset).await
+        })
+        .await
+    };
 
     if is_local {
         // TODO: do something with remote crashes
@@ -615,13 +632,13 @@ async fn main() -> Result<()> {
 
 /// Runs the callback using either a local or remote RPC client.
 async fn run_app<R>(
-    _connection_params: Option<(String, Option<String>)>,
+    #[cfg_attr(not(feature = "remote"), expect(unused_variables))] connection_params: RemoteParams,
     cb: impl AsyncFnOnce(RpcClient) -> Result<R>,
 ) -> Result<R> {
     #[cfg(feature = "remote")]
-    if let Some((host, token)) = _connection_params {
+    if let Some((host, token)) = connection_params {
         // Run the command remotely.
-        let client = rpc::client::connect(&host, token).await?;
+        let client = rpc::client::connect(&host, token.as_deref()).await?;
 
         return cb(client).await;
     }
@@ -793,6 +810,7 @@ fn load_config() -> anyhow::Result<Config> {
 
 #[cfg(test)]
 mod test {
+    use crate::FormatKind;
     use crate::multicall_check;
 
     #[test]
@@ -815,6 +833,22 @@ mod test {
             )
             .unwrap(),
             os_strs(&["cargo-flash", "--chip", "esp32c2"])
+        );
+    }
+
+    #[test]
+    fn format_kind_resolve_default_format_uses_server_hint() {
+        assert_eq!(
+            FormatKind::Target.resolve_default_format(Some("idf")),
+            FormatKind::Idf
+        );
+        assert_eq!(
+            FormatKind::Target.resolve_default_format(None),
+            FormatKind::Elf
+        );
+        assert_eq!(
+            FormatKind::Bin.resolve_default_format(Some("elf")),
+            FormatKind::Bin
         );
     }
 }

@@ -27,9 +27,15 @@ pub mod variable_cache;
 pub(crate) mod exception_handling;
 
 pub use self::{
-    debug_info::*, debug_step::SteppingMode, exception_handling::exception_handler_for_core,
-    registers::*, source_instructions::SourceLocation, source_instructions::VerifiedBreakpoint,
-    stack_frame::StackFrame, variable::*, variable_cache::VariableCache,
+    debug_info::*,
+    debug_step::SteppingMode,
+    exception_handling::exception_handler_for_core,
+    registers::*,
+    source_instructions::SourceLocation,
+    source_instructions::VerifiedBreakpoint,
+    stack_frame::{StackFrame, StackFrameInfo},
+    variable::*,
+    variable_cache::VariableCache,
 };
 
 use probe_rs::{Core, MemoryInterface};
@@ -38,7 +44,7 @@ use gimli::DebuggingInformationEntry;
 use gimli::EvaluationResult;
 use gimli::{AttributeValue, RunTimeEndian};
 use serde::Serialize;
-use typed_path::TypedPathBuf;
+pub use typed_path::{TypedPath, TypedPathBuf};
 
 use std::num::ParseIntError;
 use std::{

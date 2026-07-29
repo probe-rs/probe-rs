@@ -23,6 +23,21 @@ impl ContentHash {
     }
 }
 
+/// A resolved local upload: canonical path, content identity, and the path
+/// the RPC server should read (remote temp path, or the local path in-process).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct ResolvedUpload {
+    pub(crate) canonical_path: PathBuf,
+    pub(crate) content_hash: ContentHash,
+    pub(crate) remote_path: PathBuf,
+}
+
+impl ResolvedUpload {
+    pub(crate) fn server_path(&self) -> &Path {
+        &self.remote_path
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct UploadCacheKey {
     canonical_path: PathBuf,
