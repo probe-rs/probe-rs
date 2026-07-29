@@ -22,6 +22,7 @@ use tokio_util::sync::CancellationToken;
 pub mod client;
 pub mod functions;
 pub mod transport;
+pub(crate) mod upload_cache;
 pub mod utils;
 
 #[derive(Serialize, Deserialize, Debug)]
