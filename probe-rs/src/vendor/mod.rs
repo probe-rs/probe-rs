@@ -148,8 +148,13 @@ fn try_detect_arm_chip(
 
     // We have no information about the target, so we must assume it's using the default DP.
     // We cannot automatically detect DPs if SWD multi-drop is used.
-    // TODO: collect known DP addresses for known targets.
-    let dp_addresses = [DpAddress::Default];
+    // Most multi-drop implementations will expose enough info via the default DP to do detection
+    // so at least when there's only one SWD target, DpAddress::Default works fine.
+    // RP2040 isn't one of those - it's only accessible via multi-drop, so try it after Default.
+    let dp_addresses = [
+        DpAddress::Default,
+        DpAddress::Multidrop(0x01002927), // RP2040 core0
+    ];
 
     for dp_address in dp_addresses {
         // TODO: do not consume probe
@@ -157,9 +162,8 @@ fn try_detect_arm_chip(
             Ok(mut interface) => {
                 if let Err(error) = interface.select_debug_port(dp_address) {
                     probe = interface.close();
-                    tracing::debug!("Error during ARM chip detection: {error}");
-                    // If we can't connect, assume this is not an ARM chip and not an error.
-                    return Ok((probe, None));
+                    tracing::debug!("Error during ARM chip detection on {dp_address:?}: {error}");
+                    continue;
                 }
 
                 let found_arm_chip = read_chip_info_from_rom_table(interface.as_mut(), dp_address)
@@ -188,6 +192,10 @@ fn try_detect_arm_chip(
                 }
 
                 probe = interface.close();
+
+                if found_target.is_some() {
+                    break;
+                }
             }
             Err((returned_probe, error)) => {
                 probe = returned_probe;

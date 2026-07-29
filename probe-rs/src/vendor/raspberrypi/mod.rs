@@ -38,7 +38,20 @@ impl Vendor for RaspberryPi {
         chip_info: ArmChipInfo,
     ) -> Result<Option<String>, Error> {
         const JEP_ARM: JEP106Code = JEP106Code { id: 0x3b, cc: 0x4 };
+        const CHIPID_RP2040: u32 = 0x0000_2927;
         const CHIPID_RP235X: u32 = 0x0000_4927;
+
+        // Check for RP2040. We can immediately rule out RP2040 existing if we aren't probing via multidrop.
+        if let Some(DpAddress::Multidrop(dp)) = interface.current_debug_port() {
+            let ap = FullyQualifiedApAddress::v1_with_dp(DpAddress::Multidrop(dp), 0);
+            // Read SYSINFO.CHIP_ID and compare against RP2040 chip_id
+            if let Ok(mut memory) = interface.memory_interface(&ap)
+                && let Ok(chip_id) = memory.read_word_32(0x4000_0000)
+                && (chip_id & 0x0fff_ffff) == CHIPID_RP2040
+            {
+                return Ok(Some("RP2040".to_string()));
+            }
+        }
 
         // Check for RP235X.
         // Before we go poking memory, check that we have a CoreSight Class-1 ROM with a part number of 1225.
