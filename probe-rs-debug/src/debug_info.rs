@@ -12,19 +12,22 @@ use gimli::{
     read::RegisterRule,
 };
 use object::read::{Object, ObjectSection};
-use probe_rs::{CoreRegister, Error, InstructionSet, MemoryInterface, RegisterRole, RegisterValue};
+use probe_rs::{
+    CoreRegister, Endian, Error, InstructionSet, MemoryInterface, RegisterRole, RegisterValue,
+};
 use std::{
-    borrow, cmp::Ordering, num::NonZeroU64, ops::ControlFlow, path::Path, rc::Rc, str::from_utf8,
+    borrow, cmp::Ordering, num::NonZeroU64, ops::ControlFlow, path::Path, str::from_utf8,
+    sync::{Arc, Mutex},
 };
 use typed_path::{TypedPath, TypedPathBuf};
 
-pub(crate) type GimliReader = gimli::EndianReader<RunTimeEndian, std::rc::Rc<[u8]>>;
+pub(crate) type GimliReader = gimli::EndianReader<RunTimeEndian, std::sync::Arc<[u8]>>;
 pub(crate) type GimliReaderOffset =
-    <gimli::EndianReader<RunTimeEndian, Rc<[u8]>> as gimli::Reader>::Offset;
+    <gimli::EndianReader<RunTimeEndian, Arc<[u8]>> as gimli::Reader>::Offset;
 
 pub(crate) type GimliAttribute = gimli::Attribute<GimliReader>;
 
-pub(crate) type DwarfReader = gimli::read::EndianRcSlice<RunTimeEndian>;
+pub(crate) type DwarfReader = gimli::read::EndianArcSlice<RunTimeEndian>;
 
 /// Debug information which is parsed from DWARF debugging information.
 pub struct DebugInfo {
@@ -37,7 +40,11 @@ pub struct DebugInfo {
     pub(crate) unit_infos: Vec<UnitInfo>,
     pub(crate) endianness: gimli::RunTimeEndian,
 
-    pub(crate) addr2line: Option<addr2line::Loader>,
+    /// Cached symbol-table fallback for frames without DWARF.
+    ///
+    /// Wrapped in a [`Mutex`] because `addr2line::Loader` is `Send` but not
+    /// `Sync`, while [`DebugInfo`] must be both so an RPC server can share it.
+    pub(crate) addr2line: Option<Mutex<addr2line::Loader>>,
 }
 
 impl DebugInfo {
@@ -46,7 +53,7 @@ impl DebugInfo {
         let data = std::fs::read(path.as_ref())?;
 
         let mut this = DebugInfo::from_raw(&data)?;
-        this.addr2line = addr2line::Loader::new(path).ok();
+        this.addr2line = addr2line::Loader::new(path).ok().map(Mutex::new);
         Ok(this)
     }
 
@@ -67,8 +74,8 @@ impl DebugInfo {
                 .and_then(|section| section.uncompressed_data().ok())
                 .unwrap_or_else(|| borrow::Cow::Borrowed(&[][..]));
 
-            Ok(gimli::read::EndianRcSlice::new(
-                Rc::from(&*data),
+            Ok(gimli::read::EndianArcSlice::new(
+                Arc::from(&*data),
                 endianness,
             ))
         };
@@ -112,6 +119,44 @@ impl DebugInfo {
             endianness,
             addr2line: None,
         })
+    }
+
+    /// Create a [`DebugInfo`] that contains no debug information, for a target of the given
+    /// endianness.
+    ///
+    /// Unwinding with this still yields a backtrace: when the unwinder finds no unwind info for a
+    /// frame it falls back to the architecture's calling convention (for example the Xtensa window
+    /// save area). The resulting frames carry a program counter but no name or source location.
+    pub fn empty(endian: Endian) -> Self {
+        let endianness = match endian {
+            Endian::Little => RunTimeEndian::Little,
+            Endian::Big => RunTimeEndian::Big,
+        };
+        let load_section = |_id: gimli::SectionId| -> Result<DwarfReader, gimli::Error> {
+            Ok(gimli::read::EndianArcSlice::new(
+                Arc::from(&[][..]),
+                endianness,
+            ))
+        };
+
+        use gimli::Section;
+        let load = || -> Result<Self, gimli::Error> {
+            let debug_loc = gimli::DebugLoc::load(load_section)?;
+            let debug_loc_lists = gimli::DebugLocLists::load(load_section)?;
+
+            Ok(DebugInfo {
+                dwarf: gimli::Dwarf::load(&load_section)?,
+                frame_section: gimli::DebugFrame::load(load_section)?,
+                locations_section: gimli::LocationLists::new(debug_loc, debug_loc_lists),
+                address_section: gimli::DebugAddr::load(load_section)?,
+                debug_line_section: gimli::DebugLine::load(load_section)?,
+                unit_infos: Vec::new(),
+                endianness,
+                addr2line: None,
+            })
+        };
+
+        load().expect("loading empty DWARF sections cannot fail")
     }
 
     /// Try get the [`SourceLocation`] for a given address.
@@ -326,6 +371,10 @@ impl DebugInfo {
         let Some(ref addr2line) = self.addr2line else {
             return Ok(vec![]);
         };
+        // `Loader` is not `Sync`; serialize lookups against the shared cache.
+        let Ok(addr2line) = addr2line.lock() else {
+            return Ok(vec![]);
+        };
         let Some(fn_name) = addr2line.find_symbol(address) else {
             return Ok(vec![]);
         };
@@ -360,7 +409,7 @@ impl DebugInfo {
     /// Returns a populated (resolved) [`StackFrame`] struct.
     /// This function will also populate the `DebugInfo::VariableCache` with in scope `Variable`s for each `StackFrame`,
     /// while taking into account the appropriate strategy for lazy-loading of variables.
-    pub(crate) fn get_stackframe_info(
+    pub fn get_stackframe_info(
         &self,
         memory: &mut impl MemoryInterface,
         address: u64,

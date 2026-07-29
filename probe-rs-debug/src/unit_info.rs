@@ -22,7 +22,7 @@ pub(crate) enum ExpressionResult {
 pub struct UnitInfo {
     pub(crate) unit: gimli::Unit<GimliReader, usize>,
     dwarf_language: gimli::DwLang,
-    language: Box<dyn language::ProgrammingLanguage>,
+    language: Box<dyn language::ProgrammingLanguage + Send + Sync>,
     // A mapping from child die to parent die.
     parents: HashMap<UnitOffset, UnitOffset>,
     // Address => function DIE offset
