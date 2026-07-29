@@ -26,7 +26,6 @@ yaml_serde.workspace = true
 espflash = { version = "4.5", default-features = false }
 
 [build-dependencies]
-probe-rs = { workspace = true, features = ["test"] }
 probe-rs-target = { workspace = true, features = ["bincode"] }
 
 [lints]

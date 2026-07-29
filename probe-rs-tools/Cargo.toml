@@ -39,7 +39,15 @@ indexmap = "2.14"
 # CLI-only
 addr2line = "0.27"
 bytesize = "2"
-capstone = "0.14"
+# Only the architectures probe-rs can disassemble; the default feature set
+# compiles every Capstone backend, which dominates the build script time.
+capstone = { version = "0.14", default-features = false, features = [
+    "full",
+    "std",
+    "arch_arm",
+    "arch_arm64",
+    "arch_riscv",
+] }
 cargo_metadata = "0.23"
 clap = { version = "4", features = ["derive", "env"] }
 colored = "3"
