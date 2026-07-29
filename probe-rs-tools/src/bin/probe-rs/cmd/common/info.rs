@@ -16,7 +16,9 @@ pub async fn basic_info(
     }
     let session = cli::attach_probe(client, probe, None, false).await?;
     session
-        .target_name()
+        .target_metadata()
         .await
-        .map(|model| BasicDeviceInfo { chip: model })
+        .map(|metadata| BasicDeviceInfo {
+            chip: metadata.target_name,
+        })
 }

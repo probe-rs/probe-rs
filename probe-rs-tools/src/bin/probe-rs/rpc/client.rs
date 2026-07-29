@@ -38,16 +38,19 @@ use crate::{
             ReadMemory64Endpoint, ResetCoreAndHaltEndpoint, ResetCoreEndpoint,
             ResumeAllCoresEndpoint, RpcResult, RttDownEndpoint, RunTestEndpoint,
             SelectProbeEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint,
-            TargetNameEndpoint, TempFileDataEndpoint, TokioSpawner, VerifyEndpoint,
+            TargetMetadataEndpoint, TempFileDataEndpoint, TokioSpawner, VerifyEndpoint,
             WriteMemory8Endpoint, WriteMemory16Endpoint, WriteMemory32Endpoint,
             WriteMemory64Endpoint,
             chip::{ChipData, ChipFamily, ChipInfoRequest, LoadChipFamilyRequest},
+            core_ops::WireCoreInformation,
             file::{AppendFileRequest, TempFile},
             flash::{
                 BootInfo, BuildRequest, BuildResult, DownloadOptions, EraseCommand, EraseRequest,
                 FlashRequest, ProgressEvent, VerifyRequest, VerifyResult,
             },
-            info::{InfoEvent, TargetInfoRequest, TargetNameRequest},
+            info::{
+                InfoEvent, TargetInfoRequest, TargetMetadataRequest, WireSessionTargetMetadata,
+            },
             memory::{ReadMemoryRequest, WriteMemoryRequest},
             monitor::{MonitorExitReason, MonitorMode, MonitorOptions, MonitorRequest},
             probe::{
@@ -451,9 +454,9 @@ impl SessionInterface {
         self.client.clone()
     }
 
-    pub async fn target_name(&self) -> anyhow::Result<String> {
+    pub async fn target_metadata(&self) -> anyhow::Result<WireSessionTargetMetadata> {
         self.client
-            .send_resp::<TargetNameEndpoint, _>(&TargetNameRequest {
+            .send_resp::<TargetMetadataEndpoint, _>(&TargetMetadataRequest {
                 sessid: self.sessid,
             })
             .await
@@ -773,7 +776,7 @@ impl CoreInterface {
             .await
     }
 
-    pub async fn reset_and_halt(&self, timeout: Duration) -> anyhow::Result<()> {
+    pub async fn reset_and_halt(&self, timeout: Duration) -> anyhow::Result<WireCoreInformation> {
         self.client
             .send_resp::<ResetCoreAndHaltEndpoint, _>(&ResetCoreAndHaltRequest {
                 sessid: self.sessid,

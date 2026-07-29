@@ -1,8 +1,9 @@
 use std::time::Duration;
 
+use crate::rpc::functions::core_ops::WireCoreInformation;
 use crate::rpc::{
     Key,
-    functions::{NoResponse, RpcContext},
+    functions::{NoResponse, RpcContext, RpcResult},
 };
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
@@ -37,9 +38,9 @@ pub async fn reset_and_halt(
     ctx: &mut RpcContext,
     _header: VarHeader,
     request: ResetCoreAndHaltRequest,
-) -> NoResponse {
+) -> RpcResult<WireCoreInformation> {
     let mut session = ctx.session(request.sessid).await;
     let mut core = session.core(request.core as usize)?;
-    core.reset_and_halt(request.timeout)?;
-    Ok(())
+    let info = core.reset_and_halt(request.timeout)?;
+    Ok(info.into())
 }
