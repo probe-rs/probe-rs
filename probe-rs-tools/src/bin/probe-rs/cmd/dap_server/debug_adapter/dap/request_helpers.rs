@@ -11,8 +11,8 @@ use capstone::{
     arch::riscv::ArchMode as riscvArchMode, prelude::*,
 };
 use itertools::Itertools;
-use probe_rs::{CoreType, Error, InstructionSet, MemoryInterface};
-use probe_rs_debug::{ColumnType, ObjectRef, SourceLocation};
+use probe_rs::{Core, CoreInterface, CoreType, Error, InstructionSet, MemoryInterface};
+use probe_rs_debug::{ColumnType, DebugInfo, ObjectRef, SourceLocation};
 use std::time::Duration;
 
 use super::dap_types::{Breakpoint, InstructionBreakpoint, MemoryAddress};
@@ -24,17 +24,16 @@ pub(crate) enum DisassemblyAmount {
 }
 
 pub(crate) fn disassemble_target_memory(
-    target_core: &mut CoreHandle<'_>,
+    core: &mut Core<'_>,
+    debug_info: Option<&DebugInfo>,
     instruction_offset: i64,
     byte_offset: i64,
     memory_reference: u64,
     count: DisassemblyAmount,
 ) -> Result<Vec<DisassembledInstruction>, DebuggerError> {
-    use probe_rs::CoreInterface;
-
-    let debug_info = target_core.core_data.debug_info.as_ref();
-
-    let instruction_set = target_core.core.instruction_set()?;
+    let instruction_set = core.instruction_set()?;
+    let core_type = core.core_type();
+    let endianness = core.endianness()?;
     match instruction_set {
         InstructionSet::Thumb2
         | InstructionSet::RV32C
@@ -100,8 +99,6 @@ pub(crate) fn disassemble_target_memory(
     start_from_address &= !(min_instruction_size - 1);
     read_until_address &= !(min_instruction_size - 1);
 
-    let instruction_set = target_core.core.instruction_set()?;
-    let core_type = target_core.core.core_type();
     let cs_le = get_capstone_le(instruction_set, core_type)?;
     let mut code_buffer_le: Vec<u8> = vec![];
     let mut disassembled_instructions: Vec<DisassembledInstruction> = vec![];
@@ -109,7 +106,7 @@ pub(crate) fn disassemble_target_memory(
     let mut maybe_reference_instruction_index = None;
     let convert_endianness = match debug_info {
         Some(di) => di.endianness() == RunTimeEndian::Big,
-        None => target_core.core.endianness()? == probe_rs::Endian::Big,
+        None => endianness == probe_rs::Endian::Big,
     };
 
     let mut instruction_pointer = start_from_address;
@@ -159,13 +156,13 @@ pub(crate) fn disassemble_target_memory(
                 // order or garble partial 32 bit instructions.
                 HALFWORD => read_instruction::<HALFWORD, _>(
                     &mut read_pointer,
-                    &mut target_core.core,
+                    core,
                     &mut code_buffer_le,
                     convert_endianness,
                 ),
                 WORD => read_instruction::<WORD, _>(
                     &mut read_pointer,
-                    &mut target_core.core,
+                    core,
                     &mut code_buffer_le,
                     convert_endianness,
                 ),
