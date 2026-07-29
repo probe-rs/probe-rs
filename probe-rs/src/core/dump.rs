@@ -1,14 +1,4 @@
-use crate::architecture::arm::core::registers::aarch32::{
-    AARCH32_CORE_REGISTERS, AARCH32_WITH_FP_16_CORE_REGISTERS, AARCH32_WITH_FP_32_CORE_REGISTERS,
-};
-use crate::architecture::arm::core::registers::aarch64::AARCH64_CORE_REGISTERS;
-use crate::architecture::arm::core::registers::cortex_m::{
-    CORTEX_M_CORE_REGISTERS, CORTEX_M_WITH_FP_CORE_REGISTERS,
-};
-use crate::architecture::riscv::registers::{RISCV_CORE_REGISTERS, RISCV_WITH_FP_CORE_REGISTERS};
-use crate::architecture::riscv::registers64::{
-    RISCV64_CORE_REGISTERS, RISCV64_WITH_FP_CORE_REGISTERS,
-};
+use crate::architecture::riscv::registers::RISCV_CORE_REGISTERS;
 use crate::architecture::xtensa::arch::{Register as XtensaRegister, SpecialRegister};
 use crate::architecture::xtensa::registers::XTENSA_CORE_REGISTERS;
 use crate::{Core, CoreRegisters, CoreType, Error, InstructionSet, MemoryInterface};
@@ -356,53 +346,11 @@ impl CoreDump {
 
     /// Returns the register map for the core type.
     pub fn registers(&self) -> &'static CoreRegisters {
-        match self.core_type {
-            CoreType::Armv6m => &CORTEX_M_CORE_REGISTERS,
-            CoreType::Armv7a | CoreType::Armv7r => match self.floating_point_register_count {
-                Some(16) => &AARCH32_WITH_FP_16_CORE_REGISTERS,
-                Some(32) => &AARCH32_WITH_FP_32_CORE_REGISTERS,
-                _ => &AARCH32_CORE_REGISTERS,
-            },
-            CoreType::Armv7m => {
-                if self.fpu_support {
-                    &CORTEX_M_WITH_FP_CORE_REGISTERS
-                } else {
-                    &CORTEX_M_CORE_REGISTERS
-                }
-            }
-            CoreType::Armv7em => {
-                if self.fpu_support {
-                    &CORTEX_M_WITH_FP_CORE_REGISTERS
-                } else {
-                    &CORTEX_M_CORE_REGISTERS
-                }
-            }
-            // TODO: This can be wrong if the CPU is 32 bit. For lack of better design at the time
-            // of writing this code this differentiation has been omitted.
-            CoreType::Armv8a => &AARCH64_CORE_REGISTERS,
-            CoreType::Armv8m => {
-                if self.fpu_support {
-                    &CORTEX_M_WITH_FP_CORE_REGISTERS
-                } else {
-                    &CORTEX_M_CORE_REGISTERS
-                }
-            }
-            CoreType::Riscv => {
-                if self.fpu_support {
-                    &RISCV_WITH_FP_CORE_REGISTERS
-                } else {
-                    &RISCV_CORE_REGISTERS
-                }
-            }
-            CoreType::Riscv64 => {
-                if self.fpu_support {
-                    &RISCV64_WITH_FP_CORE_REGISTERS
-                } else {
-                    &RISCV64_CORE_REGISTERS
-                }
-            }
-            CoreType::Xtensa => &XTENSA_CORE_REGISTERS,
-        }
+        CoreRegisters::for_core_type(
+            self.core_type,
+            self.fpu_support,
+            self.floating_point_register_count,
+        )
     }
 }
 
