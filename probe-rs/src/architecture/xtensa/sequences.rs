@@ -4,6 +4,7 @@ use std::{fmt::Debug, sync::Arc, time::Duration};
 
 use crate::architecture::xtensa::Xtensa;
 use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
+use crate::flashing::DebugFlashSequence;
 use crate::semihosting::{SemihostingCommand, UnknownCommandDetails};
 
 /// A interface to operate debug sequences for Xtensa targets.
@@ -59,6 +60,14 @@ pub trait XtensaDebugSequence: Send + Sync + Debug {
         Err(crate::Error::NotImplemented(
             "RAM running on Xtensa targets",
         ))
+    }
+
+    /// Return the host-side flash sequence implementation, if any.
+    ///
+    /// Override this to enable host-side flashing for Xtensa targets.
+    /// The default returns `None`.
+    fn debug_flash_sequence(&self) -> Option<Arc<dyn DebugFlashSequence>> {
+        None
     }
 }
 

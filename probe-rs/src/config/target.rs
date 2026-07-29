@@ -9,6 +9,7 @@ use crate::{
         riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
         xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
     },
+    flashing::DebugFlashSequence,
     rtt::ScanRegion,
 };
 use probe_rs_target::{
@@ -266,6 +267,20 @@ pub enum DebugSequence {
     Riscv(Arc<dyn RiscvDebugSequence>),
     /// An Xtensa debug sequence.
     Xtensa(Arc<dyn XtensaDebugSequence>),
+}
+
+impl DebugSequence {
+    /// Return the host-side flash sequence for this target, if one is registered.
+    ///
+    /// This delegates to the architecture-specific sequence method, providing a
+    /// single architecture-agnostic entry point for the flash loader.
+    pub fn debug_flash_sequence(&self) -> Option<Arc<dyn DebugFlashSequence>> {
+        match self {
+            DebugSequence::Arm(seq) => seq.debug_flash_sequence(),
+            DebugSequence::Riscv(seq) => seq.debug_flash_sequence(),
+            DebugSequence::Xtensa(seq) => seq.debug_flash_sequence(),
+        }
+    }
 }
 
 pub(crate) trait CoreExt {
