@@ -82,30 +82,9 @@ impl DebugProbeEntry {
     }
 }
 
-#[derive(Serialize, Deserialize, Schema)]
-pub struct ListProbesRequest {
-    /// Vendor ID filter.
-    vid: Option<u16>,
-    /// Product ID filter.
-    pid: Option<u16>,
-}
-
-impl ListProbesRequest {
-    pub fn all() -> Self {
-        Self {
-            vid: None,
-            pid: None,
-        }
-    }
-}
-
 pub type ListProbesResponse = RpcResult<Vec<DebugProbeEntry>>;
 
-pub fn list_probes(
-    ctx: &mut RpcContext,
-    _header: VarHeader,
-    _request: ListProbesRequest,
-) -> ListProbesResponse {
+pub fn list_probes(ctx: &mut RpcContext, _header: VarHeader, _request: ()) -> ListProbesResponse {
     let lister = ctx.lister();
     let probes = lister.list_all_with_access();
 

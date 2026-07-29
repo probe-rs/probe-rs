@@ -11,5 +11,7 @@
 .idea/
 .zed/
 
+.cursor/
+
 # recorded profiles
 *.json.gz

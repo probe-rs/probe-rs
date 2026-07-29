@@ -21,8 +21,8 @@ use crate::{
             memory::{ReadMemoryRequest, WriteMemoryRequest, read_memory, write_memory},
             monitor::{MonitorRequest, MonitorResponse, RttEvent, SemihostingEvent, monitor},
             probe::{
-                AttachRequest, AttachResponse, ListProbesRequest, ListProbesResponse,
-                SelectProbeRequest, SelectProbeResponse, attach, list_probes, select_probe,
+                AttachRequest, AttachResponse, ListProbesResponse, SelectProbeRequest,
+                SelectProbeResponse, attach, list_probes, select_probe,
             },
             reset::{ResetCoreAndHaltRequest, ResetCoreRequest, reset, reset_and_halt},
             resume::{ResumeAllCoresRequest, resume_all_cores},
@@ -460,7 +460,7 @@ endpoints! {
     list = ENDPOINT_LIST;
     | EndpointTy                | RequestTy               | ResponseTy              | Path               |
     | ----------                | ---------               | ----------              | ----               |
-    | ListProbesEndpoint        | ListProbesRequest       | ListProbesResponse      | "probe/list"       |
+    | ListProbesEndpoint        | ()                      | ListProbesResponse      | "probe/list"       |
     | SelectProbeEndpoint       | SelectProbeRequest      | SelectProbeResponse     | "probe/select"     |
     | AttachEndpoint            | AttachRequest           | AttachResponse          | "probe/attach"     |
 

@@ -493,7 +493,8 @@ mod tests {
     fn try_fetch3() {
         let registry = Registry::from_builtin_families();
         // ok: unique substring match
-        assert!(registry.get_target_by_name("STM32G081RBI").is_ok());
+        let target = registry.get_target_by_name("STM32G081RBI").unwrap();
+        assert_eq!(target.name, "STM32G081RBIx");
     }
 
     #[cfg(feature = "builtin-targets")]
@@ -501,7 +502,8 @@ mod tests {
     fn try_fetch4() {
         let registry = Registry::from_builtin_families();
         // ok: unique exact match
-        assert!(registry.get_target_by_name("nrf51822_Xxaa").is_ok());
+        let target = registry.get_target_by_name("nrf51822_Xxaa").unwrap();
+        assert_eq!(target.name, "nRF51822_xxAA");
     }
 
     #[test]

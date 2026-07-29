@@ -15,7 +15,7 @@ pub mod rust;
 mod parsing;
 mod value;
 
-pub fn from_dwarf(language: DwLang) -> Box<dyn ProgrammingLanguage> {
+pub fn from_dwarf(language: DwLang) -> Box<dyn ProgrammingLanguage + Send + Sync> {
     match language {
         // Handle all C-like languages the same now.
         // We may have to split it later if this is not good enough.

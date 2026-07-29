@@ -50,7 +50,16 @@ use std::{
 };
 
 /// A simplified type alias of the [`gimli::EndianReader`] type.
-pub type EndianReader = gimli::EndianReader<RunTimeEndian, std::rc::Rc<[u8]>>;
+pub type EndianReader = gimli::EndianReader<RunTimeEndian, std::sync::Arc<[u8]>>;
+
+// `DebugInfo` must be `Send + Sync` so a probe-rs RPC server can share it
+// across requests (e.g. behind `Arc`).
+const _: () = {
+    const fn assert_send_sync<T: Send + Sync>() {}
+    assert_send_sync::<crate::DebugInfo>();
+    assert_send_sync::<crate::VariableCache>();
+    assert_send_sync::<crate::StackFrame>();
+};
 
 /// An error occurred while debugging the target.
 #[derive(Debug, thiserror::Error)]

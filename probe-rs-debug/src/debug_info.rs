@@ -14,17 +14,23 @@ use gimli::{
 use object::read::{Object, ObjectSection};
 use probe_rs::{CoreRegister, Error, InstructionSet, MemoryInterface, RegisterRole, RegisterValue};
 use std::{
-    borrow, cmp::Ordering, num::NonZeroU64, ops::ControlFlow, path::Path, rc::Rc, str::from_utf8,
+    borrow,
+    cmp::Ordering,
+    num::NonZeroU64,
+    ops::ControlFlow,
+    path::Path,
+    str::from_utf8,
+    sync::{Arc, Mutex},
 };
 use typed_path::{TypedPath, TypedPathBuf};
 
-pub(crate) type GimliReader = gimli::EndianReader<RunTimeEndian, std::rc::Rc<[u8]>>;
+pub(crate) type GimliReader = gimli::EndianReader<RunTimeEndian, std::sync::Arc<[u8]>>;
 pub(crate) type GimliReaderOffset =
-    <gimli::EndianReader<RunTimeEndian, Rc<[u8]>> as gimli::Reader>::Offset;
+    <gimli::EndianReader<RunTimeEndian, Arc<[u8]>> as gimli::Reader>::Offset;
 
 pub(crate) type GimliAttribute = gimli::Attribute<GimliReader>;
 
-pub(crate) type DwarfReader = gimli::read::EndianRcSlice<RunTimeEndian>;
+pub(crate) type DwarfReader = gimli::read::EndianArcSlice<RunTimeEndian>;
 
 /// Debug information which is parsed from DWARF debugging information.
 pub struct DebugInfo {
@@ -37,7 +43,11 @@ pub struct DebugInfo {
     pub(crate) unit_infos: Vec<UnitInfo>,
     pub(crate) endianness: gimli::RunTimeEndian,
 
-    pub(crate) addr2line: Option<addr2line::Loader>,
+    /// Cached symbol-table fallback for frames without DWARF.
+    ///
+    /// Wrapped in a [`Mutex`] because `addr2line::Loader` is `Send` but not
+    /// `Sync`, while [`DebugInfo`] must be both so an RPC server can share it.
+    pub(crate) addr2line: Option<Mutex<addr2line::Loader>>,
 }
 
 impl DebugInfo {
@@ -46,7 +56,7 @@ impl DebugInfo {
         let data = std::fs::read(path.as_ref())?;
 
         let mut this = DebugInfo::from_raw(&data)?;
-        this.addr2line = addr2line::Loader::new(path).ok();
+        this.addr2line = addr2line::Loader::new(path).ok().map(Mutex::new);
         Ok(this)
     }
 
@@ -67,8 +77,8 @@ impl DebugInfo {
                 .and_then(|section| section.uncompressed_data().ok())
                 .unwrap_or_else(|| borrow::Cow::Borrowed(&[][..]));
 
-            Ok(gimli::read::EndianRcSlice::new(
-                Rc::from(&*data),
+            Ok(gimli::read::EndianArcSlice::new(
+                Arc::from(&*data),
                 endianness,
             ))
         };
@@ -324,6 +334,10 @@ impl DebugInfo {
         unwind_registers: &DebugRegisters,
     ) -> Result<Vec<StackFrame>, DebugError> {
         let Some(ref addr2line) = self.addr2line else {
+            return Ok(vec![]);
+        };
+        // `Loader` is not `Sync`; serialize lookups against the shared cache.
+        let Ok(addr2line) = addr2line.lock() else {
             return Ok(vec![]);
         };
         let Some(fn_name) = addr2line.find_symbol(address) else {

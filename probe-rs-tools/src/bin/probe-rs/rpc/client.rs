@@ -52,7 +52,7 @@ use crate::{
             monitor::{MonitorExitReason, MonitorMode, MonitorOptions, MonitorRequest},
             probe::{
                 AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector,
-                ListProbesRequest, SelectProbeRequest, SelectProbeResult,
+                SelectProbeRequest, SelectProbeResult,
             },
             reset::{ResetCoreAndHaltRequest, ResetCoreRequest},
             resume::ResumeAllCoresRequest,
@@ -397,8 +397,7 @@ impl RpcClient {
     }
 
     pub async fn list_probes(&self) -> anyhow::Result<Vec<DebugProbeEntry>> {
-        self.send_resp::<ListProbesEndpoint, _>(&ListProbesRequest::all())
-            .await
+        self.send_resp::<ListProbesEndpoint, _>(&()).await
     }
 
     pub async fn select_probe(
