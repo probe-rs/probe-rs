@@ -20,7 +20,6 @@ use tokio::{
 };
 
 use std::{
-    collections::HashMap,
     path::{Path, PathBuf},
     sync::Arc,
     time::Duration,
@@ -64,6 +63,7 @@ use crate::{
             test::{ListTestsRequest, RunTestRequest, Test, TestResult, Tests},
         },
         transport::memory::{PostcardReceiver, PostcardSender, WireRx, WireTx},
+        upload_cache::{ContentHash, UploadCache},
         utils::semihosting::SemihostingOptions,
     },
     util::{
@@ -241,14 +241,14 @@ mod tls {
 #[derive(Clone)]
 pub struct RpcClient {
     client: HostClient<String>,
-    uploaded_files: Arc<Mutex<HashMap<PathBuf, PathBuf>>>,
+    upload_cache: Arc<Mutex<UploadCache>>,
     registry: Arc<Mutex<Registry>>,
     is_localhost: bool,
 }
 
 impl Drop for RpcClient {
     fn drop(&mut self) {
-        if Arc::strong_count(&self.uploaded_files) == 1 {
+        if Arc::strong_count(&self.upload_cache) == 1 {
             // Dropping the last client
             self.client.close();
         }
@@ -272,7 +272,7 @@ impl RpcClient {
                     subscriber_timeout_if_full: Duration::from_secs(1),
                 },
             ),
-            uploaded_files: Arc::new(Mutex::new(HashMap::new())),
+            upload_cache: Arc::new(Mutex::new(UploadCache::default())),
             registry: Arc::new(Mutex::new(Registry::from_builtin_families())),
             is_localhost: false,
         }
@@ -356,6 +356,12 @@ impl RpcClient {
         res
     }
 
+    /// Make a local file available to the RPC server, returning the path the
+    /// server should read.
+    ///
+    /// A prior upload is reused only when the path *and* its contents match, so
+    /// rebuilding a binary between calls uploads the new bytes rather than
+    /// silently reusing the stale copy. Failed uploads never update the cache.
     pub async fn upload_file(&self, src_path: impl AsRef<Path>) -> anyhow::Result<PathBuf> {
         use anyhow::Context as _;
 
@@ -368,14 +374,35 @@ impl RpcClient {
             return Ok(src_path);
         }
 
-        let mut uploaded = self.uploaded_files.lock().await;
-        if let Some(path) = uploaded.get(&src_path) {
-            return Ok(path.clone());
-        }
-
         let data = tokio::fs::read(&src_path)
             .await
-            .context("Failed to read file")?;
+            .with_context(|| format!("Failed to read {}", src_path.display()))?;
+        let content_hash = ContentHash::from_bytes(&data);
+
+        if let Some(remote_path) = self
+            .upload_cache
+            .lock()
+            .await
+            .lookup(&src_path, content_hash)
+        {
+            tracing::debug!("Reusing cached upload for {}", src_path.display());
+            return Ok(remote_path);
+        }
+
+        let remote_path = self
+            .upload_bytes(&src_path, &data)
+            .await
+            .context("Failed to upload file")?;
+
+        self.upload_cache
+            .lock()
+            .await
+            .insert(src_path, content_hash, remote_path.clone());
+
+        Ok(remote_path)
+    }
+
+    async fn upload_bytes(&self, src_path: &Path, data: &[u8]) -> anyhow::Result<PathBuf> {
         tracing::debug!("Uploading {} ({} bytes)", src_path.display(), data.len());
 
         let TempFile { key, path } = self.send_resp::<CreateTempFileEndpoint, _>(&()).await?;
@@ -388,11 +415,8 @@ impl RpcClient {
             .await?;
         }
 
-        tracing::debug!("Uploaded file to {}", path);
-        let path = PathBuf::from(path);
-        uploaded.insert(src_path, path.clone());
-
-        Ok(path)
+        tracing::debug!("Uploaded file to {path}");
+        Ok(PathBuf::from(path))
     }
 
     pub async fn attach_probe(&self, request: AttachRequest) -> anyhow::Result<AttachResult> {
