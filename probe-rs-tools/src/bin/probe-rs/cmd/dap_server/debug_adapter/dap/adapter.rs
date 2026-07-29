@@ -1302,7 +1302,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         instruction_count: i64,
     ) -> Result<Vec<dap_types::DisassembledInstruction>, DebuggerError> {
         let assembly_lines = disassemble_target_memory(
-            target_core,
+            &mut target_core.core,
+            target_core.core_data.debug_info.as_ref(),
             instruction_offset,
             byte_offset,
             memory_reference as u64,

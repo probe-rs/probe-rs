@@ -109,7 +109,8 @@ pub(crate) fn memory_read(
 ) -> EvalResult {
     if gdb_nuf.format_specifier == GdbFormat::Instruction {
         let assembly_lines = disassemble_target_memory(
-            target_core,
+            &mut target_core.core,
+            target_core.core_data.debug_info.as_ref(),
             0_i64,
             0_i64,
             address,
