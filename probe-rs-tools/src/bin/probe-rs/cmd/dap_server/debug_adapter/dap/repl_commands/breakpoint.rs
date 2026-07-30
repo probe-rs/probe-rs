@@ -6,18 +6,13 @@ use typed_path::TypedPath;
 use crate::cmd::dap_server::{
     DebuggerError,
     backend::rpc::RpcBackend,
-    debug_adapter::{
-        dap::{
-            adapter::DebugAdapter,
-            core_status::DapStatus,
-            dap_types::{
-                Breakpoint, BreakpointEventBody, EvaluateArguments, MemoryAddress, Source,
-            },
-            repl_commands::{EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand, async_fn},
-            repl_types::ReplCommandArgs,
-            request_helpers::instruction_breakpoint_response,
-        },
-        protocol::ProtocolAdapter,
+    debug_adapter::dap::{
+        adapter::DebugAdapter,
+        core_status::DapStatus,
+        dap_types::{Breakpoint, BreakpointEventBody, EvaluateArguments, MemoryAddress, Source},
+        repl_commands::{EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand, async_fn},
+        repl_types::ReplCommandArgs,
+        request_helpers::instruction_breakpoint_response,
     },
     server::core_data::CoreData,
     server::session_data::{ActiveBreakpoint, BreakpointType, SourceLocationScope},
@@ -130,7 +125,7 @@ async fn create_breakpoint<'a>(
     core_data: &'a mut CoreData,
     command_arguments: &'a str,
     _evaluate_arguments: &'a EvaluateArguments,
-    adapter: &'a mut DebugAdapter<dyn ProtocolAdapter + 'a>,
+    adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     let core_index = core_data.core_index;
     if command_arguments.is_empty() {
@@ -231,7 +226,7 @@ async fn clear_breakpoint<'a>(
     core_data: &'a mut CoreData,
     command_arguments: &'a str,
     _evaluate_arguments: &'a EvaluateArguments,
-    adapter: &'a mut DebugAdapter<dyn ProtocolAdapter + 'a>,
+    adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     let core_index = core_data.core_index;
     let Some(token) = command_arguments.split_whitespace().next() else {

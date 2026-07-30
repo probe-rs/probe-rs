@@ -3,16 +3,13 @@ use linkme::distributed_slice;
 use crate::cmd::dap_server::{
     DebuggerError,
     backend::rpc::RpcBackend,
-    debug_adapter::{
-        dap::{
-            adapter::DebugAdapter,
-            dap_types::EvaluateArguments,
-            repl_commands::{
-                EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand, async_fn, need_subcommand,
-            },
-            repl_types::ReplCommandArgs,
+    debug_adapter::dap::{
+        adapter::DebugAdapter,
+        dap_types::EvaluateArguments,
+        repl_commands::{
+            EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand, async_fn, need_subcommand,
         },
-        protocol::ProtocolAdapter,
+        repl_types::ReplCommandArgs,
     },
     server::core_data::CoreData,
 };
@@ -42,7 +39,7 @@ async fn rtt_write<'a>(
     core_data: &'a mut CoreData,
     input: &'a str,
     _evaluate_arguments: &'a EvaluateArguments,
-    _adapter: &'a mut DebugAdapter<dyn ProtocolAdapter + 'a>,
+    _adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     let (channel_id, data) = input.split_once(' ').ok_or_else(|| {
         DebuggerError::UserMessage("Expected input format: <channel_id> <data>".to_string())

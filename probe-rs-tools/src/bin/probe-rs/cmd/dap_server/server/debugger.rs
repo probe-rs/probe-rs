@@ -8,15 +8,12 @@ use super::{
 use crate::{
     cmd::dap_server::{
         DebuggerError,
-        debug_adapter::{
-            dap::{
-                adapter::{DebugAdapter, get_arguments},
-                dap_types::{
-                    Capabilities, DisconnectResponse, Event, ExitedEventBody,
-                    InitializeRequestArguments, MessageSeverity, Request, TerminatedEventBody,
-                },
+        debug_adapter::dap::{
+            adapter::{DebugAdapter, get_arguments},
+            dap_types::{
+                Capabilities, DisconnectResponse, Event, ExitedEventBody,
+                InitializeRequestArguments, MessageSeverity, Request, TerminatedEventBody,
             },
-            protocol::ProtocolAdapter,
         },
         server::configuration::SessionConfig,
     },
@@ -121,10 +118,10 @@ impl Debugger {
     ///   - If the [`super::core_data::CoreData::last_known_status`] is `Halted(_)`, then we stop sending status RPCs until the next DAP-Client request attempts an action
     ///   - If the `new_status` is an Err, then the probe is no longer available, and we  end the debugging session
     ///   - If the `new_status` is `Running`, then we poll on a regular basis until the target stops for good reasons like breakpoints, or bad reasons like panics.
-    pub(crate) async fn process_next_request<P: ProtocolAdapter>(
+    pub(crate) async fn process_next_request(
         &mut self,
         session_data: &mut SessionData,
-        debug_adapter: &mut DebugAdapter<P>,
+        debug_adapter: &mut DebugAdapter,
     ) -> Result<DebugSessionStatus, DebuggerError> {
         self.debug_logger.flush_to_dap(debug_adapter)?;
 
@@ -136,10 +133,10 @@ impl Debugger {
         }
     }
 
-    async fn handle_request<P: ProtocolAdapter>(
+    async fn handle_request(
         &mut self,
         session_data: &mut SessionData,
-        debug_adapter: &mut DebugAdapter<P>,
+        debug_adapter: &mut DebugAdapter,
         request: Request,
     ) -> Result<DebugSessionStatus, DebuggerError> {
         let _req_span = tracing::info_span!("Handling request", request = ?request).entered();
@@ -341,10 +338,10 @@ impl Debugger {
         Ok(debug_session)
     }
 
-    async fn no_request_poll<P: ProtocolAdapter>(
+    async fn no_request_poll(
         &mut self,
         session_data: &mut SessionData,
-        debug_adapter: &mut DebugAdapter<P>,
+        debug_adapter: &mut DebugAdapter,
     ) -> Result<DebugSessionStatus, DebuggerError> {
         let _poll_span = tracing::trace_span!("Polling for core status").entered();
         let delay;
@@ -387,10 +384,10 @@ impl Debugger {
     /// [`RpcBackend`] wired up around the provided [`RpcClient`] (and its
     /// ambient tokio runtime). The local chip registry on `client` supplies
     /// `Target` descriptions.
-    pub(crate) async fn debug_session_rpc<P: ProtocolAdapter>(
+    pub(crate) async fn debug_session_rpc(
         &mut self,
         client: &RpcClient,
-        debug_adapter: DebugAdapter<P>,
+        debug_adapter: DebugAdapter,
     ) -> Result<(), DebuggerError> {
         let timestamp_offset = self.timestamp_offset;
         let result = self
@@ -406,9 +403,9 @@ impl Debugger {
     }
 
     /// Generic driver for a DAP session.
-    async fn debug_session_impl<P: ProtocolAdapter>(
+    async fn debug_session_impl(
         &mut self,
-        mut debug_adapter: DebugAdapter<P>,
+        mut debug_adapter: DebugAdapter,
         client: &RpcClient,
         timestamp_offset: UtcOffset,
     ) -> Result<(), DebuggerError> {
@@ -495,9 +492,9 @@ impl Debugger {
     /// This function then handles this request and returns the session data.
     ///
     /// The function exits with no session if a "disconnect" request is received.
-    async fn start_session<P: ProtocolAdapter>(
+    async fn start_session(
         &mut self,
-        debug_adapter: &mut DebugAdapter<P>,
+        debug_adapter: &mut DebugAdapter,
         client: &RpcClient,
         timestamp_offset: UtcOffset,
     ) -> Result<Option<SessionData>, DebuggerError> {
@@ -557,11 +554,11 @@ impl Debugger {
 
     /// Process launch or attach request
     #[tracing::instrument(skip_all, name = "Handle Launch/Attach Request")]
-    async fn handle_launch_attach<P: ProtocolAdapter>(
+    async fn handle_launch_attach(
         &mut self,
         launch_attach_request: &Request,
         requested_target_session_type: TargetSessionType,
-        debug_adapter: &mut DebugAdapter<P>,
+        debug_adapter: &mut DebugAdapter,
         client: &RpcClient,
         timestamp_offset: UtcOffset,
     ) -> Result<SessionData, DebuggerError> {
@@ -658,9 +655,9 @@ impl Debugger {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn restart<P: ProtocolAdapter>(
+    async fn restart(
         &mut self,
-        debug_adapter: &mut DebugAdapter<P>,
+        debug_adapter: &mut DebugAdapter,
         session_data: &mut SessionData,
         request: &Request,
     ) -> Result<(), DebuggerError> {
@@ -801,10 +798,10 @@ impl Debugger {
     //
     // The actual flashing is delegated to [`RpcBackend::flash_binary_resolved`]
     // so local and remote RPC sessions share this DAP-level progress plumbing.
-    async fn flash<P: ProtocolAdapter>(
+    async fn flash(
         config: &SessionConfig,
         path_to_elf: &Path,
-        debug_adapter: &mut DebugAdapter<P>,
+        debug_adapter: &mut DebugAdapter,
         launch_attach_request: &Request,
         session_data: &mut SessionData,
     ) -> Result<(), DebuggerError> {
@@ -828,10 +825,10 @@ impl Debugger {
 
     /// Flash using a prior [`ResolvedUpload`] so restart validate/flash/publish
     /// share one uploaded object.
-    async fn flash_resolved<P: ProtocolAdapter>(
+    async fn flash_resolved(
         config: &SessionConfig,
         upload: &ResolvedUpload,
-        debug_adapter: &mut DebugAdapter<P>,
+        debug_adapter: &mut DebugAdapter,
         launch_attach_request: &Request,
         session_data: &mut SessionData,
     ) -> Result<(), DebuggerError> {
@@ -941,9 +938,9 @@ impl Debugger {
     }
 
     #[tracing::instrument(skip_all, name = "Handling initialize request")]
-    pub(crate) fn handle_initialize<P: ProtocolAdapter>(
+    pub(crate) fn handle_initialize(
         &mut self,
-        debug_adapter: &mut DebugAdapter<P>,
+        debug_adapter: &mut DebugAdapter,
     ) -> Result<(), DebuggerError> {
         let initialize_request = loop {
             if let Some(current_request) = debug_adapter.listen_for_request()? {
@@ -961,7 +958,7 @@ impl Debugger {
         };
 
         let initialize_arguments =
-            get_arguments::<InitializeRequestArguments, _>(debug_adapter, &initialize_request)?;
+            get_arguments::<InitializeRequestArguments>(debug_adapter, &initialize_request)?;
 
         // Enable quirks specific to particular DAP clients...
         if let Some(client_id) = initialize_arguments.client_id

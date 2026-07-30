@@ -1,13 +1,10 @@
 use crate::cmd::dap_server::{
     backend::rpc::RpcBackend,
-    debug_adapter::{
-        dap::{
-            adapter::DebugAdapter,
-            core_status::DapStatus,
-            dap_types::EvaluateArguments,
-            repl_commands::{EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand, async_fn},
-        },
-        protocol::ProtocolAdapter,
+    debug_adapter::dap::{
+        adapter::DebugAdapter,
+        core_status::DapStatus,
+        dap_types::EvaluateArguments,
+        repl_commands::{EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand, async_fn},
     },
     server::core_data::CoreData,
 };
@@ -50,7 +47,7 @@ async fn continue_repl<'a>(
     core_data: &'a mut CoreData,
     _command_arguments: &'a str,
     _evaluate_arguments: &'a EvaluateArguments,
-    adapter: &'a mut DebugAdapter<dyn ProtocolAdapter + 'a>,
+    adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     adapter.continue_impl_async(backend, core_data).await?;
     Ok(EvalResponse::Message(String::new()))
@@ -61,7 +58,7 @@ async fn reset_repl<'a>(
     core_data: &'a mut CoreData,
     _command_arguments: &'a str,
     _evaluate_arguments: &'a EvaluateArguments,
-    adapter: &'a mut DebugAdapter<dyn ProtocolAdapter + 'a>,
+    adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     adapter
         .reset_and_halt_core_async(backend, core_data)
@@ -74,7 +71,7 @@ async fn step_repl<'a>(
     core_data: &'a mut CoreData,
     _command_arguments: &'a str,
     _evaluate_arguments: &'a EvaluateArguments,
-    adapter: &'a mut DebugAdapter<dyn ProtocolAdapter + 'a>,
+    adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     let pc = adapter
         .step_impl_async(SteppingMode::StepInstruction, backend, core_data)

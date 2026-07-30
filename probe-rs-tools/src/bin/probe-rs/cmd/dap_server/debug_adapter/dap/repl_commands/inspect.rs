@@ -6,15 +6,12 @@ use probe_rs_debug::{ObjectRef, VariableName};
 use crate::cmd::dap_server::{
     DebuggerError,
     backend::rpc::RpcBackend,
-    debug_adapter::{
-        dap::{
-            adapter::DebugAdapter,
-            dap_types::{EvaluateArguments, MemoryAddress},
-            repl_commands::{EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand, async_fn},
-            repl_commands_helpers::{get_local_variable, memory_read_async},
-            repl_types::{GdbFormat, GdbNuf, ReplCommandArgs},
-        },
-        protocol::ProtocolAdapter,
+    debug_adapter::dap::{
+        adapter::DebugAdapter,
+        dap_types::{EvaluateArguments, MemoryAddress},
+        repl_commands::{EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand, async_fn},
+        repl_commands_helpers::{get_local_variable, memory_read_async},
+        repl_types::{GdbFormat, GdbNuf, ReplCommandArgs},
     },
     server::core_data::CoreData,
 };
@@ -65,7 +62,7 @@ async fn print_variables<'a>(
     core_data: &'a mut CoreData,
     command_arguments: &'a str,
     evaluate_arguments: &'a EvaluateArguments,
-    _adapter: &'a mut DebugAdapter<dyn ProtocolAdapter + 'a>,
+    _adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     let input_arguments = command_arguments.split_whitespace();
     let mut gdb_nuf = GdbNuf {
@@ -109,7 +106,7 @@ async fn examine_memory<'a>(
     core_data: &'a mut CoreData,
     command_arguments: &'a str,
     request_arguments: &'a EvaluateArguments,
-    _adapter: &'a mut DebugAdapter<dyn ProtocolAdapter + 'a>,
+    _adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     let core_index = core_data.core_index;
     let input_arguments = command_arguments.split_whitespace();
@@ -207,7 +204,7 @@ async fn dump_core<'a>(
     core_data: &'a mut CoreData,
     command_arguments: &'a str,
     _evaluate_arguments: &'a EvaluateArguments,
-    _adapter: &'a mut DebugAdapter<dyn ProtocolAdapter + 'a>,
+    _adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     let core_index = core_data.core_index;
     let mut args = command_arguments.split_whitespace().collect::<Vec<_>>();

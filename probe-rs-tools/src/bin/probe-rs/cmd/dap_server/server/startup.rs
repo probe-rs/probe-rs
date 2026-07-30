@@ -249,14 +249,11 @@ pub async fn debug_stdio(
 /// Drive a single DAP debug session. Every operation is proxied through the
 /// RPC layer via [`crate::cmd::dap_server::backend::rpc::RpcBackend`], even
 /// when the [`RpcClient`] is backed by an in-process RPC server (local mode).
-async fn run_debug_session<P>(
+async fn run_debug_session(
     debugger: &mut Debugger,
     client: &RpcClient,
-    debug_adapter: DebugAdapter<P>,
-) -> Result<(), crate::cmd::dap_server::DebuggerError>
-where
-    P: crate::cmd::dap_server::debug_adapter::protocol::ProtocolAdapter,
-{
+    debug_adapter: DebugAdapter,
+) -> Result<(), crate::cmd::dap_server::DebuggerError> {
     debugger.debug_session_rpc(client, debug_adapter).await
 }
 
