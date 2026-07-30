@@ -76,6 +76,8 @@ impl ProtocolAdapter for CliAdapter {
         event_type: &str,
         event_body: Option<serde_json::Value>,
     ) -> anyhow::Result<()> {
+        tracing::debug!("Sending event: {}", event_type);
+
         self.msg_sender
             .send((event_type.to_string(), event_body))
             .map_err(|_| {

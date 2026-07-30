@@ -110,7 +110,7 @@ pub trait ProtocolHelper {
     fn dyn_show_message(&mut self, severity: MessageSeverity, message: String) -> bool;
 
     /// Log a message to the console. Returns false if logging the message failed.
-    fn log_to_console(&mut self, message: impl AsRef<str>) -> bool
+    fn log_to_console(&mut self, message: &str) -> bool
     where
         Self: Sized;
 
@@ -141,12 +141,12 @@ where
         }
     }
 
-    fn log_to_console(&mut self, message: impl AsRef<str>) -> bool
+    fn log_to_console(&mut self, message: &str) -> bool
     where
         Self: Sized,
     {
         let event_body = match serde_json::to_value(OutputEventBody {
-            output: format!("{}\n", message.as_ref()),
+            output: format!("{message}\n"),
             category: Some("console".to_owned()),
             variables_reference: None,
             source: None,
@@ -161,7 +161,7 @@ where
                 return false;
             }
         };
-        self.send_event("output", Some(event_body)).is_ok()
+        self.dyn_send_event("output", Some(event_body)).is_ok()
     }
 
     fn send_response<S: Serialize + std::fmt::Debug>(
@@ -267,13 +267,13 @@ fn send_response(
         match this.console_log_level() {
             ConsoleLog::Console => {}
             ConsoleLog::Info => {
-                this.log_to_console(format!(
+                this.log_to_console(&format!(
                     "   Sent DAP Response sequence #{} : {}",
                     request.seq, request.command
                 ));
             }
             ConsoleLog::Debug => {
-                this.log_to_console(format!(
+                this.log_to_console(&format!(
                     "\nSent DAP Response: {:#?}",
                     serde_json::to_value(encoded_resp)?
                 ));
@@ -352,13 +352,13 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
                 match self.console_log_level {
                     ConsoleLog::Console => {}
                     ConsoleLog::Info => {
-                        self.log_to_console(format!(
+                        self.log_to_console(&format!(
                             "\nReceived DAP Request sequence #{} : {}",
                             request.seq, request.command
                         ));
                     }
                     ConsoleLog::Debug => {
-                        self.log_to_console(format!("\nReceived DAP Request: {request:#?}"));
+                        self.log_to_console(&format!("\nReceived DAP Request: {request:#?}"));
                     }
                 }
 
@@ -371,7 +371,7 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
             Ok(None) => Ok(None),
             Err(e) => {
                 tracing::warn!("Error while listening to request: {:?}", e);
-                self.log_to_console(e.to_string());
+                self.log_to_console(&e.to_string());
                 self.show_message(MessageSeverity::Error, e.to_string());
 
                 Err(anyhow!(e))
@@ -412,6 +412,8 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
         event_type: &str,
         event_body: Option<serde_json::Value>,
     ) -> anyhow::Result<()> {
+        tracing::debug!("Sending event: {}", event_type);
+
         let new_event = Event {
             seq: self.get_next_seq(),
             type_: "event".to_string(),
@@ -424,10 +426,10 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
             match self.console_log_level {
                 ConsoleLog::Console => {}
                 ConsoleLog::Info => {
-                    self.log_to_console(format!("\nTriggered DAP Event: {event_type}"));
+                    self.log_to_console(&format!("\nTriggered DAP Event: {event_type}"));
                 }
                 ConsoleLog::Debug => {
-                    self.log_to_console(format!("INFO: Triggered DAP Event: {new_event:#?}"));
+                    self.log_to_console(&format!("INFO: Triggered DAP Event: {new_event:#?}"));
                 }
             }
         }

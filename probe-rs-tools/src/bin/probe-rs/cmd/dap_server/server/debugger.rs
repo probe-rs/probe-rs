@@ -417,7 +417,6 @@ impl Debugger {
             // The request handler has already reported this error to the user.
             return Ok(());
         }
-        println!("foo");
 
         let Some(mut session_data) = self
             .start_session(&mut debug_adapter, client, timestamp_offset)
@@ -1308,6 +1307,7 @@ mod test {
             event_type: &str,
             event_body: Option<serde_json::Value>,
         ) -> anyhow::Result<()> {
+            tracing::debug!("Sending event: {}", event_type);
             if self.event_index >= self.expected_events.len() {
                 panic!(
                     "No more events expected, but got event_type={event_type:?}, event_body={event_body:?}"
