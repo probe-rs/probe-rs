@@ -10,14 +10,17 @@ use std::{
 };
 use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::Message;
-use tokio_util::bytes::{BufMut, Bytes, BytesMut};
+use tokio_util::bytes::Bytes;
 
-use crate::rpc::transport::memory::{PostcardReceiver, PostcardSender};
+use crate::rpc::transport::{
+    Deframer, frame,
+    memory::{PostcardReceiver, PostcardSender},
+};
 
 // Receives length-prefixed binary messages from a websocket stream
 pub struct WebsocketRx<S, E> {
     inner: S,
-    buffer: Vec<u8>,
+    deframer: Deframer,
     _marker: PhantomData<E>,
 }
 
@@ -28,37 +31,24 @@ where
     pub fn new(inner: S) -> Self {
         Self {
             inner,
-            buffer: Vec::new(),
+            deframer: Deframer::default(),
             _marker: PhantomData,
         }
     }
 
     async fn receive_inner(&mut self) -> Option<Result<Vec<u8>, E>> {
-        while let Some(packet) = self.inner.next().await {
-            let packet = match packet {
-                Ok(packet) => packet,
+        loop {
+            // Drain buffered messages first: a single websocket packet may carry
+            // more than one, and the next packet may never arrive.
+            if let Some(message) = self.deframer.next_message() {
+                return Some(Ok(message));
+            }
+
+            match self.inner.next().await? {
+                Ok(packet) => self.deframer.push(&packet),
                 Err(e) => return Some(Err(e)),
-            };
-
-            self.buffer.extend_from_slice(&packet);
-            // Process length prefix encoding - try to read the length prefix
-            if self.buffer.len() < 4 {
-                continue;
             }
-
-            let len = u32::from_le_bytes(self.buffer[0..4].try_into().unwrap()) as usize;
-
-            if self.buffer.len() < len + 4 {
-                continue;
-            }
-
-            let ret = self.buffer[4..][..len].to_vec();
-            self.buffer.drain(..len + 4);
-
-            return Some(Ok(ret));
         }
-
-        None
     }
 }
 
@@ -109,12 +99,10 @@ where
             return Err(WireTxErrorKind::Other);
         }
 
-        let bytes = prefix_with_length(&msg);
-
         self.writer
             .lock()
             .await
-            .send(Message::Binary(bytes.freeze()))
+            .send(Message::Binary(frame(&msg).freeze()))
             .await
             .map_err(|_| WireTxErrorKind::Other)
     }
@@ -142,10 +130,8 @@ where
     }
 
     fn start_send(mut self: Pin<&mut Self>, msg: Vec<u8>) -> Result<(), Self::Error> {
-        let bytes = prefix_with_length(&msg);
-
         self.writer
-            .start_send_unpin(ws::Message::Binary(bytes.freeze()))
+            .start_send_unpin(ws::Message::Binary(frame(&msg).freeze()))
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -155,11 +141,4 @@ where
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.writer.poll_close_unpin(cx)
     }
-}
-
-fn prefix_with_length(msg: &[u8]) -> BytesMut {
-    let mut bytes = BytesMut::with_capacity(4 + msg.len());
-    bytes.put_u32_le(msg.len() as u32);
-    bytes.put_slice(msg);
-    bytes
 }

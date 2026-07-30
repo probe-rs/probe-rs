@@ -1,8 +1,5 @@
 use crate::{
-    cmd::dap_server::{
-        DebuggerError,
-        debug_adapter::{dap::adapter::*, protocol::ProtocolAdapter},
-    },
+    cmd::dap_server::{DebuggerError, debug_adapter::dap::adapter::*},
     rpc::{Key, client::SessionInterface},
     util::rtt::{RttDecoder, client::RttClient},
 };
@@ -81,10 +78,7 @@ pub struct RttConnection {
 impl RttConnection {
     /// Poll all available channels through RPC and transmit data to the DAP
     /// client. Returns `true` if at least one channel had data.
-    pub async fn process_rtt_data_remote<P: ProtocolAdapter>(
-        &mut self,
-        debug_adapter: &mut DebugAdapter<P>,
-    ) -> bool {
+    pub async fn process_rtt_data_remote(&mut self, debug_adapter: &mut DebugAdapter) -> bool {
         // Only poll channels with an open client window; draining a closed
         // channel would drop target buffers prematurely.
         let windowed: Vec<u32> = self
@@ -153,11 +147,7 @@ pub(crate) struct DebuggerRttChannel {
 impl DebuggerRttChannel {
     /// Decode already-fetched `bytes` for this channel and forward them.
     /// Returns whether any data was emitted.
-    pub(crate) fn process_bytes<P: ProtocolAdapter>(
-        &mut self,
-        debug_adapter: &mut DebugAdapter<P>,
-        bytes: &[u8],
-    ) -> bool {
+    pub(crate) fn process_bytes(&mut self, debug_adapter: &mut DebugAdapter, bytes: &[u8]) -> bool {
         match self.channel_data_format.process(bytes).ok().flatten() {
             Some(data) => debug_adapter.rtt_output(self.channel_number, data.to_string()),
             _ => false,

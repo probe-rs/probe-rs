@@ -2,14 +2,11 @@ use crate::cmd::{
     dap_server::{
         DebuggerError,
         backend::rpc::RpcBackend,
-        debug_adapter::{
-            dap::{
-                adapter::DebugAdapter,
-                dap_types::EvaluateArguments,
-                repl_commands::{EvalResponse, EvalResult, ReplCommand, async_fn, need_subcommand},
-                repl_types::ReplCommandArgs,
-            },
-            protocol::ProtocolAdapter,
+        debug_adapter::dap::{
+            adapter::DebugAdapter,
+            dap_types::EvaluateArguments,
+            repl_commands::{EvalResponse, EvalResult, ReplCommand, async_fn, need_subcommand},
+            repl_types::ReplCommandArgs,
         },
         server::core_data::CoreData,
     },
@@ -47,7 +44,7 @@ async fn list_tests<'a>(
     core_data: &'a mut CoreData,
     _command_arguments: &'a str,
     _evaluate_arguments: &'a EvaluateArguments,
-    _adapter: &'a mut DebugAdapter<dyn ProtocolAdapter + 'a>,
+    _adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     let Some(test_data) = core_data.test_data.downcast_ref::<EmbeddedTestElfInfo>() else {
         return Err(DebuggerError::UserMessage(
@@ -68,7 +65,7 @@ async fn run_test<'a>(
     core_data: &'a mut CoreData,
     test_name: &'a str,
     _evaluate_arguments: &'a EvaluateArguments,
-    adapter: &'a mut DebugAdapter<dyn ProtocolAdapter + 'a>,
+    adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     let Some(test_data) = core_data.test_data.downcast_ref::<EmbeddedTestElfInfo>() else {
         return Err(DebuggerError::UserMessage(

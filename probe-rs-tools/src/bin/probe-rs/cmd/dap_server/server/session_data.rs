@@ -11,14 +11,11 @@ use crate::{
         dap_server::{
             DebuggerError,
             backend::rpc::{CorePerAttachInfo, RpcBackend, SessionTargetMetadata, rpc_err},
-            debug_adapter::{
-                dap::{
-                    adapter::DebugAdapter,
-                    core_status::DapStatus,
-                    dap_types::{ContinuedEventBody, MessageSeverity, Source, StoppedEventBody},
-                    repl_commands::{REPL_COMMANDS, embedded_test::EMBEDDED_TEST},
-                },
-                protocol::ProtocolAdapter,
+            debug_adapter::dap::{
+                adapter::DebugAdapter,
+                core_status::DapStatus,
+                dap_types::{ContinuedEventBody, MessageSeverity, Source, StoppedEventBody},
+                repl_commands::{REPL_COMMANDS, embedded_test::EMBEDDED_TEST},
             },
         },
         run::EmbeddedTestElfInfo,
@@ -444,9 +441,9 @@ impl SessionData {
     /// Emit the `stopped` event for a halted core without a live `Core`: the
     /// PC is read via `backend.program_counter_id` + `backend.read_core_reg`
     /// (one round trip for the register read; the PC id is cached).
-    async fn notify_halted<P: ProtocolAdapter>(
+    async fn notify_halted(
         &mut self,
-        debug_adapter: &mut DebugAdapter<P>,
+        debug_adapter: &mut DebugAdapter,
         cd_idx: usize,
         status: CoreStatus,
     ) -> Result<(), DebuggerError> {
@@ -471,9 +468,9 @@ impl SessionData {
     /// status transition, without a live `Core`. Semihosting halts are
     /// skipped here (the poll loop handles them separately) and the PC for
     /// the `stopped` event is read via [`Self::notify_halted`].
-    async fn process_core_status<P: ProtocolAdapter>(
+    async fn process_core_status(
         &mut self,
-        debug_adapter: &mut DebugAdapter<P>,
+        debug_adapter: &mut DebugAdapter,
         cd_idx: usize,
         status: CoreStatus,
     ) -> Result<CoreStatus, DebuggerError> {
@@ -512,9 +509,9 @@ impl SessionData {
     }
 
     /// Attach to the target's server-owned RTT interface over RPC.
-    async fn attach_to_rtt<P: ProtocolAdapter>(
+    async fn attach_to_rtt(
         &mut self,
-        debug_adapter: &mut DebugAdapter<P>,
+        debug_adapter: &mut DebugAdapter,
         cd_idx: usize,
         program_binary: Option<&Path>,
         rtt_config: &rtt::RttConfig,
@@ -527,7 +524,7 @@ impl SessionData {
         let mut defmt_data = None;
         let use_auto_formats = rtt_config.channels.is_empty();
 
-        let mut build_up_channel = |debug_adapter: &mut DebugAdapter<P>,
+        let mut build_up_channel = |debug_adapter: &mut DebugAdapter,
                                     number: u32,
                                     channel_name: &str|
          -> Result<debug_rtt::DebuggerRttChannel> {
@@ -657,10 +654,10 @@ impl SessionData {
     ///
     /// Return a boolean indicating whether we should consider a short delay before the next poll.
     #[tracing::instrument(level = "trace", skip_all)]
-    pub(crate) async fn poll_cores<P: ProtocolAdapter>(
+    pub(crate) async fn poll_cores(
         &mut self,
         session_config: &SessionConfig,
-        debug_adapter: &mut DebugAdapter<P>,
+        debug_adapter: &mut DebugAdapter,
     ) -> Result<bool, DebuggerError> {
         // By default, we will have a small delay between polls, and will disable it if
         // we know the last poll returned data, on the assumption that there might be at least one more batch of data.

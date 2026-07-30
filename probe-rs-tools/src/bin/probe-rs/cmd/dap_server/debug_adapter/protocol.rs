@@ -58,6 +58,47 @@ pub trait ProtocolAdapter {
     fn get_next_seq(&mut self) -> i64;
 }
 
+/// Type-erased [`ProtocolAdapter`].
+///
+/// The debug adapter is generic over its transport in principle, but every
+/// transport-generic function it appears in would otherwise be monomorphised
+/// once per transport (TCP, stdio, CLI). Boxing keeps a single instantiation.
+pub type BoxedAdapter = Box<dyn ProtocolAdapter + Send>;
+
+impl ProtocolAdapter for BoxedAdapter {
+    fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>> {
+        (**self).listen_for_request()
+    }
+
+    fn dyn_send_event(
+        &mut self,
+        event_type: &str,
+        event_body: Option<serde_json::Value>,
+    ) -> anyhow::Result<()> {
+        (**self).dyn_send_event(event_type, event_body)
+    }
+
+    fn send_raw_response(&mut self, response: Response) -> anyhow::Result<()> {
+        (**self).send_raw_response(response)
+    }
+
+    fn remove_pending_request(&mut self, request_seq: i64) -> Option<String> {
+        (**self).remove_pending_request(request_seq)
+    }
+
+    fn set_console_log_level(&mut self, log_level: ConsoleLog) {
+        (**self).set_console_log_level(log_level)
+    }
+
+    fn console_log_level(&self) -> ConsoleLog {
+        (**self).console_log_level()
+    }
+
+    fn get_next_seq(&mut self) -> i64 {
+        (**self).get_next_seq()
+    }
+}
+
 pub trait ProtocolHelper {
     fn show_message(&mut self, severity: MessageSeverity, message: impl AsRef<str>) -> bool
     where

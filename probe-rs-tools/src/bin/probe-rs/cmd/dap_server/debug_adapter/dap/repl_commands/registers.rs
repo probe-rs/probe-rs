@@ -4,14 +4,11 @@ use probe_rs::{CoreRegister, RegisterRole, RegisterValue};
 use crate::cmd::dap_server::{
     DebuggerError,
     backend::rpc::RpcBackend,
-    debug_adapter::{
-        dap::{
-            adapter::DebugAdapter,
-            dap_types::EvaluateArguments,
-            repl_commands::{EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand, async_fn},
-            repl_types::ReplCommandArgs,
-        },
-        protocol::ProtocolAdapter,
+    debug_adapter::dap::{
+        adapter::DebugAdapter,
+        dap_types::EvaluateArguments,
+        repl_commands::{EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand, async_fn},
+        repl_types::ReplCommandArgs,
     },
     server::core_data::CoreData,
 };
@@ -79,7 +76,7 @@ async fn write_register<'a>(
     core_data: &'a mut CoreData,
     command_arguments: &'a str,
     _evaluate_arguments: &'a EvaluateArguments,
-    _adapter: &'a mut DebugAdapter<dyn ProtocolAdapter + 'a>,
+    _adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     let core_index = core_data.core_index;
     let (register_name, value) = parse_wreg_args(command_arguments)?;

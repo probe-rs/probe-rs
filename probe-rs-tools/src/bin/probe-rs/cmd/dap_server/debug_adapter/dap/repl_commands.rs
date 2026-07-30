@@ -2,12 +2,9 @@ use super::{dap_types::EvaluateArguments, repl_types::*};
 use crate::cmd::dap_server::{
     DebuggerError,
     backend::rpc::RpcBackend,
-    debug_adapter::{
-        dap::{
-            adapter::DebugAdapter,
-            dap_types::{EvaluateResponseBody, TerminatedEventBody},
-        },
-        protocol::ProtocolAdapter,
+    debug_adapter::dap::{
+        adapter::DebugAdapter,
+        dap_types::{EvaluateResponseBody, TerminatedEventBody},
     },
     server::core_data::CoreData,
 };
@@ -37,7 +34,7 @@ pub(crate) type ReplHandler = for<'a> fn(
     core_data: &'a mut CoreData,
     command_arguments: &'a str,
     evaluate_arguments: &'a EvaluateArguments,
-    adapter: &'a mut DebugAdapter<dyn ProtocolAdapter + 'a>,
+    adapter: &'a mut DebugAdapter,
 ) -> Pin<Box<dyn Future<Output = EvalResult> + 'a>>;
 
 /// Wrap an `async fn` with the [`ReplHandler`] argument list so it can be
@@ -49,7 +46,7 @@ macro_rules! async_fn {
             core_data: &'a mut CoreData,
             command_arguments: &'a str,
             evaluate_arguments: &'a EvaluateArguments,
-            adapter: &'a mut DebugAdapter<dyn ProtocolAdapter + 'a>,
+            adapter: &'a mut DebugAdapter,
         ) -> ::std::pin::Pin<::std::boxed::Box<dyn ::std::future::Future<Output = EvalResult> + 'a>>
         {
             ::std::boxed::Box::pin($handler(
@@ -125,7 +122,7 @@ async fn print_help<'a>(
     core_data: &'a mut CoreData,
     _: &'a str,
     _: &'a EvaluateArguments,
-    _: &'a mut DebugAdapter<dyn ProtocolAdapter + 'a>,
+    _: &'a mut DebugAdapter,
 ) -> EvalResult {
     let mut help_text =
         "Usage:\t- Use <Ctrl+Space> to get a list of available commands.".to_string();
@@ -146,7 +143,7 @@ async fn need_subcommand<'a>(
     _core_data: &'a mut CoreData,
     _: &'a str,
     _: &'a EvaluateArguments,
-    _: &'a mut DebugAdapter<dyn ProtocolAdapter + 'a>,
+    _: &'a mut DebugAdapter,
 ) -> EvalResult {
     Err(DebuggerError::UserMessage(
         "Please provide one of the required subcommands. See the `help` command for more information."
@@ -160,7 +157,7 @@ async fn quit_repl<'a>(
     core_data: &'a mut CoreData,
     _: &'a str,
     _: &'a EvaluateArguments,
-    adapter: &'a mut DebugAdapter<dyn ProtocolAdapter + 'a>,
+    adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     backend
         .halt(core_data.core_index, Duration::from_millis(500))

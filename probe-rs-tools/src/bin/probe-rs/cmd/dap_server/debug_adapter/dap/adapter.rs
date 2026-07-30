@@ -9,7 +9,7 @@ use crate::cmd::dap_server::{
     DebuggerError,
     debug_adapter::{
         dap::repl_commands::{EvalResponse, EvalResult, ReplCommand},
-        protocol::{ProtocolAdapter, ProtocolHelper},
+        protocol::{BoxedAdapter, ProtocolAdapter, ProtocolHelper},
     },
     server::{
         configuration::ConsoleLog,
@@ -68,7 +68,7 @@ fn evaluate_dispatch(
 
 /// A Debug Adapter Protocol "Debug Adapter",
 /// see <https://microsoft.github.io/debug-adapter-protocol/overview>
-pub struct DebugAdapter<P: ProtocolAdapter + ?Sized> {
+pub struct DebugAdapter {
     pub(crate) halt_after_reset: bool,
     /// NOTE: VSCode sends a 'threads' request when it receives the response from the `ConfigurationDone` request, irrespective of target state.
     /// This can lead to duplicate `threads->stacktrace->etc.` sequences if & when the target halts and sends a 'stopped' event.
@@ -102,11 +102,11 @@ pub struct DebugAdapter<P: ProtocolAdapter + ?Sized> {
     /// Flag to indicate that workarounds for VSCode-specific spec deviations etc. should be
     /// enabled.
     pub(crate) vscode_quirks: bool,
-    adapter: P,
+    adapter: BoxedAdapter,
 }
 
-impl<P: ProtocolAdapter> DebugAdapter<P> {
-    pub fn new(adapter: P) -> DebugAdapter<P> {
+impl DebugAdapter {
+    pub fn new(adapter: impl ProtocolAdapter + Send + 'static) -> DebugAdapter {
         DebugAdapter {
             vscode_quirks: false,
             halt_after_reset: false,
@@ -117,7 +117,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             supports_ansi_styling: false,
             lines_start_at_1: true,
             columns_start_at_1: true,
-            adapter,
+            adapter: Box::new(adapter),
         }
     }
 
@@ -1739,7 +1739,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     }
 }
 
-impl<P: ProtocolAdapter + ?Sized> DebugAdapter<P> {
+impl DebugAdapter {
     /// Halt the core (REPL/DAP `pause`).
     pub(crate) async fn pause_impl_async(
         &mut self,
@@ -1974,8 +1974,8 @@ fn register_write_requires_stack_frame_refresh(register: &CoreRegister) -> bool 
         || register.register_has_role(RegisterRole::ReturnAddress)
 }
 
-pub fn get_arguments<T: DeserializeOwned, P: ProtocolAdapter>(
-    debug_adapter: &mut DebugAdapter<P>,
+pub fn get_arguments<T: DeserializeOwned>(
+    debug_adapter: &mut DebugAdapter,
     req: &Request,
 ) -> Result<T, DebuggerError> {
     let Some(raw_arguments) = &req.arguments else {

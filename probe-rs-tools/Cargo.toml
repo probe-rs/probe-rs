@@ -39,7 +39,15 @@ indexmap = "2.14"
 # CLI-only
 addr2line = "0.27"
 bytesize = "2"
-capstone = "0.14"
+# Only the architectures probe-rs can disassemble; the default feature set
+# compiles every Capstone backend, which dominates the build script time.
+capstone = { version = "0.14", default-features = false, features = [
+    "full",
+    "std",
+    "arch_arm",
+    "arch_arm64",
+    "arch_riscv",
+] }
 cargo_metadata = "0.23"
 clap = { version = "4", features = ["derive", "env"] }
 colored = "3"
@@ -61,7 +69,6 @@ object = { version = "0.39", default-features = false, features = [
 ] }
 rustyline-async = "0.4.7"
 sanitize-filename = "0.6"
-schemafy = "0.6"
 serde_json = "1.0.116"
 # Version 0.14.6 fails to compile
 svd-parser = { version = "=0.14.9", features = ["expand"] }
@@ -84,7 +91,7 @@ ansi-parser = "0.9.0"
 linkme = "0.3.25"
 
 parking_lot = "0.12.2"
-cargo-config2 = "0.1.26"
+toml = "1.0"
 clap_complete = "4.5.2"
 regex = "1.10.4"
 zip = { version = "8.0.0", default-features = false, features = [

@@ -7,20 +7,17 @@ use probe_rs_debug::{ColumnType, StackFrame, VariableName};
 use crate::cmd::dap_server::{
     DebuggerError,
     backend::rpc::RpcBackend,
-    debug_adapter::{
-        dap::{
-            adapter::DebugAdapter,
-            dap_types::EvaluateArguments,
-            repl_commands::{
-                EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand, async_fn, need_subcommand,
-            },
-            repl_commands_helpers::{
-                format_repl_variables, get_local_variable, scope_variables, select_frame,
-                stack_frame_id,
-            },
-            repl_types::{GdbFormat, GdbNuf, ReplCommandArgs},
+    debug_adapter::dap::{
+        adapter::DebugAdapter,
+        dap_types::EvaluateArguments,
+        repl_commands::{
+            EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand, async_fn, need_subcommand,
         },
-        protocol::ProtocolAdapter,
+        repl_commands_helpers::{
+            format_repl_variables, get_local_variable, scope_variables, select_frame,
+            stack_frame_id,
+        },
+        repl_types::{GdbFormat, GdbNuf, ReplCommandArgs},
     },
     server::core_data::CoreData,
 };
@@ -81,7 +78,7 @@ async fn info_frame<'a>(
     core_data: &'a mut CoreData,
     command_arguments: &'a str,
     evaluate_arguments: &'a EvaluateArguments,
-    _adapter: &'a mut DebugAdapter<dyn ProtocolAdapter + 'a>,
+    _adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     let frame_index = select_frame(
         &core_data.stack_frames,
@@ -99,7 +96,7 @@ async fn info_static_variables<'a>(
     core_data: &'a mut CoreData,
     _command_arguments: &'a str,
     evaluate_arguments: &'a EvaluateArguments,
-    _adapter: &'a mut DebugAdapter<dyn ProtocolAdapter + 'a>,
+    _adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     let frame_index = select_frame(&core_data.stack_frames, evaluate_arguments.frame_id, "")?;
     let frame_id = stack_frame_id(&core_data.stack_frames[frame_index])?;
@@ -166,7 +163,7 @@ async fn print_registers<'a>(
     core_data: &'a mut CoreData,
     command_arguments: &'a str,
     _evaluate_arguments: &'a EvaluateArguments,
-    _adapter: &'a mut DebugAdapter<dyn ProtocolAdapter + 'a>,
+    _adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     let core_index = core_data.core_index;
     let register_name = command_arguments.trim();
@@ -217,7 +214,7 @@ async fn print_breakpoints<'a>(
     core_data: &'a mut CoreData,
     _command_arguments: &'a str,
     _evaluate_arguments: &'a EvaluateArguments,
-    _adapter: &'a mut DebugAdapter<dyn ProtocolAdapter + 'a>,
+    _adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     let mut response_message = String::new();
     for (idx, ab) in core_data.breakpoints.iter().enumerate() {
@@ -242,7 +239,7 @@ async fn info_locals<'a>(
     core_data: &'a mut CoreData,
     _command_arguments: &'a str,
     evaluate_arguments: &'a EvaluateArguments,
-    _adapter: &'a mut DebugAdapter<dyn ProtocolAdapter + 'a>,
+    _adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     let gdb_nuf = GdbNuf {
         format_specifier: GdbFormat::Native,

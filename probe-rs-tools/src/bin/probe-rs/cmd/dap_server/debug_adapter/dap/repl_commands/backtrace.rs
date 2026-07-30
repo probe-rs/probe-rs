@@ -5,14 +5,11 @@ use linkme::distributed_slice;
 use crate::cmd::dap_server::{
     DebuggerError,
     backend::rpc::RpcBackend,
-    debug_adapter::{
-        dap::{
-            adapter::DebugAdapter,
-            dap_types::EvaluateArguments,
-            repl_commands::{EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand, async_fn},
-            repl_types::ReplCommandArgs,
-        },
-        protocol::ProtocolAdapter,
+    debug_adapter::dap::{
+        adapter::DebugAdapter,
+        dap_types::EvaluateArguments,
+        repl_commands::{EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand, async_fn},
+        repl_types::ReplCommandArgs,
     },
     server::core_data::CoreData,
 };
@@ -43,7 +40,7 @@ async fn print_backtrace<'a>(
     core_data: &'a mut CoreData,
     _command_arguments: &'a str,
     _evaluate_arguments: &'a EvaluateArguments,
-    debug_adapter: &'a mut DebugAdapter<dyn ProtocolAdapter + 'a>,
+    debug_adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     let colorize = Some(debug_adapter.supports_ansi_styling);
 
@@ -67,7 +64,7 @@ async fn save_backtrace_to_yaml<'a>(
     core_data: &'a mut CoreData,
     command_arguments: &'a str,
     _evaluate_arguments: &'a EvaluateArguments,
-    _debug_adapter: &'a mut DebugAdapter<dyn ProtocolAdapter + 'a>,
+    _debug_adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     let mut args = command_arguments.split_whitespace();
     let write_to_file = args.next().map(Path::new);
