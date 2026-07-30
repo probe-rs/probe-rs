@@ -30,18 +30,44 @@ use crate::{
     rpc::{
         Key,
         functions::{
-            AttachEndpoint, BuildEndpoint, ChipInfoEndpoint, CreateRttClientEndpoint,
-            CreateTempFileEndpoint, EraseEndpoint, FlashEndpoint, ListChipFamiliesEndpoint,
-            ListProbesEndpoint, ListTestsEndpoint, LoadChipFamilyEndpoint, MonitorEndpoint,
-            ProgressEventTopic, ReadMemory8Endpoint, ReadMemory16Endpoint, ReadMemory32Endpoint,
-            ReadMemory64Endpoint, ResetCoreAndHaltEndpoint, ResetCoreEndpoint,
-            ResumeAllCoresEndpoint, RpcResult, RttDownEndpoint, RunTestEndpoint,
-            SelectProbeEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint,
-            TargetMetadataEndpoint, TempFileDataEndpoint, TokioSpawner, VerifyEndpoint,
+            AttachEndpoint, BuildEndpoint, ChipInfoEndpoint, CleanUpRttEndpoint,
+            ClearCoreDebugStateEndpoint, ClearRttControlBlockEndpoint, CoreClearHwBpsEndpoint,
+            CoreDumpEndpoint, CoreEnableVcEndpoint, CoreHaltEndpoint, CoreMetadataEndpoint,
+            CoreReadRegistersEndpoint, CoreRunEndpoint, CoreSetHwBpsEndpoint, CoreStatusEndpoint,
+            CoreStepEndpoint, CoreWriteRegEndpoint, CreateRttClientEndpoint,
+            CreateTempFileEndpoint, DisassembleEndpoint, EraseEndpoint, EvaluateEndpoint,
+            FlashEndpoint, GetRttChannelsEndpoint, HandleSemihostingEndpoint,
+            ListChipFamiliesEndpoint, ListProbesEndpoint, ListTestsEndpoint,
+            LoadChipFamilyEndpoint, LoadDebugInfoEndpoint, LoadSvdEndpoint, MonitorEndpoint,
+            PollRttUpEndpoint, ProgressEventTopic, ReadBytesEndpoint, ReadMemory8Endpoint,
+            ReadMemory16Endpoint, ReadMemory32Endpoint, ReadMemory64Endpoint,
+            ResetCoreAndHaltEndpoint, ResetCoreEndpoint, ResolveSourceBreakpointsEndpoint,
+            ResolveSourceLocationsEndpoint, ResumeAllCoresEndpoint, RpcError, RpcResult,
+            RttDownEndpoint, RunTestEndpoint, ScopesEndpoint, SelectProbeEndpoint,
+            SetVariableEndpoint, TakeRichStackTraceEndpoint, TakeStackTraceEndpoint,
+            TargetInfoDataTopic, TargetInfoEndpoint, TargetMetadataEndpoint, TempFileDataEndpoint,
+            TestKickoffEndpoint, TokioSpawner, VariablesEndpoint, VerifyEndpoint,
             WriteMemory8Endpoint, WriteMemory16Endpoint, WriteMemory32Endpoint,
             WriteMemory64Endpoint,
+            breakpoints::{
+                BreakpointResolution, ResolveSourceBreakpointsRequest,
+                ResolveSourceLocationsRequest, SourceBreakpointLocation, WireSourceLocation,
+            },
             chip::{ChipData, ChipFamily, ChipInfoRequest, LoadChipFamilyRequest},
-            core_ops::WireCoreInformation,
+            core_ops::{
+                CoreAccessRequest, CoreBreakpointsRequest, CoreDumpRequest, CoreHaltRequest,
+                CoreReadRegistersRequest, CoreVectorCatchRequest, CoreWriteRegRequest,
+                HandleSemihostingRequest, HandleSemihostingResult, StepRequest, StepResponse,
+                WireCoreDump, WireCoreInformation, WireCoreMetadata, WireCoreStatus,
+                WireRegisterId, WireRegisterReadResult, WireRegisterValue, WireSteppingMode,
+                WireVectorCatchCondition,
+            },
+            debug_vars::{
+                ClearCoreDebugStateRequest, EvaluateRequest, LoadSvdRequest, ScopesRequest,
+                SetVariableRequest, VariablesRequest, WireEvaluateResponse, WireScope,
+                WireSetVariableResponse, WireVariable,
+            },
+            disassemble::{DisassembleRequest, WireDisassembledInstruction},
             file::{AppendFileRequest, TempFile},
             flash::{
                 BootInfo, BuildRequest, BuildResult, DownloadOptions, EraseCommand, EraseRequest,
@@ -50,7 +76,7 @@ use crate::{
             info::{
                 InfoEvent, TargetInfoRequest, TargetMetadataRequest, WireSessionTargetMetadata,
             },
-            memory::{ReadMemoryRequest, WriteMemoryRequest},
+            memory::{ReadBytesRequest, ReadMemoryRequest, WriteMemoryRequest},
             monitor::{MonitorExitReason, MonitorMode, MonitorOptions, MonitorRequest},
             probe::{
                 AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector,
@@ -58,12 +84,18 @@ use crate::{
             },
             reset::{ResetCoreAndHaltRequest, ResetCoreRequest},
             resume::ResumeAllCoresRequest,
-            rtt_client::{CreateRttClientRequest, RttClientData, RttDownRequest, ScanRegion},
-            stack_trace::{StackTraces, TakeStackTraceRequest},
-            test::{ListTestsRequest, RunTestRequest, Test, TestResult, Tests},
+            rtt_client::{
+                CreateRttClientRequest, PollRttUpRequest, RttChannelRequest, RttChannels,
+                RttClientData, RttDownRequest, RttPollResult, ScanRegion,
+            },
+            stack_trace::{
+                LoadDebugInfoRequest, RichStackTraces, StackTraces, TakeRichStackTraceRequest,
+                TakeStackTraceRequest,
+            },
+            test::{ListTestsRequest, RunTestRequest, Test, TestKickoffRequest, TestResult, Tests},
         },
         transport::memory::{PostcardReceiver, PostcardSender, WireRx, WireTx},
-        upload_cache::{ContentHash, UploadCache},
+        upload_cache::{ContentHash, ResolvedUpload, UploadCache},
         utils::semihosting::SemihostingOptions,
     },
     util::{
@@ -72,8 +104,12 @@ use crate::{
     },
 };
 
+/// Host and optional authentication token identifying a remote probe-rs RPC
+/// server. `None` selects a local, in-process server.
+pub(crate) type RemoteParams = Option<(String, Option<String>)>;
+
 #[cfg(feature = "remote")]
-pub async fn connect(host: &str, token: Option<String>) -> anyhow::Result<RpcClient> {
+pub async fn connect(host: &str, token: Option<&str>) -> anyhow::Result<RpcClient> {
     use crate::rpc::transport::websocket::{WebsocketRx, WebsocketTx};
     use anyhow::Context;
     use axum::http::Uri;
@@ -235,9 +271,7 @@ mod tls {
     }
 }
 
-/// Represents a connection to a remote server.
-///
-/// Internally implemented as a websocket connection.
+/// Websocket-backed connection to a remote probe-rs server.
 #[derive(Clone)]
 pub struct RpcClient {
     client: HostClient<String>,
@@ -356,13 +390,18 @@ impl RpcClient {
         res
     }
 
-    /// Make a local file available to the RPC server, returning the path the
-    /// server should read.
+    /// Resolve a local file to the path the RPC server should use, along with
+    /// its content identity.
     ///
-    /// A prior upload is reused only when the path *and* its contents match, so
-    /// rebuilding a binary between calls uploads the new bytes rather than
-    /// silently reusing the stale copy. Failed uploads never update the cache.
-    pub async fn upload_file(&self, src_path: impl AsRef<Path>) -> anyhow::Result<PathBuf> {
+    /// Reads and hashes the file once, reuses a prior remote upload when the
+    /// canonical path and content hash match, and uploads only on cache miss.
+    /// Failed uploads never update the cache. The file is hashed even for a
+    /// local session, where the returned hash is the caller's only way to tell
+    /// whether the contents changed since a previous resolve.
+    pub async fn resolve_upload(
+        &self,
+        src_path: impl AsRef<Path>,
+    ) -> anyhow::Result<ResolvedUpload> {
         use anyhow::Context as _;
 
         let src_path = src_path
@@ -370,14 +409,18 @@ impl RpcClient {
             .canonicalize()
             .unwrap_or_else(|_| src_path.as_ref().to_path_buf());
 
-        if self.is_localhost {
-            return Ok(src_path);
-        }
-
         let data = tokio::fs::read(&src_path)
             .await
             .with_context(|| format!("Failed to read {}", src_path.display()))?;
         let content_hash = ContentHash::from_bytes(&data);
+
+        if self.is_localhost {
+            return Ok(ResolvedUpload {
+                canonical_path: src_path.clone(),
+                content_hash,
+                remote_path: src_path,
+            });
+        }
 
         if let Some(remote_path) = self
             .upload_cache
@@ -386,7 +429,11 @@ impl RpcClient {
             .lookup(&src_path, content_hash)
         {
             tracing::debug!("Reusing cached upload for {}", src_path.display());
-            return Ok(remote_path);
+            return Ok(ResolvedUpload {
+                canonical_path: src_path,
+                content_hash,
+                remote_path,
+            });
         }
 
         let remote_path = self
@@ -394,12 +441,39 @@ impl RpcClient {
             .await
             .context("Failed to upload file")?;
 
-        self.upload_cache
-            .lock()
-            .await
-            .insert(src_path, content_hash, remote_path.clone());
+        let mut cache = self.upload_cache.lock().await;
+        if let Some(existing) = cache.lookup(&src_path, content_hash) {
+            return Ok(ResolvedUpload {
+                canonical_path: src_path,
+                content_hash,
+                remote_path: existing,
+            });
+        }
+        cache.insert(src_path.clone(), content_hash, remote_path.clone());
 
-        Ok(remote_path)
+        Ok(ResolvedUpload {
+            canonical_path: src_path,
+            content_hash,
+            remote_path,
+        })
+    }
+
+    /// Make a local file available to the RPC server, returning the path the
+    /// server should read.
+    ///
+    /// A prior upload is reused only when the path *and* its contents match, so
+    /// rebuilding a binary between calls uploads the new bytes rather than
+    /// silently reusing the stale copy. Unlike [`Self::resolve_upload`], a local
+    /// session never reads the file, since the server reads it in place.
+    pub async fn upload_file(&self, src_path: impl AsRef<Path>) -> anyhow::Result<PathBuf> {
+        if self.is_localhost {
+            let src_path = src_path.as_ref();
+            return Ok(src_path
+                .canonicalize()
+                .unwrap_or_else(|_| src_path.to_path_buf()));
+        }
+
+        Ok(self.resolve_upload(src_path).await?.remote_path)
     }
 
     async fn upload_bytes(&self, src_path: &Path, data: &[u8]) -> anyhow::Result<PathBuf> {
@@ -486,6 +560,15 @@ impl SessionInterface {
             .await
     }
 
+    /// The server-side [`Key`] identifying the attached [`Session`].
+    ///
+    /// Exposed so that alternate backends (e.g. the DAP server's RPC
+    /// backend) can reuse the same session identifier when building their
+    /// own client types.
+    pub fn session_key(&self) -> Key<Session> {
+        self.sessid
+    }
+
     pub fn core(&self, core: usize) -> CoreInterface {
         CoreInterface {
             sessid: self.sessid,
@@ -504,12 +587,24 @@ impl SessionInterface {
 
     pub async fn build_flash_loader(
         &self,
-        mut path: PathBuf,
+        path: PathBuf,
+        format: FormatOptions,
+        image_target: Option<String>,
+        read_flasher_rtt: bool,
+    ) -> anyhow::Result<BuildResult> {
+        let upload = self.client.resolve_upload(&path).await?;
+        self.build_flash_loader_resolved(&upload, format, image_target, read_flasher_rtt)
+            .await
+    }
+
+    pub async fn build_flash_loader_resolved(
+        &self,
+        upload: &ResolvedUpload,
         mut format: FormatOptions,
         image_target: Option<String>,
         read_flasher_rtt: bool,
     ) -> anyhow::Result<BuildResult> {
-        path = self.client.upload_file(&path).await?;
+        let path = upload.server_path().to_path_buf();
 
         if let Some(ref mut idf_bootloader) = format.idf_options.idf_bootloader {
             *idf_bootloader = self
@@ -668,6 +763,63 @@ impl SessionInterface {
             .await
     }
 
+    /// Attach the server-side RTT client and return its up/down channel
+    /// metadata. See [`get_rtt_channels`].
+    pub async fn get_rtt_channels(
+        &self,
+        rtt_client: Key<RttClient>,
+    ) -> anyhow::Result<RttChannels> {
+        self.client
+            .send_resp::<GetRttChannelsEndpoint, _>(&RttChannelRequest {
+                sessid: self.sessid,
+                rtt_client,
+            })
+            .await
+    }
+
+    /// Poll multiple up channels on the server-side RTT client in one
+    /// request, returning the newly-available bytes (and any per-channel
+    /// error) for each.
+    pub async fn poll_rtt_up(
+        &self,
+        rtt_client: Key<RttClient>,
+        channels: Vec<u32>,
+    ) -> anyhow::Result<Vec<RttPollResult>> {
+        self.client
+            .send_resp::<PollRttUpEndpoint, _>(&PollRttUpRequest {
+                sessid: self.sessid,
+                rtt_client,
+                channels,
+            })
+            .await
+    }
+
+    /// Restore the original mode of every up channel on the server-side
+    /// RTT client.
+    pub async fn clean_up_rtt(&self, rtt_client: Key<RttClient>) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<CleanUpRttEndpoint, _>(&RttChannelRequest {
+                sessid: self.sessid,
+                rtt_client,
+            })
+            .await
+    }
+
+    /// Wipe a stale RTT control block from target memory, before a reset or
+    /// reflash. See [`clear_rtt_control_block`].
+    pub async fn clear_rtt_control_block(&self, rtt_client: Key<RttClient>) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<ClearRttControlBlockEndpoint, _>(&RttChannelRequest {
+                sessid: self.sessid,
+                rtt_client,
+            })
+            .await
+    }
+
+    /// Path-based stack trace for generic CLI callers. Uploads and parses
+    /// DWARF from `path` on each request; does not use session
+    /// [`ServerDebugState`]. DAP stack refresh uses
+    /// [`Self::take_rich_stack_trace`] instead.
     pub async fn stack_trace(
         &self,
         path: PathBuf,
@@ -680,6 +832,220 @@ impl SessionInterface {
                 sessid: self.sessid,
                 path: path.display().to_string(),
                 stack_frame_limit,
+            })
+            .await
+    }
+
+    /// Eagerly load and cache the server-side `DebugInfo` for this session
+    /// from `path`, so server-side consumers (e.g. `disassemble`) can resolve
+    /// source locations before the first halt. Mirrors the local backend,
+    /// which loads `DebugInfo` at session start. Repeated calls replace the
+    /// server copy and invalidate DWARF-derived server state.
+    pub async fn load_debug_info(&self, path: PathBuf) -> anyhow::Result<()> {
+        let upload = self.client.resolve_upload(path).await?;
+        self.load_debug_info_resolved(&upload).await
+    }
+
+    /// Publish server-side DWARF from a prior [`ResolvedUpload`].
+    pub async fn load_debug_info_resolved(&self, upload: &ResolvedUpload) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<LoadDebugInfoEndpoint, _>(&LoadDebugInfoRequest {
+                sessid: self.sessid,
+                path: upload.server_path().display().to_string(),
+            })
+            .await
+    }
+
+    /// Resolve a local path to a single upload identity for reuse across a
+    /// restart transaction (validate, flash, publish debug info).
+    pub async fn resolve_upload(&self, path: impl AsRef<Path>) -> anyhow::Result<ResolvedUpload> {
+        self.client.resolve_upload(path).await
+    }
+
+    /// Resolve source file/line requests against the server-owned debug info.
+    pub async fn resolve_source_breakpoints(
+        &self,
+        locations: Vec<SourceBreakpointLocation>,
+    ) -> anyhow::Result<Vec<BreakpointResolution>> {
+        self.client
+            .send_resp::<ResolveSourceBreakpointsEndpoint, _>(&ResolveSourceBreakpointsRequest {
+                sessid: self.sessid,
+                locations,
+            })
+            .await
+    }
+
+    /// Resolve instruction addresses to source metadata using server DWARF.
+    pub async fn resolve_source_locations(
+        &self,
+        addresses: Vec<u64>,
+    ) -> anyhow::Result<Vec<Option<WireSourceLocation>>> {
+        self.client
+            .send_resp::<ResolveSourceLocationsEndpoint, _>(&ResolveSourceLocationsRequest {
+                sessid: self.sessid,
+                addresses,
+            })
+            .await
+    }
+
+    /// Replace the server-side per-core SVD state, or clear it when `path` is
+    /// `None`. The old cache is cleared before upload/parse so a failed reload
+    /// cannot leave stale peripheral metadata visible.
+    pub async fn load_svd(&self, core: u32, path: Option<PathBuf>) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<LoadSvdEndpoint, _>(&LoadSvdRequest {
+                sessid: self.sessid,
+                core,
+                path: None,
+            })
+            .await?;
+
+        let Some(path) = path else {
+            return Ok(());
+        };
+        let path = self.client.upload_file(&path).await?;
+
+        self.client
+            .send_resp::<LoadSvdEndpoint, _>(&LoadSvdRequest {
+                sessid: self.sessid,
+                core,
+                path: Some(path.display().to_string()),
+            })
+            .await
+    }
+
+    /// Fetch a rich stack trace (per-frame register state + display metadata,
+    /// no local variables) for the requested core(s). Requires server-side
+    /// debug state from [`Self::load_debug_info`]; does not upload or parse a
+    /// binary path.
+    pub async fn take_rich_stack_trace(
+        &self,
+        core: Option<u32>,
+        stack_frame_limit: u32,
+    ) -> anyhow::Result<RichStackTraces> {
+        self.client
+            .send_resp::<TakeRichStackTraceEndpoint, _>(&TakeRichStackTraceRequest {
+                sessid: self.sessid,
+                core,
+                stack_frame_limit,
+            })
+            .await
+    }
+
+    /// Resolve DAP scopes for a frame on the server against the server-owned
+    /// `VariableCache`.
+    pub async fn scopes(&self, core: u32, frame_id: u32) -> anyhow::Result<Vec<WireScope>> {
+        self.client
+            .send_resp::<ScopesEndpoint, _>(&ScopesRequest {
+                sessid: self.sessid,
+                core,
+                frame_id,
+            })
+            .await
+    }
+
+    /// Resolve DAP variables for a `variables_reference` on the server,
+    /// expanding lazily server-side.
+    pub async fn variables(
+        &self,
+        core: u32,
+        variables_reference: u32,
+        filter: Option<String>,
+    ) -> anyhow::Result<Vec<WireVariable>> {
+        self.client
+            .send_resp::<VariablesEndpoint, _>(&VariablesRequest {
+                sessid: self.sessid,
+                core,
+                variables_reference,
+                filter,
+            })
+            .await
+    }
+
+    /// Clear a core's server-owned stack and variable caches while preserving
+    /// binary-independent state such as SVD variables. Called before target
+    /// execution changes so stale frame and variable handles are not served.
+    pub async fn clear_core_debug_state(&self, core: u32) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<ClearCoreDebugStateEndpoint, _>(&ClearCoreDebugStateRequest {
+                sessid: self.sessid,
+                core,
+            })
+            .await
+    }
+
+    /// Evaluate a watch/hover expression server-side against the cached
+    /// `VariableCache` for the given frame, expanding lazily server-side.
+    pub async fn evaluate(
+        &self,
+        core: u32,
+        frame_id: Option<u32>,
+        expression: String,
+    ) -> anyhow::Result<WireEvaluateResponse> {
+        self.client
+            .send_resp::<EvaluateEndpoint, _>(&EvaluateRequest {
+                sessid: self.sessid,
+                core,
+                frame_id,
+                expression,
+            })
+            .await
+    }
+
+    /// Full `SteppingMode::step` (over/into/out/instruction) run server-side
+    /// against the cached `DebugInfo` and the live `Core`. Returns the new
+    /// status, program counter, and any `WarnAndContinue` message.
+    pub async fn debug_step(
+        &self,
+        core: u32,
+        mode: WireSteppingMode,
+    ) -> anyhow::Result<StepResponse> {
+        self.client
+            .send_resp::<CoreStepEndpoint, _>(&StepRequest {
+                sessid: self.sessid,
+                core,
+                mode,
+            })
+            .await
+    }
+
+    /// Set a local/static variable's value server-side (the `VariableCache`
+    /// lives server-side). Returns the response fields for the DAP
+    /// `setVariable` response body.
+    pub async fn set_variable(
+        &self,
+        core: u32,
+        parent_key: i64,
+        name: String,
+        value: String,
+    ) -> anyhow::Result<WireSetVariableResponse> {
+        self.client
+            .send_resp::<SetVariableEndpoint, _>(&SetVariableRequest {
+                sessid: self.sessid,
+                core,
+                parent_key,
+                name,
+                value,
+            })
+            .await
+    }
+
+    pub async fn disassemble(
+        &self,
+        core: u32,
+        memory_reference: u64,
+        byte_offset: i64,
+        instruction_offset: i64,
+        instruction_count: i64,
+    ) -> anyhow::Result<Vec<WireDisassembledInstruction>> {
+        self.client
+            .send_resp::<DisassembleEndpoint, _>(&DisassembleRequest {
+                sessid: self.sessid,
+                core,
+                memory_reference,
+                byte_offset,
+                instruction_offset,
+                instruction_count,
             })
             .await
     }
@@ -709,6 +1075,20 @@ pub struct CoreInterface {
 }
 
 impl CoreInterface {
+    /// Create a client for a specific core on an attached session.
+    ///
+    /// Used by the RPC-backed DAP backend, which needs to synthesize a core
+    /// client on every access.
+    pub(crate) fn new_for_backend(client: RpcClient, sessid: Key<Session>, core: u32) -> Self {
+        Self {
+            sessid,
+            core,
+            client,
+        }
+    }
+}
+
+impl CoreInterface {
     pub async fn read_memory_8(&self, address: u64, count: usize) -> anyhow::Result<Vec<u8>> {
         self.client
             .send_resp::<ReadMemory8Endpoint, _>(&ReadMemoryRequest {
@@ -716,6 +1096,19 @@ impl CoreInterface {
                 core: self.core,
                 address,
                 count: count as u32,
+            })
+            .await
+    }
+
+    /// Lossy bulk byte read: returns as many bytes as are readable starting
+    /// at `address`, stopping at the first unreadable region.
+    pub async fn read_bytes(&self, address: u64, count: usize) -> anyhow::Result<Vec<u8>> {
+        self.client
+            .send_resp::<ReadBytesEndpoint, _>(&ReadBytesRequest {
+                sessid: self.sessid,
+                core: self.core,
+                address,
+                count: count as u64,
             })
             .await
     }
@@ -806,6 +1199,171 @@ impl CoreInterface {
                 sessid: self.sessid,
                 core: self.core,
                 timeout,
+            })
+            .await
+    }
+
+    fn access_request(&self) -> CoreAccessRequest {
+        CoreAccessRequest {
+            sessid: self.sessid,
+            core: self.core,
+        }
+    }
+
+    pub async fn status(&self) -> anyhow::Result<WireCoreStatus> {
+        self.client
+            .send_resp::<CoreStatusEndpoint, _>(&self.access_request())
+            .await
+    }
+
+    pub async fn halt(&self, timeout: Duration) -> anyhow::Result<WireCoreInformation> {
+        self.client
+            .send_resp::<CoreHaltEndpoint, _>(&CoreHaltRequest {
+                sessid: self.sessid,
+                core: self.core,
+                timeout,
+            })
+            .await
+    }
+
+    pub async fn run(&self) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<CoreRunEndpoint, _>(&self.access_request())
+            .await
+    }
+
+    /// Read a single register. Thin wrapper over [`Self::read_registers`]
+    /// that turns the per-register failure back into an error.
+    pub async fn read_core_reg(&self, id: WireRegisterId) -> anyhow::Result<WireRegisterValue> {
+        let mut results = self.read_registers(vec![id]).await?;
+        match results.pop() {
+            Some(result) => result.result.map_err(anyhow::Error::from),
+            None => anyhow::bail!("Server returned no result for register {}", id.0),
+        }
+    }
+
+    pub async fn write_core_reg(
+        &self,
+        id: WireRegisterId,
+        value: WireRegisterValue,
+    ) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<CoreWriteRegEndpoint, _>(&CoreWriteRegRequest {
+                sessid: self.sessid,
+                core: self.core,
+                id,
+                value,
+            })
+            .await
+    }
+
+    /// Set a single hardware breakpoint. Thin wrapper over
+    /// [`Self::set_hw_breakpoints`] that turns the per-address failure back
+    /// into an error.
+    pub async fn set_hw_breakpoint(&self, address: u64) -> anyhow::Result<()> {
+        let mut results = self.set_hw_breakpoints(vec![address]).await?;
+        match results.pop() {
+            Some(result) => result.map_err(anyhow::Error::from),
+            None => anyhow::bail!("Server returned no result for breakpoint {address:#x}"),
+        }
+    }
+
+    pub async fn set_hw_breakpoints(
+        &self,
+        addresses: Vec<u64>,
+    ) -> anyhow::Result<Vec<Result<(), RpcError>>> {
+        self.client
+            .send_resp::<CoreSetHwBpsEndpoint, _>(&CoreBreakpointsRequest {
+                sessid: self.sessid,
+                core: self.core,
+                addresses,
+            })
+            .await
+    }
+
+    pub async fn clear_hw_breakpoints(&self, addresses: Vec<u64>) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<CoreClearHwBpsEndpoint, _>(&CoreBreakpointsRequest {
+                sessid: self.sessid,
+                core: self.core,
+                addresses,
+            })
+            .await
+    }
+
+    pub async fn enable_vector_catch(
+        &self,
+        condition: WireVectorCatchCondition,
+    ) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<CoreEnableVcEndpoint, _>(&CoreVectorCatchRequest {
+                sessid: self.sessid,
+                core: self.core,
+                condition,
+            })
+            .await
+    }
+
+    pub async fn metadata(&self) -> anyhow::Result<WireCoreMetadata> {
+        self.client
+            .send_resp::<CoreMetadataEndpoint, _>(&self.access_request())
+            .await
+    }
+
+    /// Bulk-read a set of registers.
+    ///
+    /// Per-register failures are reported in place, in the same order as
+    /// `ids`. Callers that need strict "all-or-nothing" semantics can inspect
+    /// the returned slots themselves.
+    pub async fn read_registers(
+        &self,
+        ids: Vec<WireRegisterId>,
+    ) -> anyhow::Result<Vec<WireRegisterReadResult>> {
+        self.client
+            .send_resp::<CoreReadRegistersEndpoint, _>(&CoreReadRegistersRequest {
+                sessid: self.sessid,
+                core: self.core,
+                ids,
+            })
+            .await
+    }
+
+    /// Dump the core (registers + the supplied memory ranges) server-side and
+    /// return the wire fields so the caller can reconstruct a `CoreDump`.
+    pub async fn dump_core(
+        &self,
+        ranges: Vec<std::ops::Range<u64>>,
+    ) -> anyhow::Result<WireCoreDump> {
+        self.client
+            .send_resp::<CoreDumpEndpoint, _>(&CoreDumpRequest {
+                sessid: self.sessid,
+                core: self.core,
+                ranges,
+            })
+            .await
+    }
+
+    /// Handle a semihosting halt server-side: the server performs the file I/O
+    /// next to the target and returns the resulting core status plus the UI
+    /// events the client must replay (RTT window open, console/RTT output).
+    pub async fn handle_semihosting(&self) -> anyhow::Result<HandleSemihostingResult> {
+        self.client
+            .send_resp::<HandleSemihostingEndpoint, _>(&HandleSemihostingRequest {
+                sessid: self.sessid,
+                core: self.core,
+            })
+            .await
+    }
+
+    /// Kick off a single embedded-test case server-side: run until the
+    /// `GetCommandLine` semihosting call, write `run_addr {address}` as the
+    /// command line, then resume. Used by the DAP REPL `test run` command.
+    pub async fn kickoff_test(&self, address: u64) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<TestKickoffEndpoint, _>(&TestKickoffRequest {
+                sessid: self.sessid,
+                core: self.core,
+                address,
             })
             .await
     }
@@ -907,5 +1465,30 @@ where
 
     async fn next(&mut self) -> Option<Self::Message> {
         self.recv().await
+    }
+}
+
+#[cfg(test)]
+mod resolve_upload_tests {
+    use super::*;
+    use crate::rpc::functions::{ProbeAccess, RpcApp};
+    use std::io::Write;
+    use tempfile::NamedTempFile;
+
+    #[tokio::test]
+    async fn local_resolve_upload_tracks_content_changes() {
+        let (_server, tx, rx) = RpcApp::create_server(16, ProbeAccess::All);
+        let client = RpcClient::new_local_from_wire(tx, rx);
+
+        let mut file = NamedTempFile::new().unwrap();
+        write!(file, "v1").unwrap();
+        let path = file.path().to_path_buf();
+
+        let first = client.resolve_upload(&path).await.unwrap();
+        write!(file, "v2").unwrap();
+        let second = client.resolve_upload(&path).await.unwrap();
+
+        assert_ne!(first.content_hash, second.content_hash);
+        assert_eq!(first.remote_path, second.remote_path);
     }
 }

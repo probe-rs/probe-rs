@@ -10,7 +10,7 @@ use crate::{
     rpc::{
         Key,
         functions::{
-            ListTestsEndpoint, RpcResult, RpcSpawnContext, RunTestEndpoint, WireTxImpl,
+            ListTestsEndpoint, RpcContext, RpcResult, RpcSpawnContext, RunTestEndpoint, WireTxImpl,
             flash::BootInfo,
             monitor::{MonitorSender, RttPoller, SemihostingEvent},
         },
@@ -286,6 +286,46 @@ fn run_test_impl(
             anyhow::bail!("The target locked up while running the test.")
         }
     }
+}
+
+// -- test kickoff (DAP REPL `test run`) --------------------------------------
+
+#[derive(Serialize, Deserialize, Schema)]
+pub struct TestKickoffRequest {
+    pub sessid: Key<Session>,
+    pub core: u32,
+    pub address: u64,
+}
+
+pub type TestKickoffResponse = RpcResult<()>;
+
+/// Kick off a single embedded-test case from the DAP REPL: run the core until
+/// it halts on the `GetCommandLine` semihosting call, write the test address
+/// as the command line, then resume. The subsequent test run is driven by
+/// the DAP poll loop.
+pub async fn test_kickoff(
+    ctx: &mut RpcContext,
+    _header: VarHeader,
+    request: TestKickoffRequest,
+) -> TestKickoffResponse {
+    use probe_rs::CoreStatus;
+
+    let mut session = ctx.session(request.sessid).await;
+    let mut core = session.core(request.core as usize)?;
+
+    core.run()?;
+    core.wait_for_core_halted(Duration::from_secs(1))?;
+
+    let CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
+        SemihostingCommand::GetCommandLine(cmd),
+    ))) = core.status()?
+    else {
+        Err("Could not start test: target did not halt on GetCommandLine")?
+    };
+
+    cmd.write_command_line_to_target(&mut core, &format!("run_addr {}", request.address))?;
+    core.run()?;
+    Ok(())
 }
 
 struct ListEventHandler<F: FnMut(SemihostingEvent)> {

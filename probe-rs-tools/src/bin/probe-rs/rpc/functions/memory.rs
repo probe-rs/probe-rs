@@ -117,3 +117,53 @@ pub async fn read_memory<W: Word>(
     W::read(&mut core, request.address, &mut words)?;
     Ok(words)
 }
+
+#[derive(Serialize, Deserialize, Schema)]
+pub struct ReadBytesRequest {
+    pub sessid: Key<Session>,
+    pub core: u32,
+    pub address: u64,
+    pub count: u64,
+}
+
+/// Lossy bulk byte read: reads as many bytes as possible starting at
+/// `address`, stopping at the first unreadable region. Mirrors the
+/// `CoreHandle::read_memory_lossy` chunked-read strategy.
+pub async fn read_bytes(
+    ctx: &mut RpcContext,
+    _header: VarHeader,
+    request: ReadBytesRequest,
+) -> RpcResult<Vec<u8>> {
+    let mut session = ctx.session(request.sessid).await;
+    let mut core = session.core(request.core as usize)?;
+
+    fn chunk_size(count: usize, max_chunk_size: usize) -> usize {
+        (max_chunk_size.min(count) / 2).next_power_of_two()
+    }
+
+    let mut result_buffer: Vec<u8> = Vec::new();
+    let mut address = request.address;
+    let mut num_bytes_unread = request.count as usize;
+    let mut fast_buff = [0u8; 256];
+    let mut max_chunk_size = fast_buff.len();
+
+    while num_bytes_unread > 0 && max_chunk_size > 0 {
+        let chunk_size = chunk_size(num_bytes_unread, max_chunk_size);
+        let buffer = &mut fast_buff[..chunk_size];
+        match core.read(address, buffer) {
+            Err(e) => {
+                if result_buffer.is_empty() && chunk_size == 1 {
+                    return Err(e.into());
+                }
+                max_chunk_size = chunk_size / 2;
+            }
+            Ok(()) => {
+                result_buffer.extend_from_slice(buffer);
+                address += chunk_size as u64;
+                num_bytes_unread -= chunk_size;
+            }
+        }
+    }
+
+    Ok(result_buffer)
+}

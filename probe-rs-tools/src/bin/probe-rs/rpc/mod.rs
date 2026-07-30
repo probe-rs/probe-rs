@@ -20,7 +20,9 @@ use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 
 pub mod client;
+pub mod debug_state;
 pub mod functions;
+pub mod svd;
 pub mod transport;
 pub(crate) mod upload_cache;
 pub mod utils;
@@ -94,18 +96,26 @@ impl<T> Key<T> {
     }
 }
 
+#[cfg(test)]
+impl<T> Key<T> {
+    pub fn test(id: u64) -> Self {
+        Self {
+            key: id,
+            marker: PhantomData,
+        }
+    }
+}
+
 pub(crate) struct ObjectStorage {
     storage: HashMap<u64, Arc<Mutex<dyn Any + Send>>>,
 }
 
-/// A reference to an object in ObjectStorage.
 pub(crate) struct ObjectStorageSlot<T: Any + Send> {
     obj: Arc<Mutex<dyn Any + Send>>,
     _type: PhantomData<fn() -> T>,
 }
 
 impl<T: Any + Send> ObjectStorageSlot<T> {
-    /// Returns a mutable reference to the object.
     pub async fn get(&self) -> impl DerefMut<Target = T> + Send + use<T> {
         let guard = self.obj.clone().lock_owned().await;
         tokio::sync::OwnedMutexGuard::map(guard, |e: &mut (dyn Any + Send)| {
@@ -113,9 +123,7 @@ impl<T: Any + Send> ObjectStorageSlot<T> {
         })
     }
 
-    /// Returns a mutable reference to the object.
-    ///
-    /// This is a blocking operation and should only be used in synchronous contexts.
+    /// Blocking variant of [`get`]; only use in synchronous contexts.
     pub fn get_blocking(&self) -> impl DerefMut<Target = T> + Send + use<T> {
         let guard = self.obj.clone().blocking_lock_owned();
         tokio::sync::OwnedMutexGuard::map(guard, |e: &mut (dyn Any + Send)| {
@@ -137,9 +145,7 @@ impl ObjectStorage {
         key
     }
 
-    /// Returns an [`ObjectStorageSlot`] for the given key.
-    ///
-    /// This function is intended to ensure that locks on ObjectStorage are held for as short a time as possible.
+    /// Ensures locks on `ObjectStorage` are held for as short a time as possible.
     pub fn cell<T: Any + Send>(&self, key: Key<T>) -> ObjectStorageSlot<T> {
         let obj = self.storage.get(&key.key).unwrap();
         ObjectStorageSlot {
@@ -156,6 +162,10 @@ pub struct ConnectionState {
     /// Generic object storage.
     object_storage: Arc<Mutex<ObjectStorage>>,
     registry: Arc<Mutex<Registry>>,
+    /// Server-owned debug state (cached `DebugInfo` + per-core `VariableCache`),
+    /// keyed by session. Populated by the rich stack-trace endpoint and consumed
+    /// by the server-side scopes/variables endpoints.
+    debug_states: Arc<Mutex<HashMap<Key<Session>, crate::rpc::debug_state::ServerDebugState>>>,
     token: CancellationToken,
 }
 
@@ -165,6 +175,7 @@ impl ConnectionState {
             dry_run_sessions: HashSet::new(),
             object_storage: Arc::new(Mutex::new(ObjectStorage::new())),
             registry: Arc::new(Mutex::new(Registry::from_builtin_families())),
+            debug_states: Arc::new(Mutex::new(HashMap::new())),
             token: CancellationToken::new(),
         }
     }
@@ -217,23 +228,18 @@ pub struct SessionState<'a> {
 }
 
 impl SessionState<'_> {
-    /// Returns a handle to the session.
-    ///
-    /// This function blocks while other users hold the session.
+    /// Blocks while other users hold the underlying storage.
     pub fn object_storage(&self) -> impl DerefMut<Target = ObjectStorage> + Send + use<'_> {
         self.object_storage.blocking_lock()
     }
 
-    /// Returns a handle to the session.
-    ///
-    /// This function blocks while other users hold the session.
+    /// Blocks while other users hold the session.
     pub fn session_blocking(&self) -> impl DerefMut<Target = Session> + Send + use<> {
         // MUST be two separate statements so that the lock is released.
         let obj_cell = self.object_storage().cell(self.session);
         obj_cell.get_blocking()
     }
 
-    /// Returns whether the session is in dry-run mode.
     pub fn dry_run(&self) -> bool {
         self.dry_run
     }

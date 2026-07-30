@@ -110,7 +110,7 @@ impl DebugRegisters {
         })
     }
 
-    fn from_core_registers(
+    pub fn from_core_registers(
         regs: &'static CoreRegisters,
         mut reg_value: impl FnMut(&RegisterId) -> Option<RegisterValue>,
     ) -> Self {
