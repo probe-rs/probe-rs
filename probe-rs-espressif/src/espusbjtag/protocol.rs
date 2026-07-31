@@ -2,7 +2,7 @@ use bitvec::prelude::*;
 use nusb::{
     DeviceInfo, Endpoint, MaybeFuture,
     descriptors::TransferType,
-    transfer::{Bulk, Direction, In, Out},
+    transfer::{Buffer, Bulk, Direction, In, Out},
 };
 use std::{
     fmt::Debug,
@@ -13,7 +13,7 @@ use std::{
 use probe_rs::probe::{
     DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError, ProbeError,
     list::{ProbeListItem, usb_probe_accessibility},
-    usb_util::{BulkReadExt, BulkWriteExt},
+    usb_util::BulkReadExt,
 };
 
 use super::EspUsbJtagFactory;
@@ -34,28 +34,26 @@ const MAX_COMMAND_REPETITIONS: usize = 1023;
 // If the command buffer of the device becomes full, the device sends a NAK. The host controller
 // then sends the same data again in the same transfer. The speed of a large transfer is
 // therefore the speed of the device.
-//
-// `MAX_IN_FLIGHT_CAPTURE_BITS` also limits commands that capture data. Only the parts of the
-// command stream that capture no data become as large as this value.
 const OUT_BUFFER_SIZE: usize = 4096;
 const IN_EP_BUFFER_SIZE: usize = 64;
 const HW_FIFO_SIZE: usize = 4;
 // The amount of capture data that the device can hold. If the device has more capture data than
 // this, the device stops the command stream and waits for the driver to read the data.
-//
-// This limit must include the capture data of a transfer that the driver did not send completely.
-// The driver cannot read the IN endpoint during a bulk write. If a transfer makes more capture
-// data than this limit, the device stops the command stream. The driver then waits for a transfer
-// that the device cannot receive, and the bulk write fails with a timeout.
 const MAX_IN_FLIGHT_CAPTURE_BITS: usize = (IN_EP_BUFFER_SIZE + HW_FIFO_SIZE) * 8;
+// The number of transfers that the driver keeps in the queue of the OUT endpoint.
+//
+// The driver does not wait for a transfer after it submits the transfer. The host controller can
+// therefore start the next transfer immediately after the previous transfer. This removes the
+// idle time of one round trip between two transfers.
+const MAX_IN_FLIGHT_TRANSFERS: usize = 4;
 // The maximum number of JTAG clock cycles in one transfer. This limit makes sure that the device
-// completes one transfer before `USB_TIMEOUT`.
+// completes all the transfers in the queue before `USB_TIMEOUT`.
 //
 // A command that carries data uses one nibble for each clock cycle. `OUT_BUFFER_SIZE` therefore
 // limits a transfer to 2 * OUT_BUFFER_SIZE clock cycles, and this limit has no effect. This
 // limit has an effect only for many repeat commands, because a few bytes of repeat commands can
 // hold a very large number of clock cycles.
-const MAX_BUFFERED_CLOCKS: usize = 64 * 1024;
+const MAX_BUFFERED_CLOCKS: usize = 16 * 1024;
 const USB_TIMEOUT: Duration = Duration::from_millis(500);
 const USB_DEVICE_CLASS: u8 = 0xFF;
 const USB_DEVICE_SUBCLASS: u8 = 0xFF;
@@ -99,8 +97,9 @@ pub(super) struct ProtocolHandler {
     half_byte_used: bool,
     /// The number of JTAG clock cycles in the commands in `output_buffer`.
     buffered_clocks: usize,
-    /// The number of capture bits that the commands in `output_buffer` make.
-    buffered_capture_bits: usize,
+    /// The buffers of the transfers that the OUT endpoint completed. The driver uses them again
+    /// for new transfers.
+    free_buffers: Vec<Buffer>,
     /// A store for all the read bits (from the target) such that the BitIter the methods return
     /// can borrow and iterate over it.
     response: BitVec,
@@ -284,7 +283,7 @@ impl ProtocolHandler {
             output_buffer: Vec::with_capacity(OUT_BUFFER_SIZE),
             half_byte_used: false,
             buffered_clocks: 0,
-            buffered_capture_bits: 0,
+            free_buffers: Vec::new(),
             response: BitVec::new(),
             ep_out,
             ep_in,
@@ -414,6 +413,10 @@ impl ProtocolHandler {
             }
         }
 
+        // The endpoint reports a write error only at the completion of the transfer. Wait for all
+        // the transfers, because the caller must know that the commands are on the device.
+        self.complete_writes(0)?;
+
         Ok(())
     }
 
@@ -459,13 +462,6 @@ impl ProtocolHandler {
         if command.captures() {
             // Only increment pending bits if a whole command is in the buffer.
             self.pending_in_bits += repetitions + 1;
-            self.buffered_capture_bits += repetitions + 1;
-
-            // Keep the transfer small. If the transfer is too large, the device stops the command
-            // stream before the driver sends the last byte of the transfer.
-            if self.buffered_capture_bits >= MAX_IN_FLIGHT_CAPTURE_BITS {
-                self.send_buffer_if_unpadded()?;
-            }
         }
 
         if matches!(command, Command::Clock { .. }) {
@@ -556,23 +552,24 @@ impl ProtocolHandler {
             self.push_raw_command(Command::Flush);
         }
 
-        let mut commands = self.output_buffer.as_slice();
+        tracing::trace!("Writing {} bytes to usb endpoint", self.output_buffer.len());
 
-        tracing::trace!("Writing {} bytes to usb endpoint", commands.len());
+        if !self.output_buffer.is_empty() {
+            // Keep space in the queue for the new transfer.
+            self.complete_writes(MAX_IN_FLIGHT_TRANSFERS - 1)?;
 
-        while !commands.is_empty() {
-            let bytes = self
-                .ep_out
-                .write_bulk(commands, USB_TIMEOUT)
-                .map_err(DebugProbeError::Usb)?;
+            let mut buffer = self
+                .free_buffers
+                .pop()
+                .unwrap_or_else(|| self.ep_out.allocate(OUT_BUFFER_SIZE));
+            buffer.clear();
+            buffer.extend_from_slice(&self.output_buffer);
 
-            commands = &commands[bytes..];
+            self.ep_out.submit(buffer);
         }
 
-        // We only clear the output buffer on a successful transmission of all bytes.
         self.output_buffer.clear();
         self.buffered_clocks = 0;
-        self.buffered_capture_bits = 0;
 
         if padded {
             while self.pending_in_bits != 0 {
@@ -586,6 +583,54 @@ impl ProtocolHandler {
         }
 
         Ok(())
+    }
+
+    /// Waits until the OUT endpoint has not more than `keep_pending` transfers in the queue.
+    ///
+    /// The endpoint reports the result of a transfer at this point, and not at the submission.
+    /// The driver can therefore not relate an error to a specific command.
+    fn complete_writes(&mut self, keep_pending: usize) -> Result<(), DebugProbeError> {
+        while self.ep_out.pending() > keep_pending {
+            let Some(completion) = self.ep_out.wait_next_complete(USB_TIMEOUT) else {
+                self.cancel_writes();
+
+                return Err(DebugProbeError::Usb(io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "bulk write timed out",
+                )));
+            };
+
+            if let Err(error) = completion.status {
+                self.cancel_writes();
+
+                return Err(DebugProbeError::Usb(io::Error::from(error)));
+            }
+
+            let sent = completion.actual_len;
+            let requested = completion.buffer.len();
+            if sent != requested {
+                self.cancel_writes();
+
+                return Err(DebugProbeError::Usb(io::Error::other(format!(
+                    "the device accepted {sent} of {requested} command bytes"
+                ))));
+            }
+
+            self.free_buffers.push(completion.buffer);
+        }
+
+        Ok(())
+    }
+
+    /// Removes all the transfers from the queue of the OUT endpoint.
+    fn cancel_writes(&mut self) {
+        self.ep_out.cancel_all();
+
+        while self.ep_out.pending() > 0 {
+            if self.ep_out.wait_next_complete(USB_TIMEOUT).is_none() {
+                break;
+            }
+        }
     }
 
     /// Tries to receive pending in bits from the USB EP.
