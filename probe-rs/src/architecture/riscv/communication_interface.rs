@@ -1998,6 +1998,143 @@ impl<'state> RiscvCommunicationInterface<'state> {
         })
     }
 
+    /// The abstract command that transfers DATA0 into S1 and then executes the program buffer.
+    ///
+    /// `abstractauto` repeats the last command, so a write of DATA0 stores one more word.
+    fn write_transfer_command() -> AccessRegisterCommand {
+        let mut command = AccessRegisterCommand(0);
+        command.set_cmd_type(0);
+        command.set_transfer(true);
+        command.set_write(true);
+
+        // registers are 32 bit, so we have size 2 here
+        command.set_aarsize(RiscvBusAccess::A32);
+        command.set_postexec(true);
+
+        command.set_regno((registers::S1).id.0 as u32);
+
+        command
+    }
+
+    /// Prime the autoexec pipeline for a batch memory write.
+    ///
+    /// The program buffer must already contain:
+    ///   `sw/sd s1, 0(s0); addi s0, s0, width`
+    ///
+    /// This function writes `first` to `address`. After this returns successfully:
+    /// - S0 = `address + width`
+    /// - `abstractauto` is enabled, thus a write of DATA0 stores one more word
+    fn autoexec_prime_write_pipeline(
+        &mut self,
+        address: u64,
+        first: u32,
+    ) -> Result<(), RiscvError> {
+        self.write_address_to_s0(address)?;
+
+        // Store the first word with an explicit command. `abstractauto` repeats this command.
+        // `execute_abstract_command` waits for the command and it tests the result.
+        self.schedule_write_dm_register(Data0(first))?;
+        self.execute_abstract_command(Self::write_transfer_command().0)?;
+
+        let mut abstractauto = Abstractauto(0);
+        abstractauto.set_autoexecdata(1);
+        self.write_dm_register(abstractauto)?;
+
+        Ok(())
+    }
+
+    /// Write multiple words with one DM transaction for each word.
+    fn write_multiple_autoexec<V: RiscvValue32>(
+        &mut self,
+        address: u64,
+        data: &[V],
+    ) -> Result<(), RiscvError> {
+        let width = V::WIDTH.byte_width() as u64;
+
+        self.autoexec_prime_write_pipeline(address, data[0].into())?;
+
+        // The driver does not wait for a command between two writes of DATA0. If the debug module
+        // is still busy, it makes a `Busy` error and it does not store the word. The status of the
+        // command therefore gets a test after each group of words.
+        let chunk_size: usize = 256;
+        let mut index = 1;
+
+        while index < data.len() {
+            let chunk_end = core::cmp::min(index + chunk_size, data.len());
+
+            for value in &data[index..chunk_end] {
+                self.schedule_write_dm_register(Data0((*value).into()))?;
+            }
+
+            match self.wait_for_abstract_idle(Duration::from_millis(100)) {
+                Ok(()) => index = chunk_end,
+                Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::Busy)) => {
+                    let mut cs = Abstractcs(0);
+                    cs.set_cmderr(0x7);
+                    self.write_dm_register(cs)?;
+                    self.write_dm_register(Abstractauto(0))?;
+
+                    // S0 shows the number of words that the target stored.
+                    let current_addr = if self.state.xlen_64 {
+                        self.abstract_cmd_register_read_64(registers::S0)?
+                    } else {
+                        self.abstract_cmd_register_read(registers::S0)? as u64
+                    };
+                    let written = ((current_addr - address) / width) as usize;
+
+                    tracing::warn!(
+                        "Autoexec Busy during chunk [{}, {}). S0={:#x}, written={}",
+                        index,
+                        chunk_end,
+                        current_addr,
+                        written,
+                    );
+
+                    if written == 0 || written >= data.len() {
+                        return Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::Busy));
+                    }
+
+                    self.autoexec_prime_write_pipeline(
+                        address + written as u64 * width,
+                        data[written].into(),
+                    )?;
+                    index = written + 1;
+                }
+                Err(e) => return Err(e),
+            }
+        }
+
+        self.write_dm_register(Abstractauto(0))?;
+
+        Ok(())
+    }
+
+    fn write_multiple_no_autoexec<V: RiscvValue32>(
+        &mut self,
+        data: &[V],
+        wait_for_idle: bool,
+    ) -> Result<(), RiscvError> {
+        for value in data {
+            // write data into data 0
+            self.schedule_write_dm_register(Data0((*value).into()))?;
+
+            // Write s0, then execute program buffer
+            self.schedule_write_dm_register(Self::write_transfer_command())?;
+
+            if wait_for_idle && let Err(error) = self.wait_for_idle(Duration::from_millis(10)) {
+                tracing::error!(
+                    "Executing the abstract command for write_multiple_{} failed: {:?}",
+                    V::WIDTH.byte_width() * 8,
+                    error,
+                );
+
+                return Err(error);
+            }
+        }
+
+        Ok(())
+    }
+
     /// Perform multiple memory writes to consecutive locations using the program buffer.
     /// Only writes up to a width of 32 bits are currently supported.
     fn perform_memory_write_multiple_progbuf<V: RiscvValue32>(
@@ -2027,44 +2164,27 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 assembly::addi(8, 8, V::WIDTH.byte_width() as i16),
             ])?;
 
-            core.write_address_to_s0(address)?;
+            let use_autoexec = core.state.supports_autoexec && data.len() >= 16;
 
-            for value in data {
-                // write data into data 0
-                core.schedule_write_dm_register(Data0((*value).into()))?;
+            let write_result = if use_autoexec {
+                core.write_multiple_autoexec(address, data)
+            } else {
+                core.write_address_to_s0(address)
+                    .and_then(|()| core.write_multiple_no_autoexec(data, wait_for_idle))
+            };
 
-                // Write s0, then execute program buffer
-                let mut command = AccessRegisterCommand(0);
-                command.set_cmd_type(0);
-                command.set_transfer(true);
-                command.set_write(true);
-
-                // registers are 32 bit, so we have size 2 here
-                command.set_aarsize(RiscvBusAccess::A32);
-                command.set_postexec(true);
-
-                // register s1
-                command.set_regno((registers::S1).id.0 as u32);
-
-                core.schedule_write_dm_register(command)?;
-
-                if wait_for_idle && let Err(error) = core.wait_for_idle(Duration::from_millis(10)) {
-                    tracing::error!(
-                        "Executing the abstract command for write_multiple_{} failed: {:?}",
-                        V::WIDTH.byte_width() * 8,
-                        error,
-                    );
-
-                    return Err(error);
-                }
+            if use_autoexec {
+                let _ = core.write_dm_register(Abstractauto(0));
+                let mut cs_clear = Abstractcs(0);
+                cs_clear.set_cmderr(0x7);
+                let _ = core.write_dm_register(cs_clear);
+                core.state.progbuf_cache = [0u32; 16];
             }
 
-            // Restore register s0 and s1
+            let _ = core.restore_s0(s0);
+            let _ = core.restore_s1(s1);
 
-            core.restore_s0(s0)?;
-            core.restore_s1(s1)?;
-
-            Ok(())
+            write_result
         })
     }
 
