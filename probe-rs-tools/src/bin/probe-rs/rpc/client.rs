@@ -331,15 +331,16 @@ impl RpcClient {
         E::Request: Serialize + Schema,
         E::Response: DeserializeOwned + Schema,
     {
-        match self.client.send_resp::<E>(req).await {
-            Ok(r) => Ok(r),
-            Err(e) => match e {
-                HostErr::Wire(w) => anyhow::bail!("Wire error: {w}"),
-                HostErr::BadResponse => anyhow::bail!("Bad response"),
-                HostErr::Postcard(error) => anyhow::bail!("Postcard error: {error}"),
-                HostErr::Closed => anyhow::bail!("Connection closed"),
-            },
+        #[cold]
+        fn convert_error(e: HostErr<String>) -> anyhow::Error {
+            match e {
+                HostErr::Wire(w) => anyhow::format_err!("Wire error: {w}"),
+                HostErr::BadResponse => anyhow::format_err!("Bad response"),
+                HostErr::Postcard(error) => anyhow::format_err!("Postcard error: {error}"),
+                HostErr::Closed => anyhow::format_err!("Connection closed"),
+            }
         }
+        self.client.send_resp::<E>(req).await.map_err(convert_error)
     }
 
     async fn send_resp<E, T>(&self, req: &E::Request) -> anyhow::Result<T>
@@ -348,10 +349,9 @@ impl RpcClient {
         E::Request: Serialize + Schema,
         E::Response: DeserializeOwned + Schema,
     {
-        match self.send::<E, RpcResult<T>>(req).await? {
-            Ok(r) => Ok(r),
-            Err(e) => anyhow::bail!("{e}"),
-        }
+        self.send::<E, RpcResult<T>>(req)
+            .await?
+            .map_err(|e| anyhow::format_err!("{e}"))
     }
 
     pub async fn publish<T: Topic>(&self, message: &T::Message) -> Result<(), IoClosed>
@@ -398,16 +398,12 @@ impl RpcClient {
     /// Failed uploads never update the cache. The file is hashed even for a
     /// local session, where the returned hash is the caller's only way to tell
     /// whether the contents changed since a previous resolve.
-    pub async fn resolve_upload(
-        &self,
-        src_path: impl AsRef<Path>,
-    ) -> anyhow::Result<ResolvedUpload> {
+    pub async fn resolve_upload(&self, src_path: &Path) -> anyhow::Result<ResolvedUpload> {
         use anyhow::Context as _;
 
         let src_path = src_path
-            .as_ref()
             .canonicalize()
-            .unwrap_or_else(|_| src_path.as_ref().to_path_buf());
+            .unwrap_or_else(|_| src_path.to_path_buf());
 
         let data = tokio::fs::read(&src_path)
             .await
@@ -465,9 +461,8 @@ impl RpcClient {
     /// rebuilding a binary between calls uploads the new bytes rather than
     /// silently reusing the stale copy. Unlike [`Self::resolve_upload`], a local
     /// session never reads the file, since the server reads it in place.
-    pub async fn upload_file(&self, src_path: impl AsRef<Path>) -> anyhow::Result<PathBuf> {
+    pub async fn upload_file(&self, src_path: &Path) -> anyhow::Result<PathBuf> {
         if self.is_localhost {
-            let src_path = src_path.as_ref();
             return Ok(src_path
                 .canonicalize()
                 .unwrap_or_else(|_| src_path.to_path_buf()));
@@ -609,7 +604,7 @@ impl SessionInterface {
         if let Some(ref mut idf_bootloader) = format.idf_options.idf_bootloader {
             *idf_bootloader = self
                 .client
-                .upload_file(&*idf_bootloader)
+                .upload_file(idf_bootloader.as_ref())
                 .await?
                 .display()
                 .to_string();
@@ -618,7 +613,7 @@ impl SessionInterface {
         if let Some(ref mut idf_partition_table) = format.idf_options.idf_partition_table {
             *idf_partition_table = self
                 .client
-                .upload_file(&*idf_partition_table)
+                .upload_file(idf_partition_table.as_ref())
                 .await?
                 .display()
                 .to_string();
@@ -842,7 +837,7 @@ impl SessionInterface {
     /// which loads `DebugInfo` at session start. Repeated calls replace the
     /// server copy and invalidate DWARF-derived server state.
     pub async fn load_debug_info(&self, path: PathBuf) -> anyhow::Result<()> {
-        let upload = self.client.resolve_upload(path).await?;
+        let upload = self.client.resolve_upload(&path).await?;
         self.load_debug_info_resolved(&upload).await
     }
 
@@ -858,7 +853,7 @@ impl SessionInterface {
 
     /// Resolve a local path to a single upload identity for reuse across a
     /// restart transaction (validate, flash, publish debug info).
-    pub async fn resolve_upload(&self, path: impl AsRef<Path>) -> anyhow::Result<ResolvedUpload> {
+    pub async fn resolve_upload(&self, path: &Path) -> anyhow::Result<ResolvedUpload> {
         self.client.resolve_upload(path).await
     }
 

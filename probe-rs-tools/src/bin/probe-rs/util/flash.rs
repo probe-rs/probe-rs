@@ -27,6 +27,22 @@ pub fn run_flash_download(
     probe_options: &LoadedProbeOptions,
     loader: FlashLoader,
 ) -> Result<(), OperationError> {
+    run_flash_download_inner(
+        session,
+        path.as_ref(),
+        download_options,
+        probe_options,
+        loader,
+    )
+}
+
+fn run_flash_download_inner(
+    session: &mut Session,
+    path: &Path,
+    download_options: &BinaryDownloadOptions,
+    probe_options: &LoadedProbeOptions,
+    loader: FlashLoader,
+) -> Result<(), OperationError> {
     let mut options = DownloadOptions::default();
     options.keep_unwritten_bytes = download_options.restore_unwritten;
     options.dry_run = probe_options.dry_run();
@@ -74,7 +90,7 @@ pub fn run_flash_download(
                     source: Box::new(error),
                     target: Box::new(session.target().clone()),
                     target_spec: probe_options.chip(),
-                    path: path.as_ref().to_path_buf(),
+                    path: path.to_path_buf(),
                 });
             }
         }
@@ -89,7 +105,7 @@ pub fn run_flash_download(
                 source: Box::new(error),
                 target: Box::new(session.target().clone()),
                 target_spec: probe_options.chip(),
-                path: path.as_ref().to_path_buf(),
+                path: path.to_path_buf(),
             })?;
     }
 

@@ -1593,12 +1593,11 @@ impl DebugAdapter {
         event_type: &str,
         event_body: Option<S>,
     ) -> Result<()> {
-        tracing::debug!("Sending event: {}", event_type);
         self.adapter.send_event(event_type, event_body)
     }
 
     pub fn log_to_console(&mut self, message: impl AsRef<str>) -> bool {
-        self.adapter.log_to_console(message)
+        self.adapter.log_to_console(message.as_ref())
     }
 
     /// Send a custom "probe-rs-show-message" event to the MS DAP Client.
@@ -1873,7 +1872,6 @@ impl DebugAdapter {
 
     #[tracing::instrument(level = "trace", skip_all)]
     pub fn dyn_send_event(&mut self, event_type: &str, event_body: Option<Value>) -> Result<()> {
-        tracing::debug!("Sending event: {}", event_type);
         self.adapter.dyn_send_event(event_type, event_body)
     }
 
@@ -1986,7 +1984,7 @@ pub fn get_arguments<T: DeserializeOwned>(
         )));
     };
 
-    match serde_json::from_value(raw_arguments.to_owned()) {
+    match T::deserialize(raw_arguments) {
         Ok(value) => Ok(value),
         Err(e) => {
             let err = anyhow!(
