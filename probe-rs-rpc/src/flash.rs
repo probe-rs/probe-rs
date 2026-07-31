@@ -12,6 +12,7 @@ pub struct DownloadOptions {
     pub verify: bool,
     pub disable_double_buffering: bool,
     pub preferred_algos: Vec<String>,
+    pub ram_chunk_size: Option<u64>,
 }
 
 impl DownloadOptions {
@@ -103,6 +104,7 @@ pub enum Operation {
     Erase,
     Program,
     Verify,
+    Ram,
 }
 
 #[derive(Clone, Serialize, Deserialize, Schema)]

@@ -458,6 +458,7 @@ pub async fn flash(
         verify: download_options.verify,
         disable_double_buffering: download_options.disable_double_buffering,
         preferred_algos: download_options.prefer_flash_algorithm,
+        ram_chunk_size: download_options.ram_chunk_size,
     };
 
     options.sanitize();

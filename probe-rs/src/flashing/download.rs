@@ -136,6 +136,8 @@ pub struct DownloadOptions<'p> {
     /// If there are multiple valid flash algorithms for a memory region, this list allows
     /// overriding the default selection.
     pub preferred_algos: Vec<String>,
+    /// RAM chunk size relevant for loading into RAM. [None] disables the chunking.
+    pub ram_chunk_size: Option<u64>,
 }
 
 impl DownloadOptions<'_> {

@@ -286,6 +286,7 @@ pub(crate) mod convert {
             flashing::ProgressOperation::Erase => Operation::Erase,
             flashing::ProgressOperation::Program => Operation::Program,
             flashing::ProgressOperation::Verify => Operation::Verify,
+            flashing::ProgressOperation::Ram => Operation::Ram,
         }
     }
 

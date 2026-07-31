@@ -66,6 +66,12 @@ pub struct BinaryDownloadOptions {
         help_heading = "PROBE CONFIGURATION"
     )]
     pub prefer_flash_algorithm: Vec<String>,
+
+    /// Chunk size, in bytes, for writing data directly to RAM.
+    ///
+    /// If unset, each RAM region is written in one go, so progress jumps straight to 100%.
+    #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    pub ram_chunk_size: Option<u64>,
 }
 
 /// Supported bit-widths for read/write commands (not every device may support each width).
