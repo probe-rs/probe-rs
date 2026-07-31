@@ -187,29 +187,28 @@ impl JtagAdapter {
 
         let expected_bits = std::mem::take(&mut self.in_bit_counts);
         let reply_slots = expected_bits.len();
-        let mut reply = Vec::with_capacity(reply_slots);
-        while reply.len() < reply_slots {
+
+        // Read the exact number of bytes that the commands make. A read of more bytes gets only a
+        // status message from the device, and the device sends a status message only one time in
+        // each period of the latency timer. Such a read is therefore very slow.
+        let mut reply = vec![0; reply_slots];
+        let mut received = 0;
+        while received < reply_slots {
             let read = self
                 .device
-                .read_to_end(&mut reply)
+                .read(&mut reply[received..])
                 .map_err(FtdiError::from)?;
+
+            received += read;
 
             if read > 0 {
                 t0 = Instant::now();
             }
 
             if t0.elapsed() > timeout {
-                tracing::warn!("Read {} bytes, expected {}", reply.len(), reply_slots);
+                tracing::warn!("Read {} bytes, expected {}", received, reply_slots);
                 return Err(DebugProbeError::Timeout);
             }
-        }
-
-        if reply.len() != reply_slots {
-            return Err(DebugProbeError::Other(format!(
-                "Read more data than expected. Expected {} bytes, got {} bytes",
-                reply_slots,
-                reply.len()
-            )));
         }
 
         for (byte, count) in reply.into_iter().zip(expected_bits) {
