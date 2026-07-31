@@ -1,14 +1,19 @@
 use bitvec::prelude::*;
-use nusb::{DeviceInfo, MaybeFuture, descriptors::TransferType, transfer::Direction};
+use nusb::{
+    DeviceInfo, Endpoint, MaybeFuture,
+    descriptors::TransferType,
+    transfer::{Bulk, Direction, In, Out},
+};
 use std::{
     fmt::Debug,
+    io,
     time::{Duration, Instant},
 };
 
 use probe_rs::probe::{
     DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError, ProbeError,
     list::{ProbeListItem, usb_probe_accessibility},
-    usb_util::InterfaceExt,
+    usb_util::{BulkReadExt, BulkWriteExt},
 };
 
 use super::EspUsbJtagFactory;
@@ -53,8 +58,8 @@ pub enum EspError {
 impl ProbeError for EspError {}
 
 pub(super) struct ProtocolHandler {
-    // The USB device handle.
-    device_handle: nusb::Interface,
+    // The USB device handle. The driver keeps this handle while it uses the endpoints.
+    _device_handle: nusb::Interface,
 
     /// The command in the queue and their additional repetitions.
     /// For now we do one command at a time.
@@ -68,8 +73,10 @@ pub(super) struct ProtocolHandler {
     response: BitVec,
     pending_in_bits: usize,
 
-    ep_out: u8,
-    ep_in: u8,
+    /// The bulk endpoints. The driver claims them one time. A transfer therefore does not have
+    /// the cost to open and to close an endpoint.
+    ep_out: Endpoint<Bulk, Out>,
+    ep_in: Endpoint<Bulk, In>,
 
     pub(crate) base_speed_khz: u32,
     pub(crate) div_min: u16,
@@ -82,8 +89,6 @@ impl Debug for ProtocolHandler {
             .field("command_queue", &self.command_queue)
             .field("output_buffer", &self.output_buffer)
             .field("response", &self.response)
-            .field("ep_out", &self.ep_out)
-            .field("ep_in", &self.ep_in)
             .field("base_speed_khz", &self.base_speed_khz)
             .field("div_min", &self.div_min)
             .field("div_max", &self.div_max)
@@ -233,8 +238,15 @@ impl ProtocolHandler {
 
         tracing::debug!("Successfully attached to ESP USB JTAG.");
 
+        let ep_out = iface
+            .endpoint::<Bulk, Out>(ep_out)
+            .map_err(|e| ProbeCreationError::Usb(io::Error::from(e)))?;
+        let ep_in = iface
+            .endpoint::<Bulk, In>(ep_in)
+            .map_err(|e| ProbeCreationError::Usb(io::Error::from(e)))?;
+
         let mut this = Self {
-            device_handle: iface,
+            _device_handle: iface,
             command_queue: None,
             output_buffer: Vec::with_capacity(OUT_EP_BUFFER_SIZE),
             half_byte_used: false,
@@ -254,9 +266,9 @@ impl ProtocolHandler {
         let start_flushing = Instant::now();
         let flush_ep = |this: &mut Self| {
             let mut incoming = [0; IN_EP_BUFFER_SIZE];
-            let read_bulk =
-                this.device_handle
-                    .read_bulk(this.ep_in, &mut incoming, Duration::from_millis(100));
+            let read_bulk = this
+                .ep_in
+                .read_bulk(&mut incoming, Duration::from_millis(100));
 
             // Stop after half a second, if we silently didn't succeed don't loop indefinitely
             if start_flushing.elapsed() > Duration::from_millis(500) {
@@ -473,8 +485,8 @@ impl ProtocolHandler {
 
         while !commands.is_empty() {
             let bytes = self
-                .device_handle
-                .write_bulk(self.ep_out, commands, USB_TIMEOUT)
+                .ep_out
+                .write_bulk(commands, USB_TIMEOUT)
                 .map_err(DebugProbeError::Usb)?;
 
             commands = &commands[bytes..];
@@ -503,8 +515,8 @@ impl ProtocolHandler {
         let mut incoming = [0; IN_EP_BUFFER_SIZE];
 
         let read_bytes = self
-            .device_handle
-            .read_bulk(self.ep_in, &mut incoming, USB_TIMEOUT)
+            .ep_in
+            .read_bulk(&mut incoming, USB_TIMEOUT)
             .map_err(|e| {
                 tracing::warn!(
                     "Something went wrong in read_bulk {:?} when trying to read {}bytes - pending_in_bits: {}",
