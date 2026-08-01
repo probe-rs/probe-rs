@@ -64,7 +64,7 @@ impl Display for SourceLocation {
 }
 
 /// Path-based stack trace for generic CLI callers. Parses DWARF from `path`
-/// on each request and does not use session [`ServerDebugState`].
+/// on each request and does not use session `ServerDebugState`.
 #[derive(Serialize, Deserialize, Schema)]
 pub struct TakeStackTraceRequest {
     pub sessid: Key<Session>,
@@ -73,7 +73,7 @@ pub struct TakeStackTraceRequest {
 }
 
 /// Session-owned rich stack trace for DAP and other server-state consumers.
-/// Requires preloaded [`ServerDebugState`] via [`load_debug_info`]; never
+/// Requires preloaded `ServerDebugState` via `load_debug_info`; never
 /// accepts or parses a binary path.
 #[derive(Serialize, Deserialize, Schema)]
 pub struct TakeRichStackTraceRequest {

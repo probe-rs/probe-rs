@@ -1,11 +1,12 @@
 use postcard_rpc::header::VarHeader;
-pub use probe_rs_rpc::probe::{
+use probe_rs_rpc::probe::{
     AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, ListProbesResponse,
     SelectProbeRequest, SelectProbeResponse, SelectProbeResult, WireProtocol,
 };
 
-use crate::rpc::functions::{RpcContext, RpcResult, convert::lift};
+use crate::rpc::functions::{RpcContext, convert::lift};
 use crate::util::common_options::{OperationError, ProbeOptions};
+use probe_rs_rpc::RpcResult;
 
 pub fn list_probes(ctx: &mut RpcContext, _header: VarHeader, _request: ()) -> ListProbesResponse {
     let lister = ctx.lister();

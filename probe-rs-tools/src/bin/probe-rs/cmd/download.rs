@@ -2,10 +2,10 @@ use std::path::PathBuf;
 
 use crate::rpc::client::RpcClient;
 
-use crate::rpc::functions::format::FormatOptions;
 use crate::util::cli;
 use crate::util::common_options::BinaryDownloadOptions;
 use crate::util::common_options::ProbeOptions;
+use probe_rs_rpc::format::FormatOptions;
 
 #[derive(clap::Parser)]
 pub struct Cmd {

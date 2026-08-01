@@ -7,7 +7,7 @@ use crate::probe::{DebugProbeEntry, WireProtocol};
 use crate::{Key, RpcResult, Session};
 
 /// Session-scoped target description fields the DAP RPC client needs without
-/// mirroring the full server [`probe_rs::Target`] in its local registry.
+/// mirroring the full server `probe_rs::Target` in its local registry.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Schema)]
 pub struct WireSessionTargetMetadata {
     pub target_name: String,

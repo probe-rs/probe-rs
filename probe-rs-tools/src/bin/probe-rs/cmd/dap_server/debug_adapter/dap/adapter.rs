@@ -17,7 +17,6 @@ use crate::cmd::dap_server::{
         session_data::{ActiveBreakpoint, BreakpointType, SessionData, SourceLocationScope},
     },
 };
-use crate::rpc::functions::breakpoints::SourceBreakpointLocation;
 use anyhow::{Context, Result, anyhow};
 use base64::{Engine as _, engine::general_purpose as base64_engine};
 use dap_types::*;
@@ -30,6 +29,7 @@ use probe_rs_debug::{
     ColumnType, ObjectRef, SourceLocation, SteppingMode, VerifiedBreakpoint,
     registers::{DebugRegister, DebugRegisters},
 };
+use probe_rs_rpc::breakpoints::SourceBreakpointLocation;
 use probe_rs_rpc::rtt_config::DataFormat;
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;

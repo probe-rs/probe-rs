@@ -5,17 +5,16 @@ use probe_rs::{
     InstructionSet,
     flashing::{self, FileDownloadError, FlashProgress},
 };
-pub use probe_rs_rpc::flash::{
-    BootInfo, BootRequest, BuildRequest, BuildResponse, BuildResult, DownloadOptions, EraseCommand,
-    EraseRequest, FlashLayout, FlashRequest, Operation, ProgressEvent, VerifyRequest,
-    VerifyResponse, VerifyResult,
+use probe_rs_rpc::flash::{
+    BootInfo, BootRequest, BuildRequest, BuildResponse, BuildResult, EraseCommand, EraseRequest,
+    FlashRequest, Operation, ProgressEvent, VerifyRequest, VerifyResponse, VerifyResult,
 };
 use tokio::sync::mpsc::Sender;
 
-use probe_rs_rpc::ProgressEventTopic;
+use probe_rs_rpc::{NoResponse, ProgressEventTopic};
 
 use crate::{
-    rpc::functions::{NoResponse, RpcContext, RpcSpawnContext, convert::lift},
+    rpc::functions::{RpcContext, RpcSpawnContext, convert::lift},
     util::flash::build_loader,
 };
 

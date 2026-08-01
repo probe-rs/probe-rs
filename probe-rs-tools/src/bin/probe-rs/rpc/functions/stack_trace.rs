@@ -5,7 +5,7 @@ use probe_rs::{CoreInterface, Error};
 use probe_rs_debug::{
     DebugInfo, DebugRegisters, StackFrame, VariableCache, exception_handler_for_core,
 };
-pub use probe_rs_rpc::stack_trace::{
+use probe_rs_rpc::stack_trace::{
     LoadDebugInfoRequest, LoadDebugInfoResponse, RichStackTrace, RichStackTraceFrame,
     RichStackTraces, SourceLocation, StackTrace, StackTraceFrame, StackTraces,
     TakeRichStackTraceRequest, TakeRichStackTraceResponse, TakeStackTraceRequest,
@@ -40,7 +40,7 @@ pub async fn load_debug_info(
 async fn unwind_all_cores(
     ctx: &mut RpcContext,
     request: &TakeStackTraceRequest,
-) -> crate::rpc::functions::RpcResult<Vec<(u32, Vec<StackTraceFrame>)>> {
+) -> probe_rs_rpc::RpcResult<Vec<(u32, Vec<StackTraceFrame>)>> {
     let mut session = ctx.session(request.sessid).await;
 
     let Some(debug_info) = DebugInfo::from_file(&request.path).ok() else {

@@ -4,7 +4,7 @@ use std::num::NonZeroU32;
 use std::time::Duration;
 
 use postcard_rpc::header::VarHeader;
-pub use probe_rs_rpc::core_ops::{
+use probe_rs_rpc::core_ops::{
     CoreAccessRequest, CoreBreakpointsRequest, CoreDumpRequest, CoreHaltRequest,
     CoreReadRegistersRequest, CoreVectorCatchRequest, CoreWriteRegRequest,
     HandleSemihostingRequest, HandleSemihostingResponse, HandleSemihostingResult, StepRequest,
@@ -22,7 +22,8 @@ use probe_rs::{
 use probe_rs_debug::DebugError;
 
 use crate::rpc::debug_state::{CoreSemihostingState, SemihostingFile};
-use crate::rpc::functions::{NoResponse, RpcContext, RpcError, RpcResult, convert::lift};
+use crate::rpc::functions::{RpcContext, convert::lift};
+use probe_rs_rpc::{NoResponse, RpcError, RpcResult};
 
 macro_rules! probe_rs_try {
     ($e:expr) => {

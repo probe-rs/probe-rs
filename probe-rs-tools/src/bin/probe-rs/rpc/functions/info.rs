@@ -23,18 +23,18 @@ use probe_rs::{
     },
     probe::{Probe, wlink::WchLink},
 };
-pub use probe_rs_rpc::info::{
+use probe_rs_rpc::info::{
     ApInfo, ComponentTreeNode, DebugPortId, DebugPortInfo, DebugPortInfoNode, DebugPortVersion,
     DpAddress, FullyQualifiedApAddress, InfoEvent, MinDpSupport, TargetInfoRequest,
     TargetMetadataRequest, WireSessionCore, WireSessionTargetMetadata,
 };
-use probe_rs_rpc::{TargetInfoDataTopic, probe::WireProtocol};
+use probe_rs_rpc::{NoResponse, TargetInfoDataTopic, probe::WireProtocol};
 use probe_rs_target::ScanChainElement;
 
 use crate::rpc::functions::core_ops::convert::to_wire_core_type;
 use crate::rpc::functions::probe::convert::from_wire_protocol;
 use crate::{
-    rpc::functions::{NoResponse, RpcContext, convert::lift},
+    rpc::functions::{RpcContext, convert::lift},
     util::common_options::ProbeOptions,
 };
 

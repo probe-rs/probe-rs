@@ -1,9 +1,8 @@
 use postcard_rpc::header::VarHeader;
 use probe_rs_debug::TypedPath;
-pub use probe_rs_rpc::breakpoints::{
+use probe_rs_rpc::breakpoints::{
     BreakpointResolution, ResolveSourceBreakpointsRequest, ResolveSourceBreakpointsResponse,
-    ResolveSourceLocationsRequest, ResolveSourceLocationsResponse, SourceBreakpointLocation,
-    WireSourceLocation,
+    ResolveSourceLocationsRequest, ResolveSourceLocationsResponse,
 };
 
 use crate::rpc::functions::RpcContext;

@@ -1,6 +1,6 @@
 use crate::cmd::dap_server::debug_adapter::dap::request_helpers::disassemble_target_memory;
 use postcard_rpc::header::VarHeader;
-pub use probe_rs_rpc::disassemble::{
+use probe_rs_rpc::disassemble::{
     DisassembleRequest, DisassembleResponse, WireDisassembledInstruction, WireSource,
 };
 

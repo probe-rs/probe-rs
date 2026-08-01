@@ -105,7 +105,7 @@ pub enum WireHaltReason {
 }
 
 /// Reduced breakpoint cause that does not embed the full
-/// [`SemihostingCommand`] payload. The DAP backend only needs to know that a
+/// `SemihostingCommand` payload. The DAP backend only needs to know that a
 /// semihosting halt occurred; the server handles the command via the
 /// monitor/event channels.
 #[derive(Debug, Serialize, Deserialize, Schema, Copy, Clone, PartialEq, Eq)]
@@ -121,7 +121,7 @@ pub enum WireBreakpointCause {
 
 /// Classification of a semihosting command carried over the wire.
 ///
-/// The full [`SemihostingCommand`] payload carries pointers into target
+/// The full `SemihostingCommand` payload carries pointers into target
 /// memory and cannot be transported over RPC on its own. We specialise the
 /// variants the DAP backend actually needs on the client side:
 ///
@@ -129,10 +129,10 @@ pub enum WireBreakpointCause {
 ///   "Application has exited with …" message.
 /// * [`Self::GetCommandLine`] carries the target address of the command-line
 ///   block so the client can reconstruct a real
-///   [`probe_rs::semihosting::GetCommandLineRequest`] (via
-///   [`Buffer::from_block_at`](probe_rs::semihosting::Buffer::from_block_at))
+///   `probe_rs::semihosting::GetCommandLineRequest` (via
+///   `Buffer::from_block_at` in `probe_rs::semihosting::Buffer`)
 ///   and drive the `write_command_line_to_target` handshake through the
-///   regular [`probe_rs::CoreInterface`] / memory RPCs.
+///   regular `probe_rs::CoreInterface` / memory RPCs.
 ///
 /// Everything else is surfaced as [`Self::Other`]; the server still handles
 /// its target-memory interactions locally.
@@ -144,7 +144,7 @@ pub enum WireSemihostingCommand {
     Other,
 }
 
-/// Plain-old-data copy of [`ExitErrorDetails`] for the wire.
+/// Plain-old-data copy of `ExitErrorDetails` for the wire.
 #[derive(Debug, Serialize, Deserialize, Schema, Copy, Clone, PartialEq, Eq)]
 pub struct WireExitErrorDetails {
     pub reason: u32,
@@ -205,7 +205,7 @@ pub struct CoreDumpRequest {
     pub ranges: Vec<Range<u64>>,
 }
 
-/// Wire form of [`probe_rs::CoreDump`]. The client reconstructs a `CoreDump`
+/// Wire form of `probe_rs::CoreDump`. The client reconstructs a `CoreDump`
 /// from these fields.
 #[derive(Serialize, Deserialize, Schema, Clone)]
 pub struct WireCoreDump {

@@ -1,10 +1,11 @@
 use crate::{
-    rpc::functions::{NoResponse, RpcContext, convert::lift},
+    rpc::functions::{RpcContext, convert::lift},
     util::rtt::RttConfig,
 };
 use postcard_rpc::header::VarHeader;
 use probe_rs::rtt;
-pub use probe_rs_rpc::rtt_client::{
+use probe_rs_rpc::NoResponse;
+use probe_rs_rpc::rtt_client::{
     CreateRttClientRequest, CreateRttClientResponse, PollRttUpRequest, PollRttUpResponse,
     RttChannelMeta, RttChannelRequest, RttChannels, RttChannelsResponse, RttClientData,
     RttDownRequest, RttPollResult, ScanRegion,

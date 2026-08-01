@@ -62,7 +62,6 @@ pub mod debug_vars;
 pub mod disassemble;
 pub mod file;
 pub mod flash;
-pub mod format;
 pub mod info;
 pub mod memory;
 pub mod monitor;
@@ -70,11 +69,8 @@ pub mod probe;
 pub mod reset;
 pub mod resume;
 pub mod rtt_client;
-pub mod semihosting_options;
 pub mod stack_trace;
 pub mod test;
-
-pub use probe_rs_rpc::{NoResponse, RpcError, RpcResult};
 
 #[derive(Clone)]
 pub struct RpcSpawnContext {
@@ -572,8 +568,8 @@ impl RpcApp {
 }
 
 pub(crate) mod convert {
-    use super::{RpcError, RpcResult};
     use crate::util::common_options::OperationError;
+    use probe_rs_rpc::{RpcError, RpcResult};
 
     pub(crate) fn rpc_error_anyhow(e: anyhow::Error) -> RpcError {
         format!("{e:?}").into()

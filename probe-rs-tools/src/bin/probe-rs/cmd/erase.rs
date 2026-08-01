@@ -1,7 +1,8 @@
 use crate::{
-    rpc::{client::RpcClient, functions::flash::EraseCommand},
+    rpc::client::RpcClient,
     util::{cli, common_options::ProbeOptions, flash::CliProgressBars},
 };
+use probe_rs_rpc::flash::EraseCommand;
 
 #[derive(clap::Parser)]
 pub struct Cmd {

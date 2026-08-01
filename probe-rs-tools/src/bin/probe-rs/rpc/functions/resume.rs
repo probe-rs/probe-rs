@@ -1,7 +1,8 @@
 use postcard_rpc::header::VarHeader;
-pub use probe_rs_rpc::resume::ResumeAllCoresRequest;
+use probe_rs_rpc::resume::ResumeAllCoresRequest;
 
-use crate::rpc::functions::{NoResponse, RpcContext, convert::lift};
+use crate::rpc::functions::{RpcContext, convert::lift};
+use probe_rs_rpc::NoResponse;
 
 pub async fn resume_all_cores(
     ctx: &mut RpcContext,

@@ -23,27 +23,11 @@ use tokio_util::sync::CancellationToken;
 use crate::cmd::run::{EmbeddedTestElfInfo, MonitoringOptions};
 use crate::rpc::Key;
 use crate::rpc::RttClient;
-use crate::rpc::functions::format::FormatOptions;
-use crate::rpc::functions::monitor::{ChannelInfo, MonitorExitReason};
+use crate::rpc::client::{MonitorEvent, RpcClient, SessionInterface};
 use crate::rpc::functions::probe::convert::{
     from_wire_debug_probe_selector, to_wire_debug_probe_selector, to_wire_protocol,
 };
-use crate::rpc::functions::semihosting_options::SemihostingOptions;
-use crate::rpc::functions::stack_trace::StackTraceFrame;
 use crate::rpc::utils::run_loop::VectorCatchConfig;
-use crate::rpc::{
-    client::{MonitorEvent, RpcClient, SessionInterface},
-    functions::{
-        flash::{BootInfo, DownloadOptions, FlashLayout, ProgressEvent, VerifyResult},
-        monitor::{MonitorMode, MonitorOptions, RttEvent, SemihostingEvent},
-        probe::{
-            AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, SelectProbeResult,
-        },
-        rtt_client::ScanRegion,
-        stack_trace::StackTrace,
-        test::{Test, TestResult},
-    },
-};
 use crate::util::pwr::power_reset;
 use crate::util::{
     common_options::{BinaryDownloadOptions, ProbeOptions},
@@ -52,7 +36,19 @@ use crate::util::{
     rtt::{DefmtProcessor, DefmtState, RttDecoder},
 };
 use probe_rs_rpc::CancelTopic;
+use probe_rs_rpc::flash::{BootInfo, DownloadOptions, FlashLayout, ProgressEvent, VerifyResult};
+use probe_rs_rpc::format::FormatOptions;
+use probe_rs_rpc::monitor::{ChannelInfo, MonitorExitReason};
+use probe_rs_rpc::monitor::{MonitorMode, MonitorOptions, RttEvent, SemihostingEvent};
+use probe_rs_rpc::probe::{
+    AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, SelectProbeResult,
+};
+use probe_rs_rpc::rtt_client::ScanRegion;
 use probe_rs_rpc::rtt_config::RttChannelConfig;
+use probe_rs_rpc::semihosting_options::SemihostingOptions;
+use probe_rs_rpc::stack_trace::StackTrace;
+use probe_rs_rpc::stack_trace::StackTraceFrame;
+use probe_rs_rpc::test::{Test, TestResult};
 
 type TargetOutputFiles = std::collections::HashMap<ChannelIdentifier, tokio::fs::File>;
 

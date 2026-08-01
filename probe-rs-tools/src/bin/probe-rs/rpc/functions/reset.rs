@@ -1,8 +1,9 @@
 use postcard_rpc::header::VarHeader;
-pub use probe_rs_rpc::reset::{ResetCoreAndHaltRequest, ResetCoreRequest};
+use probe_rs_rpc::reset::{ResetCoreAndHaltRequest, ResetCoreRequest};
 
-use crate::rpc::functions::{NoResponse, RpcContext, RpcResult, convert::lift};
+use crate::rpc::functions::{RpcContext, convert::lift};
 use probe_rs_rpc::core_ops::WireCoreInformation;
+use probe_rs_rpc::{NoResponse, RpcResult};
 
 pub async fn reset(
     ctx: &mut RpcContext,

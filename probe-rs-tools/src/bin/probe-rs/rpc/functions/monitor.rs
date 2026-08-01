@@ -2,10 +2,7 @@ use std::time::Duration;
 
 use crate::rpc::{
     ObjectStorageSlot,
-    functions::{
-        MultiTopicPublisher, MultiTopicWriter, RpcSpawnContext, WireTxImpl,
-        semihosting_options::SemihostingOptions,
-    },
+    functions::{MultiTopicPublisher, MultiTopicWriter, RpcSpawnContext, WireTxImpl},
     utils::{
         run_loop::{ReturnReason, RunLoop, RunLoopPoller, VectorCatchConfig},
         semihosting::SemihostingFileManager,
@@ -14,10 +11,11 @@ use crate::rpc::{
 use anyhow::Context;
 use postcard_rpc::{header::VarHeader, server::Sender};
 use probe_rs::{BreakpointCause, Core, HaltReason, semihosting::SemihostingCommand};
-pub use probe_rs_rpc::monitor::{
-    ChannelInfo, MonitorExitReason, MonitorMode, MonitorOptions, MonitorRequest, RttEvent,
-    SemihostingEvent, SemihostingExitError,
+use probe_rs_rpc::monitor::{
+    ChannelInfo, MonitorExitReason, MonitorMode, MonitorRequest, RttEvent, SemihostingEvent,
+    SemihostingExitError,
 };
+use probe_rs_rpc::semihosting_options::SemihostingOptions;
 use probe_rs_rpc::{MonitorEndpoint, RttTopic, SemihostingTopic};
 use tokio::sync::mpsc::{self, error::SendError};
 use tokio_util::sync::CancellationToken;

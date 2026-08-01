@@ -14,14 +14,12 @@ use termtree::Tree;
 use crate::rpc::functions::chip::convert::from_wire_jep106_code;
 use crate::rpc::functions::probe::convert::{to_wire_debug_probe_selector, to_wire_protocol};
 use crate::{
-    rpc::{
-        client::RpcClient,
-        functions::info::{
-            ApInfo, ComponentTreeNode, DebugPortInfo, DebugPortInfoNode, DebugPortVersion,
-            InfoEvent, MinDpSupport, TargetInfoRequest,
-        },
-    },
+    rpc::client::RpcClient,
     util::{cli::select_probe, common_options::ProbeOptions},
+};
+use probe_rs_rpc::info::{
+    ApInfo, ComponentTreeNode, DebugPortInfo, DebugPortInfoNode, DebugPortVersion, InfoEvent,
+    MinDpSupport, TargetInfoRequest,
 };
 
 const JEP_ARM: JEP106Code = JEP106Code::new(4, 0x3b);

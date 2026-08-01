@@ -1,11 +1,11 @@
 use postcard_rpc::header::VarHeader;
 
-pub use probe_rs_rpc::chip::{
-    ChipData, ChipFamily, ChipInfoRequest, ChipInfoResponse, ListFamiliesResponse,
-    LoadChipFamilyRequest, MemoryRegion,
+use probe_rs_rpc::chip::{
+    ChipInfoRequest, ChipInfoResponse, ListFamiliesResponse, LoadChipFamilyRequest,
 };
 
-use crate::rpc::functions::{NoResponse, RpcContext, convert::lift};
+use crate::rpc::functions::{RpcContext, convert::lift};
+use probe_rs_rpc::NoResponse;
 
 pub async fn list_families(
     ctx: &mut RpcContext,

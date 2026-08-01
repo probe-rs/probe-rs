@@ -3,8 +3,8 @@ use std::time::Duration;
 use anyhow::Context;
 use postcard_rpc::{header::VarHeader, server::Sender};
 use probe_rs::{BreakpointCause, Core, HaltReason, semihosting::SemihostingCommand};
-pub use probe_rs_rpc::test::{
-    ListTestsRequest, RunTestRequest, Test, TestDefinition, TestDefinitions, TestKickoffRequest,
+use probe_rs_rpc::test::{
+    ListTestsRequest, RunTestRequest, Test, TestDefinitions, TestKickoffRequest,
     TestKickoffResponse, TestOutcome, TestResult, Tests,
 };
 
@@ -12,14 +12,15 @@ use crate::rpc::{
     functions::{
         RpcContext, RpcSpawnContext, WireTxImpl,
         convert::lift,
-        monitor::{MonitorSender, RttPoller, SemihostingEvent},
-        semihosting_options::SemihostingOptions,
+        monitor::{MonitorSender, RttPoller},
     },
     utils::{
         run_loop::{ReturnReason, RunLoop, VectorCatchConfig},
         semihosting::SemihostingFileManager,
     },
 };
+use probe_rs_rpc::monitor::SemihostingEvent;
+use probe_rs_rpc::semihosting_options::SemihostingOptions;
 use probe_rs_rpc::{ListTestsEndpoint, RunTestEndpoint};
 
 pub async fn list_tests(

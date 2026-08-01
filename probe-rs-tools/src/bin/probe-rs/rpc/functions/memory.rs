@@ -1,9 +1,10 @@
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
 use probe_rs::MemoryInterface;
-pub use probe_rs_rpc::memory::{ReadBytesRequest, ReadMemoryRequest, WriteMemoryRequest};
+use probe_rs_rpc::memory::{ReadBytesRequest, ReadMemoryRequest, WriteMemoryRequest};
 
-use crate::rpc::functions::{NoResponse, RpcContext, RpcResult, convert::lift};
+use crate::rpc::functions::{RpcContext, convert::lift};
+use probe_rs_rpc::{NoResponse, RpcResult};
 
 pub trait Word: Copy + Default + Send + Schema {
     fn read(

@@ -28,7 +28,7 @@ impl TryFrom<&str> for MemoryAddress {
     }
 }
 
-/// Arguments for custom [`RttWindowOpened`] request, so that VSCode can confirm once a specific RTT channel's window has opened.
+/// Arguments for custom [`RttWindowOpenedArguments`] request, so that VSCode can confirm once a specific RTT channel's window has opened.
 /// `probe-rs-debugger` will delay polling RTT channels until the data window has opened. This ensure no RTT data is lost on the client.
 #[derive(Clone, PartialEq, Eq, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]

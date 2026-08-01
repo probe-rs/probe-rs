@@ -1,9 +1,10 @@
 #[cfg(feature = "remote")]
 use anyhow::Context as _;
 use postcard_rpc::header::VarHeader;
-pub use probe_rs_rpc::file::{AppendFileRequest, CreateFileResponse, TempFile};
+use probe_rs_rpc::file::{AppendFileRequest, CreateFileResponse};
 
-use crate::rpc::functions::{NoResponse, RpcContext};
+use crate::rpc::functions::RpcContext;
+use probe_rs_rpc::NoResponse;
 
 #[cfg(feature = "remote")]
 use crate::rpc::functions::convert::lift;
@@ -23,7 +24,7 @@ pub async fn create_temp_file(
     tracing::info!("Created temporary file {}", path);
     let key = ctx.store_object(file).await;
 
-    Ok(TempFile { path, key })
+    Ok(probe_rs_rpc::file::TempFile { path, key })
 }
 
 #[cfg(not(feature = "remote"))]

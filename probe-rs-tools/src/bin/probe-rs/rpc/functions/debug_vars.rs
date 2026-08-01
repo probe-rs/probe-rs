@@ -2,13 +2,14 @@ use postcard_rpc::header::VarHeader;
 use probe_rs_debug::{
     DebugInfo, DebugRegisters, ObjectRef, StackFrameInfo, Variable, VariableCache, VariableName,
 };
-pub use probe_rs_rpc::debug_vars::{
+use probe_rs_rpc::debug_vars::{
     ClearCoreDebugStateRequest, EvaluateRequest, EvaluateResponse, LoadSvdRequest, LoadSvdResponse,
     ScopesRequest, ScopesResponse, SetVariableRequest, SetVariableResult, VariablesRequest,
     VariablesResponse, WireEvaluateResponse, WireScope, WireSetVariableResponse, WireVariable,
 };
 
-use crate::rpc::functions::{RpcContext, RpcResult, convert::lift};
+use crate::rpc::functions::{RpcContext, convert::lift};
+use probe_rs_rpc::RpcResult;
 
 /// Mirrors `request_helpers::get_variable_reference` for the server-side path.
 fn variable_reference(parent: &Variable, cache: &VariableCache) -> (ObjectRef, i64, i64) {

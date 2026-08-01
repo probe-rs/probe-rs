@@ -56,7 +56,7 @@ impl<T: Any + Send> ObjectStorageSlot<T> {
         })
     }
 
-    /// Blocking variant of [`get`]; only use in synchronous contexts.
+    /// Blocking variant of [`ObjectStorageSlot::get`]; only use in synchronous contexts.
     pub fn get_blocking(&self) -> impl DerefMut<Target = T> + Send + use<T> {
         let guard = self.obj.clone().blocking_lock_owned();
         tokio::sync::OwnedMutexGuard::map(guard, |e: &mut (dyn Any + Send)| {

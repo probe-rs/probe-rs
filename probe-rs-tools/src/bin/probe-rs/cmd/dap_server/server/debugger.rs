@@ -17,15 +17,12 @@ use crate::{
         },
         server::configuration::SessionConfig,
     },
-    rpc::{
-        client::RpcClient,
-        functions::flash::{Operation, ProgressEvent as WireProgressEvent},
-        upload_cache::ResolvedUpload,
-    },
+    rpc::{client::RpcClient, upload_cache::ResolvedUpload},
 };
 use anyhow::{Context, anyhow};
 use probe_rs::CoreStatus;
 use probe_rs_debug::DebugInfo;
+use probe_rs_rpc::flash::{Operation, ProgressEvent as WireProgressEvent};
 use std::{collections::HashMap, path::Path, time::Duration};
 use time::UtcOffset;
 
@@ -84,8 +81,8 @@ pub struct Debugger {
     /// Session-scoped temporary directory holding files uploaded by the DAP client when running
     /// in `remote_server_mode` (program binary, SVD file, chip description).
     ///
-    /// Created at the start of each remote-mode session (in [`Self::launch`]) and dropped at the
-    /// end of that session (in [`Self::debug_session`]); `None` in local mode and between
+    /// Created at the start of each remote-mode session (in [`Self::handle_launch_attach`]) and dropped at the
+    /// end of that session (in [`Self::debug_session_impl`]); `None` in local mode and between
     /// sessions in TCP multi-session mode.
     uploaded_files: Option<UploadedFiles>,
 }
@@ -381,9 +378,9 @@ impl Debugger {
     }
 
     /// RPC entry point for the DAP server. Drives the session against an
-    /// [`RpcBackend`] wired up around the provided [`RpcClient`] (and its
-    /// ambient tokio runtime). The chip registry of the server that `client`
-    /// talks to supplies the target descriptions.
+    /// [`crate::cmd::dap_server::backend::rpc::RpcBackend`] wired up around the
+    /// provided [`RpcClient`] (and its ambient tokio runtime). The chip registry
+    /// of the server that `client` talks to supplies the target descriptions.
     pub(crate) async fn debug_session_rpc(
         &mut self,
         client: &RpcClient,
@@ -571,8 +568,8 @@ impl Debugger {
 
         // Always start each session with a fresh upload area: drop any [`UploadedFiles`] left
         // over from a previous session that did not unwind cleanly (e.g. one that panicked
-        // before [`Self::debug_session`] could run its end-of-session cleanup). In the normal
-        // case there is nothing to drop here — `debug_session` already cleared it.
+        // before [`Self::debug_session_impl`] could run its end-of-session cleanup). In the normal
+        // case there is nothing to drop here — `debug_session_impl` already cleared it.
         self.uploaded_files = None;
 
         // In `remote_server_mode`, decode any client-supplied file payloads (program binary, SVD,
