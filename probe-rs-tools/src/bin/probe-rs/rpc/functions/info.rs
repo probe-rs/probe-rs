@@ -2,43 +2,18 @@
 //!
 //! The information is passed as a stream of messages to the provided emitter.
 
-use anyhow::anyhow;
 use postcard_rpc::header::{VarHeader, VarSeq};
 use postcard_schema::{Schema, schema};
-use probe_rs::{
-    Session,
-    architecture::{
-        arm::{
-            self, ApAddress, ApV2Address, ArmDebugInterface,
-            ap::{ApClass, ApRegister, IDR},
-            component::Scs,
-            dp::{self, Ctrl, DLPIDR, DPIDR, DpRegister, TARGETID},
-            memory::{
-                ArmMemoryInterface, Component, ComponentId, CoresightComponent, PeripheralType,
-                romtable::{PeripheralID, RomTable},
-            },
-            sequences::DefaultArmSequence,
-        },
-        xtensa::communication_interface::{
-            XtensaCommunicationInterface, XtensaDebugInterfaceState,
-        },
-    },
-    probe::{Probe, WireProtocol as ProbeRsWireProtocol, wlink::WchLink},
-};
-use probe_rs_target::ScanChainElement;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    rpc::{
-        Key,
-        functions::{
-            NoResponse, RpcContext, TargetInfoDataTopic, TargetMetadataResponse,
-            chip::JEP106Code,
-            core_ops::WireCoreType,
-            probe::{DebugProbeEntry, WireProtocol},
-        },
+use crate::rpc::{
+    Key,
+    functions::{
+        NoResponse, RpcContext, TargetInfoDataTopic, TargetMetadataResponse,
+        chip::JEP106Code,
+        core_ops::WireCoreType,
+        probe::{DebugProbeEntry, WireProtocol},
     },
-    util::common_options::ProbeOptions,
 };
 
 /// Session-scoped target description fields the DAP RPC client needs without
@@ -61,27 +36,6 @@ pub struct TargetMetadataRequest {
     pub sessid: Key<Session>,
 }
 
-pub async fn target_metadata(
-    ctx: &mut RpcContext,
-    _hdr: VarHeader,
-    request: TargetMetadataRequest,
-) -> TargetMetadataResponse {
-    let session = ctx.session(request.sessid).await;
-    let target = session.target();
-    Ok(WireSessionTargetMetadata {
-        target_name: target.name.clone(),
-        default_format: target.default_format.clone(),
-        cores: session
-            .list_cores()
-            .into_iter()
-            .map(|(index, core_type)| WireSessionCore {
-                index: index as u32,
-                core_type: core_type.into(),
-            })
-            .collect(),
-    })
-}
-
 #[derive(Serialize, Deserialize, Schema)]
 pub struct TargetInfoRequest {
     pub probe: DebugProbeEntry,
@@ -96,59 +50,6 @@ pub struct TargetInfoRequest {
     /// directly. For example, `[5]` specifies a single-TAP chain with IR length 5.
     #[serde(default)]
     pub scan_chain: Vec<u8>,
-}
-
-impl From<&TargetInfoRequest> for ProbeOptions {
-    fn from(request: &TargetInfoRequest) -> Self {
-        ProbeOptions {
-            chip: None,
-            chip_description_path: None,
-            protocol: match request.protocol {
-                WireProtocol::Jtag => Some(ProbeRsWireProtocol::Jtag),
-                WireProtocol::Swd => Some(ProbeRsWireProtocol::Swd),
-            },
-            non_interactive: true,
-            probe: Some(request.probe.selector().into()),
-            speed: request.speed,
-            connect_under_reset: request.connect_under_reset,
-            cycle_power: false,
-            dry_run: request.dry_run,
-            allow_erase_all: false,
-        }
-    }
-}
-
-pub async fn target_info(
-    ctx: &mut RpcContext,
-    _hdr: VarHeader,
-    request: TargetInfoRequest,
-) -> NoResponse {
-    let mut registry = ctx.registry().await;
-    let probe_options = ProbeOptions::from(&request).load(&mut registry)?;
-
-    let probe = probe_options.attach_probe(&ctx.lister())?;
-
-    if let Err(e) = try_show_info(
-        ctx,
-        probe,
-        request.scan_chain.clone(),
-        request.protocol,
-        probe_options.connect_under_reset(),
-        request.target_sel,
-    )
-    .await
-    {
-        ctx.publish::<TargetInfoDataTopic>(
-            VarSeq::Seq2(0),
-            &InfoEvent::Message(format!(
-                "Failed to identify target using protocol {}: {e:?}",
-                request.protocol
-            )),
-        )
-        .await?;
-    }
-
-    Ok(())
 }
 
 #[derive(Clone, Serialize, Deserialize, Schema)]
@@ -187,15 +88,6 @@ pub enum DpAddress {
     Multidrop(u32),
 }
 
-impl From<dp::DpAddress> for DpAddress {
-    fn from(address: dp::DpAddress) -> Self {
-        match address {
-            dp::DpAddress::Default => DpAddress::Default,
-            dp::DpAddress::Multidrop(target_sel) => DpAddress::Multidrop(target_sel),
-        }
-    }
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct DebugPortInfoNode {
     pub dp_info: DebugPortId,
@@ -218,21 +110,6 @@ pub struct DebugPortId {
     pub designer: JEP106Code,
 }
 
-impl From<&dp::DebugPortId> for DebugPortId {
-    fn from(id: &dp::DebugPortId) -> Self {
-        Self {
-            revision: id.revision,
-            part_no: id.part_no,
-            version: id.version.into(),
-            min_dp_support: match id.min_dp_support {
-                dp::MinDpSupport::NotImplemented => MinDpSupport::NotImplemented,
-                dp::MinDpSupport::Implemented => MinDpSupport::Implemented,
-            },
-            designer: id.designer.into(),
-        }
-    }
-}
-
 /// The version of the debug port.
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Serialize, Deserialize, Schema)]
 pub enum DebugPortVersion {
@@ -246,18 +123,6 @@ pub enum DebugPortVersion {
     DPv3,
     /// Some unsupported value was encountered!
     Unsupported(u8),
-}
-
-impl From<dp::DebugPortVersion> for DebugPortVersion {
-    fn from(version: dp::DebugPortVersion) -> Self {
-        match version {
-            dp::DebugPortVersion::DPv0 => DebugPortVersion::DPv0,
-            dp::DebugPortVersion::DPv1 => DebugPortVersion::DPv1,
-            dp::DebugPortVersion::DPv2 => DebugPortVersion::DPv2,
-            dp::DebugPortVersion::DPv3 => DebugPortVersion::DPv3,
-            dp::DebugPortVersion::Unsupported(v) => DebugPortVersion::Unsupported(v),
-        }
-    }
 }
 
 /// Specifies if pushed-find operations are implemented or not.
@@ -338,6 +203,85 @@ impl ComponentTreeNode {
     fn push(&mut self, child: impl Into<ComponentTreeNode>) {
         self.children.push(child.into());
     }
+}
+
+use anyhow::anyhow;
+use probe_rs::{
+    Session,
+    architecture::{
+        arm::{
+            self, ApAddress, ApV2Address, ArmDebugInterface,
+            ap::{ApClass, ApRegister, IDR},
+            component::Scs,
+            dp::{self, Ctrl, DLPIDR, DPIDR, DpRegister, TARGETID},
+            memory::{
+                ArmMemoryInterface, Component, ComponentId, CoresightComponent, PeripheralType,
+                romtable::{PeripheralID, RomTable},
+            },
+            sequences::DefaultArmSequence,
+        },
+        xtensa::communication_interface::{
+            XtensaCommunicationInterface, XtensaDebugInterfaceState,
+        },
+    },
+    probe::{Probe, WireProtocol as ProbeRsWireProtocol, wlink::WchLink},
+};
+use probe_rs_target::ScanChainElement;
+
+use crate::util::common_options::ProbeOptions;
+
+pub async fn target_metadata(
+    ctx: &mut RpcContext,
+    _hdr: VarHeader,
+    request: TargetMetadataRequest,
+) -> TargetMetadataResponse {
+    let session = ctx.session(request.sessid).await;
+    let target = session.target();
+    Ok(WireSessionTargetMetadata {
+        target_name: target.name.clone(),
+        default_format: target.default_format.clone(),
+        cores: session
+            .list_cores()
+            .into_iter()
+            .map(|(index, core_type)| WireSessionCore {
+                index: index as u32,
+                core_type: core_type.into(),
+            })
+            .collect(),
+    })
+}
+
+pub async fn target_info(
+    ctx: &mut RpcContext,
+    _hdr: VarHeader,
+    request: TargetInfoRequest,
+) -> NoResponse {
+    let mut registry = ctx.registry().await;
+    let probe_options = ProbeOptions::from(&request).load(&mut registry)?;
+
+    let probe = probe_options.attach_probe(&ctx.lister())?;
+
+    if let Err(e) = try_show_info(
+        ctx,
+        probe,
+        request.scan_chain.clone(),
+        request.protocol,
+        probe_options.connect_under_reset(),
+        request.target_sel,
+    )
+    .await
+    {
+        ctx.publish::<TargetInfoDataTopic>(
+            VarSeq::Seq2(0),
+            &InfoEvent::Message(format!(
+                "Failed to identify target using protocol {}: {e:?}",
+                request.protocol
+            )),
+        )
+        .await?;
+    }
+
+    Ok(())
 }
 
 async fn try_show_info(
@@ -924,6 +868,70 @@ async fn show_xtensa_info(
         },
     )
     .await
+}
+
+pub(crate) mod convert {
+    use super::{
+        DebugPortId, DebugPortVersion, DpAddress, MinDpSupport, TargetInfoRequest, WireProtocol,
+    };
+    use crate::util::common_options::ProbeOptions;
+    use probe_rs::{architecture::arm::dp, probe::WireProtocol as ProbeRsWireProtocol};
+
+    impl From<&TargetInfoRequest> for ProbeOptions {
+        fn from(request: &TargetInfoRequest) -> Self {
+            ProbeOptions {
+                chip: None,
+                chip_description_path: None,
+                protocol: match request.protocol {
+                    WireProtocol::Jtag => Some(ProbeRsWireProtocol::Jtag),
+                    WireProtocol::Swd => Some(ProbeRsWireProtocol::Swd),
+                },
+                non_interactive: true,
+                probe: Some(request.probe.selector().into()),
+                speed: request.speed,
+                connect_under_reset: request.connect_under_reset,
+                cycle_power: false,
+                dry_run: request.dry_run,
+                allow_erase_all: false,
+            }
+        }
+    }
+
+    impl From<dp::DpAddress> for DpAddress {
+        fn from(address: dp::DpAddress) -> Self {
+            match address {
+                dp::DpAddress::Default => DpAddress::Default,
+                dp::DpAddress::Multidrop(target_sel) => DpAddress::Multidrop(target_sel),
+            }
+        }
+    }
+
+    impl From<&dp::DebugPortId> for DebugPortId {
+        fn from(id: &dp::DebugPortId) -> Self {
+            Self {
+                revision: id.revision,
+                part_no: id.part_no,
+                version: id.version.into(),
+                min_dp_support: match id.min_dp_support {
+                    dp::MinDpSupport::NotImplemented => MinDpSupport::NotImplemented,
+                    dp::MinDpSupport::Implemented => MinDpSupport::Implemented,
+                },
+                designer: id.designer.into(),
+            }
+        }
+    }
+
+    impl From<dp::DebugPortVersion> for DebugPortVersion {
+        fn from(version: dp::DebugPortVersion) -> Self {
+            match version {
+                dp::DebugPortVersion::DPv0 => DebugPortVersion::DPv0,
+                dp::DebugPortVersion::DPv1 => DebugPortVersion::DPv1,
+                dp::DebugPortVersion::DPv2 => DebugPortVersion::DPv2,
+                dp::DebugPortVersion::DPv3 => DebugPortVersion::DPv3,
+                dp::DebugPortVersion::Unsupported(v) => DebugPortVersion::Unsupported(v),
+            }
+        }
+    }
 }
 
 #[cfg(test)]
