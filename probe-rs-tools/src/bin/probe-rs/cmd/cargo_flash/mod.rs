@@ -3,6 +3,7 @@ mod diagnostics;
 use anyhow::Context;
 use colored::Colorize;
 use diagnostics::render_diagnostics;
+use probe_rs::config::Registry;
 use std::ffi::OsString;
 use std::{path::PathBuf, process};
 
@@ -106,17 +107,16 @@ pub async fn main(args: Vec<OsString>, config: Config) -> anyhow::Result<()> {
     let terminate = run_app(connection_params, async |mut client| {
         let main_result = main_try(&mut client, opt).await;
 
-        let r = client.registry().await;
-
         match main_result {
             Ok(()) => Ok(false),
             Err(e) => {
+                let registry = Registry::from_builtin_families();
                 // Ensure stderr is flushed before calling process::exit,
                 // otherwise the process might panic, because it tries
                 // to access stderr during shutdown.
                 //
                 // We ignore the errors, not much we can do anyway.
-                render_diagnostics(&r, e);
+                render_diagnostics(&registry, e);
 
                 Ok(true)
             }
