@@ -1,7 +1,7 @@
 use super::{debugger::Debugger, rpc_lifetime::with_dap_rpc_connection};
 use crate::cmd::dap_server::debug_adapter::{dap::adapter::*, protocol::DapAdapter};
-use crate::rpc::client::{RemoteParams, RpcClient};
 use anyhow::{Context, Result};
+use probe_rs_rpc_client::{RemoteParams, RpcClient};
 use serde::Deserialize;
 use std::{
     fs,

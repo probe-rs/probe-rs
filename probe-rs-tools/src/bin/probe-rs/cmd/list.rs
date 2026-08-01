@@ -1,4 +1,4 @@
-use crate::rpc::client::RpcClient;
+use probe_rs_rpc_client::RpcClient;
 
 #[derive(clap::Parser)]
 pub struct Cmd {}

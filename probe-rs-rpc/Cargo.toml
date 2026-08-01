@@ -14,6 +14,7 @@ rust-version.workspace = true
 default = []
 clap = ["dep:clap", "dep:parse_int"]
 remote = ["dep:tokio-tungstenite", "dep:futures-util"]
+axum = ["dep:axum", "remote"]
 
 [dependencies]
 serde = { workspace = true }

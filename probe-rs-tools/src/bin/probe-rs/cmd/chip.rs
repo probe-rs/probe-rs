@@ -2,8 +2,8 @@ use std::io::Write;
 
 use bytesize::ByteSize;
 
-use crate::rpc::client::RpcClient;
 use probe_rs_rpc::chip::MemoryRegion;
+use probe_rs_rpc_client::RpcClient;
 
 #[derive(clap::Parser)]
 pub struct Cmd {

@@ -18,7 +18,7 @@ default-run = "probe-rs"
 [features]
 default = []
 # Include server/client functionality
-remote = ["dep:tokio-tungstenite", "dep:axum", "dep:rustls", "probe-rs-rpc/remote", "probe-rs-rpc/axum"]
+remote = ["dep:tokio-tungstenite", "dep:axum", "probe-rs-rpc/remote", "probe-rs-rpc/axum", "probe-rs-rpc-client/remote"]
 
 [dependencies]
 anyhow = { workspace = true }
@@ -107,15 +107,12 @@ probe-rs-mi.workspace = true
 probe-rs-target.workspace = true
 probe-rs-espressif.workspace = true
 probe-rs-rpc = { workspace = true, features = ["clap"] }
+probe-rs-rpc-client = { workspace = true }
 
 # Server-only
 tokio = { version = "1.0", features = ["full"] }
 tokio-util = { version = "0.7", features = ["codec"] }
 futures-util = { version = "0.3" }
-rustls = { version = "0.23", default-features = false, features = [
-    "std",
-    "ring",
-], optional = true }
 tokio-tungstenite = { version = "0.30", features = [
     "rustls-tls-webpki-roots",
 ], optional = true }

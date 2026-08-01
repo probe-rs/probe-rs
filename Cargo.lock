@@ -3184,6 +3184,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "probe-rs-rpc-client"
+version = "0.1.0"
+dependencies = [
+ "docsplay",
+ "futures-util",
+ "http",
+ "postcard",
+ "postcard-rpc",
+ "postcard-schema",
+ "probe-rs-rpc",
+ "rustls",
+ "serde",
+ "sha2 0.11.0",
+ "thiserror 2.0.19",
+ "tokio",
+ "tokio-tungstenite 0.30.0",
+ "tokio-util",
+ "tracing",
+]
+
+[[package]]
 name = "probe-rs-target"
 version = "0.32.0"
 dependencies = [
@@ -3248,11 +3269,11 @@ dependencies = [
  "probe-rs-linux",
  "probe-rs-mi",
  "probe-rs-rpc",
+ "probe-rs-rpc-client",
  "probe-rs-target",
  "ratatui",
  "regex",
  "rustix",
- "rustls",
  "rustyline-async",
  "sanitize-filename",
  "scroll",

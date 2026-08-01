@@ -5,24 +5,22 @@ use super::{
     startup::{TargetSessionType, get_file_timestamp},
     uploaded_files::UploadedFiles,
 };
-use crate::{
-    cmd::dap_server::{
-        DebuggerError,
-        debug_adapter::dap::{
-            adapter::{DebugAdapter, get_arguments},
-            dap_types::{
-                Capabilities, DisconnectResponse, Event, ExitedEventBody,
-                InitializeRequestArguments, MessageSeverity, Request, TerminatedEventBody,
-            },
+use crate::cmd::dap_server::{
+    DebuggerError,
+    debug_adapter::dap::{
+        adapter::{DebugAdapter, get_arguments},
+        dap_types::{
+            Capabilities, DisconnectResponse, Event, ExitedEventBody, InitializeRequestArguments,
+            MessageSeverity, Request, TerminatedEventBody,
         },
-        server::configuration::SessionConfig,
     },
-    rpc::{client::RpcClient, upload_cache::ResolvedUpload},
+    server::configuration::SessionConfig,
 };
 use anyhow::{Context, anyhow};
 use probe_rs::CoreStatus;
 use probe_rs_debug::DebugInfo;
 use probe_rs_rpc::flash::{Operation, ProgressEvent as WireProgressEvent};
+use probe_rs_rpc_client::{ResolvedUpload, RpcClient};
 use std::{collections::HashMap, path::Path, time::Duration};
 use time::UtcOffset;
 
@@ -1023,12 +1021,12 @@ mod test {
         server::configuration::{ConsoleLog, CoreConfig, FlashingConfig, SessionConfig},
         test::TestLister,
     };
-    use crate::rpc::client::RpcClient;
     use probe_rs::{
         architecture::arm::FullyQualifiedApAddress,
         integration::{FakeProbe, Operation},
         probe::{DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory},
     };
+    use probe_rs_rpc_client::RpcClient;
     use serde_json::json;
     use std::{
         collections::{BTreeMap, HashMap, VecDeque},

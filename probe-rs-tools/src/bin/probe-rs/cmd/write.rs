@@ -1,4 +1,4 @@
-use crate::rpc::client::RpcClient;
+use probe_rs_rpc_client::RpcClient;
 
 use crate::CoreOptions;
 use crate::util::common_options::{ProbeOptions, ReadWriteBitWidth, ReadWriteOptions};

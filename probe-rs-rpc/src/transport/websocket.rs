@@ -108,6 +108,7 @@ where
     }
 }
 
+#[cfg(feature = "axum")]
 // Sends length-prefixed binary messages to a websocket stream
 #[cfg(feature = "axum")]
 pub struct AxumWebsocketTx<S> {

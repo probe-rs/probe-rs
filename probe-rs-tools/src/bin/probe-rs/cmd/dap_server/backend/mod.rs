@@ -2,7 +2,7 @@
 //!
 //! The DAP server drives the target exclusively through [`rpc::RpcBackend`],
 //! which forwards every operation to a probe-rs RPC server via
-//! [`crate::rpc::client::RpcClient`] — including the in-process RPC server
+//! [`probe_rs_rpc_client::RpcClient`] — including the in-process RPC server
 //! used for local sessions, so the debugger never touches a
 //! [`probe_rs::Session`] directly.
 

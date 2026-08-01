@@ -23,7 +23,6 @@ use tokio_util::sync::CancellationToken;
 use crate::cmd::run::{EmbeddedTestElfInfo, MonitoringOptions};
 use crate::rpc::Key;
 use crate::rpc::RttClient;
-use crate::rpc::client::{MonitorEvent, RpcClient, SessionInterface};
 use crate::rpc::functions::probe::convert::{
     from_wire_debug_probe_selector, to_wire_debug_probe_selector, to_wire_protocol,
 };
@@ -49,6 +48,7 @@ use probe_rs_rpc::semihosting_options::SemihostingOptions;
 use probe_rs_rpc::stack_trace::StackTrace;
 use probe_rs_rpc::stack_trace::StackTraceFrame;
 use probe_rs_rpc::test::{Test, TestResult};
+use probe_rs_rpc_client::{MonitorEvent, RpcClient, SessionInterface};
 
 type TargetOutputFiles = std::collections::HashMap<ChannelIdentifier, tokio::fs::File>;
 

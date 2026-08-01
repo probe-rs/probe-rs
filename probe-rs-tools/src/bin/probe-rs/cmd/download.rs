@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::rpc::client::RpcClient;
+use probe_rs_rpc_client::RpcClient;
 
 use crate::util::cli;
 use crate::util::common_options::BinaryDownloadOptions;

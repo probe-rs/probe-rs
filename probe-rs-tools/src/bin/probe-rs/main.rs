@@ -22,9 +22,9 @@ use report::Report;
 use serde::{Deserialize, Serialize};
 use time::{OffsetDateTime, UtcOffset};
 
-use crate::rpc::client::{RemoteParams, RpcClient};
 use crate::rpc::functions::RpcApp;
 use crate::util::logging::setup_logging;
+use probe_rs_rpc_client::{RemoteParams, RpcClient};
 
 const MAX_LOG_FILES: usize = 20;
 
@@ -394,7 +394,12 @@ async fn run_app<R>(
     #[cfg(feature = "remote")]
     if let Some((host, token)) = connection_params {
         // Run the command remotely.
-        let client = rpc::client::connect(&host, token.as_deref()).await?;
+        let client = probe_rs_rpc_client::connect(
+            &host,
+            token.as_deref(),
+            &crate::util::meta::rpc_user_agent(),
+        )
+        .await?;
 
         return cb(client).await;
     }

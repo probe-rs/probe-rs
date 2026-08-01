@@ -1,6 +1,7 @@
 use probe_rs_mi::info::BasicDeviceInfo;
 
-use crate::{rpc::client::RpcClient, util::cli, util::common_options::ProbeOptions};
+use crate::{util::cli, util::common_options::ProbeOptions};
+use probe_rs_rpc_client::RpcClient;
 
 /// Attach to a probe and return the auto-detected chip name.
 ///

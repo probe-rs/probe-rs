@@ -1,7 +1,7 @@
 //! RPC backend for the DAP server.
 //!
 //! [`RpcBackend`] proxies all session/core operations to a probe-rs RPC
-//! server through [`crate::rpc::client::RpcClient`]. The DAP session loop is
+//! server through [`probe_rs_rpc_client::RpcClient`]. The DAP session loop is
 //! driven from a [`tokio::task::spawn_blocking`] task on a multi-threaded
 //! runtime, so async round trips can be `.await`ed directly — no
 //! `block_on`/`block_in_place` bridge is required.
@@ -16,7 +16,6 @@ use crate::cmd::dap_server::debug_adapter::dap::dap_types::{
 use crate::cmd::dap_server::server::configuration::FlashingConfig;
 use crate::rpc::{
     Key, Session,
-    client::{CoreInterface as RpcCoreClient, RpcClient, SessionInterface},
     functions::{
         breakpoints::convert::from_wire_source_location,
         core_ops::convert::{
@@ -46,6 +45,9 @@ use probe_rs_rpc::flash::{
 use probe_rs_rpc::info::WireSessionTargetMetadata;
 use probe_rs_rpc::stack_trace::{
     RichStackTraces, SourceLocation as WireSourceLocation, WireDebugRegister,
+};
+use probe_rs_rpc_client::{
+    CoreInterface as RpcCoreClient, ResolvedUpload, RpcClient, SessionInterface,
 };
 
 /// Convert an [`anyhow::Error`] coming out of the RPC client into the
@@ -800,7 +802,7 @@ impl RpcBackend {
 
     pub(crate) async fn flash_binary_resolved(
         &mut self,
-        upload: &crate::rpc::upload_cache::ResolvedUpload,
+        upload: &ResolvedUpload,
         config: &FlashingConfig,
         progress: &mut dyn FnMut(WireProgressEvent),
     ) -> Result<(), DebuggerError> {

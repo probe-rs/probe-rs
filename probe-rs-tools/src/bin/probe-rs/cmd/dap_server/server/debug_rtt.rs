@@ -1,10 +1,11 @@
 use crate::{
     cmd::dap_server::{DebuggerError, debug_adapter::dap::adapter::*},
-    rpc::{Key, RttClient, client::SessionInterface},
+    rpc::{Key, RttClient},
     util::rtt::RttDecoder,
 };
 use anyhow::anyhow;
 use probe_rs::rtt::Error as RttError;
+use probe_rs_rpc_client::SessionInterface;
 
 /// Per-channel result of a batched [`RemoteRttClient::poll_channels_remote`]
 /// call.

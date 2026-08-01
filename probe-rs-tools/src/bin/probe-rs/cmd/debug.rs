@@ -30,10 +30,10 @@ use crate::cmd::dap_server::server::configuration::CoreConfig;
 use crate::cmd::dap_server::server::configuration::FlashingConfig;
 use crate::cmd::dap_server::server::configuration::SessionConfig;
 use crate::cmd::dap_server::server::debugger::Debugger;
-use crate::rpc::client::RpcClient;
 use crate::util::cli::{Prompt, probe_rs_color_enabled};
 use crate::util::rtt::RttConfig;
 use crate::{CoreOptions, util::common_options::ProbeOptions};
+use probe_rs_rpc_client::RpcClient;
 
 use super::dap_server::debug_adapter::dap::dap_types::Request;
 use super::dap_server::debug_adapter::dap::dap_types::Response;
