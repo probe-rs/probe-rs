@@ -1446,27 +1446,41 @@ impl UnitInfo {
             return Ok(());
         }
 
-        let value = if let VariableLocation::Address(address) = child_variable.memory_location {
-            // NOTE: hard-coding value of variable.byte_size to 1 ... replace with code if necessary.
-            let mut buff = 0u8;
-            memory.read(address, std::slice::from_mut(&mut buff))?;
-            let this_enum_const_value = buff.to_string();
+        // Determine the underlying integer value of the enum from its location.
+        // It may live in memory (read a byte) or, at -Og/-O0, directly in a
+        // register (the location evaluation already carries the value).
+        let this_enum_const_value = match child_variable.memory_location {
+            VariableLocation::Address(address) => {
+                // NOTE: hard-coding value of variable.byte_size to 1 ... replace with code if necessary.
+                let mut buff = 0u8;
+                memory.read(address, std::slice::from_mut(&mut buff))?;
+                Some(buff.to_string())
+            }
+            VariableLocation::RegisterValue(register_value) => {
+                TryInto::<u64>::try_into(register_value)
+                    .ok()
+                    .map(|v| v.to_string())
+            }
+            _ => None,
+        };
 
-            let enumerator_value = match enumerator_values
-                .iter()
-                .find(|(_name, value)| value.to_string() == this_enum_const_value)
-            {
-                Some((name, _value)) => name,
-                None => &VariableName::Named("<Error: Unresolved enum value>".to_string()),
-            };
+        let value = match this_enum_const_value {
+            Some(this_enum_const_value) => {
+                let enumerator_value = match enumerator_values
+                    .iter()
+                    .find(|(_name, value)| value.to_string() == this_enum_const_value)
+                {
+                    Some((name, _value)) => name,
+                    None => &VariableName::Named("<Error: Unresolved enum value>".to_string()),
+                };
 
-            self.language
-                .format_enum_value(&child_variable.type_name, enumerator_value)
-        } else {
-            VariableValue::Error(format!(
+                self.language
+                    .format_enum_value(&child_variable.type_name, enumerator_value)
+            }
+            None => VariableValue::Error(format!(
                 "Unsupported variable location {:?}",
                 child_variable.memory_location
-            ))
+            )),
         };
 
         child_variable.set_value(value);

@@ -1,0 +1,1 @@
+Fixed enum variable values reported as "Unsupported variable location" when the enum is held in a register (common at `-Og`/`-O0`); the enumerator is now resolved from the evaluated register value as well as from memory.
