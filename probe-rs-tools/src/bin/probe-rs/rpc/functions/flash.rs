@@ -1,21 +1,9 @@
-use std::time::Duration;
-
-use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
-use probe_rs::{
-    InstructionSet, Session,
-    flashing::{self, FileDownloadError, FlashLoader, FlashProgress},
-};
 use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc::Sender;
 
 use crate::{
     FormatOptions,
-    rpc::{
-        Key,
-        functions::{NoResponse, ProgressEventTopic, RpcContext, RpcResult, RpcSpawnContext},
-    },
-    util::{flash::build_loader, rtt::client::RttClient},
+    rpc::{Key, functions::RpcResult},
 };
 
 #[derive(Serialize, Deserialize, Default, Schema)]
@@ -79,52 +67,12 @@ pub struct BuildResult {
 
 pub type BuildResponse = RpcResult<BuildResult>;
 
-pub async fn build(
-    ctx: &mut RpcContext,
-    _header: VarHeader,
-    request: BuildRequest,
-) -> BuildResponse {
-    // build loader
-    let mut session = ctx.session(request.sessid).await;
-    let mut loader = build_loader(
-        &mut session,
-        &request.path,
-        request.format,
-        request
-            .image_target
-            .as_deref()
-            .and_then(InstructionSet::from_target_triple),
-    )?;
-
-    loader.read_rtt_output(request.read_flasher_rtt);
-
-    Ok(BuildResult {
-        boot_info: loader.boot_info().into(),
-        loader: ctx.store_object(loader).await,
-    })
-}
-
 #[derive(Serialize, Deserialize, Schema)]
 pub struct FlashRequest {
     pub sessid: Key<Session>,
     pub loader: Key<FlashLoader>,
     pub options: DownloadOptions,
     pub rtt_client: Option<Key<RttClient>>,
-}
-impl FlashRequest {
-    fn download_options<'a>(&self) -> flashing::DownloadOptions<'a> {
-        let mut options = probe_rs::flashing::DownloadOptions::default();
-
-        options.keep_unwritten_bytes = self.options.keep_unwritten_bytes;
-        options.do_chip_erase = self.options.do_chip_erase;
-        options.skip_erase = self.options.skip_erase;
-        options.preverify = false;
-        options.verify = self.options.verify;
-        options.disable_double_buffering = self.options.disable_double_buffering;
-        options.preferred_algos = self.options.preferred_algos.clone();
-
-        options
-    }
 }
 
 #[derive(Default, Clone, Serialize, Deserialize, Schema)]
@@ -140,46 +88,6 @@ impl FlashLayout {
         self.pages.extend(layout.pages);
         self.fills.extend(layout.fills);
         self.data_blocks.extend(layout.data_blocks);
-    }
-}
-
-impl From<&probe_rs::flashing::FlashLayout> for FlashLayout {
-    fn from(layout: &probe_rs::flashing::FlashLayout) -> Self {
-        FlashLayout {
-            sectors: layout
-                .sectors()
-                .iter()
-                .map(|sector| FlashSector {
-                    address: sector.address(),
-                    size: sector.size(),
-                })
-                .collect(),
-            pages: layout
-                .pages()
-                .iter()
-                .map(|page| FlashPage {
-                    address: page.address(),
-                    data_len: page.data().len() as u64,
-                })
-                .collect(),
-            fills: layout
-                .fills()
-                .iter()
-                .map(|fill| FlashFill {
-                    address: fill.address(),
-                    size: fill.size(),
-                    page_index: fill.page_index() as u64,
-                })
-                .collect(),
-            data_blocks: layout
-                .data_blocks()
-                .iter()
-                .map(|block| FlashDataBlockSpan {
-                    address: block.address(),
-                    size: block.size(),
-                })
-                .collect(),
-        }
     }
 }
 
@@ -228,17 +136,6 @@ pub enum Operation {
     Verify,
 }
 
-impl From<flashing::ProgressOperation> for Operation {
-    fn from(operation: flashing::ProgressOperation) -> Self {
-        match operation {
-            flashing::ProgressOperation::Fill => Operation::Fill,
-            flashing::ProgressOperation::Erase => Operation::Erase,
-            flashing::ProgressOperation::Program => Operation::Program,
-            flashing::ProgressOperation::Verify => Operation::Verify,
-        }
-    }
-}
-
 #[derive(Clone, Serialize, Deserialize, Schema)]
 pub enum ProgressEvent {
     FlashLayoutReady {
@@ -274,6 +171,111 @@ pub enum ProgressEvent {
     },
 }
 impl ProgressEvent {
+    pub fn is_operation(&self, operation: Operation) -> bool {
+        matches!(
+            self,
+            ProgressEvent::Started(op)
+            | ProgressEvent::Progress { operation: op, .. }
+            | ProgressEvent::Failed(op)
+            | ProgressEvent::Finished(op)
+            | ProgressEvent::AddProgressBar { operation: op, .. }
+            if *op == operation
+        )
+    }
+}
+
+/// Current boot information
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub enum BootInfo {
+    /// Loaded executable has a vector table in RAM
+    FromRam {
+        /// Address of the vector table in memory
+        vector_table_addr: u64,
+        /// All cores that should be reset and halted before any RAM access
+        cores_to_reset: Vec<String>,
+    },
+    /// Executable is either not loaded yet or will be booted conventionally (from flash etc.)
+    Other,
+}
+
+#[derive(Serialize, Deserialize, Schema)]
+pub struct EraseRequest {
+    pub sessid: Key<Session>,
+    pub command: EraseCommand,
+    pub read_flasher_rtt: bool,
+}
+
+#[derive(Serialize, Deserialize, Schema)]
+pub enum EraseCommand {
+    All,
+}
+
+#[derive(Serialize, Deserialize, Schema)]
+pub struct VerifyRequest {
+    pub sessid: Key<Session>,
+    pub loader: Key<FlashLoader>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Eq, Schema)]
+pub enum VerifyResult {
+    Ok,
+    Mismatch,
+}
+
+pub type VerifyResponse = RpcResult<VerifyResult>;
+
+use std::time::Duration;
+
+use postcard_rpc::header::VarHeader;
+use probe_rs::{
+    InstructionSet, Session,
+    flashing::{self, FileDownloadError, FlashLoader, FlashProgress},
+};
+use tokio::sync::mpsc::Sender;
+
+use crate::{
+    rpc::functions::{NoResponse, ProgressEventTopic, RpcContext, RpcSpawnContext},
+    util::{flash::build_loader, rtt::client::RttClient},
+};
+
+impl FlashRequest {
+    fn download_options<'a>(&self) -> flashing::DownloadOptions<'a> {
+        let mut options = probe_rs::flashing::DownloadOptions::default();
+
+        options.keep_unwritten_bytes = self.options.keep_unwritten_bytes;
+        options.do_chip_erase = self.options.do_chip_erase;
+        options.skip_erase = self.options.skip_erase;
+        options.preverify = false;
+        options.verify = self.options.verify;
+        options.disable_double_buffering = self.options.disable_double_buffering;
+        options.preferred_algos = self.options.preferred_algos.clone();
+
+        options
+    }
+}
+
+impl BootInfo {
+    pub fn prepare(&self, session: &mut Session, core_id: usize) -> anyhow::Result<()> {
+        match self {
+            BootInfo::FromRam {
+                vector_table_addr, ..
+            } => {
+                // core should be already reset and halt by this point.
+                session.prepare_running_on_ram(*vector_table_addr, core_id)?;
+            }
+            BootInfo::Other => {
+                // reset the core to leave it in a consistent state after flashing
+                session
+                    .core(core_id)?
+                    .reset_and_halt(Duration::from_millis(100))?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl ProgressEvent {
     pub fn from_library_event(event: flashing::ProgressEvent, mut cb: impl FnMut(ProgressEvent)) {
         let event = match event {
             flashing::ProgressEvent::FlashLayoutReady { flash_layout } => {
@@ -305,53 +307,31 @@ impl ProgressEvent {
 
         cb(event);
     }
-
-    pub fn is_operation(&self, operation: Operation) -> bool {
-        matches!(
-            self,
-            ProgressEvent::Started(op)
-            | ProgressEvent::Progress { operation: op, .. }
-            | ProgressEvent::Failed(op)
-            | ProgressEvent::Finished(op)
-            | ProgressEvent::AddProgressBar { operation: op, .. }
-            if *op == operation
-        )
-    }
 }
 
-/// Current boot information
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub enum BootInfo {
-    /// Loaded executable has a vector table in RAM
-    FromRam {
-        /// Address of the vector table in memory
-        vector_table_addr: u64,
-        /// All cores that should be reset and halted before any RAM access
-        cores_to_reset: Vec<String>,
-    },
-    /// Executable is either not loaded yet or will be booted conventionally (from flash etc.)
-    Other,
-}
+pub async fn build(
+    ctx: &mut RpcContext,
+    _header: VarHeader,
+    request: BuildRequest,
+) -> BuildResponse {
+    // build loader
+    let mut session = ctx.session(request.sessid).await;
+    let mut loader = build_loader(
+        &mut session,
+        &request.path,
+        request.format,
+        request
+            .image_target
+            .as_deref()
+            .and_then(InstructionSet::from_target_triple),
+    )?;
 
-impl BootInfo {
-    pub fn prepare(&self, session: &mut Session, core_id: usize) -> anyhow::Result<()> {
-        match self {
-            BootInfo::FromRam {
-                vector_table_addr, ..
-            } => {
-                // core should be already reset and halt by this point.
-                session.prepare_running_on_ram(*vector_table_addr, core_id)?;
-            }
-            BootInfo::Other => {
-                // reset the core to leave it in a consistent state after flashing
-                session
-                    .core(core_id)?
-                    .reset_and_halt(Duration::from_millis(100))?;
-            }
-        }
+    loader.read_rtt_output(request.read_flasher_rtt);
 
-        Ok(())
-    }
+    Ok(BuildResult {
+        boot_info: loader.boot_info().into(),
+        loader: ctx.store_object(loader).await,
+    })
 }
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -371,21 +351,6 @@ pub async fn boot(ctx: &mut RpcContext, _header: VarHeader, request: BootRequest
     session.resume_all_cores()?;
 
     Ok(())
-}
-
-impl From<probe_rs::flashing::BootInfo> for BootInfo {
-    fn from(boot_info: probe_rs::flashing::BootInfo) -> Self {
-        match boot_info {
-            probe_rs::flashing::BootInfo::FromRam {
-                vector_table_addr,
-                cores_to_reset,
-            } => BootInfo::FromRam {
-                vector_table_addr,
-                cores_to_reset,
-            },
-            probe_rs::flashing::BootInfo::Other => BootInfo::Other,
-        }
-    }
 }
 
 pub async fn flash(ctx: &mut RpcContext, _header: VarHeader, request: FlashRequest) -> NoResponse {
@@ -426,18 +391,6 @@ fn flash_impl(
     Ok(())
 }
 
-#[derive(Serialize, Deserialize, Schema)]
-pub struct EraseRequest {
-    pub sessid: Key<Session>,
-    pub command: EraseCommand,
-    pub read_flasher_rtt: bool,
-}
-
-#[derive(Serialize, Deserialize, Schema)]
-pub enum EraseCommand {
-    All,
-}
-
 pub async fn erase(ctx: &mut RpcContext, _header: VarHeader, request: EraseRequest) -> NoResponse {
     ctx.run_blocking::<ProgressEventTopic, _, _, _>(request, erase_impl)
         .await
@@ -467,20 +420,6 @@ fn erase_impl(
 
     Ok(())
 }
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct VerifyRequest {
-    pub sessid: Key<Session>,
-    pub loader: Key<FlashLoader>,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Eq, Schema)]
-pub enum VerifyResult {
-    Ok,
-    Mismatch,
-}
-
-pub type VerifyResponse = RpcResult<VerifyResult>;
 
 pub async fn verify(
     ctx: &mut RpcContext,
@@ -514,5 +453,78 @@ fn verify_impl(
         Ok(()) => Ok(VerifyResult::Ok),
         Err(flashing::FlashError::Verify) => Ok(VerifyResult::Mismatch),
         Err(other) => Err(other.into()),
+    }
+}
+
+pub(crate) mod convert {
+    use super::{
+        BootInfo, FlashDataBlockSpan, FlashFill, FlashLayout, FlashPage, FlashSector, Operation,
+    };
+    use probe_rs::flashing;
+
+    impl From<&probe_rs::flashing::FlashLayout> for FlashLayout {
+        fn from(layout: &probe_rs::flashing::FlashLayout) -> Self {
+            FlashLayout {
+                sectors: layout
+                    .sectors()
+                    .iter()
+                    .map(|sector| FlashSector {
+                        address: sector.address(),
+                        size: sector.size(),
+                    })
+                    .collect(),
+                pages: layout
+                    .pages()
+                    .iter()
+                    .map(|page| FlashPage {
+                        address: page.address(),
+                        data_len: page.data().len() as u64,
+                    })
+                    .collect(),
+                fills: layout
+                    .fills()
+                    .iter()
+                    .map(|fill| FlashFill {
+                        address: fill.address(),
+                        size: fill.size(),
+                        page_index: fill.page_index() as u64,
+                    })
+                    .collect(),
+                data_blocks: layout
+                    .data_blocks()
+                    .iter()
+                    .map(|block| FlashDataBlockSpan {
+                        address: block.address(),
+                        size: block.size(),
+                    })
+                    .collect(),
+            }
+        }
+    }
+
+    impl From<flashing::ProgressOperation> for Operation {
+        fn from(operation: flashing::ProgressOperation) -> Self {
+            match operation {
+                flashing::ProgressOperation::Fill => Operation::Fill,
+                flashing::ProgressOperation::Erase => Operation::Erase,
+                flashing::ProgressOperation::Program => Operation::Program,
+                flashing::ProgressOperation::Verify => Operation::Verify,
+            }
+        }
+    }
+
+    impl From<probe_rs::flashing::BootInfo> for BootInfo {
+        fn from(boot_info: probe_rs::flashing::BootInfo) -> Self {
+            match boot_info {
+                probe_rs::flashing::BootInfo::FromRam {
+                    vector_table_addr,
+                    cores_to_reset,
+                } => BootInfo::FromRam {
+                    vector_table_addr,
+                    cores_to_reset,
+                },
+                probe_rs::flashing::BootInfo::Other => BootInfo::Other,
+            }
+        }
     }
 }
