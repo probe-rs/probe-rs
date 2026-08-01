@@ -14,10 +14,35 @@ use postcard_schema::{
     Schema,
     schema::{DataModelType, NamedType, NamedValue},
 };
-use probe_rs::{Session, config::Registry};
+use probe_rs::config::Registry;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
+
+pub struct Session;
+pub struct FlashLoader;
+pub struct RttClient;
+pub struct TempFileHandle;
+
+pub trait ObjectMarker: 'static {
+    type Object: Any + Send;
+}
+
+impl ObjectMarker for Session {
+    type Object = probe_rs::Session;
+}
+
+impl ObjectMarker for FlashLoader {
+    type Object = probe_rs::flashing::FlashLoader;
+}
+
+impl ObjectMarker for RttClient {
+    type Object = crate::util::rtt::client::RttClient;
+}
+
+impl ObjectMarker for TempFileHandle {
+    type Object = tempfile::NamedTempFile;
+}
 
 pub mod client;
 pub mod debug_state;
@@ -86,14 +111,6 @@ impl<T> Key<T> {
             marker: PhantomData,
         }
     }
-
-    #[cfg(feature = "remote")]
-    pub unsafe fn cast<U>(&self) -> Key<U> {
-        Key {
-            key: self.key,
-            marker: PhantomData,
-        }
-    }
 }
 
 #[cfg(test)]
@@ -139,14 +156,14 @@ impl ObjectStorage {
         }
     }
 
-    pub fn store_object<T: Any + Send>(&mut self, obj: T) -> Key<T> {
+    pub fn store_object<M: ObjectMarker>(&mut self, obj: M::Object) -> Key<M> {
         let key = Key::new();
         self.storage.insert(key.key, Arc::new(Mutex::new(obj)));
         key
     }
 
     /// Ensures locks on `ObjectStorage` are held for as short a time as possible.
-    pub fn cell<T: Any + Send>(&self, key: Key<T>) -> ObjectStorageSlot<T> {
+    pub fn cell<M: ObjectMarker>(&self, key: Key<M>) -> ObjectStorageSlot<M::Object> {
         let obj = self.storage.get(&key.key).unwrap();
         ObjectStorageSlot {
             obj: obj.clone(),
@@ -180,29 +197,29 @@ impl ConnectionState {
         }
     }
 
-    pub async fn store_object<T: Any + Send>(&mut self, obj: T) -> Key<T> {
+    pub async fn store_object<M: ObjectMarker>(&mut self, obj: M::Object) -> Key<M> {
         self.object_storage.lock().await.store_object(obj)
     }
 
-    pub async fn object_mut<T: Any + Send>(
+    pub async fn object_mut<M: ObjectMarker>(
         &self,
-        key: Key<T>,
-    ) -> impl DerefMut<Target = T> + Send + use<T> {
+        key: Key<M>,
+    ) -> impl DerefMut<Target = M::Object> + Send + use<M> {
         // MUST be two separate statements so that the lock is released.
         let locked_cell = self.object_storage.lock().await.cell(key);
         locked_cell.get().await
     }
 
-    pub fn object_mut_blocking<T: Any + Send>(
+    pub fn object_mut_blocking<M: ObjectMarker>(
         &self,
-        key: Key<T>,
-    ) -> impl DerefMut<Target = T> + Send + use<T> {
+        key: Key<M>,
+    ) -> impl DerefMut<Target = M::Object> + Send + use<M> {
         // MUST be two separate statements so that the lock is released.
         let locked_cell = self.object_storage.blocking_lock().cell(key);
         locked_cell.get_blocking()
     }
 
-    pub async fn set_session(&mut self, session: Session, dry_run: bool) -> Key<Session> {
+    pub async fn set_session(&mut self, session: probe_rs::Session, dry_run: bool) -> Key<Session> {
         let key = self.store_object(session).await;
         if dry_run {
             self.dry_run_sessions.insert(key);
@@ -234,7 +251,7 @@ impl SessionState<'_> {
     }
 
     /// Blocks while other users hold the session.
-    pub fn session_blocking(&self) -> impl DerefMut<Target = Session> + Send + use<> {
+    pub fn session_blocking(&self) -> impl DerefMut<Target = probe_rs::Session> + Send + use<> {
         // MUST be two separate statements so that the lock is released.
         let obj_cell = self.object_storage().cell(self.session);
         obj_cell.get_blocking()

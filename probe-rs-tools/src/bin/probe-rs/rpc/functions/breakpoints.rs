@@ -1,5 +1,5 @@
 use crate::rpc::{
-    Key,
+    Key, Session,
     functions::{RpcContext, RpcResult},
 };
 use postcard_schema::Schema;
@@ -59,7 +59,6 @@ pub struct ResolveSourceLocationsRequest {
 pub type ResolveSourceLocationsResponse = RpcResult<Vec<Option<WireSourceLocation>>>;
 
 use postcard_rpc::header::VarHeader;
-use probe_rs::Session;
 use probe_rs_debug::TypedPath;
 
 pub async fn resolve_source_breakpoints(

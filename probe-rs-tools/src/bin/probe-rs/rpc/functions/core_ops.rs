@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use crate::util::rtt::DataFormat;
 
 use crate::rpc::{
-    Key,
+    Key, Session,
     functions::{NoResponse, RpcContext, RpcError, RpcResult},
 };
 
@@ -280,7 +280,7 @@ pub type HandleSemihostingResponse = RpcResult<HandleSemihostingResult>;
 // -- handlers -----------------------------------------------------------------
 
 use probe_rs::{
-    BreakpointCause, CoreDump, CoreStatus, HaltReason, RegisterId, RegisterValue, Session,
+    BreakpointCause, CoreDump, CoreStatus, HaltReason, RegisterId, RegisterValue,
     VectorCatchCondition, semihosting::SemihostingCommand,
 };
 use probe_rs_debug::{DebugError, SteppingMode};

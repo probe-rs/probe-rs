@@ -7,7 +7,7 @@ use postcard_schema::{Schema, schema};
 use serde::{Deserialize, Serialize};
 
 use crate::rpc::{
-    Key,
+    Key, Session,
     functions::{
         NoResponse, RpcContext, TargetInfoDataTopic, TargetMetadataResponse,
         chip::JEP106Code,
@@ -207,7 +207,6 @@ impl ComponentTreeNode {
 
 use anyhow::anyhow;
 use probe_rs::{
-    Session,
     architecture::{
         arm::{
             self, ApAddress, ApV2Address, ArmDebugInterface,

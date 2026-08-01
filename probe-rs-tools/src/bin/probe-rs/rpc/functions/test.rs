@@ -2,7 +2,7 @@ use postcard_schema::Schema;
 use serde::{Deserialize, Serialize};
 
 use crate::rpc::{
-    Key,
+    Key, RttClient, Session,
     functions::{RpcResult, flash::BootInfo},
     utils::semihosting::SemihostingOptions,
 };
@@ -121,20 +121,17 @@ use std::time::Duration;
 
 use anyhow::Context;
 use postcard_rpc::{header::VarHeader, server::Sender};
-use probe_rs::{BreakpointCause, Core, HaltReason, Session, semihosting::SemihostingCommand};
+use probe_rs::{BreakpointCause, Core, HaltReason, semihosting::SemihostingCommand};
 
-use crate::{
-    rpc::{
-        functions::{
-            ListTestsEndpoint, RpcContext, RpcSpawnContext, RunTestEndpoint, WireTxImpl,
-            monitor::{MonitorSender, RttPoller, SemihostingEvent},
-        },
-        utils::{
-            run_loop::{ReturnReason, RunLoop, VectorCatchConfig},
-            semihosting::SemihostingFileManager,
-        },
+use crate::rpc::{
+    functions::{
+        ListTestsEndpoint, RpcContext, RpcSpawnContext, RunTestEndpoint, WireTxImpl,
+        monitor::{MonitorSender, RttPoller, SemihostingEvent},
     },
-    util::rtt::client::RttClient,
+    utils::{
+        run_loop::{ReturnReason, RunLoop, VectorCatchConfig},
+        semihosting::SemihostingFileManager,
+    },
 };
 
 pub async fn list_tests(

@@ -1,13 +1,12 @@
-use std::{any::Any, ops::DerefMut, sync::Arc};
 use std::{collections::HashMap, convert::Infallible, future::Future};
+use std::{ops::DerefMut, sync::Arc};
 
-use crate::rpc::SessionState;
 use crate::rpc::debug_state::{CoreDebugState, ServerDebugState};
 use crate::rpc::functions::file::{
     AppendFileRequest, CreateFileResponse, append_temp_file, create_temp_file,
 };
 use crate::rpc::{
-    ConnectionState, Key,
+    ConnectionState, Key, Session, SessionState,
     functions::{
         breakpoints::{
             ResolveSourceBreakpointsRequest, ResolveSourceLocationsRequest,
@@ -76,9 +75,9 @@ use postcard_rpc::{Topic, TopicDirection, endpoints, host_client, server, topics
 use postcard_schema::Schema;
 use probe_rs::config::Registry;
 use probe_rs::integration::ProbeLister;
+use probe_rs::probe::list::Lister;
 use probe_rs::probe::list::{AllProbesLister, ProbeListItem};
 use probe_rs::probe::{DebugProbeError, DebugProbeSelector, Probe, ProbeCreationError};
-use probe_rs::{Session, probe::list::Lister};
 use serde::{Deserialize, Serialize};
 use tokio::sync::{
     Mutex,
@@ -210,7 +209,10 @@ impl RpcSpawnContext {
         self.shared_session(sessid).dry_run()
     }
 
-    fn session_blocking(&self, sessid: Key<Session>) -> impl DerefMut<Target = Session> + use<> {
+    fn session_blocking(
+        &self,
+        sessid: Key<Session>,
+    ) -> impl DerefMut<Target = probe_rs::Session> + use<> {
         self.shared_session(sessid).session_blocking()
     }
 
@@ -218,10 +220,10 @@ impl RpcSpawnContext {
         self.state.shared_session(sessid)
     }
 
-    pub fn object_mut_blocking<T: Any + Send>(
+    pub fn object_mut_blocking<M: crate::rpc::ObjectMarker>(
         &self,
-        key: Key<T>,
-    ) -> impl DerefMut<Target = T> + Send + use<T> {
+        key: Key<M>,
+    ) -> impl DerefMut<Target = M::Object> + Send + use<M> {
         self.state.object_mut_blocking(key)
     }
 
@@ -381,25 +383,25 @@ impl RpcContext {
             .map_err(|e| anyhow!("{e:?}"))
     }
 
-    pub async fn object_mut<T: Any + Send>(
+    pub async fn object_mut<M: crate::rpc::ObjectMarker>(
         &self,
-        key: Key<T>,
-    ) -> impl DerefMut<Target = T> + Send + use<T> {
+        key: Key<M>,
+    ) -> impl DerefMut<Target = M::Object> + Send + use<M> {
         self.state.object_mut(key).await
     }
 
-    pub async fn store_object<T: Any + Send>(&mut self, obj: T) -> Key<T> {
+    pub async fn store_object<M: crate::rpc::ObjectMarker>(&mut self, obj: M::Object) -> Key<M> {
         self.state.store_object(obj).await
     }
 
-    pub async fn set_session(&mut self, session: Session, dry_run: bool) -> Key<Session> {
+    pub async fn set_session(&mut self, session: probe_rs::Session, dry_run: bool) -> Key<Session> {
         self.state.set_session(session, dry_run).await
     }
 
     pub async fn session(
         &self,
         sid: Key<Session>,
-    ) -> impl DerefMut<Target = Session> + Send + use<> {
+    ) -> impl DerefMut<Target = probe_rs::Session> + Send + use<> {
         self.object_mut(sid).await
     }
 

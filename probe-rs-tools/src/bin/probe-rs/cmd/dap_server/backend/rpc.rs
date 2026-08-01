@@ -15,7 +15,7 @@ use crate::cmd::dap_server::debug_adapter::dap::dap_types::{
 };
 use crate::cmd::dap_server::server::configuration::FlashingConfig;
 use crate::rpc::{
-    Key,
+    Key, Session,
     client::{CoreInterface as RpcCoreClient, RpcClient, SessionInterface},
     functions::{
         RpcError,
@@ -34,7 +34,7 @@ use crate::rpc::{
 };
 use probe_rs::{
     Architecture, CoreInformation, CoreRegisters, CoreStatus, CoreType, Error, RegisterId,
-    RegisterValue, Session, VectorCatchCondition,
+    RegisterValue, VectorCatchCondition,
 };
 use probe_rs_debug::{
     ColumnType, DebugRegisters, ObjectRef, SourceLocation as DebugSourceLocation, StackFrame,

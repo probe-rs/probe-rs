@@ -1,7 +1,7 @@
 use std::fmt::{self, Display, Write as _};
 
 use crate::rpc::{
-    Key,
+    Key, Session,
     functions::{
         NoResponse, RpcResult,
         core_ops::{WireRegisterId, WireRegisterValue},
@@ -141,7 +141,7 @@ pub type TakeRichStackTraceResponse = RpcResult<RichStackTraces>;
 use std::sync::Arc;
 
 use postcard_rpc::header::VarHeader;
-use probe_rs::{CoreInterface, Error, Session};
+use probe_rs::{CoreInterface, Error};
 use probe_rs_debug::{
     DebugInfo, DebugRegisters, StackFrame, VariableCache, exception_handler_for_core,
 };

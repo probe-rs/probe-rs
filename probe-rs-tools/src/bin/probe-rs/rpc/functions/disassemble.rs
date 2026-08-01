@@ -2,7 +2,7 @@ use postcard_schema::Schema;
 use serde::{Deserialize, Serialize};
 
 use crate::rpc::{
-    Key,
+    Key, Session,
     functions::{RpcContext, RpcResult},
 };
 
@@ -36,7 +36,6 @@ pub type DisassembleResponse = RpcResult<Vec<WireDisassembledInstruction>>;
 
 use crate::cmd::dap_server::debug_adapter::dap::request_helpers::disassemble_target_memory;
 use postcard_rpc::header::VarHeader;
-use probe_rs::Session;
 
 /// Disassemble target memory server-side, running the capstone disassembly
 /// (shared with the local path via `disassemble_target_memory`) against the

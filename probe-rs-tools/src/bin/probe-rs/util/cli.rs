@@ -25,6 +25,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::cmd::run::{EmbeddedTestElfInfo, MonitoringOptions};
 use crate::rpc::Key;
+use crate::rpc::RttClient;
 use crate::rpc::functions::monitor::{ChannelInfo, MonitorExitReason};
 use crate::rpc::functions::stack_trace::StackTraceFrame;
 use crate::rpc::utils::run_loop::VectorCatchConfig;
@@ -50,7 +51,7 @@ use crate::{
         common_options::{BinaryDownloadOptions, ProbeOptions},
         flash::CliProgressBars,
         logging,
-        rtt::{DefmtProcessor, DefmtState, RttChannelConfig, RttDecoder, client::RttClient},
+        rtt::{DefmtProcessor, DefmtState, RttChannelConfig, RttDecoder},
     },
 };
 

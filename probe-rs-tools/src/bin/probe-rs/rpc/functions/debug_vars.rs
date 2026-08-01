@@ -1,10 +1,9 @@
 use crate::rpc::{
-    Key,
+    Key, Session,
     functions::{RpcContext, RpcResult},
 };
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
-use probe_rs::Session;
 use probe_rs_debug::{
     DebugInfo, DebugRegisters, ObjectRef, StackFrameInfo, Variable, VariableCache, VariableName,
 };

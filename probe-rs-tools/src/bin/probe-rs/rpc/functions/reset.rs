@@ -2,12 +2,11 @@ use std::time::Duration;
 
 use crate::rpc::functions::core_ops::WireCoreInformation;
 use crate::rpc::{
-    Key,
+    Key, Session,
     functions::{NoResponse, RpcContext, RpcResult},
 };
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
-use probe_rs::Session;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Schema)]

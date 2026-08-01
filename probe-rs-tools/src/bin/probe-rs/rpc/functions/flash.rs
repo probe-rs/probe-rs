@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     FormatOptions,
-    rpc::{Key, functions::RpcResult},
+    rpc::{FlashLoader, Key, RttClient, Session, functions::RpcResult},
 };
 
 #[derive(Serialize, Deserialize, Default, Schema)]
@@ -228,14 +228,14 @@ use std::time::Duration;
 
 use postcard_rpc::header::VarHeader;
 use probe_rs::{
-    InstructionSet, Session,
-    flashing::{self, FileDownloadError, FlashLoader, FlashProgress},
+    InstructionSet,
+    flashing::{self, FileDownloadError, FlashProgress},
 };
 use tokio::sync::mpsc::Sender;
 
 use crate::{
     rpc::functions::{NoResponse, ProgressEventTopic, RpcContext, RpcSpawnContext},
-    util::{flash::build_loader, rtt::client::RttClient},
+    util::flash::build_loader,
 };
 
 impl FlashRequest {
@@ -255,7 +255,7 @@ impl FlashRequest {
 }
 
 impl BootInfo {
-    pub fn prepare(&self, session: &mut Session, core_id: usize) -> anyhow::Result<()> {
+    pub fn prepare(&self, session: &mut probe_rs::Session, core_id: usize) -> anyhow::Result<()> {
         match self {
             BootInfo::FromRam {
                 vector_table_addr, ..

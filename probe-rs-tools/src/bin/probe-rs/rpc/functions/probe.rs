@@ -3,7 +3,10 @@ use serde::{Deserialize, Serialize};
 
 use std::fmt::Display;
 
-use crate::rpc::{Key, functions::RpcResult};
+use crate::rpc::{
+    Key, Session,
+    functions::{RpcContext, RpcResult},
+};
 
 // Separate from DebugProbeInfo because we can't serialize a &dyn ProbeFactory
 #[derive(Debug, Serialize, Deserialize, Clone, Schema)]
@@ -113,9 +116,7 @@ pub struct AttachRequest {
 pub type AttachResponse = RpcResult<AttachResult>;
 
 use postcard_rpc::header::VarHeader;
-use probe_rs::Session;
 
-use crate::rpc::functions::RpcContext;
 use crate::util::common_options::{OperationError, ProbeOptions};
 
 pub fn list_probes(ctx: &mut RpcContext, _header: VarHeader, _request: ()) -> ListProbesResponse {
