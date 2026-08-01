@@ -1,19 +1,13 @@
 use std::fmt::{self, Display, Write as _};
-use std::sync::Arc;
 
 use crate::rpc::{
     Key,
     functions::{
-        NoResponse, RpcContext, RpcResult,
+        NoResponse, RpcResult,
         core_ops::{WireRegisterId, WireRegisterValue},
     },
 };
-use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
-use probe_rs::{CoreInterface, Error, Session};
-use probe_rs_debug::{
-    DebugInfo, DebugRegister, DebugRegisters, StackFrame, VariableCache, exception_handler_for_core,
-};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -33,36 +27,6 @@ pub struct StackTraceFrame {
     pub program_counter: u64,
     pub is_inlined: bool,
     pub location: Option<SourceLocation>,
-}
-
-impl From<&probe_rs_debug::SourceLocation> for SourceLocation {
-    fn from(location: &probe_rs_debug::SourceLocation) -> Self {
-        SourceLocation {
-            file: location.path.to_path().display().to_string(),
-            line: location.line,
-            column: location.column.map(|col| match col {
-                probe_rs_debug::ColumnType::LeftEdge => 1,
-                probe_rs_debug::ColumnType::Column(c) => c,
-            }),
-        }
-    }
-}
-
-impl From<StackFrame> for StackTraceFrame {
-    fn from(frame: StackFrame) -> Self {
-        StackTraceFrame::from(&frame)
-    }
-}
-
-impl From<&StackFrame> for StackTraceFrame {
-    fn from(frame: &StackFrame) -> Self {
-        StackTraceFrame {
-            function_name: frame.function_name.clone(),
-            program_counter: frame.pc.try_into().unwrap_or(0),
-            is_inlined: frame.is_inlined,
-            location: frame.source_location.as_ref().map(SourceLocation::from),
-        }
-    }
 }
 
 impl Display for StackTraceFrame {
@@ -133,6 +97,56 @@ pub struct LoadDebugInfoRequest {
 }
 
 pub type LoadDebugInfoResponse = NoResponse;
+
+/// A single register, in the wire format used by the rich stack trace.
+#[derive(Serialize, Deserialize, Schema, Clone, PartialEq)]
+pub struct WireDebugRegister {
+    pub id: WireRegisterId,
+    pub dwarf_id: Option<u16>,
+    pub value: Option<WireRegisterValue>,
+}
+
+/// A stack frame carrying the full per-frame register state plus frame
+/// metadata. The server owns the `local_variables`/`static_variables`
+/// `VariableCache` trees (keyed by `sessid` + core); the client relays the
+/// server-assigned `id` handles
+/// verbatim so subsequent `scopes`/`variables` requests resolve server-side.
+#[derive(Serialize, Deserialize, Schema, Clone)]
+pub struct RichStackTraceFrame {
+    pub function_name: String,
+    pub program_counter: WireRegisterValue,
+    pub is_inlined: bool,
+    pub location: Option<SourceLocation>,
+    pub frame_base: Option<u64>,
+    pub canonical_frame_address: Option<u64>,
+    pub registers: Vec<WireDebugRegister>,
+    /// Server-assigned frame id (also the DAP `frameId` and the registers
+    /// scope `variablesReference`).
+    pub id: u32,
+}
+
+#[derive(Serialize, Deserialize, Schema, Clone)]
+pub struct RichStackTrace {
+    pub core: u32,
+    pub frames: Vec<RichStackTraceFrame>,
+}
+
+#[derive(Serialize, Deserialize, Schema, Clone)]
+pub struct RichStackTraces {
+    pub cores: Vec<RichStackTrace>,
+}
+
+pub type TakeRichStackTraceResponse = RpcResult<RichStackTraces>;
+
+use std::sync::Arc;
+
+use postcard_rpc::header::VarHeader;
+use probe_rs::{CoreInterface, Error, Session};
+use probe_rs_debug::{
+    DebugInfo, DebugRegisters, StackFrame, VariableCache, exception_handler_for_core,
+};
+
+use crate::rpc::functions::RpcContext;
 
 /// Eagerly load and cache the authoritative server-side [`DebugInfo`] for a
 /// session, keyed by `sessid`, so consumers can resolve source locations
@@ -212,56 +226,6 @@ pub async fn take_stack_trace(
             .collect(),
     })
 }
-
-/// A single register, in the wire format used by the rich stack trace.
-#[derive(Serialize, Deserialize, Schema, Clone, PartialEq)]
-pub struct WireDebugRegister {
-    pub id: WireRegisterId,
-    pub dwarf_id: Option<u16>,
-    pub value: Option<WireRegisterValue>,
-}
-
-impl From<&DebugRegister> for WireDebugRegister {
-    fn from(r: &DebugRegister) -> Self {
-        WireDebugRegister {
-            id: r.core_register.id.into(),
-            dwarf_id: r.dwarf_id,
-            value: r.value.map(WireRegisterValue::from),
-        }
-    }
-}
-
-/// A stack frame carrying the full per-frame register state plus frame
-/// metadata. The server owns the `local_variables`/`static_variables`
-/// `VariableCache` trees (keyed by `sessid` + core); the client relays the
-/// server-assigned `id` handles
-/// verbatim so subsequent `scopes`/`variables` requests resolve server-side.
-#[derive(Serialize, Deserialize, Schema, Clone)]
-pub struct RichStackTraceFrame {
-    pub function_name: String,
-    pub program_counter: WireRegisterValue,
-    pub is_inlined: bool,
-    pub location: Option<SourceLocation>,
-    pub frame_base: Option<u64>,
-    pub canonical_frame_address: Option<u64>,
-    pub registers: Vec<WireDebugRegister>,
-    /// Server-assigned frame id (also the DAP `frameId` and the registers
-    /// scope `variablesReference`).
-    pub id: u32,
-}
-
-#[derive(Serialize, Deserialize, Schema, Clone)]
-pub struct RichStackTrace {
-    pub core: u32,
-    pub frames: Vec<RichStackTraceFrame>,
-}
-
-#[derive(Serialize, Deserialize, Schema, Clone)]
-pub struct RichStackTraces {
-    pub cores: Vec<RichStackTrace>,
-}
-
-pub type TakeRichStackTraceResponse = RpcResult<RichStackTraces>;
 
 /// Like [`take_stack_trace`], but the server owns the per-core
 /// `local_variables`/`static_variables` `VariableCache` trees (cached in
@@ -409,5 +373,50 @@ mod tests {
         let decoded: TakeRichStackTraceRequest = postcard::from_bytes(&encoded).unwrap();
         assert_eq!(decoded.core, Some(0));
         assert_eq!(decoded.stack_frame_limit, 64);
+    }
+}
+
+pub(crate) mod convert {
+    use super::{SourceLocation, StackTraceFrame, WireDebugRegister, WireRegisterValue};
+    use probe_rs_debug::{DebugRegister, StackFrame};
+
+    impl From<&probe_rs_debug::SourceLocation> for SourceLocation {
+        fn from(location: &probe_rs_debug::SourceLocation) -> Self {
+            SourceLocation {
+                file: location.path.to_path().display().to_string(),
+                line: location.line,
+                column: location.column.map(|col| match col {
+                    probe_rs_debug::ColumnType::LeftEdge => 1,
+                    probe_rs_debug::ColumnType::Column(c) => c,
+                }),
+            }
+        }
+    }
+
+    impl From<StackFrame> for StackTraceFrame {
+        fn from(frame: StackFrame) -> Self {
+            StackTraceFrame::from(&frame)
+        }
+    }
+
+    impl From<&StackFrame> for StackTraceFrame {
+        fn from(frame: &StackFrame) -> Self {
+            StackTraceFrame {
+                function_name: frame.function_name.clone(),
+                program_counter: frame.pc.try_into().unwrap_or(0),
+                is_inlined: frame.is_inlined,
+                location: frame.source_location.as_ref().map(SourceLocation::from),
+            }
+        }
+    }
+
+    impl From<&DebugRegister> for WireDebugRegister {
+        fn from(r: &DebugRegister) -> Self {
+            WireDebugRegister {
+                id: r.core_register.id.into(),
+                dwarf_id: r.dwarf_id,
+                value: r.value.map(WireRegisterValue::from),
+            }
+        }
     }
 }
