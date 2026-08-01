@@ -28,13 +28,13 @@ pub use probe_rs_rpc::info::{
     DpAddress, FullyQualifiedApAddress, InfoEvent, MinDpSupport, TargetInfoRequest,
     TargetMetadataRequest, WireSessionCore, WireSessionTargetMetadata,
 };
-use probe_rs_rpc::probe::WireProtocol;
+use probe_rs_rpc::{TargetInfoDataTopic, probe::WireProtocol};
 use probe_rs_target::ScanChainElement;
 
 use crate::rpc::functions::core_ops::convert::to_wire_core_type;
 use crate::rpc::functions::probe::convert::from_wire_protocol;
 use crate::{
-    rpc::functions::{NoResponse, RpcContext, TargetInfoDataTopic, convert::lift},
+    rpc::functions::{NoResponse, RpcContext, convert::lift},
     util::common_options::ProbeOptions,
 };
 

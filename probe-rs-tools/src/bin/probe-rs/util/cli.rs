@@ -34,7 +34,6 @@ use crate::rpc::utils::run_loop::VectorCatchConfig;
 use crate::rpc::{
     client::{MonitorEvent, RpcClient, SessionInterface},
     functions::{
-        CancelTopic,
         flash::{BootInfo, DownloadOptions, FlashLayout, ProgressEvent, VerifyResult},
         monitor::{MonitorMode, MonitorOptions, RttEvent, SemihostingEvent},
         probe::{
@@ -52,6 +51,7 @@ use crate::util::{
     logging,
     rtt::{DefmtProcessor, DefmtState, RttDecoder},
 };
+use probe_rs_rpc::CancelTopic;
 use probe_rs_rpc::rtt_config::RttChannelConfig;
 
 type TargetOutputFiles = std::collections::HashMap<ChannelIdentifier, tokio::fs::File>;

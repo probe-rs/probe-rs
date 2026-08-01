@@ -3,7 +3,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::sync::Mutex;
 
-use crate::rpc::transport::{
+use crate::transport::{
     LENGTH_PREFIX_LEN, frame,
     memory::{PostcardReceiver, PostcardSender},
 };

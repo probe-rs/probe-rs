@@ -150,6 +150,13 @@ pub enum BootInfo {
 }
 
 #[derive(Serialize, Deserialize, Schema)]
+pub struct BootRequest {
+    pub sessid: Key<Session>,
+    pub boot_info: BootInfo,
+    pub core_id: u32,
+}
+
+#[derive(Serialize, Deserialize, Schema)]
 pub struct EraseRequest {
     pub sessid: Key<Session>,
     pub command: EraseCommand,

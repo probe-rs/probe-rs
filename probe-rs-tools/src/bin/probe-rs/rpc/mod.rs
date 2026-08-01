@@ -36,7 +36,6 @@ pub mod client;
 pub mod debug_state;
 pub mod functions;
 pub mod svd;
-pub mod transport;
 pub(crate) mod upload_cache;
 pub mod utils;
 

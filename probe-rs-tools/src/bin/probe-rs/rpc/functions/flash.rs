@@ -6,14 +6,16 @@ use probe_rs::{
     flashing::{self, FileDownloadError, FlashProgress},
 };
 pub use probe_rs_rpc::flash::{
-    BootInfo, BuildRequest, BuildResponse, BuildResult, DownloadOptions, EraseCommand,
+    BootInfo, BootRequest, BuildRequest, BuildResponse, BuildResult, DownloadOptions, EraseCommand,
     EraseRequest, FlashLayout, FlashRequest, Operation, ProgressEvent, VerifyRequest,
     VerifyResponse, VerifyResult,
 };
 use tokio::sync::mpsc::Sender;
 
+use probe_rs_rpc::ProgressEventTopic;
+
 use crate::{
-    rpc::functions::{NoResponse, ProgressEventTopic, RpcContext, RpcSpawnContext, convert::lift},
+    rpc::functions::{NoResponse, RpcContext, RpcSpawnContext, convert::lift},
     util::flash::build_loader,
 };
 
@@ -36,13 +38,13 @@ pub fn prepare_boot_info(
     session: &mut probe_rs::Session,
     core_id: usize,
 ) -> anyhow::Result<()> {
-    match boot_info {
-        BootInfo::FromRam {
+    match convert::from_wire_boot_info(boot_info) {
+        flashing::BootInfo::FromRam {
             vector_table_addr, ..
         } => {
-            session.prepare_running_on_ram(*vector_table_addr, core_id)?;
+            session.prepare_running_on_ram(vector_table_addr, core_id)?;
         }
-        BootInfo::Other => {
+        flashing::BootInfo::Other => {
             session
                 .core(core_id)?
                 .reset_and_halt(Duration::from_millis(100))?;
@@ -118,21 +120,16 @@ pub async fn build(
     })
 }
 
-#[derive(Serialize, Deserialize, Schema)]
-pub struct BootRequest {
-    pub sessid: Key<Session>,
-    pub boot_info: BootInfo,
-    pub core_id: u32,
-}
-
 /// Prepares the core to execute the loaded image, then starts all cores.
 pub async fn boot(ctx: &mut RpcContext, _header: VarHeader, request: BootRequest) -> NoResponse {
     let mut session = ctx.session(request.sessid).await;
 
-    request
-        .boot_info
-        .prepare(&mut session, request.core_id as usize)?;
-    session.resume_all_cores()?;
+    lift(prepare_boot_info(
+        &request.boot_info,
+        &mut session,
+        request.core_id as usize,
+    ))?;
+    lift(session.resume_all_cores())?;
 
     Ok(())
 }
@@ -303,6 +300,19 @@ pub(crate) mod convert {
                 cores_to_reset,
             },
             probe_rs::flashing::BootInfo::Other => BootInfo::Other,
+        }
+    }
+
+    pub(crate) fn from_wire_boot_info(boot_info: &BootInfo) -> probe_rs::flashing::BootInfo {
+        match boot_info {
+            BootInfo::FromRam {
+                vector_table_addr,
+                cores_to_reset,
+            } => probe_rs::flashing::BootInfo::FromRam {
+                vector_table_addr: *vector_table_addr,
+                cores_to_reset: cores_to_reset.clone(),
+            },
+            BootInfo::Other => probe_rs::flashing::BootInfo::Other,
         }
     }
 }

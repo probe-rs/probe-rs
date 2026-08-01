@@ -18,7 +18,7 @@ default-run = "probe-rs"
 [features]
 default = []
 # Include server/client functionality
-remote = ["dep:tokio-tungstenite", "dep:axum", "dep:rustls"]
+remote = ["dep:tokio-tungstenite", "dep:axum", "dep:rustls", "probe-rs-rpc/remote"]
 
 [dependencies]
 anyhow = { workspace = true }

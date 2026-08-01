@@ -126,6 +126,30 @@ pub type RpcResult<T> = Result<T, RpcError>;
 
 pub type NoResponse = RpcResult<()>;
 
+use std::future::Future;
+
+use postcard_rpc::{host_client, server};
+
+#[derive(Clone)]
+pub struct TokioSpawner;
+
+impl server::WireSpawn for TokioSpawner {
+    type Error = std::convert::Infallible;
+    type Info = ();
+
+    fn info(&self) -> &Self::Info {
+        &()
+    }
+}
+impl host_client::WireSpawn for TokioSpawner {
+    fn spawn(&mut self, fut: impl Future<Output = ()> + Send + 'static) {
+        _ = tokio::spawn(fut);
+    }
+}
+
+mod endpoints;
+pub use endpoints::*;
+
 pub mod breakpoints;
 pub mod chip;
 pub mod core_ops;
@@ -145,3 +169,4 @@ pub mod rtt_config;
 pub mod semihosting_options;
 pub mod stack_trace;
 pub mod test;
+pub mod transport;

@@ -1,7 +1,7 @@
 use postcard_rpc::header::VarHeader;
 pub use probe_rs_rpc::probe::{
-    AttachRequest, AttachResponse, AttachResult, DebugProbeEntry, DebugProbeSelector,
-    ListProbesResponse, SelectProbeRequest, SelectProbeResponse, SelectProbeResult, WireProtocol,
+    AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, ListProbesResponse,
+    SelectProbeRequest, SelectProbeResponse, SelectProbeResult, WireProtocol,
 };
 
 use crate::rpc::functions::{RpcContext, RpcResult, convert::lift};

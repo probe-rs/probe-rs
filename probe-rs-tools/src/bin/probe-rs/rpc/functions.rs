@@ -2,76 +2,46 @@ use std::{collections::HashMap, convert::Infallible, future::Future};
 use std::{ops::DerefMut, sync::Arc};
 
 use crate::rpc::debug_state::{CoreDebugState, ServerDebugState};
-use crate::rpc::functions::file::{
-    AppendFileRequest, CreateFileResponse, append_temp_file, create_temp_file,
-};
+use crate::rpc::functions::file::{append_temp_file, create_temp_file};
 use crate::rpc::{
     ConnectionState, Key, Session, SessionState,
     functions::{
-        breakpoints::{
-            ResolveSourceBreakpointsRequest, ResolveSourceLocationsRequest,
-            resolve_source_breakpoints, resolve_source_locations,
-        },
-        chip::{
-            ChipInfoRequest, ChipInfoResponse, ListFamiliesResponse, LoadChipFamilyRequest,
-            chip_info, list_families, load_chip_family,
-        },
+        breakpoints::{resolve_source_breakpoints, resolve_source_locations},
+        chip::{chip_info, list_families, load_chip_family},
         core_ops::{
-            CoreAccessRequest, CoreBreakpointsRequest, CoreDumpRequest, CoreHaltRequest,
-            CoreReadRegistersRequest, CoreVectorCatchRequest, CoreWriteRegRequest,
-            HandleSemihostingRequest, StepRequest, WireCoreDump, WireCoreInformation,
-            WireCoreMetadata, WireCoreStatus, WireRegisterReadResult, core_clear_hw_bps, core_dump,
-            core_enable_vc, core_halt, core_handle_semihosting, core_metadata, core_read_registers,
-            core_run, core_set_hw_bps, core_status, core_step, core_write_reg,
+            core_clear_hw_bps, core_dump, core_enable_vc, core_halt, core_handle_semihosting,
+            core_metadata, core_read_registers, core_run, core_set_hw_bps, core_status, core_step,
+            core_write_reg,
         },
         debug_vars::{
-            ClearCoreDebugStateRequest, EvaluateRequest, LoadSvdRequest, ScopesRequest,
-            SetVariableRequest, VariablesRequest, clear_core_debug_state,
-            evaluate as debug_evaluate, load_svd as debug_load_svd, scopes as debug_scopes,
-            set_variable as debug_set_variable, variables as debug_variables,
+            clear_core_debug_state, evaluate as debug_evaluate, load_svd as debug_load_svd,
+            scopes as debug_scopes, set_variable as debug_set_variable,
+            variables as debug_variables,
         },
-        disassemble::{DisassembleRequest, disassemble as disassemble_handler},
-        flash::{
-            BootRequest, BuildRequest, BuildResponse, EraseRequest, FlashRequest, ProgressEvent,
-            VerifyRequest, VerifyResponse, boot, build, erase, flash, verify,
-        },
-        info::{InfoEvent, TargetInfoRequest, TargetMetadataRequest, target_info, target_metadata},
-        memory::{
-            ReadBytesRequest, ReadMemoryRequest, WriteMemoryRequest, read_bytes, read_memory,
-            write_memory,
-        },
-        monitor::{MonitorRequest, MonitorResponse, RttEvent, SemihostingEvent, monitor},
-        probe::{
-            AttachRequest, AttachResponse, ListProbesResponse, SelectProbeRequest,
-            SelectProbeResponse, attach, list_probes, select_probe,
-        },
-        reset::{ResetCoreAndHaltRequest, ResetCoreRequest, reset, reset_and_halt},
-        resume::{ResumeAllCoresRequest, resume_all_cores},
+        disassemble::disassemble as disassemble_handler,
+        flash::{boot, build, erase, flash, verify},
+        info::{target_info, target_metadata},
+        memory::{read_bytes, read_memory, write_memory},
+        monitor::monitor,
+        probe::{attach, list_probes, select_probe},
+        reset::{reset, reset_and_halt},
+        resume::resume_all_cores,
         rtt_client::{
-            CreateRttClientRequest, CreateRttClientResponse, PollRttUpRequest, PollRttUpResponse,
-            RttChannelRequest, RttChannelsResponse, RttDownRequest, clean_up_rtt,
-            clear_rtt_control_block, create_rtt_client, get_rtt_channels, poll_rtt_up,
-            write_rtt_down,
+            clean_up_rtt, clear_rtt_control_block, create_rtt_client, get_rtt_channels,
+            poll_rtt_up, write_rtt_down,
         },
-        stack_trace::{
-            LoadDebugInfoRequest, LoadDebugInfoResponse, TakeRichStackTraceRequest,
-            TakeRichStackTraceResponse, TakeStackTraceRequest, TakeStackTraceResponse,
-            load_debug_info, take_rich_stack_trace, take_stack_trace,
-        },
-        test::{
-            ListTestsRequest, ListTestsResponse, RunTestRequest, RunTestResponse,
-            TestKickoffRequest, TestKickoffResponse, list_tests, run_test, test_kickoff,
-        },
+        stack_trace::{load_debug_info, take_rich_stack_trace, take_stack_trace},
+        test::{list_tests, run_test, test_kickoff},
     },
-    transport::memory::{WireRx, WireTx},
 };
+use probe_rs_rpc::transport::memory::{WireRx, WireTx};
 
 use anyhow::anyhow;
+use postcard_rpc::Topic;
 use postcard_rpc::header::{VarHeader, VarSeq};
 use postcard_rpc::server::{
     Dispatch, Sender as PostcardSender, Server, SpawnContext, WireRxErrorKind,
 };
-use postcard_rpc::{Topic, TopicDirection, endpoints, host_client, server, topics};
 use postcard_schema::Schema;
 use probe_rs::config::Registry;
 use probe_rs::integration::ProbeLister;
@@ -448,25 +418,8 @@ async fn cancel_handler(
     ctx.state.token.cancel();
 }
 
-#[derive(Clone)]
-pub struct TokioSpawner;
-
-impl server::WireSpawn for TokioSpawner {
-    type Error = std::convert::Infallible;
-    type Info = ();
-
-    fn info(&self) -> &Self::Info {
-        &()
-    }
-}
-impl host_client::WireSpawn for TokioSpawner {
-    fn spawn(&mut self, fut: impl Future<Output = ()> + Send + 'static) {
-        _ = tokio::spawn(fut);
-    }
-}
-
 pub fn spawn_fn(
-    _sp: &TokioSpawner,
+    _sp: &probe_rs_rpc::TokioSpawner,
     fut: impl Future<Output = ()> + 'static + Send,
 ) -> Result<(), Infallible> {
     tokio::task::spawn(fut);
@@ -475,135 +428,7 @@ pub fn spawn_fn(
 
 pub(crate) type DebugStatesMap = Arc<Mutex<HashMap<Key<Session>, ServerDebugState>>>;
 
-type TargetMetadataResponse = RpcResult<info::WireSessionTargetMetadata>;
-
-type ReadMemory8Response = RpcResult<Vec<u8>>;
-type ReadMemory16Response = RpcResult<Vec<u16>>;
-type ReadMemory32Response = RpcResult<Vec<u32>>;
-type ReadMemory64Response = RpcResult<Vec<u64>>;
-type ReadBytesResponse = RpcResult<Vec<u8>>;
-
-type ScopesResponse = debug_vars::ScopesResponse;
-type VariablesResponse = debug_vars::VariablesResponse;
-type EvaluateResponse = debug_vars::EvaluateResponse;
-type SetVariableResponse = debug_vars::SetVariableResult;
-type LoadSvdResponse = debug_vars::LoadSvdResponse;
-type DisassembleResponse = disassemble::DisassembleResponse;
-type ResolveSourceBreakpointsResponse = breakpoints::ResolveSourceBreakpointsResponse;
-type ResolveSourceLocationsResponse = breakpoints::ResolveSourceLocationsResponse;
-type StepResult = core_ops::StepResult;
-
-type WriteMemory8Request = WriteMemoryRequest<u8>;
-type WriteMemory16Request = WriteMemoryRequest<u16>;
-type WriteMemory32Request = WriteMemoryRequest<u32>;
-type WriteMemory64Request = WriteMemoryRequest<u64>;
-
-type CoreStatusResponse = RpcResult<WireCoreStatus>;
-type CoreInfoResponse = RpcResult<WireCoreInformation>;
-type ResetAndHaltResponse = RpcResult<WireCoreInformation>;
-type CoreMetadataResponse = RpcResult<WireCoreMetadata>;
-type CoreReadRegistersResponse = RpcResult<Vec<WireRegisterReadResult>>;
-type CoreDumpResponse = RpcResult<WireCoreDump>;
-type HandleSemihostingResponse =
-    RpcResult<crate::rpc::functions::core_ops::HandleSemihostingResult>;
-type CoreSetHwBpsResponse = RpcResult<Vec<Result<(), RpcError>>>;
-
-endpoints! {
-    list = ENDPOINT_LIST;
-    | EndpointTy                | RequestTy               | ResponseTy              | Path               |
-    | ----------                | ---------               | ----------              | ----               |
-    | ListProbesEndpoint        | ()                      | ListProbesResponse      | "probe/list"       |
-    | SelectProbeEndpoint       | SelectProbeRequest      | SelectProbeResponse     | "probe/select"     |
-    | AttachEndpoint            | AttachRequest           | AttachResponse          | "probe/attach"     |
-
-    | ResumeAllCoresEndpoint    | ResumeAllCoresRequest   | NoResponse              | "resume"           |
-    | BuildEndpoint             | BuildRequest            | BuildResponse           | "flash/build"      |
-    | FlashEndpoint             | FlashRequest            | NoResponse              | "flash/flash"      |
-    | EraseEndpoint             | EraseRequest            | NoResponse              | "flash/erase"      |
-    | VerifyEndpoint            | VerifyRequest           | VerifyResponse          | "flash/verify"     |
-    | BootEndpoint              | BootRequest             | NoResponse              | "flash/boot"       |
-    | MonitorEndpoint           | MonitorRequest          | MonitorResponse         | "monitor"          |
-
-    | TakeStackTraceEndpoint     | TakeStackTraceRequest     | TakeStackTraceResponse     | "stack_trace"              |
-    | TakeRichStackTraceEndpoint | TakeRichStackTraceRequest | TakeRichStackTraceResponse | "stack_trace/rich"         |
-    | ScopesEndpoint             | ScopesRequest             | ScopesResponse             | "stack_trace/scopes"       |
-    | VariablesEndpoint          | VariablesRequest          | VariablesResponse          | "stack_trace/variables"    |
-    | EvaluateEndpoint           | EvaluateRequest           | EvaluateResponse           | "stack_trace/evaluate"     |
-    | SetVariableEndpoint        | SetVariableRequest        | SetVariableResponse        | "stack_trace/set_variable" |
-
-    | LoadDebugInfoEndpoint            | LoadDebugInfoRequest            | LoadDebugInfoResponse            | "debug_state/load_debug_info"            |
-    | ResolveSourceBreakpointsEndpoint | ResolveSourceBreakpointsRequest | ResolveSourceBreakpointsResponse | "debug_state/resolve_source_breakpoints" |
-    | ResolveSourceLocationsEndpoint   | ResolveSourceLocationsRequest   | ResolveSourceLocationsResponse   | "debug_state/resolve_source_locations"   |
-    | ClearCoreDebugStateEndpoint      | ClearCoreDebugStateRequest      | NoResponse                       | "debug_state/clear_core"                 |
-    | LoadSvdEndpoint                  | LoadSvdRequest                  | LoadSvdResponse                  | "debug_state/load_svd"                   |
-
-    | CreateRttClientEndpoint      | CreateRttClientRequest | CreateRttClientResponse | "create_rtt"              |
-    | RttDownEndpoint              | RttDownRequest         | NoResponse              | "rtt/down"                |
-    | GetRttChannelsEndpoint       | RttChannelRequest      | RttChannelsResponse     | "rtt/channels"            |
-    | PollRttUpEndpoint            | PollRttUpRequest       | PollRttUpResponse       | "rtt/poll_up"             |
-    | CleanUpRttEndpoint           | RttChannelRequest      | NoResponse              | "rtt/clean_up"            |
-    | ClearRttControlBlockEndpoint | RttChannelRequest      | NoResponse              | "rtt/clear_control_block" |
-
-    | ListTestsEndpoint         | ListTestsRequest        | ListTestsResponse       | "tests/list"       |
-    | RunTestEndpoint           | RunTestRequest          | RunTestResponse         | "tests/run"        |
-    | TestKickoffEndpoint       | TestKickoffRequest      | TestKickoffResponse     | "tests/kickoff"    |
-
-    | CreateTempFileEndpoint    | ()                      | CreateFileResponse      | "temp_file/new"    |
-    | TempFileDataEndpoint      | AppendFileRequest       | NoResponse              | "temp_file/append" |
-
-    | ListChipFamiliesEndpoint  | ()                      | ListFamiliesResponse    | "chips/list"       |
-    | ChipInfoEndpoint          | ChipInfoRequest         | ChipInfoResponse        | "chips/info"       |
-    | LoadChipFamilyEndpoint    | LoadChipFamilyRequest   | NoResponse              | "chips/load"       |
-
-    | TargetMetadataEndpoint    | TargetMetadataRequest   | TargetMetadataResponse  | "target/metadata"  |
-    | TargetInfoEndpoint        | TargetInfoRequest       | NoResponse              | "info"             |
-    | ResetCoreEndpoint         | ResetCoreRequest        | NoResponse              | "reset"            |
-    | ResetCoreAndHaltEndpoint  | ResetCoreAndHaltRequest | ResetAndHaltResponse    | "reset_and_halt"   |
-
-    | CoreStatusEndpoint           | CoreAccessRequest        | CoreStatusResponse         | "core/status"             |
-    | CoreHaltEndpoint             | CoreHaltRequest          | CoreInfoResponse           | "core/halt"               |
-    | CoreRunEndpoint              | CoreAccessRequest        | NoResponse                 | "core/run"                |
-    | CoreStepEndpoint             | StepRequest              | StepResult                 | "core/step"               |
-    | CoreWriteRegEndpoint         | CoreWriteRegRequest      | NoResponse                 | "core/write_reg"          |
-    | CoreSetHwBpsEndpoint         | CoreBreakpointsRequest   | CoreSetHwBpsResponse       | "core/set_hw_bps"         |
-    | CoreClearHwBpsEndpoint       | CoreBreakpointsRequest   | NoResponse                 | "core/clear_hw_bps"       |
-    | CoreEnableVcEndpoint         | CoreVectorCatchRequest   | NoResponse                 | "core/enable_vc"          |
-    | CoreMetadataEndpoint         | CoreAccessRequest        | CoreMetadataResponse       | "core/metadata"           |
-    | CoreReadRegistersEndpoint    | CoreReadRegistersRequest | CoreReadRegistersResponse  | "core/read_registers"     |
-    | CoreDumpEndpoint             | CoreDumpRequest          | CoreDumpResponse           | "core/dump"               |
-    | HandleSemihostingEndpoint    | HandleSemihostingRequest | HandleSemihostingResponse  | "core/handle_semihosting" |
-    | DisassembleEndpoint          | DisassembleRequest       | DisassembleResponse        | "core/disassemble"        |
-
-    | ReadMemory8Endpoint       | ReadMemoryRequest       | ReadMemory8Response     | "memory/read8"     |
-    | ReadMemory16Endpoint      | ReadMemoryRequest       | ReadMemory16Response    | "memory/read16"    |
-    | ReadMemory32Endpoint      | ReadMemoryRequest       | ReadMemory32Response    | "memory/read32"    |
-    | ReadMemory64Endpoint      | ReadMemoryRequest       | ReadMemory64Response    | "memory/read64"    |
-    | ReadBytesEndpoint         | ReadBytesRequest        | ReadBytesResponse       | "memory/read_bytes" |
-
-    | WriteMemory8Endpoint      | WriteMemory8Request     | NoResponse              | "memory/write8"    |
-    | WriteMemory16Endpoint     | WriteMemory16Request    | NoResponse              | "memory/write16"   |
-    | WriteMemory32Endpoint     | WriteMemory32Request    | NoResponse              | "memory/write32"   |
-    | WriteMemory64Endpoint     | WriteMemory64Request    | NoResponse              | "memory/write64"   |
-}
-
-topics! {
-    list = TOPICS_IN_LIST;
-    direction = TopicDirection::ToServer;
-    | TopicTy     | MessageTy     | Path     |
-    | -------     | ---------     | ----     |
-    | CancelTopic | ()            | "cancel" |
-}
-
-topics! {
-    list = TOPICS_OUT_LIST;
-    direction = TopicDirection::ToClient;
-    | TopicTy             | MessageTy        | Path             | Cfg |
-    | -------             | ---------        | ----             | --- |
-    | TargetInfoDataTopic | InfoEvent        | "info/data"      |     |
-    | ProgressEventTopic  | ProgressEvent    | "flash/progress" |     |
-    | RttTopic            | RttEvent         | "rtt"            |     |
-    | SemihostingTopic    | SemihostingEvent | "semihosting"    |     |
-}
+use probe_rs_rpc::*;
 
 postcard_rpc::define_dispatch! {
     app: RpcApp;

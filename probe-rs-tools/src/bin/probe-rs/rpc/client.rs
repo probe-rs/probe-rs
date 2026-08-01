@@ -29,23 +29,6 @@ use crate::rpc::functions::format::FormatOptions;
 use crate::rpc::{
     FlashLoader, Key, RttClient, Session,
     functions::{
-        AttachEndpoint, BootEndpoint, BuildEndpoint, ChipInfoEndpoint, CleanUpRttEndpoint,
-        ClearCoreDebugStateEndpoint, ClearRttControlBlockEndpoint, CoreClearHwBpsEndpoint,
-        CoreDumpEndpoint, CoreEnableVcEndpoint, CoreHaltEndpoint, CoreMetadataEndpoint,
-        CoreReadRegistersEndpoint, CoreRunEndpoint, CoreSetHwBpsEndpoint, CoreStatusEndpoint,
-        CoreStepEndpoint, CoreWriteRegEndpoint, CreateRttClientEndpoint, CreateTempFileEndpoint,
-        DisassembleEndpoint, EraseEndpoint, EvaluateEndpoint, FlashEndpoint,
-        GetRttChannelsEndpoint, HandleSemihostingEndpoint, ListChipFamiliesEndpoint,
-        ListProbesEndpoint, ListTestsEndpoint, LoadChipFamilyEndpoint, LoadDebugInfoEndpoint,
-        LoadSvdEndpoint, MonitorEndpoint, PollRttUpEndpoint, ProgressEventTopic, ReadBytesEndpoint,
-        ReadMemory8Endpoint, ReadMemory16Endpoint, ReadMemory32Endpoint, ReadMemory64Endpoint,
-        ResetCoreAndHaltEndpoint, ResetCoreEndpoint, ResolveSourceBreakpointsEndpoint,
-        ResolveSourceLocationsEndpoint, ResumeAllCoresEndpoint, RpcError, RpcResult,
-        RttDownEndpoint, RttTopic, RunTestEndpoint, ScopesEndpoint, SelectProbeEndpoint,
-        SemihostingTopic, SetVariableEndpoint, TakeRichStackTraceEndpoint, TakeStackTraceEndpoint,
-        TargetInfoDataTopic, TargetInfoEndpoint, TargetMetadataEndpoint, TempFileDataEndpoint,
-        TestKickoffEndpoint, TokioSpawner, VariablesEndpoint, VerifyEndpoint, WriteMemory8Endpoint,
-        WriteMemory16Endpoint, WriteMemory32Endpoint, WriteMemory64Endpoint,
         breakpoints::{
             BreakpointResolution, ResolveSourceBreakpointsRequest, ResolveSourceLocationsRequest,
             SourceBreakpointLocation, WireSourceLocation,
@@ -92,10 +75,29 @@ use crate::rpc::{
         },
         test::{ListTestsRequest, RunTestRequest, Test, TestKickoffRequest, TestResult, Tests},
     },
-    transport::memory::{PostcardReceiver, PostcardSender, WireRx, WireTx},
     upload_cache::{ContentHash, ResolvedUpload, UploadCache},
 };
 use probe_rs_rpc::rtt_config::RttChannelConfig;
+use probe_rs_rpc::transport::memory::{PostcardReceiver, PostcardSender, WireRx, WireTx};
+use probe_rs_rpc::{
+    AttachEndpoint, BootEndpoint, BuildEndpoint, ChipInfoEndpoint, CleanUpRttEndpoint,
+    ClearCoreDebugStateEndpoint, ClearRttControlBlockEndpoint, CoreClearHwBpsEndpoint,
+    CoreDumpEndpoint, CoreEnableVcEndpoint, CoreHaltEndpoint, CoreMetadataEndpoint,
+    CoreReadRegistersEndpoint, CoreRunEndpoint, CoreSetHwBpsEndpoint, CoreStatusEndpoint,
+    CoreStepEndpoint, CoreWriteRegEndpoint, CreateRttClientEndpoint, CreateTempFileEndpoint,
+    DisassembleEndpoint, EraseEndpoint, EvaluateEndpoint, FlashEndpoint, GetRttChannelsEndpoint,
+    HandleSemihostingEndpoint, ListChipFamiliesEndpoint, ListProbesEndpoint, ListTestsEndpoint,
+    LoadChipFamilyEndpoint, LoadDebugInfoEndpoint, LoadSvdEndpoint, MonitorEndpoint,
+    PollRttUpEndpoint, ProgressEventTopic, ReadBytesEndpoint, ReadMemory8Endpoint,
+    ReadMemory16Endpoint, ReadMemory32Endpoint, ReadMemory64Endpoint, ResetCoreAndHaltEndpoint,
+    ResetCoreEndpoint, ResolveSourceBreakpointsEndpoint, ResolveSourceLocationsEndpoint,
+    ResumeAllCoresEndpoint, RpcError, RpcResult, RttDownEndpoint, RttTopic, RunTestEndpoint,
+    ScopesEndpoint, SelectProbeEndpoint, SemihostingTopic, SetVariableEndpoint,
+    TakeRichStackTraceEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint,
+    TargetMetadataEndpoint, TempFileDataEndpoint, TestKickoffEndpoint, TokioSpawner,
+    VariablesEndpoint, VerifyEndpoint, WriteMemory8Endpoint, WriteMemory16Endpoint,
+    WriteMemory32Endpoint, WriteMemory64Endpoint,
+};
 
 /// Host and optional authentication token identifying a remote probe-rs RPC
 /// server. `None` selects a local, in-process server.
@@ -152,9 +154,9 @@ fn from_io_closed(_: IoClosed) -> ClientError {
 
 #[cfg(feature = "remote")]
 pub async fn connect(host: &str, token: Option<&str>) -> Result<RpcClient, ClientError> {
-    use crate::rpc::transport::websocket::{WebsocketRx, WebsocketTx};
     use axum::http::Uri;
     use futures_util::StreamExt as _;
+    use probe_rs_rpc::transport::websocket::{WebsocketRx, WebsocketTx};
     use rustls::ClientConfig;
     use sha2::{Digest, Sha512};
     use std::str::FromStr;
@@ -235,7 +237,7 @@ pub async fn connect(host: &str, token: Option<&str>) -> Result<RpcClient, Clien
 
 #[cfg(all(feature = "remote", unix))]
 pub async fn connect_unix(path: &str) -> Result<RpcClient, ClientError> {
-    use crate::rpc::transport::unix::{UnixStreamRx, UnixStreamTx};
+    use probe_rs_rpc::transport::unix::{UnixStreamRx, UnixStreamTx};
     use tokio::net::UnixStream;
 
     let stream = UnixStream::connect(path).await.map_err(|err| {

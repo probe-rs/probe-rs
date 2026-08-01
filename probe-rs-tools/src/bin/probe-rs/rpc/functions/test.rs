@@ -4,13 +4,13 @@ use anyhow::Context;
 use postcard_rpc::{header::VarHeader, server::Sender};
 use probe_rs::{BreakpointCause, Core, HaltReason, semihosting::SemihostingCommand};
 pub use probe_rs_rpc::test::{
-    ListTestsRequest, ListTestsResponse, RunTestRequest, RunTestResponse, Test, TestDefinition,
-    TestDefinitions, TestKickoffRequest, TestKickoffResponse, TestOutcome, TestResult, Tests,
+    ListTestsRequest, RunTestRequest, Test, TestDefinition, TestDefinitions, TestKickoffRequest,
+    TestKickoffResponse, TestOutcome, TestResult, Tests,
 };
 
 use crate::rpc::{
     functions::{
-        ListTestsEndpoint, RpcContext, RpcSpawnContext, RunTestEndpoint, WireTxImpl,
+        RpcContext, RpcSpawnContext, WireTxImpl,
         convert::lift,
         monitor::{MonitorSender, RttPoller, SemihostingEvent},
         semihosting_options::SemihostingOptions,
@@ -20,6 +20,7 @@ use crate::rpc::{
         semihosting::SemihostingFileManager,
     },
 };
+use probe_rs_rpc::{ListTestsEndpoint, RunTestEndpoint};
 
 pub async fn list_tests(
     mut ctx: RpcSpawnContext,
