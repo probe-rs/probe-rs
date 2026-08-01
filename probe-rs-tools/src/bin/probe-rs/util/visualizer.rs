@@ -7,11 +7,15 @@ use svg::{
     node::element::{Group, Rectangle, Text},
 };
 
-use crate::rpc::functions::flash::FlashLayout;
+use probe_rs_rpc::flash::FlashLayout;
 
 /// A structure which can be used to visualize the built contents of a flash.
 pub struct FlashVisualizer<'layout> {
     flash_layout: &'layout FlashLayout,
+}
+
+pub fn visualize_flash_layout(flash_layout: &FlashLayout) -> FlashVisualizer<'_> {
+    FlashVisualizer::new(flash_layout)
 }
 
 impl<'layout> FlashVisualizer<'layout> {
@@ -128,13 +132,5 @@ impl<'layout> FlashVisualizer<'layout> {
             .open(path.as_ref())?;
 
         file.write_all(svg.as_bytes())
-    }
-}
-
-impl FlashLayout {
-    /// Get a visualizer for the flash layout, which can create
-    /// a graphical representation of the layout.
-    pub fn visualize(&self) -> FlashVisualizer<'_> {
-        FlashVisualizer::new(self)
     }
 }

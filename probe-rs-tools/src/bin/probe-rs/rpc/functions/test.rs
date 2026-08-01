@@ -174,7 +174,11 @@ fn list_tests_impl(
 
     {
         let mut session = shared_session.session_blocking();
-        request.boot_info.prepare(&mut session, run_loop.core_id)?;
+        crate::rpc::functions::flash::prepare_boot_info(
+            &request.boot_info,
+            &mut session,
+            run_loop.core_id,
+        )?;
     }
 
     let poller = request.rtt_client.map(|client| RttPoller {

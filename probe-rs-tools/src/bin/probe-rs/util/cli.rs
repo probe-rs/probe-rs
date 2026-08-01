@@ -502,7 +502,7 @@ pub async fn flash(
             flash_layout.merge_from(phase_layout);
         }
 
-        let visualizer = flash_layout.visualize();
+        let visualizer = crate::util::visualizer::visualize_flash_layout(&flash_layout);
         _ = visualizer.write_svg(visualizer_output);
     }
 

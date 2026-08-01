@@ -273,7 +273,8 @@ async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Res
     };
 
     let format_options = FormatOptions::default();
-    let format = format_options.binary_format.resolve(session.target());
+    let format =
+        crate::util::flash::resolve_format_kind(format_options.binary_format, session.target());
     let elf = if matches!(format, FormatKind::Elf | FormatKind::Idf) {
         Some(fs::read(&path)?)
     } else {

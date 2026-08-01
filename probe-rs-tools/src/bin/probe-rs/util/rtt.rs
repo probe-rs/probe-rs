@@ -74,7 +74,7 @@ impl RttActiveUpChannel {
 
     pub fn change_mode(&mut self, core: &mut Core, mode: ChannelMode) -> Result<(), Error> {
         if self.original_mode.is_none() {
-            self.original_mode = Some(self.up_channel.mode(core)?);
+            self.original_mode = Some(to_wire_channel_mode(self.up_channel.mode(core)?));
         }
         self.up_channel.set_mode(core, from_wire_channel_mode(mode))
     }
