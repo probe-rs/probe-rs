@@ -11,6 +11,8 @@ use probe_rs::{
 };
 use termtree::Tree;
 
+use crate::rpc::functions::chip::convert::from_wire_jep106_code;
+use crate::rpc::functions::probe::convert::{to_wire_debug_probe_selector, to_wire_protocol};
 use crate::{
     rpc::{
         client::RpcClient,
@@ -70,7 +72,8 @@ impl Cmd {
                 vec![WireProtocol::Jtag, WireProtocol::Swd]
             };
 
-            let probe = select_probe(&client, self.common.probe.map(Into::into)).await?;
+            let probe =
+                select_probe(&client, self.common.probe.map(to_wire_debug_probe_selector)).await?;
 
             let mut any_success = false;
 
@@ -85,7 +88,7 @@ impl Cmd {
 
                 let req = TargetInfoRequest {
                     target_sel: self.target_sel,
-                    protocol: protocol.into(),
+                    protocol: to_wire_protocol(protocol),
 
                     probe: probe.clone(),
                     speed: self.common.speed,
@@ -280,7 +283,7 @@ impl Display for DebugPortInfoNode {
 
             write!(f, ", Instance: {instance:#04x}")?;
         } else {
-            format_jep(f, self.dp_info.designer.into())?;
+            format_jep(f, from_wire_jep106_code(self.dp_info.designer))?;
         }
 
         Ok(())

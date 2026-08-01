@@ -6,6 +6,8 @@ use postcard_rpc::header::{VarHeader, VarSeq};
 use postcard_schema::{Schema, schema};
 use serde::{Deserialize, Serialize};
 
+use crate::rpc::functions::core_ops::convert::to_wire_core_type;
+use crate::rpc::functions::probe::convert::from_wire_protocol;
 use crate::rpc::{
     Key, Session,
     functions::{
@@ -224,7 +226,7 @@ use probe_rs::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState,
         },
     },
-    probe::{Probe, WireProtocol as ProbeRsWireProtocol, wlink::WchLink},
+    probe::{Probe, wlink::WchLink},
 };
 use probe_rs_target::ScanChainElement;
 
@@ -245,7 +247,7 @@ pub async fn target_metadata(
             .into_iter()
             .map(|(index, core_type)| WireSessionCore {
                 index: index as u32,
-                core_type: core_type.into(),
+                core_type: to_wire_core_type(core_type),
             })
             .collect(),
     })
@@ -294,7 +296,7 @@ async fn try_show_info(
     connect_under_reset: bool,
     target_sel: Option<u32>,
 ) -> anyhow::Result<()> {
-    probe.select_protocol(ProbeRsWireProtocol::from(protocol))?;
+    probe.select_protocol(from_wire_protocol(protocol))?;
 
     if !scan_chain.is_empty()
         && let Some(jtag) = probe.try_as_jtag_probe()
@@ -876,6 +878,8 @@ pub(crate) mod convert {
     use super::{
         DebugPortId, DebugPortVersion, DpAddress, MinDpSupport, TargetInfoRequest, WireProtocol,
     };
+    use crate::rpc::functions::chip::convert::to_wire_jep106_code;
+    use crate::rpc::functions::probe::convert::from_wire_debug_probe_selector;
     use crate::util::common_options::ProbeOptions;
     use probe_rs::{architecture::arm::dp, probe::WireProtocol as ProbeRsWireProtocol};
 
@@ -889,7 +893,7 @@ pub(crate) mod convert {
                     WireProtocol::Swd => Some(ProbeRsWireProtocol::Swd),
                 },
                 non_interactive: true,
-                probe: Some(request.probe.selector().into()),
+                probe: Some(from_wire_debug_probe_selector(request.probe.selector())),
                 speed: request.speed,
                 connect_under_reset: request.connect_under_reset,
                 cycle_power: false,
@@ -918,7 +922,7 @@ pub(crate) mod convert {
                     dp::MinDpSupport::NotImplemented => MinDpSupport::NotImplemented,
                     dp::MinDpSupport::Implemented => MinDpSupport::Implemented,
                 },
-                designer: id.designer.into(),
+                designer: to_wire_jep106_code(id.designer),
             }
         }
     }

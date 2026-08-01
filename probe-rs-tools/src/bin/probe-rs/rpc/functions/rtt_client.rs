@@ -1,16 +1,14 @@
 use crate::{
     rpc::{
         Key, RttClient, Session,
-        functions::{
-            NoResponse, RpcContext, RpcError, RpcResult, convert::lift,
-            rtt_config::RttChannelConfig,
-        },
+        functions::{NoResponse, RpcContext, RpcError, RpcResult, convert::lift},
     },
     util::rtt::RttConfig,
 };
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
 use probe_rs::rtt;
+use probe_rs_rpc::rtt_config::RttChannelConfig;
 use serde::{Deserialize, Serialize};
 
 /// Used to specify which memory regions to scan for the RTT control block.

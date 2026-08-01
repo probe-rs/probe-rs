@@ -100,7 +100,6 @@ pub mod probe;
 pub mod reset;
 pub mod resume;
 pub mod rtt_client;
-pub mod rtt_config;
 pub mod semihosting_options;
 pub mod stack_trace;
 pub mod test;

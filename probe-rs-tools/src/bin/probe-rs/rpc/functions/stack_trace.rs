@@ -322,7 +322,8 @@ pub async fn take_rich_stack_trace(
                 .iter()
                 .map(|f| RichStackTraceFrame {
                     function_name: f.function_name.clone(),
-                    program_counter: WireRegisterValue::from(f.pc),
+                    program_counter:
+                        crate::rpc::functions::core_ops::convert::to_wire_register_value(f.pc),
                     is_inlined: f.is_inlined,
                     location: f.source_location.as_ref().map(SourceLocation::from),
                     frame_base: f.frame_base,
@@ -376,7 +377,8 @@ mod tests {
 }
 
 pub(crate) mod convert {
-    use super::{SourceLocation, StackTraceFrame, WireDebugRegister, WireRegisterValue};
+    use super::{SourceLocation, StackTraceFrame, WireDebugRegister};
+    use crate::rpc::functions::core_ops::convert::{to_wire_register_id, to_wire_register_value};
     use probe_rs_debug::{DebugRegister, StackFrame};
 
     impl From<&probe_rs_debug::SourceLocation> for SourceLocation {
@@ -412,9 +414,9 @@ pub(crate) mod convert {
     impl From<&DebugRegister> for WireDebugRegister {
         fn from(r: &DebugRegister) -> Self {
             WireDebugRegister {
-                id: r.core_register.id.into(),
+                id: to_wire_register_id(r.core_register.id),
                 dwarf_id: r.dwarf_id,
-                value: r.value.map(WireRegisterValue::from),
+                value: r.value.map(to_wire_register_value),
             }
         }
     }

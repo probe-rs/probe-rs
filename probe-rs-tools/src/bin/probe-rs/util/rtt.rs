@@ -1,32 +1,27 @@
 use postcard_schema::Schema;
 use probe_rs::rtt::{self, DownChannel, Error, Rtt, UpChannel};
 use probe_rs::{Core, MemoryInterface};
+use probe_rs_rpc::rtt_config::{ChannelMode, RttChannelConfig};
 use serde::{Deserialize, Serialize};
 
 pub(crate) mod client;
 pub(crate) mod processing;
 
-use crate::rpc::functions::rtt_config::{ChannelMode, RttChannelConfig};
-
 pub use processing::*;
 
-impl From<ChannelMode> for rtt::ChannelMode {
-    fn from(mode: ChannelMode) -> Self {
-        match mode {
-            ChannelMode::NoBlockSkip => rtt::ChannelMode::NoBlockSkip,
-            ChannelMode::NoBlockTrim => rtt::ChannelMode::NoBlockTrim,
-            ChannelMode::BlockIfFull => rtt::ChannelMode::BlockIfFull,
-        }
+pub(crate) fn from_wire_channel_mode(mode: ChannelMode) -> rtt::ChannelMode {
+    match mode {
+        ChannelMode::NoBlockSkip => rtt::ChannelMode::NoBlockSkip,
+        ChannelMode::NoBlockTrim => rtt::ChannelMode::NoBlockTrim,
+        ChannelMode::BlockIfFull => rtt::ChannelMode::BlockIfFull,
     }
 }
 
-impl From<rtt::ChannelMode> for ChannelMode {
-    fn from(mode: rtt::ChannelMode) -> Self {
-        match mode {
-            rtt::ChannelMode::NoBlockSkip => ChannelMode::NoBlockSkip,
-            rtt::ChannelMode::NoBlockTrim => ChannelMode::NoBlockTrim,
-            rtt::ChannelMode::BlockIfFull => ChannelMode::BlockIfFull,
-        }
+pub(crate) fn to_wire_channel_mode(mode: rtt::ChannelMode) -> ChannelMode {
+    match mode {
+        rtt::ChannelMode::NoBlockSkip => ChannelMode::NoBlockSkip,
+        rtt::ChannelMode::NoBlockTrim => ChannelMode::NoBlockTrim,
+        rtt::ChannelMode::BlockIfFull => ChannelMode::BlockIfFull,
     }
 }
 
@@ -64,7 +59,7 @@ pub struct RttActiveUpChannel {
 
     /// If set, the original mode of the channel before we first changed it. Upon exit we should do
     /// our best to restore the original mode.
-    original_mode: Option<rtt::ChannelMode>,
+    original_mode: Option<ChannelMode>,
 }
 
 impl RttActiveUpChannel {
@@ -81,7 +76,7 @@ impl RttActiveUpChannel {
         if self.original_mode.is_none() {
             self.original_mode = Some(self.up_channel.mode(core)?);
         }
-        self.up_channel.set_mode(core, mode.into())
+        self.up_channel.set_mode(core, from_wire_channel_mode(mode))
     }
 
     pub fn channel_name(&self) -> String {
@@ -115,7 +110,8 @@ impl RttActiveUpChannel {
     /// Clean up temporary changes made to the channel.
     pub fn clean_up(&mut self, core: &mut Core) -> Result<(), Error> {
         if let Some(mode) = self.original_mode.take() {
-            self.up_channel.set_mode(core, mode)?;
+            self.up_channel
+                .set_mode(core, from_wire_channel_mode(mode))?;
         }
         Ok(())
     }
@@ -236,5 +232,22 @@ impl RttConnection {
         self.active_down_channels.clear();
         self.active_up_channels.clear();
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use probe_rs::rtt;
+
+    #[test]
+    fn channel_mode_wire_conversion_round_trips() {
+        for mode in [
+            rtt::ChannelMode::NoBlockSkip,
+            rtt::ChannelMode::NoBlockTrim,
+            rtt::ChannelMode::BlockIfFull,
+        ] {
+            assert_eq!(from_wire_channel_mode(to_wire_channel_mode(mode)), mode);
+        }
     }
 }

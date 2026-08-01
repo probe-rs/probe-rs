@@ -31,8 +31,8 @@ use probe_rs_debug::SourceLocation;
 use std::{any::Any, env::set_current_dir, path::Path};
 use time::UtcOffset;
 
-use crate::rpc::functions::rtt_config::DataFormat;
 use crate::util::rtt::RttConfig;
+use probe_rs_rpc::rtt_config::DataFormat;
 
 /// The supported breakpoint types
 #[derive(Clone, Debug, PartialEq)]

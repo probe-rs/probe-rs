@@ -1,8 +1,8 @@
 // use crate::dap_types2 as debugserver_types;
 use crate::cmd::dap_server::DebuggerError;
-use crate::rpc::functions::rtt_config::DataFormat;
 use num_traits::Num;
 use parse_int::parse;
+use probe_rs_rpc::rtt_config::DataFormat;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 

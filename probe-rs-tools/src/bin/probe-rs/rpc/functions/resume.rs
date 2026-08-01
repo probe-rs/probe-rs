@@ -1,15 +1,7 @@
-use crate::rpc::{
-    Key, Session,
-    functions::{NoResponse, RpcContext, convert::lift},
-};
 use postcard_rpc::header::VarHeader;
-use postcard_schema::Schema;
-use serde::{Deserialize, Serialize};
+pub use probe_rs_rpc::resume::ResumeAllCoresRequest;
 
-#[derive(Serialize, Deserialize, Schema)]
-pub struct ResumeAllCoresRequest {
-    pub sessid: Key<Session>,
-}
+use crate::rpc::functions::{NoResponse, RpcContext, convert::lift};
 
 pub async fn resume_all_cores(
     ctx: &mut RpcContext,

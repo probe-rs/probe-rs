@@ -1,11 +1,9 @@
-use crate::rpc::{
-    Key, Session,
-    functions::{NoResponse, RpcContext, RpcResult, convert::lift},
-};
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
 use probe_rs::MemoryInterface;
-use serde::{Deserialize, Serialize};
+pub use probe_rs_rpc::memory::{ReadBytesRequest, ReadMemoryRequest, WriteMemoryRequest};
+
+use crate::rpc::functions::{NoResponse, RpcContext, RpcResult, convert::lift};
 
 pub trait Word: Copy + Default + Send + Schema {
     fn read(
@@ -78,14 +76,6 @@ impl Word for u64 {
     }
 }
 
-#[derive(Serialize, Deserialize, Schema)]
-pub struct WriteMemoryRequest<W: Word> {
-    pub sessid: Key<Session>,
-    pub core: u32,
-    pub address: u64,
-    pub data: Vec<W>,
-}
-
 pub async fn write_memory<W: Word>(
     ctx: &mut RpcContext,
     _header: VarHeader,
@@ -95,14 +85,6 @@ pub async fn write_memory<W: Word>(
     let mut core = session.core(request.core as usize).unwrap();
     lift(W::write(&mut core, request.address, &request.data))?;
     Ok(())
-}
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct ReadMemoryRequest {
-    pub sessid: Key<Session>,
-    pub core: u32,
-    pub address: u64,
-    pub count: u32,
 }
 
 pub async fn read_memory<W: Word>(
@@ -116,14 +98,6 @@ pub async fn read_memory<W: Word>(
     let mut words = vec![W::default(); request.count as usize];
     lift(W::read(&mut core, request.address, &mut words))?;
     Ok(words)
-}
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct ReadBytesRequest {
-    pub sessid: Key<Session>,
-    pub core: u32,
-    pub address: u64,
-    pub count: u64,
 }
 
 /// Lossy bulk byte read: reads as many bytes as possible starting at

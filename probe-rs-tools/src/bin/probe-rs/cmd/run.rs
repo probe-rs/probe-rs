@@ -7,9 +7,9 @@ use crate::rpc::functions::test::{Test, TestDefinition};
 use crate::rpc::utils::run_loop::VectorCatchConfig;
 
 use crate::rpc::functions::format::FormatOptions;
-use crate::rpc::functions::rtt_config::ChannelMode;
 use crate::util::cli::{self, parse_metadata, rtt_client};
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
+use probe_rs_rpc::rtt_config::ChannelMode;
 
 use anyhow::{Context, anyhow};
 use libtest_mimic::{Arguments, FormatSetting};

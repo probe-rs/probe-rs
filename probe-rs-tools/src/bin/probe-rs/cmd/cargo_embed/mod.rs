@@ -24,7 +24,6 @@ use std::{
 use time::{OffsetDateTime, UtcOffset};
 
 use crate::rpc::functions::format::{FormatKind, FormatOptions};
-use crate::rpc::functions::rtt_config::RttChannelConfig;
 use crate::util::cargo::target_instruction_set;
 use crate::util::common_options::{BinaryDownloadOptions, OperationError, ProbeOptions};
 use crate::util::flash::{build_loader, run_flash_download};
@@ -32,6 +31,7 @@ use crate::util::logging::setup_logging;
 use crate::util::rtt::{RttConfig, client::RttClient};
 use crate::util::{cargo::build_artifact, common_options::CargoOptions, logging};
 use crate::{Config, parse_and_resolve_cli_args};
+use probe_rs_rpc::rtt_config::RttChannelConfig;
 
 #[derive(Debug, clap::Parser)]
 #[clap(

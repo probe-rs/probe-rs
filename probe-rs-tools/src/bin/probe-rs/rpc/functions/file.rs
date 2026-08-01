@@ -1,33 +1,15 @@
 #[cfg(feature = "remote")]
 use anyhow::Context as _;
 use postcard_rpc::header::VarHeader;
-use postcard_schema::Schema;
-use serde::{Deserialize, Serialize};
+pub use probe_rs_rpc::file::{AppendFileRequest, CreateFileResponse, TempFile};
 
-use crate::rpc::{
-    Key, TempFileHandle,
-    functions::{NoResponse, RpcContext, RpcResult},
-};
+use crate::rpc::functions::{NoResponse, RpcContext};
 
 #[cfg(feature = "remote")]
 use crate::rpc::functions::convert::lift;
 
 #[cfg(feature = "remote")]
 use tempfile::NamedTempFile;
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct TempFile {
-    pub path: String,
-    pub key: Key<TempFileHandle>,
-}
-
-pub type CreateFileResponse = RpcResult<TempFile>;
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct AppendFileRequest {
-    pub data: Vec<u8>,
-    pub key: Key<TempFileHandle>,
-}
 
 #[cfg(feature = "remote")]
 pub async fn create_temp_file(

@@ -85,7 +85,6 @@ use crate::rpc::{
             CreateRttClientRequest, PollRttUpRequest, RttChannelRequest, RttChannels,
             RttClientData, RttDownRequest, RttPollResult, ScanRegion,
         },
-        rtt_config::RttChannelConfig,
         semihosting_options::SemihostingOptions,
         stack_trace::{
             LoadDebugInfoRequest, RichStackTraces, StackTraces, TakeRichStackTraceRequest,
@@ -96,6 +95,7 @@ use crate::rpc::{
     transport::memory::{PostcardReceiver, PostcardSender, WireRx, WireTx},
     upload_cache::{ContentHash, ResolvedUpload, UploadCache},
 };
+use probe_rs_rpc::rtt_config::RttChannelConfig;
 
 /// Host and optional authentication token identifying a remote probe-rs RPC
 /// server. `None` selects a local, in-process server.

@@ -1,65 +1,16 @@
-use crate::rpc::{
-    Key, Session,
-    functions::{RpcContext, RpcResult},
+use postcard_rpc::header::VarHeader;
+use probe_rs_debug::TypedPath;
+pub use probe_rs_rpc::breakpoints::{
+    BreakpointResolution, ResolveSourceBreakpointsRequest, ResolveSourceBreakpointsResponse,
+    ResolveSourceLocationsRequest, ResolveSourceLocationsResponse, SourceBreakpointLocation,
+    WireSourceLocation,
 };
-use postcard_schema::Schema;
-use serde::{Deserialize, Serialize};
+
+use crate::rpc::functions::RpcContext;
 
 /// Reported per breakpoint when the session was attached without a program
 /// binary, so no DWARF is available to resolve source locations against.
 const NO_DEBUG_INFO: &str = "No debug information is loaded for this session.";
-
-#[derive(Clone, Debug, Serialize, Deserialize, Schema, PartialEq, Eq)]
-pub enum WireColumn {
-    LeftEdge,
-    Column(u64),
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Schema, PartialEq, Eq)]
-pub struct WireSourceLocation {
-    pub path: String,
-    pub line: Option<u64>,
-    pub column: Option<WireColumn>,
-    pub address: Option<u64>,
-}
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct SourceBreakpointLocation {
-    pub path: String,
-    pub line: u64,
-    pub column: Option<u64>,
-}
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct ResolveSourceBreakpointsRequest {
-    pub sessid: Key<Session>,
-    pub locations: Vec<SourceBreakpointLocation>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct WireVerifiedBreakpoint {
-    pub address: u64,
-    pub source_location: WireSourceLocation,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct BreakpointResolution {
-    pub breakpoint: Option<WireVerifiedBreakpoint>,
-    pub error: Option<String>,
-}
-
-pub type ResolveSourceBreakpointsResponse = RpcResult<Vec<BreakpointResolution>>;
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct ResolveSourceLocationsRequest {
-    pub sessid: Key<Session>,
-    pub addresses: Vec<u64>,
-}
-
-pub type ResolveSourceLocationsResponse = RpcResult<Vec<Option<WireSourceLocation>>>;
-
-use postcard_rpc::header::VarHeader;
-use probe_rs_debug::TypedPath;
 
 pub async fn resolve_source_breakpoints(
     ctx: &mut RpcContext,
@@ -93,7 +44,7 @@ pub async fn resolve_source_breakpoints(
                 location.column,
             ) {
                 Ok(breakpoint) => BreakpointResolution {
-                    breakpoint: Some(breakpoint.into()),
+                    breakpoint: Some(convert::to_wire_verified_breakpoint(breakpoint)),
                     error: None,
                 },
                 Err(error) => BreakpointResolution {
@@ -125,49 +76,45 @@ pub async fn resolve_source_locations(
             debug_info
                 .get_source_location(address)
                 .as_ref()
-                .map(WireSourceLocation::from)
+                .map(convert::to_wire_source_location)
         })
         .collect())
 }
 
 pub(crate) mod convert {
-    use super::{WireColumn, WireSourceLocation, WireVerifiedBreakpoint};
     use probe_rs_debug::{ColumnType, SourceLocation, TypedPath, VerifiedBreakpoint};
+    use probe_rs_rpc::breakpoints::{WireColumn, WireSourceLocation, WireVerifiedBreakpoint};
 
-    impl From<&SourceLocation> for WireSourceLocation {
-        fn from(location: &SourceLocation) -> Self {
-            Self {
-                path: location.path.to_path().display().to_string(),
-                line: location.line,
-                column: location.column.map(|column| match column {
-                    ColumnType::LeftEdge => WireColumn::LeftEdge,
-                    ColumnType::Column(column) => WireColumn::Column(column),
-                }),
-                address: location.address,
-            }
+    pub(crate) fn to_wire_source_location(location: &SourceLocation) -> WireSourceLocation {
+        WireSourceLocation {
+            path: location.path.to_path().display().to_string(),
+            line: location.line,
+            column: location.column.map(|column| match column {
+                ColumnType::LeftEdge => WireColumn::LeftEdge,
+                ColumnType::Column(column) => WireColumn::Column(column),
+            }),
+            address: location.address,
         }
     }
 
-    impl From<WireSourceLocation> for SourceLocation {
-        fn from(location: WireSourceLocation) -> Self {
-            Self {
-                path: TypedPath::derive(location.path.as_bytes()).to_path_buf(),
-                line: location.line,
-                column: location.column.map(|column| match column {
-                    WireColumn::LeftEdge => ColumnType::LeftEdge,
-                    WireColumn::Column(column) => ColumnType::Column(column),
-                }),
-                address: location.address,
-            }
+    pub(crate) fn from_wire_source_location(location: WireSourceLocation) -> SourceLocation {
+        SourceLocation {
+            path: TypedPath::derive(location.path.as_bytes()).to_path_buf(),
+            line: location.line,
+            column: location.column.map(|column| match column {
+                WireColumn::LeftEdge => ColumnType::LeftEdge,
+                WireColumn::Column(column) => ColumnType::Column(column),
+            }),
+            address: location.address,
         }
     }
 
-    impl From<VerifiedBreakpoint> for WireVerifiedBreakpoint {
-        fn from(breakpoint: VerifiedBreakpoint) -> Self {
-            Self {
-                address: breakpoint.address,
-                source_location: WireSourceLocation::from(&breakpoint.source_location),
-            }
+    pub(crate) fn to_wire_verified_breakpoint(
+        breakpoint: VerifiedBreakpoint,
+    ) -> WireVerifiedBreakpoint {
+        WireVerifiedBreakpoint {
+            address: breakpoint.address,
+            source_location: to_wire_source_location(&breakpoint.source_location),
         }
     }
 
@@ -184,11 +131,11 @@ pub(crate) mod convert {
                 address: Some(0x1234),
             };
 
-            let wire = WireSourceLocation::from(&location);
+            let wire = to_wire_source_location(&location);
             assert_eq!(wire.column, Some(WireColumn::LeftEdge));
             assert_eq!(wire.address, Some(0x1234));
 
-            let round_trip = SourceLocation::from(wire);
+            let round_trip = from_wire_source_location(wire);
             assert_eq!(round_trip, location);
         }
     }

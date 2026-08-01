@@ -21,8 +21,16 @@ use crate::rpc::{
         RpcError,
         breakpoints::{
             SourceBreakpointLocation, WireSourceLocation as WireBreakpointSourceLocation,
+            convert::from_wire_source_location,
         },
-        core_ops::{WireCoreMetadata, WireCoreStatus, WireRegisterId, WireSteppingMode},
+        core_ops::{
+            WireCoreMetadata, WireCoreStatus, WireRegisterId, WireSteppingMode,
+            convert::{
+                from_wire_core_information, from_wire_core_status, from_wire_core_type,
+                from_wire_instruction_set, from_wire_register_id, from_wire_register_value,
+                to_wire_register_id, to_wire_register_value, to_wire_vector_catch_condition,
+            },
+        },
         disassemble::{WireDisassembledInstruction, WireSource},
         flash::{
             DownloadOptions as WireDownloadOptions, ProgressEvent as WireProgressEvent,
@@ -69,7 +77,7 @@ pub(crate) fn rebuild_debug_registers(
     let mut lookup: HashMap<RegisterId, RegisterValue> = HashMap::with_capacity(wire.len());
     for w in wire {
         if let Some(value) = w.value {
-            lookup.insert(w.id.into(), value.into());
+            lookup.insert(from_wire_register_id(w.id), from_wire_register_value(value));
         }
     }
     DebugRegisters::from_core_registers(regs, |rid| lookup.get(rid).copied())
@@ -255,7 +263,7 @@ impl RpcBackend {
         self.core(core_index)
             .reset_and_halt(timeout)
             .await
-            .map(|info| info.into())
+            .map(from_wire_core_information)
             .map_err(rpc_err)
     }
 
@@ -281,7 +289,7 @@ impl RpcBackend {
                 |resolution| match (resolution.breakpoint, resolution.error) {
                     (Some(breakpoint), _) => Ok(VerifiedBreakpoint {
                         address: breakpoint.address,
-                        source_location: breakpoint.source_location.into(),
+                        source_location: from_wire_source_location(breakpoint.source_location),
                     }),
                     (None, Some(error)) => Err(error),
                     (None, None) => {
@@ -302,7 +310,9 @@ impl RpcBackend {
             .map(|locations| {
                 locations
                     .into_iter()
-                    .map(|location: Option<WireBreakpointSourceLocation>| location.map(Into::into))
+                    .map(|location: Option<WireBreakpointSourceLocation>| {
+                        location.map(from_wire_source_location)
+                    })
                     .collect()
             })
             .map_err(rpc_err)
@@ -315,7 +325,7 @@ impl RpcBackend {
     pub(crate) async fn status(&mut self, core_index: usize) -> Result<CoreStatus, Error> {
         let client = self.core(core_index);
         let wire: WireCoreStatus = client.status().await.map_err(rpc_err)?;
-        Ok(wire.into())
+        Ok(from_wire_core_status(wire))
     }
 
     /// Set a batch of hardware breakpoints, reporting per-address failures in
@@ -348,7 +358,7 @@ impl RpcBackend {
     ) -> Result<CoreInformation, Error> {
         let client = self.core(core_index);
         let info = client.halt(timeout).await.map_err(rpc_err)?;
-        Ok(info.into())
+        Ok(from_wire_core_information(info))
     }
 
     pub(crate) async fn run(&mut self, core_index: usize) -> Result<(), Error> {
@@ -432,10 +442,10 @@ impl RpcBackend {
     ) -> Result<RegisterValue, Error> {
         let client = self.core(core_index);
         let wire = client
-            .read_core_reg(register_id.into())
+            .read_core_reg(to_wire_register_id(register_id))
             .await
             .map_err(rpc_err)?;
-        Ok(wire.into())
+        Ok(from_wire_register_value(wire))
     }
 
     pub(crate) async fn write_core_reg(
@@ -446,7 +456,10 @@ impl RpcBackend {
     ) -> Result<(), Error> {
         let client = self.core(core_index);
         client
-            .write_core_reg(register_id.into(), value.into())
+            .write_core_reg(
+                to_wire_register_id(register_id),
+                to_wire_register_value(value),
+            )
             .await
             .map_err(rpc_err)
     }
@@ -456,12 +469,12 @@ impl RpcBackend {
         core_index: usize,
         ids: Vec<RegisterId>,
     ) -> Result<Vec<Option<RegisterValue>>, Error> {
-        let wire_ids: Vec<WireRegisterId> = ids.iter().copied().map(Into::into).collect();
+        let wire_ids: Vec<WireRegisterId> = ids.iter().copied().map(to_wire_register_id).collect();
         let client = self.core(core_index);
         let results = client.read_registers(wire_ids).await.map_err(rpc_err)?;
         Ok(results
             .into_iter()
-            .map(|r| r.result.ok().map(RegisterValue::from))
+            .map(|r| r.result.ok().map(from_wire_register_value))
             .collect())
     }
 
@@ -476,12 +489,12 @@ impl RpcBackend {
             registers: wire
                 .registers
                 .into_iter()
-                .map(|(id, v)| (id.into(), v.into()))
+                .map(|(id, v)| (from_wire_register_id(id), from_wire_register_value(v)))
                 .collect(),
             data: wire.data,
-            instruction_set: wire.instruction_set.into(),
+            instruction_set: from_wire_instruction_set(wire.instruction_set),
             supports_native_64bit_access: wire.supports_native_64bit_access,
-            core_type: wire.core_type.into(),
+            core_type: from_wire_core_type(wire.core_type),
             fpu_support: wire.fpu_support,
             floating_point_register_count: wire.floating_point_register_count.map(|c| c as usize),
         })
@@ -515,7 +528,7 @@ impl RpcBackend {
             })
             .collect();
         Ok(SemihostingHandleResult {
-            status: result.status.into(),
+            status: from_wire_core_status(result.status),
             events,
         })
     }
@@ -527,7 +540,7 @@ impl RpcBackend {
     ) -> Result<(), Error> {
         let client = self.core(core_index);
         client
-            .enable_vector_catch(condition.into())
+            .enable_vector_catch(to_wire_vector_catch_condition(condition))
             .await
             .map_err(rpc_err)
     }
@@ -583,7 +596,11 @@ impl RpcBackend {
             .debug_step(core_index as u32, wire_mode)
             .await
             .map_err(rpc_err)?;
-        Ok((resp.status.into(), resp.program_counter, resp.warning))
+        Ok((
+            from_wire_core_status(resp.status),
+            resp.program_counter,
+            resp.warning,
+        ))
     }
 
     /// Single-round-trip stack unwind: the server unwinds AND owns the
@@ -634,7 +651,7 @@ impl RpcBackend {
             let registers = rebuild_debug_registers(metadata.registers, &group_regs);
 
             for wf in group {
-                let pc_value: RegisterValue = wf.program_counter.into();
+                let pc_value: RegisterValue = from_wire_register_value(wf.program_counter);
                 frames.push(StackFrame {
                     id: ObjectRef::from(wf.id as i64),
                     function_name: wf.function_name.clone(),
@@ -842,7 +859,7 @@ impl From<WireSessionTargetMetadata> for SessionTargetMetadata {
             cores: wire
                 .cores
                 .into_iter()
-                .map(|core| (core.index as usize, core.core_type.into()))
+                .map(|core| (core.index as usize, from_wire_core_type(core.core_type)))
                 .collect(),
         }
     }

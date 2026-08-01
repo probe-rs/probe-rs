@@ -125,3 +125,13 @@ impl From<WireTxErrorKind> for RpcError {
 pub type RpcResult<T> = Result<T, RpcError>;
 
 pub type NoResponse = RpcResult<()>;
+
+pub mod breakpoints;
+pub mod chip;
+pub mod core_ops;
+pub mod file;
+pub mod memory;
+pub mod probe;
+pub mod reset;
+pub mod resume;
+pub mod rtt_config;
