@@ -10,6 +10,7 @@ use postcard_rpc::{
     Topic,
     header::{VarSeq, VarSeqKind},
     host_client::{HostClient, HostClientConfig, HostErr, IoClosed, SubscribeError, Subscription},
+    standard_icd::WireError,
 };
 use postcard_schema::Schema;
 use serde::{Serialize, de::DeserializeOwned};
@@ -266,7 +267,7 @@ mod tls {
 /// Websocket-backed connection to a remote probe-rs server.
 #[derive(Clone)]
 pub struct RpcClient {
-    client: HostClient<String>,
+    client: HostClient<WireError>,
     upload_cache: Arc<Mutex<UploadCache>>,
     is_localhost: bool,
 }
@@ -286,7 +287,7 @@ impl RpcClient {
         rx: impl PostcardReceiver + Send + 'static,
     ) -> RpcClient {
         Self {
-            client: HostClient::<String>::new_with_wire_and_config(
+            client: HostClient::<WireError>::new_with_wire_and_config(
                 WireTx::new(tx),
                 WireRx::new(rx),
                 TokioSpawner,
@@ -322,7 +323,7 @@ impl RpcClient {
         E::Response: DeserializeOwned + Schema,
     {
         #[cold]
-        fn convert_error(e: HostErr<String>) -> anyhow::Error {
+        fn convert_error(e: HostErr<WireError>) -> anyhow::Error {
             match e {
                 HostErr::Wire(w) => anyhow::format_err!("Wire error: {w}"),
                 HostErr::BadResponse => anyhow::format_err!("Bad response"),
