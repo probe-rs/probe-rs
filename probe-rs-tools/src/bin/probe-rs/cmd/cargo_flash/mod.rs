@@ -53,7 +53,7 @@ struct CliOptions {
     pub download_options: BinaryDownloadOptions,
 
     #[command(flatten)]
-    pub format_options: crate::FormatOptions,
+    pub format_options: crate::rpc::functions::format::FormatOptions,
 
     /// Remote host to connect to
     #[cfg(feature = "remote")]

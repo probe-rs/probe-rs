@@ -26,33 +26,31 @@ use tokio_util::sync::CancellationToken;
 use crate::cmd::run::{EmbeddedTestElfInfo, MonitoringOptions};
 use crate::rpc::Key;
 use crate::rpc::RttClient;
+use crate::rpc::functions::format::FormatOptions;
 use crate::rpc::functions::monitor::{ChannelInfo, MonitorExitReason};
 use crate::rpc::functions::stack_trace::StackTraceFrame;
 use crate::rpc::utils::run_loop::VectorCatchConfig;
 use crate::rpc::utils::semihosting::SemihostingOptions;
-use crate::util::pwr::power_reset;
-use crate::{
-    FormatOptions,
-    rpc::{
-        client::{MultiSubscribeError, MultiSubscription, MultiTopic, RpcClient, SessionInterface},
-        functions::{
-            CancelTopic, RttTopic, SemihostingTopic,
-            flash::{BootInfo, DownloadOptions, FlashLayout, ProgressEvent, VerifyResult},
-            monitor::{MonitorMode, MonitorOptions, RttEvent, SemihostingEvent},
-            probe::{
-                AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, SelectProbeResult,
-            },
-            rtt_client::ScanRegion,
-            stack_trace::StackTrace,
-            test::{Test, TestResult},
+use crate::rpc::{
+    client::{MultiSubscribeError, MultiSubscription, MultiTopic, RpcClient, SessionInterface},
+    functions::{
+        CancelTopic, RttTopic, SemihostingTopic,
+        flash::{BootInfo, DownloadOptions, FlashLayout, ProgressEvent, VerifyResult},
+        monitor::{MonitorMode, MonitorOptions, RttEvent, SemihostingEvent},
+        probe::{
+            AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, SelectProbeResult,
         },
+        rtt_client::ScanRegion,
+        stack_trace::StackTrace,
+        test::{Test, TestResult},
     },
-    util::{
-        common_options::{BinaryDownloadOptions, ProbeOptions},
-        flash::CliProgressBars,
-        logging,
-        rtt::{DefmtProcessor, DefmtState, RttChannelConfig, RttDecoder},
-    },
+};
+use crate::util::pwr::power_reset;
+use crate::util::{
+    common_options::{BinaryDownloadOptions, ProbeOptions},
+    flash::CliProgressBars,
+    logging,
+    rtt::{DefmtProcessor, DefmtState, RttChannelConfig, RttDecoder},
 };
 
 type TargetOutputFiles = std::collections::HashMap<ChannelIdentifier, tokio::fs::File>;

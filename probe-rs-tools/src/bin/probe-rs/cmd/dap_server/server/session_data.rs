@@ -4,31 +4,27 @@ use super::{
 };
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::PromptKind;
 use crate::cmd::dap_server::server::debug_rtt;
-use crate::util::rtt::{DefmtProcessor, DefmtState, RttDecoder};
-use crate::{
-    FormatKind,
-    cmd::{
-        dap_server::{
-            DebuggerError,
-            backend::rpc::{CorePerAttachInfo, RpcBackend, SessionTargetMetadata, rpc_err},
-            debug_adapter::dap::{
-                adapter::DebugAdapter,
-                core_status::DapStatus,
-                dap_types::{ContinuedEventBody, MessageSeverity, Source, StoppedEventBody},
-                repl_commands::{REPL_COMMANDS, embedded_test::EMBEDDED_TEST},
-            },
-        },
-        run::EmbeddedTestElfInfo,
-    },
-    rpc::{
-        Key, RttClient,
-        client::RpcClient,
-        functions::{
-            breakpoints::SourceBreakpointLocation, rtt_client::ScanRegion as WireScanRegion,
+use crate::cmd::{
+    dap_server::{
+        DebuggerError,
+        backend::rpc::{CorePerAttachInfo, RpcBackend, SessionTargetMetadata, rpc_err},
+        debug_adapter::dap::{
+            adapter::DebugAdapter,
+            core_status::DapStatus,
+            dap_types::{ContinuedEventBody, MessageSeverity, Source, StoppedEventBody},
+            repl_commands::{REPL_COMMANDS, embedded_test::EMBEDDED_TEST},
         },
     },
-    util::cli::attach_probe as attach_probe_rpc,
+    run::EmbeddedTestElfInfo,
 };
+use crate::rpc::functions::format::FormatKind;
+use crate::rpc::{
+    Key, RttClient,
+    client::RpcClient,
+    functions::{breakpoints::SourceBreakpointLocation, rtt_client::ScanRegion as WireScanRegion},
+};
+use crate::util::cli::attach_probe as attach_probe_rpc;
+use crate::util::rtt::{DefmtProcessor, DefmtState, RttDecoder};
 use anyhow::{Result, anyhow};
 use probe_rs::{BreakpointCause, CoreStatus, HaltReason, rtt::find_rtt_control_block_in_raw_file};
 use probe_rs_debug::SourceLocation;

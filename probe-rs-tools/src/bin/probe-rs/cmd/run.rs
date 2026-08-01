@@ -6,7 +6,7 @@ use crate::rpc::functions::rtt_client::ScanRegion;
 use crate::rpc::functions::test::{Test, TestDefinition};
 use crate::rpc::utils::run_loop::VectorCatchConfig;
 
-use crate::FormatOptions;
+use crate::rpc::functions::format::FormatOptions;
 use crate::util::cli::{self, parse_metadata, rtt_client};
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
 use crate::util::rtt::ChannelMode;

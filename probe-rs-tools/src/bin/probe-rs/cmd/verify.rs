@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
-use crate::FormatOptions;
 use crate::rpc::client::RpcClient;
 use crate::rpc::functions::flash::VerifyResult;
+use crate::rpc::functions::format::FormatOptions;
 use crate::util::cli;
 use crate::util::common_options::ProbeOptions;
 use crate::util::flash::CliProgressBars;

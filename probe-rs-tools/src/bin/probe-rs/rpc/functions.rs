@@ -92,6 +92,7 @@ pub mod debug_vars;
 pub mod disassemble;
 pub mod file;
 pub mod flash;
+pub mod format;
 pub mod info;
 pub mod memory;
 pub mod monitor;

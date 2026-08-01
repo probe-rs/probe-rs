@@ -1,10 +1,8 @@
 use postcard_schema::Schema;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    FormatOptions,
-    rpc::{FlashLoader, Key, RttClient, Session, functions::RpcResult},
-};
+use crate::rpc::functions::format::FormatOptions;
+use crate::rpc::{FlashLoader, Key, RttClient, Session, functions::RpcResult};
 
 #[derive(Serialize, Deserialize, Default, Schema)]
 pub struct DownloadOptions {
