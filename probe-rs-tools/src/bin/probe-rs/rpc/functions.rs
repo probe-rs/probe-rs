@@ -6,71 +6,65 @@ use crate::rpc::debug_state::{CoreDebugState, ServerDebugState};
 use crate::rpc::functions::file::{
     AppendFileRequest, CreateFileResponse, append_temp_file, create_temp_file,
 };
-use crate::{
-    rpc::{
-        ConnectionState, Key,
-        functions::{
-            breakpoints::{
-                ResolveSourceBreakpointsRequest, ResolveSourceLocationsRequest,
-                resolve_source_breakpoints, resolve_source_locations,
-            },
-            chip::{
-                ChipInfoRequest, ChipInfoResponse, ListFamiliesResponse, LoadChipFamilyRequest,
-                chip_info, list_families, load_chip_family,
-            },
-            core_ops::{
-                CoreAccessRequest, CoreBreakpointsRequest, CoreDumpRequest, CoreHaltRequest,
-                CoreReadRegistersRequest, CoreVectorCatchRequest, CoreWriteRegRequest,
-                HandleSemihostingRequest, StepRequest, WireCoreDump, WireCoreInformation,
-                WireCoreMetadata, WireCoreStatus, WireRegisterReadResult, core_clear_hw_bps,
-                core_dump, core_enable_vc, core_halt, core_handle_semihosting, core_metadata,
-                core_read_registers, core_run, core_set_hw_bps, core_status, core_step,
-                core_write_reg,
-            },
-            debug_vars::{
-                ClearCoreDebugStateRequest, EvaluateRequest, LoadSvdRequest, ScopesRequest,
-                SetVariableRequest, VariablesRequest, clear_core_debug_state,
-                evaluate as debug_evaluate, load_svd as debug_load_svd, scopes as debug_scopes,
-                set_variable as debug_set_variable, variables as debug_variables,
-            },
-            disassemble::{DisassembleRequest, disassemble as disassemble_handler},
-            flash::{
-                BootRequest, BuildRequest, BuildResponse, EraseRequest, FlashRequest,
-                ProgressEvent, VerifyRequest, VerifyResponse, boot, build, erase, flash, verify,
-            },
-            info::{
-                InfoEvent, TargetInfoRequest, TargetMetadataRequest, target_info, target_metadata,
-            },
-            memory::{
-                ReadBytesRequest, ReadMemoryRequest, WriteMemoryRequest, read_bytes, read_memory,
-                write_memory,
-            },
-            monitor::{MonitorRequest, MonitorResponse, RttEvent, SemihostingEvent, monitor},
-            probe::{
-                AttachRequest, AttachResponse, ListProbesResponse, SelectProbeRequest,
-                SelectProbeResponse, attach, list_probes, select_probe,
-            },
-            reset::{ResetCoreAndHaltRequest, ResetCoreRequest, reset, reset_and_halt},
-            resume::{ResumeAllCoresRequest, resume_all_cores},
-            rtt_client::{
-                CreateRttClientRequest, CreateRttClientResponse, PollRttUpRequest,
-                PollRttUpResponse, RttChannelRequest, RttChannelsResponse, RttDownRequest,
-                clean_up_rtt, clear_rtt_control_block, create_rtt_client, get_rtt_channels,
-                poll_rtt_up, write_rtt_down,
-            },
-            stack_trace::{
-                LoadDebugInfoRequest, LoadDebugInfoResponse, TakeRichStackTraceRequest,
-                TakeRichStackTraceResponse, TakeStackTraceRequest, TakeStackTraceResponse,
-                load_debug_info, take_rich_stack_trace, take_stack_trace,
-            },
-            test::{
-                ListTestsRequest, ListTestsResponse, RunTestRequest, RunTestResponse,
-                TestKickoffRequest, TestKickoffResponse, list_tests, run_test, test_kickoff,
-            },
+use crate::rpc::{
+    ConnectionState, Key,
+    functions::{
+        breakpoints::{
+            ResolveSourceBreakpointsRequest, ResolveSourceLocationsRequest,
+            resolve_source_breakpoints, resolve_source_locations,
         },
-        transport::memory::{WireRx, WireTx},
+        chip::{
+            ChipInfoRequest, ChipInfoResponse, ListFamiliesResponse, LoadChipFamilyRequest,
+            chip_info, list_families, load_chip_family,
+        },
+        core_ops::{
+            CoreAccessRequest, CoreBreakpointsRequest, CoreDumpRequest, CoreHaltRequest,
+            CoreReadRegistersRequest, CoreVectorCatchRequest, CoreWriteRegRequest,
+            HandleSemihostingRequest, StepRequest, WireCoreDump, WireCoreInformation,
+            WireCoreMetadata, WireCoreStatus, WireRegisterReadResult, core_clear_hw_bps, core_dump,
+            core_enable_vc, core_halt, core_handle_semihosting, core_metadata, core_read_registers,
+            core_run, core_set_hw_bps, core_status, core_step, core_write_reg,
+        },
+        debug_vars::{
+            ClearCoreDebugStateRequest, EvaluateRequest, LoadSvdRequest, ScopesRequest,
+            SetVariableRequest, VariablesRequest, clear_core_debug_state,
+            evaluate as debug_evaluate, load_svd as debug_load_svd, scopes as debug_scopes,
+            set_variable as debug_set_variable, variables as debug_variables,
+        },
+        disassemble::{DisassembleRequest, disassemble as disassemble_handler},
+        flash::{
+            BootRequest, BuildRequest, BuildResponse, EraseRequest, FlashRequest, ProgressEvent,
+            VerifyRequest, VerifyResponse, boot, build, erase, flash, verify,
+        },
+        info::{InfoEvent, TargetInfoRequest, TargetMetadataRequest, target_info, target_metadata},
+        memory::{
+            ReadBytesRequest, ReadMemoryRequest, WriteMemoryRequest, read_bytes, read_memory,
+            write_memory,
+        },
+        monitor::{MonitorRequest, MonitorResponse, RttEvent, SemihostingEvent, monitor},
+        probe::{
+            AttachRequest, AttachResponse, ListProbesResponse, SelectProbeRequest,
+            SelectProbeResponse, attach, list_probes, select_probe,
+        },
+        reset::{ResetCoreAndHaltRequest, ResetCoreRequest, reset, reset_and_halt},
+        resume::{ResumeAllCoresRequest, resume_all_cores},
+        rtt_client::{
+            CreateRttClientRequest, CreateRttClientResponse, PollRttUpRequest, PollRttUpResponse,
+            RttChannelRequest, RttChannelsResponse, RttDownRequest, clean_up_rtt,
+            clear_rtt_control_block, create_rtt_client, get_rtt_channels, poll_rtt_up,
+            write_rtt_down,
+        },
+        stack_trace::{
+            LoadDebugInfoRequest, LoadDebugInfoResponse, TakeRichStackTraceRequest,
+            TakeRichStackTraceResponse, TakeStackTraceRequest, TakeStackTraceResponse,
+            load_debug_info, take_rich_stack_trace, take_stack_trace,
+        },
+        test::{
+            ListTestsRequest, ListTestsResponse, RunTestRequest, RunTestResponse,
+            TestKickoffRequest, TestKickoffResponse, list_tests, run_test, test_kickoff,
+        },
     },
-    util::common_options::OperationError,
+    transport::memory::{WireRx, WireTx},
 };
 
 use anyhow::anyhow;
@@ -122,7 +116,6 @@ impl std::fmt::Display for RpcError {
     }
 }
 
-// TODO: replace most of these with anyhow context wrappers
 impl From<&str> for RpcError {
     fn from(e: &str) -> Self {
         Self(e.to_string())
@@ -132,54 +125,6 @@ impl From<&str> for RpcError {
 impl From<String> for RpcError {
     fn from(e: String) -> Self {
         Self(e)
-    }
-}
-
-impl From<anyhow::Error> for RpcError {
-    fn from(e: anyhow::Error) -> Self {
-        Self(format!("{e:?}"))
-    }
-}
-
-impl From<probe_rs::Error> for RpcError {
-    fn from(e: probe_rs::Error) -> Self {
-        Self::from(anyhow!(e))
-    }
-}
-
-impl From<probe_rs_debug::DebugError> for RpcError {
-    fn from(e: probe_rs_debug::DebugError) -> Self {
-        Self::from(anyhow!(e))
-    }
-}
-
-impl From<probe_rs::flashing::FileDownloadError> for RpcError {
-    fn from(e: probe_rs::flashing::FileDownloadError) -> Self {
-        Self::from(anyhow!(e))
-    }
-}
-
-impl From<probe_rs::flashing::FlashError> for RpcError {
-    fn from(e: probe_rs::flashing::FlashError) -> Self {
-        Self::from(anyhow!(e))
-    }
-}
-
-impl From<probe_rs::config::RegistryError> for RpcError {
-    fn from(e: probe_rs::config::RegistryError) -> Self {
-        Self::from(anyhow!(e))
-    }
-}
-
-impl From<OperationError> for RpcError {
-    fn from(e: OperationError) -> Self {
-        Self::from(anyhow!(e))
-    }
-}
-
-impl From<probe_rs::rtt::Error> for RpcError {
-    fn from(e: probe_rs::rtt::Error) -> Self {
-        Self::from(anyhow!(e))
     }
 }
 
@@ -829,5 +774,60 @@ impl RpcApp {
             client_to_server.0,
             server_to_client.1,
         )
+    }
+}
+
+pub(crate) mod convert {
+    use super::RpcError;
+    use crate::util::common_options::OperationError;
+    use anyhow::anyhow;
+
+    // TODO: replace most of these with anyhow context wrappers
+    impl From<anyhow::Error> for RpcError {
+        fn from(e: anyhow::Error) -> Self {
+            Self(format!("{e:?}"))
+        }
+    }
+
+    impl From<probe_rs::Error> for RpcError {
+        fn from(e: probe_rs::Error) -> Self {
+            Self::from(anyhow!(e))
+        }
+    }
+
+    impl From<probe_rs_debug::DebugError> for RpcError {
+        fn from(e: probe_rs_debug::DebugError) -> Self {
+            Self::from(anyhow!(e))
+        }
+    }
+
+    impl From<probe_rs::flashing::FileDownloadError> for RpcError {
+        fn from(e: probe_rs::flashing::FileDownloadError) -> Self {
+            Self::from(anyhow!(e))
+        }
+    }
+
+    impl From<probe_rs::flashing::FlashError> for RpcError {
+        fn from(e: probe_rs::flashing::FlashError) -> Self {
+            Self::from(anyhow!(e))
+        }
+    }
+
+    impl From<probe_rs::config::RegistryError> for RpcError {
+        fn from(e: probe_rs::config::RegistryError) -> Self {
+            Self::from(anyhow!(e))
+        }
+    }
+
+    impl From<OperationError> for RpcError {
+        fn from(e: OperationError) -> Self {
+            Self::from(anyhow!(e))
+        }
+    }
+
+    impl From<probe_rs::rtt::Error> for RpcError {
+        fn from(e: probe_rs::rtt::Error) -> Self {
+            Self::from(anyhow!(e))
+        }
     }
 }
