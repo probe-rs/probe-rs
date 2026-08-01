@@ -23,6 +23,7 @@ members = [
     "target-gen",
     "probe-rs-tools",
     "probe-rs-mi",
+    "probe-rs-rpc",
     "probe-rs-debug",
     "probe-rs-espressif",
     "probe-rs-linux",
@@ -35,6 +36,7 @@ probe-rs-target = { path = "probe-rs-target", version = "0.32.0" }
 probe-rs-mi = { path = "probe-rs-mi", version = "0.2.0" }
 probe-rs-espressif = { path = "probe-rs-espressif", version = "0.32.0" }
 probe-rs-linux = { path = "probe-rs-linux", version = "0.32.0" }
+probe-rs-rpc = { path = "probe-rs-rpc", version = "0.1.0" }
 
 docsplay = "0.1.1"
 thiserror = "2.0.11"

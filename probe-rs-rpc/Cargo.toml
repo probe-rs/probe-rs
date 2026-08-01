@@ -1,0 +1,36 @@
+[package]
+name = "probe-rs-rpc"
+version = "0.1.0"
+description = "The wire protocol of the probe-rs RPC interface"
+edition.workspace = true
+documentation.workspace = true
+homepage.workspace = true
+repository.workspace = true
+readme.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[features]
+default = []
+clap = ["dep:clap"]
+remote = ["dep:tokio-tungstenite", "dep:futures-util", "dep:axum"]
+
+[dependencies]
+serde = { workspace = true }
+postcard = { version = "1.0", features = ["use-std"] }
+postcard-rpc = { version = "0.12.0", features = ["use-std"] }
+postcard-schema = { version = "0.2.0", features = ["use-std", "derive"] }
+docsplay = { workspace = true }
+thiserror = { workspace = true }
+regex = "1.10.4"
+tokio = { version = "1.0", features = ["full"] }
+tokio-util = { version = "0.7", features = ["codec"] }
+clap = { version = "4", features = ["derive", "env"], optional = true }
+tokio-tungstenite = { version = "0.30", features = [
+    "rustls-tls-webpki-roots",
+], optional = true }
+futures-util = { version = "0.3", optional = true }
+axum = { version = "0.8", features = ["ws"], optional = true }
+
+[lints]
+workspace = true
