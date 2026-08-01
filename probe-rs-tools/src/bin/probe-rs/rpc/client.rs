@@ -30,7 +30,7 @@ use crate::{
     rpc::{
         Key,
         functions::{
-            AttachEndpoint, BuildEndpoint, ChipInfoEndpoint, CleanUpRttEndpoint,
+            AttachEndpoint, BootEndpoint, BuildEndpoint, ChipInfoEndpoint, CleanUpRttEndpoint,
             ClearCoreDebugStateEndpoint, ClearRttControlBlockEndpoint, CoreClearHwBpsEndpoint,
             CoreDumpEndpoint, CoreEnableVcEndpoint, CoreHaltEndpoint, CoreMetadataEndpoint,
             CoreReadRegistersEndpoint, CoreRunEndpoint, CoreSetHwBpsEndpoint, CoreStatusEndpoint,
@@ -70,8 +70,8 @@ use crate::{
             disassemble::{DisassembleRequest, WireDisassembledInstruction},
             file::{AppendFileRequest, TempFile},
             flash::{
-                BootInfo, BuildRequest, BuildResult, DownloadOptions, EraseCommand, EraseRequest,
-                FlashRequest, ProgressEvent, VerifyRequest, VerifyResult,
+                BootInfo, BootRequest, BuildRequest, BuildResult, DownloadOptions, EraseCommand,
+                EraseRequest, FlashRequest, ProgressEvent, VerifyRequest, VerifyResult,
             },
             info::{
                 InfoEvent, TargetInfoRequest, TargetMetadataRequest, WireSessionTargetMetadata,
@@ -576,6 +576,20 @@ impl SessionInterface {
         self.client
             .send_resp::<ResumeAllCoresEndpoint, _>(&ResumeAllCoresRequest {
                 sessid: self.sessid,
+            })
+            .await
+    }
+
+    /// Prepares the core to execute the loaded image, then starts all cores.
+    ///
+    /// If the image runs from RAM, the target does not get a reset. If the image
+    /// runs from flash, the target gets a reset.
+    pub async fn boot(&self, boot_info: BootInfo, core_id: usize) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<BootEndpoint, _>(&BootRequest {
+                sessid: self.sessid,
+                boot_info,
+                core_id: core_id as u32,
             })
             .await
     }

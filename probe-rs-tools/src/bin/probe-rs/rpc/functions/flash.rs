@@ -354,6 +354,25 @@ impl BootInfo {
     }
 }
 
+#[derive(Serialize, Deserialize, Schema)]
+pub struct BootRequest {
+    pub sessid: Key<Session>,
+    pub boot_info: BootInfo,
+    pub core_id: u32,
+}
+
+/// Prepares the core to execute the loaded image, then starts all cores.
+pub async fn boot(ctx: &mut RpcContext, _header: VarHeader, request: BootRequest) -> NoResponse {
+    let mut session = ctx.session(request.sessid).await;
+
+    request
+        .boot_info
+        .prepare(&mut session, request.core_id as usize)?;
+    session.resume_all_cores()?;
+
+    Ok(())
+}
+
 impl From<probe_rs::flashing::BootInfo> for BootInfo {
     fn from(boot_info: probe_rs::flashing::BootInfo) -> Self {
         match boot_info {

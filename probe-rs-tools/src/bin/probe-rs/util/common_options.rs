@@ -58,10 +58,6 @@ pub struct BinaryDownloadOptions {
         help_heading = "PROBE CONFIGURATION"
     )]
     pub prefer_flash_algorithm: Vec<String>,
-
-    /// Whether to reset the chip after downloading.
-    #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
-    pub reset: bool,
 }
 
 /// Supported bit-widths for read/write commands (not every device may support each width).

@@ -307,7 +307,6 @@ async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Res
             chip_erase: config.flashing.do_chip_erase,
             read_flasher_rtt: config.flashing.read_flasher_rtt,
             prefer_flash_algorithm: Vec::new(),
-            reset: false,
         };
         let loader = build_loader(&mut session, &path, format_options, image_instr_set)?;
 
@@ -556,4 +555,19 @@ fn create_rtt_config(config: &config::Config) -> RttConfig {
     }
 
     rtt_config
+}
+
+#[cfg(test)]
+mod test {
+    use super::CliOptions;
+
+    /// clap finds duplicate argument names only in a debug build, and only when it
+    /// builds the command. Release builds accept a duplicate and give one of the
+    /// two arguments to both fields.
+    #[test]
+    fn cli_is_valid() {
+        use clap::CommandFactory;
+
+        CliOptions::command().debug_assert();
+    }
 }
