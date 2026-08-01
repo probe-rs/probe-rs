@@ -12,10 +12,9 @@ use postcard_rpc::{
     host_client::{HostClient, HostClientConfig, HostErr, IoClosed, SubscribeError, Subscription},
 };
 use postcard_schema::Schema;
-use probe_rs::config::Registry;
 use serde::{Serialize, de::DeserializeOwned};
 use tokio::{
-    sync::{Mutex, MutexGuard, Notify},
+    sync::{Mutex, Notify},
     time::timeout,
 };
 
@@ -269,7 +268,6 @@ mod tls {
 pub struct RpcClient {
     client: HostClient<String>,
     upload_cache: Arc<Mutex<UploadCache>>,
-    registry: Arc<Mutex<Registry>>,
     is_localhost: bool,
 }
 
@@ -300,7 +298,6 @@ impl RpcClient {
                 },
             ),
             upload_cache: Arc::new(Mutex::new(UploadCache::default())),
-            registry: Arc::new(Mutex::new(Registry::from_builtin_families())),
             is_localhost: false,
         }
     }
@@ -518,10 +515,6 @@ impl RpcClient {
     pub async fn chip_info(&self, name: &str) -> anyhow::Result<ChipData> {
         self.send_resp::<ChipInfoEndpoint, _>(&ChipInfoRequest { name: name.into() })
             .await
-    }
-
-    pub(crate) async fn registry(&self) -> MutexGuard<'_, Registry> {
-        self.registry.lock().await
     }
 }
 
