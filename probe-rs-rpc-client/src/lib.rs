@@ -1,10 +1,7 @@
-//! Remote client
+//! A client for the probe-rs RPC interface.
 //!
-//! The client opens a websocket connection to the host, sends a token to authenticate and
-//! then sends commands to the server. The commands are handled by the server (by the same
-//! handlers that are used for the local commands) and the output is streamed back to the client.
-//!
-//! The command output may be a result and/or a stream of messages encoded as `ServerMessage`.
+//! Programs that talk to a `probe-rs serve` server depend on this crate.
+//! Enable the `remote` feature for websocket and unix socket transport.
 
 use postcard_rpc::{
     Topic,

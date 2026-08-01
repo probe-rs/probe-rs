@@ -6,9 +6,15 @@ edition.workspace = true
 documentation.workspace = true
 homepage.workspace = true
 repository.workspace = true
-readme.workspace = true
+readme = "README.md"
 license.workspace = true
 rust-version.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+[package.metadata.release]
+shared-version = false
 
 [features]
 default = []
