@@ -1,20 +1,9 @@
-use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
-use probe_rs::{
-    Session,
-    probe::list::{Accessibility, ProbeListItem},
-};
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    rpc::{
-        Key,
-        functions::{RpcContext, RpcResult},
-    },
-    util::common_options::{OperationError, ProbeOptions},
-};
-
 use std::fmt::Display;
+
+use crate::rpc::{Key, functions::RpcResult};
 
 // Separate from DebugProbeInfo because we can't serialize a &dyn ProbeFactory
 #[derive(Debug, Serialize, Deserialize, Clone, Schema)]
@@ -55,22 +44,6 @@ impl Display for DebugProbeEntry {
     }
 }
 
-impl From<ProbeListItem> for DebugProbeEntry {
-    fn from(item: ProbeListItem) -> DebugProbeEntry {
-        let inaccessible = item.accessibility == Accessibility::PermissionDenied;
-        let probe = item.info;
-        DebugProbeEntry {
-            probe_type: probe.probe_type(),
-            inaccessible,
-            identifier: probe.identifier,
-            vendor_id: probe.vendor_id,
-            product_id: probe.product_id,
-            serial_number: probe.serial_number.unwrap_or_default(),
-            interface: probe.interface,
-        }
-    }
-}
-
 impl DebugProbeEntry {
     pub fn selector(&self) -> DebugProbeSelector {
         DebugProbeSelector {
@@ -84,16 +57,6 @@ impl DebugProbeEntry {
 
 pub type ListProbesResponse = RpcResult<Vec<DebugProbeEntry>>;
 
-pub fn list_probes(ctx: &mut RpcContext, _header: VarHeader, _request: ()) -> ListProbesResponse {
-    let lister = ctx.lister();
-    let probes = lister.list_all_with_access();
-
-    Ok(probes
-        .into_iter()
-        .map(DebugProbeEntry::from)
-        .collect::<Vec<_>>())
-}
-
 #[derive(Serialize, Deserialize, Schema)]
 pub struct SelectProbeRequest {
     pub probe: Option<DebugProbeSelector>,
@@ -106,6 +69,64 @@ pub enum SelectProbeResult {
 }
 
 pub type SelectProbeResponse = RpcResult<SelectProbeResult>;
+
+#[derive(Serialize, Deserialize, Schema)]
+pub enum AttachResult {
+    Success(Key<Session>),
+    ProbeNotFound,
+    FailedToOpenProbe(String),
+    ProbeInUse,
+}
+
+#[derive(Debug, docsplay::Display, PartialEq, Eq, Clone, Copy, Serialize, Deserialize, Schema)]
+pub enum WireProtocol {
+    /// JTAG
+    Jtag,
+    /// SWD
+    Swd,
+}
+
+#[derive(Clone, Serialize, Deserialize, Schema)]
+pub struct DebugProbeSelector {
+    /// The the USB vendor id of the debug probe to be used.
+    pub vendor_id: u16,
+    /// The the USB product id of the debug probe to be used.
+    pub product_id: u16,
+    /// The the interface of the debug probe to be used.
+    pub interface: Option<u8>,
+    /// The the serial number of the debug probe to be used.
+    pub serial_number: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Schema)]
+pub struct AttachRequest {
+    pub chip: Option<String>,
+    pub protocol: Option<WireProtocol>,
+    pub probe: DebugProbeEntry,
+    pub speed: Option<u32>,
+    pub connect_under_reset: bool,
+    pub dry_run: bool,
+    pub allow_erase_all: bool,
+    pub resume_target: bool,
+}
+
+pub type AttachResponse = RpcResult<AttachResult>;
+
+use postcard_rpc::header::VarHeader;
+use probe_rs::Session;
+
+use crate::rpc::functions::RpcContext;
+use crate::util::common_options::{OperationError, ProbeOptions};
+
+pub fn list_probes(ctx: &mut RpcContext, _header: VarHeader, _request: ()) -> ListProbesResponse {
+    let lister = ctx.lister();
+    let probes = lister.list_all_with_access();
+
+    Ok(probes
+        .into_iter()
+        .map(DebugProbeEntry::from)
+        .collect::<Vec<_>>())
+}
 
 pub async fn select_probe(
     ctx: &mut RpcContext,
@@ -146,105 +167,6 @@ pub async fn select_probe(
     }
 }
 
-#[derive(Serialize, Deserialize, Schema)]
-pub enum AttachResult {
-    Success(Key<Session>),
-    ProbeNotFound,
-    FailedToOpenProbe(String),
-    ProbeInUse,
-}
-
-#[derive(Debug, docsplay::Display, PartialEq, Eq, Clone, Copy, Serialize, Deserialize, Schema)]
-pub enum WireProtocol {
-    /// JTAG
-    Jtag,
-    /// SWD
-    Swd,
-}
-
-impl From<WireProtocol> for probe_rs::probe::WireProtocol {
-    fn from(protocol: WireProtocol) -> Self {
-        match protocol {
-            WireProtocol::Jtag => probe_rs::probe::WireProtocol::Jtag,
-            WireProtocol::Swd => probe_rs::probe::WireProtocol::Swd,
-        }
-    }
-}
-
-impl From<probe_rs::probe::WireProtocol> for WireProtocol {
-    fn from(protocol: probe_rs::probe::WireProtocol) -> Self {
-        match protocol {
-            probe_rs::probe::WireProtocol::Jtag => WireProtocol::Jtag,
-            probe_rs::probe::WireProtocol::Swd => WireProtocol::Swd,
-        }
-    }
-}
-
-#[derive(Clone, Serialize, Deserialize, Schema)]
-pub struct DebugProbeSelector {
-    /// The the USB vendor id of the debug probe to be used.
-    pub vendor_id: u16,
-    /// The the USB product id of the debug probe to be used.
-    pub product_id: u16,
-    /// The the interface of the debug probe to be used.
-    pub interface: Option<u8>,
-    /// The the serial number of the debug probe to be used.
-    pub serial_number: Option<String>,
-}
-
-impl From<probe_rs::probe::DebugProbeSelector> for DebugProbeSelector {
-    fn from(selector: probe_rs::probe::DebugProbeSelector) -> Self {
-        Self {
-            vendor_id: selector.vendor_id,
-            product_id: selector.product_id,
-            serial_number: selector.serial_number,
-            interface: selector.interface,
-        }
-    }
-}
-
-impl From<DebugProbeSelector> for probe_rs::probe::DebugProbeSelector {
-    fn from(selector: DebugProbeSelector) -> Self {
-        Self {
-            vendor_id: selector.vendor_id,
-            product_id: selector.product_id,
-            serial_number: selector.serial_number,
-            interface: selector.interface,
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct AttachRequest {
-    pub chip: Option<String>,
-    pub protocol: Option<WireProtocol>,
-    pub probe: DebugProbeEntry,
-    pub speed: Option<u32>,
-    pub connect_under_reset: bool,
-    pub dry_run: bool,
-    pub allow_erase_all: bool,
-    pub resume_target: bool,
-}
-
-impl From<&AttachRequest> for ProbeOptions {
-    fn from(request: &AttachRequest) -> Self {
-        ProbeOptions {
-            chip: request.chip.clone(),
-            chip_description_path: None,
-            protocol: request.protocol.map(Into::into),
-            non_interactive: true,
-            probe: Some(request.probe.selector().into()),
-            speed: request.speed,
-            connect_under_reset: request.connect_under_reset,
-            cycle_power: false,
-            dry_run: request.dry_run,
-            allow_erase_all: request.allow_erase_all,
-        }
-    }
-}
-
-pub type AttachResponse = RpcResult<AttachResult>;
-
 pub async fn attach(
     ctx: &mut RpcContext,
     _header: VarHeader,
@@ -274,4 +196,83 @@ pub async fn attach(
     }
     let session_id = ctx.set_session(session, common_options.dry_run()).await;
     Ok(AttachResult::Success(session_id))
+}
+
+pub(crate) mod convert {
+    use super::{AttachRequest, DebugProbeEntry, DebugProbeSelector, WireProtocol};
+    use crate::util::common_options::ProbeOptions;
+    use probe_rs::probe::list::{Accessibility, ProbeListItem};
+
+    impl From<ProbeListItem> for DebugProbeEntry {
+        fn from(item: ProbeListItem) -> DebugProbeEntry {
+            let inaccessible = item.accessibility == Accessibility::PermissionDenied;
+            let probe = item.info;
+            DebugProbeEntry {
+                probe_type: probe.probe_type(),
+                inaccessible,
+                identifier: probe.identifier,
+                vendor_id: probe.vendor_id,
+                product_id: probe.product_id,
+                serial_number: probe.serial_number.unwrap_or_default(),
+                interface: probe.interface,
+            }
+        }
+    }
+
+    impl From<WireProtocol> for probe_rs::probe::WireProtocol {
+        fn from(protocol: WireProtocol) -> Self {
+            match protocol {
+                WireProtocol::Jtag => probe_rs::probe::WireProtocol::Jtag,
+                WireProtocol::Swd => probe_rs::probe::WireProtocol::Swd,
+            }
+        }
+    }
+
+    impl From<probe_rs::probe::WireProtocol> for WireProtocol {
+        fn from(protocol: probe_rs::probe::WireProtocol) -> Self {
+            match protocol {
+                probe_rs::probe::WireProtocol::Jtag => WireProtocol::Jtag,
+                probe_rs::probe::WireProtocol::Swd => WireProtocol::Swd,
+            }
+        }
+    }
+
+    impl From<probe_rs::probe::DebugProbeSelector> for DebugProbeSelector {
+        fn from(selector: probe_rs::probe::DebugProbeSelector) -> Self {
+            Self {
+                vendor_id: selector.vendor_id,
+                product_id: selector.product_id,
+                serial_number: selector.serial_number,
+                interface: selector.interface,
+            }
+        }
+    }
+
+    impl From<DebugProbeSelector> for probe_rs::probe::DebugProbeSelector {
+        fn from(selector: DebugProbeSelector) -> Self {
+            Self {
+                vendor_id: selector.vendor_id,
+                product_id: selector.product_id,
+                serial_number: selector.serial_number,
+                interface: selector.interface,
+            }
+        }
+    }
+
+    impl From<&AttachRequest> for ProbeOptions {
+        fn from(request: &AttachRequest) -> Self {
+            ProbeOptions {
+                chip: request.chip.clone(),
+                chip_description_path: None,
+                protocol: request.protocol.map(Into::into),
+                non_interactive: true,
+                probe: Some(request.probe.selector().into()),
+                speed: request.speed,
+                connect_under_reset: request.connect_under_reset,
+                cycle_power: false,
+                dry_run: request.dry_run,
+                allow_erase_all: request.allow_erase_all,
+            }
+        }
+    }
 }
