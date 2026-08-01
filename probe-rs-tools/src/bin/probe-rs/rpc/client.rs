@@ -9,7 +9,7 @@
 use postcard_rpc::{
     Topic,
     header::{VarSeq, VarSeqKind},
-    host_client::{HostClient, HostClientConfig, HostErr, IoClosed, SubscribeError, Subscription},
+    host_client::{HostClient, HostClientConfig, HostErr, IoClosed, Subscription},
     standard_icd::WireError,
 };
 use postcard_schema::Schema;
@@ -101,10 +101,58 @@ use crate::rpc::{
 /// server. `None` selects a local, in-process server.
 pub(crate) type RemoteParams = Option<(String, Option<String>)>;
 
+#[derive(Debug, docsplay::Display, thiserror::Error)]
+pub enum TransportError {
+    /// Wire error: {0}
+    Wire(WireError),
+    /// Bad response
+    BadResponse,
+    /// Postcard error: {0}
+    Postcard(#[source] postcard::Error),
+    /// Connection closed
+    Closed,
+    /// {0}
+    Message(String),
+}
+
+#[derive(Debug, docsplay::Display, thiserror::Error)]
+pub enum ClientError {
+    /// The connection to the server failed.
+    #[display("{0}")]
+    Transport(#[source] TransportError),
+    /// The server does not know this endpoint. The client and the server
+    /// versions may differ.
+    UnknownEndpoint,
+    /// The server refused the request.
+    #[display("{0}")]
+    Remote(RpcError),
+    /// Failed to parse server URI.
+    #[cfg_attr(
+        not(feature = "remote"),
+        expect(dead_code, reason = "only constructed by the remote connect path")
+    )]
+    InvalidRemoteHost,
+    /// Failed to read {0}.
+    FileRead(PathBuf, #[source] std::io::Error),
+}
+
+fn from_host_err(e: HostErr<WireError>) -> ClientError {
+    match e {
+        HostErr::Wire(WireError::UnknownKey) => ClientError::UnknownEndpoint,
+        HostErr::Wire(w) => ClientError::Transport(TransportError::Wire(w)),
+        HostErr::BadResponse => ClientError::Transport(TransportError::BadResponse),
+        HostErr::Postcard(e) => ClientError::Transport(TransportError::Postcard(e)),
+        HostErr::Closed => ClientError::Transport(TransportError::Closed),
+    }
+}
+
+fn from_io_closed(_: IoClosed) -> ClientError {
+    ClientError::Transport(TransportError::Closed)
+}
+
 #[cfg(feature = "remote")]
-pub async fn connect(host: &str, token: Option<&str>) -> anyhow::Result<RpcClient> {
+pub async fn connect(host: &str, token: Option<&str>) -> Result<RpcClient, ClientError> {
     use crate::rpc::transport::websocket::{WebsocketRx, WebsocketTx};
-    use anyhow::Context;
     use axum::http::Uri;
     use futures_util::StreamExt as _;
     use rustls::ClientConfig;
@@ -123,7 +171,8 @@ pub async fn connect(host: &str, token: Option<&str>) -> anyhow::Result<RpcClien
         return connect_unix(path).await;
     }
 
-    let uri = Uri::from_str(&format!("{host}/worker")).context("Failed to parse server URI")?;
+    let uri =
+        Uri::from_str(&format!("{host}/worker")).map_err(|_| ClientError::InvalidRemoteHost)?;
 
     // We could check the host address for localhost and then set the `is_localhost` option, but
     // there are setups where the user uses port forwarding and the file actually needs to be
@@ -151,15 +200,21 @@ pub async fn connect(host: &str, token: Option<&str>) -> anyhow::Result<RpcClien
         ))),
     )
     .await
-    .context("Failed to connect")?;
+    .map_err(|_| ClientError::Transport(TransportError::Message("Failed to connect".into())))?;
 
     // Respond to the challenge
     let challenge = resp
         .headers()
         .get("Probe-Rs-Challenge")
-        .context("No challenge header")?
+        .ok_or(ClientError::Transport(TransportError::Message(
+            "No challenge header".into(),
+        )))?
         .to_str()
-        .context("Failed to parse challenge header")?;
+        .map_err(|_| {
+            ClientError::Transport(TransportError::Message(
+                "Failed to parse challenge header".into(),
+            ))
+        })?;
 
     let mut hasher = Sha512::new();
     hasher.update(challenge.as_bytes());
@@ -169,9 +224,11 @@ pub async fn connect(host: &str, token: Option<&str>) -> anyhow::Result<RpcClien
     let (tx, rx) = ws_stream.split();
 
     let tx = WebsocketTx::new(tx);
-    tx.send(challenge_response)
-        .await
-        .map_err(|err| anyhow::anyhow!("Failed to send challenge response: {err:?}"))?;
+    tx.send(challenge_response).await.map_err(|err| {
+        ClientError::Transport(TransportError::Message(format!(
+            "Failed to send challenge response: {err:?}"
+        )))
+    })?;
 
     Ok(RpcClient::new_from_wire(
         tx,
@@ -185,14 +242,15 @@ pub async fn connect(host: &str, token: Option<&str>) -> anyhow::Result<RpcClien
 }
 
 #[cfg(all(feature = "remote", unix))]
-pub async fn connect_unix(path: &str) -> anyhow::Result<RpcClient> {
+pub async fn connect_unix(path: &str) -> Result<RpcClient, ClientError> {
     use crate::rpc::transport::unix::{UnixStreamRx, UnixStreamTx};
-    use anyhow::Context;
     use tokio::net::UnixStream;
 
-    let stream = UnixStream::connect(path)
-        .await
-        .context("Failed to connect to Unix socket")?;
+    let stream = UnixStream::connect(path).await.map_err(|_| {
+        ClientError::Transport(TransportError::Message(
+            "Failed to connect to Unix socket".into(),
+        ))
+    })?;
 
     let (reader, writer) = stream.into_split();
 
@@ -316,25 +374,16 @@ impl RpcClient {
         this
     }
 
-    async fn send<E, T>(&self, req: &E::Request) -> anyhow::Result<T>
+    async fn send<E, T>(&self, req: &E::Request) -> Result<T, ClientError>
     where
         E: postcard_rpc::Endpoint<Response = T>,
         E::Request: Serialize + Schema,
         E::Response: DeserializeOwned + Schema,
     {
-        #[cold]
-        fn convert_error(e: HostErr<WireError>) -> anyhow::Error {
-            match e {
-                HostErr::Wire(w) => anyhow::format_err!("Wire error: {w}"),
-                HostErr::BadResponse => anyhow::format_err!("Bad response"),
-                HostErr::Postcard(error) => anyhow::format_err!("Postcard error: {error}"),
-                HostErr::Closed => anyhow::format_err!("Connection closed"),
-            }
-        }
-        self.client.send_resp::<E>(req).await.map_err(convert_error)
+        self.client.send_resp::<E>(req).await.map_err(from_host_err)
     }
 
-    async fn send_resp<E, T>(&self, req: &E::Request) -> anyhow::Result<T>
+    async fn send_resp<E, T>(&self, req: &E::Request) -> Result<T, ClientError>
     where
         E: postcard_rpc::Endpoint<Response = RpcResult<T>>,
         E::Request: Serialize + Schema,
@@ -342,31 +391,31 @@ impl RpcClient {
     {
         self.send::<E, RpcResult<T>>(req)
             .await?
-            .map_err(|e| anyhow::format_err!("{e}"))
+            .map_err(ClientError::Remote)
     }
 
-    pub async fn publish<T: Topic>(&self, message: &T::Message) -> Result<(), IoClosed>
+    pub async fn publish<T: Topic>(&self, message: &T::Message) -> Result<(), ClientError>
     where
         T::Message: Serialize,
     {
-        self.client.publish::<T>(VarSeq::Seq2(0), message).await
+        self.client
+            .publish::<T>(VarSeq::Seq2(0), message)
+            .await
+            .map_err(from_io_closed)
     }
 
     async fn send_and_read_stream<E, T, R>(
         &self,
         req: &E::Request,
         on_msg: impl AsyncFnMut(T::Message),
-    ) -> anyhow::Result<R>
+    ) -> Result<R, ClientError>
     where
         E: postcard_rpc::Endpoint<Response = RpcResult<R>>,
         E::Request: Serialize + Schema,
         E::Response: DeserializeOwned + Schema,
         T: MultiTopic,
     {
-        let mut stream = match T::subscribe(&self.client, 64).await {
-            Ok(stream) => stream,
-            Err(err) => anyhow::bail!("Failed to subscribe to '{}': {:?}", err.topic, err.error),
-        };
+        let mut stream = T::subscribe(&self.client, 64).await?;
         let notify = Arc::new(Notify::new());
         let req_fut = async {
             let res = self.send_resp::<E, R>(req).await;
@@ -389,16 +438,14 @@ impl RpcClient {
     /// Failed uploads never update the cache. The file is hashed even for a
     /// local session, where the returned hash is the caller's only way to tell
     /// whether the contents changed since a previous resolve.
-    pub async fn resolve_upload(&self, src_path: &Path) -> anyhow::Result<ResolvedUpload> {
-        use anyhow::Context as _;
-
+    pub async fn resolve_upload(&self, src_path: &Path) -> Result<ResolvedUpload, ClientError> {
         let src_path = src_path
             .canonicalize()
             .unwrap_or_else(|_| src_path.to_path_buf());
 
         let data = tokio::fs::read(&src_path)
             .await
-            .with_context(|| format!("Failed to read {}", src_path.display()))?;
+            .map_err(|e| ClientError::FileRead(src_path.clone(), e))?;
         let content_hash = ContentHash::from_bytes(&data);
 
         if self.is_localhost {
@@ -423,10 +470,11 @@ impl RpcClient {
             });
         }
 
-        let remote_path = self
-            .upload_bytes(&src_path, &data)
-            .await
-            .context("Failed to upload file")?;
+        let remote_path = self.upload_bytes(&src_path, &data).await.map_err(|e| {
+            ClientError::Transport(TransportError::Message(format!(
+                "Failed to upload file: {e}"
+            )))
+        })?;
 
         let mut cache = self.upload_cache.lock().await;
         if let Some(existing) = cache.lookup(&src_path, content_hash) {
@@ -452,7 +500,7 @@ impl RpcClient {
     /// rebuilding a binary between calls uploads the new bytes rather than
     /// silently reusing the stale copy. Unlike [`Self::resolve_upload`], a local
     /// session never reads the file, since the server reads it in place.
-    pub async fn upload_file(&self, src_path: &Path) -> anyhow::Result<PathBuf> {
+    pub async fn upload_file(&self, src_path: &Path) -> Result<PathBuf, ClientError> {
         if self.is_localhost {
             return Ok(src_path
                 .canonicalize()
@@ -462,7 +510,7 @@ impl RpcClient {
         Ok(self.resolve_upload(src_path).await?.remote_path)
     }
 
-    async fn upload_bytes(&self, src_path: &Path, data: &[u8]) -> anyhow::Result<PathBuf> {
+    async fn upload_bytes(&self, src_path: &Path, data: &[u8]) -> Result<PathBuf, ClientError> {
         tracing::debug!("Uploading {} ({} bytes)", src_path.display(), data.len());
 
         let TempFile { key, path } = self.send_resp::<CreateTempFileEndpoint, _>(&()).await?;
@@ -479,18 +527,18 @@ impl RpcClient {
         Ok(PathBuf::from(path))
     }
 
-    pub async fn attach_probe(&self, request: AttachRequest) -> anyhow::Result<AttachResult> {
+    pub async fn attach_probe(&self, request: AttachRequest) -> Result<AttachResult, ClientError> {
         self.send_resp::<AttachEndpoint, _>(&request).await
     }
 
-    pub async fn list_probes(&self) -> anyhow::Result<Vec<DebugProbeEntry>> {
+    pub async fn list_probes(&self) -> Result<Vec<DebugProbeEntry>, ClientError> {
         self.send_resp::<ListProbesEndpoint, _>(&()).await
     }
 
     pub async fn select_probe(
         &self,
         selector: Option<DebugProbeSelector>,
-    ) -> anyhow::Result<SelectProbeResult> {
+    ) -> Result<SelectProbeResult, ClientError> {
         self.send_resp::<SelectProbeEndpoint, _>(&SelectProbeRequest { probe: selector })
             .await
     }
@@ -499,21 +547,21 @@ impl RpcClient {
         &self,
         request: TargetInfoRequest,
         on_msg: impl AsyncFnMut(InfoEvent),
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), ClientError> {
         self.send_and_read_stream::<TargetInfoEndpoint, TargetInfoDataTopic, _>(&request, on_msg)
             .await
     }
 
-    pub async fn load_chip_family(&self, families_yaml: String) -> anyhow::Result<()> {
+    pub async fn load_chip_family(&self, families_yaml: String) -> Result<(), ClientError> {
         self.send_resp::<LoadChipFamilyEndpoint, _>(&LoadChipFamilyRequest { families_yaml })
             .await
     }
 
-    pub async fn list_chip_families(&self) -> anyhow::Result<Vec<ChipFamily>> {
+    pub async fn list_chip_families(&self) -> Result<Vec<ChipFamily>, ClientError> {
         self.send_resp::<ListChipFamiliesEndpoint, _>(&()).await
     }
 
-    pub async fn chip_info(&self, name: &str) -> anyhow::Result<ChipData> {
+    pub async fn chip_info(&self, name: &str) -> Result<ChipData, ClientError> {
         self.send_resp::<ChipInfoEndpoint, _>(&ChipInfoRequest { name: name.into() })
             .await
     }
@@ -534,7 +582,7 @@ impl SessionInterface {
         self.client.clone()
     }
 
-    pub async fn target_metadata(&self) -> anyhow::Result<WireSessionTargetMetadata> {
+    pub async fn target_metadata(&self) -> Result<WireSessionTargetMetadata, ClientError> {
         self.client
             .send_resp::<TargetMetadataEndpoint, _>(&TargetMetadataRequest {
                 sessid: self.sessid,
@@ -559,7 +607,7 @@ impl SessionInterface {
         }
     }
 
-    pub async fn resume_all_cores(&self) -> anyhow::Result<()> {
+    pub async fn resume_all_cores(&self) -> Result<(), ClientError> {
         self.client
             .send_resp::<ResumeAllCoresEndpoint, _>(&ResumeAllCoresRequest {
                 sessid: self.sessid,
@@ -571,7 +619,7 @@ impl SessionInterface {
     ///
     /// If the image runs from RAM, the target does not get a reset. If the image
     /// runs from flash, the target gets a reset.
-    pub async fn boot(&self, boot_info: BootInfo, core_id: usize) -> anyhow::Result<()> {
+    pub async fn boot(&self, boot_info: BootInfo, core_id: usize) -> Result<(), ClientError> {
         self.client
             .send_resp::<BootEndpoint, _>(&BootRequest {
                 sessid: self.sessid,
@@ -587,7 +635,7 @@ impl SessionInterface {
         format: FormatOptions,
         image_target: Option<String>,
         read_flasher_rtt: bool,
-    ) -> anyhow::Result<BuildResult> {
+    ) -> Result<BuildResult, ClientError> {
         let upload = self.client.resolve_upload(&path).await?;
         self.build_flash_loader_resolved(&upload, format, image_target, read_flasher_rtt)
             .await
@@ -599,7 +647,7 @@ impl SessionInterface {
         mut format: FormatOptions,
         image_target: Option<String>,
         read_flasher_rtt: bool,
-    ) -> anyhow::Result<BuildResult> {
+    ) -> Result<BuildResult, ClientError> {
         let path = upload.server_path().to_path_buf();
 
         if let Some(ref mut idf_bootloader) = format.idf_options.idf_bootloader {
@@ -637,7 +685,7 @@ impl SessionInterface {
         loader: Key<FlashLoader>,
         rtt_client: Option<Key<RttClient>>,
         on_msg: impl AsyncFnMut(ProgressEvent),
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), ClientError> {
         self.client
             .send_and_read_stream::<FlashEndpoint, ProgressEventTopic, _>(
                 &FlashRequest {
@@ -656,7 +704,7 @@ impl SessionInterface {
         command: EraseCommand,
         read_flasher_rtt: bool,
         on_msg: impl AsyncFnMut(ProgressEvent),
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), ClientError> {
         self.client
             .send_and_read_stream::<EraseEndpoint, ProgressEventTopic, _>(
                 &EraseRequest {
@@ -674,7 +722,7 @@ impl SessionInterface {
         mode: MonitorMode,
         options: MonitorOptions,
         on_msg: impl AsyncFnMut(MonitorEvent),
-    ) -> anyhow::Result<MonitorExitReason> {
+    ) -> Result<MonitorExitReason, ClientError> {
         self.client
             .send_and_read_stream::<MonitorEndpoint, MonitorEvent, _>(
                 &MonitorRequest {
@@ -692,7 +740,7 @@ impl SessionInterface {
         rtt_client: Key<RttClient>,
         channel: u32,
         data: Vec<u8>,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), ClientError> {
         self.client
             .send_resp::<RttDownEndpoint, _>(&RttDownRequest {
                 sessid: self.sessid,
@@ -709,7 +757,7 @@ impl SessionInterface {
         rtt_client: Option<Key<RttClient>>,
         semihosting_options: SemihostingOptions,
         on_msg: impl AsyncFnMut(MonitorEvent),
-    ) -> anyhow::Result<Tests> {
+    ) -> Result<Tests, ClientError> {
         self.client
             .send_and_read_stream::<ListTestsEndpoint, MonitorEvent, _>(
                 &ListTestsRequest {
@@ -729,7 +777,7 @@ impl SessionInterface {
         rtt_client: Option<Key<RttClient>>,
         semihosting_options: SemihostingOptions,
         on_msg: impl AsyncFnMut(MonitorEvent),
-    ) -> anyhow::Result<TestResult> {
+    ) -> Result<TestResult, ClientError> {
         self.client
             .send_and_read_stream::<RunTestEndpoint, MonitorEvent, _>(
                 &RunTestRequest {
@@ -748,7 +796,7 @@ impl SessionInterface {
         scan_regions: ScanRegion,
         config: Vec<RttChannelConfig>,
         default_config: RttChannelConfig,
-    ) -> anyhow::Result<RttClientData> {
+    ) -> Result<RttClientData, ClientError> {
         self.client
             .send_resp::<CreateRttClientEndpoint, _>(&CreateRttClientRequest {
                 sessid: self.sessid,
@@ -764,7 +812,7 @@ impl SessionInterface {
     pub async fn get_rtt_channels(
         &self,
         rtt_client: Key<RttClient>,
-    ) -> anyhow::Result<RttChannels> {
+    ) -> Result<RttChannels, ClientError> {
         self.client
             .send_resp::<GetRttChannelsEndpoint, _>(&RttChannelRequest {
                 sessid: self.sessid,
@@ -780,7 +828,7 @@ impl SessionInterface {
         &self,
         rtt_client: Key<RttClient>,
         channels: Vec<u32>,
-    ) -> anyhow::Result<Vec<RttPollResult>> {
+    ) -> Result<Vec<RttPollResult>, ClientError> {
         self.client
             .send_resp::<PollRttUpEndpoint, _>(&PollRttUpRequest {
                 sessid: self.sessid,
@@ -792,7 +840,7 @@ impl SessionInterface {
 
     /// Restore the original mode of every up channel on the server-side
     /// RTT client.
-    pub async fn clean_up_rtt(&self, rtt_client: Key<RttClient>) -> anyhow::Result<()> {
+    pub async fn clean_up_rtt(&self, rtt_client: Key<RttClient>) -> Result<(), ClientError> {
         self.client
             .send_resp::<CleanUpRttEndpoint, _>(&RttChannelRequest {
                 sessid: self.sessid,
@@ -803,7 +851,10 @@ impl SessionInterface {
 
     /// Wipe a stale RTT control block from target memory, before a reset or
     /// reflash. See [`clear_rtt_control_block`].
-    pub async fn clear_rtt_control_block(&self, rtt_client: Key<RttClient>) -> anyhow::Result<()> {
+    pub async fn clear_rtt_control_block(
+        &self,
+        rtt_client: Key<RttClient>,
+    ) -> Result<(), ClientError> {
         self.client
             .send_resp::<ClearRttControlBlockEndpoint, _>(&RttChannelRequest {
                 sessid: self.sessid,
@@ -820,7 +871,7 @@ impl SessionInterface {
         &self,
         path: PathBuf,
         stack_frame_limit: u32,
-    ) -> anyhow::Result<StackTraces> {
+    ) -> Result<StackTraces, ClientError> {
         let path = self.client.upload_file(&path).await?;
 
         self.client
@@ -837,13 +888,16 @@ impl SessionInterface {
     /// source locations before the first halt. Mirrors the local backend,
     /// which loads `DebugInfo` at session start. Repeated calls replace the
     /// server copy and invalidate DWARF-derived server state.
-    pub async fn load_debug_info(&self, path: PathBuf) -> anyhow::Result<()> {
+    pub async fn load_debug_info(&self, path: PathBuf) -> Result<(), ClientError> {
         let upload = self.client.resolve_upload(&path).await?;
         self.load_debug_info_resolved(&upload).await
     }
 
     /// Publish server-side DWARF from a prior [`ResolvedUpload`].
-    pub async fn load_debug_info_resolved(&self, upload: &ResolvedUpload) -> anyhow::Result<()> {
+    pub async fn load_debug_info_resolved(
+        &self,
+        upload: &ResolvedUpload,
+    ) -> Result<(), ClientError> {
         self.client
             .send_resp::<LoadDebugInfoEndpoint, _>(&LoadDebugInfoRequest {
                 sessid: self.sessid,
@@ -854,7 +908,7 @@ impl SessionInterface {
 
     /// Resolve a local path to a single upload identity for reuse across a
     /// restart transaction (validate, flash, publish debug info).
-    pub async fn resolve_upload(&self, path: &Path) -> anyhow::Result<ResolvedUpload> {
+    pub async fn resolve_upload(&self, path: &Path) -> Result<ResolvedUpload, ClientError> {
         self.client.resolve_upload(path).await
     }
 
@@ -862,7 +916,7 @@ impl SessionInterface {
     pub async fn resolve_source_breakpoints(
         &self,
         locations: Vec<SourceBreakpointLocation>,
-    ) -> anyhow::Result<Vec<BreakpointResolution>> {
+    ) -> Result<Vec<BreakpointResolution>, ClientError> {
         self.client
             .send_resp::<ResolveSourceBreakpointsEndpoint, _>(&ResolveSourceBreakpointsRequest {
                 sessid: self.sessid,
@@ -875,7 +929,7 @@ impl SessionInterface {
     pub async fn resolve_source_locations(
         &self,
         addresses: Vec<u64>,
-    ) -> anyhow::Result<Vec<Option<WireSourceLocation>>> {
+    ) -> Result<Vec<Option<WireSourceLocation>>, ClientError> {
         self.client
             .send_resp::<ResolveSourceLocationsEndpoint, _>(&ResolveSourceLocationsRequest {
                 sessid: self.sessid,
@@ -887,7 +941,7 @@ impl SessionInterface {
     /// Replace the server-side per-core SVD state, or clear it when `path` is
     /// `None`. The old cache is cleared before upload/parse so a failed reload
     /// cannot leave stale peripheral metadata visible.
-    pub async fn load_svd(&self, core: u32, path: Option<PathBuf>) -> anyhow::Result<()> {
+    pub async fn load_svd(&self, core: u32, path: Option<PathBuf>) -> Result<(), ClientError> {
         self.client
             .send_resp::<LoadSvdEndpoint, _>(&LoadSvdRequest {
                 sessid: self.sessid,
@@ -918,7 +972,7 @@ impl SessionInterface {
         &self,
         core: Option<u32>,
         stack_frame_limit: u32,
-    ) -> anyhow::Result<RichStackTraces> {
+    ) -> Result<RichStackTraces, ClientError> {
         self.client
             .send_resp::<TakeRichStackTraceEndpoint, _>(&TakeRichStackTraceRequest {
                 sessid: self.sessid,
@@ -930,7 +984,7 @@ impl SessionInterface {
 
     /// Resolve DAP scopes for a frame on the server against the server-owned
     /// `VariableCache`.
-    pub async fn scopes(&self, core: u32, frame_id: u32) -> anyhow::Result<Vec<WireScope>> {
+    pub async fn scopes(&self, core: u32, frame_id: u32) -> Result<Vec<WireScope>, ClientError> {
         self.client
             .send_resp::<ScopesEndpoint, _>(&ScopesRequest {
                 sessid: self.sessid,
@@ -947,7 +1001,7 @@ impl SessionInterface {
         core: u32,
         variables_reference: u32,
         filter: Option<String>,
-    ) -> anyhow::Result<Vec<WireVariable>> {
+    ) -> Result<Vec<WireVariable>, ClientError> {
         self.client
             .send_resp::<VariablesEndpoint, _>(&VariablesRequest {
                 sessid: self.sessid,
@@ -961,7 +1015,7 @@ impl SessionInterface {
     /// Clear a core's server-owned stack and variable caches while preserving
     /// binary-independent state such as SVD variables. Called before target
     /// execution changes so stale frame and variable handles are not served.
-    pub async fn clear_core_debug_state(&self, core: u32) -> anyhow::Result<()> {
+    pub async fn clear_core_debug_state(&self, core: u32) -> Result<(), ClientError> {
         self.client
             .send_resp::<ClearCoreDebugStateEndpoint, _>(&ClearCoreDebugStateRequest {
                 sessid: self.sessid,
@@ -977,7 +1031,7 @@ impl SessionInterface {
         core: u32,
         frame_id: Option<u32>,
         expression: String,
-    ) -> anyhow::Result<WireEvaluateResponse> {
+    ) -> Result<WireEvaluateResponse, ClientError> {
         self.client
             .send_resp::<EvaluateEndpoint, _>(&EvaluateRequest {
                 sessid: self.sessid,
@@ -995,7 +1049,7 @@ impl SessionInterface {
         &self,
         core: u32,
         mode: WireSteppingMode,
-    ) -> anyhow::Result<StepResponse> {
+    ) -> Result<StepResponse, ClientError> {
         self.client
             .send_resp::<CoreStepEndpoint, _>(&StepRequest {
                 sessid: self.sessid,
@@ -1014,7 +1068,7 @@ impl SessionInterface {
         parent_key: i64,
         name: String,
         value: String,
-    ) -> anyhow::Result<WireSetVariableResponse> {
+    ) -> Result<WireSetVariableResponse, ClientError> {
         self.client
             .send_resp::<SetVariableEndpoint, _>(&SetVariableRequest {
                 sessid: self.sessid,
@@ -1033,7 +1087,7 @@ impl SessionInterface {
         byte_offset: i64,
         instruction_offset: i64,
         instruction_count: i64,
-    ) -> anyhow::Result<Vec<WireDisassembledInstruction>> {
+    ) -> Result<Vec<WireDisassembledInstruction>, ClientError> {
         self.client
             .send_resp::<DisassembleEndpoint, _>(&DisassembleRequest {
                 sessid: self.sessid,
@@ -1050,7 +1104,7 @@ impl SessionInterface {
         &self,
         loader: Key<FlashLoader>,
         on_msg: impl AsyncFnMut(ProgressEvent),
-    ) -> anyhow::Result<VerifyResult> {
+    ) -> Result<VerifyResult, ClientError> {
         self.client
             .send_and_read_stream::<VerifyEndpoint, ProgressEventTopic, _>(
                 &VerifyRequest {
@@ -1085,7 +1139,7 @@ impl CoreInterface {
 }
 
 impl CoreInterface {
-    pub async fn read_memory_8(&self, address: u64, count: usize) -> anyhow::Result<Vec<u8>> {
+    pub async fn read_memory_8(&self, address: u64, count: usize) -> Result<Vec<u8>, ClientError> {
         self.client
             .send_resp::<ReadMemory8Endpoint, _>(&ReadMemoryRequest {
                 sessid: self.sessid,
@@ -1098,7 +1152,7 @@ impl CoreInterface {
 
     /// Lossy bulk byte read: returns as many bytes as are readable starting
     /// at `address`, stopping at the first unreadable region.
-    pub async fn read_bytes(&self, address: u64, count: usize) -> anyhow::Result<Vec<u8>> {
+    pub async fn read_bytes(&self, address: u64, count: usize) -> Result<Vec<u8>, ClientError> {
         self.client
             .send_resp::<ReadBytesEndpoint, _>(&ReadBytesRequest {
                 sessid: self.sessid,
@@ -1108,7 +1162,11 @@ impl CoreInterface {
             })
             .await
     }
-    pub async fn read_memory_16(&self, address: u64, count: usize) -> anyhow::Result<Vec<u16>> {
+    pub async fn read_memory_16(
+        &self,
+        address: u64,
+        count: usize,
+    ) -> Result<Vec<u16>, ClientError> {
         self.client
             .send_resp::<ReadMemory16Endpoint, _>(&ReadMemoryRequest {
                 sessid: self.sessid,
@@ -1118,7 +1176,11 @@ impl CoreInterface {
             })
             .await
     }
-    pub async fn read_memory_32(&self, address: u64, count: usize) -> anyhow::Result<Vec<u32>> {
+    pub async fn read_memory_32(
+        &self,
+        address: u64,
+        count: usize,
+    ) -> Result<Vec<u32>, ClientError> {
         self.client
             .send_resp::<ReadMemory32Endpoint, _>(&ReadMemoryRequest {
                 sessid: self.sessid,
@@ -1128,7 +1190,11 @@ impl CoreInterface {
             })
             .await
     }
-    pub async fn read_memory_64(&self, address: u64, count: usize) -> anyhow::Result<Vec<u64>> {
+    pub async fn read_memory_64(
+        &self,
+        address: u64,
+        count: usize,
+    ) -> Result<Vec<u64>, ClientError> {
         self.client
             .send_resp::<ReadMemory64Endpoint, _>(&ReadMemoryRequest {
                 sessid: self.sessid,
@@ -1139,7 +1205,7 @@ impl CoreInterface {
             .await
     }
 
-    pub async fn write_memory_8(&self, address: u64, data: Vec<u8>) -> anyhow::Result<()> {
+    pub async fn write_memory_8(&self, address: u64, data: Vec<u8>) -> Result<(), ClientError> {
         self.client
             .send_resp::<WriteMemory8Endpoint, _>(&WriteMemoryRequest {
                 sessid: self.sessid,
@@ -1149,7 +1215,7 @@ impl CoreInterface {
             })
             .await
     }
-    pub async fn write_memory_16(&self, address: u64, data: Vec<u16>) -> anyhow::Result<()> {
+    pub async fn write_memory_16(&self, address: u64, data: Vec<u16>) -> Result<(), ClientError> {
         self.client
             .send_resp::<WriteMemory16Endpoint, _>(&WriteMemoryRequest {
                 sessid: self.sessid,
@@ -1159,7 +1225,7 @@ impl CoreInterface {
             })
             .await
     }
-    pub async fn write_memory_32(&self, address: u64, data: Vec<u32>) -> anyhow::Result<()> {
+    pub async fn write_memory_32(&self, address: u64, data: Vec<u32>) -> Result<(), ClientError> {
         self.client
             .send_resp::<WriteMemory32Endpoint, _>(&WriteMemoryRequest {
                 sessid: self.sessid,
@@ -1169,7 +1235,7 @@ impl CoreInterface {
             })
             .await
     }
-    pub async fn write_memory_64(&self, address: u64, data: Vec<u64>) -> anyhow::Result<()> {
+    pub async fn write_memory_64(&self, address: u64, data: Vec<u64>) -> Result<(), ClientError> {
         self.client
             .send_resp::<WriteMemory64Endpoint, _>(&WriteMemoryRequest {
                 sessid: self.sessid,
@@ -1180,7 +1246,7 @@ impl CoreInterface {
             .await
     }
 
-    pub async fn reset(&self) -> anyhow::Result<()> {
+    pub async fn reset(&self) -> Result<(), ClientError> {
         self.client
             .send_resp::<ResetCoreEndpoint, _>(&ResetCoreRequest {
                 sessid: self.sessid,
@@ -1189,7 +1255,10 @@ impl CoreInterface {
             .await
     }
 
-    pub async fn reset_and_halt(&self, timeout: Duration) -> anyhow::Result<WireCoreInformation> {
+    pub async fn reset_and_halt(
+        &self,
+        timeout: Duration,
+    ) -> Result<WireCoreInformation, ClientError> {
         self.client
             .send_resp::<ResetCoreAndHaltEndpoint, _>(&ResetCoreAndHaltRequest {
                 sessid: self.sessid,
@@ -1206,13 +1275,13 @@ impl CoreInterface {
         }
     }
 
-    pub async fn status(&self) -> anyhow::Result<WireCoreStatus> {
+    pub async fn status(&self) -> Result<WireCoreStatus, ClientError> {
         self.client
             .send_resp::<CoreStatusEndpoint, _>(&self.access_request())
             .await
     }
 
-    pub async fn halt(&self, timeout: Duration) -> anyhow::Result<WireCoreInformation> {
+    pub async fn halt(&self, timeout: Duration) -> Result<WireCoreInformation, ClientError> {
         self.client
             .send_resp::<CoreHaltEndpoint, _>(&CoreHaltRequest {
                 sessid: self.sessid,
@@ -1222,7 +1291,7 @@ impl CoreInterface {
             .await
     }
 
-    pub async fn run(&self) -> anyhow::Result<()> {
+    pub async fn run(&self) -> Result<(), ClientError> {
         self.client
             .send_resp::<CoreRunEndpoint, _>(&self.access_request())
             .await
@@ -1230,11 +1299,17 @@ impl CoreInterface {
 
     /// Read a single register. Thin wrapper over [`Self::read_registers`]
     /// that turns the per-register failure back into an error.
-    pub async fn read_core_reg(&self, id: WireRegisterId) -> anyhow::Result<WireRegisterValue> {
+    pub async fn read_core_reg(
+        &self,
+        id: WireRegisterId,
+    ) -> Result<WireRegisterValue, ClientError> {
         let mut results = self.read_registers(vec![id]).await?;
         match results.pop() {
-            Some(result) => result.result.map_err(anyhow::Error::from),
-            None => anyhow::bail!("Server returned no result for register {}", id.0),
+            Some(result) => result.result.map_err(ClientError::Remote),
+            None => Err(ClientError::Transport(TransportError::Message(format!(
+                "Server returned no result for register {}",
+                id.0
+            )))),
         }
     }
 
@@ -1242,7 +1317,7 @@ impl CoreInterface {
         &self,
         id: WireRegisterId,
         value: WireRegisterValue,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), ClientError> {
         self.client
             .send_resp::<CoreWriteRegEndpoint, _>(&CoreWriteRegRequest {
                 sessid: self.sessid,
@@ -1256,18 +1331,20 @@ impl CoreInterface {
     /// Set a single hardware breakpoint. Thin wrapper over
     /// [`Self::set_hw_breakpoints`] that turns the per-address failure back
     /// into an error.
-    pub async fn set_hw_breakpoint(&self, address: u64) -> anyhow::Result<()> {
+    pub async fn set_hw_breakpoint(&self, address: u64) -> Result<(), ClientError> {
         let mut results = self.set_hw_breakpoints(vec![address]).await?;
         match results.pop() {
-            Some(result) => result.map_err(anyhow::Error::from),
-            None => anyhow::bail!("Server returned no result for breakpoint {address:#x}"),
+            Some(result) => result.map_err(ClientError::Remote),
+            None => Err(ClientError::Transport(TransportError::Message(format!(
+                "Server returned no result for breakpoint {address:#x}"
+            )))),
         }
     }
 
     pub async fn set_hw_breakpoints(
         &self,
         addresses: Vec<u64>,
-    ) -> anyhow::Result<Vec<Result<(), RpcError>>> {
+    ) -> Result<Vec<Result<(), RpcError>>, ClientError> {
         self.client
             .send_resp::<CoreSetHwBpsEndpoint, _>(&CoreBreakpointsRequest {
                 sessid: self.sessid,
@@ -1277,7 +1354,7 @@ impl CoreInterface {
             .await
     }
 
-    pub async fn clear_hw_breakpoints(&self, addresses: Vec<u64>) -> anyhow::Result<()> {
+    pub async fn clear_hw_breakpoints(&self, addresses: Vec<u64>) -> Result<(), ClientError> {
         self.client
             .send_resp::<CoreClearHwBpsEndpoint, _>(&CoreBreakpointsRequest {
                 sessid: self.sessid,
@@ -1290,7 +1367,7 @@ impl CoreInterface {
     pub async fn enable_vector_catch(
         &self,
         condition: WireVectorCatchCondition,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), ClientError> {
         self.client
             .send_resp::<CoreEnableVcEndpoint, _>(&CoreVectorCatchRequest {
                 sessid: self.sessid,
@@ -1300,7 +1377,7 @@ impl CoreInterface {
             .await
     }
 
-    pub async fn metadata(&self) -> anyhow::Result<WireCoreMetadata> {
+    pub async fn metadata(&self) -> Result<WireCoreMetadata, ClientError> {
         self.client
             .send_resp::<CoreMetadataEndpoint, _>(&self.access_request())
             .await
@@ -1314,7 +1391,7 @@ impl CoreInterface {
     pub async fn read_registers(
         &self,
         ids: Vec<WireRegisterId>,
-    ) -> anyhow::Result<Vec<WireRegisterReadResult>> {
+    ) -> Result<Vec<WireRegisterReadResult>, ClientError> {
         self.client
             .send_resp::<CoreReadRegistersEndpoint, _>(&CoreReadRegistersRequest {
                 sessid: self.sessid,
@@ -1329,7 +1406,7 @@ impl CoreInterface {
     pub async fn dump_core(
         &self,
         ranges: Vec<std::ops::Range<u64>>,
-    ) -> anyhow::Result<WireCoreDump> {
+    ) -> Result<WireCoreDump, ClientError> {
         self.client
             .send_resp::<CoreDumpEndpoint, _>(&CoreDumpRequest {
                 sessid: self.sessid,
@@ -1342,7 +1419,7 @@ impl CoreInterface {
     /// Handle a semihosting halt server-side: the server performs the file I/O
     /// next to the target and returns the resulting core status plus the UI
     /// events the client must replay (RTT window open, console/RTT output).
-    pub async fn handle_semihosting(&self) -> anyhow::Result<HandleSemihostingResult> {
+    pub async fn handle_semihosting(&self) -> Result<HandleSemihostingResult, ClientError> {
         self.client
             .send_resp::<HandleSemihostingEndpoint, _>(&HandleSemihostingRequest {
                 sessid: self.sessid,
@@ -1354,7 +1431,7 @@ impl CoreInterface {
     /// Kick off a single embedded-test case server-side: run until the
     /// `GetCommandLine` semihosting call, write `run_addr {address}` as the
     /// command line, then resume. Used by the DAP REPL `test run` command.
-    pub async fn kickoff_test(&self, address: u64) -> anyhow::Result<()> {
+    pub async fn kickoff_test(&self, address: u64) -> Result<(), ClientError> {
         self.client
             .send_resp::<TestKickoffEndpoint, _>(&TestKickoffRequest {
                 sessid: self.sessid,
@@ -1365,12 +1442,6 @@ impl CoreInterface {
     }
 }
 
-#[derive(Debug)]
-pub(crate) struct MultiSubscribeError {
-    topic: &'static str,
-    error: SubscribeError,
-}
-
 pub(crate) trait MultiTopic {
     type Message;
     type Subscription: MultiSubscription<Message = Self::Message>;
@@ -1378,7 +1449,7 @@ pub(crate) trait MultiTopic {
     async fn subscribe<E>(
         client: &HostClient<E>,
         depth: usize,
-    ) -> Result<Self::Subscription, MultiSubscribeError>
+    ) -> Result<Self::Subscription, ClientError>
     where
         E: DeserializeOwned + Schema;
 }
@@ -1394,17 +1465,19 @@ where
     async fn subscribe<E>(
         client: &HostClient<E>,
         depth: usize,
-    ) -> Result<Self::Subscription, MultiSubscribeError>
+    ) -> Result<Self::Subscription, ClientError>
     where
         E: DeserializeOwned + Schema,
     {
-        match client.subscribe_exclusive::<Self>(depth).await {
-            Ok(subscription) => Ok(subscription),
-            Err(error) => Err(MultiSubscribeError {
-                topic: T::PATH,
-                error,
-            }),
-        }
+        client
+            .subscribe_exclusive::<Self>(depth)
+            .await
+            .map_err(|error| {
+                ClientError::Transport(TransportError::Message(format!(
+                    "Failed to subscribe to '{}': {error:?}",
+                    T::PATH,
+                )))
+            })
     }
 }
 
@@ -1426,7 +1499,7 @@ pub(crate) trait MultiSubscription {
         &mut self,
         mut on_msg: impl AsyncFnMut(Self::Message),
         stopper: Arc<Notify>,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), ClientError> {
         let listen_fut = async {
             while let Some(message) = self.next().await {
                 on_msg(message).await;
@@ -1465,7 +1538,7 @@ impl MultiTopic for MonitorEvent {
     async fn subscribe<E>(
         client: &HostClient<E>,
         depth: usize,
-    ) -> Result<Self::Subscription, MultiSubscribeError>
+    ) -> Result<Self::Subscription, ClientError>
     where
         E: DeserializeOwned + Schema,
     {

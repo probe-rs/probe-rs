@@ -33,7 +33,7 @@ impl RemoteRttClient {
             .session
             .poll_rtt_up(self.rtt_client, channels.to_vec())
             .await
-            .map_err(RttError::Other)?;
+            .map_err(|e| RttError::Other(e.into()))?;
         Ok(results
             .into_iter()
             .map(|r| {
@@ -51,7 +51,7 @@ impl RemoteRttClient {
         self.session
             .clean_up_rtt(self.rtt_client)
             .await
-            .map_err(RttError::Other)
+            .map_err(|e| RttError::Other(e.into()))
     }
 
     /// Write data to a down channel.
@@ -63,7 +63,7 @@ impl RemoteRttClient {
         self.session
             .send_to_rtt(self.rtt_client, channel, data)
             .await
-            .map_err(RttError::Other)
+            .map_err(|e| RttError::Other(e.into()))
     }
 }
 
