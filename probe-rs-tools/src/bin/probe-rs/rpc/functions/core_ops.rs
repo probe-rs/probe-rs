@@ -10,7 +10,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::rpc::{
     Key, Session,
-    functions::{NoResponse, RpcContext, RpcError, RpcResult, rtt_config::DataFormat},
+    functions::{
+        NoResponse, RpcContext, RpcError, RpcResult, convert::lift, rtt_config::DataFormat,
+    },
 };
 
 /// Common request fields for addressing a single core.
@@ -285,12 +287,25 @@ use probe_rs_debug::{DebugError, SteppingMode};
 
 use crate::rpc::debug_state::{CoreSemihostingState, SemihostingFile};
 
+macro_rules! probe_rs_try {
+    ($e:expr) => {
+        match $e {
+            Ok(v) => v,
+            Err(e) => return Err($crate::rpc::functions::convert::rpc_error_probe_rs(e)),
+        }
+    };
+}
+
 macro_rules! with_core {
     ($ctx:expr, $sessid:expr, $core:expr, |$core_var:ident| $body:block) => {{
         let mut session = $ctx.session($sessid).await;
-        let mut $core_var = session.core($core as usize)?;
-        let result: Result<_, probe_rs::Error> = $body;
-        result
+        let mut $core_var = match session.core($core as usize) {
+            Ok(core) => core,
+            Err(e) => {
+                return Err($crate::rpc::functions::convert::rpc_error_probe_rs(e));
+            }
+        };
+        $body
     }};
 }
 
@@ -299,7 +314,9 @@ pub async fn core_status(
     _header: VarHeader,
     request: CoreAccessRequest,
 ) -> RpcResult<WireCoreStatus> {
-    let status = with_core!(ctx, request.sessid, request.core, |core| { core.status() })?;
+    let status = with_core!(ctx, request.sessid, request.core, |core| {
+        probe_rs_try!(core.status())
+    });
     Ok(status.into())
 }
 
@@ -309,8 +326,8 @@ pub async fn core_halt(
     request: CoreHaltRequest,
 ) -> RpcResult<WireCoreInformation> {
     let info = with_core!(ctx, request.sessid, request.core, |core| {
-        core.halt(request.timeout)
-    })?;
+        probe_rs_try!(core.halt(request.timeout))
+    });
     Ok(info.into())
 }
 
@@ -319,7 +336,9 @@ pub async fn core_run(
     _header: VarHeader,
     request: CoreAccessRequest,
 ) -> NoResponse {
-    with_core!(ctx, request.sessid, request.core, |core| { core.run() })?;
+    with_core!(ctx, request.sessid, request.core, |core| {
+        probe_rs_try!(core.run());
+    });
     Ok(())
 }
 
@@ -337,7 +356,7 @@ pub async fn core_step(
         .await;
 
     let mut session = ctx.session(request.sessid).await;
-    let mut core = session.core(request.core as usize)?;
+    let mut core = lift(session.core(request.core as usize))?;
 
     let stepping_mode = SteppingMode::from(request.mode);
     let debug_info_ref = debug_info.as_deref();
@@ -348,10 +367,12 @@ pub async fn core_step(
             warning: None,
         }),
         Err(DebugError::WarnAndContinue { message }) => {
-            let status = core.status()?;
-            let pc: u64 = core
-                .read_core_reg::<RegisterValue>(core.program_counter().id())?
-                .try_into()?;
+            let status = lift(core.status())?;
+            let pc: u64 = lift(core.read_core_reg::<RegisterValue>(core.program_counter().id()))?
+                .try_into()
+                .map_err(|e| {
+                    crate::rpc::functions::convert::rpc_error_anyhow_from(anyhow::anyhow!("{e:?}"))
+                })?;
             Ok(StepResponse {
                 status: status.into(),
                 program_counter: pc,
@@ -373,9 +394,8 @@ pub async fn core_write_reg(
     let id: RegisterId = request.id.into();
     let value: RegisterValue = request.value.into();
     with_core!(ctx, request.sessid, request.core, |core| {
-        core.write_core_reg(id, value)?;
-        Ok(())
-    })?;
+        probe_rs_try!(core.write_core_reg(id, value));
+    });
     Ok(())
 }
 
@@ -402,13 +422,13 @@ pub async fn core_set_hw_bps(
                         seen.insert(*address);
                         Ok(())
                     }
-                    Err(error) => Err(RpcError::from(error)),
+                    Err(error) => Err(crate::rpc::functions::convert::rpc_error_probe_rs(error)),
                 }
             };
             out.push(result);
         }
-        Ok(out)
-    })?;
+        out
+    });
     Ok(results)
 }
 
@@ -419,15 +439,14 @@ pub async fn core_clear_hw_bps(
 ) -> NoResponse {
     with_core!(ctx, request.sessid, request.core, |core| {
         for address in request.addresses {
-            core.clear_hw_breakpoint(address).or_else(|e| match e {
+            probe_rs_try!(core.clear_hw_breakpoint(address).or_else(|e| match e {
                 probe_rs::Error::BreakpointOperation(probe_rs::BreakpointError::NotFound(_)) => {
                     Ok(())
                 }
                 e => Err(e),
-            })?;
+            }));
         }
-        Ok(())
-    })?;
+    });
     Ok(())
 }
 
@@ -438,9 +457,8 @@ pub async fn core_enable_vc(
 ) -> NoResponse {
     let cond: VectorCatchCondition = request.condition.into();
     with_core!(ctx, request.sessid, request.core, |core| {
-        core.enable_vector_catch(cond)?;
-        Ok(())
-    })?;
+        probe_rs_try!(core.enable_vector_catch(cond));
+    });
     Ok(())
 }
 
@@ -450,17 +468,19 @@ pub async fn core_metadata(
     request: CoreAccessRequest,
 ) -> RpcResult<WireCoreMetadata> {
     let metadata = with_core!(ctx, request.sessid, request.core, |core| {
-        let fpu_support = core.fpu_support()?;
-        let floating_point_register_count = fpu_support
-            .then(|| core.floating_point_register_count())
-            .transpose()?
-            .map(|count| count as u64);
+        let fpu_support = probe_rs_try!(core.fpu_support());
+        let floating_point_register_count = probe_rs_try!(
+            fpu_support
+                .then(|| core.floating_point_register_count())
+                .transpose()
+        )
+        .map(|count| count as u64);
 
-        Ok(WireCoreMetadata {
+        WireCoreMetadata {
             fpu_support,
             floating_point_register_count,
-        })
-    })?;
+        }
+    });
     Ok(metadata)
 }
 
@@ -480,11 +500,11 @@ pub async fn core_read_registers(
         for id in &ids {
             out.push(
                 core.read_core_reg::<RegisterValue>(*id)
-                    .map_err(RpcError::from),
+                    .map_err(crate::rpc::functions::convert::rpc_error_probe_rs),
             );
         }
-        Ok(out)
-    })?;
+        out
+    });
 
     Ok(request
         .ids
@@ -503,9 +523,9 @@ pub async fn core_dump(
     request: CoreDumpRequest,
 ) -> RpcResult<WireCoreDump> {
     let mut session = ctx.session(request.sessid).await;
-    let mut core = session.core(request.core as usize)?;
+    let mut core = lift(session.core(request.core as usize))?;
 
-    let dump = CoreDump::dump_core(&mut core, request.ranges)?;
+    let dump = lift(CoreDump::dump_core(&mut core, request.ranges))?;
 
     Ok(WireCoreDump {
         registers: dump
@@ -535,9 +555,9 @@ pub async fn core_handle_semihosting(
     let mut guard = states.lock().await;
 
     let mut session = ctx.session(request.sessid).await;
-    let mut core = session.core(request.core as usize)?;
+    let mut core = lift(session.core(request.core as usize))?;
 
-    let status = core.status()?;
+    let status = lift(core.status())?;
     let command = match status {
         CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(c))) => Some(c),
         _ => None,
@@ -555,7 +575,7 @@ pub async fn core_handle_semihosting(
     let sh = state.semihosting_state(request.core as usize);
 
     let mut events = Vec::new();
-    let result = handle_semihosting_impl(&mut core, sh, command, &mut events)?;
+    let result = lift(handle_semihosting_impl(&mut core, sh, command, &mut events))?;
     Ok(HandleSemihostingResult {
         status: result.into(),
         events,

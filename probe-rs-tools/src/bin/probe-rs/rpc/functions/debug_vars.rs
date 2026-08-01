@@ -1,6 +1,6 @@
 use crate::rpc::{
     Key, Session,
-    functions::{RpcContext, RpcResult},
+    functions::{RpcContext, RpcResult, convert::lift},
 };
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
@@ -199,7 +199,7 @@ pub async fn variables(
     // `!Send`, so it must not be held across the `debug_states().lock().await`
     // (the spawned server future must remain `Send`).
     let mut session = ctx.session(request.sessid).await;
-    let mut core = session.core(request.core as usize)?;
+    let mut core = lift(session.core(request.core as usize))?;
 
     let Some(state) = guard.get_mut(&request.sessid) else {
         Err("No debug state for session")?
@@ -304,7 +304,7 @@ pub async fn variables(
         && !variable_cache.has_children(parent)
         && let Some(frame_info) = frame_info
     {
-        debug_info.cache_deferred_variables(variable_cache, &mut core, parent, frame_info)?;
+        lift(debug_info.cache_deferred_variables(variable_cache, &mut core, parent, frame_info))?;
     }
 
     Ok(variable_cache
@@ -368,7 +368,7 @@ pub async fn load_svd(
         }
         Err(error) => {
             state.replace_svd(request.core as usize, None);
-            Err(error.into())
+            Err(crate::rpc::functions::convert::rpc_error_debug(error))
         }
     })
     .await
@@ -408,7 +408,7 @@ pub async fn set_variable(
     let mut guard = states.lock().await;
 
     let mut session = ctx.session(request.sessid).await;
-    let mut core = session.core(request.core as usize)?;
+    let mut core = lift(session.core(request.core as usize))?;
 
     let Some(state) = guard.get_mut(&request.sessid) else {
         Err("No debug state for session")?
@@ -512,7 +512,7 @@ pub async fn evaluate(
     };
 
     let mut session = ctx.session(request.sessid).await;
-    let mut core = session.core(request.core as usize)?;
+    let mut core = lift(session.core(request.core as usize))?;
 
     let Some(state) = guard.get_mut(&request.sessid) else {
         Err("No debug state for session")?

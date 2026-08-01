@@ -11,6 +11,7 @@ use crate::rpc::{
     functions::{
         NoResponse, RpcContext, TargetInfoDataTopic, TargetMetadataResponse,
         chip::JEP106Code,
+        convert::lift,
         core_ops::WireCoreType,
         probe::{DebugProbeEntry, WireProtocol},
     },
@@ -270,14 +271,16 @@ pub async fn target_info(
     )
     .await
     {
-        ctx.publish::<TargetInfoDataTopic>(
-            VarSeq::Seq2(0),
-            &InfoEvent::Message(format!(
-                "Failed to identify target using protocol {}: {e:?}",
-                request.protocol
-            )),
-        )
-        .await?;
+        lift(
+            ctx.publish::<TargetInfoDataTopic>(
+                VarSeq::Seq2(0),
+                &InfoEvent::Message(format!(
+                    "Failed to identify target using protocol {}: {e:?}",
+                    request.protocol
+                )),
+            )
+            .await,
+        )?;
     }
 
     Ok(())
@@ -497,7 +500,7 @@ async fn try_show_arm_dp_info(
     };
 
     if let Err(err) = interface.select_debug_port(dp_address) {
-        return (interface.close(), Err(err.into()));
+        return (interface.close(), Err(anyhow!(err)));
     }
 
     let res = show_arm_info(ctx, &mut *interface, dp_address).await;

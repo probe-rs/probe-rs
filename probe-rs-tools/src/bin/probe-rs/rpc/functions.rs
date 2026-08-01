@@ -69,7 +69,7 @@ use crate::rpc::{
 use anyhow::anyhow;
 use postcard_rpc::header::{VarHeader, VarSeq};
 use postcard_rpc::server::{
-    Dispatch, Sender as PostcardSender, Server, SpawnContext, WireRxErrorKind, WireTxErrorKind,
+    Dispatch, Sender as PostcardSender, Server, SpawnContext, WireRxErrorKind,
 };
 use postcard_rpc::{Topic, TopicDirection, endpoints, host_client, server, topics};
 use postcard_schema::Schema;
@@ -105,42 +105,7 @@ pub mod semihosting_options;
 pub mod stack_trace;
 pub mod test;
 
-pub type RpcResult<T> = Result<T, RpcError>;
-
-pub type NoResponse = RpcResult<()>;
-
-#[derive(Debug, Clone, Serialize, Deserialize, Schema)]
-pub struct RpcError(String);
-
-impl std::fmt::Display for RpcError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl From<&str> for RpcError {
-    fn from(e: &str) -> Self {
-        Self(e.to_string())
-    }
-}
-
-impl From<String> for RpcError {
-    fn from(e: String) -> Self {
-        Self(e)
-    }
-}
-
-impl From<WireTxErrorKind> for RpcError {
-    fn from(e: WireTxErrorKind) -> Self {
-        Self(format!("{e:?}"))
-    }
-}
-
-impl From<RpcError> for anyhow::Error {
-    fn from(e: RpcError) -> Self {
-        anyhow!(e.0)
-    }
-}
+pub use probe_rs_rpc::{NoResponse, RpcError, RpcResult};
 
 #[derive(Clone)]
 pub struct RpcSpawnContext {
@@ -783,56 +748,40 @@ impl RpcApp {
 }
 
 pub(crate) mod convert {
-    use super::RpcError;
+    use super::{RpcError, RpcResult};
     use crate::util::common_options::OperationError;
-    use anyhow::anyhow;
 
-    // TODO: replace most of these with anyhow context wrappers
-    impl From<anyhow::Error> for RpcError {
-        fn from(e: anyhow::Error) -> Self {
-            Self(format!("{e:?}"))
-        }
+    pub(crate) fn rpc_error_anyhow(e: anyhow::Error) -> RpcError {
+        format!("{e:?}").into()
     }
 
-    impl From<probe_rs::Error> for RpcError {
-        fn from(e: probe_rs::Error) -> Self {
-            Self::from(anyhow!(e))
-        }
+    pub(crate) fn rpc_error_anyhow_from<E: Into<anyhow::Error>>(e: E) -> RpcError {
+        rpc_error_anyhow(e.into())
     }
 
-    impl From<probe_rs_debug::DebugError> for RpcError {
-        fn from(e: probe_rs_debug::DebugError) -> Self {
-            Self::from(anyhow!(e))
-        }
+    pub(crate) fn lift<T, E: Into<anyhow::Error>>(result: Result<T, E>) -> RpcResult<T> {
+        result.map_err(rpc_error_anyhow_from)
     }
 
-    impl From<probe_rs::flashing::FileDownloadError> for RpcError {
-        fn from(e: probe_rs::flashing::FileDownloadError) -> Self {
-            Self::from(anyhow!(e))
-        }
+    pub(crate) fn rpc_error_probe_rs(e: probe_rs::Error) -> RpcError {
+        rpc_error_anyhow_from(e)
     }
 
-    impl From<probe_rs::flashing::FlashError> for RpcError {
-        fn from(e: probe_rs::flashing::FlashError) -> Self {
-            Self::from(anyhow!(e))
-        }
+    pub(crate) fn rpc_error_debug(e: probe_rs_debug::DebugError) -> RpcError {
+        rpc_error_anyhow_from(e)
     }
 
-    impl From<probe_rs::config::RegistryError> for RpcError {
-        fn from(e: probe_rs::config::RegistryError) -> Self {
-            Self::from(anyhow!(e))
-        }
+    pub(crate) fn rpc_error_flash(e: probe_rs::flashing::FlashError) -> RpcError {
+        rpc_error_anyhow_from(e)
+    }
+
+    pub(crate) fn rpc_error_rtt(e: probe_rs::rtt::Error) -> RpcError {
+        rpc_error_anyhow_from(e)
     }
 
     impl From<OperationError> for RpcError {
-        fn from(e: OperationError) -> Self {
-            Self::from(anyhow!(e))
-        }
-    }
-
-    impl From<probe_rs::rtt::Error> for RpcError {
-        fn from(e: probe_rs::rtt::Error) -> Self {
-            Self::from(anyhow!(e))
+        fn from(e: OperationError) -> RpcError {
+            rpc_error_anyhow_from(e)
         }
     }
 }

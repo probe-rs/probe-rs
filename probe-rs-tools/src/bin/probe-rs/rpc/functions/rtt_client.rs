@@ -1,7 +1,10 @@
 use crate::{
     rpc::{
         Key, RttClient, Session,
-        functions::{NoResponse, RpcContext, RpcError, RpcResult, rtt_config::RttChannelConfig},
+        functions::{
+            NoResponse, RpcContext, RpcError, RpcResult, convert::lift,
+            rtt_config::RttChannelConfig,
+        },
     },
     util::rtt::RttConfig,
 };
@@ -96,8 +99,8 @@ pub async fn write_rtt_down(
     let mut rtt_client = ctx.object_mut(request.rtt_client).await;
 
     let core_id = rtt_client.core_id();
-    let mut core = session.core(core_id)?;
-    rtt_client.write_down_channel(&mut core, request.channel, &request.data)?;
+    let mut core = lift(session.core(core_id))?;
+    lift(rtt_client.write_down_channel(&mut core, request.channel, &request.data))?;
 
     Ok(())
 }
@@ -128,8 +131,8 @@ pub async fn get_rtt_channels(
     let mut rtt_client = ctx.object_mut(request.rtt_client).await;
 
     let core_id = rtt_client.core_id();
-    let mut core = session.core(core_id)?;
-    rtt_client.try_attach(&mut core)?;
+    let mut core = lift(session.core(core_id))?;
+    lift(rtt_client.try_attach(&mut core))?;
 
     let up = rtt_client
         .up_channels()
@@ -168,8 +171,8 @@ pub async fn clear_rtt_control_block(
     let mut rtt_client = ctx.object_mut(request.rtt_client).await;
 
     let core_id = rtt_client.core_id();
-    let mut core = session.core(core_id)?;
-    rtt_client.clear_control_block(&mut core)?;
+    let mut core = lift(session.core(core_id))?;
+    lift(rtt_client.clear_control_block(&mut core))?;
 
     Ok(())
 }
@@ -206,7 +209,7 @@ pub async fn poll_rtt_up(
     let mut rtt_client = ctx.object_mut(request.rtt_client).await;
 
     let core_id = rtt_client.core_id();
-    let mut core = session.core(core_id)?;
+    let mut core = lift(session.core(core_id))?;
 
     let mut results = Vec::with_capacity(request.channels.len());
     for channel in request.channels {
@@ -214,7 +217,7 @@ pub async fn poll_rtt_up(
             Ok(bytes) => Ok(bytes.to_vec()),
             Err(error) => {
                 tracing::warn!("RTT poll of channel {channel} failed: {error}");
-                Err(RpcError::from(error))
+                Err(crate::rpc::functions::convert::rpc_error_rtt(error))
             }
         };
         results.push(RttPollResult { channel, result });
@@ -242,8 +245,8 @@ pub async fn clean_up_rtt(
     let mut rtt_client = ctx.object_mut(request.rtt_client).await;
 
     let core_id = rtt_client.core_id();
-    let mut core = session.core(core_id)?;
-    rtt_client.clean_up(&mut core)?;
+    let mut core = lift(session.core(core_id))?;
+    lift(rtt_client.clean_up(&mut core))?;
 
     Ok(())
 }

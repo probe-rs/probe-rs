@@ -98,7 +98,7 @@ pub async fn monitor(
     let resp = ctx
         .run_blocking::<MonitorSender, _, _, _>(request, monitor_impl)
         .await
-        .map_err(Into::into);
+        .map_err(crate::rpc::functions::convert::rpc_error_anyhow);
 
     sender
         .reply::<MonitorEndpoint>(header.seq_no, &resp)

@@ -5,7 +5,7 @@ use std::fmt::Display;
 
 use crate::rpc::{
     Key, Session,
-    functions::{RpcContext, RpcResult},
+    functions::{RpcContext, RpcResult, convert::lift},
 };
 
 // Separate from DebugProbeInfo because we can't serialize a &dyn ProbeFactory
@@ -193,7 +193,7 @@ pub async fn attach(
     // attach_session halts the target, let's give the user the option
     // to resume it without a roundtrip
     if request.resume_target {
-        session.resume_all_cores()?;
+        lift(session.resume_all_cores())?;
     }
     let session_id = ctx.set_session(session, common_options.dry_run()).await;
     Ok(AttachResult::Success(session_id))

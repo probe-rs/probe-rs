@@ -2,7 +2,10 @@ use postcard_schema::Schema;
 use serde::{Deserialize, Serialize};
 
 use crate::rpc::functions::format::FormatOptions;
-use crate::rpc::{FlashLoader, Key, RttClient, Session, functions::RpcResult};
+use crate::rpc::{
+    FlashLoader, Key, RttClient, Session,
+    functions::{RpcResult, convert::lift},
+};
 
 #[derive(Serialize, Deserialize, Default, Schema)]
 pub struct DownloadOptions {
@@ -314,7 +317,7 @@ pub async fn build(
 ) -> BuildResponse {
     // build loader
     let mut session = ctx.session(request.sessid).await;
-    let mut loader = build_loader(
+    let mut loader = lift(build_loader(
         &mut session,
         &request.path,
         request.format,
@@ -322,7 +325,7 @@ pub async fn build(
             .image_target
             .as_deref()
             .and_then(InstructionSet::from_target_triple),
-    )?;
+    ))?;
 
     loader.read_rtt_output(request.read_flasher_rtt);
 
@@ -382,9 +385,11 @@ fn flash_impl(
     });
 
     // run flash download
-    loader
-        .commit(&mut session, options)
-        .map_err(FileDownloadError::Flash)?;
+    lift(
+        loader
+            .commit(&mut session, options)
+            .map_err(FileDownloadError::Flash),
+    )?;
 
     Ok(())
 }
@@ -411,9 +416,11 @@ fn erase_impl(
     });
 
     match request.command {
-        EraseCommand::All => {
-            flashing::erase_all(&mut session, &mut progress, request.read_flasher_rtt)?
-        }
+        EraseCommand::All => lift(flashing::erase_all(
+            &mut session,
+            &mut progress,
+            request.read_flasher_rtt,
+        ))?,
     }
 
     Ok(())
@@ -450,7 +457,7 @@ fn verify_impl(
     match loader.verify(&mut session, &mut progress) {
         Ok(()) => Ok(VerifyResult::Ok),
         Err(flashing::FlashError::Verify) => Ok(VerifyResult::Mismatch),
-        Err(other) => Err(other.into()),
+        Err(other) => Err(crate::rpc::functions::convert::rpc_error_flash(other)),
     }
 }
 

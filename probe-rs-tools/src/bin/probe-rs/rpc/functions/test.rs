@@ -126,6 +126,7 @@ use probe_rs::{BreakpointCause, Core, HaltReason, semihosting::SemihostingComman
 use crate::rpc::{
     functions::{
         ListTestsEndpoint, RpcContext, RpcSpawnContext, RunTestEndpoint, WireTxImpl,
+        convert::lift,
         monitor::{MonitorSender, RttPoller, SemihostingEvent},
     },
     utils::{
@@ -143,7 +144,7 @@ pub async fn list_tests(
     let resp = ctx
         .run_blocking::<MonitorSender, _, _, _>(request, list_tests_impl)
         .await
-        .map_err(Into::into);
+        .map_err(crate::rpc::functions::convert::rpc_error_anyhow);
 
     sender
         .reply::<ListTestsEndpoint>(header.seq_no, &resp)
@@ -221,7 +222,7 @@ pub async fn run_test(
     let resp = ctx
         .run_blocking::<MonitorSender, _, _, _>(request, run_test_impl)
         .await
-        .map_err(Into::into);
+        .map_err(crate::rpc::functions::convert::rpc_error_anyhow);
 
     sender
         .reply::<RunTestEndpoint>(header.seq_no, &resp)
@@ -313,20 +314,20 @@ pub async fn test_kickoff(
     use probe_rs::CoreStatus;
 
     let mut session = ctx.session(request.sessid).await;
-    let mut core = session.core(request.core as usize)?;
+    let mut core = lift(session.core(request.core as usize))?;
 
-    core.run()?;
-    core.wait_for_core_halted(Duration::from_secs(1))?;
+    lift(core.run())?;
+    lift(core.wait_for_core_halted(Duration::from_secs(1)))?;
 
     let CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
         SemihostingCommand::GetCommandLine(cmd),
-    ))) = core.status()?
+    ))) = lift(core.status())?
     else {
         Err("Could not start test: target did not halt on GetCommandLine")?
     };
 
-    cmd.write_command_line_to_target(&mut core, &format!("run_addr {}", request.address))?;
-    core.run()?;
+    lift(cmd.write_command_line_to_target(&mut core, &format!("run_addr {}", request.address)))?;
+    lift(core.run())?;
     Ok(())
 }
 

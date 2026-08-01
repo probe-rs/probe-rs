@@ -4,6 +4,7 @@ use crate::rpc::{
     Key, Session,
     functions::{
         NoResponse, RpcResult,
+        convert::lift,
         core_ops::{WireRegisterId, WireRegisterValue},
     },
 };
@@ -181,36 +182,34 @@ async fn unwind_all_cores(
         Err("No debug info found.")?
     };
 
-    session
-        .halted_access(|session| {
-            let mut cores = Vec::new();
-            for (idx, core_type) in session.list_cores() {
-                let mut core = match session.core(idx) {
-                    Ok(core) => core,
-                    Err(Error::CoreDisabled(_)) => continue,
-                    Err(e) => return Err(e),
-                };
+    lift(session.halted_access(|session| {
+        let mut cores = Vec::new();
+        for (idx, core_type) in session.list_cores() {
+            let mut core = match session.core(idx) {
+                Ok(core) => core,
+                Err(Error::CoreDisabled(_)) => continue,
+                Err(e) => return Err(e),
+            };
 
-                let initial_registers = DebugRegisters::from_core(&mut core);
-                let exception_interface = exception_handler_for_core(core_type);
-                let instruction_set = core.instruction_set().ok();
-                let stack_frames = debug_info.unwind(
-                    &mut core,
-                    initial_registers,
-                    exception_interface.as_ref(),
-                    instruction_set,
-                    request.stack_frame_limit as usize,
-                )?;
+            let initial_registers = DebugRegisters::from_core(&mut core);
+            let exception_interface = exception_handler_for_core(core_type);
+            let instruction_set = core.instruction_set().ok();
+            let stack_frames = debug_info.unwind(
+                &mut core,
+                initial_registers,
+                exception_interface.as_ref(),
+                instruction_set,
+                request.stack_frame_limit as usize,
+            )?;
 
-                let frames: Vec<StackTraceFrame> = stack_frames
-                    .into_iter()
-                    .map(StackTraceFrame::from)
-                    .collect();
-                cores.push((idx as u32, frames));
-            }
-            Ok(cores)
-        })
-        .map_err(Into::into)
+            let frames: Vec<StackTraceFrame> = stack_frames
+                .into_iter()
+                .map(StackTraceFrame::from)
+                .collect();
+            cores.push((idx as u32, frames));
+        }
+        Ok(cores)
+    }))
 }
 
 pub async fn take_stack_trace(
@@ -255,7 +254,7 @@ pub async fn take_rich_stack_trace(
         Vec<StackFrame>,
         VariableCache,
         Vec<RichStackTraceFrame>,
-    )> = session.halted_access(|session| {
+    )> = lift(session.halted_access(|session| {
         let mut cores = Vec::new();
         for (idx, core_type) in session.list_cores() {
             if let Some(requested_core) = request.core
@@ -336,7 +335,7 @@ pub async fn take_rich_stack_trace(
             cores.push((idx as u32, stack_frames, static_variables, rich_frames));
         }
         Ok(cores)
-    })?;
+    }))?;
 
     drop(session);
 

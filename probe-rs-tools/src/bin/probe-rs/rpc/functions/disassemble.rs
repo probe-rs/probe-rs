@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::rpc::{
     Key, Session,
-    functions::{RpcContext, RpcResult},
+    functions::{RpcContext, RpcResult, convert::lift},
 };
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -55,7 +55,7 @@ pub async fn disassemble(
         .await;
 
     let mut session = ctx.session(request.sessid).await;
-    let mut core = session.core(request.core as usize)?;
+    let mut core = lift(session.core(request.core as usize))?;
     let instructions = disassemble_target_memory(
         &mut core,
         debug_info.as_deref(),

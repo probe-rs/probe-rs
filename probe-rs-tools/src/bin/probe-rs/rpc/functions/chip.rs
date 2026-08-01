@@ -4,7 +4,7 @@ use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
 use serde::{Deserialize, Serialize};
 
-use crate::rpc::functions::{NoResponse, RpcContext, RpcResult};
+use crate::rpc::functions::{NoResponse, RpcContext, RpcResult, convert::lift};
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Schema)]
 pub struct JEP106Code {
@@ -206,11 +206,7 @@ pub async fn chip_info(
     _header: VarHeader,
     request: ChipInfoRequest,
 ) -> ChipInfoResponse {
-    Ok(ctx
-        .registry()
-        .await
-        .get_target_by_name(request.name)?
-        .into())
+    Ok(lift(ctx.registry().await.get_target_by_name(request.name))?.into())
 }
 
 pub async fn load_chip_family(
@@ -218,9 +214,11 @@ pub async fn load_chip_family(
     _header: VarHeader,
     request: LoadChipFamilyRequest,
 ) -> NoResponse {
-    ctx.registry()
-        .await
-        .add_target_family_from_yaml(&request.families_yaml)?;
+    lift(
+        ctx.registry()
+            .await
+            .add_target_family_from_yaml(&request.families_yaml),
+    )?;
 
     Ok(())
 }

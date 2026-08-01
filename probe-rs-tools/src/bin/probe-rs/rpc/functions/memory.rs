@@ -1,6 +1,6 @@
 use crate::rpc::{
     Key, Session,
-    functions::{NoResponse, RpcContext, RpcResult},
+    functions::{NoResponse, RpcContext, RpcResult, convert::lift},
 };
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
@@ -93,7 +93,7 @@ pub async fn write_memory<W: Word>(
 ) -> NoResponse {
     let mut session = ctx.session(request.sessid).await;
     let mut core = session.core(request.core as usize).unwrap();
-    W::write(&mut core, request.address, &request.data)?;
+    lift(W::write(&mut core, request.address, &request.data))?;
     Ok(())
 }
 
@@ -111,10 +111,10 @@ pub async fn read_memory<W: Word>(
     request: ReadMemoryRequest,
 ) -> RpcResult<Vec<W>> {
     let mut session = ctx.session(request.sessid).await;
-    let mut core = session.core(request.core as usize)?;
+    let mut core = lift(session.core(request.core as usize))?;
 
     let mut words = vec![W::default(); request.count as usize];
-    W::read(&mut core, request.address, &mut words)?;
+    lift(W::read(&mut core, request.address, &mut words))?;
     Ok(words)
 }
 
@@ -135,7 +135,7 @@ pub async fn read_bytes(
     request: ReadBytesRequest,
 ) -> RpcResult<Vec<u8>> {
     let mut session = ctx.session(request.sessid).await;
-    let mut core = session.core(request.core as usize)?;
+    let mut core = lift(session.core(request.core as usize))?;
 
     fn chunk_size(count: usize, max_chunk_size: usize) -> usize {
         (max_chunk_size.min(count) / 2).next_power_of_two()
@@ -153,7 +153,7 @@ pub async fn read_bytes(
         match core.read(address, buffer) {
             Err(e) => {
                 if result_buffer.is_empty() && chunk_size == 1 {
-                    return Err(e.into());
+                    return Err(crate::rpc::functions::convert::rpc_error_probe_rs(e));
                 }
                 max_chunk_size = chunk_size / 2;
             }

@@ -10,6 +10,9 @@ use crate::rpc::{
 };
 
 #[cfg(feature = "remote")]
+use crate::rpc::functions::convert::lift;
+
+#[cfg(feature = "remote")]
 use tempfile::NamedTempFile;
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -33,7 +36,7 @@ pub async fn create_temp_file(
     _req: (),
 ) -> CreateFileResponse {
     // TODO: avoid temp files altogether
-    let file = NamedTempFile::new().context("Failed to write temporary file")?;
+    let file = lift(NamedTempFile::new().context("Failed to write temporary file"))?;
     let path = file.path().to_path_buf().display().to_string();
     tracing::info!("Created temporary file {}", path);
     let key = ctx.store_object(file).await;
@@ -60,9 +63,11 @@ pub async fn append_temp_file(
 
     let mut file = ctx.object_mut(request.key).await;
 
-    file.as_file_mut()
-        .write_all(&request.data)
-        .context("Failed to write temporary file")?;
+    lift(
+        file.as_file_mut()
+            .write_all(&request.data)
+            .context("Failed to write temporary file"),
+    )?;
 
     Ok(())
 }
