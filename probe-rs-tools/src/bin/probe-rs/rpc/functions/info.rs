@@ -2,213 +2,8 @@
 //!
 //! The information is passed as a stream of messages to the provided emitter.
 
-use postcard_rpc::header::{VarHeader, VarSeq};
-use postcard_schema::{Schema, schema};
-use serde::{Deserialize, Serialize};
-
-use crate::rpc::functions::core_ops::convert::to_wire_core_type;
-use crate::rpc::functions::probe::convert::from_wire_protocol;
-use crate::rpc::{
-    Key, Session,
-    functions::{
-        NoResponse, RpcContext, TargetInfoDataTopic, TargetMetadataResponse,
-        chip::JEP106Code,
-        convert::lift,
-        core_ops::WireCoreType,
-        probe::{DebugProbeEntry, WireProtocol},
-    },
-};
-
-/// Session-scoped target description fields the DAP RPC client needs without
-/// mirroring the full server [`probe_rs::Target`] in its local registry.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Schema)]
-pub struct WireSessionTargetMetadata {
-    pub target_name: String,
-    pub default_format: Option<String>,
-    pub cores: Vec<WireSessionCore>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Schema)]
-pub struct WireSessionCore {
-    pub index: u32,
-    pub core_type: WireCoreType,
-}
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct TargetMetadataRequest {
-    pub sessid: Key<Session>,
-}
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct TargetInfoRequest {
-    pub probe: DebugProbeEntry,
-    pub speed: Option<u32>,
-    pub connect_under_reset: bool,
-    pub dry_run: bool,
-    pub target_sel: Option<u32>,
-    pub protocol: WireProtocol,
-    /// IR lengths for each TAP in the scan chain, in scan-chain order.
-    ///
-    /// When non-empty, the JTAG auto-detection scan is bypassed and these values are used
-    /// directly. For example, `[5]` specifies a single-TAP chain with IR length 5.
-    #[serde(default)]
-    pub scan_chain: Vec<u8>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Schema)]
-pub enum InfoEvent {
-    Message(String),
-    ProtocolNotSupportedByArch {
-        architecture: String,
-        protocol: WireProtocol,
-    },
-    ProbeInterfaceMissing {
-        interface: String,
-        architecture: String,
-    },
-    Error {
-        architecture: String,
-        error: String,
-    },
-    ArmError {
-        dp_addr: DpAddress,
-        error: String,
-    },
-    Idcode {
-        architecture: String,
-        idcode: Option<u32>,
-    },
-    ArmDp(DebugPortInfo),
-}
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Serialize, Deserialize, Schema)]
-pub enum DpAddress {
-    /// Access the single DP on the bus, assuming there is only one.
-    /// Will cause corruption if multiple are present.
-    Default,
-    /// Select a particular DP on a SWDv2 multidrop bus. The contained `u32` is
-    /// the `TARGETSEL` value to select it.
-    Multidrop(u32),
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct DebugPortInfoNode {
-    pub dp_info: DebugPortId,
-    pub targetid: u32,
-    pub dlpidr: u32,
-}
-
-/// The ID of a debug port. Can be used to detect and select devices in a multidrop setup.
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct DebugPortId {
-    /// The revision of the debug port (implementation defined). This is what the designer of the debug port chooses.
-    pub revision: u8,
-    /// The part number of the debug port (determined by the designer).
-    pub part_no: u8,
-    /// The version of this debug port. This is what the selected spec says.
-    pub version: DebugPortVersion,
-    /// Specifies if pushed-find operations are implemented or not.
-    pub min_dp_support: MinDpSupport,
-    /// The JEP106 code of the designer of this debug port.
-    pub designer: JEP106Code,
-}
-
-/// The version of the debug port.
-#[derive(Debug, PartialEq, Eq, Copy, Clone, Serialize, Deserialize, Schema)]
-pub enum DebugPortVersion {
-    /// Version 0 (not common)
-    DPv0,
-    /// Version 1 (most of the ARM cores feature this version)
-    DPv1,
-    /// Version 2 (**very** rare (only known example is the RP2040))
-    DPv2,
-    /// Version 3 (on ADIv6 devices)
-    DPv3,
-    /// Some unsupported value was encountered!
-    Unsupported(u8),
-}
-
-/// Specifies if pushed-find operations are implemented or not.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Schema)]
-pub enum MinDpSupport {
-    /// Pushed-find operations are **not** implemented.
-    NotImplemented,
-    /// Pushed-find operations are implemented.
-    Implemented,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct DebugPortInfo {
-    pub dp_info: DebugPortInfoNode,
-    pub aps: Vec<ApInfo>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub enum ApInfo {
-    MemoryAp {
-        ap_addr: FullyQualifiedApAddress,
-        component_tree: ComponentTreeNode,
-    },
-    ApV2Root {
-        component_tree: ComponentTreeNode,
-    },
-    Unknown {
-        ap_addr: FullyQualifiedApAddress,
-        idr: u32,
-    },
-}
-
-/// Access port address.
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Serialize, Deserialize, Schema)]
-pub struct FullyQualifiedApAddress {
-    /// The address of the debug port this access port belongs to.
-    pub dp: DpAddress,
-    /// The access port number.
-    pub ap: String,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ComponentTreeNode {
-    pub node: String,
-    pub children: Vec<ComponentTreeNode>,
-}
-
-impl postcard_schema::Schema for ComponentTreeNode {
-    const SCHEMA: &'static schema::NamedType = &schema::NamedType {
-        name: "ComponentTreeNode",
-        ty: &schema::DataModelType::Struct(&[
-            &schema::NamedValue {
-                name: "node",
-                ty: <String as ::postcard_schema::Schema>::SCHEMA,
-            },
-            &schema::NamedValue {
-                name: "children",
-                ty: <Vec<()> as ::postcard_schema::Schema>::SCHEMA,
-            },
-        ]),
-    };
-}
-
-impl From<String> for ComponentTreeNode {
-    fn from(node: String) -> Self {
-        Self::new(node)
-    }
-}
-
-impl ComponentTreeNode {
-    fn new(node: String) -> Self {
-        Self {
-            node,
-            children: vec![],
-        }
-    }
-
-    fn push(&mut self, child: impl Into<ComponentTreeNode>) {
-        self.children.push(child.into());
-    }
-}
-
 use anyhow::anyhow;
+use postcard_rpc::header::{VarHeader, VarSeq};
 use probe_rs::{
     architecture::{
         arm::{
@@ -228,15 +23,26 @@ use probe_rs::{
     },
     probe::{Probe, wlink::WchLink},
 };
+pub use probe_rs_rpc::info::{
+    ApInfo, ComponentTreeNode, DebugPortId, DebugPortInfo, DebugPortInfoNode, DebugPortVersion,
+    DpAddress, FullyQualifiedApAddress, InfoEvent, MinDpSupport, TargetInfoRequest,
+    TargetMetadataRequest, WireSessionCore, WireSessionTargetMetadata,
+};
+use probe_rs_rpc::probe::WireProtocol;
 use probe_rs_target::ScanChainElement;
 
-use crate::util::common_options::ProbeOptions;
+use crate::rpc::functions::core_ops::convert::to_wire_core_type;
+use crate::rpc::functions::probe::convert::from_wire_protocol;
+use crate::{
+    rpc::functions::{NoResponse, RpcContext, TargetInfoDataTopic, convert::lift},
+    util::common_options::ProbeOptions,
+};
 
 pub async fn target_metadata(
     ctx: &mut RpcContext,
     _hdr: VarHeader,
     request: TargetMetadataRequest,
-) -> TargetMetadataResponse {
+) -> probe_rs_rpc::info::TargetMetadataResponse {
     let session = ctx.session(request.sessid).await;
     let target = session.target();
     Ok(WireSessionTargetMetadata {
@@ -352,7 +158,7 @@ async fn try_show_info(
                     ctx.publish::<TargetInfoDataTopic>(
                         VarSeq::Seq2(0),
                         &InfoEvent::ArmError {
-                            dp_addr: address.into(),
+                            dp_addr: convert::to_wire_dp_address(address),
                             error: format!("{e:?}"),
                         },
                     )
@@ -532,13 +338,13 @@ async fn show_arm_info(
         let _ = interface.read_raw_dp_register(dp, Ctrl::ADDRESS)?;
 
         DebugPortInfoNode {
-            dp_info: DebugPortId::from(&dp_info),
+            dp_info: convert::to_wire_debug_port_id(&dp_info),
             targetid,
             dlpidr,
         }
     } else {
         DebugPortInfoNode {
-            dp_info: DebugPortId::from(&dp_info),
+            dp_info: convert::to_wire_debug_port_id(&dp_info),
             targetid: 0,
             dlpidr: 0,
         }
@@ -574,7 +380,7 @@ async fn show_arm_info(
                         };
                         ApInfo::MemoryAp {
                             ap_addr: FullyQualifiedApAddress {
-                                dp: ap_address.dp().into(),
+                                dp: convert::to_wire_dp_address(ap_address.dp()),
                                 ap: ap_address.ap().to_string(),
                             },
                             component_tree: ap_nodes,
@@ -582,7 +388,7 @@ async fn show_arm_info(
                     } else {
                         ApInfo::Unknown {
                             ap_addr: FullyQualifiedApAddress {
-                                dp: ap_address.dp().into(),
+                                dp: convert::to_wire_dp_address(ap_address.dp()),
                                 ap: ap_address.ap().to_string(),
                             },
                             idr: raw_idr,
@@ -875,13 +681,12 @@ async fn show_xtensa_info(
 }
 
 pub(crate) mod convert {
-    use super::{
-        DebugPortId, DebugPortVersion, DpAddress, MinDpSupport, TargetInfoRequest, WireProtocol,
-    };
+    use super::{DebugPortId, DebugPortVersion, DpAddress, MinDpSupport, TargetInfoRequest};
     use crate::rpc::functions::chip::convert::to_wire_jep106_code;
     use crate::rpc::functions::probe::convert::from_wire_debug_probe_selector;
     use crate::util::common_options::ProbeOptions;
     use probe_rs::{architecture::arm::dp, probe::WireProtocol as ProbeRsWireProtocol};
+    use probe_rs_rpc::probe::WireProtocol;
 
     impl From<&TargetInfoRequest> for ProbeOptions {
         fn from(request: &TargetInfoRequest) -> Self {
@@ -903,61 +708,33 @@ pub(crate) mod convert {
         }
     }
 
-    impl From<dp::DpAddress> for DpAddress {
-        fn from(address: dp::DpAddress) -> Self {
-            match address {
-                dp::DpAddress::Default => DpAddress::Default,
-                dp::DpAddress::Multidrop(target_sel) => DpAddress::Multidrop(target_sel),
-            }
+    pub(crate) fn to_wire_dp_address(address: dp::DpAddress) -> DpAddress {
+        match address {
+            dp::DpAddress::Default => DpAddress::Default,
+            dp::DpAddress::Multidrop(target_sel) => DpAddress::Multidrop(target_sel),
         }
     }
 
-    impl From<&dp::DebugPortId> for DebugPortId {
-        fn from(id: &dp::DebugPortId) -> Self {
-            Self {
-                revision: id.revision,
-                part_no: id.part_no,
-                version: id.version.into(),
-                min_dp_support: match id.min_dp_support {
-                    dp::MinDpSupport::NotImplemented => MinDpSupport::NotImplemented,
-                    dp::MinDpSupport::Implemented => MinDpSupport::Implemented,
-                },
-                designer: to_wire_jep106_code(id.designer),
-            }
+    pub(crate) fn to_wire_debug_port_id(id: &dp::DebugPortId) -> DebugPortId {
+        DebugPortId {
+            revision: id.revision,
+            part_no: id.part_no,
+            version: to_wire_debug_port_version(id.version),
+            min_dp_support: match id.min_dp_support {
+                dp::MinDpSupport::NotImplemented => MinDpSupport::NotImplemented,
+                dp::MinDpSupport::Implemented => MinDpSupport::Implemented,
+            },
+            designer: to_wire_jep106_code(id.designer),
         }
     }
 
-    impl From<dp::DebugPortVersion> for DebugPortVersion {
-        fn from(version: dp::DebugPortVersion) -> Self {
-            match version {
-                dp::DebugPortVersion::DPv0 => DebugPortVersion::DPv0,
-                dp::DebugPortVersion::DPv1 => DebugPortVersion::DPv1,
-                dp::DebugPortVersion::DPv2 => DebugPortVersion::DPv2,
-                dp::DebugPortVersion::DPv3 => DebugPortVersion::DPv3,
-                dp::DebugPortVersion::Unsupported(v) => DebugPortVersion::Unsupported(v),
-            }
+    pub(crate) fn to_wire_debug_port_version(version: dp::DebugPortVersion) -> DebugPortVersion {
+        match version {
+            dp::DebugPortVersion::DPv0 => DebugPortVersion::DPv0,
+            dp::DebugPortVersion::DPv1 => DebugPortVersion::DPv1,
+            dp::DebugPortVersion::DPv2 => DebugPortVersion::DPv2,
+            dp::DebugPortVersion::DPv3 => DebugPortVersion::DPv3,
+            dp::DebugPortVersion::Unsupported(v) => DebugPortVersion::Unsupported(v),
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::rpc::functions::core_ops::WireCoreType;
-
-    #[test]
-    fn wire_session_target_metadata_roundtrip() {
-        let metadata = WireSessionTargetMetadata {
-            target_name: "nrf52840_xxAA".to_string(),
-            default_format: Some("elf".to_string()),
-            cores: vec![WireSessionCore {
-                index: 0,
-                core_type: WireCoreType::Armv7em,
-            }],
-        };
-
-        let encoded = postcard::to_allocvec(&metadata).unwrap();
-        let decoded: WireSessionTargetMetadata = postcard::from_bytes(&encoded).unwrap();
-        assert_eq!(decoded, metadata);
     }
 }

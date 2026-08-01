@@ -1,4 +1,4 @@
-use std::{fmt::Display, num::ParseIntError};
+use std::{fmt::Write, num::ParseIntError};
 
 use anyhow::Result;
 use jep106::JEP106Code;
@@ -121,12 +121,12 @@ impl Cmd {
 
                 if successes.is_empty() {
                     for message in errors {
-                        println!("{message}");
+                        println!("{}", format_info_event(&message));
                     }
                 } else {
                     any_success = true;
                     for message in successes {
-                        println!("{message}");
+                        println!("{}", format_info_event(&message));
                     }
                 }
             }
@@ -160,187 +160,197 @@ impl Cmd {
     }
 }
 
-impl std::fmt::Display for InfoEvent {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            InfoEvent::Message(message) => writeln!(f, "{message}"),
-            InfoEvent::ProtocolNotSupportedByArch {
-                architecture,
-                protocol,
-            } => {
-                writeln!(
-                    f,
-                    "Debugging {architecture} targets over {protocol} is not supported. {architecture} specific information cannot be printed."
-                )
-            }
-            InfoEvent::ProbeInterfaceMissing {
-                interface,
-                architecture,
-            } => {
-                writeln!(
-                    f,
-                    "No {interface} interface was found on the connected probe. {architecture} specific information cannot be printed."
-                )
-            }
-            InfoEvent::Error {
-                architecture,
-                error,
-            } => {
-                writeln!(f, "Error showing {architecture} chip information: {error}")
-            }
-            InfoEvent::ArmError { dp_addr, error } => {
-                writeln!(
-                    f,
-                    "Error showing ARM chip information for Debug Port {dp_addr:?}: {error}",
-                )
-            }
-            InfoEvent::Idcode {
-                architecture,
-                idcode: Some(idcode),
-            } => {
-                let version = (idcode >> 28) & 0xf;
-                let part_number = (idcode >> 12) & 0xffff;
-                let manufacturer_id = (idcode >> 1) & 0x7ff;
+fn format_info_event(event: &InfoEvent) -> String {
+    let mut output = String::new();
+    match event {
+        InfoEvent::Message(message) => {
+            writeln!(output, "{message}").unwrap();
+        }
+        InfoEvent::ProtocolNotSupportedByArch {
+            architecture,
+            protocol,
+        } => {
+            writeln!(
+                output,
+                "Debugging {architecture} targets over {protocol} is not supported. {architecture} specific information cannot be printed."
+            )
+            .unwrap();
+        }
+        InfoEvent::ProbeInterfaceMissing {
+            interface,
+            architecture,
+        } => {
+            writeln!(
+                output,
+                "No {interface} interface was found on the connected probe. {architecture} specific information cannot be printed."
+            )
+            .unwrap();
+        }
+        InfoEvent::Error {
+            architecture,
+            error,
+        } => {
+            writeln!(
+                output,
+                "Error showing {architecture} chip information: {error}"
+            )
+            .unwrap();
+        }
+        InfoEvent::ArmError { dp_addr, error } => {
+            writeln!(
+                output,
+                "Error showing ARM chip information for Debug Port {dp_addr:?}: {error}",
+            )
+            .unwrap();
+        }
+        InfoEvent::Idcode {
+            architecture,
+            idcode: Some(idcode),
+        } => {
+            let version = (idcode >> 28) & 0xf;
+            let part_number = (idcode >> 12) & 0xffff;
+            let manufacturer_id = (idcode >> 1) & 0x7ff;
 
-                let jep_cc = (manufacturer_id >> 7) & 0xf;
-                let jep_id = manufacturer_id & 0x7f;
+            let jep_cc = (manufacturer_id >> 7) & 0xf;
+            let jep_id = manufacturer_id & 0x7f;
 
-                let jep_id = jep106::JEP106Code::new(jep_cc as u8, jep_id as u8);
+            let jep_id = jep106::JEP106Code::new(jep_cc as u8, jep_id as u8);
 
-                writeln!(f, "{architecture} Chip:")?;
-                writeln!(f, "  IDCODE: {idcode:010x}")?;
-                writeln!(f, "    Version:      {version}")?;
-                writeln!(f, "    Part:         {part_number}")?;
-                writeln!(f, "    Manufacturer: {manufacturer_id} ({jep_id})")
-            }
-            InfoEvent::Idcode {
-                architecture,
-                idcode: None,
-            } => {
-                writeln!(f, "No IDCODE info for this {architecture} chip.")
-            }
-            InfoEvent::ArmDp(dp_info) => {
-                writeln!(f, "{dp_info}")
-            }
+            writeln!(output, "{architecture} Chip:").unwrap();
+            writeln!(output, "  IDCODE: {idcode:010x}").unwrap();
+            writeln!(output, "    Version:      {version}").unwrap();
+            writeln!(output, "    Part:         {part_number}").unwrap();
+            writeln!(output, "    Manufacturer: {manufacturer_id} ({jep_id})").unwrap();
+        }
+        InfoEvent::Idcode {
+            architecture,
+            idcode: None,
+        } => {
+            writeln!(output, "No IDCODE info for this {architecture} chip.").unwrap();
+        }
+        InfoEvent::ArmDp(dp_info) => {
+            writeln!(output, "{}", format_debug_port_info(dp_info)).unwrap();
         }
     }
+    output
 }
 
-impl From<&ComponentTreeNode> for Tree<String> {
-    fn from(node: &ComponentTreeNode) -> Self {
-        let mut tree = Tree::new(node.node.clone());
+fn component_tree_to_termtree(node: &ComponentTreeNode) -> Tree<String> {
+    let mut tree = Tree::new(node.node.clone());
 
-        for child in node.children.iter() {
-            tree.push(child);
-        }
-
-        tree
+    for child in node.children.iter() {
+        tree.push(component_tree_to_termtree(child));
     }
+
+    tree
 }
 
-impl Display for DebugPortInfoNode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        fn format_jep(f: &mut std::fmt::Formatter<'_>, jep: JEP106Code) -> std::fmt::Result {
-            write!(f, ", Designer: {}", jep.get().unwrap_or("<unknown>"))
-        }
+fn format_debug_port_info_node(node: &DebugPortInfoNode) -> String {
+    fn format_jep(jep: JEP106Code) -> String {
+        format!("Designer: {}", jep.get().unwrap_or("<unknown>"))
+    }
 
+    let mut output = String::new();
+    write!(
+        output,
+        "Debug Port: {}",
+        match node.dp_info.version {
+            DebugPortVersion::DPv0 => "DPv0".to_string(),
+            DebugPortVersion::DPv1 => "DPv1".to_string(),
+            DebugPortVersion::DPv2 => "DPv2".to_string(),
+            DebugPortVersion::DPv3 => "DPv3".to_string(),
+            DebugPortVersion::Unsupported(version) =>
+                format!("<unsupported Debugport Version {version}>"),
+        }
+    )
+    .unwrap();
+
+    if node.dp_info.min_dp_support == MinDpSupport::Implemented {
+        write!(output, ", MINDP").unwrap();
+    }
+
+    if node.dp_info.version == DebugPortVersion::DPv2 {
+        let target_id = TARGETID(node.targetid);
+        let dlpidr = DLPIDR(node.dlpidr);
+
+        let part_no = target_id.tpartno();
+        let revision = target_id.trevision();
+
+        let designer_id = target_id.tdesigner();
+
+        let cc = (designer_id >> 7) as u8;
+        let id = (designer_id & 0x7f) as u8;
+
+        let designer = jep106::JEP106Code::new(cc, id);
+
+        write!(output, ", {}", format_jep(designer)).unwrap();
+        write!(output, ", Part: {part_no:#x}").unwrap();
+        write!(output, ", Revision: {revision:#x}").unwrap();
+
+        let instance = dlpidr.tinstance();
+
+        write!(output, ", Instance: {instance:#04x}").unwrap();
+    } else {
         write!(
-            f,
-            "Debug Port: {}",
-            match self.dp_info.version {
-                DebugPortVersion::DPv0 => "DPv0".to_string(),
-                DebugPortVersion::DPv1 => "DPv1".to_string(),
-                DebugPortVersion::DPv2 => "DPv2".to_string(),
-                DebugPortVersion::DPv3 => "DPv3".to_string(),
-                DebugPortVersion::Unsupported(version) =>
-                    format!("<unsupported Debugport Version {version}>"),
-            }
-        )?;
-
-        if self.dp_info.min_dp_support == MinDpSupport::Implemented {
-            write!(f, ", MINDP")?;
-        }
-
-        if self.dp_info.version == DebugPortVersion::DPv2 {
-            let target_id = TARGETID(self.targetid);
-            let dlpidr = DLPIDR(self.dlpidr);
-
-            let part_no = target_id.tpartno();
-            let revision = target_id.trevision();
-
-            let designer_id = target_id.tdesigner();
-
-            let cc = (designer_id >> 7) as u8;
-            let id = (designer_id & 0x7f) as u8;
-
-            let designer = jep106::JEP106Code::new(cc, id);
-
-            format_jep(f, designer)?;
-            write!(f, ", Part: {part_no:#x}")?;
-            write!(f, ", Revision: {revision:#x}")?;
-
-            let instance = dlpidr.tinstance();
-
-            write!(f, ", Instance: {instance:#04x}")?;
-        } else {
-            format_jep(f, from_wire_jep106_code(self.dp_info.designer))?;
-        }
-
-        Ok(())
+            output,
+            ", {}",
+            format_jep(from_wire_jep106_code(node.dp_info.designer))
+        )
+        .unwrap();
     }
+
+    output
 }
 
-impl Display for DebugPortInfo {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut tree = Tree::new(self.dp_info.to_string());
-        if self.aps.is_empty() {
-            tree.push(Tree::new("No access ports found on this chip.".to_string()));
-        } else {
-            for ap in &self.aps {
-                match ap {
-                    ApInfo::MemoryAp {
-                        ap_addr,
-                        component_tree,
-                    } => {
-                        let mut ap_root = Tree::new(format!("{} MemoryAP", ap_addr.ap));
+fn format_debug_port_info(info: &DebugPortInfo) -> String {
+    let mut tree = Tree::new(format_debug_port_info_node(&info.dp_info));
+    if info.aps.is_empty() {
+        tree.push(Tree::new("No access ports found on this chip.".to_string()));
+    } else {
+        for ap in &info.aps {
+            match ap {
+                ApInfo::MemoryAp {
+                    ap_addr,
+                    component_tree,
+                } => {
+                    let mut ap_root = Tree::new(format!("{} MemoryAP", ap_addr.ap));
 
-                        ap_root.push(component_tree);
+                    ap_root.push(component_tree_to_termtree(component_tree));
 
-                        tree.push(ap_root);
+                    tree.push(ap_root);
+                }
+                ApInfo::ApV2Root { component_tree } => {
+                    for child in component_tree.children.iter() {
+                        tree.push(component_tree_to_termtree(child));
                     }
-                    ApInfo::ApV2Root { component_tree } => {
-                        for child in component_tree.children.iter() {
-                            tree.push(child);
-                        }
-                    }
-                    ApInfo::Unknown { ap_addr, idr } => {
-                        let idr = IDR::from_raw(*idr);
-                        let jep = idr.DESIGNER();
+                }
+                ApInfo::Unknown { ap_addr, idr } => {
+                    let idr = IDR::from_raw(*idr);
+                    let jep = idr.DESIGNER();
 
-                        let ap_type = if jep == JEP_ARM {
-                            format!("{:?}", idr.TYPE())
-                        } else {
-                            format!("{:#x}", u32::from(idr) & 0xF)
-                        };
+                    let ap_type = if jep == JEP_ARM {
+                        format!("{:?}", idr.TYPE())
+                    } else {
+                        format!("{:#x}", u32::from(idr) & 0xF)
+                    };
 
-                        let ap_node = Tree::new(format!(
-                            "{} Unknown AP (Designer: {}, Class: {:?}, Type: {}, Variant: {:#x}, Revision: {:#x})",
-                            ap_addr.ap,
-                            jep.get().unwrap_or("<unknown>"),
-                            idr.CLASS(),
-                            ap_type,
-                            idr.VARIANT(),
-                            idr.REVISION()
-                        ));
+                    let ap_node = Tree::new(format!(
+                        "{} Unknown AP (Designer: {}, Class: {:?}, Type: {}, Variant: {:#x}, Revision: {:#x})",
+                        ap_addr.ap,
+                        jep.get().unwrap_or("<unknown>"),
+                        idr.CLASS(),
+                        ap_type,
+                        idr.VARIANT(),
+                        idr.REVISION()
+                    ));
 
-                        tree.push(ap_node);
-                    }
-                };
-            }
+                    tree.push(ap_node);
+                }
+            };
         }
-
-        write!(f, "{tree}")
     }
+
+    format!("{tree}")
 }
 
 #[cfg(test)]

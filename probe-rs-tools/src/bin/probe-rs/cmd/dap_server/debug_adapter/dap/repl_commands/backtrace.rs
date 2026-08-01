@@ -13,7 +13,7 @@ use crate::cmd::dap_server::{
     },
     server::core_data::CoreData,
 };
-use crate::rpc::functions::stack_trace::StackTraceFrame;
+use crate::rpc::functions::stack_trace::convert::to_wire_stack_trace_frame_ref;
 use crate::util::cli::format_stack_frame;
 
 #[distributed_slice(REPL_COMMANDS)]
@@ -51,7 +51,7 @@ async fn print_backtrace<'a>(
             &mut response_message,
             "    Frame {}: {}",
             i + 1,
-            format_stack_frame(&StackTraceFrame::from(frame), colorize)
+            format_stack_frame(&to_wire_stack_trace_frame_ref(frame), colorize)
         )
         .unwrap();
     }

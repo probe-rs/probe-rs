@@ -1,144 +1,3 @@
-use std::fmt::{self, Display, Write as _};
-
-use crate::rpc::{
-    Key, Session,
-    functions::{
-        NoResponse, RpcResult,
-        convert::lift,
-        core_ops::{WireRegisterId, WireRegisterValue},
-    },
-};
-use postcard_schema::Schema;
-use serde::{Deserialize, Serialize};
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct StackTraces {
-    pub cores: Vec<StackTrace>,
-}
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct StackTrace {
-    pub core: u32,
-    pub frames: Vec<StackTraceFrame>,
-}
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct StackTraceFrame {
-    pub function_name: String,
-    pub program_counter: u64,
-    pub is_inlined: bool,
-    pub location: Option<SourceLocation>,
-}
-
-impl Display for StackTraceFrame {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut output_stream = String::new();
-        write!(f, "{} @ {:x}", self.function_name, self.program_counter).unwrap();
-
-        if self.is_inlined {
-            write!(&mut output_stream, " inline").unwrap();
-        }
-        f.write_str("\n")?;
-
-        if let Some(location) = &self.location {
-            write!(f, "       {location}")?;
-        }
-
-        Ok(())
-    }
-}
-
-#[derive(Serialize, Deserialize, Schema, Clone)]
-pub struct SourceLocation {
-    pub file: String,
-    pub line: Option<u64>,
-    pub column: Option<u64>,
-}
-
-impl Display for SourceLocation {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.file)?;
-        if let Some(line) = self.line {
-            write!(f, ":{line}")?;
-            if let Some(column) = self.column {
-                write!(f, ":{column}")?;
-            }
-        }
-        Ok(())
-    }
-}
-
-/// Path-based stack trace for generic CLI callers. Parses DWARF from `path`
-/// on each request and does not use session [`ServerDebugState`].
-#[derive(Serialize, Deserialize, Schema)]
-pub struct TakeStackTraceRequest {
-    pub sessid: Key<Session>,
-    pub path: String,
-    pub stack_frame_limit: u32,
-}
-
-/// Session-owned rich stack trace for DAP and other server-state consumers.
-/// Requires preloaded [`ServerDebugState`] via [`load_debug_info`]; never
-/// accepts or parses a binary path.
-#[derive(Serialize, Deserialize, Schema)]
-pub struct TakeRichStackTraceRequest {
-    pub sessid: Key<Session>,
-    /// When set, only unwind this core. When omitted, every enabled core is
-    /// unwound.
-    pub core: Option<u32>,
-    pub stack_frame_limit: u32,
-}
-
-pub type TakeStackTraceResponse = RpcResult<StackTraces>;
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct LoadDebugInfoRequest {
-    pub sessid: Key<Session>,
-    pub path: String,
-}
-
-pub type LoadDebugInfoResponse = NoResponse;
-
-/// A single register, in the wire format used by the rich stack trace.
-#[derive(Serialize, Deserialize, Schema, Clone, PartialEq)]
-pub struct WireDebugRegister {
-    pub id: WireRegisterId,
-    pub dwarf_id: Option<u16>,
-    pub value: Option<WireRegisterValue>,
-}
-
-/// A stack frame carrying the full per-frame register state plus frame
-/// metadata. The server owns the `local_variables`/`static_variables`
-/// `VariableCache` trees (keyed by `sessid` + core); the client relays the
-/// server-assigned `id` handles
-/// verbatim so subsequent `scopes`/`variables` requests resolve server-side.
-#[derive(Serialize, Deserialize, Schema, Clone)]
-pub struct RichStackTraceFrame {
-    pub function_name: String,
-    pub program_counter: WireRegisterValue,
-    pub is_inlined: bool,
-    pub location: Option<SourceLocation>,
-    pub frame_base: Option<u64>,
-    pub canonical_frame_address: Option<u64>,
-    pub registers: Vec<WireDebugRegister>,
-    /// Server-assigned frame id (also the DAP `frameId` and the registers
-    /// scope `variablesReference`).
-    pub id: u32,
-}
-
-#[derive(Serialize, Deserialize, Schema, Clone)]
-pub struct RichStackTrace {
-    pub core: u32,
-    pub frames: Vec<RichStackTraceFrame>,
-}
-
-#[derive(Serialize, Deserialize, Schema, Clone)]
-pub struct RichStackTraces {
-    pub cores: Vec<RichStackTrace>,
-}
-
-pub type TakeRichStackTraceResponse = RpcResult<RichStackTraces>;
-
 use std::sync::Arc;
 
 use postcard_rpc::header::VarHeader;
@@ -146,8 +5,14 @@ use probe_rs::{CoreInterface, Error};
 use probe_rs_debug::{
     DebugInfo, DebugRegisters, StackFrame, VariableCache, exception_handler_for_core,
 };
+pub use probe_rs_rpc::stack_trace::{
+    LoadDebugInfoRequest, LoadDebugInfoResponse, RichStackTrace, RichStackTraceFrame,
+    RichStackTraces, SourceLocation, StackTrace, StackTraceFrame, StackTraces,
+    TakeRichStackTraceRequest, TakeRichStackTraceResponse, TakeStackTraceRequest,
+    TakeStackTraceResponse, WireDebugRegister,
+};
 
-use crate::rpc::functions::RpcContext;
+use crate::rpc::functions::{RpcContext, convert::lift};
 
 /// Eagerly load and cache the authoritative server-side [`DebugInfo`] for a
 /// session, keyed by `sessid`, so consumers can resolve source locations
@@ -175,7 +40,7 @@ pub async fn load_debug_info(
 async fn unwind_all_cores(
     ctx: &mut RpcContext,
     request: &TakeStackTraceRequest,
-) -> RpcResult<Vec<(u32, Vec<StackTraceFrame>)>> {
+) -> crate::rpc::functions::RpcResult<Vec<(u32, Vec<StackTraceFrame>)>> {
     let mut session = ctx.session(request.sessid).await;
 
     let Some(debug_info) = DebugInfo::from_file(&request.path).ok() else {
@@ -204,7 +69,7 @@ async fn unwind_all_cores(
 
             let frames: Vec<StackTraceFrame> = stack_frames
                 .into_iter()
-                .map(StackTraceFrame::from)
+                .map(convert::to_wire_stack_trace_frame)
                 .collect();
             cores.push((idx as u32, frames));
         }
@@ -325,10 +190,18 @@ pub async fn take_rich_stack_trace(
                     program_counter:
                         crate::rpc::functions::core_ops::convert::to_wire_register_value(f.pc),
                     is_inlined: f.is_inlined,
-                    location: f.source_location.as_ref().map(SourceLocation::from),
+                    location: f
+                        .source_location
+                        .as_ref()
+                        .map(convert::to_wire_source_location),
                     frame_base: f.frame_base,
                     canonical_frame_address: f.canonical_frame_address,
-                    registers: f.registers.0.iter().map(WireDebugRegister::from).collect(),
+                    registers: f
+                        .registers
+                        .0
+                        .iter()
+                        .map(convert::to_wire_debug_register)
+                        .collect(),
                     id: i64::from(f.id) as u32,
                 })
                 .collect();
@@ -357,67 +230,42 @@ pub async fn take_rich_stack_trace(
         .await)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use postcard::to_allocvec;
-
-    #[test]
-    fn rich_stack_trace_request_has_no_path_field() {
-        let request = TakeRichStackTraceRequest {
-            sessid: Key::test(1),
-            core: Some(0),
-            stack_frame_limit: 64,
-        };
-        let encoded = to_allocvec(&request).unwrap();
-        let decoded: TakeRichStackTraceRequest = postcard::from_bytes(&encoded).unwrap();
-        assert_eq!(decoded.core, Some(0));
-        assert_eq!(decoded.stack_frame_limit, 64);
-    }
-}
-
 pub(crate) mod convert {
     use super::{SourceLocation, StackTraceFrame, WireDebugRegister};
     use crate::rpc::functions::core_ops::convert::{to_wire_register_id, to_wire_register_value};
     use probe_rs_debug::{DebugRegister, StackFrame};
 
-    impl From<&probe_rs_debug::SourceLocation> for SourceLocation {
-        fn from(location: &probe_rs_debug::SourceLocation) -> Self {
-            SourceLocation {
-                file: location.path.to_path().display().to_string(),
-                line: location.line,
-                column: location.column.map(|col| match col {
-                    probe_rs_debug::ColumnType::LeftEdge => 1,
-                    probe_rs_debug::ColumnType::Column(c) => c,
-                }),
-            }
+    pub(crate) fn to_wire_source_location(
+        location: &probe_rs_debug::SourceLocation,
+    ) -> SourceLocation {
+        SourceLocation {
+            file: location.path.to_path().display().to_string(),
+            line: location.line,
+            column: location.column.map(|col| match col {
+                probe_rs_debug::ColumnType::LeftEdge => 1,
+                probe_rs_debug::ColumnType::Column(c) => c,
+            }),
         }
     }
 
-    impl From<StackFrame> for StackTraceFrame {
-        fn from(frame: StackFrame) -> Self {
-            StackTraceFrame::from(&frame)
+    pub(crate) fn to_wire_stack_trace_frame(frame: StackFrame) -> StackTraceFrame {
+        to_wire_stack_trace_frame_ref(&frame)
+    }
+
+    pub(crate) fn to_wire_stack_trace_frame_ref(frame: &StackFrame) -> StackTraceFrame {
+        StackTraceFrame {
+            function_name: frame.function_name.clone(),
+            program_counter: frame.pc.try_into().unwrap_or(0),
+            is_inlined: frame.is_inlined,
+            location: frame.source_location.as_ref().map(to_wire_source_location),
         }
     }
 
-    impl From<&StackFrame> for StackTraceFrame {
-        fn from(frame: &StackFrame) -> Self {
-            StackTraceFrame {
-                function_name: frame.function_name.clone(),
-                program_counter: frame.pc.try_into().unwrap_or(0),
-                is_inlined: frame.is_inlined,
-                location: frame.source_location.as_ref().map(SourceLocation::from),
-            }
-        }
-    }
-
-    impl From<&DebugRegister> for WireDebugRegister {
-        fn from(r: &DebugRegister) -> Self {
-            WireDebugRegister {
-                id: to_wire_register_id(r.core_register.id),
-                dwarf_id: r.dwarf_id,
-                value: r.value.map(to_wire_register_value),
-            }
+    pub(crate) fn to_wire_debug_register(r: &DebugRegister) -> WireDebugRegister {
+        WireDebugRegister {
+            id: to_wire_register_id(r.core_register.id),
+            dwarf_id: r.dwarf_id,
+            value: r.value.map(to_wire_register_value),
         }
     }
 }

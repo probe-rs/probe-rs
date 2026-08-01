@@ -1,7 +1,7 @@
 use postcard_rpc::header::VarHeader;
 
 pub use probe_rs_rpc::chip::{
-    ChipData, ChipFamily, ChipInfoRequest, ChipInfoResponse, JEP106Code, ListFamiliesResponse,
+    ChipData, ChipFamily, ChipInfoRequest, ChipInfoResponse, ListFamiliesResponse,
     LoadChipFamilyRequest, MemoryRegion,
 };
 
