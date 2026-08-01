@@ -202,3 +202,18 @@ async fn main_try(client: &mut RpcClient, opt: CliOptions) -> Result<(), Operati
 
     Ok(())
 }
+
+#[cfg(test)]
+mod test {
+    use super::CliOptions;
+
+    /// clap finds duplicate argument names only in a debug build, and only when it
+    /// builds the command. Release builds accept a duplicate and give one of the
+    /// two arguments to both fields.
+    #[test]
+    fn cli_is_valid() {
+        use clap::CommandFactory;
+
+        CliOptions::command().debug_assert();
+    }
+}

@@ -810,8 +810,19 @@ fn load_config() -> anyhow::Result<Config> {
 
 #[cfg(test)]
 mod test {
+    use crate::Cli;
     use crate::FormatKind;
     use crate::multicall_check;
+
+    /// clap finds duplicate argument names only in a debug build, and only when it
+    /// builds the command. Release builds accept a duplicate and give one of the
+    /// two arguments to both fields.
+    #[test]
+    fn cli_is_valid() {
+        use clap::CommandFactory;
+
+        Cli::command().debug_assert();
+    }
 
     #[test]
     fn argument_preprocessing() {
