@@ -8,11 +8,9 @@ use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
 use serde::{Deserialize, Serialize};
 
-use crate::util::rtt::DataFormat;
-
 use crate::rpc::{
     Key, Session,
-    functions::{NoResponse, RpcContext, RpcError, RpcResult},
+    functions::{NoResponse, RpcContext, RpcError, RpcResult, rtt_config::DataFormat},
 };
 
 /// Common request fields for addressing a single core.

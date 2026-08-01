@@ -5,10 +5,11 @@ use crate::rpc::{
     functions::{
         MonitorEndpoint, MultiTopicPublisher, MultiTopicWriter, RpcResult, RpcSpawnContext,
         RttTopic, SemihostingTopic, WireTxImpl, flash::BootInfo,
+        semihosting_options::SemihostingOptions,
     },
     utils::{
         run_loop::{ReturnReason, RunLoop, RunLoopPoller, VectorCatchConfig},
-        semihosting::{SemihostingFileManager, SemihostingOptions},
+        semihosting::SemihostingFileManager,
     },
 };
 use anyhow::Context;

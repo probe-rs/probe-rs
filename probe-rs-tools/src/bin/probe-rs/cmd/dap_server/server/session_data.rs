@@ -31,7 +31,8 @@ use probe_rs_debug::SourceLocation;
 use std::{any::Any, env::set_current_dir, path::Path};
 use time::UtcOffset;
 
-use crate::util::rtt::{self, DataFormat};
+use crate::rpc::functions::rtt_config::DataFormat;
+use crate::util::rtt::RttConfig;
 
 /// The supported breakpoint types
 #[derive(Clone, Debug, PartialEq)]
@@ -255,7 +256,7 @@ impl SessionData {
     async fn ensure_rtt_client(
         &mut self,
         cd_idx: usize,
-        rtt_config: &rtt::RttConfig,
+        rtt_config: &RttConfig,
     ) -> Result<Key<RttClient>> {
         if let Some(handle) = self.core_data[cd_idx].rtt_remote_handle {
             return Ok(handle);
@@ -509,7 +510,7 @@ impl SessionData {
         debug_adapter: &mut DebugAdapter,
         cd_idx: usize,
         program_binary: Option<&Path>,
-        rtt_config: &rtt::RttConfig,
+        rtt_config: &RttConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<()> {
         if self.core_data[cd_idx].rtt_connection.is_some() {

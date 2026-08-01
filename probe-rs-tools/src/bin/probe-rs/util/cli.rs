@@ -8,13 +8,10 @@ use std::{future::Future, ops::DerefMut, path::Path, time::Instant};
 
 use anyhow::Context;
 use libtest_mimic::{Failed, Trial};
-use postcard_rpc::host_client::HostClient;
-use postcard_schema::Schema;
 use probe_rs::meta::ElfMetadata;
 use probe_rs::rtt::find_rtt_control_block_and_metadata_in_raw_file;
 use ratatui::crossterm::style::Stylize;
 use rustyline_async::{Readline, ReadlineError, ReadlineEvent, SharedWriter};
-use serde::de::DeserializeOwned;
 use std::env::VarError;
 use time::UtcOffset;
 use tokio::io::AsyncWriteExt;
@@ -28,13 +25,14 @@ use crate::rpc::Key;
 use crate::rpc::RttClient;
 use crate::rpc::functions::format::FormatOptions;
 use crate::rpc::functions::monitor::{ChannelInfo, MonitorExitReason};
+use crate::rpc::functions::rtt_config::RttChannelConfig;
+use crate::rpc::functions::semihosting_options::SemihostingOptions;
 use crate::rpc::functions::stack_trace::StackTraceFrame;
 use crate::rpc::utils::run_loop::VectorCatchConfig;
-use crate::rpc::utils::semihosting::SemihostingOptions;
 use crate::rpc::{
-    client::{MultiSubscribeError, MultiSubscription, MultiTopic, RpcClient, SessionInterface},
+    client::{MonitorEvent, RpcClient, SessionInterface},
     functions::{
-        CancelTopic, RttTopic, SemihostingTopic,
+        CancelTopic,
         flash::{BootInfo, DownloadOptions, FlashLayout, ProgressEvent, VerifyResult},
         monitor::{MonitorMode, MonitorOptions, RttEvent, SemihostingEvent},
         probe::{
@@ -50,7 +48,7 @@ use crate::util::{
     common_options::{BinaryDownloadOptions, ProbeOptions},
     flash::CliProgressBars,
     logging,
-    rtt::{DefmtProcessor, DefmtState, RttChannelConfig, RttDecoder},
+    rtt::{DefmtProcessor, DefmtState, RttDecoder},
 };
 
 type TargetOutputFiles = std::collections::HashMap<ChannelIdentifier, tokio::fs::File>;
@@ -507,45 +505,6 @@ pub async fn flash(
     ));
 
     Ok(loader.boot_info)
-}
-
-pub enum MonitorEvent {
-    Rtt(RttEvent),
-    Semihosting(SemihostingEvent),
-}
-
-impl MultiTopic for MonitorEvent {
-    type Message = Self;
-    type Subscription = MonitorSubscription;
-
-    async fn subscribe<E>(
-        client: &HostClient<E>,
-        depth: usize,
-    ) -> Result<Self::Subscription, MultiSubscribeError>
-    where
-        E: DeserializeOwned + Schema,
-    {
-        // TODO: remove MonitorEvent from the RPC interface, split this subscribe into two:
-        // one for RTT, one for semihosting, then introduce a MultiSubscription impl for them
-        let rtt = RttTopic::subscribe(client, depth).await?;
-        let semihosting = SemihostingTopic::subscribe(client, depth).await?;
-        Ok(MonitorSubscription { rtt, semihosting })
-    }
-}
-
-pub struct MonitorSubscription {
-    rtt: <RttTopic as MultiTopic>::Subscription,
-    semihosting: <SemihostingTopic as MultiTopic>::Subscription,
-}
-impl MultiSubscription for MonitorSubscription {
-    type Message = MonitorEvent;
-
-    async fn next(&mut self) -> Option<Self::Message> {
-        tokio::select! {
-            message = self.rtt.recv() => message.map(MonitorEvent::Rtt),
-            message = self.semihosting.recv() => message.map(MonitorEvent::Semihosting),
-        }
-    }
 }
 
 // Monitor starts in read-only mode: it outputs logs, but has no prompt to type into.

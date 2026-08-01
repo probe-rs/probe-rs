@@ -1,5 +1,5 @@
 use crate::rpc::functions::monitor::SemihostingEvent;
-pub use crate::rpc::functions::semihosting_options::{Mapping, SemihostingOptions};
+use crate::rpc::functions::semihosting_options::{Mapping, SemihostingOptions};
 use probe_rs::{
     Core,
     semihosting::{

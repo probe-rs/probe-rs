@@ -18,9 +18,8 @@ use time::UtcOffset;
 
 use crate::{
     cmd::cargo_embed::rttui::{channel::ChannelData, tab::TabConfig},
-    util::rtt::{
-        DataFormat, DefmtProcessor, DefmtState, RttChannelConfig, RttDecoder, client::RttClient,
-    },
+    rpc::functions::rtt_config::{DataFormat, RttChannelConfig},
+    util::rtt::{DefmtProcessor, DefmtState, RttDecoder, client::RttClient},
 };
 
 use super::super::config;

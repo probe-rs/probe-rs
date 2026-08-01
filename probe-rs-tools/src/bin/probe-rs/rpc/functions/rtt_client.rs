@@ -1,9 +1,9 @@
 use crate::{
     rpc::{
         Key, RttClient, Session,
-        functions::{NoResponse, RpcContext, RpcError, RpcResult},
+        functions::{NoResponse, RpcContext, RpcError, RpcResult, rtt_config::RttChannelConfig},
     },
-    util::rtt::{RttChannelConfig, RttConfig},
+    util::rtt::RttConfig,
 };
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;

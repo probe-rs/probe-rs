@@ -6,7 +6,8 @@ use serde::{Deserialize, Serialize};
 pub(crate) mod client;
 pub(crate) mod processing;
 
-pub use crate::rpc::functions::rtt_config::{ChannelMode, DataFormat, RttChannelConfig};
+use crate::rpc::functions::rtt_config::{ChannelMode, RttChannelConfig};
+
 pub use processing::*;
 
 impl From<ChannelMode> for rtt::ChannelMode {

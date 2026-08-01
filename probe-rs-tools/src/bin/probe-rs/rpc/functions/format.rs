@@ -1,8 +1,16 @@
-﻿use clap::ValueEnum;
+﻿use std::num::ParseIntError;
+
+use clap::ValueEnum;
 use postcard_schema::Schema;
 use serde::{Deserialize, Serialize};
 
-use crate::util::{parse_u32, parse_u64};
+fn parse_u32(input: &str) -> Result<u32, ParseIntError> {
+    parse_int::parse(input)
+}
+
+fn parse_u64(input: &str) -> Result<u64, ParseIntError> {
+    parse_int::parse(input)
+}
 
 #[derive(clap::Parser, Clone, Serialize, Deserialize, Debug, Default, Schema)]
 #[serde(default)]

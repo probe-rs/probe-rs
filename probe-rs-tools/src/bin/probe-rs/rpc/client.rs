@@ -41,10 +41,10 @@ use crate::rpc::{
         ReadMemory8Endpoint, ReadMemory16Endpoint, ReadMemory32Endpoint, ReadMemory64Endpoint,
         ResetCoreAndHaltEndpoint, ResetCoreEndpoint, ResolveSourceBreakpointsEndpoint,
         ResolveSourceLocationsEndpoint, ResumeAllCoresEndpoint, RpcError, RpcResult,
-        RttDownEndpoint, RunTestEndpoint, ScopesEndpoint, SelectProbeEndpoint, SetVariableEndpoint,
-        TakeRichStackTraceEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic,
-        TargetInfoEndpoint, TargetMetadataEndpoint, TempFileDataEndpoint, TestKickoffEndpoint,
-        TokioSpawner, VariablesEndpoint, VerifyEndpoint, WriteMemory8Endpoint,
+        RttDownEndpoint, RttTopic, RunTestEndpoint, ScopesEndpoint, SelectProbeEndpoint,
+        SemihostingTopic, SetVariableEndpoint, TakeRichStackTraceEndpoint, TakeStackTraceEndpoint,
+        TargetInfoDataTopic, TargetInfoEndpoint, TargetMetadataEndpoint, TempFileDataEndpoint,
+        TestKickoffEndpoint, TokioSpawner, VariablesEndpoint, VerifyEndpoint, WriteMemory8Endpoint,
         WriteMemory16Endpoint, WriteMemory32Endpoint, WriteMemory64Endpoint,
         breakpoints::{
             BreakpointResolution, ResolveSourceBreakpointsRequest, ResolveSourceLocationsRequest,
@@ -71,7 +71,10 @@ use crate::rpc::{
         },
         info::{InfoEvent, TargetInfoRequest, TargetMetadataRequest, WireSessionTargetMetadata},
         memory::{ReadBytesRequest, ReadMemoryRequest, WriteMemoryRequest},
-        monitor::{MonitorExitReason, MonitorMode, MonitorOptions, MonitorRequest},
+        monitor::{
+            MonitorExitReason, MonitorMode, MonitorOptions, MonitorRequest, RttEvent,
+            SemihostingEvent,
+        },
         probe::{
             AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, SelectProbeRequest,
             SelectProbeResult,
@@ -82,6 +85,8 @@ use crate::rpc::{
             CreateRttClientRequest, PollRttUpRequest, RttChannelRequest, RttChannels,
             RttClientData, RttDownRequest, RttPollResult, ScanRegion,
         },
+        rtt_config::RttChannelConfig,
+        semihosting_options::SemihostingOptions,
         stack_trace::{
             LoadDebugInfoRequest, RichStackTraces, StackTraces, TakeRichStackTraceRequest,
             TakeStackTraceRequest,
@@ -90,9 +95,7 @@ use crate::rpc::{
     },
     transport::memory::{PostcardReceiver, PostcardSender, WireRx, WireTx},
     upload_cache::{ContentHash, ResolvedUpload, UploadCache},
-    utils::semihosting::SemihostingOptions,
 };
-use crate::util::{cli::MonitorEvent, rtt::RttChannelConfig};
 
 /// Host and optional authentication token identifying a remote probe-rs RPC
 /// server. `None` selects a local, in-process server.
@@ -1452,6 +1455,45 @@ pub(crate) trait MultiSubscription {
                     }
                 }
             }
+        }
+    }
+}
+
+pub(crate) enum MonitorEvent {
+    Rtt(RttEvent),
+    Semihosting(SemihostingEvent),
+}
+
+impl MultiTopic for MonitorEvent {
+    type Message = Self;
+    type Subscription = MonitorSubscription;
+
+    async fn subscribe<E>(
+        client: &HostClient<E>,
+        depth: usize,
+    ) -> Result<Self::Subscription, MultiSubscribeError>
+    where
+        E: DeserializeOwned + Schema,
+    {
+        // TODO: remove MonitorEvent from the RPC interface, split this subscribe into two:
+        // one for RTT, one for semihosting, then introduce a MultiSubscription impl for them
+        let rtt = RttTopic::subscribe(client, depth).await?;
+        let semihosting = SemihostingTopic::subscribe(client, depth).await?;
+        Ok(MonitorSubscription { rtt, semihosting })
+    }
+}
+
+pub(crate) struct MonitorSubscription {
+    rtt: <RttTopic as MultiTopic>::Subscription,
+    semihosting: <SemihostingTopic as MultiTopic>::Subscription,
+}
+impl MultiSubscription for MonitorSubscription {
+    type Message = MonitorEvent;
+
+    async fn next(&mut self) -> Option<Self::Message> {
+        tokio::select! {
+            message = self.rtt.recv() => message.map(MonitorEvent::Rtt),
+            message = self.semihosting.recv() => message.map(MonitorEvent::Semihosting),
         }
     }
 }
