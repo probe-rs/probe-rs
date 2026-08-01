@@ -1,25 +1,10 @@
-use std::time::Duration;
-
-use anyhow::Context;
-use postcard_rpc::{header::VarHeader, server::Sender};
 use postcard_schema::Schema;
-use probe_rs::{BreakpointCause, Core, HaltReason, Session, semihosting::SemihostingCommand};
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    rpc::{
-        Key,
-        functions::{
-            ListTestsEndpoint, RpcContext, RpcResult, RpcSpawnContext, RunTestEndpoint, WireTxImpl,
-            flash::BootInfo,
-            monitor::{MonitorSender, RttPoller, SemihostingEvent},
-        },
-        utils::{
-            run_loop::{ReturnReason, RunLoop, VectorCatchConfig},
-            semihosting::{SemihostingFileManager, SemihostingOptions},
-        },
-    },
-    util::rtt::client::RttClient,
+use crate::rpc::{
+    Key,
+    functions::{RpcResult, flash::BootInfo},
+    utils::semihosting::SemihostingOptions,
 };
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
@@ -112,6 +97,46 @@ pub struct ListTestsRequest {
 
 pub type ListTestsResponse = RpcResult<Tests>;
 
+#[derive(Serialize, Deserialize, Schema)]
+pub struct RunTestRequest {
+    pub sessid: Key<Session>,
+    pub test: Test,
+    /// RTT client if used.
+    pub rtt_client: Option<Key<RttClient>>,
+    pub semihosting_options: SemihostingOptions,
+}
+
+pub type RunTestResponse = RpcResult<TestResult>;
+
+#[derive(Serialize, Deserialize, Schema)]
+pub struct TestKickoffRequest {
+    pub sessid: Key<Session>,
+    pub core: u32,
+    pub address: u64,
+}
+
+pub type TestKickoffResponse = RpcResult<()>;
+
+use std::time::Duration;
+
+use anyhow::Context;
+use postcard_rpc::{header::VarHeader, server::Sender};
+use probe_rs::{BreakpointCause, Core, HaltReason, Session, semihosting::SemihostingCommand};
+
+use crate::{
+    rpc::{
+        functions::{
+            ListTestsEndpoint, RpcContext, RpcSpawnContext, RunTestEndpoint, WireTxImpl,
+            monitor::{MonitorSender, RttPoller, SemihostingEvent},
+        },
+        utils::{
+            run_loop::{ReturnReason, RunLoop, VectorCatchConfig},
+            semihosting::SemihostingFileManager,
+        },
+    },
+    util::rtt::client::RttClient,
+};
+
 pub async fn list_tests(
     mut ctx: RpcSpawnContext,
     header: VarHeader,
@@ -189,17 +214,6 @@ fn list_tests_impl(
         }
     }
 }
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct RunTestRequest {
-    pub sessid: Key<Session>,
-    pub test: Test,
-    /// RTT client if used.
-    pub rtt_client: Option<Key<RttClient>>,
-    pub semihosting_options: SemihostingOptions,
-}
-
-pub type RunTestResponse = RpcResult<TestResult>;
 
 pub async fn run_test(
     mut ctx: RpcSpawnContext,
@@ -289,15 +303,6 @@ fn run_test_impl(
 }
 
 // -- test kickoff (DAP REPL `test run`) --------------------------------------
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct TestKickoffRequest {
-    pub sessid: Key<Session>,
-    pub core: u32,
-    pub address: u64,
-}
-
-pub type TestKickoffResponse = RpcResult<()>;
 
 /// Kick off a single embedded-test case from the DAP REPL: run the core until
 /// it halts on the `GetCommandLine` semihosting call, write the test address

@@ -1,13 +1,10 @@
-use crate::cmd::dap_server::debug_adapter::dap::dap_types::{DisassembledInstruction, Source};
-use crate::cmd::dap_server::debug_adapter::dap::request_helpers::disassemble_target_memory;
+use postcard_schema::Schema;
+use serde::{Deserialize, Serialize};
+
 use crate::rpc::{
     Key,
     functions::{RpcContext, RpcResult},
 };
-use postcard_rpc::header::VarHeader;
-use postcard_schema::Schema;
-use probe_rs::Session;
-use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct DisassembleRequest {
@@ -36,6 +33,10 @@ pub struct WireDisassembledInstruction {
 }
 
 pub type DisassembleResponse = RpcResult<Vec<WireDisassembledInstruction>>;
+
+use crate::cmd::dap_server::debug_adapter::dap::request_helpers::disassemble_target_memory;
+use postcard_rpc::header::VarHeader;
+use probe_rs::Session;
 
 /// Disassemble target memory server-side, running the capstone disassembly
 /// (shared with the local path via `disassemble_target_memory`) against the
@@ -71,24 +72,29 @@ pub async fn disassemble(
         .collect())
 }
 
-impl From<Source> for WireSource {
-    fn from(s: Source) -> Self {
-        WireSource {
-            name: s.name,
-            path: s.path,
+pub(crate) mod convert {
+    use super::{WireDisassembledInstruction, WireSource};
+    use crate::cmd::dap_server::debug_adapter::dap::dap_types::{DisassembledInstruction, Source};
+
+    impl From<Source> for WireSource {
+        fn from(s: Source) -> Self {
+            WireSource {
+                name: s.name,
+                path: s.path,
+            }
         }
     }
-}
 
-impl From<DisassembledInstruction> for WireDisassembledInstruction {
-    fn from(i: DisassembledInstruction) -> Self {
-        WireDisassembledInstruction {
-            address: i.address,
-            column: i.column,
-            instruction: i.instruction,
-            instruction_bytes: i.instruction_bytes,
-            line: i.line,
-            location: i.location.map(WireSource::from),
+    impl From<DisassembledInstruction> for WireDisassembledInstruction {
+        fn from(i: DisassembledInstruction) -> Self {
+            WireDisassembledInstruction {
+                address: i.address,
+                column: i.column,
+                instruction: i.instruction,
+                instruction_bytes: i.instruction_bytes,
+                line: i.line,
+                location: i.location.map(WireSource::from),
+            }
         }
     }
 }
