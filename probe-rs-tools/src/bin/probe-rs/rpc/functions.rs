@@ -35,8 +35,8 @@ use crate::{
             },
             disassemble::{DisassembleRequest, disassemble as disassemble_handler},
             flash::{
-                BuildRequest, BuildResponse, EraseRequest, FlashRequest, ProgressEvent,
-                VerifyRequest, VerifyResponse, build, erase, flash, verify,
+                BootRequest, BuildRequest, BuildResponse, EraseRequest, FlashRequest,
+                ProgressEvent, VerifyRequest, VerifyResponse, boot, build, erase, flash, verify,
             },
             info::{
                 InfoEvent, TargetInfoRequest, TargetMetadataRequest, target_info, target_metadata,
@@ -607,6 +607,7 @@ endpoints! {
     | FlashEndpoint             | FlashRequest            | NoResponse              | "flash/flash"      |
     | EraseEndpoint             | EraseRequest            | NoResponse              | "flash/erase"      |
     | VerifyEndpoint            | VerifyRequest           | VerifyResponse          | "flash/verify"     |
+    | BootEndpoint              | BootRequest             | NoResponse              | "flash/boot"       |
     | MonitorEndpoint           | MonitorRequest          | MonitorResponse         | "monitor"          |
 
     | TakeStackTraceEndpoint     | TakeStackTraceRequest     | TakeStackTraceResponse     | "stack_trace"              |
@@ -724,6 +725,7 @@ postcard_rpc::define_dispatch! {
         | FlashEndpoint                    | async | flash                      |
         | EraseEndpoint                    | async | erase                      |
         | VerifyEndpoint                   | async | verify                     |
+        | BootEndpoint                     | async | boot                       |
         | MonitorEndpoint                  | spawn | monitor                    |
         | RttDownEndpoint                  | async | write_rtt_down             |
         | GetRttChannelsEndpoint           | async | get_rtt_channels           |
