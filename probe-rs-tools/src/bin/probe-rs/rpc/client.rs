@@ -119,7 +119,7 @@ pub enum TransportError {
 pub enum ClientError {
     /// The connection to the server failed.
     #[display("{0}")]
-    Transport(#[source] TransportError),
+    Transport(#[from] TransportError),
     /// The server does not know this endpoint. The client and the server
     /// versions may differ.
     UnknownEndpoint,
@@ -200,21 +200,15 @@ pub async fn connect(host: &str, token: Option<&str>) -> Result<RpcClient, Clien
         ))),
     )
     .await
-    .map_err(|_| ClientError::Transport(TransportError::Message("Failed to connect".into())))?;
+    .map_err(|_| TransportError::Message("Failed to connect".into()))?;
 
     // Respond to the challenge
     let challenge = resp
         .headers()
         .get("Probe-Rs-Challenge")
-        .ok_or(ClientError::Transport(TransportError::Message(
-            "No challenge header".into(),
-        )))?
+        .ok_or(TransportError::Message("No challenge header".into()))?
         .to_str()
-        .map_err(|_| {
-            ClientError::Transport(TransportError::Message(
-                "Failed to parse challenge header".into(),
-            ))
-        })?;
+        .map_err(|_| TransportError::Message("Failed to parse challenge header".into()))?;
 
     let mut hasher = Sha512::new();
     hasher.update(challenge.as_bytes());
@@ -225,9 +219,7 @@ pub async fn connect(host: &str, token: Option<&str>) -> Result<RpcClient, Clien
 
     let tx = WebsocketTx::new(tx);
     tx.send(challenge_response).await.map_err(|err| {
-        ClientError::Transport(TransportError::Message(format!(
-            "Failed to send challenge response: {err:?}"
-        )))
+        TransportError::Message(format!("Failed to send challenge response: {err:?}"))
     })?;
 
     Ok(RpcClient::new_from_wire(
@@ -246,10 +238,8 @@ pub async fn connect_unix(path: &str) -> Result<RpcClient, ClientError> {
     use crate::rpc::transport::unix::{UnixStreamRx, UnixStreamTx};
     use tokio::net::UnixStream;
 
-    let stream = UnixStream::connect(path).await.map_err(|_| {
-        ClientError::Transport(TransportError::Message(
-            "Failed to connect to Unix socket".into(),
-        ))
+    let stream = UnixStream::connect(path).await.map_err(|err| {
+        TransportError::Message(format!("Failed to connect to Unix socket: {err:?}"))
     })?;
 
     let (reader, writer) = stream.into_split();
@@ -470,11 +460,10 @@ impl RpcClient {
             });
         }
 
-        let remote_path = self.upload_bytes(&src_path, &data).await.map_err(|e| {
-            ClientError::Transport(TransportError::Message(format!(
-                "Failed to upload file: {e}"
-            )))
-        })?;
+        let remote_path = self
+            .upload_bytes(&src_path, &data)
+            .await
+            .map_err(|e| TransportError::Message(format!("Failed to upload file: {e}")))?;
 
         let mut cache = self.upload_cache.lock().await;
         if let Some(existing) = cache.lookup(&src_path, content_hash) {
