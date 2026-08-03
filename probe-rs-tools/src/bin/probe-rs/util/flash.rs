@@ -1,10 +1,11 @@
-use crate::FormatOptions;
 use crate::rpc::functions::flash::{FlashLayout, Operation, ProgressEvent};
+use crate::rpc::functions::format::{EspFlashFrequency, EspFlashMode, FormatKind, FormatOptions};
 
 use super::common_options::{BinaryDownloadOptions, LoadedProbeOptions, OperationError};
 use super::logging;
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::time::Duration;
 use std::{path::Path, time::Instant};
 
@@ -12,11 +13,15 @@ use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use parking_lot::Mutex;
 use probe_rs::InstructionSet;
-use probe_rs::flashing::{FlashError, FlashProgress};
+use probe_rs::flashing::{
+    BinLoader, BinOptions, ElfLoader, ElfOptions, FlashError, FlashProgress, HexLoader,
+    ImageLoader, Uf2Loader,
+};
 use probe_rs::{
-    Session,
+    Session, Target,
     flashing::{DownloadOptions, FileDownloadError, FlashLoader},
 };
+use probe_rs_espressif::image_format::IdfLoader;
 
 /// Performs the flash download with the given loader. Ensure that the loader has the data to load already stored.
 /// This function also manages the update and display of progress bars.
@@ -119,6 +124,75 @@ fn run_flash_download_inner(
     ));
 
     Ok(())
+}
+
+impl From<EspFlashFrequency> for espflash::flasher::FlashFrequency {
+    fn from(freq: EspFlashFrequency) -> Self {
+        match freq {
+            EspFlashFrequency::_12Mhz => espflash::flasher::FlashFrequency::_12Mhz,
+            EspFlashFrequency::_15Mhz => espflash::flasher::FlashFrequency::_15Mhz,
+            EspFlashFrequency::_16Mhz => espflash::flasher::FlashFrequency::_16Mhz,
+            EspFlashFrequency::_20Mhz => espflash::flasher::FlashFrequency::_20Mhz,
+            EspFlashFrequency::_24Mhz => espflash::flasher::FlashFrequency::_24Mhz,
+            EspFlashFrequency::_26Mhz => espflash::flasher::FlashFrequency::_26Mhz,
+            EspFlashFrequency::_30Mhz => espflash::flasher::FlashFrequency::_30Mhz,
+            EspFlashFrequency::_40Mhz => espflash::flasher::FlashFrequency::_40Mhz,
+            EspFlashFrequency::_48Mhz => espflash::flasher::FlashFrequency::_48Mhz,
+            EspFlashFrequency::_60Mhz => espflash::flasher::FlashFrequency::_60Mhz,
+            EspFlashFrequency::_80Mhz => espflash::flasher::FlashFrequency::_80Mhz,
+        }
+    }
+}
+
+impl From<EspFlashMode> for espflash::flasher::FlashMode {
+    fn from(mode: EspFlashMode) -> Self {
+        match mode {
+            EspFlashMode::Qio => espflash::flasher::FlashMode::Qio,
+            EspFlashMode::Qout => espflash::flasher::FlashMode::Qout,
+            EspFlashMode::Dio => espflash::flasher::FlashMode::Dio,
+            EspFlashMode::Dout => espflash::flasher::FlashMode::Dout,
+        }
+    }
+}
+
+impl FormatKind {
+    /// Replaces `FormatKind::Target` with a default format based on the target.
+    pub fn resolve(self, target: &Target) -> FormatKind {
+        self.resolve_default_format(target.default_format.as_deref())
+    }
+}
+
+impl FormatOptions {
+    /// If a format is provided, use it.
+    /// If a target has a preferred format, we use that.
+    /// Finally, if neither of the above cases are true, we default to [`FormatKind::default()`].
+    fn image_loader(&self, target: &Target) -> Box<dyn ImageLoader> {
+        match self.binary_format.resolve(target) {
+            FormatKind::Target => unreachable!(),
+            FormatKind::Bin => Box::new(BinLoader(BinOptions {
+                base_address: self.bin_options.base_address,
+                skip: self.bin_options.skip,
+            })),
+
+            FormatKind::Hex => Box::new(HexLoader),
+            FormatKind::Elf => Box::new(ElfLoader(ElfOptions {
+                skip_sections: self.elf_options.skip_section.clone(),
+            })),
+            FormatKind::Uf2 => Box::new(Uf2Loader),
+
+            FormatKind::Idf => Box::new(IdfLoader {
+                bootloader: self.idf_options.idf_bootloader.as_ref().map(PathBuf::from),
+                partition_table: self
+                    .idf_options
+                    .idf_partition_table
+                    .as_ref()
+                    .map(PathBuf::from),
+                target_app_partition: self.idf_options.idf_target_app_partition.clone(),
+                flash_frequency: self.idf_options.idf_flash_freq.map(From::from),
+                flash_mode: self.idf_options.idf_flash_mode.map(From::from),
+            }),
+        }
+    }
 }
 
 /// Builds a new flash loader for the given target and path. This

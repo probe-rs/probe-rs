@@ -4,38 +4,35 @@ use super::{
 };
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::PromptKind;
 use crate::cmd::dap_server::server::debug_rtt;
-use crate::util::rtt::{DefmtProcessor, DefmtState, RttDecoder};
-use crate::{
-    FormatKind,
-    cmd::{
-        dap_server::{
-            DebuggerError,
-            backend::rpc::{CorePerAttachInfo, RpcBackend, SessionTargetMetadata, rpc_err},
-            debug_adapter::dap::{
-                adapter::DebugAdapter,
-                core_status::DapStatus,
-                dap_types::{ContinuedEventBody, MessageSeverity, Source, StoppedEventBody},
-                repl_commands::{REPL_COMMANDS, embedded_test::EMBEDDED_TEST},
-            },
-        },
-        run::EmbeddedTestElfInfo,
-    },
-    rpc::{
-        Key, RttClient,
-        client::RpcClient,
-        functions::{
-            breakpoints::SourceBreakpointLocation, rtt_client::ScanRegion as WireScanRegion,
+use crate::cmd::{
+    dap_server::{
+        DebuggerError,
+        backend::rpc::{CorePerAttachInfo, RpcBackend, SessionTargetMetadata, rpc_err},
+        debug_adapter::dap::{
+            adapter::DebugAdapter,
+            core_status::DapStatus,
+            dap_types::{ContinuedEventBody, MessageSeverity, Source, StoppedEventBody},
+            repl_commands::{REPL_COMMANDS, embedded_test::EMBEDDED_TEST},
         },
     },
-    util::cli::attach_probe as attach_probe_rpc,
+    run::EmbeddedTestElfInfo,
 };
+use crate::rpc::functions::format::FormatKind;
+use crate::rpc::{
+    Key, RttClient,
+    client::RpcClient,
+    functions::{breakpoints::SourceBreakpointLocation, rtt_client::ScanRegion as WireScanRegion},
+};
+use crate::util::cli::attach_probe as attach_probe_rpc;
+use crate::util::rtt::{DefmtProcessor, DefmtState, RttDecoder};
 use anyhow::{Result, anyhow};
 use probe_rs::{BreakpointCause, CoreStatus, HaltReason, rtt::find_rtt_control_block_in_raw_file};
 use probe_rs_debug::SourceLocation;
 use std::{any::Any, env::set_current_dir, path::Path};
 use time::UtcOffset;
 
-use crate::util::rtt::{self, DataFormat};
+use crate::rpc::functions::rtt_config::DataFormat;
+use crate::util::rtt::RttConfig;
 
 /// The supported breakpoint types
 #[derive(Clone, Debug, PartialEq)]
@@ -259,7 +256,7 @@ impl SessionData {
     async fn ensure_rtt_client(
         &mut self,
         cd_idx: usize,
-        rtt_config: &rtt::RttConfig,
+        rtt_config: &RttConfig,
     ) -> Result<Key<RttClient>> {
         if let Some(handle) = self.core_data[cd_idx].rtt_remote_handle {
             return Ok(handle);
@@ -513,7 +510,7 @@ impl SessionData {
         debug_adapter: &mut DebugAdapter,
         cd_idx: usize,
         program_binary: Option<&Path>,
-        rtt_config: &rtt::RttConfig,
+        rtt_config: &RttConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<()> {
         if self.core_data[cd_idx].rtt_connection.is_some() {

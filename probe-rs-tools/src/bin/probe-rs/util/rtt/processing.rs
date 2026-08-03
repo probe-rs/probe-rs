@@ -11,7 +11,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::util::rtt::DataFormat;
+use crate::rpc::functions::rtt_config::DataFormat;
 
 pub enum RttDecoder {
     String {

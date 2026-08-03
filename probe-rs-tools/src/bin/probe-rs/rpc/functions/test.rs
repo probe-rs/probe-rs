@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::rpc::{
     Key, RttClient, Session,
+    functions::semihosting_options::SemihostingOptions,
     functions::{RpcResult, flash::BootInfo},
-    utils::semihosting::SemihostingOptions,
 };
 
 #[derive(Debug, Serialize, Deserialize, Schema)]

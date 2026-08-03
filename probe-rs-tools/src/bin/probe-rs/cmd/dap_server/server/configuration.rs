@@ -1,6 +1,7 @@
+use crate::cmd::dap_server::DebuggerError;
+use crate::rpc::functions::format::FormatOptions;
 use crate::util::common_options::ProbeOptions;
 use crate::util::rtt;
-use crate::{FormatOptions, cmd::dap_server::DebuggerError};
 use anyhow::{Result, anyhow};
 use probe_rs::probe::{DebugProbeSelector, WireProtocol};
 use serde::{Deserialize, Serialize};

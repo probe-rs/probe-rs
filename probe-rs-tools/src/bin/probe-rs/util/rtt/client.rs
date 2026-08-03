@@ -1,6 +1,5 @@
-use crate::util::rtt::{
-    ChannelMode, RttActiveDownChannel, RttActiveUpChannel, RttConfig, RttConnection,
-};
+use crate::rpc::functions::rtt_config::ChannelMode;
+use crate::util::rtt::{RttActiveDownChannel, RttActiveUpChannel, RttConfig, RttConnection};
 use probe_rs::{
     Core, MemoryInterface, Target,
     flashing::FlashLoader,

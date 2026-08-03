@@ -92,6 +92,7 @@ pub mod debug_vars;
 pub mod disassemble;
 pub mod file;
 pub mod flash;
+pub mod format;
 pub mod info;
 pub mod memory;
 pub mod monitor;
@@ -99,6 +100,8 @@ pub mod probe;
 pub mod reset;
 pub mod resume;
 pub mod rtt_client;
+pub mod rtt_config;
+pub mod semihosting_options;
 pub mod stack_trace;
 pub mod test;
 

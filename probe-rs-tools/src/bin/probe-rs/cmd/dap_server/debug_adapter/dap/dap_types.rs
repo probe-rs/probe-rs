@@ -1,6 +1,6 @@
 // use crate::dap_types2 as debugserver_types;
 use crate::cmd::dap_server::DebuggerError;
-use crate::util::rtt;
+use crate::rpc::functions::rtt_config::DataFormat;
 use num_traits::Num;
 use parse_int::parse;
 use serde::{Deserialize, Serialize};
@@ -43,7 +43,7 @@ pub struct RttWindowOpenedArguments {
 pub struct RttChannelEventBody {
     pub channel_number: u32,
     pub channel_name: String,
-    pub data_format: rtt::DataFormat,
+    pub data_format: DataFormat,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]

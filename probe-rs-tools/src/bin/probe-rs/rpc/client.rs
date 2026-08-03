@@ -25,80 +25,76 @@ use std::{
     time::Duration,
 };
 
-use crate::{
-    FormatOptions,
-    rpc::{
-        FlashLoader, Key, RttClient, Session,
-        functions::{
-            AttachEndpoint, BootEndpoint, BuildEndpoint, ChipInfoEndpoint, CleanUpRttEndpoint,
-            ClearCoreDebugStateEndpoint, ClearRttControlBlockEndpoint, CoreClearHwBpsEndpoint,
-            CoreDumpEndpoint, CoreEnableVcEndpoint, CoreHaltEndpoint, CoreMetadataEndpoint,
-            CoreReadRegistersEndpoint, CoreRunEndpoint, CoreSetHwBpsEndpoint, CoreStatusEndpoint,
-            CoreStepEndpoint, CoreWriteRegEndpoint, CreateRttClientEndpoint,
-            CreateTempFileEndpoint, DisassembleEndpoint, EraseEndpoint, EvaluateEndpoint,
-            FlashEndpoint, GetRttChannelsEndpoint, HandleSemihostingEndpoint,
-            ListChipFamiliesEndpoint, ListProbesEndpoint, ListTestsEndpoint,
-            LoadChipFamilyEndpoint, LoadDebugInfoEndpoint, LoadSvdEndpoint, MonitorEndpoint,
-            PollRttUpEndpoint, ProgressEventTopic, ReadBytesEndpoint, ReadMemory8Endpoint,
-            ReadMemory16Endpoint, ReadMemory32Endpoint, ReadMemory64Endpoint,
-            ResetCoreAndHaltEndpoint, ResetCoreEndpoint, ResolveSourceBreakpointsEndpoint,
-            ResolveSourceLocationsEndpoint, ResumeAllCoresEndpoint, RpcError, RpcResult,
-            RttDownEndpoint, RunTestEndpoint, ScopesEndpoint, SelectProbeEndpoint,
-            SetVariableEndpoint, TakeRichStackTraceEndpoint, TakeStackTraceEndpoint,
-            TargetInfoDataTopic, TargetInfoEndpoint, TargetMetadataEndpoint, TempFileDataEndpoint,
-            TestKickoffEndpoint, TokioSpawner, VariablesEndpoint, VerifyEndpoint,
-            WriteMemory8Endpoint, WriteMemory16Endpoint, WriteMemory32Endpoint,
-            WriteMemory64Endpoint,
-            breakpoints::{
-                BreakpointResolution, ResolveSourceBreakpointsRequest,
-                ResolveSourceLocationsRequest, SourceBreakpointLocation, WireSourceLocation,
-            },
-            chip::{ChipData, ChipFamily, ChipInfoRequest, LoadChipFamilyRequest},
-            core_ops::{
-                CoreAccessRequest, CoreBreakpointsRequest, CoreDumpRequest, CoreHaltRequest,
-                CoreReadRegistersRequest, CoreVectorCatchRequest, CoreWriteRegRequest,
-                HandleSemihostingRequest, HandleSemihostingResult, StepRequest, StepResponse,
-                WireCoreDump, WireCoreInformation, WireCoreMetadata, WireCoreStatus,
-                WireRegisterId, WireRegisterReadResult, WireRegisterValue, WireSteppingMode,
-                WireVectorCatchCondition,
-            },
-            debug_vars::{
-                ClearCoreDebugStateRequest, EvaluateRequest, LoadSvdRequest, ScopesRequest,
-                SetVariableRequest, VariablesRequest, WireEvaluateResponse, WireScope,
-                WireSetVariableResponse, WireVariable,
-            },
-            disassemble::{DisassembleRequest, WireDisassembledInstruction},
-            file::{AppendFileRequest, TempFile},
-            flash::{
-                BootInfo, BootRequest, BuildRequest, BuildResult, DownloadOptions, EraseCommand,
-                EraseRequest, FlashRequest, ProgressEvent, VerifyRequest, VerifyResult,
-            },
-            info::{
-                InfoEvent, TargetInfoRequest, TargetMetadataRequest, WireSessionTargetMetadata,
-            },
-            memory::{ReadBytesRequest, ReadMemoryRequest, WriteMemoryRequest},
-            monitor::{MonitorExitReason, MonitorMode, MonitorOptions, MonitorRequest},
-            probe::{
-                AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector,
-                SelectProbeRequest, SelectProbeResult,
-            },
-            reset::{ResetCoreAndHaltRequest, ResetCoreRequest},
-            resume::ResumeAllCoresRequest,
-            rtt_client::{
-                CreateRttClientRequest, PollRttUpRequest, RttChannelRequest, RttChannels,
-                RttClientData, RttDownRequest, RttPollResult, ScanRegion,
-            },
-            stack_trace::{
-                LoadDebugInfoRequest, RichStackTraces, StackTraces, TakeRichStackTraceRequest,
-                TakeStackTraceRequest,
-            },
-            test::{ListTestsRequest, RunTestRequest, Test, TestKickoffRequest, TestResult, Tests},
+use crate::rpc::functions::format::FormatOptions;
+use crate::rpc::{
+    FlashLoader, Key, RttClient, Session,
+    functions::{
+        AttachEndpoint, BootEndpoint, BuildEndpoint, ChipInfoEndpoint, CleanUpRttEndpoint,
+        ClearCoreDebugStateEndpoint, ClearRttControlBlockEndpoint, CoreClearHwBpsEndpoint,
+        CoreDumpEndpoint, CoreEnableVcEndpoint, CoreHaltEndpoint, CoreMetadataEndpoint,
+        CoreReadRegistersEndpoint, CoreRunEndpoint, CoreSetHwBpsEndpoint, CoreStatusEndpoint,
+        CoreStepEndpoint, CoreWriteRegEndpoint, CreateRttClientEndpoint, CreateTempFileEndpoint,
+        DisassembleEndpoint, EraseEndpoint, EvaluateEndpoint, FlashEndpoint,
+        GetRttChannelsEndpoint, HandleSemihostingEndpoint, ListChipFamiliesEndpoint,
+        ListProbesEndpoint, ListTestsEndpoint, LoadChipFamilyEndpoint, LoadDebugInfoEndpoint,
+        LoadSvdEndpoint, MonitorEndpoint, PollRttUpEndpoint, ProgressEventTopic, ReadBytesEndpoint,
+        ReadMemory8Endpoint, ReadMemory16Endpoint, ReadMemory32Endpoint, ReadMemory64Endpoint,
+        ResetCoreAndHaltEndpoint, ResetCoreEndpoint, ResolveSourceBreakpointsEndpoint,
+        ResolveSourceLocationsEndpoint, ResumeAllCoresEndpoint, RpcError, RpcResult,
+        RttDownEndpoint, RttTopic, RunTestEndpoint, ScopesEndpoint, SelectProbeEndpoint,
+        SemihostingTopic, SetVariableEndpoint, TakeRichStackTraceEndpoint, TakeStackTraceEndpoint,
+        TargetInfoDataTopic, TargetInfoEndpoint, TargetMetadataEndpoint, TempFileDataEndpoint,
+        TestKickoffEndpoint, TokioSpawner, VariablesEndpoint, VerifyEndpoint, WriteMemory8Endpoint,
+        WriteMemory16Endpoint, WriteMemory32Endpoint, WriteMemory64Endpoint,
+        breakpoints::{
+            BreakpointResolution, ResolveSourceBreakpointsRequest, ResolveSourceLocationsRequest,
+            SourceBreakpointLocation, WireSourceLocation,
         },
-        transport::memory::{PostcardReceiver, PostcardSender, WireRx, WireTx},
-        upload_cache::{ContentHash, ResolvedUpload, UploadCache},
-        utils::semihosting::SemihostingOptions,
+        chip::{ChipData, ChipFamily, ChipInfoRequest, LoadChipFamilyRequest},
+        core_ops::{
+            CoreAccessRequest, CoreBreakpointsRequest, CoreDumpRequest, CoreHaltRequest,
+            CoreReadRegistersRequest, CoreVectorCatchRequest, CoreWriteRegRequest,
+            HandleSemihostingRequest, HandleSemihostingResult, StepRequest, StepResponse,
+            WireCoreDump, WireCoreInformation, WireCoreMetadata, WireCoreStatus, WireRegisterId,
+            WireRegisterReadResult, WireRegisterValue, WireSteppingMode, WireVectorCatchCondition,
+        },
+        debug_vars::{
+            ClearCoreDebugStateRequest, EvaluateRequest, LoadSvdRequest, ScopesRequest,
+            SetVariableRequest, VariablesRequest, WireEvaluateResponse, WireScope,
+            WireSetVariableResponse, WireVariable,
+        },
+        disassemble::{DisassembleRequest, WireDisassembledInstruction},
+        file::{AppendFileRequest, TempFile},
+        flash::{
+            BootInfo, BootRequest, BuildRequest, BuildResult, DownloadOptions, EraseCommand,
+            EraseRequest, FlashRequest, ProgressEvent, VerifyRequest, VerifyResult,
+        },
+        info::{InfoEvent, TargetInfoRequest, TargetMetadataRequest, WireSessionTargetMetadata},
+        memory::{ReadBytesRequest, ReadMemoryRequest, WriteMemoryRequest},
+        monitor::{
+            MonitorExitReason, MonitorMode, MonitorOptions, MonitorRequest, RttEvent,
+            SemihostingEvent,
+        },
+        probe::{
+            AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, SelectProbeRequest,
+            SelectProbeResult,
+        },
+        reset::{ResetCoreAndHaltRequest, ResetCoreRequest},
+        resume::ResumeAllCoresRequest,
+        rtt_client::{
+            CreateRttClientRequest, PollRttUpRequest, RttChannelRequest, RttChannels,
+            RttClientData, RttDownRequest, RttPollResult, ScanRegion,
+        },
+        rtt_config::RttChannelConfig,
+        semihosting_options::SemihostingOptions,
+        stack_trace::{
+            LoadDebugInfoRequest, RichStackTraces, StackTraces, TakeRichStackTraceRequest,
+            TakeStackTraceRequest,
+        },
+        test::{ListTestsRequest, RunTestRequest, Test, TestKickoffRequest, TestResult, Tests},
     },
-    util::{cli::MonitorEvent, rtt::RttChannelConfig},
+    transport::memory::{PostcardReceiver, PostcardSender, WireRx, WireTx},
+    upload_cache::{ContentHash, ResolvedUpload, UploadCache},
 };
 
 /// Host and optional authentication token identifying a remote probe-rs RPC
@@ -1459,6 +1455,45 @@ pub(crate) trait MultiSubscription {
                     }
                 }
             }
+        }
+    }
+}
+
+pub(crate) enum MonitorEvent {
+    Rtt(RttEvent),
+    Semihosting(SemihostingEvent),
+}
+
+impl MultiTopic for MonitorEvent {
+    type Message = Self;
+    type Subscription = MonitorSubscription;
+
+    async fn subscribe<E>(
+        client: &HostClient<E>,
+        depth: usize,
+    ) -> Result<Self::Subscription, MultiSubscribeError>
+    where
+        E: DeserializeOwned + Schema,
+    {
+        // TODO: remove MonitorEvent from the RPC interface, split this subscribe into two:
+        // one for RTT, one for semihosting, then introduce a MultiSubscription impl for them
+        let rtt = RttTopic::subscribe(client, depth).await?;
+        let semihosting = SemihostingTopic::subscribe(client, depth).await?;
+        Ok(MonitorSubscription { rtt, semihosting })
+    }
+}
+
+pub(crate) struct MonitorSubscription {
+    rtt: <RttTopic as MultiTopic>::Subscription,
+    semihosting: <SemihostingTopic as MultiTopic>::Subscription,
+}
+impl MultiSubscription for MonitorSubscription {
+    type Message = MonitorEvent;
+
+    async fn next(&mut self) -> Option<Self::Message> {
+        tokio::select! {
+            message = self.rtt.recv() => message.map(MonitorEvent::Rtt),
+            message = self.semihosting.recv() => message.map(MonitorEvent::Semihosting),
         }
     }
 }

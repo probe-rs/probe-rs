@@ -18,7 +18,7 @@ use crate::cmd::dap_server::{
     },
 };
 use crate::rpc::functions::breakpoints::SourceBreakpointLocation;
-use crate::util::rtt;
+use crate::rpc::functions::rtt_config::DataFormat;
 use anyhow::{Context, Result, anyhow};
 use base64::{Engine as _, engine::general_purpose as base64_engine};
 use dap_types::*;
@@ -1611,7 +1611,7 @@ impl DebugAdapter {
         &mut self,
         channel_number: u32,
         channel_name: String,
-        data_format: rtt::DataFormat,
+        data_format: DataFormat,
     ) -> bool {
         let Ok(event_body) = serde_json::to_value(RttChannelEventBody {
             channel_number,
