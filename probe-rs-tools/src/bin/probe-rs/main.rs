@@ -16,6 +16,7 @@ use figment::Figment;
 use figment::providers::{Data, Format as _, Json, Toml, Yaml};
 use figment::value::Value;
 use itertools::Itertools;
+use probe_rs::config::Registry;
 use probe_rs::probe::list::Lister;
 use report::Report;
 use serde::{Deserialize, Serialize};
@@ -104,6 +105,7 @@ struct Cli {
 impl Cli {
     async fn run(self, client: RpcClient, _config: Config, utc_offset: UtcOffset) -> Result<()> {
         let lister = Lister::new();
+        let mut registry = Registry::from_builtin_families();
         match self.subcommand {
             Subcommand::DapServer(cmd) => {
                 let log_path = self.log_file.as_deref();
@@ -113,7 +115,7 @@ impl Cli {
             Subcommand::Serve(cmd) => cmd.run(_config.server).await,
             Subcommand::List(cmd) => cmd.run(client).await,
             Subcommand::Info(cmd) => cmd.run(client).await,
-            Subcommand::Gdb(cmd) => cmd.run(&mut *client.registry().await, &lister),
+            Subcommand::Gdb(cmd) => cmd.run(&mut registry, &lister),
             Subcommand::Reset(cmd) => cmd.run(client).await,
             Subcommand::Debug(cmd) => cmd.run(client, utc_offset).await,
             Subcommand::Download(cmd) => cmd.run(client).await,
@@ -121,11 +123,11 @@ impl Cli {
             Subcommand::Attach(cmd) => cmd.run(client, utc_offset).await,
             Subcommand::Verify(cmd) => cmd.run(client).await,
             Subcommand::Erase(cmd) => cmd.run(client).await,
-            Subcommand::Trace(cmd) => cmd.run(&mut *client.registry().await, &lister),
-            Subcommand::Itm(cmd) => cmd.run(&mut *client.registry().await, &lister),
+            Subcommand::Trace(cmd) => cmd.run(&mut registry, &lister),
+            Subcommand::Itm(cmd) => cmd.run(&mut registry, &lister),
             Subcommand::Chip(cmd) => cmd.run(client).await,
-            Subcommand::Benchmark(cmd) => cmd.run(&mut *client.registry().await, &lister),
-            Subcommand::Profile(cmd) => cmd.run(&mut *client.registry().await, &lister),
+            Subcommand::Benchmark(cmd) => cmd.run(&mut registry, &lister),
+            Subcommand::Profile(cmd) => cmd.run(&mut registry, &lister),
             Subcommand::Read(cmd) => cmd.run(client).await,
             Subcommand::Write(cmd) => cmd.run(client).await,
             Subcommand::Complete(cmd) => cmd.run(&lister),

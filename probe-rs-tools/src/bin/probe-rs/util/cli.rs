@@ -79,10 +79,6 @@ pub async fn attach_probe(
                 )
             })?;
 
-        // Parse the YAML locally to validate it and register chip metadata for
-        // client-side transport setup; target state remains server-owned after attach.
-        client.registry().await.add_target_family_from_yaml(&file)?;
-
         client.load_chip_family(file).await?;
     }
 
