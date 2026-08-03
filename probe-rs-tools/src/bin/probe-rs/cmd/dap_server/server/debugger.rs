@@ -382,8 +382,8 @@ impl Debugger {
 
     /// RPC entry point for the DAP server. Drives the session against an
     /// [`RpcBackend`] wired up around the provided [`RpcClient`] (and its
-    /// ambient tokio runtime). The local chip registry on `client` supplies
-    /// `Target` descriptions.
+    /// ambient tokio runtime). The chip registry of the server that `client`
+    /// talks to supplies the target descriptions.
     pub(crate) async fn debug_session_rpc(
         &mut self,
         client: &RpcClient,

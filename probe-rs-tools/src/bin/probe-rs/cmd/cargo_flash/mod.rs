@@ -5,7 +5,10 @@ use colored::Colorize;
 use diagnostics::render_diagnostics;
 use probe_rs::config::Registry;
 use std::ffi::OsString;
-use std::{path::PathBuf, process};
+use std::{
+    path::{Path, PathBuf},
+    process,
+};
 
 use crate::rpc::client::RpcClient;
 use crate::util::cargo::build_artifact;
@@ -88,6 +91,20 @@ struct CliOptions {
     preset: Option<String>,
 }
 
+/// Creates a registry that holds the builtin targets and the targets of the
+/// chip description file, if the caller names one.
+pub fn registry_with_chip_description(chip_description: Option<&Path>) -> Registry {
+    let mut registry = Registry::from_builtin_families();
+
+    if let Some(path) = chip_description
+        && let Ok(yaml) = std::fs::read_to_string(path)
+    {
+        _ = registry.add_target_family_from_yaml(&yaml);
+    }
+
+    registry
+}
+
 pub async fn main(args: Vec<OsString>, config: Config) -> anyhow::Result<()> {
     // Parse the commandline options.
     let opt = parse_and_resolve_cli_args::<CliOptions>(args, &config)?;
@@ -104,13 +121,17 @@ pub async fn main(args: Vec<OsString>, config: Config) -> anyhow::Result<()> {
     #[cfg(not(feature = "remote"))]
     let connection_params = None;
 
+    // The server owns the target state, but it offers no chip name search, so
+    // the diagnostics keep a local copy of the same targets.
+    let registry =
+        registry_with_chip_description(opt.probe_options.chip_description_path.as_deref());
+
     let terminate = run_app(connection_params, async |mut client| {
         let main_result = main_try(&mut client, opt).await;
 
         match main_result {
             Ok(()) => Ok(false),
             Err(e) => {
-                let registry = Registry::from_builtin_families();
                 // Ensure stderr is flushed before calling process::exit,
                 // otherwise the process might panic, because it tries
                 // to access stderr during shutdown.
