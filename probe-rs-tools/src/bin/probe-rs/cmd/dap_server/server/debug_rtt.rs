@@ -1,7 +1,7 @@
 use crate::{
     cmd::dap_server::{DebuggerError, debug_adapter::dap::adapter::*},
-    rpc::{Key, client::SessionInterface},
-    util::rtt::{RttDecoder, client::RttClient},
+    rpc::{Key, RttClient, client::SessionInterface},
+    util::rtt::RttDecoder,
 };
 use anyhow::anyhow;
 use probe_rs::rtt::Error as RttError;

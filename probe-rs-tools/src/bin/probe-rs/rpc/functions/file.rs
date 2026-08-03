@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 #[cfg(feature = "remote")]
 use anyhow::Context as _;
 use postcard_rpc::header::VarHeader;
@@ -7,7 +5,7 @@ use postcard_schema::Schema;
 use serde::{Deserialize, Serialize};
 
 use crate::rpc::{
-    Key,
+    Key, TempFileHandle,
     functions::{NoResponse, RpcContext, RpcResult},
 };
 
@@ -17,7 +15,7 @@ use tempfile::NamedTempFile;
 #[derive(Serialize, Deserialize, Schema)]
 pub struct TempFile {
     pub path: String,
-    pub key: Key<PathBuf>,
+    pub key: Key<TempFileHandle>,
 }
 
 pub type CreateFileResponse = RpcResult<TempFile>;
@@ -25,7 +23,7 @@ pub type CreateFileResponse = RpcResult<TempFile>;
 #[derive(Serialize, Deserialize, Schema)]
 pub struct AppendFileRequest {
     pub data: Vec<u8>,
-    pub key: Key<PathBuf>,
+    pub key: Key<TempFileHandle>,
 }
 
 #[cfg(feature = "remote")]
@@ -40,10 +38,7 @@ pub async fn create_temp_file(
     tracing::info!("Created temporary file {}", path);
     let key = ctx.store_object(file).await;
 
-    Ok(TempFile {
-        path,
-        key: unsafe { key.cast() },
-    })
+    Ok(TempFile { path, key })
 }
 
 #[cfg(not(feature = "remote"))]
@@ -63,9 +58,7 @@ pub async fn append_temp_file(
 ) -> NoResponse {
     use std::io::Write as _;
 
-    let mut file = ctx
-        .object_mut::<NamedTempFile>(unsafe { request.key.cast::<NamedTempFile>() })
-        .await;
+    let mut file = ctx.object_mut(request.key).await;
 
     file.as_file_mut()
         .write_all(&request.data)

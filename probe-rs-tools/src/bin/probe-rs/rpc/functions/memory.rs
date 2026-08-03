@@ -1,10 +1,10 @@
 use crate::rpc::{
-    Key,
+    Key, Session,
     functions::{NoResponse, RpcContext, RpcResult},
 };
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
-use probe_rs::{MemoryInterface, Session};
+use probe_rs::MemoryInterface;
 use serde::{Deserialize, Serialize};
 
 pub trait Word: Copy + Default + Send + Schema {

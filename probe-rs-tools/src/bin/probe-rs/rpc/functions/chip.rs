@@ -2,7 +2,6 @@ use std::ops::Range;
 
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
-use probe_rs::Target;
 use serde::{Deserialize, Serialize};
 
 use crate::rpc::functions::{NoResponse, RpcContext, RpcResult};
@@ -17,24 +16,6 @@ pub struct JEP106Code {
     pub cc: u8,
 }
 
-impl From<jep106::JEP106Code> for JEP106Code {
-    fn from(value: jep106::JEP106Code) -> Self {
-        Self {
-            id: value.id,
-            cc: value.cc,
-        }
-    }
-}
-
-impl From<JEP106Code> for jep106::JEP106Code {
-    fn from(value: JEP106Code) -> Self {
-        Self {
-            id: value.id,
-            cc: value.cc,
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Clone, Schema)]
 pub struct ChipFamily {
     /// This is the name of the chip family in base form.
@@ -44,16 +25,6 @@ pub struct ChipFamily {
     pub manufacturer: Option<JEP106Code>,
     /// This vector holds all the variants of the family.
     pub variants: Vec<Chip>,
-}
-
-impl From<&probe_rs_target::ChipFamily> for ChipFamily {
-    fn from(value: &probe_rs_target::ChipFamily) -> Self {
-        Self {
-            name: value.name.clone(),
-            manufacturer: value.manufacturer.map(|m| m.into()),
-            variants: value.variants.iter().map(|v| v.into()).collect(),
-        }
-    }
 }
 
 /// A single chip variant.
@@ -69,29 +40,7 @@ pub struct Chip {
     pub name: String,
 }
 
-impl From<&probe_rs_target::Chip> for Chip {
-    fn from(value: &probe_rs_target::Chip) -> Self {
-        Self {
-            name: value.name.clone(),
-        }
-    }
-}
-
 pub type ListFamiliesResponse = RpcResult<Vec<ChipFamily>>;
-
-pub async fn list_families(
-    ctx: &mut RpcContext,
-    _header: VarHeader,
-    _req: (),
-) -> ListFamiliesResponse {
-    Ok(ctx
-        .registry()
-        .await
-        .families()
-        .iter()
-        .map(|f| f.into())
-        .collect())
-}
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct ChipInfoRequest {
@@ -104,19 +53,6 @@ pub struct ChipData {
     pub memory_map: Vec<MemoryRegion>,
 }
 
-impl From<Target> for ChipData {
-    fn from(value: Target) -> Self {
-        Self {
-            cores: value.cores.into_iter().map(|core| core.into()).collect(),
-            memory_map: value
-                .memory_map
-                .into_iter()
-                .map(|mmap| mmap.into())
-                .collect(),
-        }
-    }
-}
-
 /// An individual core inside a chip
 #[derive(Debug, Clone, Serialize, Deserialize, Schema)]
 pub struct Core {
@@ -125,15 +61,6 @@ pub struct Core {
 
     /// The core type.
     pub core_type: CoreType,
-}
-
-impl From<probe_rs_target::Core> for Core {
-    fn from(value: probe_rs_target::Core) -> Self {
-        Self {
-            name: value.name,
-            core_type: value.core_type.into(),
-        }
-    }
 }
 
 /// Type of a supported core.
@@ -161,23 +88,6 @@ pub enum CoreType {
     Xtensa,
 }
 
-impl From<probe_rs_target::CoreType> for CoreType {
-    fn from(value: probe_rs_target::CoreType) -> Self {
-        match value {
-            probe_rs_target::CoreType::Armv6m => CoreType::Armv6m,
-            probe_rs_target::CoreType::Armv7a => CoreType::Armv7a,
-            probe_rs_target::CoreType::Armv7r => CoreType::Armv7r,
-            probe_rs_target::CoreType::Armv7m => CoreType::Armv7m,
-            probe_rs_target::CoreType::Armv7em => CoreType::Armv7em,
-            probe_rs_target::CoreType::Armv8a => CoreType::Armv8a,
-            probe_rs_target::CoreType::Armv8m => CoreType::Armv8m,
-            probe_rs_target::CoreType::Riscv => CoreType::Riscv,
-            probe_rs_target::CoreType::Riscv64 => CoreType::Riscv64,
-            probe_rs_target::CoreType::Xtensa => CoreType::Xtensa,
-        }
-    }
-}
-
 /// Declares the type of a memory region.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Schema)]
 pub enum MemoryRegion {
@@ -187,16 +97,6 @@ pub enum MemoryRegion {
     Generic(GenericRegion),
     /// Memory region describing flash, EEPROM or other non-volatile memory.
     Nvm(NvmRegion),
-}
-
-impl From<probe_rs_target::MemoryRegion> for MemoryRegion {
-    fn from(value: probe_rs_target::MemoryRegion) -> Self {
-        match value {
-            probe_rs_target::MemoryRegion::Ram(rr) => MemoryRegion::Ram(rr.into()),
-            probe_rs_target::MemoryRegion::Generic(gr) => MemoryRegion::Generic(gr.into()),
-            probe_rs_target::MemoryRegion::Nvm(nr) => MemoryRegion::Nvm(nr.into()),
-        }
-    }
 }
 
 impl MemoryRegion {
@@ -226,18 +126,6 @@ pub struct NvmRegion {
     pub access: Option<MemoryAccess>,
 }
 
-impl From<probe_rs_target::NvmRegion> for NvmRegion {
-    fn from(value: probe_rs_target::NvmRegion) -> Self {
-        Self {
-            name: value.name,
-            range: (value.range.start, value.range.end),
-            cores: value.cores,
-            is_alias: value.is_alias,
-            access: value.access.map(|a| a.into()),
-        }
-    }
-}
-
 /// Represents a region in RAM.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Schema)]
 pub struct RamRegion {
@@ -250,17 +138,6 @@ pub struct RamRegion {
     /// Access permissions for the region.
     #[serde(default)]
     pub access: Option<MemoryAccess>,
-}
-
-impl From<probe_rs_target::RamRegion> for RamRegion {
-    fn from(value: probe_rs_target::RamRegion) -> Self {
-        Self {
-            name: value.name,
-            range: (value.range.start, value.range.end),
-            cores: value.cores,
-            access: value.access.map(|a| a.into()),
-        }
-    }
 }
 
 /// Represents a generic region.
@@ -276,17 +153,6 @@ pub struct GenericRegion {
     pub access: Option<MemoryAccess>,
 }
 
-impl From<probe_rs_target::GenericRegion> for GenericRegion {
-    fn from(value: probe_rs_target::GenericRegion) -> Self {
-        Self {
-            name: value.name,
-            range: (value.range.start, value.range.end),
-            cores: value.cores,
-            access: value.access.map(|a| a.into()),
-        }
-    }
-}
-
 /// Represents access permissions of a region in RAM.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Schema)]
 pub struct MemoryAccess {
@@ -298,17 +164,6 @@ pub struct MemoryAccess {
     pub execute: bool,
     /// True if the chip boots from this memory
     pub boot: bool,
-}
-
-impl From<probe_rs_target::MemoryAccess> for MemoryAccess {
-    fn from(value: probe_rs_target::MemoryAccess) -> Self {
-        Self {
-            read: value.read,
-            write: value.write,
-            execute: value.execute,
-            boot: value.boot,
-        }
-    }
 }
 
 impl Default for MemoryAccess {
@@ -324,6 +179,28 @@ impl Default for MemoryAccess {
 
 pub type ChipInfoResponse = RpcResult<ChipData>;
 
+// Used to avoid uploading a temp file to the remote.
+#[derive(Serialize, Deserialize, Schema)]
+pub struct LoadChipFamilyRequest {
+    /// Chip description in YAML format.
+    // TODO: instead, serialize the whole ChipFamily struct
+    pub families_yaml: String,
+}
+
+pub async fn list_families(
+    ctx: &mut RpcContext,
+    _header: VarHeader,
+    _req: (),
+) -> ListFamiliesResponse {
+    Ok(ctx
+        .registry()
+        .await
+        .families()
+        .iter()
+        .map(|f| f.into())
+        .collect())
+}
+
 pub async fn chip_info(
     ctx: &mut RpcContext,
     _header: VarHeader,
@@ -336,14 +213,6 @@ pub async fn chip_info(
         .into())
 }
 
-// Used to avoid uploading a temp file to the remote.
-#[derive(Serialize, Deserialize, Schema)]
-pub struct LoadChipFamilyRequest {
-    /// Chip description in YAML format.
-    // TODO: instead, serialize the whole ChipFamily struct
-    pub families_yaml: String,
-}
-
 pub async fn load_chip_family(
     ctx: &mut RpcContext,
     _header: VarHeader,
@@ -354,4 +223,142 @@ pub async fn load_chip_family(
         .add_target_family_from_yaml(&request.families_yaml)?;
 
     Ok(())
+}
+
+pub(crate) mod convert {
+    use super::{
+        Chip, ChipData, ChipFamily, Core, CoreType, GenericRegion, JEP106Code, MemoryAccess,
+        MemoryRegion, NvmRegion, RamRegion,
+    };
+    use probe_rs::Target;
+
+    impl From<jep106::JEP106Code> for JEP106Code {
+        fn from(value: jep106::JEP106Code) -> Self {
+            Self {
+                id: value.id,
+                cc: value.cc,
+            }
+        }
+    }
+
+    impl From<JEP106Code> for jep106::JEP106Code {
+        fn from(value: JEP106Code) -> Self {
+            Self {
+                id: value.id,
+                cc: value.cc,
+            }
+        }
+    }
+
+    impl From<&probe_rs_target::ChipFamily> for ChipFamily {
+        fn from(value: &probe_rs_target::ChipFamily) -> Self {
+            Self {
+                name: value.name.clone(),
+                manufacturer: value.manufacturer.map(|m| m.into()),
+                variants: value.variants.iter().map(|v| v.into()).collect(),
+            }
+        }
+    }
+
+    impl From<&probe_rs_target::Chip> for Chip {
+        fn from(value: &probe_rs_target::Chip) -> Self {
+            Self {
+                name: value.name.clone(),
+            }
+        }
+    }
+
+    impl From<Target> for ChipData {
+        fn from(value: Target) -> Self {
+            Self {
+                cores: value.cores.into_iter().map(|core| core.into()).collect(),
+                memory_map: value
+                    .memory_map
+                    .into_iter()
+                    .map(|mmap| mmap.into())
+                    .collect(),
+            }
+        }
+    }
+
+    impl From<probe_rs_target::Core> for Core {
+        fn from(value: probe_rs_target::Core) -> Self {
+            Self {
+                name: value.name,
+                core_type: value.core_type.into(),
+            }
+        }
+    }
+
+    impl From<probe_rs_target::CoreType> for CoreType {
+        fn from(value: probe_rs_target::CoreType) -> Self {
+            match value {
+                probe_rs_target::CoreType::Armv6m => CoreType::Armv6m,
+                probe_rs_target::CoreType::Armv7a => CoreType::Armv7a,
+                probe_rs_target::CoreType::Armv7r => CoreType::Armv7r,
+                probe_rs_target::CoreType::Armv7m => CoreType::Armv7m,
+                probe_rs_target::CoreType::Armv7em => CoreType::Armv7em,
+                probe_rs_target::CoreType::Armv8a => CoreType::Armv8a,
+                probe_rs_target::CoreType::Armv8m => CoreType::Armv8m,
+                probe_rs_target::CoreType::Riscv => CoreType::Riscv,
+                probe_rs_target::CoreType::Riscv64 => CoreType::Riscv64,
+                probe_rs_target::CoreType::Xtensa => CoreType::Xtensa,
+            }
+        }
+    }
+
+    impl From<probe_rs_target::MemoryRegion> for MemoryRegion {
+        fn from(value: probe_rs_target::MemoryRegion) -> Self {
+            match value {
+                probe_rs_target::MemoryRegion::Ram(rr) => MemoryRegion::Ram(rr.into()),
+                probe_rs_target::MemoryRegion::Generic(gr) => MemoryRegion::Generic(gr.into()),
+                probe_rs_target::MemoryRegion::Nvm(nr) => MemoryRegion::Nvm(nr.into()),
+            }
+        }
+    }
+
+    impl From<probe_rs_target::NvmRegion> for NvmRegion {
+        fn from(value: probe_rs_target::NvmRegion) -> Self {
+            Self {
+                name: value.name,
+                range: (value.range.start, value.range.end),
+                cores: value.cores,
+                is_alias: value.is_alias,
+                access: value.access.map(|a| a.into()),
+            }
+        }
+    }
+
+    impl From<probe_rs_target::RamRegion> for RamRegion {
+        fn from(value: probe_rs_target::RamRegion) -> Self {
+            Self {
+                name: value.name,
+                range: (value.range.start, value.range.end),
+                cores: value.cores,
+                access: value.access.map(|a| a.into()),
+            }
+        }
+    }
+
+    impl From<probe_rs_target::GenericRegion> for GenericRegion {
+        fn from(value: probe_rs_target::GenericRegion) -> Self {
+            Self {
+                name: value.name,
+                range: (value.range.start, value.range.end),
+                cores: value.cores,
+                access: value.access.map(|a| a.into()),
+            }
+        }
+    }
+
+    impl From<probe_rs_target::MemoryAccess> for MemoryAccess {
+        fn from(value: probe_rs_target::MemoryAccess) -> Self {
+            Self {
+                read: value.read,
+                write: value.write,
+                execute: value.execute,
+                boot: value.boot,
+            }
+        }
+    }
 }

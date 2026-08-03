@@ -12,7 +12,7 @@ use postcard_rpc::{
     host_client::{HostClient, HostClientConfig, HostErr, IoClosed, SubscribeError, Subscription},
 };
 use postcard_schema::Schema;
-use probe_rs::{Session, config::Registry, flashing::FlashLoader};
+use probe_rs::config::Registry;
 use serde::{Serialize, de::DeserializeOwned};
 use tokio::{
     sync::{Mutex, MutexGuard, Notify},
@@ -28,7 +28,7 @@ use std::{
 use crate::{
     FormatOptions,
     rpc::{
-        Key,
+        FlashLoader, Key, RttClient, Session,
         functions::{
             AttachEndpoint, BootEndpoint, BuildEndpoint, ChipInfoEndpoint, CleanUpRttEndpoint,
             ClearCoreDebugStateEndpoint, ClearRttControlBlockEndpoint, CoreClearHwBpsEndpoint,
@@ -98,10 +98,7 @@ use crate::{
         upload_cache::{ContentHash, ResolvedUpload, UploadCache},
         utils::semihosting::SemihostingOptions,
     },
-    util::{
-        cli::MonitorEvent,
-        rtt::{RttChannelConfig, client::RttClient},
-    },
+    util::{cli::MonitorEvent, rtt::RttChannelConfig},
 };
 
 /// Host and optional authentication token identifying a remote probe-rs RPC

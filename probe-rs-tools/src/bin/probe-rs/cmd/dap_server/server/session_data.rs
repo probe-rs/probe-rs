@@ -21,14 +21,13 @@ use crate::{
         run::EmbeddedTestElfInfo,
     },
     rpc::{
-        Key,
+        Key, RttClient,
         client::RpcClient,
         functions::{
             breakpoints::SourceBreakpointLocation, rtt_client::ScanRegion as WireScanRegion,
         },
     },
     util::cli::attach_probe as attach_probe_rpc,
-    util::rtt::client::RttClient,
 };
 use anyhow::{Result, anyhow};
 use probe_rs::{BreakpointCause, CoreStatus, HaltReason, rtt::find_rtt_control_block_in_raw_file};

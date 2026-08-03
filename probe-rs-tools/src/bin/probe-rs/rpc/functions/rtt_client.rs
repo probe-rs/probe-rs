@@ -1,13 +1,13 @@
 use crate::{
     rpc::{
-        Key,
+        Key, RttClient, Session,
         functions::{NoResponse, RpcContext, RpcError, RpcResult},
     },
-    util::rtt::{RttChannelConfig, RttConfig, client::RttClient},
+    util::rtt::{RttChannelConfig, RttConfig},
 };
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
-use probe_rs::{Session, rtt};
+use probe_rs::rtt;
 use serde::{Deserialize, Serialize};
 
 /// Used to specify which memory regions to scan for the RTT control block.
@@ -64,7 +64,7 @@ pub async fn create_rtt_client(
         ScanRegion::Exact(addr) => rtt::ScanRegion::Exact(addr),
     };
 
-    let client = RttClient::new(
+    let client = crate::util::rtt::client::RttClient::new(
         RttConfig {
             enabled: true,
             channels: request.config,

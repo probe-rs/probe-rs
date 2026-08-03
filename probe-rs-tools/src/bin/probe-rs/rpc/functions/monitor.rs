@@ -1,23 +1,20 @@
 use std::time::Duration;
 
-use crate::{
-    rpc::{
-        Key, ObjectStorageSlot,
-        functions::{
-            MonitorEndpoint, MultiTopicPublisher, MultiTopicWriter, RpcResult, RpcSpawnContext,
-            RttTopic, SemihostingTopic, WireTxImpl, flash::BootInfo,
-        },
-        utils::{
-            run_loop::{ReturnReason, RunLoop, RunLoopPoller, VectorCatchConfig},
-            semihosting::{SemihostingFileManager, SemihostingOptions},
-        },
+use crate::rpc::{
+    Key, ObjectStorageSlot, RttClient, Session,
+    functions::{
+        MonitorEndpoint, MultiTopicPublisher, MultiTopicWriter, RpcResult, RpcSpawnContext,
+        RttTopic, SemihostingTopic, WireTxImpl, flash::BootInfo,
     },
-    util::rtt::client::RttClient,
+    utils::{
+        run_loop::{ReturnReason, RunLoop, RunLoopPoller, VectorCatchConfig},
+        semihosting::{SemihostingFileManager, SemihostingOptions},
+    },
 };
 use anyhow::Context;
 use postcard_rpc::{header::VarHeader, server::Sender};
 use postcard_schema::Schema;
-use probe_rs::{BreakpointCause, Core, HaltReason, Session, semihosting::SemihostingCommand};
+use probe_rs::{BreakpointCause, Core, HaltReason, semihosting::SemihostingCommand};
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::{self, error::SendError};
 use tokio_util::sync::CancellationToken;
@@ -37,7 +34,7 @@ impl MonitorMode {
         }
     }
 
-    pub fn prepare(&self, session: &mut Session, core_id: usize) -> anyhow::Result<()> {
+    pub fn prepare(&self, session: &mut probe_rs::Session, core_id: usize) -> anyhow::Result<()> {
         match self {
             MonitorMode::Run(boot_info) => boot_info.prepare(session, core_id),
             MonitorMode::AttachToRunning => Ok(()),
@@ -245,7 +242,7 @@ pub struct RttPoller<S>
 where
     S: FnMut(RttEvent) -> anyhow::Result<()>,
 {
-    pub rtt_client: ObjectStorageSlot<RttClient>,
+    pub rtt_client: ObjectStorageSlot<crate::util::rtt::client::RttClient>,
     pub clear_control_block: bool,
     pub sender: S,
 }

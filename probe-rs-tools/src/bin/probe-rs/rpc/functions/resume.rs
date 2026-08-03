@@ -1,10 +1,9 @@
 use crate::rpc::{
-    Key,
+    Key, Session,
     functions::{NoResponse, RpcContext},
 };
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
-use probe_rs::Session;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Schema)]
