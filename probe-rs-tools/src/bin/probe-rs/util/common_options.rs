@@ -1,4 +1,4 @@
-use std::{io::Write, path::PathBuf};
+use std::{io::Write, path::PathBuf, time::Duration};
 
 use super::cargo::ArtifactError;
 use crate::util::parse_u64;
@@ -83,6 +83,17 @@ pub struct ReadWriteOptions {
     /// Takes an integer as an argument, and can be specified in decimal (16), hexadecimal (0x10) or octal (0o20) format.
     #[clap(value_parser = parse_u64)]
     pub address: u64,
+}
+
+/// How long to wait for a core to come to a halt after being reset.
+pub const RESET_HALT_TIMEOUT: Duration = Duration::from_millis(500);
+
+/// Common options for commands that reset the target core.
+#[derive(Debug, clap::Parser)]
+pub struct ResetHaltOptions {
+    /// Halt the core after resetting it.
+    #[arg(long = "reset-halt")]
+    pub reset_halt: bool,
 }
 
 /// Common options and logic when interfacing with a [Probe].
