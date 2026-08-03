@@ -14,9 +14,10 @@ use axum::{
     routing::{any, get},
 };
 use base64::{Engine, engine::general_purpose::STANDARD};
-use futures_util::{SinkExt, StreamExt};
+use futures_util::{Sink, SinkExt, StreamExt};
 use postcard_rpc::server::WireRxErrorKind;
 use probe_rs::probe::list::Lister;
+use probe_rs_rpc::transport::{frame, websocket::WebsocketRx};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha512};
 use tokio::task::LocalSet;
@@ -25,13 +26,49 @@ use tokio_util::bytes::Bytes;
 #[cfg(unix)]
 use std::path::PathBuf;
 use std::{fmt::Write, sync::Arc};
+use std::{
+    pin::Pin,
+    task::{Context, Poll},
+};
 
 use crate::{
     rpc::functions::{ProbeAccess, RpcApp},
     util::pwr,
 };
-#[cfg(feature = "remote")]
-use probe_rs_rpc::transport::websocket::{AxumWebsocketTx, WebsocketRx};
+
+// Sends length-prefixed binary messages to a websocket stream
+pub struct AxumWebsocketTx<S> {
+    writer: S,
+}
+impl<S> AxumWebsocketTx<S> {
+    pub fn new(writer: S) -> Self {
+        Self { writer }
+    }
+}
+
+impl<S> Sink<Vec<u8>> for AxumWebsocketTx<S>
+where
+    S: Sink<ws::Message> + Unpin,
+{
+    type Error = S::Error;
+
+    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.writer.poll_ready_unpin(cx)
+    }
+
+    fn start_send(mut self: Pin<&mut Self>, msg: Vec<u8>) -> Result<(), Self::Error> {
+        self.writer
+            .start_send_unpin(ws::Message::Binary(frame(&msg).freeze()))
+    }
+
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.writer.poll_flush_unpin(cx)
+    }
+
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.writer.poll_close_unpin(cx)
+    }
+}
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

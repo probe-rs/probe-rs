@@ -14,10 +14,10 @@ use std::{
 
 /// SHA-256 digest of a local file's contents.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) struct ContentHash([u8; 32]);
+pub struct ContentHash([u8; 32]);
 
 impl ContentHash {
-    pub(crate) fn from_bytes(data: &[u8]) -> Self {
+    pub fn from_bytes(data: &[u8]) -> Self {
         let digest = Sha256::digest(data);
         Self(digest.into())
     }
@@ -26,14 +26,14 @@ impl ContentHash {
 /// A resolved local upload: canonical path, content identity, and the path
 /// the RPC server should read (remote temp path, or the local path in-process).
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct ResolvedUpload {
-    pub(crate) canonical_path: PathBuf,
-    pub(crate) content_hash: ContentHash,
-    pub(crate) remote_path: PathBuf,
+pub struct ResolvedUpload {
+    pub canonical_path: PathBuf,
+    pub content_hash: ContentHash,
+    pub remote_path: PathBuf,
 }
 
 impl ResolvedUpload {
-    pub(crate) fn server_path(&self) -> &Path {
+    pub fn server_path(&self) -> &Path {
         &self.remote_path
     }
 }

@@ -10,10 +10,10 @@ use anyhow::Context;
 use anyhow::Result;
 use tokio::task::JoinHandle;
 
-use crate::rpc::{
-    client::{RemoteParams, RpcClient},
-    functions::{ProbeAccess, RpcApp},
-};
+use crate::rpc::functions::{ProbeAccess, RpcApp};
+#[cfg(feature = "remote")]
+use probe_rs_rpc_client::connect;
+use probe_rs_rpc_client::{RemoteParams, RpcClient};
 
 /// Owns one RPC client and, for local mode, the in-process server task backing
 /// it. Drop or [`close`](Self::close) to release connection-scoped state.
@@ -29,7 +29,7 @@ impl DapRpcConnection {
     ) -> Result<Self> {
         #[cfg(feature = "remote")]
         if let Some((host, token)) = remote {
-            let client = crate::rpc::client::connect(host, token.as_deref())
+            let client = connect(host, token.as_deref(), &crate::util::meta::rpc_user_agent())
                 .await
                 .context("Failed to connect to remote probe-rs server")?;
             return Ok(Self {

@@ -32,12 +32,13 @@ impl ObjectMarker for TempFileHandle {
     type Object = tempfile::NamedTempFile;
 }
 
-pub mod client;
 pub mod debug_state;
 pub mod functions;
 pub mod svd;
-pub(crate) mod upload_cache;
 pub mod utils;
+
+#[cfg(test)]
+mod client_tests;
 
 pub(crate) struct ObjectStorage {
     storage: HashMap<u64, Arc<Mutex<dyn Any + Send>>>,

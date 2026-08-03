@@ -17,7 +17,7 @@ use crate::cmd::{
     },
     run::EmbeddedTestElfInfo,
 };
-use crate::rpc::{Key, RttClient, client::RpcClient};
+use crate::rpc::{Key, RttClient};
 use crate::util::cli::attach_probe as attach_probe_rpc;
 use crate::util::rtt::{DefmtProcessor, DefmtState, RttDecoder};
 use anyhow::{Result, anyhow};
@@ -26,6 +26,7 @@ use probe_rs_debug::SourceLocation;
 use probe_rs_rpc::breakpoints::SourceBreakpointLocation;
 use probe_rs_rpc::format::FormatKind;
 use probe_rs_rpc::rtt_client::ScanRegion as WireScanRegion;
+use probe_rs_rpc_client::{ResolvedUpload, RpcClient};
 use std::{any::Any, env::set_current_dir, path::Path};
 use time::UtcOffset;
 
@@ -403,11 +404,11 @@ impl SessionData {
         Ok(())
     }
 
-    /// Publish server-owned debug info from a prior [`crate::rpc::upload_cache::ResolvedUpload`].
+    /// Publish server-owned debug info from a prior [`ResolvedUpload`].
     pub(crate) async fn reload_debug_info_resolved(
         &mut self,
         core_configuration: &CoreConfig,
-        upload: &crate::rpc::upload_cache::ResolvedUpload,
+        upload: &ResolvedUpload,
     ) -> Result<(), DebuggerError> {
         let Some(core_data_index) = self
             .core_data

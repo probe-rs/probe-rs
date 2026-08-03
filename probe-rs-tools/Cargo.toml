@@ -18,12 +18,11 @@ default-run = "probe-rs"
 [features]
 default = []
 # Include server/client functionality
-remote = ["dep:tokio-tungstenite", "dep:axum", "dep:rustls", "probe-rs-rpc/remote", "probe-rs-rpc/axum"]
+remote = ["dep:axum", "probe-rs-rpc/remote", "probe-rs-rpc-client/remote"]
 
 [dependencies]
 anyhow = { workspace = true }
 base64 = "0.23"
-docsplay = { workspace = true }
 jep106 = "0.3"
 num-traits = "0.2"
 scroll = "0.13"
@@ -107,21 +106,14 @@ probe-rs-mi.workspace = true
 probe-rs-target.workspace = true
 probe-rs-espressif.workspace = true
 probe-rs-rpc = { workspace = true, features = ["clap"] }
+probe-rs-rpc-client = { workspace = true }
 
 # Server-only
 tokio = { version = "1.0", features = ["full"] }
 tokio-util = { version = "0.7", features = ["codec"] }
 futures-util = { version = "0.3" }
-rustls = { version = "0.23", default-features = false, features = [
-    "std",
-    "ring",
-], optional = true }
-tokio-tungstenite = { version = "0.30", features = [
-    "rustls-tls-webpki-roots",
-], optional = true }
 axum = { version = "0.8", features = ["ws"], optional = true }
 tempfile = "3.0"
-postcard = { version = "1.0", features = ["use-std"] }
 postcard-rpc = { version = "0.12.0", features = ["use-std"] }
 postcard-schema = { version = "0.2.0", features = ["use-std", "derive"] }
 sha2 = "0.11"

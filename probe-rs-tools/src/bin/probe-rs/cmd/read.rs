@@ -2,7 +2,7 @@ use anyhow::Context;
 use ihex::Record;
 use itertools::Itertools;
 
-use crate::rpc::client::{CoreInterface, RpcClient};
+use probe_rs_rpc_client::{CoreInterface, RpcClient};
 
 use crate::CoreOptions;
 use crate::util::cli;

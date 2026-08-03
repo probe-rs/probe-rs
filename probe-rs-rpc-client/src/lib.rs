@@ -1,10 +1,7 @@
-//! Remote client
+//! A client for the probe-rs RPC interface.
 //!
-//! The client opens a websocket connection to the host, sends a token to authenticate and
-//! then sends commands to the server. The commands are handled by the server (by the same
-//! handlers that are used for the local commands) and the output is streamed back to the client.
-//!
-//! The command output may be a result and/or a stream of messages encoded as `ServerMessage`.
+//! Programs that talk to a `probe-rs serve` server depend on this crate.
+//! Enable the `remote` feature for websocket and unix socket transport.
 
 use postcard_rpc::{
     Topic,
@@ -25,10 +22,11 @@ use std::{
     time::Duration,
 };
 
-use crate::rpc::{
-    FlashLoader, Key, RttClient, Session,
-    upload_cache::{ContentHash, ResolvedUpload, UploadCache},
-};
+mod upload_cache;
+
+use upload_cache::UploadCache;
+pub use upload_cache::{ContentHash, ResolvedUpload};
+
 use probe_rs_rpc::breakpoints::{
     BreakpointResolution, ResolveSourceBreakpointsRequest, ResolveSourceLocationsRequest,
     SourceBreakpointLocation, WireSourceLocation,
@@ -98,10 +96,11 @@ use probe_rs_rpc::{
     VariablesEndpoint, VerifyEndpoint, WriteMemory8Endpoint, WriteMemory16Endpoint,
     WriteMemory32Endpoint, WriteMemory64Endpoint,
 };
+use probe_rs_rpc::{FlashLoader, Key, RttClient, Session};
 
 /// Host and optional authentication token identifying a remote probe-rs RPC
 /// server. `None` selects a local, in-process server.
-pub(crate) type RemoteParams = Option<(String, Option<String>)>;
+pub type RemoteParams = Option<(String, Option<String>)>;
 
 #[derive(Debug, docsplay::Display, thiserror::Error)]
 pub enum TransportError {
@@ -129,10 +128,6 @@ pub enum ClientError {
     #[display("{0}")]
     Remote(RpcError),
     /// Failed to parse server URI.
-    #[cfg_attr(
-        not(feature = "remote"),
-        expect(dead_code, reason = "only constructed by the remote connect path")
-    )]
     InvalidRemoteHost,
     /// Failed to read {0}.
     FileRead(PathBuf, #[source] std::io::Error),
@@ -153,9 +148,13 @@ fn from_io_closed(_: IoClosed) -> ClientError {
 }
 
 #[cfg(feature = "remote")]
-pub async fn connect(host: &str, token: Option<&str>) -> Result<RpcClient, ClientError> {
-    use axum::http::Uri;
+pub async fn connect(
+    host: &str,
+    token: Option<&str>,
+    user_agent: &str,
+) -> Result<RpcClient, ClientError> {
     use futures_util::StreamExt as _;
+    use http::Uri;
     use probe_rs_rpc::transport::websocket::{WebsocketRx, WebsocketTx};
     use rustls::ClientConfig;
     use sha2::{Digest, Sha512};
@@ -180,10 +179,7 @@ pub async fn connect(host: &str, token: Option<&str>) -> Result<RpcClient, Clien
     // there are setups where the user uses port forwarding and the file actually needs to be
     // uploaded for correct behavior. Therefore, this check is not performed.
 
-    let req = ClientRequestBuilder::new(uri).with_header(
-        "User-Agent",
-        format!("probe-rs-tools {}", env!("PROBE_RS_LONG_VERSION")),
-    );
+    let req = ClientRequestBuilder::new(uri).with_header("User-Agent", user_agent);
 
     // TODO: implement something more secure
     let rustls_connector = ClientConfig::builder()
@@ -856,7 +852,7 @@ impl SessionInterface {
 
     /// Path-based stack trace for generic CLI callers. Uploads and parses
     /// DWARF from `path` on each request; does not use session
-    /// `crate::rpc::debug_state::ServerDebugState`. DAP stack refresh uses
+    /// `ServerDebugState`. DAP stack refresh uses
     /// [`Self::take_rich_stack_trace`] instead.
     pub async fn stack_trace(
         &self,
@@ -1091,7 +1087,7 @@ impl SessionInterface {
             .await
     }
 
-    pub(crate) async fn verify(
+    pub async fn verify(
         &self,
         loader: Key<FlashLoader>,
         on_msg: impl AsyncFnMut(ProgressEvent),
@@ -1120,7 +1116,7 @@ impl CoreInterface {
     ///
     /// Used by the RPC-backed DAP backend, which needs to synthesize a core
     /// client on every access.
-    pub(crate) fn new_for_backend(client: RpcClient, sessid: Key<Session>, core: u32) -> Self {
+    pub fn new_for_backend(client: RpcClient, sessid: Key<Session>, core: u32) -> Self {
         Self {
             sessid,
             core,
@@ -1517,7 +1513,7 @@ pub(crate) trait MultiSubscription {
     }
 }
 
-pub(crate) enum MonitorEvent {
+pub enum MonitorEvent {
     Rtt(RttEvent),
     Semihosting(SemihostingEvent),
 }
@@ -1564,30 +1560,5 @@ where
 
     async fn next(&mut self) -> Option<Self::Message> {
         self.recv().await
-    }
-}
-
-#[cfg(test)]
-mod resolve_upload_tests {
-    use super::*;
-    use crate::rpc::functions::{ProbeAccess, RpcApp};
-    use std::io::Write;
-    use tempfile::NamedTempFile;
-
-    #[tokio::test]
-    async fn local_resolve_upload_tracks_content_changes() {
-        let (_server, tx, rx) = RpcApp::create_server(16, ProbeAccess::All);
-        let client = RpcClient::new_local_from_wire(tx, rx);
-
-        let mut file = NamedTempFile::new().unwrap();
-        write!(file, "v1").unwrap();
-        let path = file.path().to_path_buf();
-
-        let first = client.resolve_upload(&path).await.unwrap();
-        write!(file, "v2").unwrap();
-        let second = client.resolve_upload(&path).await.unwrap();
-
-        assert_ne!(first.content_hash, second.content_hash);
-        assert_eq!(first.remote_path, second.remote_path);
     }
 }

@@ -1,3 +1,8 @@
+//! Wire types, endpoint tables, and transport for the probe-rs RPC protocol.
+//!
+//! Programs that implement or speak the protocol depend on this crate.
+//! The client crate is `probe-rs-rpc-client`.
+
 use std::{
     hash::{Hash, Hasher},
     marker::PhantomData,

@@ -1,11 +1,11 @@
 use std::path::PathBuf;
 
-use crate::rpc::client::RpcClient;
 use crate::util::cli;
 use crate::util::common_options::ProbeOptions;
 use crate::util::flash::CliProgressBars;
 use probe_rs_rpc::flash::VerifyResult;
 use probe_rs_rpc::format::FormatOptions;
+use probe_rs_rpc_client::RpcClient;
 
 #[derive(clap::Parser)]
 pub struct Cmd {

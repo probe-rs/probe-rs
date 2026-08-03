@@ -23,8 +23,8 @@ use std::{
 };
 use time::UtcOffset;
 
-use crate::rpc::client::RpcClient;
 use crate::util::common_options::OperationError;
+use probe_rs_rpc_client::RpcClient;
 
 #[derive(Debug, thiserror::Error)]
 pub enum DebuggerError {
@@ -103,7 +103,7 @@ impl Cmd {
 pub async fn run(
     cmd: Cmd,
     stdio_client: Option<RpcClient>,
-    remote: crate::rpc::client::RemoteParams,
+    remote: probe_rs_rpc_client::RemoteParams,
     time_offset: UtcOffset,
     log_file: Option<&Path>,
 ) -> Result<()> {
