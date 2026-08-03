@@ -20,7 +20,6 @@ shared-version = false
 default = []
 clap = ["dep:clap", "dep:parse_int"]
 remote = ["dep:tokio-tungstenite", "dep:futures-util"]
-axum = ["dep:axum", "remote"]
 
 [dependencies]
 serde = { workspace = true }
@@ -38,7 +37,6 @@ tokio-tungstenite = { version = "0.30", features = [
     "rustls-tls-webpki-roots",
 ], optional = true }
 futures-util = { version = "0.3", optional = true }
-axum = { version = "0.8", features = ["ws"], optional = true }
 
 [lints]
 workspace = true

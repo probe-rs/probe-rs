@@ -1,5 +1,3 @@
-#[cfg(feature = "axum")]
-use axum::extract::ws;
 use futures_util::{FutureExt, Sink, SinkExt, Stream, StreamExt};
 use postcard_rpc::server::{WireRxErrorKind, WireTxErrorKind};
 use std::{
@@ -105,43 +103,5 @@ where
             .send(Message::Binary(frame(&msg).freeze()))
             .await
             .map_err(|_| WireTxErrorKind::Other)
-    }
-}
-
-#[cfg(feature = "axum")]
-// Sends length-prefixed binary messages to a websocket stream
-#[cfg(feature = "axum")]
-pub struct AxumWebsocketTx<S> {
-    writer: S,
-}
-#[cfg(feature = "axum")]
-impl<S> AxumWebsocketTx<S> {
-    pub fn new(writer: S) -> Self {
-        Self { writer }
-    }
-}
-
-#[cfg(feature = "axum")]
-impl<S> Sink<Vec<u8>> for AxumWebsocketTx<S>
-where
-    S: Sink<ws::Message> + Unpin,
-{
-    type Error = S::Error;
-
-    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.writer.poll_ready_unpin(cx)
-    }
-
-    fn start_send(mut self: Pin<&mut Self>, msg: Vec<u8>) -> Result<(), Self::Error> {
-        self.writer
-            .start_send_unpin(ws::Message::Binary(frame(&msg).freeze()))
-    }
-
-    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.writer.poll_flush_unpin(cx)
-    }
-
-    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.writer.poll_close_unpin(cx)
     }
 }
