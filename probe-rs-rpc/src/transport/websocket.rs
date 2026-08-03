@@ -1,4 +1,4 @@
-#[cfg(feature = "remote")]
+#[cfg(feature = "axum")]
 use axum::extract::ws;
 use futures_util::{FutureExt, Sink, SinkExt, Stream, StreamExt};
 use postcard_rpc::server::{WireRxErrorKind, WireTxErrorKind};
@@ -12,7 +12,7 @@ use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_util::bytes::Bytes;
 
-use crate::rpc::transport::{
+use crate::transport::{
     Deframer, frame,
     memory::{PostcardReceiver, PostcardSender},
 };
@@ -83,7 +83,7 @@ pub struct WebsocketTx<S> {
     writer: Arc<Mutex<S>>,
 }
 impl<S> WebsocketTx<S> {
-    pub(crate) fn new(writer: S) -> Self {
+    pub fn new(writer: S) -> Self {
         Self {
             writer: Arc::new(Mutex::new(writer)),
         }
@@ -109,16 +109,18 @@ where
 }
 
 // Sends length-prefixed binary messages to a websocket stream
+#[cfg(feature = "axum")]
 pub struct AxumWebsocketTx<S> {
     writer: S,
 }
+#[cfg(feature = "axum")]
 impl<S> AxumWebsocketTx<S> {
-    pub(crate) fn new(writer: S) -> Self {
+    pub fn new(writer: S) -> Self {
         Self { writer }
     }
 }
 
-#[cfg(feature = "remote")]
+#[cfg(feature = "axum")]
 impl<S> Sink<Vec<u8>> for AxumWebsocketTx<S>
 where
     S: Sink<ws::Message> + Unpin,

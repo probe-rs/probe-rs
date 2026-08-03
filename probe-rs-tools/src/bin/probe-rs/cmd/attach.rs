@@ -4,11 +4,11 @@ use time::UtcOffset;
 
 use crate::cmd::run::{MonitoringOptions, NormalRunOptions};
 use crate::rpc::client::RpcClient;
-use crate::rpc::functions::format::FormatOptions;
-use crate::rpc::functions::monitor::MonitorMode;
 use crate::rpc::utils::run_loop::VectorCatchConfig;
 use crate::util::cli::{self, FileMetadata, parse_metadata, rtt_client};
 use crate::util::common_options::ProbeOptions;
+use probe_rs_rpc::format::FormatOptions;
+use probe_rs_rpc::monitor::MonitorMode;
 
 #[derive(clap::Parser)]
 #[group(skip)]

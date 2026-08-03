@@ -11,14 +11,14 @@ pub enum Mapping {
     Regex(String, String),
 }
 
-#[derive(Serialize, Deserialize, Schema, Clone)]
+#[derive(Serialize, Deserialize, Schema, Clone, Default)]
 pub struct SemihostingOptions {
     mappings: Vec<Mapping>,
 }
 
 impl SemihostingOptions {
     pub fn new() -> Self {
-        Self { mappings: vec![] }
+        Self::default()
     }
 
     pub fn mappings(&self) -> &[Mapping] {
@@ -36,7 +36,7 @@ impl SemihostingOptions {
     }
 
     pub fn add_file_regex(&mut self, re: String, to: String) -> Result<(), regex::Error> {
-        let _ = Regex::new(&re)?; // Check if it's a valid regular expression
+        let _ = Regex::new(&re)?;
         self.mappings.push(Mapping::Regex(re, to));
         Ok(())
     }

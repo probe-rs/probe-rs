@@ -1,9 +1,9 @@
 use crate::cmd::dap_server::DebuggerError;
-use crate::rpc::functions::format::FormatOptions;
 use crate::util::common_options::ProbeOptions;
 use crate::util::rtt;
 use anyhow::{Result, anyhow};
 use probe_rs::probe::{DebugProbeSelector, WireProtocol};
+use probe_rs_rpc::format::FormatOptions;
 use serde::{Deserialize, Serialize};
 use std::{env::current_dir, path::PathBuf};
 
@@ -320,7 +320,7 @@ pub struct FlashingConfig {
     #[serde(default)]
     pub(crate) verify_after_flashing: bool,
 
-    /// [`FormatOptions`] to control the flashing operation, depending on the type of binary ( [`probe_rs::flashing::Format`] ) to be flashed.
+    /// [`FormatOptions`] to control the flashing operation, depending on the type of binary (`probe_rs::flashing::loader::ImageFormat`) to be flashed.
     #[serde(default)]
     pub(crate) format_options: FormatOptions,
 }

@@ -17,22 +17,20 @@ use crate::cmd::{
     },
     run::EmbeddedTestElfInfo,
 };
-use crate::rpc::functions::format::FormatKind;
-use crate::rpc::{
-    Key, RttClient,
-    client::RpcClient,
-    functions::{breakpoints::SourceBreakpointLocation, rtt_client::ScanRegion as WireScanRegion},
-};
+use crate::rpc::{Key, RttClient, client::RpcClient};
 use crate::util::cli::attach_probe as attach_probe_rpc;
 use crate::util::rtt::{DefmtProcessor, DefmtState, RttDecoder};
 use anyhow::{Result, anyhow};
 use probe_rs::{BreakpointCause, CoreStatus, HaltReason, rtt::find_rtt_control_block_in_raw_file};
 use probe_rs_debug::SourceLocation;
+use probe_rs_rpc::breakpoints::SourceBreakpointLocation;
+use probe_rs_rpc::format::FormatKind;
+use probe_rs_rpc::rtt_client::ScanRegion as WireScanRegion;
 use std::{any::Any, env::set_current_dir, path::Path};
 use time::UtcOffset;
 
-use crate::rpc::functions::rtt_config::DataFormat;
 use crate::util::rtt::RttConfig;
+use probe_rs_rpc::rtt_config::DataFormat;
 
 /// The supported breakpoint types
 #[derive(Clone, Debug, PartialEq)]
@@ -405,7 +403,7 @@ impl SessionData {
         Ok(())
     }
 
-    /// Publish server-owned debug info from a prior [`ResolvedUpload`].
+    /// Publish server-owned debug info from a prior [`crate::rpc::upload_cache::ResolvedUpload`].
     pub(crate) async fn reload_debug_info_resolved(
         &mut self,
         core_configuration: &CoreConfig,

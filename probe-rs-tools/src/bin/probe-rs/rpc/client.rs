@@ -4,7 +4,7 @@
 //! then sends commands to the server. The commands are handled by the server (by the same
 //! handlers that are used for the local commands) and the output is streamed back to the client.
 //!
-//! The command output may be a result and/or a stream of messages encoded as [ServerMessage].
+//! The command output may be a result and/or a stream of messages encoded as `ServerMessage`.
 
 use postcard_rpc::{
     Topic,
@@ -25,76 +25,78 @@ use std::{
     time::Duration,
 };
 
-use crate::rpc::functions::format::FormatOptions;
 use crate::rpc::{
     FlashLoader, Key, RttClient, Session,
-    functions::{
-        AttachEndpoint, BootEndpoint, BuildEndpoint, ChipInfoEndpoint, CleanUpRttEndpoint,
-        ClearCoreDebugStateEndpoint, ClearRttControlBlockEndpoint, CoreClearHwBpsEndpoint,
-        CoreDumpEndpoint, CoreEnableVcEndpoint, CoreHaltEndpoint, CoreMetadataEndpoint,
-        CoreReadRegistersEndpoint, CoreRunEndpoint, CoreSetHwBpsEndpoint, CoreStatusEndpoint,
-        CoreStepEndpoint, CoreWriteRegEndpoint, CreateRttClientEndpoint, CreateTempFileEndpoint,
-        DisassembleEndpoint, EraseEndpoint, EvaluateEndpoint, FlashEndpoint,
-        GetRttChannelsEndpoint, HandleSemihostingEndpoint, ListChipFamiliesEndpoint,
-        ListProbesEndpoint, ListTestsEndpoint, LoadChipFamilyEndpoint, LoadDebugInfoEndpoint,
-        LoadSvdEndpoint, MonitorEndpoint, PollRttUpEndpoint, ProgressEventTopic, ReadBytesEndpoint,
-        ReadMemory8Endpoint, ReadMemory16Endpoint, ReadMemory32Endpoint, ReadMemory64Endpoint,
-        ResetCoreAndHaltEndpoint, ResetCoreEndpoint, ResolveSourceBreakpointsEndpoint,
-        ResolveSourceLocationsEndpoint, ResumeAllCoresEndpoint, RpcError, RpcResult,
-        RttDownEndpoint, RttTopic, RunTestEndpoint, ScopesEndpoint, SelectProbeEndpoint,
-        SemihostingTopic, SetVariableEndpoint, TakeRichStackTraceEndpoint, TakeStackTraceEndpoint,
-        TargetInfoDataTopic, TargetInfoEndpoint, TargetMetadataEndpoint, TempFileDataEndpoint,
-        TestKickoffEndpoint, TokioSpawner, VariablesEndpoint, VerifyEndpoint, WriteMemory8Endpoint,
-        WriteMemory16Endpoint, WriteMemory32Endpoint, WriteMemory64Endpoint,
-        breakpoints::{
-            BreakpointResolution, ResolveSourceBreakpointsRequest, ResolveSourceLocationsRequest,
-            SourceBreakpointLocation, WireSourceLocation,
-        },
-        chip::{ChipData, ChipFamily, ChipInfoRequest, LoadChipFamilyRequest},
-        core_ops::{
-            CoreAccessRequest, CoreBreakpointsRequest, CoreDumpRequest, CoreHaltRequest,
-            CoreReadRegistersRequest, CoreVectorCatchRequest, CoreWriteRegRequest,
-            HandleSemihostingRequest, HandleSemihostingResult, StepRequest, StepResponse,
-            WireCoreDump, WireCoreInformation, WireCoreMetadata, WireCoreStatus, WireRegisterId,
-            WireRegisterReadResult, WireRegisterValue, WireSteppingMode, WireVectorCatchCondition,
-        },
-        debug_vars::{
-            ClearCoreDebugStateRequest, EvaluateRequest, LoadSvdRequest, ScopesRequest,
-            SetVariableRequest, VariablesRequest, WireEvaluateResponse, WireScope,
-            WireSetVariableResponse, WireVariable,
-        },
-        disassemble::{DisassembleRequest, WireDisassembledInstruction},
-        file::{AppendFileRequest, TempFile},
-        flash::{
-            BootInfo, BootRequest, BuildRequest, BuildResult, DownloadOptions, EraseCommand,
-            EraseRequest, FlashRequest, ProgressEvent, VerifyRequest, VerifyResult,
-        },
-        info::{InfoEvent, TargetInfoRequest, TargetMetadataRequest, WireSessionTargetMetadata},
-        memory::{ReadBytesRequest, ReadMemoryRequest, WriteMemoryRequest},
-        monitor::{
-            MonitorExitReason, MonitorMode, MonitorOptions, MonitorRequest, RttEvent,
-            SemihostingEvent,
-        },
-        probe::{
-            AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, SelectProbeRequest,
-            SelectProbeResult,
-        },
-        reset::{ResetCoreAndHaltRequest, ResetCoreRequest},
-        resume::ResumeAllCoresRequest,
-        rtt_client::{
-            CreateRttClientRequest, PollRttUpRequest, RttChannelRequest, RttChannels,
-            RttClientData, RttDownRequest, RttPollResult, ScanRegion,
-        },
-        rtt_config::RttChannelConfig,
-        semihosting_options::SemihostingOptions,
-        stack_trace::{
-            LoadDebugInfoRequest, RichStackTraces, StackTraces, TakeRichStackTraceRequest,
-            TakeStackTraceRequest,
-        },
-        test::{ListTestsRequest, RunTestRequest, Test, TestKickoffRequest, TestResult, Tests},
-    },
-    transport::memory::{PostcardReceiver, PostcardSender, WireRx, WireTx},
     upload_cache::{ContentHash, ResolvedUpload, UploadCache},
+};
+use probe_rs_rpc::breakpoints::{
+    BreakpointResolution, ResolveSourceBreakpointsRequest, ResolveSourceLocationsRequest,
+    SourceBreakpointLocation, WireSourceLocation,
+};
+use probe_rs_rpc::chip::{ChipData, ChipFamily, ChipInfoRequest, LoadChipFamilyRequest};
+use probe_rs_rpc::core_ops::{
+    CoreAccessRequest, CoreBreakpointsRequest, CoreDumpRequest, CoreHaltRequest,
+    CoreReadRegistersRequest, CoreVectorCatchRequest, CoreWriteRegRequest,
+    HandleSemihostingRequest, HandleSemihostingResult, StepRequest, StepResponse, WireCoreDump,
+    WireCoreInformation, WireCoreMetadata, WireCoreStatus, WireRegisterId, WireRegisterReadResult,
+    WireRegisterValue, WireSteppingMode, WireVectorCatchCondition,
+};
+use probe_rs_rpc::debug_vars::{
+    ClearCoreDebugStateRequest, EvaluateRequest, LoadSvdRequest, ScopesRequest, SetVariableRequest,
+    VariablesRequest, WireEvaluateResponse, WireScope, WireSetVariableResponse, WireVariable,
+};
+use probe_rs_rpc::disassemble::{DisassembleRequest, WireDisassembledInstruction};
+use probe_rs_rpc::file::{AppendFileRequest, TempFile};
+use probe_rs_rpc::flash::{
+    BootInfo, BootRequest, BuildRequest, BuildResult, DownloadOptions, EraseCommand, EraseRequest,
+    FlashRequest, ProgressEvent, VerifyRequest, VerifyResult,
+};
+use probe_rs_rpc::format::FormatOptions;
+use probe_rs_rpc::info::{
+    InfoEvent, TargetInfoRequest, TargetMetadataRequest, WireSessionTargetMetadata,
+};
+use probe_rs_rpc::memory::{ReadBytesRequest, ReadMemoryRequest, WriteMemoryRequest};
+use probe_rs_rpc::monitor::{
+    MonitorExitReason, MonitorMode, MonitorOptions, MonitorRequest, RttEvent, SemihostingEvent,
+};
+use probe_rs_rpc::probe::{
+    AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, SelectProbeRequest,
+    SelectProbeResult,
+};
+use probe_rs_rpc::reset::{ResetCoreAndHaltRequest, ResetCoreRequest};
+use probe_rs_rpc::resume::ResumeAllCoresRequest;
+use probe_rs_rpc::rtt_client::{
+    CreateRttClientRequest, PollRttUpRequest, RttChannelRequest, RttChannels, RttClientData,
+    RttDownRequest, RttPollResult, ScanRegion,
+};
+use probe_rs_rpc::rtt_config::RttChannelConfig;
+use probe_rs_rpc::semihosting_options::SemihostingOptions;
+use probe_rs_rpc::stack_trace::{
+    LoadDebugInfoRequest, RichStackTraces, StackTraces, TakeRichStackTraceRequest,
+    TakeStackTraceRequest,
+};
+use probe_rs_rpc::test::{
+    ListTestsRequest, RunTestRequest, Test, TestKickoffRequest, TestResult, Tests,
+};
+use probe_rs_rpc::transport::memory::{PostcardReceiver, PostcardSender, WireRx, WireTx};
+use probe_rs_rpc::{
+    AttachEndpoint, BootEndpoint, BuildEndpoint, ChipInfoEndpoint, CleanUpRttEndpoint,
+    ClearCoreDebugStateEndpoint, ClearRttControlBlockEndpoint, CoreClearHwBpsEndpoint,
+    CoreDumpEndpoint, CoreEnableVcEndpoint, CoreHaltEndpoint, CoreMetadataEndpoint,
+    CoreReadRegistersEndpoint, CoreRunEndpoint, CoreSetHwBpsEndpoint, CoreStatusEndpoint,
+    CoreStepEndpoint, CoreWriteRegEndpoint, CreateRttClientEndpoint, CreateTempFileEndpoint,
+    DisassembleEndpoint, EraseEndpoint, EvaluateEndpoint, FlashEndpoint, GetRttChannelsEndpoint,
+    HandleSemihostingEndpoint, ListChipFamiliesEndpoint, ListProbesEndpoint, ListTestsEndpoint,
+    LoadChipFamilyEndpoint, LoadDebugInfoEndpoint, LoadSvdEndpoint, MonitorEndpoint,
+    PollRttUpEndpoint, ProgressEventTopic, ReadBytesEndpoint, ReadMemory8Endpoint,
+    ReadMemory16Endpoint, ReadMemory32Endpoint, ReadMemory64Endpoint, ResetCoreAndHaltEndpoint,
+    ResetCoreEndpoint, ResolveSourceBreakpointsEndpoint, ResolveSourceLocationsEndpoint,
+    ResumeAllCoresEndpoint, RpcError, RpcResult, RttDownEndpoint, RttTopic, RunTestEndpoint,
+    ScopesEndpoint, SelectProbeEndpoint, SemihostingTopic, SetVariableEndpoint,
+    TakeRichStackTraceEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint,
+    TargetMetadataEndpoint, TempFileDataEndpoint, TestKickoffEndpoint, TokioSpawner,
+    VariablesEndpoint, VerifyEndpoint, WriteMemory8Endpoint, WriteMemory16Endpoint,
+    WriteMemory32Endpoint, WriteMemory64Endpoint,
 };
 
 /// Host and optional authentication token identifying a remote probe-rs RPC
@@ -152,9 +154,9 @@ fn from_io_closed(_: IoClosed) -> ClientError {
 
 #[cfg(feature = "remote")]
 pub async fn connect(host: &str, token: Option<&str>) -> Result<RpcClient, ClientError> {
-    use crate::rpc::transport::websocket::{WebsocketRx, WebsocketTx};
     use axum::http::Uri;
     use futures_util::StreamExt as _;
+    use probe_rs_rpc::transport::websocket::{WebsocketRx, WebsocketTx};
     use rustls::ClientConfig;
     use sha2::{Digest, Sha512};
     use std::str::FromStr;
@@ -235,7 +237,7 @@ pub async fn connect(host: &str, token: Option<&str>) -> Result<RpcClient, Clien
 
 #[cfg(all(feature = "remote", unix))]
 pub async fn connect_unix(path: &str) -> Result<RpcClient, ClientError> {
-    use crate::rpc::transport::unix::{UnixStreamRx, UnixStreamTx};
+    use probe_rs_rpc::transport::unix::{UnixStreamRx, UnixStreamTx};
     use tokio::net::UnixStream;
 
     let stream = UnixStream::connect(path).await.map_err(|err| {
@@ -797,7 +799,7 @@ impl SessionInterface {
     }
 
     /// Attach the server-side RTT client and return its up/down channel
-    /// metadata. See [`get_rtt_channels`].
+    /// metadata.
     pub async fn get_rtt_channels(
         &self,
         rtt_client: Key<RttClient>,
@@ -839,7 +841,7 @@ impl SessionInterface {
     }
 
     /// Wipe a stale RTT control block from target memory, before a reset or
-    /// reflash. See [`clear_rtt_control_block`].
+    /// reflash.
     pub async fn clear_rtt_control_block(
         &self,
         rtt_client: Key<RttClient>,
@@ -854,7 +856,7 @@ impl SessionInterface {
 
     /// Path-based stack trace for generic CLI callers. Uploads and parses
     /// DWARF from `path` on each request; does not use session
-    /// [`ServerDebugState`]. DAP stack refresh uses
+    /// `crate::rpc::debug_state::ServerDebugState`. DAP stack refresh uses
     /// [`Self::take_rich_stack_trace`] instead.
     pub async fn stack_trace(
         &self,

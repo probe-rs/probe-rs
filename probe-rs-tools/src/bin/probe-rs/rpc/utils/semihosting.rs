@@ -1,5 +1,3 @@
-use crate::rpc::functions::monitor::SemihostingEvent;
-use crate::rpc::functions::semihosting_options::{Mapping, SemihostingOptions};
 use probe_rs::{
     Core,
     semihosting::{
@@ -7,6 +5,8 @@ use probe_rs::{
         SeekRequest, SemihostingCommand, WriteRequest,
     },
 };
+use probe_rs_rpc::monitor::SemihostingEvent;
+use probe_rs_rpc::semihosting_options::{Mapping, SemihostingOptions};
 #[cfg(target_family = "unix")]
 use std::os::unix::net::UnixStream;
 use std::{

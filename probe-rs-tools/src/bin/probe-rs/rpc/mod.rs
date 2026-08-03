@@ -1,28 +1,16 @@
 use std::{
     any::Any,
     collections::{HashMap, HashSet},
-    hash::{Hash, Hasher},
     marker::PhantomData,
     ops::DerefMut,
-    sync::{
-        Arc,
-        atomic::{AtomicU64, Ordering},
-    },
+    sync::Arc,
 };
 
-use postcard_schema::{
-    Schema,
-    schema::{DataModelType, NamedType, NamedValue},
-};
 use probe_rs::config::Registry;
-use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 
-pub struct Session;
-pub struct FlashLoader;
-pub struct RttClient;
-pub struct TempFileHandle;
+pub use probe_rs_rpc::{FlashLoader, Key, RttClient, Session, TempFileHandle};
 
 pub trait ObjectMarker: 'static {
     type Object: Any + Send;
@@ -48,80 +36,8 @@ pub mod client;
 pub mod debug_state;
 pub mod functions;
 pub mod svd;
-pub mod transport;
 pub(crate) mod upload_cache;
 pub mod utils;
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Key<T> {
-    key: u64,
-    marker: PhantomData<T>,
-}
-
-impl<T> Eq for Key<T> {}
-impl<T> PartialEq for Key<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.key == other.key
-    }
-}
-impl<T> Hash for Key<T> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.key.hash(state);
-    }
-}
-
-unsafe impl<T> Send for Key<T> {}
-unsafe impl<T> Sync for Key<T> {}
-
-impl<T> Schema for Key<T> {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "Key<T>",
-        ty: &DataModelType::Struct(&[
-            &NamedValue {
-                name: "key",
-                ty: &NamedType {
-                    name: "u64",
-                    ty: &DataModelType::U64,
-                },
-            },
-            &NamedValue {
-                name: "marker",
-                ty: &NamedType {
-                    name: "PhantomData<T>",
-                    ty: &DataModelType::UnitStruct,
-                },
-            },
-        ]),
-    };
-}
-
-impl<T> Clone for Key<T> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl<T> Copy for Key<T> {}
-
-impl<T> Key<T> {
-    fn new() -> Self {
-        static COUNTER: AtomicU64 = AtomicU64::new(0);
-        Self {
-            key: COUNTER.fetch_add(1, Ordering::Relaxed),
-            marker: PhantomData,
-        }
-    }
-}
-
-#[cfg(test)]
-impl<T> Key<T> {
-    pub fn test(id: u64) -> Self {
-        Self {
-            key: id,
-            marker: PhantomData,
-        }
-    }
-}
 
 pub(crate) struct ObjectStorage {
     storage: HashMap<u64, Arc<Mutex<dyn Any + Send>>>,
@@ -140,7 +56,7 @@ impl<T: Any + Send> ObjectStorageSlot<T> {
         })
     }
 
-    /// Blocking variant of [`get`]; only use in synchronous contexts.
+    /// Blocking variant of [`ObjectStorageSlot::get`]; only use in synchronous contexts.
     pub fn get_blocking(&self) -> impl DerefMut<Target = T> + Send + use<T> {
         let guard = self.obj.clone().blocking_lock_owned();
         tokio::sync::OwnedMutexGuard::map(guard, |e: &mut (dyn Any + Send)| {
@@ -158,13 +74,13 @@ impl ObjectStorage {
 
     pub fn store_object<M: ObjectMarker>(&mut self, obj: M::Object) -> Key<M> {
         let key = Key::new();
-        self.storage.insert(key.key, Arc::new(Mutex::new(obj)));
+        self.storage.insert(key.id(), Arc::new(Mutex::new(obj)));
         key
     }
 
     /// Ensures locks on `ObjectStorage` are held for as short a time as possible.
     pub fn cell<M: ObjectMarker>(&self, key: Key<M>) -> ObjectStorageSlot<M::Object> {
-        let obj = self.storage.get(&key.key).unwrap();
+        let obj = self.storage.get(&key.id()).unwrap();
         ObjectStorageSlot {
             obj: obj.clone(),
             _type: PhantomData,

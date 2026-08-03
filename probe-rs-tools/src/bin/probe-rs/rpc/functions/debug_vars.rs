@@ -1,92 +1,15 @@
-use crate::rpc::{
-    Key, Session,
-    functions::{RpcContext, RpcResult},
-};
 use postcard_rpc::header::VarHeader;
-use postcard_schema::Schema;
 use probe_rs_debug::{
     DebugInfo, DebugRegisters, ObjectRef, StackFrameInfo, Variable, VariableCache, VariableName,
 };
-use serde::{Deserialize, Serialize};
+use probe_rs_rpc::debug_vars::{
+    ClearCoreDebugStateRequest, EvaluateRequest, EvaluateResponse, LoadSvdRequest, LoadSvdResponse,
+    ScopesRequest, ScopesResponse, SetVariableRequest, SetVariableResult, VariablesRequest,
+    VariablesResponse, WireEvaluateResponse, WireScope, WireSetVariableResponse, WireVariable,
+};
 
-#[derive(Serialize, Deserialize, Schema)]
-pub struct ScopesRequest {
-    pub sessid: Key<Session>,
-    pub core: u32,
-    pub frame_id: u32,
-}
-
-#[derive(Serialize, Deserialize, Schema, Clone)]
-pub struct WireScope {
-    pub name: String,
-    pub presentation_hint: Option<String>,
-    pub variables_reference: i64,
-    pub expensive: bool,
-    pub line: Option<i64>,
-    pub column: Option<i64>,
-}
-
-pub type ScopesResponse = crate::rpc::functions::RpcResult<Vec<WireScope>>;
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct VariablesRequest {
-    pub sessid: Key<Session>,
-    pub core: u32,
-    pub variables_reference: u32,
-    pub filter: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct ClearCoreDebugStateRequest {
-    pub sessid: Key<Session>,
-    pub core: u32,
-}
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct LoadSvdRequest {
-    pub sessid: Key<Session>,
-    pub core: u32,
-    /// Server-side path to the CMSIS-SVD file (the client uploads it via the
-    /// temp-file endpoints, then passes the resulting path here), or `None`
-    /// to remove the core's current SVD state.
-    pub path: Option<String>,
-}
-
-pub type LoadSvdResponse = crate::rpc::functions::RpcResult<()>;
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct EvaluateRequest {
-    pub sessid: Key<Session>,
-    pub core: u32,
-    pub frame_id: Option<u32>,
-    pub expression: String,
-}
-
-#[derive(Serialize, Deserialize, Schema, Clone)]
-pub struct WireEvaluateResponse {
-    pub result: String,
-    pub type_: Option<String>,
-    pub variables_reference: i64,
-    pub named_variables: Option<i64>,
-    pub indexed_variables: Option<i64>,
-    pub memory_reference: Option<String>,
-}
-
-pub type EvaluateResponse = crate::rpc::functions::RpcResult<WireEvaluateResponse>;
-
-#[derive(Serialize, Deserialize, Schema, Clone)]
-pub struct WireVariable {
-    pub name: String,
-    pub evaluate_name: Option<String>,
-    pub memory_reference: Option<String>,
-    pub indexed_variables: Option<i64>,
-    pub named_variables: Option<i64>,
-    pub type_: Option<String>,
-    pub value: String,
-    pub variables_reference: i64,
-}
-
-pub type VariablesResponse = crate::rpc::functions::RpcResult<Vec<WireVariable>>;
+use crate::rpc::functions::{RpcContext, convert::lift};
+use probe_rs_rpc::RpcResult;
 
 /// Mirrors `request_helpers::get_variable_reference` for the server-side path.
 fn variable_reference(parent: &Variable, cache: &VariableCache) -> (ObjectRef, i64, i64) {
@@ -199,7 +122,7 @@ pub async fn variables(
     // `!Send`, so it must not be held across the `debug_states().lock().await`
     // (the spawned server future must remain `Send`).
     let mut session = ctx.session(request.sessid).await;
-    let mut core = session.core(request.core as usize)?;
+    let mut core = lift(session.core(request.core as usize))?;
 
     let Some(state) = guard.get_mut(&request.sessid) else {
         Err("No debug state for session")?
@@ -304,7 +227,7 @@ pub async fn variables(
         && !variable_cache.has_children(parent)
         && let Some(frame_info) = frame_info
     {
-        debug_info.cache_deferred_variables(variable_cache, &mut core, parent, frame_info)?;
+        lift(debug_info.cache_deferred_variables(variable_cache, &mut core, parent, frame_info))?;
     }
 
     Ok(variable_cache
@@ -338,7 +261,7 @@ pub async fn clear_core_debug_state(
     ctx: &mut RpcContext,
     _header: VarHeader,
     request: ClearCoreDebugStateRequest,
-) -> crate::rpc::functions::RpcResult<()> {
+) -> RpcResult<()> {
     let states = ctx.debug_states();
     let mut guard = states.lock().await;
     if let Some(state) = guard.get_mut(&request.sessid) {
@@ -368,32 +291,11 @@ pub async fn load_svd(
         }
         Err(error) => {
             state.replace_svd(request.core as usize, None);
-            Err(error.into())
+            Err(crate::rpc::functions::convert::rpc_error_debug(error))
         }
     })
     .await
 }
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct SetVariableRequest {
-    pub sessid: Key<Session>,
-    pub core: u32,
-    pub parent_key: i64,
-    pub name: String,
-    pub value: String,
-}
-
-#[derive(Serialize, Deserialize, Schema, Clone)]
-pub struct WireSetVariableResponse {
-    pub value: String,
-    pub type_: Option<String>,
-    pub variables_reference: i64,
-    pub named_variables: Option<i64>,
-    pub indexed_variables: Option<i64>,
-    pub memory_reference: Option<String>,
-}
-
-pub type SetVariableResult = RpcResult<WireSetVariableResponse>;
 
 /// Set a local/static variable's value server-side. The client only relays
 /// the parent key, name, and new value. Searches per-frame locals then
@@ -408,7 +310,7 @@ pub async fn set_variable(
     let mut guard = states.lock().await;
 
     let mut session = ctx.session(request.sessid).await;
-    let mut core = session.core(request.core as usize)?;
+    let mut core = lift(session.core(request.core as usize))?;
 
     let Some(state) = guard.get_mut(&request.sessid) else {
         Err("No debug state for session")?
@@ -512,7 +414,7 @@ pub async fn evaluate(
     };
 
     let mut session = ctx.session(request.sessid).await;
-    let mut core = session.core(request.core as usize)?;
+    let mut core = lift(session.core(request.core as usize))?;
 
     let Some(state) = guard.get_mut(&request.sessid) else {
         Err("No debug state for session")?

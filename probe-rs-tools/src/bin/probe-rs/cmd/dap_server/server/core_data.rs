@@ -2,8 +2,8 @@ use std::any::Any;
 
 use super::session_data;
 use crate::cmd::dap_server::debug_adapter::dap::repl_commands::ReplCommand;
-use crate::rpc::functions::rtt_client::ScanRegion as WireScanRegion;
 use crate::rpc::{Key, RttClient};
+use probe_rs_rpc::rtt_client::ScanRegion as WireScanRegion;
 
 /// `(channel number, channel name)` pairs returned while attaching to RTT.
 pub(crate) type ChannelNames = Vec<(u32, String)>;

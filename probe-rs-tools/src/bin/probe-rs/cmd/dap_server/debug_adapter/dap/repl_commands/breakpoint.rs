@@ -17,7 +17,7 @@ use crate::cmd::dap_server::{
     server::core_data::CoreData,
     server::session_data::{ActiveBreakpoint, BreakpointType, SourceLocationScope},
 };
-use crate::rpc::functions::breakpoints::SourceBreakpointLocation;
+use probe_rs_rpc::breakpoints::SourceBreakpointLocation;
 
 #[distributed_slice(REPL_COMMANDS)]
 static BREAK: ReplCommand = ReplCommand {

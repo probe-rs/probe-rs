@@ -1,296 +1,49 @@
 //! RPC endpoints for [`probe_rs::Core`] operations.
 
 use std::num::NonZeroU32;
-use std::ops::Range;
 use std::time::Duration;
 
 use postcard_rpc::header::VarHeader;
-use postcard_schema::Schema;
-use serde::{Deserialize, Serialize};
-
-use crate::rpc::{
-    Key, Session,
-    functions::{NoResponse, RpcContext, RpcError, RpcResult, rtt_config::DataFormat},
+use probe_rs_rpc::core_ops::{
+    CoreAccessRequest, CoreBreakpointsRequest, CoreDumpRequest, CoreHaltRequest,
+    CoreReadRegistersRequest, CoreVectorCatchRequest, CoreWriteRegRequest,
+    HandleSemihostingRequest, HandleSemihostingResponse, HandleSemihostingResult, StepRequest,
+    StepResponse, StepResult, WireBreakpointCause, WireCoreDump, WireCoreInformation,
+    WireCoreMetadata, WireCoreStatus, WireCoreType, WireExitErrorDetails, WireHaltReason,
+    WireInstructionSet, WireRegisterId, WireRegisterReadResult, WireRegisterValue,
+    WireSemihostingCommand, WireSemihostingUiEvent, WireSteppingMode, WireVectorCatchCondition,
 };
-
-/// Common request fields for addressing a single core.
-#[derive(Serialize, Deserialize, Schema, Clone)]
-pub struct CoreAccessRequest {
-    pub sessid: Key<Session>,
-    pub core: u32,
-}
-
-/// Live core properties needed to select the matching static register file.
-#[derive(Debug, Serialize, Deserialize, Schema, Clone, Copy, PartialEq, Eq)]
-pub struct WireCoreMetadata {
-    pub fpu_support: bool,
-    pub floating_point_register_count: Option<u64>,
-}
-
-#[derive(Serialize, Deserialize, Schema, Clone)]
-pub struct CoreHaltRequest {
-    pub sessid: Key<Session>,
-    pub core: u32,
-    pub timeout: Duration,
-}
-
-#[derive(Serialize, Deserialize, Schema, Clone)]
-pub struct CoreWriteRegRequest {
-    pub sessid: Key<Session>,
-    pub core: u32,
-    pub id: WireRegisterId,
-    pub value: WireRegisterValue,
-}
-
-#[derive(Serialize, Deserialize, Schema, Clone)]
-pub struct CoreReadRegistersRequest {
-    pub sessid: Key<Session>,
-    pub core: u32,
-    pub ids: Vec<WireRegisterId>,
-}
-
-/// One entry in a bulk-register-read response.
-///
-/// Per-register failures are reported in place so that a single unreadable
-/// register does not abort the whole request (reading "all" registers
-/// typically touches a few that are context-dependent, e.g. FP registers on
-/// a core without FPU enabled).
-#[derive(Serialize, Deserialize, Schema, Clone)]
-pub struct WireRegisterReadResult {
-    pub id: WireRegisterId,
-    pub result: Result<WireRegisterValue, RpcError>,
-}
-
-#[derive(Serialize, Deserialize, Schema, Clone)]
-pub struct CoreBreakpointsRequest {
-    pub sessid: Key<Session>,
-    pub core: u32,
-    pub addresses: Vec<u64>,
-}
-
-#[derive(Serialize, Deserialize, Schema, Clone)]
-pub struct CoreVectorCatchRequest {
-    pub sessid: Key<Session>,
-    pub core: u32,
-    pub condition: WireVectorCatchCondition,
-}
-
-// -- wire types ---------------------------------------------------------------
-
-#[derive(Debug, Serialize, Deserialize, Schema, Copy, Clone, PartialEq, Eq)]
-pub struct WireRegisterId(pub u16);
-
-#[derive(Debug, Serialize, Deserialize, Schema, Copy, Clone, PartialEq)]
-pub enum WireRegisterValue {
-    U32(u32),
-    U64(u64),
-    U128(u128),
-}
-
-#[derive(Debug, Serialize, Deserialize, Schema, Copy, Clone)]
-pub struct WireCoreInformation {
-    pub pc: u64,
-}
-
-#[derive(Debug, Serialize, Deserialize, Schema, Copy, Clone, PartialEq, Eq)]
-pub enum WireCoreStatus {
-    Running,
-    Halted(WireHaltReason),
-    LockedUp,
-    Sleeping,
-    Unknown,
-}
-
-#[derive(Debug, Serialize, Deserialize, Schema, Copy, Clone, PartialEq, Eq)]
-pub enum WireHaltReason {
-    Multiple,
-    Breakpoint(WireBreakpointCause),
-    Exception,
-    Watchpoint,
-    Step,
-    Request,
-    External,
-    Unknown,
-}
-
-/// Reduced breakpoint cause that does not embed the full
-/// [`SemihostingCommand`] payload. The DAP backend only needs to know that a
-/// semihosting halt occurred; the server handles the command via the
-/// monitor/event channels.
-#[derive(Debug, Serialize, Deserialize, Schema, Copy, Clone, PartialEq, Eq)]
-pub enum WireBreakpointCause {
-    Hardware,
-    Software,
-    Unknown,
-    /// The target requested a semihosting operation. The operation kind is
-    /// serialized as an opcode; parameters stay on the server side and are
-    /// surfaced through the existing semihosting event channels when needed.
-    Semihosting(WireSemihostingCommand),
-}
-
-/// Classification of a semihosting command carried over the wire.
-///
-/// The full [`SemihostingCommand`] payload carries pointers into target
-/// memory and cannot be transported over RPC on its own. We specialise the
-/// variants the DAP backend actually needs on the client side:
-///
-/// * [`Self::ExitSuccess`] / [`Self::ExitError`] reproduce the user-visible
-///   "Application has exited with …" message.
-/// * [`Self::GetCommandLine`] carries the target address of the command-line
-///   block so the client can reconstruct a real
-///   [`probe_rs::semihosting::GetCommandLineRequest`] (via
-///   [`Buffer::from_block_at`](probe_rs::semihosting::Buffer::from_block_at))
-///   and drive the `write_command_line_to_target` handshake through the
-///   regular [`probe_rs::CoreInterface`] / memory RPCs.
-///
-/// Everything else is surfaced as [`Self::Other`]; the server still handles
-/// its target-memory interactions locally.
-#[derive(Debug, Serialize, Deserialize, Schema, Copy, Clone, PartialEq, Eq)]
-pub enum WireSemihostingCommand {
-    ExitSuccess,
-    ExitError(WireExitErrorDetails),
-    GetCommandLine { block_address: u32 },
-    Other,
-}
-
-/// Plain-old-data copy of [`ExitErrorDetails`] for the wire.
-#[derive(Debug, Serialize, Deserialize, Schema, Copy, Clone, PartialEq, Eq)]
-pub struct WireExitErrorDetails {
-    pub reason: u32,
-    pub exit_status: Option<u32>,
-    pub subcode: Option<u32>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Schema, Copy, Clone, PartialEq, Eq)]
-pub enum WireVectorCatchCondition {
-    HardFault,
-    CoreReset,
-    SecureFault,
-    All,
-    Svc,
-    Hlt,
-}
-
-#[derive(Debug, Serialize, Deserialize, Schema, Copy, Clone, PartialEq, Eq)]
-pub enum WireInstructionSet {
-    Thumb2,
-    A32,
-    A64,
-    RV32,
-    RV32C,
-    RV64,
-    RV64C,
-    Xtensa,
-}
-
-#[derive(Serialize, Deserialize, Schema, Clone, Copy)]
-pub enum WireSteppingMode {
-    StepInstruction,
-    OverStatement,
-    IntoStatement,
-    OutOfStatement,
-}
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct StepRequest {
-    pub sessid: Key<Session>,
-    pub core: u32,
-    pub mode: WireSteppingMode,
-}
-
-#[derive(Serialize, Deserialize, Schema, Clone)]
-pub struct StepResponse {
-    pub status: WireCoreStatus,
-    pub program_counter: u64,
-    pub warning: Option<String>,
-}
-
-pub type StepResult = RpcResult<StepResponse>;
-
-// -- core dump ---------------------------------------------------------------
-
-#[derive(Serialize, Deserialize, Schema, Clone)]
-pub struct CoreDumpRequest {
-    pub sessid: Key<Session>,
-    pub core: u32,
-    pub ranges: Vec<Range<u64>>,
-}
-
-/// Wire form of [`probe_rs::CoreDump`]. The client reconstructs a `CoreDump`
-/// from these fields.
-#[derive(Serialize, Deserialize, Schema, Clone)]
-pub struct WireCoreDump {
-    pub registers: Vec<(WireRegisterId, WireRegisterValue)>,
-    pub data: Vec<(Range<u64>, Vec<u8>)>,
-    pub instruction_set: WireInstructionSet,
-    pub supports_native_64bit_access: bool,
-    pub core_type: WireCoreType,
-    pub fpu_support: bool,
-    pub floating_point_register_count: Option<u64>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Schema, Clone, Copy, PartialEq, Eq)]
-pub enum WireCoreType {
-    Armv6m,
-    Armv7a,
-    Armv7r,
-    Armv7m,
-    Armv7em,
-    Armv8a,
-    Armv8m,
-    Riscv,
-    Riscv64,
-    Xtensa,
-}
-
-// -- semihosting -------------------------------------------------------------
-
-/// UI event produced by server-side semihosting handling, to be replayed on
-/// the client so the DAP UI behaves as if the call ran locally.
-#[derive(Serialize, Deserialize, Schema, Clone)]
-pub enum WireSemihostingUiEvent {
-    /// Open an RTT window for a newly-allocated semihosting file handle.
-    RttWindow {
-        handle: u32,
-        path: String,
-        format: DataFormat,
-    },
-    /// Write a line to the DAP console.
-    LogToConsole(String),
-    /// Emit RTT output for a previously-opened handle.
-    RttOutput { handle: u32, data: String },
-}
-
-#[derive(Serialize, Deserialize, Schema, Clone)]
-pub struct HandleSemihostingRequest {
-    pub sessid: Key<Session>,
-    pub core: u32,
-}
-
-#[derive(Serialize, Deserialize, Schema, Clone)]
-pub struct HandleSemihostingResult {
-    pub status: WireCoreStatus,
-    pub events: Vec<WireSemihostingUiEvent>,
-}
-
-pub type HandleSemihostingResponse = RpcResult<HandleSemihostingResult>;
-
-// -- handlers -----------------------------------------------------------------
+use probe_rs_rpc::rtt_config::DataFormat;
 
 use probe_rs::{
     BreakpointCause, CoreDump, CoreStatus, HaltReason, RegisterId, RegisterValue,
-    VectorCatchCondition, semihosting::SemihostingCommand,
+    semihosting::SemihostingCommand,
 };
-use probe_rs_debug::{DebugError, SteppingMode};
+use probe_rs_debug::DebugError;
 
 use crate::rpc::debug_state::{CoreSemihostingState, SemihostingFile};
+use crate::rpc::functions::{RpcContext, convert::lift};
+use probe_rs_rpc::{NoResponse, RpcError, RpcResult};
+
+macro_rules! probe_rs_try {
+    ($e:expr) => {
+        match $e {
+            Ok(v) => v,
+            Err(e) => return Err($crate::rpc::functions::convert::rpc_error_probe_rs(e)),
+        }
+    };
+}
 
 macro_rules! with_core {
     ($ctx:expr, $sessid:expr, $core:expr, |$core_var:ident| $body:block) => {{
         let mut session = $ctx.session($sessid).await;
-        let mut $core_var = session.core($core as usize)?;
-        let result: Result<_, probe_rs::Error> = $body;
-        result
+        let mut $core_var = match session.core($core as usize) {
+            Ok(core) => core,
+            Err(e) => {
+                return Err($crate::rpc::functions::convert::rpc_error_probe_rs(e));
+            }
+        };
+        $body
     }};
 }
 
@@ -299,8 +52,10 @@ pub async fn core_status(
     _header: VarHeader,
     request: CoreAccessRequest,
 ) -> RpcResult<WireCoreStatus> {
-    let status = with_core!(ctx, request.sessid, request.core, |core| { core.status() })?;
-    Ok(status.into())
+    let status = with_core!(ctx, request.sessid, request.core, |core| {
+        probe_rs_try!(core.status())
+    });
+    Ok(convert::to_wire_core_status(status))
 }
 
 pub async fn core_halt(
@@ -309,9 +64,9 @@ pub async fn core_halt(
     request: CoreHaltRequest,
 ) -> RpcResult<WireCoreInformation> {
     let info = with_core!(ctx, request.sessid, request.core, |core| {
-        core.halt(request.timeout)
-    })?;
-    Ok(info.into())
+        probe_rs_try!(core.halt(request.timeout))
+    });
+    Ok(convert::to_wire_core_information(info))
 }
 
 pub async fn core_run(
@@ -319,7 +74,9 @@ pub async fn core_run(
     _header: VarHeader,
     request: CoreAccessRequest,
 ) -> NoResponse {
-    with_core!(ctx, request.sessid, request.core, |core| { core.run() })?;
+    with_core!(ctx, request.sessid, request.core, |core| {
+        probe_rs_try!(core.run());
+    });
     Ok(())
 }
 
@@ -337,23 +94,25 @@ pub async fn core_step(
         .await;
 
     let mut session = ctx.session(request.sessid).await;
-    let mut core = session.core(request.core as usize)?;
+    let mut core = lift(session.core(request.core as usize))?;
 
-    let stepping_mode = SteppingMode::from(request.mode);
+    let stepping_mode = convert::from_wire_stepping_mode(request.mode);
     let debug_info_ref = debug_info.as_deref();
     match stepping_mode.step(&mut core, debug_info_ref) {
         Ok((status, pc)) => Ok(StepResponse {
-            status: status.into(),
+            status: convert::to_wire_core_status(status),
             program_counter: pc,
             warning: None,
         }),
         Err(DebugError::WarnAndContinue { message }) => {
-            let status = core.status()?;
-            let pc: u64 = core
-                .read_core_reg::<RegisterValue>(core.program_counter().id())?
-                .try_into()?;
+            let status = lift(core.status())?;
+            let pc: u64 = lift(core.read_core_reg::<RegisterValue>(core.program_counter().id()))?
+                .try_into()
+                .map_err(|e| {
+                    crate::rpc::functions::convert::rpc_error_anyhow_from(anyhow::anyhow!("{e:?}"))
+                })?;
             Ok(StepResponse {
-                status: status.into(),
+                status: convert::to_wire_core_status(status),
                 program_counter: pc,
                 warning: Some(message),
             })
@@ -370,12 +129,11 @@ pub async fn core_write_reg(
     _header: VarHeader,
     request: CoreWriteRegRequest,
 ) -> NoResponse {
-    let id: RegisterId = request.id.into();
-    let value: RegisterValue = request.value.into();
+    let id = convert::from_wire_register_id(request.id);
+    let value = convert::from_wire_register_value(request.value);
     with_core!(ctx, request.sessid, request.core, |core| {
-        core.write_core_reg(id, value)?;
-        Ok(())
-    })?;
+        probe_rs_try!(core.write_core_reg(id, value));
+    });
     Ok(())
 }
 
@@ -402,13 +160,13 @@ pub async fn core_set_hw_bps(
                         seen.insert(*address);
                         Ok(())
                     }
-                    Err(error) => Err(RpcError::from(error)),
+                    Err(error) => Err(crate::rpc::functions::convert::rpc_error_probe_rs(error)),
                 }
             };
             out.push(result);
         }
-        Ok(out)
-    })?;
+        out
+    });
     Ok(results)
 }
 
@@ -419,15 +177,14 @@ pub async fn core_clear_hw_bps(
 ) -> NoResponse {
     with_core!(ctx, request.sessid, request.core, |core| {
         for address in request.addresses {
-            core.clear_hw_breakpoint(address).or_else(|e| match e {
+            probe_rs_try!(core.clear_hw_breakpoint(address).or_else(|e| match e {
                 probe_rs::Error::BreakpointOperation(probe_rs::BreakpointError::NotFound(_)) => {
                     Ok(())
                 }
                 e => Err(e),
-            })?;
+            }));
         }
-        Ok(())
-    })?;
+    });
     Ok(())
 }
 
@@ -436,11 +193,10 @@ pub async fn core_enable_vc(
     _header: VarHeader,
     request: CoreVectorCatchRequest,
 ) -> NoResponse {
-    let cond: VectorCatchCondition = request.condition.into();
+    let cond = convert::from_wire_vector_catch_condition(request.condition);
     with_core!(ctx, request.sessid, request.core, |core| {
-        core.enable_vector_catch(cond)?;
-        Ok(())
-    })?;
+        probe_rs_try!(core.enable_vector_catch(cond));
+    });
     Ok(())
 }
 
@@ -450,17 +206,19 @@ pub async fn core_metadata(
     request: CoreAccessRequest,
 ) -> RpcResult<WireCoreMetadata> {
     let metadata = with_core!(ctx, request.sessid, request.core, |core| {
-        let fpu_support = core.fpu_support()?;
-        let floating_point_register_count = fpu_support
-            .then(|| core.floating_point_register_count())
-            .transpose()?
-            .map(|count| count as u64);
+        let fpu_support = probe_rs_try!(core.fpu_support());
+        let floating_point_register_count = probe_rs_try!(
+            fpu_support
+                .then(|| core.floating_point_register_count())
+                .transpose()
+        )
+        .map(|count| count as u64);
 
-        Ok(WireCoreMetadata {
+        WireCoreMetadata {
             fpu_support,
             floating_point_register_count,
-        })
-    })?;
+        }
+    });
     Ok(metadata)
 }
 
@@ -474,17 +232,22 @@ pub async fn core_read_registers(
     _header: VarHeader,
     request: CoreReadRegistersRequest,
 ) -> RpcResult<Vec<WireRegisterReadResult>> {
-    let ids: Vec<RegisterId> = request.ids.iter().copied().map(Into::into).collect();
+    let ids: Vec<RegisterId> = request
+        .ids
+        .iter()
+        .copied()
+        .map(convert::from_wire_register_id)
+        .collect();
     let values = with_core!(ctx, request.sessid, request.core, |core| {
         let mut out: Vec<Result<RegisterValue, RpcError>> = Vec::with_capacity(ids.len());
         for id in &ids {
             out.push(
                 core.read_core_reg::<RegisterValue>(*id)
-                    .map_err(RpcError::from),
+                    .map_err(crate::rpc::functions::convert::rpc_error_probe_rs),
             );
         }
-        Ok(out)
-    })?;
+        out
+    });
 
     Ok(request
         .ids
@@ -492,7 +255,7 @@ pub async fn core_read_registers(
         .zip(values)
         .map(|(id, result)| WireRegisterReadResult {
             id,
-            result: result.map(Into::into),
+            result: result.map(convert::to_wire_register_value),
         })
         .collect())
 }
@@ -503,20 +266,25 @@ pub async fn core_dump(
     request: CoreDumpRequest,
 ) -> RpcResult<WireCoreDump> {
     let mut session = ctx.session(request.sessid).await;
-    let mut core = session.core(request.core as usize)?;
+    let mut core = lift(session.core(request.core as usize))?;
 
-    let dump = CoreDump::dump_core(&mut core, request.ranges)?;
+    let dump = lift(CoreDump::dump_core(&mut core, request.ranges))?;
 
     Ok(WireCoreDump {
         registers: dump
             .registers
             .into_iter()
-            .map(|(id, v)| (id.into(), v.into()))
+            .map(|(id, v)| {
+                (
+                    convert::to_wire_register_id(id),
+                    convert::to_wire_register_value(v),
+                )
+            })
             .collect(),
         data: dump.data,
-        instruction_set: dump.instruction_set.into(),
+        instruction_set: convert::to_wire_instruction_set(dump.instruction_set),
         supports_native_64bit_access: dump.supports_native_64bit_access,
-        core_type: dump.core_type.into(),
+        core_type: convert::to_wire_core_type(dump.core_type),
         fpu_support: dump.fpu_support,
         floating_point_register_count: dump.floating_point_register_count.map(|c| c as u64),
     })
@@ -535,16 +303,16 @@ pub async fn core_handle_semihosting(
     let mut guard = states.lock().await;
 
     let mut session = ctx.session(request.sessid).await;
-    let mut core = session.core(request.core as usize)?;
+    let mut core = lift(session.core(request.core as usize))?;
 
-    let status = core.status()?;
+    let status = lift(core.status())?;
     let command = match status {
         CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(c))) => Some(c),
         _ => None,
     };
     let Some(command) = command else {
         return Ok(HandleSemihostingResult {
-            status: status.into(),
+            status: convert::to_wire_core_status(status),
             events: vec![],
         });
     };
@@ -555,9 +323,9 @@ pub async fn core_handle_semihosting(
     let sh = state.semihosting_state(request.core as usize);
 
     let mut events = Vec::new();
-    let result = handle_semihosting_impl(&mut core, sh, command, &mut events)?;
+    let result = lift(handle_semihosting_impl(&mut core, sh, command, &mut events))?;
     Ok(HandleSemihostingResult {
-        status: result.into(),
+        status: convert::to_wire_core_status(result),
         events,
     })
 }
@@ -695,118 +463,126 @@ pub(crate) mod convert {
     };
     use probe_rs_debug::SteppingMode;
 
-    impl From<RegisterId> for WireRegisterId {
-        fn from(value: RegisterId) -> Self {
-            WireRegisterId(value.0)
+    pub(crate) fn to_wire_register_id(value: RegisterId) -> WireRegisterId {
+        WireRegisterId(value.0)
+    }
+
+    pub(crate) fn from_wire_register_id(value: WireRegisterId) -> RegisterId {
+        RegisterId(value.0)
+    }
+
+    pub(crate) fn to_wire_register_value(value: RegisterValue) -> WireRegisterValue {
+        match value {
+            RegisterValue::U32(v) => WireRegisterValue::U32(v),
+            RegisterValue::U64(v) => WireRegisterValue::U64(v),
+            RegisterValue::U128(v) => WireRegisterValue::U128(v),
         }
     }
 
-    impl From<WireRegisterId> for RegisterId {
-        fn from(value: WireRegisterId) -> Self {
-            RegisterId(value.0)
+    pub(crate) fn from_wire_register_value(value: WireRegisterValue) -> RegisterValue {
+        match value {
+            WireRegisterValue::U32(v) => RegisterValue::U32(v),
+            WireRegisterValue::U64(v) => RegisterValue::U64(v),
+            WireRegisterValue::U128(v) => RegisterValue::U128(v),
         }
     }
 
-    impl From<RegisterValue> for WireRegisterValue {
-        fn from(value: RegisterValue) -> Self {
-            match value {
-                RegisterValue::U32(v) => WireRegisterValue::U32(v),
-                RegisterValue::U64(v) => WireRegisterValue::U64(v),
-                RegisterValue::U128(v) => WireRegisterValue::U128(v),
+    pub(crate) fn to_wire_core_information(value: CoreInformation) -> WireCoreInformation {
+        WireCoreInformation { pc: value.pc }
+    }
+
+    pub(crate) fn from_wire_core_information(value: WireCoreInformation) -> CoreInformation {
+        CoreInformation { pc: value.pc }
+    }
+
+    pub(crate) fn to_wire_exit_error_details(value: &ExitErrorDetails) -> WireExitErrorDetails {
+        WireExitErrorDetails {
+            reason: value.reason,
+            exit_status: value.exit_status,
+            subcode: value.subcode,
+        }
+    }
+
+    pub(crate) fn from_wire_exit_error_details(value: WireExitErrorDetails) -> ExitErrorDetails {
+        ExitErrorDetails {
+            reason: value.reason,
+            exit_status: value.exit_status,
+            subcode: value.subcode,
+        }
+    }
+
+    pub(crate) fn to_wire_semihosting_command(
+        value: &SemihostingCommand,
+    ) -> WireSemihostingCommand {
+        match value {
+            SemihostingCommand::ExitSuccess => WireSemihostingCommand::ExitSuccess,
+            SemihostingCommand::ExitError(details) => {
+                WireSemihostingCommand::ExitError(to_wire_exit_error_details(details))
             }
+            SemihostingCommand::GetCommandLine(request) => WireSemihostingCommand::GetCommandLine {
+                block_address: request.block_address(),
+            },
+            _ => WireSemihostingCommand::Other,
         }
     }
 
-    impl From<WireRegisterValue> for RegisterValue {
-        fn from(value: WireRegisterValue) -> Self {
-            match value {
-                WireRegisterValue::U32(v) => RegisterValue::U32(v),
-                WireRegisterValue::U64(v) => RegisterValue::U64(v),
-                WireRegisterValue::U128(v) => RegisterValue::U128(v),
-            }
+    pub(crate) fn to_wire_core_status(value: CoreStatus) -> WireCoreStatus {
+        match value {
+            CoreStatus::Running => WireCoreStatus::Running,
+            CoreStatus::Halted(reason) => WireCoreStatus::Halted(to_wire_halt_reason(reason)),
+            CoreStatus::LockedUp => WireCoreStatus::LockedUp,
+            CoreStatus::Sleeping => WireCoreStatus::Sleeping,
+            CoreStatus::Unknown => WireCoreStatus::Unknown,
         }
     }
 
-    impl From<CoreInformation> for WireCoreInformation {
-        fn from(value: CoreInformation) -> Self {
-            Self { pc: value.pc }
-        }
-    }
-
-    impl From<WireCoreInformation> for CoreInformation {
-        fn from(value: WireCoreInformation) -> Self {
-            Self { pc: value.pc }
-        }
-    }
-
-    impl From<&ExitErrorDetails> for WireExitErrorDetails {
-        fn from(value: &ExitErrorDetails) -> Self {
-            Self {
-                reason: value.reason,
-                exit_status: value.exit_status,
-                subcode: value.subcode,
-            }
-        }
-    }
-
-    impl From<WireExitErrorDetails> for ExitErrorDetails {
-        fn from(value: WireExitErrorDetails) -> Self {
-            Self {
-                reason: value.reason,
-                exit_status: value.exit_status,
-                subcode: value.subcode,
-            }
-        }
-    }
-
-    impl From<&SemihostingCommand> for WireSemihostingCommand {
-        fn from(value: &SemihostingCommand) -> Self {
-            match value {
-                SemihostingCommand::ExitSuccess => WireSemihostingCommand::ExitSuccess,
-                SemihostingCommand::ExitError(details) => {
-                    WireSemihostingCommand::ExitError(details.into())
+    pub(crate) fn to_wire_halt_reason(value: HaltReason) -> WireHaltReason {
+        use probe_rs::BreakpointCause;
+        match value {
+            HaltReason::Multiple => WireHaltReason::Multiple,
+            HaltReason::Breakpoint(cause) => WireHaltReason::Breakpoint(match cause {
+                BreakpointCause::Hardware => WireBreakpointCause::Hardware,
+                BreakpointCause::Software => WireBreakpointCause::Software,
+                BreakpointCause::Unknown => WireBreakpointCause::Unknown,
+                BreakpointCause::Semihosting(ref cmd) => {
+                    WireBreakpointCause::Semihosting(to_wire_semihosting_command(cmd))
                 }
-                SemihostingCommand::GetCommandLine(request) => {
-                    WireSemihostingCommand::GetCommandLine {
-                        block_address: request.block_address(),
-                    }
-                }
-                _ => WireSemihostingCommand::Other,
-            }
+            }),
+            HaltReason::Exception => WireHaltReason::Exception,
+            HaltReason::Watchpoint => WireHaltReason::Watchpoint,
+            HaltReason::Step => WireHaltReason::Step,
+            HaltReason::Request => WireHaltReason::Request,
+            HaltReason::External => WireHaltReason::External,
+            HaltReason::Unknown => WireHaltReason::Unknown,
         }
     }
 
-    impl From<CoreStatus> for WireCoreStatus {
-        fn from(value: CoreStatus) -> Self {
-            match value {
-                CoreStatus::Running => WireCoreStatus::Running,
-                CoreStatus::Halted(reason) => WireCoreStatus::Halted(reason.into()),
-                CoreStatus::LockedUp => WireCoreStatus::LockedUp,
-                CoreStatus::Sleeping => WireCoreStatus::Sleeping,
-                CoreStatus::Unknown => WireCoreStatus::Unknown,
-            }
-        }
-    }
-
-    impl From<HaltReason> for WireHaltReason {
-        fn from(value: HaltReason) -> Self {
-            use probe_rs::BreakpointCause;
-            match value {
-                HaltReason::Multiple => WireHaltReason::Multiple,
-                HaltReason::Breakpoint(cause) => WireHaltReason::Breakpoint(match cause {
-                    BreakpointCause::Hardware => WireBreakpointCause::Hardware,
-                    BreakpointCause::Software => WireBreakpointCause::Software,
-                    BreakpointCause::Unknown => WireBreakpointCause::Unknown,
-                    BreakpointCause::Semihosting(ref cmd) => {
-                        WireBreakpointCause::Semihosting(cmd.into())
+    pub(crate) fn from_wire_breakpoint_cause(
+        value: WireBreakpointCause,
+    ) -> probe_rs::BreakpointCause {
+        match value {
+            WireBreakpointCause::Hardware => probe_rs::BreakpointCause::Hardware,
+            WireBreakpointCause::Software => probe_rs::BreakpointCause::Software,
+            WireBreakpointCause::Unknown => probe_rs::BreakpointCause::Unknown,
+            WireBreakpointCause::Semihosting(cmd) => {
+                probe_rs::BreakpointCause::Semihosting(match cmd {
+                    WireSemihostingCommand::ExitSuccess => SemihostingCommand::ExitSuccess,
+                    WireSemihostingCommand::ExitError(details) => {
+                        SemihostingCommand::ExitError(from_wire_exit_error_details(details))
                     }
-                }),
-                HaltReason::Exception => WireHaltReason::Exception,
-                HaltReason::Watchpoint => WireHaltReason::Watchpoint,
-                HaltReason::Step => WireHaltReason::Step,
-                HaltReason::Request => WireHaltReason::Request,
-                HaltReason::External => WireHaltReason::External,
-                HaltReason::Unknown => WireHaltReason::Unknown,
+                    WireSemihostingCommand::GetCommandLine { .. } => {
+                        SemihostingCommand::Unknown(UnknownCommandDetails {
+                            operation: 0,
+                            parameter: 0,
+                        })
+                    }
+                    WireSemihostingCommand::Other => {
+                        SemihostingCommand::Unknown(UnknownCommandDetails {
+                            operation: 0,
+                            parameter: 0,
+                        })
+                    }
+                })
             }
         }
     }
@@ -821,167 +597,119 @@ pub(crate) mod convert {
     // the server-side `core/handle_semihosting` endpoint re-derives the real
     // command from the live core, so the client never needs target memory access
     // for it.
-    impl From<WireBreakpointCause> for probe_rs::BreakpointCause {
-        fn from(value: WireBreakpointCause) -> Self {
-            match value {
-                WireBreakpointCause::Hardware => probe_rs::BreakpointCause::Hardware,
-                WireBreakpointCause::Software => probe_rs::BreakpointCause::Software,
-                WireBreakpointCause::Unknown => probe_rs::BreakpointCause::Unknown,
-                WireBreakpointCause::Semihosting(cmd) => {
-                    probe_rs::BreakpointCause::Semihosting(match cmd {
-                        WireSemihostingCommand::ExitSuccess => SemihostingCommand::ExitSuccess,
-                        WireSemihostingCommand::ExitError(details) => {
-                            SemihostingCommand::ExitError(details.into())
-                        }
-                        // Placeholder: the server-side `core/handle_semihosting`
-                        // endpoint re-derives the real `GetCommandLineRequest`
-                        // from the live core.
-                        WireSemihostingCommand::GetCommandLine { .. } => {
-                            SemihostingCommand::Unknown(UnknownCommandDetails {
-                                operation: 0,
-                                parameter: 0,
-                            })
-                        }
-                        // The server handles the real command payload; surface a
-                        // placeholder so the DAP server recognizes the halt as
-                        // semihosting-induced.
-                        WireSemihostingCommand::Other => {
-                            SemihostingCommand::Unknown(UnknownCommandDetails {
-                                operation: 0,
-                                parameter: 0,
-                            })
-                        }
-                    })
-                }
+    pub(crate) fn from_wire_halt_reason(value: WireHaltReason) -> HaltReason {
+        match value {
+            WireHaltReason::Multiple => HaltReason::Multiple,
+            WireHaltReason::Breakpoint(cause) => {
+                HaltReason::Breakpoint(from_wire_breakpoint_cause(cause))
             }
+            WireHaltReason::Exception => HaltReason::Exception,
+            WireHaltReason::Watchpoint => HaltReason::Watchpoint,
+            WireHaltReason::Step => HaltReason::Step,
+            WireHaltReason::Request => HaltReason::Request,
+            WireHaltReason::External => HaltReason::External,
+            WireHaltReason::Unknown => HaltReason::Unknown,
         }
     }
 
-    impl From<WireHaltReason> for HaltReason {
-        fn from(value: WireHaltReason) -> Self {
-            match value {
-                WireHaltReason::Multiple => HaltReason::Multiple,
-                WireHaltReason::Breakpoint(cause) => HaltReason::Breakpoint(cause.into()),
-                WireHaltReason::Exception => HaltReason::Exception,
-                WireHaltReason::Watchpoint => HaltReason::Watchpoint,
-                WireHaltReason::Step => HaltReason::Step,
-                WireHaltReason::Request => HaltReason::Request,
-                WireHaltReason::External => HaltReason::External,
-                WireHaltReason::Unknown => HaltReason::Unknown,
-            }
+    pub(crate) fn from_wire_core_status(value: WireCoreStatus) -> CoreStatus {
+        match value {
+            WireCoreStatus::Running => CoreStatus::Running,
+            WireCoreStatus::Halted(reason) => CoreStatus::Halted(from_wire_halt_reason(reason)),
+            WireCoreStatus::LockedUp => CoreStatus::LockedUp,
+            WireCoreStatus::Sleeping => CoreStatus::Sleeping,
+            WireCoreStatus::Unknown => CoreStatus::Unknown,
         }
     }
 
-    impl From<WireCoreStatus> for CoreStatus {
-        fn from(value: WireCoreStatus) -> Self {
-            match value {
-                WireCoreStatus::Running => CoreStatus::Running,
-                WireCoreStatus::Halted(reason) => CoreStatus::Halted(reason.into()),
-                WireCoreStatus::LockedUp => CoreStatus::LockedUp,
-                WireCoreStatus::Sleeping => CoreStatus::Sleeping,
-                WireCoreStatus::Unknown => CoreStatus::Unknown,
-            }
+    pub(crate) fn to_wire_vector_catch_condition(
+        value: VectorCatchCondition,
+    ) -> WireVectorCatchCondition {
+        match value {
+            VectorCatchCondition::HardFault => WireVectorCatchCondition::HardFault,
+            VectorCatchCondition::CoreReset => WireVectorCatchCondition::CoreReset,
+            VectorCatchCondition::SecureFault => WireVectorCatchCondition::SecureFault,
+            VectorCatchCondition::All => WireVectorCatchCondition::All,
+            VectorCatchCondition::Svc => WireVectorCatchCondition::Svc,
+            VectorCatchCondition::Hlt => WireVectorCatchCondition::Hlt,
         }
     }
 
-    impl From<VectorCatchCondition> for WireVectorCatchCondition {
-        fn from(value: VectorCatchCondition) -> Self {
-            match value {
-                VectorCatchCondition::HardFault => WireVectorCatchCondition::HardFault,
-                VectorCatchCondition::CoreReset => WireVectorCatchCondition::CoreReset,
-                VectorCatchCondition::SecureFault => WireVectorCatchCondition::SecureFault,
-                VectorCatchCondition::All => WireVectorCatchCondition::All,
-                VectorCatchCondition::Svc => WireVectorCatchCondition::Svc,
-                VectorCatchCondition::Hlt => WireVectorCatchCondition::Hlt,
-            }
+    pub(crate) fn from_wire_vector_catch_condition(
+        value: WireVectorCatchCondition,
+    ) -> VectorCatchCondition {
+        match value {
+            WireVectorCatchCondition::HardFault => VectorCatchCondition::HardFault,
+            WireVectorCatchCondition::CoreReset => VectorCatchCondition::CoreReset,
+            WireVectorCatchCondition::SecureFault => VectorCatchCondition::SecureFault,
+            WireVectorCatchCondition::All => VectorCatchCondition::All,
+            WireVectorCatchCondition::Svc => VectorCatchCondition::Svc,
+            WireVectorCatchCondition::Hlt => VectorCatchCondition::Hlt,
         }
     }
 
-    impl From<WireVectorCatchCondition> for VectorCatchCondition {
-        fn from(value: WireVectorCatchCondition) -> Self {
-            match value {
-                WireVectorCatchCondition::HardFault => VectorCatchCondition::HardFault,
-                WireVectorCatchCondition::CoreReset => VectorCatchCondition::CoreReset,
-                WireVectorCatchCondition::SecureFault => VectorCatchCondition::SecureFault,
-                WireVectorCatchCondition::All => VectorCatchCondition::All,
-                WireVectorCatchCondition::Svc => VectorCatchCondition::Svc,
-                WireVectorCatchCondition::Hlt => VectorCatchCondition::Hlt,
-            }
+    pub(crate) fn to_wire_instruction_set(value: InstructionSet) -> WireInstructionSet {
+        match value {
+            InstructionSet::Thumb2 => WireInstructionSet::Thumb2,
+            InstructionSet::A32 => WireInstructionSet::A32,
+            InstructionSet::A64 => WireInstructionSet::A64,
+            InstructionSet::RV32 => WireInstructionSet::RV32,
+            InstructionSet::RV32C => WireInstructionSet::RV32C,
+            InstructionSet::RV64 => WireInstructionSet::RV64,
+            InstructionSet::RV64C => WireInstructionSet::RV64C,
+            InstructionSet::Xtensa => WireInstructionSet::Xtensa,
         }
     }
 
-    impl From<InstructionSet> for WireInstructionSet {
-        fn from(value: InstructionSet) -> Self {
-            match value {
-                InstructionSet::Thumb2 => WireInstructionSet::Thumb2,
-                InstructionSet::A32 => WireInstructionSet::A32,
-                InstructionSet::A64 => WireInstructionSet::A64,
-                InstructionSet::RV32 => WireInstructionSet::RV32,
-                InstructionSet::RV32C => WireInstructionSet::RV32C,
-                InstructionSet::RV64 => WireInstructionSet::RV64,
-                InstructionSet::RV64C => WireInstructionSet::RV64C,
-                InstructionSet::Xtensa => WireInstructionSet::Xtensa,
-            }
+    pub(crate) fn from_wire_instruction_set(value: WireInstructionSet) -> InstructionSet {
+        match value {
+            WireInstructionSet::Thumb2 => InstructionSet::Thumb2,
+            WireInstructionSet::A32 => InstructionSet::A32,
+            WireInstructionSet::A64 => InstructionSet::A64,
+            WireInstructionSet::RV32 => InstructionSet::RV32,
+            WireInstructionSet::RV32C => InstructionSet::RV32C,
+            WireInstructionSet::RV64 => InstructionSet::RV64,
+            WireInstructionSet::RV64C => InstructionSet::RV64C,
+            WireInstructionSet::Xtensa => InstructionSet::Xtensa,
         }
     }
 
-    impl From<WireInstructionSet> for InstructionSet {
-        fn from(value: WireInstructionSet) -> Self {
-            match value {
-                WireInstructionSet::Thumb2 => InstructionSet::Thumb2,
-                WireInstructionSet::A32 => InstructionSet::A32,
-                WireInstructionSet::A64 => InstructionSet::A64,
-                WireInstructionSet::RV32 => InstructionSet::RV32,
-                WireInstructionSet::RV32C => InstructionSet::RV32C,
-                WireInstructionSet::RV64 => InstructionSet::RV64,
-                WireInstructionSet::RV64C => InstructionSet::RV64C,
-                WireInstructionSet::Xtensa => InstructionSet::Xtensa,
-            }
+    pub(crate) fn from_wire_stepping_mode(mode: WireSteppingMode) -> SteppingMode {
+        match mode {
+            WireSteppingMode::StepInstruction => SteppingMode::StepInstruction,
+            WireSteppingMode::OverStatement => SteppingMode::OverStatement,
+            WireSteppingMode::IntoStatement => SteppingMode::IntoStatement,
+            WireSteppingMode::OutOfStatement => SteppingMode::OutOfStatement,
         }
     }
 
-    impl From<WireSteppingMode> for SteppingMode {
-        fn from(mode: WireSteppingMode) -> Self {
-            match mode {
-                WireSteppingMode::StepInstruction => SteppingMode::StepInstruction,
-                WireSteppingMode::OverStatement => SteppingMode::OverStatement,
-                WireSteppingMode::IntoStatement => SteppingMode::IntoStatement,
-                WireSteppingMode::OutOfStatement => SteppingMode::OutOfStatement,
-            }
+    pub(crate) fn to_wire_core_type(value: probe_rs::CoreType) -> WireCoreType {
+        match value {
+            probe_rs::CoreType::Armv6m => WireCoreType::Armv6m,
+            probe_rs::CoreType::Armv7a => WireCoreType::Armv7a,
+            probe_rs::CoreType::Armv7r => WireCoreType::Armv7r,
+            probe_rs::CoreType::Armv7m => WireCoreType::Armv7m,
+            probe_rs::CoreType::Armv7em => WireCoreType::Armv7em,
+            probe_rs::CoreType::Armv8a => WireCoreType::Armv8a,
+            probe_rs::CoreType::Armv8m => WireCoreType::Armv8m,
+            probe_rs::CoreType::Riscv => WireCoreType::Riscv,
+            probe_rs::CoreType::Riscv64 => WireCoreType::Riscv64,
+            probe_rs::CoreType::Xtensa => WireCoreType::Xtensa,
         }
     }
 
-    impl From<probe_rs::CoreType> for WireCoreType {
-        fn from(value: probe_rs::CoreType) -> Self {
-            match value {
-                probe_rs::CoreType::Armv6m => WireCoreType::Armv6m,
-                probe_rs::CoreType::Armv7a => WireCoreType::Armv7a,
-                probe_rs::CoreType::Armv7r => WireCoreType::Armv7r,
-                probe_rs::CoreType::Armv7m => WireCoreType::Armv7m,
-                probe_rs::CoreType::Armv7em => WireCoreType::Armv7em,
-                probe_rs::CoreType::Armv8a => WireCoreType::Armv8a,
-                probe_rs::CoreType::Armv8m => WireCoreType::Armv8m,
-                probe_rs::CoreType::Riscv => WireCoreType::Riscv,
-                probe_rs::CoreType::Riscv64 => WireCoreType::Riscv64,
-                probe_rs::CoreType::Xtensa => WireCoreType::Xtensa,
-            }
-        }
-    }
-
-    impl From<WireCoreType> for probe_rs::CoreType {
-        fn from(value: WireCoreType) -> Self {
-            match value {
-                WireCoreType::Armv6m => probe_rs::CoreType::Armv6m,
-                WireCoreType::Armv7a => probe_rs::CoreType::Armv7a,
-                WireCoreType::Armv7r => probe_rs::CoreType::Armv7r,
-                WireCoreType::Armv7m => probe_rs::CoreType::Armv7m,
-                WireCoreType::Armv7em => probe_rs::CoreType::Armv7em,
-                WireCoreType::Armv8a => probe_rs::CoreType::Armv8a,
-                WireCoreType::Armv8m => probe_rs::CoreType::Armv8m,
-                WireCoreType::Riscv => probe_rs::CoreType::Riscv,
-                WireCoreType::Riscv64 => probe_rs::CoreType::Riscv64,
-                WireCoreType::Xtensa => probe_rs::CoreType::Xtensa,
-            }
+    pub(crate) fn from_wire_core_type(value: WireCoreType) -> probe_rs::CoreType {
+        match value {
+            WireCoreType::Armv6m => probe_rs::CoreType::Armv6m,
+            WireCoreType::Armv7a => probe_rs::CoreType::Armv7a,
+            WireCoreType::Armv7r => probe_rs::CoreType::Armv7r,
+            WireCoreType::Armv7m => probe_rs::CoreType::Armv7m,
+            WireCoreType::Armv7em => probe_rs::CoreType::Armv7em,
+            WireCoreType::Armv8a => probe_rs::CoreType::Armv8a,
+            WireCoreType::Armv8m => probe_rs::CoreType::Armv8m,
+            WireCoreType::Riscv => probe_rs::CoreType::Riscv,
+            WireCoreType::Riscv64 => probe_rs::CoreType::Riscv64,
+            WireCoreType::Xtensa => probe_rs::CoreType::Xtensa,
         }
     }
 }

@@ -10,7 +10,7 @@ pub mod rpc;
 
 use probe_rs::CoreStatus;
 
-use crate::rpc::functions::rtt_config::DataFormat;
+use probe_rs_rpc::rtt_config::DataFormat;
 
 /// UI event produced by semihosting handling, to be replayed on the DAP
 /// adapter (RTT window open, console/RTT output). Backend-agnostic mirror of

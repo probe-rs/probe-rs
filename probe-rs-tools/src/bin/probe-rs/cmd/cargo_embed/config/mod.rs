@@ -7,8 +7,8 @@ use probe_rs::probe::WireProtocol;
 use serde::{Deserialize, Serialize};
 use std::{net::SocketAddr, path::PathBuf, time::Duration};
 
-use crate::rpc::functions::rtt_config::{ChannelMode, DataFormat};
 use crate::util::logging::LevelFilter;
+use probe_rs_rpc::rtt_config::{ChannelMode, DataFormat};
 
 use super::rttui::tab::TabConfig;
 

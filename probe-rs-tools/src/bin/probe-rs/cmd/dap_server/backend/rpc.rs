@@ -18,18 +18,12 @@ use crate::rpc::{
     Key, Session,
     client::{CoreInterface as RpcCoreClient, RpcClient, SessionInterface},
     functions::{
-        RpcError,
-        breakpoints::{
-            SourceBreakpointLocation, WireSourceLocation as WireBreakpointSourceLocation,
+        breakpoints::convert::from_wire_source_location,
+        core_ops::convert::{
+            from_wire_core_information, from_wire_core_status, from_wire_core_type,
+            from_wire_instruction_set, from_wire_register_id, from_wire_register_value,
+            to_wire_register_id, to_wire_register_value, to_wire_vector_catch_condition,
         },
-        core_ops::{WireCoreMetadata, WireCoreStatus, WireRegisterId, WireSteppingMode},
-        disassemble::{WireDisassembledInstruction, WireSource},
-        flash::{
-            DownloadOptions as WireDownloadOptions, ProgressEvent as WireProgressEvent,
-            VerifyResult,
-        },
-        info::WireSessionTargetMetadata,
-        stack_trace::{RichStackTraces, SourceLocation as WireSourceLocation, WireDebugRegister},
     },
 };
 use probe_rs::{
@@ -39,6 +33,19 @@ use probe_rs::{
 use probe_rs_debug::{
     ColumnType, DebugRegisters, ObjectRef, SourceLocation as DebugSourceLocation, StackFrame,
     SteppingMode, TypedPath, VerifiedBreakpoint,
+};
+use probe_rs_rpc::RpcError;
+use probe_rs_rpc::breakpoints::{
+    SourceBreakpointLocation, WireSourceLocation as WireBreakpointSourceLocation,
+};
+use probe_rs_rpc::core_ops::{WireCoreMetadata, WireCoreStatus, WireRegisterId, WireSteppingMode};
+use probe_rs_rpc::disassemble::{WireDisassembledInstruction, WireSource};
+use probe_rs_rpc::flash::{
+    DownloadOptions as WireDownloadOptions, ProgressEvent as WireProgressEvent, VerifyResult,
+};
+use probe_rs_rpc::info::WireSessionTargetMetadata;
+use probe_rs_rpc::stack_trace::{
+    RichStackTraces, SourceLocation as WireSourceLocation, WireDebugRegister,
 };
 
 /// Convert an [`anyhow::Error`] coming out of the RPC client into the
@@ -69,14 +76,14 @@ pub(crate) fn rebuild_debug_registers(
     let mut lookup: HashMap<RegisterId, RegisterValue> = HashMap::with_capacity(wire.len());
     for w in wire {
         if let Some(value) = w.value {
-            lookup.insert(w.id.into(), value.into());
+            lookup.insert(from_wire_register_id(w.id), from_wire_register_value(value));
         }
     }
     DebugRegisters::from_core_registers(regs, |rid| lookup.get(rid).copied())
 }
 
-/// Convert a wire [`SourceLocation`] (resolved server-side) back into a
-/// `probe_rs_debug` [`SourceLocation`]. The wire form encodes `LeftEdge`
+/// Convert a wire `probe_rs_rpc::stack_trace::SourceLocation` (resolved server-side) back into a
+/// `probe_rs_debug::SourceLocation`. The wire form encodes `LeftEdge`
 /// columns as `1`, so they round-trip as `Column(1)` — a minor, UI-irrelevant
 /// difference for the RPC path.
 pub(crate) fn from_wire_location(w: &WireSourceLocation) -> DebugSourceLocation {
@@ -255,7 +262,7 @@ impl RpcBackend {
         self.core(core_index)
             .reset_and_halt(timeout)
             .await
-            .map(|info| info.into())
+            .map(from_wire_core_information)
             .map_err(rpc_err)
     }
 
@@ -281,7 +288,7 @@ impl RpcBackend {
                 |resolution| match (resolution.breakpoint, resolution.error) {
                     (Some(breakpoint), _) => Ok(VerifiedBreakpoint {
                         address: breakpoint.address,
-                        source_location: breakpoint.source_location.into(),
+                        source_location: from_wire_source_location(breakpoint.source_location),
                     }),
                     (None, Some(error)) => Err(error),
                     (None, None) => {
@@ -302,7 +309,9 @@ impl RpcBackend {
             .map(|locations| {
                 locations
                     .into_iter()
-                    .map(|location: Option<WireBreakpointSourceLocation>| location.map(Into::into))
+                    .map(|location: Option<WireBreakpointSourceLocation>| {
+                        location.map(from_wire_source_location)
+                    })
                     .collect()
             })
             .map_err(rpc_err)
@@ -315,7 +324,7 @@ impl RpcBackend {
     pub(crate) async fn status(&mut self, core_index: usize) -> Result<CoreStatus, Error> {
         let client = self.core(core_index);
         let wire: WireCoreStatus = client.status().await.map_err(rpc_err)?;
-        Ok(wire.into())
+        Ok(from_wire_core_status(wire))
     }
 
     /// Set a batch of hardware breakpoints, reporting per-address failures in
@@ -348,7 +357,7 @@ impl RpcBackend {
     ) -> Result<CoreInformation, Error> {
         let client = self.core(core_index);
         let info = client.halt(timeout).await.map_err(rpc_err)?;
-        Ok(info.into())
+        Ok(from_wire_core_information(info))
     }
 
     pub(crate) async fn run(&mut self, core_index: usize) -> Result<(), Error> {
@@ -393,7 +402,7 @@ impl RpcBackend {
         parent_key: i64,
         name: String,
         value: String,
-    ) -> Result<crate::rpc::functions::debug_vars::WireSetVariableResponse, Error> {
+    ) -> Result<probe_rs_rpc::debug_vars::WireSetVariableResponse, Error> {
         self.session_interface()
             .set_variable(core_index as u32, parent_key, name, value)
             .await
@@ -432,10 +441,10 @@ impl RpcBackend {
     ) -> Result<RegisterValue, Error> {
         let client = self.core(core_index);
         let wire = client
-            .read_core_reg(register_id.into())
+            .read_core_reg(to_wire_register_id(register_id))
             .await
             .map_err(rpc_err)?;
-        Ok(wire.into())
+        Ok(from_wire_register_value(wire))
     }
 
     pub(crate) async fn write_core_reg(
@@ -446,7 +455,10 @@ impl RpcBackend {
     ) -> Result<(), Error> {
         let client = self.core(core_index);
         client
-            .write_core_reg(register_id.into(), value.into())
+            .write_core_reg(
+                to_wire_register_id(register_id),
+                to_wire_register_value(value),
+            )
             .await
             .map_err(rpc_err)
     }
@@ -456,12 +468,12 @@ impl RpcBackend {
         core_index: usize,
         ids: Vec<RegisterId>,
     ) -> Result<Vec<Option<RegisterValue>>, Error> {
-        let wire_ids: Vec<WireRegisterId> = ids.iter().copied().map(Into::into).collect();
+        let wire_ids: Vec<WireRegisterId> = ids.iter().copied().map(to_wire_register_id).collect();
         let client = self.core(core_index);
         let results = client.read_registers(wire_ids).await.map_err(rpc_err)?;
         Ok(results
             .into_iter()
-            .map(|r| r.result.ok().map(RegisterValue::from))
+            .map(|r| r.result.ok().map(from_wire_register_value))
             .collect())
     }
 
@@ -476,12 +488,12 @@ impl RpcBackend {
             registers: wire
                 .registers
                 .into_iter()
-                .map(|(id, v)| (id.into(), v.into()))
+                .map(|(id, v)| (from_wire_register_id(id), from_wire_register_value(v)))
                 .collect(),
             data: wire.data,
-            instruction_set: wire.instruction_set.into(),
+            instruction_set: from_wire_instruction_set(wire.instruction_set),
             supports_native_64bit_access: wire.supports_native_64bit_access,
-            core_type: wire.core_type.into(),
+            core_type: from_wire_core_type(wire.core_type),
             fpu_support: wire.fpu_support,
             floating_point_register_count: wire.floating_point_register_count.map(|c| c as usize),
         })
@@ -491,7 +503,7 @@ impl RpcBackend {
         &mut self,
         core_index: usize,
     ) -> Result<SemihostingHandleResult, Error> {
-        use crate::rpc::functions::core_ops::WireSemihostingUiEvent;
+        use probe_rs_rpc::core_ops::WireSemihostingUiEvent;
 
         let client = self.core(core_index);
         let result = client.handle_semihosting().await.map_err(rpc_err)?;
@@ -515,7 +527,7 @@ impl RpcBackend {
             })
             .collect();
         Ok(SemihostingHandleResult {
-            status: result.status.into(),
+            status: from_wire_core_status(result.status),
             events,
         })
     }
@@ -527,7 +539,7 @@ impl RpcBackend {
     ) -> Result<(), Error> {
         let client = self.core(core_index);
         client
-            .enable_vector_catch(condition.into())
+            .enable_vector_catch(to_wire_vector_catch_condition(condition))
             .await
             .map_err(rpc_err)
     }
@@ -583,7 +595,11 @@ impl RpcBackend {
             .debug_step(core_index as u32, wire_mode)
             .await
             .map_err(rpc_err)?;
-        Ok((resp.status.into(), resp.program_counter, resp.warning))
+        Ok((
+            from_wire_core_status(resp.status),
+            resp.program_counter,
+            resp.warning,
+        ))
     }
 
     /// Single-round-trip stack unwind: the server unwinds AND owns the
@@ -634,7 +650,7 @@ impl RpcBackend {
             let registers = rebuild_debug_registers(metadata.registers, &group_regs);
 
             for wf in group {
-                let pc_value: RegisterValue = wf.program_counter.into();
+                let pc_value: RegisterValue = from_wire_register_value(wf.program_counter);
                 frames.push(StackFrame {
                     id: ObjectRef::from(wf.id as i64),
                     function_name: wf.function_name.clone(),
@@ -736,7 +752,7 @@ impl RpcBackend {
     }
 
     fn evaluate_response_body(
-        wire: crate::rpc::functions::debug_vars::WireEvaluateResponse,
+        wire: probe_rs_rpc::debug_vars::WireEvaluateResponse,
     ) -> EvaluateResponseBody {
         EvaluateResponseBody {
             result: wire.result,
@@ -842,7 +858,7 @@ impl From<WireSessionTargetMetadata> for SessionTargetMetadata {
             cores: wire
                 .cores
                 .into_iter()
-                .map(|core| (core.index as usize, core.core_type.into()))
+                .map(|core| (core.index as usize, from_wire_core_type(core.core_type)))
                 .collect(),
         }
     }
@@ -885,7 +901,7 @@ mod test {
     use probe_rs::{Architecture, CoreRegisters, CoreType, RegisterRole};
 
     use super::CorePerAttachInfo;
-    use crate::rpc::functions::core_ops::WireCoreMetadata;
+    use probe_rs_rpc::core_ops::WireCoreMetadata;
 
     #[test]
     fn live_fpu_metadata_selects_floating_point_registers() {
@@ -937,7 +953,7 @@ mod test {
     #[test]
     fn wire_session_core_converts_to_backend_core_list() {
         use super::SessionTargetMetadata;
-        use crate::rpc::functions::info::{WireSessionCore, WireSessionTargetMetadata};
+        use probe_rs_rpc::info::{WireSessionCore, WireSessionTargetMetadata};
 
         let wire = WireSessionTargetMetadata {
             target_name: "stm32f407vgtx".to_string(),
@@ -945,11 +961,11 @@ mod test {
             cores: vec![
                 WireSessionCore {
                     index: 0,
-                    core_type: crate::rpc::functions::core_ops::WireCoreType::Armv7em,
+                    core_type: probe_rs_rpc::core_ops::WireCoreType::Armv7em,
                 },
                 WireSessionCore {
                     index: 1,
-                    core_type: crate::rpc::functions::core_ops::WireCoreType::Armv7em,
+                    core_type: probe_rs_rpc::core_ops::WireCoreType::Armv7em,
                 },
             ],
         };

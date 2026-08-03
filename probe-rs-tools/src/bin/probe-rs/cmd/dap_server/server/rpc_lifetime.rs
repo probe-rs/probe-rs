@@ -120,6 +120,7 @@ mod tests {
     }
 
     async fn attach_once(client: &RpcClient, serial: &str) -> Result<()> {
+        use crate::rpc::functions::probe::convert::from_wire_debug_probe_selector;
         use crate::util::cli::attach_probe;
 
         let probes = client.list_probes().await?;
@@ -137,7 +138,7 @@ mod tests {
             probe: probes
                 .into_iter()
                 .find(|p| p.serial_number == serial)
-                .map(|p| p.selector().into()),
+                .map(|p| from_wire_debug_probe_selector(p.selector())),
             speed: None,
             connect_under_reset: false,
             dry_run: false,

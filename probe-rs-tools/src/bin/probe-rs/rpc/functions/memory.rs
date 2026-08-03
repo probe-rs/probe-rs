@@ -1,11 +1,10 @@
-use crate::rpc::{
-    Key, Session,
-    functions::{NoResponse, RpcContext, RpcResult},
-};
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
 use probe_rs::MemoryInterface;
-use serde::{Deserialize, Serialize};
+use probe_rs_rpc::memory::{ReadBytesRequest, ReadMemoryRequest, WriteMemoryRequest};
+
+use crate::rpc::functions::{RpcContext, convert::lift};
+use probe_rs_rpc::{NoResponse, RpcResult};
 
 pub trait Word: Copy + Default + Send + Schema {
     fn read(
@@ -78,14 +77,6 @@ impl Word for u64 {
     }
 }
 
-#[derive(Serialize, Deserialize, Schema)]
-pub struct WriteMemoryRequest<W: Word> {
-    pub sessid: Key<Session>,
-    pub core: u32,
-    pub address: u64,
-    pub data: Vec<W>,
-}
-
 pub async fn write_memory<W: Word>(
     ctx: &mut RpcContext,
     _header: VarHeader,
@@ -93,16 +84,8 @@ pub async fn write_memory<W: Word>(
 ) -> NoResponse {
     let mut session = ctx.session(request.sessid).await;
     let mut core = session.core(request.core as usize).unwrap();
-    W::write(&mut core, request.address, &request.data)?;
+    lift(W::write(&mut core, request.address, &request.data))?;
     Ok(())
-}
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct ReadMemoryRequest {
-    pub sessid: Key<Session>,
-    pub core: u32,
-    pub address: u64,
-    pub count: u32,
 }
 
 pub async fn read_memory<W: Word>(
@@ -111,19 +94,11 @@ pub async fn read_memory<W: Word>(
     request: ReadMemoryRequest,
 ) -> RpcResult<Vec<W>> {
     let mut session = ctx.session(request.sessid).await;
-    let mut core = session.core(request.core as usize)?;
+    let mut core = lift(session.core(request.core as usize))?;
 
     let mut words = vec![W::default(); request.count as usize];
-    W::read(&mut core, request.address, &mut words)?;
+    lift(W::read(&mut core, request.address, &mut words))?;
     Ok(words)
-}
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct ReadBytesRequest {
-    pub sessid: Key<Session>,
-    pub core: u32,
-    pub address: u64,
-    pub count: u64,
 }
 
 /// Lossy bulk byte read: reads as many bytes as possible starting at
@@ -135,7 +110,7 @@ pub async fn read_bytes(
     request: ReadBytesRequest,
 ) -> RpcResult<Vec<u8>> {
     let mut session = ctx.session(request.sessid).await;
-    let mut core = session.core(request.core as usize)?;
+    let mut core = lift(session.core(request.core as usize))?;
 
     fn chunk_size(count: usize, max_chunk_size: usize) -> usize {
         (max_chunk_size.min(count) / 2).next_power_of_two()
@@ -153,7 +128,7 @@ pub async fn read_bytes(
         match core.read(address, buffer) {
             Err(e) => {
                 if result_buffer.is_empty() && chunk_size == 1 {
-                    return Err(e.into());
+                    return Err(crate::rpc::functions::convert::rpc_error_probe_rs(e));
                 }
                 max_chunk_size = chunk_size / 2;
             }

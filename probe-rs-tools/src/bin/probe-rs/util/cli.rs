@@ -23,26 +23,11 @@ use tokio_util::sync::CancellationToken;
 use crate::cmd::run::{EmbeddedTestElfInfo, MonitoringOptions};
 use crate::rpc::Key;
 use crate::rpc::RttClient;
-use crate::rpc::functions::format::FormatOptions;
-use crate::rpc::functions::monitor::{ChannelInfo, MonitorExitReason};
-use crate::rpc::functions::rtt_config::RttChannelConfig;
-use crate::rpc::functions::semihosting_options::SemihostingOptions;
-use crate::rpc::functions::stack_trace::StackTraceFrame;
-use crate::rpc::utils::run_loop::VectorCatchConfig;
-use crate::rpc::{
-    client::{MonitorEvent, RpcClient, SessionInterface},
-    functions::{
-        CancelTopic,
-        flash::{BootInfo, DownloadOptions, FlashLayout, ProgressEvent, VerifyResult},
-        monitor::{MonitorMode, MonitorOptions, RttEvent, SemihostingEvent},
-        probe::{
-            AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, SelectProbeResult,
-        },
-        rtt_client::ScanRegion,
-        stack_trace::StackTrace,
-        test::{Test, TestResult},
-    },
+use crate::rpc::client::{MonitorEvent, RpcClient, SessionInterface};
+use crate::rpc::functions::probe::convert::{
+    from_wire_debug_probe_selector, to_wire_debug_probe_selector, to_wire_protocol,
 };
+use crate::rpc::utils::run_loop::VectorCatchConfig;
 use crate::util::pwr::power_reset;
 use crate::util::{
     common_options::{BinaryDownloadOptions, ProbeOptions},
@@ -50,6 +35,20 @@ use crate::util::{
     logging,
     rtt::{DefmtProcessor, DefmtState, RttDecoder},
 };
+use probe_rs_rpc::CancelTopic;
+use probe_rs_rpc::flash::{BootInfo, DownloadOptions, FlashLayout, ProgressEvent, VerifyResult};
+use probe_rs_rpc::format::FormatOptions;
+use probe_rs_rpc::monitor::{ChannelInfo, MonitorExitReason};
+use probe_rs_rpc::monitor::{MonitorMode, MonitorOptions, RttEvent, SemihostingEvent};
+use probe_rs_rpc::probe::{
+    AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, SelectProbeResult,
+};
+use probe_rs_rpc::rtt_client::ScanRegion;
+use probe_rs_rpc::rtt_config::RttChannelConfig;
+use probe_rs_rpc::semihosting_options::SemihostingOptions;
+use probe_rs_rpc::stack_trace::StackTrace;
+use probe_rs_rpc::stack_trace::StackTraceFrame;
+use probe_rs_rpc::test::{Test, TestResult};
 
 type TargetOutputFiles = std::collections::HashMap<ChannelIdentifier, tokio::fs::File>;
 
@@ -82,7 +81,12 @@ pub async fn attach_probe(
         client.load_chip_family(file).await?;
     }
 
-    let probe = match select_probe(client, probe_options.probe.map(Into::into)).await {
+    let probe = match select_probe(
+        client,
+        probe_options.probe.map(to_wire_debug_probe_selector),
+    )
+    .await
+    {
         Ok(probe) => probe,
         Err(error) => {
             print_setup_hints_if_relevant(client).await;
@@ -91,13 +95,17 @@ pub async fn attach_probe(
     };
 
     if probe_options.cycle_power {
-        power_reset(probe.selector().into(), Duration::from_secs(1)).await?;
+        power_reset(
+            from_wire_debug_probe_selector(probe.selector()),
+            Duration::from_secs(1),
+        )
+        .await?;
     }
 
     let result = client
         .attach_probe(AttachRequest {
             chip: probe_options.chip.or(elf_meta.chip),
-            protocol: probe_options.protocol.map(Into::into),
+            protocol: probe_options.protocol.map(to_wire_protocol),
             probe,
             speed: probe_options.speed,
             connect_under_reset: probe_options.connect_under_reset,
@@ -490,7 +498,7 @@ pub async fn flash(
             flash_layout.merge_from(phase_layout);
         }
 
-        let visualizer = flash_layout.visualize();
+        let visualizer = crate::util::visualizer::visualize_flash_layout(&flash_layout);
         _ = visualizer.write_svg(visualizer_output);
     }
 

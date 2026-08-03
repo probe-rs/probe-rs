@@ -27,12 +27,11 @@ use std::path::PathBuf;
 use std::{fmt::Write, sync::Arc};
 
 use crate::{
-    rpc::{
-        functions::{ProbeAccess, RpcApp},
-        transport::websocket::{AxumWebsocketTx, WebsocketRx},
-    },
+    rpc::functions::{ProbeAccess, RpcApp},
     util::pwr,
 };
+#[cfg(feature = "remote")]
+use probe_rs_rpc::transport::websocket::{AxumWebsocketTx, WebsocketRx};
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -296,8 +295,8 @@ async fn handle_socket(socket: WebSocket, challenge: String, state: Arc<ServerSt
 
 #[cfg(unix)]
 async fn handle_unix_rpc(stream: tokio::net::UnixStream) {
-    use crate::rpc::transport::memory::{PostcardReceiver, PostcardSender};
-    use crate::rpc::transport::unix::{UnixStreamRx, UnixStreamTx};
+    use probe_rs_rpc::transport::memory::{PostcardReceiver, PostcardSender};
+    use probe_rs_rpc::transport::unix::{UnixStreamRx, UnixStreamTx};
 
     tracing::info!("Unix socket client connected");
 

@@ -18,7 +18,7 @@ default-run = "probe-rs"
 [features]
 default = []
 # Include server/client functionality
-remote = ["dep:tokio-tungstenite", "dep:axum", "dep:rustls"]
+remote = ["dep:tokio-tungstenite", "dep:axum", "dep:rustls", "probe-rs-rpc/remote", "probe-rs-rpc/axum"]
 
 [dependencies]
 anyhow = { workspace = true }
@@ -106,6 +106,7 @@ probe-rs-debug = { version = "0.32.0", path = "../probe-rs-debug" }
 probe-rs-mi.workspace = true
 probe-rs-target.workspace = true
 probe-rs-espressif.workspace = true
+probe-rs-rpc = { workspace = true, features = ["clap"] }
 
 # Server-only
 tokio = { version = "1.0", features = ["full"] }

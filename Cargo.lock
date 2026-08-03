@@ -3164,6 +3164,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "probe-rs-rpc"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "clap",
+ "docsplay",
+ "futures-util",
+ "parse_int",
+ "postcard",
+ "postcard-rpc",
+ "postcard-schema",
+ "regex",
+ "serde",
+ "thiserror 2.0.19",
+ "tokio",
+ "tokio-tungstenite 0.30.0",
+ "tokio-util",
+]
+
+[[package]]
 name = "probe-rs-target"
 version = "0.32.0"
 dependencies = [
@@ -3227,6 +3247,7 @@ dependencies = [
  "probe-rs-espressif",
  "probe-rs-linux",
  "probe-rs-mi",
+ "probe-rs-rpc",
  "probe-rs-target",
  "ratatui",
  "regex",
