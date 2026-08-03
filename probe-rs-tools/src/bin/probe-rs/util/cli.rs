@@ -828,7 +828,7 @@ pub async fn monitor(
         }
         Err(e) => {
             // Some irrecoverable error happened, probably can't print the stack trace.
-            (false, Err(e))
+            (false, Err(e.into()))
         }
     };
 

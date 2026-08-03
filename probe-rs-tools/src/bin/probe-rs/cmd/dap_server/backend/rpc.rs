@@ -43,7 +43,8 @@ use probe_rs_debug::{
 
 /// Convert an [`anyhow::Error`] coming out of the RPC client into the
 /// [`probe_rs::Error`] surface the DAP server expects.
-pub(crate) fn rpc_err(err: anyhow::Error) -> Error {
+pub(crate) fn rpc_err(err: impl Into<anyhow::Error>) -> Error {
+    let err = err.into();
     // Typed `probe_rs::Error` values lose their variant when crossing the
     // RPC boundary (they come back as an opaque `anyhow::Error` carrying only
     // the `Display` text). Best-effort reconstruct the common variants call
