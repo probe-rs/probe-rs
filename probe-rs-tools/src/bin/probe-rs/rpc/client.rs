@@ -799,7 +799,7 @@ impl SessionInterface {
     }
 
     /// Attach the server-side RTT client and return its up/down channel
-    /// metadata. See [`Self::get_rtt_channels`].
+    /// metadata.
     pub async fn get_rtt_channels(
         &self,
         rtt_client: Key<RttClient>,
@@ -841,7 +841,7 @@ impl SessionInterface {
     }
 
     /// Wipe a stale RTT control block from target memory, before a reset or
-    /// reflash. See [`Self::clear_rtt_control_block`].
+    /// reflash.
     pub async fn clear_rtt_control_block(
         &self,
         rtt_client: Key<RttClient>,
