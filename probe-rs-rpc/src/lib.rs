@@ -34,9 +34,6 @@ impl<T> Hash for Key<T> {
     }
 }
 
-unsafe impl<T> Send for Key<T> {}
-unsafe impl<T> Sync for Key<T> {}
-
 impl<T> Schema for Key<T> {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "Key<T>",
@@ -81,6 +78,7 @@ impl<T> Key<T> {
     }
 
     /// Test helper for constructing a [`Key`] with a fixed id.
+    #[cfg(test)]
     pub fn test(id: u64) -> Self {
         Self {
             key: id,
