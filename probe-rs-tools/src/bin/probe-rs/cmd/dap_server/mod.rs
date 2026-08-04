@@ -70,6 +70,10 @@ pub enum DebuggerError {
 
 /// Open target in debug mode and accept debug commands.
 /// This only works as a [debug_adapter::protocol::DapAdapter] and uses Debug Adapter Protocol (DAP) commands (enables connections from clients such as Microsoft Visual Studio Code).
+///
+/// The DAP client talks to the server over stdin/stdout, unless `--ip`/`--port` make the server
+/// listen for TCP connections. The server accesses the debug probes through an in-process probe-rs
+/// server, unless `--host` points it at a remote probe-rs server.
 #[derive(clap::Parser)]
 pub struct Cmd {
     /// IP port number to listen for incoming DAP connections, e.g. "50000".
@@ -77,9 +81,10 @@ pub struct Cmd {
     #[clap(long)]
     port: Option<u16>,
 
-    /// IP address to listen for incoming DAP connections, e.g. "127.0.0.1"
-    #[clap(long, default_value_t = Ipv4Addr::LOCALHOST.into())]
-    ip: IpAddr,
+    /// IP address to listen for incoming DAP connections, e.g. "127.0.0.1".
+    /// Defaults to "127.0.0.1".
+    #[clap(long, requires = "port")]
+    ip: Option<IpAddr>,
 
     /// Some editors and IDEs expect the debug adapter processes to exit at the end of every debug
     /// session (on receiving a `Disconnect` or `Terminate` request).
@@ -109,7 +114,8 @@ pub async fn run(
 ) -> Result<()> {
     match cmd.port {
         Some(port) => {
-            let addr = SocketAddr::new(cmd.ip, port);
+            let ip = cmd.ip.unwrap_or(IpAddr::V4(Ipv4Addr::LOCALHOST));
+            let addr = SocketAddr::new(ip, port);
             debug_tcp(remote, addr, cmd.single_session, log_file, time_offset).await
         }
         None => {
