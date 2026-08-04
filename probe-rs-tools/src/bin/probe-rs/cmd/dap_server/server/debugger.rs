@@ -1,51 +1,55 @@
 use super::{
     configuration::{self, ConsoleLog},
-    core_data::CoreHandle,
     logger::DebugLogger,
     session_data::SessionData,
     startup::{TargetSessionType, get_file_timestamp},
     uploaded_files::UploadedFiles,
 };
-use crate::{
-    cmd::dap_server::{
-        DebuggerError,
-        debug_adapter::{
-            dap::{
-                adapter::{DebugAdapter, get_arguments},
-                dap_types::{
-                    Capabilities, DisconnectResponse, Event, ExitedEventBody,
-                    InitializeRequestArguments, MessageSeverity, Request, RttWindowOpenedArguments,
-                    TerminatedEventBody,
-                },
-                request_helpers::halt_core,
-            },
-            protocol::ProtocolAdapter,
+use crate::cmd::dap_server::{
+    DebuggerError,
+    debug_adapter::dap::{
+        adapter::{DebugAdapter, get_arguments},
+        dap_types::{
+            Capabilities, DisconnectResponse, Event, ExitedEventBody, InitializeRequestArguments,
+            MessageSeverity, Request, TerminatedEventBody,
         },
-        peripherals::svd_variables::SvdCache,
-        server::configuration::SessionConfig,
     },
-    rpc::functions::flash::Operation,
-    util::flash::build_loader,
+    server::configuration::SessionConfig,
 };
 use anyhow::{Context, anyhow};
-use probe_rs::{
-    CoreStatus,
-    config::Registry,
-    flashing::{DownloadOptions, FileDownloadError, FlashError, FlashProgress, ProgressEvent},
-    probe::list::Lister,
-};
-use std::{
-    collections::HashMap,
-    fs,
-    path::Path,
-    time::{Duration, UNIX_EPOCH},
-};
+use probe_rs::CoreStatus;
+use probe_rs_debug::DebugInfo;
+use probe_rs_rpc::flash::{Operation, ProgressEvent as WireProgressEvent};
+use probe_rs_rpc_client::{ResolvedUpload, RpcClient};
+use std::{collections::HashMap, path::Path, time::Duration};
 use time::UtcOffset;
 
+fn dap_capabilities() -> Capabilities {
+    Capabilities {
+        supports_configuration_done_request: Some(true),
+        supports_restart_request: Some(true),
+        support_suspend_debuggee: Some(true),
+        support_terminate_debuggee: Some(true),
+        supports_evaluate_for_hovers: Some(true),
+        // stackTrace serves the halt-time display cache; it does not
+        // perform an on-demand unwind for startFrame/levels requests.
+        supports_delayed_stack_trace_loading: Some(false),
+        supports_read_memory_request: Some(true),
+        supports_write_memory_request: Some(true),
+        supports_set_variable: Some(true),
+        supports_disassemble_request: Some(true),
+        supports_instruction_breakpoints: Some(true),
+        supports_stepping_granularity: Some(true),
+        supports_completions_request: Some(true),
+        // ANSI output is emitted only when the client also opts in.
+        supports_ansi_styling: Some(true),
+        ..Default::default()
+    }
+}
+
 #[derive(Debug)]
-/// The `DebuggerStatus` is used to control how the Debugger::debug_session() decides if it should respond to
-/// DAP Client requests such as `Terminate`, `Disconnect`, and `Reset`, as well as how to respond to unrecoverable errors
-/// during a debug session interacting with a target session.
+/// Controls how `debug_session` responds to client `Terminate`/`Disconnect`/`Reset`
+/// requests and to unrecoverable errors during a target session.
 pub(crate) enum DebugSessionStatus {
     /// Continue handling requests after a specified delay.
     Continue(Duration),
@@ -53,13 +57,8 @@ pub(crate) enum DebugSessionStatus {
     Restart(Request),
 }
 
-/// #Debugger Overview
-/// The DAP Server may either be managed automatically by the development tool (typically an IDE or
-/// editor the "DAP client") e.g. VSCode, or...
-/// The DAP Server can optionally be run from the command line as a "server" process, and the
-/// development tool can be configured to connect to it via a TCP connection.
-/// - In this case, the management (start and stop) of the server process is the responsibility of the user. e.g.
-///   - `probe-rs dap-server --port <IP port number> <other options>` : Uses TCP Sockets to the defined IP port number to service DAP requests.
+/// Top-level DAP server driver. May be managed by an IDE/editor (e.g. VSCode)
+/// or run standalone over TCP via `probe-rs dap-server --port <port>`.
 pub struct Debugger {
     config: configuration::SessionConfig,
 
@@ -80,8 +79,8 @@ pub struct Debugger {
     /// Session-scoped temporary directory holding files uploaded by the DAP client when running
     /// in `remote_server_mode` (program binary, SVD file, chip description).
     ///
-    /// Created at the start of each remote-mode session (in [`Self::launch`]) and dropped at the
-    /// end of that session (in [`Self::debug_session`]); `None` in local mode and between
+    /// Created at the start of each remote-mode session (in [`Self::handle_launch_attach`]) and dropped at the
+    /// end of that session (in [`Self::debug_session_impl`]); `None` in local mode and between
     /// sessions in TCP multi-session mode.
     uploaded_files: Option<UploadedFiles>,
 }
@@ -108,36 +107,37 @@ impl Debugger {
     }
 
     /// The logic of this function is as follows:
-    /// - While we are waiting for DAP-Client, we have to continuously check in on the status of the probe.
+    /// - While we are waiting for DAP-Client, periodically query core status through the RPC backend.
     /// - Initially, while [`DebugAdapter::configuration_done`] = `false`, we do nothing.
-    /// - Once [`DebugAdapter::configuration_done`] = `true`, we can start polling the probe for status, as follows:
-    ///   - If the [`super::core_data::CoreData::last_known_status`] is `Halted(_)`, then we stop polling the Probe until the next DAP-Client request attempts an action
+    /// - Once [`DebugAdapter::configuration_done`] = `true`, status polling proceeds as follows:
+    ///   - If the [`super::core_data::CoreData::last_known_status`] is `Halted(_)`, then we stop sending status RPCs until the next DAP-Client request attempts an action
     ///   - If the `new_status` is an Err, then the probe is no longer available, and we  end the debugging session
-    ///   - If the `new_status` is `Running`, then we have to poll on a regular basis, until the Probe stops for good reasons like breakpoints, or bad reasons like panics.
-    pub(crate) fn process_next_request<P: ProtocolAdapter>(
+    ///   - If the `new_status` is `Running`, then we poll on a regular basis until the target stops for good reasons like breakpoints, or bad reasons like panics.
+    pub(crate) async fn process_next_request(
         &mut self,
         session_data: &mut SessionData,
-        debug_adapter: &mut DebugAdapter<P>,
+        debug_adapter: &mut DebugAdapter,
     ) -> Result<DebugSessionStatus, DebuggerError> {
         self.debug_logger.flush_to_dap(debug_adapter)?;
 
         if let Some(request) = debug_adapter.listen_for_request()? {
             self.handle_request(session_data, debug_adapter, request)
+                .await
         } else {
-            self.no_request_poll(session_data, debug_adapter)
+            self.no_request_poll(session_data, debug_adapter).await
         }
     }
 
-    fn handle_request<P: ProtocolAdapter>(
+    async fn handle_request(
         &mut self,
         session_data: &mut SessionData,
-        debug_adapter: &mut DebugAdapter<P>,
+        debug_adapter: &mut DebugAdapter,
         request: Request,
     ) -> Result<DebugSessionStatus, DebuggerError> {
         let _req_span = tracing::info_span!("Handling request", request = ?request).entered();
 
         // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
-        session_data.poll_cores(&self.config, debug_adapter)?;
+        session_data.poll_cores(&self.config, debug_adapter).await?;
 
         // Check if we have configured cores
         if session_data.core_data.is_empty() {
@@ -156,54 +156,175 @@ impl Debugger {
         // to a multi-core implementation that understands which MS DAP requests are core specific.
         let core_id = 0;
 
-        // Attach to the core. so that we have the handle available for processing the request.
-
         let Some(target_core_config) = self.config.core_configs.get(core_id) else {
             return Err(DebuggerError::Other(anyhow!(
                 "No core configuration found for core id {core_id}"
             )));
         };
+        let core_index = target_core_config.core_index;
 
-        let mut target_core = session_data
-            .attach_core(target_core_config.core_index)
-            .context("Unable to connect to target core")?;
-
-        let new_status = target_core.core_data.last_known_status;
-
-        // For some operations, we need to make sure the core isn't sleeping, by calling `Core::halt()`.
-        // When we do this, we need to flag it (`unhalt_me = true`), and later call `Core::run()` again.
+        // Some operations require a sleeping core to be halted through the
+        // RPC backend. Track that temporary halt so the backend can resume it
+        // after the request.
         // NOTE: The target will exit sleep mode as a result of this command.
         let mut unhalt_me = false;
-
-        match request.command.as_ref() {
-            "configurationDone"
-            | "setBreakpoints"
-            | "setInstructionBreakpoints"
-            | "clearBreakpoint"
-            | "stackTrace"
-            | "threads"
-            | "scopes"
-            | "variables"
-            | "readMemory"
-            | "writeMemory"
-            | "disassemble" => {
-                if new_status == CoreStatus::Sleeping {
-                    if let Err(error) = target_core.core.halt(Duration::from_millis(100)) {
-                        let err = DebuggerError::from(error);
-                        debug_adapter.send_response::<()>(&request, Err(&err))?;
-                        return Err(err);
-                    }
-                    unhalt_me = true;
+        {
+            let new_status = session_data
+                .core_data_opt(core_index)
+                .map(|cd| cd.last_known_status)
+                .unwrap_or(CoreStatus::Unknown);
+            if matches!(
+                request.command.as_ref(),
+                "configurationDone"
+                    | "setBreakpoints"
+                    | "setInstructionBreakpoints"
+                    | "clearBreakpoint"
+                    | "stackTrace"
+                    | "threads"
+                    | "scopes"
+                    | "variables"
+                    | "readMemory"
+                    | "writeMemory"
+                    | "disassemble"
+            ) && new_status == CoreStatus::Sleeping
+            {
+                if let Err(error) = session_data
+                    .backend
+                    .halt(core_index, Duration::from_millis(100))
+                    .await
+                {
+                    let err = DebuggerError::from(error);
+                    debug_adapter.send_response::<()>(&request, Err(&err))?;
+                    return Err(err);
                 }
+                unhalt_me = true;
             }
-            _ => {}
         }
 
-        // Now we are ready to execute supported commands, or return an error if it isn't supported.
-        let debug_session = dispatch_request(debug_adapter, request, &mut target_core)
-            .context("Error executing request.")?;
+        let mut debug_session = DebugSessionStatus::Continue(Duration::ZERO);
+        match request.command.as_ref() {
+            "setBreakpoints" => {
+                debug_adapter
+                    .set_breakpoints(session_data, core_index, &request)
+                    .await?;
+            }
+            "setInstructionBreakpoints" => {
+                debug_adapter
+                    .set_instruction_breakpoints(session_data, core_index, &request)
+                    .await?;
+            }
+            "readMemory" => {
+                debug_adapter
+                    .read_memory(session_data, core_index, &request)
+                    .await?;
+            }
+            "writeMemory" => {
+                debug_adapter
+                    .write_memory(session_data, core_index, &request)
+                    .await?;
+            }
+            "pause" => {
+                debug_adapter
+                    .pause(session_data, core_index, &request)
+                    .await?;
+            }
+            "scopes" => {
+                debug_adapter
+                    .scopes(session_data, core_index, &request)
+                    .await?;
+            }
+            "variables" => {
+                debug_adapter
+                    .variables(session_data, core_index, &request)
+                    .await?;
+            }
+            "evaluate" => {
+                debug_adapter
+                    .evaluate(session_data, core_index, &request)
+                    .await?;
+            }
+            "stackTrace" => {
+                debug_adapter
+                    .stack_trace(session_data, core_index, &request)
+                    .await?;
+            }
+            "next" => {
+                debug_adapter
+                    .next(session_data, core_index, &request)
+                    .await?;
+            }
+            "stepIn" => {
+                debug_adapter
+                    .step_in(session_data, core_index, &request)
+                    .await?;
+            }
+            "stepOut" => {
+                debug_adapter
+                    .step_out(session_data, core_index, &request)
+                    .await?;
+            }
+            "setVariable" => {
+                debug_adapter
+                    .set_variable(session_data, core_index, &request)
+                    .await?;
+            }
+            "disassemble" => {
+                debug_adapter
+                    .disassemble(session_data, core_index, &request)
+                    .await?;
+            }
+            "configurationDone" => {
+                debug_adapter
+                    .configuration_done(session_data, core_index, &request)
+                    .await?;
+            }
+            "threads" => {
+                debug_adapter
+                    .threads(session_data, core_index, &request)
+                    .await?;
+            }
+            "completions" => {
+                debug_adapter
+                    .completions(session_data, core_index, &request)
+                    .await?;
+            }
+            "rttWindowOpened" => {
+                debug_adapter
+                    .rtt_window_opened(session_data, core_index, &request)
+                    .await?;
+            }
+            "continue" => {
+                debug_adapter
+                    .r#continue(session_data, core_index, &request)
+                    .await?;
+            }
 
-        if unhalt_me && let Err(error) = target_core.core.run() {
+            "disconnect" => {
+                debug_adapter
+                    .disconnect(session_data, core_index, &request)
+                    .await?;
+                debug_session = DebugSessionStatus::Terminate;
+            }
+            "restart" => {
+                session_data
+                    .backend
+                    .halt(core_index, Duration::from_millis(500))
+                    .await
+                    .context("Failed to halt core")?;
+                debug_session = DebugSessionStatus::Restart(request);
+            }
+            _ => {
+                let unimplemented_command = request.command.as_str();
+                debug_adapter.send_response::<()>(
+                    &request,
+                    Err(&DebuggerError::Other(anyhow!(
+                        "Received request '{unimplemented_command}', which is not supported or not implemented yet"
+                    ))),
+                ).context("Error executing request.")?;
+            }
+        };
+
+        if unhalt_me && let Err(error) = session_data.backend.run(core_index).await {
             let error = DebuggerError::Other(anyhow!(error).context("Failed to resume target."));
             debug_adapter.show_error_message(&error)?;
             return Err(error);
@@ -212,17 +333,17 @@ impl Debugger {
         Ok(debug_session)
     }
 
-    fn no_request_poll<P: ProtocolAdapter>(
+    async fn no_request_poll(
         &mut self,
         session_data: &mut SessionData,
-        debug_adapter: &mut DebugAdapter<P>,
+        debug_adapter: &mut DebugAdapter,
     ) -> Result<DebugSessionStatus, DebuggerError> {
         let _poll_span = tracing::trace_span!("Polling for core status").entered();
         let delay;
 
         // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
         // We do this even if the cores may be halted, as we need to handle RTT data from cores the debugger does not control.
-        let suggest_delay_required = session_data.poll_cores(&self.config, debug_adapter)?;
+        let suggest_delay_required = session_data.poll_cores(&self.config, debug_adapter).await?;
 
         if debug_adapter.all_cores_halted {
             // Medium delay to reduce fast looping costs.
@@ -254,38 +375,37 @@ impl Debugger {
         Ok(DebugSessionStatus::Continue(delay))
     }
 
-    /// `debug_session` is where the primary _debug processing_ for the DAP (Debug Adapter Protocol) adapter happens.
-    /// All requests are interpreted, actions taken, and responses formulated here.
-    /// This function is self contained and returns only status data to control what happens after the session completes.
-    /// The [`DebugAdapter`] takes care of _implementing the DAP Base Protocol_ and _communicating with the DAP client_ and _probe_.
-    pub(crate) async fn debug_session<P: ProtocolAdapter>(
+    /// RPC entry point for the DAP server. Drives the session against an
+    /// [`crate::cmd::dap_server::backend::rpc::RpcBackend`] wired up around the
+    /// provided [`RpcClient`] (and its ambient tokio runtime). The chip registry
+    /// of the server that `client` talks to supplies the target descriptions.
+    pub(crate) async fn debug_session_rpc(
         &mut self,
-        registry: &mut Registry,
-        debug_adapter: DebugAdapter<P>,
-        lister: &Lister,
+        client: &RpcClient,
+        debug_adapter: DebugAdapter,
     ) -> Result<(), DebuggerError> {
+        let timestamp_offset = self.timestamp_offset;
         let result = self
-            .run_debug_session(registry, debug_adapter, lister)
+            .debug_session_impl(debug_adapter, client, timestamp_offset)
             .await;
-        // Drop the session-scoped temporary directory holding any client-uploaded files
-        // (program binary, SVD, chip description). Done at session end rather than at
-        // [`Debugger`] drop so that, in TCP multi-session mode, one client's uploaded
-        // firmware does not linger on disk after they disconnect (and is not visible to
-        // the next client that connects).
+        // Drop the session-scoped temporary directory holding any client-uploaded
+        // files (program binary, SVD, chip description). Done at session end rather
+        // than at [`Debugger`] drop so that, in TCP multi-session mode, one client's
+        // uploaded firmware does not linger on disk after they disconnect (and is
+        // not visible to the next client that connects).
         self.uploaded_files = None;
         result
     }
 
-    async fn run_debug_session<P: ProtocolAdapter>(
+    /// Generic driver for a DAP session.
+    async fn debug_session_impl(
         &mut self,
-        registry: &mut Registry,
-        mut debug_adapter: DebugAdapter<P>,
-        lister: &Lister,
+        mut debug_adapter: DebugAdapter,
+        client: &RpcClient,
+        timestamp_offset: UtcOffset,
     ) -> Result<(), DebuggerError> {
-        // The DapClient startup process has a specific sequence.
-        // Handle it here before starting a probe-rs session and looping through user generated requests.
-        // Handling the initialize, and Attach/Launch requests here in this method,
-        // before entering the iterative loop that processes requests through the process_request method.
+        // Handle the initialize + attach/launch sequence before entering the
+        // request loop.
 
         // Initialize request
         if self.handle_initialize(&mut debug_adapter).is_err() {
@@ -293,7 +413,9 @@ impl Debugger {
             return Ok(());
         }
 
-        let Some(mut session_data) = self.start_session(registry, lister, &mut debug_adapter)?
+        let Some(mut session_data) = self
+            .start_session(&mut debug_adapter, client, timestamp_offset)
+            .await?
         else {
             // We got no error, but no SessionData, either
             return Ok(());
@@ -311,13 +433,16 @@ impl Debugger {
             return Err(error);
         }
 
-        // Loop through remaining (user generated) requests and send to the [process_request] method until either the client or some unexpected behaviour terminates the process.
+        // Loop through user-generated requests until the client or an error
+        // terminates the session.
         let error = loop {
-            let debug_session_status =
-                match self.process_next_request(&mut session_data, &mut debug_adapter) {
-                    Ok(status) => status,
-                    Err(error) => break error,
-                };
+            let debug_session_status = match self
+                .process_next_request(&mut session_data, &mut debug_adapter)
+                .await
+            {
+                Ok(status) => status,
+                Err(error) => break error,
+            };
 
             match debug_session_status {
                 DebugSessionStatus::Continue(delay) => {
@@ -327,15 +452,16 @@ impl Debugger {
                     }
                 }
                 DebugSessionStatus::Restart(request) => {
-                    if let Err(error) =
-                        self.restart(&mut debug_adapter, &mut session_data, &request)
+                    if let Err(error) = self
+                        .restart(&mut debug_adapter, &mut session_data, &request)
+                        .await
                     {
                         debug_adapter.send_response::<()>(&request, Err(&error))?;
                         return Err(error);
                     }
                 }
                 DebugSessionStatus::Terminate => {
-                    session_data.clean_up(&self.config)?;
+                    session_data.clean_up(&self.config).await?;
                     return Ok(());
                 }
             };
@@ -360,11 +486,11 @@ impl Debugger {
     /// This function then handles this request and returns the session data.
     ///
     /// The function exits with no session if a "disconnect" request is received.
-    fn start_session<P: ProtocolAdapter>(
+    async fn start_session(
         &mut self,
-        registry: &mut Registry,
-        lister: &Lister,
-        debug_adapter: &mut DebugAdapter<P>,
+        debug_adapter: &mut DebugAdapter,
+        client: &RpcClient,
+        timestamp_offset: UtcOffset,
     ) -> Result<Option<SessionData>, DebuggerError> {
         loop {
             // Wait for a request
@@ -399,13 +525,16 @@ impl Debugger {
             self.debug_logger.flush_to_dap(debug_adapter)?;
 
             // Process either the Launch or Attach request.
-            let session = match self.handle_launch_attach(
-                registry,
-                &request,
-                launch_attach_request,
-                debug_adapter,
-                lister,
-            ) {
+            let session = match self
+                .handle_launch_attach(
+                    &request,
+                    launch_attach_request,
+                    debug_adapter,
+                    client,
+                    timestamp_offset,
+                )
+                .await
+            {
                 Ok(session_data) => Some(session_data),
                 Err(error) => {
                     debug_adapter.send_response::<()>(&request, Err(&error))?;
@@ -419,13 +548,13 @@ impl Debugger {
 
     /// Process launch or attach request
     #[tracing::instrument(skip_all, name = "Handle Launch/Attach Request")]
-    fn handle_launch_attach<P: ProtocolAdapter>(
+    async fn handle_launch_attach(
         &mut self,
-        registry: &mut Registry,
         launch_attach_request: &Request,
         requested_target_session_type: TargetSessionType,
-        debug_adapter: &mut DebugAdapter<P>,
-        lister: &Lister,
+        debug_adapter: &mut DebugAdapter,
+        client: &RpcClient,
+        timestamp_offset: UtcOffset,
     ) -> Result<SessionData, DebuggerError> {
         self.config = get_arguments(debug_adapter, launch_attach_request)?;
 
@@ -437,8 +566,8 @@ impl Debugger {
 
         // Always start each session with a fresh upload area: drop any [`UploadedFiles`] left
         // over from a previous session that did not unwind cleanly (e.g. one that panicked
-        // before [`Self::debug_session`] could run its end-of-session cleanup). In the normal
-        // case there is nothing to drop here — `debug_session` already cleared it.
+        // before [`Self::debug_session_impl`] could run its end-of-session cleanup). In the normal
+        // case there is nothing to drop here — `debug_session_impl` already cleared it.
         self.uploaded_files = None;
 
         // In `remote_server_mode`, decode any client-supplied file payloads (program binary, SVD,
@@ -453,7 +582,7 @@ impl Debugger {
         self.config.validate_config_files()?;
 
         let mut session_data =
-            SessionData::new(registry, lister, &mut self.config, self.timestamp_offset)?;
+            SessionData::new_rpc_backed(client, &mut self.config, timestamp_offset).await?;
 
         debug_adapter.halt_after_reset = self.config.flashing_config.halt_after_reset;
 
@@ -464,55 +593,54 @@ impl Debugger {
         };
 
         if self.config.flashing_config.flashing_enabled {
-            let Some(path_to_elf) = &target_core_config.program_binary else {
+            let Some(path_to_elf) = target_core_config.program_binary.clone() else {
                 return Err(DebuggerError::Other(anyhow!(
                     "Please specify use the `program-binary` option in `launch.json` to specify an executable"
                 )));
             };
 
             // Store timestamp of flashed binary
-            self.binary_timestamp = get_file_timestamp(path_to_elf);
+            self.binary_timestamp = get_file_timestamp(&path_to_elf);
 
             Self::flash(
                 &self.config,
-                path_to_elf,
+                &path_to_elf,
                 debug_adapter,
                 launch_attach_request,
                 &mut session_data,
-            )?;
+            )
+            .await?;
         }
 
-        // First, attach to the core
-        let mut target_core = session_data.attach_core(target_core_config.core_index)?;
+        // First, halt the core so we can finish initialization without
+        // bumping into user code. (Depending on `config`, the core is
+        // restarted at the end of initialization in `configuration_done`.)
+        let core_index = target_core_config.core_index;
+        session_data
+            .backend
+            .halt(core_index, Duration::from_millis(100))
+            .await
+            .map_err(DebuggerError::from)?;
 
-        // Immediately after attaching, halt the core, so that we can finish initialization without bumping into user code.
-        // Depending on supplied `config`, the core will be restarted at the end of initialization in the `configuration_done` request.
-        halt_core(&mut target_core.core)?;
-
-        // Before we complete, load the (optional) CMSIS-SVD file and its variable cache.
-        // Configure the [CorePeripherals].
-        if let Some(svd_file) = &target_core_config.svd_file {
-            target_core.core_data.core_peripherals =
-                match SvdCache::new(svd_file, debug_adapter, launch_attach_request.seq) {
-                    Ok(core_peripherals) => Some(core_peripherals),
-                    Err(error) => {
-                        // This is not a fatal error. We can continue the debug session without the SVD file.
-                        tracing::warn!("{:?}", error);
-                        None
-                    }
-                };
+        // Synchronize the optional SVD configuration before exposing scopes.
+        // This is non-fatal: a failed load leaves the server cache cleared.
+        if let Err(error) = session_data
+            .backend
+            .load_svd(core_index, target_core_config.svd_file.clone())
+            .await
+        {
+            tracing::warn!("Failed to load SVD file: {error:?}");
         }
 
         if requested_target_session_type == TargetSessionType::LaunchRequest {
             // This will effectively do a `reset` and `halt` of the core, which is what we want until after the `configuration_done` request.
             debug_adapter
-                .restart(&mut target_core, None)
+                .restart_async(&mut session_data, core_index, None)
+                .await
                 .context("Failed to restart core")?;
         }
 
-        drop(target_core);
-
-        session_data.poll_cores(&self.config, debug_adapter)?;
+        session_data.poll_cores(&self.config, debug_adapter).await?;
 
         debug_adapter.send_response::<()>(launch_attach_request, Ok(None))?;
         self.debug_logger.flush_to_dap(debug_adapter)?;
@@ -521,9 +649,9 @@ impl Debugger {
     }
 
     #[tracing::instrument(skip_all)]
-    fn restart<P: ProtocolAdapter>(
+    async fn restart(
         &mut self,
-        debug_adapter: &mut DebugAdapter<P>,
+        debug_adapter: &mut DebugAdapter,
         session_data: &mut SessionData,
         request: &Request,
     ) -> Result<(), DebuggerError> {
@@ -534,54 +662,126 @@ impl Debugger {
         };
 
         if self.config.flashing_config.flashing_enabled {
-            let Some(path_to_elf) = &target_core_config.program_binary else {
+            let Some(path_to_elf) = target_core_config.program_binary.clone() else {
                 return Err(DebuggerError::Other(anyhow!(
                     "Please specify use the `program-binary` option in `launch.json` to specify an executable"
                 )));
             };
 
-            if is_file_newer(&mut self.binary_timestamp, path_to_elf) {
+            let flash_new_binary = match self.binary_timestamp {
+                Some(check_current_binary_timestamp) => match get_file_timestamp(&path_to_elf) {
+                    Some(new_binary_timestamp) => {
+                        if new_binary_timestamp > check_current_binary_timestamp {
+                            self.binary_timestamp = Some(new_binary_timestamp);
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                    None => {
+                        tracing::warn!(
+                            "Could not get timestamp for new binary. Assuming it is new."
+                        );
+                        true
+                    }
+                },
+                None => {
+                    self.binary_timestamp = get_file_timestamp(&path_to_elf);
+                    true
+                }
+            };
+            if flash_new_binary {
                 // If there is a new binary as part of a restart, there are some key things that
                 // need to be 'reset' for things to work properly.
-                session_data.load_debug_info_for_core(target_core_config)?;
+                let core_index = target_core_config.core_index;
+                // Reborrow `self.config.core_configs[0]` by cloning the
+                // relevant entry so we can call mutating methods on
+                // `session_data`.
+                let target_core_config = target_core_config.clone();
+                // Reject a replacement binary with unparsable DWARF before
+                // uploading it or mutating the target.
+                DebugInfo::from_file(&path_to_elf).map_err(|error| {
+                    DebuggerError::Other(anyhow!(
+                        "Failed to validate replacement debug info: {error}"
+                    ))
+                })?;
+                // Resolve the upload once so flash and debug-info publication
+                // share the same bytes.
+                let upload = session_data
+                    .backend
+                    .session_interface()
+                    .resolve_upload(&path_to_elf)
+                    .await
+                    .map_err(|error| {
+                        DebuggerError::Other(anyhow!(
+                            "Failed to resolve program binary upload: {error}"
+                        ))
+                    })?;
+                if let Ok(core_data) = session_data.core_data_mut(core_index) {
+                    // Reflashing changes the target image. Do not retain
+                    // frame ids from the pre-flash server unwind.
+                    core_data.invalidate_stack_frame_cache();
+                }
+                // Flashing can partially mutate the target before returning
+                // an error. Invalidate server-derived frame/variable handles
+                // first so no failure path can expose pre-flash state.
                 session_data
-                    .attach_core(target_core_config.core_index)
-                    .map(|mut target_core| target_core.recompute_breakpoints())??;
+                    .backend
+                    .session_interface()
+                    .clear_core_debug_state(core_index as u32)
+                    .await
+                    .map_err(|error| {
+                        DebuggerError::Other(anyhow!(
+                            "Failed to clear server debug state before reflash: {error}"
+                        ))
+                    })?;
 
+                Self::flash_resolved(&self.config, &upload, debug_adapter, request, session_data)
+                    .await?;
+
+                // Publish the new server-owned DWARF only after flashing
+                // succeeds, then recompute source breakpoints through RPC.
+                session_data
+                    .reload_debug_info_resolved(&target_core_config, &upload)
+                    .await?;
+                session_data.recompute_breakpoints(core_index).await?;
                 session_data.load_rtt_location(&self.config)?;
-
-                Self::flash(
-                    &self.config,
-                    path_to_elf,
-                    debug_adapter,
-                    request,
-                    session_data,
-                )?;
             }
         }
 
-        // First, attach to the core
-        let mut target_core = session_data.attach_core(target_core_config.core_index)?;
+        // First, halt the core so we can finish restart logic without
+        // bumping into user code.
+        let core_index = target_core_config.core_index;
+        session_data
+            .backend
+            .halt(core_index, Duration::from_millis(100))
+            .await
+            .map_err(DebuggerError::from)?;
 
-        // Immediately after attaching, halt the core, so that we can finish restart logic without bumping into user code.
-        halt_core(&mut target_core.core)?;
+        // A DAP restart carries no replacement launch configuration, but the
+        // configured SVD file may have changed on disk. Reload it on every
+        // restart; `None` and failures clear any stale server cache.
+        if let Err(error) = session_data
+            .backend
+            .load_svd(core_index, target_core_config.svd_file.clone())
+            .await
+        {
+            tracing::warn!("Failed to reload SVD file during restart: {error:?}");
+        }
 
         // Reset RTT so that the link can be re-established.
-        target_core.core_data.rtt_connection = None;
+        if let Ok(cd) = session_data.core_data_mut(core_index) {
+            cd.rtt_connection = None;
+        }
 
-        // We can't keep the reference for borrow checker reasons.
-        drop(target_core);
+        session_data.clear_rtt_blocks(&self.config).await?;
 
-        session_data.clear_rtt_blocks()?;
-
-        session_data.poll_cores(&self.config, debug_adapter)?;
-
-        // Re-attach
-        let mut target_core = session_data.attach_core(target_core_config.core_index)?;
+        session_data.poll_cores(&self.config, debug_adapter).await?;
 
         // After completing optional flashing and other config, we can run the debug adapter's restart logic.
         debug_adapter
-            .restart(&mut target_core, Some(request))
+            .restart_async(session_data, core_index, Some(request))
+            .await
             .context("Failed to restart core")?;
 
         Ok(())
@@ -589,136 +789,132 @@ impl Debugger {
 
     /// Flash the given binary, and report the progress to the
     /// debug adapter.
-    // Note: This function consumes the 'debug_adapter', so all error reporting via that handle must be done before returning from this function.
-    fn flash<P: ProtocolAdapter>(
+    //
+    // The actual flashing is delegated to [`RpcBackend::flash_binary_resolved`]
+    // so local and remote RPC sessions share this DAP-level progress plumbing.
+    async fn flash(
         config: &SessionConfig,
         path_to_elf: &Path,
-        debug_adapter: &mut DebugAdapter<P>,
+        debug_adapter: &mut DebugAdapter,
+        launch_attach_request: &Request,
+        session_data: &mut SessionData,
+    ) -> Result<(), DebuggerError> {
+        let upload = session_data
+            .backend
+            .session_interface()
+            .resolve_upload(path_to_elf)
+            .await
+            .map_err(|error| {
+                DebuggerError::Other(anyhow!("Failed to resolve program binary upload: {error}"))
+            })?;
+        Self::flash_resolved(
+            config,
+            &upload,
+            debug_adapter,
+            launch_attach_request,
+            session_data,
+        )
+        .await
+    }
+
+    /// Flash using a prior [`ResolvedUpload`] so restart validate/flash/publish
+    /// share one uploaded object.
+    async fn flash_resolved(
+        config: &SessionConfig,
+        upload: &ResolvedUpload,
+        debug_adapter: &mut DebugAdapter,
         launch_attach_request: &Request,
         session_data: &mut SessionData,
     ) -> Result<(), DebuggerError> {
         debug_adapter.log_to_console(format!(
-            "FLASHING: Starting write of {:?} to device memory",
-            &path_to_elf
+            "FLASHING: Starting write of {} to device memory",
+            upload.canonical_path.display()
         ));
         let progress_id = debug_adapter
             .start_progress("Flashing device", Some(launch_attach_request.seq))
             .ok();
-
-        let mut download_options = DownloadOptions::default();
-        download_options.keep_unwritten_bytes = config.flashing_config.restore_unwritten_bytes;
-        download_options.do_chip_erase = config.flashing_config.full_chip_erase;
-        download_options.verify = config.flashing_config.verify_after_flashing;
 
         #[derive(Default)]
         struct ProgressBarState {
             total_size: u64,
             size_done: u64,
         }
-
         type ProgressState = HashMap<Operation, ProgressBarState>;
 
-        download_options.progress = progress_id
-            .map(|id| {
-                let describe_op = |operation| match Operation::from(operation) {
-                    Operation::Fill => "Reading Old Pages",
-                    Operation::Erase => "Erasing Sectors",
-                    Operation::Program => "Programming Pages",
-                    Operation::Verify => "Verifying",
-                };
-                let mut flash_progress = ProgressState::default();
-                let debug_adapter = &mut *debug_adapter;
-                FlashProgress::new(move |event| {
-                    match event {
-                        ProgressEvent::AddProgressBar { operation, total } => {
-                            let pbar_state = flash_progress.entry(operation.into()).or_default();
-                            if let Some(total) = total {
-                                pbar_state.total_size += total; // should this be an assignment instead?
-                                pbar_state.size_done = 0;
-                            };
-                        }
-                        ProgressEvent::Started(operation) => {
-                            debug_adapter
-                                .update_progress(None, Some(describe_op(operation)), id)
-                                .ok();
-                        }
-                        ProgressEvent::Progress {
-                            operation, size, ..
-                        } => {
-                            let pbar_state = flash_progress.entry(operation.into()).or_default();
-                            pbar_state.size_done += size;
-                            let progress =
-                                pbar_state.size_done as f64 / pbar_state.total_size as f64;
+        // Clear stale RTT control blocks before reflashing so that the old
+        // control block header does not leak into the first poll cycle.
+        session_data.clear_rtt_blocks(config).await?;
 
-                            debug_adapter
-                                .update_progress(
-                                    Some(progress.min(1.0)),
-                                    Some(describe_op(operation)),
-                                    id,
-                                )
-                                .ok();
-                        }
-                        ProgressEvent::Failed(operation) => {
-                            debug_adapter
-                                .update_progress(
-                                    Some(1.0),
-                                    Some(format!("{} Failed!", describe_op(operation))),
-                                    id,
-                                )
-                                .ok();
-                        }
-                        ProgressEvent::Finished(operation) => {
-                            debug_adapter
-                                .update_progress(
-                                    Some(1.0),
-                                    Some(format!("{} Complete!", describe_op(operation))),
-                                    id,
-                                )
-                                .ok();
-                        }
-                        ProgressEvent::FlashLayoutReady { .. } => {}
-                        ProgressEvent::DiagnosticMessage { .. } => {}
+        let mut flash_progress_state = ProgressState::default();
+        let describe_op = |operation| match operation {
+            Operation::Fill => "Reading Old Pages",
+            Operation::Erase => "Erasing Sectors",
+            Operation::Program => "Programming Pages",
+            Operation::Verify => "Verifying",
+        };
+
+        let result = {
+            let mut on_event = |event: WireProgressEvent| match event {
+                WireProgressEvent::AddProgressBar { operation, total } => {
+                    let pbar_state = flash_progress_state.entry(operation).or_default();
+                    if let Some(total) = total {
+                        pbar_state.total_size += total;
+                        pbar_state.size_done = 0;
                     }
-                })
-            })
-            .unwrap_or_default();
-
-        let result = match build_loader(
-            &mut session_data.session,
-            path_to_elf,
-            config.flashing_config.format_options.clone(),
-            None,
-        ) {
-            Ok(loader) => {
-                let do_flashing = if config.flashing_config.verify_before_flashing {
-                    match loader.verify(&mut session_data.session, &mut download_options.progress) {
-                        Ok(_) => false,
-                        Err(FlashError::Verify) => true,
-                        Err(other) => {
-                            return Err(DebuggerError::FileDownload(FileDownloadError::Flash(
-                                other,
-                            )));
-                        }
-                    }
-                } else {
-                    true
-                };
-
-                session_data.clear_rtt_blocks()?;
-
-                if do_flashing {
-                    loader
-                        .commit(&mut session_data.session, download_options)
-                        .map_err(FileDownloadError::Flash)
-                } else {
-                    drop(download_options);
-                    Ok(())
                 }
-            }
-            Err(error) => {
-                drop(download_options);
-                Err(error)
-            }
+                WireProgressEvent::Started(operation) => {
+                    if let Some(id) = progress_id {
+                        debug_adapter
+                            .update_progress(None, Some(describe_op(operation)), id)
+                            .ok();
+                    }
+                }
+                WireProgressEvent::Progress { operation, size } => {
+                    let pbar_state = flash_progress_state.entry(operation).or_default();
+                    pbar_state.size_done += size;
+                    let progress =
+                        pbar_state.size_done as f64 / pbar_state.total_size.max(1) as f64;
+
+                    if let Some(id) = progress_id {
+                        debug_adapter
+                            .update_progress(
+                                Some(progress.min(1.0)),
+                                Some(describe_op(operation)),
+                                id,
+                            )
+                            .ok();
+                    }
+                }
+                WireProgressEvent::Failed(operation) => {
+                    if let Some(id) = progress_id {
+                        debug_adapter
+                            .update_progress(
+                                Some(1.0),
+                                Some(format!("{} Failed!", describe_op(operation))),
+                                id,
+                            )
+                            .ok();
+                    }
+                }
+                WireProgressEvent::Finished(operation) => {
+                    if let Some(id) = progress_id {
+                        debug_adapter
+                            .update_progress(
+                                Some(1.0),
+                                Some(format!("{} Complete!", describe_op(operation))),
+                                id,
+                            )
+                            .ok();
+                    }
+                }
+                WireProgressEvent::FlashLayoutReady { .. } => {}
+                WireProgressEvent::DiagnosticMessage { .. } => {}
+            };
+
+            session_data
+                .backend
+                .flash_binary_resolved(upload, &config.flashing_config, &mut on_event)
+                .await
         };
 
         if let Some(id) = progress_id {
@@ -727,18 +923,18 @@ impl Debugger {
 
         if result.is_ok() {
             debug_adapter.log_to_console(format!(
-                "FLASHING: Completed write of {:?} to device memory",
-                &path_to_elf
+                "FLASHING: Completed write of {} to device memory",
+                upload.canonical_path.display()
             ));
         }
 
-        result.map_err(DebuggerError::FileDownload)
+        result
     }
 
     #[tracing::instrument(skip_all, name = "Handling initialize request")]
-    pub(crate) fn handle_initialize<P: ProtocolAdapter>(
+    pub(crate) fn handle_initialize(
         &mut self,
-        debug_adapter: &mut DebugAdapter<P>,
+        debug_adapter: &mut DebugAdapter,
     ) -> Result<(), DebuggerError> {
         let initialize_request = loop {
             if let Some(current_request) = debug_adapter.listen_for_request()? {
@@ -756,7 +952,7 @@ impl Debugger {
         };
 
         let initialize_arguments =
-            get_arguments::<InitializeRequestArguments, _>(debug_adapter, &initialize_request)?;
+            get_arguments::<InitializeRequestArguments>(debug_adapter, &initialize_request)?;
 
         // Enable quirks specific to particular DAP clients...
         if let Some(client_id) = initialize_arguments.client_id
@@ -795,134 +991,12 @@ impl Debugger {
         }
 
         // Reply to Initialize with `Capabilities`.
-        let capabilities = Capabilities {
-            supports_configuration_done_request: Some(true),
-            supports_restart_request: Some(true),
-            support_suspend_debuggee: Some(true),
-            supports_delayed_stack_trace_loading: Some(true),
-            supports_read_memory_request: Some(true),
-            supports_write_memory_request: Some(true),
-            supports_set_variable: Some(true),
-            supports_clipboard_context: Some(true),
-            supports_disassemble_request: Some(true),
-            supports_instruction_breakpoints: Some(true),
-            supports_stepping_granularity: Some(true),
-            supports_completions_request: Some(true),
-            support_terminate_debuggee: Some(true),
-            // supports_value_formatting_options: Some(true),
-            // supports_function_breakpoints: Some(true),
-            // TODO: Use DEMCR register to implement exception breakpoints
-            // supports_exception_options: Some(true),
-            // supports_exception_filter_options: Some (true),
-            ..Default::default()
-        };
+        let capabilities = dap_capabilities();
         debug_adapter.send_response(&initialize_request, Ok(Some(capabilities)))?;
 
         self.debug_logger.flush_to_dap(debug_adapter)?;
 
         Ok(())
-    }
-}
-
-// FIXME: why are we using anyhow internally, but an enum on the outside?
-fn dispatch_request<P: ProtocolAdapter>(
-    debug_adapter: &mut DebugAdapter<P>,
-    request: Request,
-    target_core: &mut CoreHandle<'_>,
-) -> anyhow::Result<DebugSessionStatus> {
-    match request.command.as_ref() {
-        "rttWindowOpened" => {
-            if let Some(debugger_rtt_target) = target_core.core_data.rtt_connection.as_mut() {
-                let arguments: RttWindowOpenedArguments = get_arguments(debug_adapter, &request)?;
-
-                if let Some(rtt_channel) = debugger_rtt_target
-                    .debugger_rtt_channels
-                    .iter_mut()
-                    .find(|debugger_rtt_channel| {
-                        debugger_rtt_channel.channel_number == arguments.channel_number
-                    })
-                {
-                    rtt_channel.has_client_window = arguments.window_is_open;
-                }
-
-                debug_adapter
-                    .send_response::<()>(&request, Ok(None))
-                    .context("Could not deserialize arguments for RttWindowOpened")?;
-            }
-        }
-        "disconnect" => {
-            debug_adapter.disconnect(target_core, &request)?;
-            return Ok(DebugSessionStatus::Terminate);
-        }
-        "next" => debug_adapter.next(target_core, &request)?,
-        "stepIn" => debug_adapter.step_in(target_core, &request)?,
-        "stepOut" => debug_adapter.step_out(target_core, &request)?,
-        "pause" => debug_adapter.pause(target_core, &request)?,
-        "readMemory" => debug_adapter.read_memory(target_core, &request)?,
-        "writeMemory" => debug_adapter.write_memory(target_core, &request)?,
-        "setVariable" => debug_adapter.set_variable(target_core, &request)?,
-        "configurationDone" => debug_adapter.configuration_done(target_core, &request)?,
-        "threads" => debug_adapter.threads(target_core, &request)?,
-        "restart" => {
-            target_core
-                .core
-                .halt(Duration::from_millis(500))
-                .context("Failed to halt core")?;
-
-            return Ok(DebugSessionStatus::Restart(request));
-        }
-        "setBreakpoints" => debug_adapter.set_breakpoints(target_core, &request)?,
-        "setInstructionBreakpoints" => {
-            debug_adapter.set_instruction_breakpoints(target_core, &request)?
-        }
-        "stackTrace" => debug_adapter.stack_trace(target_core, &request)?,
-        "scopes" => debug_adapter.scopes(target_core, &request)?,
-        "disassemble" => debug_adapter.disassemble(target_core, &request)?,
-        "variables" => debug_adapter.variables(target_core, &request)?,
-        "continue" => debug_adapter.r#continue(target_core, &request)?,
-        "evaluate" => debug_adapter.evaluate(target_core, &request)?,
-        "completions" => debug_adapter.completions(target_core, &request)?,
-
-        unimplemented_command => {
-            debug_adapter.send_response::<()>(
-                &request,
-                Err(&DebuggerError::Other(anyhow!(
-                    "Received request '{unimplemented_command}', which is not supported or not implemented yet"
-                ))),
-            )?;
-        }
-    }
-
-    Ok(DebugSessionStatus::Continue(Duration::ZERO))
-}
-
-pub(crate) fn is_file_newer(
-    saved_binary_timestamp: &mut Option<Duration>,
-    path_to_elf: &Path,
-) -> bool {
-    if let Some(check_current_binary_timestamp) = *saved_binary_timestamp {
-        // We have a timestamp for the binary that is currently on the device, so we need to compare it with the new binary.
-        if let Some(new_binary_timestamp) = get_file_timestamp(path_to_elf) {
-            // If it is newer, we can flash it. Otherwise just skip flashing.
-            if new_binary_timestamp > check_current_binary_timestamp {
-                *saved_binary_timestamp = Some(new_binary_timestamp);
-                true
-            } else {
-                false
-            }
-        } else {
-            // For some reason we couldn't get a timestamp for the new binary. Warn and assume it is new.
-            tracing::warn!("Could not get timestamp for new binary. Assuming it is new.");
-            true
-        }
-    } else {
-        // We don't have a timestamp for the binary that is currently on the device, so we can flash the binary.
-        *saved_binary_timestamp = fs::metadata(path_to_elf)
-            .and_then(|metadata| metadata.modified())
-            .map(|modified| modified.duration_since(UNIX_EPOCH).ok())
-            .ok()
-            .flatten();
-        true
     }
 }
 
@@ -949,13 +1023,10 @@ mod test {
     };
     use probe_rs::{
         architecture::arm::FullyQualifiedApAddress,
-        config::Registry,
         integration::{FakeProbe, Operation},
-        probe::{
-            DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory,
-            list::Lister,
-        },
+        probe::{DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory},
     };
+    use probe_rs_rpc_client::RpcClient;
     use serde_json::json;
     use std::{
         collections::{BTreeMap, HashMap, VecDeque},
@@ -984,7 +1055,7 @@ mod test {
             todo!()
         }
 
-        fn list_probes(&self) -> Vec<DebugProbeInfo> {
+        fn list_probes(&self) -> Vec<probe_rs::probe::list::ProbeListItem> {
             todo!()
         }
     }
@@ -993,23 +1064,43 @@ mod test {
     ///
     /// `Capabilities::default()` is not const, so this can't just be a constant.
     fn expected_capabilities() -> Capabilities {
-        Capabilities {
-            support_suspend_debuggee: Some(true),
-            supports_clipboard_context: Some(true),
-            supports_completions_request: Some(true),
-            supports_configuration_done_request: Some(true),
-            supports_delayed_stack_trace_loading: Some(true),
-            supports_disassemble_request: Some(true),
-            supports_instruction_breakpoints: Some(true),
-            supports_read_memory_request: Some(true),
-            supports_write_memory_request: Some(true),
-            supports_restart_request: Some(true),
-            supports_set_variable: Some(true),
-            supports_stepping_granularity: Some(true),
-            support_terminate_debuggee: Some(true),
+        super::dap_capabilities()
+    }
 
-            ..Default::default()
-        }
+    #[test]
+    fn initialize_capabilities_match_dispatch_and_behavior() {
+        let capabilities = super::dap_capabilities();
+
+        // Request capabilities with explicit handle_request arms.
+        assert_eq!(capabilities.supports_configuration_done_request, Some(true));
+        assert_eq!(capabilities.supports_restart_request, Some(true));
+        assert_eq!(capabilities.supports_read_memory_request, Some(true));
+        assert_eq!(capabilities.supports_write_memory_request, Some(true));
+        assert_eq!(capabilities.supports_set_variable, Some(true));
+        assert_eq!(capabilities.supports_disassemble_request, Some(true));
+        assert_eq!(capabilities.supports_instruction_breakpoints, Some(true));
+        assert_eq!(capabilities.supports_completions_request, Some(true));
+
+        // Behavior capabilities implemented by existing request handlers.
+        assert_eq!(capabilities.supports_evaluate_for_hovers, Some(true));
+        assert_eq!(capabilities.supports_stepping_granularity, Some(true));
+        assert_eq!(capabilities.support_suspend_debuggee, Some(true));
+        assert_eq!(capabilities.support_terminate_debuggee, Some(true));
+        assert_eq!(capabilities.supports_ansi_styling, Some(true));
+        assert_eq!(
+            capabilities.supports_delayed_stack_trace_loading,
+            Some(false)
+        );
+
+        // These pre-existing requests still take the fallback path and must
+        // remain unadvertised.
+        assert_ne!(capabilities.supports_terminate_request, Some(true));
+        assert_ne!(capabilities.supports_modules_request, Some(true));
+        assert_ne!(capabilities.supports_loaded_sources_request, Some(true));
+        assert_ne!(capabilities.supports_exception_info_request, Some(true));
+        assert_ne!(capabilities.supports_exception_options, Some(true));
+        assert_ne!(capabilities.supports_exception_filter_options, Some(true));
+        assert!(capabilities.exception_breakpoint_filters.is_none());
     }
 
     fn default_initialize_args() -> InitializeRequestArguments {
@@ -1066,7 +1157,7 @@ mod test {
             self
         }
 
-        fn and_succesful_response(self) -> ResponseBuilder<'r> {
+        fn and_successful_response(self) -> ResponseBuilder<'r> {
             let req = self.adapter.requests.back_mut().unwrap();
 
             let response = Response {
@@ -1162,7 +1253,7 @@ mod test {
         fn expect_response(&mut self, response: Response) -> ResponseBuilder<'_> {
             assert!(
                 response.success,
-                "success field must be true for succesful response"
+                "success field must be true for successful response"
             );
             self.expected_responses.push(response);
             ResponseBuilder { adapter: self }
@@ -1211,6 +1302,7 @@ mod test {
             event_type: &str,
             event_body: Option<serde_json::Value>,
         ) -> anyhow::Result<()> {
+            tracing::debug!("Sending event: {}", event_type);
             if self.event_index >= self.expected_events.len() {
                 panic!(
                     "No more events expected, but got event_type={event_type:?}, event_body={event_body:?}"
@@ -1277,7 +1369,7 @@ mod test {
         protocol_adapter
             .add_request("initialize")
             .with_arguments(default_initialize_args())
-            .and_succesful_response()
+            .and_successful_response()
             .with_body(expected_capabilities());
 
         protocol_adapter.expect_output_event("probe-rs-debug: Log output for \"probe_rs=warn\" will be written to the Debug Console.\n");
@@ -1311,7 +1403,7 @@ mod test {
         protocol_adapter
             .add_request("launch")
             .with_arguments(launch_args)
-            .and_succesful_response();
+            .and_successful_response();
 
         protocol_adapter.expect_event("initialized", None::<u32>);
 
@@ -1326,7 +1418,7 @@ mod test {
                 suspend_debuggee: Some(false),
                 terminate_debuggee: Some(false),
             })
-            .and_succesful_response();
+            .and_successful_response();
     }
 
     fn fake_probe() -> (DebugProbeInfo, FakeProbe) {
@@ -1356,19 +1448,31 @@ mod test {
         protocol_adapter: MockProtocolAdapter,
         with_probe: bool,
     ) -> Result<(), DebuggerError> {
+        use crate::rpc::functions::RpcApp;
+        use std::sync::Arc;
+
         let debug_adapter = DebugAdapter::new(protocol_adapter);
 
         let lister = TestLister::new();
         if with_probe {
-            lister.probes.borrow_mut().push(fake_probe());
+            lister.probes.lock().unwrap().push(fake_probe());
         }
-        let lister = Lister::with_lister(Box::new(lister));
+        let lister = Arc::new(lister) as Arc<dyn probe_rs::integration::ProbeLister + Send + Sync>;
 
-        let mut registry = Registry::from_builtin_families();
+        // Spawn an in-process RPC server backed by the test lister (so the
+        // `FakeProbe` is visible to `probe/attach`), and drive the DAP
+        // session through `RpcBackend` — the same path production uses.
+        let (mut local_server, tx, rx) = RpcApp::create_server_with_lister(16, lister);
+        let handle = tokio::spawn(async move { local_server.run().await });
+
+        let client = RpcClient::new_local_from_wire(tx, rx);
         let mut debugger = Debugger::new(UtcOffset::UTC, None)?;
-        debugger
-            .debug_session(&mut registry, debug_adapter, &lister)
-            .await
+        let result = debugger.debug_session_rpc(&client, debug_adapter).await;
+
+        // Shut the server down (drop the client first so the server exits).
+        drop(client);
+        _ = handle.await;
+        result
     }
 
     #[tokio::test]
@@ -1386,9 +1490,14 @@ mod test {
         let expected_error = "No connected probes were found.";
         protocol_adapter.expect_output_event(&format!("{expected_error}\n"));
 
+        // RPC attach requires a chip name (to look up the target locally and
+        // drive `probe/attach`), so give it a valid session config. With no
+        // `FakeProbe` registered in the test lister, `select_probe` then
+        // reports "No connected probes were found." (before the program
+        // binary is ever touched).
         protocol_adapter
             .add_request("launch")
-            .with_arguments(SessionConfig::default())
+            .with_arguments(valid_session_config())
             .and_error_response()
             .with_body(error_response_body(expected_error));
 
@@ -1431,7 +1540,7 @@ mod test {
         protocol_adapter
             .add_request("attach")
             .with_arguments(attach_args)
-            .and_succesful_response();
+            .and_successful_response();
 
         protocol_adapter.expect_event("initialized", None::<u32>);
 
@@ -1471,7 +1580,7 @@ mod test {
 
         protocol_adapter
             .add_request("configurationDone")
-            .and_succesful_response();
+            .and_successful_response();
 
         protocol_adapter.expect_event(
             "continued",
@@ -1497,7 +1606,7 @@ mod test {
 
         protocol_adapter
             .add_request("threads")
-            .and_succesful_response()
+            .and_successful_response()
             .with_body(ThreadsResponseBody {
                 threads: vec![Thread {
                     id: 0,
@@ -1581,7 +1690,7 @@ mod test {
 
         protocol_adapter
             .add_request("configurationDone")
-            .and_succesful_response();
+            .and_successful_response();
 
         protocol_adapter.expect_event(
             "continued",
@@ -1641,7 +1750,7 @@ mod test {
                 instruction_count: *inst_cnt,
                 resolve_symbols: None,
             })
-            .and_succesful_response()
+            .and_successful_response()
             .with_body(DisassembleResponseBody {
                 instructions: test_instrs
                     .iter()

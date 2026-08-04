@@ -354,11 +354,17 @@ impl ArmCommunicationInterface {
             if self.current_dp.is_none() {
                 sequence.debug_port_setup(&mut *self.probe_mut(), dp)?;
             } else {
-                // Try to switch to the new DP.
+                // Try the quick switch to the new DP first. This is expected to fail for
+                // some targets (e.g. RP2040 multidrop, which needs the dormant-state
+                // transition), so only fall back to the full setup here - if that also
+                // fails, the `?` below surfaces the real error.
                 if let Err(e) = sequence.debug_port_connect(&mut *self.probe_mut(), dp) {
-                    tracing::warn!("Failed to switch to DP {:x?}: {}", dp, e);
+                    tracing::debug!(
+                        "Quick connect to DP {:x?} failed ({e}), running full setup",
+                        dp
+                    );
 
-                    // Try the more involved debug_port_setup sequence, which also handles dormant mode.
+                    // The more involved debug_port_setup sequence also handles dormant mode.
                     sequence.debug_port_setup(&mut *self.probe_mut(), dp)?;
                 }
             }
@@ -487,9 +493,11 @@ impl ArmCommunicationInterface {
                     "DPv3 targets require APv2 addresses in target descriptions; got legacy AP index {port}. Use `ap: !v2 0x...`."
                 )));
             }
-            _ => unreachable!(
-                "Did not expect to be called with {ap:x?}. This is a bug, please report it."
-            ),
+            (ApAddress::V2(_), SelectCache::DPv1(_)) => {
+                return Err(ArmError::Other(format!(
+                    "The selected target uses an APv2 address ({ap:x?}), but the connected debug port only supports the ADIv5 SELECT register. This usually means the wrong chip was selected for the attached target."
+                )));
+            }
         }
 
         if previous_select != dp_state.current_select {

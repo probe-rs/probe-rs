@@ -38,7 +38,6 @@ test = ["object"]
 
 [dependencies]
 anyhow.workspace = true
-async-io.workspace = true
 docsplay.workspace = true
 thiserror.workspace = true
 probe-rs-target.workspace = true
@@ -51,7 +50,7 @@ bitvec = "1"
 hidapi = { version = "2.6.4", default-features = false, features = [
     "linux-native-basic-udev",
 ], optional = true }
-itertools = "0.14"
+itertools = "0.15"
 jep106 = "0.3"
 object = { version = "0.39", default-features = false, features = [
     "elf",
@@ -59,7 +58,6 @@ object = { version = "0.39", default-features = false, features = [
     "std",
 ], optional = true }
 nusb.workspace = true
-futures-lite = { version = "2", default-features = false }
 scroll = "0.13"
 serialport = { version = "4.7.0", default-features = false, features = [
     "usbportinfo-interface",
@@ -81,6 +79,10 @@ hexdump = { version = "0.1", optional = true }
 # For coredump
 rmp-serde = { version = "1", optional = true }
 dunce = { version = "1.0.5", optional = true }
+
+# Used to check whether a probe's device node is accessible to the current user (access(2)).
+[target.'cfg(target_os = "linux")'.dependencies]
+nix = { version = "0.31", features = ["fs"] }
 
 [build-dependencies]
 probe-rs-target = { workspace = true, optional = true, features = ["bincode"] }

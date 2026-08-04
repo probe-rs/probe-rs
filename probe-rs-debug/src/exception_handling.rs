@@ -135,7 +135,14 @@ pub trait ExceptionInterface {
         _memory: &mut dyn MemoryInterface,
         register_rule: &mut String,
     ) -> Result<Option<RegisterValue>, DebugError> {
-        if debug_register.register_has_role(RegisterRole::FramePointer) {
+        if debug_register.register_has_role(RegisterRole::FramePointer)
+            && debug_register.unwind_rule != UnwindRule::Preserve
+        {
+            // The frame pointer usually has an `Undefined` DWARF rule, in which
+            // case we fall back to FP=CFA. But if it is marked `Preserve` (it is
+            // callee-saved, e.g. R7 in the ARM ABI), the caller's value is simply
+            // whatever the callee left in it, so we must NOT overwrite it with the
+            // CFA. Fall through to the `Preserve` handling below instead.
             *register_rule = "FP=CFA (dwarf Undefined)".to_string();
             return Ok(cfa_as_register(debug_register, unwind_cfa));
         }

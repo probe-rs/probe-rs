@@ -36,7 +36,7 @@ fn breakpoint_location_absolute() {
                 .expect("Failed to find breakpoint location.")
                 .address,
             "Addresses do not match for data path={:?}, line={:?}, col={:?}",
-            &path,
+            path,
             line,
             col,
         );
@@ -71,7 +71,7 @@ fn breakpoint_location_inexact() {
                 .expect("Failed to find valid breakpoint locations.")
                 .address,
             "Addresses do not match for data path={:?}, line={:?}, col={:?}",
-            &path,
+            path,
             line,
             col,
         );

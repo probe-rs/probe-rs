@@ -1,11 +1,10 @@
-use crate::util::rtt::{
-    ChannelMode, RttActiveDownChannel, RttActiveUpChannel, RttConfig, RttConnection,
-};
+use crate::util::rtt::{RttActiveDownChannel, RttActiveUpChannel, RttConfig, RttConnection};
 use probe_rs::{
     Core, MemoryInterface, Target,
     flashing::FlashLoader,
     rtt::{Error, Rtt, ScanRegion},
 };
+use probe_rs_rpc::rtt_config::ChannelMode;
 
 pub struct RttClient {
     pub scan_region: ScanRegion,

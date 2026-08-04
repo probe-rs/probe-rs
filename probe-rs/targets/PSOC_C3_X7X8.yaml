@@ -1,0 +1,3030 @@
+name: PSOC_C3_X7X8
+manufacturer:
+  id: 0x41
+  cc: 0x0
+chip_detection:
+- !InfineonPsocSiid
+  family_id: 0x119
+  silicon_ids:
+    0xee80: PSC3M8GFS3PAHQ1
+    0xee81: PSC3M8GFS3PAFQ1
+    0xee82: PSC3M8GFS3PABQ1
+    0xee83: PSC3M8GFS3PACQ1
+    0xee84: PSC3M8GFS3PLGQ1
+    0xee85: PSC3M8GFS3PLHQ1
+    0xee86: PSC3P8GFS3PAHQ1
+    0xee87: PSC3P8GFS3PAFQ1
+    0xee88: PSC3P7GES3PAFQ1
+    0xee89: PSC3M7GES3PAFQ1
+    0xee8a: PSC3P8GFS3PACQ1
+    0xee8b: PSC3P8GFS3PLHQ1
+    0xee8c: PSC3P8FES2PLHQ1
+    0xee8d: PSC3M8FES2PLHQ1
+    0xee8e: PSC3P7FES2PLHQ1
+    0xee8f: PSC3M7FES2PLHQ1
+    0xee90: PSC3P8GFS3PABQ1
+    0xee91: PSC3P7FES2PABQ1
+    0xee92: PSC3P8GFS3PLGQ1
+    0xee93: PSC3P8FES2PLGQ1
+    0xee94: PSC3M8FES2PLGQ1
+    0xee95: PSC3P7FES2PLGQ1
+    0xee96: PSC3M7FES2PLGQ1
+generated_from_pack: true
+pack_file_release: 1.1.0
+variants:
+- name: PSC3M7FES2PLGQ1
+  cores:
+  - name: cortex-m33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0002000
+  - name: cortex-m33-ppca0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0006000
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x22000000
+      end: 0x22040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Nvm
+    name: IROM3
+    is_alias: true
+    range:
+      start: 0x22800000
+      end: 0x22820000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+  - !Nvm
+    name: IROM2
+    is_alias: true
+    range:
+      start: 0x32000000
+      end: 0x32040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Nvm
+    name: IROM4
+    is_alias: true
+    range:
+      start: 0x32800000
+      end: 0x32820000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    is_alias: true
+    range:
+      start: 0x34000000
+      end: 0x34010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_CODE_SRAM
+    range:
+      start: 0x43010000
+      end: 0x43018000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_DATA_SRAM
+    range:
+      start: 0x43020000
+      end: 0x43024000
+    cores:
+    - cortex-m33-ppca0
+  flash_algorithms:
+  - psc3xxf
+  - psc3xxf_s
+  - psc3xxf_dbm1
+- name: PSC3M7FES2PLHQ1
+  cores:
+  - name: cortex-m33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0002000
+  - name: cortex-m33-ppca0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0006000
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x22000000
+      end: 0x22040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Nvm
+    name: IROM3
+    is_alias: true
+    range:
+      start: 0x22800000
+      end: 0x22820000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+  - !Nvm
+    name: IROM2
+    is_alias: true
+    range:
+      start: 0x32000000
+      end: 0x32040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Nvm
+    name: IROM4
+    is_alias: true
+    range:
+      start: 0x32800000
+      end: 0x32820000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    is_alias: true
+    range:
+      start: 0x34000000
+      end: 0x34010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_CODE_SRAM
+    range:
+      start: 0x43010000
+      end: 0x43018000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_DATA_SRAM
+    range:
+      start: 0x43020000
+      end: 0x43024000
+    cores:
+    - cortex-m33-ppca0
+  flash_algorithms:
+  - psc3xxf
+  - psc3xxf_s
+  - psc3xxf_dbm1
+- name: PSC3M7GES3PAFQ1
+  cores:
+  - name: cortex-m33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0002000
+  - name: cortex-m33-ppca0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0006000
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x22000000
+      end: 0x22080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Nvm
+    name: IROM3
+    is_alias: true
+    range:
+      start: 0x22800000
+      end: 0x22840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+  - !Nvm
+    name: IROM2
+    is_alias: true
+    range:
+      start: 0x32000000
+      end: 0x32080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Nvm
+    name: IROM4
+    is_alias: true
+    range:
+      start: 0x32800000
+      end: 0x32840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    is_alias: true
+    range:
+      start: 0x34000000
+      end: 0x34010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_CODE_SRAM
+    range:
+      start: 0x43010000
+      end: 0x43018000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_DATA_SRAM
+    range:
+      start: 0x43020000
+      end: 0x43024000
+    cores:
+    - cortex-m33-ppca0
+  flash_algorithms:
+  - psc3xxg
+  - psc3xxg_s
+  - psc3xxg_dbm1
+- name: PSC3M8FES2PLGQ1
+  cores:
+  - name: cortex-m33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0002000
+  - name: cortex-m33-ppca0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0006000
+  - name: cortex-m33-ppca1
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0008000
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x22000000
+      end: 0x22040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM3
+    is_alias: true
+    range:
+      start: 0x22800000
+      end: 0x22820000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM2
+    is_alias: true
+    range:
+      start: 0x32000000
+      end: 0x32040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM4
+    is_alias: true
+    range:
+      start: 0x32800000
+      end: 0x32820000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    is_alias: true
+    range:
+      start: 0x34000000
+      end: 0x34010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA0_CODE_SRAM
+    range:
+      start: 0x43010000
+      end: 0x43018000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_DATA_SRAM
+    range:
+      start: 0x43020000
+      end: 0x43024000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA1_CODE_SRAM
+    range:
+      start: 0x43030000
+      end: 0x43038000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA1_DATA_SRAM
+    range:
+      start: 0x43040000
+      end: 0x43044000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x43050000
+      end: 0x43054000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  flash_algorithms:
+  - psc3xxf
+  - psc3xxf_s
+  - psc3xxf_dbm1
+- name: PSC3M8FES2PLHQ1
+  cores:
+  - name: cortex-m33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0002000
+  - name: cortex-m33-ppca0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0006000
+  - name: cortex-m33-ppca1
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0008000
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x22000000
+      end: 0x22040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM3
+    is_alias: true
+    range:
+      start: 0x22800000
+      end: 0x22820000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM2
+    is_alias: true
+    range:
+      start: 0x32000000
+      end: 0x32040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM4
+    is_alias: true
+    range:
+      start: 0x32800000
+      end: 0x32820000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    is_alias: true
+    range:
+      start: 0x34000000
+      end: 0x34010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA0_CODE_SRAM
+    range:
+      start: 0x43010000
+      end: 0x43018000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_DATA_SRAM
+    range:
+      start: 0x43020000
+      end: 0x43024000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA1_CODE_SRAM
+    range:
+      start: 0x43030000
+      end: 0x43038000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA1_DATA_SRAM
+    range:
+      start: 0x43040000
+      end: 0x43044000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x43050000
+      end: 0x43054000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  flash_algorithms:
+  - psc3xxf
+  - psc3xxf_s
+  - psc3xxf_dbm1
+- name: PSC3M8GFS3PABQ1
+  cores:
+  - name: cortex-m33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0002000
+  - name: cortex-m33-ppca0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0006000
+  - name: cortex-m33-ppca1
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0008000
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x22000000
+      end: 0x22080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM3
+    is_alias: true
+    range:
+      start: 0x22800000
+      end: 0x22840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM2
+    is_alias: true
+    range:
+      start: 0x32000000
+      end: 0x32080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM4
+    is_alias: true
+    range:
+      start: 0x32800000
+      end: 0x32840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    is_alias: true
+    range:
+      start: 0x34000000
+      end: 0x34010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA0_CODE_SRAM
+    range:
+      start: 0x43010000
+      end: 0x43018000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_DATA_SRAM
+    range:
+      start: 0x43020000
+      end: 0x43024000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA1_CODE_SRAM
+    range:
+      start: 0x43030000
+      end: 0x43038000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA1_DATA_SRAM
+    range:
+      start: 0x43040000
+      end: 0x43044000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x43050000
+      end: 0x43054000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  flash_algorithms:
+  - psc3xxg
+  - psc3xxg_s
+  - psc3xxg_dbm1
+- name: PSC3M8GFS3PACQ1
+  cores:
+  - name: cortex-m33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0002000
+  - name: cortex-m33-ppca0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0006000
+  - name: cortex-m33-ppca1
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0008000
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x22000000
+      end: 0x22080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM3
+    is_alias: true
+    range:
+      start: 0x22800000
+      end: 0x22840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM2
+    is_alias: true
+    range:
+      start: 0x32000000
+      end: 0x32080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM4
+    is_alias: true
+    range:
+      start: 0x32800000
+      end: 0x32840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    is_alias: true
+    range:
+      start: 0x34000000
+      end: 0x34010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA0_CODE_SRAM
+    range:
+      start: 0x43010000
+      end: 0x43018000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_DATA_SRAM
+    range:
+      start: 0x43020000
+      end: 0x43024000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA1_CODE_SRAM
+    range:
+      start: 0x43030000
+      end: 0x43038000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA1_DATA_SRAM
+    range:
+      start: 0x43040000
+      end: 0x43044000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x43050000
+      end: 0x43054000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  flash_algorithms:
+  - psc3xxg
+  - psc3xxg_s
+  - psc3xxg_dbm1
+- name: PSC3M8GFS3PAFQ1
+  cores:
+  - name: cortex-m33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0002000
+  - name: cortex-m33-ppca0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0006000
+  - name: cortex-m33-ppca1
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0008000
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x22000000
+      end: 0x22080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM3
+    is_alias: true
+    range:
+      start: 0x22800000
+      end: 0x22840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM2
+    is_alias: true
+    range:
+      start: 0x32000000
+      end: 0x32080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM4
+    is_alias: true
+    range:
+      start: 0x32800000
+      end: 0x32840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    is_alias: true
+    range:
+      start: 0x34000000
+      end: 0x34010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA0_CODE_SRAM
+    range:
+      start: 0x43010000
+      end: 0x43018000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_DATA_SRAM
+    range:
+      start: 0x43020000
+      end: 0x43024000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA1_CODE_SRAM
+    range:
+      start: 0x43030000
+      end: 0x43038000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA1_DATA_SRAM
+    range:
+      start: 0x43040000
+      end: 0x43044000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x43050000
+      end: 0x43054000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  flash_algorithms:
+  - psc3xxg
+  - psc3xxg_s
+  - psc3xxg_dbm1
+- name: PSC3M8GFS3PAHQ1
+  cores:
+  - name: cortex-m33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0002000
+  - name: cortex-m33-ppca0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0006000
+  - name: cortex-m33-ppca1
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0008000
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x22000000
+      end: 0x22080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM3
+    is_alias: true
+    range:
+      start: 0x22800000
+      end: 0x22840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM2
+    is_alias: true
+    range:
+      start: 0x32000000
+      end: 0x32080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM4
+    is_alias: true
+    range:
+      start: 0x32800000
+      end: 0x32840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    is_alias: true
+    range:
+      start: 0x34000000
+      end: 0x34010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA0_CODE_SRAM
+    range:
+      start: 0x43010000
+      end: 0x43018000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_DATA_SRAM
+    range:
+      start: 0x43020000
+      end: 0x43024000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA1_CODE_SRAM
+    range:
+      start: 0x43030000
+      end: 0x43038000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA1_DATA_SRAM
+    range:
+      start: 0x43040000
+      end: 0x43044000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x43050000
+      end: 0x43054000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  flash_algorithms:
+  - psc3xxg
+  - psc3xxg_s
+  - psc3xxg_dbm1
+- name: PSC3M8GFS3PLGQ1
+  cores:
+  - name: cortex-m33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0002000
+  - name: cortex-m33-ppca0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0006000
+  - name: cortex-m33-ppca1
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0008000
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x22000000
+      end: 0x22080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM3
+    is_alias: true
+    range:
+      start: 0x22800000
+      end: 0x22840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM2
+    is_alias: true
+    range:
+      start: 0x32000000
+      end: 0x32080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM4
+    is_alias: true
+    range:
+      start: 0x32800000
+      end: 0x32840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    is_alias: true
+    range:
+      start: 0x34000000
+      end: 0x34010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA0_CODE_SRAM
+    range:
+      start: 0x43010000
+      end: 0x43018000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_DATA_SRAM
+    range:
+      start: 0x43020000
+      end: 0x43024000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA1_CODE_SRAM
+    range:
+      start: 0x43030000
+      end: 0x43038000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA1_DATA_SRAM
+    range:
+      start: 0x43040000
+      end: 0x43044000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x43050000
+      end: 0x43054000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  flash_algorithms:
+  - psc3xxg
+  - psc3xxg_s
+  - psc3xxg_dbm1
+- name: PSC3M8GFS3PLHQ1
+  cores:
+  - name: cortex-m33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0002000
+  - name: cortex-m33-ppca0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0006000
+  - name: cortex-m33-ppca1
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0008000
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x22000000
+      end: 0x22080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM3
+    is_alias: true
+    range:
+      start: 0x22800000
+      end: 0x22840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM2
+    is_alias: true
+    range:
+      start: 0x32000000
+      end: 0x32080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM4
+    is_alias: true
+    range:
+      start: 0x32800000
+      end: 0x32840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    is_alias: true
+    range:
+      start: 0x34000000
+      end: 0x34010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA0_CODE_SRAM
+    range:
+      start: 0x43010000
+      end: 0x43018000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_DATA_SRAM
+    range:
+      start: 0x43020000
+      end: 0x43024000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA1_CODE_SRAM
+    range:
+      start: 0x43030000
+      end: 0x43038000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA1_DATA_SRAM
+    range:
+      start: 0x43040000
+      end: 0x43044000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x43050000
+      end: 0x43054000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  flash_algorithms:
+  - psc3xxg
+  - psc3xxg_s
+  - psc3xxg_dbm1
+- name: PSC3P7FES2PABQ1
+  cores:
+  - name: cortex-m33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0002000
+  - name: cortex-m33-ppca0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0006000
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x22000000
+      end: 0x22040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Nvm
+    name: IROM3
+    is_alias: true
+    range:
+      start: 0x22800000
+      end: 0x22820000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+  - !Nvm
+    name: IROM2
+    is_alias: true
+    range:
+      start: 0x32000000
+      end: 0x32040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Nvm
+    name: IROM4
+    is_alias: true
+    range:
+      start: 0x32800000
+      end: 0x32820000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    is_alias: true
+    range:
+      start: 0x34000000
+      end: 0x34010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_CODE_SRAM
+    range:
+      start: 0x43010000
+      end: 0x43018000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_DATA_SRAM
+    range:
+      start: 0x43020000
+      end: 0x43024000
+    cores:
+    - cortex-m33-ppca0
+  flash_algorithms:
+  - psc3xxf
+  - psc3xxf_s
+  - psc3xxf_dbm1
+- name: PSC3P7FES2PLGQ1
+  cores:
+  - name: cortex-m33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0002000
+  - name: cortex-m33-ppca0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0006000
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x22000000
+      end: 0x22040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Nvm
+    name: IROM3
+    is_alias: true
+    range:
+      start: 0x22800000
+      end: 0x22820000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+  - !Nvm
+    name: IROM2
+    is_alias: true
+    range:
+      start: 0x32000000
+      end: 0x32040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Nvm
+    name: IROM4
+    is_alias: true
+    range:
+      start: 0x32800000
+      end: 0x32820000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    is_alias: true
+    range:
+      start: 0x34000000
+      end: 0x34010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_CODE_SRAM
+    range:
+      start: 0x43010000
+      end: 0x43018000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_DATA_SRAM
+    range:
+      start: 0x43020000
+      end: 0x43024000
+    cores:
+    - cortex-m33-ppca0
+  flash_algorithms:
+  - psc3xxf
+  - psc3xxf_s
+  - psc3xxf_dbm1
+- name: PSC3P7FES2PLHQ1
+  cores:
+  - name: cortex-m33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0002000
+  - name: cortex-m33-ppca0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0006000
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x22000000
+      end: 0x22040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Nvm
+    name: IROM3
+    is_alias: true
+    range:
+      start: 0x22800000
+      end: 0x22820000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+  - !Nvm
+    name: IROM2
+    is_alias: true
+    range:
+      start: 0x32000000
+      end: 0x32040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Nvm
+    name: IROM4
+    is_alias: true
+    range:
+      start: 0x32800000
+      end: 0x32820000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    is_alias: true
+    range:
+      start: 0x34000000
+      end: 0x34010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_CODE_SRAM
+    range:
+      start: 0x43010000
+      end: 0x43018000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_DATA_SRAM
+    range:
+      start: 0x43020000
+      end: 0x43024000
+    cores:
+    - cortex-m33-ppca0
+  flash_algorithms:
+  - psc3xxf
+  - psc3xxf_s
+  - psc3xxf_dbm1
+- name: PSC3P7GES3PAFQ1
+  cores:
+  - name: cortex-m33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0002000
+  - name: cortex-m33-ppca0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0006000
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x22000000
+      end: 0x22080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Nvm
+    name: IROM3
+    is_alias: true
+    range:
+      start: 0x22800000
+      end: 0x22840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+  - !Nvm
+    name: IROM2
+    is_alias: true
+    range:
+      start: 0x32000000
+      end: 0x32080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Nvm
+    name: IROM4
+    is_alias: true
+    range:
+      start: 0x32800000
+      end: 0x32840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    is_alias: true
+    range:
+      start: 0x34000000
+      end: 0x34010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_CODE_SRAM
+    range:
+      start: 0x43010000
+      end: 0x43018000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_DATA_SRAM
+    range:
+      start: 0x43020000
+      end: 0x43024000
+    cores:
+    - cortex-m33-ppca0
+  flash_algorithms:
+  - psc3xxg
+  - psc3xxg_s
+  - psc3xxg_dbm1
+- name: PSC3P8FES2PLGQ1
+  cores:
+  - name: cortex-m33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0002000
+  - name: cortex-m33-ppca0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0006000
+  - name: cortex-m33-ppca1
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0008000
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x22000000
+      end: 0x22040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM3
+    is_alias: true
+    range:
+      start: 0x22800000
+      end: 0x22820000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM2
+    is_alias: true
+    range:
+      start: 0x32000000
+      end: 0x32040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM4
+    is_alias: true
+    range:
+      start: 0x32800000
+      end: 0x32820000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    is_alias: true
+    range:
+      start: 0x34000000
+      end: 0x34010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA0_CODE_SRAM
+    range:
+      start: 0x43010000
+      end: 0x43018000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_DATA_SRAM
+    range:
+      start: 0x43020000
+      end: 0x43024000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA1_CODE_SRAM
+    range:
+      start: 0x43030000
+      end: 0x43038000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA1_DATA_SRAM
+    range:
+      start: 0x43040000
+      end: 0x43044000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x43050000
+      end: 0x43054000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  flash_algorithms:
+  - psc3xxf
+  - psc3xxf_s
+  - psc3xxf_dbm1
+- name: PSC3P8FES2PLHQ1
+  cores:
+  - name: cortex-m33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0002000
+  - name: cortex-m33-ppca0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0006000
+  - name: cortex-m33-ppca1
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0008000
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x22000000
+      end: 0x22040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM3
+    is_alias: true
+    range:
+      start: 0x22800000
+      end: 0x22820000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM2
+    is_alias: true
+    range:
+      start: 0x32000000
+      end: 0x32040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM4
+    is_alias: true
+    range:
+      start: 0x32800000
+      end: 0x32820000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    is_alias: true
+    range:
+      start: 0x34000000
+      end: 0x34010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA0_CODE_SRAM
+    range:
+      start: 0x43010000
+      end: 0x43018000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_DATA_SRAM
+    range:
+      start: 0x43020000
+      end: 0x43024000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA1_CODE_SRAM
+    range:
+      start: 0x43030000
+      end: 0x43038000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA1_DATA_SRAM
+    range:
+      start: 0x43040000
+      end: 0x43044000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x43050000
+      end: 0x43054000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  flash_algorithms:
+  - psc3xxf
+  - psc3xxf_s
+  - psc3xxf_dbm1
+- name: PSC3P8GFS3PABQ1
+  cores:
+  - name: cortex-m33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0002000
+  - name: cortex-m33-ppca0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0006000
+  - name: cortex-m33-ppca1
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0008000
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x22000000
+      end: 0x22080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM3
+    is_alias: true
+    range:
+      start: 0x22800000
+      end: 0x22840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM2
+    is_alias: true
+    range:
+      start: 0x32000000
+      end: 0x32080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM4
+    is_alias: true
+    range:
+      start: 0x32800000
+      end: 0x32840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    is_alias: true
+    range:
+      start: 0x34000000
+      end: 0x34010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA0_CODE_SRAM
+    range:
+      start: 0x43010000
+      end: 0x43018000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_DATA_SRAM
+    range:
+      start: 0x43020000
+      end: 0x43024000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA1_CODE_SRAM
+    range:
+      start: 0x43030000
+      end: 0x43038000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA1_DATA_SRAM
+    range:
+      start: 0x43040000
+      end: 0x43044000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x43050000
+      end: 0x43054000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  flash_algorithms:
+  - psc3xxg
+  - psc3xxg_s
+  - psc3xxg_dbm1
+- name: PSC3P8GFS3PACQ1
+  cores:
+  - name: cortex-m33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0002000
+  - name: cortex-m33-ppca0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0006000
+  - name: cortex-m33-ppca1
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0008000
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x22000000
+      end: 0x22080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM3
+    is_alias: true
+    range:
+      start: 0x22800000
+      end: 0x22840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM2
+    is_alias: true
+    range:
+      start: 0x32000000
+      end: 0x32080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM4
+    is_alias: true
+    range:
+      start: 0x32800000
+      end: 0x32840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    is_alias: true
+    range:
+      start: 0x34000000
+      end: 0x34010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA0_CODE_SRAM
+    range:
+      start: 0x43010000
+      end: 0x43018000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_DATA_SRAM
+    range:
+      start: 0x43020000
+      end: 0x43024000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA1_CODE_SRAM
+    range:
+      start: 0x43030000
+      end: 0x43038000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA1_DATA_SRAM
+    range:
+      start: 0x43040000
+      end: 0x43044000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x43050000
+      end: 0x43054000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  flash_algorithms:
+  - psc3xxg
+  - psc3xxg_s
+  - psc3xxg_dbm1
+- name: PSC3P8GFS3PAFQ1
+  cores:
+  - name: cortex-m33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0002000
+  - name: cortex-m33-ppca0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0006000
+  - name: cortex-m33-ppca1
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0008000
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x22000000
+      end: 0x22080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM3
+    is_alias: true
+    range:
+      start: 0x22800000
+      end: 0x22840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM2
+    is_alias: true
+    range:
+      start: 0x32000000
+      end: 0x32080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM4
+    is_alias: true
+    range:
+      start: 0x32800000
+      end: 0x32840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    is_alias: true
+    range:
+      start: 0x34000000
+      end: 0x34010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA0_CODE_SRAM
+    range:
+      start: 0x43010000
+      end: 0x43018000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_DATA_SRAM
+    range:
+      start: 0x43020000
+      end: 0x43024000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA1_CODE_SRAM
+    range:
+      start: 0x43030000
+      end: 0x43038000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA1_DATA_SRAM
+    range:
+      start: 0x43040000
+      end: 0x43044000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x43050000
+      end: 0x43054000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  flash_algorithms:
+  - psc3xxg
+  - psc3xxg_s
+  - psc3xxg_dbm1
+- name: PSC3P8GFS3PAHQ1
+  cores:
+  - name: cortex-m33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0002000
+  - name: cortex-m33-ppca0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0006000
+  - name: cortex-m33-ppca1
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0008000
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x22000000
+      end: 0x22080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM3
+    is_alias: true
+    range:
+      start: 0x22800000
+      end: 0x22840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM2
+    is_alias: true
+    range:
+      start: 0x32000000
+      end: 0x32080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM4
+    is_alias: true
+    range:
+      start: 0x32800000
+      end: 0x32840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    is_alias: true
+    range:
+      start: 0x34000000
+      end: 0x34010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA0_CODE_SRAM
+    range:
+      start: 0x43010000
+      end: 0x43018000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_DATA_SRAM
+    range:
+      start: 0x43020000
+      end: 0x43024000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA1_CODE_SRAM
+    range:
+      start: 0x43030000
+      end: 0x43038000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA1_DATA_SRAM
+    range:
+      start: 0x43040000
+      end: 0x43044000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x43050000
+      end: 0x43054000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  flash_algorithms:
+  - psc3xxg
+  - psc3xxg_s
+  - psc3xxg_dbm1
+- name: PSC3P8GFS3PLGQ1
+  cores:
+  - name: cortex-m33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0002000
+  - name: cortex-m33-ppca0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0006000
+  - name: cortex-m33-ppca1
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0008000
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x22000000
+      end: 0x22080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM3
+    is_alias: true
+    range:
+      start: 0x22800000
+      end: 0x22840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM2
+    is_alias: true
+    range:
+      start: 0x32000000
+      end: 0x32080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM4
+    is_alias: true
+    range:
+      start: 0x32800000
+      end: 0x32840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    is_alias: true
+    range:
+      start: 0x34000000
+      end: 0x34010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA0_CODE_SRAM
+    range:
+      start: 0x43010000
+      end: 0x43018000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_DATA_SRAM
+    range:
+      start: 0x43020000
+      end: 0x43024000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA1_CODE_SRAM
+    range:
+      start: 0x43030000
+      end: 0x43038000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA1_DATA_SRAM
+    range:
+      start: 0x43040000
+      end: 0x43044000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x43050000
+      end: 0x43054000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  flash_algorithms:
+  - psc3xxg
+  - psc3xxg_s
+  - psc3xxg_dbm1
+- name: PSC3P8GFS3PLHQ1
+  cores:
+  - name: cortex-m33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0002000
+  - name: cortex-m33-ppca0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0006000
+  - name: cortex-m33-ppca1
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v2 0xf0008000
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x22000000
+      end: 0x22080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM3
+    is_alias: true
+    range:
+      start: 0x22800000
+      end: 0x22840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM2
+    is_alias: true
+    range:
+      start: 0x32000000
+      end: 0x32080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Nvm
+    name: IROM4
+    is_alias: true
+    range:
+      start: 0x32800000
+      end: 0x32840000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: IRAM2
+    is_alias: true
+    range:
+      start: 0x34000000
+      end: 0x34010000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA0_CODE_SRAM
+    range:
+      start: 0x43010000
+      end: 0x43018000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA0_DATA_SRAM
+    range:
+      start: 0x43020000
+      end: 0x43024000
+    cores:
+    - cortex-m33-ppca0
+  - !Ram
+    name: PPCA1_CODE_SRAM
+    range:
+      start: 0x43030000
+      end: 0x43038000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA1_DATA_SRAM
+    range:
+      start: 0x43040000
+      end: 0x43044000
+    cores:
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x43050000
+      end: 0x43054000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  flash_algorithms:
+  - psc3xxg
+  - psc3xxg_s
+  - psc3xxg_dbm1
+flash_algorithms:
+- name: psc3xxf
+  description: PSC3xxF
+  default: true
+  instructions: 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AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  load_address: 0x34000008
+  pc_init: 0x1
+  pc_uninit: 0x611
+  pc_program_page: 0x58b
+  pc_erase_sector: 0x503
+  pc_erase_all: 0x4ff
+  pc_verify: 0x615
+  pc_blank_check: 0x169
+  data_section_offset: 0x7b8
+  flash_properties:
+    address_range:
+      start: 0x22000000
+      end: 0x22040000
+    page_size: 0x200
+    erased_byte_value: 0x0
+    program_page_timeout: 1000
+    erase_sector_timeout: 5000
+    sectors:
+    - size: 0x200
+      address: 0x0
+  stack_size: 4096
+- name: psc3xxf_s
+  description: PSC3xxF
+  default: true
+  instructions: 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AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  pc_init: 0x1
+  pc_uninit: 0x611
+  pc_program_page: 0x58b
+  pc_erase_sector: 0x503
+  pc_erase_all: 0x4ff
+  pc_verify: 0x615
+  pc_blank_check: 0x169
+  data_section_offset: 0x7b8
+  flash_properties:
+    address_range:
+      start: 0x32000000
+      end: 0x32040000
+    page_size: 0x200
+    erased_byte_value: 0x0
+    program_page_timeout: 1000
+    erase_sector_timeout: 5000
+    sectors:
+    - size: 0x200
+      address: 0x0
+  stack_size: 4096
+- name: psc3xxf_dbm1
+  description: PSC3xxF
+  instructions: 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AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  pc_init: 0x1
+  pc_uninit: 0x611
+  pc_program_page: 0x58b
+  pc_erase_sector: 0x503
+  pc_erase_all: 0x4ff
+  pc_verify: 0x615
+  pc_blank_check: 0x169
+  data_section_offset: 0x7b8
+  flash_properties:
+    address_range:
+      start: 0x22800000
+      end: 0x22820000
+    page_size: 0x200
+    erased_byte_value: 0x0
+    program_page_timeout: 1000
+    erase_sector_timeout: 5000
+    sectors:
+    - size: 0x200
+      address: 0x0
+  stack_size: 4096
+- name: psc3xxg
+  description: PSC3xxG
+  default: true
+  instructions: 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AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+  load_address: 0x34000008
+  pc_init: 0x1
+  pc_uninit: 0x62d
+  pc_program_page: 0x5bd
+  pc_erase_sector: 0x52b
+  pc_erase_all: 0x527
+  pc_verify: 0x631
+  pc_blank_check: 0x169
+  data_section_offset: 0x790
+  flash_properties:
+    address_range:
+      start: 0x22000000
+      end: 0x22080000
+    page_size: 0x200
+    erased_byte_value: 0x0
+    program_page_timeout: 1000
+    erase_sector_timeout: 15000
+    sectors:
+    - size: 0x200
+      address: 0x0
+  stack_size: 4096
+- name: psc3xxg_s
+  description: PSC3xxG
+  default: true
+  instructions: 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AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+  pc_init: 0x1
+  pc_uninit: 0x62d
+  pc_program_page: 0x5bd
+  pc_erase_sector: 0x52b
+  pc_erase_all: 0x527
+  pc_verify: 0x631
+  pc_blank_check: 0x169
+  data_section_offset: 0x790
+  flash_properties:
+    address_range:
+      start: 0x32000000
+      end: 0x32080000
+    page_size: 0x200
+    erased_byte_value: 0x0
+    program_page_timeout: 1000
+    erase_sector_timeout: 15000
+    sectors:
+    - size: 0x200
+      address: 0x0
+  stack_size: 4096
+- name: psc3xxg_dbm1
+  description: PSC3xxG
+  instructions: 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AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+  pc_init: 0x1
+  pc_uninit: 0x62d
+  pc_program_page: 0x5bd
+  pc_erase_sector: 0x52b
+  pc_erase_all: 0x527
+  pc_verify: 0x631
+  pc_blank_check: 0x169
+  data_section_offset: 0x790
+  flash_properties:
+    address_range:
+      start: 0x22800000
+      end: 0x22840000
+    page_size: 0x200
+    erased_byte_value: 0x0
+    program_page_timeout: 1000
+    erase_sector_timeout: 15000
+    sectors:
+    - size: 0x200
+      address: 0x0
+  stack_size: 4096

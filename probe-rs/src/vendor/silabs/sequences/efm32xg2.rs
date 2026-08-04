@@ -132,7 +132,7 @@ impl ArmDebugSequence for EFM32xG2 {
             cortex_m_wait_for_reset(interface)?;
 
             // We should no longer be in lokup state at this point. CoreInterface::status is going
-            // to chek this soon.
+            // to check this soon.
         }
 
         Ok(())

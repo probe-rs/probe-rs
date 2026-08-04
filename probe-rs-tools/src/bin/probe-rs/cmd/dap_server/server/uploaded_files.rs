@@ -1,7 +1,7 @@
 //! Materialization of client-uploaded file content into a session-scoped temporary directory.
 //!
 //! When the DAP server runs on a different machine from the VSCode client (i.e. the
-//! `remote_server_mode` flag is enabled in the [`super::configuration::SessionConfig`]), the
+//! `remote_server_mode` flag is enabled in the [`configuration::SessionConfig`]), the
 //! client cannot pass filesystem paths the server can open. Instead, the client base64-encodes
 //! file bytes alongside each path-bearing field in the launch configuration (e.g. `program_binary`
 //! is paired with `program_binary_data`). This module decodes those bytes and persists them to a
@@ -10,7 +10,7 @@
 //!
 //! ## Lifecycle
 //!
-//! A new [`UploadedFiles`] instance is created at the start of each remote-mode debug session and
+//! A new `UploadedFiles` instance is created at the start of each remote-mode debug session and
 //! is dropped (which removes the temporary directory and all files within) at the end of that
 //! session — *not* at the end of the server process. In TCP multi-session mode this means each
 //! incoming client connection gets its own clean scratch area, and one client's uploaded firmware

@@ -1,0 +1,27 @@
+[default]
+# Chip part numbers (e.g. PSC3P7GES3PAFQ1, STM32H747XI) are single caps+digit
+# tokens whose substrings keep tripping the checker (GES, ...). Ignore any
+# identifier containing a digit; real prose typos don't have one. This covers
+# every current and future part number so they don't each need an entry below.
+extend-ignore-identifiers-re = ["[A-Za-z]*[0-9][A-Za-z0-9]*"]
+
+# GitHub @handles in changelog credits aren't words (e.g. @bastien-buil).
+extend-ignore-re = ["@[A-Za-z0-9-]+"]
+
+# Domain terms and abbreviations that look like typos but aren't.
+[default.extend-words]
+pn = "pn"           # Renesas register/field name
+fram = "fram"       # ferroelectric RAM
+dout = "dout"       # data out signal
+intack = "intack"   # interrupt acknowledge
+unstall = "unstall" # un-stall a core (Espressif)
+ue = "ue"           # register bit
+tge = "tge"         # ARM HCR.TGE bit
+wronly = "wronly"   # O_WRONLY
+hpe = "hpe"         # SAM "Hot-Plugging Enable" register bit
+ative = "ative"     # "n(ative)" REPL format hint
+ariable = "ariable" # "v(ariable)" REPL format hint
+
+[default.extend-identifiers]
+# variable name baked into the debug-unwind test binaries
+stuct_with_one_variant_pointer = "stuct_with_one_variant_pointer"

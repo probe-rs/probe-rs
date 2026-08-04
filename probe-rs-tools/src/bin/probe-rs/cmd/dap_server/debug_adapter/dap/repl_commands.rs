@@ -1,17 +1,18 @@
 use super::{dap_types::EvaluateArguments, repl_types::*};
 use crate::cmd::dap_server::{
     DebuggerError,
-    debug_adapter::{
-        dap::{
-            adapter::DebugAdapter,
-            dap_types::{EvaluateResponseBody, TerminatedEventBody},
-        },
-        protocol::ProtocolAdapter,
+    backend::rpc::RpcBackend,
+    debug_adapter::dap::{
+        adapter::DebugAdapter,
+        dap_types::{EvaluateResponseBody, TerminatedEventBody},
     },
-    server::core_data::CoreHandle,
+    server::core_data::CoreData,
 };
 use linkme::distributed_slice;
-use std::{fmt::Display, time::Duration};
+use std::fmt::Display;
+use std::future::Future;
+use std::pin::Pin;
+use std::time::Duration;
 
 pub(crate) mod backtrace;
 pub(crate) mod breakpoint;
@@ -19,26 +20,47 @@ pub(crate) mod cpu;
 pub(crate) mod embedded_test;
 pub(crate) mod info;
 pub(crate) mod inspect;
+pub(crate) mod registers;
 pub(crate) mod rtt;
 
-/// The handler is a function that takes a reference to the target core, and a reference to the response body.
-/// The response body is used to populate the response to the client.
-/// The handler returns a Result<[`Response`], [`DebuggerError`]>.
-///
-/// We use the [`Response`] type here, so that we can have a consistent interface for processing the result as follows:
-/// - The `command`, `success`, and `message` fields are the most commonly used fields for all the REPL commands.
-/// - The `body` field is used if we need to pass back other DAP body types, e.g. [`BreakpointEventBody`].
-/// - The remainder of the fields are unused/ignored.
-///
-/// The majority of the REPL command results will be populated into the response body.
+/// Returns a boxed future so handlers can `.await` backend round trips without
+/// a `block_on` bridge, while still being stored as a plain `fn` pointer in
+/// the static [`REPL_COMMANDS`] table — which is shared across all sessions,
+/// hence `&mut RpcBackend` rather than a generic `B`.
 //
 // TODO: Make this less confusing by having a different struct for this.
-pub(crate) type ReplHandler = fn(
-    target_core: &mut CoreHandle<'_>,
-    command_arguments: &str,
-    evaluate_arguments: &EvaluateArguments,
-    adapter: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
-) -> EvalResult;
+pub(crate) type ReplHandler = for<'a> fn(
+    backend: &'a mut RpcBackend,
+    core_data: &'a mut CoreData,
+    command_arguments: &'a str,
+    evaluate_arguments: &'a EvaluateArguments,
+    adapter: &'a mut DebugAdapter,
+) -> Pin<Box<dyn Future<Output = EvalResult> + 'a>>;
+
+/// Wrap an `async fn` with the [`ReplHandler`] argument list so it can be
+/// stored as a `fn` pointer in [`REPL_COMMANDS`].
+macro_rules! async_fn {
+    ($handler:ident) => {{
+        fn wrapper<'a>(
+            backend: &'a mut RpcBackend,
+            core_data: &'a mut CoreData,
+            command_arguments: &'a str,
+            evaluate_arguments: &'a EvaluateArguments,
+            adapter: &'a mut DebugAdapter,
+        ) -> ::std::pin::Pin<::std::boxed::Box<dyn ::std::future::Future<Output = EvalResult> + 'a>>
+        {
+            ::std::boxed::Box::pin($handler(
+                backend,
+                core_data,
+                command_arguments,
+                evaluate_arguments,
+                adapter,
+            ))
+        }
+        wrapper
+    }};
+}
+pub(crate) use async_fn;
 
 #[derive(Clone, Copy)]
 pub(crate) struct ReplCommand {
@@ -82,7 +104,7 @@ static HELP: ReplCommand = ReplCommand {
     requires_target_halted: false,
     sub_commands: &[],
     args: &[],
-    handler: print_help,
+    handler: async_fn!(print_help),
 };
 
 #[distributed_slice(REPL_COMMANDS)]
@@ -92,48 +114,58 @@ static QUIT: ReplCommand = ReplCommand {
     requires_target_halted: false,
     sub_commands: &[],
     args: &[],
-    handler: quit,
+    handler: async_fn!(quit_repl),
 };
 
-fn print_help(
-    target_core: &mut CoreHandle<'_>,
-    _: &str,
-    _: &EvaluateArguments,
-    _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
+async fn print_help<'a>(
+    _backend: &'a mut RpcBackend,
+    core_data: &'a mut CoreData,
+    _: &'a str,
+    _: &'a EvaluateArguments,
+    _: &'a mut DebugAdapter,
 ) -> EvalResult {
     let mut help_text =
         "Usage:\t- Use <Ctrl+Space> to get a list of available commands.".to_string();
     help_text.push_str("\n\t- Use <Up/DownArrows> to navigate through the command list.");
     help_text.push_str("\n\t- Use <Hab> to insert the currently selected command.");
-    help_text.push_str("\n\t- Note: This implementation is a subset of gdb commands, and is intended to behave similarly.");
+    help_text.push_str(
+        "\n\t- Note: This implementation is a subset of gdb commands, and is intended to behave similarly.",
+    );
     help_text.push_str("\nAvailable commands:");
-    for command in target_core.core_data.repl_commands.iter() {
+    for command in core_data.repl_commands.iter() {
         help_text.push_str(&format!("\n{command}"));
     }
     Ok(EvalResponse::Message(help_text))
 }
 
-fn need_subcommand(
-    _: &mut CoreHandle<'_>,
-    _: &str,
-    _: &EvaluateArguments,
-    _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
+async fn need_subcommand<'a>(
+    _backend: &'a mut RpcBackend,
+    _core_data: &'a mut CoreData,
+    _: &'a str,
+    _: &'a EvaluateArguments,
+    _: &'a mut DebugAdapter,
 ) -> EvalResult {
-    Err(DebuggerError::UserMessage("Please provide one of the required subcommands. See the `help` command for more information.".to_string()))
+    Err(DebuggerError::UserMessage(
+        "Please provide one of the required subcommands. See the `help` command for more information."
+            .to_string(),
+    ))
 }
 
-fn quit(
-    target_core: &mut CoreHandle<'_>,
-    _: &str,
-    _: &EvaluateArguments,
-    adapter: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
+/// Halt the target and emit the `terminated` event (REPL `quit`).
+async fn quit_repl<'a>(
+    backend: &'a mut RpcBackend,
+    core_data: &'a mut CoreData,
+    _: &'a str,
+    _: &'a EvaluateArguments,
+    adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
-    target_core.core.halt(Duration::from_millis(500))?;
+    backend
+        .halt(core_data.core_index, Duration::from_millis(500))
+        .await?;
     adapter.dyn_send_event(
         "terminated",
         serde_json::to_value(TerminatedEventBody { restart: None }).ok(),
     )?;
-
     Ok(EvalResponse::Message(
         "Debug Session Terminated".to_string(),
     ))

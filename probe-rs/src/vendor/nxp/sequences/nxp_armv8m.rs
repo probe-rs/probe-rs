@@ -262,7 +262,7 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmMemoryInterface) -> Result<(), 
 
     thread::sleep(Duration::from_millis(10));
 
-    if memory.generic_status()?.DeviceEn {
+    if memory.generic_status()?.DeviceEn() {
         let dp = memory.fully_qualified_address().dp();
         enable_debug_mailbox(memory.get_arm_debug_interface()?, dp)?;
     }
@@ -434,14 +434,14 @@ impl MIMXRT5xxS {
         let ap = memory.fully_qualified_address();
         let dp = ap.dp();
         let start = Instant::now();
-        while !memory.generic_status()?.DeviceEn && start.elapsed() < Duration::from_millis(300) {
+        while !memory.generic_status()?.DeviceEn() && start.elapsed() < Duration::from_millis(300) {
             // Wait for either condition
         }
 
         let enabled_mailbox =
             self.enable_debug_mailbox(memory.get_arm_debug_interface()?, dp, &ap)?;
 
-        // Halt the core in case it didn't stop at a breakpiont.
+        // Halt the core in case it didn't stop at a breakpoint.
         tracing::trace!("halting MIMXRT5xxS Cortex-M33 core");
         let mut dhcsr = Dhcsr(0);
         dhcsr.set_c_halt(true);
@@ -452,7 +452,7 @@ impl MIMXRT5xxS {
 
         if enabled_mailbox {
             // We'll double-check now to make sure we're in a reasonable state.
-            if !memory.generic_status()?.DeviceEn {
+            if !memory.generic_status()?.DeviceEn() {
                 tracing::warn!(
                     "MIMXRT5xxS is still not ready to debug, even after using DebugMailbox to activate session"
                 );

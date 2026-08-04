@@ -1,95 +1,37 @@
 use std::time::Duration;
 
-use crate::{
-    rpc::{
-        Key, ObjectStorageSlot,
-        functions::{
-            MonitorEndpoint, MultiTopicPublisher, MultiTopicWriter, RpcResult, RpcSpawnContext,
-            RttTopic, SemihostingTopic, WireTxImpl, flash::BootInfo,
-        },
-        utils::{
-            run_loop::{ReturnReason, RunLoop, RunLoopPoller, VectorCatchConfig},
-            semihosting::{SemihostingFileManager, SemihostingOptions},
-        },
+use crate::rpc::{
+    ObjectStorageSlot,
+    functions::{MultiTopicPublisher, MultiTopicWriter, RpcSpawnContext, WireTxImpl},
+    utils::{
+        run_loop::{ReturnReason, RunLoop, RunLoopPoller, VectorCatchConfig},
+        semihosting::SemihostingFileManager,
     },
-    util::rtt::client::RttClient,
 };
 use anyhow::Context;
 use postcard_rpc::{header::VarHeader, server::Sender};
-use postcard_schema::Schema;
-use probe_rs::{BreakpointCause, Core, HaltReason, Session, semihosting::SemihostingCommand};
-use serde::{Deserialize, Serialize};
+use probe_rs::{BreakpointCause, Core, HaltReason, semihosting::SemihostingCommand};
+use probe_rs_rpc::monitor::{
+    ChannelInfo, MonitorExitReason, MonitorMode, MonitorRequest, RttEvent, SemihostingEvent,
+    SemihostingExitError,
+};
+use probe_rs_rpc::semihosting_options::SemihostingOptions;
+use probe_rs_rpc::{MonitorEndpoint, RttTopic, SemihostingTopic};
 use tokio::sync::mpsc::{self, error::SendError};
 use tokio_util::sync::CancellationToken;
 
-#[derive(Serialize, Deserialize, Schema)]
-pub enum MonitorMode {
-    AttachToRunning,
-    Run(BootInfo),
-}
-
-impl MonitorMode {
-    pub fn should_clear_rtt_header(&self) -> bool {
-        match self {
-            MonitorMode::Run(BootInfo::FromRam { .. }) => true,
-            MonitorMode::Run(BootInfo::Other) => true,
-            MonitorMode::AttachToRunning => false,
+fn prepare_monitor_mode(
+    mode: &MonitorMode,
+    session: &mut probe_rs::Session,
+    core_id: usize,
+) -> anyhow::Result<()> {
+    match mode {
+        MonitorMode::Run(boot_info) => {
+            crate::rpc::functions::flash::prepare_boot_info(boot_info, session, core_id)
         }
-    }
-
-    pub fn prepare(&self, session: &mut Session, core_id: usize) -> anyhow::Result<()> {
-        match self {
-            MonitorMode::Run(boot_info) => boot_info.prepare(session, core_id),
-            MonitorMode::AttachToRunning => Ok(()),
-        }
+        MonitorMode::AttachToRunning => Ok(()),
     }
 }
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct MonitorOptions {
-    /// Enable reset vector catch if its supported on the target.
-    pub catch_reset: bool,
-    /// Enable hardfault vector catch if its supported on the target.
-    pub catch_hardfault: bool,
-    /// Enable SVC vector catch (ARMv7-A/R only).
-    pub catch_svc: bool,
-    /// Enable HLT vector catch (ARMv7-A/R only).
-    pub catch_hlt: bool,
-    /// RTT client if used.
-    pub rtt_client: Option<Key<RttClient>>,
-    /// Configure the support for semihosting.
-    pub semihosting_options: SemihostingOptions,
-}
-
-/// Monitor in normal run mode.
-#[derive(Serialize, Deserialize, Schema)]
-pub struct MonitorRequest {
-    pub sessid: Key<Session>,
-    pub mode: MonitorMode,
-    pub options: MonitorOptions,
-}
-
-/// Reasons why the firmware exited.
-#[derive(Serialize, Deserialize, Schema)]
-pub enum MonitorExitReason {
-    Success,
-    UserExit,
-    SemihostingExit(Result<(), SemihostingExitError>),
-    UnexpectedExit(String),
-}
-
-/// Details of an unexpected exit, triggered by a semihosting call.
-#[derive(Serialize, Deserialize, Schema)]
-pub struct SemihostingExitError {
-    /// The reason for the exit.
-    pub reason: u32,
-    /// The subcode of the exit, if the call was EXIT_EXTENDED.
-    pub subcode: Option<u32>,
-}
-
-/// If a communication error occurs, an error is returned. If we detect that the firmware exited,
-/// a `MonitorExitReason` is returned.
-pub type MonitorResponse = RpcResult<MonitorExitReason>;
 
 pub async fn monitor(
     mut ctx: RpcSpawnContext,
@@ -100,35 +42,12 @@ pub async fn monitor(
     let resp = ctx
         .run_blocking::<MonitorSender, _, _, _>(request, monitor_impl)
         .await
-        .map_err(Into::into);
+        .map_err(crate::rpc::functions::convert::rpc_error_anyhow);
 
     sender
         .reply::<MonitorEndpoint>(header.seq_no, &resp)
         .await
         .unwrap();
-}
-
-#[derive(Serialize, Deserialize, Clone, Schema)]
-pub struct ChannelInfo {
-    pub name: String,
-    pub buffer_size: u64,
-}
-
-#[derive(Serialize, Deserialize, Schema)]
-pub enum RttEvent {
-    Discovered {
-        up_channels: Vec<ChannelInfo>,
-        down_channels: Vec<ChannelInfo>,
-    },
-    Output {
-        channel: u32,
-        bytes: Vec<u8>,
-    },
-}
-
-#[derive(Serialize, Deserialize, Schema)]
-pub enum SemihostingEvent {
-    Output { stream: String, data: String },
 }
 
 pub(crate) struct MonitorSender {
@@ -207,7 +126,7 @@ fn monitor_impl(
 
     {
         let mut session = shared_session.session_blocking();
-        request.mode.prepare(&mut session, run_loop.core_id)?;
+        prepare_monitor_mode(&request.mode, &mut session, run_loop.core_id)?;
     }
 
     let poller = client_key.map(|client| RttPoller {
@@ -245,7 +164,7 @@ pub struct RttPoller<S>
 where
     S: FnMut(RttEvent) -> anyhow::Result<()>,
 {
-    pub rtt_client: ObjectStorageSlot<RttClient>,
+    pub rtt_client: ObjectStorageSlot<crate::util::rtt::client::RttClient>,
     pub clear_control_block: bool,
     pub sender: S,
 }
@@ -293,8 +212,6 @@ where
         for channel in 0..rtt_client.up_channels().len() {
             let bytes = rtt_client.poll_channel(core, channel as u32)?;
             if !bytes.is_empty() {
-                // Poll RTT with a frequency of 10 Hz if we do not receive any new data.
-                // Once we receive new data, we poll continuously while we have anything to read.
                 next_poll = Duration::ZERO;
 
                 (self.sender)(RttEvent::Output {
@@ -340,7 +257,7 @@ impl<F: FnMut(SemihostingEvent)> MonitorEventHandler<F> {
         };
 
         match cmd {
-            SemihostingCommand::ExitSuccess => Ok(Some(MonitorExitReason::SemihostingExit(Ok(())))), // Exit the run loop
+            SemihostingCommand::ExitSuccess => Ok(Some(MonitorExitReason::SemihostingExit(Ok(())))),
             SemihostingCommand::ExitError(details) => Ok(Some(MonitorExitReason::SemihostingExit(
                 Err(SemihostingExitError {
                     reason: details.reason,
@@ -354,13 +271,13 @@ impl<F: FnMut(SemihostingEvent)> MonitorEventHandler<F> {
                     details.operation,
                     details.parameter
                 );
-                Ok(None) // Continue running
+                Ok(None)
             }
             SemihostingCommand::GetCommandLine(_) => {
                 tracing::warn!(
                     "Target wanted to run semihosting operation SYS_GET_CMDLINE, but probe-rs does not support this operation yet. Continuing..."
                 );
-                Ok(None) // Continue running
+                Ok(None)
             }
             SemihostingCommand::Time(request) => {
                 request.write_current_time(core)?;

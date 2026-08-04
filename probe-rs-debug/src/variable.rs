@@ -750,7 +750,7 @@ impl Variable {
             VariableName::AnonymousNamespace | VariableName::Namespace(_)
         ) {
             // Namespaces do not have values, so we report no value up.
-            // This will alow us to filter it out when we concatenate children.
+            // This will allow us to filter it out when we concatenate children.
             return None;
         }
 

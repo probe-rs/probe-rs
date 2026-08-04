@@ -1,41 +1,102 @@
-use probe_rs::MemoryInterface;
-use probe_rs_debug::{ObjectRef, VariableName};
+use probe_rs_debug::{ObjectRef, StackFrame, VariableName};
 
 use crate::cmd::dap_server::{
     DebuggerError,
+    backend::rpc::RpcBackend,
     debug_adapter::dap::repl_commands::{EvalResponse, EvalResult},
-    server::core_data::CoreHandle,
 };
 
 use super::{
     dap_types::{
         CompletionItem, CompletionItemType, CompletionsArguments, EvaluateArguments,
-        EvaluateResponseBody,
+        EvaluateResponseBody, Variable,
     },
     repl_commands::ReplCommand,
     repl_types::*,
-    request_helpers::{DisassemblyAmount, disassemble_target_memory},
 };
 
-/// Format the `variable` and add it to the `response_body.result` for display to the user.
-/// - If the `variable_name` is `VariableName::LocalScopeRoot`, then all local variables will be printed.
-pub(crate) fn get_local_variable(
+/// Fetch variables for a scope identified by its DAP presentation hint.
+pub(crate) async fn scope_variables(
+    backend: &mut RpcBackend,
+    core_index: usize,
+    frame_id: u32,
+    presentation_hint: &str,
+) -> Result<Option<Vec<Variable>>, DebuggerError> {
+    let scopes = backend.scopes(core_index, frame_id).await?;
+    let Some(scope) = scopes
+        .into_iter()
+        .find(|scope| scope.presentation_hint.as_deref() == Some(presentation_hint))
+    else {
+        return Ok(None);
+    };
+    let variables_reference = u32::try_from(scope.variables_reference).map_err(|_| {
+        DebuggerError::UserMessage(format!(
+            "Invalid {presentation_hint}-variable reference returned by server."
+        ))
+    })?;
+    Ok(Some(
+        backend
+            .variables(core_index, variables_reference, None)
+            .await?,
+    ))
+}
+
+pub(crate) fn stack_frame_id(stack_frame: &StackFrame) -> Result<u32, DebuggerError> {
+    i64::from(stack_frame.id)
+        .try_into()
+        .map_err(|_| DebuggerError::UserMessage("Invalid selected frame id.".to_string()))
+}
+
+pub(crate) fn select_frame(
+    frames: &[StackFrame],
+    requested_frame_id: Option<i64>,
+    address: &str,
+) -> Result<usize, DebuggerError> {
+    let address = address.trim();
+    if !address.is_empty() {
+        let address = parse_int::parse::<u64>(address)
+            .map_err(|error| DebuggerError::UserMessage(error.to_string()))?;
+        return frames
+            .iter()
+            .position(|frame| TryInto::<u64>::try_into(frame.pc).ok() == Some(address))
+            .ok_or_else(|| {
+                DebuggerError::UserMessage(format!(
+                    "No cached stack frame found at address {address:#x}."
+                ))
+            });
+    }
+
+    match requested_frame_id {
+        Some(frame_id) => frames
+            .iter()
+            .position(|frame| frame.id == ObjectRef::from(frame_id))
+            .ok_or_else(|| {
+                DebuggerError::UserMessage(format!("No stack frame found for id {frame_id}."))
+            }),
+        None => (!frames.is_empty())
+            .then_some(0)
+            .ok_or_else(|| DebuggerError::UserMessage("No frame selected.".to_string())),
+    }
+}
+
+/// Fetch and format local variables from the server-owned variable cache.
+pub(crate) async fn get_local_variable(
+    backend: &mut RpcBackend,
     evaluate_arguments: &EvaluateArguments,
-    target_core: &mut CoreHandle<'_>,
+    core_data: &crate::cmd::dap_server::server::core_data::CoreData,
     variable_name: VariableName,
     gdb_nuf: GdbNuf,
 ) -> EvalResult {
     let frame_ref = evaluate_arguments.frame_id.map(ObjectRef::from);
 
     let stack_frame = match frame_ref {
-        Some(frame_id) => target_core
-            .core_data
+        Some(frame_id) => core_data
             .stack_frames
-            .iter_mut()
+            .iter()
             .find(|stack_frame| stack_frame.id == frame_id),
         None => {
             // Use the current frame_id
-            target_core.core_data.stack_frames.first_mut()
+            core_data.stack_frames.first()
         }
     };
 
@@ -44,30 +105,34 @@ pub(crate) fn get_local_variable(
         return Err(DebuggerError::UserMessage("No frame selected.".to_string()));
     };
 
-    let Some(variable_cache) = stack_frame.local_variables.as_mut() else {
+    let frame_id = stack_frame_id(stack_frame)?;
+
+    if let VariableName::Named(name) = variable_name {
+        let response = backend
+            .evaluate_repl_variable(core_data.core_index, frame_id, name.clone())
+            .await?;
+        return Ok(EvalResponse::Body(format_repl_variable(
+            &name, response, gdb_nuf,
+        )));
+    }
+
+    let Some(variables) =
+        scope_variables(backend, core_data.core_index, frame_id, "locals").await?
+    else {
         return Err(DebuggerError::UserMessage(format!(
             "No variables available for frame: {:?}.",
             stack_frame.function_name
         )));
     };
 
-    let Some(variable) = variable_cache.get_variable_by_name(&variable_name) else {
-        return Err(DebuggerError::UserMessage(format!(
-            "No variable named {:?} found for frame: {:?}.",
-            variable_name, stack_frame.function_name
-        )));
-    };
+    Ok(EvalResponse::Body(format_repl_variables(
+        &variables, &gdb_nuf,
+    )))
+}
 
-    let variable_list = if variable.name == VariableName::LocalScopeRoot {
-        variable_cache
-            .get_children(variable.variable_key())
-            .cloned()
-            .collect()
-    } else {
-        vec![variable]
-    };
-    let mut response_body = EvaluateResponseBody {
-        result: "".to_string(),
+fn empty_evaluate_response() -> EvaluateResponseBody {
+    EvaluateResponseBody {
+        result: String::new(),
         variables_reference: 0,
         named_variables: None,
         indexed_variables: None,
@@ -75,71 +140,99 @@ pub(crate) fn get_local_variable(
         type_: None,
         presentation_hint: None,
         value_location_reference: None,
-    };
-
-    for variable in variable_list {
-        if gdb_nuf.format_specifier == GdbFormat::DapReference {
-            response_body.memory_reference = Some(variable.memory_location.to_string());
-            response_body.result = format!(
-                "{} : {} ",
-                variable.name,
-                variable.to_string(variable_cache)
-            );
-            response_body.type_ = Some(variable.type_name());
-            response_body.variables_reference = variable.variable_key().into();
-        } else {
-            response_body.result.push_str(&format!(
-                "\n{} [{} @ {}]: {} ",
-                variable.name,
-                variable.type_name(),
-                variable.memory_location,
-                variable.to_string(variable_cache)
-            ));
-        }
     }
+}
 
-    Ok(EvalResponse::Body(response_body))
+pub(crate) fn format_repl_variables(
+    variables: &[Variable],
+    gdb_nuf: &GdbNuf,
+) -> EvaluateResponseBody {
+    let mut response = empty_evaluate_response();
+    for variable in variables {
+        append_repl_variable(&mut response, variable, gdb_nuf);
+    }
+    response
+}
+
+fn append_repl_variable(
+    response: &mut EvaluateResponseBody,
+    variable: &Variable,
+    gdb_nuf: &GdbNuf,
+) {
+    if gdb_nuf.format_specifier == GdbFormat::DapReference {
+        response.memory_reference = variable.memory_reference.clone();
+        response.result = format!("{} : {} ", variable.name, variable.value);
+        response.type_ = variable.type_.clone();
+        response.variables_reference = variable.variables_reference;
+        response.named_variables = variable.named_variables;
+        response.indexed_variables = variable.indexed_variables;
+    } else {
+        response.result.push_str(&format!(
+            "\n{} [{} @ {}]: {} ",
+            variable.name,
+            variable.type_.as_deref().unwrap_or("<unknown>"),
+            variable.memory_reference.as_deref().unwrap_or("<unknown>"),
+            variable.value
+        ));
+    }
+}
+
+fn format_repl_variable(
+    name: &str,
+    mut response: EvaluateResponseBody,
+    gdb_nuf: GdbNuf,
+) -> EvaluateResponseBody {
+    let value = std::mem::take(&mut response.result);
+    if gdb_nuf.format_specifier == GdbFormat::DapReference {
+        response.result = format!("{name} : {value} ");
+    } else {
+        response.result = format!(
+            "\n{name} [{} @ {}]: {value} ",
+            response.type_.as_deref().unwrap_or("<unknown>"),
+            response.memory_reference.as_deref().unwrap_or("<unknown>")
+        );
+    }
+    response
 }
 
 /// Read memory at the specified address (hex), using the [`GdbNuf`] specifiers to determine size and format.
-pub(crate) fn memory_read(
+pub(crate) async fn memory_read_async(
+    backend: &mut RpcBackend,
+    core_index: usize,
     address: u64,
     gdb_nuf: GdbNuf,
-    target_core: &mut CoreHandle<'_>,
 ) -> EvalResult {
     if gdb_nuf.format_specifier == GdbFormat::Instruction {
-        let assembly_lines = disassemble_target_memory(
-            target_core,
-            0_i64,
-            0_i64,
-            address,
-            DisassemblyAmount::Instructions(gdb_nuf.unit_count as i64),
-        )?;
+        let assembly_lines = backend
+            .disassemble(core_index, address, 0, 0, gdb_nuf.unit_count as i64)
+            .await?;
         if assembly_lines.is_empty() {
             return Err(DebuggerError::UserMessage(format!(
                 "Cannot disassemble memory at address {address:#010x}"
             )));
         }
-        let mut formatted_output = "".to_string();
+        let mut formatted_output = String::new();
         for assembly_line in &assembly_lines {
             formatted_output.push_str(&assembly_line.to_string());
         }
 
         Ok(EvalResponse::Message(formatted_output))
     } else {
-        let mut memory_result = vec![0u8; gdb_nuf.get_size()];
-        match target_core.core.read_8(address, &mut memory_result) {
-            Ok(()) => Ok(EvalResponse::Message(
-                GdbNufMemoryResult {
-                    nuf: &gdb_nuf,
-                    memory: &memory_result,
-                }
-                .to_string(),
-            )),
-            Err(err) => Err(DebuggerError::UserMessage(format!(
-                "Cannot read memory at address {address:#010x}: {err:?}"
-            ))),
-        }
+        let memory = backend
+            .read_memory_8(core_index, address, gdb_nuf.get_size())
+            .await
+            .map_err(|err| {
+                DebuggerError::UserMessage(format!(
+                    "Cannot read memory at address {address:#010x}: {err:?}"
+                ))
+            })?;
+        Ok(EvalResponse::Message(
+            GdbNufMemoryResult {
+                nuf: &gdb_nuf,
+                memory: &memory,
+            }
+            .to_string(),
+        ))
     }
 }
 
@@ -276,9 +369,66 @@ pub(crate) fn command_completions(
 #[cfg(test)]
 mod test {
     use crate::cmd::dap_server::debug_adapter::dap::{
+        dap_types::EvaluateResponseBody,
         repl_commands::REPL_COMMANDS,
-        repl_commands_helpers::{build_completions, build_expanded_commands},
+        repl_commands_helpers::{
+            build_completions, build_expanded_commands, format_repl_variable, format_repl_variables,
+        },
+        repl_types::{GdbFormat, GdbNuf},
     };
+
+    #[test]
+    fn formats_rpc_variable_for_repl() {
+        let response = EvaluateResponseBody {
+            result: "42".to_string(),
+            type_: Some("i32".to_string()),
+            variables_reference: 7,
+            named_variables: Some(1),
+            indexed_variables: Some(0),
+            memory_reference: Some("0x20000000".to_string()),
+            presentation_hint: None,
+            value_location_reference: None,
+        };
+
+        let formatted = format_repl_variable(
+            "answer",
+            response,
+            GdbNuf {
+                format_specifier: GdbFormat::Native,
+                ..Default::default()
+            },
+        );
+
+        assert_eq!(formatted.result, "\nanswer [i32 @ 0x20000000]: 42 ");
+        assert_eq!(formatted.variables_reference, 7);
+    }
+
+    #[test]
+    fn formats_rpc_variable_list_for_repl() {
+        let variables = vec![super::Variable {
+            name: "STATIC_COUNT".to_string(),
+            value: "3".to_string(),
+            type_: Some("u32".to_string()),
+            memory_reference: Some("0x20000010".to_string()),
+            variables_reference: 0,
+            evaluate_name: None,
+            indexed_variables: Some(0),
+            named_variables: Some(0),
+            presentation_hint: None,
+            declaration_location_reference: None,
+            value_location_reference: None,
+        }];
+
+        let formatted = format_repl_variables(
+            &variables,
+            &GdbNuf {
+                format_specifier: GdbFormat::Native,
+                ..Default::default()
+            },
+        );
+
+        assert_eq!(formatted.result, "\nSTATIC_COUNT [u32 @ 0x20000010]: 3 ");
+    }
 
     #[test]
     fn finds_matching_command_by_shorthand() {

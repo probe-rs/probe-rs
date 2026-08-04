@@ -2,7 +2,7 @@ use anyhow::Context;
 use ihex::Record;
 use itertools::Itertools;
 
-use crate::rpc::client::{CoreInterface, RpcClient};
+use probe_rs_rpc_client::{CoreInterface, RpcClient};
 
 use crate::CoreOptions;
 use crate::util::cli;
@@ -25,7 +25,7 @@ enum OutputFormat {
 impl OutputFormat {
     fn write(
         self,
-        dst: impl Write,
+        dst: &mut dyn Write,
         address: u64,
         width: ReadWriteBitWidth,
         data: &[u8],
@@ -39,7 +39,7 @@ impl OutputFormat {
     }
 
     fn write_simple_hex(
-        mut dst: impl Write,
+        dst: &mut dyn Write,
         width: ReadWriteBitWidth,
         data: &[u8],
     ) -> anyhow::Result<()> {
@@ -68,7 +68,7 @@ impl OutputFormat {
     }
 
     fn write_hex_table(
-        mut dst: impl Write,
+        dst: &mut dyn Write,
         mut address: u64,
         width: ReadWriteBitWidth,
         data: &[u8],
@@ -80,20 +80,20 @@ impl OutputFormat {
         };
         for window in data.chunks(bytes_in_line) {
             write!(dst, "{address:08x}: ")?;
-            Self::write_simple_hex(&mut dst, width, window)?;
+            Self::write_simple_hex(dst, width, window)?;
             address += bytes_in_line as u64;
         }
 
         Ok(())
     }
 
-    fn write_binary(mut dst: impl Write, data: &[u8]) -> anyhow::Result<()> {
+    fn write_binary(dst: &mut dyn Write, data: &[u8]) -> anyhow::Result<()> {
         dst.write_all(data)?;
 
         Ok(())
     }
 
-    fn write_ihex(mut dst: impl Write, address: u64, data: &[u8]) -> anyhow::Result<()> {
+    fn write_ihex(dst: &mut dyn Write, address: u64, data: &[u8]) -> anyhow::Result<()> {
         let mut running_address = address;
         let mut records = vec![];
 

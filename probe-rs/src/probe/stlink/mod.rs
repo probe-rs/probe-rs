@@ -20,8 +20,8 @@ use crate::{
         valid_32bit_arm_address,
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeError,
-        ProbeFactory, WireProtocol,
+        DebugProbe, DebugProbeError, DebugProbeSelector, Probe, ProbeError, ProbeFactory,
+        WireProtocol,
     },
 };
 
@@ -62,7 +62,7 @@ impl ProbeFactory for StLinkFactory {
         tracing::debug!("Opening ST-Link: {selector:?}");
         let device = StLinkUsbDevice::new_from_selector(selector)?;
         let mut stlink = StLink {
-            name: format!("ST-Link {}", &device.info.version_name),
+            name: format!("ST-Link {}", device.info.version_name),
             device,
             hw_version: 0,
             jtag_version: 0,
@@ -79,7 +79,7 @@ impl ProbeFactory for StLinkFactory {
         Ok(Box::new(stlink))
     }
 
-    fn list_probes(&self) -> Vec<DebugProbeInfo> {
+    fn list_probes(&self) -> Vec<crate::probe::list::ProbeListItem> {
         tools::list_stlink_devices()
     }
 }
@@ -1345,7 +1345,7 @@ impl DapAccess for StlinkArmDebug {
 
         tracing::Span::current().record("value", result);
 
-        tracing::debug!("Read succesful");
+        tracing::debug!("Read successful");
 
         Ok(result)
     }
@@ -1546,7 +1546,7 @@ impl MemoryInterface<ArmError> for StLinkMemoryInterface<'_> {
             return Ok(());
         }
 
-        // Read needs to be chunked into chunks with appropiate max length (see STLINK_MAX_READ_LEN).
+        // Read needs to be chunked into chunks with appropriate max length (see STLINK_MAX_READ_LEN).
         for (index, chunk) in data.chunks_mut(STLINK_MAX_READ_LEN / 4).enumerate() {
             let mut buff = vec![0u8; 4 * chunk.len()];
 

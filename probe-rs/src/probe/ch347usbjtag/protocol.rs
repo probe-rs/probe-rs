@@ -5,6 +5,7 @@ use nusb::{DeviceInfo, Interface, MaybeFuture};
 
 use crate::probe::{
     self, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
+    list::{ProbeListItem, usb_probe_accessibility},
     usb_util::InterfaceExt,
 };
 
@@ -286,12 +287,12 @@ impl Ch347UsbJtagDevice {
     }
 }
 
-pub(super) fn list_ch347usbjtag_devices() -> Vec<DebugProbeInfo> {
+pub(super) fn list_ch347usbjtag_devices() -> Vec<ProbeListItem> {
     match nusb::list_devices().wait() {
         Ok(devices) => devices
             .filter(is_ch34x_device)
             .map(|device| {
-                DebugProbeInfo::new(
+                let info = DebugProbeInfo::new(
                     "CH347 USB Jtag".to_string(),
                     device.vendor_id(),
                     device.product_id(),
@@ -299,7 +300,11 @@ pub(super) fn list_ch347usbjtag_devices() -> Vec<DebugProbeInfo> {
                     &Ch347UsbJtagFactory,
                     None,
                     false,
-                )
+                );
+                ProbeListItem {
+                    info,
+                    accessibility: usb_probe_accessibility(&device),
+                }
             })
             .collect(),
         Err(e) => {

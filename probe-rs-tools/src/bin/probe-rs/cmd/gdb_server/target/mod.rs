@@ -146,7 +146,15 @@ impl<'a> RuntimeTarget<'a> {
         let mut session = self.session.lock();
 
         for i in &self.cores {
-            let mut core = session.core(*i)?;
+            let mut core = match session.core(*i) {
+                Ok(core) => core,
+                // A core that is not enabled yet (e.g. a secondary core still
+                // held in reset by firmware) cannot be halted. Skip it rather
+                // than failing the whole session; it will be picked up on a
+                // later access once firmware has enabled it.
+                Err(Error::CoreDisabled(_)) => continue,
+                Err(e) => return Err(e),
+            };
             if !core.core_halted()? {
                 core.halt(Duration::from_millis(100))?;
             }
@@ -197,7 +205,12 @@ impl<'a> RuntimeTarget<'a> {
             let mut session = self.session.lock();
 
             for i in &self.cores {
-                let mut core = session.core(*i)?;
+                let mut core = match session.core(*i) {
+                    Ok(core) => core,
+                    // A core that is not enabled yet has no status to report.
+                    Err(Error::CoreDisabled(_)) => continue,
+                    Err(e) => return Err(e.into()),
+                };
                 let CoreStatus::Halted(reason) = core.status()? else {
                     continue;
                 };

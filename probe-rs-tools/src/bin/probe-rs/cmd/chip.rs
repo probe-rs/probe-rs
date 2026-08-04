@@ -2,7 +2,8 @@ use std::io::Write;
 
 use bytesize::ByteSize;
 
-use crate::rpc::{client::RpcClient, functions::chip::MemoryRegion};
+use probe_rs_rpc::chip::MemoryRegion;
+use probe_rs_rpc_client::RpcClient;
 
 #[derive(clap::Parser)]
 pub struct Cmd {
@@ -41,7 +42,7 @@ pub async fn print_families(client: &RpcClient, mut output: impl Write) -> anyho
     writeln!(output, "Available chips:")?;
     let families = client.list_chip_families().await?;
     for family in families {
-        writeln!(output, "{}", &family.name)?;
+        writeln!(output, "{}", family.name)?;
         writeln!(output, "    Variants:")?;
         for variant in family.variants {
             writeln!(output, "        {}", variant.name)?;

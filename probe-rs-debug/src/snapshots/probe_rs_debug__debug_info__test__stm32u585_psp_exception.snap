@@ -1,0 +1,2697 @@
+---
+source: probe-rs-debug/src/debug_info.rs
+expression: stack_frames
+---
+- function_name: __nop
+  source_location:
+    path: "./asm/lib.rs"
+    line: 48
+    column: LeftEdge
+    address: 134219974
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: R0
+          - Argument: a1
+          - Return: r1
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value:
+        U32: 2268
+    - core_register:
+        id: 1
+        roles:
+          - Core: R1
+          - Argument: a2
+          - Return: r2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value:
+        U32: 2
+    - core_register:
+        id: 2
+        roles:
+          - Core: R2
+          - Argument: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value:
+        U32: 15728640
+    - core_register:
+        id: 3
+        roles:
+          - Core: R3
+          - Argument: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value:
+        U32: 0
+    - core_register:
+        id: 4
+        roles:
+          - Core: R4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 0
+    - core_register:
+        id: 5
+        roles:
+          - Core: R5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 0
+    - core_register:
+        id: 6
+        roles:
+          - Core: R6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 0
+    - core_register:
+        id: 7
+        roles:
+          - Core: R7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 537657312
+    - core_register:
+        id: 8
+        roles:
+          - Core: R8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 9
+        roles:
+          - Core: R9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 10
+        roles:
+          - Core: R10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 11
+        roles:
+          - Core: R11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 12
+        roles:
+          - Core: R12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 13
+        roles:
+          - Core: R13
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 537657312
+    - core_register:
+        id: 14
+        roles:
+          - Core: R14
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 134219973
+    - core_register:
+        id: 15
+        roles:
+          - Core: R15
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 134219974
+    - core_register:
+        id: 17
+        roles:
+          - Core: MSP
+          - MainStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 537657312
+    - core_register:
+        id: 18
+        roles:
+          - Core: PSP
+          - ProcessStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value:
+        U32: 536872912
+    - core_register:
+        id: 16
+        roles:
+          - Core: XPSR
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 18
+      value:
+        U32: 1761607691
+    - core_register:
+        id: 20
+        roles:
+          - Core: EXTRA
+          - Other: EXTRA
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 19
+      value:
+        U32: 0
+  pc:
+    U32: 134219974
+  frame_base: 537657312
+  is_inlined: true
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown>"
+  canonical_frame_address: 537657312
+- function_name: __nop
+  source_location:
+    path: "./asm/lib.rs"
+    line: 51
+    column:
+      Column: 17
+    address: 134219974
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: R0
+          - Argument: a1
+          - Return: r1
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value:
+        U32: 2268
+    - core_register:
+        id: 1
+        roles:
+          - Core: R1
+          - Argument: a2
+          - Return: r2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value:
+        U32: 2
+    - core_register:
+        id: 2
+        roles:
+          - Core: R2
+          - Argument: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value:
+        U32: 15728640
+    - core_register:
+        id: 3
+        roles:
+          - Core: R3
+          - Argument: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value:
+        U32: 0
+    - core_register:
+        id: 4
+        roles:
+          - Core: R4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 0
+    - core_register:
+        id: 5
+        roles:
+          - Core: R5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 0
+    - core_register:
+        id: 6
+        roles:
+          - Core: R6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 0
+    - core_register:
+        id: 7
+        roles:
+          - Core: R7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 537657312
+    - core_register:
+        id: 8
+        roles:
+          - Core: R8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 9
+        roles:
+          - Core: R9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 10
+        roles:
+          - Core: R10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 11
+        roles:
+          - Core: R11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 12
+        roles:
+          - Core: R12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 13
+        roles:
+          - Core: R13
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 537657312
+    - core_register:
+        id: 14
+        roles:
+          - Core: R14
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 134219973
+    - core_register:
+        id: 15
+        roles:
+          - Core: R15
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 134219974
+    - core_register:
+        id: 17
+        roles:
+          - Core: MSP
+          - MainStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 537657312
+    - core_register:
+        id: 18
+        roles:
+          - Core: PSP
+          - ProcessStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value:
+        U32: 536872912
+    - core_register:
+        id: 16
+        roles:
+          - Core: XPSR
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 18
+      value:
+        U32: 1761607691
+    - core_register:
+        id: 20
+        roles:
+          - Core: EXTRA
+          - Other: EXTRA
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 19
+      value:
+        U32: 0
+  pc:
+    U32: 134219974
+  frame_base: 537657312
+  is_inlined: false
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown>"
+  canonical_frame_address: 537657312
+- function_name: nop
+  source_location:
+    path: /home/dirbaio/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cortex-m-0.7.7/src/call_asm.rs
+    line: 19
+    column:
+      Column: 21
+    address: 134219968
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: R0
+          - Argument: a1
+          - Return: r1
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value: ~
+    - core_register:
+        id: 1
+        roles:
+          - Core: R1
+          - Argument: a2
+          - Return: r2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value: ~
+    - core_register:
+        id: 2
+        roles:
+          - Core: R2
+          - Argument: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value: ~
+    - core_register:
+        id: 3
+        roles:
+          - Core: R3
+          - Argument: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value: ~
+    - core_register:
+        id: 4
+        roles:
+          - Core: R4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 0
+    - core_register:
+        id: 5
+        roles:
+          - Core: R5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 0
+    - core_register:
+        id: 6
+        roles:
+          - Core: R6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 0
+    - core_register:
+        id: 7
+        roles:
+          - Core: R7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 537657312
+    - core_register:
+        id: 8
+        roles:
+          - Core: R8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 9
+        roles:
+          - Core: R9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value: ~
+    - core_register:
+        id: 10
+        roles:
+          - Core: R10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 11
+        roles:
+          - Core: R11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 12
+        roles:
+          - Core: R12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 13
+        roles:
+          - Core: R13
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 537657312
+    - core_register:
+        id: 14
+        roles:
+          - Core: R14
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 134219973
+    - core_register:
+        id: 15
+        roles:
+          - Core: R15
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 134219970
+    - core_register:
+        id: 17
+        roles:
+          - Core: MSP
+          - MainStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 537657312
+    - core_register:
+        id: 18
+        roles:
+          - Core: PSP
+          - ProcessStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value:
+        U32: 536872912
+    - core_register:
+        id: 16
+        roles:
+          - Core: XPSR
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 18
+      value:
+        U32: 1761607691
+    - core_register:
+        id: 20
+        roles:
+          - Core: EXTRA
+          - Other: EXTRA
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 19
+      value: ~
+  pc:
+    U32: 134219970
+  frame_base: 537657312
+  is_inlined: true
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown>"
+  canonical_frame_address: 537657320
+- function_name: psp_handler_inner
+  source_location:
+    path: /tmp/claude-1000/-home-dirbaio-probe-rs/25e92516-66c7-4ad6-a7d6-f01d09e4b941/scratchpad/minimal-fw/src/bin/psp_exception.rs
+    line: 59
+    column:
+      Column: 9
+    address: 134219968
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: R0
+          - Argument: a1
+          - Return: r1
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value: ~
+    - core_register:
+        id: 1
+        roles:
+          - Core: R1
+          - Argument: a2
+          - Return: r2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value: ~
+    - core_register:
+        id: 2
+        roles:
+          - Core: R2
+          - Argument: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value: ~
+    - core_register:
+        id: 3
+        roles:
+          - Core: R3
+          - Argument: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value: ~
+    - core_register:
+        id: 4
+        roles:
+          - Core: R4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 0
+    - core_register:
+        id: 5
+        roles:
+          - Core: R5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 0
+    - core_register:
+        id: 6
+        roles:
+          - Core: R6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 0
+    - core_register:
+        id: 7
+        roles:
+          - Core: R7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 537657312
+    - core_register:
+        id: 8
+        roles:
+          - Core: R8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 9
+        roles:
+          - Core: R9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value: ~
+    - core_register:
+        id: 10
+        roles:
+          - Core: R10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 11
+        roles:
+          - Core: R11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 12
+        roles:
+          - Core: R12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 13
+        roles:
+          - Core: R13
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 537657312
+    - core_register:
+        id: 14
+        roles:
+          - Core: R14
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 134219973
+    - core_register:
+        id: 15
+        roles:
+          - Core: R15
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 134219970
+    - core_register:
+        id: 17
+        roles:
+          - Core: MSP
+          - MainStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 537657312
+    - core_register:
+        id: 18
+        roles:
+          - Core: PSP
+          - ProcessStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value:
+        U32: 536872912
+    - core_register:
+        id: 16
+        roles:
+          - Core: XPSR
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 18
+      value:
+        U32: 1761607691
+    - core_register:
+        id: 20
+        roles:
+          - Core: EXTRA
+          - Other: EXTRA
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 19
+      value: ~
+  pc:
+    U32: 134219968
+  frame_base: 537657312
+  is_inlined: false
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown>"
+  canonical_frame_address: 537657320
+- function_name: __cortex_m_rt_SVCall
+  source_location:
+    path: /tmp/claude-1000/-home-dirbaio-probe-rs/25e92516-66c7-4ad6-a7d6-f01d09e4b941/scratchpad/minimal-fw/src/bin/psp_exception.rs
+    line: 50
+    column:
+      Column: 5
+    address: 134219868
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: R0
+          - Argument: a1
+          - Return: r1
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value: ~
+    - core_register:
+        id: 1
+        roles:
+          - Core: R1
+          - Argument: a2
+          - Return: r2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value: ~
+    - core_register:
+        id: 2
+        roles:
+          - Core: R2
+          - Argument: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value: ~
+    - core_register:
+        id: 3
+        roles:
+          - Core: R3
+          - Argument: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value: ~
+    - core_register:
+        id: 4
+        roles:
+          - Core: R4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 0
+    - core_register:
+        id: 5
+        roles:
+          - Core: R5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 0
+    - core_register:
+        id: 6
+        roles:
+          - Core: R6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 0
+    - core_register:
+        id: 7
+        roles:
+          - Core: R7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 537657320
+    - core_register:
+        id: 8
+        roles:
+          - Core: R8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 9
+        roles:
+          - Core: R9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value: ~
+    - core_register:
+        id: 10
+        roles:
+          - Core: R10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 11
+        roles:
+          - Core: R11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 12
+        roles:
+          - Core: R12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 13
+        roles:
+          - Core: R13
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 537657320
+    - core_register:
+        id: 14
+        roles:
+          - Core: R14
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 134219873
+    - core_register:
+        id: 15
+        roles:
+          - Core: R15
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 134219870
+    - core_register:
+        id: 17
+        roles:
+          - Core: MSP
+          - MainStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 537657312
+    - core_register:
+        id: 18
+        roles:
+          - Core: PSP
+          - ProcessStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value:
+        U32: 536872912
+    - core_register:
+        id: 16
+        roles:
+          - Core: XPSR
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 18
+      value:
+        U32: 1761607691
+    - core_register:
+        id: 20
+        roles:
+          - Core: EXTRA
+          - Other: EXTRA
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 19
+      value: ~
+  pc:
+    U32: 134219870
+  frame_base: 537657320
+  is_inlined: true
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown>"
+  canonical_frame_address: 537657328
+- function_name: __cortex_m_rt_SVCall_trampoline
+  source_location:
+    path: /tmp/claude-1000/-home-dirbaio-probe-rs/25e92516-66c7-4ad6-a7d6-f01d09e4b941/scratchpad/minimal-fw/src/bin/psp_exception.rs
+    line: 48
+    column:
+      Column: 1
+    address: 134219868
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: R0
+          - Argument: a1
+          - Return: r1
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value: ~
+    - core_register:
+        id: 1
+        roles:
+          - Core: R1
+          - Argument: a2
+          - Return: r2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value: ~
+    - core_register:
+        id: 2
+        roles:
+          - Core: R2
+          - Argument: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value: ~
+    - core_register:
+        id: 3
+        roles:
+          - Core: R3
+          - Argument: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value: ~
+    - core_register:
+        id: 4
+        roles:
+          - Core: R4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 0
+    - core_register:
+        id: 5
+        roles:
+          - Core: R5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 0
+    - core_register:
+        id: 6
+        roles:
+          - Core: R6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 0
+    - core_register:
+        id: 7
+        roles:
+          - Core: R7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 537657320
+    - core_register:
+        id: 8
+        roles:
+          - Core: R8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 9
+        roles:
+          - Core: R9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value: ~
+    - core_register:
+        id: 10
+        roles:
+          - Core: R10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 11
+        roles:
+          - Core: R11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 12
+        roles:
+          - Core: R12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 13
+        roles:
+          - Core: R13
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 537657320
+    - core_register:
+        id: 14
+        roles:
+          - Core: R14
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 134219873
+    - core_register:
+        id: 15
+        roles:
+          - Core: R15
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 134219870
+    - core_register:
+        id: 17
+        roles:
+          - Core: MSP
+          - MainStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 537657312
+    - core_register:
+        id: 18
+        roles:
+          - Core: PSP
+          - ProcessStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value:
+        U32: 536872912
+    - core_register:
+        id: 16
+        roles:
+          - Core: XPSR
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 18
+      value:
+        U32: 1761607691
+    - core_register:
+        id: 20
+        roles:
+          - Core: EXTRA
+          - Other: EXTRA
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 19
+      value: ~
+  pc:
+    U32: 134219868
+  frame_base: 537657320
+  is_inlined: false
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown>"
+  canonical_frame_address: 537657328
+- function_name: SVC
+  source_location: ~
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: R0
+          - Argument: a1
+          - Return: r1
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value:
+        U32: 2268
+    - core_register:
+        id: 1
+        roles:
+          - Core: R1
+          - Argument: a2
+          - Return: r2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value:
+        U32: 2
+    - core_register:
+        id: 2
+        roles:
+          - Core: R2
+          - Argument: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value:
+        U32: 15728640
+    - core_register:
+        id: 3
+        roles:
+          - Core: R3
+          - Argument: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value:
+        U32: 0
+    - core_register:
+        id: 4
+        roles:
+          - Core: R4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 0
+    - core_register:
+        id: 5
+        roles:
+          - Core: R5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 0
+    - core_register:
+        id: 6
+        roles:
+          - Core: R6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 0
+    - core_register:
+        id: 7
+        roles:
+          - Core: R7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 536872944
+    - core_register:
+        id: 8
+        roles:
+          - Core: R8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 9
+        roles:
+          - Core: R9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value: ~
+    - core_register:
+        id: 10
+        roles:
+          - Core: R10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 11
+        roles:
+          - Core: R11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 12
+        roles:
+          - Core: R12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 13
+        roles:
+          - Core: R13
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 536872944
+    - core_register:
+        id: 14
+        roles:
+          - Core: R14
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 134219935
+    - core_register:
+        id: 15
+        roles:
+          - Core: R15
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 134219956
+    - core_register:
+        id: 17
+        roles:
+          - Core: MSP
+          - MainStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 537657312
+    - core_register:
+        id: 18
+        roles:
+          - Core: PSP
+          - ProcessStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value:
+        U32: 536872912
+    - core_register:
+        id: 16
+        roles:
+          - Core: XPSR
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 18
+      value:
+        U32: 1761607680
+    - core_register:
+        id: 20
+        roles:
+          - Core: EXTRA
+          - Other: EXTRA
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 19
+      value: ~
+  pc:
+    U32: 134219956
+  frame_base: ~
+  is_inlined: false
+  local_variables: ~
+  canonical_frame_address: ~
+- function_name: read_volatile<u32>
+  source_location:
+    path: /home/dirbaio/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs
+    line: 2095
+    column:
+      Column: 9
+    address: 134219956
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: R0
+          - Argument: a1
+          - Return: r1
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value:
+        U32: 2268
+    - core_register:
+        id: 1
+        roles:
+          - Core: R1
+          - Argument: a2
+          - Return: r2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value:
+        U32: 2
+    - core_register:
+        id: 2
+        roles:
+          - Core: R2
+          - Argument: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value:
+        U32: 15728640
+    - core_register:
+        id: 3
+        roles:
+          - Core: R3
+          - Argument: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value:
+        U32: 0
+    - core_register:
+        id: 4
+        roles:
+          - Core: R4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 0
+    - core_register:
+        id: 5
+        roles:
+          - Core: R5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 0
+    - core_register:
+        id: 6
+        roles:
+          - Core: R6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 0
+    - core_register:
+        id: 7
+        roles:
+          - Core: R7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 536872944
+    - core_register:
+        id: 8
+        roles:
+          - Core: R8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 9
+        roles:
+          - Core: R9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value: ~
+    - core_register:
+        id: 10
+        roles:
+          - Core: R10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 11
+        roles:
+          - Core: R11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 12
+        roles:
+          - Core: R12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 13
+        roles:
+          - Core: R13
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 536872944
+    - core_register:
+        id: 14
+        roles:
+          - Core: R14
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 134219935
+    - core_register:
+        id: 15
+        roles:
+          - Core: R15
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 134219956
+    - core_register:
+        id: 17
+        roles:
+          - Core: MSP
+          - MainStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 537657312
+    - core_register:
+        id: 18
+        roles:
+          - Core: PSP
+          - ProcessStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value:
+        U32: 536872912
+    - core_register:
+        id: 16
+        roles:
+          - Core: XPSR
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 18
+      value:
+        U32: 1761607680
+    - core_register:
+        id: 20
+        roles:
+          - Core: EXTRA
+          - Other: EXTRA
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 19
+      value: ~
+  pc:
+    U32: 134219956
+  frame_base: 536872944
+  is_inlined: true
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown> {\n\tsrc: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >}"
+      children:
+        - name:
+            Named: src
+          type_name: Unknown
+          value: "< <value optimized away by compiler, out of scope, or dropped> >"
+          source_location:
+            path: /home/dirbaio/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs
+            line: 2084
+            column: ~
+            address: ~
+  canonical_frame_address: 536872952
+- function_name: psp_b
+  source_location:
+    path: /tmp/claude-1000/-home-dirbaio-probe-rs/25e92516-66c7-4ad6-a7d6-f01d09e4b941/scratchpad/minimal-fw/src/bin/psp_exception.rs
+    line: 45
+    column:
+      Column: 14
+    address: 134219950
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: R0
+          - Argument: a1
+          - Return: r1
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value:
+        U32: 2268
+    - core_register:
+        id: 1
+        roles:
+          - Core: R1
+          - Argument: a2
+          - Return: r2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value:
+        U32: 2
+    - core_register:
+        id: 2
+        roles:
+          - Core: R2
+          - Argument: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value:
+        U32: 15728640
+    - core_register:
+        id: 3
+        roles:
+          - Core: R3
+          - Argument: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value:
+        U32: 0
+    - core_register:
+        id: 4
+        roles:
+          - Core: R4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 0
+    - core_register:
+        id: 5
+        roles:
+          - Core: R5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 0
+    - core_register:
+        id: 6
+        roles:
+          - Core: R6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 0
+    - core_register:
+        id: 7
+        roles:
+          - Core: R7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 536872944
+    - core_register:
+        id: 8
+        roles:
+          - Core: R8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 9
+        roles:
+          - Core: R9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value: ~
+    - core_register:
+        id: 10
+        roles:
+          - Core: R10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 11
+        roles:
+          - Core: R11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 12
+        roles:
+          - Core: R12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 13
+        roles:
+          - Core: R13
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 536872944
+    - core_register:
+        id: 14
+        roles:
+          - Core: R14
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 134219935
+    - core_register:
+        id: 15
+        roles:
+          - Core: R15
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 134219956
+    - core_register:
+        id: 17
+        roles:
+          - Core: MSP
+          - MainStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 537657312
+    - core_register:
+        id: 18
+        roles:
+          - Core: PSP
+          - ProcessStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value:
+        U32: 536872912
+    - core_register:
+        id: 16
+        roles:
+          - Core: XPSR
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 18
+      value:
+        U32: 1761607680
+    - core_register:
+        id: 20
+        roles:
+          - Core: EXTRA
+          - Other: EXTRA
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 19
+      value: ~
+  pc:
+    U32: 134219950
+  frame_base: 536872944
+  is_inlined: false
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown>"
+  canonical_frame_address: 536872952
+- function_name: psp_a
+  source_location:
+    path: /tmp/claude-1000/-home-dirbaio-probe-rs/25e92516-66c7-4ad6-a7d6-f01d09e4b941/scratchpad/minimal-fw/src/bin/psp_exception.rs
+    line: 36
+    column:
+      Column: 5
+    address: 134219930
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: R0
+          - Argument: a1
+          - Return: r1
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value: ~
+    - core_register:
+        id: 1
+        roles:
+          - Core: R1
+          - Argument: a2
+          - Return: r2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value: ~
+    - core_register:
+        id: 2
+        roles:
+          - Core: R2
+          - Argument: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value: ~
+    - core_register:
+        id: 3
+        roles:
+          - Core: R3
+          - Argument: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value: ~
+    - core_register:
+        id: 4
+        roles:
+          - Core: R4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 0
+    - core_register:
+        id: 5
+        roles:
+          - Core: R5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 0
+    - core_register:
+        id: 6
+        roles:
+          - Core: R6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 0
+    - core_register:
+        id: 7
+        roles:
+          - Core: R7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 536872952
+    - core_register:
+        id: 8
+        roles:
+          - Core: R8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 9
+        roles:
+          - Core: R9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value: ~
+    - core_register:
+        id: 10
+        roles:
+          - Core: R10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 11
+        roles:
+          - Core: R11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 12
+        roles:
+          - Core: R12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 13
+        roles:
+          - Core: R13
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 536872952
+    - core_register:
+        id: 14
+        roles:
+          - Core: R14
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 134219935
+    - core_register:
+        id: 15
+        roles:
+          - Core: R15
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 134219932
+    - core_register:
+        id: 17
+        roles:
+          - Core: MSP
+          - MainStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 537657312
+    - core_register:
+        id: 18
+        roles:
+          - Core: PSP
+          - ProcessStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value:
+        U32: 536872912
+    - core_register:
+        id: 16
+        roles:
+          - Core: XPSR
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 18
+      value:
+        U32: 1761607680
+    - core_register:
+        id: 20
+        roles:
+          - Core: EXTRA
+          - Other: EXTRA
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 19
+      value: ~
+  pc:
+    U32: 134219932
+  frame_base: 536872952
+  is_inlined: false
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown>"
+  canonical_frame_address: 536872960
+- function_name: __cortex_m_rt_main
+  source_location:
+    path: /tmp/claude-1000/-home-dirbaio-probe-rs/25e92516-66c7-4ad6-a7d6-f01d09e4b941/scratchpad/minimal-fw/src/bin/psp_exception.rs
+    line: 84
+    column:
+      Column: 5
+    address: 134219908
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: R0
+          - Argument: a1
+          - Return: r1
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value: ~
+    - core_register:
+        id: 1
+        roles:
+          - Core: R1
+          - Argument: a2
+          - Return: r2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value: ~
+    - core_register:
+        id: 2
+        roles:
+          - Core: R2
+          - Argument: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value: ~
+    - core_register:
+        id: 3
+        roles:
+          - Core: R3
+          - Argument: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value: ~
+    - core_register:
+        id: 4
+        roles:
+          - Core: R4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 0
+    - core_register:
+        id: 5
+        roles:
+          - Core: R5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 0
+    - core_register:
+        id: 6
+        roles:
+          - Core: R6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 0
+    - core_register:
+        id: 7
+        roles:
+          - Core: R7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 537657328
+    - core_register:
+        id: 8
+        roles:
+          - Core: R8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 9
+        roles:
+          - Core: R9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value: ~
+    - core_register:
+        id: 10
+        roles:
+          - Core: R10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 11
+        roles:
+          - Core: R11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 12
+        roles:
+          - Core: R12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 13
+        roles:
+          - Core: R13
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 536872960
+    - core_register:
+        id: 14
+        roles:
+          - Core: R14
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 134219913
+    - core_register:
+        id: 15
+        roles:
+          - Core: R15
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 134219910
+    - core_register:
+        id: 17
+        roles:
+          - Core: MSP
+          - MainStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 537657312
+    - core_register:
+        id: 18
+        roles:
+          - Core: PSP
+          - ProcessStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value:
+        U32: 536872912
+    - core_register:
+        id: 16
+        roles:
+          - Core: XPSR
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 18
+      value:
+        U32: 1761607680
+    - core_register:
+        id: 20
+        roles:
+          - Core: EXTRA
+          - Other: EXTRA
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 19
+      value: ~
+  pc:
+    U32: 134219910
+  frame_base: 537657328
+  is_inlined: false
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown>"
+  canonical_frame_address: 537657336
+- function_name: __cortex_m_rt_main_trampoline
+  source_location:
+    path: /tmp/claude-1000/-home-dirbaio-probe-rs/25e92516-66c7-4ad6-a7d6-f01d09e4b941/scratchpad/minimal-fw/src/bin/psp_exception.rs
+    line: 63
+    column:
+      Column: 1
+    address: 134219922
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: R0
+          - Argument: a1
+          - Return: r1
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value: ~
+    - core_register:
+        id: 1
+        roles:
+          - Core: R1
+          - Argument: a2
+          - Return: r2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value: ~
+    - core_register:
+        id: 2
+        roles:
+          - Core: R2
+          - Argument: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value: ~
+    - core_register:
+        id: 3
+        roles:
+          - Core: R3
+          - Argument: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value: ~
+    - core_register:
+        id: 4
+        roles:
+          - Core: R4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 0
+    - core_register:
+        id: 5
+        roles:
+          - Core: R5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 0
+    - core_register:
+        id: 6
+        roles:
+          - Core: R6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 0
+    - core_register:
+        id: 7
+        roles:
+          - Core: R7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 537657336
+    - core_register:
+        id: 8
+        roles:
+          - Core: R8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 9
+        roles:
+          - Core: R9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value: ~
+    - core_register:
+        id: 10
+        roles:
+          - Core: R10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 11
+        roles:
+          - Core: R11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 12
+        roles:
+          - Core: R12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 13
+        roles:
+          - Core: R13
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 537657336
+    - core_register:
+        id: 14
+        roles:
+          - Core: R14
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 134219927
+    - core_register:
+        id: 15
+        roles:
+          - Core: R15
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 134219924
+    - core_register:
+        id: 17
+        roles:
+          - Core: MSP
+          - MainStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 537657312
+    - core_register:
+        id: 18
+        roles:
+          - Core: PSP
+          - ProcessStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value:
+        U32: 536872912
+    - core_register:
+        id: 16
+        roles:
+          - Core: XPSR
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 18
+      value:
+        U32: 1761607680
+    - core_register:
+        id: 20
+        roles:
+          - Core: EXTRA
+          - Other: EXTRA
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 19
+      value: ~
+  pc:
+    U32: 134219924
+  frame_base: 537657336
+  is_inlined: false
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown>"
+  canonical_frame_address: 537657344
+- function_name: Reset
+  source_location: ~
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: R0
+          - Argument: a1
+          - Return: r1
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value: ~
+    - core_register:
+        id: 1
+        roles:
+          - Core: R1
+          - Argument: a2
+          - Return: r2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value: ~
+    - core_register:
+        id: 2
+        roles:
+          - Core: R2
+          - Argument: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value: ~
+    - core_register:
+        id: 3
+        roles:
+          - Core: R3
+          - Argument: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value: ~
+    - core_register:
+        id: 4
+        roles:
+          - Core: R4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 0
+    - core_register:
+        id: 5
+        roles:
+          - Core: R5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 0
+    - core_register:
+        id: 6
+        roles:
+          - Core: R6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 0
+    - core_register:
+        id: 7
+        roles:
+          - Core: R7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 0
+    - core_register:
+        id: 8
+        roles:
+          - Core: R8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 9
+        roles:
+          - Core: R9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value: ~
+    - core_register:
+        id: 10
+        roles:
+          - Core: R10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 11
+        roles:
+          - Core: R11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 12
+        roles:
+          - Core: R12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 4294967295
+    - core_register:
+        id: 13
+        roles:
+          - Core: R13
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 537657344
+    - core_register:
+        id: 14
+        roles:
+          - Core: R14
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 134219837
+    - core_register:
+        id: 15
+        roles:
+          - Core: R15
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 134219834
+    - core_register:
+        id: 17
+        roles:
+          - Core: MSP
+          - MainStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 537657312
+    - core_register:
+        id: 18
+        roles:
+          - Core: PSP
+          - ProcessStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value:
+        U32: 536872912
+    - core_register:
+        id: 16
+        roles:
+          - Core: XPSR
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 18
+      value:
+        U32: 1761607680
+    - core_register:
+        id: 20
+        roles:
+          - Core: EXTRA
+          - Other: EXTRA
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 19
+      value: ~
+  pc:
+    U32: 134219834
+  frame_base: ~
+  is_inlined: false
+  local_variables: ~
+  canonical_frame_address: ~

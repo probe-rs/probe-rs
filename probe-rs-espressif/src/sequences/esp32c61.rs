@@ -110,7 +110,7 @@ impl RiscvDebugSequence for ESP32C61 {
         interface.write_dm_register(Sbdata0(0x80000000_u32))?;
 
         // clear dmactive to clear sbbusy otherwise debug module gets stuck
-        // interface.write_dm_register(Dmcontrol(0))?;
+        interface.write_dm_register(Dmcontrol(0))?;
 
         interface.write_dm_register(Sbcs(0x48000))?;
         interface.write_dm_register(Sbaddress0(0x600b1038))?;
@@ -134,11 +134,71 @@ impl RiscvDebugSequence for ESP32C61 {
         interface.enter_debug_mode()?;
         self.on_connect(interface)?;
 
-        // The ROM code fails to boot if UART0 SCLK is not enabled
+        fn set_bit(
+            interface: &mut RiscvCommunicationInterface,
+            addr: u64,
+            bit: usize,
+        ) -> Result<(), Error> {
+            let reg = interface.read_word_32(addr)?;
+            interface.write_word_32(addr, reg | (1u32 << bit))
+        }
+
+        fn clear_bit(
+            interface: &mut RiscvCommunicationInterface,
+            addr: u64,
+            bit: usize,
+        ) -> Result<(), Error> {
+            let reg = interface.read_word_32(addr)?;
+            interface.write_word_32(addr, reg & !(1u32 << bit))
+        }
+
+        // Reset modem
+        const MODEM_SYSCON_MODEM_RST_CONF: u64 = 0x600A9C00 + 0x10;
+        interface.write_word_32(MODEM_SYSCON_MODEM_RST_CONF, 0xFFFF_FFFF)?;
+        interface.write_word_32(MODEM_SYSCON_MODEM_RST_CONF, 0)?;
+        const MODEM_LPCON_RST_CONF: u64 = 0x600AF000 + 0x24;
+        interface.write_word_32(MODEM_LPCON_RST_CONF, 0xFF)?;
+        interface.write_word_32(MODEM_LPCON_RST_CONF, 0)?;
+
+        // Reset peripherals
         const PCR_BASE: u64 = 0x6009_6000;
+
+        const MSPI_CLK_CONF_OFFSET: u64 = 0x28;
+        const MSPI_CONF_OFFSET: u64 = 0x24;
         const UART0_SCLK_CONF_OFFSET: u64 = 0x04;
-        let reg = interface.read_word_32(PCR_BASE + UART0_SCLK_CONF_OFFSET)?;
-        interface.write_word_32(PCR_BASE + UART0_SCLK_CONF_OFFSET, reg | (1u32 << 22))?;
+
+        const PCR_PERI_REGISTER_OFFSETS: &[u64] = &[
+            0x00,  // UART0_CONF
+            0x0c,  // UART1_CONF
+            0x58,  // SYSTIMER_CONF
+            0x90,  // GDMA_CONF
+            0xe0,  // MODEM_CONF
+            0x158, // SDIO_SLAVE_CONF
+            0x13c, // ETM_CONF
+            0x138, // REGDMA_CONF
+            0x9c,  // AES_CONF
+            0xb4,  // DS_CONF
+            0xac,  // ECC_CONF
+            0xbc,  // ECDSA_CONF
+            0xb8,  // HMAC_CONF
+            0xa4,  // RSA_CONF
+            0xa0,  // SHA_CONF
+        ];
+
+        // Must reset mspi AXI before reset mspi core.
+        set_bit(interface, PCR_BASE + MSPI_CLK_CONF_OFFSET, 11)?;
+        set_bit(interface, PCR_BASE + MSPI_CONF_OFFSET, 1)?;
+        // Must release mspi core reset before mspi AXI.
+        clear_bit(interface, PCR_BASE + MSPI_CONF_OFFSET, 1)?;
+        clear_bit(interface, PCR_BASE + MSPI_CLK_CONF_OFFSET, 11)?;
+
+        for offset in PCR_PERI_REGISTER_OFFSETS {
+            set_bit(interface, PCR_BASE + *offset, 1)?;
+            clear_bit(interface, PCR_BASE + *offset, 1)?;
+        }
+
+        // The ROM code fails to boot if UART0 SCLK is not enabled
+        set_bit(interface, PCR_BASE + UART0_SCLK_CONF_OFFSET, 22)?;
 
         interface.reset_hart_and_halt(timeout)?;
 

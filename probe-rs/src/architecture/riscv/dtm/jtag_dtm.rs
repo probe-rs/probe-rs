@@ -301,7 +301,7 @@ impl DtmAccess for JtagDtm<'_> {
 
             if elapsed_time > JTAG_COMMAND_TIMEOUT {
                 tracing::error!(
-                    "Timeout ({JTAG_COMMAND_TIMEOUT:?}) exceeded executing RISCV commands (elpased: {elapsed_time:?})"
+                    "Timeout ({JTAG_COMMAND_TIMEOUT:?}) exceeded executing RISCV commands (elapsed: {elapsed_time:?})"
                 );
                 return Err(RiscvError::Timeout);
             }

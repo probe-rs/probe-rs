@@ -1768,7 +1768,7 @@ expression: stack_frames
       value:
         U32: 396576
   pc:
-    U64: 1107299479
+    U32: 1107299479
   frame_base: 1070450064
   is_inlined: false
   local_variables:
@@ -2652,7 +2652,7 @@ expression: stack_frames
       value:
         U32: 396576
   pc:
-    U64: 1107315785
+    U32: 1107315785
   frame_base: 1070450240
   is_inlined: true
   local_variables:
@@ -2984,7 +2984,7 @@ expression: stack_frames
       value:
         U32: 396576
   pc:
-    U64: 1107315720
+    U32: 1107315720
   frame_base: 1070450240
   is_inlined: true
   local_variables:
@@ -3259,7 +3259,7 @@ expression: stack_frames
       value:
         U32: 396576
   pc:
-    U64: 1107315720
+    U32: 1107315720
   frame_base: 1070450240
   is_inlined: false
   local_variables:
@@ -4199,7 +4199,7 @@ expression: stack_frames
       value:
         U32: 396576
   pc:
-    U64: 1107300213
+    U32: 1107300213
   frame_base: 1070450352
   is_inlined: false
   local_variables:

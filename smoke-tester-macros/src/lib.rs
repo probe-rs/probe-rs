@@ -1,4 +1,3 @@
-use proc_macro_error2::{abort, proc_macro_error};
 use proc_macro2::Span;
 use quote::quote;
 use syn::{
@@ -48,7 +47,10 @@ impl Parse for Args {
         let parts = Punctuated::<TestKind, Token![,]>::parse_terminated(input)?;
 
         let Some(kind) = parts.first() else {
-            abort!(input.span(), "Should have exactly one attribute")
+            return Err(syn::Error::new(
+                input.span(),
+                "Should have exactly one attribute",
+            ));
         };
 
         Ok(Args { kind: *kind })
@@ -56,14 +58,16 @@ impl Parse for Args {
 }
 
 #[proc_macro_attribute]
-#[proc_macro_error]
 pub fn test(
     args: proc_macro::TokenStream,
     item: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
     let item: proc_macro2::TokenStream = parse_macro_input!(item);
     let args = parse_macro_input!(args as Args);
-    let test_info = parse(args, item);
+    let test_info = match parse(args, item) {
+        Ok(test_info) => test_info,
+        Err(err) => return err.to_compile_error().into(),
+    };
 
     match test_info.kind {
         TestKind::Session { _kw: _ } => session_test(test_info),
@@ -113,16 +117,18 @@ fn core_test(test_info: TestInfo) -> proc_macro::TokenStream {
     with_attr.into()
 }
 
-fn parse(args: Args, item: proc_macro2::TokenStream) -> TestInfo {
+fn parse(args: Args, item: proc_macro2::TokenStream) -> syn::Result<TestInfo> {
     let item_span = item.span();
 
     let test_fn = match syn::parse2(item) {
         Ok(parsed) => parsed,
-        Err(_err) => abort!(item_span, "Can only be used on functions"),
+        Err(_err) => {
+            return Err(syn::Error::new(item_span, "Can only be used on functions"));
+        }
     };
 
-    TestInfo {
+    Ok(TestInfo {
         kind: args.kind,
         test_fn,
-    }
+    })
 }

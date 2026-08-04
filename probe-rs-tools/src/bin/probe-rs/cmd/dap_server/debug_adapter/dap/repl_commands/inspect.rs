@@ -1,22 +1,19 @@
 use std::{fmt::Write as _, ops::Range, path::Path, str::FromStr};
 
 use linkme::distributed_slice;
-use probe_rs::CoreDump;
 use probe_rs_debug::{ObjectRef, VariableName};
 
 use crate::cmd::dap_server::{
     DebuggerError,
-    debug_adapter::{
-        dap::{
-            adapter::DebugAdapter,
-            dap_types::{EvaluateArguments, MemoryAddress},
-            repl_commands::{EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand},
-            repl_commands_helpers::{get_local_variable, memory_read},
-            repl_types::{GdbFormat, GdbNuf, ReplCommandArgs},
-        },
-        protocol::ProtocolAdapter,
+    backend::rpc::RpcBackend,
+    debug_adapter::dap::{
+        adapter::DebugAdapter,
+        dap_types::{EvaluateArguments, MemoryAddress},
+        repl_commands::{EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand, async_fn},
+        repl_commands_helpers::{get_local_variable, memory_read_async},
+        repl_types::{GdbFormat, GdbNuf, ReplCommandArgs},
     },
-    server::core_data::CoreHandle,
+    server::core_data::CoreData,
 };
 
 #[distributed_slice(REPL_COMMANDS)]
@@ -30,7 +27,7 @@ static PRINT: ReplCommand = ReplCommand {
         ReplCommandArgs::Optional("/f (f=format[n|v])"),
         ReplCommandArgs::Required("<local variable name>"),
     ],
-    handler: print_variables,
+    handler: async_fn!(print_variables),
 };
 
 #[distributed_slice(REPL_COMMANDS)]
@@ -43,7 +40,7 @@ static EXAMINE: ReplCommand = ReplCommand {
         ReplCommandArgs::Optional("/Nuf (N=count, u=unit[b|h|w|g], f=format[t|x|i])"),
         ReplCommandArgs::Optional("address (hex)"),
     ],
-    handler: examine_memory,
+    handler: async_fn!(examine_memory),
 };
 
 #[distributed_slice(REPL_COMMANDS)]
@@ -57,14 +54,15 @@ static DUMP: ReplCommand = ReplCommand {
         ReplCommandArgs::Optional("memory size in bytes"),
         ReplCommandArgs::Optional("path (default: ./coredump)"),
     ],
-    handler: dump_core,
+    handler: async_fn!(dump_core),
 };
 
-fn print_variables(
-    target_core: &mut CoreHandle<'_>,
-    command_arguments: &str,
-    evaluate_arguments: &EvaluateArguments,
-    _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
+async fn print_variables<'a>(
+    backend: &'a mut RpcBackend,
+    core_data: &'a mut CoreData,
+    command_arguments: &'a str,
+    evaluate_arguments: &'a EvaluateArguments,
+    _adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     let input_arguments = command_arguments.split_whitespace();
     let mut gdb_nuf = GdbNuf {
@@ -93,15 +91,24 @@ fn print_variables(
         }
     }
 
-    get_local_variable(evaluate_arguments, target_core, variable_name, gdb_nuf)
+    get_local_variable(
+        backend,
+        evaluate_arguments,
+        core_data,
+        variable_name,
+        gdb_nuf,
+    )
+    .await
 }
 
-fn examine_memory(
-    target_core: &mut CoreHandle<'_>,
-    command_arguments: &str,
-    request_arguments: &EvaluateArguments,
-    _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
+async fn examine_memory<'a>(
+    backend: &'a mut RpcBackend,
+    core_data: &'a mut CoreData,
+    command_arguments: &'a str,
+    request_arguments: &'a EvaluateArguments,
+    _adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
+    let core_index = core_data.core_index;
     let input_arguments = command_arguments.split_whitespace();
     let mut gdb_nuf = GdbNuf {
         ..Default::default()
@@ -136,16 +143,27 @@ fn examine_memory(
                     ))
                 })?;
         } else if let Some(reg) = input_argument.strip_prefix('$') {
-            let Some(register) = target_core.core.registers().all_registers().find(|r| {
-                std::iter::once(r.name().to_string())
-                    .chain(r.roles.iter().map(|role| role.to_string()))
-                    .any(|name| name.eq_ignore_ascii_case(reg))
-            }) else {
+            let id = {
+                let regs = backend.core_metadata[core_index].registers;
+                regs.all_registers()
+                    .find(|r| {
+                        std::iter::once(r.name().to_string())
+                            .chain(r.roles.iter().map(|role| role.to_string()))
+                            .any(|name| name.eq_ignore_ascii_case(reg))
+                    })
+                    .map(|r| r.id())
+            };
+            let Some(id) = id else {
                 return Err(DebuggerError::UserMessage(format!(
                     "Undefined register ${reg:?}."
                 )));
             };
-            input_address = Some(target_core.core.read_core_reg(register)?);
+            let value = backend.read_core_reg(core_index, id).await?;
+            input_address = Some(
+                value
+                    .try_into()
+                    .map_err(|e| DebuggerError::UserMessage(format!("{e:?}")))?,
+            );
         } else {
             return Err(DebuggerError::UserMessage(
                 "Invalid parameters. See the `help` command for more information.".to_string(),
@@ -156,36 +174,39 @@ fn examine_memory(
         input_address
     } else {
         // No address was specified, so we'll use the frame address, if available.
-
         let frame_id = request_arguments.frame_id.map(ObjectRef::from);
 
         if let Some(frame_pc) = frame_id
             .and_then(|frame_id| {
-                target_core
-                    .core_data
+                core_data
                     .stack_frames
                     .iter()
                     .find(|stack_frame| stack_frame.id == frame_id)
             })
             .map(|stack_frame| stack_frame.pc)
         {
-            frame_pc.try_into()?
+            frame_pc
+                .try_into()
+                .map_err(|e| DebuggerError::UserMessage(format!("{e:?}")))?
         } else {
-            target_core
-                .core
-                .read_core_reg(target_core.core.program_counter())?
+            let pc_id = backend.program_counter_id(core_index).await?;
+            let pc = backend.read_core_reg(core_index, pc_id).await?;
+            pc.try_into()
+                .map_err(|e| DebuggerError::UserMessage(format!("{e:?}")))?
         }
     };
 
-    memory_read(input_address, gdb_nuf, target_core)
+    memory_read_async(backend, core_index, input_address, gdb_nuf).await
 }
 
-fn dump_core(
-    target_core: &mut CoreHandle<'_>,
-    command_arguments: &str,
-    _: &EvaluateArguments,
-    _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
+async fn dump_core<'a>(
+    backend: &'a mut RpcBackend,
+    core_data: &'a mut CoreData,
+    command_arguments: &'a str,
+    _evaluate_arguments: &'a EvaluateArguments,
+    _adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
+    let core_index = core_data.core_index;
     let mut args = command_arguments.split_whitespace().collect::<Vec<_>>();
 
     // If we get an odd number of arguments, treat all n * 2 args at the start as memory blocks
@@ -200,10 +221,10 @@ fn dump_core(
     );
 
     let ranges = if args.is_empty() {
-        // No specific memory ranges were requested, so we will dump the
-        // memory ranges we know are specifically referenced by the variables
-        // in the current scope.
-        target_core.get_memory_ranges()
+        // Auto-detect of memory ranges relied on the client-side variable
+        // cache, which the RPC backend doesn't populate (the cache lives
+        // server-side). Fall through to a registers-only dump.
+        Vec::new()
     } else {
         args
             .chunks(2)
@@ -234,7 +255,11 @@ fn dump_core(
     } else {
         format!("(Includes memory ranges: {range_string})")
     };
-    CoreDump::dump_core(&mut target_core.core, ranges)?.store(location)?;
+    let dump = backend
+        .dump_core(core_index, ranges)
+        .await
+        .map_err(DebuggerError::from)?;
+    dump.store(location)?;
 
     Ok(EvalResponse::Message(format!(
         "Core dump {range_string} successfully stored at {location:?}.",

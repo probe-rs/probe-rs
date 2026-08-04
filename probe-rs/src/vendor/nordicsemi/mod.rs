@@ -32,7 +32,7 @@ const JEP_NORDICSEMI: JEP106Code = JEP106Code::new(0x2, 0x44);
 impl Vendor for NordicSemi {
     fn try_create_debug_sequence(&self, chip: &Chip) -> Option<DebugSequence> {
         let sequence = if chip.name.starts_with("nRF5340") {
-            DebugSequence::Arm(Nrf5340::create())
+            DebugSequence::Arm(Nrf5340::create_for_chip(chip))
         } else if chip.name.starts_with("nRF52") {
             DebugSequence::Arm(Nrf52::create())
         } else if chip.name.starts_with("nRF9160") {

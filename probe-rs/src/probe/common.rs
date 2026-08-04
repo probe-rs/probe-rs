@@ -571,7 +571,7 @@ impl<Probe: AutoImplementJtagAccess> JtagAccess for Probe {
     fn shift_raw_sequence(&mut self, sequence: JtagSequence) -> Result<BitVec, DebugProbeError> {
         self.shift_bits(
             std::iter::repeat(sequence.tms),
-            sequence.data.into_iter(),
+            sequence.data,
             std::iter::repeat(sequence.tdo_capture),
         )?;
         self.read_captured_bits()

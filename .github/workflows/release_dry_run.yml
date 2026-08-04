@@ -1,0 +1,75 @@
+# Dry-runs a release on PRs labelled 'release': a crates.io publish dry-run, plus
+# the full dist build (dispatched as a dry-run of the release workflow). Catches
+# publish/build/runner problems on the release PR instead of when we cut the
+# release. Nothing is published, tagged or pushed.
+
+on:
+  pull_request:
+    branches: [master, release/**]
+    types: [opened, reopened, synchronize, labeled]
+  workflow_dispatch:
+
+name: Release dry-run
+
+jobs:
+  publish:
+    name: Dry-run publish
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'release')
+    steps:
+      - uses: actions/checkout@v6
+      - uses: taiki-e/install-action@cargo-release
+      # Use cargo-release (not `cargo publish --dry-run`) so the dry-run runs the
+      # exact checks the real release does: metadata validation (missing
+      # description etc.) plus the verification build. --allow-branch lets it run
+      # on the release PR branch; leaving off --execute keeps it a dry-run.
+      - run: cargo release publish --no-confirm --allow-branch '*'
+
+  # Run the real dist build (all targets) as a dry-run without copying dist's
+  # workflow: dispatch it against this PR's branch and watch it, so this job's
+  # pass/fail mirrors the build and shows up as a check on the PR.
+  build:
+    name: Dry-run build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'release')
+    steps:
+      - name: Dispatch and watch the dist dry-run build
+        run: |
+          before=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow=v-release.yml --branch "$HEAD" --limit 1 --json databaseId --jq '.[0].databaseId // 0')
+          gh workflow run v-release.yml --repo "$GITHUB_REPOSITORY" --ref "$HEAD" -f tag=dry-run
+
+          # Wait for the new run to appear.
+          run_id=0
+          for _ in $(seq 1 30); do
+            run_id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow=v-release.yml --branch "$HEAD" --limit 1 --json databaseId --jq '.[0].databaseId // 0')
+            [ "$run_id" != "$before" ] && break
+            sleep 5
+          done
+          echo "Watching run $run_id"
+
+          # Poll until the run finishes. The build jobs sit "queued" while `plan`
+          # runs (they need it), so only start the runner clock once plan is done:
+          # a healthy runner attaches within a minute, so if a build job is still
+          # queued 1 min after that, no runner is coming -> abort.
+          # Judging by the final conclusion means an API hiccup can't fail a green build.
+          plan_done=0
+          while :; do
+            info=$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --json status,jobs)
+            if [ "$(jq -r .status <<<"$info")" = "completed" ]; then break; fi
+            plan_status=$(jq -r '.jobs[] | select(.name == "plan") | .status' <<<"$info")
+            if [ "$plan_status" = "completed" ] && [ "$plan_done" = 0 ]; then plan_done=$(date +%s); fi
+            stuck=$(jq '[.jobs[] | select(.name != "plan" and .status == "queued")] | length' <<<"$info")
+            if [ "$plan_done" != 0 ] && [ "$stuck" -gt 0 ] && [ "$(( $(date +%s) - plan_done ))" -gt 60 ]; then
+              echo "::error::a dist build job got no runner within 1 min of plan completing:"
+              jq -r '.jobs[] | select(.name != "plan" and .status == "queued") | "  - " + .name' <<<"$info"
+              gh run cancel "$run_id" --repo "$GITHUB_REPOSITORY" || true
+              exit 1
+            fi
+            sleep 20
+          done
+          result=$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)
+          echo "dist dry-run build: $result"
+          [ "$result" = "success" ]
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          HEAD: ${{ github.head_ref }}

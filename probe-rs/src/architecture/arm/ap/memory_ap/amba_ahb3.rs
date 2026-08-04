@@ -1,5 +1,6 @@
+#![allow(non_snake_case)]
 use crate::architecture::arm::{
-    ArmError, DapAccess, FullyQualifiedApAddress, RegisterParseError,
+    ArmError, DapAccess, FullyQualifiedApAddress,
     ap::{AccessPortType, ApAccess, ApRegAccess, ApRegister, CFG, define_ap_register},
 };
 
@@ -27,16 +28,14 @@ impl AmbaAhb3 {
         let (csw, cfg) = (csw.try_into()?, cfg.try_into()?);
 
         let me = Self { address, csw, cfg };
-        let csw = CSW {
-            DbgSwEnable: true,
-            HNONSEC: !csw.SPIDEN,
-            MasterType: true,
-            Cacheable: true,
-            Privileged: true,
-            Data: true,
-            AddrInc: AddressIncrement::Single,
-            ..me.csw
-        };
+        let mut csw = me.csw;
+        csw.set_DbgSwEnable(true);
+        csw.set_HNONSEC(!csw.SPIDEN());
+        csw.set_MasterType(true);
+        csw.set_Cacheable(true);
+        csw.set_Privileged(true);
+        csw.set_Data(true);
+        csw.set_AddrInc(AddressIncrement::Single);
         probe.write_ap_register(&me, csw)?;
         Ok(Self { csw, ..me })
     }
@@ -57,11 +56,9 @@ impl super::MemoryApType for AmbaAhb3 {
         data_size: DataSize,
     ) -> Result<(), ArmError> {
         match data_size {
-            DataSize::U8 | DataSize::U16 | DataSize::U32 if data_size != self.csw.Size => {
-                let csw = CSW {
-                    Size: data_size,
-                    ..self.csw
-                };
+            DataSize::U8 | DataSize::U16 | DataSize::U32 if data_size != self.csw.Size() => {
+                let mut csw = self.csw;
+                csw.set_Size(data_size);
                 probe.write_ap_register(self, csw)?;
                 self.csw = csw;
             }
@@ -76,11 +73,11 @@ impl super::MemoryApType for AmbaAhb3 {
     }
 
     fn has_large_address_extension(&self) -> bool {
-        self.cfg.LA
+        self.cfg.LA()
     }
 
     fn has_large_data_extension(&self) -> bool {
-        self.cfg.LD
+        self.cfg.LD()
     }
 
     fn supports_only_32bit_data_size(&self) -> bool {
@@ -108,30 +105,30 @@ define_ap_register!(
     address: 0x00,
     fields: [
         /// Is debug software access enabled.
-        DbgSwEnable: bool,          // [31]
+        pub DbgSwEnable, set_DbgSwEnable: 31;
         /// HNONSEC
         ///
         /// Not formally defined.
         /// If implemented should be 1 at reset.
         /// If not implemented, should be 1 and writing 0 leads to unpredictable AHB-AP behavior.
-        HNONSEC: bool,              // [30]
+        pub HNONSEC, set_HNONSEC: 30;
         /// Defines which Requester ID is used on `HMASTER[3:0]` signals.
         ///
         /// Support of this function is implementation defined.
-        MasterType: bool,           // [29]
+        pub MasterType, set_MasterType: 29;
         /// Drives `HPROT[4]`, Allocate.
         ///
         /// `HPROT[4]` is an Armv5 extension to AHB. For more information, see the Arm1136JF-S™ and
         /// Arm1136J-S ™ Technical Reference Manual.
-        Allocate: bool,             // [28]
+        pub Allocate, set_Allocate: 28;
         /// `HPROT[3]`
-        Cacheable: bool,            // [27]
+        pub Cacheable, set_Cacheable: 27;
         /// `HPROT[2]`
-        Bufferable: bool,           // [26]
+        pub Bufferable, set_Bufferable: 26;
         /// `HPROT[1]`
-        Privileged: bool,           // [25]
+        pub Privileged, set_Privileged: 25;
         /// `HPROT[0]`
-        Data: bool,                 // [24]
+        pub Data, set_Data: 24;
         /// Secure Debug Enabled.
         ///
         /// This field has one of the following values:
@@ -147,49 +144,17 @@ define_ap_register!(
         /// position as CSW.SDeviceEn, and has the same meaning. From ADIv6, the name SDeviceEn is
         /// used to avoid confusion between this field and the SPIDEN signal on the authentication
         /// interface.
-        SPIDEN: bool,               // [23]
+        pub SPIDEN, set_SPIDEN: 23;
         /// A transfer is in progress.
         /// Can be used to poll whether an aborted transaction has completed.
         /// Read only.
-        TrInProg: bool,             // [7]
+        pub TrInProg, set_TrInProg: 7;
         /// `1` if transactions can be issued through this access port at the moment.
         /// Read only.
-        DeviceEn: bool,             // [6]
+        pub DeviceEn, set_DeviceEn: 6;
         /// The address increment on DRW access.
-        AddrInc: AddressIncrement,  // [5:4]
+        pub u8, from into AddressIncrement, AddrInc, set_AddrInc: 5, 4;
         /// The access size of this memory AP.
-        Size: DataSize,             // [2:0]
-        /// Reserved bit, kept to preserve IMPLEMENTATION DEFINED statuses.
-        _reserved_bits: u32         // mask
-    ],
-    from: value => Ok(CSW {
-        DbgSwEnable: ((value >> 31) & 0x01) != 0,
-        HNONSEC:    ((value >> 30) & 0x01) != 0,
-        MasterType: ((value >> 29) & 0x01) != 0,
-        Allocate:   ((value >> 28) & 0x01) != 0,
-        Cacheable:  ((value >> 27) & 0x01) != 0,
-        Bufferable: ((value >> 26) & 0x01) != 0,
-        Privileged: ((value >> 25) & 0x01) != 0,
-        Data:       ((value >> 24) & 0x01) != 0,
-        SPIDEN:     ((value >> 23) & 0x01) != 0,
-        TrInProg:   ((value >> 7) & 0x01) != 0,
-        DeviceEn:   ((value >> 6) & 0x01) != 0,
-        AddrInc: AddressIncrement::from_u8(((value >> 4) & 0x03) as u8).ok_or_else(|| RegisterParseError::new("CSW", value))?,
-        Size: DataSize::try_from((value & 0x07) as u8).map_err(|_| RegisterParseError::new("CSW", value))?,
-        _reserved_bits: value & 0x007F_FF08,
-    }),
-    to: value => (u32::from(value.DbgSwEnable) << 31)
-    | (u32::from(value.HNONSEC      ) << 30)
-    | (u32::from(value.MasterType   ) << 29)
-    | (u32::from(value.Allocate     ) << 28)
-    | (u32::from(value.Cacheable    ) << 27)
-    | (u32::from(value.Bufferable   ) << 26)
-    | (u32::from(value.Privileged   ) << 25)
-    | (u32::from(value.Data         ) << 24)
-    | (u32::from(value.SPIDEN       ) << 23)
-    | (u32::from(value.TrInProg     ) <<  7)
-    | (u32::from(value.DeviceEn     ) <<  6)
-    | (u32::from(value.AddrInc as u8) <<  4)
-    | (value.Size as u32)
-    | value._reserved_bits
+        pub u8, from into DataSize, Size, set_Size: 2, 0;
+    ]
 );

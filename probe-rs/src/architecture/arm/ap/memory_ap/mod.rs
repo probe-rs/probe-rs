@@ -96,18 +96,18 @@ pub trait MemoryApType:
     /// The base address of this AP which is used to then access all relative control registers.
     fn base_address<I: ApAccess>(&self, interface: &mut I) -> Result<u64, ArmError> {
         let base_register: BASE = interface.read_ap_register(self)?;
-        if !base_register.present {
+        if !base_register.present() {
             return Err(ArmError::Other("debug entry not present".to_string()));
         }
 
-        let mut base_address = if BaseAddrFormat::ADIv5 == base_register.Format {
+        let mut base_address = if BaseAddrFormat::ADIv5 == base_register.Format() {
             let base2: BASE2 = interface.read_ap_register(self)?;
 
-            u64::from(base2.BASEADDR) << 32
+            u64::from(base2.BASEADDR()) << 32
         } else {
             0
         };
-        base_address |= u64::from(base_register.BASEADDR << 12);
+        base_address |= u64::from(base_register.BASEADDR() << 12);
 
         Ok(base_address)
     }
@@ -125,17 +125,15 @@ pub trait MemoryApType:
         let address_upper = (address >> 32) as u32;
 
         if self.has_large_address_extension() {
-            let tar = TAR2 {
-                address: address_upper,
-            };
+            let mut tar = TAR2::from_raw(0);
+            tar.set_address(address_upper);
             interface.write_ap_register(self, tar)?;
         } else if address_upper != 0 {
             return Err(ArmError::OutOfBounds);
         }
 
-        let tar = TAR {
-            address: address_lower,
-        };
+        let mut tar = TAR::from_raw(0);
+        tar.set_address(address_lower);
         interface.write_ap_register(self, tar)?;
 
         Ok(())
@@ -151,7 +149,7 @@ pub trait MemoryApType:
             // If transferring only 1 word, use non-repeated register access, because it might be
             // faster depending on the probe.
             [value] => interface.read_ap_register(self).map(|drw: DRW| {
-                *value = drw.data;
+                *value = drw.data();
             }),
             _ => interface.read_ap_register_repeated::<_, DRW>(self, values),
         }
@@ -168,7 +166,7 @@ pub trait MemoryApType:
         match values {
             // If transferring only 1 word, use non-repeated register access, because it might be
             // faster depending on the probe.
-            &[data] => interface.write_ap_register(self, DRW { data }),
+            &[data] => interface.write_ap_register(self, DRW::from_raw(data)),
             _ => interface.write_ap_register_repeated::<_, DRW>(self, values),
         }
         .map_err(AccessPortError::register_write_error::<DRW, _>)
@@ -211,9 +209,10 @@ macro_rules! memory_aps {
                 let idr: IDR = idr_raw.try_into()?;
                 tracing::debug!("reading IDR: {:x?}", idr);
                 use crate::architecture::arm::ap::ApType;
-                Ok(match idr.TYPE {
+                Ok(match idr.TYPE() {
                     ApType::JtagComAp => return Err(ArmError::WrongApType),
                     $(ApType::$variant => <$type>::new(interface, address.clone())?.into(),)*
+                    ApType::Unknown(_) => return Err(ArmError::WrongApType),
                 })
             }
         }

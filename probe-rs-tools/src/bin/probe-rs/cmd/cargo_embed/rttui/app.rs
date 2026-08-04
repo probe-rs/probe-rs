@@ -16,11 +16,11 @@ use std::{cell::RefCell, io::Write, rc::Rc};
 use std::{path::PathBuf, sync::mpsc::TryRecvError};
 use time::UtcOffset;
 
+use probe_rs_rpc::rtt_config::{DataFormat, RttChannelConfig};
+
 use crate::{
     cmd::cargo_embed::rttui::{channel::ChannelData, tab::TabConfig},
-    util::rtt::{
-        DataFormat, DefmtProcessor, DefmtState, RttChannelConfig, RttDecoder, client::RttClient,
-    },
+    util::rtt::{DefmtProcessor, DefmtState, RttDecoder, client::RttClient},
 };
 
 use super::super::config;

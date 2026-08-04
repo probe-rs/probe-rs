@@ -20,6 +20,7 @@ use crate::{
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JtagSequence, ProbeError,
         ProbeFactory, WireProtocol,
+        list::{ProbeListItem, usb_probe_accessibility},
     },
 };
 
@@ -93,6 +94,8 @@ pub enum RiscvChip {
     CH57X = 0x02,
     /// CH565/CH569 Qingke-V3A series
     CH56X = 0x03,
+    /// CH32F10X Cortex-M3 series
+    CH32F10X = 0x04,
     /// CH32V20X Qingke-V4B/V4C series
     CH32V20X = 0x05,
     /// CH32V30X Qingke-V4C/V4F series, the same as CH32V20X
@@ -114,6 +117,12 @@ pub enum RiscvChip {
     CH32L103 = 0x0E, // 14
     /// CH641 Qingke-V2A series, USB-PD, fallback as CH32V003
     CH641 = 0x49,
+    /// CH32V00X Qingke-V2C series (V002/V004/V005/V006/V007)
+    CH32V00X = 0x4e,
+    /// CH32V317 Qingke-V4F gigabit Ethernet series
+    CH32V317 = 0x86,
+    /// CH32H4 Qingke-V4F high-performance series (H415/H416/H417)
+    CH32H4 = 0xC6,
 }
 
 impl RiscvChip {
@@ -122,6 +131,7 @@ impl RiscvChip {
             0x01 => Some(RiscvChip::CH32V103),
             0x02 => Some(RiscvChip::CH57X),
             0x03 => Some(RiscvChip::CH56X),
+            0x04 => Some(RiscvChip::CH32F10X),
             0x05 => Some(RiscvChip::CH32V20X),
             0x06 => Some(RiscvChip::CH32V30X),
             0x07 => Some(RiscvChip::CH58X),
@@ -132,6 +142,9 @@ impl RiscvChip {
             0x0D => Some(RiscvChip::CH32X035),
             0x0E => Some(RiscvChip::CH32L103),
             0x49 => Some(RiscvChip::CH641),
+            0x4E => Some(RiscvChip::CH32V00X),
+            0x86 => Some(RiscvChip::CH32V317),
+            0xC6 => Some(RiscvChip::CH32H4),
             _ => None,
         }
     }
@@ -143,10 +156,13 @@ impl RiscvChip {
                 | RiscvChip::CH32V20X
                 | RiscvChip::CH32V30X
                 | RiscvChip::CH32V003
+                | RiscvChip::CH32V00X
                 | RiscvChip::CH643
                 | RiscvChip::CH32L103
                 | RiscvChip::CH32X035
                 | RiscvChip::CH641
+                | RiscvChip::CH32V317
+                | RiscvChip::CH32H4
         )
     }
 }
@@ -182,7 +198,7 @@ impl ProbeFactory for WchLinkFactory {
         Ok(Box::new(wlink))
     }
 
-    fn list_probes(&self) -> Vec<DebugProbeInfo> {
+    fn list_probes(&self) -> Vec<ProbeListItem> {
         list_wlink_devices()
     }
 }
@@ -258,6 +274,16 @@ impl WchLink {
         self.name = format!("{} v{}.{}", self.variant, self.v_major, self.v_minor);
 
         Ok(())
+    }
+
+    /// `chip_id` reported by the probe's `AttachChip`; zero before attach.
+    pub fn chip_id(&self) -> u32 {
+        self.chip_id
+    }
+
+    /// Chip family reported by the probe's `AttachChip`.
+    pub fn chip_family(&self) -> RiscvChip {
+        self.chip_family
     }
 
     fn dmi_op_read(&mut self, addr: u8) -> Result<(u8, u32, u8), DebugProbeError> {
@@ -528,9 +554,9 @@ impl JtagAccess for WchLink {
     }
 }
 
-fn get_wlink_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
+fn get_wlink_info(device: &DeviceInfo) -> Option<ProbeListItem> {
     if matches!(device.product_string(), Some("WCH-Link") | Some("WCH_Link")) {
-        Some(DebugProbeInfo::new(
+        let info = DebugProbeInfo::new(
             "WCH-Link",
             VENDOR_ID,
             PRODUCT_ID,
@@ -538,14 +564,18 @@ fn get_wlink_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
             &WchLinkFactory,
             None,
             false,
-        ))
+        );
+        Some(ProbeListItem {
+            info,
+            accessibility: usb_probe_accessibility(device),
+        })
     } else {
         None
     }
 }
 
 #[tracing::instrument(skip_all)]
-fn list_wlink_devices() -> Vec<DebugProbeInfo> {
+fn list_wlink_devices() -> Vec<ProbeListItem> {
     tracing::debug!("Searching for WCH-Link(RV) probes");
     let devices = match nusb::list_devices().wait() {
         Ok(devices) => devices,

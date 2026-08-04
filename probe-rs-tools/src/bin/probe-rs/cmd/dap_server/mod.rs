@@ -1,7 +1,10 @@
 // Bad things happen to the VSCode debug extension and debug_adapter if we panic at the wrong time.
-#![warn(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
+#![cfg_attr(
+    not(test),
+    warn(clippy::unwrap_used, clippy::panic, clippy::expect_used)
+)]
+pub(crate) mod backend;
 pub(crate) mod debug_adapter;
-mod peripherals;
 pub(crate) mod server;
 
 #[cfg(test)]
@@ -9,10 +12,8 @@ mod test;
 
 use anyhow::Result;
 use probe_rs::{
-    CoreDumpError, Error,
-    architecture::arm::ap::AccessPortError,
-    flashing::FileDownloadError,
-    probe::{DebugProbeError, list::Lister},
+    CoreDumpError, Error, architecture::arm::ap::AccessPortError, flashing::FileDownloadError,
+    probe::DebugProbeError,
 };
 use probe_rs_debug::DebugError;
 use server::startup::{debug_stdio, debug_tcp};
@@ -23,6 +24,7 @@ use std::{
 use time::UtcOffset;
 
 use crate::util::common_options::OperationError;
+use probe_rs_rpc_client::RpcClient;
 
 #[derive(Debug, thiserror::Error)]
 pub enum DebuggerError {
@@ -54,8 +56,7 @@ pub enum DebuggerError {
     #[error("An error with a CoreDump occurred")]
     CoreDump(#[from] CoreDumpError),
     #[error("{0}")]
-    /// A message that is intended to be displayed to the user, and does not unwind nested errors.
-    /// It is intended to communicate helpful "correct and try again" information to users.
+    /// A user-facing message that does not unwind nested errors.
     UserMessage(String),
     #[error("Serialization error")]
     SerdeError(#[from] serde_json::Error),
@@ -92,17 +93,30 @@ pub struct Cmd {
     single_session: bool,
 }
 
+impl Cmd {
+    /// True when the DAP server listens on TCP (`--port` was given).
+    pub(crate) fn is_tcp_mode(&self) -> bool {
+        self.port.is_some()
+    }
+}
+
 pub async fn run(
     cmd: Cmd,
-    lister: &Lister,
+    stdio_client: Option<RpcClient>,
+    remote: probe_rs_rpc_client::RemoteParams,
     time_offset: UtcOffset,
     log_file: Option<&Path>,
 ) -> Result<()> {
     match cmd.port {
         Some(port) => {
             let addr = SocketAddr::new(cmd.ip, port);
-            debug_tcp(lister, addr, cmd.single_session, log_file, time_offset).await
+            debug_tcp(remote, addr, cmd.single_session, log_file, time_offset).await
         }
-        None => debug_stdio(lister, log_file, time_offset).await,
+        None => {
+            let Some(client) = stdio_client else {
+                anyhow::bail!("stdio DAP mode requires an RPC client");
+            };
+            debug_stdio(client, log_file, time_offset).await
+        }
     }
 }

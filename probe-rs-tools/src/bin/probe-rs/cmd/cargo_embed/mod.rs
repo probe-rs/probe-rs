@@ -27,10 +27,11 @@ use crate::util::cargo::target_instruction_set;
 use crate::util::common_options::{BinaryDownloadOptions, OperationError, ProbeOptions};
 use crate::util::flash::{build_loader, run_flash_download};
 use crate::util::logging::setup_logging;
-use crate::util::rtt::client::RttClient;
-use crate::util::rtt::{RttChannelConfig, RttConfig};
+use crate::util::rtt::{RttConfig, client::RttClient};
 use crate::util::{cargo::build_artifact, common_options::CargoOptions, logging};
-use crate::{Config, FormatKind, FormatOptions, parse_and_resolve_cli_args};
+use crate::{Config, parse_and_resolve_cli_args};
+use probe_rs_rpc::format::{FormatKind, FormatOptions};
+use probe_rs_rpc::rtt_config::RttChannelConfig;
 
 #[derive(Debug, clap::Parser)]
 #[clap(
@@ -48,7 +49,7 @@ struct CliOptions {
     ///
     /// When this is set, the default path is still considered, but the given file is considered
     /// with the highest priority.
-    #[arg(long)]
+    #[arg(long, env = "PROBE_RS_EMBED_CONFIG_FILE")]
     config_file: Option<String>,
     #[arg(long)]
     chip: Option<String>,
@@ -219,7 +220,7 @@ async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Res
     let probe_options = ProbeOptions {
         chip,
         chip_description_path: None,
-        protocol: Some(config.probe.protocol),
+        protocol: config.probe.protocol,
         non_interactive: false,
         probe: selector,
         cycle_power: false,
@@ -272,7 +273,8 @@ async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Res
     };
 
     let format_options = FormatOptions::default();
-    let format = format_options.binary_format.resolve(session.target());
+    let format =
+        crate::util::flash::resolve_format_kind(format_options.binary_format, session.target());
     let elf = if matches!(format, FormatKind::Elf | FormatKind::Idf) {
         Some(fs::read(&path)?)
     } else {
@@ -555,4 +557,19 @@ fn create_rtt_config(config: &config::Config) -> RttConfig {
     }
 
     rtt_config
+}
+
+#[cfg(test)]
+mod test {
+    use super::CliOptions;
+
+    /// clap finds duplicate argument names only in a debug build, and only when it
+    /// builds the command. Release builds accept a duplicate and give one of the
+    /// two arguments to both fields.
+    #[test]
+    fn cli_is_valid() {
+        use clap::CommandFactory;
+
+        CliOptions::command().debug_assert();
+    }
 }

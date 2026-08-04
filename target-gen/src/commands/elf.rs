@@ -57,7 +57,7 @@ pub fn cmd_elf(
             bail!(
                 "Unable to update flash algorithm in target description file '{}'. Did not find an existing algorithm with name '{}'",
                 target_description_file.display(),
-                &algorithm.name
+                algorithm.name
             )
         };
 

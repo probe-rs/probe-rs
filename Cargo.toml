@@ -1,5 +1,5 @@
 [workspace.package]
-version = "0.31.0"
+version = "0.32.0"
 edition = "2024"
 
 documentation = "https://docs.rs/probe-rs/"
@@ -23,6 +23,8 @@ members = [
     "target-gen",
     "probe-rs-tools",
     "probe-rs-mi",
+    "probe-rs-rpc",
+    "probe-rs-rpc-client",
     "probe-rs-debug",
     "probe-rs-espressif",
     "probe-rs-linux",
@@ -30,16 +32,17 @@ members = [
 exclude = ["probe-rs/tests/gpio-hal-blinky"]
 
 [workspace.dependencies]
-probe-rs = { path = "probe-rs", version = "0.31.0" }
-probe-rs-target = { path = "probe-rs-target", version = "0.31.0" }
-probe-rs-mi = { path = "probe-rs-mi", version = "0.1.0" }
-probe-rs-espressif = { path = "probe-rs-espressif", version = "0.31.0" }
-probe-rs-linux = { path = "probe-rs-linux", version = "0.31.0" }
+probe-rs = { path = "probe-rs", version = "0.32.0" }
+probe-rs-target = { path = "probe-rs-target", version = "0.32.0" }
+probe-rs-mi = { path = "probe-rs-mi", version = "0.2.0" }
+probe-rs-espressif = { path = "probe-rs-espressif", version = "0.32.0" }
+probe-rs-linux = { path = "probe-rs-linux", version = "0.32.0" }
+probe-rs-rpc = { path = "probe-rs-rpc", version = "0.1.0" }
+probe-rs-rpc-client = { path = "probe-rs-rpc-client", version = "0.1.0" }
 
 docsplay = "0.1.1"
 thiserror = "2.0.11"
 anyhow = "1.0.82"
-async-io = "2"
 nusb = "0.2.1"
 
 serde = { version = "1", features = ["derive"] }

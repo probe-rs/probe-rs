@@ -1,5 +1,7 @@
+#![allow(non_snake_case)]
+
 use crate::architecture::arm::{
-    ArmError, DapAccess, FullyQualifiedApAddress, RegisterParseError,
+    ArmError, DapAccess, FullyQualifiedApAddress,
     ap::{AccessPortType, ApAccess, ApRegAccess, ApRegister, CFG, define_ap_register},
 };
 
@@ -27,12 +29,10 @@ impl AmbaAxi3Axi4 {
         let (csw, cfg) = (csw.try_into()?, cfg.try_into()?);
 
         let me = Self { address, csw, cfg };
-        let csw = CSW {
-            DbgSwEnable: true,
-            Privileged: true,
-            AddrInc: AddressIncrement::Single,
-            ..me.csw
-        };
+        let mut csw = me.csw;
+        csw.set_DbgSwEnable(true);
+        csw.set_Privileged(true);
+        csw.set_AddrInc(AddressIncrement::Single);
         probe.write_ap_register(&me, csw)?;
         Ok(Self { csw, ..me })
     }
@@ -53,25 +53,21 @@ impl super::MemoryApType for AmbaAxi3Axi4 {
         data_size: DataSize,
     ) -> Result<(), ArmError> {
         match data_size {
-            DataSize::U8 | DataSize::U16 | DataSize::U32 if data_size != self.csw.Size => {
-                let csw = CSW {
-                    Size: data_size,
-                    ..self.csw
-                };
+            DataSize::U8 | DataSize::U16 | DataSize::U32 if data_size != self.csw.Size() => {
+                let mut csw = self.csw;
+                csw.set_Size(data_size);
                 probe.write_ap_register(self, csw)?;
                 self.csw = csw;
             }
-            DataSize::U64 | DataSize::U128 | DataSize::U256 if data_size != self.csw.Size => {
+            DataSize::U64 | DataSize::U128 | DataSize::U256 if data_size != self.csw.Size() => {
                 if !self.has_large_data_extension() {
                     return Err(ArmError::UnsupportedTransferWidth(
                         data_size.to_byte_count() * 8,
                     ));
                 }
 
-                let csw = CSW {
-                    Size: data_size,
-                    ..self.csw
-                };
+                let mut csw = self.csw;
+                csw.set_Size(data_size);
 
                 probe.write_ap_register(self, csw)?;
 
@@ -84,7 +80,7 @@ impl super::MemoryApType for AmbaAxi3Axi4 {
 
                 self.csw = probe.read_ap_register(self)?;
 
-                if csw.Size != self.csw.Size {
+                if csw.Size() != self.csw.Size() {
                     return Err(ArmError::UnsupportedTransferWidth(
                         data_size.to_byte_count() * 8,
                     ));
@@ -96,11 +92,11 @@ impl super::MemoryApType for AmbaAxi3Axi4 {
     }
 
     fn has_large_address_extension(&self) -> bool {
-        self.cfg.LA
+        self.cfg.LA()
     }
 
     fn has_large_data_extension(&self) -> bool {
-        self.cfg.LD
+        self.cfg.LD()
     }
 
     fn supports_only_32bit_data_size(&self) -> bool {
@@ -128,59 +124,33 @@ define_ap_register!(
     address: 0x00,
     fields: [
         /// Is debug software access enabled.
-        DbgSwEnable: bool,          // [31]
-        Instruction: bool,          // [30]
+        pub DbgSwEnable, set_DbgSwEnable: 31;
+        pub Instruction, set_Instruction: 30;
         /// Is the transaction request non-secure
         ///
         /// - If 1 a non-secure transfer is initiated.
         /// - If 0 and SPIDEN is 1 then a secure transfer is initiated.
         /// - If 0 and SPIDEN is 0 then no transaction is initiated.
-        NonSecure: bool,            // [29]
+        pub NonSecure, set_NonSecure: 29;
         /// Is this transaction privileged
-        Privileged: bool,           // [28]
+        pub Privileged, set_Privileged: 28;
         /// Drives `AxCACHE[3:0]` where x is R for reads and W for writes.
         /// Amba AXI4 requires asymmetrical usage of `ARCACHE` and `AWCACHE`.
-        CACHE: u8,                  // [27:24]
+        pub u8, CACHE, set_CACHE: 27, 24;
         /// Secure Debug Enabled.
         ///
         /// This bit reflects the state of the CoreSight authentication signal.
-        SPIDEN: bool,               // [23]
+        pub SPIDEN, set_SPIDEN: 23;
         /// A transfer is in progress.
         /// Can be used to poll whether an aborted transaction has completed.
         /// Read only.
-        TrInProg: bool,             // [7]
+        pub TrInProg, set_TrInProg: 7;
         /// `1` if transactions can be issued through this access port at the moment.
         /// Read only.
-        DeviceEn: bool,             // [6]
+        pub DeviceEn, set_DeviceEn: 6;
         /// The address increment on DRW access.
-        AddrInc: AddressIncrement,  // [5:4]
+        pub u8, from into AddressIncrement, AddrInc, set_AddrInc: 5, 4;
         /// The access size of this memory AP.
-        Size: DataSize,             // [2:0]
-        /// Reserved bit, kept to preserve IMPLEMENTATION DEFINED statuses.
-        _reserved_bits: u32         // mask
-    ],
-    from: value => Ok(CSW {
-        DbgSwEnable: ((value >> 31) & 0x01) != 0,
-        Instruction: ((value >> 30) & 0x01) != 0,
-        NonSecure:  ((value >> 29) & 0x01) != 0,
-        Privileged: ((value >> 28) & 0x01) != 0,
-        CACHE:      ((value >> 24) & 0xF) as u8,
-        SPIDEN:     ((value >> 23) & 0x01) != 0,
-        TrInProg:   ((value >> 7) & 0x01) != 0,
-        DeviceEn:   ((value >> 6) & 0x01) != 0,
-        AddrInc: AddressIncrement::from_u8(((value >> 4) & 0x03) as u8).ok_or_else(|| RegisterParseError::new("CSW", value))?,
-        Size: DataSize::try_from((value & 0x07) as u8).map_err(|_| RegisterParseError::new("CSW", value))?,
-        _reserved_bits: value & 0x007F_FF08,
-    }),
-    to: value => (u32::from(value.DbgSwEnable) << 31)
-    | (u32::from(value.Instruction  ) << 30)
-    | (u32::from(value.NonSecure    ) << 29)
-    | (u32::from(value.Privileged   ) << 28)
-    | (u32::from(value.CACHE        ) << 24)
-    | (u32::from(value.SPIDEN       ) << 23)
-    | (u32::from(value.TrInProg     ) <<  7)
-    | (u32::from(value.DeviceEn     ) <<  6)
-    | (u32::from(value.AddrInc as u8) <<  4)
-    | (value.Size as u32)
-    | value._reserved_bits
+        pub u8, from into DataSize, Size, set_Size: 2, 0;
+    ]
 );

@@ -630,6 +630,19 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         interface: &mut dyn DapAccess,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
+        self.debug_port_start_default(interface, dp)
+    }
+
+    /// The stock `DebugPortStart` implementation, split out from
+    /// [`debug_port_start`](ArmDebugSequence::debug_port_start) so that vendor sequences which
+    /// only need to *append* device-specific steps can run it without copying the body.
+    ///
+    /// There is no reason to override this; override `debug_port_start` and call this from it.
+    fn debug_port_start_default(
+        &self,
+        interface: &mut dyn DapAccess,
+        dp: DpAddress,
+    ) -> Result<(), ArmError> {
         interface.write_dp_register(dp, SelectV1(0))?;
         let dpidr: DPIDR = interface.read_dp_register(dp)?;
 
@@ -897,6 +910,19 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         interface: &mut dyn ArmMemoryInterface,
         core_type: CoreType,
     ) -> Result<(), ArmError> {
+        self.debug_core_stop_default(interface, core_type)
+    }
+
+    /// The stock `DebugCoreStop` implementation, split out from
+    /// [`debug_core_stop`](ArmDebugSequence::debug_core_stop) so that vendor sequences which only
+    /// need to *append* device-specific steps can run it without copying the body.
+    ///
+    /// There is no reason to override this; override `debug_core_stop` and call this from it.
+    fn debug_core_stop_default(
+        &self,
+        interface: &mut dyn ArmMemoryInterface,
+        core_type: CoreType,
+    ) -> Result<(), ArmError> {
         if core_type.is_cortex_m() {
             // System Control Space (SCS) offset as defined in Armv6-M/Armv7-M.
             // Disable Core Debug via DHCSR
@@ -1009,7 +1035,11 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                 Err(z) => {
                     if guard.elapsed() > RESET_RECOVERY_TIMEOUT {
                         tracing::debug!("DPIDR didn't become readable within guard time");
-                        return Err(z);
+                        // The debug port never acknowledged the initial read, which usually
+                        // means nothing is listening on the wire.
+                        return Err(ArmError::NoTargetResponse {
+                            source: Box::new(z),
+                        });
                     }
                 }
             }

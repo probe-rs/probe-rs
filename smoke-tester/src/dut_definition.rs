@@ -8,7 +8,10 @@ use probe_rs::config::Registry;
 use probe_rs::probe::WireProtocol;
 use probe_rs::{
     Target,
-    probe::{DebugProbeSelector, Probe, list::Lister},
+    probe::{
+        DebugProbeSelector, Probe,
+        list::{Accessibility, Lister},
+    },
 };
 use serde::Deserialize;
 use std::{
@@ -118,6 +121,37 @@ impl DutDefinition {
         let raw_definition = RawDutDefinition::from_file(file)?;
 
         DutDefinition::from_raw_definition(raw_definition, file)
+    }
+
+    /// Check that the configured probe shows up when listing probes, and that the
+    /// current user is allowed to access it.
+    pub fn assert_listed(&self) -> Result<()> {
+        let lister = Lister::new();
+        let probes = lister.list_all_with_access();
+
+        let listed = match &self.probe_selector {
+            Some(selector) => probes
+                .iter()
+                .find(|probe| selector.matches_probe(&probe.info))
+                .with_context(|| {
+                    format!("Probe with selector {selector} did not show up when listing probes")
+                })?,
+            None => {
+                anyhow::ensure!(
+                    !probes.is_empty(),
+                    "No probes detected when listing probes!"
+                );
+                &probes[0]
+            }
+        };
+
+        anyhow::ensure!(
+            listed.accessibility == Accessibility::Accessible,
+            "Probe was listed but reported as not accessible: {}",
+            listed.info
+        );
+
+        Ok(())
     }
 
     pub fn open_probe(&self) -> Result<Probe> {

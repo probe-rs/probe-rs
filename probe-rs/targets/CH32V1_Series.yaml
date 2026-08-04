@@ -1,0 +1,405 @@
+name: CH32V1 Series
+chip_detection:
+- !WchLink
+  mask: 0xffffff0f
+  variants:
+    0x25004102: CH32V103C8T6
+    0x2500410f: CH32V103R8T6
+variants:
+- name: CH32V103C6T6
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+  memory_map:
+  - !Nvm
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0x8000
+    cores:
+    - main
+    is_alias: true
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+  - !Nvm
+    name: SYS_1
+    range:
+      start: 0x1ffff000
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff880
+    cores:
+    - main
+    is_alias: true
+    access:
+      execute: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff880
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
+    access:
+      write: false
+      execute: false
+  - !Nvm
+    name: SYS_2
+    range:
+      start: 0x1ffff900
+      end: 0x20000000
+    cores:
+    - main
+    is_alias: true
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20002800
+    cores:
+    - main
+  flash_algorithms:
+  - ch32-v1-usr
+  - ch32-v1-usr-legacy
+  - ch32-v1-sys-1
+  - ch32-v1-opt
+  - ch32-v1-sys-2
+- name: CH32V103C8T6
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+  memory_map:
+  - !Nvm
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    is_alias: true
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+  - !Nvm
+    name: SYS_1
+    range:
+      start: 0x1ffff000
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff880
+    cores:
+    - main
+    is_alias: true
+    access:
+      execute: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff880
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
+    access:
+      write: false
+      execute: false
+  - !Nvm
+    name: SYS_2
+    range:
+      start: 0x1ffff900
+      end: 0x20000000
+    cores:
+    - main
+    is_alias: true
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  flash_algorithms:
+  - ch32-v1-usr
+  - ch32-v1-usr-legacy
+  - ch32-v1-sys-1
+  - ch32-v1-opt
+  - ch32-v1-sys-2
+- name: CH32V103C8U6
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+  memory_map:
+  - !Nvm
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    is_alias: true
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+  - !Nvm
+    name: SYS_1
+    range:
+      start: 0x1ffff000
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff880
+    cores:
+    - main
+    is_alias: true
+    access:
+      execute: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff880
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
+    access:
+      write: false
+      execute: false
+  - !Nvm
+    name: SYS_2
+    range:
+      start: 0x1ffff900
+      end: 0x20000000
+    cores:
+    - main
+    is_alias: true
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  flash_algorithms:
+  - ch32-v1-usr
+  - ch32-v1-usr-legacy
+  - ch32-v1-sys-1
+  - ch32-v1-opt
+  - ch32-v1-sys-2
+- name: CH32V103R8T6
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+  memory_map:
+  - !Nvm
+    name: USR_LEGACY
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    is_alias: true
+  - !Nvm
+    name: USR
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+  - !Nvm
+    name: SYS_1
+    range:
+      start: 0x1ffff000
+      end: 0x1ffff800
+    cores:
+    - main
+    is_alias: true
+  - !Nvm
+    name: OPT
+    range:
+      start: 0x1ffff800
+      end: 0x1ffff880
+    cores:
+    - main
+    is_alias: true
+    access:
+      execute: false
+  - !Nvm
+    name: VND
+    range:
+      start: 0x1ffff880
+      end: 0x1ffff900
+    cores:
+    - main
+    is_alias: true
+    access:
+      write: false
+      execute: false
+  - !Nvm
+    name: SYS_2
+    range:
+      start: 0x1ffff900
+      end: 0x20000000
+    cores:
+    - main
+    is_alias: true
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  flash_algorithms:
+  - ch32-v1-usr
+  - ch32-v1-usr-legacy
+  - ch32-v1-sys-1
+  - ch32-v1-opt
+  - ch32-v1-sys-2
+flash_algorithms:
+- name: ch32-v1-opt
+  description: ch32-v1-opt
+  default: true
+  instructions: BUWCgDcFACADRWUUBc23JQJAyEUFiXX9EwUAAsjFiEkTZQUCiMmISRNlBQSIychFBYl1/RMGAALQxZBJE3b2/ZDJgoAFRYKAtwYAIIPFZhQ3JQJAmcUMSSFnEwcHCNmNDMmFRX0WEUcjg7YUY3TmAjcGZ0W3lu/NEwY2EpOGtppQwVTBEMU3BgAgFMUjA7YUAUWCgJcAAADngOAItwYAIAPHZhSFRinLM+elAAWLKecT2BUAYwEIBIFGNycCQJMIAAKDVQYAXEeFi/X/IyYXARxLk+cHARzLIxC1AExHhYn1/SMmFwEMS4UGCQW9mQzLCQbjmAb9gUY2hYKAtwUAIAPFZRQJzQFFNyYCQBRKIWcTBwcI2Y4UyiODBRSCgAVFgoAAAAAAAAA=
+  load_address: 0x20000020
+  pc_init: 0x48
+  pc_uninit: 0xfc
+  pc_program_page: 0x9c
+  pc_erase_sector: 0x4
+  pc_erase_all: 0x0
+  data_section_offset: 0x128
+  flash_properties:
+    address_range:
+      start: 0x1ffff800
+      end: 0x1ffff880
+    page_size: 0x80
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x80
+      address: 0x0
+- name: ch32-v1-sys-1
+  description: ch32-v1-sys-1
+  default: true
+  instructions: BUWCgLcFACCDxcUYocE3JgJATEaFifX9kwUAAkzGtwUCAAzKSMqThQUEDMpMRoWJ9f2TBgACVMYUSgF3fRf5jhTKhWY1jQhBSNoRoIVFLoWCgLcGACCDxcYYNyUCQJnFDEkhZxMHBwjZjQzJhUV9FhFHI4a2GGN05gI3BmdFt5bvzRMGNhKThraaUMFUwVDRNwYAIFTRIwa2GAFFgoCXAAAA54CgDLcGACCDxsYYwcq3JgJA2EYFi3X/EwcAAtjGQWeYyjcHCQCYythGBYt1/xN4BfiTCAACE9MlACOmFgFjCAMCgUOBR7cCBQAMQpEDE/fDAAzBAesjqFYAzEaFifX9I6YWAYUHEQURBuOQZ/4jqgYBQWUTBQUEiMrIRgWJdf2TBQACzMaMSkF2fRbxjYzKhWWzRbgAjEHM2oKABUWCgLcFACADxcUYCc0BRTcmAkAUSiFnEwcHCNmOFMojhgUYgoAFRYKAAAAAAAAAAAA=
+  load_address: 0x20000020
+  pc_init: 0x52
+  pc_uninit: 0x142
+  pc_program_page: 0xa6
+  pc_erase_sector: 0x4
+  data_section_offset: 0x170
+  flash_properties:
+    address_range:
+      start: 0x1ffff000
+      end: 0x1ffff800
+    page_size: 0x80
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x80
+      address: 0x0
+- name: ch32-v1-sys-2
+  description: ch32-v1-sys-2
+  default: true
+  instructions: BUWCgLcFACCDxcUYocE3JgJATEaFifX9kwUAAkzGtwUCAAzKSMqThQUEDMpMRoWJ9f2TBgACVMYUSgF3fRf5jhTKhWY1jQhBSNoRoIVFLoWCgLcGACCDxcYYNyUCQJnFDEkhZxMHBwjZjQzJhUV9FhFHI4a2GGN05gI3BmdFt5bvzRMGNhKThraaUMFUwVDRNwYAIFTRIwa2GAFFgoCXAAAA54CgDLcGACCDxsYYwcq3JgJA2EYFi3X/EwcAAtjGQWeYyjcHCQCYythGBYt1/xN4BfiTCAACE9MlACOmFgFjCAMCgUOBR7cCBQAMQpEDE/fDAAzBAesjqFYAzEaFifX9I6YWAYUHEQURBuOQZ/4jqgYBQWUTBQUEiMrIRgWJdf2TBQACzMaMSkF2fRbxjYzKhWWzRbgAjEHM2oKABUWCgLcFACADxcUYCc0BRTcmAkAUSiFnEwcHCNmOFMojhgUYgoAFRYKAAAAAAAAAAAA=
+  load_address: 0x20000020
+  pc_init: 0x52
+  pc_uninit: 0x142
+  pc_program_page: 0xa6
+  pc_erase_sector: 0x4
+  data_section_offset: 0x170
+  flash_properties:
+    address_range:
+      start: 0x1ffff900
+      end: 0x20000000
+    page_size: 0x80
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x80
+      address: 0x0
+- name: ch32-v1-usr
+  description: ch32-v1-usr
+  default: true
+  instructions: NwUAIANFxR0dzbclAkDIRQWJdf0TBQACyMWISRNlRQCIyYhJE2UFBIjJyEUFiXX9EwYAAtDFkEltmpDJNxYACBBC0NmCgAVFgoC3BQAgg8XFHbnBtyUCQNBFBYp1/jcGAAhJjhMFAALIxTcFAgCIyRMFBQTQyYjJyEUFiXX9kwYAAtTFlEkBd30X+Y6UyYVmNY4QQtDZgoAFRYKAtwYAIIPFxh03JQJAmcUMSSFnEwcHCNmNDMmFRX0WEUcjjrYcY3TmAjcGZ0W3lu/NEwY2EpOGtppQwVTBUNE3BgAgVNEjDrYcAUWCgJcAAADngAANtwYAIIPGxh3ZyrcmAkDYRgWLdf8TBwAC2MZBZ5jKNwcJAJjK2EYFi3X/NwcACJMIAAIT0yUAWY0TeAX4I6YWAWMIAwKBQwFHtwIFABxCkQOT9cMAHMGB6SOoVgDMRoWJ9f0jphYBBQcRBREG4xBn/iOqBgFBZRMFBQSIyshGBYl1/ZMFAALMxoxKQXZ9FvGNjMqFZbNFuACMQczagoAFRYKAtwUAIAPFxR0JzQFFNyYCQBRKIWcTBwcI2Y4UyiOOBRyCgAVFgoAAAAAAAAAAAA==
+  load_address: 0x20000020
+  pc_init: 0x9c
+  pc_uninit: 0x192
+  pc_program_page: 0xf0
+  pc_erase_sector: 0x4a
+  pc_erase_all: 0x0
+  data_section_offset: 0x1c0
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8010000
+    page_size: 0x80
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x80
+      address: 0x0
+- name: ch32-v1-usr-legacy
+  description: ch32-v1-usr-legacy
+  default: true
+  instructions: NwUAIANFxR0dzbclAkDIRQWJdf0TBQACyMWISRNlRQCIyYhJE2UFBIjJyEUFiXX9EwYAAtDFkEltmpDJNxYACBBC0NmCgAVFgoC3BQAgg8XFHbnBtyUCQNBFBYp1/jcGAAhJjhMFAALIxTcFAgCIyRMFBQTQyYjJyEUFiXX9kwYAAtTFlEkBd30X+Y6UyYVmNY4QQtDZgoAFRYKAtwYAIIPFxh03JQJAmcUMSSFnEwcHCNmNDMmFRX0WEUcjjrYcY3TmAjcGZ0W3lu/NEwY2EpOGtppQwVTBUNE3BgAgVNEjDrYcAUWCgJcAAADngAANtwYAIIPGxh3ZyrcmAkDYRgWLdf8TBwAC2MZBZ5jKNwcJAJjK2EYFi3X/NwcACJMIAAIT0yUAWY0TeAX4I6YWAWMIAwKBQwFHtwIFABxCkQOT9cMAHMGB6SOoVgDMRoWJ9f0jphYBBQcRBREG4xBn/iOqBgFBZRMFBQSIyshGBYl1/ZMFAALMxoxKQXZ9FvGNjMqFZbNFuACMQczagoAFRYKAtwUAIAPFxR0JzQFFNyYCQBRKIWcTBwcI2Y4UyiOOBRyCgAVFgoAAAAAAAAAAAA==
+  load_address: 0x20000020
+  pc_init: 0x9c
+  pc_uninit: 0x192
+  pc_program_page: 0xf0
+  pc_erase_sector: 0x4a
+  pc_erase_all: 0x0
+  data_section_offset: 0x1c0
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x10000
+    page_size: 0x80
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x80
+      address: 0x0

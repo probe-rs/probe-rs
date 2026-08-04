@@ -8,13 +8,10 @@ use std::{future::Future, ops::DerefMut, path::Path, time::Instant};
 
 use anyhow::Context;
 use libtest_mimic::{Failed, Trial};
-use postcard_rpc::host_client::HostClient;
-use postcard_schema::Schema;
 use probe_rs::meta::ElfMetadata;
 use probe_rs::rtt::find_rtt_control_block_and_metadata_in_raw_file;
 use ratatui::crossterm::style::Stylize;
 use rustyline_async::{Readline, ReadlineError, ReadlineEvent, SharedWriter};
-use serde::de::DeserializeOwned;
 use std::env::VarError;
 use time::UtcOffset;
 use tokio::io::AsyncWriteExt;
@@ -25,34 +22,33 @@ use tokio_util::sync::CancellationToken;
 
 use crate::cmd::run::{EmbeddedTestElfInfo, MonitoringOptions};
 use crate::rpc::Key;
-use crate::rpc::functions::monitor::{ChannelInfo, MonitorExitReason};
-use crate::rpc::functions::stack_trace::StackTraceFrame;
-use crate::rpc::utils::run_loop::VectorCatchConfig;
-use crate::rpc::utils::semihosting::SemihostingOptions;
-use crate::util::pwr::power_reset;
-use crate::{
-    FormatOptions,
-    rpc::{
-        client::{MultiSubscribeError, MultiSubscription, MultiTopic, RpcClient, SessionInterface},
-        functions::{
-            CancelTopic, RttTopic, SemihostingTopic,
-            flash::{BootInfo, DownloadOptions, FlashLayout, ProgressEvent, VerifyResult},
-            monitor::{MonitorMode, MonitorOptions, RttEvent, SemihostingEvent},
-            probe::{
-                AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, SelectProbeResult,
-            },
-            rtt_client::ScanRegion,
-            stack_trace::StackTrace,
-            test::{Test, TestResult},
-        },
-    },
-    util::{
-        common_options::{BinaryDownloadOptions, ProbeOptions},
-        flash::CliProgressBars,
-        logging,
-        rtt::{DefmtProcessor, DefmtState, RttChannelConfig, RttDecoder, client::RttClient},
-    },
+use crate::rpc::RttClient;
+use crate::rpc::functions::probe::convert::{
+    from_wire_debug_probe_selector, to_wire_debug_probe_selector, to_wire_protocol,
 };
+use crate::rpc::utils::run_loop::VectorCatchConfig;
+use crate::util::pwr::power_reset;
+use crate::util::{
+    common_options::{BinaryDownloadOptions, ProbeOptions},
+    flash::CliProgressBars,
+    logging,
+    rtt::{DefmtProcessor, DefmtState, RttDecoder},
+};
+use probe_rs_rpc::CancelTopic;
+use probe_rs_rpc::flash::{BootInfo, DownloadOptions, FlashLayout, ProgressEvent, VerifyResult};
+use probe_rs_rpc::format::FormatOptions;
+use probe_rs_rpc::monitor::{ChannelInfo, MonitorExitReason};
+use probe_rs_rpc::monitor::{MonitorMode, MonitorOptions, RttEvent, SemihostingEvent};
+use probe_rs_rpc::probe::{
+    AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, SelectProbeResult,
+};
+use probe_rs_rpc::rtt_client::ScanRegion;
+use probe_rs_rpc::rtt_config::RttChannelConfig;
+use probe_rs_rpc::semihosting_options::SemihostingOptions;
+use probe_rs_rpc::stack_trace::StackTrace;
+use probe_rs_rpc::stack_trace::StackTraceFrame;
+use probe_rs_rpc::test::{Test, TestResult};
+use probe_rs_rpc_client::{MonitorEvent, RpcClient, SessionInterface};
 
 type TargetOutputFiles = std::collections::HashMap<ChannelIdentifier, tokio::fs::File>;
 
@@ -82,23 +78,34 @@ pub async fn attach_probe(
                 )
             })?;
 
-        // Load the YAML locally to validate it before sending it to the remote.
-        // We may also need it locally.
-        client.registry().await.add_target_family_from_yaml(&file)?;
-
         client.load_chip_family(file).await?;
     }
 
-    let probe = select_probe(client, probe_options.probe.map(Into::into)).await?;
+    let probe = match select_probe(
+        client,
+        probe_options.probe.map(to_wire_debug_probe_selector),
+    )
+    .await
+    {
+        Ok(probe) => probe,
+        Err(error) => {
+            print_setup_hints_if_relevant(client).await;
+            return Err(error);
+        }
+    };
 
     if probe_options.cycle_power {
-        power_reset(probe.selector().into(), Duration::from_secs(1)).await?;
+        power_reset(
+            from_wire_debug_probe_selector(probe.selector()),
+            Duration::from_secs(1),
+        )
+        .await?;
     }
 
     let result = client
         .attach_probe(AttachRequest {
             chip: probe_options.chip.or(elf_meta.chip),
-            protocol: probe_options.protocol.map(Into::into),
+            protocol: probe_options.protocol.map(to_wire_protocol),
             probe,
             speed: probe_options.speed,
             connect_under_reset: probe_options.connect_under_reset,
@@ -110,9 +117,32 @@ pub async fn attach_probe(
 
     match result {
         AttachResult::Success(session) => Ok(SessionInterface::new(client.clone(), session)),
-        AttachResult::ProbeNotFound => anyhow::bail!("Probe not found"),
-        AttachResult::FailedToOpenProbe(error) => anyhow::bail!("Failed to open probe: {error}"),
+        AttachResult::ProbeNotFound => {
+            print_setup_hints_if_relevant(client).await;
+            anyhow::bail!("Probe not found")
+        }
+        AttachResult::FailedToOpenProbe(error) => {
+            print_setup_hints_if_relevant(client).await;
+            anyhow::bail!("Failed to open probe: {error}")
+        }
+        // A busy probe is accessible, so no setup hint here.
         AttachResult::ProbeInUse => anyhow::bail!("Probe is already in use"),
+    }
+}
+
+/// Nudge the user about probe setup after a failed attach over the RPC client.
+///
+/// Mirrors the direct-attach path: we key off the accessibility reported by
+/// listing, not the specific error, so a probe that is present but blocked (or a
+/// missing probe) prints the hint, while a busy-but-accessible probe does not.
+async fn print_setup_hints_if_relevant(client: &RpcClient) {
+    let relevant = match client.list_probes().await {
+        Ok(probes) => probes.is_empty() || probes.iter().any(|probe| probe.inaccessible),
+        // If we can't even list, something setup-related is plausible.
+        Err(_) => true,
+    };
+    if relevant {
+        crate::util::setup_hints::print_setup_hints();
     }
 }
 
@@ -126,13 +156,13 @@ pub async fn select_probe(
     match client.select_probe(probe).await? {
         SelectProbeResult::Success(probe) => Ok(probe),
         SelectProbeResult::MultipleProbes(list) => {
-            println!("Available Probes:");
+            eprintln!("Available Probes:");
             for (i, probe_info) in list.iter().enumerate() {
-                println!("{i}: {probe_info}");
+                eprintln!("{i}: {probe_info}");
             }
 
-            print!("Selection: ");
-            std::io::stdout().flush().unwrap();
+            eprint!("Selection: ");
+            std::io::stderr().flush().unwrap();
 
             let mut input = String::new();
             std::io::stdin()
@@ -468,7 +498,7 @@ pub async fn flash(
             flash_layout.merge_from(phase_layout);
         }
 
-        let visualizer = flash_layout.visualize();
+        let visualizer = crate::util::visualizer::visualize_flash_layout(&flash_layout);
         _ = visualizer.write_svg(visualizer_output);
     }
 
@@ -479,45 +509,6 @@ pub async fn flash(
     ));
 
     Ok(loader.boot_info)
-}
-
-pub enum MonitorEvent {
-    Rtt(RttEvent),
-    Semihosting(SemihostingEvent),
-}
-
-impl MultiTopic for MonitorEvent {
-    type Message = Self;
-    type Subscription = MonitorSubscription;
-
-    async fn subscribe<E>(
-        client: &HostClient<E>,
-        depth: usize,
-    ) -> Result<Self::Subscription, MultiSubscribeError>
-    where
-        E: DeserializeOwned + Schema,
-    {
-        // TODO: remove MonitorEvent from the RPC interface, split this subscribe into two:
-        // one for RTT, one for semihosting, then introduce a MultiSubscription impl for them
-        let rtt = RttTopic::subscribe(client, depth).await?;
-        let semihosting = SemihostingTopic::subscribe(client, depth).await?;
-        Ok(MonitorSubscription { rtt, semihosting })
-    }
-}
-
-pub struct MonitorSubscription {
-    rtt: <RttTopic as MultiTopic>::Subscription,
-    semihosting: <SemihostingTopic as MultiTopic>::Subscription,
-}
-impl MultiSubscription for MonitorSubscription {
-    type Message = MonitorEvent;
-
-    async fn next(&mut self) -> Option<Self::Message> {
-        tokio::select! {
-            message = self.rtt.recv() => message.map(MonitorEvent::Rtt),
-            message = self.semihosting.recv() => message.map(MonitorEvent::Semihosting),
-        }
-    }
 }
 
 // Monitor starts in read-only mode: it outputs logs, but has no prompt to type into.
@@ -667,7 +658,7 @@ pub async fn monitor(
         let prompt = |channel_idx| {
             Prompt::new(format!(
                 "{}> ",
-                &data.down_channels[channel_idx as usize].name
+                data.down_channels[channel_idx as usize].name
             ))
             .to_string()
         };
@@ -845,7 +836,7 @@ pub async fn monitor(
         }
         Err(e) => {
             // Some irrecoverable error happened, probably can't print the stack trace.
-            (false, Err(e))
+            (false, Err(e.into()))
         }
     };
 

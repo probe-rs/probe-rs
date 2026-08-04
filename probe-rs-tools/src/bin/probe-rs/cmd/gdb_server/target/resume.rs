@@ -1,7 +1,13 @@
+use std::time::{Duration, Instant};
+
 use super::{ResumeAction, RuntimeTarget};
 
 use gdbstub::target::ext::base::multithread::MultiThreadSingleStepOps;
 use gdbstub::target::ext::base::multithread::{MultiThreadResume, MultiThreadSingleStep};
+use probe_rs::CoreStatus;
+
+/// Max time to wait for a core to leave halt after resuming before we poll it.
+const RESUME_SETTLE_TIMEOUT: Duration = Duration::from_millis(100);
 
 impl MultiThreadResume for RuntimeTarget<'_> {
     fn resume(&mut self) -> Result<(), Self::Error> {
@@ -12,6 +18,16 @@ impl MultiThreadResume for RuntimeTarget<'_> {
                 for core_id in self.cores.iter() {
                     let mut core = session.core(*core_id)?;
                     core.run()?;
+
+                    // `run()` clears the halt bit but the core may still read halted briefly;
+                    // wait for it to resume so the poll loop doesn't misread that as a stop (#3965).
+                    let start = Instant::now();
+                    while matches!(core.status()?, CoreStatus::Halted(_)) {
+                        if start.elapsed() >= RESUME_SETTLE_TIMEOUT {
+                            break;
+                        }
+                        std::thread::sleep(Duration::from_millis(1));
+                    }
                 }
             }
             (core_id, ResumeAction::Step) => {

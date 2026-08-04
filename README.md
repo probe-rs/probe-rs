@@ -12,7 +12,7 @@ Additionally the project offers a variety of tools to be used directly for flash
 
 ## Functionality
 
-As of version 0.27.0 this library can:
+This library can:
 
 - Connect to a DAPLink, STLink, JLink, FTDI probes, ESP32 devices with USB JTAG, WLink and the Blackmagic probe.
 - Talk to ARM, Risc-V and Xtensa cores via SWD or JTAG.
@@ -21,7 +21,7 @@ As of version 0.27.0 this library can:
 - Download ELF, BIN and IHEX binaries using standard CMSIS-Pack flash algorithms.
 - Debug a target via the CLI, VSCode (MS-DAP) and GDB.
 
-To see what new functionality gets added every release, have a look at the [CHANGELOG](CHANGELOG.md)
+To see what new functionality gets added every release, have a look at the [CHANGELOG](https://github.com/probe-rs/probe-rs/blob/master/CHANGELOG.md). Changes that haven't been released yet live as individual fragments in the [`changelog/`](https://github.com/probe-rs/probe-rs/tree/master/changelog) directory.
 
 ## Support
 
@@ -30,6 +30,23 @@ If you think probe-rs makes your embedded journey more enjoyable or even earns y
 ## Tools
 
 In addition to being a library, probe-rs also includes a suite of tools which can be used for flashing and debugging.
+
+### Which tool should I use?
+
+For most projects, **`probe-rs run`** is what you want. It flashes your firmware, resets the target and streams RTT/`defmt` output and panics back to your console, so it works as a Cargo runner. Point Cargo at it once:
+
+```toml
+# .cargo/config.toml
+[target.'cfg(all(target_arch = "arm", target_os = "none"))']
+runner = "probe-rs run --chip nRF52840_xxAA"
+```
+
+and then `cargo run` flashes and runs your firmware.
+
+The other two tools cover narrower needs:
+
+- **`cargo-embed`** offers similar functionality with an interactive RTT terminal on top. It is expected to be phased out in the future, so prefer `probe-rs run` for new setups.
+- **`cargo-flash`** just flashes a binary onto the target without any further faff, for when you only need to program the chip.
 
 ### Installation
 

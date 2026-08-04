@@ -1,0 +1,1 @@
+Fixed flashing on EFR32FG23/EFR32MG24 erasing a neighboring sector at image boundaries: the geckos2c3 page size was not aligned to the flash base address, which could brick devices (e.g. wipe the last bootloader sector when flashing the application).

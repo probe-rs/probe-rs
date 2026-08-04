@@ -130,6 +130,15 @@ impl UnknownCommandDetails {
 pub struct GetCommandLineRequest(Buffer);
 
 impl GetCommandLineRequest {
+    /// Address of the `block` argument the target passed to
+    /// `SYS_GET_CMDLINE`.
+    ///
+    /// Useful when transporting semihosting halt metadata out of band
+    /// (for example over RPC) without serializing the full request.
+    pub fn block_address(&self) -> u32 {
+        self.0.buffer_location
+    }
+
     /// Writes the command line to the target. You have to continue the core manually afterwards.
     pub fn write_command_line_to_target(
         &self,

@@ -1,13 +1,16 @@
 // use crate::dap_types2 as debugserver_types;
 use crate::cmd::dap_server::DebuggerError;
-use crate::util::rtt;
 use num_traits::Num;
 use parse_int::parse;
+use probe_rs_rpc::rtt_config::DataFormat;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 
-// Convert the MSDAP `debugAdaptor.json` file into Rust types.
-schemafy::schemafy!(root: debugserver_types "src/bin/probe-rs/cmd/dap_server/debug_adapter/dap/debugProtocol.json");
+// Convert the MSDAP `debugProtocol.json` file into Rust types.
+// Regenerate with `cargo xtask update-dap-schema`.
+#[path = "debugProtocol.rs"]
+mod debug_protocol;
+pub use debug_protocol::*;
 
 /// Memory addresses come in as strings, but we want to use them as u64s.
 pub struct MemoryAddress(pub u64);
@@ -25,7 +28,7 @@ impl TryFrom<&str> for MemoryAddress {
     }
 }
 
-/// Arguments for custom [`RttWindowOpened`] request, so that VSCode can confirm once a specific RTT channel's window has opened.
+/// Arguments for custom [`RttWindowOpenedArguments`] request, so that VSCode can confirm once a specific RTT channel's window has opened.
 /// `probe-rs-debugger` will delay polling RTT channels until the data window has opened. This ensure no RTT data is lost on the client.
 #[derive(Clone, PartialEq, Eq, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -40,7 +43,7 @@ pub struct RttWindowOpenedArguments {
 pub struct RttChannelEventBody {
     pub channel_number: u32,
     pub channel_name: String,
-    pub data_format: rtt::DataFormat,
+    pub data_format: DataFormat,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]

@@ -11,7 +11,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::util::rtt::DataFormat;
+use probe_rs_rpc::rtt_config::DataFormat;
 
 pub enum RttDecoder {
     String {
@@ -171,10 +171,14 @@ pub struct DefmtStateInner {
 
 impl DefmtStateInner {
     pub fn try_from_bytes(buffer: &[u8]) -> Result<Option<Self>, Error> {
-        let Some(table) =
-            defmt_decoder::Table::parse(buffer).with_context(|| "Failed to parse defmt data")?
-        else {
-            return Ok(None);
+        let table = match defmt_decoder::Table::parse(buffer) {
+            // Parsing ok, still no table found.
+            Ok(None) => return Ok(None),
+            Ok(Some(table)) => table,
+            Err(e) => {
+                tracing::warn!("failed to parse defmt data: {}", e);
+                return Ok(None);
+            }
         };
 
         let locs = table

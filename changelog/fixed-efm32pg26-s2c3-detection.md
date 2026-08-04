@@ -1,1 +1,0 @@
-Fixed the EFM32PG26 chip name not matching the Series-2 Configuration 3 debug-sequence detection in `efm32xg2.rs` (was typoed as `EFR32PG26`, which is not a Silicon Labs product). EFM32PG26 now correctly uses the `0x0800_0000` flash base and MSC mass-erase path introduced in #3845.

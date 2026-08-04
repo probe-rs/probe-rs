@@ -143,6 +143,13 @@ pub struct CortexMState {
 
     /// The semihosting command that was decoded at the current program counter
     semihosting_command: Option<SemihostingCommand>,
+
+    /// Set after issuing `C_STEP` until `CoreInterface::status()` reads the halt from DFSR.
+    /// Cortex-M DFSR.HALTED is set for halt requests from both `C_HALT` and `C_STEP`, but it cannot
+    /// be determined from registers alone which was the cause.
+    /// `pending_step` tracks whether we're waiting for a step so that `CoreInterface::status()`
+    /// can return `HaltReason::Step` instead of `HaltReason::Request` if a step was pending.
+    pending_step: bool,
 }
 
 impl CortexMState {
@@ -153,6 +160,30 @@ impl CortexMState {
             current_state: CoreStatus::Unknown,
             fp_present: false,
             semihosting_command: None,
+            pending_step: false,
+        }
+    }
+
+    pub(crate) fn begin_step(&mut self) {
+        self.pending_step = true;
+    }
+
+    pub(crate) fn clear_pending_step(&mut self) {
+        self.pending_step = false;
+    }
+
+    /// Apply step context to a halt reason read from DFSR.
+    pub(crate) fn resolve_halt_reason(&mut self, reason: HaltReason) -> HaltReason {
+        if !self.pending_step {
+            return reason;
+        }
+
+        self.pending_step = false;
+
+        if reason == HaltReason::Request {
+            HaltReason::Step
+        } else {
+            reason
         }
     }
 

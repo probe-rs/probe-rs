@@ -24,17 +24,20 @@ use crate::{
 pub mod amd;
 pub mod holtek;
 pub mod infineon;
+pub mod maxim;
 pub mod microchip;
 pub mod nordicsemi;
 pub mod nuclei;
 pub mod nxp;
 pub mod raspberrypi;
 pub mod renesas;
+pub mod sifive;
 pub mod sifli;
 pub mod silabs;
 pub mod st;
 pub mod ti;
 pub mod vorago;
+pub mod wch;
 
 /// Vendor support trait.
 pub trait Vendor: Send + Sync + std::fmt::Display {
@@ -70,6 +73,15 @@ pub trait Vendor: Send + Sync + std::fmt::Display {
     ) -> Result<Option<String>, Error> {
         Ok(None)
     }
+
+    /// Tries to identify a chip from probe-firmware-side metadata. Returns `Some(target name)` on success.
+    fn try_detect_chip_from_probe(
+        &self,
+        _registry: &Registry,
+        _probe: &mut Probe,
+    ) -> Result<Option<String>, Error> {
+        Ok(None)
+    }
 }
 
 static VENDORS: LazyLock<RwLock<Vec<&'static dyn Vendor>>> = LazyLock::new(|| {
@@ -77,6 +89,7 @@ static VENDORS: LazyLock<RwLock<Vec<&'static dyn Vendor>>> = LazyLock::new(|| {
         &amd::Amd,
         &microchip::Microchip,
         &infineon::Infineon,
+        &maxim::Maxim,
         &holtek::Holtek,
         &silabs::SiliconLabs,
         &ti::TexasInstruments,
@@ -86,8 +99,10 @@ static VENDORS: LazyLock<RwLock<Vec<&'static dyn Vendor>>> = LazyLock::new(|| {
         &raspberrypi::RaspberryPi,
         &st::St,
         &vorago::Vorago,
+        &sifive::Sifive,
         &sifli::Sifli,
         &renesas::Renesas,
+        &wch::Wch,
     ];
 
     RwLock::new(vendors)
@@ -133,8 +148,13 @@ fn try_detect_arm_chip(
 
     // We have no information about the target, so we must assume it's using the default DP.
     // We cannot automatically detect DPs if SWD multi-drop is used.
-    // TODO: collect known DP addresses for known targets.
-    let dp_addresses = [DpAddress::Default];
+    // Most multi-drop implementations will expose enough info via the default DP to do detection
+    // so at least when there's only one SWD target, DpAddress::Default works fine.
+    // RP2040 isn't one of those - it's only accessible via multi-drop, so try it after Default.
+    let dp_addresses = [
+        DpAddress::Default,
+        DpAddress::Multidrop(0x01002927), // RP2040 core0
+    ];
 
     for dp_address in dp_addresses {
         // TODO: do not consume probe
@@ -142,9 +162,8 @@ fn try_detect_arm_chip(
             Ok(mut interface) => {
                 if let Err(error) = interface.select_debug_port(dp_address) {
                     probe = interface.close();
-                    tracing::debug!("Error during ARM chip detection: {error}");
-                    // If we can't connect, assume this is not an ARM chip and not an error.
-                    return Ok((probe, None));
+                    tracing::debug!("Error during ARM chip detection on {dp_address:?}: {error}");
+                    continue;
                 }
 
                 let found_arm_chip = read_chip_info_from_rom_table(interface.as_mut(), dp_address)
@@ -173,6 +192,10 @@ fn try_detect_arm_chip(
                 }
 
                 probe = interface.close();
+
+                if found_target.is_some() {
+                    break;
+                }
             }
             Err((returned_probe, error)) => {
                 probe = returned_probe;
@@ -283,6 +306,15 @@ fn try_detect_xtensa_chip(registry: &Registry, probe: &mut Probe) -> Result<Opti
     Ok(found_target)
 }
 
+fn try_detect_from_probe(registry: &Registry, probe: &mut Probe) -> Result<Option<Target>, Error> {
+    for vendor in vendors().iter() {
+        if let Some(target_name) = vendor.try_detect_chip_from_probe(registry, probe)? {
+            return Ok(Some(registry.get_target_by_name(target_name)?));
+        }
+    }
+    Ok(None)
+}
+
 /// Tries to identify the chip using the given probe.
 pub(crate) fn auto_determine_target(
     registry: &Registry,
@@ -294,22 +326,49 @@ pub(crate) fn auto_determine_target(
     // Xtensa and RISC-V interfaces don't need moving the probe. For clarity, their
     // handlers work with the borrowed probe, and we use these wrappers to adapt to the
     // ARM way of moving in and out of the probe.
+    //
+    // Detection is a best-effort operation (see comment on `TargetSelector::Auto` above), so
+    // an error from one architecture's detection logic (e.g. a probe/board combination that
+    // physically cannot perform JTAG signaling, like an SWD-only connection) must not abort
+    // the whole auto-detection sequence. The probe itself is only borrowed by the inner
+    // functions, so it's still valid to keep using after an error and try the next
+    // architecture.
+    fn try_detect_from_probe_wrapper(
+        registry: &Registry,
+        mut probe: Probe,
+    ) -> Result<(Probe, Option<Target>), Error> {
+        let found_target = try_detect_from_probe(registry, &mut probe).unwrap_or_else(|error| {
+            tracing::debug!("Error during chip auto-detection: {error}");
+            None
+        });
+        Ok((probe, found_target))
+    }
+
     fn try_detect_riscv_chip_wrapper(
         registry: &Registry,
         mut probe: Probe,
     ) -> Result<(Probe, Option<Target>), Error> {
-        try_detect_riscv_chip(registry, &mut probe).map(|found_target| (probe, found_target))
+        let found_target = try_detect_riscv_chip(registry, &mut probe).unwrap_or_else(|error| {
+            tracing::debug!("Error during RISC-V chip auto-detection: {error}");
+            None
+        });
+        Ok((probe, found_target))
     }
 
     fn try_detect_xtensa_chip_wrapper(
         registry: &Registry,
         mut probe: Probe,
     ) -> Result<(Probe, Option<Target>), Error> {
-        try_detect_xtensa_chip(registry, &mut probe).map(|found_target| (probe, found_target))
+        let found_target = try_detect_xtensa_chip(registry, &mut probe).unwrap_or_else(|error| {
+            tracing::debug!("Error during Xtensa chip auto-detection: {error}");
+            None
+        });
+        Ok((probe, found_target))
     }
 
     type DetectFn = fn(&Registry, Probe) -> Result<(Probe, Option<Target>), Error>;
     const ARCHITECTURES: &[DetectFn] = &[
+        try_detect_from_probe_wrapper,
         try_detect_arm_chip,
         try_detect_riscv_chip_wrapper,
         try_detect_xtensa_chip_wrapper,

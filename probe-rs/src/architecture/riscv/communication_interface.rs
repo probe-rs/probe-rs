@@ -2,7 +2,7 @@
 //!
 //! This module implements communication with a
 //! Debug Module, as described in the RISC-V debug
-//! specification v0.13.2 .
+//! specification v0.13 and v1.0.
 
 use crate::architecture::riscv::dtm::DtmAccess;
 use crate::memory::valid_32bit_address;
@@ -151,10 +151,21 @@ pub enum DebugModuleVersion {
     Version0_11,
     /// The debug module conforms to the version 0.13 of the RISC-V Debug Specification.
     Version0_13,
+    /// The debug module conforms to the version 1.0 of the RISC-V Debug Specification.
+    Version1_0,
     /// The debug module is present, but does not conform to any available version of the RISC-V Debug Specification.
     NonConforming,
     /// Unknown debug module version.
     Unknown(u8),
+}
+
+impl DebugModuleVersion {
+    fn is_implemented(self) -> bool {
+        matches!(
+            self,
+            DebugModuleVersion::Version0_13 | DebugModuleVersion::Version1_0
+        )
+    }
 }
 
 impl From<u8> for DebugModuleVersion {
@@ -163,6 +174,7 @@ impl From<u8> for DebugModuleVersion {
             0 => Self::NoModule,
             1 => Self::Version0_11,
             2 => Self::Version0_13,
+            3 => Self::Version1_0,
             15 => Self::NonConforming,
             other => Self::Unknown(other),
         }
@@ -615,8 +627,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         self.state.debug_version = DebugModuleVersion::from(status.version() as u8);
         self.state.is_halted = status.allhalted();
 
-        // Only version of 0.13 of the debug specification is currently supported.
-        if self.state.debug_version != DebugModuleVersion::Version0_13 {
+        if !self.state.debug_version.is_implemented() {
             return Err(RiscvError::UnsupportedDebugModuleVersion(
                 self.state.debug_version,
             ));
@@ -663,7 +674,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         let mut num_harts = 1;
         self.state.enabled_harts = 1;
 
-        // Check if anynonexistent is avaliable.
+        // Check if anynonexistent is available.
         // Some chips that have only one hart do not implement anynonexistent and allnonexistent.
         // So let's check max hart index to see if we can use it reliably,
         // or else we will assume only one hart exists.
@@ -675,11 +686,19 @@ impl<'state> RiscvCommunicationInterface<'state> {
         // Check if the anynonexistent works
         let status: Dmstatus = self.read_dm_register()?;
 
+        // Spec 1.0: stickyunavail means allunavail/anyunavail stay set until
+        // the debugger writes ackunavail=1. Check once and apply throughout.
+        let sticky_unavail = status.stickyunavail();
+
         if status.anynonexistent() {
             for hart_index in 1..max_hart_index {
                 let mut control = Dmcontrol(0);
                 control.set_dmactive(true);
                 control.set_hartsel(hart_index);
+                // Clear any sticky unavail state so we read fresh availability.
+                if sticky_unavail {
+                    control.set_ackunavail(true);
+                }
 
                 self.schedule_write_dm_register(control)?;
 
@@ -704,10 +723,15 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         self.state.num_harts = num_harts;
 
-        // Select hart 0 again - assuming all harts are same in regards of discovered features
+        // Select hart 0 again - assuming all harts are same in regards of discovered features.
+        // For spec 1.0 DMs, set the keepalive hint to discourage the hart from
+        // entering a low-power state while we are attached.
         let mut control = Dmcontrol(0);
         control.set_dmactive(true);
         control.set_hartsel(0);
+        if self.state.debug_version == DebugModuleVersion::Version1_0 {
+            control.set_setkeepalive(true);
+        }
 
         self.schedule_write_dm_register(control)?;
 
@@ -852,24 +876,23 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         let result_status = Dmstatus(self.dtm.read_deferred_result(result_status_idx)?.into_u32());
 
-        if result_status.allhalted() {
-            self.state.is_halted = true;
-            // Cores have halted, we have nothing else to do but return.
-            return Ok(());
+        if !result_status.allhalted() {
+            // Not every core has halted in time. Let's do things slowly.
+
+            // set the halt request again
+            dmcontrol.set_haltreq(true);
+            self.write_dm_register(dmcontrol)?;
+
+            // Wait until halted state is active again.
+            self.wait_for_core_halted(timeout)?;
+
+            // clear the halt request
+            dmcontrol.set_haltreq(false);
+            self.write_dm_register(dmcontrol)?;
         }
 
-        // Not every core has halted in time. Let's do things slowly.
-
-        // set the halt request again
-        dmcontrol.set_haltreq(true);
-        self.write_dm_register(dmcontrol)?;
-
-        // Wait until halted state is active again.
-        self.wait_for_core_halted(timeout)?;
-
-        // clear the halt request
-        dmcontrol.set_haltreq(false);
-        self.write_dm_register(dmcontrol)?;
+        // Both paths above guarantee the core is halted here.
+        self.state.is_halted = true;
 
         if !self.state.sw_breakpoint_debug_enabled {
             self.debug_on_sw_breakpoint(true)?;
@@ -1047,8 +1070,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         let csrr_cmd = assembly::csrr(8, Self::DCSR_REGNO);
         self.schedule_setup_program_buffer(&[csrr_cmd])?;
 
-        let mut postexec_cmd = AccessRegisterCommand(0);
-        postexec_cmd.set_postexec(true);
+        let postexec_cmd = self.postexec_command();
 
         self.run_with_s0_saved(|core| {
             core.execute_abstract_command(postexec_cmd.0)?;
@@ -1070,8 +1092,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         let csrw_cmd = assembly::csrw(Self::DCSR_REGNO, 8);
         self.schedule_setup_program_buffer(&[csrw_cmd])?;
 
-        let mut postexec_cmd = AccessRegisterCommand(0);
-        postexec_cmd.set_postexec(true);
+        let postexec_cmd = self.postexec_command();
 
         self.run_with_s0_saved(|core| {
             core.restore_s0_xlen(value as u64)?;
@@ -1112,7 +1133,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
     ///
     /// Dispatches to a 32- or 64-bit abstract command based on the XLEN mode.  Falls back to the
     /// program buffer if abstract commands are not supported.
-    pub(super) fn write_csr(&mut self, address: u16, value: u64) -> Result<(), RiscvError> {
+    pub fn write_csr(&mut self, address: u16, value: u64) -> Result<(), RiscvError> {
         tracing::debug!("Writing CSR {:#x}", address);
         let result = if self.state.xlen_64 {
             self.abstract_cmd_register_write_64(address, value)
@@ -1453,7 +1474,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         // Add manual ebreak if necessary.
         //
         // This is necessary when we either don't need the full program buffer,
-        // or if there is no implict ebreak after the last program buffer word.
+        // or if there is no implicit ebreak after the last program buffer word.
         if !self.state.implicit_ebreak || data.len() < self.state.progbuf_size as usize {
             self.schedule_write_progbuf(data.len(), assembly::EBREAK)?;
         }
@@ -1977,6 +1998,143 @@ impl<'state> RiscvCommunicationInterface<'state> {
         })
     }
 
+    /// The abstract command that transfers DATA0 into S1 and then executes the program buffer.
+    ///
+    /// `abstractauto` repeats the last command, so a write of DATA0 stores one more word.
+    fn write_transfer_command() -> AccessRegisterCommand {
+        let mut command = AccessRegisterCommand(0);
+        command.set_cmd_type(0);
+        command.set_transfer(true);
+        command.set_write(true);
+
+        // registers are 32 bit, so we have size 2 here
+        command.set_aarsize(RiscvBusAccess::A32);
+        command.set_postexec(true);
+
+        command.set_regno((registers::S1).id.0 as u32);
+
+        command
+    }
+
+    /// Prime the autoexec pipeline for a batch memory write.
+    ///
+    /// The program buffer must already contain:
+    ///   `sw/sd s1, 0(s0); addi s0, s0, width`
+    ///
+    /// This function writes `first` to `address`. After this returns successfully:
+    /// - S0 = `address + width`
+    /// - `abstractauto` is enabled, thus a write of DATA0 stores one more word
+    fn autoexec_prime_write_pipeline(
+        &mut self,
+        address: u64,
+        first: u32,
+    ) -> Result<(), RiscvError> {
+        self.write_address_to_s0(address)?;
+
+        // Store the first word with an explicit command. `abstractauto` repeats this command.
+        // `execute_abstract_command` waits for the command and it tests the result.
+        self.schedule_write_dm_register(Data0(first))?;
+        self.execute_abstract_command(Self::write_transfer_command().0)?;
+
+        let mut abstractauto = Abstractauto(0);
+        abstractauto.set_autoexecdata(1);
+        self.write_dm_register(abstractauto)?;
+
+        Ok(())
+    }
+
+    /// Write multiple words with one DM transaction for each word.
+    fn write_multiple_autoexec<V: RiscvValue32>(
+        &mut self,
+        address: u64,
+        data: &[V],
+    ) -> Result<(), RiscvError> {
+        let width = V::WIDTH.byte_width() as u64;
+
+        self.autoexec_prime_write_pipeline(address, data[0].into())?;
+
+        // The driver does not wait for a command between two writes of DATA0. If the debug module
+        // is still busy, it makes a `Busy` error and it does not store the word. The status of the
+        // command therefore gets a test after each group of words.
+        let chunk_size: usize = 256;
+        let mut index = 1;
+
+        while index < data.len() {
+            let chunk_end = core::cmp::min(index + chunk_size, data.len());
+
+            for value in &data[index..chunk_end] {
+                self.schedule_write_dm_register(Data0((*value).into()))?;
+            }
+
+            match self.wait_for_abstract_idle(Duration::from_millis(100)) {
+                Ok(()) => index = chunk_end,
+                Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::Busy)) => {
+                    let mut cs = Abstractcs(0);
+                    cs.set_cmderr(0x7);
+                    self.write_dm_register(cs)?;
+                    self.write_dm_register(Abstractauto(0))?;
+
+                    // S0 shows the number of words that the target stored.
+                    let current_addr = if self.state.xlen_64 {
+                        self.abstract_cmd_register_read_64(registers::S0)?
+                    } else {
+                        self.abstract_cmd_register_read(registers::S0)? as u64
+                    };
+                    let written = ((current_addr - address) / width) as usize;
+
+                    tracing::warn!(
+                        "Autoexec Busy during chunk [{}, {}). S0={:#x}, written={}",
+                        index,
+                        chunk_end,
+                        current_addr,
+                        written,
+                    );
+
+                    if written == 0 || written >= data.len() {
+                        return Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::Busy));
+                    }
+
+                    self.autoexec_prime_write_pipeline(
+                        address + written as u64 * width,
+                        data[written].into(),
+                    )?;
+                    index = written + 1;
+                }
+                Err(e) => return Err(e),
+            }
+        }
+
+        self.write_dm_register(Abstractauto(0))?;
+
+        Ok(())
+    }
+
+    fn write_multiple_no_autoexec<V: RiscvValue32>(
+        &mut self,
+        data: &[V],
+        wait_for_idle: bool,
+    ) -> Result<(), RiscvError> {
+        for value in data {
+            // write data into data 0
+            self.schedule_write_dm_register(Data0((*value).into()))?;
+
+            // Write s0, then execute program buffer
+            self.schedule_write_dm_register(Self::write_transfer_command())?;
+
+            if wait_for_idle && let Err(error) = self.wait_for_idle(Duration::from_millis(10)) {
+                tracing::error!(
+                    "Executing the abstract command for write_multiple_{} failed: {:?}",
+                    V::WIDTH.byte_width() * 8,
+                    error,
+                );
+
+                return Err(error);
+            }
+        }
+
+        Ok(())
+    }
+
     /// Perform multiple memory writes to consecutive locations using the program buffer.
     /// Only writes up to a width of 32 bits are currently supported.
     fn perform_memory_write_multiple_progbuf<V: RiscvValue32>(
@@ -2006,45 +2164,49 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 assembly::addi(8, 8, V::WIDTH.byte_width() as i16),
             ])?;
 
-            core.write_address_to_s0(address)?;
+            let use_autoexec = core.state.supports_autoexec && data.len() >= 16;
 
-            for value in data {
-                // write data into data 0
-                core.schedule_write_dm_register(Data0((*value).into()))?;
+            let write_result = if use_autoexec {
+                core.write_multiple_autoexec(address, data)
+            } else {
+                core.write_address_to_s0(address)
+                    .and_then(|()| core.write_multiple_no_autoexec(data, wait_for_idle))
+            };
 
-                // Write s0, then execute program buffer
-                let mut command = AccessRegisterCommand(0);
-                command.set_cmd_type(0);
-                command.set_transfer(true);
-                command.set_write(true);
-
-                // registers are 32 bit, so we have size 2 here
-                command.set_aarsize(RiscvBusAccess::A32);
-                command.set_postexec(true);
-
-                // register s1
-                command.set_regno((registers::S1).id.0 as u32);
-
-                core.schedule_write_dm_register(command)?;
-
-                if wait_for_idle && let Err(error) = core.wait_for_idle(Duration::from_millis(10)) {
-                    tracing::error!(
-                        "Executing the abstract command for write_multiple_{} failed: {:?}",
-                        V::WIDTH.byte_width() * 8,
-                        error,
-                    );
-
-                    return Err(error);
-                }
+            if use_autoexec {
+                let _ = core.write_dm_register(Abstractauto(0));
+                let mut cs_clear = Abstractcs(0);
+                cs_clear.set_cmderr(0x7);
+                let _ = core.write_dm_register(cs_clear);
+                core.state.progbuf_cache = [0u32; 16];
             }
 
-            // Restore register s0 and s1
+            let _ = core.restore_s0(s0);
+            let _ = core.restore_s1(s1);
 
-            core.restore_s0(s0)?;
-            core.restore_s1(s1)?;
-
-            Ok(())
+            write_result
         })
+    }
+
+    /// Build a postexec-only abstract command (run the program buffer without a
+    /// register transfer) that strict DM implementations accept.
+    ///
+    /// A `postexec=1, transfer=0` command with `aarsize=0` is rejected as
+    /// `NotSupported` (abstractcs.cmderr=2) by some DMs — notably the HiSilicon
+    /// WS63. Set a valid `aarsize` and `regno=x0` explicitly so the program
+    /// buffer can be executed on those implementations.
+    fn postexec_command(&self) -> AccessRegisterCommand {
+        let mut cmd = AccessRegisterCommand(0);
+        cmd.set_cmd_type(0);
+        cmd.set_postexec(true);
+        cmd.set_transfer(false);
+        cmd.set_aarsize(if self.state.xlen_64 {
+            RiscvBusAccess::A64
+        } else {
+            RiscvBusAccess::A32
+        });
+        cmd.set_regno(0x1000); // x0
+        cmd
     }
 
     pub(crate) fn execute_abstract_command(&mut self, command: u32) -> Result<(), RiscvError> {
@@ -2097,6 +2259,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         match do_execute_abstract_command(self, Command(command)) {
             err @ Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::HaltResume)) => {
+                // Re-query the hardware; cached `is_halted` may be stale after
+                // a self-reboot (e.g. watchdog reset).
+                self.state.is_halted = false;
                 if !self.core_halted()? {
                     // This command requires the core to be halted.
                     // We can do that, so let's try again.
@@ -2232,8 +2397,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             // Read CSR value into register 8 (s0)
             let csrr_cmd = assembly::csrr(8, address);
             core.schedule_setup_program_buffer(&[csrr_cmd])?;
-            let mut postexec_cmd = AccessRegisterCommand(0);
-            postexec_cmd.set_postexec(true);
+            let postexec_cmd = core.postexec_command();
             core.run_with_s0_saved(|c| {
                 c.execute_abstract_command(postexec_cmd.0)?;
                 c.read_s0_xlen()
@@ -2271,8 +2435,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             }
             let csrw_cmd = assembly::csrw(address, 8);
             core.schedule_setup_program_buffer(&[csrw_cmd])?;
-            let mut postexec_cmd = AccessRegisterCommand(0);
-            postexec_cmd.set_postexec(true);
+            let postexec_cmd = core.postexec_command();
             core.run_with_s0_saved(|c| {
                 c.write_s0_xlen(value)?;
                 c.execute_abstract_command(postexec_cmd.0)
@@ -2501,11 +2664,26 @@ impl<'state> RiscvCommunicationInterface<'state> {
         self.write_dm_register(dmcontrol)?;
 
         let status = Dmstatus(self.dtm.read_deferred_result(status_idx)?.into_u32());
-        if !status.allresumeack() {
-            return Err(RiscvError::RequestNotAcknowledged);
+        if status.allresumeack() || status.allrunning() {
+            return Ok(());
         }
+        self.wait_for_resume_ack(Duration::from_millis(50))
+    }
 
-        Ok(())
+    /// Some cores (WCH Qingke) update dmstatus only after a brief delay; poll
+    /// for the ack bit or for the hart actually running.
+    fn wait_for_resume_ack(&mut self, timeout: Duration) -> Result<(), RiscvError> {
+        let start = Instant::now();
+        loop {
+            let dmstatus: Dmstatus = self.read_dm_register()?;
+            if dmstatus.allresumeack() || dmstatus.allrunning() {
+                return Ok(());
+            }
+            if start.elapsed() >= timeout {
+                return Err(RiscvError::RequestNotAcknowledged);
+            }
+            std::thread::sleep(Duration::from_millis(1));
+        }
     }
 
     /// Perform a reset of all harts on the target and halt them at the first instruction.
@@ -2554,6 +2732,16 @@ impl<'state> RiscvCommunicationInterface<'state> {
         loop {
             // check that cores have reset
             let readback: Dmstatus = self.read_dm_register()?;
+
+            // Spec 1.0: poll ndmresetpending until the system finishes resetting.
+            if self.state.debug_version == DebugModuleVersion::Version1_0
+                && readback.ndmresetpending()
+            {
+                if start.elapsed() > timeout {
+                    return Err(RiscvError::RequestNotAcknowledged);
+                }
+                continue;
+            }
 
             if readback.allhavereset() && readback.allhalted() {
                 break;
@@ -2606,6 +2794,25 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// Returns a mutable reference to the memory access configuration.
     pub fn memory_access_config(&mut self) -> &mut MemoryAccessConfig {
         &mut self.state.memory_access_config
+    }
+
+    /// Clear the abstractauto register to disable any auto-execution,
+    /// clear cmderr, and invalidate the progbuf cache.
+    ///
+    /// This should be called during session setup to prevent stale autoexec
+    /// state from a previous crashed session from interfering.
+    pub fn clear_abstractauto(&mut self) {
+        if let Err(e) = self.write_dm_register(Abstractauto(0)) {
+            tracing::debug!("Failed to clear abstractauto: {:?}", e);
+        }
+        // Clear any cmderr that may have been caused by stale autoexec.
+        let mut abstractcs_clear = Abstractcs(0);
+        abstractcs_clear.set_cmderr(0x7);
+        if let Err(e) = self.write_dm_register(abstractcs_clear) {
+            tracing::debug!("Failed to clear abstractcs cmderr: {:?}", e);
+        }
+        // Invalidate the progbuf cache so the next operation fully rewrites it.
+        self.state.progbuf_cache = [0u32; 16];
     }
 }
 

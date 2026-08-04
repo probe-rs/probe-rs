@@ -1,5 +1,6 @@
 [package]
 name = "probe-rs-espressif"
+description = "Espressif chip support built on top of the probe-rs crate"
 version.workspace = true
 edition.workspace = true
 documentation.workspace = true
@@ -22,10 +23,9 @@ tracing = "0.1"
 serde.workspace = true
 yaml_serde.workspace = true
 
-espflash = { version = "4", default-features = false }
+espflash = { version = "4.5", default-features = false }
 
 [build-dependencies]
-probe-rs = { workspace = true, features = ["test"] }
 probe-rs-target = { workspace = true, features = ["bincode"] }
 
 [lints]

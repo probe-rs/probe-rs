@@ -17,6 +17,7 @@ use crate::{
         AutoImplementJtagAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
         IoSequenceItem, JtagAccess, JtagDriverState, ProbeCreationError, ProbeFactory, RawJtagIo,
         RawSwdIo, SwdSettings, WireProtocol,
+        list::{ProbeListItem, usb_probe_accessibility},
     },
 };
 use bitvec::prelude::*;
@@ -40,6 +41,8 @@ struct JtagAdapter {
 
     command: Command,
     commands: Vec<u8>,
+
+    /// For each command that captures bits, stores how many bits are captured.
     in_bit_counts: Vec<usize>,
     in_bits: BitVec,
     ftdi: FtdiProperties,
@@ -180,38 +183,35 @@ impl JtagAdapter {
         }
 
         let mut t0 = Instant::now();
-        let timeout = Duration::from_millis(10);
+        let timeout = Duration::from_millis(100);
 
-        let mut reply = Vec::with_capacity(self.in_bit_counts.len());
-        while reply.len() < self.in_bit_counts.len() {
+        let expected_bits = std::mem::take(&mut self.in_bit_counts);
+        let reply_slots = expected_bits.len();
+
+        // Read the exact number of bytes that the commands make. A read of more bytes gets only a
+        // status message from the device, and the device sends a status message only one time in
+        // each period of the latency timer. Such a read is therefore very slow.
+        let mut reply = vec![0; reply_slots];
+        let mut received = 0;
+        while received < reply_slots {
             let read = self
                 .device
-                .read_to_end(&mut reply)
+                .read(&mut reply[received..])
                 .map_err(FtdiError::from)?;
+
+            received += read;
 
             if read > 0 {
                 t0 = Instant::now();
             }
 
             if t0.elapsed() > timeout {
-                tracing::warn!(
-                    "Read {} bytes, expected {}",
-                    reply.len(),
-                    self.in_bit_counts.len()
-                );
+                tracing::warn!("Read {} bytes, expected {}", received, reply_slots);
                 return Err(DebugProbeError::Timeout);
             }
         }
 
-        if reply.len() != self.in_bit_counts.len() {
-            return Err(DebugProbeError::Other(format!(
-                "Read more data than expected. Expected {} bytes, got {} bytes",
-                self.in_bit_counts.len(),
-                reply.len()
-            )));
-        }
-
-        for (byte, count) in reply.into_iter().zip(self.in_bit_counts.drain(..)) {
+        for (byte, count) in reply.into_iter().zip(expected_bits) {
             let bits = byte >> (8 - count);
             self.in_bits
                 .extend_from_bitslice(&bits.view_bits::<Lsb0>()[..count]);
@@ -334,11 +334,11 @@ impl ProbeFactory for FtdiProbeFactory {
         Ok(Box::new(probe))
     }
 
-    fn list_probes(&self) -> Vec<DebugProbeInfo> {
+    fn list_probes(&self) -> Vec<ProbeListItem> {
         list_ftdi_devices()
     }
 
-    fn list_probes_filtered(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
+    fn list_probes_filtered(&self, selector: Option<&DebugProbeSelector>) -> Vec<ProbeListItem> {
         // FTDI probes are enumerated as one entry per USB device. The interface/channel
         // (A/B/C/D) is not stored in DebugProbeInfo; it is a runtime selection passed
         // through to open(). The default list_probes_filtered() filters by interface,
@@ -351,10 +351,10 @@ impl ProbeFactory for FtdiProbeFactory {
             .into_iter()
             .filter(|probe| {
                 selector.as_ref().is_none_or(|s| {
-                    probe.vendor_id == s.vendor_id
-                        && probe.product_id == s.product_id
+                    probe.info.vendor_id == s.vendor_id
+                        && probe.info.product_id == s.product_id
                         && s.serial_number.as_ref().is_none_or(|sn| {
-                            if let Some(probe_sn) = &probe.serial_number {
+                            if let Some(probe_sn) = &probe.info.serial_number {
                                 probe_sn == sn
                             } else {
                                 sn.is_empty()
@@ -647,22 +647,25 @@ static FTDI_COMPAT_DEVICES: &[FtdiDevice] = &[
     },
 ];
 
-fn get_device_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
+fn get_device_info(device: &DeviceInfo) -> Option<ProbeListItem> {
     FTDI_COMPAT_DEVICES.iter().find_map(|ftdi| {
-        ftdi.matches(device).then(|| DebugProbeInfo {
-            identifier: device.product_string().unwrap_or("FTDI").to_string(),
-            vendor_id: device.vendor_id(),
-            product_id: device.product_id(),
-            serial_number: device.serial_number().map(|s| s.to_string()),
-            probe_factory: &FtdiProbeFactory,
-            is_hid_interface: false,
-            interface: None,
+        ftdi.matches(device).then(|| ProbeListItem {
+            info: DebugProbeInfo {
+                identifier: device.product_string().unwrap_or("FTDI").to_string(),
+                vendor_id: device.vendor_id(),
+                product_id: device.product_id(),
+                serial_number: device.serial_number().map(|s| s.to_string()),
+                probe_factory: &FtdiProbeFactory,
+                is_hid_interface: false,
+                interface: None,
+            },
+            accessibility: usb_probe_accessibility(device),
         })
     })
 }
 
 #[tracing::instrument(skip_all)]
-fn list_ftdi_devices() -> Vec<DebugProbeInfo> {
+fn list_ftdi_devices() -> Vec<ProbeListItem> {
     match nusb::list_devices().wait() {
         Ok(devices) => devices
             .filter_map(|device| get_device_info(&device))

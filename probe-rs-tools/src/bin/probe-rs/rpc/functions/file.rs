@@ -1,32 +1,16 @@
-use std::path::PathBuf;
-
 #[cfg(feature = "remote")]
 use anyhow::Context as _;
 use postcard_rpc::header::VarHeader;
-use postcard_schema::Schema;
-use serde::{Deserialize, Serialize};
+use probe_rs_rpc::file::{AppendFileRequest, CreateFileResponse};
 
-use crate::rpc::{
-    Key,
-    functions::{NoResponse, RpcContext, RpcResult},
-};
+use crate::rpc::functions::RpcContext;
+use probe_rs_rpc::NoResponse;
+
+#[cfg(feature = "remote")]
+use crate::rpc::functions::convert::lift;
 
 #[cfg(feature = "remote")]
 use tempfile::NamedTempFile;
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct TempFile {
-    pub path: String,
-    pub key: Key<PathBuf>,
-}
-
-pub type CreateFileResponse = RpcResult<TempFile>;
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct AppendFileRequest {
-    pub data: Vec<u8>,
-    pub key: Key<PathBuf>,
-}
 
 #[cfg(feature = "remote")]
 pub async fn create_temp_file(
@@ -35,15 +19,12 @@ pub async fn create_temp_file(
     _req: (),
 ) -> CreateFileResponse {
     // TODO: avoid temp files altogether
-    let file = NamedTempFile::new().context("Failed to write temporary file")?;
+    let file = lift(NamedTempFile::new().context("Failed to write temporary file"))?;
     let path = file.path().to_path_buf().display().to_string();
     tracing::info!("Created temporary file {}", path);
     let key = ctx.store_object(file).await;
 
-    Ok(TempFile {
-        path,
-        key: unsafe { key.cast() },
-    })
+    Ok(probe_rs_rpc::file::TempFile { path, key })
 }
 
 #[cfg(not(feature = "remote"))]
@@ -63,13 +44,13 @@ pub async fn append_temp_file(
 ) -> NoResponse {
     use std::io::Write as _;
 
-    let mut file = ctx
-        .object_mut::<NamedTempFile>(unsafe { request.key.cast::<NamedTempFile>() })
-        .await;
+    let mut file = ctx.object_mut(request.key).await;
 
-    file.as_file_mut()
-        .write_all(&request.data)
-        .context("Failed to write temporary file")?;
+    lift(
+        file.as_file_mut()
+            .write_all(&request.data)
+            .context("Failed to write temporary file"),
+    )?;
 
     Ok(())
 }

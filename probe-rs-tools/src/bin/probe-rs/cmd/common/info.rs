@@ -1,6 +1,7 @@
 use probe_rs_mi::info::BasicDeviceInfo;
 
-use crate::{rpc::client::RpcClient, util::cli, util::common_options::ProbeOptions};
+use crate::{util::cli, util::common_options::ProbeOptions};
+use probe_rs_rpc_client::RpcClient;
 
 /// Attach to a probe and return the auto-detected chip name.
 ///
@@ -15,8 +16,8 @@ pub async fn basic_info(
         probe.chip = None;
     }
     let session = cli::attach_probe(client, probe, None, false).await?;
-    session
-        .target_name()
-        .await
-        .map(|model| BasicDeviceInfo { chip: model })
+    let metadata = session.target_metadata().await?;
+    Ok(BasicDeviceInfo {
+        chip: metadata.target_name,
+    })
 }

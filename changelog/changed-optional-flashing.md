@@ -1,1 +1,0 @@
-* The `builtin-formats` feature in the `probe-rs` crate can now be used to disable support for built-in firmware image formats (bin, hex, elf, uf2), which reduces the number of dependencies if disabled.

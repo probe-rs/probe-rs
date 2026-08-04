@@ -371,6 +371,50 @@ impl MemoryMappedRegister<u32> for Demcr {
 }
 
 bitfield! {
+    /// MPU Control Register, MPU_CTRL (see armv7-M Architecture Reference Manual B3.5.3)
+    #[derive(Copy, Clone)]
+    pub struct MpuCtrl(u32);
+    impl Debug;
+    /// When the ENABLE bit is set to `1`, controls whether privileged software
+    /// access to the default memory map is enabled:
+    ///
+    /// `0`: Disabled. Any privileged access to an address not covered by an
+    /// enabled MPU region generates a fault.\
+    /// `1`: Enabled. Privileged accesses to addresses not covered by an
+    /// enabled MPU region use the default memory map.
+    pub privdefena, set_privdefena: 2;
+    /// Controls whether handlers executing with priority less than 0 access
+    /// memory with the MPU enabled or disabled (HardFault, NMI, and
+    /// FAULTMASK escalated handlers):
+    ///
+    /// `0`: MPU disabled for these handlers.\
+    /// `1`: MPU enabled for these handlers.
+    pub hfnmiena, set_hfnmiena: 1;
+    /// Enables the MPU:
+    ///
+    /// `0`: MPU disabled.\
+    /// `1`: MPU enabled.
+    pub enable, set_enable: 0;
+}
+
+impl From<u32> for MpuCtrl {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<MpuCtrl> for u32 {
+    fn from(value: MpuCtrl) -> Self {
+        value.0
+    }
+}
+
+impl MemoryMappedRegister<u32> for MpuCtrl {
+    const ADDRESS_OFFSET: u64 = 0xE000_ED94;
+    const NAME: &'static str = "MPU_CTRL";
+}
+
+bitfield! {
     /// Flash Patch Control Register, FP_CTRL (see armv7-M Architecture Reference Manual C1.11.3)
     #[derive(Copy,Clone)]
     pub struct FpCtrl(u32);
@@ -681,6 +725,7 @@ impl CoreInterface for Armv7m<'_> {
                 "The core is in locked up status as a result of an unrecoverable exception"
             );
 
+            self.state.clear_pending_step();
             self.set_core_status(CoreStatus::LockedUp);
 
             return Ok(CoreStatus::LockedUp);
@@ -701,6 +746,7 @@ impl CoreInterface for Armv7m<'_> {
             let dfsr = Dfsr(self.memory.read_word_32(Dfsr::get_mmio_address())?);
 
             let mut reason = dfsr.halt_reason();
+            reason = self.state.resolve_halt_reason(reason);
 
             // Clear bits from Dfsr register
             self.memory
@@ -755,6 +801,7 @@ impl CoreInterface for Armv7m<'_> {
 
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         // TODO: Generic halt support
+        self.state.clear_pending_step();
 
         let mut value = Dhcsr(0);
         value.set_c_halt(true);
@@ -778,6 +825,7 @@ impl CoreInterface for Armv7m<'_> {
     fn run(&mut self) -> Result<(), Error> {
         // Before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction.
         self.step()?;
+        self.state.clear_pending_step();
 
         let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
 
@@ -806,6 +854,7 @@ impl CoreInterface for Armv7m<'_> {
 
     fn reset(&mut self) -> Result<(), Error> {
         self.state.semihosting_command = None;
+        self.state.clear_pending_step();
 
         self.sequence
             .reset_system(&mut *self.memory, crate::CoreType::Armv7m, None)?;
@@ -819,6 +868,7 @@ impl CoreInterface for Armv7m<'_> {
         // Set the vc_corereset bit in the DEMCR register.
         // This will halt the core after reset.
         self.reset_catch_set()?;
+        self.state.clear_pending_step();
 
         self.sequence
             .reset_system(&mut *self.memory, crate::CoreType::Armv7m, None)?;
@@ -890,6 +940,7 @@ impl CoreInterface for Armv7m<'_> {
 
         // Leave halted state.
         // Step one instruction.
+        self.state.begin_step();
         dhcsr.set_c_step(true);
         dhcsr.set_c_halt(false);
         dhcsr.enable_write();
@@ -900,9 +951,12 @@ impl CoreInterface for Armv7m<'_> {
         // The single-step might put the core in lockup state. Lockup isn't considered "halted"
         // so we can't use `wait_for_core_halted` here.
         // So we wait for halted OR lockup, and if we entered lockup we halt.
-        self.wait_for_status(Duration::from_millis(100), |s| {
+        if let Err(err) = self.wait_for_status(Duration::from_millis(100), |s| {
             matches!(s, CoreStatus::Halted(_) | CoreStatus::LockedUp)
-        })?;
+        }) {
+            self.state.clear_pending_step();
+            return Err(err);
+        }
         if self.status()? == CoreStatus::LockedUp {
             self.halt(Duration::from_millis(100))?;
         }
