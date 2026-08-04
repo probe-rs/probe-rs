@@ -40,7 +40,7 @@ pub struct RttDownRequest {
 
 /// The number of bytes the target accepted. A down channel write is not
 /// blocking, so this may be less than the request's data length.
-pub type RttDownResponse = RpcResult<u64>;
+pub type RttDownResponse = RpcResult<u32>;
 
 #[derive(Serialize, Deserialize, Schema, Clone)]
 pub struct RttChannelMeta {

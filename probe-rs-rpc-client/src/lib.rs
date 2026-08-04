@@ -730,7 +730,7 @@ impl SessionInterface {
         channel: u32,
         data: Vec<u8>,
         timeout_ms: u32,
-    ) -> Result<u64, ClientError> {
+    ) -> Result<u32, ClientError> {
         self.client
             .send_resp::<RttDownEndpoint, _>(&RttDownRequest {
                 sessid: self.sessid,

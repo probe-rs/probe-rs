@@ -92,7 +92,7 @@ pub async fn write_rtt_down(
         // A partial write still returns its count: erroring would leave the caller
         // unable to tell what landed, and resending would duplicate it.
         if written == request.data.len() || !attached || Instant::now() >= deadline {
-            return Ok(written as u64);
+            return Ok(written as u32);
         }
 
         tokio::time::sleep(DOWN_WRITE_RETRY_INTERVAL).await;
