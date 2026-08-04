@@ -33,7 +33,14 @@ pub struct RttDownRequest {
     pub rtt_client: Key<RttClient>,
     pub channel: u32,
     pub data: Vec<u8>,
+    /// How long to keep retrying while the target's channel buffer is full.
+    /// `0` means a single attempt. The server caps this.
+    pub timeout_ms: u32,
 }
+
+/// The number of bytes the target accepted. A down channel write is not
+/// blocking, so this may be less than the request's data length.
+pub type RttDownResponse = RpcResult<u64>;
 
 #[derive(Serialize, Deserialize, Schema, Clone)]
 pub struct RttChannelMeta {

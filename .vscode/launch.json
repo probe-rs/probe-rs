@@ -4,6 +4,21 @@
   // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
+{
+      "type": "lldb",
+      "request": "launch",
+      "name": "cargo-embed",
+      "cargo": {
+        "args": ["build", "--package", "probe-rs-tools"],
+        "filter": {
+          "name": "cargo-embed",
+          "kind": "bin"
+        }
+      },
+      "stopOnEntry": false,
+      "args": ["--bin", "proxy-main" ],
+      "cwd": "/Users/sean/Projects/crypto-seq/app/rp-app",
+    },    
     {
       "type": "lldb",
       "request": "launch",

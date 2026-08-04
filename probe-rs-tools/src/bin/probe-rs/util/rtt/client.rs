@@ -176,16 +176,18 @@ impl RttClient {
         Ok(&[])
     }
 
+    /// Writes as much of `input` as the target accepts, returning that count.
+    /// Returns 0 if RTT is not attached yet, in which case nothing was sent.
     pub(crate) fn write_down_channel(
         &mut self,
         core: &mut Core,
         channel: u32,
         input: impl AsRef<[u8]>,
-    ) -> Result<(), Error> {
+    ) -> Result<usize, Error> {
         self.try_attach(core)?;
 
         let Some(target) = self.target.as_mut() else {
-            return Ok(());
+            return Ok(0);
         };
 
         target.write_down_channel(core, channel, input)

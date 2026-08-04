@@ -1,0 +1,1 @@
+Writing to an RTT down channel no longer silently discards the bytes the target could not accept. The `rtt/down` RPC endpoint now returns the number of bytes written, and takes a `timeout_ms` for how long the server should retry a channel that is full (`0` means a single attempt).
