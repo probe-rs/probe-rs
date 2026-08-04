@@ -181,11 +181,11 @@ impl RttClient {
         core: &mut Core,
         channel: u32,
         input: impl AsRef<[u8]>,
-    ) -> Result<(), Error> {
+    ) -> Result<usize, Error> {
         self.try_attach(core)?;
 
         let Some(target) = self.target.as_mut() else {
-            return Ok(());
+            return Ok(0);
         };
 
         target.write_down_channel(core, channel, input)

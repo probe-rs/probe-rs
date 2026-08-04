@@ -160,23 +160,18 @@ impl UpDownChannel {
             }
         }
 
-        // Write buffered data to RTT down channel in chunks
-        // Note: Since write_down_channel doesn't return bytes written, we write in small chunks.
-        const CHUNK_SIZE: usize = 64;
+        // Send data from TCP buffer to RTT down channel, bounded by MAX_ATTEMPTS to avoid blocking.
+        const MAX_ATTEMPTS: usize = 10; // Bound the work per poll.
         let mut attempts = 0;
-        const MAX_ATTEMPTS: usize = 10; // Limit attempts per poll to avoid blocking
 
         while !self.tcp_read_buffer.is_empty() && attempts < MAX_ATTEMPTS {
             attempts += 1;
-            let chunk_size = self.tcp_read_buffer.len().min(CHUNK_SIZE);
-            let chunk = &self.tcp_read_buffer[..chunk_size];
-
-            // Try to write the chunk. The RTT implementation will write as much as possible.
-            client.write_down_channel(core, down_channel, chunk)?;
-
-            // Remove the chunk from buffer. If nothing was written (buffer full),
-            // we'll lose this chunk, but continue with the next one.
-            self.tcp_read_buffer.drain(..chunk_size);
+            let written = client.write_down_channel(core, down_channel, &self.tcp_read_buffer)?;
+            if written == 0 {
+                // Buffer full: keep the remainder and retry on the next poll.
+                break;
+            }
+            self.tcp_read_buffer.drain(..written);
         }
 
         Ok(())

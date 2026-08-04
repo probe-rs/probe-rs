@@ -144,8 +144,11 @@ impl RttActiveDownChannel {
         self.down_channel.number() as u32
     }
 
-    pub fn write(&mut self, core: &mut Core<'_>, data: impl AsRef<[u8]>) -> Result<(), Error> {
-        self.down_channel.write(core, data.as_ref()).map(|_| ())
+    /// Write as much of `data` as the target's buffer accepts, returning how
+    /// many bytes were taken. A caller that discards this count cannot know
+    /// what to retry, and silently loses the remainder.
+    pub fn write(&mut self, core: &mut Core<'_>, data: impl AsRef<[u8]>) -> Result<usize, Error> {
+        self.down_channel.write(core, data.as_ref())
     }
 }
 
@@ -202,13 +205,13 @@ impl RttConnection {
         }
     }
 
-    /// Send data to a down channel.
+    /// Send data to a down channel, returning how many bytes it accepted.
     pub fn write_down_channel(
         &mut self,
         core: &mut Core,
         channel_idx: u32,
         data: impl AsRef<[u8]>,
-    ) -> Result<(), Error> {
+    ) -> Result<usize, Error> {
         let channel_idx = channel_idx as usize;
         if let Some(channel) = self.active_down_channels.get_mut(channel_idx) {
             channel.write(core, data)
