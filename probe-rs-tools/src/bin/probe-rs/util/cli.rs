@@ -683,7 +683,7 @@ pub async fn monitor(
                     line.push('\n');
                     if let Some(client) = data.rtt_client
                         && let Err(error) = session
-                            .send_to_rtt(client, selected_channel, line.into_bytes())
+                            .send_to_rtt(client, selected_channel, line.into_bytes(), 0)
                             .await
                     {
                         eprintln!("Error sending data to RTT: {:?}", error);

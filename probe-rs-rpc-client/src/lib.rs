@@ -722,18 +722,22 @@ impl SessionInterface {
             .await
     }
 
+    /// Write to an RTT down channel, returning how many bytes the target
+    /// accepted until finish or Timeout. Timeout = 0 -> single attempt
     pub async fn send_to_rtt(
         &self,
         rtt_client: Key<RttClient>,
         channel: u32,
         data: Vec<u8>,
-    ) -> Result<(), ClientError> {
+        timeout_ms: u32,
+    ) -> Result<u64, ClientError> {
         self.client
             .send_resp::<RttDownEndpoint, _>(&RttDownRequest {
                 sessid: self.sessid,
                 rtt_client,
                 channel,
                 data,
+                timeout_ms,
             })
             .await
     }
