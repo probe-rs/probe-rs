@@ -4,12 +4,13 @@ use crate::{
 };
 use postcard_rpc::header::VarHeader;
 use probe_rs::rtt;
-use probe_rs_rpc::NoResponse;
 use probe_rs_rpc::rtt_client::{
     CreateRttClientRequest, CreateRttClientResponse, PollRttUpRequest, PollRttUpResponse,
     RttChannelMeta, RttChannelRequest, RttChannels, RttChannelsResponse, RttClientData,
-    RttDownRequest, RttPollResult, ScanRegion,
+    RttDownRequest, RttDownResponse, RttPollResult, ScanRegion,
 };
+use probe_rs_rpc::{NoResponse, RpcError};
+use std::time::{Duration, Instant};
 
 pub async fn create_rtt_client(
     ctx: &mut RpcContext,
@@ -41,19 +42,61 @@ pub async fn create_rtt_client(
     })
 }
 
+/// Upper bound on `RttDownRequest::timeout_ms`.
+const MAX_DOWN_WRITE_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// How long to wait before retrying a full channel. The target drains on its own
+/// schedule, so this only has to be short relative to that.
+const DOWN_WRITE_RETRY_INTERVAL: Duration = Duration::from_millis(1);
+
 pub async fn write_rtt_down(
     ctx: &mut RpcContext,
     _header: VarHeader,
     request: RttDownRequest,
-) -> NoResponse {
-    let mut session = ctx.session(request.sessid).await;
-    let mut rtt_client = ctx.object_mut(request.rtt_client).await;
+) -> RttDownResponse {
+    // Nothing to write
+    if request.data.is_empty() {
+        return Ok(0);
+    }
 
-    let core_id = rtt_client.core_id();
-    let mut core = lift(session.core(core_id))?;
-    lift(rtt_client.write_down_channel(&mut core, request.channel, &request.data))?;
+    let timeout = Duration::from_millis(request.timeout_ms as u64).min(MAX_DOWN_WRITE_TIMEOUT);
+    let deadline = Instant::now() + timeout;
+    let mut written = 0;
 
-    Ok(())
+    loop {
+        let attached;
+
+        // Scoped so the session and RTT client guards drop before we sleep
+        {
+            let mut session = ctx.session(request.sessid).await;
+            let mut rtt_client = ctx.object_mut(request.rtt_client).await;
+
+            let core_id = rtt_client.core_id();
+            let mut core = lift(session.core(core_id))?;
+            written += lift(rtt_client.write_down_channel(
+                &mut core,
+                request.channel,
+                &request.data[written..],
+            ))?;
+            attached = rtt_client.is_attached();
+        }
+
+        // Nothing was written and nothing can be: report that rather than a
+        // zero-byte write, which the caller cannot tell from a full channel.
+        if !attached && written == 0 {
+            return Err(RpcError::from("RTT is not attached"));
+        }
+
+        // Only a full buffer is worth waiting on. Writing while unattached scans
+        // for the control block every time, so retrying that is far from free.
+        // A partial write still returns its count: erroring would leave the caller
+        // unable to tell what landed, and resending would duplicate it.
+        if written == request.data.len() || !attached || Instant::now() >= deadline {
+            return Ok(written as u32);
+        }
+
+        tokio::time::sleep(DOWN_WRITE_RETRY_INTERVAL).await;
+    }
 }
 
 pub async fn get_rtt_channels(

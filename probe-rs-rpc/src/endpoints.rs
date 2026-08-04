@@ -32,7 +32,7 @@ use crate::reset::{ResetCoreAndHaltRequest, ResetCoreRequest};
 use crate::resume::ResumeAllCoresRequest;
 use crate::rtt_client::{
     CreateRttClientRequest, CreateRttClientResponse, PollRttUpRequest, PollRttUpResponse,
-    RttChannelRequest, RttChannelsResponse, RttDownRequest,
+    RttChannelRequest, RttChannelsResponse, RttDownRequest, RttDownResponse,
 };
 use crate::stack_trace::{
     LoadDebugInfoRequest, LoadDebugInfoResponse, TakeRichStackTraceRequest,
@@ -95,7 +95,7 @@ endpoints! {
     | LoadSvdEndpoint                  | LoadSvdRequest                  | LoadSvdResponse                  | "debug_state/load_svd"                   |
 
     | CreateRttClientEndpoint      | CreateRttClientRequest | CreateRttClientResponse | "create_rtt"              |
-    | RttDownEndpoint              | RttDownRequest         | NoResponse              | "rtt/down"                |
+    | RttDownEndpoint              | RttDownRequest         | RttDownResponse         | "rtt/down"                |
     | GetRttChannelsEndpoint       | RttChannelRequest      | RttChannelsResponse     | "rtt/channels"            |
     | PollRttUpEndpoint            | PollRttUpRequest       | PollRttUpResponse       | "rtt/poll_up"             |
     | CleanUpRttEndpoint           | RttChannelRequest      | NoResponse              | "rtt/clean_up"            |

@@ -56,14 +56,19 @@ impl RemoteRttClient {
     }
 
     /// Write data to a down channel.
+    ///
+    /// Single attempt, and the accepted count is discarded: this signature
+    /// cannot report a short write, so a full target buffer still loses the
+    /// tail here. Kept as it was rather than fixed blind -- see the callers.
     pub(crate) async fn write_down_async(
         &mut self,
         channel: u32,
         data: Vec<u8>,
     ) -> Result<(), RttError> {
         self.session
-            .send_to_rtt(self.rtt_client, channel, data)
+            .send_to_rtt(self.rtt_client, channel, data, 0)
             .await
+            .map(|_| ())
             .map_err(|e| RttError::Other(e.into()))
     }
 }
