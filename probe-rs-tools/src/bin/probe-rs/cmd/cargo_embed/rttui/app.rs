@@ -24,7 +24,7 @@ use crate::{
 };
 
 use super::super::config;
-use super::channel::UpChannel;
+use super::channel::UpDownChannel;
 use super::{event::Events, tab::Tab};
 
 use event::KeyModifiers;
@@ -44,7 +44,7 @@ pub struct App {
     // The configured channels are shared with the tabs; this works with no synchronization other
     // than RefCell because the cargo-embed main loop runs the `.render()` step and the
     // `.poll_rtt()` step in alternation.
-    up_channels: Vec<Rc<RefCell<UpChannel>>>,
+    channels: Vec<Rc<RefCell<UpDownChannel>>>,
 
     client: RttClient,
 }
@@ -65,9 +65,17 @@ impl App {
 
         let mut tab_config = config.rtt.tabs;
 
-        // Create channel states
-        let mut up_channels = Vec::new();
-        let mut down_channels = Vec::new();
+        // Create unified channel states
+        let mut channels = Vec::new();
+
+        // Build a map of which down channels are associated with which up channels
+        let mut up_to_down_map: std::collections::HashMap<u32, u32> =
+            std::collections::HashMap::new();
+        for tab in &tab_config {
+            if let Some(down) = tab.down_channel {
+                up_to_down_map.insert(tab.up_channel, down);
+            }
+        }
 
         // Create tab config based on detected channels
         for up in client.up_channels() {
@@ -130,32 +138,83 @@ impl App {
                 },
             };
 
-            up_channels.push(Rc::new(RefCell::new(UpChannel::new(
+            // Find associated down channel if any
+            let down_channel_number = up_to_down_map.get(&number).copied();
+
+            channels.push(Rc::new(RefCell::new(UpDownChannel::new_with_up(
                 up,
                 data_format,
                 channel_config.socket,
+                down_channel_number,
             ))));
         }
 
+        // Handle down-only channels (not associated with any up channel)
         for down in client.down_channels() {
             let number = down.number();
-            if !tab_config
-                .iter()
-                .any(|tab| tab.down_channel == Some(number))
-            {
-                tab_config.push(TabConfig {
-                    up_channel: if up_channels.len() as u32 > number {
-                        number
-                    } else {
-                        0
-                    },
-                    down_channel: Some(number),
-                    name: Some(down.channel_name()),
-                    hide: false,
-                });
-            }
 
-            down_channels.push(Rc::new(RefCell::new(down)));
+            // Check if this down channel is already associated with an up channel
+            let is_associated = up_to_down_map.values().any(|&down_num| down_num == number);
+
+            if !is_associated {
+                // Get TCP configuration for this down channel
+                let tcp_socket = config
+                    .rtt
+                    .down_channels
+                    .iter()
+                    .find(|down_config| down_config.channel == number)
+                    .and_then(|down_config| down_config.socket);
+
+                // Create a down-only channel if it has TCP configured or is explicitly in tabs
+                let in_tabs = tab_config
+                    .iter()
+                    .any(|tab| tab.down_channel == Some(number));
+
+                if tcp_socket.is_some() || in_tabs {
+                    // Create down-only channel and append to channels
+                    let channel_index = channels.len();
+                    channels.push(Rc::new(RefCell::new(UpDownChannel::new_down_only(
+                        down, tcp_socket,
+                    ))));
+
+                    // Ensure tab config exists, using the new channel index
+                    if !tab_config
+                        .iter()
+                        .any(|tab| tab.down_channel == Some(number))
+                    {
+                        tab_config.push(TabConfig {
+                            up_channel: channel_index as u32,
+                            down_channel: Some(number),
+                            name: Some(down.channel_name()),
+                            hide: false,
+                        });
+                    } else {
+                        // Update existing tab config to use the correct channel index
+                        for tab in &mut tab_config {
+                            if tab.down_channel == Some(number) && !is_associated {
+                                tab.up_channel = channel_index as u32;
+                            }
+                        }
+                    }
+                } else {
+                    // No TCP, but ensure tab config exists (for UI input)
+                    if !tab_config
+                        .iter()
+                        .any(|tab| tab.down_channel == Some(number))
+                    {
+                        tab_config.push(TabConfig {
+                            up_channel: if !channels.is_empty() {
+                                (channels.len() - 1) as u32
+                            } else {
+                                0
+                            },
+                            down_channel: Some(number),
+                            name: Some(down.channel_name()),
+                            hide: false,
+                        });
+                    }
+                }
+            }
         }
 
         // Create tabs
@@ -164,7 +223,7 @@ impl App {
             if tab.hide {
                 continue;
             }
-            let Some(up_channel) = up_channels.get(tab.up_channel as usize) else {
+            let Some(channel) = channels.get(tab.up_channel as usize) else {
                 tracing::warn!(
                     "Configured up channel {} does not exist, skipping tab",
                     tab.up_channel
@@ -172,7 +231,7 @@ impl App {
                 continue;
             };
 
-            tabs.push(Tab::new(up_channel.clone(), tab.down_channel, tab.name));
+            tabs.push(Tab::new(channel.clone(), tab.down_channel, tab.name));
         }
 
         // Code farther down relies on tabs being configured and might panic
@@ -215,7 +274,7 @@ impl App {
             logname,
             current_height: 0,
 
-            up_channels,
+            channels,
             client,
         })
     }
@@ -297,17 +356,25 @@ impl App {
         &mut self.tabs[self.current_tab]
     }
 
-    /// Polls the RTT target for new data on all channels.
+    /// Polls the RTT target for new data on all channels (both up and down directions).
     #[expect(
         clippy::await_holding_refcell_ref,
         reason = "Main loop alternates between GUI and channel polling accesses"
     )]
     pub async fn poll_rtt(&mut self, core: &mut Core<'_>) -> Result<()> {
-        for channel in self.up_channels.iter_mut() {
+        // Poll up channels (target -> host) and forward to TCP
+        for channel in self.channels.iter_mut() {
             channel
                 .borrow_mut()
-                .poll_rtt(core, &mut self.client)
+                .poll_rtt_up(core, &mut self.client)
                 .await?;
+        }
+
+        // Poll TCP for down channels (host -> target) and forward to RTT
+        for channel in self.channels.iter_mut() {
+            if let Err(e) = channel.borrow_mut().poll_tcp_down(core, &mut self.client) {
+                tracing::warn!("Error forwarding TCP data to RTT down channel: {e:?}");
+            }
         }
 
         Ok(())
@@ -337,9 +404,9 @@ impl App {
             return;
         };
 
-        let up_channel = tab.up_channel();
+        let channel = tab.up_channel();
 
-        let extension = match up_channel.data {
+        let extension = match channel.data {
             ChannelData::Strings { .. } => "txt",
             ChannelData::Binary { .. } => "dat",
         };
@@ -351,7 +418,7 @@ impl App {
         let sanitized_name = sanitize_filename::sanitize_with_options(name, sanitize_options);
         let final_path = path.join(sanitized_name);
 
-        match &up_channel.data {
+        match &channel.data {
             ChannelData::Strings { messages } => {
                 let mut file = match std::fs::File::create(&final_path) {
                     Ok(file) => file,
