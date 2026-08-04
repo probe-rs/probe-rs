@@ -186,10 +186,6 @@ impl UpDownChannel {
         &self.channel_name
     }
 
-    pub(crate) fn up_channel_number(&self) -> Option<u32> {
-        self.up_channel_number
-    }
-
     pub(crate) fn down_channel_number(&self) -> Option<u32> {
         self.down_channel_number
     }

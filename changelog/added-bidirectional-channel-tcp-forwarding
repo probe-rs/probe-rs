@@ -1,0 +1,1 @@
+Added bidirectional tcp forwarding to `cargo-embed`, enhancing up-channels with the option to send data back to the target via a down channel.
