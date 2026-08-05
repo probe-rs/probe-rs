@@ -1,10 +1,11 @@
+use std::{any::Any, ops::DerefMut, sync::Arc};
 use std::{collections::HashMap, convert::Infallible, future::Future};
-use std::{ops::DerefMut, sync::Arc};
 
 use crate::rpc::debug_state::{CoreDebugState, ServerDebugState};
 use crate::rpc::functions::file::{append_temp_file, create_temp_file};
+use crate::rpc::probe_broker::ProbeBroker;
 use crate::rpc::{
-    ConnectionState, Key, Session, SessionState,
+    ConnectionState, Key, Session, SessionEntry, SessionState,
     functions::{
         breakpoints::{resolve_source_breakpoints, resolve_source_locations},
         chip::{chip_info, list_families, load_chip_family},
@@ -76,6 +77,8 @@ pub mod test;
 pub struct RpcSpawnContext {
     state: ConnectionState,
     sender: PostcardSender<WireTxImpl>,
+    probe_broker: Arc<ProbeBroker>,
+    lister: Arc<dyn ProbeLister + Send + Sync>,
 }
 
 pub(crate) trait MultiTopicWriter {
@@ -162,6 +165,27 @@ impl RpcSpawnContext {
 
     pub fn cancellation_token(&self) -> CancellationToken {
         self.state.token.clone()
+    }
+
+    pub(crate) fn registry_blocking(&self) -> impl DerefMut<Target = Registry> + Send + use<> {
+        self.state.registry.clone().blocking_lock_owned()
+    }
+
+    pub(crate) fn probe_broker(&self) -> &Arc<ProbeBroker> {
+        &self.probe_broker
+    }
+
+    pub(crate) fn lister(&self) -> Lister {
+        Lister::with_lister(Box::new(ArcLister(self.lister.clone())))
+    }
+
+    pub(crate) async fn set_session(
+        &self,
+        session: probe_rs::Session,
+        dry_run: bool,
+        lease: Option<crate::rpc::probe_broker::ProbeLease>,
+    ) -> Key<Session> {
+        self.state.set_session(session, dry_run, lease).await
     }
 
     pub async fn run_blocking<T, F, REQ, RESP>(&mut self, request: REQ, task: F) -> RESP
@@ -258,6 +282,7 @@ pub struct RpcContext {
     /// `Send + Sync` (the server future is driven via `tokio::spawn`).
     /// [`RpcContext::lister`] repackages it as an owned [`Lister`] per call.
     lister: Arc<dyn ProbeLister + Send + Sync>,
+    probe_broker: Arc<ProbeBroker>,
 }
 
 /// Shim that lets a [`Lister`] own a reference to the shared
@@ -282,6 +307,8 @@ impl SpawnContext for RpcContext {
         RpcSpawnContext {
             state: self.state.clone(),
             sender: self.sender.clone().unwrap(),
+            probe_broker: self.probe_broker.clone(),
+            lister: self.lister.clone(),
         }
     }
 }
@@ -290,11 +317,15 @@ impl RpcContext {
     /// Build a context with a custom probe lister, bypassing the
     /// [`ProbeAccess`] filtering applied by [`LimitedLister`]. Used by tests
     /// that drive the in-process RPC server with a `FakeProbe`.
-    pub fn with_lister(lister: Arc<dyn ProbeLister + Send + Sync>) -> Self {
+    pub fn with_lister(
+        lister: Arc<dyn ProbeLister + Send + Sync>,
+        probe_broker: Arc<ProbeBroker>,
+    ) -> Self {
         Self {
             state: ConnectionState::new(),
             sender: None,
             lister,
+            probe_broker,
         }
     }
 
@@ -327,15 +358,15 @@ impl RpcContext {
         self.state.store_object(obj).await
     }
 
-    pub async fn set_session(&mut self, session: probe_rs::Session, dry_run: bool) -> Key<Session> {
-        self.state.set_session(session, dry_run).await
-    }
-
     pub async fn session(
         &self,
         sid: Key<Session>,
     ) -> impl DerefMut<Target = probe_rs::Session> + Send + use<> {
-        self.object_mut(sid).await
+        let locked_cell = self.state.object_storage.lock().await.cell(sid);
+        let guard = locked_cell.obj.clone().lock_owned().await;
+        tokio::sync::OwnedMutexGuard::map(guard, |e: &mut (dyn Any + Send)| {
+            &mut e.downcast_mut::<SessionEntry>().unwrap().session
+        })
     }
 
     pub fn debug_states(&self) -> DebugStatesMap {
@@ -440,7 +471,7 @@ postcard_rpc::define_dispatch! {
         | ----------                | ----      | -------           |
         | ListProbesEndpoint        | blocking  | list_probes       |
         | SelectProbeEndpoint       | async     | select_probe      |
-        | AttachEndpoint            | async     | attach            |
+        | AttachEndpoint            | spawn     | attach            |
 
         | ResumeAllCoresEndpoint           | async | resume_all_cores           |
         | CreateRttClientEndpoint          | async | create_rtt_client          |
@@ -531,8 +562,13 @@ impl RpcApp {
     pub fn create_server(
         depth: usize,
         probe_access: ProbeAccess,
+        probe_broker: Arc<ProbeBroker>,
     ) -> (ServerImpl, TxChannel, RxChannel) {
-        Self::create_server_with_lister(depth, Arc::new(LimitedLister::new(probe_access)))
+        Self::create_server_with_lister(
+            depth,
+            Arc::new(LimitedLister::new(probe_access)),
+            probe_broker,
+        )
     }
 
     /// Like [`RpcApp::create_server`] but with a custom probe lister. Used by
@@ -540,6 +576,7 @@ impl RpcApp {
     pub fn create_server_with_lister(
         depth: usize,
         lister: Arc<dyn ProbeLister + Send + Sync>,
+        probe_broker: Arc<ProbeBroker>,
     ) -> (ServerImpl, TxChannel, RxChannel) {
         let client_to_server = channel::<Result<Vec<u8>, WireRxErrorKind>>(depth);
         let server_to_client = channel::<Vec<u8>>(depth);
@@ -547,7 +584,8 @@ impl RpcApp {
         let client_to_server_rx = WireRx::new(client_to_server.1);
         let server_to_client_tx = WireTx::new(server_to_client.0);
 
-        let mut dispatcher = RpcApp::new(RpcContext::with_lister(lister), TokioSpawner);
+        let mut dispatcher =
+            RpcApp::new(RpcContext::with_lister(lister, probe_broker), TokioSpawner);
         let vkk = dispatcher.min_key_len();
         dispatcher
             .context

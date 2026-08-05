@@ -1,12 +1,15 @@
-use postcard_rpc::header::VarHeader;
+use std::time::{Duration, Instant};
+
+use postcard_rpc::{header::VarHeader, server::Sender};
+use probe_rs::probe::DebugProbeSelector;
 use probe_rs_rpc::probe::{
-    AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, ListProbesResponse,
-    SelectProbeRequest, SelectProbeResponse, SelectProbeResult, WireProtocol,
+    AttachRequest, AttachResult, DebugProbeEntry, ListProbesResponse, SelectProbeRequest,
+    SelectProbeResponse, SelectProbeResult, WireProtocol,
 };
 
-use crate::rpc::functions::{RpcContext, convert::lift};
+use crate::rpc::functions::{RpcContext, RpcSpawnContext, WireTxImpl};
 use crate::util::common_options::{OperationError, ProbeOptions};
-use probe_rs_rpc::RpcResult;
+use probe_rs_rpc::{AttachEndpoint, RpcResult};
 
 pub fn list_probes(ctx: &mut RpcContext, _header: VarHeader, _request: ()) -> ListProbesResponse {
     let lister = ctx.lister();
@@ -63,39 +66,131 @@ pub async fn select_probe(
     }
 }
 
-pub async fn attach(
-    ctx: &mut RpcContext,
-    _header: VarHeader,
-    request: AttachRequest,
-) -> RpcResult<AttachResult> {
-    let mut registry = ctx.registry().await;
-    let common_options = ProbeOptions::from(&request).load(&mut registry)?;
-    let target = common_options.get_target_selector()?;
+/// How long to wait before another attempt at a probe that is held by a
+/// process this server does not know about.
+const OPEN_RETRY_INTERVAL: Duration = Duration::from_secs(1);
 
-    let probe = match common_options.attach_probe(&ctx.lister()) {
-        Ok(probe) => probe,
-        Err(OperationError::NoProbesFound) => return Ok(AttachResult::ProbeNotFound),
-        Err(error) => {
+pub async fn attach(
+    ctx: RpcSpawnContext,
+    header: VarHeader,
+    request: AttachRequest,
+    sender: Sender<WireTxImpl>,
+) {
+    let resp = attach_impl(ctx, request).await;
+
+    sender
+        .reply::<AttachEndpoint>(header.seq_no, &resp)
+        .await
+        .unwrap();
+}
+
+async fn attach_impl(ctx: RpcSpawnContext, request: AttachRequest) -> RpcResult<AttachResult> {
+    let probe_options = ProbeOptions::from(&request);
+    let dry_run = probe_options.dry_run;
+    let selector = convert::from_wire_debug_probe_selector(request.probe.selector());
+    let cancel = ctx.cancellation_token();
+
+    let wait_for_probe = request.wait_for_probe.unwrap_or(Duration::ZERO);
+    // A dry run drives a `FakeProbe` and claims no device.
+    let lease = if dry_run {
+        None
+    } else {
+        let acquire = ctx.probe_broker().acquire(selector.clone());
+
+        tokio::select! {
+            granted = tokio::time::timeout(wait_for_probe, acquire) => match granted {
+                Ok(lease) => Some(lease),
+                Err(_) => return Ok(AttachResult::ProbeInUse),
+            },
+            _ = cancel.cancelled() => return Err("attach cancelled".into()),
+        }
+    };
+
+    let start = Instant::now();
+
+    loop {
+        let attempt = {
+            let ctx = ctx.clone();
+            let probe_options = probe_options.clone();
+            let selector = selector.clone();
+
+            tokio::task::spawn_blocking(move || {
+                attach_once(ctx, probe_options, selector, request.resume_target)
+            })
+            .await
+            .unwrap()?
+        };
+
+        let error = match attempt {
+            AttachAttempt::Attached(session) => {
+                let session_id = ctx.set_session(*session, dry_run, lease).await;
+                return Ok(AttachResult::Success(session_id));
+            }
+            AttachAttempt::ProbeGone => return Ok(AttachResult::ProbeNotFound),
+            AttachAttempt::Failed(error) => error,
+        };
+
+        if start.elapsed() >= wait_for_probe {
+            // Only a caller that asked to wait can conclude that the probe is
+            // busy. Without a timeout the open error is the better diagnostic:
+            // it also covers a probe the user has no permission to open.
+            if request.wait_for_probe.is_some() {
+                return Ok(AttachResult::ProbeInUse);
+            }
             return Ok(AttachResult::FailedToOpenProbe(format!(
                 "{:?}",
                 anyhow::anyhow!(error)
             )));
         }
+
+        tokio::select! {
+            _ = tokio::time::sleep(OPEN_RETRY_INTERVAL) => {}
+            _ = cancel.cancelled() => return Err("attach cancelled".into()),
+        }
+    }
+}
+
+enum AttachAttempt {
+    Attached(Box<probe_rs::Session>),
+    /// The probe is no longer connected, so waiting for it is pointless.
+    ProbeGone,
+    Failed(Box<OperationError>),
+}
+
+fn attach_once(
+    ctx: RpcSpawnContext,
+    probe_options: ProbeOptions,
+    selector: DebugProbeSelector,
+    resume_target: bool,
+) -> RpcResult<AttachAttempt> {
+    use crate::rpc::functions::convert::lift;
+
+    let lister = ctx.lister();
+    let mut registry = ctx.registry_blocking();
+    let loaded = probe_options.load(&mut registry)?;
+    let target = loaded.get_target_selector()?;
+
+    let probe = match loaded.attach_probe(&lister) {
+        Ok(probe) => probe,
+        Err(OperationError::NoProbesFound) => return Ok(AttachAttempt::ProbeGone),
+        Err(error) => {
+            if lister.list_with_access(Some(&selector)).is_empty() {
+                return Ok(AttachAttempt::ProbeGone);
+            }
+            return Ok(AttachAttempt::Failed(Box::new(error)));
+        }
     };
 
-    let mut session = common_options.attach_session(probe, target)?;
-
-    // attach_session halts the target, let's give the user the option
-    // to resume it without a roundtrip
-    if request.resume_target {
+    let mut session = loaded.attach_session(probe, target)?;
+    if resume_target {
         lift(session.resume_all_cores())?;
     }
-    let session_id = ctx.set_session(session, common_options.dry_run()).await;
-    Ok(AttachResult::Success(session_id))
+
+    Ok(AttachAttempt::Attached(Box::new(session)))
 }
 
 pub(crate) mod convert {
-    use super::{AttachRequest, DebugProbeEntry, DebugProbeSelector, WireProtocol};
+    use super::{AttachRequest, DebugProbeEntry, WireProtocol};
     use crate::util::common_options::ProbeOptions;
     use probe_rs::probe::list::{Accessibility, ProbeListItem};
 
@@ -129,8 +224,8 @@ pub(crate) mod convert {
 
     pub(crate) fn to_wire_debug_probe_selector(
         selector: probe_rs::probe::DebugProbeSelector,
-    ) -> DebugProbeSelector {
-        DebugProbeSelector {
+    ) -> probe_rs_rpc::probe::DebugProbeSelector {
+        probe_rs_rpc::probe::DebugProbeSelector {
             vendor_id: selector.vendor_id,
             product_id: selector.product_id,
             serial_number: selector.serial_number,
@@ -139,7 +234,7 @@ pub(crate) mod convert {
     }
 
     pub(crate) fn from_wire_debug_probe_selector(
-        selector: DebugProbeSelector,
+        selector: probe_rs_rpc::probe::DebugProbeSelector,
     ) -> probe_rs::probe::DebugProbeSelector {
         probe_rs::probe::DebugProbeSelector {
             vendor_id: selector.vendor_id,

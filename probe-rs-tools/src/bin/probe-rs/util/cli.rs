@@ -112,6 +112,7 @@ pub async fn attach_probe(
             dry_run: probe_options.dry_run,
             allow_erase_all: probe_options.allow_erase_all,
             resume_target,
+            wait_for_probe: None,
         })
         .await?;
 

@@ -7,6 +7,7 @@ use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use std::sync::Arc;
 use std::{ffi::OsString, path::PathBuf};
 
 use anyhow::{Context, Result};
@@ -405,7 +406,9 @@ async fn run_app<R>(
     }
 
     // Create a local server to run commands against.
-    let (mut local_server, tx, rx) = RpcApp::create_server(16, rpc::functions::ProbeAccess::All);
+    let probe_broker = Arc::new(crate::rpc::probe_broker::ProbeBroker::new());
+    let (mut local_server, tx, rx) =
+        RpcApp::create_server(16, rpc::functions::ProbeAccess::All, probe_broker);
     let handle = tokio::spawn(async move { local_server.run().await });
 
     // Run the command locally.

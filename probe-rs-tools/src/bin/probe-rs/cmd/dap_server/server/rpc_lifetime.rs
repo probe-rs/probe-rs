@@ -8,6 +8,7 @@
 #[cfg(feature = "remote")]
 use anyhow::Context;
 use anyhow::Result;
+use std::sync::Arc;
 use tokio::task::JoinHandle;
 
 use crate::rpc::functions::{ProbeAccess, RpcApp};
@@ -38,7 +39,8 @@ impl DapRpcConnection {
             });
         }
 
-        let (mut local_server, tx, rx) = RpcApp::create_server(16, ProbeAccess::All);
+        let probe_broker = Arc::new(crate::rpc::probe_broker::ProbeBroker::new());
+        let (mut local_server, tx, rx) = RpcApp::create_server(16, ProbeAccess::All, probe_broker);
         let handle = tokio::spawn(async move {
             local_server.run().await;
         });
@@ -153,9 +155,11 @@ mod tests {
         lister: Arc<TestLister>,
         f: impl AsyncFnOnce(&RpcClient) -> Result<()>,
     ) -> Result<()> {
+        let probe_broker = Arc::new(crate::rpc::probe_broker::ProbeBroker::new());
         let (mut server, tx, rx) = RpcApp::create_server_with_lister(
             16,
             lister as Arc<dyn probe_rs::integration::ProbeLister + Send + Sync>,
+            probe_broker,
         );
         let handle = tokio::spawn(async move {
             server.run().await;
