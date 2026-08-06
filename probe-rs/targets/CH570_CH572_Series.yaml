@@ -1,0 +1,53 @@
+name: CH570 / CH572 Series
+chip_detection:
+- !WchLink
+  mask: 0xff000000
+  variants:
+    0x70000000: CH570
+    0x72000000: CH572
+variants:
+- name: CH570
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+  memory_map:
+  - !Nvm
+    name: CodeFlash
+    range:
+      start: 0x0
+      end: 0x3c000
+    cores:
+    - main
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms: []
+- name: CH572
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+  memory_map:
+  - !Nvm
+    name: CodeFlash
+    range:
+      start: 0x0
+      end: 0x3c000
+    cores:
+    - main
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms: []
+flash_algorithms: []
