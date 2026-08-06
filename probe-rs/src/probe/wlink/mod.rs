@@ -121,6 +121,8 @@ pub enum RiscvChip {
     CH32V00X = 0x4e,
     /// CH32V317 Qingke-V4F gigabit Ethernet series
     CH32V317 = 0x86,
+    /// CH570/CH572 Qingke-V3C series
+    CH570 = 0x8B,
     /// CH32H4 Qingke-V4F high-performance series (H415/H416/H417)
     CH32H4 = 0xC6,
 }
@@ -144,6 +146,7 @@ impl RiscvChip {
             0x49 => Some(RiscvChip::CH641),
             0x4E => Some(RiscvChip::CH32V00X),
             0x86 => Some(RiscvChip::CH32V317),
+            0x8B => Some(RiscvChip::CH570),
             0xC6 => Some(RiscvChip::CH32H4),
             _ => None,
         }
@@ -337,9 +340,13 @@ impl DebugProbe for WchLink {
 
         self.chip_family = resp.chip_family;
 
-        tracing::info!("attached riscv chip {:?}", self.chip_family);
-
         self.chip_id = resp.chip_id;
+
+        tracing::info!(
+            "attached riscv chip {:?} with chip id 0x{:08x}",
+            self.chip_family,
+            self.chip_id
+        );
 
         if self.chip_family.support_flash_protect() {
             self.device.send_command(commands::CheckFlashProtection)?;
