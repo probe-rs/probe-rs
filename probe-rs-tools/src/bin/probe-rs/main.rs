@@ -51,6 +51,13 @@ pub(crate) struct Config {
 
     /// A named set of `--key=value` pairs.
     pub presets: HashMap<String, ConfigPreset>,
+
+    /// Control which probes are accessible.
+    ///
+    /// `allow` lists the probes permitted. `deny` lists the probes blocked.
+    /// When this field is absent, all probes are accessible.
+    #[serde(default)]
+    pub probe_access: Option<rpc::functions::ProbeAccess>,
 }
 
 #[derive(clap::Parser)]
@@ -382,7 +389,7 @@ async fn main() -> Result<()> {
         let log_path = log_path.as_deref();
         cmd::dap_server::run(cmd, None, connection_params, utc_offset, log_path).await
     } else {
-        run_app(connection_params, async |client| {
+        run_app(connection_params, config.probe_access.clone().unwrap_or(rpc::functions::ProbeAccess::All), async |client| {
             anyhow::ensure!(
                 client.is_local_session() || cli.subcommand.is_remote_cmd(),
                 "The subcommand is not supported in remote mode."
@@ -404,6 +411,7 @@ async fn main() -> Result<()> {
 /// Runs the callback using either a local or remote RPC client.
 async fn run_app<R>(
     #[cfg_attr(not(feature = "remote"), expect(unused_variables))] connection_params: RemoteParams,
+    probe_access: rpc::functions::ProbeAccess,
     cb: impl AsyncFnOnce(RpcClient) -> Result<R>,
 ) -> Result<R> {
     #[cfg(feature = "remote")]
@@ -422,7 +430,7 @@ async fn run_app<R>(
     // Create a local server to run commands against.
     let probe_broker = Arc::new(crate::rpc::probe_broker::ProbeBroker::new());
     let (mut local_server, tx, rx) =
-        RpcApp::create_server(16, rpc::functions::ProbeAccess::All, probe_broker);
+        RpcApp::create_server(16, probe_access, probe_broker);
     let handle = tokio::spawn(async move { local_server.run().await });
 
     // Run the command locally.

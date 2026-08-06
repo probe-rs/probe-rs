@@ -18,6 +18,7 @@ use crate::util::common_options::{
 use crate::util::logging::{LevelFilter, setup_logging};
 use crate::util::{cli, logging};
 use crate::{Config, parse_and_resolve_cli_args, run_app};
+use crate::rpc::functions::ProbeAccess;
 use probe_rs_rpc_client::RpcClient;
 
 /// Common options when flashing a target device.
@@ -127,7 +128,7 @@ pub async fn main(args: Vec<OsString>, config: Config) -> anyhow::Result<()> {
     let registry =
         registry_with_chip_description(opt.probe_options.chip_description_path.as_deref());
 
-    let terminate = run_app(connection_params, async |mut client| {
+    let terminate = run_app(connection_params, ProbeAccess::All, async |mut client| {
         let main_result = main_try(&mut client, opt).await;
 
         match main_result {
