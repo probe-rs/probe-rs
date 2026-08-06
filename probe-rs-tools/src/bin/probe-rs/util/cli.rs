@@ -102,19 +102,18 @@ pub async fn attach_probe(
         .await?;
     }
 
-    let result = client
-        .attach_probe(AttachRequest {
-            chip: probe_options.chip.or(elf_meta.chip),
-            protocol: probe_options.protocol.map(to_wire_protocol),
-            probe,
-            speed: probe_options.speed,
-            connect_under_reset: probe_options.connect_under_reset,
-            dry_run: probe_options.dry_run,
-            allow_erase_all: probe_options.allow_erase_all,
-            resume_target,
-            wait_for_probe: None,
-        })
-        .await?;
+    let result = with_slow_attach_feedback(client.attach_probe(AttachRequest {
+        chip: probe_options.chip.or(elf_meta.chip),
+        protocol: probe_options.protocol.map(to_wire_protocol),
+        probe,
+        speed: probe_options.speed,
+        connect_under_reset: probe_options.connect_under_reset,
+        dry_run: probe_options.dry_run,
+        allow_erase_all: probe_options.allow_erase_all,
+        resume_target,
+        wait_for_probe: probe_options.attach_timeout,
+    }))
+    .await?;
 
     match result {
         AttachResult::Success(session) => Ok(SessionInterface::new(client.clone(), session)),
@@ -129,6 +128,41 @@ pub async fn attach_probe(
         // A busy probe is accessible, so no setup hint here.
         AttachResult::ProbeInUse => anyhow::bail!("Probe is already in use"),
     }
+}
+
+/// How long an attach may run before the user gets a progress indicator.
+const ATTACH_FEEDBACK_DELAY: Duration = Duration::from_millis(1500);
+
+/// Displays a spinner while `attach` runs, but only if `attach` is slow.
+///
+/// An attach that waits for a busy probe can take as long as the configured
+/// attach timeout, so without this the CLI looks frozen.
+async fn with_slow_attach_feedback<F: Future>(attach: F) -> F::Output {
+    let mut attach = std::pin::pin!(attach);
+
+    tokio::select! {
+        result = &mut attach => return result,
+        _ = tokio::time::sleep(ATTACH_FEEDBACK_DELAY) => {}
+    }
+
+    let multi_progress = indicatif::MultiProgress::new();
+    logging::set_progress_bar(multi_progress.clone());
+
+    let spinner = multi_progress.add(indicatif::ProgressBar::new_spinner());
+    spinner.set_style(
+        indicatif::ProgressStyle::with_template("{msg:.green.bold} {spinner} {elapsed}")
+            .expect("Error in progress bar creation. This is a bug, please report it.")
+            .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔"),
+    );
+    spinner.set_message(format!("{:>13}", "Attaching"));
+    spinner.enable_steady_tick(Duration::from_millis(100));
+
+    let result = attach.await;
+
+    spinner.finish_and_clear();
+    logging::clear_progress_bar();
+
+    result
 }
 
 /// Nudge the user about probe setup after a failed attach over the RPC client.

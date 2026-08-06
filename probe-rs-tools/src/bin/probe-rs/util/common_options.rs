@@ -1,4 +1,4 @@
-use std::{io::Write, path::PathBuf};
+use std::{io::Write, path::PathBuf, time::Duration};
 
 use super::cargo::ArtifactError;
 use crate::util::parse_u64;
@@ -148,6 +148,21 @@ pub struct ProbeOptions {
         help_heading = "PROBE CONFIGURATION"
     )]
     pub allow_erase_all: bool,
+
+    /// How long to wait for a busy probe, in seconds.
+    ///
+    /// Another process, or another user of the same server, can hold the probe.
+    /// With this option the attach waits for the probe instead of failing
+    /// immediately.
+    #[arg(
+        long,
+        value_name = "seconds",
+        value_parser = crate::util::parse_duration_secs,
+        env = "PROBE_RS_ATTACH_TIMEOUT",
+        help_heading = "PROBE CONFIGURATION"
+    )]
+    #[serde(default)]
+    pub attach_timeout: Option<Duration>,
 }
 
 impl ProbeOptions {

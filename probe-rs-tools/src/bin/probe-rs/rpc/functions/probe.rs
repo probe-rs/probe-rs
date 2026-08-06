@@ -257,6 +257,7 @@ pub(crate) mod convert {
                 cycle_power: false,
                 dry_run: request.dry_run,
                 allow_erase_all: request.allow_erase_all,
+                attach_timeout: None,
             }
         }
     }

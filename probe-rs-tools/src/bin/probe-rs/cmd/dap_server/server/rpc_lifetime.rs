@@ -145,6 +145,7 @@ mod tests {
             connect_under_reset: false,
             dry_run: false,
             allow_erase_all: false,
+            attach_timeout: None,
         };
 
         attach_probe(client, options, None, false).await?;
