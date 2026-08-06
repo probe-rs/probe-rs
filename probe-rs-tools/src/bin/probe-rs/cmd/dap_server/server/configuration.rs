@@ -5,7 +5,7 @@ use anyhow::{Result, anyhow};
 use probe_rs::probe::{DebugProbeSelector, WireProtocol};
 use probe_rs_rpc::format::FormatOptions;
 use serde::{Deserialize, Serialize};
-use std::{env::current_dir, path::PathBuf};
+use std::{env::current_dir, path::PathBuf, time::Duration};
 
 use super::startup::TargetSessionType;
 use super::uploaded_files::UploadedFiles;
@@ -70,6 +70,10 @@ pub struct SessionConfig {
 
     /// Protocol to use for target connection
     pub(crate) wire_protocol: Option<WireProtocol>,
+
+    /// How long to wait for a busy probe, in seconds.
+    #[serde(default)]
+    pub(crate) attach_timeout: Option<f64>,
 
     ///Allow the session to erase all memory of the chip or reset it to factory default.
     #[serde(default)]
@@ -264,6 +268,9 @@ impl SessionConfig {
             cycle_power: false,
             dry_run: false,
             allow_erase_all: self.allow_erase_all,
+            attach_timeout: self
+                .attach_timeout
+                .and_then(|seconds| Duration::try_from_secs_f64(seconds).ok()),
         }
     }
 }

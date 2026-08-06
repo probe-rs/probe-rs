@@ -278,6 +278,7 @@ impl Cmd {
                     connect_under_reset: self.common.connect_under_reset,
                     speed: self.common.speed,
                     wire_protocol: self.common.protocol,
+                    attach_timeout: self.common.attach_timeout.map(|t| t.as_secs_f64()),
                     allow_erase_all: false,
                     flashing_config: FlashingConfig {
                         flashing_enabled: self.launch && self.binary.is_some(),

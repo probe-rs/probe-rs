@@ -91,6 +91,7 @@ pub async fn print_chip_info(
 mod test {
     use super::*;
     use std::future::Future;
+    use std::sync::Arc;
 
     async fn run_on_local_server<F, Fut>(f: F)
     where
@@ -100,8 +101,9 @@ mod test {
         use crate::rpc::functions::RpcApp;
 
         // Create a local server to run commands against.
+        let probe_broker = Arc::new(crate::rpc::probe_broker::ProbeBroker::new());
         let (mut local_server, tx, rx) =
-            RpcApp::create_server(16, crate::rpc::functions::ProbeAccess::All);
+            RpcApp::create_server(16, crate::rpc::functions::ProbeAccess::All, probe_broker);
         let handle = tokio::spawn(async move { local_server.run().await });
 
         // Run the command locally.
