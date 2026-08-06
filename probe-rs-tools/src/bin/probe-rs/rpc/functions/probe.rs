@@ -8,7 +8,7 @@ use probe_rs_rpc::probe::{
 };
 
 use crate::rpc::functions::{RpcContext, RpcSpawnContext, WireTxImpl};
-use crate::util::common_options::{OperationError, ProbeOptions};
+use crate::util::common_options::{OPEN_RETRY_INTERVAL, OperationError, ProbeOptions};
 use probe_rs_rpc::{AttachEndpoint, RpcResult};
 
 pub fn list_probes(ctx: &mut RpcContext, _header: VarHeader, _request: ()) -> ListProbesResponse {
@@ -66,10 +66,6 @@ pub async fn select_probe(
     }
 }
 
-/// How long to wait before another attempt at a probe that is held by a
-/// process this server does not know about.
-const OPEN_RETRY_INTERVAL: Duration = Duration::from_secs(1);
-
 pub async fn attach(
     ctx: RpcSpawnContext,
     header: VarHeader,
@@ -106,7 +102,7 @@ async fn attach_impl(ctx: RpcSpawnContext, request: AttachRequest) -> RpcResult<
         }
     };
 
-    let deadline = Instant::now() + wait_for_probe;
+    let start = Instant::now();
 
     loop {
         let attempt = {
@@ -132,8 +128,8 @@ async fn attach_impl(ctx: RpcSpawnContext, request: AttachRequest) -> RpcResult<
             AttachAttempt::Failed(error) => Some(error),
         };
 
-        let now = Instant::now();
-        if now >= deadline {
+        let elapsed = start.elapsed();
+        if elapsed >= wait_for_probe {
             return Ok(match failure {
                 Some(error) => {
                     AttachResult::FailedToOpenProbe(format!("{:?}", anyhow::anyhow!(error)))
@@ -143,7 +139,7 @@ async fn attach_impl(ctx: RpcSpawnContext, request: AttachRequest) -> RpcResult<
         }
 
         tokio::select! {
-            _ = tokio::time::sleep(OPEN_RETRY_INTERVAL.min(deadline - now)) => {}
+            _ = tokio::time::sleep(OPEN_RETRY_INTERVAL.min(wait_for_probe - elapsed)) => {}
             _ = cancel.cancelled() => return Err("attach cancelled".into()),
         }
     }
@@ -468,6 +464,9 @@ pub(crate) mod convert {
                 cycle_power: false,
                 dry_run: request.dry_run,
                 allow_erase_all: request.allow_erase_all,
+                // `attach_impl` runs the wait, so that it can also retry a
+                // probe that has dropped out of the probe list, and so that the
+                // client can cancel it.
                 attach_timeout: None,
             }
         }
