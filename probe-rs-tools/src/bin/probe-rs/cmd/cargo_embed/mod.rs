@@ -222,7 +222,7 @@ async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Res
         chip_description_path: None,
         protocol: config.probe.protocol,
         non_interactive: false,
-        probe: selector,
+        probe: selector.map(|s| s.to_string()),
         cycle_power: false,
         speed: config.probe.speed,
         connect_under_reset: config.general.connect_under_reset,

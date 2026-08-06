@@ -270,7 +270,7 @@ impl Cmd {
                 arguments: serde_json::to_value(&SessionConfig {
                     console_log_level: None,
                     cwd: None,
-                    probe: self.common.probe,
+                    probe: self.common.probe.as_deref().and_then(|s| s.parse().ok()),
                     chip: self.common.chip,
                     chip_description_path: self.common.chip_description_path,
                     chip_description_data: None,

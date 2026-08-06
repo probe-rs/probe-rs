@@ -1,6 +1,8 @@
 use std::{
+    collections::HashMap,
     io::Write,
     path::PathBuf,
+    sync::OnceLock,
     time::{Duration, Instant},
 };
 
@@ -21,6 +23,22 @@ use serde::{Deserialize, Serialize};
 /// How long to wait before another attempt at a probe that another process
 /// holds.
 pub const OPEN_RETRY_INTERVAL: Duration = Duration::from_secs(1);
+
+/// Global probe group definitions, set once during startup.
+static PROBE_GROUPS: OnceLock<HashMap<String, Vec<String>>> = OnceLock::new();
+
+/// Store probe group definitions loaded from the config file.
+///
+/// Call this once during startup before any probe resolution.
+pub fn set_probe_groups(groups: HashMap<String, Vec<String>>) {
+    let _ = PROBE_GROUPS.set(groups);
+}
+
+/// Read the probe group definitions, or an empty map if none were set.
+pub fn get_probe_groups() -> &'static HashMap<String, Vec<String>> {
+    static EMPTY: OnceLock<HashMap<String, Vec<String>>> = OnceLock::new();
+    PROBE_GROUPS.get().unwrap_or_else(|| EMPTY.get_or_init(HashMap::new))
+}
 
 /// Common options when flashing a target device.
 #[derive(Debug, clap::Parser)]
@@ -92,7 +110,6 @@ pub struct ReadWriteOptions {
     #[clap(value_parser = parse_u64)]
     pub address: u64,
 }
-
 /// Common options and logic when interfacing with a [Probe].
 #[derive(clap::Parser, Clone, Debug, Serialize, Deserialize)]
 pub struct ProbeOptions {
@@ -126,14 +143,19 @@ pub struct ProbeOptions {
     )]
     pub non_interactive: bool,
 
-    /// Use this flag to select a specific probe in the list.
+    /// Use this flag to select a specific probe in the list, or a named probe group
+    /// defined in the config file.
+    ///
+    /// When the value is a group name (see `[probe_groups]` in `.probe-rs.toml`),
+    /// probe-rs picks one free probe from the group.
     ///
     /// Use '--probe VID:PID' or '--probe VID:PID:Serial' if you have more than one
     /// probe with the same VID:PID. For multi-channel FTDI probes (e.g. FT2232H),
     /// use '--probe VID:PID-INTERFACE' to select the channel (0=A, 1=B, 2=C, 3=D).
     /// Example: '--probe 0403:6010-1' selects Channel B.
     #[arg(long, env = "PROBE_RS_PROBE", help_heading = "PROBE CONFIGURATION")]
-    pub probe: Option<DebugProbeSelector>,
+    pub probe: Option<String>,
+
     /// The protocol speed in kHz.
     #[arg(long, env = "PROBE_RS_SPEED", help_heading = "PROBE CONFIGURATION")]
     pub speed: Option<u32>,
@@ -173,9 +195,44 @@ pub struct ProbeOptions {
     pub attach_timeout: Option<Duration>,
 }
 
+/// Resolve a probe argument to a concrete [DebugProbeSelector].
+///
+/// If the argument matches a group name in the config, it selects one free
+/// probe from the group. Otherwise, it parses the argument as a `VID:PID`
+/// selector string.
+pub fn resolve_probe_selector(
+    probe_arg: &str,
+    lister: &Lister,
+) -> Option<DebugProbeSelector> {
+    if let Some(groups) = PROBE_GROUPS.get() {
+        if let Some(selectors) = groups.get(probe_arg) {
+            let probes = lister.list_all();
+            for selector_str in selectors {
+                if let Ok(selector) = selector_str.parse::<DebugProbeSelector>() {
+                    for probe in &probes {
+                        if selector.matches_probe(probe) {
+                            return Some(probe.into());
+                        }
+                    }
+                }
+            }
+            return None;
+        }
+    }
+    probe_arg.parse().ok()
+}
+
 impl ProbeOptions {
-    pub fn load(self, registry: &mut Registry) -> Result<LoadedProbeOptions<'_>, OperationError> {
-        LoadedProbeOptions::new(self, registry)
+    pub fn load<'r>(
+        self,
+        registry: &'r mut Registry,
+        lister: &Lister,
+    ) -> Result<LoadedProbeOptions<'r>, OperationError> {
+        let resolved = self
+            .probe
+            .as_deref()
+            .and_then(|arg| resolve_probe_selector(arg, lister));
+        LoadedProbeOptions::new(self, registry, resolved)
     }
 
     /// Convenience method that attaches to the specified probe, target,
@@ -185,7 +242,7 @@ impl ProbeOptions {
         registry: &'r mut Registry,
         lister: &Lister,
     ) -> Result<(Session, LoadedProbeOptions<'r>), OperationError> {
-        let common_options = self.load(registry)?;
+        let common_options = self.load(registry, lister)?;
 
         let target = common_options.get_target_selector()?;
         let probe = common_options.attach_probe(lister)?;
@@ -196,7 +253,11 @@ impl ProbeOptions {
 }
 
 /// Common options and logic when interfacing with a [Probe] which already did all pre operation preparation.
-pub struct LoadedProbeOptions<'r>(ProbeOptions, &'r mut Registry);
+pub struct LoadedProbeOptions<'r> {
+    options: ProbeOptions,
+    registry: &'r mut Registry,
+    pub(crate) probe_selector: Option<DebugProbeSelector>,
+}
 
 impl<'r> LoadedProbeOptions<'r> {
     /// Performs necessary init calls such as loading all chip descriptions
@@ -204,8 +265,13 @@ impl<'r> LoadedProbeOptions<'r> {
     pub(crate) fn new(
         probe_options: ProbeOptions,
         registry: &'r mut Registry,
+        resolved_probe: Option<DebugProbeSelector>,
     ) -> Result<Self, OperationError> {
-        let mut options = Self(probe_options, registry);
+        let mut options = Self {
+            options: probe_options,
+            registry,
+            probe_selector: resolved_probe,
+        };
         // Load the target description, if given in the cli parameters.
         options.maybe_load_chip_desc()?;
         Ok(options)
@@ -216,7 +282,7 @@ impl<'r> LoadedProbeOptions<'r> {
     ///
     /// Note: should be called before any functions in [ProbeOptions].
     fn maybe_load_chip_desc(&mut self) -> Result<(), OperationError> {
-        if let Some(ref cdp) = self.0.chip_description_path {
+        if let Some(ref cdp) = self.options.chip_description_path {
             let yaml = std::fs::read_to_string(cdp).map_err(|error| {
                 OperationError::ChipDescriptionNotFound {
                     source: error,
@@ -224,12 +290,12 @@ impl<'r> LoadedProbeOptions<'r> {
                 }
             })?;
 
-            self.1.add_target_family_from_yaml(&yaml).map_err(|error| {
-                OperationError::FailedChipDescriptionParsing {
+            self.registry
+                .add_target_family_from_yaml(&yaml)
+                .map_err(|error| OperationError::FailedChipDescriptionParsing {
                     source: error,
                     path: cdp.clone(),
-                }
-            })?;
+                })?;
         }
 
         Ok(())
@@ -237,13 +303,14 @@ impl<'r> LoadedProbeOptions<'r> {
 
     /// Resolves a resultant target selector from passed [ProbeOptions].
     pub fn get_target_selector(&self) -> Result<TargetSelector, OperationError> {
-        let target = if let Some(chip_name) = &self.0.chip {
-            let target = self.1.get_target_by_name(chip_name).map_err(|error| {
-                OperationError::ChipNotFound {
+        let target = if let Some(chip_name) = &self.options.chip {
+            let target = self
+                .registry
+                .get_target_by_name(chip_name)
+                .map_err(|error| OperationError::ChipNotFound {
                     source: error,
                     name: chip_name.clone(),
-                }
-            })?;
+                })?;
 
             TargetSelector::Specified(target)
         } else {
@@ -299,15 +366,15 @@ impl<'r> LoadedProbeOptions<'r> {
     /// Another process can hold the probe, in which case opening it fails, or
     /// the probe drops out of the probe list altogether.
     fn open_probe(&self, lister: &Lister) -> Result<Probe, OperationError> {
-        let wait_for_probe = self.0.attach_timeout.unwrap_or(Duration::ZERO);
+        let wait_for_probe = self.options.attach_timeout.unwrap_or(Duration::ZERO);
         let start = Instant::now();
 
         loop {
             // If we got a probe selector as an argument, open the probe
             // matching the selector if possible.
-            let error = match &self.0.probe {
+            let error = match &self.probe_selector {
                 Some(selector) => lister.open(selector.clone()).map_err(OperationError::from),
-                None => Self::select_probe(lister, self.0.non_interactive),
+                None => Self::select_probe(lister, self.options.non_interactive),
             };
 
             let error = match error {
@@ -329,13 +396,13 @@ impl<'r> LoadedProbeOptions<'r> {
 
     /// Attaches to specified probe and configures it.
     pub fn attach_probe(&self, lister: &Lister) -> Result<Probe, OperationError> {
-        let mut probe = if self.0.dry_run {
+        let mut probe = if self.options.dry_run {
             Probe::from_specific_probe(Box::new(FakeProbe::with_mocked_core()))
         } else {
             self.open_probe(lister)?
         };
 
-        if let Some(protocol) = self.0.protocol {
+        if let Some(protocol) = self.options.protocol {
             // Select protocol and speed
             probe.select_protocol(protocol).map_err(|error| {
                 OperationError::FailedToSelectProtocol {
@@ -345,7 +412,7 @@ impl<'r> LoadedProbeOptions<'r> {
             })?;
         }
 
-        if let Some(speed) = self.0.speed {
+        if let Some(speed) = self.options.speed {
             let _actual_speed = probe.set_speed(speed).map_err(|error| {
                 OperationError::FailedToSelectProtocolSpeed {
                     source: error,
@@ -356,7 +423,7 @@ impl<'r> LoadedProbeOptions<'r> {
             // Warn the user if they specified a speed the debug probe does not support
             // and a fitting speed was automatically selected.
             let protocol_speed = probe.speed_khz();
-            if let Some(speed) = self.0.speed
+            if let Some(speed) = self.options.speed
                 && protocol_speed < speed
             {
                 tracing::warn!(
@@ -380,39 +447,39 @@ impl<'r> LoadedProbeOptions<'r> {
         target: TargetSelector,
     ) -> Result<Session, OperationError> {
         let mut permissions = Permissions::new();
-        if self.0.allow_erase_all {
+        if self.options.allow_erase_all {
             permissions = permissions.allow_erase_all();
         }
 
-        let session = if self.0.connect_under_reset {
-            probe.attach_under_reset_with_registry(target, permissions, self.1)
+        let session = if self.options.connect_under_reset {
+            probe.attach_under_reset_with_registry(target, permissions, self.registry)
         } else {
-            probe.attach_with_registry(target, permissions, self.1)
+            probe.attach_with_registry(target, permissions, self.registry)
         }
         .map_err(|error| OperationError::AttachingFailed {
             source: error,
-            connect_under_reset: self.0.connect_under_reset,
+            connect_under_reset: self.options.connect_under_reset,
         })?;
 
         Ok(session)
     }
 
     pub(crate) fn connect_under_reset(&self) -> bool {
-        self.0.connect_under_reset
+        self.options.connect_under_reset
     }
 
     pub(crate) fn dry_run(&self) -> bool {
-        self.0.dry_run
+        self.options.dry_run
     }
 
     pub(crate) fn chip(&self) -> Option<String> {
-        self.0.chip.clone()
+        self.options.chip.clone()
     }
 }
 
 impl AsRef<ProbeOptions> for LoadedProbeOptions<'_> {
     fn as_ref(&self) -> &ProbeOptions {
-        &self.0
+        &self.options
     }
 }
 
@@ -777,7 +844,7 @@ mod tests {
         let (lister, handle) = busy_lister(2);
         let mut registry = Registry::from_builtin_families();
         let options = probe_options(Some(Duration::from_secs(30)))
-            .load(&mut registry)
+            .load(&mut registry, &handle)
             .unwrap();
 
         assert!(options.attach_probe(&handle).is_ok());
@@ -788,7 +855,7 @@ mod tests {
     fn busy_probe_is_tried_once_without_an_attach_timeout() {
         let (lister, handle) = busy_lister(usize::MAX);
         let mut registry = Registry::from_builtin_families();
-        let options = probe_options(None).load(&mut registry).unwrap();
+        let options = probe_options(None).load(&mut registry, &handle).unwrap();
 
         assert!(options.attach_probe(&handle).is_err());
         assert_eq!(lister.attempts.load(Ordering::SeqCst), 1);

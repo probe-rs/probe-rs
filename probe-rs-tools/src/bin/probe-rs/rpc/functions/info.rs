@@ -65,7 +65,7 @@ pub async fn target_info(
     request: TargetInfoRequest,
 ) -> NoResponse {
     let mut registry = ctx.registry().await;
-    let probe_options = ProbeOptions::from(&request).load(&mut registry)?;
+    let probe_options = ProbeOptions::from(&request).load(&mut registry, &ctx.lister())?;
 
     let probe = probe_options.attach_probe(&ctx.lister())?;
 
@@ -690,6 +690,8 @@ pub(crate) mod convert {
 
     impl From<&TargetInfoRequest> for ProbeOptions {
         fn from(request: &TargetInfoRequest) -> Self {
+            let selector: probe_rs::probe::DebugProbeSelector =
+                from_wire_debug_probe_selector(request.probe.selector());
             ProbeOptions {
                 chip: None,
                 chip_description_path: None,
@@ -698,7 +700,7 @@ pub(crate) mod convert {
                     WireProtocol::Swd => Some(ProbeRsWireProtocol::Swd),
                 },
                 non_interactive: true,
-                probe: Some(from_wire_debug_probe_selector(request.probe.selector())),
+                probe: Some(selector.to_string()),
                 speed: request.speed,
                 connect_under_reset: request.connect_under_reset,
                 cycle_power: false,

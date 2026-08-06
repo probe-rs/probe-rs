@@ -140,7 +140,7 @@ mod tests {
             probe: probes
                 .into_iter()
                 .find(|p| p.serial_number == serial)
-                .map(|p| from_wire_debug_probe_selector(p.selector())),
+                .map(|p| from_wire_debug_probe_selector(p.selector()).to_string()),
             speed: None,
             connect_under_reset: false,
             dry_run: false,

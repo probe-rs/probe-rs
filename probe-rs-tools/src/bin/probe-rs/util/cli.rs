@@ -52,6 +52,69 @@ use probe_rs_rpc_client::{MonitorEvent, RpcClient, SessionInterface};
 
 type TargetOutputFiles = std::collections::HashMap<ChannelIdentifier, tokio::fs::File>;
 
+async fn resolve_probe_from_client(
+    client: &RpcClient,
+    probe_options: &ProbeOptions,
+) -> anyhow::Result<Option<DebugProbeSelector>> {
+    let Some(probe_arg) = &probe_options.probe else {
+        return Ok(None);
+    };
+
+    // Try group resolution via RPC client
+    if let Some(selectors) = crate::util::common_options::get_probe_groups().get(probe_arg) {
+        let probes = client.list_probes().await?;
+        for selector_str in selectors {
+            if let Ok(selector) = selector_str
+                .parse::<probe_rs::probe::DebugProbeSelector>()
+            {
+                for entry in &probes {
+                    if selector.vendor_id == entry.vendor_id
+                        && selector.product_id == entry.product_id
+                        && selector
+                            .interface
+                            .map(|iface| entry.interface == Some(iface))
+                            .unwrap_or(true)
+                        && selector
+                            .serial_number
+                            .as_ref()
+                            .map(|s| {
+                                if entry.serial_number.is_empty() {
+                                    s.is_empty()
+                                } else {
+                                    entry.serial_number == *s
+                                }
+                            })
+                            .unwrap_or(true)
+                    {
+                        return Ok(Some(to_wire_debug_probe_selector(
+                            probe_rs::probe::DebugProbeSelector {
+                                vendor_id: entry.vendor_id,
+                                product_id: entry.product_id,
+                                interface: entry.interface,
+                                serial_number: if entry.serial_number.is_empty() {
+                                    None
+                                } else {
+                                    Some(entry.serial_number.clone())
+                                },
+                            },
+                        )));
+                    }
+                }
+            }
+        }
+        anyhow::bail!(
+            "No free probe found in group '{}'. Check that a matching probe is connected.",
+            probe_arg
+        );
+    }
+
+    // Try direct selector format: parse as core DebugProbeSelector and convert
+    let core_selector: probe_rs::probe::DebugProbeSelector = probe_arg
+        .parse()
+        .context(format!("Invalid probe selector or group name: '{}'", probe_arg))?;
+    Ok(Some(to_wire_debug_probe_selector(core_selector)))
+}
+
 pub async fn attach_probe(
     client: &RpcClient,
     mut probe_options: ProbeOptions,
@@ -81,9 +144,11 @@ pub async fn attach_probe(
         client.load_chip_family(file).await?;
     }
 
+    let probe_selector = resolve_probe_from_client(client, &probe_options).await?;
+
     let probe = match select_probe(
         client,
-        probe_options.probe.map(to_wire_debug_probe_selector),
+        probe_selector,
     )
     .await
     {

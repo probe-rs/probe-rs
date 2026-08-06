@@ -85,7 +85,7 @@ struct TestData {
 impl Cmd {
     pub fn run(self, registry: &mut Registry, lister: &Lister) -> anyhow::Result<()> {
         let speed = self.common.speed;
-        let common_options = self.common.load(registry)?;
+        let common_options = self.common.load(registry, lister)?;
         let mut max_speed = self.max_speed;
         let mut speeds = vec![];
         // if no max-speed specified, assume the user just wants to use a single speed (as per other cli cmds)

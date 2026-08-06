@@ -51,6 +51,15 @@ pub(crate) struct Config {
 
     /// A named set of `--key=value` pairs.
     pub presets: HashMap<String, ConfigPreset>,
+
+    /// Named groups of probes.
+    ///
+    /// Each group maps a name to a list of probe selector strings
+    /// (format: `VID:PID`, `VID:PID:SERIAL`, or `VID:PID-INTERFACE:SERIAL`).
+    /// When the user passes `--probe <group_name>`, probe-rs picks one
+    /// free probe from the group.
+    #[serde(default)]
+    pub probe_groups: HashMap<String, Vec<String>>,
 }
 
 #[derive(clap::Parser)]
@@ -337,6 +346,9 @@ async fn main() -> Result<()> {
     }
 
     let mut cli = parse_and_resolve_cli_args::<Cli>(args, &config)?;
+
+    // Store probe group definitions for use during probe resolution.
+    crate::util::common_options::set_probe_groups(config.probe_groups.clone());
 
     // If the user has not specified a log file, we will try to create one in the default location.
     if cli.log_file.is_none() && (cli.log_to_folder || cli.report.is_some()) {

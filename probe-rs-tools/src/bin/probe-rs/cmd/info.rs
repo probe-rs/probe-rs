@@ -68,8 +68,11 @@ impl Cmd {
                 vec![WireProtocol::Jtag, WireProtocol::Swd]
             };
 
-            let probe =
-                select_probe(&client, self.common.probe.map(to_wire_debug_probe_selector)).await?;
+            let probe = self.common.probe
+                .as_deref()
+                .and_then(|s| s.parse().ok())
+                .map(to_wire_debug_probe_selector);
+            let probe = select_probe(&client, probe).await?;
 
             let mut any_success = false;
 

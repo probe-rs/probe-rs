@@ -262,7 +262,7 @@ impl SessionConfig {
             chip_description_path: self.chip_description_path.clone(),
             protocol: self.wire_protocol,
             non_interactive: true,
-            probe: self.probe.clone(),
+            probe: self.probe.clone().map(|s| s.to_string()),
             speed: self.speed,
             connect_under_reset: self.connect_under_reset,
             cycle_power: false,

@@ -163,7 +163,7 @@ fn attach_once(
 
     let lister = ctx.lister();
     let mut registry = ctx.registry_blocking();
-    let loaded = probe_options.load(&mut registry)?;
+    let loaded = probe_options.load(&mut registry, &lister)?;
     let target = loaded.get_target_selector()?;
 
     let probe = match loaded.attach_probe(&lister) {
@@ -453,12 +453,14 @@ pub(crate) mod convert {
 
     impl From<&AttachRequest> for ProbeOptions {
         fn from(request: &AttachRequest) -> Self {
+            let selector: probe_rs::probe::DebugProbeSelector =
+                from_wire_debug_probe_selector(request.probe.selector());
             ProbeOptions {
                 chip: request.chip.clone(),
                 chip_description_path: None,
                 protocol: request.protocol.map(from_wire_protocol),
                 non_interactive: true,
-                probe: Some(from_wire_debug_probe_selector(request.probe.selector())),
+                probe: Some(selector.to_string()),
                 speed: request.speed,
                 connect_under_reset: request.connect_under_reset,
                 cycle_power: false,
