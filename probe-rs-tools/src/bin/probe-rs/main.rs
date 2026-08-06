@@ -29,6 +29,19 @@ use probe_rs_rpc_client::{RemoteParams, RpcClient};
 
 const MAX_LOG_FILES: usize = 20;
 
+#[cfg(feature = "remote")]
+pub(crate) const HOST_LONG_HELP: &str = "Remote host to connect to.\n\n\
+    Accepted URL prefixes:\n  \
+    ws://, wss://   a probe-rs serve websocket\n  \
+    ssh://          a probe-rs serve websocket, tunnelled through ssh\n  \
+    socket://       a probe-rs serve unix socket (Unix only)\n\n\
+    The ssh:// form takes [user@]destination[:port] and runs \
+    `ssh <destination> -W 127.0.0.1:<port>`, so the server must listen on the \
+    loopback interface of the remote host. The port defaults to 3000.\n\n\
+    probe-rs gives ssh no other options. Name the destination in your ssh \
+    configuration file to select an identity file, a jump host, or an ssh \
+    port other than 22.";
+
 type ConfigPreset = HashMap<String, Value>;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -74,7 +87,8 @@ struct Cli {
         long,
         global = true,
         env = "PROBE_RS_REMOTE_HOST",
-        help_heading = "REMOTE CONFIGURATION"
+        help_heading = "REMOTE CONFIGURATION",
+        long_help = HOST_LONG_HELP
     )]
     host: Option<String>,
 

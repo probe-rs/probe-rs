@@ -1,7 +1,7 @@
 //! A client for the probe-rs RPC interface.
 //!
 //! Programs that talk to a `probe-rs serve` server depend on this crate.
-//! Enable the `remote` feature for websocket and unix socket transport.
+//! Enable the `remote` feature for websocket, SSH, and unix socket transport.
 
 use postcard_rpc::{
     Topic,
@@ -117,6 +117,7 @@ pub enum TransportError {
 }
 
 #[derive(Debug, docsplay::Display, thiserror::Error)]
+#[non_exhaustive]
 pub enum ClientError {
     /// The connection to the server failed.
     #[display("{0}")]
@@ -129,6 +130,8 @@ pub enum ClientError {
     Remote(RpcError),
     /// Failed to parse server URI.
     InvalidRemoteHost,
+    /// Could not start ssh.
+    SshSpawn(#[source] std::io::Error),
     /// Failed to read {0}.
     FileRead(PathBuf, #[source] std::io::Error),
 }
@@ -148,28 +151,77 @@ fn from_io_closed(_: IoClosed) -> ClientError {
 }
 
 #[cfg(feature = "remote")]
+mod ssh;
+
+#[cfg(feature = "remote")]
+async fn rpc_client_from_websocket<S>(
+    ws_stream: tokio_tungstenite::WebSocketStream<S>,
+    challenge: &str,
+    token: Option<&str>,
+) -> Result<RpcClient, TransportError>
+where
+    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
+{
+    use futures_util::StreamExt as _;
+    use probe_rs_rpc::transport::websocket::{WebsocketRx, WebsocketTx};
+    use sha2::{Digest, Sha512};
+    use tokio_tungstenite::tungstenite::Message;
+    use tokio_util::bytes::Bytes;
+
+    let mut hasher = Sha512::new();
+    hasher.update(challenge.as_bytes());
+    hasher.update(token.unwrap_or_default().as_bytes());
+    let challenge_response = hasher.finalize().to_vec();
+
+    let (tx, rx) = ws_stream.split();
+
+    let tx = WebsocketTx::new(tx);
+    tx.send(challenge_response).await.map_err(|err| {
+        TransportError::Message(format!("Failed to send challenge response: {err:?}"))
+    })?;
+
+    Ok(RpcClient::new_from_wire(
+        tx,
+        WebsocketRx::new(rx.map(|message| {
+            message.map(|message| match message {
+                Message::Binary(binary) => binary,
+                _ => Bytes::new(),
+            })
+        })),
+    ))
+}
+
+/// Connect to a `probe-rs serve` server.
+///
+/// `host` selects the transport by its prefix:
+///
+/// - `ws://` or `wss://`: a websocket.
+/// - `ssh://`, followed by `[user@]destination[:port]`: a websocket that runs
+///   over `ssh -W`. The port defaults to 3000, and names the port of the
+///   server on the loopback interface of the remote host, not the ssh port.
+///   Every other ssh setting comes from the ssh configuration file of the
+///   user.
+/// - `socket://`, followed by a path: a unix socket. Unix only.
+#[cfg(feature = "remote")]
 pub async fn connect(
     host: &str,
     token: Option<&str>,
     user_agent: &str,
 ) -> Result<RpcClient, ClientError> {
-    use futures_util::StreamExt as _;
     use http::Uri;
-    use probe_rs_rpc::transport::websocket::{WebsocketRx, WebsocketTx};
     use rustls::ClientConfig;
-    use sha2::{Digest, Sha512};
     use std::str::FromStr;
-    use tokio_tungstenite::{
-        connect_async_tls_with_config,
-        tungstenite::{ClientRequestBuilder, Message},
-    };
-    use tokio_util::bytes::Bytes;
+    use tokio_tungstenite::{connect_async_tls_with_config, tungstenite::ClientRequestBuilder};
 
     #[cfg(unix)]
     if let Some(path) = host.strip_prefix("socket://") {
         tracing::debug!("Socket path detected, will connect via Unix socket.");
 
         return connect_unix(path).await;
+    }
+
+    if let Some(ssh_host) = host.strip_prefix("ssh://") {
+        return ssh::connect(ssh_host, token, user_agent).await;
     }
 
     let uri =
@@ -208,27 +260,9 @@ pub async fn connect(
         .to_str()
         .map_err(|_| TransportError::Message("Failed to parse challenge header".into()))?;
 
-    let mut hasher = Sha512::new();
-    hasher.update(challenge.as_bytes());
-    hasher.update(token.unwrap_or_default().as_bytes());
-    let challenge_response = hasher.finalize().to_vec();
-
-    let (tx, rx) = ws_stream.split();
-
-    let tx = WebsocketTx::new(tx);
-    tx.send(challenge_response).await.map_err(|err| {
-        TransportError::Message(format!("Failed to send challenge response: {err:?}"))
-    })?;
-
-    Ok(RpcClient::new_from_wire(
-        tx,
-        WebsocketRx::new(rx.map(|message| {
-            message.map(|message| match message {
-                Message::Binary(binary) => binary,
-                _ => Bytes::new(),
-            })
-        })),
-    ))
+    rpc_client_from_websocket(ws_stream, challenge, token)
+        .await
+        .map_err(ClientError::Transport)
 }
 
 #[cfg(all(feature = "remote", unix))]
