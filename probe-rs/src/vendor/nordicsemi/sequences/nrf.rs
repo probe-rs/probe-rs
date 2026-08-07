@@ -5,11 +5,12 @@ use crate::{
         ArmDebugInterface, ArmError, FullyQualifiedApAddress,
         dp::DpAddress,
         memory::ArmMemoryInterface,
-        sequences::{ArmDebugSequence, ArmDebugSequenceError},
+        sequences::{ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence},
     },
     session::MissingPermissions,
 };
 use std::fmt::Debug;
+use std::sync::Arc;
 
 pub trait Nrf: Sync + Send + Debug {
     /// Returns the ahb_ap and ctrl_ap of every core
@@ -170,6 +171,45 @@ impl<T: Nrf> ArmDebugSequence for T {
             set_network_core_running(&mut *memory_interface)?;
 
             memory_interface.flush()?;
+        }
+
+        Ok(())
+    }
+
+    fn debug_erase_sequence(&self) -> Option<Arc<dyn DebugEraseSequence>> {
+        Some(Arc::new(NrfDebugEraseSequence {
+            ctrl_aps: self
+                .core_aps(&DpAddress::Default)
+                .into_iter()
+                .map(|(_ahb_ap, ctrl_ap)| ctrl_ap)
+                .collect(),
+            reset_after_erase: self.requires_soft_reset_after_erase(),
+        }))
+    }
+}
+
+/// Chip erase via the ERASEALL register of each core's CTRL-AP.
+///
+/// Unlike the flash algorithms from the vendor's CMSIS-Pack, this erases *all* nonvolatile
+/// memory, including the UICR, which some of the pack algorithms cannot erase at all
+/// (the UICR of nRF53 and nRF91 chips can only be erased by an ERASEALL operation).
+///
+/// TODO: Eraseprotect is not considered, same as in `debug_device_unlock` above. If enabled,
+/// the hardware ignores the ERASEALL request and this sequence reports success anyway.
+#[derive(Debug)]
+struct NrfDebugEraseSequence {
+    ctrl_aps: Vec<FullyQualifiedApAddress>,
+    reset_after_erase: bool,
+}
+
+impl DebugEraseSequence for NrfDebugEraseSequence {
+    fn erase_all(&self, interface: &mut dyn ArmDebugInterface) -> Result<(), ArmError> {
+        // Chip erase is only requested by an explicit user action (`--chip-erase` or an erase
+        // command), which stands in for the `erase_all` permission here.
+        let permissions = crate::Permissions::new().allow_erase_all();
+
+        for ctrl_ap in &self.ctrl_aps {
+            erase_all(interface, ctrl_ap, &permissions, self.reset_after_erase)?;
         }
 
         Ok(())
