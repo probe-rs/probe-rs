@@ -1,0 +1,1 @@
+Chip erase on nRF53 and nRF91 targets now uses the CTRL-AP ERASEALL sequence, which also erases the UICR. Previously, `--chip-erase` ran the CMSIS-Pack flash algorithm's erase routine, which does not erase the UICR on these chips, so downloading an image with UICR contents failed with `program_page` error code 104 unless the UICR was already blank.
