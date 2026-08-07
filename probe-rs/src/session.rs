@@ -4,7 +4,7 @@ use crate::{
         arm::{
             ArmError, FullyQualifiedApAddress, SwoReader,
             communication_interface::ArmDebugInterface,
-            component::{TraceSink, get_arm_components},
+            component::{PmuEvent, PmuSnapshot, TraceSink, get_arm_components},
             dp::DpAddress,
             memory::CoresightComponent,
             sequences::{ArmDebugSequence, DefaultArmSequence},
@@ -699,6 +699,65 @@ impl Session {
                 crate::architecture::arm::component::read_trace_memory(interface, &components)
             }
         }
+    }
+
+    /// Run PMU profiling on the given core.
+    ///
+    /// This method:
+    /// 1. Halts the core (if not already halted).
+    /// 2. Configures the PMU to count `events` and enables it.
+    /// 3. Resumes the core.
+    /// 4. Waits `duration` for the target to run.
+    /// 5. Halts the core again.
+    /// 6. Reads and returns a [`PmuSnapshot`] with cycle + event counts.
+    ///
+    /// # Notes
+    /// - Requires the target to expose a PMU CoreSight component in its ROM table.
+    /// - The Cortex-A9 PMU supports up to 6 event counters simultaneously (`events` is
+    ///   silently truncated to the hardware limit).
+    pub fn pmu_profile(
+        &mut self,
+        core_index: usize,
+        events: &[PmuEvent],
+        duration: Duration,
+    ) -> Result<PmuSnapshot, Error> {
+        use std::thread::sleep;
+
+        // Halt the core before configuring the PMU.
+        {
+            let mut core = self.core(core_index)?;
+            if !core.core_halted()? {
+                core.halt(Duration::from_millis(500))?;
+            }
+        }
+
+        // Configure the PMU (requires ArmDebugInterface + ROM table walk).
+        let components = self.get_arm_components(DpAddress::Default)?;
+        {
+            let interface = self.get_arm_interface()?;
+            crate::architecture::arm::component::configure_pmu(interface, &components, events)
+                .map_err(Error::Arm)?;
+        }
+
+        // Resume the core so it runs and accumulates counts.
+        {
+            let mut core = self.core(core_index)?;
+            core.run()?;
+        }
+
+        // Let the target run for the requested duration.
+        sleep(duration);
+
+        // Halt the core so we can read stable counter values.
+        {
+            let mut core = self.core(core_index)?;
+            core.halt(Duration::from_millis(500))?;
+        }
+
+        // Read the snapshot.
+        let interface = self.get_arm_interface()?;
+        crate::architecture::arm::component::snapshot_pmu(interface, &components, events)
+            .map_err(Error::Arm)
     }
 
     /// Returns an implementation of [std::io::Read] that wraps [SwoAccess::read_swo].
