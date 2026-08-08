@@ -172,18 +172,26 @@ pub struct BootRequest {
     pub sessid: Key<Session>,
     pub boot_info: BootInfo,
     pub core_id: u32,
+    /// When true, resume all cores after prepare. When false, leave them halted.
+    pub resume: bool,
 }
 
 #[derive(Serialize, Deserialize, Schema)]
-pub struct EraseRequest {
+pub struct EraseAllRequest {
     pub sessid: Key<Session>,
-    pub command: EraseCommand,
     pub read_flasher_rtt: bool,
 }
 
 #[derive(Serialize, Deserialize, Schema)]
-pub enum EraseCommand {
-    All,
+pub struct EraseRangeRequest {
+    pub sessid: Key<Session>,
+    pub address: u64,
+    pub length: u64,
+    /// When true, restore bytes that fall inside erased flash sectors but
+    /// outside `[address, address + length)`. When false, those bordering
+    /// bytes stay erased.
+    pub restore: bool,
+    pub read_flasher_rtt: bool,
 }
 
 #[derive(Serialize, Deserialize, Schema)]

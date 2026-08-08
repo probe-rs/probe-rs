@@ -14,19 +14,21 @@ use crate::rpc::{
             core_metadata, core_read_registers, core_run, core_set_hw_bps, core_status, core_step,
             core_write_reg,
         },
+        cores::{cores_status, halt_cores, resume_cores},
         debug_vars::{
             clear_core_debug_state, evaluate as debug_evaluate, load_svd as debug_load_svd,
             scopes as debug_scopes, set_variable as debug_set_variable,
             variables as debug_variables,
         },
         disassemble::disassemble as disassemble_handler,
-        flash::{boot, build, erase, flash, load_region, new_flash_loader, verify},
+        flash::{
+            boot, build, erase_all, erase_range, flash, load_region, new_flash_loader, verify,
+        },
         info::{target_info, target_metadata},
         memory::{read_bytes, read_memory, write_memory},
         monitor::monitor,
         probe::{attach, list_probes, select_probe},
         reset::{reset, reset_and_halt},
-        resume::resume_all_cores,
         rtt_client::{
             clean_up_rtt, clear_rtt_control_block, create_rtt_client, get_rtt_channels,
             poll_rtt_up, write_rtt_down,
@@ -59,6 +61,7 @@ use tokio_util::sync::CancellationToken;
 pub mod breakpoints;
 pub mod chip;
 pub mod core_ops;
+pub mod cores;
 pub mod debug_vars;
 pub mod disassemble;
 pub mod file;
@@ -68,7 +71,6 @@ pub mod memory;
 pub mod monitor;
 pub mod probe;
 pub mod reset;
-pub mod resume;
 pub mod rtt_client;
 pub mod stack_trace;
 pub mod test;
@@ -473,7 +475,9 @@ postcard_rpc::define_dispatch! {
         | SelectProbeEndpoint       | async     | select_probe      |
         | AttachEndpoint            | spawn     | attach            |
 
-        | ResumeAllCoresEndpoint           | async | resume_all_cores           |
+        | HaltCoresEndpoint                | async | halt_cores                 |
+        | ResumeCoresEndpoint              | async | resume_cores               |
+        | CoresStatusEndpoint              | async | cores_status               |
         | CreateRttClientEndpoint          | async | create_rtt_client          |
         | TakeStackTraceEndpoint           | async | take_stack_trace           |
         | TakeRichStackTraceEndpoint       | async | take_rich_stack_trace      |
@@ -491,7 +495,8 @@ postcard_rpc::define_dispatch! {
         | BuildEndpoint                    | async | build                      |
         | LoadRegionEndpoint               | async | load_region                |
         | FlashEndpoint                    | async | flash                      |
-        | EraseEndpoint                    | async | erase                      |
+        | EraseAllEndpoint                 | async | erase_all                  |
+        | EraseRangeEndpoint               | async | erase_range                |
         | VerifyEndpoint                   | async | verify                     |
         | BootEndpoint                     | async | boot                       |
         | MonitorEndpoint                  | spawn | monitor                    |

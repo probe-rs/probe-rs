@@ -23,6 +23,8 @@ pub struct CreateRttClientRequest {
 #[derive(Serialize, Deserialize, Schema)]
 pub struct RttClientData {
     pub handle: Key<RttClient>,
+    /// Core that owns the RTT control block for this client.
+    pub core_id: u32,
 }
 
 pub type CreateRttClientResponse = RpcResult<RttClientData>;
