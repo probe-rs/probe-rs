@@ -724,11 +724,12 @@ impl FlashLoader {
         tracing::debug!("Committing RAM!");
 
         if let BootInfo::FromRam { cores_to_reset, .. } = self.boot_info() {
-            // If we are booting from RAM, it is important to reset and halt to guarantee a clear state
-            // Normally, flash algorithm loader performs reset and halt - does not happen here.
-            tracing::debug!(
-                " -- action: vector table in RAM, assuming RAM boot, resetting and halting"
-            );
+            // If we are booting from RAM, it might be important to reset and halt before the RAM
+            // image is written below, to guarantee a clear state. Normally, flash algorithm
+            // loader performs reset and halt - does not happen here. Some targets are expected to
+            // already be reset by other tooling before RAM flashing runs, in which case the
+            // target description disables this reset and the core is only halted.
+            let skip_reset_on_ram_boot = session.target().skip_reset_on_ram_boot;
             for (core_to_reset_index, _) in session
                 .target()
                 .cores
@@ -739,7 +740,19 @@ impl FlashLoader {
             {
                 session
                     .core(core_to_reset_index)
-                    .and_then(|mut core| core.reset_and_halt(Duration::from_millis(500)))
+                    .and_then(|mut core| {
+                        if skip_reset_on_ram_boot {
+                            tracing::debug!(
+                                " -- action: vector table in RAM, assuming RAM boot, halting"
+                            );
+                            core.halt(Duration::from_millis(500))
+                        } else {
+                            tracing::debug!(
+                                " -- action: vector table in RAM, assuming RAM boot, resetting and halting"
+                            );
+                            core.reset_and_halt(Duration::from_millis(500))
+                        }
+                    })
                     .map_err(FlashError::Core)?;
             }
         }

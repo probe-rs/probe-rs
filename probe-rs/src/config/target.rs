@@ -44,6 +44,9 @@ pub struct Target {
     pub jtag: Option<Jtag>,
     /// The default executable format for the target.
     pub default_format: Option<String>,
+    /// Skip the reset that normally precedes RAM flashing when booting from RAM. See
+    /// [`Chip::skip_reset_on_ram_boot`](probe_rs_target::Chip::skip_reset_on_ram_boot).
+    pub skip_reset_on_ram_boot: bool,
 }
 
 impl std::fmt::Debug for Target {
@@ -138,6 +141,7 @@ impl Target {
             rtt_scan_regions,
             jtag: chip.jtag.clone(),
             default_format: chip.default_binary_format.clone(),
+            skip_reset_on_ram_boot: chip.skip_reset_on_ram_boot,
         }
     }
 

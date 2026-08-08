@@ -140,6 +140,7 @@ pub fn cmd_elf(
                 rtt_scan_ranges: None,
                 jtag: None,
                 default_binary_format: None,
+                skip_reset_on_ram_boot: false,
             }],
             flash_algorithms: vec![algorithm],
             source: TargetDescriptionSource::BuiltIn,
