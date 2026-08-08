@@ -84,6 +84,7 @@ pub async fn attach_probe(
     let probe = match select_probe(
         client,
         probe_options.probe.map(to_wire_debug_probe_selector),
+        probe_options.non_interactive,
     )
     .await
     {
@@ -119,14 +120,22 @@ pub async fn attach_probe(
         AttachResult::Success(session) => Ok(SessionInterface::new(client.clone(), session)),
         AttachResult::ProbeNotFound => {
             print_setup_hints_if_relevant(client).await;
-            anyhow::bail!("Probe not found")
+            Err(ProbeNotFound.into())
         }
         AttachResult::FailedToOpenProbe(error) => {
             print_setup_hints_if_relevant(client).await;
-            anyhow::bail!("Failed to open probe: {error}")
+            Err(FailedToOpenProbe(error).into())
         }
         // A busy probe is accessible, so no setup hint here.
-        AttachResult::ProbeInUse => anyhow::bail!("Probe is already in use"),
+        AttachResult::ProbeInUse => Err(ProbeInUse.into()),
+        AttachResult::TargetAttachFailed {
+            message,
+            connect_under_reset,
+        } => Err(TargetAttachFailed {
+            message,
+            connect_under_reset,
+        }
+        .into()),
     }
 }
 
@@ -184,6 +193,7 @@ async fn print_setup_hints_if_relevant(client: &RpcClient) {
 pub async fn select_probe(
     client: &RpcClient,
     probe: Option<DebugProbeSelector>,
+    non_interactive: bool,
 ) -> anyhow::Result<DebugProbeEntry> {
     use anyhow::Context as _;
     use std::io::Write as _;
@@ -191,6 +201,13 @@ pub async fn select_probe(
     match client.select_probe(probe).await? {
         SelectProbeResult::Success(probe) => Ok(probe),
         SelectProbeResult::MultipleProbes(list) => {
+            if non_interactive {
+                return Err(MultipleProbesFound {
+                    list: list.iter().map(|probe| probe.to_string()).collect(),
+                }
+                .into());
+            }
+
             eprintln!("Available Probes:");
             for (i, probe_info) in list.iter().enumerate() {
                 eprintln!("{i}: {probe_info}");
@@ -221,6 +238,50 @@ pub async fn select_probe(
             }
         }
     }
+}
+
+/// More than one probe matched, and interactive selection was disabled.
+#[derive(Debug)]
+pub struct MultipleProbesFound {
+    pub list: Vec<String>,
+}
+
+impl std::fmt::Display for MultipleProbesFound {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "The following devices were found:")?;
+        for (num, probe) in self.list.iter().enumerate() {
+            writeln!(f, "[{num}]: {probe}")?;
+        }
+        write!(
+            f,
+            "\nUse '--probe VID:PID' or '--probe VID:PID:Serial' to select one."
+        )
+    }
+}
+
+impl std::error::Error for MultipleProbesFound {}
+
+/// No probe matched the selector / listing.
+#[derive(Debug, thiserror::Error)]
+#[error("Probe not found")]
+pub struct ProbeNotFound;
+
+/// The selected probe is held by another session.
+#[derive(Debug, thiserror::Error)]
+#[error("Probe is already in use")]
+pub struct ProbeInUse;
+
+/// Opening the probe failed before a chip attach was attempted.
+#[derive(Debug, thiserror::Error)]
+#[error("Failed to open probe: {0}")]
+pub struct FailedToOpenProbe(pub String);
+
+/// The probe opened, but connecting to the chip failed.
+#[derive(Debug, thiserror::Error)]
+#[error("Connecting to the chip was unsuccessful: {message}")]
+pub struct TargetAttachFailed {
+    pub message: String,
+    pub connect_under_reset: bool,
 }
 
 /// A selector for a named stream, be it an RTT or a semihosting channel.
@@ -445,7 +506,7 @@ pub async fn flash(
     path: &Path,
     format: FormatOptions,
     download_options: BinaryDownloadOptions,
-    rtt_client: Option<&mut CliRttClient>,
+    rtt_client: Option<Key<RttClient>>,
     image_target: Option<String>,
 ) -> anyhow::Result<BootInfo> {
     // Start timer.
@@ -506,22 +567,17 @@ pub async fn flash(
             Some(CliProgressBars::new())
         };
         session
-            .flash(
-                options,
-                loader.loader,
-                rtt_client.as_ref().map(|c| c.handle),
-                async |event| {
-                    if let ProgressEvent::FlashLayoutReady {
-                        flash_layout: layout,
-                    } = &event
-                    {
-                        flash_layout = Some(layout.clone());
-                    }
-                    if let Some(ref pb) = pb {
-                        pb.handle(event);
-                    }
-                },
-            )
+            .flash(options, loader.loader, rtt_client, async |event| {
+                if let ProgressEvent::FlashLayoutReady {
+                    flash_layout: layout,
+                } = &event
+                {
+                    flash_layout = Some(layout.clone());
+                }
+                if let Some(ref pb) = pb {
+                    pb.handle(event);
+                }
+            })
             .await?;
     }
 

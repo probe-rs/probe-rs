@@ -1,12 +1,14 @@
 use anyhow::bail;
 use indexmap::IndexMap;
-use parking_lot::FairMutex;
-use probe_rs::{CoreType, Session};
+use probe_rs::CoreType;
+use probe_rs_rpc_client::SessionInterface;
+use tokio::runtime::Handle;
 
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::process::Child;
 use std::time::Duration;
 
+use super::GdbSessionContext;
 use super::target;
 
 const CONNECTION_STRING: &str = "127.0.0.1:1337";
@@ -15,26 +17,16 @@ const CONNECTION_STRING: &str = "127.0.0.1:1337";
 pub struct GdbInstanceConfiguration {
     /// The core type that will be sent to GDB
     pub core_type: CoreType,
-    /// The list of cores to expose.  Each ID corresponds to the value passed to [Session::core()].
+    /// The list of core indices to expose.
     pub cores: Vec<usize>,
     /// The list of [SocketAddr] addresses to bind to
     pub socket_addrs: Vec<SocketAddr>,
 }
 
 impl GdbInstanceConfiguration {
-    /// Build a GDB configuration from a session object.  All cores are included.
-    ///
-    /// # Arguments
-    ///
-    /// * session - the [Session] object to load target information from
-    /// * connection_string - The optional connection string to use.
-    ///   If not specified `localhost:1337` is used.
-    ///   Multiple instances are bound by adding an offset to the supplied port.
-    ///
-    /// # Returns
-    /// Vec with the computed configuration
-    pub fn from_session(
-        session: &Session,
+    /// Build a GDB configuration from cached session context. All cores are included.
+    pub fn from_context(
+        context: &GdbSessionContext,
         connection_string: Option<impl AsRef<str>>,
     ) -> Vec<Self> {
         let connection_string = connection_string
@@ -44,21 +36,14 @@ impl GdbInstanceConfiguration {
 
         let addrs: Vec<SocketAddr> = connection_string.to_socket_addrs().unwrap().collect();
 
-        // Build a grouped list of cores by core type
-        // GDB only supports one architecture per stub so if we have two core types,
-        // such as ARMv7-a + ARMv7-m, we must create two stubs to connect to.
         let mut groups = IndexMap::new();
-        for (i, core) in session.target().cores.iter().enumerate() {
+        for core in &context.cores {
             groups
                 .entry(core.core_type)
                 .or_insert_with(Vec::new)
-                .push(i);
+                .push(core.index);
         }
 
-        // Create a GDB instance for each group, starting at the specified connection and adding one to the port each time
-        // For example - consider two groups computed above and an input of localhost:1337.
-        // Group 1 will bind to localhost:1337
-        // Group 2 will bind to localhost:1338
         groups
             .into_iter()
             .enumerate()
@@ -71,36 +56,31 @@ impl GdbInstanceConfiguration {
     }
 }
 
-/// Run a new GDB session.
-///
-/// # Arguments
-///
-/// * session - The [Session] to use, protected by a [FairMutex]
-/// * instances - a list of [GdbInstanceConfiguration] objects used to configure the GDB session
-///
-/// # Remarks
-///
-/// A default configuration can be created by calling [GdbInstanceConfiguration::from_session()]
+/// Run a new GDB session over RPC.
 pub fn run<'a>(
-    session: &FairMutex<Session>,
+    session: SessionInterface,
+    handle: Handle,
+    context: GdbSessionContext,
     instances: impl Iterator<Item = &'a GdbInstanceConfiguration>,
     mut gdb_process: Option<Child>,
 ) -> anyhow::Result<()> {
-    // Turn our group list into GDB targets
     let mut targets = instances
         .map(|instance| {
-            target::RuntimeTarget::new(session, instance.cores.to_vec(), &instance.socket_addrs[..])
+            target::RuntimeTarget::new(
+                session.clone(),
+                handle.clone(),
+                &context,
+                instance.cores.to_vec(),
+                &instance.socket_addrs[..],
+            )
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    // Avoid getting stuck in an infinite loop if we have no targets
     if targets.is_empty() {
         return Ok(());
     }
 
-    // Process every target in a loop
     loop {
-        // Check if the gdb we spawned has exited and if so exit outself.
         if let Some(gdb_process) = &mut gdb_process
             && let Some(exit_status) = gdb_process.try_wait()?
         {
@@ -116,21 +96,16 @@ pub fn run<'a>(
             wait_time = wait_time.min(target.process()?);
         }
 
-        // Wait until we were asked to check again
         std::thread::sleep(wait_time);
     }
 }
 
-/// Given a list of socket addresses, adjust the port by `offset` and return
-/// the new values
 fn adjust_addrs(addrs: &[SocketAddr], offset: usize) -> Vec<SocketAddr> {
     addrs
         .iter()
         .map(|addr| {
             let mut new_addr = *addr;
-
             new_addr.set_port(new_addr.port() + offset as u16);
-
             new_addr
         })
         .collect()

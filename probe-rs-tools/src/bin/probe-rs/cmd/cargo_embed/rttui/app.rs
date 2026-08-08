@@ -1,5 +1,7 @@
 use anyhow::{Context, Result, anyhow};
-use probe_rs::Core;
+use probe_rs_rpc::rtt_client::RttChannels;
+use probe_rs_rpc::{Key, RttClient};
+use probe_rs_rpc_client::SessionInterface;
 use ratatui::{
     Terminal,
     backend::CrosstermBackend,
@@ -20,7 +22,7 @@ use probe_rs_rpc::rtt_config::{DataFormat, RttChannelConfig};
 
 use crate::{
     cmd::cargo_embed::rttui::{channel::ChannelData, tab::TabConfig},
-    util::rtt::{DefmtProcessor, DefmtState, RttDecoder, client::RttClient},
+    util::rtt::{DefmtProcessor, DefmtState, RttDecoder},
 };
 
 use super::super::config;
@@ -46,12 +48,15 @@ pub struct App {
     // `.poll_rtt()` step in alternation.
     up_channels: Vec<Rc<RefCell<UpChannel>>>,
 
-    client: RttClient,
+    session: SessionInterface,
+    rtt_client: Key<RttClient>,
 }
 
 impl App {
     pub fn new(
-        client: RttClient,
+        session: SessionInterface,
+        rtt_client: Key<RttClient>,
+        channels: &RttChannels,
         elf: Option<Vec<u8>>,
         config: config::Config,
         timestamp_offset: UtcOffset,
@@ -67,18 +72,17 @@ impl App {
 
         // Create channel states
         let mut up_channels = Vec::new();
-        let mut down_channels = Vec::new();
 
         // Create tab config based on detected channels
-        for up in client.up_channels() {
-            let number = up.number();
+        for up in &channels.up {
+            let number = up.number;
 
             // Create a default tab config if the user didn't specify one
             if !tab_config.iter().any(|tab| tab.up_channel == number) {
                 tab_config.push(TabConfig {
                     up_channel: number,
                     down_channel: None,
-                    name: Some(up.channel_name()),
+                    name: Some(up.name.clone()),
                     hide: false,
                 });
             }
@@ -95,7 +99,7 @@ impl App {
             // TODO: this logic is duplicated in `create_rtt_config` - which function probably
             // should be removed.
             let default_channel_config = RttChannelConfig::default();
-            let channel_format = if up.channel_name() == "defmt" {
+            let channel_format = if up.name == "defmt" {
                 DataFormat::Defmt
             } else {
                 channel_config
@@ -131,14 +135,15 @@ impl App {
             };
 
             up_channels.push(Rc::new(RefCell::new(UpChannel::new(
-                up,
+                number,
+                up.name.clone(),
                 data_format,
                 channel_config.socket,
             ))));
         }
 
-        for down in client.down_channels() {
-            let number = down.number();
+        for down in &channels.down {
+            let number = down.number;
             if !tab_config
                 .iter()
                 .any(|tab| tab.down_channel == Some(number))
@@ -150,12 +155,10 @@ impl App {
                         0
                     },
                     down_channel: Some(number),
-                    name: Some(down.channel_name()),
+                    name: Some(down.name.clone()),
                     hide: false,
                 });
             }
-
-            down_channels.push(Rc::new(RefCell::new(down)));
         }
 
         // Create tabs
@@ -164,7 +167,10 @@ impl App {
             if tab.hide {
                 continue;
             }
-            let Some(up_channel) = up_channels.get(tab.up_channel as usize) else {
+            let Some(up_channel) = up_channels
+                .iter()
+                .find(|channel| channel.borrow().number() == tab.up_channel)
+            else {
                 tracing::warn!(
                     "Configured up channel {} does not exist, skipping tab",
                     tab.up_channel
@@ -216,7 +222,8 @@ impl App {
             current_height: 0,
 
             up_channels,
-            client,
+            session,
+            rtt_client,
         })
     }
 
@@ -224,8 +231,10 @@ impl App {
         self.terminal
             .draw(|f| {
                 let tab = &self.tabs[self.current_tab];
+                let has_down_channel = tab.has_down_channel();
+                let blocked = tab.is_blocked();
 
-                let chunks = layout_chunks(f, tab.input().is_some());
+                let chunks = layout_chunks(f, has_down_channel);
                 render_tabs(f, chunks[0], &self.tabs, self.current_tab);
 
                 let height = chunks[1].height as usize;
@@ -240,17 +249,20 @@ impl App {
                     .block(Block::default().borders(Borders::NONE));
                 f.render_widget(messages, chunks[1]);
 
-                if let Some(input) = current_tab.input() {
-                    let input = Paragraph::new(input)
-                        .style(Style::default().fg(Color::Yellow).bg(Color::Blue));
-                    f.render_widget(input, chunks[2]);
+                if let Some(text) = current_tab.down_line_display() {
+                    let style = if blocked {
+                        Style::default().fg(Color::White).bg(Color::Red)
+                    } else {
+                        Style::default().fg(Color::Yellow).bg(Color::Blue)
+                    };
+                    f.render_widget(Paragraph::new(text).style(style), chunks[2]);
                 }
             })
             .expect("Failed to render terminal UI");
     }
 
     /// Returns `true` if the application should exit.
-    pub fn handle_event(&mut self, core: &mut Core) -> bool {
+    pub async fn handle_event(&mut self) -> bool {
         let event = match self.events.next() {
             // Ignore key release events emitted by Crossterm on Windows
             Ok(event) if event.kind != KeyEventKind::Press => return false,
@@ -273,7 +285,7 @@ impl App {
             KeyCode::F(n) => self.select_tab(n as usize - 1),
             KeyCode::Tab => self.next_tab(),
             KeyCode::BackTab => self.previous_tab(),
-            KeyCode::Enter => self.push_rtt(core),
+            KeyCode::Enter => self.push_rtt().await,
             KeyCode::Char(c) => {
                 if has_control && let Some(digit) = c.to_digit(10).and_then(|d| d.checked_sub(1)) {
                     self.select_tab(digit as usize);
@@ -302,24 +314,77 @@ impl App {
         clippy::await_holding_refcell_ref,
         reason = "Main loop alternates between GUI and channel polling accesses"
     )]
-    pub async fn poll_rtt(&mut self, core: &mut Core<'_>) -> Result<()> {
-        for channel in self.up_channels.iter_mut() {
-            channel
-                .borrow_mut()
-                .poll_rtt(core, &mut self.client)
-                .await?;
+    pub async fn poll_rtt(&mut self) -> Result<()> {
+        let channel_numbers: Vec<u32> = self
+            .up_channels
+            .iter()
+            .map(|channel| channel.borrow().number())
+            .collect();
+
+        let results = self
+            .session
+            .poll_rtt_up(self.rtt_client, channel_numbers)
+            .await?;
+
+        for result in results {
+            let Some(channel) = self
+                .up_channels
+                .iter_mut()
+                .find(|channel| channel.borrow().number() == result.channel)
+            else {
+                continue;
+            };
+
+            match result.result {
+                Ok(bytes) => channel.borrow_mut().push_bytes(&bytes).await?,
+                Err(error) => {
+                    tracing::warn!("RTT poll of channel {} failed: {error}", result.channel);
+                }
+            }
         }
 
         Ok(())
     }
 
-    pub fn push_rtt(&mut self, core: &mut Core) {
-        if let Err(error) = self.tabs[self.current_tab].send_input(core, &mut self.client) {
-            tracing::warn!("Failed to send input to RTT channel: {error:?}");
+    pub async fn push_rtt(&mut self) {
+        self.tabs[self.current_tab].queue_input_line();
+        self.flush_down_channel(self.current_tab).await;
+    }
+
+    /// Retry writes for tabs whose down channel still has unsent bytes.
+    pub async fn flush_blocked_down_channels(&mut self) {
+        for index in 0..self.tabs.len() {
+            if self.tabs[index].is_blocked() {
+                self.flush_down_channel(index).await;
+            }
         }
     }
 
-    pub(crate) fn clean_up(&mut self, core: &mut Core) -> Result<()> {
+    async fn flush_down_channel(&mut self, tab_index: usize) {
+        let Some((channel, data)) = self.tabs[tab_index].take_pending() else {
+            return;
+        };
+
+        // Single attempt so the UI loop stays responsive; blocked tabs retry later.
+        match self
+            .session
+            .send_to_rtt(self.rtt_client, channel, data.clone(), 0)
+            .await
+        {
+            Ok(written) => {
+                let written = written as usize;
+                if written < data.len() {
+                    self.tabs[tab_index].restore_pending(data[written..].to_vec());
+                }
+            }
+            Err(error) => {
+                self.tabs[tab_index].restore_pending(data);
+                tracing::warn!("Failed to send input to RTT channel {channel}: {error:?}");
+            }
+        }
+    }
+
+    pub(crate) async fn clean_up(&mut self) -> Result<()> {
         clean_up_terminal();
         let _ = self.terminal.show_cursor();
 
@@ -327,7 +392,7 @@ impl App {
             self.save_tab_logs(i, tab);
         }
 
-        self.client.clean_up(core)?;
+        self.session.clean_up_rtt(self.rtt_client).await?;
 
         Ok(())
     }
@@ -417,7 +482,13 @@ fn layout_chunks(f: &mut ratatui::Frame, has_down_channel: bool) -> Rc<[Rect]> {
 }
 
 fn render_tabs(f: &mut ratatui::Frame, chunk: Rect, tabs: &[Tab], current_tab: usize) {
-    let tab_names = tabs.iter().map(|t| t.name());
+    let tab_names = tabs.iter().map(|t| {
+        if t.is_blocked() {
+            format!("{} [blocked]", t.name())
+        } else {
+            t.name().to_string()
+        }
+    });
     let tabs = Tabs::new(tab_names)
         .select(current_tab)
         .style(Style::default().fg(Color::Black).bg(Color::Yellow))

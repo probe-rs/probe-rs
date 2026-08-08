@@ -131,9 +131,18 @@ async fn attach_impl(ctx: RpcSpawnContext, request: AttachRequest) -> RpcResult<
         let elapsed = start.elapsed();
         if elapsed >= wait_for_probe {
             return Ok(match failure {
-                Some(error) => {
-                    AttachResult::FailedToOpenProbe(format!("{:?}", anyhow::anyhow!(error)))
-                }
+                Some(error) => match *error {
+                    OperationError::AttachingFailed {
+                        source,
+                        connect_under_reset,
+                    } => AttachResult::TargetAttachFailed {
+                        message: source.to_string(),
+                        connect_under_reset,
+                    },
+                    other => {
+                        AttachResult::FailedToOpenProbe(format!("{:?}", anyhow::anyhow!(other)))
+                    }
+                },
                 None => AttachResult::ProbeNotFound,
             });
         }

@@ -11,6 +11,7 @@ use crate::core_ops::{
     HandleSemihostingRequest, HandleSemihostingResponse, StepRequest, StepResult, WireCoreDump,
     WireCoreInformation, WireCoreMetadata, WireCoreStatus, WireRegisterReadResult,
 };
+use crate::cores::{CoresRequest, CoresStatusResponse, HaltCoresRequest};
 use crate::debug_vars::{
     ClearCoreDebugStateRequest, EvaluateRequest, EvaluateResponse, LoadSvdRequest, LoadSvdResponse,
     ScopesRequest, ScopesResponse, SetVariableRequest, SetVariableResult, VariablesRequest,
@@ -19,8 +20,9 @@ use crate::debug_vars::{
 use crate::disassemble::{DisassembleRequest, DisassembleResponse};
 use crate::file::{AppendFileRequest, CreateFileResponse};
 use crate::flash::{
-    BootRequest, BuildRequest, BuildResponse, EraseRequest, FlashRequest, LoadRegionRequest,
-    NewFlashLoaderRequest, NewFlashLoaderResponse, ProgressEvent, VerifyRequest, VerifyResponse,
+    BootRequest, BuildRequest, BuildResponse, EraseAllRequest, EraseRangeRequest, FlashRequest,
+    LoadRegionRequest, NewFlashLoaderRequest, NewFlashLoaderResponse, ProgressEvent, VerifyRequest,
+    VerifyResponse,
 };
 use crate::info::{InfoEvent, TargetInfoRequest, TargetMetadataRequest, TargetMetadataResponse};
 use crate::memory::{ReadBytesRequest, ReadMemoryRequest, WriteMemoryRequest};
@@ -29,7 +31,6 @@ use crate::probe::{
     AttachRequest, AttachResponse, ListProbesResponse, SelectProbeRequest, SelectProbeResponse,
 };
 use crate::reset::{ResetCoreAndHaltRequest, ResetCoreRequest};
-use crate::resume::ResumeAllCoresRequest;
 use crate::rtt_client::{
     CreateRttClientRequest, CreateRttClientResponse, PollRttUpRequest, PollRttUpResponse,
     RttChannelRequest, RttChannelsResponse, RttDownRequest, RttDownResponse,
@@ -73,12 +74,15 @@ endpoints! {
     | SelectProbeEndpoint       | SelectProbeRequest      | SelectProbeResponse     | "probe/select"     |
     | AttachEndpoint            | AttachRequest           | AttachResponse          | "probe/attach"     |
 
-    | ResumeAllCoresEndpoint    | ResumeAllCoresRequest   | NoResponse              | "resume"           |
+    | HaltCoresEndpoint         | HaltCoresRequest        | CoresStatusResponse     | "cores/halt"       |
+    | ResumeCoresEndpoint       | CoresRequest            | CoresStatusResponse     | "cores/resume"     |
+    | CoresStatusEndpoint       | CoresRequest            | CoresStatusResponse     | "cores/status"     |
     | NewFlashLoaderEndpoint    | NewFlashLoaderRequest   | NewFlashLoaderResponse  | "flash/new"        |
     | BuildEndpoint             | BuildRequest            | BuildResponse           | "flash/build"      |
     | LoadRegionEndpoint        | LoadRegionRequest       | NoResponse              | "flash/load_region"|
     | FlashEndpoint             | FlashRequest            | NoResponse              | "flash/flash"      |
-    | EraseEndpoint             | EraseRequest            | NoResponse              | "flash/erase"      |
+    | EraseAllEndpoint          | EraseAllRequest         | NoResponse              | "flash/erase_all"  |
+    | EraseRangeEndpoint        | EraseRangeRequest       | NoResponse              | "flash/erase_range"|
     | VerifyEndpoint            | VerifyRequest           | VerifyResponse          | "flash/verify"     |
     | BootEndpoint              | BootRequest             | NoResponse              | "flash/boot"       |
     | MonitorEndpoint           | MonitorRequest          | MonitorResponse         | "monitor"          |
@@ -133,10 +137,10 @@ endpoints! {
     | HandleSemihostingEndpoint    | HandleSemihostingRequest | HandleSemihostingResponse  | "core/handle_semihosting" |
     | DisassembleEndpoint          | DisassembleRequest       | DisassembleResponse        | "core/disassemble"        |
 
-    | ReadMemory8Endpoint       | ReadMemoryRequest       | ReadMemory8Response     | "memory/read8"     |
-    | ReadMemory16Endpoint      | ReadMemoryRequest       | ReadMemory16Response    | "memory/read16"    |
-    | ReadMemory32Endpoint      | ReadMemoryRequest       | ReadMemory32Response    | "memory/read32"    |
-    | ReadMemory64Endpoint      | ReadMemoryRequest       | ReadMemory64Response    | "memory/read64"    |
+    | ReadMemory8Endpoint       | ReadMemoryRequest       | ReadMemory8Response     | "memory/read8"      |
+    | ReadMemory16Endpoint      | ReadMemoryRequest       | ReadMemory16Response    | "memory/read16"     |
+    | ReadMemory32Endpoint      | ReadMemoryRequest       | ReadMemory32Response    | "memory/read32"     |
+    | ReadMemory64Endpoint      | ReadMemoryRequest       | ReadMemory64Response    | "memory/read64"     |
     | ReadBytesEndpoint         | ReadBytesRequest        | ReadBytesResponse       | "memory/read_bytes" |
 
     | WriteMemory8Endpoint      | WriteMemory8Request     | NoResponse              | "memory/write8"    |

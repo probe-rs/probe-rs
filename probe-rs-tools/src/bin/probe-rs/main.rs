@@ -130,7 +130,7 @@ impl Cli {
             Subcommand::Serve(cmd) => cmd.run(_config.server).await,
             Subcommand::List(cmd) => cmd.run(client).await,
             Subcommand::Info(cmd) => cmd.run(client).await,
-            Subcommand::Gdb(cmd) => cmd.run(&mut registry, &lister),
+            Subcommand::Gdb(cmd) => cmd.run(client).await,
             Subcommand::Reset(cmd) => cmd.run(client).await,
             Subcommand::Debug(cmd) => cmd.run(client, utc_offset).await,
             Subcommand::Download(cmd) => cmd.run(client).await,

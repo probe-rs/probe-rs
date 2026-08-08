@@ -78,6 +78,11 @@ pub enum AttachResult {
     ProbeNotFound,
     FailedToOpenProbe(String),
     ProbeInUse,
+    /// The probe opened, but attaching to the chip failed.
+    TargetAttachFailed {
+        message: String,
+        connect_under_reset: bool,
+    },
 }
 
 #[derive(Debug, docsplay::Display, PartialEq, Eq, Clone, Copy, Serialize, Deserialize, Schema)]
