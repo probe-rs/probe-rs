@@ -5,8 +5,6 @@ use std::collections::btree_map::Entry;
 
 use anyhow::anyhow;
 
-use data::build_target_description;
-
 use gdbstub::target::TargetError;
 use gdbstub::target::ext::memory_map::MemoryMap;
 use gdbstub::target::ext::target_description_xml_override::TargetDescriptionXmlOverride;
@@ -15,9 +13,8 @@ use probe_rs::Error;
 use probe_rs::config::MemoryRegion;
 use probe_rs::{CoreType, Session};
 
-pub(crate) use data::{GdbRegisterSource, TargetDescription};
-
-mod data;
+pub(crate) mod data;
+pub(crate) use data::{GdbRegisterSource, TargetDescription, build_target_description};
 
 impl TargetDescriptionXmlOverride for RuntimeTarget<'_> {
     fn target_description_xml(

@@ -1,18 +1,24 @@
 mod base;
 mod breakpoints;
-pub(crate) mod desc;
+mod desc;
 mod flash;
 mod monitor;
 mod resume;
 mod thread;
 mod traits;
-pub(crate) mod utils;
 
-use super::arch::RuntimeArch;
-use parking_lot::FairMutex;
-use probe_rs::flashing::FlashLoader;
-use probe_rs::{BreakpointCause, CoreStatus, Error, HaltReason, Session};
+use crate::cmd::gdb_server::arch::RuntimeArch;
+use crate::cmd::gdb_server::target::desc::TargetDescription;
+use probe_rs::CoreRegisters;
+use probe_rs::InstructionSet;
+use probe_rs_rpc::chip::MemoryRegion;
+use probe_rs_rpc::core_ops::WireCoreStatus;
+use probe_rs_rpc::info::WireFlashSector;
+use probe_rs_rpc::{FlashLoader, Key};
+use probe_rs_rpc_client::{ClientError, CoreInterface, SessionInterface};
+use tokio::runtime::Handle;
 
+use std::future::Future;
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::num::NonZeroUsize;
 use std::time::Duration;
@@ -31,89 +37,116 @@ use gdbstub::target::ext::target_description_xml_override::TargetDescriptionXmlO
 
 pub(crate) use traits::GdbErrorExt;
 
-use desc::TargetDescription;
+use super::GdbSessionContext;
 
 /// Actions for resuming a core
 #[derive(Debug, Copy, Clone)]
 pub(crate) enum ResumeAction {
-    /// Don't change the state
     Unchanged,
-    /// Resume core
     Resume,
-    /// Single step core
     Step,
 }
 
-/// The top level gdbstub target for a probe-rs debug session
-pub(crate) struct RuntimeTarget<'a> {
-    /// The probe-rs session object
-    session: &'a FairMutex<Session>,
-    /// A list of core IDs for this stub
-    cores: Vec<usize>,
-
-    /// TCP listener accepting incoming connections
-    listener: TcpListener,
-    /// The current GDB stub state machine
-    gdb: Option<GdbStubStateMachine<'a, RuntimeTarget<'a>, TcpStream>>,
-    /// Resume action to be used upon a continue request
-    resume_action: (usize, ResumeAction),
-
-    /// Description of target's architecture and registers
-    target_desc: TargetDescription,
-
-    /// The FlashLoader in reused between multiple flash write commands in
-    /// order to batch all erase and write operations.
-    flash_loader: Option<FlashLoader>,
+/// Cached facts for one core exposed by this stub.
+#[derive(Clone)]
+pub(crate) struct CoreCache {
+    pub index: usize,
+    pub name: String,
+    pub core_type: probe_rs::CoreType,
+    pub registers: &'static CoreRegisters,
+    pub instruction_set: InstructionSet,
 }
 
-impl<'a> RuntimeTarget<'a> {
-    /// Create a new RuntimeTarget and get ready to start processing GDB input
+/// The top level gdbstub target for a probe-rs RPC debug session
+pub(crate) struct RuntimeTarget {
+    session: SessionInterface,
+    handle: Handle,
+    cores: Vec<CoreCache>,
+    target_name: String,
+    memory_map: Vec<MemoryRegion>,
+    flash_sectors: Vec<WireFlashSector>,
+
+    listener: TcpListener,
+    gdb: Option<GdbStubStateMachine<'static, RuntimeTarget, TcpStream>>,
+    resume_action: (usize, ResumeAction),
+
+    target_desc: TargetDescription,
+    /// Server-side flash loader created for an in-progress GDB `load`.
+    flash_loader: Option<Key<FlashLoader>>,
+    memory_map_xml: Option<String>,
+}
+
+impl RuntimeTarget {
     pub fn new(
-        session: &'a FairMutex<Session>,
-        cores: Vec<usize>,
+        session: SessionInterface,
+        handle: Handle,
+        context: &GdbSessionContext,
+        core_indices: Vec<usize>,
         addrs: &[SocketAddr],
     ) -> Result<Self, anyhow::Error> {
         let listener = TcpListener::bind(addrs)?;
         listener.set_nonblocking(true)?;
 
+        let cores = core_indices
+            .into_iter()
+            .map(|index| {
+                context
+                    .cores
+                    .iter()
+                    .find(|c| c.index == index)
+                    .cloned()
+                    .map(|c| CoreCache {
+                        index: c.index,
+                        name: c.name,
+                        core_type: c.core_type,
+                        registers: c.registers,
+                        instruction_set: c.instruction_set,
+                    })
+                    .ok_or_else(|| anyhow::anyhow!("Missing core metadata for core {index}"))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
         Ok(Self {
             session,
+            handle,
             cores,
+            target_name: context.target_name.clone(),
+            memory_map: context.memory_map.clone(),
+            flash_sectors: context.flash_sectors.clone(),
             listener,
             gdb: None,
             resume_action: (0, ResumeAction::Unchanged),
             target_desc: TargetDescription::default(),
             flash_loader: None,
+            memory_map_xml: None,
         })
     }
 
-    /// Process any pending work for this target
-    ///
-    /// Returns: Duration to wait before processing this target again
+    pub(crate) fn block_on<F: Future>(&self, fut: F) -> F::Output {
+        tokio::task::block_in_place(|| self.handle.block_on(fut))
+    }
+
+    pub(crate) fn core(&self, index: usize) -> CoreInterface {
+        self.session.core(index)
+    }
+
     pub fn process(&mut self) -> Result<Duration, anyhow::Error> {
-        // State 1 - unconnected
         if self.gdb.is_none() {
-            // See if we have a connection
             let stream = match self.listener.accept() {
                 Ok((stream, addr)) => {
                     tracing::info!("New connection from {addr:#?}");
                     stream
                 }
-                // No connection yet
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                     return Ok(Duration::from_millis(10));
                 }
-                // Fatal error
                 Err(e) => return Err(e.into()),
             };
 
-            // When we first attach to the core, GDB expects us to halt the core,
-            // so we do this here when a new client connects.
             self.halt_all_cores()?;
             self.load_target_desc()?;
+            self.memory_map_xml = Some(self.build_memory_map_xml()?);
 
-            // Start the GDB Stub state machine
-            // Any errors at this state are either IO errors or fatal config errors
             let state_machine = GdbStub::new(stream)
                 .run_state_machine(self)
                 .map_err(|e| anyhow::anyhow!(e))?;
@@ -121,7 +154,6 @@ impl<'a> RuntimeTarget<'a> {
             self.gdb = Some(state_machine);
         }
 
-        // Stage 2 - connected
         let Some(gdb) = self.gdb.take() else {
             return Ok(Duration::ZERO);
         };
@@ -134,7 +166,6 @@ impl<'a> RuntimeTarget<'a> {
             GdbStubStateMachine::CtrlCInterrupt(state) => self.handle_ctrl_c(state)?,
             GdbStubStateMachine::Disconnected(state) => {
                 tracing::info!("GDB client disconnected: {:?}", state.get_reason());
-
                 None
             }
         };
@@ -142,35 +173,30 @@ impl<'a> RuntimeTarget<'a> {
         Ok(wait_time)
     }
 
-    fn halt_all_cores(&mut self) -> Result<(), Error> {
-        let mut session = self.session.lock();
-
-        for i in &self.cores {
-            let mut core = match session.core(*i) {
-                Ok(core) => core,
-                // A core that is not enabled yet (e.g. a secondary core still
-                // held in reset by firmware) cannot be halted. Skip it rather
-                // than failing the whole session; it will be picked up on a
-                // later access once firmware has enabled it.
-                Err(Error::CoreDisabled(_)) => continue,
-                Err(e) => return Err(e),
+    fn halt_all_cores(&mut self) -> Result<(), ClientError> {
+        for core_info in &self.cores {
+            let core = self.session.core(core_info.index);
+            let status = match self.handle.block_on(core.status()) {
+                Ok(status) => status,
+                Err(error) if is_core_disabled(&error) => continue,
+                Err(error) => return Err(error),
             };
-            if !core.core_halted()? {
-                core.halt(Duration::from_millis(100))?;
+            if !matches!(status, WireCoreStatus::Halted(_)) {
+                self.handle
+                    .block_on(core.halt(Duration::from_millis(100)))?;
             }
         }
 
         Ok(())
     }
 
-    fn handle_idle<'b>(
+    fn handle_idle(
         &mut self,
-        mut state: GdbStubStateMachineInner<'b, state::Idle<Self>, Self, TcpStream>,
+        mut state: GdbStubStateMachineInner<'static, state::Idle<Self>, Self, TcpStream>,
         wait_time: &mut Duration,
-    ) -> Result<Option<GdbStubStateMachine<'b, Self, TcpStream>>, anyhow::Error> {
+    ) -> Result<Option<GdbStubStateMachine<'static, Self, TcpStream>>, anyhow::Error> {
         let next_byte = {
             let conn = state.borrow_conn();
-
             read_if_available(conn)?
         };
 
@@ -184,14 +210,13 @@ impl<'a> RuntimeTarget<'a> {
         Ok(Some(next_state))
     }
 
-    fn handle_running<'b>(
+    fn handle_running(
         &mut self,
-        mut state: GdbStubStateMachineInner<'b, state::Running, Self, TcpStream>,
+        mut state: GdbStubStateMachineInner<'static, state::Running, Self, TcpStream>,
         wait_time: &mut Duration,
-    ) -> Result<Option<GdbStubStateMachine<'b, Self, TcpStream>>, anyhow::Error> {
+    ) -> Result<Option<GdbStubStateMachine<'static, Self, TcpStream>>, anyhow::Error> {
         let next_byte = {
             let conn = state.borrow_conn();
-
             read_if_available(conn)?
         };
 
@@ -199,44 +224,35 @@ impl<'a> RuntimeTarget<'a> {
             return Ok(Some(state.incoming_data(self, b)?));
         }
 
-        // Check for break
         let mut stop_reason: Option<MultiThreadStopReason<u64>> = None;
-        {
-            let mut session = self.session.lock();
+        for core_info in &self.cores {
+            let core = self.session.core(core_info.index);
+            let status = match self.block_on(core.status()) {
+                Ok(status) => status,
+                Err(error) if is_core_disabled(&error) => continue,
+                Err(error) => return Err(error.into()),
+            };
 
-            for i in &self.cores {
-                let mut core = match session.core(*i) {
-                    Ok(core) => core,
-                    // A core that is not enabled yet has no status to report.
-                    Err(Error::CoreDisabled(_)) => continue,
-                    Err(e) => return Err(e.into()),
-                };
-                let CoreStatus::Halted(reason) = core.status()? else {
-                    continue;
-                };
+            let WireCoreStatus::Halted(reason) = status else {
+                continue;
+            };
 
-                let tid = NonZeroUsize::new(i + 1).unwrap();
-                stop_reason = Some(match reason {
-                    HaltReason::Breakpoint(BreakpointCause::Hardware)
-                    | HaltReason::Breakpoint(BreakpointCause::Unknown) => {
-                        // Some architectures do not allow us to distinguish between
-                        // hardware and software breakpoints, so we just treat `Unknown`
-                        // as hardware breakpoints.
-                        MultiThreadStopReason::HwBreak(tid)
-                    }
-                    HaltReason::Step => MultiThreadStopReason::DoneStep,
-                    _ => MultiThreadStopReason::SignalWithThread {
-                        tid,
-                        signal: Signal::SIGINT,
-                    },
-                });
-                break;
-            }
+            let tid = NonZeroUsize::new(core_info.index + 1).unwrap();
+            stop_reason = Some(match reason {
+                probe_rs_rpc::core_ops::WireHaltReason::Breakpoint(
+                    probe_rs_rpc::core_ops::WireBreakpointCause::Hardware
+                    | probe_rs_rpc::core_ops::WireBreakpointCause::Unknown,
+                ) => MultiThreadStopReason::HwBreak(tid),
+                probe_rs_rpc::core_ops::WireHaltReason::Step => MultiThreadStopReason::DoneStep,
+                _ => MultiThreadStopReason::SignalWithThread {
+                    tid,
+                    signal: Signal::SIGINT,
+                },
+            });
+            break;
         }
 
         let next_state = if let Some(reason) = stop_reason {
-            // Halt all remaining cores that are still running.
-            // GDB expects all or nothing stops.
             self.halt_all_cores()?;
             state.report_stop(self, reason)?
         } else {
@@ -247,10 +263,10 @@ impl<'a> RuntimeTarget<'a> {
         Ok(Some(next_state))
     }
 
-    fn handle_ctrl_c<'b>(
+    fn handle_ctrl_c(
         &mut self,
-        state: GdbStubStateMachineInner<'b, state::CtrlCInterrupt, Self, TcpStream>,
-    ) -> Result<Option<GdbStubStateMachine<'b, Self, TcpStream>>, anyhow::Error> {
+        state: GdbStubStateMachineInner<'static, state::CtrlCInterrupt, Self, TcpStream>,
+    ) -> Result<Option<GdbStubStateMachine<'static, Self, TcpStream>>, anyhow::Error> {
         self.halt_all_cores()?;
         let next_state =
             state.interrupt_handled(self, Some(MultiThreadStopReason::Signal(Signal::SIGINT)))?;
@@ -259,7 +275,7 @@ impl<'a> RuntimeTarget<'a> {
     }
 }
 
-impl Target for RuntimeTarget<'_> {
+impl Target for RuntimeTarget {
     type Arch = RuntimeArch;
     type Error = anyhow::Error;
 
@@ -294,17 +310,17 @@ impl Target for RuntimeTarget<'_> {
     }
 }
 
-/// Read a byte from a stream if available, otherwise return None
 fn read_if_available(conn: &mut TcpStream) -> Result<Option<u8>, anyhow::Error> {
     match conn.peek() {
-        Ok(p) => {
-            // Unwrap is safe because peek already showed
-            // there's data in the buffer
-            match p {
-                Some(_) => conn.read().map(Some).map_err(|e| e.into()),
-                None => Ok(None),
-            }
-        }
+        Ok(p) => match p {
+            Some(_) => conn.read().map(Some).map_err(|e| e.into()),
+            None => Ok(None),
+        },
         Err(e) => Err(anyhow::Error::from(e)),
     }
+}
+
+pub(crate) fn is_core_disabled(error: &ClientError) -> bool {
+    let text = error.to_string();
+    text.contains("is not enabled") || text.contains("CoreDisabled")
 }

@@ -130,7 +130,7 @@ impl Cli {
             Subcommand::Serve(cmd) => cmd.run(_config.server).await,
             Subcommand::List(cmd) => cmd.run(client).await,
             Subcommand::Info(cmd) => cmd.run(client).await,
-            Subcommand::Gdb(cmd) => cmd.run(&mut registry, &lister),
+            Subcommand::Gdb(cmd) => cmd.run(client).await,
             Subcommand::Reset(cmd) => cmd.run(client).await,
             Subcommand::Debug(cmd) => cmd.run(client, utc_offset).await,
             Subcommand::Download(cmd) => cmd.run(client).await,
@@ -172,7 +172,7 @@ enum Subcommand {
     /// Resets the target attached to the selected debug probe
     Reset(cmd::reset::Cmd),
     /// Run a GDB server
-    Gdb(cmd::gdb_server::Cmd),
+    Gdb(cmd::gdb_server_rpc::Cmd),
     /// Basic command line debugger
     Debug(cmd::debug::Cmd),
     /// Download memory to attached target
