@@ -1,0 +1,79 @@
+name: CH570 / CH572 Series
+chip_detection:
+- !WchLink
+  mask: 0xff000000
+  variants:
+    0x70000000: CH570
+    0x72000000: CH572
+variants:
+- name: CH570
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+  memory_map:
+  - !Nvm
+    name: CodeFlash
+    range:
+      start: 0x0
+      end: 0x3c000
+    cores:
+    - main
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - ch570-code-flash
+- name: CH572
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+  memory_map:
+  - !Nvm
+    name: CodeFlash
+    range:
+      start: 0x0
+      end: 0x3c000
+    cores:
+    - main
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - ch570-code-flash
+flash_algorithms:
+- name: ch570-code-flash
+  description: CH570/CH572 CodeFlash
+  default: true
+  instructions: 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
+  load_address: 0x20000008
+  pc_init: 0x0
+  pc_uninit: 0x18
+  pc_program_page: 0x284
+  pc_erase_sector: 0x24
+  pc_erase_all: 0x25a
+  data_section_offset: 0x548
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x3c000
+    page_size: 0x1000
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+  cores:
+  - main

@@ -2,10 +2,11 @@ use std::{
     any::Any,
     collections::{HashMap, HashSet},
     marker::PhantomData,
-    ops::DerefMut,
+    ops::{Deref, DerefMut},
     sync::Arc,
 };
 
+use parking_lot::Mutex as ParkingMutex;
 use probe_rs::config::Registry;
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
@@ -16,8 +17,27 @@ pub trait ObjectMarker: 'static {
     type Object: Any + Send;
 }
 
+pub struct SessionEntry {
+    pub session: probe_rs::Session,
+    pub _lease: Option<probe_broker::ProbeLease>,
+}
+
+impl Deref for SessionEntry {
+    type Target = probe_rs::Session;
+
+    fn deref(&self) -> &Self::Target {
+        &self.session
+    }
+}
+
+impl DerefMut for SessionEntry {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.session
+    }
+}
+
 impl ObjectMarker for Session {
-    type Object = probe_rs::Session;
+    type Object = SessionEntry;
 }
 
 impl ObjectMarker for FlashLoader {
@@ -34,6 +54,7 @@ impl ObjectMarker for TempFileHandle {
 
 pub mod debug_state;
 pub mod functions;
+pub mod probe_broker;
 pub mod svd;
 pub mod utils;
 
@@ -92,7 +113,7 @@ impl ObjectStorage {
 /// State associated with a single connection.
 #[derive(Clone)]
 pub struct ConnectionState {
-    dry_run_sessions: HashSet<Key<Session>>,
+    dry_run_sessions: Arc<ParkingMutex<HashSet<Key<Session>>>>,
     /// Generic object storage.
     object_storage: Arc<Mutex<ObjectStorage>>,
     registry: Arc<Mutex<Registry>>,
@@ -106,7 +127,7 @@ pub struct ConnectionState {
 impl ConnectionState {
     pub fn new() -> Self {
         Self {
-            dry_run_sessions: HashSet::new(),
+            dry_run_sessions: Arc::new(ParkingMutex::new(HashSet::new())),
             object_storage: Arc::new(Mutex::new(ObjectStorage::new())),
             registry: Arc::new(Mutex::new(Registry::from_builtin_families())),
             debug_states: Arc::new(Mutex::new(HashMap::new())),
@@ -136,10 +157,18 @@ impl ConnectionState {
         locked_cell.get_blocking()
     }
 
-    pub async fn set_session(&mut self, session: probe_rs::Session, dry_run: bool) -> Key<Session> {
-        let key = self.store_object(session).await;
+    pub async fn set_session(
+        &self,
+        session: probe_rs::Session,
+        dry_run: bool,
+        lease: Option<probe_broker::ProbeLease>,
+    ) -> Key<Session> {
+        let key = self.object_storage.lock().await.store_object(SessionEntry {
+            session,
+            _lease: lease,
+        });
         if dry_run {
-            self.dry_run_sessions.insert(key);
+            self.dry_run_sessions.lock().insert(key);
         }
         key
     }
@@ -148,7 +177,7 @@ impl ConnectionState {
         SessionState {
             object_storage: self.object_storage.as_ref(),
             session: sid,
-            dry_run: self.dry_run_sessions.contains(&sid),
+            dry_run: self.dry_run_sessions.lock().contains(&sid),
         }
     }
 }
@@ -169,9 +198,11 @@ impl SessionState<'_> {
 
     /// Blocks while other users hold the session.
     pub fn session_blocking(&self) -> impl DerefMut<Target = probe_rs::Session> + Send + use<> {
-        // MUST be two separate statements so that the lock is released.
         let obj_cell = self.object_storage().cell(self.session);
-        obj_cell.get_blocking()
+        let guard = obj_cell.obj.clone().blocking_lock_owned();
+        tokio::sync::OwnedMutexGuard::map(guard, |e: &mut (dyn Any + Send)| {
+            &mut e.downcast_mut::<SessionEntry>().unwrap().session
+        })
     }
 
     pub fn dry_run(&self) -> bool {

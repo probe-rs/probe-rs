@@ -65,7 +65,8 @@ struct CliOptions {
         long,
         global = true,
         env = "PROBE_RS_REMOTE_HOST",
-        help_heading = "REMOTE CONFIGURATION"
+        help_heading = "REMOTE CONFIGURATION",
+        long_help = crate::HOST_LONG_HELP
     )]
     host: Option<String>,
 

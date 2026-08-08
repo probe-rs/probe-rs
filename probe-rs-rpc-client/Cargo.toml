@@ -25,6 +25,8 @@ remote = [
     "dep:http",
     "dep:futures-util",
     "dep:tokio-util",
+    "tokio/io-util",
+    "tokio/process",
 ]
 
 [dependencies]

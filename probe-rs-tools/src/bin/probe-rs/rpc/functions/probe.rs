@@ -1,12 +1,15 @@
-use postcard_rpc::header::VarHeader;
+use std::time::{Duration, Instant};
+
+use postcard_rpc::{header::VarHeader, server::Sender};
+use probe_rs::probe::DebugProbeSelector;
 use probe_rs_rpc::probe::{
-    AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, ListProbesResponse,
-    SelectProbeRequest, SelectProbeResponse, SelectProbeResult, WireProtocol,
+    AttachRequest, AttachResult, DebugProbeEntry, ListProbesResponse, SelectProbeRequest,
+    SelectProbeResponse, SelectProbeResult, WireProtocol,
 };
 
-use crate::rpc::functions::{RpcContext, convert::lift};
-use crate::util::common_options::{OperationError, ProbeOptions};
-use probe_rs_rpc::RpcResult;
+use crate::rpc::functions::{RpcContext, RpcSpawnContext, WireTxImpl};
+use crate::util::common_options::{OPEN_RETRY_INTERVAL, OperationError, ProbeOptions};
+use probe_rs_rpc::{AttachEndpoint, RpcResult};
 
 pub fn list_probes(ctx: &mut RpcContext, _header: VarHeader, _request: ()) -> ListProbesResponse {
     let lister = ctx.lister();
@@ -64,38 +67,337 @@ pub async fn select_probe(
 }
 
 pub async fn attach(
-    ctx: &mut RpcContext,
-    _header: VarHeader,
+    ctx: RpcSpawnContext,
+    header: VarHeader,
     request: AttachRequest,
-) -> RpcResult<AttachResult> {
-    let mut registry = ctx.registry().await;
-    let common_options = ProbeOptions::from(&request).load(&mut registry)?;
-    let target = common_options.get_target_selector()?;
+    sender: Sender<WireTxImpl>,
+) {
+    let resp = attach_impl(ctx, request).await;
 
-    let probe = match common_options.attach_probe(&ctx.lister()) {
-        Ok(probe) => probe,
-        Err(OperationError::NoProbesFound) => return Ok(AttachResult::ProbeNotFound),
-        Err(error) => {
-            return Ok(AttachResult::FailedToOpenProbe(format!(
-                "{:?}",
-                anyhow::anyhow!(error)
-            )));
+    sender
+        .reply::<AttachEndpoint>(header.seq_no, &resp)
+        .await
+        .unwrap();
+}
+
+async fn attach_impl(ctx: RpcSpawnContext, request: AttachRequest) -> RpcResult<AttachResult> {
+    let probe_options = ProbeOptions::from(&request);
+    let dry_run = probe_options.dry_run;
+    let selector = convert::from_wire_debug_probe_selector(request.probe.selector());
+    let cancel = ctx.cancellation_token();
+
+    let wait_for_probe = request.wait_for_probe.unwrap_or(Duration::ZERO);
+    // A dry run drives a `FakeProbe` and claims no device.
+    let lease = if dry_run {
+        None
+    } else {
+        let acquire = ctx.probe_broker().acquire(selector.clone());
+
+        tokio::select! {
+            granted = tokio::time::timeout(wait_for_probe, acquire) => match granted {
+                Ok(lease) => Some(lease),
+                Err(_) => return Ok(AttachResult::ProbeInUse),
+            },
+            _ = cancel.cancelled() => return Err("attach cancelled".into()),
         }
     };
 
-    let mut session = common_options.attach_session(probe, target)?;
+    let start = Instant::now();
 
-    // attach_session halts the target, let's give the user the option
-    // to resume it without a roundtrip
-    if request.resume_target {
+    loop {
+        let attempt = {
+            let ctx = ctx.clone();
+            let probe_options = probe_options.clone();
+            let selector = selector.clone();
+
+            tokio::task::spawn_blocking(move || {
+                attach_once(ctx, probe_options, selector, request.resume_target)
+            })
+            .await
+            .unwrap()?
+        };
+
+        // Only the outcome of the last attempt is reported, so that the caller
+        // learns why the probe is unusable now, not why it was earlier.
+        let failure = match attempt {
+            AttachAttempt::Attached(session) => {
+                let session_id = ctx.set_session(*session, dry_run, lease).await;
+                return Ok(AttachResult::Success(session_id));
+            }
+            AttachAttempt::ProbeGone => None,
+            AttachAttempt::Failed(error) => Some(error),
+        };
+
+        let elapsed = start.elapsed();
+        if elapsed >= wait_for_probe {
+            return Ok(match failure {
+                Some(error) => {
+                    AttachResult::FailedToOpenProbe(format!("{:?}", anyhow::anyhow!(error)))
+                }
+                None => AttachResult::ProbeNotFound,
+            });
+        }
+
+        tokio::select! {
+            _ = tokio::time::sleep(OPEN_RETRY_INTERVAL.min(wait_for_probe - elapsed)) => {}
+            _ = cancel.cancelled() => return Err("attach cancelled".into()),
+        }
+    }
+}
+
+enum AttachAttempt {
+    Attached(Box<probe_rs::Session>),
+    /// The probe is not in the probe list. A probe that another process holds
+    /// can drop out of the list, so this is not necessarily permanent.
+    ProbeGone,
+    Failed(Box<OperationError>),
+}
+
+fn attach_once(
+    ctx: RpcSpawnContext,
+    probe_options: ProbeOptions,
+    selector: DebugProbeSelector,
+    resume_target: bool,
+) -> RpcResult<AttachAttempt> {
+    use crate::rpc::functions::convert::lift;
+
+    let lister = ctx.lister();
+    let mut registry = ctx.registry_blocking();
+    let loaded = probe_options.load(&mut registry)?;
+    let target = loaded.get_target_selector()?;
+
+    let probe = match loaded.attach_probe(&lister) {
+        Ok(probe) => probe,
+        Err(OperationError::NoProbesFound) => return Ok(AttachAttempt::ProbeGone),
+        Err(error) => {
+            if lister.list_with_access(Some(&selector)).is_empty() {
+                return Ok(AttachAttempt::ProbeGone);
+            }
+            return Ok(AttachAttempt::Failed(Box::new(error)));
+        }
+    };
+
+    let mut session = loaded.attach_session(probe, target)?;
+    if resume_target {
         lift(session.resume_all_cores())?;
     }
-    let session_id = ctx.set_session(session, common_options.dry_run()).await;
-    Ok(AttachResult::Success(session_id))
+
+    Ok(AttachAttempt::Attached(Box::new(session)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::rpc::functions::RpcApp;
+    use crate::rpc::probe_broker::ProbeBroker;
+    use probe_rs::architecture::arm::FullyQualifiedApAddress;
+    use probe_rs::integration::{FakeProbe, Operation, ProbeLister};
+    use probe_rs::probe::{
+        DebugProbe, DebugProbeError, DebugProbeInfo, Probe, ProbeCreationError, ProbeFactory,
+        list::ProbeListItem,
+    };
+    use probe_rs_rpc_client::RpcClient;
+    use std::fmt::Display;
+    use std::path::PathBuf;
+    use std::sync::Arc;
+    use std::sync::Mutex;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    const TEST_CHIP_NAME: &str = "nRF52833_xxAA";
+
+    fn program_binary() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../probe-rs-debug/tests/debug-unwind-tests/nRF52833_xxAA_full_unwind.elf")
+    }
+
+    #[derive(Debug)]
+    struct MockProbeFactory;
+
+    impl Display for MockProbeFactory {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str("Mocked Probe")
+        }
+    }
+
+    impl ProbeFactory for MockProbeFactory {
+        fn open(
+            &self,
+            _selector: &DebugProbeSelector,
+        ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+            unreachable!("BusyLister opens FakeProbe directly")
+        }
+
+        fn list_probes(&self) -> Vec<ProbeListItem> {
+            Vec::new()
+        }
+    }
+
+    /// A probe that another process holds. `open` fails until `free_after`
+    /// attempts have been made, and while it is held the probe is missing from
+    /// the probe list if `listed_while_busy` is false.
+    struct BusyLister {
+        info: DebugProbeInfo,
+        probe: Mutex<Option<FakeProbe>>,
+        attempts: AtomicUsize,
+        free_after: usize,
+        listed_while_busy: bool,
+    }
+
+    impl BusyLister {
+        fn new(free_after: usize) -> Self {
+            let probe = FakeProbe::with_mocked_core_and_binary(program_binary().as_path());
+            probe.expect_operation(Operation::ReadRawApRegister {
+                ap: FullyQualifiedApAddress::v1_with_default_dp(1),
+                address: 0xC,
+                result: 1,
+            });
+
+            Self {
+                info: DebugProbeInfo::new(
+                    "Mock probe",
+                    0x12,
+                    0x23,
+                    Some("busy_serial".to_owned()),
+                    &MockProbeFactory,
+                    None,
+                    false,
+                ),
+                probe: Mutex::new(Some(probe)),
+                attempts: AtomicUsize::new(0),
+                free_after,
+                listed_while_busy: true,
+            }
+        }
+
+        /// The probe drops out of the probe list while another process holds it.
+        fn hidden_while_busy(mut self) -> Self {
+            self.listed_while_busy = false;
+            self
+        }
+
+        fn attempts(&self) -> usize {
+            self.attempts.load(Ordering::SeqCst)
+        }
+
+        fn busy(&self) -> bool {
+            self.attempts() < self.free_after
+        }
+    }
+
+    impl std::fmt::Debug for BusyLister {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str("BusyLister")
+        }
+    }
+
+    impl ProbeLister for BusyLister {
+        fn open(&self, _selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError> {
+            let attempt = self.attempts.fetch_add(1, Ordering::SeqCst);
+            if attempt < self.free_after {
+                return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                    ProbeCreationError::CouldNotOpen,
+                ));
+            }
+
+            match self.probe.lock().unwrap().take() {
+                Some(probe) => Ok(Probe::from_specific_probe(Box::new(probe))),
+                None => Err(DebugProbeError::ProbeCouldNotBeCreated(
+                    ProbeCreationError::CouldNotOpen,
+                )),
+            }
+        }
+
+        fn list_with_access(&self, _selector: Option<&DebugProbeSelector>) -> Vec<ProbeListItem> {
+            if self.busy() && !self.listed_while_busy {
+                return Vec::new();
+            }
+            vec![ProbeListItem::accessible(self.info.clone())]
+        }
+    }
+
+    async fn attach(lister: Arc<BusyLister>, wait_for_probe: Option<Duration>) -> AttachResult {
+        let probe =
+            convert::to_wire_debug_probe_entry(ProbeListItem::accessible(lister.info.clone()));
+
+        let (mut server, tx, rx) = RpcApp::create_server_with_lister(
+            16,
+            lister as Arc<dyn ProbeLister + Send + Sync>,
+            Arc::new(ProbeBroker::new()),
+        );
+        let handle = tokio::spawn(async move { server.run().await });
+        let client = RpcClient::new_local_from_wire(tx, rx);
+
+        let result = client
+            .attach_probe(AttachRequest {
+                chip: Some(TEST_CHIP_NAME.to_owned()),
+                protocol: None,
+                probe,
+                speed: None,
+                connect_under_reset: false,
+                dry_run: false,
+                allow_erase_all: false,
+                resume_target: false,
+                wait_for_probe,
+            })
+            .await;
+
+        drop(client);
+        _ = handle.await;
+
+        result.unwrap()
+    }
+
+    #[tokio::test]
+    async fn busy_probe_fails_immediately_without_a_timeout() {
+        let lister = Arc::new(BusyLister::new(usize::MAX));
+
+        let result = attach(lister.clone(), None).await;
+
+        assert!(matches!(result, AttachResult::FailedToOpenProbe(_)));
+        assert_eq!(lister.attempts(), 1);
+    }
+
+    #[tokio::test]
+    async fn busy_probe_is_retried_until_it_can_be_opened() {
+        let lister = Arc::new(BusyLister::new(2));
+
+        let result = attach(lister.clone(), Some(Duration::from_secs(30))).await;
+
+        assert!(matches!(result, AttachResult::Success(_)));
+        assert_eq!(lister.attempts(), 3);
+    }
+
+    /// A probe that another process holds can be missing from the probe list.
+    #[tokio::test]
+    async fn unlisted_probe_is_retried_until_it_reappears() {
+        let lister = Arc::new(BusyLister::new(2).hidden_while_busy());
+
+        let result = attach(lister.clone(), Some(Duration::from_secs(30))).await;
+
+        assert!(matches!(result, AttachResult::Success(_)));
+    }
+
+    /// The reason the probe could not be opened is more useful than a bare
+    /// "the probe is in use".
+    #[tokio::test]
+    async fn expired_wait_reports_why_the_probe_could_not_be_opened() {
+        let lister = Arc::new(BusyLister::new(usize::MAX));
+
+        let result = attach(lister.clone(), Some(Duration::from_millis(1500))).await;
+
+        let AttachResult::FailedToOpenProbe(error) = result else {
+            panic!("expected the open error");
+        };
+        assert!(
+            error.contains("could not be opened"),
+            "unexpected error: {error}"
+        );
+        assert!(lister.attempts() > 1, "the probe was tried only once");
+    }
 }
 
 pub(crate) mod convert {
-    use super::{AttachRequest, DebugProbeEntry, DebugProbeSelector, WireProtocol};
+    use super::{AttachRequest, DebugProbeEntry, WireProtocol};
     use crate::util::common_options::ProbeOptions;
     use probe_rs::probe::list::{Accessibility, ProbeListItem};
 
@@ -129,8 +431,8 @@ pub(crate) mod convert {
 
     pub(crate) fn to_wire_debug_probe_selector(
         selector: probe_rs::probe::DebugProbeSelector,
-    ) -> DebugProbeSelector {
-        DebugProbeSelector {
+    ) -> probe_rs_rpc::probe::DebugProbeSelector {
+        probe_rs_rpc::probe::DebugProbeSelector {
             vendor_id: selector.vendor_id,
             product_id: selector.product_id,
             serial_number: selector.serial_number,
@@ -139,7 +441,7 @@ pub(crate) mod convert {
     }
 
     pub(crate) fn from_wire_debug_probe_selector(
-        selector: DebugProbeSelector,
+        selector: probe_rs_rpc::probe::DebugProbeSelector,
     ) -> probe_rs::probe::DebugProbeSelector {
         probe_rs::probe::DebugProbeSelector {
             vendor_id: selector.vendor_id,
@@ -162,6 +464,10 @@ pub(crate) mod convert {
                 cycle_power: false,
                 dry_run: request.dry_run,
                 allow_erase_all: request.allow_erase_all,
+                // `attach_impl` runs the wait, so that it can also retry a
+                // probe that has dropped out of the probe list, and so that the
+                // client can cancel it.
+                attach_timeout: None,
             }
         }
     }
