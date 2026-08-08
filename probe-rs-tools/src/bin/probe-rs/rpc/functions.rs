@@ -20,7 +20,7 @@ use crate::rpc::{
             variables as debug_variables,
         },
         disassemble::disassemble as disassemble_handler,
-        flash::{boot, build, erase, flash, verify},
+        flash::{boot, build, erase, flash, load_region, new_flash_loader, verify},
         info::{target_info, target_metadata},
         memory::{read_bytes, read_memory, write_memory},
         monitor::monitor,
@@ -487,7 +487,9 @@ postcard_rpc::define_dispatch! {
         | EvaluateEndpoint                 | async | debug_evaluate             |
         | SetVariableEndpoint              | async | debug_set_variable         |
         | DisassembleEndpoint              | async | disassemble_handler        |
+        | NewFlashLoaderEndpoint           | async | new_flash_loader           |
         | BuildEndpoint                    | async | build                      |
+        | LoadRegionEndpoint               | async | load_region                |
         | FlashEndpoint                    | async | flash                      |
         | EraseEndpoint                    | async | erase                      |
         | VerifyEndpoint                   | async | verify                     |

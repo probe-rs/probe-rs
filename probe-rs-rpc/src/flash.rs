@@ -32,6 +32,22 @@ impl DownloadOptions {
 }
 
 #[derive(Serialize, Deserialize, Schema)]
+pub struct NewFlashLoaderRequest {
+    pub sessid: Key<Session>,
+    pub read_flasher_rtt: bool,
+}
+
+pub type NewFlashLoaderResponse = RpcResult<Key<FlashLoader>>;
+
+#[derive(Serialize, Deserialize, Schema)]
+pub struct LoadRegionRequest {
+    pub sessid: Key<Session>,
+    pub loader: Key<FlashLoader>,
+    pub address: u64,
+    pub data: Vec<u8>,
+}
+
+#[derive(Serialize, Deserialize, Schema)]
 pub struct BuildRequest {
     pub sessid: Key<Session>,
     pub path: String,

@@ -18,6 +18,7 @@ pub struct CoreAccessRequest {
 pub struct WireCoreMetadata {
     pub fpu_support: bool,
     pub floating_point_register_count: Option<u64>,
+    pub instruction_set: WireInstructionSet,
 }
 
 #[derive(Serialize, Deserialize, Schema, Clone)]

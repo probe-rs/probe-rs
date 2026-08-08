@@ -7,7 +7,8 @@ use probe_rs::{
 };
 use probe_rs_rpc::flash::{
     BootInfo, BootRequest, BuildRequest, BuildResponse, BuildResult, EraseCommand, EraseRequest,
-    FlashRequest, Operation, ProgressEvent, VerifyRequest, VerifyResponse, VerifyResult,
+    FlashRequest, LoadRegionRequest, NewFlashLoaderRequest, NewFlashLoaderResponse, Operation,
+    ProgressEvent, VerifyRequest, VerifyResponse, VerifyResult,
 };
 use tokio::sync::mpsc::Sender;
 
@@ -93,6 +94,27 @@ pub fn from_library_progress_event(
     };
 
     cb(event);
+}
+
+pub async fn new_flash_loader(
+    ctx: &mut RpcContext,
+    _header: VarHeader,
+    request: NewFlashLoaderRequest,
+) -> NewFlashLoaderResponse {
+    let session = ctx.session(request.sessid).await;
+    let mut loader = session.target().flash_loader();
+    loader.read_rtt_output(request.read_flasher_rtt);
+    Ok(ctx.store_object(loader).await)
+}
+
+pub async fn load_region(
+    ctx: &mut RpcContext,
+    _header: VarHeader,
+    request: LoadRegionRequest,
+) -> NoResponse {
+    let mut loader = ctx.object_mut(request.loader).await;
+    lift(loader.add_data(request.address, &request.data))?;
+    Ok(())
 }
 
 pub async fn build(

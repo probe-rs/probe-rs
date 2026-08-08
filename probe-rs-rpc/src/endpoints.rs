@@ -19,8 +19,8 @@ use crate::debug_vars::{
 use crate::disassemble::{DisassembleRequest, DisassembleResponse};
 use crate::file::{AppendFileRequest, CreateFileResponse};
 use crate::flash::{
-    BootRequest, BuildRequest, BuildResponse, EraseRequest, FlashRequest, ProgressEvent,
-    VerifyRequest, VerifyResponse,
+    BootRequest, BuildRequest, BuildResponse, EraseRequest, FlashRequest, LoadRegionRequest,
+    NewFlashLoaderRequest, NewFlashLoaderResponse, ProgressEvent, VerifyRequest, VerifyResponse,
 };
 use crate::info::{InfoEvent, TargetInfoRequest, TargetMetadataRequest, TargetMetadataResponse};
 use crate::memory::{ReadBytesRequest, ReadMemoryRequest, WriteMemoryRequest};
@@ -74,7 +74,9 @@ endpoints! {
     | AttachEndpoint            | AttachRequest           | AttachResponse          | "probe/attach"     |
 
     | ResumeAllCoresEndpoint    | ResumeAllCoresRequest   | NoResponse              | "resume"           |
+    | NewFlashLoaderEndpoint    | NewFlashLoaderRequest   | NewFlashLoaderResponse  | "flash/new"        |
     | BuildEndpoint             | BuildRequest            | BuildResponse           | "flash/build"      |
+    | LoadRegionEndpoint        | LoadRegionRequest       | NoResponse              | "flash/load_region"|
     | FlashEndpoint             | FlashRequest            | NoResponse              | "flash/flash"      |
     | EraseEndpoint             | EraseRequest            | NoResponse              | "flash/erase"      |
     | VerifyEndpoint            | VerifyRequest           | VerifyResponse          | "flash/verify"     |

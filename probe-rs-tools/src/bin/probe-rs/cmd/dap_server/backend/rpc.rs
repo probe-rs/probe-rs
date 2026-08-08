@@ -913,6 +913,7 @@ mod test {
             WireCoreMetadata {
                 fpu_support: true,
                 floating_point_register_count: Some(32),
+                instruction_set: probe_rs_rpc::core_ops::WireInstructionSet::Thumb2,
             },
         );
 
@@ -937,6 +938,7 @@ mod test {
             WireCoreMetadata {
                 fpu_support: false,
                 floating_point_register_count: None,
+                instruction_set: probe_rs_rpc::core_ops::WireInstructionSet::Thumb2,
             },
         );
 
@@ -971,6 +973,8 @@ mod test {
                     core_type: probe_rs_rpc::core_ops::WireCoreType::Armv7em,
                 },
             ],
+            memory_map: vec![],
+            flash_sectors: vec![],
         };
 
         let metadata = SessionTargetMetadata::from(wire);
