@@ -104,6 +104,9 @@ pub struct DownChannelConfig {
     pub channel: u32,
     #[serde(default)]
     pub mode: Option<ChannelMode>,
+    /// If set, bytes received on this TCP socket are forwarded to the target's down channel.
+    #[serde(default)]
+    pub socket: Option<SocketAddr>,
 }
 
 /// The rtt config struct holding all the possible rtt options.
