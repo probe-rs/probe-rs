@@ -10,7 +10,6 @@ pub mod debug;
 pub mod download;
 pub mod erase;
 pub mod gdb_server;
-pub mod gdb_server_rpc;
 pub mod info;
 pub mod itm;
 pub mod list;

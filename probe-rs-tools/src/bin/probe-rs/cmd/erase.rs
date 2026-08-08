@@ -1,5 +1,4 @@
 use crate::util::{cli, common_options::ProbeOptions, flash::CliProgressBars};
-use probe_rs_rpc::flash::EraseCommand;
 use probe_rs_rpc_client::RpcClient;
 
 #[derive(clap::Parser)]
@@ -26,15 +25,11 @@ impl Cmd {
         };
 
         session
-            .erase(
-                EraseCommand::All,
-                self.read_flasher_rtt,
-                async move |event| {
-                    if let Some(pb) = pb.as_ref() {
-                        pb.handle(event);
-                    }
-                },
-            )
+            .erase_all(self.read_flasher_rtt, async move |event| {
+                if let Some(pb) = pb.as_ref() {
+                    pb.handle(event);
+                }
+            })
             .await?;
 
         Ok(())

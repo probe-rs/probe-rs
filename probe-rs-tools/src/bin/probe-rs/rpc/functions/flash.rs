@@ -6,9 +6,9 @@ use probe_rs::{
     flashing::{self, FileDownloadError, FlashProgress},
 };
 use probe_rs_rpc::flash::{
-    BootInfo, BootRequest, BuildRequest, BuildResponse, BuildResult, EraseCommand, EraseRequest,
-    FlashRequest, LoadRegionRequest, NewFlashLoaderRequest, NewFlashLoaderResponse, Operation,
-    ProgressEvent, VerifyRequest, VerifyResponse, VerifyResult,
+    BootInfo, BootRequest, BuildRequest, BuildResponse, BuildResult, EraseAllRequest,
+    EraseRangeRequest, FlashRequest, LoadRegionRequest, NewFlashLoaderRequest,
+    NewFlashLoaderResponse, Operation, ProgressEvent, VerifyRequest, VerifyResponse, VerifyResult,
 };
 use tokio::sync::mpsc::Sender;
 
@@ -141,7 +141,9 @@ pub async fn build(
     })
 }
 
-/// Prepares the core to execute the loaded image, then starts all cores.
+/// Prepares the core to execute the loaded image.
+///
+/// When `request.resume` is true, all cores are started afterward.
 pub async fn boot(ctx: &mut RpcContext, _header: VarHeader, request: BootRequest) -> NoResponse {
     let mut session = ctx.session(request.sessid).await;
 
@@ -150,7 +152,9 @@ pub async fn boot(ctx: &mut RpcContext, _header: VarHeader, request: BootRequest
         &mut session,
         request.core_id as usize,
     ))?;
-    lift(session.resume_all_cores())?;
+    if request.resume {
+        lift(session.resume_all_cores())?;
+    }
 
     Ok(())
 }
@@ -193,14 +197,18 @@ fn flash_impl(
     Ok(())
 }
 
-pub async fn erase(ctx: &mut RpcContext, _header: VarHeader, request: EraseRequest) -> NoResponse {
-    ctx.run_blocking::<ProgressEventTopic, _, _, _>(request, erase_impl)
+pub async fn erase_all(
+    ctx: &mut RpcContext,
+    _header: VarHeader,
+    request: EraseAllRequest,
+) -> NoResponse {
+    ctx.run_blocking::<ProgressEventTopic, _, _, _>(request, erase_all_impl)
         .await
 }
 
-fn erase_impl(
+fn erase_all_impl(
     ctx: RpcSpawnContext,
-    request: EraseRequest,
+    request: EraseAllRequest,
     sender: Sender<ProgressEvent>,
 ) -> NoResponse {
     let mut session = ctx.session_blocking(request.sessid);
@@ -213,13 +221,47 @@ fn erase_impl(
         });
     });
 
-    match request.command {
-        EraseCommand::All => lift(flashing::erase_all(
-            &mut session,
-            &mut progress,
-            request.read_flasher_rtt,
-        ))?,
-    }
+    lift(flashing::erase_all(
+        &mut session,
+        &mut progress,
+        request.read_flasher_rtt,
+    ))?;
+
+    Ok(())
+}
+
+pub async fn erase_range(
+    ctx: &mut RpcContext,
+    _header: VarHeader,
+    request: EraseRangeRequest,
+) -> NoResponse {
+    ctx.run_blocking::<ProgressEventTopic, _, _, _>(request, erase_range_impl)
+        .await
+}
+
+fn erase_range_impl(
+    ctx: RpcSpawnContext,
+    request: EraseRangeRequest,
+    sender: Sender<ProgressEvent>,
+) -> NoResponse {
+    let mut session = ctx.session_blocking(request.sessid);
+
+    let mut progress = FlashProgress::new(move |event| {
+        from_library_progress_event(event, |event| {
+            if event.is_operation(Operation::Erase) {
+                sender.blocking_send(event).unwrap()
+            }
+        });
+    });
+
+    lift(flashing::erase(
+        &mut session,
+        &mut progress,
+        request.address,
+        request.address.saturating_add(request.length),
+        request.restore,
+        request.read_flasher_rtt,
+    ))?;
 
     Ok(())
 }

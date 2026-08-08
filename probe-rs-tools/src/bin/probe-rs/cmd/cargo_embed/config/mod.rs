@@ -28,6 +28,7 @@ pub struct Config {
     pub probe: Probe,
     pub rtt: Rtt,
     pub gdb: Gdb,
+    pub remote: Remote,
 }
 
 /// The probe config struct holding all the possible probe options.
@@ -172,6 +173,14 @@ mod duration_ms {
 pub struct Gdb {
     pub enabled: bool,
     pub gdb_connection_string: Option<String>,
+}
+
+/// Remote RPC connection options for cargo-embed.
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct Remote {
+    pub host: Option<String>,
+    pub token: Option<String>,
 }
 
 impl Configs {

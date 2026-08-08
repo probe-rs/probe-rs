@@ -1,7 +1,6 @@
 use anyhow::Result;
 
 use cargo_metadata::Message;
-use probe_rs::InstructionSet;
 use serde::Deserialize;
 
 use std::process::{Command, Stdio};
@@ -120,11 +119,6 @@ pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<Artifact, Arti
         // We did not find a binary, so we should return an error.
         Err(ArtifactError::NoArtifacts)
     }
-}
-
-/// Returns the target instruction set for the given target triple, or the current cargo project.
-pub fn target_instruction_set(target: Option<&str>) -> Option<InstructionSet> {
-    cargo_target(target).and_then(|target| InstructionSet::from_target_triple(&target))
 }
 
 /// Returns the cargo target triple from CLI, env, or hierarchical Cargo config.

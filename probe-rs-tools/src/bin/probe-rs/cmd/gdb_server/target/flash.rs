@@ -2,9 +2,14 @@ use gdbstub::{
     arch::Arch,
     target::{TargetError, ext::flash::Flash},
 };
-use probe_rs::flashing::DownloadOptions;
+use probe_rs_rpc::FlashLoader;
+use probe_rs_rpc::Key;
+use probe_rs_rpc::flash::DownloadOptions;
 
 use super::RuntimeTarget;
+
+/// Upper bound for a single `flash/load_region` RPC payload.
+const LOAD_REGION_CHUNK: usize = 64 * 1024;
 
 // The GDB "load" command works as follow:
 // - flash_erase is called first to erase all involved sectors. GDB uses the blocksize
@@ -12,21 +17,30 @@ use super::RuntimeTarget;
 // - One flash_write command is issued for each object file section (e.g., .vector_table, .text, etc.)
 //   that needs to be written to flash.
 // - Finally, flash_done is called to indicate that flash programming operation is complete.
-//   According to the GDB documentation, we are allowed to delay and batch all the erase/write
-//   operations until flash_done is invoked.
-
-// In our implementation, we collect all the write operations in the FlashLoader
-// and ignore the flash_erase command, as the FlashLoader will handle everything
-// when we commit during the flash_done command.
-impl Flash for RuntimeTarget<'_> {
+//
+// Erase runs immediately over RPC. Writes are staged into a flash loader and committed in
+// flash_done with skip_erase, since the sectors were already erased.
+impl Flash for RuntimeTarget {
     fn flash_erase(
         &mut self,
-        _start_addr: <Self::Arch as Arch>::Usize,
-        _length: <Self::Arch as Arch>::Usize,
+        start_addr: <Self::Arch as Arch>::Usize,
+        length: <Self::Arch as Arch>::Usize,
     ) -> gdbstub::target::TargetResult<(), Self> {
-        // We drop the flash_loader to ensure a fresh start in case
-        // flash_write returns an error and flash_done is not called.
+        // Drop any prior loader so a failed earlier load cannot leak staged data.
         let _drop = self.flash_loader.take();
+
+        self.block_on(
+            self.session
+                .erase_range(start_addr, length, false, false, async |_| {}),
+        )
+        .map_err(|e| {
+            tracing::error!(
+                "GDB flash_erase failed for {length} bytes at {start_addr:#010x}: {e:#}"
+            );
+            TargetError::NonFatal
+        })?;
+
+        self.flash_erased = true;
         Ok(())
     }
 
@@ -35,33 +49,67 @@ impl Flash for RuntimeTarget<'_> {
         start_addr: <Self::Arch as Arch>::Usize,
         data: &[u8],
     ) -> gdbstub::target::TargetResult<(), Self> {
-        let flash_loader = self
-            .flash_loader
-            .get_or_insert_with(|| self.session.lock().target().flash_loader());
+        let loader = self.ensure_flash_loader()?;
 
-        flash_loader.add_data(start_addr, data).map_err(|e| {
-            tracing::error!(
-                "GDB flash_write failed to stage {} bytes at {:#010x}: {:#}",
-                data.len(),
-                start_addr,
-                e
-            );
-            TargetError::NonFatal
-        })?;
+        let mut offset = 0usize;
+        while offset < data.len() {
+            let end = (offset + LOAD_REGION_CHUNK).min(data.len());
+            let chunk = data[offset..end].to_vec();
+            let address = start_addr + offset as u64;
+
+            self.block_on(self.session.load_region(loader, address, chunk))
+                .map_err(|e| {
+                    tracing::error!(
+                        "GDB flash_write failed to stage {} bytes at {:#010x}: {e:#}",
+                        end - offset,
+                        address
+                    );
+                    TargetError::NonFatal
+                })?;
+
+            offset = end;
+        }
+
         Ok(())
     }
 
     fn flash_done(&mut self) -> gdbstub::target::TargetResult<(), Self> {
-        let flash_loader = self.flash_loader.as_mut().ok_or(TargetError::NonFatal)?;
-        let mut session = self.session.lock();
-        flash_loader
-            .commit(&mut session, DownloadOptions::default())
+        let Some(loader) = self.flash_loader.take() else {
+            self.flash_erased = false;
+            return Err(TargetError::NonFatal);
+        };
+
+        let skip_erase = self.flash_erased;
+        self.flash_erased = false;
+
+        let options = DownloadOptions {
+            skip_erase,
+            ..DownloadOptions::default()
+        };
+
+        self.block_on(self.session.flash(options, loader, None, async |_| {}))
             .map_err(|e| {
-                tracing::error!("GDB flash_done failed to commit flash programming: {:#}", e);
+                tracing::error!("GDB flash_done failed to commit flash programming: {e:#}");
                 TargetError::NonFatal
             })?;
 
-        let _drop = self.flash_loader.take();
         Ok(())
+    }
+}
+
+impl RuntimeTarget {
+    fn ensure_flash_loader(&mut self) -> Result<Key<FlashLoader>, TargetError<anyhow::Error>> {
+        if let Some(loader) = self.flash_loader {
+            return Ok(loader);
+        }
+
+        let loader = self
+            .block_on(self.session.new_flash_loader(false))
+            .map_err(|e| {
+                tracing::error!("GDB failed to create a flash loader: {e:#}");
+                TargetError::NonFatal
+            })?;
+        self.flash_loader = Some(loader);
+        Ok(loader)
     }
 }

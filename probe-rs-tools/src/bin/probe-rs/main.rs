@@ -172,7 +172,7 @@ enum Subcommand {
     /// Resets the target attached to the selected debug probe
     Reset(cmd::reset::Cmd),
     /// Run a GDB server
-    Gdb(cmd::gdb_server_rpc::Cmd),
+    Gdb(cmd::gdb_server::Cmd),
     /// Basic command line debugger
     Debug(cmd::debug::Cmd),
     /// Download memory to attached target

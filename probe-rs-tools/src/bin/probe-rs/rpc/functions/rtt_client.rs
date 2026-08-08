@@ -37,8 +37,10 @@ pub async fn create_rtt_client(
         session.target(),
     );
 
+    let core_id = client.core_id() as u32;
     Ok(RttClientData {
         handle: ctx.store_object(client).await,
+        core_id,
     })
 }
 

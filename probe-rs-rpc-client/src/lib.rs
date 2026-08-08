@@ -39,6 +39,7 @@ use probe_rs_rpc::core_ops::{
     WireCoreInformation, WireCoreMetadata, WireCoreStatus, WireRegisterId, WireRegisterReadResult,
     WireRegisterValue, WireSteppingMode, WireVectorCatchCondition,
 };
+use probe_rs_rpc::cores::{CoresRequest, CoresStatusMap, HaltCoresRequest};
 use probe_rs_rpc::debug_vars::{
     ClearCoreDebugStateRequest, EvaluateRequest, LoadSvdRequest, ScopesRequest, SetVariableRequest,
     VariablesRequest, WireEvaluateResponse, WireScope, WireSetVariableResponse, WireVariable,
@@ -46,9 +47,9 @@ use probe_rs_rpc::debug_vars::{
 use probe_rs_rpc::disassemble::{DisassembleRequest, WireDisassembledInstruction};
 use probe_rs_rpc::file::{AppendFileRequest, TempFile};
 use probe_rs_rpc::flash::{
-    BootInfo, BootRequest, BuildRequest, BuildResult, DownloadOptions, EraseCommand, EraseRequest,
-    FlashRequest, LoadRegionRequest, NewFlashLoaderRequest, ProgressEvent, VerifyRequest,
-    VerifyResult,
+    BootInfo, BootRequest, BuildRequest, BuildResult, DownloadOptions, EraseAllRequest,
+    EraseRangeRequest, FlashRequest, LoadRegionRequest, NewFlashLoaderRequest, ProgressEvent,
+    VerifyRequest, VerifyResult,
 };
 use probe_rs_rpc::format::FormatOptions;
 use probe_rs_rpc::info::{
@@ -63,7 +64,6 @@ use probe_rs_rpc::probe::{
     SelectProbeResult,
 };
 use probe_rs_rpc::reset::{ResetCoreAndHaltRequest, ResetCoreRequest};
-use probe_rs_rpc::resume::ResumeAllCoresRequest;
 use probe_rs_rpc::rtt_client::{
     CreateRttClientRequest, PollRttUpRequest, RttChannelRequest, RttChannels, RttClientData,
     RttDownRequest, RttPollResult, ScanRegion,
@@ -83,14 +83,15 @@ use probe_rs_rpc::{
     ClearCoreDebugStateEndpoint, ClearRttControlBlockEndpoint, CoreClearHwBpsEndpoint,
     CoreDumpEndpoint, CoreEnableVcEndpoint, CoreHaltEndpoint, CoreMetadataEndpoint,
     CoreReadRegistersEndpoint, CoreRunEndpoint, CoreSetHwBpsEndpoint, CoreStatusEndpoint,
-    CoreStepEndpoint, CoreWriteRegEndpoint, CreateRttClientEndpoint, CreateTempFileEndpoint,
-    DisassembleEndpoint, EraseEndpoint, EvaluateEndpoint, FlashEndpoint, GetRttChannelsEndpoint,
+    CoreStepEndpoint, CoreWriteRegEndpoint, CoresStatusEndpoint, CreateRttClientEndpoint,
+    CreateTempFileEndpoint, DisassembleEndpoint, EraseAllEndpoint, EraseRangeEndpoint,
+    EvaluateEndpoint, FlashEndpoint, GetRttChannelsEndpoint, HaltCoresEndpoint,
     HandleSemihostingEndpoint, ListChipFamiliesEndpoint, ListProbesEndpoint, ListTestsEndpoint,
     LoadChipFamilyEndpoint, LoadDebugInfoEndpoint, LoadRegionEndpoint, LoadSvdEndpoint,
     MonitorEndpoint, NewFlashLoaderEndpoint, PollRttUpEndpoint, ProgressEventTopic,
     ReadBytesEndpoint, ReadMemory8Endpoint, ReadMemory16Endpoint, ReadMemory32Endpoint,
     ReadMemory64Endpoint, ResetCoreAndHaltEndpoint, ResetCoreEndpoint,
-    ResolveSourceBreakpointsEndpoint, ResolveSourceLocationsEndpoint, ResumeAllCoresEndpoint,
+    ResolveSourceBreakpointsEndpoint, ResolveSourceLocationsEndpoint, ResumeCoresEndpoint,
     RpcError, RpcResult, RttDownEndpoint, RttTopic, RunTestEndpoint, ScopesEndpoint,
     SelectProbeEndpoint, SemihostingTopic, SetVariableEndpoint, TakeRichStackTraceEndpoint,
     TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint, TargetMetadataEndpoint,
@@ -630,23 +631,91 @@ impl SessionInterface {
     }
 
     pub async fn resume_all_cores(&self) -> Result<(), ClientError> {
+        self.resume_cores(None).await.map(|_| ())
+    }
+
+    /// Halt selected cores and return the status of each active core.
+    ///
+    /// When `cores` is `None`, every session core is considered. Disabled cores
+    /// are omitted from the returned map.
+    pub async fn halt_cores(
+        &self,
+        cores: Option<Vec<u32>>,
+        timeout: Duration,
+    ) -> Result<CoresStatusMap, ClientError> {
         self.client
-            .send_resp::<ResumeAllCoresEndpoint, _>(&ResumeAllCoresRequest {
+            .send_resp::<HaltCoresEndpoint, _>(&HaltCoresRequest {
                 sessid: self.sessid,
+                cores,
+                timeout,
             })
             .await
     }
 
-    /// Prepares the core to execute the loaded image, then starts all cores.
+    /// Resume selected cores and return the status of each active core.
+    ///
+    /// When `cores` is `None`, every session core is considered. Disabled cores
+    /// are omitted from the returned map.
+    pub async fn resume_cores(
+        &self,
+        cores: Option<Vec<u32>>,
+    ) -> Result<CoresStatusMap, ClientError> {
+        self.client
+            .send_resp::<ResumeCoresEndpoint, _>(&CoresRequest {
+                sessid: self.sessid,
+                cores,
+            })
+            .await
+    }
+
+    /// Read the status of selected cores.
+    ///
+    /// When `cores` is `None`, every session core is considered. Disabled cores
+    /// are omitted from the returned map.
+    pub async fn cores_status(
+        &self,
+        cores: Option<Vec<u32>>,
+    ) -> Result<CoresStatusMap, ClientError> {
+        self.client
+            .send_resp::<CoresStatusEndpoint, _>(&CoresRequest {
+                sessid: self.sessid,
+                cores,
+            })
+            .await
+    }
+
+    /// Prepares the core to execute the loaded image.
+    ///
+    /// When `resume` is true, all cores are started afterward. When false, the
+    /// cores stay halted after prepare.
     ///
     /// If the image runs from RAM, the target does not get a reset. If the image
     /// runs from flash, the target gets a reset.
     pub async fn boot(&self, boot_info: BootInfo, core_id: usize) -> Result<(), ClientError> {
+        self.boot_with_resume(boot_info, core_id, true).await
+    }
+
+    /// Prepares the core to execute the loaded image and leaves cores halted.
+    pub async fn prepare_boot(
+        &self,
+        boot_info: BootInfo,
+        core_id: usize,
+    ) -> Result<(), ClientError> {
+        self.boot_with_resume(boot_info, core_id, false).await
+    }
+
+    async fn boot_with_resume(
+        &self,
+        boot_info: BootInfo,
+        core_id: usize,
+        resume: bool,
+    ) -> Result<(), ClientError> {
         self.client
             .send_resp::<BootEndpoint, _>(&BootRequest {
                 sessid: self.sessid,
                 boot_info,
                 core_id: core_id as u32,
+                resume,
             })
             .await
     }
@@ -749,17 +818,37 @@ impl SessionInterface {
             .await
     }
 
-    pub async fn erase(
+    pub async fn erase_all(
         &self,
-        command: EraseCommand,
         read_flasher_rtt: bool,
         on_msg: impl AsyncFnMut(ProgressEvent),
     ) -> Result<(), ClientError> {
         self.client
-            .send_and_read_stream::<EraseEndpoint, ProgressEventTopic, _>(
-                &EraseRequest {
+            .send_and_read_stream::<EraseAllEndpoint, ProgressEventTopic, _>(
+                &EraseAllRequest {
                     sessid: self.sessid,
-                    command,
+                    read_flasher_rtt,
+                },
+                on_msg,
+            )
+            .await
+    }
+
+    pub async fn erase_range(
+        &self,
+        address: u64,
+        length: u64,
+        restore: bool,
+        read_flasher_rtt: bool,
+        on_msg: impl AsyncFnMut(ProgressEvent),
+    ) -> Result<(), ClientError> {
+        self.client
+            .send_and_read_stream::<EraseRangeEndpoint, ProgressEventTopic, _>(
+                &EraseRangeRequest {
+                    sessid: self.sessid,
+                    address,
+                    length,
+                    restore,
                     read_flasher_rtt,
                 },
                 on_msg,
