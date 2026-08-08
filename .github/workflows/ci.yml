@@ -23,9 +23,10 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  check:
-    name: Check
+  clippy:
+    name: Clippy
     strategy:
+      fail-fast: false
       matrix:
         os:
           - ubuntu-latest
@@ -44,14 +45,12 @@ jobs:
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v2.9.1
 
-      - name: cargo check for probe-rs, --no-default-features
-        run: cargo check -p probe-rs --no-default-features --locked
+      - uses: taiki-e/install-action@cargo-hack
 
-      - name: Run cargo check
-        run: cargo check --locked
-
-      - name: Run cargo check with all features
-        run: cargo check --all-features --locked
+      # --each-feature lints every feature on its own and also covers
+      # --all-features and --no-default-features.
+      - name: Run clippy
+        run: cargo hack clippy --each-feature --all-targets --workspace --locked -- -D warnings
 
   test:
     name: Test Suite
@@ -93,19 +92,6 @@ jobs:
 
       - name: Run cargo fmt
         run: cargo fmt --all -- --check
-
-  clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v6
-
-      - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v2.9.1
-
-      - name: Run cargo clippy
-        run: cargo clippy --all-features --all-targets --locked -- -D warnings
 
   cargo-deny:
     runs-on: ubuntu-latest
