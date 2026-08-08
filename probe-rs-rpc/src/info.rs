@@ -1,10 +1,18 @@
 use postcard_schema::{Schema, schema};
 use serde::{Deserialize, Serialize};
 
-use crate::chip::JEP106Code;
+use crate::chip::{JEP106Code, MemoryRegion};
 use crate::core_ops::WireCoreType;
 use crate::probe::{DebugProbeEntry, WireProtocol};
 use crate::{Key, RpcResult, Session};
+
+/// Absolute flash sector range for GDB memory-map XML (`blocksize`).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Schema)]
+pub struct WireFlashSector {
+    pub start: u64,
+    pub length: u64,
+    pub blocksize: u64,
+}
 
 /// Session-scoped target description fields the DAP RPC client needs without
 /// mirroring the full server `probe_rs::Target` in its local registry.
@@ -13,6 +21,8 @@ pub struct WireSessionTargetMetadata {
     pub target_name: String,
     pub default_format: Option<String>,
     pub cores: Vec<WireSessionCore>,
+    pub memory_map: Vec<MemoryRegion>,
+    pub flash_sectors: Vec<WireFlashSector>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Schema)]
@@ -209,6 +219,12 @@ mod tests {
             cores: vec![WireSessionCore {
                 index: 0,
                 core_type: WireCoreType::Armv7em,
+            }],
+            memory_map: vec![],
+            flash_sectors: vec![WireFlashSector {
+                start: 0,
+                length: 0x1000,
+                blocksize: 0x1000,
             }],
         };
 

@@ -214,9 +214,13 @@ pub async fn core_metadata(
         )
         .map(|count| count as u64);
 
+        let instruction_set =
+            convert::to_wire_instruction_set(probe_rs_try!(core.instruction_set()));
+
         WireCoreMetadata {
             fpu_support,
             floating_point_register_count,
+            instruction_set,
         }
     });
     Ok(metadata)

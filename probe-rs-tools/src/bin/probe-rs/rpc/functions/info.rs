@@ -26,11 +26,12 @@ use probe_rs::{
 use probe_rs_rpc::info::{
     ApInfo, ComponentTreeNode, DebugPortId, DebugPortInfo, DebugPortInfoNode, DebugPortVersion,
     DpAddress, FullyQualifiedApAddress, InfoEvent, MinDpSupport, TargetInfoRequest,
-    TargetMetadataRequest, WireSessionCore, WireSessionTargetMetadata,
+    TargetMetadataRequest, WireFlashSector, WireSessionCore, WireSessionTargetMetadata,
 };
 use probe_rs_rpc::{NoResponse, TargetInfoDataTopic, probe::WireProtocol};
 use probe_rs_target::ScanChainElement;
 
+use crate::rpc::functions::chip::convert::to_wire_memory_region;
 use crate::rpc::functions::core_ops::convert::to_wire_core_type;
 use crate::rpc::functions::probe::convert::from_wire_protocol;
 use crate::{
@@ -56,7 +57,56 @@ pub async fn target_metadata(
                 core_type: to_wire_core_type(core_type),
             })
             .collect(),
+        memory_map: target
+            .memory_map
+            .iter()
+            .cloned()
+            .map(to_wire_memory_region)
+            .collect(),
+        flash_sectors: wire_flash_sectors(target),
     })
+}
+
+/// Deduplicated absolute flash sectors for GDB memory-map XML.
+fn wire_flash_sectors(target: &probe_rs::Target) -> Vec<WireFlashSector> {
+    use std::collections::BTreeMap;
+    use std::collections::btree_map::Entry;
+
+    let mut regions = BTreeMap::new();
+    for algo in target.flash_algorithms.iter() {
+        let start = algo.flash_properties.address_range.start;
+        let end = if let Some(region) =
+            target.memory_region_by_address(algo.flash_properties.address_range.start)
+        {
+            region.address_range().end
+        } else {
+            algo.flash_properties.address_range.end
+        };
+        let mut sectors = algo.flash_properties.sectors.clone();
+        sectors.sort_by_key(|s| s.address);
+        sectors.push(probe_rs::config::SectorDescription {
+            size: 0,
+            address: end - start,
+        });
+        for (current, next) in sectors.iter().zip(sectors.iter().skip(1)) {
+            let sector = WireFlashSector {
+                start: start + current.address,
+                length: next.address - current.address,
+                blocksize: current.size,
+            };
+            match regions.entry(sector.start) {
+                Entry::Vacant(e) => {
+                    e.insert(sector);
+                }
+                Entry::Occupied(mut e) => {
+                    if sector.blocksize < e.get().blocksize {
+                        e.insert(sector);
+                    }
+                }
+            }
+        }
+    }
+    regions.into_values().collect()
 }
 
 pub async fn target_info(
