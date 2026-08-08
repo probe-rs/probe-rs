@@ -1,7 +1,7 @@
 use crate::{
     MemoryMappedRegister, RegisterId,
     architecture::arm::{
-        ArmError, armv8m::Dhcsr, core::cortex_m::write_core_reg, memory::ArmMemoryInterface,
+        ArmError, armv7m::Dhcsr, core::cortex_m::write_core_reg, memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
     },
 };
