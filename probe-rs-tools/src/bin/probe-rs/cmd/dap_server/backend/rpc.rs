@@ -838,6 +838,7 @@ impl RpcBackend {
                 verify: config.verify_after_flashing,
                 disable_double_buffering: false,
                 preferred_algos: Vec::new(),
+                ram_chunk_size: None,
             };
 
             session

@@ -7,7 +7,7 @@ use probe_rs_target::{
 use std::io::{Read, Seek};
 use std::ops::Range;
 use std::sync::LazyLock;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use yaml_serde::Value;
 
 use super::builder::FlashBuilder;
@@ -744,8 +744,11 @@ impl FlashLoader {
             }
         }
 
+        let mut ram_write_result = Ok(());
+        let mut ram_progress_start: Option<Instant> = None;
+
         // Commit RAM last, because NVM flashing overwrites RAM
-        for region in self
+        'ram_regions: for region in self
             .memory_map
             .iter()
             .filter_map(MemoryRegion::as_ram_region)
@@ -755,6 +758,11 @@ impl FlashLoader {
             if ranges_in_region.is_empty() {
                 continue;
             }
+
+            let ram_progress_start = *ram_progress_start.get_or_insert_with(|| {
+                options.progress.started(ProgressOperation::Ram);
+                Instant::now()
+            });
 
             tracing::debug!(
                 "    region: {:#010X?} ({} bytes)",
@@ -793,10 +801,49 @@ impl FlashLoader {
                     address + data.len() as u64,
                     data.len()
                 );
-                // Write data to memory.
-                core.write(address, data).map_err(FlashError::Core)?;
+
+                match options.ram_chunk_size {
+                    None => {
+                        // No progress to report, so skip the chunking overhead and write in one go.
+                        if let Err(error) = core.write(address, data) {
+                            ram_write_result = Err(FlashError::Core(error));
+                            break 'ram_regions;
+                        }
+                        options.progress.progressed(
+                            ProgressOperation::Ram,
+                            data.len() as u64,
+                            ram_progress_start.elapsed(),
+                        );
+                        continue;
+                    }
+                    Some(chunk_size) => {
+                        for (chunk_index, chunk) in data.chunks(chunk_size as usize).enumerate() {
+                            let chunk_address = address + (chunk_index as u64 * chunk_size);
+
+                            // Write data to memory.
+                            if let Err(error) = core.write(chunk_address, chunk) {
+                                ram_write_result = Err(FlashError::Core(error));
+                                break 'ram_regions;
+                            }
+                            options.progress.progressed(
+                                ProgressOperation::Ram,
+                                chunk.len() as u64,
+                                ram_progress_start.elapsed(),
+                            );
+                        }
+                    }
+                }
             }
         }
+
+        if ram_progress_start.is_some() {
+            match ram_write_result {
+                Ok(()) => options.progress.finished(ProgressOperation::Ram),
+                Err(_) => options.progress.failed(ProgressOperation::Ram),
+            }
+        }
+
+        ram_write_result?;
 
         if options.verify {
             self.verify_ram(session)?;
@@ -976,6 +1023,19 @@ impl FlashLoader {
             }
 
             phases.push(phase_layout);
+        }
+
+        let ram_size: u64 = self
+            .memory_map
+            .iter()
+            .filter_map(MemoryRegion::as_ram_region)
+            .flat_map(|region| self.builder.data_in_range(&region.range))
+            .map(|(_, data)| data.len() as u64)
+            .sum();
+        if ram_size > 0 {
+            options
+                .progress
+                .add_progress_bar(ProgressOperation::Ram, Some(ram_size));
         }
 
         options.progress.initialized(phases);
