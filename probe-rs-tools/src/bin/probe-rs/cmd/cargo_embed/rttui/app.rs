@@ -1,12 +1,12 @@
 use anyhow::{Context, Result, anyhow};
-use probe_rs_rpc::rtt_client::RttChannels;
+use probe_rs_rpc::rtt_client::{RttChannels, RttPollResult};
 use probe_rs_rpc::{Key, RttClient};
-use probe_rs_rpc_client::SessionInterface;
+use probe_rs_rpc_client::{ClientError, SessionInterface};
 use ratatui::{
     Terminal,
     backend::CrosstermBackend,
     crossterm::{
-        event::{self, KeyCode, KeyEventKind},
+        event::{self, KeyCode, KeyEvent, KeyEventKind},
         execute,
         terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
     },
@@ -14,9 +14,11 @@ use ratatui::{
     style::{Color, Modifier, Style},
     widgets::{Block, Borders, List, Paragraph, Tabs},
 };
+use std::time::{Duration, Instant};
 use std::{cell::RefCell, io::Write, rc::Rc};
 use std::{path::PathBuf, sync::mpsc::TryRecvError};
 use time::UtcOffset;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 use probe_rs_rpc::rtt_config::{DataFormat, RttChannelConfig};
 
@@ -30,6 +32,31 @@ use super::channel::UpChannel;
 use super::{event::Events, tab::Tab};
 
 use event::KeyModifiers;
+
+/// How often to request an RTT up-channel poll from the background worker.
+const RTT_POLL_INTERVAL: Duration = Duration::from_millis(50);
+
+/// How often to retry a blocked down-channel write.
+const DOWN_FLUSH_RETRY_INTERVAL: Duration = Duration::from_millis(100);
+
+enum RttRequest {
+    Poll {
+        channels: Vec<u32>,
+    },
+    Flush {
+        tab_index: usize,
+        channel: u32,
+        data: Vec<u8>,
+    },
+}
+
+enum RttResponse {
+    Poll(Result<Vec<RttPollResult>, ClientError>),
+    Flush {
+        tab_index: usize,
+        result: Result<u32, ClientError>,
+    },
+}
 
 /// App holds the state of the application
 pub struct App {
@@ -50,6 +77,16 @@ pub struct App {
 
     session: SessionInterface,
     rtt_client: Key<RttClient>,
+
+    /// Flush down channels as soon as the worker is free (set when the user presses Enter).
+    down_flush_requested: bool,
+    last_down_flush: Option<Instant>,
+    last_rtt_poll: Option<Instant>,
+
+    rtt_req_tx: Option<UnboundedSender<RttRequest>>,
+    rtt_resp_rx: UnboundedReceiver<RttResponse>,
+    /// True while the background worker still owes us a response.
+    rtt_rpc_in_flight: bool,
 }
 
 impl App {
@@ -212,6 +249,8 @@ impl App {
             None
         };
 
+        let (rtt_req_tx, rtt_resp_rx) = spawn_rtt_worker(session.clone(), rtt_client);
+
         Ok(Self {
             tabs,
             current_tab: 0,
@@ -224,6 +263,12 @@ impl App {
             up_channels,
             session,
             rtt_client,
+            down_flush_requested: false,
+            last_down_flush: None,
+            last_rtt_poll: None,
+            rtt_req_tx: Some(rtt_req_tx),
+            rtt_resp_rx,
+            rtt_rpc_in_flight: false,
         })
     }
 
@@ -261,19 +306,31 @@ impl App {
             .expect("Failed to render terminal UI");
     }
 
-    /// Returns `true` if the application should exit.
-    pub async fn handle_event(&mut self) -> bool {
-        let event = match self.events.next() {
-            // Ignore key release events emitted by Crossterm on Windows
-            Ok(event) if event.kind != KeyEventKind::Press => return false,
-            Ok(event) => event,
-            Err(TryRecvError::Empty) => return false,
-            Err(TryRecvError::Disconnected) => {
-                tracing::warn!("Unable to receive more input events from terminal, shutting down.");
+    /// Process all pending keyboard events. Returns `true` if the application should exit.
+    ///
+    /// Enter only queues bytes locally; RPC writes happen in [`Self::flush_down_channels`].
+    pub fn handle_events(&mut self) -> bool {
+        loop {
+            let event = match self.events.next() {
+                // Ignore key release events emitted by Crossterm on Windows
+                Ok(event) if event.kind != KeyEventKind::Press => continue,
+                Ok(event) => event,
+                Err(TryRecvError::Empty) => return false,
+                Err(TryRecvError::Disconnected) => {
+                    tracing::warn!(
+                        "Unable to receive more input events from terminal, shutting down."
+                    );
+                    return true;
+                }
+            };
+
+            if self.dispatch_event(event) {
                 return true;
             }
-        };
+        }
+    }
 
+    fn dispatch_event(&mut self, event: KeyEvent) -> bool {
         let height = self.current_height / 2;
         let has_control = event.modifiers.contains(KeyModifiers::CONTROL);
 
@@ -285,7 +342,10 @@ impl App {
             KeyCode::F(n) => self.select_tab(n as usize - 1),
             KeyCode::Tab => self.next_tab(),
             KeyCode::BackTab => self.previous_tab(),
-            KeyCode::Enter => self.push_rtt().await,
+            KeyCode::Enter => {
+                self.current_tab_mut().queue_input_line();
+                self.down_flush_requested = true;
+            }
             KeyCode::Char(c) => {
                 if has_control && let Some(digit) = c.to_digit(10).and_then(|d| d.checked_sub(1)) {
                     self.select_tab(digit as usize);
@@ -309,36 +369,51 @@ impl App {
         &mut self.tabs[self.current_tab]
     }
 
-    /// Polls the RTT target for new data on all channels.
-    #[expect(
-        clippy::await_holding_refcell_ref,
-        reason = "Main loop alternates between GUI and channel polling accesses"
-    )]
-    pub async fn poll_rtt(&mut self) -> Result<()> {
-        let channel_numbers: Vec<u32> = self
-            .up_channels
-            .iter()
-            .map(|channel| channel.borrow().number())
-            .collect();
+    /// Apply finished RPC results and queue the next poll/flush without blocking the UI.
+    pub async fn pump_rtt_io(&mut self) -> Result<()> {
+        while let Ok(response) = self.rtt_resp_rx.try_recv() {
+            self.rtt_rpc_in_flight = false;
+            self.apply_rtt_response(response).await?;
+        }
 
-        let results = self
-            .session
-            .poll_rtt_up(self.rtt_client, channel_numbers)
-            .await?;
+        if self.rtt_rpc_in_flight {
+            return Ok(());
+        }
 
-        for result in results {
-            let Some(channel) = self
+        if !self.tabs.iter().any(Tab::is_blocked) {
+            self.down_flush_requested = false;
+        }
+
+        if self.should_flush_down()
+            && let Some((tab_index, channel, data)) = self.take_next_pending_flush()
+        {
+            self.down_flush_requested = false;
+            self.last_down_flush = Some(Instant::now());
+            self.rtt_rpc_in_flight = true;
+            if let Some(tx) = &self.rtt_req_tx {
+                let _ = tx.send(RttRequest::Flush {
+                    tab_index,
+                    channel,
+                    data,
+                });
+            }
+            return Ok(());
+        }
+
+        if self
+            .last_rtt_poll
+            .is_none_or(|last| last.elapsed() >= RTT_POLL_INTERVAL)
+        {
+            let channels: Vec<u32> = self
                 .up_channels
-                .iter_mut()
-                .find(|channel| channel.borrow().number() == result.channel)
-            else {
-                continue;
-            };
-
-            match result.result {
-                Ok(bytes) => channel.borrow_mut().push_bytes(&bytes).await?,
-                Err(error) => {
-                    tracing::warn!("RTT poll of channel {} failed: {error}", result.channel);
+                .iter()
+                .map(|channel| channel.borrow().number())
+                .collect();
+            if !channels.is_empty() {
+                self.last_rtt_poll = Some(Instant::now());
+                self.rtt_rpc_in_flight = true;
+                if let Some(tx) = &self.rtt_req_tx {
+                    let _ = tx.send(RttRequest::Poll { channels });
                 }
             }
         }
@@ -346,45 +421,74 @@ impl App {
         Ok(())
     }
 
-    pub async fn push_rtt(&mut self) {
-        self.tabs[self.current_tab].queue_input_line();
-        self.flush_down_channel(self.current_tab).await;
+    fn should_flush_down(&self) -> bool {
+        if !self.tabs.iter().any(Tab::can_start_flush) {
+            return false;
+        }
+        self.down_flush_requested
+            || self
+                .last_down_flush
+                .is_none_or(|last| last.elapsed() >= DOWN_FLUSH_RETRY_INTERVAL)
     }
 
-    /// Retry writes for tabs whose down channel still has unsent bytes.
-    pub async fn flush_blocked_down_channels(&mut self) {
+    fn take_next_pending_flush(&mut self) -> Option<(usize, u32, Vec<u8>)> {
         for index in 0..self.tabs.len() {
-            if self.tabs[index].is_blocked() {
-                self.flush_down_channel(index).await;
+            if let Some((channel, data)) = self.tabs[index].begin_flush() {
+                return Some((index, channel, data));
             }
         }
+        None
     }
 
-    async fn flush_down_channel(&mut self, tab_index: usize) {
-        let Some((channel, data)) = self.tabs[tab_index].take_pending() else {
-            return;
-        };
+    #[expect(
+        clippy::await_holding_refcell_ref,
+        reason = "Main loop alternates between GUI and channel polling accesses"
+    )]
+    async fn apply_rtt_response(&mut self, response: RttResponse) -> Result<()> {
+        match response {
+            RttResponse::Poll(result) => {
+                let results = result?;
+                for poll in results {
+                    let Some(channel) = self
+                        .up_channels
+                        .iter_mut()
+                        .find(|channel| channel.borrow().number() == poll.channel)
+                    else {
+                        continue;
+                    };
 
-        // Single attempt so the UI loop stays responsive; blocked tabs retry later.
-        match self
-            .session
-            .send_to_rtt(self.rtt_client, channel, data.clone(), 0)
-            .await
-        {
-            Ok(written) => {
-                let written = written as usize;
-                if written < data.len() {
-                    self.tabs[tab_index].restore_pending(data[written..].to_vec());
+                    match poll.result {
+                        Ok(bytes) => channel.borrow_mut().push_bytes(&bytes).await?,
+                        Err(error) => {
+                            tracing::warn!("RTT poll of channel {} failed: {error}", poll.channel);
+                        }
+                    }
                 }
             }
-            Err(error) => {
-                self.tabs[tab_index].restore_pending(data);
-                tracing::warn!("Failed to send input to RTT channel {channel}: {error:?}");
-            }
+            RttResponse::Flush { tab_index, result } => match result {
+                Ok(written) => {
+                    if let Some(tab) = self.tabs.get_mut(tab_index) {
+                        tab.finish_flush(written as usize);
+                    }
+                }
+                Err(error) => {
+                    if let Some(tab) = self.tabs.get_mut(tab_index) {
+                        tab.abort_flush();
+                    }
+                    tracing::warn!("Failed to send input to RTT channel: {error:?}");
+                }
+            },
         }
+
+        Ok(())
     }
 
     pub(crate) async fn clean_up(&mut self) -> Result<()> {
+        // Stop the background worker before tearing down the RTT client.
+        self.rtt_req_tx = None;
+        while self.rtt_resp_rx.try_recv().is_ok() {}
+        self.rtt_rpc_in_flight = false;
+
         clean_up_terminal();
         let _ = self.terminal.show_cursor();
 
@@ -499,6 +603,38 @@ fn render_tabs(f: &mut ratatui::Frame, chunk: Rect, tabs: &[Tab], current_tab: u
                 .add_modifier(Modifier::BOLD),
         );
     f.render_widget(tabs, chunk);
+}
+
+fn spawn_rtt_worker(
+    session: SessionInterface,
+    rtt_client: Key<RttClient>,
+) -> (UnboundedSender<RttRequest>, UnboundedReceiver<RttResponse>) {
+    let (req_tx, mut req_rx) = unbounded_channel();
+    let (resp_tx, resp_rx) = unbounded_channel();
+
+    tokio::spawn(async move {
+        while let Some(request) = req_rx.recv().await {
+            let response = match request {
+                RttRequest::Poll { channels } => {
+                    RttResponse::Poll(session.poll_rtt_up(rtt_client, channels).await)
+                }
+                RttRequest::Flush {
+                    tab_index,
+                    channel,
+                    data,
+                } => {
+                    let result = session.send_to_rtt(rtt_client, channel, data, 0).await;
+                    RttResponse::Flush { tab_index, result }
+                }
+            };
+
+            if resp_tx.send(response).is_err() {
+                break;
+            }
+        }
+    });
+
+    (req_tx, resp_rx)
 }
 
 pub fn clean_up_terminal() {

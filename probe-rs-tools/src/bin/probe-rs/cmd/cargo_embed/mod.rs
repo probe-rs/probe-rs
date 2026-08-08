@@ -532,13 +532,12 @@ async fn run_rttui_app(
     loop {
         app.render();
 
-        if app.handle_event().await {
+        if app.handle_events() {
             logging::println("Shutting down.");
             break;
         }
 
-        app.poll_rtt().await?;
-        app.flush_blocked_down_channels().await;
+        app.pump_rtt_io().await?;
 
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
