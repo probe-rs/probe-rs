@@ -1,5 +1,7 @@
 use anyhow::{Context, Result, anyhow};
-use probe_rs::Core;
+use probe_rs_rpc::rtt_client::RttChannels;
+use probe_rs_rpc::{Key, RttClient};
+use probe_rs_rpc_client::SessionInterface;
 use ratatui::{
     Terminal,
     backend::CrosstermBackend,
@@ -20,7 +22,7 @@ use probe_rs_rpc::rtt_config::{DataFormat, RttChannelConfig};
 
 use crate::{
     cmd::cargo_embed::rttui::{channel::ChannelData, tab::TabConfig},
-    util::rtt::{DefmtProcessor, DefmtState, RttDecoder, client::RttClient},
+    util::rtt::{DefmtProcessor, DefmtState, RttDecoder},
 };
 
 use super::super::config;
@@ -46,12 +48,15 @@ pub struct App {
     // `.poll_rtt()` step in alternation.
     up_channels: Vec<Rc<RefCell<UpChannel>>>,
 
-    client: RttClient,
+    session: SessionInterface,
+    rtt_client: Key<RttClient>,
 }
 
 impl App {
     pub fn new(
-        client: RttClient,
+        session: SessionInterface,
+        rtt_client: Key<RttClient>,
+        channels: &RttChannels,
         elf: Option<Vec<u8>>,
         config: config::Config,
         timestamp_offset: UtcOffset,
@@ -67,18 +72,17 @@ impl App {
 
         // Create channel states
         let mut up_channels = Vec::new();
-        let mut down_channels = Vec::new();
 
         // Create tab config based on detected channels
-        for up in client.up_channels() {
-            let number = up.number();
+        for up in &channels.up {
+            let number = up.number;
 
             // Create a default tab config if the user didn't specify one
             if !tab_config.iter().any(|tab| tab.up_channel == number) {
                 tab_config.push(TabConfig {
                     up_channel: number,
                     down_channel: None,
-                    name: Some(up.channel_name()),
+                    name: Some(up.name.clone()),
                     hide: false,
                 });
             }
@@ -95,7 +99,7 @@ impl App {
             // TODO: this logic is duplicated in `create_rtt_config` - which function probably
             // should be removed.
             let default_channel_config = RttChannelConfig::default();
-            let channel_format = if up.channel_name() == "defmt" {
+            let channel_format = if up.name == "defmt" {
                 DataFormat::Defmt
             } else {
                 channel_config
@@ -131,14 +135,15 @@ impl App {
             };
 
             up_channels.push(Rc::new(RefCell::new(UpChannel::new(
-                up,
+                number,
+                up.name.clone(),
                 data_format,
                 channel_config.socket,
             ))));
         }
 
-        for down in client.down_channels() {
-            let number = down.number();
+        for down in &channels.down {
+            let number = down.number;
             if !tab_config
                 .iter()
                 .any(|tab| tab.down_channel == Some(number))
@@ -150,12 +155,10 @@ impl App {
                         0
                     },
                     down_channel: Some(number),
-                    name: Some(down.channel_name()),
+                    name: Some(down.name.clone()),
                     hide: false,
                 });
             }
-
-            down_channels.push(Rc::new(RefCell::new(down)));
         }
 
         // Create tabs
@@ -164,7 +167,10 @@ impl App {
             if tab.hide {
                 continue;
             }
-            let Some(up_channel) = up_channels.get(tab.up_channel as usize) else {
+            let Some(up_channel) = up_channels
+                .iter()
+                .find(|channel| channel.borrow().number() == tab.up_channel)
+            else {
                 tracing::warn!(
                     "Configured up channel {} does not exist, skipping tab",
                     tab.up_channel
@@ -216,7 +222,8 @@ impl App {
             current_height: 0,
 
             up_channels,
-            client,
+            session,
+            rtt_client,
         })
     }
 
@@ -250,7 +257,7 @@ impl App {
     }
 
     /// Returns `true` if the application should exit.
-    pub fn handle_event(&mut self, core: &mut Core) -> bool {
+    pub async fn handle_event(&mut self) -> bool {
         let event = match self.events.next() {
             // Ignore key release events emitted by Crossterm on Windows
             Ok(event) if event.kind != KeyEventKind::Press => return false,
@@ -273,7 +280,7 @@ impl App {
             KeyCode::F(n) => self.select_tab(n as usize - 1),
             KeyCode::Tab => self.next_tab(),
             KeyCode::BackTab => self.previous_tab(),
-            KeyCode::Enter => self.push_rtt(core),
+            KeyCode::Enter => self.push_rtt().await,
             KeyCode::Char(c) => {
                 if has_control && let Some(digit) = c.to_digit(10).and_then(|d| d.checked_sub(1)) {
                     self.select_tab(digit as usize);
@@ -302,24 +309,84 @@ impl App {
         clippy::await_holding_refcell_ref,
         reason = "Main loop alternates between GUI and channel polling accesses"
     )]
-    pub async fn poll_rtt(&mut self, core: &mut Core<'_>) -> Result<()> {
-        for channel in self.up_channels.iter_mut() {
-            channel
-                .borrow_mut()
-                .poll_rtt(core, &mut self.client)
-                .await?;
+    pub async fn poll_rtt(&mut self) -> Result<()> {
+        let channel_numbers: Vec<u32> = self
+            .up_channels
+            .iter()
+            .map(|channel| channel.borrow().number())
+            .collect();
+
+        let results = self
+            .session
+            .poll_rtt_up(self.rtt_client, channel_numbers)
+            .await?;
+
+        for result in results {
+            let Some(channel) = self
+                .up_channels
+                .iter_mut()
+                .find(|channel| channel.borrow().number() == result.channel)
+            else {
+                continue;
+            };
+
+            match result.result {
+                Ok(bytes) => channel.borrow_mut().push_bytes(&bytes).await?,
+                Err(error) => {
+                    tracing::warn!("RTT poll of channel {} failed: {error}", result.channel);
+                }
+            }
         }
 
         Ok(())
     }
 
-    pub fn push_rtt(&mut self, core: &mut Core) {
-        if let Err(error) = self.tabs[self.current_tab].send_input(core, &mut self.client) {
-            tracing::warn!("Failed to send input to RTT channel: {error:?}");
+    pub async fn push_rtt(&mut self) {
+        let Some((channel, user_text)) = self.tabs[self.current_tab].take_input() else {
+            return;
+        };
+
+        let mut data = user_text.into_bytes();
+        data.push(b'\n');
+
+        match self
+            .session
+            .send_to_rtt(self.rtt_client, channel, data.clone(), 100)
+            .await
+        {
+            Ok(written) => {
+                let written = written as usize;
+                if written < data.len() {
+                    let mut remaining = data[written..].to_vec();
+                    if remaining.last() == Some(&b'\n') {
+                        remaining.pop();
+                    }
+                    match String::from_utf8(remaining) {
+                        Ok(text) => self.tabs[self.current_tab].restore_input(text),
+                        Err(error) => tracing::warn!(
+                            "Failed to restore unsent RTT input after a short write: {error}"
+                        ),
+                    }
+                    tracing::warn!(
+                        "RTT down channel {channel} accepted {written} of {} bytes",
+                        data.len()
+                    );
+                }
+            }
+            Err(error) => {
+                data.pop();
+                match String::from_utf8(data) {
+                    Ok(text) => self.tabs[self.current_tab].restore_input(text),
+                    Err(restore_error) => tracing::warn!(
+                        "Failed to restore RTT input after write error: {restore_error}"
+                    ),
+                }
+                tracing::warn!("Failed to send input to RTT channel: {error:?}");
+            }
         }
     }
 
-    pub(crate) fn clean_up(&mut self, core: &mut Core) -> Result<()> {
+    pub(crate) async fn clean_up(&mut self) -> Result<()> {
         clean_up_terminal();
         let _ = self.terminal.show_cursor();
 
@@ -327,7 +394,7 @@ impl App {
             self.save_tab_logs(i, tab);
         }
 
-        self.client.clean_up(core)?;
+        self.session.clean_up_rtt(self.rtt_client).await?;
 
         Ok(())
     }

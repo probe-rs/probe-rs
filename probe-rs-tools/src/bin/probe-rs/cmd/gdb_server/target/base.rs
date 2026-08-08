@@ -1,6 +1,9 @@
-use super::super::arch::{RuntimeRegId, RuntimeRegisters};
-use super::desc::GdbRegisterSource;
 use super::{GdbErrorExt, RuntimeTarget};
+use crate::cmd::gdb_server::arch::{RuntimeRegId, RuntimeRegisters};
+use crate::cmd::gdb_server::target::desc::GdbRegisterSource;
+use crate::rpc::functions::core_ops::convert::{
+    from_wire_register_value, to_wire_register_id, to_wire_register_value,
+};
 
 use gdbstub::common::Tid;
 use gdbstub::target::ext::base::multithread::MultiThreadBase;
@@ -9,23 +12,31 @@ use gdbstub::target::ext::base::single_register_access::SingleRegisterAccess;
 use gdbstub::target::ext::base::single_register_access::SingleRegisterAccessOps;
 use gdbstub::target::ext::thread_extra_info::ThreadExtraInfoOps;
 use gdbstub::target::{TargetError, TargetResult};
-use probe_rs::{Core, Error, MemoryInterface};
+use probe_rs::RegisterValue;
+use probe_rs_rpc::core_ops::WireRegisterId;
+use probe_rs_rpc_client::ClientError;
 
-impl MultiThreadBase for RuntimeTarget<'_> {
+impl MultiThreadBase for RuntimeTarget {
     fn read_registers(&mut self, regs: &mut RuntimeRegisters, tid: Tid) -> TargetResult<(), Self> {
-        let mut session = self.session.lock();
-        let mut core = session.core(tid.get() - 1).into_target_result()?;
+        let core_index = tid.get() - 1;
+        let core = self.core(core_index);
+        let registers = self.core_cache(core_index)?.registers;
 
-        regs.pc = core
-            .read_core_reg(core.program_counter())
+        let pc_id = registers
+            .pc()
+            .ok_or_else(|| TargetError::Fatal(anyhow::anyhow!("Core has no program counter")))?
+            .id();
+        let pc_value = self
+            .block_on(core.read_core_reg(to_wire_register_id(pc_id)))
             .into_target_result()?;
+        regs.pc = register_value_to_u64(from_wire_register_value(pc_value))?;
 
         let mut reg_buffer = Vec::<u8>::new();
 
         for reg in self.target_desc.get_registers_for_main_group() {
             let bytesize = reg.size_in_bytes();
             let mut value: u128 =
-                read_register_from_source(&mut core, reg.source()).into_target_result()?;
+                read_register_from_source(self, core_index, reg.source()).into_target_result()?;
 
             for _ in 0..bytesize {
                 reg_buffer.push(value as u8);
@@ -39,21 +50,27 @@ impl MultiThreadBase for RuntimeTarget<'_> {
     }
 
     fn write_registers(&mut self, regs: &RuntimeRegisters, tid: Tid) -> TargetResult<(), Self> {
-        let mut session = self.session.lock();
-        let mut core = session.core(tid.get() - 1).into_target_result()?;
+        let core_index = tid.get() - 1;
+        let core = self.core(core_index);
+        let registers = self.core_cache(core_index)?.registers;
 
-        core.write_core_reg(core.program_counter(), regs.pc)
-            .into_target_result()?;
+        let pc_id = registers
+            .pc()
+            .ok_or_else(|| TargetError::Fatal(anyhow::anyhow!("Core has no program counter")))?
+            .id();
+        self.block_on(core.write_core_reg(
+            to_wire_register_id(pc_id),
+            to_wire_register_value(RegisterValue::from(regs.pc)),
+        ))
+        .into_target_result()?;
 
         let mut current_regval_offset = 0;
 
         for reg in self.target_desc.get_registers_for_main_group() {
             let bytesize = reg.size_in_bytes();
-
             let current_regval_end = current_regval_offset + bytesize;
 
             if current_regval_end > regs.regs.len() {
-                // Supplied write general registers command argument length not valid, tell GDB
                 tracing::error!(
                     "Unable to write register {:#?}, because supplied register value length was too short",
                     reg.source()
@@ -62,16 +79,15 @@ impl MultiThreadBase for RuntimeTarget<'_> {
             }
 
             let str_value = &regs.regs[current_regval_offset..current_regval_end];
-
-            let mut value = 0;
+            let mut value = 0u128;
             for (exp, ch) in str_value.iter().enumerate() {
                 value += (*ch as u128) << (8 * exp);
             }
 
-            write_register_from_source(&mut core, reg.source(), value).into_target_result()?;
+            write_register_from_source(self, core_index, reg.source(), value)
+                .into_target_result()?;
 
             current_regval_offset = current_regval_end;
-
             if current_regval_offset == regs.regs.len() {
                 break;
             }
@@ -87,27 +103,26 @@ impl MultiThreadBase for RuntimeTarget<'_> {
         tid: Tid,
     ) -> TargetResult<usize, Self> {
         if start_addr.checked_add(data.len() as u64).is_none() {
-            // Workaround for a GDB bug: it may send "$mfffffffffffffffc,4#2a".
-            // Detect address+length overflow and report EFAULT (14) to GDB.
-            // Treat as non-fatal; remove once upstream GDB fixes this.
             return Err(TargetError::Errno(14));
         }
-        let mut session = self.session.lock();
-        let mut core = session.core(tid.get() - 1).into_target_result()?;
 
-        // We currently either read the entire buffer or nothing
-        let num_read = data.len();
+        let core = self.core(tid.get() - 1);
+        let bytes = self
+            .block_on(core.read_bytes(start_addr, data.len()))
+            .into_target_result_non_fatal()?;
 
-        core.read(start_addr, data)
-            .map(|_| num_read)
-            .into_target_result_non_fatal()
+        let num_read = bytes.len().min(data.len());
+        data[..num_read].copy_from_slice(&bytes[..num_read]);
+        if num_read != data.len() {
+            return Err(TargetError::Errno(122));
+        }
+
+        Ok(num_read)
     }
 
     fn write_addrs(&mut self, start_addr: u64, data: &[u8], tid: Tid) -> TargetResult<(), Self> {
-        let mut session = self.session.lock();
-        let mut core = session.core(tid.get() - 1).into_target_result()?;
-
-        core.write_8(start_addr, data)
+        let core = self.core(tid.get() - 1);
+        self.block_on(core.write_memory_8(start_addr, data.to_vec()))
             .into_target_result_non_fatal()
     }
 
@@ -115,9 +130,8 @@ impl MultiThreadBase for RuntimeTarget<'_> {
         &mut self,
         thread_is_active: &mut dyn FnMut(Tid),
     ) -> Result<(), Self::Error> {
-        for i in &self.cores {
-            // Unwrap is always safe because we'll never pass 0 to new
-            let tid = Tid::new(i + 1).unwrap();
+        for core in &self.cores {
+            let tid = Tid::new(core.index + 1).unwrap();
             thread_is_active(tid);
         }
 
@@ -137,7 +151,7 @@ impl MultiThreadBase for RuntimeTarget<'_> {
     }
 }
 
-impl SingleRegisterAccess<Tid> for RuntimeTarget<'_> {
+impl SingleRegisterAccess<Tid> for RuntimeTarget {
     fn read_register(
         &mut self,
         tid: Tid,
@@ -148,13 +162,9 @@ impl SingleRegisterAccess<Tid> for RuntimeTarget<'_> {
             return Err(TargetError::Errno(0));
         };
 
-        let mut session = self.session.lock();
-        let mut core = session.core(tid.get() - 1).into_target_result()?;
-
         let bytesize = reg.size_in_bytes();
-
         let mut value: u128 =
-            read_register_from_source(&mut core, reg.source()).into_target_result()?;
+            read_register_from_source(self, tid.get() - 1, reg.source()).into_target_result()?;
 
         for buf_entry in buf.iter_mut().take(bytesize) {
             *buf_entry = value as u8;
@@ -174,40 +184,46 @@ impl SingleRegisterAccess<Tid> for RuntimeTarget<'_> {
             return Err(TargetError::Errno(0));
         };
 
-        let mut session = self.session.lock();
-        let mut core = session.core(tid.get() - 1).into_target_result()?;
-
         let bytesize = reg.size_in_bytes();
-
-        let mut value = 0;
-
+        let mut value = 0u128;
         for (exp, ch) in val.iter().enumerate().take(bytesize) {
             value += (*ch as u128) << (8 * exp);
         }
 
-        write_register_from_source(&mut core, reg.source(), value).into_target_result()?;
-
-        Ok(())
+        write_register_from_source(self, tid.get() - 1, reg.source(), value).into_target_result()
     }
 }
 
-fn read_register_from_source(core: &mut Core, source: GdbRegisterSource) -> Result<u128, Error> {
+impl RuntimeTarget {
+    fn core_cache(&self, index: usize) -> Result<&super::CoreCache, TargetError<anyhow::Error>> {
+        self.cores
+            .iter()
+            .find(|c| c.index == index)
+            .ok_or_else(|| TargetError::Fatal(anyhow::anyhow!("Unknown core {index}")))
+    }
+}
+
+fn read_register_from_source(
+    target: &RuntimeTarget,
+    core_index: usize,
+    source: GdbRegisterSource,
+) -> Result<u128, ClientError> {
+    let core = target.core(core_index);
     match source {
         GdbRegisterSource::SingleRegister(id) => {
-            let val: u128 = core.read_core_reg(id)?;
-
-            Ok(val)
+            let value = target.block_on(core.read_core_reg(WireRegisterId(id.0)))?;
+            Ok(register_value_to_u128(from_wire_register_value(value)))
         }
         GdbRegisterSource::TwoWordRegister {
             low,
             high,
             word_size,
         } => {
-            let mut val: u128 = core.read_core_reg(low)?;
-            let high_val: u128 = core.read_core_reg(high)?;
-
+            let low_val = target.block_on(core.read_core_reg(WireRegisterId(low.0)))?;
+            let high_val = target.block_on(core.read_core_reg(WireRegisterId(high.0)))?;
+            let mut val = register_value_to_u128(from_wire_register_value(low_val));
+            let high_val = register_value_to_u128(from_wire_register_value(high_val));
             val |= high_val << word_size;
-
             Ok(val)
         }
         GdbRegisterSource::Unavailable => Ok(0),
@@ -215,12 +231,17 @@ fn read_register_from_source(core: &mut Core, source: GdbRegisterSource) -> Resu
 }
 
 fn write_register_from_source(
-    core: &mut Core,
+    target: &RuntimeTarget,
+    core_index: usize,
     source: GdbRegisterSource,
     value: u128,
-) -> Result<(), Error> {
+) -> Result<(), ClientError> {
+    let core = target.core(core_index);
     match source {
-        GdbRegisterSource::SingleRegister(id) => core.write_core_reg(id, value),
+        GdbRegisterSource::SingleRegister(id) => target.block_on(core.write_core_reg(
+            WireRegisterId(id.0),
+            to_wire_register_value(register_value_from_u128(value)),
+        )),
         GdbRegisterSource::TwoWordRegister {
             low,
             high,
@@ -228,10 +249,39 @@ fn write_register_from_source(
         } => {
             let low_word = value & ((1 << word_size) - 1);
             let high_word = value >> word_size;
-
-            core.write_core_reg(low, low_word)?;
-            core.write_core_reg(high, high_word)
+            target.block_on(core.write_core_reg(
+                WireRegisterId(low.0),
+                to_wire_register_value(register_value_from_u128(low_word)),
+            ))?;
+            target.block_on(core.write_core_reg(
+                WireRegisterId(high.0),
+                to_wire_register_value(register_value_from_u128(high_word)),
+            ))
         }
         GdbRegisterSource::Unavailable => Ok(()),
+    }
+}
+
+fn register_value_to_u128(value: RegisterValue) -> u128 {
+    match value {
+        RegisterValue::U32(v) => v as u128,
+        RegisterValue::U64(v) => v as u128,
+        RegisterValue::U128(v) => v,
+    }
+}
+
+fn register_value_to_u64(value: RegisterValue) -> Result<u64, TargetError<anyhow::Error>> {
+    value
+        .try_into()
+        .map_err(|e| TargetError::Fatal(anyhow::anyhow!("{e:?}")))
+}
+
+fn register_value_from_u128(value: u128) -> RegisterValue {
+    if value <= u32::MAX as u128 {
+        RegisterValue::U32(value as u32)
+    } else if value <= u64::MAX as u128 {
+        RegisterValue::U64(value as u64)
+    } else {
+        RegisterValue::U128(value)
     }
 }

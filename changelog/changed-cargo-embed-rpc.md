@@ -1,0 +1,1 @@
+`cargo-embed` now drives the probe through the RPC client, so it can share a session with the GDB stub and RTT UI. Embed.toml gained a `[remote]` section with `host` / `token`. The local (non-RPC) GDB server implementation was removed; `probe-rs gdb` and embed both use the RPC-backed stub.

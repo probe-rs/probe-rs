@@ -106,3 +106,10 @@ tabs = [
 enabled = false
 # The connection string in host:port format where the GDB server will open a socket.
 gdb_connection_string = "127.0.0.1:1337"
+
+[default.remote]
+# Remote probe-rs serve host. When set, cargo-embed talks to that server over RPC
+# instead of opening the probe in-process.
+# host = "ws://127.0.0.1:3000"
+# Authentication token for the remote server, if required.
+# token = "secret"

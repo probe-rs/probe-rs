@@ -4,9 +4,7 @@ use std::{
     rc::Rc,
 };
 
-use probe_rs::Core;
-
-use crate::{cmd::cargo_embed::rttui::channel::ChannelData, util::rtt::client::RttClient};
+use crate::cmd::cargo_embed::rttui::channel::ChannelData;
 
 use super::channel::UpChannel;
 
@@ -99,14 +97,17 @@ impl Tab {
         self.down_channel.as_ref().map(|(_, input)| input.as_str())
     }
 
-    pub fn send_input(&mut self, core: &mut Core, client: &mut RttClient) -> anyhow::Result<()> {
-        if let Some((channel, input)) = self.down_channel.as_mut() {
-            input.push('\n');
-            client.write_down_channel(core, *channel, input.as_str())?;
-            input.clear();
-        }
+    /// Take the pending down-channel input without the trailing newline
+    /// that will be appended for the RTT write.
+    pub fn take_input(&mut self) -> Option<(u32, String)> {
+        let (channel, input) = self.down_channel.as_mut()?;
+        Some((*channel, std::mem::take(input)))
+    }
 
-        Ok(())
+    pub fn restore_input(&mut self, text: String) {
+        if let Some((_, input)) = self.down_channel.as_mut() {
+            *input = text;
+        }
     }
 
     pub fn update_messages(&mut self, width: usize, height: usize) {

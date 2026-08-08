@@ -7,7 +7,7 @@ use gdbstub::{
     },
 };
 
-impl Breakpoints for RuntimeTarget<'_> {
+impl Breakpoints for RuntimeTarget {
     fn support_sw_breakpoint(&mut self) -> Option<SwBreakpointOps<'_, Self>> {
         None
     }
@@ -21,18 +21,16 @@ impl Breakpoints for RuntimeTarget<'_> {
     }
 }
 
-impl HwBreakpoint for RuntimeTarget<'_> {
+impl HwBreakpoint for RuntimeTarget {
     fn add_hw_breakpoint(
         &mut self,
         addr: u64,
         _kind: <Self::Arch as Arch>::BreakpointKind,
     ) -> gdbstub::target::TargetResult<bool, Self> {
-        let mut session = self.session.lock();
-
-        for core_id in &self.cores {
-            let mut core = session.core(*core_id).into_target_result()?;
-
-            core.set_hw_breakpoint(addr).into_target_result()?;
+        for core_info in &self.cores {
+            let core = self.session.core(core_info.index);
+            self.block_on(core.set_hw_breakpoint(addr))
+                .into_target_result()?;
         }
 
         Ok(true)
@@ -43,12 +41,10 @@ impl HwBreakpoint for RuntimeTarget<'_> {
         addr: u64,
         _kind: <Self::Arch as Arch>::BreakpointKind,
     ) -> gdbstub::target::TargetResult<bool, Self> {
-        let mut session = self.session.lock();
-
-        for core_id in &self.cores {
-            let mut core = session.core(*core_id).into_target_result()?;
-
-            core.clear_hw_breakpoint(addr).into_target_result()?;
+        for core_info in &self.cores {
+            let core = self.session.core(core_info.index);
+            self.block_on(core.clear_hw_breakpoints(vec![addr]))
+                .into_target_result()?;
         }
 
         Ok(true)

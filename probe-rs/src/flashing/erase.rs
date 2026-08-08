@@ -4,8 +4,9 @@ use probe_rs_target::{MemoryRange, MemoryRegion, NvmRegion};
 
 use crate::Session;
 use crate::flashing::progress::ProgressOperation;
-use crate::flashing::{FlashError, FlashLoader, flasher::Flasher};
+use crate::flashing::{DownloadOptions, FlashError, FlashLoader, flasher::Flasher};
 use crate::flashing::{FlashLayout, FlashSector};
+use crate::memory::MemoryInterface;
 
 use super::FlashProgress;
 
@@ -162,16 +163,25 @@ pub fn erase_all(
     Ok(())
 }
 
-/// Erases flash address range `address_start..address_end`.
+/// Erases flash covering `address_start..address_end`.
+///
+/// Flash can only be erased in whole sectors. Every sector that intersects the
+/// requested range is erased.
+///
+/// When `restore` is `true`, bytes that lie inside those erased sectors but
+/// outside `address_start..address_end` are read first and programmed back
+/// afterwards, so only the requested range is left erased. When `restore` is
+/// `false`, those bordering bytes stay erased.
 // TODO: currently no progress other than RTT output is reported by anything in this function.
 pub fn erase(
     session: &mut Session,
     progress: &mut FlashProgress<'_>,
     address_start: u64,
     address_end: u64,
+    restore: bool,
     read_flasher_rtt: bool,
 ) -> Result<(), FlashError> {
-    tracing::debug!("Erasing {address_start:08x}..{address_end:08x}");
+    tracing::debug!("Erasing {address_start:08x}..{address_end:08x} (restore={restore})");
 
     let address_range = address_start..address_end;
 
@@ -230,15 +240,28 @@ pub fn erase(
         let sectors = flasher
             .flash_algorithm()
             .iter_sectors()
-            .filter(|info| address_range.contains_range(&info.address_range()))
+            .filter(|info| address_range.intersects_range(&info.address_range()))
             .filter(|info| {
                 let range = info.base_address..info.base_address + info.size;
                 regions.iter().any(|r| r.range.contains_range(&range))
             })
             .collect::<Vec<_>>();
 
+        let restore_data = if restore {
+            read_restore_data(
+                &mut flasher,
+                session,
+                core_index,
+                &sectors,
+                address_start,
+                address_end,
+            )?
+        } else {
+            Vec::new()
+        };
+
         flasher.run_erase(session, progress, |active, _| {
-            for info in sectors {
+            for info in &sectors {
                 tracing::debug!(
                     "    sector: {:#010x}-{:#010x} ({} bytes)",
                     info.base_address,
@@ -255,9 +278,82 @@ pub fn erase(
             }
             Ok(())
         })?;
+
+        if !restore_data.is_empty() {
+            let mut loader = session.target().flash_loader();
+            loader.read_rtt_output(read_flasher_rtt);
+            for (address, data) in &restore_data {
+                loader.add_data(*address, data)?;
+            }
+
+            loader.commit(
+                session,
+                DownloadOptions {
+                    skip_erase: true,
+                    ..Default::default()
+                },
+            )?;
+        }
     }
 
     Ok(())
+}
+
+/// Read bytes that sit in `sectors` but outside `address_start..address_end`.
+fn read_restore_data(
+    flasher: &mut Flasher,
+    session: &mut Session,
+    core_index: usize,
+    sectors: &[probe_rs_target::SectorInfo],
+    address_start: u64,
+    address_end: u64,
+) -> Result<Vec<(u64, Vec<u8>)>, FlashError> {
+    let mut ranges = Vec::new();
+
+    for info in sectors {
+        let sector_start = info.base_address;
+        let sector_end = info.base_address + info.size;
+
+        if sector_start < address_start {
+            let head_end = address_start.min(sector_end);
+            if head_end > sector_start {
+                ranges.push((sector_start, (head_end - sector_start) as usize));
+            }
+        }
+
+        if sector_end > address_end {
+            let tail_start = address_end.max(sector_start);
+            if sector_end > tail_start {
+                ranges.push((tail_start, (sector_end - tail_start) as usize));
+            }
+        }
+    }
+
+    if ranges.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut restore_data = Vec::with_capacity(ranges.len());
+
+    if flasher.flash_algorithm().pc_read.is_some() {
+        flasher.run_verify(session, &mut FlashProgress::empty(), |active, _| {
+            for &(address, len) in &ranges {
+                let mut buf = vec![0; len];
+                active.read_flash(address, &mut buf)?;
+                restore_data.push((address, buf));
+            }
+            Ok(())
+        })?;
+    } else {
+        let mut core = session.core(core_index).map_err(FlashError::Core)?;
+        for (address, len) in ranges {
+            let mut buf = vec![0; len];
+            core.read(address, &mut buf).map_err(FlashError::Core)?;
+            restore_data.push((address, buf));
+        }
+    }
+
+    Ok(restore_data)
 }
 
 /// Check that a memory range has been erased.

@@ -249,7 +249,7 @@ impl Cmd {
 
         let session = cli::attach_probe(&client, self.probe_options, elf_meta, false).await?;
 
-        let mut rtt_client = rtt_client(
+        let rtt_client = rtt_client(
             &session,
             &file_meta,
             &self.monitor_options,
@@ -263,7 +263,7 @@ impl Cmd {
             &self.path,
             self.format_options,
             self.download_options,
-            Some(&mut rtt_client),
+            Some(rtt_client.handle()),
             None,
         )
         .await?;
