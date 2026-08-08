@@ -47,7 +47,8 @@ use probe_rs_rpc::disassemble::{DisassembleRequest, WireDisassembledInstruction}
 use probe_rs_rpc::file::{AppendFileRequest, TempFile};
 use probe_rs_rpc::flash::{
     BootInfo, BootRequest, BuildRequest, BuildResult, DownloadOptions, EraseCommand, EraseRequest,
-    FlashRequest, ProgressEvent, VerifyRequest, VerifyResult,
+    FlashRequest, LoadRegionRequest, NewFlashLoaderRequest, ProgressEvent, VerifyRequest,
+    VerifyResult,
 };
 use probe_rs_rpc::format::FormatOptions;
 use probe_rs_rpc::info::{
@@ -85,16 +86,16 @@ use probe_rs_rpc::{
     CoreStepEndpoint, CoreWriteRegEndpoint, CreateRttClientEndpoint, CreateTempFileEndpoint,
     DisassembleEndpoint, EraseEndpoint, EvaluateEndpoint, FlashEndpoint, GetRttChannelsEndpoint,
     HandleSemihostingEndpoint, ListChipFamiliesEndpoint, ListProbesEndpoint, ListTestsEndpoint,
-    LoadChipFamilyEndpoint, LoadDebugInfoEndpoint, LoadSvdEndpoint, MonitorEndpoint,
-    PollRttUpEndpoint, ProgressEventTopic, ReadBytesEndpoint, ReadMemory8Endpoint,
-    ReadMemory16Endpoint, ReadMemory32Endpoint, ReadMemory64Endpoint, ResetCoreAndHaltEndpoint,
-    ResetCoreEndpoint, ResolveSourceBreakpointsEndpoint, ResolveSourceLocationsEndpoint,
-    ResumeAllCoresEndpoint, RpcError, RpcResult, RttDownEndpoint, RttTopic, RunTestEndpoint,
-    ScopesEndpoint, SelectProbeEndpoint, SemihostingTopic, SetVariableEndpoint,
-    TakeRichStackTraceEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint,
-    TargetMetadataEndpoint, TempFileDataEndpoint, TestKickoffEndpoint, TokioSpawner,
-    VariablesEndpoint, VerifyEndpoint, WriteMemory8Endpoint, WriteMemory16Endpoint,
-    WriteMemory32Endpoint, WriteMemory64Endpoint,
+    LoadChipFamilyEndpoint, LoadDebugInfoEndpoint, LoadRegionEndpoint, LoadSvdEndpoint,
+    MonitorEndpoint, NewFlashLoaderEndpoint, PollRttUpEndpoint, ProgressEventTopic,
+    ReadBytesEndpoint, ReadMemory8Endpoint, ReadMemory16Endpoint, ReadMemory32Endpoint,
+    ReadMemory64Endpoint, ResetCoreAndHaltEndpoint, ResetCoreEndpoint,
+    ResolveSourceBreakpointsEndpoint, ResolveSourceLocationsEndpoint, ResumeAllCoresEndpoint,
+    RpcError, RpcResult, RttDownEndpoint, RttTopic, RunTestEndpoint, ScopesEndpoint,
+    SelectProbeEndpoint, SemihostingTopic, SetVariableEndpoint, TakeRichStackTraceEndpoint,
+    TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint, TargetMetadataEndpoint,
+    TempFileDataEndpoint, TestKickoffEndpoint, TokioSpawner, VariablesEndpoint, VerifyEndpoint,
+    WriteMemory8Endpoint, WriteMemory16Endpoint, WriteMemory32Endpoint, WriteMemory64Endpoint,
 };
 use probe_rs_rpc::{FlashLoader, Key, RttClient, Session};
 
@@ -646,6 +647,34 @@ impl SessionInterface {
                 sessid: self.sessid,
                 boot_info,
                 core_id: core_id as u32,
+            })
+            .await
+    }
+
+    pub async fn new_flash_loader(
+        &self,
+        read_flasher_rtt: bool,
+    ) -> Result<Key<FlashLoader>, ClientError> {
+        self.client
+            .send_resp::<NewFlashLoaderEndpoint, _>(&NewFlashLoaderRequest {
+                sessid: self.sessid,
+                read_flasher_rtt,
+            })
+            .await
+    }
+
+    pub async fn load_region(
+        &self,
+        loader: Key<FlashLoader>,
+        address: u64,
+        data: Vec<u8>,
+    ) -> Result<(), ClientError> {
+        self.client
+            .send_resp::<LoadRegionEndpoint, _>(&LoadRegionRequest {
+                sessid: self.sessid,
+                loader,
+                address,
+                data,
             })
             .await
     }
