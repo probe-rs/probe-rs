@@ -34,6 +34,21 @@ const SCB_VTOR: u64 = 0xE000_ED08;
 const SCB_SCR: u64 = 0xE000_ED10;
 const SCB_SHCSR: u64 = 0xE000_ED24;
 
+// RCC base 0x4000_0000 — RM §8.3.4 RCC_CGR0 (offset 0x00C).
+const RCC_CGR0: u64 = 0x4000_000C;
+/// RM §8.3.4 bit 21: clock gate for the SYSCFG peripheral.
+const RCC_CGR0_SYSCFG_CLK_EN: u32 = 1 << 21;
+
+// SYSCFG base 0x4000_1000 — RM §7.5.
+const SYSCFG_CR2: u64 = 0x4000_1008;
+const SYSCFG_CR3: u64 = 0x4000_100C;
+/// SYSCFG_CR2 bit 10: allow debug while the CPU is in Sleep/Deepsleep.
+const SYSCFG_DBG_SLEEP: u32 = 1 << 10;
+/// SYSCFG_CR3 bit 1: allow debug while the CPU is in Stop.
+const SYSCFG_DBG_STOP: u32 = 1 << 1;
+/// SYSCFG_CR3 bit 0: allow debug while the CPU is in Standby.
+const SYSCFG_DBG_STANDBY: u32 = 1 << 0;
+
 const REG_SP: RegisterId = RegisterId(13);
 const REG_LR: RegisterId = RegisterId(14);
 const REG_PC: RegisterId = RegisterId(15);
@@ -42,6 +57,34 @@ const REG_MSP: RegisterId = RegisterId(17);
 const REG_PSP: RegisterId = RegisterId(18);
 // { CONTROL[7:0], FAULTMASK[7:0], BASEPRI[7:0], PRIMASK[7:0] }
 const REG_SPECIAL: RegisterId = RegisterId(20);
+
+/// Keep SWD working after the application executes WFI/WFE.
+///
+/// By default the ASR6601 powers down the debug connection when entering low-power
+/// modes (Sleep / Stop / Standby). Once that happens the probe times out and cannot
+/// reattach until a power cycle or BOOT0 recovery.
+///
+/// The chip has three sticky "keep debug on" bits in SYSCFG. We set all three so any
+/// low-power mode is debug-safe.
+fn enable_debug_during_sleep(memory: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
+    // SYSCFG_CR2 is on the gated SYSCFG clock; we need to enable it before touching CR2.
+    let cgr0 = memory.read_word_32(RCC_CGR0)?;
+    if cgr0 & RCC_CGR0_SYSCFG_CLK_EN == 0 {
+        memory.write_word_32(RCC_CGR0, cgr0 | RCC_CGR0_SYSCFG_CLK_EN)?;
+    }
+
+    // SYSCFG_DBG_SLEEP = 1 → "allowed" to keep a debug connection
+    // in Sleep/Deepsleep (covers ordinary WFE/WFI with SLEEPDEEP = 0/1).
+    let cr2 = memory.read_word_32(SYSCFG_CR2)?;
+    memory.write_word_32(SYSCFG_CR2, cr2 | SYSCFG_DBG_SLEEP)?;
+
+    // SYSCFG_DBG_STOP / SYSCFG_DBG_STANDBY = 1 → keep debug
+    // when firmware later enters Stop0–3 or Standby (SLEEPDEEP + PWR lp_mode).
+    let cr3 = memory.read_word_32(SYSCFG_CR3)?;
+    memory.write_word_32(SYSCFG_CR3, cr3 | SYSCFG_DBG_STOP | SYSCFG_DBG_STANDBY)?;
+
+    Ok(())
+}
 
 impl ArmDebugSequence for Asr6601 {
     /// SYSRESETREQ drops the ASR6601 debug connection and does not reliably boot
@@ -101,6 +144,8 @@ impl ArmDebugSequence for Asr6601 {
         write_core_reg(interface, REG_SP, sp)?;
         write_core_reg(interface, REG_LR, u32::MAX)?;
         write_core_reg(interface, REG_PC, pc)?;
+
+        enable_debug_during_sleep(interface)?;
 
         Ok(())
     }
