@@ -3,11 +3,12 @@
 use std::sync::Arc;
 
 use super::nrf::Nrf;
+use crate::architecture::arm::sequences::ArmDebugSequenceError;
 use crate::architecture::arm::{
-    ArmDebugInterface, ArmError, FullyQualifiedApAddress, ap::CSW, dp::DpAddress,
-    sequences::ArmDebugSequence,
+    ApAddress as ArmApAddress, ArmDebugInterface, ArmError, FullyQualifiedApAddress, ap::CSW,
+    dp::DpAddress, sequences::ArmDebugSequence,
 };
-use probe_rs_target::{ApAddress, Chip, CoreAccessOptions};
+use probe_rs_target::{ApAddress as TargetApAddress, Chip, CoreAccessOptions};
 
 /// The sequence handle for the nRF5340.
 #[derive(Debug)]
@@ -39,8 +40,8 @@ impl Nrf5340 {
             };
 
             let ap_pair = match options.ap {
-                ApAddress::V1(0) => (0, 2),
-                ApAddress::V1(1) => (1, 3),
+                TargetApAddress::V1(0) => (0, 2),
+                TargetApAddress::V1(1) => (1, 3),
                 ref ap => {
                     tracing::error!(
                         "Unsupported nRF5340 core access port {ap:?} for core {}",
@@ -94,11 +95,35 @@ impl Nrf for Nrf5340 {
     fn has_network_core(&self) -> bool {
         self.core_aps.iter().any(|&(ahb_ap, _)| ahb_ap == 1)
     }
+
+    fn ctrl_ap_for_core(
+        &self,
+        core_ap: &FullyQualifiedApAddress,
+    ) -> Result<Option<FullyQualifiedApAddress>, ArmError> {
+        // The nRF5340 application CTRL-AP is documented at AP2:
+        // https://docs.nordicsemi.com/bundle/ps_nrf5340/page/ctrl-ap.html
+        let ctrl_ap = self
+            .core_aps(&core_ap.dp())
+            .into_iter()
+            .find_map(|(ahb_ap, ctrl_ap)| (ahb_ap == *core_ap).then_some(ctrl_ap))
+            .ok_or_else(|| {
+                ArmError::from(ArmDebugSequenceError::custom(format!(
+                    "No nRF5340 CTRL-AP reset mapping for core access port {:?}",
+                    core_ap.ap()
+                )))
+            })?;
+
+        if core_ap.ap() == &ArmApAddress::V1(0) {
+            Ok(Some(ctrl_ap))
+        } else {
+            Ok(None)
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use probe_rs_target::{ApAddress, CoreAccessOptions, CoreType};
+    use probe_rs_target::{ApAddress as TargetApAddress, CoreAccessOptions, CoreType};
 
     use super::*;
 
@@ -122,7 +147,7 @@ mod tests {
         let CoreAccessOptions::Arm(options) = &mut network_core.core_access_options else {
             unreachable!();
         };
-        options.ap = ApAddress::V1(1);
+        options.ap = TargetApAddress::V1(1);
         chip.cores.push(network_core);
 
         let sequence = Nrf5340::from_chip(&chip);
@@ -137,7 +162,7 @@ mod tests {
         let CoreAccessOptions::Arm(options) = &mut chip.cores[0].core_access_options else {
             unreachable!();
         };
-        options.ap = ApAddress::V1(7);
+        options.ap = TargetApAddress::V1(7);
 
         let sequence = Nrf5340::from_chip(&chip);
 
@@ -153,7 +178,7 @@ mod tests {
         let CoreAccessOptions::Arm(options) = &mut unsupported_core.core_access_options else {
             unreachable!();
         };
-        options.ap = ApAddress::V1(7);
+        options.ap = TargetApAddress::V1(7);
         chip.cores.push(unsupported_core);
 
         let sequence = Nrf5340::from_chip(&chip);
@@ -201,5 +226,37 @@ mod tests {
                 .iter()
                 .all(|region| region.cores() == ["application"])
         );
+    }
+
+    #[test]
+    fn application_core_resets_through_application_ctrl_ap() {
+        let sequence = Nrf5340 {
+            core_aps: vec![(0, 2)],
+        };
+        let core_ap = FullyQualifiedApAddress::v1_with_default_dp(0);
+
+        let ctrl_ap = sequence.ctrl_ap_for_core(&core_ap).unwrap().unwrap();
+
+        assert_eq!(ctrl_ap.ap(), &ArmApAddress::V1(2));
+    }
+
+    #[test]
+    fn network_core_retains_the_generic_reset_path() {
+        let sequence = Nrf5340 {
+            core_aps: vec![(0, 2), (1, 3)],
+        };
+        let core_ap = FullyQualifiedApAddress::v1_with_default_dp(1);
+
+        assert!(sequence.ctrl_ap_for_core(&core_ap).unwrap().is_none());
+    }
+
+    #[test]
+    fn core_outside_the_selected_target_has_no_reset_mapping() {
+        let sequence = Nrf5340 {
+            core_aps: vec![(0, 2)],
+        };
+        let core_ap = FullyQualifiedApAddress::v1_with_default_dp(7);
+
+        assert!(sequence.ctrl_ap_for_core(&core_ap).is_err());
     }
 }
