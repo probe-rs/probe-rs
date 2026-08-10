@@ -430,7 +430,9 @@ async fn run_app<R>(
     let result = cb(client).await;
 
     // Wait for the server to shut down
-    _ = handle.await.unwrap();
+    if let Err(e) = handle.await {
+        tracing::error!("local RPC server task failed: {e}");
+    }
 
     result
 }

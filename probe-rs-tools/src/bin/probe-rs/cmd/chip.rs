@@ -112,7 +112,9 @@ mod test {
         f(client).await;
 
         // Wait for the server to shut down
-        _ = handle.await.unwrap();
+        if let Err(e) = handle.await {
+            tracing::warn!("local RPC server task failed during test: {e}");
+        }
     }
 
     #[tokio::test]
