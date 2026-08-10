@@ -393,7 +393,7 @@ impl ArmDebugInterface for BlackMagicProbeArmDebug {
 
             self.sequence.debug_port_connect(self.probe.as_mut(), dp)?;
 
-            self.debug_port_start(dp).unwrap();
+            self.debug_port_start(dp)?;
 
             self.access_ports = valid_access_ports(self, dp).into_iter().collect();
 
