@@ -12,7 +12,8 @@ use probe_rs::{
     flashing::{FileDownloadError, FlashError},
     integration::FakeProbe,
     probe::{
-        DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, WireProtocol,
+        DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError,
+        WireProtocol,
         list::{Accessibility, Lister},
     },
 };
@@ -21,6 +22,29 @@ use serde::{Deserialize, Serialize};
 /// How long to wait before another attempt at a probe that another process
 /// holds.
 pub const OPEN_RETRY_INTERVAL: Duration = Duration::from_secs(1);
+
+/// Whether waiting for the probe can still turn this failure into a successful
+/// open.
+///
+/// The wait covers a probe that another process holds, or that has not been
+/// plugged in yet. Both clear on their own. A probe that answers the open and
+/// then faults does not, so retrying it only hides the reason until the attach
+/// timeout runs out.
+pub fn probe_may_become_available(error: &OperationError) -> bool {
+    let OperationError::FailedToOpenProbe(error) = error else {
+        // The probe is absent, or the caller must choose between several.
+        return matches!(error, OperationError::NoProbesFound);
+    };
+
+    match error {
+        DebugProbeError::ProbeCouldNotBeCreated(
+            ProbeCreationError::NotFound | ProbeCreationError::CouldNotOpen,
+        ) => true,
+        DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::Usb(error))
+        | DebugProbeError::Usb(error) => error.kind() == std::io::ErrorKind::ResourceBusy,
+        _ => false,
+    }
+}
 
 /// Common options when flashing a target device.
 #[derive(Debug, clap::Parser)]
@@ -322,7 +346,7 @@ impl<'r> LoadedProbeOptions<'r> {
             };
 
             let elapsed = start.elapsed();
-            if elapsed >= wait_for_probe {
+            if elapsed >= wait_for_probe || !probe_may_become_available(&error) {
                 if setup_hint_warranted(&error, lister) {
                     crate::util::setup_hints::print_setup_hints();
                 }
@@ -669,6 +693,8 @@ mod tests {
         info: DebugProbeInfo,
         attempts: AtomicUsize,
         free_after: usize,
+        /// The probe answers the open, then faults.
+        faulty: bool,
     }
 
     #[derive(Debug)]
@@ -701,7 +727,15 @@ mod tests {
 
     impl probe_rs::integration::ProbeLister for BusyLister {
         fn open(&self, _selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError> {
-            if self.attempts.fetch_add(1, Ordering::SeqCst) < self.free_after {
+            let attempt = self.attempts.fetch_add(1, Ordering::SeqCst);
+            if self.faulty {
+                return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                    ProbeCreationError::Usb(std::io::Error::other(
+                        "hardware fault or protocol violation",
+                    )),
+                ));
+            }
+            if attempt < self.free_after {
                 return Err(DebugProbeError::ProbeCouldNotBeCreated(
                     ProbeCreationError::CouldNotOpen,
                 ));
@@ -722,6 +756,14 @@ mod tests {
     }
 
     fn busy_lister(free_after: usize) -> (Arc<BusyLister>, Lister) {
+        make_lister(free_after, false)
+    }
+
+    fn faulty_lister() -> (Arc<BusyLister>, Lister) {
+        make_lister(usize::MAX, true)
+    }
+
+    fn make_lister(free_after: usize, faulty: bool) -> (Arc<BusyLister>, Lister) {
         let lister = Arc::new(BusyLister {
             info: DebugProbeInfo::new(
                 "Mock probe",
@@ -734,6 +776,7 @@ mod tests {
             ),
             attempts: AtomicUsize::new(0),
             free_after,
+            faulty,
         });
 
         struct ArcLister(Arc<BusyLister>);
@@ -788,6 +831,20 @@ mod tests {
 
         assert!(options.attach_probe(&handle).is_ok());
         assert_eq!(lister.attempts.load(Ordering::SeqCst), 3);
+    }
+
+    /// The wait cannot repair a probe that faults, so the attach timeout must
+    /// not delay the report.
+    #[test]
+    fn faulting_probe_is_reported_without_waiting_out_the_attach_timeout() {
+        let (lister, handle) = faulty_lister();
+        let mut registry = Registry::from_builtin_families();
+        let options = probe_options(Some(Duration::from_secs(600)))
+            .load(&mut registry)
+            .unwrap();
+
+        assert!(options.attach_probe(&handle).is_err());
+        assert_eq!(lister.attempts.load(Ordering::SeqCst), 1);
     }
 
     #[test]
