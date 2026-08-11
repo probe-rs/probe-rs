@@ -737,13 +737,13 @@ impl PeripheralID {
             ("ARM Ltd", 0x000, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M3 SCS", PeripheralType::Scs)),
             ("ARM Ltd", 0x001, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M3 ITM", PeripheralType::Itm)),
             ("ARM Ltd", 0x002, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M3 DWT", PeripheralType::Dwt)),
-            ("ARM Ltd", 0x003, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M3 FBP", PeripheralType::Fbp)),
+            ("ARM Ltd", 0x003, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M3/M4 FPB", PeripheralType::Fpb)),
             ("ARM Ltd", 0x008, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M0 SCS", PeripheralType::Scs)),
             ("ARM Ltd", 0x00A, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M0 DWT", PeripheralType::Dwt)),
             ("ARM Ltd", 0x00B, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M0 BPU", PeripheralType::Bpu)),
             ("ARM Ltd", 0x00C, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M4 SCS", PeripheralType::Scs)),
             ("ARM Ltd", 0x00D, 0x00, 0x0000) => Some(PartInfo::new("CoreSight ETM11", PeripheralType::Etm)),
-            ("ARM Ltd", 0x00E, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M7 FBP", PeripheralType::Fbp)),
+            ("ARM Ltd", 0x00E, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M7 FPB", PeripheralType::Fpb)),
             ("ARM Ltd", 0x101, 0x00, 0x0000) => Some(PartInfo::new("System TSGEN", PeripheralType::Tsgen)),
             ("ARM Ltd", 0x471, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M0  ROM", PeripheralType::Rom)),
             ("ARM Ltd", 0x4C0, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M0+ ROM", PeripheralType::Rom)),
@@ -774,7 +774,7 @@ impl PeripheralID {
             ("ARM Ltd", _, _, 0x1A01) => Some(PartInfo::new("ITM architecture", PeripheralType::Itm)),
             ("ARM Ltd", _, _, 0x1A02) => Some(PartInfo::new("DWT architecture", PeripheralType::Dwt)),
             ("ARM Ltd", _, _, 0x0A17) => Some(PartInfo::new("Memory Access Port v2", PeripheralType::MemAp)),
-            ("ARM Ltd", _, _, 0x1A03) => Some(PartInfo::new("FPB architecture", PeripheralType::Fbp)),
+            ("ARM Ltd", _, _, 0x1A03) => Some(PartInfo::new("FPB architecture", PeripheralType::Fpb)),
             ("ARM Ltd", _, _, 0x1A14) => Some(PartInfo::new("CTI architecture", PeripheralType::Cti)),
             ("ARM Ltd", _, _, 0x2A04) => Some(PartInfo::new("Processor debug architecture (ARMv8-M)", PeripheralType::Scs)),
             ("ARM Ltd", _, _, 0x4A13) => Some(PartInfo::new("ETM architecture", PeripheralType::Etm)),
@@ -842,7 +842,7 @@ pub enum PeripheralType {
     /// System Control Space
     Scs,
     /// Flash Patch and Breakpoint Unit
-    Fbp,
+    Fpb,
     /// breakpoint Unit
     Bpu,
     /// Embedded Trace Macrocell
@@ -880,7 +880,7 @@ impl std::fmt::Display for PeripheralType {
             PeripheralType::Itm => write!(f, "ITM (Instrumentation Trace Module)"),
             PeripheralType::Dwt => write!(f, "DWT (Data Watchpoint and Trace)"),
             PeripheralType::Scs => write!(f, "SCS (System Control Space)"),
-            PeripheralType::Fbp => write!(f, "FBP (Flash Patch and Breakpoint)"),
+            PeripheralType::Fpb => write!(f, "FPB (Flash Patch and Breakpoint)"),
             PeripheralType::Bpu => write!(f, "BPU (Breakpoint Unit)"),
             PeripheralType::Etm => write!(f, "ETM (Embedded Trace Macrocell)"),
             PeripheralType::Etb => write!(f, "ETB (Embedded Trace Buffer)"),
