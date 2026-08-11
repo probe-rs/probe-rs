@@ -8,7 +8,9 @@ use probe_rs_rpc::probe::{
 };
 
 use crate::rpc::functions::{RpcContext, RpcSpawnContext, WireTxImpl};
-use crate::util::common_options::{OPEN_RETRY_INTERVAL, OperationError, ProbeOptions};
+use crate::util::common_options::{
+    OPEN_RETRY_INTERVAL, OperationError, ProbeOptions, probe_may_become_available,
+};
 use probe_rs_rpc::{AttachEndpoint, RpcResult};
 
 pub fn list_probes(ctx: &mut RpcContext, _header: VarHeader, _request: ()) -> ListProbesResponse {
@@ -128,8 +130,12 @@ async fn attach_impl(ctx: RpcSpawnContext, request: AttachRequest) -> RpcResult<
             AttachAttempt::Failed(error) => Some(error),
         };
 
+        let broken = failure
+            .as_deref()
+            .is_some_and(|error| !probe_may_become_available(error));
+
         let elapsed = start.elapsed();
-        if elapsed >= wait_for_probe {
+        if broken || elapsed >= wait_for_probe {
             return Ok(match failure {
                 Some(error) => match *error {
                     OperationError::AttachingFailed {
@@ -250,6 +256,7 @@ mod tests {
         attempts: AtomicUsize,
         free_after: usize,
         listed_while_busy: bool,
+        faulty: bool,
     }
 
     impl BusyLister {
@@ -275,12 +282,19 @@ mod tests {
                 attempts: AtomicUsize::new(0),
                 free_after,
                 listed_while_busy: true,
+                faulty: false,
             }
         }
 
         /// The probe drops out of the probe list while another process holds it.
         fn hidden_while_busy(mut self) -> Self {
             self.listed_while_busy = false;
+            self
+        }
+
+        /// The probe answers the open, then faults.
+        fn faulty(mut self) -> Self {
+            self.faulty = true;
             self
         }
 
@@ -302,6 +316,13 @@ mod tests {
     impl ProbeLister for BusyLister {
         fn open(&self, _selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError> {
             let attempt = self.attempts.fetch_add(1, Ordering::SeqCst);
+            if self.faulty {
+                return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                    ProbeCreationError::Usb(std::io::Error::other(
+                        "hardware fault or protocol violation",
+                    )),
+                ));
+            }
             if attempt < self.free_after {
                 return Err(DebugProbeError::ProbeCouldNotBeCreated(
                     ProbeCreationError::CouldNotOpen,
@@ -402,6 +423,24 @@ mod tests {
             "unexpected error: {error}"
         );
         assert!(lister.attempts() > 1, "the probe was tried only once");
+    }
+
+    /// A probe that faults is broken now and stays broken, so the wait cannot
+    /// help. Retrying it until the attach timeout only delays the report.
+    #[tokio::test]
+    async fn faulting_probe_is_reported_without_waiting_out_the_timeout() {
+        let lister = Arc::new(BusyLister::new(usize::MAX).faulty());
+
+        let result = attach(lister.clone(), Some(Duration::from_secs(600))).await;
+
+        let AttachResult::FailedToOpenProbe(error) = result else {
+            panic!("expected the open error");
+        };
+        assert!(
+            error.contains("hardware fault or protocol violation"),
+            "unexpected error: {error}"
+        );
+        assert_eq!(lister.attempts(), 1);
     }
 }
 
