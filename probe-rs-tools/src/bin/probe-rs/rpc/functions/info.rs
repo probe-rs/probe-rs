@@ -581,6 +581,7 @@ fn coresight_component_tree(
 
             let mut tree = ComponentTreeNode::new(desc);
             process_component_entry(&mut tree, interface, peripheral_id, &component, access_port)?;
+            parent.push(tree);
         }
 
         Component::CoreLinkOrPrimeCellOrSystemComponent(id) => {
