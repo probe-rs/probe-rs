@@ -1,9 +1,13 @@
+# Note: the ranges for `IRAMn` have been adjusted to use the contiguous ranges per § 7.2.1.  The
+# official CMSIS packs split the RAM into two discrete banks which makes supporting RTT more
+# difficult.  If this file is ever updated from a CMSIS pack make sure to revert any changes to
+# the RAM regions.
 name: SAM3X
 manufacturer:
   id: 0x1f
   cc: 0x0
-generated_from_pack: true
-pack_file_release: 1.0.50
+# generated_from_pack: true
+# pack_file_release: 1.0.50
 variants:
 - name: ATSAM3X4C
   cores:
@@ -36,16 +40,9 @@ variants:
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: IRAM
     range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x20080000
+      start: 0x20078000
       end: 0x20088000
     cores:
     - main
@@ -83,16 +80,9 @@ variants:
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: IRAM
     range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x20080000
+      start: 0x20078000
       end: 0x20088000
     cores:
     - main
@@ -130,16 +120,9 @@ variants:
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: IRAM
     range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x20080000
+      start: 0x20070000
       end: 0x20088000
     cores:
     - main
@@ -177,16 +160,9 @@ variants:
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: IRAM
     range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x20080000
+      start: 0x20070000
       end: 0x20088000
     cores:
     - main
@@ -224,16 +200,9 @@ variants:
     cores:
     - main
   - !Ram
-    name: IRAM1
+    name: IRAM
     range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  - !Generic
-    name: IRAM2
-    range:
-      start: 0x20080000
+      start: 0x20070000
       end: 0x20088000
     cores:
     - main
