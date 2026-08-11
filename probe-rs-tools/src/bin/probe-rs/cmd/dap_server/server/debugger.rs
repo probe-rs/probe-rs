@@ -57,6 +57,39 @@ pub(crate) enum DebugSessionStatus {
     Restart(Request),
 }
 
+/// A failure that occurs while the server handles a request.
+///
+/// The `?` operator makes a [`RequestFailure::Request`]. Use
+/// [`RequestFailure::Session`] when the failed operation is necessary for the
+/// session, and not only for the request.
+enum RequestFailure {
+    /// The request failed. The client receives an error response, and the
+    /// session continues.
+    Request(DebuggerError),
+    /// The session cannot continue.
+    Session(DebuggerError),
+}
+
+impl RequestFailure {
+    fn error(&self) -> &DebuggerError {
+        match self {
+            Self::Request(error) | Self::Session(error) => error,
+        }
+    }
+}
+
+impl From<DebuggerError> for RequestFailure {
+    fn from(error: DebuggerError) -> Self {
+        Self::Request(error)
+    }
+}
+
+impl From<anyhow::Error> for RequestFailure {
+    fn from(error: anyhow::Error) -> Self {
+        Self::Request(DebuggerError::Other(error))
+    }
+}
+
 /// Top-level DAP server driver. May be managed by an IDE/editor (e.g. VSCode)
 /// or run standalone over TCP via `probe-rs dap-server --port <port>`.
 pub struct Debugger {
@@ -129,24 +162,35 @@ impl Debugger {
     }
 
     /// Handles a request and sends an error response if necessary.
+    ///
+    /// A request that fails does not end the session. A target that becomes
+    /// unreachable is caught by the next poll of the cores.
     async fn handle_request(
         &mut self,
         session_data: &mut SessionData,
         debug_adapter: &mut DebugAdapter,
         request: Request,
     ) -> Result<DebugSessionStatus, DebuggerError> {
-        let result = self
+        let failure = match self
             .handle_request_impl(session_data, debug_adapter, &request)
-            .await;
+            .await
+        {
+            Ok(status) => return Ok(status),
+            Err(failure) => failure,
+        };
 
-        if let Err(error) = &result {
-            // In case the error response fails, we still want to return the result.
-            if let Err(response_error) = debug_adapter.send_error_response(&request, error) {
-                tracing::warn!("Failed to send error response: {response_error}");
-            }
+        // In case the error response fails, we still want to return the result.
+        if let Err(response_error) = debug_adapter.send_error_response(&request, failure.error()) {
+            tracing::warn!("Failed to send error response: {response_error}");
         }
 
-        result
+        match failure {
+            // A client that repeats a failing request must not spin the server.
+            RequestFailure::Request(_) => {
+                Ok(DebugSessionStatus::Continue(Duration::from_millis(50)))
+            }
+            RequestFailure::Session(error) => Err(error),
+        }
     }
 
     async fn handle_request_impl(
@@ -154,19 +198,22 @@ impl Debugger {
         session_data: &mut SessionData,
         debug_adapter: &mut DebugAdapter,
         request: &Request,
-    ) -> Result<DebugSessionStatus, DebuggerError> {
+    ) -> Result<DebugSessionStatus, RequestFailure> {
         let _req_span = tracing::info_span!("Handling request", request = ?request).entered();
 
         // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
-        session_data.poll_cores(&self.config, debug_adapter).await?;
+        session_data
+            .poll_cores(&self.config, debug_adapter)
+            .await
+            .map_err(RequestFailure::Session)?;
 
         // Check if we have configured cores
         if session_data.core_data.is_empty() {
             if debug_adapter.configuration_is_done() {
                 // We've passed `configuration_done` and still do not have at least one core configured.
-                return Err(DebuggerError::Other(anyhow!(
+                return Err(RequestFailure::Session(DebuggerError::Other(anyhow!(
                     "Cannot continue unless one target core configuration is defined."
-                )));
+                ))));
             }
 
             // Keep processing "configuration" requests until we've passed `configuration_done` and have a valid `target_core`.
@@ -178,9 +225,9 @@ impl Debugger {
         let core_id = 0;
 
         let Some(target_core_config) = self.config.core_configs.get(core_id) else {
-            return Err(DebuggerError::Other(anyhow!(
+            return Err(RequestFailure::Session(DebuggerError::Other(anyhow!(
                 "No core configuration found for core id {core_id}"
-            )));
+            ))));
         };
         let core_index = target_core_config.core_index;
 
@@ -209,13 +256,11 @@ impl Debugger {
                     | "disassemble"
             ) && new_status == CoreStatus::Sleeping
             {
-                if let Err(error) = session_data
+                session_data
                     .backend
                     .halt(core_index, Duration::from_millis(100))
                     .await
-                {
-                    return Err(DebuggerError::from(error));
-                }
+                    .map_err(DebuggerError::from)?;
                 unhalt_me = true;
             }
         }
@@ -346,7 +391,7 @@ impl Debugger {
         if unhalt_me && let Err(error) = session_data.backend.run(core_index).await {
             let error = DebuggerError::Other(anyhow!(error).context("Failed to resume target."));
             debug_adapter.show_error_message(&error)?;
-            return Err(error);
+            return Err(error.into());
         }
 
         Ok(debug_session)
@@ -1033,7 +1078,7 @@ mod test {
                     Capabilities, ContinuedEventBody, DisassembleArguments,
                     DisassembleResponseBody, DisassembledInstruction, DisconnectArguments,
                     ErrorResponseBody, InitializeRequestArguments, Message, OutputEventBody,
-                    Request, Response, Source, Thread, ThreadsResponseBody,
+                    Request, Response, Source, Thread, ThreadsResponseBody, VariablesArguments,
                 },
             },
             protocol::ProtocolAdapter,
@@ -1630,6 +1675,57 @@ mod test {
             }),
         );
 
+        protocol_adapter
+            .add_request("threads")
+            .and_successful_response()
+            .with_body(ThreadsResponseBody {
+                threads: vec![Thread {
+                    id: 0,
+                    name: format!("0-{TEST_CHIP_NAME}"),
+                }],
+            });
+
+        disconnect_protocol_adapter(&mut protocol_adapter);
+
+        execute_test(protocol_adapter, true).await.unwrap();
+    }
+
+    /// A request that fails must receive an error response, and must not end
+    /// the session.
+    #[tokio::test]
+    async fn failed_request_does_not_end_the_session() {
+        let mut protocol_adapter = launched_protocol_adapter();
+
+        protocol_adapter
+            .add_request("configurationDone")
+            .and_successful_response();
+
+        protocol_adapter.expect_event(
+            "continued",
+            Some(ContinuedEventBody {
+                all_threads_continued: Some(true),
+                thread_id: 0,
+            }),
+        );
+        protocol_adapter.expect_output_event("Core is running\n");
+
+        let unknown_variables_reference = 0xDEAD_BEEF_i64;
+        let expected_error =
+            format!("No variable information found for {unknown_variables_reference}!");
+        protocol_adapter
+            .add_request("variables")
+            .with_arguments(VariablesArguments {
+                variables_reference: unknown_variables_reference,
+                count: None,
+                filter: None,
+                format: None,
+                start: None,
+            })
+            .and_error_response()
+            .with_body(error_response_body(&expected_error));
+        protocol_adapter.expect_output_event(&format!("{expected_error}\n"));
+
+        // The session must still answer the requests that follow.
         protocol_adapter
             .add_request("threads")
             .and_successful_response()
