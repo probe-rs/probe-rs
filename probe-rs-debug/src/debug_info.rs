@@ -1088,7 +1088,14 @@ impl DebugInfo {
 
 /// Uses the [`TypedPathBuf::normalize`] function to normalize both paths before comparing them
 pub(crate) fn canonical_path_eq(primary_path: TypedPath, secondary_path: TypedPath) -> bool {
-    primary_path.normalize() == secondary_path.normalize()
+    let primary = primary_path.normalize();
+    let secondary = secondary_path.normalize();
+    if primary.is_windows() != secondary.is_windows() {
+        return primary
+            .to_string_lossy()
+            .eq_ignore_ascii_case(&secondary.to_string_lossy());
+    }
+    primary == secondary
 }
 
 /// Returns `true` if `full_path` matches `partial_path`.
@@ -1098,23 +1105,33 @@ pub(crate) fn canonical_path_eq(primary_path: TypedPath, secondary_path: TypedPa
 /// a component boundary, so that a caller can supply just a filename (`main.rs`) or a partial
 /// sub-path (`src/main.rs`) and still resolve to the correct compilation unit.
 ///
+/// Windows paths are normalized to lowercase before comparison.
+///
 /// Separators are normalized to `/` before comparison so that cross-OS paths (e.g. DWARF info
 /// embedded by a Windows compiler, inspected on Linux) are handled correctly.
 pub(crate) fn path_matches(full_path: TypedPath, partial_path: TypedPath) -> bool {
     if canonical_path_eq(full_path, partial_path) {
         return true;
     }
-    if partial_path.is_relative() {
-        let full_buf = full_path.normalize();
-        let full_str = full_buf.to_string_lossy().replace('\\', "/");
-        let partial_buf = partial_path.normalize();
-        let partial_str = partial_buf.to_string_lossy().replace('\\', "/");
-        full_str.ends_with(&*partial_str)
-            && (full_str.len() == partial_str.len()
-                || full_str[..full_str.len() - partial_str.len()].ends_with('/'))
-    } else {
-        false
+    if partial_path.is_absolute() {
+        return false;
     }
+
+    fn normalize_path(path: TypedPath) -> String {
+        let string = path.normalize().to_string_lossy().replace('\\', "/");
+
+        if path.is_windows() {
+            string.to_lowercase()
+        } else {
+            string
+        }
+    }
+
+    let full_str = normalize_path(full_path);
+    let partial_str = normalize_path(partial_path);
+    full_str.ends_with(&*partial_str)
+        && (full_str.len() == partial_str.len()
+            || full_str[..full_str.len() - partial_str.len()].ends_with('/'))
 }
 
 /// Get a handle to the [`gimli::UnwindTableRow`] for this call frame, so that we can reference it to unwind register values.
