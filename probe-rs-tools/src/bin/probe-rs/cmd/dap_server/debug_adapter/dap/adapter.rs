@@ -1470,7 +1470,11 @@ impl DebugAdapter {
         {
             Ok(core_info) => core_info,
             Err(error) => {
-                return self.show_error_message(&DebuggerError::Other(anyhow!("{error}")));
+                let error = DebuggerError::Other(anyhow!("{error}"));
+                if let Some(request) = request {
+                    return self.send_response::<()>(request, Err(&error));
+                }
+                return self.show_error_message(&error);
             }
         };
 

@@ -95,6 +95,12 @@ struct MockCore {
     program_binary: Option<Vec<u8>>,
     loadable_segments: Vec<LoadableSegment>,
     endianness: Endianness,
+
+    /// When set, a write to the system reset request register (AIRCR) fails.
+    ///
+    /// Use this to simulate a target whose debug connection drops when it
+    /// resets, which is what the DAP restart flow must handle.
+    fail_system_reset_write: bool,
 }
 
 impl MockCore {
@@ -105,6 +111,7 @@ impl MockCore {
             program_binary: None,
             loadable_segments: Vec::new(),
             endianness: Endianness::Little,
+            fail_system_reset_write: false,
         }
     }
 }
@@ -234,6 +241,12 @@ impl MemoryInterface<ArmError> for &mut MockCore {
     }
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
+        use crate::architecture::arm::core::armv7m::Aircr;
+
+        if self.fail_system_reset_write && address == Aircr::ADDRESS_OFFSET {
+            return Err(ArmError::Timeout);
+        }
+
         for (i, word) in data.iter().enumerate() {
             let address = address + (i as u64 * 4);
 
@@ -391,6 +404,17 @@ impl FakeProbe {
         handler: Box<dyn Fn(RegisterAddress, u32) -> Result<(), ArmError> + Send>,
     ) {
         self.dap_register_write_handler = Some(handler);
+    }
+
+    /// When `fail` is true, the next write to the system reset request
+    /// register (AIRCR) fails with a timeout.
+    ///
+    /// Use this to simulate a target whose debug connection drops when it
+    /// resets. This is only honored for a core-mocked memory AP.
+    pub fn set_system_reset_write_failure(&mut self, fail: bool) {
+        if let MockedAp::Core(core) = &mut self.memory_ap {
+            core.fail_system_reset_write = fail;
+        }
     }
 
     /// Makes a generic probe out of the [`FakeProbe`]

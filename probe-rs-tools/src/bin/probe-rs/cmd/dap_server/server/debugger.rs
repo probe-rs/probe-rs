@@ -1449,6 +1449,14 @@ mod test {
         protocol_adapter: MockProtocolAdapter,
         with_probe: bool,
     ) -> Result<(), DebuggerError> {
+        execute_test_with_probe_config(protocol_adapter, with_probe, |_| {}).await
+    }
+
+    async fn execute_test_with_probe_config(
+        protocol_adapter: MockProtocolAdapter,
+        with_probe: bool,
+        probe_config: impl FnOnce(&mut FakeProbe),
+    ) -> Result<(), DebuggerError> {
         use crate::rpc::functions::RpcApp;
         use std::sync::Arc;
 
@@ -1456,7 +1464,9 @@ mod test {
 
         let lister = TestLister::new();
         if with_probe {
-            lister.probes.lock().unwrap().push(fake_probe());
+            let (info, mut fake_probe) = fake_probe();
+            probe_config(&mut fake_probe);
+            lister.probes.lock().unwrap().push((info, fake_probe));
         }
         let lister = Arc::new(lister) as Arc<dyn probe_rs::integration::ProbeLister + Send + Sync>;
 
@@ -1550,6 +1560,37 @@ mod test {
         disconnect_protocol_adapter(&mut protocol_adapter);
 
         execute_test(protocol_adapter, true).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn restart_failure_responds_with_error() {
+        let mut protocol_adapter = initialized_protocol_adapter();
+
+        let attach_args = valid_session_config();
+        protocol_adapter
+            .add_request("attach")
+            .with_arguments(attach_args)
+            .and_successful_response();
+
+        protocol_adapter.expect_event("initialized", None::<u32>);
+
+        // The restart request must receive an error response. The reset
+        // fails on the target (the system reset request register write
+        // times out, as when the debug connection drops on reset), so the
+        // server must not leave the client waiting for a response.
+        protocol_adapter.expect_output_event("A timeout occurred.\n");
+        protocol_adapter
+            .add_request("restart")
+            .and_error_response()
+            .with_body(error_response_body("A timeout occurred."));
+
+        disconnect_protocol_adapter(&mut protocol_adapter);
+
+        execute_test_with_probe_config(protocol_adapter, true, |probe| {
+            probe.set_system_reset_write_failure(true);
+        })
+        .await
+        .unwrap();
     }
 
     #[tokio::test]
