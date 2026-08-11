@@ -1,3 +1,6 @@
+// Author: RawNuke
+// Copyright (c) 2026 RawNuke. All rights reserved.
+
 use probe_rs_debug::{ColumnType, SourceLocation, debug_info::DebugInfo};
 use std::path::PathBuf;
 use typed_path::{TypedPath, UnixPathBuf};
@@ -116,6 +119,18 @@ fn find_non_existing_unit_by_path() {
 #[test]
 fn regression_pr2324() {
     let path = "C:\\_Hobby\\probe-rs-test-c-firmware/Atmel/hpl/core/hpl_init.c";
+
+    let di = DebugInfo::from_file("tests/debug-unwind-tests/atsamd51p19a.elf").unwrap();
+    let path = TypedPath::derive(path);
+
+    let addr = di.get_breakpoint_location(path, 58, None).unwrap();
+
+    assert_eq!(addr.address, 0x2e4);
+}
+
+#[test]
+fn regression_pr4244_drive_letter_case() {
+    let path = "c:\\_hobby\\probe-rs-test-c-firmware/Atmel/hpl/core/hpl_init.c";
 
     let di = DebugInfo::from_file("tests/debug-unwind-tests/atsamd51p19a.elf").unwrap();
     let path = TypedPath::derive(path);

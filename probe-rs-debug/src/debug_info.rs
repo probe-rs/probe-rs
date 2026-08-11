@@ -1,3 +1,6 @@
+// Author: RawNuke
+// Copyright (c) 2026 RawNuke. All rights reserved.
+
 use super::{
     DebugError, DebugRegisters, StackFrame, VariableCache,
     exception_handling::ExceptionInterface,
@@ -1087,8 +1090,20 @@ impl DebugInfo {
 }
 
 /// Uses the [`TypedPathBuf::normalize`] function to normalize both paths before comparing them
+///
+/// When either path is Windows-typed, the comparison is case-insensitive, because Windows
+/// file systems are case-insensitive and the drive letter case may differ between the client
+/// and the DWARF info. Otherwise the comparison is byte-for-byte.
 pub(crate) fn canonical_path_eq(primary_path: TypedPath, secondary_path: TypedPath) -> bool {
-    primary_path.normalize() == secondary_path.normalize()
+    let primary_buf = primary_path.normalize();
+    let secondary_buf = secondary_path.normalize();
+    if primary_path.is_windows() || secondary_path.is_windows() {
+        primary_buf
+            .to_string_lossy()
+            .eq_ignore_ascii_case(&secondary_buf.to_string_lossy())
+    } else {
+        primary_buf == secondary_buf
+    }
 }
 
 /// Returns `true` if `full_path` matches `partial_path`.
@@ -1109,6 +1124,14 @@ pub(crate) fn path_matches(full_path: TypedPath, partial_path: TypedPath) -> boo
         let full_str = full_buf.to_string_lossy().replace('\\', "/");
         let partial_buf = partial_path.normalize();
         let partial_str = partial_buf.to_string_lossy().replace('\\', "/");
+        let (full_str, partial_str) = if full_path.is_windows() || partial_path.is_windows() {
+            (
+                full_str.to_ascii_lowercase(),
+                partial_str.to_ascii_lowercase(),
+            )
+        } else {
+            (full_str, partial_str)
+        };
         full_str.ends_with(&*partial_str)
             && (full_str.len() == partial_str.len()
                 || full_str[..full_str.len() - partial_str.len()].ends_with('/'))
@@ -1486,8 +1509,9 @@ mod test {
     };
     use std::path::{Path, PathBuf};
     use test_case::test_case;
+    use typed_path::TypedPath;
 
-    use super::unwind_register_using_rule;
+    use super::{canonical_path_eq, path_matches, unwind_register_using_rule};
 
     /// Get the full path to a file in the `tests` directory.
     fn get_path_for_test_files(relative_file: &str) -> PathBuf {
@@ -2240,5 +2264,32 @@ mod test {
         // forward, NOT the canonical frame address. Overwriting it with the CFA
         // would corrupt the frame pointer when unwinding handlers that don't save R7.
         assert_eq!(value, Some(RegisterValue::U32(0x100)));
+    }
+
+    #[test]
+    fn windows_absolute_paths_case_insensitive() {
+        let primary = TypedPath::derive(r"C:\src\main.rs");
+        let secondary = TypedPath::derive(r"c:\src\main.rs");
+
+        assert!(primary.is_windows());
+        assert!(canonical_path_eq(primary, secondary));
+        assert!(path_matches(primary, secondary));
+    }
+
+    #[test]
+    fn windows_relative_suffix_case_insensitive() {
+        let full_path = TypedPath::derive(r"C:\probe-rs\src\main.rs");
+        let partial_path = TypedPath::derive(r"src\MAIN.RS");
+
+        assert!(path_matches(full_path, partial_path));
+    }
+
+    #[test]
+    fn unix_paths_case_sensitive() {
+        let primary = TypedPath::derive("/src/main.rs");
+        let secondary = TypedPath::derive("/src/Main.rs");
+
+        assert!(!canonical_path_eq(primary, secondary));
+        assert!(!path_matches(primary, secondary));
     }
 }
