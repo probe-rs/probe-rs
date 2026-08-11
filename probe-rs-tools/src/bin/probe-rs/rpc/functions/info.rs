@@ -574,7 +574,11 @@ fn coresight_component_tree(
             let peripheral_id = id.peripheral_id();
 
             let desc = if let Some(part_desc) = peripheral_id.determine_part() {
-                format!("{: <15} (Generic IP component)", part_desc.name())
+                format!(
+                    "{:#06x} {: <15} (Generic IP component)",
+                    id.component_address(),
+                    part_desc.name()
+                )
             } else {
                 "Generic IP component".to_string()
             };
