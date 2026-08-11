@@ -726,7 +726,7 @@ impl PeripheralID {
     /// If it is not known, None is returned.
     #[rustfmt::skip]
     pub fn determine_part(&self) -> Option<PartInfo> {
-        // Source of the table: https://github.com/blacksphere/blackmagic/blob/master/src/target/adiv5.c#L189
+        // Source of the table: <https://codeberg.org/blackmagic-debug/blackmagic/src/branch/main/src/target/adi.c#L87>
         // Not all are present and this table could be expanded
         match (
             self.designer().unwrap_or(""),
