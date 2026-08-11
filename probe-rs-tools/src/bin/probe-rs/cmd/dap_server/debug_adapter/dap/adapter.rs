@@ -466,29 +466,25 @@ impl DebugAdapter {
         core_index: usize,
         request: &Request,
     ) -> Result<()> {
+        let arguments: RttWindowOpenedArguments = get_arguments(self, request)?;
+
         if let Some(debugger_rtt_target) = session_data
             .core_data
             .iter_mut()
             .find(|cd| cd.core_index == core_index)
             .and_then(|cd| cd.rtt_connection.as_mut())
-        {
-            let arguments: RttWindowOpenedArguments = get_arguments(self, request)?;
-
-            if let Some(rtt_channel) =
+            && let Some(rtt_channel) =
                 debugger_rtt_target
                     .debugger_rtt_channels
                     .iter_mut()
                     .find(|debugger_rtt_channel| {
                         debugger_rtt_channel.channel_number == arguments.channel_number
                     })
-            {
-                rtt_channel.has_client_window = arguments.window_is_open;
-            }
-
-            self.send_response::<()>(request, Ok(None))
-                .context("Could not deserialize arguments for RttWindowOpened")?;
+        {
+            rtt_channel.has_client_window = arguments.window_is_open;
         }
-        Ok(())
+
+        self.send_response::<()>(request, Ok(None))
     }
 
     /// Works in tandem with the `evaluate` request, to provide possible completions in the Debug Console REPL window.
@@ -1455,7 +1451,7 @@ impl DebugAdapter {
         core_index: usize,
         request: Option<&Request>,
     ) -> Result<()> {
-        let core_info = match self
+        let core_info = self
             .reset_and_halt_core_async(
                 &mut session_data.backend,
                 session_data
@@ -1466,34 +1462,21 @@ impl DebugAdapter {
                         DebuggerError::Other(anyhow!("No core data for core {core_index}"))
                     })?,
             )
-            .await
-        {
-            Ok(core_info) => core_info,
-            Err(error) => {
-                return self.show_error_message(&DebuggerError::Other(anyhow!("{error}")));
-            }
-        };
+            .await?;
 
         if let Some(request) = request {
             if !self.halt_after_reset {
-                if let Err(error) = self
-                    .continue_impl_async(
-                        &mut session_data.backend,
-                        session_data
-                            .core_data
-                            .iter_mut()
-                            .find(|c| c.core_index == core_index)
-                            .ok_or_else(|| {
-                                DebuggerError::Other(anyhow!("No core data for core {core_index}"))
-                            })?,
-                    )
-                    .await
-                {
-                    return self.send_response::<()>(
-                        request,
-                        Err(&DebuggerError::Other(anyhow!("{error}"))),
-                    );
-                }
+                self.continue_impl_async(
+                    &mut session_data.backend,
+                    session_data
+                        .core_data
+                        .iter_mut()
+                        .find(|c| c.core_index == core_index)
+                        .ok_or_else(|| {
+                            DebuggerError::Other(anyhow!("No core data for core {core_index}"))
+                        })?,
+                )
+                .await?;
 
                 self.send_response::<()>(request, Ok(None))?;
                 let event_body = Some(ContinuedEventBody {
@@ -1553,6 +1536,15 @@ impl DebugAdapter {
         response: Result<Option<S>, &DebuggerError>,
     ) -> Result<()> {
         self.adapter.send_response(request, response)
+    }
+
+    /// Sends an error response, unless the request already has a response.
+    pub fn send_error_response(&mut self, request: &Request, error: &DebuggerError) -> Result<()> {
+        if self.adapter.has_pending_request(request.seq) {
+            self.send_response::<()>(request, Err(error))
+        } else {
+            Ok(())
+        }
     }
 
     /// Displays an error message to the user.

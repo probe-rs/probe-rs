@@ -50,6 +50,9 @@ pub trait ProtocolAdapter {
 
     fn remove_pending_request(&mut self, request_seq: i64) -> Option<String>;
 
+    /// Returns `true` while the request with the given sequence number waits for a response.
+    fn has_pending_request(&self, request_seq: i64) -> bool;
+
     fn set_console_log_level(&mut self, log_level: ConsoleLog);
 
     fn console_log_level(&self) -> ConsoleLog;
@@ -84,6 +87,10 @@ impl ProtocolAdapter for BoxedAdapter {
 
     fn remove_pending_request(&mut self, request_seq: i64) -> Option<String> {
         (**self).remove_pending_request(request_seq)
+    }
+
+    fn has_pending_request(&self, request_seq: i64) -> bool {
+        (**self).has_pending_request(request_seq)
     }
 
     fn set_console_log_level(&mut self, log_level: ConsoleLog) {
@@ -448,6 +455,10 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
 
     fn remove_pending_request(&mut self, request_seq: i64) -> Option<String> {
         self.pending_requests.remove(&request_seq)
+    }
+
+    fn has_pending_request(&self, request_seq: i64) -> bool {
+        self.pending_requests.contains_key(&request_seq)
     }
 
     fn send_raw_response(&mut self, response: Response) -> anyhow::Result<()> {

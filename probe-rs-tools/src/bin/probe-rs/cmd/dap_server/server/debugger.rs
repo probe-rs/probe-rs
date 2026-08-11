@@ -128,11 +128,32 @@ impl Debugger {
         }
     }
 
+    /// Handles a request and sends an error response if necessary.
     async fn handle_request(
         &mut self,
         session_data: &mut SessionData,
         debug_adapter: &mut DebugAdapter,
         request: Request,
+    ) -> Result<DebugSessionStatus, DebuggerError> {
+        let result = self
+            .handle_request_impl(session_data, debug_adapter, &request)
+            .await;
+
+        if let Err(error) = &result {
+            // In case the error response fails, we still want to return the result.
+            if let Err(response_error) = debug_adapter.send_error_response(&request, error) {
+                tracing::warn!("Failed to send error response: {response_error}");
+            }
+        }
+
+        result
+    }
+
+    async fn handle_request_impl(
+        &mut self,
+        session_data: &mut SessionData,
+        debug_adapter: &mut DebugAdapter,
+        request: &Request,
     ) -> Result<DebugSessionStatus, DebuggerError> {
         let _req_span = tracing::info_span!("Handling request", request = ?request).entered();
 
@@ -193,9 +214,7 @@ impl Debugger {
                     .halt(core_index, Duration::from_millis(100))
                     .await
                 {
-                    let err = DebuggerError::from(error);
-                    debug_adapter.send_response::<()>(&request, Err(&err))?;
-                    return Err(err);
+                    return Err(DebuggerError::from(error));
                 }
                 unhalt_me = true;
             }
@@ -205,103 +224,103 @@ impl Debugger {
         match request.command.as_ref() {
             "setBreakpoints" => {
                 debug_adapter
-                    .set_breakpoints(session_data, core_index, &request)
+                    .set_breakpoints(session_data, core_index, request)
                     .await?;
             }
             "setInstructionBreakpoints" => {
                 debug_adapter
-                    .set_instruction_breakpoints(session_data, core_index, &request)
+                    .set_instruction_breakpoints(session_data, core_index, request)
                     .await?;
             }
             "readMemory" => {
                 debug_adapter
-                    .read_memory(session_data, core_index, &request)
+                    .read_memory(session_data, core_index, request)
                     .await?;
             }
             "writeMemory" => {
                 debug_adapter
-                    .write_memory(session_data, core_index, &request)
+                    .write_memory(session_data, core_index, request)
                     .await?;
             }
             "pause" => {
                 debug_adapter
-                    .pause(session_data, core_index, &request)
+                    .pause(session_data, core_index, request)
                     .await?;
             }
             "scopes" => {
                 debug_adapter
-                    .scopes(session_data, core_index, &request)
+                    .scopes(session_data, core_index, request)
                     .await?;
             }
             "variables" => {
                 debug_adapter
-                    .variables(session_data, core_index, &request)
+                    .variables(session_data, core_index, request)
                     .await?;
             }
             "evaluate" => {
                 debug_adapter
-                    .evaluate(session_data, core_index, &request)
+                    .evaluate(session_data, core_index, request)
                     .await?;
             }
             "stackTrace" => {
                 debug_adapter
-                    .stack_trace(session_data, core_index, &request)
+                    .stack_trace(session_data, core_index, request)
                     .await?;
             }
             "next" => {
                 debug_adapter
-                    .next(session_data, core_index, &request)
+                    .next(session_data, core_index, request)
                     .await?;
             }
             "stepIn" => {
                 debug_adapter
-                    .step_in(session_data, core_index, &request)
+                    .step_in(session_data, core_index, request)
                     .await?;
             }
             "stepOut" => {
                 debug_adapter
-                    .step_out(session_data, core_index, &request)
+                    .step_out(session_data, core_index, request)
                     .await?;
             }
             "setVariable" => {
                 debug_adapter
-                    .set_variable(session_data, core_index, &request)
+                    .set_variable(session_data, core_index, request)
                     .await?;
             }
             "disassemble" => {
                 debug_adapter
-                    .disassemble(session_data, core_index, &request)
+                    .disassemble(session_data, core_index, request)
                     .await?;
             }
             "configurationDone" => {
                 debug_adapter
-                    .configuration_done(session_data, core_index, &request)
+                    .configuration_done(session_data, core_index, request)
                     .await?;
             }
             "threads" => {
                 debug_adapter
-                    .threads(session_data, core_index, &request)
+                    .threads(session_data, core_index, request)
                     .await?;
             }
             "completions" => {
                 debug_adapter
-                    .completions(session_data, core_index, &request)
+                    .completions(session_data, core_index, request)
                     .await?;
             }
             "rttWindowOpened" => {
                 debug_adapter
-                    .rtt_window_opened(session_data, core_index, &request)
+                    .rtt_window_opened(session_data, core_index, request)
                     .await?;
             }
             "continue" => {
                 debug_adapter
-                    .r#continue(session_data, core_index, &request)
+                    .r#continue(session_data, core_index, request)
                     .await?;
             }
 
             "disconnect" => {
                 debug_adapter
-                    .disconnect(session_data, core_index, &request)
+                    .disconnect(session_data, core_index, request)
                     .await?;
                 debug_session = DebugSessionStatus::Terminate;
             }
@@ -311,12 +330,12 @@ impl Debugger {
                     .halt(core_index, Duration::from_millis(500))
                     .await
                     .context("Failed to halt core")?;
-                debug_session = DebugSessionStatus::Restart(request);
+                debug_session = DebugSessionStatus::Restart(request.clone());
             }
             _ => {
                 let unimplemented_command = request.command.as_str();
                 debug_adapter.send_response::<()>(
-                    &request,
+                    request,
                     Err(&DebuggerError::Other(anyhow!(
                         "Received request '{unimplemented_command}', which is not supported or not implemented yet"
                     ))),
@@ -456,7 +475,7 @@ impl Debugger {
                         .restart(&mut debug_adapter, &mut session_data, &request)
                         .await
                     {
-                        debug_adapter.send_response::<()>(&request, Err(&error))?;
+                        debug_adapter.send_error_response(&request, &error)?;
                         return Err(error);
                     }
                 }
@@ -537,7 +556,7 @@ impl Debugger {
             {
                 Ok(session_data) => Some(session_data),
                 Err(error) => {
-                    debug_adapter.send_response::<()>(&request, Err(&error))?;
+                    debug_adapter.send_error_response(&request, &error)?;
                     None
                 }
             };
@@ -1356,6 +1375,10 @@ mod test {
 
         fn remove_pending_request(&mut self, request_seq: i64) -> Option<String> {
             self.pending_requests.remove(&request_seq)
+        }
+
+        fn has_pending_request(&self, request_seq: i64) -> bool {
+            self.pending_requests.contains_key(&request_seq)
         }
 
         fn get_next_seq(&mut self) -> i64 {
