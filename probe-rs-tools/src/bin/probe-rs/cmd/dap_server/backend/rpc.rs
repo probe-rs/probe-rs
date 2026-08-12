@@ -570,7 +570,13 @@ impl RpcBackend {
         ];
         for (enabled, condition) in requested {
             if enabled && let Err(e) = self.enable_vector_catch(core_index, condition).await {
-                tracing::error!("Failed to enable_vector_catch: {e}");
+                // A target that has no vector catch must not raise an error
+                // popup in the client on every attach.
+                if matches!(e, Error::NotImplemented(_)) {
+                    tracing::debug!("The target does not support vector catch: {e}");
+                } else {
+                    tracing::error!("Failed to enable_vector_catch: {e}");
+                }
             }
         }
         if was_halted {
