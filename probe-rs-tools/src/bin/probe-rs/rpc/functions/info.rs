@@ -5,12 +5,10 @@
 use anyhow::anyhow;
 use postcard_rpc::header::{VarHeader, VarSeq};
 use probe_rs::{
-    MemoryMappedRegister,
     architecture::{
         arm::{
             self, ApAddress, ApV2Address, ArmDebugInterface,
             ap::{ApClass, ApRegister, IDR},
-            armv6m::Demcr,
             component::Scs,
             dp::{self, Ctrl, DLPIDR, DPIDR, DpRegister, TARGETID},
             memory::{
@@ -491,10 +489,6 @@ fn handle_memory_ap(
         }
 
         let base_address = memory.base_address()?;
-        // Enable dwt here otherwise DWT/ITM/ETM/TPIU won't be visible in component table
-        let mut demcr = Demcr(memory.read_word_32(Demcr::get_mmio_address())?);
-        demcr.set_dwtena(true);
-        memory.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
         Component::try_parse(&mut *memory, base_address)?
     };
     coresight_component_tree(interface, component, access_port, parent)
