@@ -70,7 +70,7 @@ impl Cmd {
         if self.reset_halt {
             session
                 .core(0)
-                .reset_and_halt(Duration::from_millis(100))
+                .reset_and_halt(Duration::from_millis(500))
                 .await?;
         }
 
