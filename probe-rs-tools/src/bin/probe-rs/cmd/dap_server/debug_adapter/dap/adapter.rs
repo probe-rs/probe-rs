@@ -47,21 +47,10 @@ enum EvaluateDispatch {
     Unsupported,
 }
 
-fn evaluate_dispatch(
-    context: Option<&str>,
-    expression: &str,
-    repl_commands: &[ReplCommand],
-) -> EvaluateDispatch {
+fn evaluate_dispatch(context: Option<&str>) -> EvaluateDispatch {
     match context {
         Some("watch" | "hover") => EvaluateDispatch::Server,
-        Some("repl") => {
-            let (_, _, matches) = build_expanded_commands(repl_commands, expression.trim());
-            if matches.is_empty() {
-                EvaluateDispatch::Server
-            } else {
-                EvaluateDispatch::ReplCommand
-            }
-        }
+        Some("repl") => EvaluateDispatch::ReplCommand,
         _ => EvaluateDispatch::Unsupported,
     }
 }
@@ -333,16 +322,8 @@ impl DebugAdapter {
         request: &Request,
     ) -> Result<()> {
         let arguments: EvaluateArguments = get_arguments(self, request)?;
-        let repl_commands = session_data
-            .core_data_opt(core_index)
-            .map(|core_data| core_data.repl_commands.as_slice())
-            .unwrap_or_default();
 
-        match evaluate_dispatch(
-            arguments.context.as_deref(),
-            &arguments.expression,
-            repl_commands,
-        ) {
+        match evaluate_dispatch(arguments.context.as_deref()) {
             EvaluateDispatch::Server => {
                 let response_body = session_data
                     .backend
@@ -2080,43 +2061,16 @@ mod tests {
     };
 
     #[test]
-    fn evaluate_dispatch_preserves_commands_and_routes_expressions_to_server() {
-        assert_eq!(
-            evaluate_dispatch(Some("repl"), "help", &REPL_COMMANDS),
-            EvaluateDispatch::ReplCommand
-        );
-        assert_eq!(
-            evaluate_dispatch(Some("repl"), "b", &REPL_COMMANDS),
-            EvaluateDispatch::ReplCommand
-        );
-        assert_eq!(
-            evaluate_dispatch(Some("repl"), "__dap_rpc_expression", &REPL_COMMANDS),
-            EvaluateDispatch::Server
-        );
-        assert_eq!(
-            evaluate_dispatch(Some("watch"), "help", &REPL_COMMANDS),
-            EvaluateDispatch::Server
-        );
-        assert_eq!(
-            evaluate_dispatch(Some("hover"), "help", &REPL_COMMANDS),
-            EvaluateDispatch::Server
-        );
-    }
-
-    #[test]
     fn evaluate_dispatch_rejects_unsupported_contexts() {
         assert_eq!(
-            evaluate_dispatch(Some("clipboard"), "value", &REPL_COMMANDS),
+            evaluate_dispatch(Some("clipboard")),
             EvaluateDispatch::Unsupported
         );
         assert_eq!(
-            evaluate_dispatch(Some("variables"), "value", &REPL_COMMANDS),
+            evaluate_dispatch(Some("variables")),
             EvaluateDispatch::Unsupported
         );
-        assert_eq!(
-            evaluate_dispatch(None, "value", &REPL_COMMANDS),
-            EvaluateDispatch::Unsupported
-        );
+        assert_eq!(evaluate_dispatch(None), EvaluateDispatch::Unsupported);
     }
 
     #[test]
