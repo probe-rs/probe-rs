@@ -8,17 +8,17 @@ use super::{
 use crate::cmd::dap_server::{
     DebuggerError,
     debug_adapter::dap::{
-        adapter::{DebugAdapter, get_arguments},
+        adapter::{DebugAdapter, ProgressId, get_arguments},
         dap_types::{
             Capabilities, DisconnectResponse, Event, ExitedEventBody, InitializeRequestArguments,
             MessageSeverity, Request, TerminatedEventBody,
         },
     },
+    debug_adapter::protocol::RequestSummary,
     server::configuration::SessionConfig,
 };
 use anyhow::{Context, anyhow};
 use probe_rs::CoreStatus;
-use probe_rs_debug::DebugInfo;
 use probe_rs_rpc::flash::{Operation, ProgressEvent as WireProgressEvent};
 use probe_rs_rpc_client::{ResolvedUpload, RpcClient};
 use std::{collections::HashMap, path::Path, time::Duration};
@@ -105,6 +105,10 @@ pub struct Debugger {
     /// Timestamp of the flashed binary
     binary_timestamp: Option<Duration>,
 
+    // TODO: Store somewhere else
+    /// Timestamp of the SVD file that the server parsed last
+    svd_timestamp: Option<Duration>,
+
     /// Used to capture the `tracing` messages that are generated during the DAP sessions,
     /// to be ultimately forwarded to the DAP client's Debug Console, or failing that, stderr.
     pub(crate) debug_logger: DebugLogger,
@@ -128,6 +132,7 @@ impl Debugger {
             config: configuration::SessionConfig::default(),
             timestamp_offset,
             binary_timestamp: None,
+            svd_timestamp: None,
             debug_logger: DebugLogger::new(log_file)?,
             uploaded_files: None,
         };
@@ -199,7 +204,8 @@ impl Debugger {
         debug_adapter: &mut DebugAdapter,
         request: &Request,
     ) -> Result<DebugSessionStatus, RequestFailure> {
-        let _req_span = tracing::info_span!("Handling request", request = ?request).entered();
+        let _req_span =
+            tracing::info_span!("Handling request", request = ?RequestSummary(request)).entered();
 
         // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
         session_data
@@ -688,12 +694,17 @@ impl Debugger {
 
         // Synchronize the optional SVD configuration before exposing scopes.
         // This is non-fatal: a failed load leaves the server cache cleared.
-        if let Err(error) = session_data
+        let svd_timestamp = target_core_config
+            .svd_file
+            .as_deref()
+            .and_then(get_file_timestamp);
+        match session_data
             .backend
             .load_svd(core_index, target_core_config.svd_file.clone())
             .await
         {
-            tracing::warn!("Failed to load SVD file: {error:?}");
+            Ok(()) => self.svd_timestamp = svd_timestamp,
+            Err(error) => tracing::warn!("Failed to load SVD file: {error:?}"),
         }
 
         if requested_target_session_type == TargetSessionType::LaunchRequest {
@@ -712,12 +723,49 @@ impl Debugger {
         Ok(session_data)
     }
 
+    /// Show the current restart phase in the progress report of the client.
+    fn report_progress(
+        debug_adapter: &mut DebugAdapter,
+        progress_id: Option<ProgressId>,
+        message: &str,
+    ) {
+        if let Some(progress_id) = progress_id {
+            debug_adapter
+                .update_progress(None, Some(message), progress_id)
+                .ok();
+        }
+    }
+
     #[tracing::instrument(skip_all)]
     async fn restart(
         &mut self,
         debug_adapter: &mut DebugAdapter,
         session_data: &mut SessionData,
         request: &Request,
+    ) -> Result<(), DebuggerError> {
+        // On a slow host, a restart takes many seconds. Report the phases of
+        // the restart, so that the client does not look frozen.
+        let progress_id = debug_adapter
+            .start_progress("Restarting", Some(request.seq))
+            .ok();
+
+        let result = self
+            .restart_impl(debug_adapter, session_data, request, progress_id)
+            .await;
+
+        if let Some(progress_id) = progress_id {
+            let _ = debug_adapter.end_progress(progress_id);
+        }
+
+        result
+    }
+
+    async fn restart_impl(
+        &mut self,
+        debug_adapter: &mut DebugAdapter,
+        session_data: &mut SessionData,
+        request: &Request,
+        progress_id: Option<ProgressId>,
     ) -> Result<(), DebuggerError> {
         let Some(target_core_config) = self.config.core_configs.first() else {
             return Err(DebuggerError::Other(anyhow!(
@@ -762,13 +810,7 @@ impl Debugger {
                 // relevant entry so we can call mutating methods on
                 // `session_data`.
                 let target_core_config = target_core_config.clone();
-                // Reject a replacement binary with unparsable DWARF before
-                // uploading it or mutating the target.
-                DebugInfo::from_file(&path_to_elf).map_err(|error| {
-                    DebuggerError::Other(anyhow!(
-                        "Failed to validate replacement debug info: {error}"
-                    ))
-                })?;
+                Self::report_progress(debug_adapter, progress_id, "Reading the program binary");
                 // Resolve the upload once so flash and debug-info publication
                 // share the same bytes.
                 let upload = session_data
@@ -800,9 +842,17 @@ impl Debugger {
                         ))
                     })?;
 
-                Self::flash_resolved(&self.config, &upload, debug_adapter, request, session_data)
-                    .await?;
+                Self::flash_resolved(
+                    &self.config,
+                    &upload,
+                    debug_adapter,
+                    request,
+                    session_data,
+                    progress_id,
+                )
+                .await?;
 
+                Self::report_progress(debug_adapter, progress_id, "Loading the debug information");
                 // Publish the new server-owned DWARF only after flashing
                 // succeeds, then recompute source breakpoints through RPC.
                 session_data
@@ -823,14 +873,27 @@ impl Debugger {
             .map_err(DebuggerError::from)?;
 
         // A DAP restart carries no replacement launch configuration, but the
-        // configured SVD file may have changed on disk. Reload it on every
-        // restart; `None` and failures clear any stale server cache.
-        if let Err(error) = session_data
-            .backend
-            .load_svd(core_index, target_core_config.svd_file.clone())
-            .await
-        {
-            tracing::warn!("Failed to reload SVD file during restart: {error:?}");
+        // configured SVD file may have changed on disk. An SVD parse is slow,
+        // thus reload the file only after a change of its timestamp. A failed
+        // load clears any stale server cache.
+        if let Some(svd_file) = target_core_config.svd_file.clone() {
+            let svd_timestamp = get_file_timestamp(&svd_file);
+            if svd_timestamp.is_none() || svd_timestamp != self.svd_timestamp {
+                Self::report_progress(debug_adapter, progress_id, "Loading the SVD file");
+                match session_data
+                    .backend
+                    .load_svd(core_index, Some(svd_file))
+                    .await
+                {
+                    // A failed load leaves no SVD data on the server. Forget
+                    // the timestamp, so that the next restart tries again.
+                    Ok(()) => self.svd_timestamp = svd_timestamp,
+                    Err(error) => {
+                        self.svd_timestamp = None;
+                        tracing::warn!("Failed to reload SVD file during restart: {error:?}");
+                    }
+                }
+            }
         }
 
         // Reset RTT so that the link can be re-established.
@@ -840,8 +903,10 @@ impl Debugger {
 
         session_data.clear_rtt_blocks(&self.config).await?;
 
-        session_data.poll_cores(&self.config, debug_adapter).await?;
-
+        // Do not poll the cores here. The reset discards the state of the
+        // target, thus a poll would unwind the stack, tell the client that the
+        // core halted, and attach to the RTT of the old program for nothing.
+        Self::report_progress(debug_adapter, progress_id, "Resetting the core");
         // After completing optional flashing and other config, we can run the debug adapter's restart logic.
         debug_adapter
             .restart_async(session_data, core_index, Some(request))
@@ -877,26 +942,35 @@ impl Debugger {
             debug_adapter,
             launch_attach_request,
             session_data,
+            None,
         )
         .await
     }
 
     /// Flash using a prior [`ResolvedUpload`] so restart validate/flash/publish
     /// share one uploaded object.
+    ///
+    /// `parent_progress_id` is the progress report of an operation that
+    /// contains the flash operation. If it is `None`, this function starts and
+    /// ends its own progress report.
     async fn flash_resolved(
         config: &SessionConfig,
         upload: &ResolvedUpload,
         debug_adapter: &mut DebugAdapter,
         launch_attach_request: &Request,
         session_data: &mut SessionData,
+        parent_progress_id: Option<ProgressId>,
     ) -> Result<(), DebuggerError> {
         debug_adapter.log_to_console(format!(
             "FLASHING: Starting write of {} to device memory",
             upload.canonical_path.display()
         ));
-        let progress_id = debug_adapter
-            .start_progress("Flashing device", Some(launch_attach_request.seq))
-            .ok();
+        let progress_id = match parent_progress_id {
+            Some(progress_id) => Some(progress_id),
+            None => debug_adapter
+                .start_progress("Flashing device", Some(launch_attach_request.seq))
+                .ok(),
+        };
 
         #[derive(Default)]
         struct ProgressBarState {
@@ -982,7 +1056,9 @@ impl Debugger {
                 .await
         };
 
-        if let Some(id) = progress_id {
+        if parent_progress_id.is_none()
+            && let Some(id) = progress_id
+        {
             let _ = debug_adapter.end_progress(id);
         }
 

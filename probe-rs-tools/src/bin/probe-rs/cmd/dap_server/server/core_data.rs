@@ -8,6 +8,7 @@ use probe_rs_rpc::rtt_client::ScanRegion as WireScanRegion;
 /// `(channel number, channel name)` pairs returned while attaching to RTT.
 pub(crate) type ChannelNames = Vec<(u32, String)>;
 use crate::cmd::dap_server::server::debug_rtt;
+use crate::util::rtt::DefmtState;
 use probe_rs::CoreStatus;
 
 /// [CoreData] is used to cache data needed by the debugger, on a per-core basis.
@@ -31,6 +32,14 @@ pub struct CoreData {
     pub breakpoints: Vec<session_data::ActiveBreakpoint>,
     pub rtt_scan_ranges: WireScanRegion,
     pub rtt_connection: Option<debug_rtt::RttConnection>,
+    /// defmt data of the program binary, parsed on the first RTT attach.
+    ///
+    /// The parse reads the whole ELF file, thus each RTT attach after a reset
+    /// reuses this. The outer `Option` is `None` until the first parse, the
+    /// inner `Option` is `None` for a program without defmt data. A new
+    /// program binary clears the cache in
+    /// [`super::session_data::SessionData::load_rtt_location`].
+    pub defmt_state: Option<Option<DefmtState>>,
     /// Cache of the server-side RTT client handle between attach attempts,
     /// so we only call `create_rtt` once per core (RPC backend).
     pub rtt_remote_handle: Option<Key<RttClient>>,
@@ -78,6 +87,7 @@ fn stack_frame_display_cache_is_invalidated_before_replacement() {
         breakpoints: vec![],
         rtt_scan_ranges: WireScanRegion::Ranges(vec![]),
         rtt_connection: None,
+        defmt_state: None,
         rtt_remote_handle: None,
         repl_commands: vec![],
         test_data: Box::new(()),

@@ -9,7 +9,7 @@ use crate::cmd::dap_server::{
     DebuggerError,
     debug_adapter::{
         dap::repl_commands::{EvalResponse, EvalResult, ReplCommand},
-        protocol::{BoxedAdapter, ProtocolAdapter, ProtocolHelper},
+        protocol::{BoxedAdapter, ProtocolAdapter, ProtocolHelper, hide_file_payloads},
     },
     server::{
         configuration::ConsoleLog,
@@ -38,7 +38,7 @@ use typed_path::NativePathBuf;
 use std::{fmt::Display, str, time::Duration};
 
 /// Progress ID used for progress reporting when the debug adapter protocol is used.
-type ProgressId = i64;
+pub(crate) type ProgressId = i64;
 
 #[derive(Debug, PartialEq, Eq)]
 enum EvaluateDispatch {
@@ -1962,7 +1962,7 @@ pub fn get_arguments<T: DeserializeOwned>(
             let err = anyhow!(
                 "Failed to deserialize {} arguments: {}, error: {}",
                 req.command,
-                raw_arguments,
+                hide_file_payloads(raw_arguments),
                 e
             );
 

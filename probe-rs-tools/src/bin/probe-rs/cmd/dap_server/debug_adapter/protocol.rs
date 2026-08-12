@@ -8,8 +8,10 @@ use crate::cmd::dap_server::{
 };
 use anyhow::{Context, anyhow};
 use serde::Serialize;
+use serde_json::Value;
 use std::{
     collections::{BTreeMap, HashMap},
+    fmt,
     io::{BufRead, BufReader, ErrorKind, Read, Write},
     str,
 };
@@ -20,6 +22,60 @@ use tokio_util::{
 use tracing::instrument;
 
 use super::codec::{DapCodec, Frame, Message};
+
+/// Request argument fields that hold a base64 copy of a file.
+const FILE_PAYLOAD_FIELDS: [&str; 3] = ["programBinaryData", "svdFileData", "chipDescriptionData"];
+
+/// A view of a [`Request`] for a log message or a console message, in which
+/// each file payload shows as its size.
+///
+/// In `remoteServerMode` the launch arguments hold a base64 copy of the
+/// program binary, and the client repeats these arguments in every `restart`
+/// request. The [`fmt::Debug`] output of such a request is tens of megabytes.
+/// To format it, and for the client to display it, takes long enough to look
+/// like a freeze.
+pub(crate) struct RequestSummary<'a>(pub(crate) &'a Request);
+
+impl fmt::Debug for RequestSummary<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Request")
+            .field("seq", &self.0.seq)
+            .field("type_", &self.0.type_)
+            .field("command", &self.0.command)
+            .field(
+                "arguments",
+                &self.0.arguments.as_ref().map(hide_file_payloads),
+            )
+            .finish()
+    }
+}
+
+/// Replace every [`FILE_PAYLOAD_FIELDS`] entry of `value` with its size.
+///
+/// Use this for every message that shows request arguments. See
+/// [`RequestSummary`].
+pub(crate) fn hide_file_payloads(value: &Value) -> Value {
+    match value {
+        Value::Object(fields) => Value::Object(
+            fields
+                .iter()
+                .map(|(name, value)| {
+                    let value = if FILE_PAYLOAD_FIELDS.contains(&name.as_str()) {
+                        Value::String(format!(
+                            "<{} bytes>",
+                            value.as_str().unwrap_or_default().len()
+                        ))
+                    } else {
+                        hide_file_payloads(value)
+                    };
+                    (name.clone(), value)
+                })
+                .collect(),
+        ),
+        Value::Array(items) => Value::Array(items.iter().map(hide_file_payloads).collect()),
+        value => value.clone(),
+    }
+}
 
 pub trait ProtocolAdapter {
     /// Listen for a request. This call should be non-blocking, and if not request is available, it should
@@ -353,7 +409,7 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
     fn listen_for_request_and_respond(&mut self) -> anyhow::Result<Option<Request>> {
         match self.receive_msg_content() {
             Ok(Some(request)) => {
-                tracing::debug!("Received request: {:?}", request);
+                tracing::debug!("Received request: {:?}", RequestSummary(&request));
 
                 // This is the SUCCESS request for new requests from the client.
                 match self.console_log_level {
@@ -365,7 +421,10 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
                         ));
                     }
                     ConsoleLog::Debug => {
-                        self.log_to_console(&format!("\nReceived DAP Request: {request:#?}"));
+                        self.log_to_console(&format!(
+                            "\nReceived DAP Request: {:#?}",
+                            RequestSummary(&request)
+                        ));
                     }
                 }
 
@@ -513,6 +572,30 @@ mod test {
 
         assert_eq!(request.command, "test");
         assert_eq!(request.seq, 3);
+    }
+
+    #[test]
+    fn request_summary_hides_file_payloads() {
+        let request = Request {
+            seq: 3,
+            type_: "request".to_string(),
+            command: "restart".to_string(),
+            arguments: Some(serde_json::json!({
+                "chipDescriptionData": "aaaa",
+                "chip": "esp32c6",
+                "coreConfigs": [{
+                    "programBinary": "target/app",
+                    "programBinaryData": "aaaaaaaa",
+                }],
+            })),
+        };
+
+        let summary = format!("{:?}", RequestSummary(&request));
+
+        assert!(summary.contains(r#""chipDescriptionData": String("<4 bytes>")"#));
+        assert!(summary.contains(r#""programBinaryData": String("<8 bytes>")"#));
+        assert!(summary.contains(r#""chip": String("esp32c6")"#));
+        assert!(summary.contains(r#""programBinary": String("target/app")"#));
     }
 
     #[test]
