@@ -142,7 +142,7 @@ fn run_test_impl(
     {
         let mut session = shared_session.session_blocking();
         let mut core = session.core(core_id)?;
-        core.reset_and_halt(Duration::from_millis(100))?;
+        core.reset_and_halt(Duration::from_millis(500))?;
     }
 
     let expected_outcome = request.test.expected_outcome;
