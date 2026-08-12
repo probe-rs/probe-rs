@@ -383,8 +383,7 @@ impl DebugAdapter {
 
         let Some(repl_command) = repl_commands.first() else {
             return Err(DebuggerError::UserMessage(format!(
-                "Unknown REPL command: {}.",
-                command_root.trim()
+                "Unknown REPL command: {expression_trimmed}."
             )));
         };
         let repl_command = *repl_command;
@@ -1976,7 +1975,6 @@ pub fn get_arguments<T: DeserializeOwned>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cmd::dap_server::debug_adapter::dap::repl_commands::REPL_COMMANDS;
     use probe_rs::{RegisterId, UnwindRule};
 
     static U32_ROLES: [RegisterRole; 1] = [RegisterRole::Core("r0")];
