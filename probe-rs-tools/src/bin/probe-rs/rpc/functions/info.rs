@@ -532,13 +532,13 @@ fn coresight_component_tree(
             let mut tree =
                 ComponentTreeNode::new(format!("{:#06x} {}", id.component_address(), root));
             process_vendor_rom_tables(interface, id, table, access_port, &mut tree)?;
-            parent.push(tree);
 
             for entry in table.entries() {
                 let component = entry.component().clone();
 
-                coresight_component_tree(interface, component, access_port, parent)?;
+                coresight_component_tree(interface, component, access_port, &mut tree)?;
             }
+            parent.push(tree);
         }
         Component::CoresightComponent(id) => {
             let peripheral_id = id.peripheral_id();
