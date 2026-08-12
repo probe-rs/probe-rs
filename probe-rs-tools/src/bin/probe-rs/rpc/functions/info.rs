@@ -479,7 +479,7 @@ fn handle_memory_ap(
     parent: &mut ComponentTreeNode,
 ) -> anyhow::Result<()> {
     let component = {
-        let raw_idr = interface.read_raw_ap_register(&access_port, IDR::ADDRESS)?;
+        let raw_idr = interface.read_raw_ap_register(access_port, IDR::ADDRESS)?;
         let idr: IDR = raw_idr.try_into()?;
         let mut memory = interface.memory_interface(access_port)?;
 
