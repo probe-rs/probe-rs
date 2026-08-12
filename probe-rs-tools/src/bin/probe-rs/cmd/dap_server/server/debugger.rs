@@ -526,8 +526,13 @@ impl Debugger {
                         .restart(&mut debug_adapter, &mut session_data, &request)
                         .await
                     {
-                        debug_adapter.send_error_response(&request, &error)?;
-                        return Err(error);
+                        // Report the failed restart, then end the session
+                        // through the common path, so that the client also
+                        // receives the `terminated` and `exited` events. A
+                        // client that receives neither shows a session that
+                        // does not respond to any action.
+                        let _ = debug_adapter.send_error_response(&request, &error);
+                        break error;
                     }
                 }
                 DebugSessionStatus::Terminate => {
@@ -537,6 +542,7 @@ impl Debugger {
             };
         };
 
+        tracing::error!("The debug session ends with an error: {error:?}");
         debug_adapter.show_message(
             MessageSeverity::Error,
             format!("Debug Adapter terminated unexpectedly with an error: {error:?}"),

@@ -14,6 +14,7 @@ use std::{
     fmt,
     io::{BufRead, BufReader, ErrorKind, Read, Write},
     str,
+    time::{Duration, Instant},
 };
 use tokio_util::{
     bytes::BytesMut,
@@ -22,6 +23,29 @@ use tokio_util::{
 use tracing::instrument;
 
 use super::codec::{DapCodec, Frame, Message};
+
+fn would_block(error: &std::io::Error) -> bool {
+    error.kind() == ErrorKind::WouldBlock
+}
+
+/// A client that does not read for this long holds up the whole server.
+const SLOW_CLIENT_WARNING: Duration = Duration::from_millis(500);
+
+/// A message that stops for this long counts as abandoned. The server polls
+/// the target again, and keeps the part that arrived.
+const PARTIAL_MESSAGE_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Give the client time to read from the connection, and report a client that
+/// keeps the connection full.
+fn wait_for_output(blocked_since: Instant, warned: &mut bool) {
+    if !*warned && blocked_since.elapsed() > SLOW_CLIENT_WARNING {
+        *warned = true;
+        tracing::warn!(
+            "The DAP client does not read from the connection. The server waits for it."
+        );
+    }
+    std::thread::sleep(Duration::from_millis(1));
+}
 
 /// Request argument fields that hold a base64 copy of a file.
 const FILE_PAYLOAD_FIELDS: [&str; 3] = ["programBinaryData", "svdFileData", "chipDescriptionData"];
@@ -362,7 +386,7 @@ pub struct DapAdapter<R: Read, W: Write> {
 impl<R: Read, W: Write> DapAdapter<R, W> {
     pub(crate) fn new(reader: R, writer: W) -> Self {
         Self {
-            input: BufReader::new(reader),
+            input: BufReader::with_capacity(64 * 1024, reader),
             output: writer,
             seq: 0,
             console_log_level: ConsoleLog::Console,
@@ -377,33 +401,82 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
     fn send_data(&mut self, item: Frame<Message>) -> Result<(), std::io::Error> {
         let mut buf = BytesMut::with_capacity(4096);
         self.codec.encode(item, &mut buf)?;
-        self.output.write_all(&buf)?;
-        self.output.flush()?;
+        self.write_all_slowly(&buf)?;
+
+        let blocked_since = Instant::now();
+        let mut warned = false;
+        loop {
+            match self.output.flush() {
+                Err(error) if would_block(&error) => wait_for_output(blocked_since, &mut warned),
+                result => return result,
+            }
+        }
+    }
+
+    /// Write the whole buffer, and wait while the output cannot take more.
+    ///
+    /// In TCP mode the socket is non-blocking, because the server polls the
+    /// target while no request waits. [`Write::write_all`] on such a socket
+    /// fails as soon as the send buffer is full, which happens when the client
+    /// is slow to read. A partial message breaks the frame format of the
+    /// protocol, and the failure ends the debug session.
+    fn write_all_slowly(&mut self, mut buf: &[u8]) -> Result<(), std::io::Error> {
+        let blocked_since = Instant::now();
+        let mut warned = false;
+        while !buf.is_empty() {
+            match self.output.write(buf) {
+                Ok(0) => return Err(std::io::Error::from(ErrorKind::WriteZero)),
+                Ok(written) => buf = &buf[written..],
+                Err(error) if error.kind() == ErrorKind::Interrupted => {}
+                Err(error) if would_block(&error) => wait_for_output(blocked_since, &mut warned),
+                Err(error) => return Err(error),
+            }
+        }
         Ok(())
     }
 
     /// Receive data from `self.input`. Data has to be in the format specified by the Debug Adapter Protocol (DAP).
     /// The returned data is the content part of the request, as raw bytes.
+    ///
+    /// The loop reads until a message is complete, or until the input has no
+    /// more data. One read per call is not enough: a request that carries a
+    /// program binary is several megabytes long, and the caller reads again
+    /// only after the next poll of the target.
+    ///
+    /// While a message is on its way, the loop waits for the rest of it
+    /// instead of going back to the caller. The poll of the target holds the
+    /// loop for 100 ms per turn, which limits the input to the size of the
+    /// receive buffer of the socket per turn.
     fn receive_data(&mut self) -> Result<Option<Frame<Message>>, DebuggerError> {
-        match self.input.fill_buf() {
-            Ok(data) => {
-                // New data is here. Shove it into the buffer.
-                self.input_buffer.extend_from_slice(data);
-                let consumed = data.len();
-                self.input.consume(consumed);
+        let mut idle_since = Instant::now();
+        loop {
+            if let Some(frame) = self.codec.decode(&mut self.input_buffer)? {
+                return Ok(Some(frame));
             }
-            Err(error) => match error.kind() {
-                // No new data is here and we also have nothing buffered, go back to polling.
-                ErrorKind::WouldBlock if self.input_buffer.is_empty() => return Ok(None),
-                // No new data is here but we have some buffered, so go to work the data and produce frames.
-                ErrorKind::WouldBlock if !self.input_buffer.is_empty() => {}
-                // An error occurred, report it.
-                _ => return Err(error.into()),
-            },
-        };
 
-        // Process the next message from the buffer.
-        Ok(self.codec.decode(&mut self.input_buffer)?)
+            match self.input.fill_buf() {
+                // The input is at its end.
+                Ok([]) => return Ok(None),
+                Ok(data) => {
+                    self.input_buffer.extend_from_slice(data);
+                    let consumed = data.len();
+                    self.input.consume(consumed);
+                    idle_since = Instant::now();
+                }
+                Err(error) => match error.kind() {
+                    ErrorKind::Interrupted => {}
+                    // No part of a message waits, thus go back to polling.
+                    ErrorKind::WouldBlock if self.input_buffer.is_empty() => return Ok(None),
+                    // A client that stops in the middle of a message must not
+                    // hold the poll of the target. Keep the part that arrived.
+                    ErrorKind::WouldBlock if idle_since.elapsed() > PARTIAL_MESSAGE_TIMEOUT => {
+                        return Ok(None);
+                    }
+                    ErrorKind::WouldBlock => std::thread::sleep(Duration::from_millis(1)),
+                    _ => return Err(error.into()),
+                },
+            }
+        }
     }
 
     fn listen_for_request_and_respond(&mut self) -> anyhow::Result<Option<Request>> {
@@ -572,6 +645,51 @@ mod test {
 
         assert_eq!(request.command, "test");
         assert_eq!(request.seq, 3);
+    }
+
+    /// A reader that hands out the input in small pieces, as a socket does
+    /// with a large request.
+    struct ChunkedReader {
+        data: Vec<u8>,
+        position: usize,
+        chunk: usize,
+    }
+
+    impl Read for ChunkedReader {
+        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            if self.position == self.data.len() {
+                return Err(io::Error::new(ErrorKind::WouldBlock, "would block"));
+            }
+            let end = (self.position + self.chunk).min(self.data.len());
+            let piece = &self.data[self.position..end];
+            let length = piece.len().min(buf.len());
+            buf[..length].copy_from_slice(&piece[..length]);
+            self.position += length;
+            Ok(length)
+        }
+    }
+
+    #[test]
+    fn receive_request_that_arrives_in_pieces() {
+        let content = format!(
+            r#"{{ "seq": 3, "type": "request", "command": "test", "arguments": {{ "data": "{}" }} }}"#,
+            "a".repeat(100_000)
+        );
+        let input = format!("Content-Length: {}\r\n\r\n{content}", content.len());
+
+        let mut output = Vec::new();
+        let mut adapter = DapAdapter::new(
+            ChunkedReader {
+                data: input.into_bytes(),
+                position: 0,
+                chunk: 64,
+            },
+            &mut output,
+        );
+
+        let request = adapter.listen_for_request().unwrap().unwrap();
+
+        assert_eq!(request.command, "test");
     }
 
     #[test]
