@@ -142,6 +142,7 @@ impl XtensaDebugSequence for ESP32S3 {
         {
             let _span = tracing::debug_span!("Resetting core").entered();
             core.reset_and_halt(timeout)?;
+            self.disable_wdts(core)?;
         }
 
         // A program that does the system reset and then loops,
