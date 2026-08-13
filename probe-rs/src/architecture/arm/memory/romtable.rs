@@ -769,6 +769,8 @@ impl PeripheralID {
             ("ARM Ltd", 0xD21, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M33 TPIU", PeripheralType::Tpiu)),
             // From Arm Cortex-M55 Processor Technical Reference Manual
             ("ARM Ltd", 0xD22, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M55 TPIU", PeripheralType::Tpiu)),
+            // From Arm Cortex-M85 Processor Technical Reference Manual B.2
+            ("ARM Ltd", 0xD23, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M85 TPIU", PeripheralType::Tpiu)),
             // From IHI0029F: Coresight v3.0 architecture Specification
             ("ARM Ltd", _, _, 0x0A06) => Some(PartInfo::new("PMU architecture", PeripheralType::Pmu)),
             ("ARM Ltd", _, _, 0x1A01) => Some(PartInfo::new("ITM architecture", PeripheralType::Itm)),
@@ -781,13 +783,23 @@ impl PeripheralID {
             ("ARM Ltd", _, _, 0x0AF7) => Some(PartInfo::new("ROM architecture", PeripheralType::Rom)),
             // From Arm CoreSight System-on-Chip SoC-600 Technical Reference Manual
             ("ARM Ltd", 0x193, _, _) => Some(PartInfo::new("SoC-600 Timestamp Generator", PeripheralType::Tsgen)),
+            // Verified empirically
+            ("ARM Ltd", 0x4C9, 0x01, 0x0000) => Some(PartInfo::new("Cortex-M33 Core", PeripheralType::Rom)),
+            ("ARM Ltd", 0x4D4, 0x01, 0x0000) => Some(PartInfo::new("Cortex-M85 Core", PeripheralType::Rom)),
+            // From Arm CoreSight System-on-Chip SoC-400 Technical Reference Manual
+            ("ARM Ltd", 0x906, 0x14, 0x0000) => Some(PartInfo::new("SoC-400 CTI", PeripheralType::Cti)),
+            // From Arm CoreSight System-on-Chip SoC-600 Technical Reference Manual
             ("ARM Ltd", 0x9E7, 0x11, 0x0000) => Some(PartInfo::new("SoC-600 TPIU", PeripheralType::Tpiu)),
             ("ARM Ltd", 0x9EB, 0x12, 0x0000) => Some(PartInfo::new("SoC-600 ATB Funnel", PeripheralType::TraceFunnel)),
             // From Arm CoreSight TPIU-M Technical Reference Manual
-            ("ARM Ltd", 0x9F1, 0x11, _) => Some(PartInfo::new("Coresigth TPIU-M", PeripheralType::Tpiu)),
+            ("ARM Ltd", 0x9F1, 0x11, _) => Some(PartInfo::new("Coresight TPIU-M", PeripheralType::Tpiu)),
             // vendors
             ("Atmel", 0xCD0, 1, 0) => Some(PartInfo::new("Atmel DSU", PeripheralType::Custom)),
             ("Raspberry Pi Trading Ltd", _, _, 0x0AF7) => Some(PartInfo::new("RP235x CoreSight ROM", PeripheralType::Rom)),
+            ("Renesas Electronics", 0x004, 0x00, 0x0000) => Some(PartInfo::new("Renesas OCDREG", PeripheralType::Custom)),
+            ("Renesas Electronics", 0x050, 0x01, 0x0000) => Some(PartInfo::new("Renesas EPPB", PeripheralType::Rom)),
+            ("Renesas Electronics", 0x050, 0x00, 0x0000) => Some(PartInfo::new("Renesas Debug System", PeripheralType::Rom)),
+            ("STMicroelectronics", 0x000, _, _) => Some(PartInfo::new("STMicroelectronics DBGMCU", PeripheralType::Custom)),
 
             _ => None,
         }

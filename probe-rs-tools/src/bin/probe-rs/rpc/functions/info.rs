@@ -529,22 +529,26 @@ fn coresight_component_tree(
             let root = if let Some(part) = peripheral_id.determine_part() {
                 format!("{} (ROM Table, Class 1)", part.name())
             } else {
-                match peripheral_id.designer() {
-                    Some(designer) => format!("ROM Table (Class 1), Designer: {designer}"),
-                    None => "ROM Table (Class 1)".to_string(),
-                }
+                let designer = peripheral_id.designer().unwrap_or("<unknown>");
+                format!(
+                    "ROM Table (Class 1), Designer: {}, Part: {:#06x}, Devtype: {:#04x}, Archid: {:#06x}",
+                    designer,
+                    peripheral_id.part(),
+                    peripheral_id.dev_type(),
+                    peripheral_id.arch_id(),
+                )
             };
 
             let mut tree =
                 ComponentTreeNode::new(format!("{:#06x} {}", id.component_address(), root));
             process_vendor_rom_tables(interface, id, table, access_port, &mut tree)?;
-            parent.push(tree);
 
             for entry in table.entries() {
                 let component = entry.component().clone();
 
-                coresight_component_tree(interface, component, access_port, parent)?;
+                coresight_component_tree(interface, component, access_port, &mut tree)?;
             }
+            parent.push(tree);
         }
         Component::CoresightComponent(id) => {
             let peripheral_id = id.peripheral_id();
@@ -591,12 +595,12 @@ fn coresight_component_tree(
 
             let desc = if let Some(part_desc) = peripheral_id.determine_part() {
                 format!(
-                    "{:#06x} {: <15} (Generic IP component)",
+                    "{:#06x} {: <15} (Generic IP Component)",
                     id.component_address(),
                     part_desc.name()
                 )
             } else {
-                "Generic IP component".to_string()
+                "Generic IP Component".to_string()
             };
 
             let mut tree = ComponentTreeNode::new(desc);
@@ -605,17 +609,27 @@ fn coresight_component_tree(
         }
 
         Component::CoreLinkOrPrimeCellOrSystemComponent(id) => {
-            let desc = "Core Link / Prime Cell / System component";
-            let desc = if let Some(part_desc) = id.peripheral_id().determine_part() {
-                format!("{: <15} ({})", part_desc.name(), desc)
+            let desc = "Core Link / Prime Cell / System Component";
+            let peripheral_id = id.peripheral_id();
+            let part_info = peripheral_id.determine_part();
+
+            let component_description = if let Some(part_info) = part_info {
+                format!("{: <15} ({})", part_info.name(), desc)
             } else {
-                desc.to_string()
+                format!(
+                    "{}, Part: {:#06x}, Devtype: {:#04x}, Archid: {:#06x}, Designer: {}",
+                    desc,
+                    peripheral_id.part(),
+                    peripheral_id.dev_type(),
+                    peripheral_id.arch_id(),
+                    peripheral_id.designer().unwrap_or("<unknown>"),
+                )
             };
 
             parent.push(ComponentTreeNode::new(format!(
                 "{:#06x} {}",
                 id.component_address(),
-                desc
+                component_description
             )));
         }
     };
