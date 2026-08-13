@@ -5,10 +5,12 @@
 use anyhow::anyhow;
 use postcard_rpc::header::{VarHeader, VarSeq};
 use probe_rs::{
+    MemoryMappedRegister as _,
     architecture::{
         arm::{
             self, ApAddress, ApV2Address, ArmDebugInterface,
-            ap::{ApClass, ApRegister, IDR},
+            ap::{ApClass, ApRegister, ApType, IDR},
+            armv6m::Demcr,
             component::Scs,
             dp::{self, Ctrl, DLPIDR, DPIDR, DpRegister, TARGETID},
             memory::{
@@ -477,6 +479,8 @@ fn handle_memory_ap(
     parent: &mut ComponentTreeNode,
 ) -> anyhow::Result<()> {
     let component = {
+        let raw_idr = interface.read_raw_ap_register(access_port, IDR::ADDRESS)?;
+        let idr: IDR = raw_idr.try_into()?;
         let mut memory = interface.memory_interface(access_port)?;
 
         // Check if the AP is accessible
@@ -486,6 +490,18 @@ fn handle_memory_ap(
                 "Memory AP is not accessible, DeviceEn bit not set".to_string(),
             );
             return Ok(());
+        }
+
+        if matches!(
+            idr.TYPE(),
+            ApType::AmbaAhb3 | ApType::AmbaAhb5 | ApType::AmbaAhb5Hprot
+        ) {
+            // Enable DWT here otherwise DWT/ITM/ETM/TPIU won't be visible in component table.
+            // DWT is part of the Cortex-M core and unlikely to show up on a non-AHB bus.
+            // Enabling `DWTENA` on e.g. an APB bus will cause the port to error out.
+            let mut demcr = Demcr(memory.read_word_32(Demcr::get_mmio_address())?);
+            demcr.set_dwtena(true);
+            memory.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
         }
 
         let base_address = memory.base_address()?;
