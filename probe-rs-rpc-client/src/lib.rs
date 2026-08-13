@@ -252,7 +252,7 @@ pub async fn connect(
         ))),
     )
     .await
-    .map_err(|_| TransportError::Message("Failed to connect".into()))?;
+    .map_err(|_| TransportError::Message(format!("Failed to connect to {host}")))?;
 
     // Respond to the challenge
     let challenge = resp

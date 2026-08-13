@@ -226,6 +226,7 @@ impl SessionData {
                 continue;
             };
 
+            core_data.defmt_state = None;
             core_data.rtt_scan_ranges = match core_configuration.program_binary.as_ref() {
                 Some(program_binary)
                     if matches!(image_format, FormatKind::Elf | FormatKind::Idf) =>
@@ -516,7 +517,7 @@ impl SessionData {
             return Ok(());
         }
 
-        let mut defmt_data = None;
+        let mut defmt_data = self.core_data[cd_idx].defmt_state.clone();
         let use_auto_formats = rtt_config.channels.is_empty();
 
         let mut build_up_channel = |debug_adapter: &mut DebugAdapter,
@@ -618,6 +619,7 @@ impl SessionData {
         for (number, name) in &up_channels {
             debugger_rtt_channels.push(build_up_channel(debug_adapter, *number, name)?);
         }
+        self.core_data[cd_idx].defmt_state = defmt_data;
 
         for (number, name) in &down_channels {
             debug_adapter.open_prompt(PromptKind::Rtt, name, *number);
@@ -917,6 +919,7 @@ fn build_core_data(
         breakpoints: vec![],
         rtt_scan_ranges: WireScanRegion::Ranges(vec![]),
         rtt_connection: None,
+        defmt_state: None,
         rtt_remote_handle: None,
         repl_commands,
         test_data,
