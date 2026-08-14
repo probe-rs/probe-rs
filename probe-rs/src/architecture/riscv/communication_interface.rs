@@ -1958,7 +1958,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         let mut results = vec![];
         self.schedule_read_large_dtm_register::<V, Arg0>(&mut results)?;
 
-        Ok(V::read_scheduled_result(self, &mut results)?)
+        V::read_scheduled_result(self, &mut results)
     }
 
     /// Perform multiple reads from consecutive memory locations
