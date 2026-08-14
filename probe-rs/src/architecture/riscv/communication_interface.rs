@@ -32,6 +32,9 @@ pub enum RiscvError {
     /// An error occurred during the execution of an abstract command.
     #[error("Error occurred during execution of an abstract command: {0:?}")]
     AbstractCommand(AbstractCommandErrorKind),
+    /// Value does not fit into the abstract command argument width
+    #[error("Abstract command argument value {0:#x} does not fit in 32 bits")]
+    AbstractArgumentOutOfRange(u64),
     /// The request for reset, resume or halt was not acknowledged.
     #[error("The core did not acknowledge a request for reset, resume or halt")]
     RequestNotAcknowledged,
@@ -1897,6 +1900,104 @@ impl<'state> RiscvCommunicationInterface<'state> {
         })
     }
 
+    /// https://github.com/riscv/riscv-debug-spec/issues/1148
+    fn check_abstract_cmd_memory_support<V: RiscvValue>(&self) -> Result<(), RiscvError> {
+        let maximum_aamsize = if self.state.xlen_64 {
+            RiscvBusAccess::A64
+        } else {
+            RiscvBusAccess::A32
+        };
+
+        if V::WIDTH > maximum_aamsize {
+            return Err(RiscvError::AbstractCommand(
+                AbstractCommandErrorKind::NotSupported,
+            ));
+        }
+
+        // Using arg0 and arg1 consumes twice as much Abstract Data.
+        if self.state.data_register_count < if self.state.xlen_64 { 4 } else { 2 } {
+            return Err(RiscvError::AbstractCommand(
+                AbstractCommandErrorKind::NotSupported,
+            ));
+        }
+
+        Ok(())
+    }
+
+    fn schedule_write_abstract_cmd_arg1(&mut self, arg1: u64) -> Result<(), RiscvError> {
+        if self.state.xlen_64 {
+            self.schedule_write_dm_register(Data3((arg1 >> 32) as u32))?;
+            self.schedule_write_dm_register(Data2(arg1 as u32))?;
+        } else {
+            if arg1 > u32::MAX as u64 {
+                return Err(RiscvError::AbstractArgumentOutOfRange(arg1));
+            }
+
+            self.schedule_write_dm_register(Data1(arg1 as u32))?;
+        }
+
+        Ok(())
+    }
+
+    /// Perform a single read from a memory location, using abstract commands.
+    fn perform_memory_read_abstract_cmd<V: RiscvValue>(
+        &mut self,
+        address: u64,
+        aamvirtual: bool,
+    ) -> Result<V, RiscvError> {
+        self.check_abstract_cmd_memory_support::<V>()?;
+
+        let mut command = AccessMemoryCommand(0);
+        command.set_cmd_type(2);
+        command.set_aamvirtual(aamvirtual);
+        command.set_aamsize(V::WIDTH);
+
+        self.schedule_write_abstract_cmd_arg1(address)?;
+        self.execute_abstract_command(command.0)?;
+
+        let mut results = vec![];
+        self.schedule_read_large_dtm_register::<V, Arg0>(&mut results)?;
+
+        Ok(V::read_scheduled_result(self, &mut results)?)
+    }
+
+    /// Perform multiple reads from consecutive memory locations
+    /// using abstract commands.
+    ///
+    /// `aampostincrement` is not currently supported.
+    fn perform_memory_read_multiple_abstract_cmd<V: RiscvValue>(
+        &mut self,
+        address: u64,
+        data: &mut [V],
+        aamvirtual: bool,
+    ) -> Result<(), RiscvError> {
+        if data.is_empty() {
+            return Ok(());
+        }
+
+        self.check_abstract_cmd_memory_support::<V>()?;
+
+        let mut command = AccessMemoryCommand(0);
+        command.set_cmd_type(2);
+        command.set_aamvirtual(aamvirtual);
+        command.set_aamsize(V::WIDTH);
+
+        let mut address = address;
+        for out in data {
+            self.schedule_write_abstract_cmd_arg1(address)?;
+            self.execute_abstract_command(command.0)?;
+
+            let mut results = vec![];
+            self.schedule_read_large_dtm_register::<V, Arg0>(&mut results)?;
+
+            *out = V::read_scheduled_result(self, &mut results)?;
+
+            address = address.wrapping_add(V::WIDTH.byte_width() as u64);
+        }
+
+        Ok(())
+    }
+
     /// Memory write using system bus
     fn perform_memory_write_sysbus<V: RiscvValue>(
         &mut self,
@@ -1996,6 +2097,40 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
             Ok(())
         })
+    }
+
+    /// Memory write using abstract commands.
+    ///
+    /// `aampostincrement` is not currently supported.
+    fn perform_memory_write_abstract_cmd<V: RiscvValue>(
+        &mut self,
+        address: u64,
+        data: &[V],
+        aamvirtual: bool,
+    ) -> Result<(), RiscvError> {
+        if data.is_empty() {
+            return Ok(());
+        }
+
+        self.check_abstract_cmd_memory_support::<V>()?;
+
+        let mut command = AccessMemoryCommand(0);
+        command.set_cmd_type(2);
+        command.set_aamvirtual(aamvirtual);
+        command.set_aamsize(V::WIDTH);
+
+        command.set_write(true);
+
+        let mut address = address;
+        for value in data {
+            self.schedule_write_large_dtm_register::<V, Arg0>(*value)?;
+            self.schedule_write_abstract_cmd_arg1(address)?;
+            self.execute_abstract_command(command.0)?;
+
+            address = address.wrapping_add(V::WIDTH.byte_width() as u64);
+        }
+
+        Ok(())
     }
 
     /// The abstract command that transfers DATA0 into S1 and then executes the program buffer.
@@ -2456,9 +2591,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             }
             MemoryAccessMethod::SystemBus => self.perform_memory_read_sysbus(address)?,
             MemoryAccessMethod::AbstractCommand => {
-                return Err(crate::Error::NotImplemented(
-                    "Memory access using abstract commands is not implemented",
-                ));
+                self.perform_memory_read_abstract_cmd(address, false)?
             }
         };
 
@@ -2495,9 +2628,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 self.perform_memory_read_multiple_sysbus(address, data)?;
             }
             MemoryAccessMethod::AbstractCommand => {
-                return Err(crate::Error::NotImplemented(
-                    "Memory access using abstract commands is not implemented",
-                ));
+                self.perform_memory_read_multiple_abstract_cmd(address, data, false)?;
             }
         };
 
@@ -2517,9 +2648,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             }
             MemoryAccessMethod::SystemBus => self.perform_memory_write_sysbus(address, &[data])?,
             MemoryAccessMethod::AbstractCommand => {
-                return Err(crate::Error::NotImplemented(
-                    "Memory access using abstract commands is not implemented",
-                ));
+                self.perform_memory_write_abstract_cmd(address, &[data], false)?
             }
         };
 
@@ -2547,9 +2676,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 self.perform_memory_write_multiple_progbuf(address, data, true)?
             }
             MemoryAccessMethod::AbstractCommand => {
-                return Err(crate::Error::NotImplemented(
-                    "Memory access using abstract commands is not implemented",
-                ));
+                self.perform_memory_write_abstract_cmd(address, data, false)?
             }
         }
 
@@ -3227,8 +3354,6 @@ impl From<RiscvBusAccess> for u8 {
 
 /// Different methods of memory access,
 /// which can be supported by a debug module.
-///
-/// The `AbstractCommand` method for memory access is not implemented.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MemoryAccessMethod {
     /// Memory access using an abstract command is supported
