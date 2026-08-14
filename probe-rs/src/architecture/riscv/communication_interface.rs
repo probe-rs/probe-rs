@@ -3394,7 +3394,7 @@ memory_mapped_bitfield_register! {
     /// 2: Access the lowest 32 bits of the memory location.\
     /// 3: Access the lowest 64 bits of the memory location.\
     /// 4: Access the lowest 128 bits of the memory location.
-    pub _, set_aamsize: 22,20;
+    pub u8, from into RiscvBusAccess, _, set_aamsize: 22,20;
     /// After a memory access has completed, if this bit
     /// is 1, increment arg1 (which contains the address
     /// used) by the number of bytes encoded in `aamsize`.
