@@ -87,7 +87,7 @@ pub async fn debug_tcp(
 
                 let end_message = match with_dap_rpc_connection(&remote, async |client| {
                     debugger
-                        .debug_session_rpc(&client, debug_adapter)
+                        .debug_session_rpc(client, debug_adapter)
                         .await
                         .map_err(|error| anyhow::anyhow!("{error:?}"))
                 })

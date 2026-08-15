@@ -445,16 +445,15 @@ fn parse_and_resolve_cli_args<T: FromArgMatches + CommandFactory>(
     let mut matches = T::command().get_matches_from(&args);
 
     // Apply the configuration preset if one is specified.
-    if apply_config_preset(config, &matches, &mut args)? {
-        // Re-parse the modified CLI input. Ignore errors so that users can specify
-        // options that are only valid for certain subcommands.
-        matches = T::command().ignore_errors(true).get_matches_from(args);
+    if apply_config_preset::<T>(config, &matches, &mut args)? {
+        // Re-parse the modified CLI input.
+        matches = T::command().get_matches_from(args);
     }
 
     Ok(T::from_arg_matches(&matches)?)
 }
 
-fn apply_config_preset(
+fn apply_config_preset<T: FromArgMatches + CommandFactory>(
     config: &Config,
     matches: &ArgMatches,
     args: &mut Vec<OsString>,
@@ -476,8 +475,9 @@ fn apply_config_preset(
 
     let mut args_modified = false;
     for (arg, value) in preset {
-        let flag = format!("--{arg}").into();
-        if args.contains(&flag) {
+        let flag = format!("--{arg}");
+        let flag_os = OsString::from(&flag);
+        if args.iter().any(|arg| arg == &flag_os) {
             continue;
         }
 
@@ -488,23 +488,36 @@ fn apply_config_preset(
         // Append --flag. For booleans, this is all we do. For strings and
         // numbers, we'll append a value as well.
         args_modified = true;
-        args.push(flag);
 
-        match value {
-            Value::String(_, value) => args.push(value.into()),
+        let kv = match value {
+            Value::String(_, value) => format!("{flag}={value}"),
             Value::Num(_, num) => {
                 if let Some(uint) = num.to_u128() {
-                    args.push(format!("{uint}").into())
+                    format!("{flag}={uint}")
                 } else if let Some(int) = num.to_i128() {
-                    args.push(format!("{int}").into())
+                    format!("{flag}={int}")
                 } else if let Some(float) = num.to_f64() {
-                    args.push(format!("{float}").into())
+                    format!("{flag}={float}")
                 } else {
                     unreachable!()
                 }
             }
-            Value::Bool(_, _) => {}
+            Value::Bool(_, _) => flag.clone(),
             _ => anyhow::bail!("Unsupported value: {value:?}"),
+        };
+        let kv_os = OsString::from(kv);
+
+        // Filter out any args that are no longer valid after applying the preset.
+        //
+        // TODO: because we walk one argument at a time, we may reject valid combinations.
+        // Unfortunately, even with `ignore_errors(true)`, clap discards unparsed arguments
+        // when it finds one that doesn't match, so we can't just pass the unfiltered list
+        // to `try_get_matches_from`.
+        if T::command()
+            .try_get_matches_from(args.iter().chain([&kv_os]))
+            .is_ok()
+        {
+            args.push(kv_os);
         }
     }
 
