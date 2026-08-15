@@ -96,11 +96,6 @@ impl SessionData {
         config: &mut configuration::SessionConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<Self, DebuggerError> {
-        config
-            .chip
-            .as_ref()
-            .ok_or_else(|| anyhow!("A chip name is required when debugging over RPC."))?;
-
         // Reuse the shared CLI helper: it uploads any user-supplied chip
         // description, selects a probe, and performs the `probe/attach` RPC.
         let probe_options = config.probe_options();
