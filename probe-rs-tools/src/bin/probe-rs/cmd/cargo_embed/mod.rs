@@ -446,6 +446,9 @@ async fn prepare_halted_image(
             BootInfo::Other => {
                 core.reset_and_halt(Duration::from_millis(500)).await?;
             }
+            BootInfo::BootArchitectureSwitch { .. } => {
+                session.prepare_boot(boot_info.clone(), core_id).await?;
+            }
         }
     } else {
         core.reset_and_halt(Duration::from_millis(500)).await?;

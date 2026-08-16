@@ -13,6 +13,7 @@ use yaml_serde::Value;
 use super::builder::FlashBuilder;
 use super::{DownloadOptions, FileDownloadError, FlashError, Flasher};
 use crate::Target;
+use crate::core::Architecture;
 use crate::flashing::progress::ProgressOperation;
 use crate::flashing::{FlashLayout, FlashProgress};
 use crate::memory::MemoryInterface;
@@ -181,7 +182,7 @@ mod builtin {
         fn load(
             &self,
             flash_loader: &mut FlashLoader,
-            _session: &mut Session,
+            session: &mut Session,
             file: &mut dyn ImageReader,
         ) -> Result<(), FileDownloadError> {
             // Skip the specified bytes.
@@ -197,6 +198,7 @@ mod builtin {
                 &buf,
             )?;
 
+            flash_loader.prepare_rp235x_nvm_flash(session)?;
             Ok(())
         }
     }
@@ -209,7 +211,7 @@ mod builtin {
         fn load(
             &self,
             flash_loader: &mut FlashLoader,
-            _session: &mut Session,
+            session: &mut Session,
             file: &mut dyn ImageReader,
         ) -> Result<(), FileDownloadError> {
             const VECTOR_TABLE_SECTION_NAME: &str = ".vector_table";
@@ -246,6 +248,7 @@ mod builtin {
                 flash_loader.add_data(data.address.into(), data.data)?;
             }
 
+            flash_loader.prepare_rp235x_nvm_flash(session)?;
             Ok(())
         }
     }
@@ -390,7 +393,7 @@ mod builtin {
         fn load(
             &self,
             flash_loader: &mut FlashLoader,
-            _session: &mut Session,
+            session: &mut Session,
             file: &mut dyn ImageReader,
         ) -> Result<(), FileDownloadError> {
             let mut base_address = 0;
@@ -416,6 +419,7 @@ mod builtin {
                     | Record::StartLinearAddress(_) => {}
                 }
             }
+            flash_loader.prepare_rp235x_nvm_flash(session)?;
             Ok(())
         }
     }
@@ -428,7 +432,7 @@ mod builtin {
         fn load(
             &self,
             flash_loader: &mut FlashLoader,
-            _session: &mut Session,
+            session: &mut Session,
             file: &mut dyn ImageReader,
         ) -> Result<(), FileDownloadError> {
             let mut uf2_buffer = Vec::new();
@@ -444,6 +448,7 @@ mod builtin {
                     tracing::warn!("More than 1 section found in UF2 file.  Using first section.");
                 }
                 flash_loader.add_data(*target_address, &converted)?;
+                flash_loader.prepare_rp235x_nvm_flash(session)?;
 
                 Ok(())
             } else {
@@ -470,6 +475,11 @@ pub enum BootInfo {
     /// Executable is either not loaded yet or will be booted conventionally (from flash etc.)
     #[default]
     Other,
+    /// RP235x IMAGE_DEF is for the other processor architecture; rebind after reset.
+    BootArchitectureSwitch {
+        /// Architecture bootrom should select after IMAGE_DEF reset.
+        desired: Architecture,
+    },
 }
 
 /// `FlashLoader` is a struct which manages the flashing of any chunks of data onto any sections of flash.
@@ -488,6 +498,9 @@ pub struct FlashLoader {
     /// Relevant for manually configured RAM booted executables, available only if given loader supports it
     vector_table_addr: Option<u64>,
 
+    /// When set, flash was written for this RP235x architecture; after reset, rebind cores.
+    pending_boot_architecture: Option<Architecture>,
+
     read_flasher_rtt: bool,
 }
 
@@ -499,6 +512,7 @@ impl FlashLoader {
             builder: FlashBuilder::new(),
             source,
             vector_table_addr: None,
+            pending_boot_architecture: None,
             read_flasher_rtt: false,
         }
     }
@@ -524,19 +538,61 @@ impl FlashLoader {
         self.vector_table_addr = Some(vector_table_addr);
     }
 
-    /// Retrieve available boot information
-    pub fn boot_info(&self) -> BootInfo {
-        let Some(vector_table_addr) = self.vector_table_addr else {
-            return BootInfo::Other;
+    pub(crate) fn retarget(&mut self, target: &Target) {
+        self.memory_map = target.memory_map.clone();
+        self.source = target.source.clone();
+    }
+
+    /// Switch to Arm and record the IMAGE_DEF boot architecture when flashing RP235x NVM.
+    ///
+    /// ISA intent comes from `--chip` (`RP235x_riscv` vs `RP235x`), not ELF `e_machine`.
+    fn prepare_rp235x_nvm_flash(&mut self, session: &mut Session) -> Result<(), FileDownloadError> {
+        if !crate::vendor::raspberrypi::is_rp235x_chip(&session.target().name) {
+            return Ok(());
+        }
+
+        let has_nvm = self.builder.data.keys().any(|addr| {
+            matches!(
+                Self::get_region_for_address(&self.memory_map, *addr),
+                Some(MemoryRegion::Nvm(_))
+            )
+        });
+        if !has_nvm {
+            return Ok(());
+        }
+
+        session
+            .ensure_architecture(Architecture::Arm)
+            .map_err(FileDownloadError::Other)?;
+        self.retarget(session.target());
+
+        self.pending_boot_architecture = match session.rp235x_requested_arch() {
+            Some(crate::vendor::raspberrypi::Rp235xArch::Riscv) => Some(Architecture::Riscv),
+            _ => None,
         };
 
-        match Self::get_region_for_address(&self.memory_map, vector_table_addr) {
-            Some(MemoryRegion::Ram(region)) => BootInfo::FromRam {
+        Ok(())
+    }
+
+    /// Retrieve available boot information
+    pub fn boot_info(&self) -> BootInfo {
+        if let Some(vector_table_addr) = self.vector_table_addr
+            && let Some(MemoryRegion::Ram(region)) =
+                Self::get_region_for_address(&self.memory_map, vector_table_addr)
+        {
+            return BootInfo::FromRam {
                 vector_table_addr,
                 cores_to_reset: region.cores.clone(),
-            },
-            _ => BootInfo::Other,
+            };
         }
+
+        if let Some(desired) = self.pending_boot_architecture
+            && desired == Architecture::Riscv
+        {
+            return BootInfo::BootArchitectureSwitch { desired };
+        }
+
+        BootInfo::Other
     }
 
     /// Check the given address range is completely covered by the memory map,
@@ -610,10 +666,11 @@ impl FlashLoader {
                 }
             }
 
-            // Is the image compatible with any of the cores?
-            if !target_archs
-                .iter()
-                .any(|target| target.is_compatible(instr_set))
+            // RISC-V IMAGE_DEF is programmed with the Arm flash algorithm.
+            if !crate::vendor::raspberrypi::is_rp235x_chip(&session.target().name)
+                && !target_archs
+                    .iter()
+                    .any(|target| target.is_compatible(instr_set))
             {
                 return Err(FileDownloadError::IncompatibleImage {
                     target: target_archs,

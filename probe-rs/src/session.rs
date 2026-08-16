@@ -22,7 +22,7 @@ use crate::{
     config::{CoreExt, DebugSequence, RegistryError, Target, TargetSelector, registry::Registry},
     core::{Architecture, CombinedCoreState},
     probe::{
-        AttachMethod, DebugProbeError, Probe, ProbeCreationError, WireProtocol,
+        AttachMethod, DebugProbe, DebugProbeError, Probe, ProbeCreationError, WireProtocol,
         fake_probe::FakeProbe, list::Lister,
     },
 };
@@ -53,6 +53,8 @@ pub struct Session {
     interfaces: ArchitectureInterface,
     cores: Vec<CombinedCoreState>,
     configured_trace_sink: Option<TraceSink>,
+    /// `--chip` RP235x vs RP235x_riscv, kept if YAML is rebound to Arm for flashing.
+    rp235x_requested: Option<crate::vendor::raspberrypi::Rp235xArch>,
 }
 
 /// The `SessionConfig` struct is used to configure a new `Session` during auto-attach.
@@ -186,19 +188,7 @@ impl Session {
     ) -> Result<Self, Error> {
         let (probe, target) = get_target_from_selector(target, attach_method, probe, registry)?;
 
-        let cores = target
-            .cores
-            .iter()
-            .enumerate()
-            .map(|(id, core)| {
-                Core::create_state(
-                    id,
-                    core.core_access_options.clone(),
-                    &target,
-                    core.core_type,
-                )
-            })
-            .collect();
+        let cores = Self::cores_from_target(&target);
 
         // Use ARM DAP path when the target connects via SWD/DAP: either ARM cores or RISC-V cores
         // over mem-AP (e.g. RP235x_riscv).
@@ -211,6 +201,17 @@ impl Session {
         session.clear_all_hw_breakpoints()?;
 
         Ok(session)
+    }
+
+    fn cores_from_target(target: &Target) -> Vec<CombinedCoreState> {
+        target
+            .cores
+            .iter()
+            .enumerate()
+            .map(|(id, core)| {
+                Core::create_state(id, core.core_access_options.clone(), target, core.core_type)
+            })
+            .collect()
     }
 
     fn attach_arm_debug_interface(
@@ -277,6 +278,48 @@ impl Session {
 
         interface.select_debug_port(default_dp)?;
 
+        let rp235x_requested = crate::vendor::raspberrypi::Rp235xArch::from_chip_name(&target.name);
+        let mut target = target;
+        let mut cores = cores;
+        if crate::vendor::raspberrypi::is_rp235x_chip(&target.name) {
+            let live = crate::vendor::raspberrypi::detect_rp235x_arch(interface.as_mut())?;
+            match (live, rp235x_requested) {
+                (Some(crate::vendor::raspberrypi::Rp235xArch::Riscv), Some(desired))
+                    if desired == crate::vendor::raspberrypi::Rp235xArch::Arm =>
+                {
+                    tracing::info!("RP235x live RISC-V, switching to Arm for flash");
+                    crate::vendor::raspberrypi::switch_rp235x_architecture(
+                        interface.as_mut(),
+                        crate::vendor::raspberrypi::Rp235xArch::Arm,
+                    )?;
+                    interface.select_debug_port(default_dp)?;
+                }
+                (
+                    Some(crate::vendor::raspberrypi::Rp235xArch::Arm),
+                    Some(crate::vendor::raspberrypi::Rp235xArch::Riscv),
+                ) => {
+                    tracing::info!(
+                        "RP235x live Arm with --chip RP235x_riscv; stay Arm for flash, IMAGE_DEF bind after"
+                    );
+                    target = Registry::from_builtin_families()
+                        .get_target_by_name("RP235x")
+                        .map_err(Error::from)?;
+                    cores = Self::cores_from_target(&target);
+                }
+                (
+                    Some(crate::vendor::raspberrypi::Rp235xArch::Riscv),
+                    Some(crate::vendor::raspberrypi::Rp235xArch::Riscv),
+                ) => {
+                    tracing::info!("RP235x live RISC-V; flash path will switch to Arm");
+                }
+                _ => {}
+            }
+        }
+
+        let default_memory_ap = target.default_core().memory_ap().ok_or_else(|| {
+            Error::Other("Unable to connect to core, no memory AP configured".into())
+        })?;
+
         let unlock_span = tracing::debug_span!("debug_device_unlock").entered();
 
         // Enable debug mode
@@ -333,6 +376,7 @@ impl Session {
                 interfaces,
                 cores,
                 configured_trace_sink: None,
+                rp235x_requested,
             };
 
             {
@@ -362,10 +406,11 @@ impl Session {
 
             Ok(session)
         } else {
-            // For each core, setup debugging
+            // For each core, setup debugging. After an RP235x architecture switch the
+            // second M33 Mem-AP can briefly FAULT; retry instead of aborting attach.
             for core in &cores {
                 if core.is_arm_core() {
-                    core.enable_arm_debug(&mut *interface)?;
+                    Self::enable_arm_debug_with_retry(&mut *interface, core)?;
                 }
             }
 
@@ -375,6 +420,7 @@ impl Session {
                 interfaces,
                 cores,
                 configured_trace_sink: None,
+                rp235x_requested,
             })
         }
     }
@@ -409,6 +455,9 @@ impl Session {
                 let mut iface =
                     RiscvCommunicationInterface::new(Box::new(dtm), &mut state.interface_state);
                 iface.enter_debug_mode().map_err(Error::Riscv)?;
+                if let DebugSequence::Riscv(sequence) = &target.debug_sequence {
+                    sequence.on_connect(&mut iface)?;
+                }
             }
             Ok(ArchitectureInterface::ArmWithRiscv {
                 arm,
@@ -510,12 +559,14 @@ impl Session {
         }
 
         let interfaces = ArchitectureInterface::Jtag(probe, interfaces);
+        let rp235x_requested = crate::vendor::raspberrypi::Rp235xArch::from_chip_name(&target.name);
 
         let mut session = Session {
             target,
             interfaces,
             cores,
             configured_trace_sink: None,
+            rp235x_requested,
         };
 
         // Connect to the cores
@@ -712,6 +763,155 @@ impl Session {
     pub fn swo_reader(&mut self) -> Result<SwoReader<'_>, Error> {
         let interface = self.get_arm_interface()?;
         Ok(SwoReader::new(interface))
+    }
+
+    fn enable_arm_debug_with_retry(
+        interface: &mut dyn ArmDebugInterface,
+        core: &CombinedCoreState,
+    ) -> Result<(), Error> {
+        let mut last_err = None;
+        for attempt in 0..20 {
+            match core.enable_arm_debug(interface) {
+                Ok(()) => return Ok(()),
+                Err(e) => {
+                    tracing::debug!(
+                        "enable_arm_debug core {} attempt {}: {e}",
+                        core.id(),
+                        attempt + 1
+                    );
+                    last_err = Some(e);
+                    let _ = interface.reinitialize();
+                    std::thread::sleep(Duration::from_millis(50));
+                }
+            }
+        }
+        Err(last_err.unwrap())
+    }
+
+    fn take_arm_debug_interface(&mut self) -> Result<Box<dyn ArmDebugInterface + 'static>, Error> {
+        let dummy = Box::<FakeProbe>::default()
+            .try_get_arm_debug_interface(DefaultArmSequence::create())
+            .map_err(|(_, err)| err)?;
+        match &mut self.interfaces {
+            ArchitectureInterface::Arm(arm) => Ok(std::mem::replace(arm, dummy)),
+            ArchitectureInterface::ArmWithRiscv { arm, .. } => Ok(std::mem::replace(arm, dummy)),
+            ArchitectureInterface::Jtag(..) => Err(Error::Arm(ArmError::NoArmTarget)),
+        }
+    }
+
+    fn put_arm_debug_interface(&mut self, iface: Box<dyn ArmDebugInterface + 'static>) {
+        match &mut self.interfaces {
+            ArchitectureInterface::Arm(arm) => *arm = iface,
+            ArchitectureInterface::ArmWithRiscv { arm, .. } => *arm = iface,
+            ArchitectureInterface::Jtag(..) => {}
+        }
+    }
+
+    fn rebind_rp235x_yaml(
+        &mut self,
+        desired_arch: crate::vendor::raspberrypi::Rp235xArch,
+    ) -> Result<(), Error> {
+        let mut arm = self.take_arm_debug_interface()?;
+        let new_target = match Registry::from_builtin_families()
+            .get_target_by_name(desired_arch.target_name())
+        {
+            Ok(target) => target,
+            Err(e) => {
+                self.put_arm_debug_interface(arm);
+                return Err(e.into());
+            }
+        };
+
+        let cores = Self::cores_from_target(&new_target);
+
+        for core in &cores {
+            if core.is_arm_core()
+                && let Err(e) = Self::enable_arm_debug_with_retry(&mut *arm, core)
+            {
+                self.put_arm_debug_interface(arm);
+                return Err(e);
+            }
+        }
+
+        let interfaces = match Self::build_arm_interfaces(&new_target, arm) {
+            Ok(interfaces) => interfaces,
+            Err(e) => return Err(e),
+        };
+        self.target = new_target;
+        self.cores = cores;
+        self.interfaces = interfaces;
+        Ok(())
+    }
+
+    /// Switch an RP235x session to `desired` if the live architecture differs.
+    ///
+    /// No-op for other chips, or when the session is already on `desired`.
+    pub fn ensure_architecture(&mut self, desired: Architecture) -> Result<(), Error> {
+        if self.architecture() == desired {
+            return Ok(());
+        }
+        if !crate::vendor::raspberrypi::is_rp235x_chip(&self.target.name) {
+            return Ok(());
+        }
+
+        let desired_arch = match desired {
+            Architecture::Arm => crate::vendor::raspberrypi::Rp235xArch::Arm,
+            Architecture::Riscv => crate::vendor::raspberrypi::Rp235xArch::Riscv,
+            other => {
+                return Err(Error::Other(format!(
+                    "unsupported RP235x architecture {other:?}"
+                )));
+            }
+        };
+
+        tracing::info!(
+            "Switching RP235x from {:?} to {desired:?}",
+            self.architecture()
+        );
+
+        {
+            let arm = self.get_arm_interface()?;
+            crate::vendor::raspberrypi::switch_rp235x_architecture(arm, desired_arch)?;
+        }
+
+        self.rebind_rp235x_yaml(desired_arch)
+    }
+
+    /// `--chip` architecture, even if YAML was rebound to Arm for flashing.
+    pub(crate) fn rp235x_requested_arch(&self) -> Option<crate::vendor::raspberrypi::Rp235xArch> {
+        self.rp235x_requested
+    }
+
+    /// Switch an RP235x session after bootrom auto-selected `desired` from flash.
+    pub fn boot_switch_rebind(&mut self, desired: Architecture) -> Result<(), Error> {
+        if !crate::vendor::raspberrypi::is_rp235x_chip(&self.target.name) {
+            return Ok(());
+        }
+        if self.architecture() == desired {
+            return Ok(());
+        }
+
+        let desired_arch = match desired {
+            Architecture::Arm => crate::vendor::raspberrypi::Rp235xArch::Arm,
+            Architecture::Riscv => crate::vendor::raspberrypi::Rp235xArch::Riscv,
+            other => {
+                return Err(Error::Other(format!(
+                    "unsupported RP235x architecture {other:?}"
+                )));
+            }
+        };
+
+        tracing::info!(
+            "RP235x boot switch rebind: live {:?} → {desired:?} (IMAGE_DEF)",
+            self.architecture()
+        );
+
+        {
+            let arm = self.get_arm_interface()?;
+            crate::vendor::raspberrypi::rebind_after_bootrom_switch(arm, desired_arch)?;
+        }
+
+        self.rebind_rp235x_yaml(desired_arch)
     }
 
     /// Get the Arm probe interface.

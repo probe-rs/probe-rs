@@ -49,6 +49,12 @@ pub fn prepare_boot_info(
                 .core(core_id)?
                 .reset_and_halt(Duration::from_millis(500))?;
         }
+        flashing::BootInfo::BootArchitectureSwitch { desired } => {
+            session.boot_switch_rebind(desired)?;
+            session
+                .core(core_id)?
+                .reset_and_halt(Duration::from_millis(500))?;
+        }
     }
 
     Ok(())
@@ -364,6 +370,11 @@ pub(crate) mod convert {
                 cores_to_reset,
             },
             probe_rs::flashing::BootInfo::Other => BootInfo::Other,
+            probe_rs::flashing::BootInfo::BootArchitectureSwitch { desired } => {
+                BootInfo::BootArchitectureSwitch {
+                    desired: format!("{desired:?}"),
+                }
+            }
         }
     }
 
@@ -377,6 +388,15 @@ pub(crate) mod convert {
                 cores_to_reset: cores_to_reset.clone(),
             },
             BootInfo::Other => probe_rs::flashing::BootInfo::Other,
+            BootInfo::BootArchitectureSwitch { desired } => {
+                probe_rs::flashing::BootInfo::BootArchitectureSwitch {
+                    desired: if desired.eq_ignore_ascii_case("riscv") {
+                        probe_rs::Architecture::Riscv
+                    } else {
+                        probe_rs::Architecture::Arm
+                    },
+                }
+            }
         }
     }
 }

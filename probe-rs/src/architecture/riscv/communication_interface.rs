@@ -536,11 +536,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
             return Err(RiscvError::HartUnavailable);
         }
 
-        if self.state.last_selected_hart == hart {
-            return Ok(());
-        }
-
-        // Since we changed harts, we don't know the state of the Dmcontrol register anymore.
+        // Always write `hartsel`. ArmWithRiscv sessions keep a separate DM
+        // state per hart; the cache is stale after the other hart's interface
+        // changed the hardware selection.
         let mut control = self.read_dm_register::<Dmcontrol>()?;
         control.set_dmactive(true);
         control.set_hartsel(hart);
@@ -552,6 +550,17 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// Check if the given hart is enabled
     pub fn hart_enabled(&self, hart: u32) -> bool {
         self.state.enabled_harts & (1 << hart) != 0
+    }
+
+    /// Override the hart-present mask discovered in `enter_debug_mode`.
+    ///
+    /// If the number of harts found through autodetect is wrong, this
+    /// function allows you override it. Needs to be called any time
+    /// after autodetect happens, before something that accesses a hart
+    /// is called.
+    pub fn set_enabled_harts(&mut self, mask: u32) {
+        self.state.enabled_harts = mask;
+        self.state.num_harts = mask.count_ones();
     }
 
     /// Assert the target reset

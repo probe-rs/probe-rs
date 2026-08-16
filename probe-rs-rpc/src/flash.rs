@@ -165,6 +165,9 @@ pub enum BootInfo {
         cores_to_reset: Vec<String>,
     },
     Other,
+    BootArchitectureSwitch {
+        desired: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Schema)]

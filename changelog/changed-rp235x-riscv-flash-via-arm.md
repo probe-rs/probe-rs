@@ -1,0 +1,1 @@
+Flashing `--chip RP235x_riscv` now programs QSPI with the existing Arm CMSIS-Pack algorithm, then IMAGE_DEF-binds Hazard3. `--chip RP235x` stays Arm. Live RISC-V is switched to Arm for the flash algorithm; live Arm is left on Arm until after program.

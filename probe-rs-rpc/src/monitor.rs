@@ -16,6 +16,7 @@ impl MonitorMode {
         match self {
             MonitorMode::Run(BootInfo::FromRam { .. }) => true,
             MonitorMode::Run(BootInfo::Other) => true,
+            MonitorMode::Run(BootInfo::BootArchitectureSwitch { .. }) => true,
             MonitorMode::AttachToRunning => false,
         }
     }
