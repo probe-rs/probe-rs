@@ -201,6 +201,23 @@ impl CoreRegisterAbstractCmdSupport {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+struct MemoryAbstractCmdSupport(u8);
+
+impl MemoryAbstractCmdSupport {
+    const READ: Self = Self(1 << 0);
+    const WRITE: Self = Self(1 << 1);
+    const BOTH: Self = Self(Self::READ.0 | Self::WRITE.0);
+
+    fn supports(&self, o: Self) -> bool {
+        self.0 & o.0 == o.0
+    }
+
+    fn unset(&mut self, o: Self) {
+        self.0 &= !(o.0);
+    }
+}
+
 /// Save stack of a scratch register.
 // TODO: we probably only need an Option, we don't seem to use scratch registers in nested situations.
 #[derive(Debug, Default)]
@@ -227,6 +244,10 @@ pub struct MemoryAccessConfig {
     default_method: HashMap<RiscvBusAccess, MemoryAccessMethod>,
 
     region_override: HashMap<(Range<u64>, RiscvBusAccess), MemoryAccessMethod>,
+
+    /// Describes if the abstract command supports read or write access
+    /// at the given `aamsize`.
+    aamsize_info: HashMap<RiscvBusAccess, MemoryAbstractCmdSupport>,
 }
 
 impl MemoryAccessConfig {
@@ -287,6 +308,34 @@ impl MemoryAccessConfig {
         }
 
         max
+    }
+
+    /// Check if an `aamsize` is supported
+    fn check_abstract_cmd_aamsize_support(
+        &self,
+        aamsize: RiscvBusAccess,
+        rw: MemoryAbstractCmdSupport,
+    ) -> bool {
+        if let Some(status) = self.aamsize_info.get(&aamsize) {
+            status.supports(rw)
+        } else {
+            // If not cached yet, assume the aamsize supported
+            true
+        }
+    }
+
+    /// Remember that the given `aamsize` is not supported.
+    fn set_abstract_cmd_aamsize_unsupported(
+        &mut self,
+        aamsize: RiscvBusAccess,
+        rw: MemoryAbstractCmdSupport,
+    ) {
+        let entry = self
+            .aamsize_info
+            .entry(aamsize)
+            .or_insert(MemoryAbstractCmdSupport::BOTH);
+
+        entry.unset(rw);
     }
 }
 
@@ -1900,8 +1949,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
         })
     }
 
-    /// https://github.com/riscv/riscv-debug-spec/issues/1148
-    fn check_abstract_cmd_memory_support<V: RiscvValue>(&self) -> Result<(), RiscvError> {
+    /// [About DXLEN, aamsize, and Argument Width](https://github.com/riscv/riscv-debug-spec/issues/1148)
+    fn check_abstract_cmd_memory_support<V: RiscvValue>(
+        &self,
+        rw: MemoryAbstractCmdSupport,
+    ) -> Result<(), RiscvError> {
         let maximum_aamsize = if self.state.xlen_64 {
             RiscvBusAccess::A64
         } else {
@@ -1916,6 +1968,16 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         // Using arg0 and arg1 consumes twice as much Abstract Data.
         if self.state.data_register_count < if self.state.xlen_64 { 4 } else { 2 } {
+            return Err(RiscvError::AbstractCommand(
+                AbstractCommandErrorKind::NotSupported,
+            ));
+        }
+
+        if !self
+            .state
+            .memory_access_config
+            .check_abstract_cmd_aamsize_support(V::WIDTH, rw)
+        {
             return Err(RiscvError::AbstractCommand(
                 AbstractCommandErrorKind::NotSupported,
             ));
@@ -1945,7 +2007,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         address: u64,
         aamvirtual: bool,
     ) -> Result<V, RiscvError> {
-        self.check_abstract_cmd_memory_support::<V>()?;
+        self.check_abstract_cmd_memory_support::<V>(MemoryAbstractCmdSupport::READ)?;
 
         let mut command = AccessMemoryCommand(0);
         command.set_cmd_type(2);
@@ -1953,7 +2015,18 @@ impl<'state> RiscvCommunicationInterface<'state> {
         command.set_aamsize(V::WIDTH);
 
         self.schedule_write_abstract_cmd_arg1(address)?;
-        self.execute_abstract_command(command.0)?;
+
+        match self.execute_abstract_command(command.0) {
+            Ok(_) => (),
+            err @ Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
+                // Remember, that this aamsize is unsupported
+                self.state
+                    .memory_access_config
+                    .set_abstract_cmd_aamsize_unsupported(V::WIDTH, MemoryAbstractCmdSupport::READ);
+                err?;
+            }
+            Err(e) => return Err(e),
+        }
 
         let mut results = vec![];
         self.schedule_read_large_dtm_register::<V, Arg0>(&mut results)?;
@@ -1975,7 +2048,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             return Ok(());
         }
 
-        self.check_abstract_cmd_memory_support::<V>()?;
+        self.check_abstract_cmd_memory_support::<V>(MemoryAbstractCmdSupport::READ)?;
 
         let mut command = AccessMemoryCommand(0);
         command.set_cmd_type(2);
@@ -1985,7 +2058,21 @@ impl<'state> RiscvCommunicationInterface<'state> {
         let mut address = address;
         for out in data {
             self.schedule_write_abstract_cmd_arg1(address)?;
-            self.execute_abstract_command(command.0)?;
+
+            match self.execute_abstract_command(command.0) {
+                Ok(_) => (),
+                err @ Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
+                    // Remember, that this aamsize is unsupported
+                    self.state
+                        .memory_access_config
+                        .set_abstract_cmd_aamsize_unsupported(
+                            V::WIDTH,
+                            MemoryAbstractCmdSupport::READ,
+                        );
+                    err?;
+                }
+                Err(e) => return Err(e),
+            }
 
             let mut results = vec![];
             self.schedule_read_large_dtm_register::<V, Arg0>(&mut results)?;
@@ -2112,7 +2199,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             return Ok(());
         }
 
-        self.check_abstract_cmd_memory_support::<V>()?;
+        self.check_abstract_cmd_memory_support::<V>(MemoryAbstractCmdSupport::WRITE)?;
 
         let mut command = AccessMemoryCommand(0);
         command.set_cmd_type(2);
@@ -2125,7 +2212,21 @@ impl<'state> RiscvCommunicationInterface<'state> {
         for value in data {
             self.schedule_write_large_dtm_register::<V, Arg0>(*value)?;
             self.schedule_write_abstract_cmd_arg1(address)?;
-            self.execute_abstract_command(command.0)?;
+
+            match self.execute_abstract_command(command.0) {
+                Ok(_) => (),
+                err @ Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
+                    // Remember, that this aamsize is unsupported
+                    self.state
+                        .memory_access_config
+                        .set_abstract_cmd_aamsize_unsupported(
+                            V::WIDTH,
+                            MemoryAbstractCmdSupport::WRITE,
+                        );
+                    err?;
+                }
+                Err(e) => return Err(e),
+            }
 
             address = address.wrapping_add(V::WIDTH.byte_width() as u64);
         }
