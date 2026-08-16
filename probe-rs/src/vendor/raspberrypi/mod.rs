@@ -364,10 +364,12 @@ pub(crate) fn switch_rp235x_architecture(
     let _ = interface.select_debug_port(DpAddress::Default);
     tracing::info!("RP235x switch: catching {desired:?} cores after warm reset");
     if catch_switched_cores(interface, desired) {
-        let _ = interface.reinitialize();
-        std::thread::sleep(Duration::from_millis(50));
+        // Do not reinitialize() after an Arm catch: DP power-down/up leaves DeviceEn=0.
         if desired == Rp235xArch::Arm {
+            std::thread::sleep(Duration::from_millis(50));
             settle_arm_core1(interface);
+        } else {
+            let _ = interface.reinitialize();
         }
         return Ok(());
     }
@@ -445,7 +447,15 @@ fn catch_switched_cores(interface: &mut dyn ArmDebugInterface, arch: Rp235xArch)
                     }
                 }
                 if core0 {
-                    let _ = try_halt_arm_ap(interface, RP235X_ARM_CORE1_MEM_AP, false);
+                    match arm_ap_csw_device_en(interface, RP235X_ARM_CORE1_MEM_AP) {
+                        Some(true) => {
+                            let _ = try_halt_arm_ap(interface, RP235X_ARM_CORE1_MEM_AP, false);
+                        }
+                        _ => {
+                            // Core1 often has DeviceEn=0 right after the socket switch.
+                            // Do not probe it: a FAULT here drops core0 DeviceEn too.
+                        }
+                    }
                 }
                 core0
             }
