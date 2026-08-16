@@ -2014,7 +2014,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
         command.set_aamvirtual(aamvirtual);
         command.set_aamsize(V::WIDTH);
 
-        self.schedule_write_abstract_cmd_arg1(address)?;
+        if self.state.xlen_64 {
+            self.schedule_write_abstract_cmd_arg1(address)?;
+        } else {
+            self.schedule_write_abstract_cmd_arg1((address as u32) as u64)?;
+        }
 
         match self.execute_abstract_command(command.0) {
             Ok(_) => (),
@@ -2057,7 +2061,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         let mut address = address;
         for out in data {
-            self.schedule_write_abstract_cmd_arg1(address)?;
+            if self.state.xlen_64 {
+                self.schedule_write_abstract_cmd_arg1(address)?;
+            } else {
+                self.schedule_write_abstract_cmd_arg1((address as u32) as u64)?;
+            }
 
             match self.execute_abstract_command(command.0) {
                 Ok(_) => (),
@@ -2211,7 +2219,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
         let mut address = address;
         for value in data {
             self.schedule_write_large_dtm_register::<V, Arg0>(*value)?;
-            self.schedule_write_abstract_cmd_arg1(address)?;
+            if self.state.xlen_64 {
+                self.schedule_write_abstract_cmd_arg1(address)?;
+            } else {
+                self.schedule_write_abstract_cmd_arg1((address as u32) as u64)?;
+            }
 
             match self.execute_abstract_command(command.0) {
                 Ok(_) => (),
