@@ -24,7 +24,7 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install target for cross-compilation
         run: rustup target add aarch64-unknown-linux-musl
@@ -50,7 +50,7 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install target for cross-compilation
         run: rustup target add aarch64-unknown-linux-gnu
@@ -85,7 +85,7 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # There is a conflict between the probe-rs/ subfolder and the probe-rs binary artifact, if the
           # checkout is done into the workspace root.
