@@ -157,3 +157,45 @@ jobs:
 
       - name: Check minimum Rust version
         run: cargo hack check --rust-version --workspace --all-targets --ignore-private
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v6
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v2.9.1
+
+      - uses: taiki-e/install-action@cargo-llvm-cov
+      - uses: taiki-e/install-action@nextest
+
+      - name: Measure coverage
+        run: |
+          cargo llvm-cov nextest --all-features --locked --profile ci-unit --summary-only > cov.txt
+          lines=$(awk '/^TOTAL/{print $10}' cov.txt)
+          funcs=$(awk '/^TOTAL/{print $7}' cov.txt)
+          regions=$(awk '/^TOTAL/{print $4}' cov.txt)
+          {
+            echo "### Test coverage"
+            echo
+            echo "**Lines \`${lines}\` · Functions \`${funcs}\` · Regions \`${regions}\`**"
+            echo
+            echo "<details><summary>Per-file breakdown</summary>"
+            echo
+            echo '```'
+            cat cov.txt
+            echo '```'
+            echo
+            echo "</details>"
+          } > coverage.md
+
+      - name: Comment coverage on the PR
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: coverage
+          path: coverage.md
