@@ -23,7 +23,7 @@ tracing = "0.1"
 serde.workspace = true
 yaml_serde.workspace = true
 
-espflash = { version = "4.5", default-features = false }
+espflash = { version = "4.5.0", git = "https://github.com/esp-rs/espflash", rev = "feb3cc7", default-features = false }
 
 [build-dependencies]
 probe-rs-target = { workspace = true, features = ["bincode"] }
