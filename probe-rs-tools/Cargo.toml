@@ -30,7 +30,7 @@ serde = { version = "1", features = ["derive"] }
 thiserror = { workspace = true }
 tracing = "0.1"
 typed-path = "0.12"
-espflash = { git = "https://github.com/esp-rs/espflash", rev = "feb3cc7", default-features = false }
+espflash = { version = "4.5.0", git = "https://github.com/esp-rs/espflash", rev = "feb3cc7", default-features = false }
 
 itertools = "0.15"
 indexmap = "2.14"
