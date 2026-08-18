@@ -172,6 +172,12 @@ impl Flasher {
         })
     }
 
+    /// Builder method to enable RTT.
+    pub fn with_rtt(mut self) -> Self {
+        self.read_rtt_output(true);
+        self
+    }
+
     fn ensure_loaded(&mut self, session: &mut Session) -> Result<(), FlashError> {
         if !self.loaded {
             self.load(session)?;
@@ -359,6 +365,22 @@ impl Flasher {
 
     /// Initializes the flashing algorithm for the [`Verify`] operation and provides an interface to it via the callback.
     pub fn run_verify<'p, T, F>(
+        &mut self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'p>,
+        f: F,
+    ) -> Result<T, FlashError>
+    where
+        F: FnOnce(&mut ActiveFlasher<'_, 'p, Verify>, &mut [LoadedRegion]) -> Result<T, FlashError>,
+    {
+        let (mut active, data) = self.init(session, progress, None)?;
+        let r = f(&mut active, data)?;
+        active.uninit()?;
+        Ok(r)
+    }
+
+    /// Initializes the flashing algorithm for the [`Read`] operation and provides an interface to it via the callback.
+    pub fn run_read<'p, T, F>(
         &mut self,
         session: &mut Session,
         progress: &mut FlashProgress<'p>,
@@ -1143,7 +1165,8 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
         Ok(())
     }
 
-    pub(super) fn read_flash(&mut self, address: u64, data: &mut [u8]) -> Result<(), FlashError> {
+    /// Do not use, only exposed with `pub` visibility for target-gen.
+    pub fn read_flash(&mut self, address: u64, data: &mut [u8]) -> Result<(), FlashError> {
         if let Some(read_flash) = self.flash_algorithm.pc_read {
             let page_size = self.flash_algorithm.flash_properties.page_size;
             let buffer_address = self.flash_algorithm.page_buffers[0];
