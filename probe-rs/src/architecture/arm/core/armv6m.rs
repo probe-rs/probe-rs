@@ -478,6 +478,16 @@ impl<'probe> Armv6m<'probe> {
     }
 }
 
+impl super::cortex_m::CortexMStateAccess for Armv6m<'_> {
+    fn cortex_m_state(&mut self) -> &mut CortexMState {
+        self.state
+    }
+
+    fn cortex_m_memory(&mut self) -> &mut dyn ArmMemoryInterface {
+        &mut *self.memory
+    }
+}
+
 impl CoreInterface for Armv6m<'_> {
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
         // Wait until halted state is active again.
@@ -600,8 +610,7 @@ impl CoreInterface for Armv6m<'_> {
     }
 
     fn run(&mut self) -> Result<(), Error> {
-        // Before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction.
-        self.step()?;
+        super::cortex_m::skip_breakpoint(self)?;
         self.state.clear_pending_step();
 
         let mut value = Dhcsr(0);
@@ -676,38 +685,36 @@ impl CoreInterface for Armv6m<'_> {
     }
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
-        // First check if we stopped on a breakpoint, because this requires special handling before we can continue.
-        let breakpoint_at_pc = if matches!(
+        let on_breakpoint = matches!(
             self.state.current_state,
             CoreStatus::Halted(HaltReason::Breakpoint(_))
-        ) {
-            let pc_before_step = self.read_core_reg(self.program_counter().into())?;
-            self.enable_breakpoints(false)?;
-            Some(pc_before_step)
-        } else {
-            None
-        };
+        );
 
-        let mut value = Dhcsr(0);
-        // Leave halted state.
-        // Step one instruction.
         self.state.begin_step();
-        value.set_c_step(true);
-        value.set_c_halt(false);
-        value.set_c_debugen(true);
-        value.set_c_maskints(true);
-        value.enable_write();
-
-        self.memory
-            .write_word_32(Dhcsr::get_mmio_address(), value.into())?;
-        self.memory.flush()?;
 
         // The single-step might put the core in lockup state. Lockup isn't considered "halted"
         // so we can't use `wait_for_core_halted` here.
         // So we wait for halted OR lockup, and if we entered lockup we halt.
-        if let Err(err) = self.wait_for_status(Duration::from_millis(100), |s| {
-            matches!(s, CoreStatus::Halted(_) | CoreStatus::LockedUp)
-        }) {
+        let step_result = if on_breakpoint {
+            super::cortex_m::hardware_step_with_breakpoints_disabled(self)
+        } else {
+            let mut value = Dhcsr(0);
+            value.set_c_step(true);
+            value.set_c_halt(false);
+            value.set_c_debugen(true);
+            value.set_c_maskints(true);
+            value.enable_write();
+
+            self.memory
+                .write_word_32(Dhcsr::get_mmio_address(), value.into())?;
+            self.memory.flush()?;
+
+            self.wait_for_status(Duration::from_millis(100), |s| {
+                matches!(s, CoreStatus::Halted(_) | CoreStatus::LockedUp)
+            })
+        };
+
+        if let Err(err) = step_result {
             self.state.clear_pending_step();
             return Err(err);
         }
@@ -715,28 +722,7 @@ impl CoreInterface for Armv6m<'_> {
             self.halt(Duration::from_millis(100))?;
         }
 
-        // Try to read the new program counter.
-        let mut pc_after_step = self.read_core_reg(self.program_counter().into())?;
-
-        // Re-enable breakpoints before we continue.
-        if let Some(pc_before_step) = breakpoint_at_pc {
-            // If we were stopped on a software breakpoint, then we need to manually advance the PC, or else we will be stuck here forever.
-            if pc_before_step == pc_after_step
-                && !self
-                    .hw_breakpoints()?
-                    .contains(&pc_before_step.try_into().ok())
-            {
-                tracing::debug!(
-                    "Encountered a breakpoint instruction @ {}. We need to manually advance the program counter to the next instruction.",
-                    pc_after_step
-                );
-                // Advance the program counter by the architecture specific byte size of the BKPT instruction.
-                pc_after_step.increment_address(2)?;
-                self.write_core_reg(self.program_counter().into(), pc_after_step)?;
-            }
-            self.enable_breakpoints(true)?;
-        }
-
+        let pc_after_step = self.read_core_reg(self.program_counter().into())?;
         self.state.semihosting_command = None;
 
         Ok(CoreInformation {
