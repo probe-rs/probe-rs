@@ -32,17 +32,10 @@ variants:
     cores:
     - main
   - !Ram
-    name: SRAM0
-    range:
-      start: 0x40800000
-      end: 0x40810000
-    cores:
-    - main
-  - !Ram
     name: Internal SRAM
     range:
-      start: 0x40810000
-      end: 0x40860000
+      start: 0x40800000
+      end: 0x40868000
     cores:
     - main
   - !Nvm
