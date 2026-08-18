@@ -38,13 +38,6 @@ variants:
       end: 0x40860000
     cores:
     - main
-  - !Ram
-    name: LP SRAM
-    range:
-      start: 0x50000000
-      end: 0x50004000
-    cores:
-    - main
   - !Nvm
     name: External flash (Read Only)
     range:
@@ -53,6 +46,13 @@ variants:
     cores:
     - main
     is_alias: true
+  - !Ram
+    name: LP SRAM
+    range:
+      start: 0x50000000
+      end: 0x50004000
+    cores:
+    - main
   flash_algorithms:
   - esp32h4-flashloader
   jtag:
