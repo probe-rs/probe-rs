@@ -221,6 +221,16 @@ impl RiscvDebugSequence for ESP32P4 {
 
         interface.enter_debug_mode()?;
 
+        // The ROM code fails to boot if UART0 SCLK is not enabled.
+        const HP_SYS_CLKRST_BASE: u64 = 0x500E_6000;
+        const PERI_CLK_CTRL110_OFFSET: u64 = 0x68;
+        const UART0_CLK_EN: u32 = 1 << 26;
+        let reg = interface.read_word_32(HP_SYS_CLKRST_BASE + PERI_CLK_CTRL110_OFFSET)?;
+        interface.write_word_32(
+            HP_SYS_CLKRST_BASE + PERI_CLK_CTRL110_OFFSET,
+            reg | UART0_CLK_EN,
+        )?;
+
         interface.reset_hart_and_halt(timeout)?;
 
         // Perform a manual reset of all peripherals

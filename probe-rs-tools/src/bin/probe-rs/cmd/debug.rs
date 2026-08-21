@@ -102,6 +102,10 @@ impl ProtocolAdapter for CliAdapter {
         self.pending.remove(&request_seq).map(|r| r.command)
     }
 
+    fn has_pending_request(&self, request_seq: i64) -> bool {
+        self.pending.contains_key(&request_seq)
+    }
+
     fn set_console_log_level(&mut self, log_level: ConsoleLog) {
         self.console_log_level = log_level;
     }

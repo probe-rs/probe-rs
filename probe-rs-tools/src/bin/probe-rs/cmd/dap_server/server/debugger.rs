@@ -14,11 +14,11 @@ use crate::cmd::dap_server::{
             MessageSeverity, Request, TerminatedEventBody,
         },
     },
+    debug_adapter::protocol::RequestSummary,
     server::configuration::SessionConfig,
 };
 use anyhow::{Context, anyhow};
 use probe_rs::CoreStatus;
-use probe_rs_debug::DebugInfo;
 use probe_rs_rpc::flash::{Operation, ProgressEvent as WireProgressEvent};
 use probe_rs_rpc_client::{ResolvedUpload, RpcClient};
 use std::{collections::HashMap, path::Path, time::Duration};
@@ -57,6 +57,39 @@ pub(crate) enum DebugSessionStatus {
     Restart(Request),
 }
 
+/// A failure that occurs while the server handles a request.
+///
+/// The `?` operator makes a [`RequestFailure::Request`]. Use
+/// [`RequestFailure::Session`] when the failed operation is necessary for the
+/// session, and not only for the request.
+enum RequestFailure {
+    /// The request failed. The client receives an error response, and the
+    /// session continues.
+    Request(DebuggerError),
+    /// The session cannot continue.
+    Session(DebuggerError),
+}
+
+impl RequestFailure {
+    fn error(&self) -> &DebuggerError {
+        match self {
+            Self::Request(error) | Self::Session(error) => error,
+        }
+    }
+}
+
+impl From<DebuggerError> for RequestFailure {
+    fn from(error: DebuggerError) -> Self {
+        Self::Request(error)
+    }
+}
+
+impl From<anyhow::Error> for RequestFailure {
+    fn from(error: anyhow::Error) -> Self {
+        Self::Request(DebuggerError::Other(error))
+    }
+}
+
 /// Top-level DAP server driver. May be managed by an IDE/editor (e.g. VSCode)
 /// or run standalone over TCP via `probe-rs dap-server --port <port>`.
 pub struct Debugger {
@@ -71,6 +104,10 @@ pub struct Debugger {
     // TODO: Store somewhere else
     /// Timestamp of the flashed binary
     binary_timestamp: Option<Duration>,
+
+    // TODO: Store somewhere else
+    /// Timestamp of the SVD file that the server parsed last
+    svd_timestamp: Option<Duration>,
 
     /// Used to capture the `tracing` messages that are generated during the DAP sessions,
     /// to be ultimately forwarded to the DAP client's Debug Console, or failing that, stderr.
@@ -95,6 +132,7 @@ impl Debugger {
             config: configuration::SessionConfig::default(),
             timestamp_offset,
             binary_timestamp: None,
+            svd_timestamp: None,
             debug_logger: DebugLogger::new(log_file)?,
             uploaded_files: None,
         };
@@ -128,24 +166,60 @@ impl Debugger {
         }
     }
 
+    /// Handles a request and sends an error response if necessary.
+    ///
+    /// A request that fails does not end the session. A target that becomes
+    /// unreachable is caught by the next poll of the cores.
     async fn handle_request(
         &mut self,
         session_data: &mut SessionData,
         debug_adapter: &mut DebugAdapter,
         request: Request,
     ) -> Result<DebugSessionStatus, DebuggerError> {
-        let _req_span = tracing::info_span!("Handling request", request = ?request).entered();
+        let failure = match self
+            .handle_request_impl(session_data, debug_adapter, &request)
+            .await
+        {
+            Ok(status) => return Ok(status),
+            Err(failure) => failure,
+        };
+
+        // In case the error response fails, we still want to return the result.
+        if let Err(response_error) = debug_adapter.send_error_response(&request, failure.error()) {
+            tracing::warn!("Failed to send error response: {response_error}");
+        }
+
+        match failure {
+            // A client that repeats a failing request must not spin the server.
+            RequestFailure::Request(_) => {
+                Ok(DebugSessionStatus::Continue(Duration::from_millis(50)))
+            }
+            RequestFailure::Session(error) => Err(error),
+        }
+    }
+
+    async fn handle_request_impl(
+        &mut self,
+        session_data: &mut SessionData,
+        debug_adapter: &mut DebugAdapter,
+        request: &Request,
+    ) -> Result<DebugSessionStatus, RequestFailure> {
+        let _req_span =
+            tracing::info_span!("Handling request", request = ?RequestSummary(request)).entered();
 
         // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
-        session_data.poll_cores(&self.config, debug_adapter).await?;
+        session_data
+            .poll_cores(&self.config, debug_adapter)
+            .await
+            .map_err(RequestFailure::Session)?;
 
         // Check if we have configured cores
         if session_data.core_data.is_empty() {
             if debug_adapter.configuration_is_done() {
                 // We've passed `configuration_done` and still do not have at least one core configured.
-                return Err(DebuggerError::Other(anyhow!(
+                return Err(RequestFailure::Session(DebuggerError::Other(anyhow!(
                     "Cannot continue unless one target core configuration is defined."
-                )));
+                ))));
             }
 
             // Keep processing "configuration" requests until we've passed `configuration_done` and have a valid `target_core`.
@@ -157,9 +231,9 @@ impl Debugger {
         let core_id = 0;
 
         let Some(target_core_config) = self.config.core_configs.get(core_id) else {
-            return Err(DebuggerError::Other(anyhow!(
+            return Err(RequestFailure::Session(DebuggerError::Other(anyhow!(
                 "No core configuration found for core id {core_id}"
-            )));
+            ))));
         };
         let core_index = target_core_config.core_index;
 
@@ -188,15 +262,11 @@ impl Debugger {
                     | "disassemble"
             ) && new_status == CoreStatus::Sleeping
             {
-                if let Err(error) = session_data
+                session_data
                     .backend
                     .halt(core_index, Duration::from_millis(100))
                     .await
-                {
-                    let err = DebuggerError::from(error);
-                    debug_adapter.send_response::<()>(&request, Err(&err))?;
-                    return Err(err);
-                }
+                    .map_err(DebuggerError::from)?;
                 unhalt_me = true;
             }
         }
@@ -205,103 +275,103 @@ impl Debugger {
         match request.command.as_ref() {
             "setBreakpoints" => {
                 debug_adapter
-                    .set_breakpoints(session_data, core_index, &request)
+                    .set_breakpoints(session_data, core_index, request)
                     .await?;
             }
             "setInstructionBreakpoints" => {
                 debug_adapter
-                    .set_instruction_breakpoints(session_data, core_index, &request)
+                    .set_instruction_breakpoints(session_data, core_index, request)
                     .await?;
             }
             "readMemory" => {
                 debug_adapter
-                    .read_memory(session_data, core_index, &request)
+                    .read_memory(session_data, core_index, request)
                     .await?;
             }
             "writeMemory" => {
                 debug_adapter
-                    .write_memory(session_data, core_index, &request)
+                    .write_memory(session_data, core_index, request)
                     .await?;
             }
             "pause" => {
                 debug_adapter
-                    .pause(session_data, core_index, &request)
+                    .pause(session_data, core_index, request)
                     .await?;
             }
             "scopes" => {
                 debug_adapter
-                    .scopes(session_data, core_index, &request)
+                    .scopes(session_data, core_index, request)
                     .await?;
             }
             "variables" => {
                 debug_adapter
-                    .variables(session_data, core_index, &request)
+                    .variables(session_data, core_index, request)
                     .await?;
             }
             "evaluate" => {
                 debug_adapter
-                    .evaluate(session_data, core_index, &request)
+                    .evaluate(session_data, core_index, request)
                     .await?;
             }
             "stackTrace" => {
                 debug_adapter
-                    .stack_trace(session_data, core_index, &request)
+                    .stack_trace(session_data, core_index, request)
                     .await?;
             }
             "next" => {
                 debug_adapter
-                    .next(session_data, core_index, &request)
+                    .next(session_data, core_index, request)
                     .await?;
             }
             "stepIn" => {
                 debug_adapter
-                    .step_in(session_data, core_index, &request)
+                    .step_in(session_data, core_index, request)
                     .await?;
             }
             "stepOut" => {
                 debug_adapter
-                    .step_out(session_data, core_index, &request)
+                    .step_out(session_data, core_index, request)
                     .await?;
             }
             "setVariable" => {
                 debug_adapter
-                    .set_variable(session_data, core_index, &request)
+                    .set_variable(session_data, core_index, request)
                     .await?;
             }
             "disassemble" => {
                 debug_adapter
-                    .disassemble(session_data, core_index, &request)
+                    .disassemble(session_data, core_index, request)
                     .await?;
             }
             "configurationDone" => {
                 debug_adapter
-                    .configuration_done(session_data, core_index, &request)
+                    .configuration_done(session_data, core_index, request)
                     .await?;
             }
             "threads" => {
                 debug_adapter
-                    .threads(session_data, core_index, &request)
+                    .threads(session_data, core_index, request)
                     .await?;
             }
             "completions" => {
                 debug_adapter
-                    .completions(session_data, core_index, &request)
+                    .completions(session_data, core_index, request)
                     .await?;
             }
             "rttWindowOpened" => {
                 debug_adapter
-                    .rtt_window_opened(session_data, core_index, &request)
+                    .rtt_window_opened(session_data, core_index, request)
                     .await?;
             }
             "continue" => {
                 debug_adapter
-                    .r#continue(session_data, core_index, &request)
+                    .r#continue(session_data, core_index, request)
                     .await?;
             }
 
             "disconnect" => {
                 debug_adapter
-                    .disconnect(session_data, core_index, &request)
+                    .disconnect(session_data, core_index, request)
                     .await?;
                 debug_session = DebugSessionStatus::Terminate;
             }
@@ -311,12 +381,12 @@ impl Debugger {
                     .halt(core_index, Duration::from_millis(500))
                     .await
                     .context("Failed to halt core")?;
-                debug_session = DebugSessionStatus::Restart(request);
+                debug_session = DebugSessionStatus::Restart(request.clone());
             }
             _ => {
                 let unimplemented_command = request.command.as_str();
                 debug_adapter.send_response::<()>(
-                    &request,
+                    request,
                     Err(&DebuggerError::Other(anyhow!(
                         "Received request '{unimplemented_command}', which is not supported or not implemented yet"
                     ))),
@@ -327,7 +397,7 @@ impl Debugger {
         if unhalt_me && let Err(error) = session_data.backend.run(core_index).await {
             let error = DebuggerError::Other(anyhow!(error).context("Failed to resume target."));
             debug_adapter.show_error_message(&error)?;
-            return Err(error);
+            return Err(error.into());
         }
 
         Ok(debug_session)
@@ -456,8 +526,13 @@ impl Debugger {
                         .restart(&mut debug_adapter, &mut session_data, &request)
                         .await
                     {
-                        debug_adapter.send_response::<()>(&request, Err(&error))?;
-                        return Err(error);
+                        // Report the failed restart, then end the session
+                        // through the common path, so that the client also
+                        // receives the `terminated` and `exited` events. A
+                        // client that receives neither shows a session that
+                        // does not respond to any action.
+                        let _ = debug_adapter.send_error_response(&request, &error);
+                        break error;
                     }
                 }
                 DebugSessionStatus::Terminate => {
@@ -467,6 +542,7 @@ impl Debugger {
             };
         };
 
+        tracing::error!("The debug session ends with an error: {error:?}");
         debug_adapter.show_message(
             MessageSeverity::Error,
             format!("Debug Adapter terminated unexpectedly with an error: {error:?}"),
@@ -537,7 +613,7 @@ impl Debugger {
             {
                 Ok(session_data) => Some(session_data),
                 Err(error) => {
-                    debug_adapter.send_response::<()>(&request, Err(&error))?;
+                    debug_adapter.send_error_response(&request, &error)?;
                     None
                 }
             };
@@ -624,12 +700,17 @@ impl Debugger {
 
         // Synchronize the optional SVD configuration before exposing scopes.
         // This is non-fatal: a failed load leaves the server cache cleared.
-        if let Err(error) = session_data
+        let svd_timestamp = target_core_config
+            .svd_file
+            .as_deref()
+            .and_then(get_file_timestamp);
+        match session_data
             .backend
             .load_svd(core_index, target_core_config.svd_file.clone())
             .await
         {
-            tracing::warn!("Failed to load SVD file: {error:?}");
+            Ok(()) => self.svd_timestamp = svd_timestamp,
+            Err(error) => tracing::warn!("Failed to load SVD file: {error:?}"),
         }
 
         if requested_target_session_type == TargetSessionType::LaunchRequest {
@@ -698,13 +779,6 @@ impl Debugger {
                 // relevant entry so we can call mutating methods on
                 // `session_data`.
                 let target_core_config = target_core_config.clone();
-                // Reject a replacement binary with unparsable DWARF before
-                // uploading it or mutating the target.
-                DebugInfo::from_file(&path_to_elf).map_err(|error| {
-                    DebuggerError::Other(anyhow!(
-                        "Failed to validate replacement debug info: {error}"
-                    ))
-                })?;
                 // Resolve the upload once so flash and debug-info publication
                 // share the same bytes.
                 let upload = session_data
@@ -759,14 +833,26 @@ impl Debugger {
             .map_err(DebuggerError::from)?;
 
         // A DAP restart carries no replacement launch configuration, but the
-        // configured SVD file may have changed on disk. Reload it on every
-        // restart; `None` and failures clear any stale server cache.
-        if let Err(error) = session_data
-            .backend
-            .load_svd(core_index, target_core_config.svd_file.clone())
-            .await
-        {
-            tracing::warn!("Failed to reload SVD file during restart: {error:?}");
+        // configured SVD file may have changed on disk. An SVD parse is slow,
+        // thus reload the file only after a change of its timestamp. A failed
+        // load clears any stale server cache.
+        if let Some(svd_file) = target_core_config.svd_file.clone() {
+            let svd_timestamp = get_file_timestamp(&svd_file);
+            if svd_timestamp.is_none() || svd_timestamp != self.svd_timestamp {
+                match session_data
+                    .backend
+                    .load_svd(core_index, Some(svd_file))
+                    .await
+                {
+                    // A failed load leaves no SVD data on the server. Forget
+                    // the timestamp, so that the next restart tries again.
+                    Ok(()) => self.svd_timestamp = svd_timestamp,
+                    Err(error) => {
+                        self.svd_timestamp = None;
+                        tracing::warn!("Failed to reload SVD file during restart: {error:?}");
+                    }
+                }
+            }
         }
 
         // Reset RTT so that the link can be re-established.
@@ -776,8 +862,9 @@ impl Debugger {
 
         session_data.clear_rtt_blocks(&self.config).await?;
 
-        session_data.poll_cores(&self.config, debug_adapter).await?;
-
+        // Do not poll the cores here. The reset discards the state of the
+        // target, thus a poll would unwind the stack, tell the client that the
+        // core halted, and attach to the RTT of the old program for nothing.
         // After completing optional flashing and other config, we can run the debug adapter's restart logic.
         debug_adapter
             .restart_async(session_data, core_index, Some(request))
@@ -1014,7 +1101,7 @@ mod test {
                     Capabilities, ContinuedEventBody, DisassembleArguments,
                     DisassembleResponseBody, DisassembledInstruction, DisconnectArguments,
                     ErrorResponseBody, InitializeRequestArguments, Message, OutputEventBody,
-                    Request, Response, Source, Thread, ThreadsResponseBody,
+                    Request, Response, Source, Thread, ThreadsResponseBody, VariablesArguments,
                 },
             },
             protocol::ProtocolAdapter,
@@ -1358,6 +1445,10 @@ mod test {
             self.pending_requests.remove(&request_seq)
         }
 
+        fn has_pending_request(&self, request_seq: i64) -> bool {
+            self.pending_requests.contains_key(&request_seq)
+        }
+
         fn get_next_seq(&mut self) -> i64 {
             self.sequence_number += 1;
             self.sequence_number
@@ -1607,6 +1698,57 @@ mod test {
             }),
         );
 
+        protocol_adapter
+            .add_request("threads")
+            .and_successful_response()
+            .with_body(ThreadsResponseBody {
+                threads: vec![Thread {
+                    id: 0,
+                    name: format!("0-{TEST_CHIP_NAME}"),
+                }],
+            });
+
+        disconnect_protocol_adapter(&mut protocol_adapter);
+
+        execute_test(protocol_adapter, true).await.unwrap();
+    }
+
+    /// A request that fails must receive an error response, and must not end
+    /// the session.
+    #[tokio::test]
+    async fn failed_request_does_not_end_the_session() {
+        let mut protocol_adapter = launched_protocol_adapter();
+
+        protocol_adapter
+            .add_request("configurationDone")
+            .and_successful_response();
+
+        protocol_adapter.expect_event(
+            "continued",
+            Some(ContinuedEventBody {
+                all_threads_continued: Some(true),
+                thread_id: 0,
+            }),
+        );
+        protocol_adapter.expect_output_event("Core is running\n");
+
+        let unknown_variables_reference = 0xDEAD_BEEF_i64;
+        let expected_error =
+            format!("No variable information found for {unknown_variables_reference}!");
+        protocol_adapter
+            .add_request("variables")
+            .with_arguments(VariablesArguments {
+                variables_reference: unknown_variables_reference,
+                count: None,
+                filter: None,
+                format: None,
+                start: None,
+            })
+            .and_error_response()
+            .with_body(error_response_body(&expected_error));
+        protocol_adapter.expect_output_event(&format!("{expected_error}\n"));
+
+        // The session must still answer the requests that follow.
         protocol_adapter
             .add_request("threads")
             .and_successful_response()

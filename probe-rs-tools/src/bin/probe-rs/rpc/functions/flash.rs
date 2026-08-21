@@ -47,7 +47,7 @@ pub fn prepare_boot_info(
         flashing::BootInfo::Other => {
             session
                 .core(core_id)?
-                .reset_and_halt(Duration::from_millis(100))?;
+                .reset_and_halt(Duration::from_millis(500))?;
         }
     }
 

@@ -176,6 +176,7 @@ impl XtensaDebugSequence for ESP32S2 {
         {
             let _span = tracing::debug_span!("Resetting core").entered();
             core.reset_and_halt(timeout)?;
+            self.disable_wdts(core)?;
         }
 
         // Set some clock-related RTC registers to the default values

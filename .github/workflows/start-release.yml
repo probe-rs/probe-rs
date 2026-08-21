@@ -17,7 +17,7 @@ jobs:
     env:
       BRANCH_NAME: create-release/${{ inputs.version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # The custom token is needed so that this workflow can trigger
           # another workflow. By default, pushing tags from inside a workflow

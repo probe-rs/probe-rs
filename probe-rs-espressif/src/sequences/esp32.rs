@@ -24,6 +24,15 @@ use probe_rs::{
 pub struct ESP32 {}
 
 impl ESP32 {
+    const RTC_SLOW_MEM: u64 = 0x5000_0000;
+    const RTC_CNTL_RESET_STATE_REG: u64 = 0x3ff48034;
+    const RTC_CNTL_RESET_STATE_DEF: u32 = 0x3000;
+
+    const RTC_CNTL_DIG_PWC_REG: u64 = 0x3FF48084;
+    const DG_WRAP_PD_EN: u32 = 1 << 31;
+    const DG_WRAP_FORCE_PU: u32 = 1 << 20;
+    const DG_WRAP_FORCE_PD: u32 = 1 << 19;
+
     /// Creates a new debug sequence handle for the ESP32.
     pub fn create() -> Arc<dyn XtensaDebugSequence> {
         tracing::warn!(
@@ -110,14 +119,48 @@ impl XtensaDebugSequence for ESP32 {
         core: &mut XtensaCommunicationInterface,
         timeout: Duration,
     ) -> Result<(), crate::Error> {
-        const RTC_CNTL_BASE: u64 = 0x3ff48000;
+        const ATTEMPTS: u32 = 3;
 
-        const RTC_CNTL_RESET_STATE_REG: u64 = RTC_CNTL_BASE + 0x34;
-        const RTC_CNTL_RESET_STATE_DEF: u32 = 0x3000;
+        let mut last_error = None;
+        for attempt in 1..=ATTEMPTS {
+            match self.try_reset_system_and_halt(core, timeout) {
+                Ok(()) => return Ok(()),
+                Err(error) => {
+                    tracing::warn!("Reset attempt {attempt} of {ATTEMPTS} failed: {error}");
+                    last_error = Some(error);
+                }
+            }
+        }
 
+        Err(last_error.expect("at least one attempt has run"))
+    }
+
+    fn on_unknown_semihosting_command(
+        &self,
+        interface: &mut Xtensa,
+        details: UnknownCommandDetails,
+    ) -> Result<Option<SemihostingCommand>, crate::Error> {
+        EspBreakpointHandler::handle_xtensa_idf_semihosting(interface, details)
+    }
+}
+
+impl ESP32 {
+    /// Resets the chip by running a stub from RTC slow memory, and halts the CPU afterwards.
+    ///
+    /// The stub is needed because a system reset disables JTAG on rev. 3 silicon: the PRO CPU
+    /// has to re-enable it, disable the watchdogs and restore the reset vector selection after
+    /// the reset. If this sequence gives up before the stub has done so, the chip stays
+    /// unreachable until the next power-on reset, so both pieces of state this function changes
+    /// are put back even when the reset fails.
+    fn try_reset_system_and_halt(
+        &self,
+        core: &mut XtensaCommunicationInterface,
+        timeout: Duration,
+    ) -> Result<(), crate::Error> {
         {
             let _span = tracing::debug_span!("Resetting core").entered();
             core.reset_and_halt(timeout)?;
+            self.disable_wdts(core)?;
         }
 
         // A program that does the system reset and then loops,
@@ -146,22 +189,89 @@ impl XtensaDebugSequence for ESP32 {
 
         {
             let _span = tracing::debug_span!("Backing up RTC_SLOW").entered();
-            core.read(0x5000_0000, &mut ram_value)?;
+            core.read(Self::RTC_SLOW_MEM, &mut ram_value)?;
         }
 
+        let result = self.run_reset_stub(core, timeout, &instructions);
+
+        let boots_from_rom = match &result {
+            Ok(()) => true,
+            Err(error) => {
+                tracing::debug!("Reset failed, cleaning up: {error}");
+
+                // The CPU may still be running the stub, or code from wherever the reset
+                // vector points at. Take control before changing memory.
+                if let Err(error) = core.reset_and_halt(timeout) {
+                    tracing::warn!("Failed to halt the core after the failed reset: {error}");
+                }
+
+                // Point the reset vector back at ROM. Left cleared, the next system reset
+                // makes both CPUs execute the contents of RTC slow memory.
+                match core.write_word_32(
+                    Self::RTC_CNTL_RESET_STATE_REG,
+                    Self::RTC_CNTL_RESET_STATE_DEF,
+                ) {
+                    Ok(()) => true,
+                    Err(error) => {
+                        tracing::warn!("Failed to restore the reset vector selection: {error}");
+                        false
+                    }
+                }
+            }
+        };
+
+        if !boots_from_rom {
+            // The CPUs still boot from RTC slow memory, so the stub has to stay there: it
+            // re-enables JTAG and points the reset vector back at ROM, which lets the next
+            // reset recover the chip. Putting the original contents back instead would make
+            // the CPUs execute them, and only a power-on reset could recover from that.
+            tracing::warn!(
+                "Keeping the reset stub in RTC slow memory to recover on the next reset"
+            );
+            return result;
+        }
+
+        let restore = {
+            let _span = tracing::debug_span!("Restore RAM contents").entered();
+            core.write(Self::RTC_SLOW_MEM, &ram_value)
+        };
+
+        result.and(restore)?;
+
+        tracing::info!("Reset complete");
+
+        Ok(())
+    }
+
+    fn run_reset_stub(
+        &self,
+        core: &mut XtensaCommunicationInterface,
+        timeout: Duration,
+        instructions: &[u8],
+    ) -> Result<(), crate::Error> {
         {
             let _span = tracing::debug_span!("Downloading code").entered();
-            core.write(0x5000_0000, &instructions)?;
+            core.write(Self::RTC_SLOW_MEM, instructions)?;
+            // Offset 4 is the entry point that resets the chip. Offset 0 is where the CPUs
+            // start after that reset.
             core.write_register(ProgramCounter(0x5000_0004))?;
         }
 
         {
             let _span =
                 tracing::debug_span!("Make sure the ready value is not what we expect").entered();
-            let reset_state = core.read_word_32(RTC_CNTL_RESET_STATE_REG)?;
-            let new_state = reset_state & !RTC_CNTL_RESET_STATE_DEF;
-            core.write_word_32(RTC_CNTL_RESET_STATE_REG, new_state)?;
+            let reset_state = core.read_word_32(Self::RTC_CNTL_RESET_STATE_REG)?;
+            let new_state = reset_state & !Self::RTC_CNTL_RESET_STATE_DEF;
+            core.write_word_32(Self::RTC_CNTL_RESET_STATE_REG, new_state)?;
         }
+
+        // Firmware may have left the digital core set to power down; it has to be on for the
+        // stub to run after the reset.
+        let dig_pwc = core.read_word_32(Self::RTC_CNTL_DIG_PWC_REG)?;
+        core.write_word_32(
+            Self::RTC_CNTL_DIG_PWC_REG,
+            (dig_pwc & !(Self::DG_WRAP_PD_EN | Self::DG_WRAP_FORCE_PD)) | Self::DG_WRAP_FORCE_PU,
+        )?;
 
         match core.resume_core() {
             err @ Err(XtensaError::XdmError(
@@ -182,10 +292,10 @@ impl XtensaDebugSequence for ESP32 {
         loop {
             // RTC_CNTL_RESET_STATE_REG is the last one to be set,
             // so if it's set, the program has completed.
-            let reset_state = core.read_word_32(RTC_CNTL_RESET_STATE_REG)?;
+            let reset_state = core.read_word_32(Self::RTC_CNTL_RESET_STATE_REG)?;
 
             tracing::debug!("Reset status register: {:#010x}", reset_state);
-            if reset_state & RTC_CNTL_RESET_STATE_DEF == RTC_CNTL_RESET_STATE_DEF {
+            if reset_state & Self::RTC_CNTL_RESET_STATE_DEF == Self::RTC_CNTL_RESET_STATE_DEF {
                 break;
             }
 
@@ -197,21 +307,6 @@ impl XtensaDebugSequence for ESP32 {
         core.reset_and_halt(timeout)?;
         self.on_connect(core)?;
 
-        {
-            let _span = tracing::debug_span!("Restore RAM contents").entered();
-            core.write(0x5000_0000, &ram_value)?;
-        }
-
-        tracing::info!("Reset complete");
-
         Ok(())
-    }
-
-    fn on_unknown_semihosting_command(
-        &self,
-        interface: &mut Xtensa,
-        details: UnknownCommandDetails,
-    ) -> Result<Option<SemihostingCommand>, crate::Error> {
-        EspBreakpointHandler::handle_xtensa_idf_semihosting(interface, details)
     }
 }

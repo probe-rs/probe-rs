@@ -86,7 +86,8 @@ pub async fn debug_tcp(
                 debugger.debug_logger.flush_to_dap(&mut debug_adapter)?;
 
                 let end_message = match with_dap_rpc_connection(&remote, async |client| {
-                    run_debug_session(&mut debugger, client, debug_adapter)
+                    debugger
+                        .debug_session_rpc(client, debug_adapter)
                         .await
                         .map_err(|error| anyhow::anyhow!("{error:?}"))
                 })
@@ -221,7 +222,7 @@ pub async fn debug_stdio(
 
     debugger.debug_logger.flush_to_dap(&mut debug_adapter)?;
 
-    match run_debug_session(&mut debugger, &client, debug_adapter).await {
+    match debugger.debug_session_rpc(&client, debug_adapter).await {
         Err(error) => {
             eprintln!("Session ended with error: {error:?}");
             debugger
@@ -241,20 +242,6 @@ pub async fn debug_stdio(
     debugger.debug_logger.flush()?;
 
     Ok(())
-}
-
-/// Pick the correct [`Debugger`] entry point based on whether the provided
-/// [`RpcClient`] is backed by an in-process RPC server (local session) or a
-/// real remote connection.
-/// Drive a single DAP debug session. Every operation is proxied through the
-/// RPC layer via [`crate::cmd::dap_server::backend::rpc::RpcBackend`], even
-/// when the [`RpcClient`] is backed by an in-process RPC server (local mode).
-async fn run_debug_session(
-    debugger: &mut Debugger,
-    client: &RpcClient,
-    debug_adapter: DebugAdapter,
-) -> Result<(), crate::cmd::dap_server::DebuggerError> {
-    debugger.debug_session_rpc(client, debug_adapter).await
 }
 
 /// Try to get the timestamp of a file.
