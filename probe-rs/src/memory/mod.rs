@@ -1,7 +1,5 @@
 use crate::error::Error;
 
-use scroll::Pread;
-
 /// {function_name} was called with data length that is not a multiple of {alignment}
 #[derive(Debug, thiserror::Error, docsplay::Display)]
 pub struct InvalidDataLengthError {
@@ -115,8 +113,9 @@ where
         }
         let mut buffer = vec![0u64; data.len() / 8];
         self.read_64(address, &mut buffer)?;
-        for (bytes, value) in data.chunks_exact_mut(8).zip(buffer.iter()) {
-            bytes.copy_from_slice(&u64::to_le_bytes(*value));
+        let (chunks, _rem) = data.as_chunks_mut::<8>();
+        for (bytes, value) in chunks.iter_mut().zip(buffer.iter()) {
+            *bytes = u64::to_le_bytes(*value);
         }
         Ok(())
     }
@@ -135,8 +134,9 @@ where
         }
         let mut buffer = vec![0u32; data.len() / 4];
         self.read_32(address, &mut buffer)?;
-        for (bytes, value) in data.chunks_exact_mut(4).zip(buffer.iter()) {
-            bytes.copy_from_slice(&u32::to_le_bytes(*value));
+        let (chunks, _rem) = data.as_chunks_mut::<4>();
+        for (bytes, value) in chunks.iter_mut().zip(buffer.iter()) {
+            *bytes = u32::to_le_bytes(*value);
         }
         Ok(())
     }
@@ -231,10 +231,9 @@ where
             return Err(InvalidDataLengthError::new("write_mem_64bit", 8).into());
         }
         let mut buffer = vec![0u64; data.len() / 8];
-        for (bytes, value) in data.chunks_exact(8).zip(buffer.iter_mut()) {
-            *value = bytes
-                .pread_with(0, scroll::LE)
-                .expect("an u64 - this is a bug, please report it");
+        let (chunks, _rem) = data.as_chunks::<8>();
+        for (bytes, value) in chunks.iter().zip(buffer.iter_mut()) {
+            *value = u64::from_le_bytes(*bytes);
         }
 
         self.write_64(address, &buffer)?;
@@ -252,10 +251,9 @@ where
             return Err(InvalidDataLengthError::new("write_mem_32bit", 4).into());
         }
         let mut buffer = vec![0u32; data.len() / 4];
-        for (bytes, value) in data.chunks_exact(4).zip(buffer.iter_mut()) {
-            *value = bytes
-                .pread_with(0, scroll::LE)
-                .expect("an u32 - this is a bug, please report it");
+        let (chunks, _rem) = data.as_chunks::<4>();
+        for (bytes, value) in chunks.iter().zip(buffer.iter_mut()) {
+            *value = u32::from_le_bytes(*bytes);
         }
 
         self.write_32(address, &buffer)?;
@@ -302,8 +300,9 @@ where
         if inbetween_count > 0 {
             // We do a 32 bit write of the remaining bytes that are 4 byte aligned.
             let mut buffer = vec![0u32; inbetween_count / 4];
-            for (bytes, value) in data.chunks_exact(4).zip(buffer.iter_mut()) {
-                *value = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+            let (chunks, _rem) = data.as_chunks::<4>();
+            for (bytes, value) in chunks.iter().zip(buffer.iter_mut()) {
+                *value = u32::from_le_bytes(*bytes);
             }
             self.write_32(address, &buffer)?;
 

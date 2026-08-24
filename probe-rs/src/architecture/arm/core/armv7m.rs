@@ -1086,11 +1086,10 @@ impl CoreInterface for Armv7m<'_> {
         let raw_val = self.memory.read_word_32(FpCtrl::get_mmio_address())?;
         let ctrl_reg = FpCtrl::from(raw_val);
 
-        let val: u32;
-        if ctrl_reg.rev() == 0 {
-            val = FpRev1CompX::breakpoint_configuration(addr)?.into();
+        let val = if ctrl_reg.rev() == 0 {
+            FpRev1CompX::breakpoint_configuration(addr)?.into()
         } else if ctrl_reg.rev() == 1 {
-            val = FpRev2CompX::breakpoint_configuration(addr).into();
+            FpRev2CompX::breakpoint_configuration(addr).into()
         } else {
             tracing::warn!(
                 "This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.",
@@ -1100,7 +1099,7 @@ impl CoreInterface for Armv7m<'_> {
                 "This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.",
                 ctrl_reg.rev()
             )));
-        }
+        };
 
         // This is fine as FpRev1CompX and Rev2CompX are just two different
         // interpretations of the same memory region as Rev2 can handle bigger

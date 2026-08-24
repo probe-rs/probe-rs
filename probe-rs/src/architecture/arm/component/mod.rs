@@ -326,7 +326,8 @@ pub(crate) fn read_trace_memory(
     let mut itm_trace = Vec::new();
 
     // Process each formatted frame and extract the multiplexed trace data.
-    for frame_buffer in etf_trace.chunks_exact(16) {
+    let (chunks, _rem) = etf_trace.as_chunks::<16>();
+    for frame_buffer in chunks {
         let mut frame = tmc::Frame::new(frame_buffer, id);
         for (id, data) in &mut frame {
             match id.into() {

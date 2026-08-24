@@ -1470,7 +1470,8 @@ impl MemoryInterface for Armv7ar<'_> {
 
                 // We used 32-bit accesses, so swap the 32-bit values if necessary.
                 if core.endianness()? == Endian::Big {
-                    for word in data.chunks_exact_mut(4) {
+                    let (chunks, _rem) = data.as_chunks_mut::<4>();
+                    for word in chunks.iter_mut() {
                         word.reverse();
                     }
                 }
@@ -1655,11 +1656,12 @@ impl MemoryInterface for Armv7ar<'_> {
             // streaming path in `write_32` regardless of how large it is.
             if !middle.is_empty() {
                 let endianness = core.endianness()?;
-                let words: Vec<u32> = middle
-                    .chunks_exact(4)
+                let (chunks, _rem) = middle.as_chunks::<4>();
+                let words: Vec<u32> = chunks
+                    .iter()
                     .map(|bytes| match endianness {
-                        Endian::Little => u32::from_le_bytes(bytes.try_into().unwrap()),
-                        Endian::Big => u32::from_be_bytes(bytes.try_into().unwrap()),
+                        Endian::Little => u32::from_le_bytes(*bytes),
+                        Endian::Big => u32::from_be_bytes(*bytes),
                     })
                     .collect();
                 core.write_32(address + start_extra_count as u64, &words)?;

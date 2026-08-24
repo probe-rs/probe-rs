@@ -1556,8 +1556,9 @@ impl MemoryInterface<ArmError> for StLinkMemoryInterface<'_> {
                 self.current_ap.ap_address().ap_v1()?,
             )?;
 
-            for (index, word) in buff.chunks_exact(4).enumerate() {
-                chunk[index] = u32::from_le_bytes(word.try_into().unwrap());
+            let (chunks, _rem) = buff.as_chunks::<4>();
+            for (index, word) in chunks.iter().enumerate() {
+                chunk[index] = u32::from_le_bytes(*word);
             }
         }
 
@@ -1589,8 +1590,9 @@ impl MemoryInterface<ArmError> for StLinkMemoryInterface<'_> {
                 self.current_ap.ap_address().ap_v1()?,
             )?;
 
-            for (index, word) in buff.chunks_exact(2).enumerate() {
-                chunk[index] = u16::from_le_bytes(word.try_into().unwrap());
+            let (chunks, _rem) = buff.as_chunks::<2>();
+            for (index, word) in chunks.iter().enumerate() {
+                chunk[index] = u16::from_le_bytes(*word);
             }
         }
 
