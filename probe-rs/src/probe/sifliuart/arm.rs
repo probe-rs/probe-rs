@@ -284,9 +284,10 @@ impl SifliUartMemoryInterface<'_> {
             }
         }
 
-        let words: Vec<u32> = buffer
-            .chunks_exact(4)
-            .map(|chunk| u32::from_le_bytes(chunk.try_into().expect("chunk length is 4")))
+        let (chunks, _rem) = buffer.as_chunks::<4>();
+        let words: Vec<u32> = chunks
+            .iter()
+            .map(|chunk| u32::from_le_bytes(*chunk))
             .collect();
 
         // Write the entire alignment area at once

@@ -274,9 +274,7 @@ impl FlashAlgorithm {
     ) -> Result<Self, FlashError> {
         use std::mem::size_of;
 
-        let assembled_instructions = raw.instructions.chunks_exact(size_of::<u32>());
-
-        let remainder = assembled_instructions.remainder();
+        let (assembled_instructions, remainder) = raw.instructions.as_chunks::<4>();
         let last_elem = if !remainder.is_empty() {
             let word = u32::from_le_bytes(
                 remainder
@@ -307,7 +305,9 @@ impl FlashAlgorithm {
             .iter()
             .copied()
             .chain(
-                assembled_instructions.map(|bytes| u32::from_le_bytes(bytes.try_into().unwrap())),
+                assembled_instructions
+                    .iter()
+                    .map(|bytes| u32::from_le_bytes(*bytes)),
             )
             .chain(last_elem)
             .collect();

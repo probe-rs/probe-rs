@@ -896,18 +896,14 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             if !address_loaded {
                 memory_access.load_initial_address_for_write(self, addr)?;
             }
-            let mut chunks = buffer.chunks_exact(4);
-            for chunk in chunks.by_ref() {
-                let mut word = [0; 4];
-                word[..].copy_from_slice(chunk);
-                let word = u32::from_le_bytes(word);
-
-                memory_access.write_one(self, word)?;
+            let (chunks, remainder) = buffer.as_chunks::<4>();
+            for chunk in chunks.iter() {
+                memory_access.write_one(self, u32::from_le_bytes(*chunk))?;
 
                 addr += 4;
             }
 
-            buffer = chunks.remainder();
+            buffer = remainder;
         }
 
         // We store the narrow tail of the data (1-3 bytes) separately.
