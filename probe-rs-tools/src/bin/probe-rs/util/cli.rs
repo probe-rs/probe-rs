@@ -704,7 +704,6 @@ pub async fn monitor(
             down_channels,
             up_channels,
         }) = &msg
-            && !down_channels.is_empty()
         {
             ui_context
                 .update(|state| {
@@ -811,6 +810,9 @@ pub async fn monitor(
     // Main UI loop. Detects changes generated either by the user or received from
     // the server, and decides what to display based on the current state.
     let ui = async {
+        const LIST_RTT_TIMEOUT: Duration = Duration::from_secs(5);
+        let list_rtt_deadline = Instant::now() + LIST_RTT_TIMEOUT;
+
         loop {
             enum DisplayMode {
                 OutputOnly,
@@ -824,10 +826,10 @@ pub async fn monitor(
 
                 if locked.exited {
                     DisplayMode::Exited
-                } else if locked.down_channels.is_empty() {
-                    DisplayMode::OutputOnly
                 } else if monitor_options.list_rtt {
                     DisplayMode::ListChannelsAndQuit
+                } else if locked.down_channels.is_empty() {
+                    DisplayMode::OutputOnly
                 } else {
                     DisplayMode::CliWithPrompt
                 }
@@ -844,16 +846,39 @@ pub async fn monitor(
                 }
                 DisplayMode::CliWithPrompt => cli_with_prompt(session, &ui_context).await,
                 DisplayMode::ListChannelsAndQuit => {
+                    // Subscribe before the state check so that a discovery
+                    // notification is not lost between the check and the wait.
+                    let notified = ui_context.subscribe();
                     let mut data = ui_context.lock().await;
-                    println!("Up channels:");
-                    for (i, channel) in data.up_channels.iter().enumerate() {
-                        println!("  {}: {}", i, ChannelInfoPrinter(channel));
+                    if data.rtt_client.is_some() {
+                        fn print_channels(channels: &[ChannelInfo]) {
+                            if channels.is_empty() {
+                                println!("  None.");
+                                return;
+                            }
+                            for (i, channel) in channels.iter().enumerate() {
+                                println!("  {}: {}", i, ChannelInfoPrinter(channel));
+                            }
+                        }
+                        println!("Up channels:");
+                        print_channels(&data.up_channels);
+                        println!("Down channels:");
+                        print_channels(&data.down_channels);
+                        data.exit();
+                    } else {
+                        drop(data);
+                        tokio::select! {
+                            _ = tokio::signal::ctrl_c() => {
+                                eprintln!("Received Ctrl+C, exiting");
+                                ui_context.exit().await;
+                            }
+                            _ = tokio::time::sleep(list_rtt_deadline.saturating_duration_since(Instant::now())) => {
+                                eprintln!("Failed to attach to RTT: Timeout");
+                                ui_context.exit().await;
+                            }
+                            _ = notified => {}
+                        }
                     }
-                    println!("Down channels:");
-                    for (i, channel) in data.down_channels.iter().enumerate() {
-                        println!("  {}: {}", i, ChannelInfoPrinter(channel));
-                    }
-                    data.exit();
                 }
                 DisplayMode::Exited => break,
             }
