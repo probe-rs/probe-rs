@@ -370,21 +370,13 @@ pub(crate) async fn connect_target_output_files(
     let mut map = TargetOutputFiles::new();
     for component in arg {
         let parts: Vec<&str> = component.splitn(2, "=").collect();
-        let key;
-        let value;
-        match parts[..] {
+        let (key, value) = match parts[..] {
             // Tolerating empty entries in particular makes a trailing comma tolerated.
             [] => continue,
-            [single] => {
-                key = ChannelIdentifier::CatchAll;
-                value = single;
-            }
-            [first, second] => {
-                key = first.parse()?;
-                value = second;
-            }
+            [single] => (ChannelIdentifier::CatchAll, single),
+            [first, second] => (first.parse()?, second),
             _ => unreachable!("splitn produces at most 2 items."),
-        }
+        };
         let value = tokio::fs::OpenOptions::new()
             .read(false)
             .append(true)
