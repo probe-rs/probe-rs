@@ -116,9 +116,10 @@ impl ArmDebugSequence for Asr6601 {
         let sp = interface.read_word_32(VECTOR_TABLE)?;
         let pc = interface.read_word_32(VECTOR_TABLE + 4)?;
         if !RAM_RANGE.contains(&sp) || !FLASH_RANGE.contains(&(pc & !1)) || pc & 1 == 0 {
-            return Err(ArmError::Other(format!(
-                "vector table at {VECTOR_TABLE:#010x} is invalid (SP={sp:#010x}, PC={pc:#010x})"
-            )));
+            tracing::warn!(
+                "vector table at {VECTOR_TABLE:#010x} is invalid (SP={sp:#010x}, PC={pc:#010x}), \
+                 continuing with reset anyway"
+            );
         }
 
         interface.write_word_32(SYST_CSR, 0)?;
