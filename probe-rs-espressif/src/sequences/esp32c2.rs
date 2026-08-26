@@ -34,7 +34,8 @@ impl ESP32C2 {
         // disable super wdt
         interface.write_word_32(0x600080A4, 0x8F1D312A)?; // write protection off
         let current = interface.read_word_32(0x600080A0)?;
-        interface.write_word_32(0x600080A0, current | (1 << 31))?; // set RTC_CNTL_SWD_AUTO_FEED_EN
+        // set RTC_CNTL_SWD_DISABLE and RTC_CNTL_SWD_AUTO_FEED_EN
+        interface.write_word_32(0x600080A0, current | (1 << 30) | (1 << 31))?;
         interface.write_word_32(0x600080A4, 0x0)?; // write protection on
 
         // tg0 wdg
