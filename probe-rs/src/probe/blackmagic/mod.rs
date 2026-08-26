@@ -97,7 +97,7 @@ enum RemoteCommand<'a> {
     Handshake(&'a mut [u8]),
     GetAccelerators,
     HighLevelCheck,
-    GetVoltage,
+    GetVoltage(&'a mut [u8]),
     GetSpeedKhz,
     SetNrst(bool),
     SetPower(bool),
@@ -297,6 +297,7 @@ impl RemoteCommand<'_> {
     fn response_buffer(&mut self) -> Option<&mut [u8]> {
         match self {
             RemoteCommand::Handshake(data) => Some(data),
+            RemoteCommand::GetVoltage(data) => Some(data),
             RemoteCommand::MemReadV0P { data, .. } => Some(data),
             RemoteCommand::MemReadV1 { data, .. } => Some(data),
             RemoteCommand::MemReadV3 { data, .. } => Some(data),
@@ -326,7 +327,7 @@ impl std::string::ToString for RemoteCommand<'_> {
     fn to_string(&self) -> String {
         match self {
             RemoteCommand::Handshake(_) => "+#!GA#".to_string(),
-            RemoteCommand::GetVoltage => " !GV#".to_string(),
+            RemoteCommand::GetVoltage(_) => " !GV#".to_string(),
             RemoteCommand::GetSpeedKhz => "!Gf#".to_string(),
             RemoteCommand::SetSpeedHz(speed) => {
                 format!("!GF{speed:08x}#")
@@ -791,9 +792,7 @@ impl BlackMagicProbe {
         };
 
         probe.command(RemoteCommand::SetNrst(false)).ok();
-        probe.command(RemoteCommand::GetVoltage).ok();
         probe.command(RemoteCommand::SetSpeedHz(400_0000)).ok();
-        probe.command(RemoteCommand::GetSpeedKhz).ok();
 
         Ok(probe)
     }
@@ -1279,6 +1278,30 @@ impl DebugProbe for BlackMagicProbe {
 
     fn has_xtensa_interface(&self) -> bool {
         true
+    }
+
+    fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
+        let mut voltage_response = [0u8; 4];
+        let res = self.command(RemoteCommand::GetVoltage(&mut voltage_response));
+        match res {
+            Ok(RemoteResponse(0)) => Err(RemoteError::ParameterError(0).into()),
+            Ok(RemoteResponse(response_size)) => {
+                let response_str = str::from_utf8(&voltage_response[0..response_size as usize])
+                    .map_err(|_| RemoteError::ParameterError(0))?;
+
+                // cut off trailing 'V'
+                let response_str = response_str
+                    .strip_suffix('V')
+                    .ok_or(RemoteError::ParameterError(0))?;
+
+                let voltage: f32 = response_str
+                    .parse()
+                    .map_err(|_| RemoteError::ParameterError(0))?;
+
+                Ok(Some(voltage))
+            }
+            Err(e) => Err(e.into()),
+        }
     }
 }
 
