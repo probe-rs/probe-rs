@@ -754,6 +754,8 @@ pub async fn monitor(
             return;
         };
 
+        let _prompt_logs = logging::install_prompt_writer(sw.clone());
+
         context
             .update(|data| data.shared_writer = Some(sw.clone()))
             .await;

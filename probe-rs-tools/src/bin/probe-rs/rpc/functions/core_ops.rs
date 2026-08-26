@@ -443,7 +443,7 @@ fn handle_semihosting_impl(
         }
 
         unhandled => {
-            tracing::warn!("Unhandled semihosting command: {:?}", unhandled);
+            tracing::warn!("Unhandled semihosting command: {unhandled}");
             return Ok(CoreStatus::Halted(HaltReason::Breakpoint(
                 BreakpointCause::Semihosting(unhandled),
             )));

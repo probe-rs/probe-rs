@@ -1,7 +1,8 @@
 use indicatif::MultiProgress;
 use parking_lot::Mutex;
+use rustyline_async::SharedWriter;
 use serde::{Deserialize, Serialize};
-use std::{fs::File, path::Path, sync::LazyLock};
+use std::{fs::File, io::Write, path::Path, sync::LazyLock};
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{
     EnvFilter, Layer, fmt::format::FmtSpan, layer::SubscriberExt, util::SubscriberInitExt,
@@ -9,6 +10,25 @@ use tracing_subscriber::{
 
 /// Stores the progress bar for the logging facility.
 static PROGRESS_BAR: LazyLock<Mutex<Option<MultiProgress>>> = LazyLock::new(|| Mutex::new(None));
+
+/// When a CLI prompt is active, tracing and `eprintln` write through this
+/// rustyline writer so log lines do not overwrite the prompt.
+static PROMPT_WRITER: LazyLock<Mutex<Option<SharedWriter>>> = LazyLock::new(|| Mutex::new(None));
+
+/// Clears [`PROMPT_WRITER`] when the prompt session ends.
+pub struct PromptWriterGuard;
+
+impl Drop for PromptWriterGuard {
+    fn drop(&mut self) {
+        *PROMPT_WRITER.lock() = None;
+    }
+}
+
+/// Route [`eprintln`] / tracing output through `writer` until the guard is dropped.
+pub fn install_prompt_writer(writer: SharedWriter) -> PromptWriterGuard {
+    *PROMPT_WRITER.lock() = Some(writer);
+    PromptWriterGuard
+}
 
 pub struct FileLoggerGuard<'a> {
     _append_guard: WorkerGuard,
@@ -163,7 +183,14 @@ pub fn eprintln(message: impl AsRef<str>) {
             Some(pb) => {
                 let _ = pb.println(message);
             }
-            None => eprintln!("{message}"),
+            None => {
+                let prompt_writer = PROMPT_WRITER.lock().clone();
+                if let Some(mut writer) = prompt_writer {
+                    let _ = writeln!(writer, "{message}");
+                } else {
+                    eprintln!("{message}");
+                }
+            }
         }
     }
     inner(message.as_ref())
@@ -178,7 +205,14 @@ pub fn println(message: impl AsRef<str>) {
             Some(pb) => {
                 let _ = pb.println(message);
             }
-            None => println!("{message}"),
+            None => {
+                let prompt_writer = PROMPT_WRITER.lock().clone();
+                if let Some(mut writer) = prompt_writer {
+                    let _ = writeln!(writer, "{message}");
+                } else {
+                    println!("{message}");
+                }
+            }
         }
     }
     inner(message.as_ref())

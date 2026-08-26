@@ -30,9 +30,11 @@ use crate::cmd::dap_server::server::configuration::CoreConfig;
 use crate::cmd::dap_server::server::configuration::FlashingConfig;
 use crate::cmd::dap_server::server::configuration::SessionConfig;
 use crate::cmd::dap_server::server::debugger::Debugger;
-use crate::util::cli::{Prompt, probe_rs_color_enabled};
+use crate::util::cli::{self, Prompt, parse_metadata, probe_rs_color_enabled};
+use crate::util::common_options::BinaryDownloadOptions;
 use crate::util::rtt::RttConfig;
 use crate::{CoreOptions, util::common_options::ProbeOptions};
+use probe_rs_rpc::format::FormatOptions;
 use probe_rs_rpc_client::RpcClient;
 
 use super::dap_server::debug_adapter::dap::dap_types::Request;
@@ -199,18 +201,34 @@ pub struct Cmd {
     #[clap(long, help_heading = "LOG CONFIGURATION / RTT")]
     pub no_rtt: bool,
 
-    // TODO: support all options in BinaryDownloadOptions
-    /// Before flashing, read back all the flashed data to skip flashing if the device is up to date.
-    #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
-    pub preverify: bool,
-
-    /// After flashing, read back all the flashed data to verify it has been written correctly.
-    #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
-    pub verify: bool,
+    #[clap(flatten)]
+    pub download_options: BinaryDownloadOptions,
 }
 
 impl Cmd {
     pub async fn run(self, client: RpcClient, utc_offset: UtcOffset) -> anyhow::Result<()> {
+        let preattached_session = if self.launch {
+            if let Some(path) = &self.binary {
+                let (_file_meta, elf_meta) = parse_metadata(path).await?;
+                let session =
+                    cli::attach_probe(&client, self.common.clone(), elf_meta, false).await?;
+                cli::flash(
+                    &session,
+                    path,
+                    FormatOptions::default(),
+                    self.download_options,
+                    None,
+                    None,
+                )
+                .await?;
+                Some(session)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
         let (req_sender, req_receiver) = mpsc::channel(100);
         let (msg_sender, mut msg_receiver) = mpsc::unbounded_channel();
 
@@ -285,9 +303,7 @@ impl Cmd {
                     attach_timeout: self.common.attach_timeout.map(|t| t.as_secs_f64()),
                     allow_erase_all: false,
                     flashing_config: FlashingConfig {
-                        flashing_enabled: self.launch && self.binary.is_some(),
-                        verify_before_flashing: self.preverify,
-                        verify_after_flashing: self.verify,
+                        flashing_enabled: false,
                         ..FlashingConfig::default()
                     },
                     core_configs: vec![CoreConfig {
@@ -331,6 +347,7 @@ impl Cmd {
         // instead of `tokio::spawn`.
         let server = async move {
             let mut debugger = Debugger::new(utc_offset, None)?;
+            debugger.preattached_session = preattached_session;
             debugger
                 .debug_session_rpc(&client, debug_adapter)
                 .await
@@ -405,6 +422,7 @@ impl Cmd {
         let (mut rl, writer) =
             Readline::new(Prompt::new(format!("{}> ", debug_client.current_prompt())).to_string())
                 .unwrap();
+        let _prompt_logs = crate::util::logging::install_prompt_writer(writer.clone());
         debug_client.writer = Some(writer);
 
         let readline_result = if server_result.is_some() {
