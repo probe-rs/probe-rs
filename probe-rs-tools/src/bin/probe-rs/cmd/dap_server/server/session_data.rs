@@ -757,7 +757,11 @@ impl SessionData {
             // the RPC server owns the live core and semihosting state. The
             // backend returns UI events (RTT window open, console/RTT output)
             // that we replay on the DAP adapter here.
-            if let Some(_command) = semihosting_command {
+            //
+            // An unhandled command (for example `GetCommandLine` from
+            // embedded-test) leaves the core halted. Call the handler only
+            // on a new halt, otherwise the poll loop warns forever.
+            if semihosting_command.is_some() && previous_core_status != current_core_status {
                 let result = self.backend.handle_semihosting(core_index).await?;
                 for event in result.events {
                     match event {

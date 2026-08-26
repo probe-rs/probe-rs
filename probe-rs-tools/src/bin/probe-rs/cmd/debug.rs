@@ -422,6 +422,7 @@ impl Cmd {
         let (mut rl, writer) =
             Readline::new(Prompt::new(format!("{}> ", debug_client.current_prompt())).to_string())
                 .unwrap();
+        let _prompt_logs = crate::util::logging::install_prompt_writer(writer.clone());
         debug_client.writer = Some(writer);
 
         let readline_result = if server_result.is_some() {
