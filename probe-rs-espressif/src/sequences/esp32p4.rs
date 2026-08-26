@@ -72,7 +72,11 @@ const LP_AONCLKRST_LP_RST_EN: ResetRegister = ResetRegister::new(
     0xfffc_0000 & !(1 << 30),
 );
 
-const LP_PERI_RESET_EN: ResetRegister = ResetRegister::new(0x5012_0008, 0xfffc_0000);
+const LP_PERI_RESET_EN: ResetRegister = ResetRegister::new(
+    0x5012_0008,
+    // Skip resetting the efuse registers, since that will reset the USJ connection
+    0xfffc_0000 & !(1 << 20),
+);
 
 /// The debug sequence implementation for the ESP32P4.
 #[derive(Debug)]
