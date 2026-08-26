@@ -31,7 +31,8 @@ impl ESP32C5 {
         // disable LP_WDT_SWD
         interface.write_word_32(0x600B1C20, 0x50D83AA1)?; // write protection off
         let current = interface.read_word_32(0x600B_1C1C)?;
-        interface.write_word_32(0x600B_1C1C, current | (1 << 18))?; // set RTC_CNTL_SWD_AUTO_FEED_EN
+        // set LP_WDT_SWD_DISABLE and LP_WDT_SWD_AUTO_FEED_EN
+        interface.write_word_32(0x600B_1C1C, current | (1 << 30) | (1 << 18))?;
         interface.write_word_32(0x600B1C20, 0x0)?; // write protection on
 
         // tg0 wdg

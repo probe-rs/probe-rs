@@ -42,7 +42,8 @@ impl ESP32C61 {
         // disable super wdt
         interface.write_word_32(0x600B_1C20, 0x50D83AA1)?; // write protection off
         let current = interface.read_word_32(0x600B_1C1C)?;
-        interface.write_word_32(0x600B_1C1C, current | (1 << 18))?; // set RTC_WDT_SWD_AUTO_FEED_EN
+        // set LP_WDT_SWD_DISABLE and LP_WDT_SWD_AUTO_FEED_EN
+        interface.write_word_32(0x600B_1C1C, current | (1 << 30) | (1 << 18))?;
 
         // rtc wdg
         interface.write_word_32(0x600B_1C18, 0x50D83AA1)?; // write protection off

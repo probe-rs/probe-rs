@@ -24,8 +24,13 @@ const RTC_CNTL_WDT_WKEY: u32 = 0x50d8_3aa1;
 
 const RTC_CNTL_SWD_CONF_REG: u64 = DR_REG_LP_WDT_BASE + 0x001c;
 const RTC_CNTL_SWD_AUTO_FEED_EN: u32 = 1 << 18;
+const RTC_CNTL_SWD_DISABLE: u32 = 1 << 30;
 const RTC_CNTL_SWD_WPROTECT_REG: u64 = DR_REG_LP_WDT_BASE + 0x0020;
 const RTC_CNTL_SWD_WKEY: u32 = 0x50d8_3aa1;
+
+const RTC_CNTL_INT_CLR_REG: u64 = DR_REG_LP_WDT_BASE + 0x0030;
+const RTC_CNTL_SUPER_WDT_INT_CLR: u32 = 1 << 30;
+const RTC_CNTL_WDT_INT_CLR: u32 = 1 << 31;
 
 const DR_REG_TIMG0_BASE: u64 = 0x500c_2000;
 const TIMG0_WDTCONFIG0_REG: u64 = DR_REG_TIMG0_BASE + 0x48;
@@ -72,7 +77,11 @@ const LP_AONCLKRST_LP_RST_EN: ResetRegister = ResetRegister::new(
     0xfffc_0000 & !(1 << 30),
 );
 
-const LP_PERI_RESET_EN: ResetRegister = ResetRegister::new(0x5012_0008, 0xfffc_0000);
+const LP_PERI_RESET_EN: ResetRegister = ResetRegister::new(
+    0x5012_0008,
+    // Skip resetting the efuse registers, since that will reset the USJ connection
+    0xfffc_0000 & !(1 << 20),
+);
 
 /// The debug sequence implementation for the ESP32P4.
 #[derive(Debug)]
@@ -117,12 +126,20 @@ impl ESP32P4 {
 
         // Write protection off
         interface.write_word_32(RTC_CNTL_SWD_WPROTECT_REG, RTC_CNTL_SWD_WKEY)?;
-        // Automatically feed SWD
-        let auto_feed_swd =
-            interface.read_word_32(RTC_CNTL_SWD_CONF_REG)? | RTC_CNTL_SWD_AUTO_FEED_EN;
-        interface.write_word_32(RTC_CNTL_SWD_CONF_REG, auto_feed_swd)?;
+        // Disable the super watchdog, and feed it automatically as well. The automatic feed alone
+        // does not survive the target gating the clock of the LP_WDT.
+        let swd_conf = interface.read_word_32(RTC_CNTL_SWD_CONF_REG)?
+            | RTC_CNTL_SWD_DISABLE
+            | RTC_CNTL_SWD_AUTO_FEED_EN;
+        interface.write_word_32(RTC_CNTL_SWD_CONF_REG, swd_conf)?;
         // Write protection on
         interface.write_word_32(RTC_CNTL_SWD_WPROTECT_REG, 0)?;
+
+        // Clear the interrupt state of the RTC watchdog and of the super watchdog
+        interface.write_word_32(
+            RTC_CNTL_INT_CLR_REG,
+            RTC_CNTL_WDT_INT_CLR | RTC_CNTL_SUPER_WDT_INT_CLR,
+        )?;
 
         tracing::info!("Done disabling watchdogs");
         Ok(())

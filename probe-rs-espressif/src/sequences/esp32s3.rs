@@ -28,6 +28,7 @@ impl ESP32S3 {
     const SWD_WRITE_PROT: u64 = Self::SWD_BASE | 0xB8;
     const SWD_CONF: u64 = Self::SWD_BASE | 0xB4;
     const SWD_AUTO_FEED_EN: u32 = 1 << 31;
+    const SWD_DISABLE: u32 = 1 << 30;
     const SWD_WRITE_PROT_KEY: u32 = 0x8f1d312a;
 
     /// Creates a new debug sequence handle for the ESP32-S3.
@@ -41,7 +42,10 @@ impl ESP32S3 {
         // disable super wdt
         core.write_word_32(Self::SWD_WRITE_PROT, Self::SWD_WRITE_PROT_KEY)?; // write protection off
         let current = core.read_word_32(Self::SWD_CONF)?;
-        core.write_word_32(Self::SWD_CONF, current | Self::SWD_AUTO_FEED_EN)?;
+        core.write_word_32(
+            Self::SWD_CONF,
+            current | Self::SWD_DISABLE | Self::SWD_AUTO_FEED_EN,
+        )?;
         core.write_word_32(Self::SWD_WRITE_PROT, 0x0)?; // write protection on
 
         // tg0 wdg
