@@ -26,7 +26,7 @@ use probe_rs_debug::SourceLocation;
 use probe_rs_rpc::breakpoints::SourceBreakpointLocation;
 use probe_rs_rpc::format::FormatKind;
 use probe_rs_rpc::rtt_client::ScanRegion as WireScanRegion;
-use probe_rs_rpc_client::{ResolvedUpload, RpcClient};
+use probe_rs_rpc_client::{ResolvedUpload, RpcClient, SessionInterface};
 use std::{any::Any, env::set_current_dir, path::Path};
 use time::UtcOffset;
 
@@ -91,15 +91,24 @@ impl SessionData {
     /// (name, default image format, core list) are fetched from the server
     /// after attach so the DAP client does not mirror the full target
     /// description locally.
+    ///
+    /// When `preattached` is `Some`, that session is reused and `probe/attach`
+    /// is not called again.
     pub(crate) async fn new_rpc_backed(
         client: &RpcClient,
         config: &mut configuration::SessionConfig,
         timestamp_offset: UtcOffset,
+        preattached: Option<SessionInterface>,
     ) -> Result<Self, DebuggerError> {
-        // Reuse the shared CLI helper: it uploads any user-supplied chip
-        // description, selects a probe, and performs the `probe/attach` RPC.
-        let probe_options = config.probe_options();
-        let session = attach_probe_rpc(client, probe_options, None, false).await?;
+        let session = match preattached {
+            Some(session) => session,
+            None => {
+                // Reuse the shared CLI helper: it uploads any user-supplied chip
+                // description, selects a probe, and performs the `probe/attach` RPC.
+                let probe_options = config.probe_options();
+                attach_probe_rpc(client, probe_options, None, false).await?
+            }
+        };
         let sessid = session.session_key();
 
         let wire_metadata = session.target_metadata().await.map_err(|e| {
