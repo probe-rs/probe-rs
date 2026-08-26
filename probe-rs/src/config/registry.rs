@@ -165,9 +165,18 @@ pub fn add_builtin_target(family: ChipFamily) {
 
 #[cfg(feature = "builtin-targets")]
 fn builtin_targets() -> Vec<ChipFamily> {
-    const BUILTIN_TARGETS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/targets.bincode"));
+    use std::io::Read as _;
 
-    bincode::serde::decode_from_slice(BUILTIN_TARGETS, bincode::config::standard())
+    const BUILTIN_TARGETS: &[u8] =
+        include_bytes!(concat!(env!("OUT_DIR"), "/targets.bincode.zlib"));
+
+    let mut decoder = flate2::read::ZlibDecoder::new(BUILTIN_TARGETS);
+    let mut bytes = Vec::new();
+    decoder
+        .read_to_end(&mut bytes)
+        .expect("Failed to decompress builtin targets. This is a bug");
+
+    bincode::serde::decode_from_slice(&bytes, bincode::config::standard())
         .expect("Failed to deserialize builtin targets. This is a bug")
         .0
 }

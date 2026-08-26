@@ -41,4 +41,23 @@ fn handle_builtin_targets() {
     }
 
     probe_rs_target::process_targets(&source_paths, &dest_path);
+
+    let raw = std::fs::read(&dest_path).expect("Failed to read serialized targets");
+    let compressed = {
+        use std::io::Write as _;
+
+        let mut encoder =
+            flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
+        encoder
+            .write_all(&raw)
+            .expect("Failed to compress serialized targets");
+        encoder
+            .finish()
+            .expect("Failed to compress serialized targets")
+    };
+    std::fs::write(
+        Path::new(&out_dir).join("targets.bincode.zlib"),
+        &compressed,
+    )
+    .expect("Failed to write compressed targets");
 }

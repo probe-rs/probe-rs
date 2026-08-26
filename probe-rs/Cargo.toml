@@ -25,7 +25,7 @@ default = ["builtin-targets", "cmsisdap_v1", "builtin-formats", "coredump"]
 flate2 = ["dep:flate2"]
 
 # Enable all built in targets.
-builtin-targets = ["dep:bincode", "dep:probe-rs-target"]
+builtin-targets = ["dep:bincode", "dep:probe-rs-target", "flate2"]
 cmsisdap_v1 = ["dep:hidapi"]
 
 # Enables the bin, hex, elf image formats
@@ -86,6 +86,7 @@ nix = { version = "0.31", features = ["fs"] }
 
 [build-dependencies]
 probe-rs-target = { workspace = true, optional = true, features = ["bincode"] }
+flate2 = { version = "1.0", optional = true }
 
 [dev-dependencies]
 env_logger = "0.11"
