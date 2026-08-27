@@ -365,8 +365,7 @@ async fn handle_unix_rpc(stream: tokio::net::UnixStream, probe_broker: Arc<Probe
     tracing::info!("Unix socket client connected");
 
     let (reader, writer) = stream.into_split();
-    let (mut server, tx, mut rx) =
-        RpcApp::create_server(SERVER_DEPTH, ProbeAccess::All, probe_broker);
+    let (server, tx, mut rx) = RpcApp::create_server(SERVER_DEPTH, ProbeAccess::All, probe_broker);
 
     // Connect the server's channels to the unix socket connection
     let sender = async {
