@@ -40,7 +40,7 @@ impl DapRpcConnection {
         }
 
         let probe_broker = Arc::new(crate::rpc::probe_broker::ProbeBroker::new());
-        let (mut local_server, tx, rx) = RpcApp::create_server(16, ProbeAccess::All, probe_broker);
+        let (local_server, tx, rx) = RpcApp::create_server(16, ProbeAccess::All, probe_broker);
         let handle = tokio::spawn(async move {
             local_server.run().await;
         });
@@ -157,7 +157,7 @@ mod tests {
         f: impl AsyncFnOnce(&RpcClient) -> Result<()>,
     ) -> Result<()> {
         let probe_broker = Arc::new(crate::rpc::probe_broker::ProbeBroker::new());
-        let (mut server, tx, rx) = RpcApp::create_server_with_lister(
+        let (server, tx, rx) = RpcApp::create_server_with_lister(
             16,
             lister as Arc<dyn probe_rs::integration::ProbeLister + Send + Sync>,
             probe_broker,

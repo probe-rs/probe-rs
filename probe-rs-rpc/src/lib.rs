@@ -133,8 +133,11 @@ use std::future::Future;
 
 use postcard_rpc::{host_client, server};
 
-#[derive(Clone)]
-pub struct TokioSpawner;
+#[derive(Clone, Default)]
+pub struct TokioSpawner {
+    /// Cancelled when a spawned request handler ends in a panic.
+    pub handler_panicked: tokio_util::sync::CancellationToken,
+}
 
 impl server::WireSpawn for TokioSpawner {
     type Error = std::convert::Infallible;

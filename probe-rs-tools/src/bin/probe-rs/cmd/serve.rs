@@ -326,7 +326,7 @@ async fn handle_socket(socket: WebSocket, challenge: String, state: Arc<ServerSt
 
     tracing::info!("User {} connected", user.name);
 
-    let (mut server, tx, mut rx) = RpcApp::create_server(
+    let (server, tx, mut rx) = RpcApp::create_server(
         SERVER_DEPTH,
         user.access.clone(),
         state.probe_broker.clone(),
