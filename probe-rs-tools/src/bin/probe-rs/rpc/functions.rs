@@ -1,4 +1,4 @@
-use std::{any::Any, ops::DerefMut, sync::Arc};
+use std::{any::Any, ops::DerefMut, panic::AssertUnwindSafe, sync::Arc};
 use std::{collections::HashMap, convert::Infallible, future::Future};
 
 use crate::rpc::debug_state::{CoreDebugState, ServerDebugState};
@@ -40,6 +40,7 @@ use crate::rpc::{
 use probe_rs_rpc::transport::memory::{WireRx, WireTx};
 
 use anyhow::anyhow;
+use futures_util::FutureExt;
 use postcard_rpc::Topic;
 use postcard_rpc::header::{VarHeader, VarSeq};
 use postcard_rpc::server::{
@@ -448,10 +449,18 @@ async fn cancel_handler(
 }
 
 pub fn spawn_fn(
-    _sp: &probe_rs_rpc::TokioSpawner,
+    sp: &probe_rs_rpc::TokioSpawner,
     fut: impl Future<Output = ()> + 'static + Send,
 ) -> Result<(), Infallible> {
-    tokio::task::spawn(fut);
+    let panicked = sp.handler_panicked.clone();
+    tokio::task::spawn(async move {
+        // A spawned handler answers its own request. A panic drops it before it
+        // replies, so the connection must end to release the client. Nothing
+        // the handler touches outlives that connection.
+        if AssertUnwindSafe(fut).catch_unwind().await.is_err() {
+            panicked.cancel();
+        }
+    });
     Ok(())
 }
 
@@ -565,12 +574,35 @@ type ServerImpl = Server<WireTxImpl, WireRxImpl, Box<[u8]>, RpcApp>;
 type TxChannel = Sender<Result<Vec<u8>, WireRxErrorKind>>;
 type RxChannel = Receiver<Vec<u8>>;
 
+/// Serves a single client connection.
+pub struct RpcServer {
+    server: ServerImpl,
+    handler_panicked: CancellationToken,
+}
+
+impl RpcServer {
+    /// Answers requests until the client disconnects, or until a request
+    /// handler panics.
+    ///
+    /// A panicked handler leaves its request unanswered. Ending the connection
+    /// tells the client that the request failed, instead of leaving it to wait
+    /// for a reply that nobody will send.
+    pub async fn run(mut self) {
+        tokio::select! {
+            _ = self.server.run() => {}
+            _ = self.handler_panicked.cancelled() => {
+                tracing::error!("A request handler panicked. Closing the connection.");
+            }
+        }
+    }
+}
+
 impl RpcApp {
     pub fn create_server(
         depth: usize,
         probe_access: ProbeAccess,
         probe_broker: Arc<ProbeBroker>,
-    ) -> (ServerImpl, TxChannel, RxChannel) {
+    ) -> (RpcServer, TxChannel, RxChannel) {
         Self::create_server_with_lister(
             depth,
             Arc::new(LimitedLister::new(probe_access)),
@@ -584,28 +616,33 @@ impl RpcApp {
         depth: usize,
         lister: Arc<dyn ProbeLister + Send + Sync>,
         probe_broker: Arc<ProbeBroker>,
-    ) -> (ServerImpl, TxChannel, RxChannel) {
+    ) -> (RpcServer, TxChannel, RxChannel) {
         let client_to_server = channel::<Result<Vec<u8>, WireRxErrorKind>>(depth);
         let server_to_client = channel::<Vec<u8>>(depth);
 
         let client_to_server_rx = WireRx::new(client_to_server.1);
         let server_to_client_tx = WireTx::new(server_to_client.0);
 
-        let mut dispatcher =
-            RpcApp::new(RpcContext::with_lister(lister, probe_broker), TokioSpawner);
+        let spawner = TokioSpawner::default();
+        let handler_panicked = spawner.handler_panicked.clone();
+
+        let mut dispatcher = RpcApp::new(RpcContext::with_lister(lister, probe_broker), spawner);
         let vkk = dispatcher.min_key_len();
         dispatcher
             .context
             .set_sender(PostcardSender::new(server_to_client_tx.clone(), vkk));
 
         (
-            Server::new(
-                server_to_client_tx,
-                client_to_server_rx,
-                vec![0u8; 1024 * 1024].into_boxed_slice(), // 1MB buffer
-                dispatcher,
-                vkk,
-            ),
+            RpcServer {
+                server: Server::new(
+                    server_to_client_tx,
+                    client_to_server_rx,
+                    vec![0u8; 1024 * 1024].into_boxed_slice(), // 1MB buffer
+                    dispatcher,
+                    vkk,
+                ),
+                handler_panicked,
+            },
             client_to_server.0,
             server_to_client.1,
         )

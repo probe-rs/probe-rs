@@ -80,6 +80,9 @@ pub enum EspError {
 
     /// Unknown capabilities descriptor version: {0:#04x}.
     UnknownCapabilities(u8),
+
+    /// The JTAG reset that starts the connection failed.
+    JtagReset(#[source] DebugProbeError),
 }
 
 impl ProbeError for EspError {}
@@ -147,7 +150,9 @@ impl ProtocolHandler {
 
         tracing::debug!("Acquired handle for probe");
 
-        let config = device_handle.configurations().next().unwrap();
+        let Some(config) = device_handle.configurations().next() else {
+            return Err(EspError::InterfaceNotFound.into());
+        };
 
         tracing::debug!("Active config descriptor: {:?}", config);
 
@@ -320,11 +325,19 @@ impl ProtocolHandler {
             while flush_ep(&mut this) {}
         } else {
             // Just returning here would end us up with Invalid IDCODE.
-            for _ in 0..16 {
-                this.shift_bit(true, true, false).unwrap();
-            }
+            let mut reset_jtag = || -> Result<(), DebugProbeError> {
+                for _ in 0..16 {
+                    this.shift_bit(true, true, false)?;
+                }
 
-            this.flush().unwrap();
+                this.flush()
+            };
+
+            reset_jtag().map_err(|error| match error {
+                DebugProbeError::Usb(error) => ProbeCreationError::Usb(error),
+                DebugProbeError::ProbeCouldNotBeCreated(error) => error,
+                other => EspError::JtagReset(other).into(),
+            })?;
             this.response.clear();
 
             if flush_ep(&mut this) {

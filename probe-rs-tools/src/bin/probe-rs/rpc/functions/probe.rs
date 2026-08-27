@@ -211,7 +211,7 @@ mod tests {
         DebugProbe, DebugProbeError, DebugProbeInfo, Probe, ProbeCreationError, ProbeFactory,
         list::ProbeListItem,
     };
-    use probe_rs_rpc_client::RpcClient;
+    use probe_rs_rpc_client::{ClientError, RpcClient, TransportError};
     use std::fmt::Display;
     use std::path::PathBuf;
     use std::sync::Arc;
@@ -257,6 +257,7 @@ mod tests {
         free_after: usize,
         listed_while_busy: bool,
         faulty: bool,
+        panicking: bool,
     }
 
     impl BusyLister {
@@ -283,6 +284,7 @@ mod tests {
                 free_after,
                 listed_while_busy: true,
                 faulty: false,
+                panicking: false,
             }
         }
 
@@ -295,6 +297,12 @@ mod tests {
         /// The probe answers the open, then faults.
         fn faulty(mut self) -> Self {
             self.faulty = true;
+            self
+        }
+
+        /// The probe driver panics instead of reporting the failed open.
+        fn panicking(mut self) -> Self {
+            self.panicking = true;
             self
         }
 
@@ -316,6 +324,9 @@ mod tests {
     impl ProbeLister for BusyLister {
         fn open(&self, _selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError> {
             let attempt = self.attempts.fetch_add(1, Ordering::SeqCst);
+            if self.panicking {
+                panic!("the probe driver gave up");
+            }
             if self.faulty {
                 return Err(DebugProbeError::ProbeCouldNotBeCreated(
                     ProbeCreationError::Usb(std::io::Error::other(
@@ -346,10 +357,17 @@ mod tests {
     }
 
     async fn attach(lister: Arc<BusyLister>, wait_for_probe: Option<Duration>) -> AttachResult {
+        attach_raw(lister, wait_for_probe).await.unwrap()
+    }
+
+    async fn attach_raw(
+        lister: Arc<BusyLister>,
+        wait_for_probe: Option<Duration>,
+    ) -> Result<AttachResult, ClientError> {
         let probe =
             convert::to_wire_debug_probe_entry(ProbeListItem::accessible(lister.info.clone()));
 
-        let (mut server, tx, rx) = RpcApp::create_server_with_lister(
+        let (server, tx, rx) = RpcApp::create_server_with_lister(
             16,
             lister as Arc<dyn ProbeLister + Send + Sync>,
             Arc::new(ProbeBroker::new()),
@@ -374,7 +392,7 @@ mod tests {
         drop(client);
         _ = handle.await;
 
-        result.unwrap()
+        result
     }
 
     #[tokio::test]
@@ -441,6 +459,31 @@ mod tests {
             "unexpected error: {error}"
         );
         assert_eq!(lister.attempts(), 1);
+    }
+
+    /// A panicked handler cannot answer its request. The connection has to end,
+    /// or the client waits for a reply that nobody will send.
+    #[tokio::test]
+    async fn a_panicking_handler_closes_the_connection() {
+        let lister = Arc::new(BusyLister::new(usize::MAX).panicking());
+
+        let result = tokio::time::timeout(
+            Duration::from_secs(30),
+            attach_raw(lister.clone(), Some(Duration::from_secs(600))),
+        )
+        .await
+        .expect("the client was left waiting for a reply");
+
+        let Err(error) = result else {
+            panic!("the panicked handler answered the request");
+        };
+        assert!(
+            matches!(
+                error,
+                ClientError::Transport(TransportError::Closed | TransportError::BadResponse)
+            ),
+            "expected a lost connection, got {error}"
+        );
     }
 }
 

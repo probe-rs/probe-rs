@@ -372,7 +372,7 @@ impl RpcClient {
             client: HostClient::<WireError>::new_with_wire_and_config(
                 WireTx::new(tx),
                 WireRx::new(rx),
-                TokioSpawner,
+                TokioSpawner::default(),
                 &HostClientConfig {
                     seq_kind: VarSeqKind::Seq2,
                     err_uri_path: "error",
