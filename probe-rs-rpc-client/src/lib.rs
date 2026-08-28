@@ -22,6 +22,7 @@ use std::{
     time::Duration,
 };
 
+mod schema;
 mod upload_cache;
 
 use upload_cache::UploadCache;
@@ -127,6 +128,10 @@ pub enum ClientError {
     /// The server does not know this endpoint. The client and the server
     /// versions may differ.
     UnknownEndpoint,
+    /// The RPC schema of the server does not match this client.
+    ///
+    /// Use the same probe-rs version for the client and the server.
+    IncompatibleServer,
     /// The server refused the request.
     #[display("{0}")]
     Remote(RpcError),
@@ -138,7 +143,7 @@ pub enum ClientError {
     FileRead(PathBuf, #[source] std::io::Error),
 }
 
-fn from_host_err(e: HostErr<WireError>) -> ClientError {
+pub(crate) fn from_host_err(e: HostErr<WireError>) -> ClientError {
     match e {
         HostErr::Wire(WireError::UnknownKey) => ClientError::UnknownEndpoint,
         HostErr::Wire(w) => ClientError::Transport(TransportError::Wire(w)),
@@ -160,7 +165,7 @@ async fn rpc_client_from_websocket<S>(
     ws_stream: tokio_tungstenite::WebSocketStream<S>,
     challenge: &str,
     token: Option<&str>,
-) -> Result<RpcClient, TransportError>
+) -> Result<RpcClient, ClientError>
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
 {
@@ -182,7 +187,7 @@ where
         TransportError::Message(format!("Failed to send challenge response: {err:?}"))
     })?;
 
-    Ok(RpcClient::new_from_wire(
+    RpcClient::new_from_wire(
         tx,
         WebsocketRx::new(rx.map(|message| {
             message.map(|message| match message {
@@ -190,7 +195,9 @@ where
                 _ => Bytes::new(),
             })
         })),
-    ))
+    )
+    .ensure_compatible()
+    .await
 }
 
 /// Connect to a `probe-rs serve` server.
@@ -262,9 +269,7 @@ pub async fn connect(
         .to_str()
         .map_err(|_| TransportError::Message("Failed to parse challenge header".into()))?;
 
-    rpc_client_from_websocket(ws_stream, challenge, token)
-        .await
-        .map_err(ClientError::Transport)
+    rpc_client_from_websocket(ws_stream, challenge, token).await
 }
 
 #[cfg(all(feature = "remote", unix))]
@@ -281,7 +286,7 @@ pub async fn connect_unix(path: &str) -> Result<RpcClient, ClientError> {
     let tx = UnixStreamTx::new(writer);
     let rx = UnixStreamRx::new(reader);
 
-    Ok(RpcClient::new_from_wire(tx, rx))
+    RpcClient::new_from_wire(tx, rx).ensure_compatible().await
 }
 
 #[cfg(feature = "remote")]
@@ -396,6 +401,37 @@ impl RpcClient {
         let mut this = Self::new_from_wire(tx, rx);
         this.is_localhost = true;
         this
+    }
+
+    /// Fetch the schema of the server and refuse to continue when it does
+    /// not match the schema of this client.
+    pub async fn ensure_compatible(self) -> Result<Self, ClientError> {
+        self.check_compatibility().await?;
+        Ok(self)
+    }
+
+    /// Fetch the schema of the server and compare it with the schema of this
+    /// client.
+    pub async fn check_compatibility(&self) -> Result<(), ClientError> {
+        let expected = schema::expected_schema_report()?;
+        let actual = self
+            .client
+            .get_schema_report()
+            .await
+            .map_err(schema::from_schema_err)?;
+
+        if schema::schema_reports_match(&expected, &actual) {
+            Ok(())
+        } else {
+            tracing::error!(
+                expected_endpoints = expected.endpoints.len(),
+                actual_endpoints = actual.endpoints.len(),
+                expected_types = expected.types.len(),
+                actual_types = actual.types.len(),
+                "RPC schema of the server does not match this client"
+            );
+            Err(ClientError::IncompatibleServer)
+        }
     }
 
     async fn send<E, T>(&self, req: &E::Request) -> Result<T, ClientError>

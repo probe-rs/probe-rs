@@ -6,10 +6,11 @@ probe-rs RPC protocol. The `probe-rs-rpc-client` crate and the
 
 ## Version compatibility
 
-The protocol is not stable between releases. postcard-rpc keys each endpoint
-by a hash of its path and its schemas. A client that talks to a server of
-a different version gets an unknown endpoint error, not corrupt data. See
-`ClientError::UnknownEndpoint` in the `probe-rs-rpc-client` crate.
+The protocol is not stable between releases. On connect, the client fetches
+the schema of the server and compares it with the schema of the client. A
+mismatch ends the session with `ClientError::IncompatibleServer`. postcard-rpc
+also keys each endpoint by a hash of its path and its schemas, so a later
+unknown endpoint cannot corrupt data.
 
 ## Usage
 
