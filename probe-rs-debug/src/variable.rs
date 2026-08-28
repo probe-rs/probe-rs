@@ -226,7 +226,10 @@ impl Bitfield {
     }
 
     pub(crate) fn mask(&self) -> u128 {
-        (1 << self.length) - 1
+        match 1u128.checked_shl(self.length as u32) {
+            Some(bit_above) => bit_above - 1,
+            None => u128::MAX,
+        }
     }
 
     pub(crate) fn extract(&self, value: u128) -> u128 {

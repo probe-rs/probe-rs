@@ -2270,12 +2270,13 @@ impl UnitInfo {
             None
         };
 
-        if let (None, None) = (size, offset) {
+        // Without a bit size this is not a bitfield, but a member at a byte offset.
+        let Some(length) = size else {
             return Ok(None);
-        }
+        };
 
         Ok(Some(Bitfield {
-            length: size.unwrap_or(0),
+            length,
             offset: offset.unwrap_or(BitOffset::FromLsb(0)),
         }))
     }
