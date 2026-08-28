@@ -35,6 +35,7 @@ use crate::util::{
     rtt::{DefmtProcessor, DefmtState, RttDecoder},
 };
 use probe_rs_rpc::CancelTopic;
+use probe_rs_rpc::core_ops::{WireBreakpointCause, WireHaltReason};
 use probe_rs_rpc::flash::{BootInfo, DownloadOptions, FlashLayout, ProgressEvent, VerifyResult};
 use probe_rs_rpc::format::FormatOptions;
 use probe_rs_rpc::monitor::{ChannelInfo, MonitorExitReason};
@@ -893,7 +894,7 @@ pub async fn monitor(
     };
 
     let (print_stack_trace, result) = match result {
-        Ok(MonitorExitReason::Success | MonitorExitReason::SemihostingExit(Ok(_))) => {
+        Ok(MonitorExitReason::SemihostingExit(Ok(_))) => {
             println!("Firmware exited successfully");
             // On success, we only print if the user asked for it.
             (monitor_options.always_print_stacktrace, Ok(()))
@@ -903,9 +904,10 @@ pub async fn monitor(
             // On ctrl-c, we only print if the user asked for it.
             (monitor_options.always_print_stacktrace, Ok(()))
         }
-        Ok(MonitorExitReason::UnexpectedExit(reason)) => {
+        Ok(MonitorExitReason::Halted(halt_reason)) => {
+            let reason = describe_halt_reason(halt_reason);
             println!("Firmware exited unexpectedly: {reason}");
-            (true, Err(anyhow::anyhow!("{reason}")))
+            (true, Err(anyhow::anyhow!(reason)))
         }
         Ok(MonitorExitReason::SemihostingExit(Err(details))) => {
             let reason = match details.reason {
@@ -960,6 +962,32 @@ pub async fn monitor(
     }
 
     result
+}
+
+/// Describes why the core halted, for a user who runs firmware and does not
+/// debug it.
+fn describe_halt_reason(reason: WireHaltReason) -> &'static str {
+    match reason {
+        WireHaltReason::Multiple => "the core halted for multiple reasons",
+        WireHaltReason::Breakpoint(WireBreakpointCause::Hardware) => {
+            "the core halted on a hardware breakpoint"
+        }
+        WireHaltReason::Breakpoint(WireBreakpointCause::Software) => {
+            "the core halted on a software breakpoint"
+        }
+        WireHaltReason::Breakpoint(WireBreakpointCause::Unknown) => {
+            "the core halted on a breakpoint"
+        }
+        WireHaltReason::Breakpoint(WireBreakpointCause::Semihosting(_)) => {
+            "the core halted on an unsupported semihosting command"
+        }
+        WireHaltReason::Exception => "the core halted on an exception",
+        WireHaltReason::Watchpoint => "the core halted on a watchpoint",
+        WireHaltReason::Step => "the core halted after a single step",
+        WireHaltReason::Request => "the core halted on a debugger request",
+        WireHaltReason::External => "the core halted on an external request",
+        WireHaltReason::Unknown => "the core halted for an unknown reason",
+    }
 }
 
 pub async fn test(
