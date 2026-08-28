@@ -16,8 +16,8 @@ description = "A collection of on chip debugging tools to communicate with micro
 default-run = "probe-rs"
 
 [features]
-default = []
-# Include server/client functionality
+default = ["remote"]
+# Include server/client functionality. Disable with `--no-default-features`.
 remote = ["dep:axum", "probe-rs-rpc/remote", "probe-rs-rpc-client/remote"]
 
 [dependencies]
