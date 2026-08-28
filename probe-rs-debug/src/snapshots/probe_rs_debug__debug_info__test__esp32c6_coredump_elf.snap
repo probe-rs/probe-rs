@@ -1819,7 +1819,7 @@ expression: stack_frames
                 Named: cpu_clock
               type_name:
                 Enum: CpuClock
-              value: "CpuClock::<Error: Unresolved enum value>"
+              value: "CpuClock::<Error: Unresolved enum value 4>"
             - name:
                 Named: watchdog
               type_name:
@@ -1888,7 +1888,7 @@ expression: stack_frames
                     Named: unit
                   type_name:
                     Enum: Unit
-                  value: "Unit::<Error: Unresolved enum value>"
+                  value: "Unit::<Error: Unresolved enum value 4>"
             - name:
                 Named: alarm2
               type_name:

@@ -1456,31 +1456,44 @@ impl UnitInfo {
         }
 
         // Determine the underlying integer value of the enum from its location.
-        // It may live in memory (read a byte) or, at -Og/-O0, directly in a
-        // register (the location evaluation already carries the value).
+        // It may live in memory or, at -Og/-O0, directly in a register (the location evaluation
+        // already carries the value).
+        let byte_size = child_variable.byte_size.unwrap_or(1).clamp(1, 16) as usize;
         let this_enum_const_value = match child_variable.memory_location {
             VariableLocation::Address(address) => {
-                // NOTE: hard-coding value of variable.byte_size to 1 ... replace with code if necessary.
-                let mut buff = 0u8;
-                memory.read(address, std::slice::from_mut(&mut buff))?;
-                Some(buff.to_string())
+                let mut buff = [0u8; 16];
+                memory.read(address, &mut buff[..byte_size])?;
+                Some(u128::from_le_bytes(buff))
             }
             VariableLocation::RegisterValue(register_value) => {
-                TryInto::<u64>::try_into(register_value)
+                TryInto::<u128>::try_into(register_value)
                     .ok()
-                    .map(|v| v.to_string())
+                    .map(|value| truncate(value, byte_size))
             }
             _ => None,
         };
 
         let value = match this_enum_const_value {
             Some(this_enum_const_value) => {
-                let enumerator_value = match enumerator_values
-                    .iter()
-                    .find(|(_name, value)| value.to_string() == this_enum_const_value)
-                {
+                // The enumerators may be signed or unsigned, so accept either reading.
+                let as_signed = sign_extend(this_enum_const_value, byte_size);
+                let unresolved;
+                let enumerator_value = match enumerator_values.iter().find(|(_name, value)| {
+                    let VariableValue::Valid(value) = value else {
+                        return false;
+                    };
+                    value
+                        .parse::<u128>()
+                        .is_ok_and(|value| value == this_enum_const_value)
+                        || value.parse::<i128>().is_ok_and(|value| value == as_signed)
+                }) {
                     Some((name, _value)) => name,
-                    None => &VariableName::Named("<Error: Unresolved enum value>".to_string()),
+                    None => {
+                        unresolved = VariableName::Named(format!(
+                            "<Error: Unresolved enum value {this_enum_const_value}>"
+                        ));
+                        &unresolved
+                    }
                 };
 
                 self.language
@@ -2403,6 +2416,18 @@ fn provide_cfa(
             message: format!("Error while calculating `Variable::memory_location`:{error}."),
         }),
     }
+}
+
+/// Keeps the lowest `byte_size` bytes of `value`.
+fn truncate(value: u128, byte_size: usize) -> u128 {
+    let shift = 128 - byte_size * 8;
+    (value << shift) >> shift
+}
+
+/// Interprets the lowest `byte_size` bytes of `value` as a signed number.
+fn sign_extend(value: u128, byte_size: usize) -> i128 {
+    let shift = 128 - byte_size * 8;
+    ((value << shift) as i128) >> shift
 }
 
 /// Reads memory requested by the DWARF resolver.
