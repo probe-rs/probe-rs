@@ -420,10 +420,178 @@ pub enum VariableLocation {
     Value,
     /// The variable is stored in a register, and the value is read from there.
     RegisterValue(RegisterValue),
+    /// The value is assembled from more than one place, or from part of a place. The pieces are
+    /// ordered from the least significant bits of the value to the most significant bits.
+    Composite(Vec<LocationPiece>),
     /// There was an error evaluating the variable location.
     Error(String),
     /// Support for handling the location of this variable is not (yet) implemented.
     Unsupported(String),
+}
+
+/// One piece of the value of a variable. See section '2.6.1.2 Composite Location Descriptions' of
+/// the DWARF 5 specification.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LocationPiece {
+    /// The place that holds the bits of this piece.
+    pub source: PieceSource,
+    /// The offset of the piece inside the source, in bits.
+    pub bit_offset: u64,
+    /// The size of the piece in bits. `None` means that the piece holds all of the value.
+    pub bit_size: Option<u64>,
+}
+
+/// The place that holds the bits of a [`LocationPiece`].
+#[derive(Debug, Clone, PartialEq)]
+pub enum PieceSource {
+    /// The bits are in target memory, at this address.
+    Address(u64),
+    /// The bits are in a register, which holds this value.
+    Register(RegisterValue),
+    /// The bits are a constant that the debug info holds.
+    Implicit(Vec<u8>),
+    /// The piece has no place, because the compiler optimized it away.
+    Empty,
+}
+
+impl PieceSource {
+    /// Read `bits` bits, starting `bit_offset` bits into the source. The result holds the bits in
+    /// little endian order, and the first bit of the piece is the least significant bit.
+    fn read_bits(
+        &self,
+        bit_offset: u64,
+        bits: u64,
+        memory: &mut dyn MemoryInterface,
+    ) -> Result<Vec<u8>, DebugError> {
+        match self {
+            PieceSource::Address(address) => {
+                let Some(address) = address.checked_add(bit_offset / 8) else {
+                    return Err(DebugError::WarnAndContinue {
+                        message: "Overflow calculating the address of a value piece".to_string(),
+                    });
+                };
+
+                let mut buffer = vec![0u8; (bit_offset % 8 + bits).div_ceil(8) as usize];
+                memory.read(address, &mut buffer)?;
+
+                Ok(extract_bits(&buffer, bit_offset % 8, bits))
+            }
+            PieceSource::Register(value) => {
+                let value = TryInto::<u128>::try_into(*value)?;
+                Ok(extract_bits(&value.to_le_bytes(), bit_offset, bits))
+            }
+            PieceSource::Implicit(bytes) => Ok(extract_bits(bytes, bit_offset, bits)),
+            PieceSource::Empty => Ok(vec![0; bits.div_ceil(8) as usize]),
+        }
+    }
+}
+
+/// Take `bits` bits of a value that pieces hold, starting `bit_offset` bits into the value.
+fn slice_pieces(pieces: &[LocationPiece], bit_offset: u64, bits: Option<u64>) -> VariableLocation {
+    let mut skip = bit_offset;
+    let mut remaining = bits;
+    let mut result = Vec::new();
+
+    for piece in pieces {
+        let Some(size) = piece.bit_size else {
+            // The piece holds all of the value, so the offset applies to the piece itself.
+            result.push(LocationPiece {
+                source: piece.source.clone(),
+                bit_offset: piece.bit_offset + skip,
+                bit_size: remaining,
+            });
+            break;
+        };
+
+        if skip >= size {
+            skip -= size;
+            continue;
+        }
+
+        let available = size - skip;
+        let take = remaining.map_or(available, |remaining| remaining.min(available));
+        if take == 0 {
+            break;
+        }
+
+        result.push(LocationPiece {
+            source: piece.source.clone(),
+            bit_offset: piece.bit_offset + skip,
+            bit_size: Some(take),
+        });
+
+        skip = 0;
+        if let Some(remaining) = remaining.as_mut() {
+            *remaining -= take;
+            if *remaining == 0 {
+                break;
+            }
+        }
+    }
+
+    if result
+        .iter()
+        .all(|piece| piece.source == PieceSource::Empty)
+    {
+        // The pieces hold no bits, or the compiler optimized all of the bits away.
+        return VariableLocation::Unavailable;
+    }
+
+    match &result[..] {
+        // A value that memory holds as a whole number of bytes keeps its address, so that the
+        // debugger can still show the memory of the value and follow it as a pointer.
+        [
+            LocationPiece {
+                source: PieceSource::Address(address),
+                bit_offset,
+                bit_size,
+            },
+        ] if bit_offset % 8 == 0 && bit_size.is_none_or(|bits| bits % 8 == 0) => {
+            match address.checked_add(bit_offset / 8) {
+                Some(address) => VariableLocation::Address(address),
+                None => {
+                    VariableLocation::Error("Overflow calculating variable address".to_string())
+                }
+            }
+        }
+        _pieces => VariableLocation::Composite(result),
+    }
+}
+
+/// Copy `bits` bits out of a little endian buffer, starting at `bit_offset`.
+fn extract_bits(source: &[u8], bit_offset: u64, bits: u64) -> Vec<u8> {
+    let mut destination = vec![0u8; bits.div_ceil(8) as usize];
+    insert_bits(source, bit_offset, &mut destination, 0, bits);
+    destination
+}
+
+/// Copy `bits` bits from `bit_offset` in a little endian buffer to `destination_offset` in another.
+/// Bits that the source does not hold stay unchanged in the destination.
+fn insert_bits(
+    source: &[u8],
+    bit_offset: u64,
+    destination: &mut [u8],
+    destination_offset: u64,
+    bits: u64,
+) {
+    for bit in 0..bits {
+        let from = bit_offset + bit;
+        let to = destination_offset + bit;
+
+        let (Some(source_byte), Some(destination_byte)) = (
+            source.get((from / 8) as usize),
+            destination.get_mut((to / 8) as usize),
+        ) else {
+            return;
+        };
+
+        let mask = 1 << (to % 8);
+        if source_byte >> (from % 8) & 1 == 1 {
+            *destination_byte |= mask;
+        } else {
+            *destination_byte &= !mask;
+        }
+    }
 }
 
 impl VariableLocation {
@@ -446,15 +614,94 @@ impl VariableLocation {
         }
     }
 
+    /// The address of the value, if target memory holds the value.
+    pub fn address(&self) -> Option<u64> {
+        match self {
+            VariableLocation::Address(address) => Some(*address),
+            _other => None,
+        }
+    }
+
     /// Check if the location is valid, ie. not an error, unsupported, or unavailable.
     pub fn valid(&self) -> bool {
         match self {
             VariableLocation::Address(_)
             | VariableLocation::RegisterValue(_)
+            | VariableLocation::Composite(_)
             | VariableLocation::Value
             | VariableLocation::Unknown => true,
             _other => false,
         }
+    }
+
+    /// The location of a value of `byte_size` bytes, `byte_offset` bytes into this location.
+    pub fn offset_by(&self, byte_offset: u64, byte_size: Option<u64>) -> VariableLocation {
+        let bit_offset = byte_offset * 8;
+        let bit_size = byte_size.map(|byte_size| byte_size * 8);
+
+        match self {
+            VariableLocation::Address(address) => match address.checked_add(byte_offset) {
+                Some(address) => VariableLocation::Address(address),
+                None => {
+                    VariableLocation::Error("Overflow calculating variable address".to_string())
+                }
+            },
+            VariableLocation::Composite(pieces) => slice_pieces(pieces, bit_offset, bit_size),
+            other => other.clone(),
+        }
+    }
+
+    /// Read the value that this location holds into `buffer`, in little endian order.
+    ///
+    /// A value that is shorter than the buffer leaves the remaining bytes unchanged.
+    pub fn read(
+        &self,
+        buffer: &mut [u8],
+        memory: &mut dyn MemoryInterface,
+    ) -> Result<(), DebugError> {
+        match self {
+            VariableLocation::Address(address) => memory.read(*address, buffer)?,
+            VariableLocation::RegisterValue(value) => {
+                let value = TryInto::<u128>::try_into(*value)?.to_le_bytes();
+                let bytes = buffer.len().min(value.len());
+                buffer[..bytes].copy_from_slice(&value[..bytes]);
+            }
+            VariableLocation::Composite(pieces) => {
+                let capacity = (buffer.len() * 8) as u64;
+                let mut offset = 0;
+
+                for piece in pieces {
+                    let available = capacity - offset;
+                    if available == 0 {
+                        break;
+                    }
+
+                    if piece.source == PieceSource::Empty {
+                        return Err(DebugError::WarnAndContinue {
+                            message: "The compiler optimized a part of this value away".to_string(),
+                        });
+                    }
+
+                    let bits = piece.bit_size.unwrap_or(available).min(available);
+                    let source = piece.source.read_bits(piece.bit_offset, bits, memory)?;
+
+                    insert_bits(&source, 0, buffer, offset, bits);
+                    offset += bits;
+                }
+            }
+            VariableLocation::Error(error) => {
+                return Err(DebugError::WarnAndContinue {
+                    message: error.clone(),
+                });
+            }
+            other => {
+                return Err(DebugError::WarnAndContinue {
+                    message: format!("Variable does not have a readable location: {other}"),
+                });
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -471,6 +718,7 @@ impl std::fmt::Display for VariableLocation {
                 RegisterValue::U64(value) => write!(f, "{value:#018X}"),
                 RegisterValue::U128(value) => write!(f, "{value:#034X}"),
             },
+            VariableLocation::Composite(_) => "<composite value>".fmt(f),
             VariableLocation::Value => "<not applicable - statically stored value>".fmt(f),
             VariableLocation::Error(error) => error.fmt(f),
             VariableLocation::Unsupported(reason) => reason.fmt(f),
@@ -976,4 +1224,137 @@ fn format_children_values<'a>(
 fn line_indent_string(indentation: usize) -> String {
     let line_feed = if indentation == 0 { "" } else { "\n" };
     format!("{line_feed}{:\t<indentation$}", "")
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use probe_rs::test::MockMemory;
+
+    /// Memory that holds the byte `index` at address `index`.
+    fn memory() -> MockMemory {
+        let mut memory = MockMemory::new();
+        memory.add_range(0, (0..=u8::MAX).collect());
+        memory
+    }
+
+    fn piece(source: PieceSource, bit_offset: u64, bit_size: Option<u64>) -> LocationPiece {
+        LocationPiece {
+            source,
+            bit_offset,
+            bit_size,
+        }
+    }
+
+    fn read(location: &VariableLocation, byte_size: usize) -> Vec<u8> {
+        let mut buffer = vec![0u8; byte_size];
+        location.read(&mut buffer, &mut memory()).unwrap();
+        buffer
+    }
+
+    #[test]
+    fn a_value_in_memory_reads_the_bytes_at_the_address() {
+        let location = VariableLocation::Address(4);
+
+        assert_eq!(read(&location, 4), vec![4, 5, 6, 7]);
+    }
+
+    #[test]
+    fn a_value_in_a_register_reads_the_least_significant_bytes() {
+        let location = VariableLocation::RegisterValue(RegisterValue::U32(0xAABB_CCDD));
+
+        assert_eq!(read(&location, 2), vec![0xDD, 0xCC]);
+    }
+
+    #[test]
+    fn a_composite_value_appends_the_pieces_from_the_least_significant_bits() {
+        // The low half comes from a register, the high half from memory.
+        let location = VariableLocation::Composite(vec![
+            piece(
+                PieceSource::Register(RegisterValue::U32(0x0000_1234)),
+                0,
+                Some(16),
+            ),
+            piece(PieceSource::Address(0x10), 0, Some(16)),
+        ]);
+
+        assert_eq!(read(&location, 4), vec![0x34, 0x12, 0x10, 0x11]);
+    }
+
+    #[test]
+    fn a_piece_reads_from_its_bit_offset() {
+        // The second byte of the register, and the second byte in memory.
+        let location = VariableLocation::Composite(vec![
+            piece(
+                PieceSource::Register(RegisterValue::U32(0xAABB_CCDD)),
+                8,
+                Some(8),
+            ),
+            piece(PieceSource::Address(0x20), 8, Some(8)),
+        ]);
+
+        assert_eq!(read(&location, 2), vec![0xCC, 0x21]);
+    }
+
+    #[test]
+    fn pieces_that_are_not_a_whole_number_of_bytes_join_without_a_gap() {
+        // Four bits of 0b1010, then four bits of 0b0011, then a full byte.
+        let location = VariableLocation::Composite(vec![
+            piece(PieceSource::Implicit(vec![0b1010]), 0, Some(4)),
+            piece(PieceSource::Implicit(vec![0b0011]), 0, Some(4)),
+            piece(PieceSource::Implicit(vec![0xEF]), 0, Some(8)),
+        ]);
+
+        assert_eq!(read(&location, 2), vec![0b0011_1010, 0xEF]);
+    }
+
+    #[test]
+    fn a_piece_that_crosses_a_byte_boundary_reads_the_bits_of_both_bytes() {
+        // Twelve bits, starting at bit 4 of the byte at address 0x30.
+        let location =
+            VariableLocation::Composite(vec![piece(PieceSource::Address(0x30), 4, Some(12))]);
+
+        // 0x30 holds 0x30 and 0x31 holds 0x31, so the bits are 0x1 followed by 0x31.
+        assert_eq!(read(&location, 2), vec![0x13, 0x03]);
+    }
+
+    #[test]
+    fn a_value_with_a_piece_that_the_compiler_optimized_away_cannot_be_read() {
+        let location = VariableLocation::Composite(vec![
+            piece(PieceSource::Empty, 0, Some(8)),
+            piece(PieceSource::Implicit(vec![0xAB]), 0, Some(8)),
+        ]);
+
+        assert!(location.read(&mut [0u8; 2], &mut memory()).is_err());
+    }
+
+    #[test]
+    fn a_value_that_the_compiler_optimized_away_has_no_location() {
+        let location = VariableLocation::Composite(vec![
+            piece(PieceSource::Empty, 0, Some(32)),
+            piece(PieceSource::Implicit(vec![0xAB; 4]), 0, Some(32)),
+        ]);
+
+        assert_eq!(
+            location.offset_by(0, Some(4)),
+            VariableLocation::Unavailable
+        );
+        assert_eq!(
+            location.offset_by(4, Some(4)),
+            VariableLocation::Composite(vec![piece(
+                PieceSource::Implicit(vec![0xAB; 4]),
+                0,
+                Some(32)
+            )])
+        );
+    }
+
+    #[test]
+    fn a_location_without_a_value_cannot_be_read() {
+        assert!(
+            VariableLocation::Unavailable
+                .read(&mut [0u8], &mut memory())
+                .is_err()
+        );
+    }
 }

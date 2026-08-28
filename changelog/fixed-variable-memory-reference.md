@@ -1,0 +1,1 @@
+The debug adapter now sends a memory reference only for a variable that target memory holds. A variable in a register, or a variable without a location, had a memory reference that was not an address, which made the client read unrelated memory.

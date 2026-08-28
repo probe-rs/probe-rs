@@ -247,18 +247,7 @@ impl UnsignedInt {
         // Read the bits. The actual count is encoded in the variable type.
         let mut buff = [0u8; 16];
         let bytes = variable.byte_size.unwrap_or(1).min(16) as usize;
-        if let VariableLocation::RegisterValue(value) = variable.memory_location {
-            // The value is in a register, we just need to extract the bytes.
-            let reg_bytes = TryInto::<u128>::try_into(value)?.to_le_bytes();
-
-            buff[..bytes].copy_from_slice(&reg_bytes[..bytes]);
-        } else {
-            // We only have an address, we need to read the value from memory.
-            memory.read(
-                variable.memory_location.memory_address()?,
-                &mut buff[..bytes],
-            )?;
-        }
+        variable.memory_location.read(&mut buff[..bytes], memory)?;
 
         let value = u128::from_le_bytes(buff);
 

@@ -1,6 +1,7 @@
 use postcard_rpc::header::VarHeader;
 use probe_rs_debug::{
-    DebugInfo, DebugRegisters, ObjectRef, StackFrameInfo, Variable, VariableCache, VariableName,
+    DebugInfo, DebugRegisters, ObjectRef, StackFrameInfo, Variable, VariableCache,
+    VariableLocation, VariableName,
 };
 use probe_rs_rpc::debug_vars::{
     ClearCoreDebugStateRequest, EvaluateRequest, EvaluateResponse, LoadSvdRequest, LoadSvdResponse,
@@ -10,6 +11,12 @@ use probe_rs_rpc::debug_vars::{
 
 use crate::rpc::functions::{RpcContext, convert::lift};
 use probe_rs_rpc::RpcResult;
+
+/// The memory reference of a variable. The client reads and writes the memory of the variable
+/// through this address, so a location that is not an address must not have one.
+fn memory_reference(location: &VariableLocation) -> Option<String> {
+    location.address().map(|address| format!("{address:#010x}"))
+}
 
 /// Mirrors `request_helpers::get_variable_reference` for the server-side path.
 fn variable_reference(parent: &Variable, cache: &VariableCache) -> (ObjectRef, i64, i64) {
@@ -246,7 +253,7 @@ pub async fn variables(
             WireVariable {
                 name: variable.name.to_string(),
                 evaluate_name: None,
-                memory_reference: Some(variable.memory_location.to_string()),
+                memory_reference: memory_reference(&variable.memory_location),
                 indexed_variables: Some(indexed_cnt),
                 named_variables: Some(named_cnt),
                 type_: Some(variable.type_name()),
@@ -359,7 +366,7 @@ pub async fn set_variable(
         variables_reference: i64::from(vr),
         named_variables: Some(named),
         indexed_variables: Some(indexed),
-        memory_reference: Some(cache_variable.memory_location.to_string()),
+        memory_reference: memory_reference(&cache_variable.memory_location),
     })
 }
 
@@ -395,7 +402,7 @@ fn resolve_expression(
         variables_reference: i64::from(vr),
         named_variables: Some(named),
         indexed_variables: Some(indexed),
-        memory_reference: Some(variable.memory_location.to_string()),
+        memory_reference: memory_reference(&variable.memory_location),
     })
 }
 
