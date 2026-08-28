@@ -2099,7 +2099,9 @@ impl UnitInfo {
             // Push the array member to the proper location according to its index.
             if matches!(
                 parent_variable.memory_location,
-                VariableLocation::Address(_) | VariableLocation::Composite(_)
+                VariableLocation::Address(_)
+                    | VariableLocation::RegisterValue(_)
+                    | VariableLocation::Composite(_)
             ) {
                 if let Some(byte_size) = child_variable.byte_size {
                     parent_variable
@@ -2114,59 +2116,46 @@ impl UnitInfo {
             } else {
                 VariableLocation::Unavailable
             }
-        } else if child_variable.memory_location == VariableLocation::Unknown {
-            // Non-array members can inherit their memory location from their parent, but only if the parent has a valid memory location.
-            if self.is_pointer(child_variable, parent_variable, unit_ref) {
-                match &parent_variable.memory_location {
-                    location @ (VariableLocation::Address(_)
-                    | VariableLocation::RegisterValue(_)
-                    | VariableLocation::Composite(_)) => {
-                        // Now, retrieve the location by reading the address that the parent
-                        // variable holds. A register holds the address of the value, because the
-                        // debugger uses a register location for the frame base as well.
-                        let location = match location {
-                            VariableLocation::RegisterValue(value) => {
-                                match TryInto::<u64>::try_into(*value) {
-                                    Ok(address) => VariableLocation::Address(address),
-                                    Err(_) => VariableLocation::Error(
-                                        "Register value is not a valid address".to_string(),
-                                    ),
-                                }
-                            }
-                            location => location.clone(),
-                        };
+        } else if self.is_pointer(child_variable, parent_variable, unit_ref) {
+            match &parent_variable.memory_location {
+                location @ (VariableLocation::Address(_)
+                | VariableLocation::RegisterValue(_)
+                | VariableLocation::Composite(_)) => {
+                    let mut buffer = [0u8; 8];
+                    let address_size = (self.unit.encoding().address_size as usize).min(8);
 
-                        let mut buffer = [0u8; 8];
-                        let address_size = (self.unit.encoding().address_size as usize).min(8);
+                    match location.read(&mut buffer[..address_size], memory) {
+                        // A null pointer has no referenced value, so the debugger must not read
+                        // the memory at address zero.
+                        Ok(()) => match u64::from_le_bytes(buffer) {
+                            0 => VariableLocation::Error("<null pointer>".to_string()),
+                            address => VariableLocation::Address(address),
+                        },
+                        Err(error) => {
+                            // The Display of the error hides the cause, which holds the
+                            // detail of the failure.
+                            let cause = std::error::Error::source(&error)
+                                .map_or_else(|| error.to_string(), |cause| cause.to_string());
 
-                        match location.read(&mut buffer[..address_size], memory) {
-                            Ok(()) => VariableLocation::Address(u64::from_le_bytes(buffer)),
-                            Err(error) => {
-                                // The Display of the error hides the cause, which holds the
-                                // detail of the failure.
-                                let cause = std::error::Error::source(&error)
-                                    .map_or_else(|| error.to_string(), |cause| cause.to_string());
-
-                                tracing::debug!(
-                                    "Failed to read referenced variable address from memory location {} : {cause}.",
-                                    parent_variable.memory_location
-                                );
-                                VariableLocation::Error(format!(
-                                    "Failed to read referenced variable address from memory location {} : {cause}.",
-                                    parent_variable.memory_location
-                                ))
-                            }
+                            tracing::debug!(
+                                "Failed to read referenced variable address from memory location {} : {cause}.",
+                                parent_variable.memory_location
+                            );
+                            VariableLocation::Error(format!(
+                                "Failed to read referenced variable address from memory location {} : {cause}.",
+                                parent_variable.memory_location
+                            ))
                         }
                     }
-                    other => VariableLocation::Unsupported(format!(
-                        "Location {other:?} not supported for referenced variables."
-                    )),
                 }
-            } else {
-                // If the parent variable is not a pointer, or it is a pointer to the actual data location
-                // (not the address of the data location) then it can inherit it's memory location from it's parent.
-                parent_variable.memory_location.clone()
+                other => VariableLocation::Unsupported(format!(
+                    "Location {other:?} not supported for referenced variables."
+                )),
             }
+        } else if child_variable.memory_location == VariableLocation::Unknown {
+            // A variable that is not a referenced value shares the location of its parent, for
+            // example an intermediate node of a struct.
+            parent_variable.memory_location.clone()
         } else {
             return;
         };
