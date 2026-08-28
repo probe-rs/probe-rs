@@ -1,0 +1,1 @@
+The ESP32 reset sequence now sets up the JTAG link again before it cleans up after a failed reset. The clean-up used to run against a debug module that the reset had just disabled, which made every following operation time out and left the chip unreachable.
