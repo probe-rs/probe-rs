@@ -107,12 +107,9 @@ impl Rust {
     /// Replaces *const data pointer with *const [data; len] in slices.
     ///
     /// This function may return `Ok(())` even if it does not modify the variable.
-    #[expect(clippy::too_many_arguments)]
     fn expand_slice(
         &self,
-        unit_info: &UnitInfo,
         debug_info: &DebugInfo,
-        _node: &DebuggingInformationEntry<GimliReader>,
         variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
@@ -311,18 +308,16 @@ impl ProgrammingLanguage for Rust {
 
     fn process_struct(
         &self,
-        unit_info: &UnitInfo,
+        _unit_info: &UnitInfo,
         debug_info: &DebugInfo,
-        node: &DebuggingInformationEntry<GimliReader>,
+        _node: &DebuggingInformationEntry<GimliReader>,
         variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
         frame_info: StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         if variable.type_name().starts_with("&[") {
-            self.expand_slice(
-                unit_info, debug_info, node, variable, memory, cache, frame_info,
-            )?;
+            self.expand_slice(debug_info, variable, memory, cache, frame_info)?;
         }
 
         Ok(())
