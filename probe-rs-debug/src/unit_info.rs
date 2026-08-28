@@ -299,7 +299,7 @@ impl UnitInfo {
         // For variable attribute resolution, we need to resolve a few attributes in advance of looping through all the other ones.
         // Try to exact the name first, for easier debugging
         if let Some(entry) = attributes_entry.as_ref()
-            && let Ok(Some(name)) = extract_name(debug_info, entry)
+            && let Ok(Some(name)) = extract_name(debug_info, &self.unit, entry)
         {
             child_variable.name = VariableName::Named(name);
         }
@@ -548,12 +548,13 @@ impl UnitInfo {
         while let Some(child_node) = child_nodes.next()? {
             match child_node.entry().tag() {
                 gimli::DW_TAG_namespace => {
-                    let variable_name =
-                        if let Ok(Some(name)) = extract_name(debug_info, child_node.entry()) {
-                            VariableName::Namespace(name)
-                        } else {
-                            VariableName::AnonymousNamespace
-                        };
+                    let variable_name = if let Ok(Some(name)) =
+                        extract_name(debug_info, &self.unit, child_node.entry())
+                    {
+                        VariableName::Namespace(name)
+                    } else {
+                        VariableName::AnonymousNamespace
+                    };
 
                     // See if this namespace already exists in the cache.
                     let mut namespace_variable = if let Some(existing_var) = cache
@@ -1199,15 +1200,18 @@ impl UnitInfo {
                     Some(data_type_attribute) => {
                         match debug_info.resolve_die_reference_with_unit(data_type_attribute, self)
                         {
-                            Ok((_, subroutine_type_node)) => {
-                                child_variable.type_name =
-                                    match extract_name(debug_info, &subroutine_type_node) {
-                                        Ok(Some(name_attr)) => VariableType::Other(name_attr),
-                                        Ok(None) => VariableType::Unknown,
-                                        Err(error) => VariableType::Other(format!(
-                                            "Error: evaluating subroutine type name: {error:?} "
-                                        )),
-                                    };
+                            Ok((subroutine_unit, subroutine_type_node)) => {
+                                child_variable.type_name = match extract_name(
+                                    debug_info,
+                                    &subroutine_unit.unit,
+                                    &subroutine_type_node,
+                                ) {
+                                    Ok(Some(name_attr)) => VariableType::Other(name_attr),
+                                    Ok(None) => VariableType::Unknown,
+                                    Err(error) => VariableType::Other(format!(
+                                        "Error: evaluating subroutine type name: {error:?} "
+                                    )),
+                                };
                             }
                             Err(error) => {
                                 child_variable.set_value(VariableValue::Error(format!(
@@ -1510,7 +1514,7 @@ impl UnitInfo {
                 gimli::DW_TAG_enumerator => {
                     let attributes_entry = child_node.entry();
 
-                    let name_result = extract_name(debug_info, attributes_entry);
+                    let name_result = extract_name(debug_info, &self.unit, attributes_entry);
 
                     let Some(attr_value) = attributes_entry.attr_value(gimli::DW_AT_const_value)
                     else {
@@ -2145,23 +2149,7 @@ impl UnitInfo {
         entry: &gimli::DebuggingInformationEntry<GimliReader>,
     ) -> Result<Option<String>, gimli::Error> {
         match entry.attr(gimli::DW_AT_name) {
-            Some(attr) => {
-                let name = match attr.value() {
-                    gimli::AttributeValue::DebugStrRef(name_ref) => {
-                        if let Ok(name_raw) = debug_info.dwarf.string(name_ref) {
-                            String::from_utf8_lossy(&name_raw).to_string()
-                        } else {
-                            "Invalid DW_AT_name value".to_string()
-                        }
-                    }
-                    gimli::AttributeValue::String(name) => {
-                        String::from_utf8_lossy(&name).to_string()
-                    }
-                    other => format!("Unimplemented: Evaluate name from {other:?}"),
-                };
-
-                Ok(Some(name))
-            }
+            Some(attr) => Ok(Some(attribute_string(debug_info, &self.unit, attr.value()))),
             None => {
                 let Some(attr) = entry.attr(gimli::DW_AT_type) else {
                     // No type attribute.
@@ -2330,25 +2318,26 @@ impl UnitInfo {
 
 fn extract_name(
     debug_info: &DebugInfo,
+    unit: &gimli::Unit<GimliReader>,
     entry: &gimli::DebuggingInformationEntry<GimliReader>,
 ) -> Result<Option<String>, gimli::Error> {
     let Some(attr) = entry.attr_value(gimli::DW_AT_name) else {
         return Ok(None);
     };
 
-    let name = match attr {
-        gimli::AttributeValue::DebugStrRef(name_ref) => {
-            if let Ok(name_raw) = debug_info.dwarf.string(name_ref) {
-                String::from_utf8_lossy(&name_raw).to_string()
-            } else {
-                "Invalid DW_AT_name value".to_string()
-            }
-        }
-        gimli::AttributeValue::String(name) => String::from_utf8_lossy(&name).to_string(),
-        other => format!("Unimplemented: Evaluate name from {other:?}"),
-    };
+    Ok(Some(attribute_string(debug_info, unit, attr)))
+}
 
-    Ok(Some(name))
+/// Reads a string attribute, whatever form the compiler used to encode it.
+fn attribute_string(
+    debug_info: &DebugInfo,
+    unit: &gimli::Unit<GimliReader>,
+    attr: gimli::AttributeValue<GimliReader>,
+) -> String {
+    match debug_info.dwarf.attr_string(unit, attr) {
+        Ok(raw) => String::from_utf8_lossy(&raw).to_string(),
+        Err(error) => format!("Invalid string attribute value: {error}"),
+    }
 }
 
 /// Gets necessary register information for the DWARF resolver.

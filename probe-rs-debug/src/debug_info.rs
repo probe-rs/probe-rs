@@ -1006,20 +1006,6 @@ impl DebugInfo {
         )))
     }
 
-    /// Look up the DIE reference for the given attribute, if it exists.
-    pub(crate) fn resolve_die_reference<'debug_info, 'unit_info>(
-        &'debug_info self,
-        attribute: gimli::DwAt,
-        die: &Die,
-        unit_info: &'unit_info UnitInfo,
-    ) -> Option<Die>
-    where
-        'unit_info: 'debug_info,
-    {
-        self.resolve_die_reference_with_unit_info(attribute, die, unit_info)
-            .map(|(_, die)| die)
-    }
-
     /// Look up the DIE reference for the given attribute, returning both the resolved DIE
     /// and the compilation unit it belongs to.
     ///
