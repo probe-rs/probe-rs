@@ -2464,6 +2464,10 @@ fn read_memory(
             let buff = read::<4>(memory, address)?;
             gimli::Value::U32(u32::from_le_bytes(buff))
         }
+        8 => {
+            let buff = read::<8>(memory, address)?;
+            gimli::Value::U64(u64::from_le_bytes(buff))
+        }
         x => {
             return Err(DebugError::WarnAndContinue {
                 message: format!(
