@@ -554,7 +554,26 @@ fn slice_pieces(pieces: &[LocationPiece], bit_offset: u64, bits: Option<u64>) ->
                 }
             }
         }
+        // A member that occupies a whole register keeps the register location, so that a pointer
+        // that lives in a register still prints as the register value.
+        [
+            LocationPiece {
+                source: PieceSource::Register(value),
+                bit_offset: 0,
+                bit_size,
+            },
+        ] if bit_size.is_none_or(|bits| bits == register_bit_size(*value)) => {
+            VariableLocation::RegisterValue(*value)
+        }
         _pieces => VariableLocation::Composite(result),
+    }
+}
+
+fn register_bit_size(value: RegisterValue) -> u64 {
+    match value {
+        RegisterValue::U32(_) => 32,
+        RegisterValue::U64(_) => 64,
+        RegisterValue::U128(_) => 128,
     }
 }
 
@@ -596,15 +615,14 @@ fn insert_bits(
 
 impl VariableLocation {
     /// Return the memory address, if available. Otherwise an error is returned.
+    ///
+    /// A register location holds the value, not an address of the value.
     pub fn memory_address(&self) -> Result<u64, DebugError> {
         match self {
             VariableLocation::Address(address) => Ok(*address),
-            VariableLocation::RegisterValue(address) => match TryInto::<u64>::try_into(*address) {
-                Ok(address) => Ok(address),
-                Err(_) => Err(DebugError::WarnAndContinue {
-                    message: "Register value is not a valid address".to_string(),
-                }),
-            },
+            VariableLocation::RegisterValue(_) => Err(DebugError::WarnAndContinue {
+                message: "The value is in a register and has no memory address".to_string(),
+            }),
             VariableLocation::Error(error) => Err(DebugError::WarnAndContinue {
                 message: error.clone(),
             }),
@@ -636,8 +654,8 @@ impl VariableLocation {
 
     /// The location of a value of `byte_size` bytes, `byte_offset` bytes into this location.
     pub fn offset_by(&self, byte_offset: u64, byte_size: Option<u64>) -> VariableLocation {
-        let bit_offset = byte_offset * 8;
-        let bit_size = byte_size.map(|byte_size| byte_size * 8);
+        let bit_offset = byte_offset.saturating_mul(8);
+        let bit_size = byte_size.map(|byte_size| byte_size.saturating_mul(8));
 
         match self {
             VariableLocation::Address(address) => match address.checked_add(byte_offset) {
@@ -646,6 +664,17 @@ impl VariableLocation {
                     VariableLocation::Error("Overflow calculating variable address".to_string())
                 }
             },
+            VariableLocation::RegisterValue(value) => slice_pieces(
+                &[LocationPiece {
+                    source: PieceSource::Register(*value),
+                    bit_offset: 0,
+                    // The register holds all of the value, so a value that starts after the
+                    // register has no location.
+                    bit_size: Some(register_bit_size(*value)),
+                }],
+                bit_offset,
+                bit_size,
+            ),
             VariableLocation::Composite(pieces) => slice_pieces(pieces, bit_offset, bit_size),
             other => other.clone(),
         }
@@ -882,13 +911,18 @@ impl Variable {
         if variable_cache.has_children(self) {
             self.formatted_variable_value(variable_cache, 0, false)
                 .unwrap_or_default()
+        } else if matches!(self.type_name, VariableType::Array { count: 0, .. }) {
+            // An empty array has no bytes, so it needs no location.
+            self.formatted_variable_value(variable_cache, 0, false)
+                .unwrap_or_default()
         } else if self.type_name == VariableType::Unknown || !self.memory_location.valid() {
             if self.variable_node_type.is_deferred() {
                 // When we will do a lazy-load of variable children, and they have not yet been
                 // requested by the user, just display the type_name as the value
                 self.type_name()
-            } else if let VariableLocation::Error(ref error) = self.memory_location {
-                error.clone()
+            } else if !self.memory_location.valid() {
+                // The location explains why the variable has no value.
+                self.memory_location.to_string()
             } else {
                 // This condition should only be true for intermediate nodes
                 // from DWARF. These should not show up in the final
@@ -898,9 +932,6 @@ impl Variable {
             }
         } else if matches!(self.type_name, VariableType::Struct(ref name) if name == "None") {
             "None".to_string()
-        } else if matches!(self.type_name, VariableType::Array { count: 0, .. }) {
-            self.formatted_variable_value(variable_cache, 0, false)
-                .unwrap_or_default()
         } else {
             format!(
                 "Unimplemented: Get value of type {:?} of ({:?} bytes) at location {}",
@@ -931,9 +962,17 @@ impl Variable {
             return;
         }
 
-        if self.variable_node_type.is_deferred()
-            || matches!(self.type_name, VariableType::Pointer(_))
-        {
+        if matches!(self.type_name, VariableType::Pointer(_)) {
+            // The value of a pointer is the address that it holds, not the place that holds the
+            // pointer.
+            let location = self
+                .pointer_target(memory)
+                .map_or_else(|| self.memory_location.clone(), VariableLocation::Address);
+            self.value = VariableValue::Valid(format!("{} @ {location}", self.type_name()));
+            return;
+        }
+
+        if self.variable_node_type.is_deferred() {
             // And we have not previously assigned the value, then assign the type and address as
             // the value.
             self.value =
@@ -949,6 +988,19 @@ impl Variable {
 
         self.value =
             language::from_dwarf(self.language).read_variable_value(self, memory, variable_cache);
+    }
+
+    /// The address that a pointer holds, if the debug info gives the size of the pointer and the
+    /// target holds the bytes of the pointer.
+    fn pointer_target(&self, memory: &mut dyn MemoryInterface) -> Option<u64> {
+        let byte_size = self.byte_size.filter(|byte_size| *byte_size <= 8)? as usize;
+        let mut buffer = [0u8; 8];
+
+        self.memory_location
+            .read(&mut buffer[..byte_size], memory)
+            .ok()?;
+
+        Some(u64::from_le_bytes(buffer))
     }
 
     /// The variable is considered to be an 'indexed' variable if the name starts with two
@@ -1355,6 +1407,69 @@ mod test {
             VariableLocation::Unavailable
                 .read(&mut [0u8], &mut memory())
                 .is_err()
+        );
+    }
+
+    #[test]
+    fn a_pointer_that_lives_in_a_register_resolves_to_the_register_value_without_a_memory_access() {
+        let location = VariableLocation::RegisterValue(RegisterValue::U32(0x3FCD_C3B0));
+        let mut buffer = [0u8; 8];
+        let address_size = 4;
+
+        location
+            .read(&mut buffer[..address_size], &mut MockMemory::new())
+            .unwrap();
+
+        assert_eq!(u64::from_le_bytes(buffer), 0x3FCD_C3B0);
+    }
+
+    #[test]
+    fn a_member_of_a_register_held_struct_reads_the_bits_of_the_register_at_the_offset_of_the_member()
+     {
+        let location = VariableLocation::RegisterValue(RegisterValue::U32(0xAABB_CCDD));
+        let member = location.offset_by(2, Some(2));
+
+        assert_eq!(
+            member,
+            VariableLocation::Composite(vec![piece(
+                PieceSource::Register(RegisterValue::U32(0xAABB_CCDD)),
+                16,
+                Some(16)
+            )])
+        );
+
+        let mut buffer = [0u8; 2];
+        member.read(&mut buffer, &mut MockMemory::new()).unwrap();
+        assert_eq!(buffer, [0xBB, 0xAA]);
+    }
+
+    #[test]
+    fn a_member_that_starts_after_the_register_has_no_location() {
+        let location = VariableLocation::RegisterValue(RegisterValue::U32(0xAABB_CCDD));
+
+        assert_eq!(
+            location.offset_by(4, Some(4)),
+            VariableLocation::Unavailable
+        );
+    }
+
+    #[test]
+    fn a_write_to_a_variable_that_lives_in_a_register_fails() {
+        let mut variable = Variable::new(None);
+        variable.name = VariableName::Named("x".to_string());
+        variable.type_name = VariableType::Base("u32".to_string());
+        variable.memory_location = VariableLocation::RegisterValue(RegisterValue::U32(0x2000_0000));
+        variable.value = VariableValue::Valid("1".to_string());
+        variable.byte_size = Some(4);
+
+        let mut cache = crate::VariableCache::new_static_cache();
+        let error = variable
+            .update_value(&mut MockMemory::new(), &mut cache, "2".to_string())
+            .expect_err("a register value cannot be updated");
+
+        assert!(
+            error.to_string().contains("register"),
+            "the error must name the register as the reason: {error}"
         );
     }
 }

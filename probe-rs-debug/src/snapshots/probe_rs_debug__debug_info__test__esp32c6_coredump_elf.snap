@@ -1624,16 +1624,7 @@ expression: stack_frames
                 Named: "*this"
               type_name:
                 Struct: "TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}>"
-              value: "TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}> {\n\traw: <unknown> = < Location Unknown not supported for referenced variables. >,\n\tfuture: <unknown> = < Location Unknown not supported for referenced variables. >}"
-              children:
-                - name:
-                    Named: raw
-                  type_name: Unknown
-                  value: "< Location Unknown not supported for referenced variables. >"
-                - name:
-                    Named: future
-                  type_name: Unknown
-                  value: "< Location Unknown not supported for referenced variables. >"
+              value: Location Unknown not supported for referenced variables.
         - name:
             Named: future
           type_name:
@@ -1655,7 +1646,7 @@ expression: stack_frames
                     Named: "*__pointer"
                   type_name:
                     Struct: "{async_fn_env#0}"
-                  value: "{async_fn_env#0}"
+                  value: Location Unknown not supported for referenced variables.
         - name:
             Named: waker
           type_name:
@@ -1688,24 +1679,7 @@ expression: stack_frames
                         Named: "*vtable"
                       type_name:
                         Struct: RawWakerVTable
-                      value: "RawWakerVTable {\n\tclone: <unknown> = < Location Unknown not supported for referenced variables. >,\n\twake: <unknown> = < Location Unknown not supported for referenced variables. >,\n\twake_by_ref: <unknown> = < Location Unknown not supported for referenced variables. >,\n\tdrop: <unknown> = < Location Unknown not supported for referenced variables. >}"
-                      children:
-                        - name:
-                            Named: clone
-                          type_name: Unknown
-                          value: "< Location Unknown not supported for referenced variables. >"
-                        - name:
-                            Named: wake
-                          type_name: Unknown
-                          value: "< Location Unknown not supported for referenced variables. >"
-                        - name:
-                            Named: wake_by_ref
-                          type_name: Unknown
-                          value: "< Location Unknown not supported for referenced variables. >"
-                        - name:
-                            Named: drop
-                          type_name: Unknown
-                          value: "< Location Unknown not supported for referenced variables. >"
+                      value: Location Unknown not supported for referenced variables.
         - name:
             Named: cx
           type_name:
@@ -1727,12 +1701,7 @@ expression: stack_frames
                     Named: "*waker"
                   type_name:
                     Struct: Waker
-                  value: "Waker {\n\twaker: <unknown> = < Failed to read referenced variable address from memory location <composite value> : The compiler optimized a part of this value away. >}"
-                  children:
-                    - name:
-                        Named: waker
-                      type_name: Unknown
-                      value: "< Failed to read referenced variable address from memory location <composite value> : The compiler optimized a part of this value away. >"
+                  value: "Failed to read referenced variable address from memory location <composite value> : The compiler optimized a part of this value away."
             - name:
                 Named: local_waker
               type_name:
@@ -1743,12 +1712,7 @@ expression: stack_frames
                     Named: "*local_waker"
                   type_name:
                     Struct: LocalWaker
-                  value: "LocalWaker {\n\twaker: <unknown> = < Failed to read referenced variable address from memory location <composite value> : The compiler optimized a part of this value away. >}"
-                  children:
-                    - name:
-                        Named: waker
-                      type_name: Unknown
-                      value: "< Failed to read referenced variable address from memory location <composite value> : The compiler optimized a part of this value away. >"
+                  value: "Failed to read referenced variable address from memory location <composite value> : The compiler optimized a part of this value away."
             - name:
                 Named: ext
               type_name:
@@ -1783,7 +1747,7 @@ expression: stack_frames
                                     Named: "*pointer"
                                   type_name:
                                     Struct: "dyn core::any::Any"
-                                  value: "dyn core::any::Any @ 0x00000000"
+                                  value: "<null pointer>"
                             - name:
                                 Named: vtable
                               type_name: Unknown
@@ -3849,66 +3813,66 @@ expression: stack_frames
                 Named: "*self"
               type_name:
                 Struct: Executor
-              value: Executor @ 0x00000000
+              value: Executor @ 0x4086E5C0
               children:
                 - name:
                     Named: inner
                   type_name:
                     Struct: InnerExecutor
-                  value: InnerExecutor @ 0x00000000
+                  value: InnerExecutor @ 0x4086E5C0
                   children:
                     - name:
                         Named: inner
                       type_name:
                         Struct: Executor
-                      value: Executor @ 0x00000000
+                      value: Executor @ 0x4086E5C0
                       children:
                         - name:
                             Named: inner
                           type_name:
                             Struct: SyncExecutor
-                          value: SyncExecutor @ 0x00000000
+                          value: SyncExecutor @ 0x4086E5C0
                           children:
                             - name:
                                 Named: run_queue
                               type_name:
                                 Struct: RunQueue
-                              value: RunQueue @ 0x00000000
+                              value: RunQueue @ 0x4086E5C0
                               children:
                                 - name:
                                     Named: head
                                   type_name:
                                     Struct: "AtomicPtr<embassy_executor::raw::TaskHeader>"
-                                  value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x00000000"
+                                  value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x4086E5C0"
                                   children:
                                     - name:
                                         Named: p
                                       type_name:
                                         Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
-                                      value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x00000000"
+                                      value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x4086E5C0"
                                       children:
                                         - name:
                                             Named: value
                                           type_name:
                                             Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                          value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
+                                          value: "*mut embassy_executor::raw::TaskHeader @ 0x4086E5C0"
                                           children:
                                             - name:
                                                 Named: "*value"
                                               type_name:
                                                 Struct: TaskHeader
-                                              value: TaskHeader
+                                              value: "<null pointer>"
                             - name:
                                 Named: pender
                               type_name:
                                 Struct: Pender
-                              value: Pender @ 0x00000004
+                              value: Pender @ 0x4086E5C4
                               children:
                                 - name:
                                     Named: __0
                                   type_name:
                                     Pointer: "*mut ()"
-                                  value: "*mut () @ 0x00000004"
+                                  value: "*mut () @ 0x4086E5C4"
         - name:
             Named: init
           type_name:
@@ -4310,33 +4274,7 @@ expression: stack_frames
                                             Named: "*value"
                                           type_name:
                                             Struct: TaskHeader
-                                          value: TaskHeader @ 0x00000000
-                                          children:
-                                            - name:
-                                                Named: state
-                                              type_name:
-                                                Struct: State
-                                              value: State @ 0x00000010
-                                            - name:
-                                                Named: run_queue_item
-                                              type_name:
-                                                Struct: RunQueueItem
-                                              value: RunQueueItem @ 0x00000014
-                                            - name:
-                                                Named: executor
-                                              type_name:
-                                                Struct: "AtomicPtr<embassy_executor::raw::SyncExecutor>"
-                                              value: "AtomicPtr<embassy_executor::raw::SyncExecutor> @ 0x00000018"
-                                            - name:
-                                                Named: poll_fn
-                                              type_name:
-                                                Struct: "SyncUnsafeCell<core::option::Option<unsafe fn(embassy_executor::raw::TaskRef)>>"
-                                              value: "SyncUnsafeCell<core::option::Option<unsafe fn(embassy_executor::raw::TaskRef)>> @ 0x0000001C"
-                                            - name:
-                                                Named: timer_queue_item
-                                              type_name:
-                                                Struct: TimerQueueItem
-                                              value: TimerQueueItem @ 0x00000000
+                                          value: "<null pointer>"
                         - name:
                             Named: pender
                           type_name:
@@ -4363,16 +4301,7 @@ expression: stack_frames
                 Named: "*executor"
               type_name:
                 Struct: Executor
-              value: "Executor {\n\tinner: <unknown> = < Location Value not supported for referenced variables. >,\n\tnot_send: <unknown> = < Location Value not supported for referenced variables. >}"
-              children:
-                - name:
-                    Named: inner
-                  type_name: Unknown
-                  value: "< Location Value not supported for referenced variables. >"
-                - name:
-                    Named: not_send
-                  type_name: Unknown
-                  value: "< Location Value not supported for referenced variables. >"
+              value: Location Value not supported for referenced variables.
   canonical_frame_address: 1082582480
 - function_name: hal_main
   source_location:
@@ -4738,7 +4667,7 @@ expression: stack_frames
                 Named: "*stack_chk_guard"
               type_name:
                 Base: u32
-              value: "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location"
+              value: Location Unknown not supported for referenced variables.
   canonical_frame_address: 1082582496
 - function_name: start_rust
   source_location:

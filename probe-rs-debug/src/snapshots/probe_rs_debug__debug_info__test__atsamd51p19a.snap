@@ -212,13 +212,13 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tconst_void_pointer: void* = void* @ 0x2000004C,\n\tconst_void_const_pointer: const void* = void* @ 0x00001760}"
+      value: "<unknown> {\n\tconst_void_pointer: void* = void* @ 0x20000000,\n\tconst_void_const_pointer: const void* = void* @ 0x20000000}"
       children:
         - name:
             Named: const_void_pointer
           type_name:
             Pointer: ~
-          value: void* @ 0x2000004C
+          value: void* @ 0x20000000
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 71
@@ -236,7 +236,7 @@ expression: stack_frames
             Modified:
               - Const
               - Pointer: ~
-          value: void* @ 0x00001760
+          value: void* @ 0x20000000
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 72
@@ -684,13 +684,13 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tstring: int* = int* @ 0x20000054}"
+      value: "<unknown> {\n\tstring: int* = int* @ 0x00001750}"
       children:
         - name:
             Named: string
           type_name:
             Pointer: int
-          value: int* @ 0x20000054
+          value: int* @ 0x00001750
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 98
@@ -910,13 +910,13 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tpSrc: uint32_t* = uint32_t* @ 0x2000106C,\n\tpDest: uint32_t* = uint32_t* @ 0x20001068}"
+      value: "<unknown> {\n\tpSrc: uint32_t* = uint32_t* @ 0x00000000,\n\tpDest: uint32_t* = uint32_t* @ 0x20000074}"
       children:
         - name:
             Named: pSrc
           type_name:
             Pointer: uint32_t
-          value: uint32_t* @ 0x2000106C
+          value: uint32_t* @ 0x00000000
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\Atmel\\Device_Startup\\startup_samd51.c"
             line: 501
@@ -932,12 +932,12 @@ expression: stack_frames
                   - Modified:
                       - Typedef: __uint32_t
                       - Base: long unsigned int
-              value: "536875128"
+              value: "<null pointer>"
         - name:
             Named: pDest
           type_name:
             Pointer: uint32_t
-          value: uint32_t* @ 0x20001068
+          value: uint32_t* @ 0x20000074
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\Atmel\\Device_Startup\\startup_samd51.c"
             line: 501

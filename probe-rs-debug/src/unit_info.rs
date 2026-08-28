@@ -2,7 +2,8 @@ use std::{collections::HashMap, ops::Range};
 
 use super::{
     DebugError, DebugRegisters, EndianReader, SourceLocation, VariableCache, debug_info::*,
-    extract_byte_size, extract_file, extract_line, function_die::FunctionDie, variable::*,
+    extract_alignment, extract_byte_size, extract_file, extract_line, function_die::FunctionDie,
+    variable::*,
 };
 use crate::{language, stack_frame::StackFrameInfo};
 use gimli::{
@@ -1318,7 +1319,7 @@ impl UnitInfo {
             frame_info,
         )?;
 
-        if child_variable.memory_location != VariableLocation::Unavailable {
+        if child_variable.memory_location.valid() {
             // The default behaviour is to defer the processing of child types.
             child_variable.variable_node_type =
                 VariableNodeType::TypeOffset(self.debug_info_offset()?, node.offset());
@@ -2099,7 +2100,9 @@ impl UnitInfo {
             // Push the array member to the proper location according to its index.
             if matches!(
                 parent_variable.memory_location,
-                VariableLocation::Address(_) | VariableLocation::Composite(_)
+                VariableLocation::Address(_)
+                    | VariableLocation::RegisterValue(_)
+                    | VariableLocation::Composite(_)
             ) {
                 if let Some(byte_size) = child_variable.byte_size {
                     parent_variable
@@ -2114,59 +2117,58 @@ impl UnitInfo {
             } else {
                 VariableLocation::Unavailable
             }
-        } else if child_variable.memory_location == VariableLocation::Unknown {
-            // Non-array members can inherit their memory location from their parent, but only if the parent has a valid memory location.
-            if self.is_pointer(child_variable, parent_variable, unit_ref) {
-                match &parent_variable.memory_location {
-                    location @ (VariableLocation::Address(_)
-                    | VariableLocation::RegisterValue(_)
-                    | VariableLocation::Composite(_)) => {
-                        // Now, retrieve the location by reading the address that the parent
-                        // variable holds. A register holds the address of the value, because the
-                        // debugger uses a register location for the frame base as well.
-                        let location = match location {
-                            VariableLocation::RegisterValue(value) => {
-                                match TryInto::<u64>::try_into(*value) {
-                                    Ok(address) => VariableLocation::Address(address),
-                                    Err(_) => VariableLocation::Error(
-                                        "Register value is not a valid address".to_string(),
-                                    ),
+        } else if self.is_pointer(child_variable, parent_variable, unit_ref) {
+            match &parent_variable.memory_location {
+                location @ (VariableLocation::Address(_)
+                | VariableLocation::RegisterValue(_)
+                | VariableLocation::Composite(_)) => {
+                    let mut buffer = [0u8; 8];
+                    let address_size = (self.unit.encoding().address_size as usize).min(8);
+
+                    match location.read(&mut buffer[..address_size], memory) {
+                        Ok(()) => {
+                            let address = u64::from_le_bytes(buffer);
+                            let alignment = self
+                                .unit
+                                .entry(unit_ref)
+                                .ok()
+                                .and_then(|entry| extract_alignment(&entry));
+
+                            match object_at(address, alignment, child_variable.byte_size) {
+                                Some(address) => VariableLocation::Address(address),
+                                None if address == 0 => {
+                                    VariableLocation::Error("<null pointer>".to_string())
                                 }
-                            }
-                            location => location.clone(),
-                        };
-
-                        let mut buffer = [0u8; 8];
-                        let address_size = (self.unit.encoding().address_size as usize).min(8);
-
-                        match location.read(&mut buffer[..address_size], memory) {
-                            Ok(()) => VariableLocation::Address(u64::from_le_bytes(buffer)),
-                            Err(error) => {
-                                // The Display of the error hides the cause, which holds the
-                                // detail of the failure.
-                                let cause = std::error::Error::source(&error)
-                                    .map_or_else(|| error.to_string(), |cause| cause.to_string());
-
-                                tracing::debug!(
-                                    "Failed to read referenced variable address from memory location {} : {cause}.",
-                                    parent_variable.memory_location
-                                );
-                                VariableLocation::Error(format!(
-                                    "Failed to read referenced variable address from memory location {} : {cause}.",
-                                    parent_variable.memory_location
-                                ))
+                                None => VariableLocation::Error(format!(
+                                    "<dangling pointer: {address:#010X}>"
+                                )),
                             }
                         }
+                        Err(error) => {
+                            // The Display of the error hides the cause, which holds the
+                            // detail of the failure.
+                            let cause = std::error::Error::source(&error)
+                                .map_or_else(|| error.to_string(), |cause| cause.to_string());
+
+                            tracing::debug!(
+                                "Failed to read referenced variable address from memory location {} : {cause}.",
+                                parent_variable.memory_location
+                            );
+                            VariableLocation::Error(format!(
+                                "Failed to read referenced variable address from memory location {} : {cause}.",
+                                parent_variable.memory_location
+                            ))
+                        }
                     }
-                    other => VariableLocation::Unsupported(format!(
-                        "Location {other:?} not supported for referenced variables."
-                    )),
                 }
-            } else {
-                // If the parent variable is not a pointer, or it is a pointer to the actual data location
-                // (not the address of the data location) then it can inherit it's memory location from it's parent.
-                parent_variable.memory_location.clone()
+                other => VariableLocation::Unsupported(format!(
+                    "Location {other:?} not supported for referenced variables."
+                )),
             }
+        } else if child_variable.memory_location == VariableLocation::Unknown {
+            // A variable that is not a referenced value shares the location of its parent, for
+            // example an intermediate node of a struct.
+            parent_variable.memory_location.clone()
         } else {
             return;
         };
@@ -2484,6 +2486,35 @@ fn provide_cfa(
     }
 }
 
+/// The largest alignment that a type on a target has, in bytes.
+const MAX_ALIGNMENT: u64 = 16;
+
+/// The address of the referenced value of a pointer that holds `address`, if the pointer points
+/// at an object.
+///
+/// A pointer of an empty collection holds the alignment of the type, not the address of an
+/// object. `core::ptr::NonNull::dangling` creates such a pointer. `alignment` is the alignment
+/// of the type, and `byte_size` its size, as far as the debug info gives them.
+fn object_at(address: u64, alignment: Option<u64>, byte_size: Option<u64>) -> Option<u64> {
+    if address == 0 {
+        return None;
+    }
+
+    let dangling = match alignment {
+        Some(alignment) => address == alignment,
+        // Without the alignment of the type, take every address that an alignment can be: a
+        // power of two that is neither greater than the type nor greater than the largest
+        // alignment of a target type.
+        None => {
+            address.is_power_of_two()
+                && address <= MAX_ALIGNMENT
+                && byte_size.is_some_and(|byte_size| address <= byte_size)
+        }
+    };
+
+    (!dangling).then_some(address)
+}
+
 /// Keeps the lowest `byte_size` bytes of `value`.
 fn truncate(value: u128, byte_size: usize) -> u128 {
     let shift = 128 - byte_size * 8;
@@ -2582,5 +2613,49 @@ impl RangeExt for &mut gimli::RngListIter<GimliReader> {
 impl RangeExt for gimli::Range {
     fn contains(self, addr: u64) -> bool {
         self.begin <= addr && addr < self.end
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::object_at;
+
+    #[test]
+    fn a_null_pointer_points_at_no_object() {
+        assert_eq!(object_at(0, Some(4), Some(32)), None);
+        assert_eq!(object_at(0, None, None), None);
+    }
+
+    #[test]
+    fn a_pointer_that_holds_the_alignment_of_the_type_points_at_no_object() {
+        assert_eq!(object_at(4, Some(4), Some(32)), None);
+        assert_eq!(object_at(8, Some(8), Some(8)), None);
+    }
+
+    #[test]
+    fn a_pointer_that_holds_more_than_the_alignment_of_the_type_points_at_an_object() {
+        assert_eq!(object_at(0x2000_0004, Some(4), Some(32)), Some(0x2000_0004));
+        // An object can be at a low address, for example in the flash of a target that maps the
+        // flash to address zero.
+        assert_eq!(object_at(0x40, Some(4), Some(64)), Some(0x40));
+    }
+
+    #[test]
+    fn without_the_alignment_a_pointer_that_holds_no_more_than_the_size_of_the_type_points_at_no_object()
+     {
+        assert_eq!(object_at(1, None, Some(1)), None);
+        assert_eq!(object_at(16, None, Some(32)), None);
+    }
+
+    #[test]
+    fn without_the_alignment_an_address_that_no_alignment_can_be_points_at_an_object() {
+        // Greater than the type.
+        assert_eq!(object_at(8, None, Some(4)), Some(8));
+        // Not a power of two.
+        assert_eq!(object_at(12, None, Some(32)), Some(12));
+        // Greater than the largest alignment of a target type.
+        assert_eq!(object_at(32, None, Some(1024)), Some(32));
+        // Without the size of the type.
+        assert_eq!(object_at(4, None, None), Some(4));
     }
 }

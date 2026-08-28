@@ -218,6 +218,21 @@ fn extract_file(
     }
 }
 
+/// If a DW_AT_alignment attribute exists, return the u64 value, otherwise (including errors) return None
+fn extract_alignment(node_die: &DebuggingInformationEntry<GimliReader>) -> Option<u64> {
+    match node_die.attr(gimli::DW_AT_alignment)?.value() {
+        AttributeValue::Udata(alignment) => Some(alignment),
+        AttributeValue::Data1(alignment) => Some(alignment as u64),
+        AttributeValue::Data2(alignment) => Some(alignment as u64),
+        AttributeValue::Data4(alignment) => Some(alignment as u64),
+        AttributeValue::Data8(alignment) => Some(alignment),
+        other => {
+            tracing::warn!("Unimplemented: DW_AT_alignment value: {other:?}");
+            None
+        }
+    }
+}
+
 /// If a DW_AT_byte_size attribute exists, return the u64 value, otherwise (including errors) return None
 fn extract_byte_size(node_die: &DebuggingInformationEntry<GimliReader>) -> Option<u64> {
     match node_die.attr(gimli::DW_AT_byte_size) {
