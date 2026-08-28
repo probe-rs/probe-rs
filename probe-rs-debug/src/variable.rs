@@ -226,7 +226,10 @@ impl Bitfield {
     }
 
     pub(crate) fn mask(&self) -> u128 {
-        (1 << self.length) - 1
+        match 1u128.checked_shl(self.length as u32) {
+            Some(bit_above) => bit_above - 1,
+            None => u128::MAX,
+        }
     }
 
     pub(crate) fn extract(&self, value: u128) -> u128 {
@@ -485,8 +488,8 @@ pub struct Variable {
     /// The value will be zero until it is stored in VariableCache, at which time its value will be
     /// set to the same as the VariableCache::variable_cache_key
     pub(super) variable_key: ObjectRef,
-    /// The offset to the variable's type information.
-    pub(crate) type_node_offset: Option<UnitOffset>,
+    /// The offset to the variable's type information, relative to the debug info section.
+    pub(crate) type_node_offset: Option<DebugInfoOffset>,
     /// Every variable must have a unique parent assigned to it when stored in the VariableCache.
     pub parent_key: ObjectRef,
     /// The variable name refers to the name of any of the types of values described in the [VariableCache]

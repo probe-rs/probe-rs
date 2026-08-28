@@ -94,8 +94,15 @@ impl XtensaExceptionHandler {
 
         let [a0, caller_sp, a2, a3] = stack_frame;
 
+        if caller_sp as u64 <= sp {
+            // The stack grows down, so the stack pointer of the caller must be above.
+            return Err(DebugError::Other(
+                "Stack pointer of the caller is not above the current stack pointer".to_string(),
+            ));
+        }
+
         // TODO: use an architecture-appropriate value?
-        if (caller_sp as u64).saturating_sub(sp) > 0x1000_0000 {
+        if caller_sp as u64 - sp > 0x1000_0000 {
             // Stack pointer is too far away from the current stack pointer.
             return Err(DebugError::Other(
                 "Stack pointer is too far away to unwind".to_string(),

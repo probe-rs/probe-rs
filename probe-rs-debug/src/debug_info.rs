@@ -1006,20 +1006,6 @@ impl DebugInfo {
         )))
     }
 
-    /// Look up the DIE reference for the given attribute, if it exists.
-    pub(crate) fn resolve_die_reference<'debug_info, 'unit_info>(
-        &'debug_info self,
-        attribute: gimli::DwAt,
-        die: &Die,
-        unit_info: &'unit_info UnitInfo,
-    ) -> Option<Die>
-    where
-        'unit_info: 'debug_info,
-    {
-        self.resolve_die_reference_with_unit_info(attribute, die, unit_info)
-            .map(|(_, die)| die)
-    }
-
     /// Look up the DIE reference for the given attribute, returning both the resolved DIE
     /// and the compilation unit it belongs to.
     ///
@@ -1059,30 +1045,36 @@ impl DebugInfo {
             gimli::AttributeValue::UnitRef(unit_ref) => {
                 Ok((unit_info, unit_info.unit.entry(unit_ref)?))
             }
-            gimli::AttributeValue::DebugInfoRef(offset) => {
-                for unit_info in &self.unit_infos {
-                    let Some(unit_offset) = offset.to_unit_offset(&unit_info.unit.header) else {
-                        continue;
-                    };
-
-                    let entry = unit_info.unit.entry(unit_offset).map_err(|error| {
-                        DebugError::Other(format!(
-                            "Error reading DIE at debug info offset {:#x} : {}",
-                            offset.0, error
-                        ))
-                    })?;
-                    return Ok((unit_info, entry));
-                }
-
-                Err(DebugError::Other(format!(
-                    "Unable to find unit info for debug info offset {:#x}",
-                    offset.0
-                )))
-            }
+            gimli::AttributeValue::DebugInfoRef(offset) => self.entry_at_debug_info_offset(offset),
             other_attribute_value => Err(DebugError::Other(format!(
                 "Unimplemented attribute value {other_attribute_value:?}"
             ))),
         }
+    }
+
+    /// Returns the UnitInfo and DIE at the given offset into the debug info.
+    pub(crate) fn entry_at_debug_info_offset(
+        &self,
+        offset: gimli::DebugInfoOffset,
+    ) -> Result<(&UnitInfo, Die), DebugError> {
+        for unit_info in &self.unit_infos {
+            let Some(unit_offset) = offset.to_unit_offset(&unit_info.unit.header) else {
+                continue;
+            };
+
+            let entry = unit_info.unit.entry(unit_offset).map_err(|error| {
+                DebugError::Other(format!(
+                    "Error reading DIE at debug info offset {:#x} : {}",
+                    offset.0, error
+                ))
+            })?;
+            return Ok((unit_info, entry));
+        }
+
+        Err(DebugError::Other(format!(
+            "Unable to find unit info for debug info offset {:#x}",
+            offset.0
+        )))
     }
 }
 
@@ -1238,7 +1230,7 @@ pub fn unwind_pc_without_debuginfo(
     ControlFlow::Continue(())
 }
 
-/// A per_register unwind, applying register rules and updating the [`registers::DebugRegister`] value as appropriate, before returning control to the calling function.
+/// A per_register unwind, applying register rules and updating the [`crate::DebugRegister`] value as appropriate, before returning control to the calling function.
 pub fn unwind_register(
     debug_register: &super::DebugRegister,
     // The callee_frame_registers are used to lookup values and never updated.

@@ -44,15 +44,72 @@ impl Rust {
         })
     }
 
+    /// Reads a `usize`, whose width is the pointer width of the target.
+    fn read_usize(
+        variable: &Variable,
+        memory: &mut dyn MemoryInterface,
+        cache: &VariableCache,
+    ) -> VariableValue {
+        match variable.byte_size {
+            Some(1) => u8::get_value(variable, memory, cache).into(),
+            Some(2) => u16::get_value(variable, memory, cache).into(),
+            Some(8) => u64::get_value(variable, memory, cache).into(),
+            Some(16) => u128::get_value(variable, memory, cache).into(),
+            _ => u32::get_value(variable, memory, cache).into(),
+        }
+    }
+
+    /// Reads an `isize`, whose width is the pointer width of the target.
+    fn read_isize(
+        variable: &Variable,
+        memory: &mut dyn MemoryInterface,
+        cache: &VariableCache,
+    ) -> VariableValue {
+        match variable.byte_size {
+            Some(1) => i8::get_value(variable, memory, cache).into(),
+            Some(2) => i16::get_value(variable, memory, cache).into(),
+            Some(8) => i64::get_value(variable, memory, cache).into(),
+            Some(16) => i128::get_value(variable, memory, cache).into(),
+            _ => i32::get_value(variable, memory, cache).into(),
+        }
+    }
+
+    /// Writes a `usize`, whose width is the pointer width of the target.
+    fn update_usize(
+        variable: &Variable,
+        memory: &mut dyn MemoryInterface,
+        new_value: &str,
+    ) -> Result<(), DebugError> {
+        match variable.byte_size {
+            Some(1) => u8::update_value(variable, memory, new_value),
+            Some(2) => u16::update_value(variable, memory, new_value),
+            Some(8) => u64::update_value(variable, memory, new_value),
+            Some(16) => u128::update_value(variable, memory, new_value),
+            _ => u32::update_value(variable, memory, new_value),
+        }
+    }
+
+    /// Writes an `isize`, whose width is the pointer width of the target.
+    fn update_isize(
+        variable: &Variable,
+        memory: &mut dyn MemoryInterface,
+        new_value: &str,
+    ) -> Result<(), DebugError> {
+        match variable.byte_size {
+            Some(1) => i8::update_value(variable, memory, new_value),
+            Some(2) => i16::update_value(variable, memory, new_value),
+            Some(8) => i64::update_value(variable, memory, new_value),
+            Some(16) => i128::update_value(variable, memory, new_value),
+            _ => i32::update_value(variable, memory, new_value),
+        }
+    }
+
     /// Replaces *const data pointer with *const [data; len] in slices.
     ///
     /// This function may return `Ok(())` even if it does not modify the variable.
-    #[expect(clippy::too_many_arguments)]
     fn expand_slice(
         &self,
-        unit_info: &UnitInfo,
         debug_info: &DebugInfo,
-        _node: &DebuggingInformationEntry<GimliReader>,
         variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
@@ -92,13 +149,11 @@ impl Rust {
 
         cache.add_variable(variable.variable_key, &mut pointee)?;
 
-        let array_member_type_node = unit_info
-            .unit
-            .entry(type_node_offset)
-            .expect("Failed to get array member type node. This is a bug, please report it!");
+        let (member_unit, array_member_type_node) =
+            debug_info.entry_at_debug_info_offset(type_node_offset)?;
 
         let member_range = 0..length;
-        unit_info.expand_array_members(
+        member_unit.expand_array_members(
             debug_info,
             &array_member_type_node,
             cache,
@@ -137,15 +192,13 @@ impl ProgrammingLanguage for Rust {
                 "i32" => i32::get_value(variable, memory, variable_cache).into(),
                 "i64" => i64::get_value(variable, memory, variable_cache).into(),
                 "i128" => i128::get_value(variable, memory, variable_cache).into(),
-                // TODO: We can get the actual WORD length from DWARF instead of assuming `i32`
-                "isize" => i32::get_value(variable, memory, variable_cache).into(),
+                "isize" => Self::read_isize(variable, memory, variable_cache),
                 "u8" => u8::get_value(variable, memory, variable_cache).into(),
                 "u16" => u16::get_value(variable, memory, variable_cache).into(),
                 "u32" => u32::get_value(variable, memory, variable_cache).into(),
                 "u64" => u64::get_value(variable, memory, variable_cache).into(),
                 "u128" => u128::get_value(variable, memory, variable_cache).into(),
-                // TODO: We can get the actual WORD length from DWARF instead of assuming `u32`
-                "usize" => u32::get_value(variable, memory, variable_cache).into(),
+                "usize" => Self::read_usize(variable, memory, variable_cache),
                 "f32" => f32::get_value(variable, memory, variable_cache)
                     .map(|f| format_float(f as f64))
                     .into(),
@@ -178,15 +231,13 @@ impl ProgrammingLanguage for Rust {
                 "i32" => i32::update_value(variable, memory, new_value),
                 "i64" => i64::update_value(variable, memory, new_value),
                 "i128" => i128::update_value(variable, memory, new_value),
-                // TODO: We can get the actual WORD length from DWARF instead of assuming `i32`
-                "isize" => i32::update_value(variable, memory, new_value),
+                "isize" => Self::update_isize(variable, memory, new_value),
                 "u8" => u8::update_value(variable, memory, new_value),
                 "u16" => u16::update_value(variable, memory, new_value),
                 "u32" => u32::update_value(variable, memory, new_value),
                 "u64" => u64::update_value(variable, memory, new_value),
                 "u128" => u128::update_value(variable, memory, new_value),
-                // TODO: We can get the actual WORD length from DWARF instead of assuming `u32`
-                "usize" => u32::update_value(variable, memory, new_value),
+                "usize" => Self::update_usize(variable, memory, new_value),
                 "f32" => f32::update_value(variable, memory, new_value),
                 "f64" => f64::update_value(variable, memory, new_value),
                 other => Err(DebugError::WarnAndContinue {
@@ -257,18 +308,16 @@ impl ProgrammingLanguage for Rust {
 
     fn process_struct(
         &self,
-        unit_info: &UnitInfo,
+        _unit_info: &UnitInfo,
         debug_info: &DebugInfo,
-        node: &DebuggingInformationEntry<GimliReader>,
+        _node: &DebuggingInformationEntry<GimliReader>,
         variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
         frame_info: StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         if variable.type_name().starts_with("&[") {
-            self.expand_slice(
-                unit_info, debug_info, node, variable, memory, cache, frame_info,
-            )?;
+            self.expand_slice(debug_info, variable, memory, cache, frame_info)?;
         }
 
         Ok(())

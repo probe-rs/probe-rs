@@ -6,7 +6,7 @@ use probe_rs::{
 };
 use serde::Serialize;
 
-/// Stores the relevant information from [`crate::core::CoreRegister`] for use in debug operations,
+/// Stores the relevant information from [`probe_rs::CoreRegister`] for use in debug operations,
 /// as well as additional information required during debug.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct DebugRegister {
@@ -82,7 +82,7 @@ impl DebugRegister {
 pub struct DebugRegisters(pub Vec<DebugRegister>);
 
 impl DebugRegisters {
-    /// Read all registers defined in [`probe_rs::core::CoreRegisters`] from the given core.
+    /// Read all registers defined in [`probe_rs::CoreRegisters`] from the given core.
     pub fn from_core(core: &mut impl CoreInterface) -> Self {
         if let Err(error) = core.spill_registers() {
             tracing::warn!("Failed to spill registers: {error}");

@@ -23,7 +23,13 @@ pub fn from_dwarf(language: DwLang) -> Box<dyn ProgrammingLanguage + Send + Sync
         | gimli::DW_LANG_C89
         | gimli::DW_LANG_C99
         | gimli::DW_LANG_C11
-        | gimli::DW_LANG_C17 => Box::new(c::C),
+        | gimli::DW_LANG_C17
+        | gimli::DW_LANG_C_plus_plus
+        | gimli::DW_LANG_C_plus_plus_03
+        | gimli::DW_LANG_C_plus_plus_11
+        | gimli::DW_LANG_C_plus_plus_14
+        | gimli::DW_LANG_C_plus_plus_17
+        | gimli::DW_LANG_C_plus_plus_20 => Box::new(c::C),
         gimli::DW_LANG_Rust => Box::new(rust::Rust),
         other => Box::new(UnknownLanguage(other)),
     }

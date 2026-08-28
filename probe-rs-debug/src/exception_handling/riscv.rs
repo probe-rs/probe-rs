@@ -30,23 +30,38 @@ impl RiscvExceptionHandler {
             ));
         }
 
-        let mut stack_frame = [0; 2];
-        memory.read_32(sp - 8, &mut stack_frame)?;
+        // The callee saved the frame pointer of the current frame at the bottom of its own frame.
+        // The frame pointer is the address above the current frame, which is the stack pointer of
+        // the caller.
+        let caller_sp = memory.read_word_32(sp - 8)? as u64;
 
-        let [caller_sp, return_addr] = stack_frame;
+        if caller_sp <= sp {
+            // The stack grows down, so the stack pointer of the caller must be above.
+            return Err(DebugError::Other(
+                "Stack pointer of the caller is not above the current stack pointer".to_string(),
+            ));
+        }
 
         // TODO: use an architecture-appropriate value?
-        if (caller_sp as u64).saturating_sub(sp) > 0x1000_0000 {
+        if caller_sp - sp > 0x1000_0000 {
             // Stack pointer is too far away from the current stack pointer.
             return Err(DebugError::Other(
                 "Stack pointer is too far away to unwind".to_string(),
             ));
         }
 
+        // The current frame stored the return address and the frame pointer of the caller at the
+        // top of its own frame.
+        let mut stack_frame = [0; 2];
+        memory.read_32(caller_sp - 8, &mut stack_frame)?;
+
+        let [caller_fp, return_addr] = stack_frame;
+
         // TODO: unwind other registers as well.
         let regs_from_current_frame = [
             (RegisterRole::ReturnAddress, return_addr),
-            (RegisterRole::StackPointer, caller_sp),
+            (RegisterRole::StackPointer, caller_sp as u32),
+            (RegisterRole::FramePointer, caller_fp),
         ];
 
         for (role, value) in regs_from_current_frame {
@@ -67,13 +82,14 @@ impl ExceptionInterface for RiscvExceptionHandler {
         instruction_set: Option<InstructionSet>,
         memory: &mut dyn MemoryInterface,
     ) -> ControlFlow<Option<DebugError>> {
-        // Use the default method to unwind PC.
-        unwind_pc_without_debuginfo(unwind_registers, frame_pc, instruction_set)?;
-
+        // The return address must be unwound first, because the program counter of the calling
+        // frame comes from it.
         // TODO: this should be automatically handled by the caller.
-        match self.unwind_registers(memory, unwind_registers) {
-            Ok(_) => ControlFlow::Continue(()),
-            Err(error) => ControlFlow::Break(Some(error)),
+        if let Err(error) = self.unwind_registers(memory, unwind_registers) {
+            return ControlFlow::Break(Some(error));
         }
+
+        // Use the default method to unwind PC.
+        unwind_pc_without_debuginfo(unwind_registers, frame_pc, instruction_set)
     }
 }
