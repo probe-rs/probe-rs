@@ -2999,12 +2999,7 @@ expression: stack_frames
                         Named: "*waker"
                       type_name:
                         Struct: Waker
-                      value: "Waker {\n\twaker: <unknown> = < Location Value not supported for referenced variables. >}"
-                      children:
-                        - name:
-                            Named: waker
-                          type_name: Unknown
-                          value: "< Location Value not supported for referenced variables. >"
+                      value: Location Value not supported for referenced variables.
                 - name:
                     Named: local_waker
                   type_name:
@@ -3015,12 +3010,7 @@ expression: stack_frames
                         Named: "*local_waker"
                       type_name:
                         Struct: LocalWaker
-                      value: "LocalWaker {\n\twaker: <unknown> = < Location Value not supported for referenced variables. >}"
-                      children:
-                        - name:
-                            Named: waker
-                          type_name: Unknown
-                          value: "< Location Value not supported for referenced variables. >"
+                      value: Location Value not supported for referenced variables.
                 - name:
                     Named: ext
                   type_name:
@@ -3055,7 +3045,7 @@ expression: stack_frames
                                         Named: "*pointer"
                                       type_name:
                                         Struct: "dyn core::any::Any"
-                                      value: "dyn core::any::Any"
+                                      value: Location Value not supported for referenced variables.
                                 - name:
                                     Named: vtable
                                   type_name:
@@ -3075,22 +3065,22 @@ expression: stack_frames
                                             Indexed: 0
                                           type_name:
                                             Base: usize
-                                          value: "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location"
+                                          value: "<value not available>"
                                         - name:
                                             Indexed: 1
                                           type_name:
                                             Base: usize
-                                          value: "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location"
+                                          value: "<value not available>"
                                         - name:
                                             Indexed: 2
                                           type_name:
                                             Base: usize
-                                          value: "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location"
+                                          value: "<value not available>"
                                         - name:
                                             Indexed: 3
                                           type_name:
                                             Base: usize
-                                          value: "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location"
+                                          value: "<value not available>"
         - name:
             Named: _task_context
           type_name:
@@ -3106,28 +3096,7 @@ expression: stack_frames
                 Named: "*_task_context"
               type_name:
                 Struct: Context
-              value: "Context {\n\twaker: <unknown> = < Location Value not supported for referenced variables. >,\n\tlocal_waker: <unknown> = < Location Value not supported for referenced variables. >,\n\text: <unknown> = < Location Value not supported for referenced variables. >,\n\t_marker: <unknown> = < Location Value not supported for referenced variables. >,\n\t_marker2: <unknown> = < Location Value not supported for referenced variables. >}"
-              children:
-                - name:
-                    Named: waker
-                  type_name: Unknown
-                  value: "< Location Value not supported for referenced variables. >"
-                - name:
-                    Named: local_waker
-                  type_name: Unknown
-                  value: "< Location Value not supported for referenced variables. >"
-                - name:
-                    Named: ext
-                  type_name: Unknown
-                  value: "< Location Value not supported for referenced variables. >"
-                - name:
-                    Named: _marker
-                  type_name: Unknown
-                  value: "< Location Value not supported for referenced variables. >"
-                - name:
-                    Named: _marker2
-                  type_name: Unknown
-                  value: "< Location Value not supported for referenced variables. >"
+              value: Location Value not supported for referenced variables.
         - name:
             Named: config
           type_name:
@@ -4118,7 +4087,7 @@ expression: stack_frames
                                     Named: "*pointer"
                                   type_name:
                                     Struct: "dyn core::any::Any"
-                                  value: "dyn core::any::Any"
+                                  value: "<null pointer>"
                             - name:
                                 Named: vtable
                               type_name:
@@ -5135,28 +5104,7 @@ expression: stack_frames
                                 Named: "*value"
                               type_name:
                                 Struct: TaskHeader
-                              value: "TaskHeader {\n\tstate: <unknown> = < <null pointer> >,\n\trun_queue_item: <unknown> = < <null pointer> >,\n\texecutor: <unknown> = < <null pointer> >,\n\tpoll_fn: <unknown> = < <null pointer> >,\n\ttimer_queue_item: <unknown> = < <null pointer> >}"
-                              children:
-                                - name:
-                                    Named: state
-                                  type_name: Unknown
-                                  value: "< <null pointer> >"
-                                - name:
-                                    Named: run_queue_item
-                                  type_name: Unknown
-                                  value: "< <null pointer> >"
-                                - name:
-                                    Named: executor
-                                  type_name: Unknown
-                                  value: "< <null pointer> >"
-                                - name:
-                                    Named: poll_fn
-                                  type_name: Unknown
-                                  value: "< <null pointer> >"
-                                - name:
-                                    Named: timer_queue_item
-                                  type_name: Unknown
-                                  value: "< <null pointer> >"
+                              value: "<null pointer>"
         - name:
             Named: ptr
           type_name: Unknown
@@ -5677,28 +5625,7 @@ expression: stack_frames
                                     Named: "*value"
                                   type_name:
                                     Struct: TaskHeader
-                                  value: "TaskHeader {\n\tstate: <unknown> = < <null pointer> >,\n\trun_queue_item: <unknown> = < <null pointer> >,\n\texecutor: <unknown> = < <null pointer> >,\n\tpoll_fn: <unknown> = < <null pointer> >,\n\ttimer_queue_item: <unknown> = < <null pointer> >}"
-                                  children:
-                                    - name:
-                                        Named: state
-                                      type_name: Unknown
-                                      value: "< <null pointer> >"
-                                    - name:
-                                        Named: run_queue_item
-                                      type_name: Unknown
-                                      value: "< <null pointer> >"
-                                    - name:
-                                        Named: executor
-                                      type_name: Unknown
-                                      value: "< <null pointer> >"
-                                    - name:
-                                        Named: poll_fn
-                                      type_name: Unknown
-                                      value: "< <null pointer> >"
-                                    - name:
-                                        Named: timer_queue_item
-                                      type_name: Unknown
-                                      value: "< <null pointer> >"
+                                  value: "<null pointer>"
                 - name:
                     Named: pender
                   type_name:
@@ -5957,28 +5884,7 @@ expression: stack_frames
                                         Named: "*value"
                                       type_name:
                                         Struct: TaskHeader
-                                      value: "TaskHeader {\n\tstate: <unknown> = < <null pointer> >,\n\trun_queue_item: <unknown> = < <null pointer> >,\n\texecutor: <unknown> = < <null pointer> >,\n\tpoll_fn: <unknown> = < <null pointer> >,\n\ttimer_queue_item: <unknown> = < <null pointer> >}"
-                                      children:
-                                        - name:
-                                            Named: state
-                                          type_name: Unknown
-                                          value: "< <null pointer> >"
-                                        - name:
-                                            Named: run_queue_item
-                                          type_name: Unknown
-                                          value: "< <null pointer> >"
-                                        - name:
-                                            Named: executor
-                                          type_name: Unknown
-                                          value: "< <null pointer> >"
-                                        - name:
-                                            Named: poll_fn
-                                          type_name: Unknown
-                                          value: "< <null pointer> >"
-                                        - name:
-                                            Named: timer_queue_item
-                                          type_name: Unknown
-                                          value: "< <null pointer> >"
+                                      value: "<null pointer>"
                     - name:
                         Named: pender
                       type_name:
@@ -6249,7 +6155,7 @@ expression: stack_frames
                                                 Named: "*value"
                                               type_name:
                                                 Struct: TaskHeader
-                                              value: TaskHeader
+                                              value: "<null pointer>"
                             - name:
                                 Named: pender
                               type_name:
@@ -6534,28 +6440,7 @@ expression: stack_frames
                                             Named: "*value"
                                           type_name:
                                             Struct: TaskHeader
-                                          value: "TaskHeader {\n\tstate: <unknown> = < <null pointer> >,\n\trun_queue_item: <unknown> = < <null pointer> >,\n\texecutor: <unknown> = < <null pointer> >,\n\tpoll_fn: <unknown> = < <null pointer> >,\n\ttimer_queue_item: <unknown> = < <null pointer> >}"
-                                          children:
-                                            - name:
-                                                Named: state
-                                              type_name: Unknown
-                                              value: "< <null pointer> >"
-                                            - name:
-                                                Named: run_queue_item
-                                              type_name: Unknown
-                                              value: "< <null pointer> >"
-                                            - name:
-                                                Named: executor
-                                              type_name: Unknown
-                                              value: "< <null pointer> >"
-                                            - name:
-                                                Named: poll_fn
-                                              type_name: Unknown
-                                              value: "< <null pointer> >"
-                                            - name:
-                                                Named: timer_queue_item
-                                              type_name: Unknown
-                                              value: "< <null pointer> >"
+                                          value: "<null pointer>"
                         - name:
                             Named: pender
                           type_name:
@@ -6630,7 +6515,7 @@ expression: stack_frames
                                                 Named: "*value"
                                               type_name:
                                                 Struct: TaskHeader
-                                              value: TaskHeader
+                                              value: "<null pointer>"
                             - name:
                                 Named: pender
                               type_name:

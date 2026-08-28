@@ -1,6 +1,5 @@
 ---
 source: probe-rs-debug/src/debug_info.rs
-assertion_line: 2035
 expression: static_variables
 ---
 Child Variables:
@@ -290,7 +289,7 @@ Child Variables:
                     Named: sName
                   type_name:
                     Pointer: char
-                  value: char* @ 0x20002018
+                  value: char* @ 0x00001654
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                     line: 305
@@ -309,7 +308,7 @@ Child Variables:
                     Named: pBuffer
                   type_name:
                     Pointer: char
-                  value: char* @ 0x2000201C
+                  value: char* @ 0x20002048
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                     line: 306
@@ -403,7 +402,7 @@ Child Variables:
                     Named: sName
                   type_name:
                     Pointer: char
-                  value: char* @ 0x20002030
+                  value: char* @ 0x00001654
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                     line: 318
@@ -422,7 +421,7 @@ Child Variables:
                     Named: pBuffer
                   type_name:
                     Pointer: char
-                  value: char* @ 0x20002034
+                  value: char* @ 0x20002448
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                     line: 319

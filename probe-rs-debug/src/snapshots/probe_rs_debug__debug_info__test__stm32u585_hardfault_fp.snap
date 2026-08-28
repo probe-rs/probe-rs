@@ -1074,7 +1074,7 @@ expression: stack_frames
                 Named: "*dst"
               type_name:
                 Base: u32
-              value: "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location"
+              value: Location Unknown not supported for referenced variables.
         - name:
             Named: src
           type_name:

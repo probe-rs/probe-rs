@@ -911,13 +911,18 @@ impl Variable {
         if variable_cache.has_children(self) {
             self.formatted_variable_value(variable_cache, 0, false)
                 .unwrap_or_default()
+        } else if matches!(self.type_name, VariableType::Array { count: 0, .. }) {
+            // An empty array has no bytes, so it needs no location.
+            self.formatted_variable_value(variable_cache, 0, false)
+                .unwrap_or_default()
         } else if self.type_name == VariableType::Unknown || !self.memory_location.valid() {
             if self.variable_node_type.is_deferred() {
                 // When we will do a lazy-load of variable children, and they have not yet been
                 // requested by the user, just display the type_name as the value
                 self.type_name()
-            } else if let VariableLocation::Error(ref error) = self.memory_location {
-                error.clone()
+            } else if !self.memory_location.valid() {
+                // The location explains why the variable has no value.
+                self.memory_location.to_string()
             } else {
                 // This condition should only be true for intermediate nodes
                 // from DWARF. These should not show up in the final
@@ -927,9 +932,6 @@ impl Variable {
             }
         } else if matches!(self.type_name, VariableType::Struct(ref name) if name == "None") {
             "None".to_string()
-        } else if matches!(self.type_name, VariableType::Array { count: 0, .. }) {
-            self.formatted_variable_value(variable_cache, 0, false)
-                .unwrap_or_default()
         } else {
             format!(
                 "Unimplemented: Get value of type {:?} of ({:?} bytes) at location {}",
@@ -960,9 +962,17 @@ impl Variable {
             return;
         }
 
-        if self.variable_node_type.is_deferred()
-            || matches!(self.type_name, VariableType::Pointer(_))
-        {
+        if matches!(self.type_name, VariableType::Pointer(_)) {
+            // The value of a pointer is the address that it holds, not the place that holds the
+            // pointer.
+            let location = self
+                .pointer_target(memory)
+                .map_or_else(|| self.memory_location.clone(), VariableLocation::Address);
+            self.value = VariableValue::Valid(format!("{} @ {location}", self.type_name()));
+            return;
+        }
+
+        if self.variable_node_type.is_deferred() {
             // And we have not previously assigned the value, then assign the type and address as
             // the value.
             self.value =
@@ -978,6 +988,19 @@ impl Variable {
 
         self.value =
             language::from_dwarf(self.language).read_variable_value(self, memory, variable_cache);
+    }
+
+    /// The address that a pointer holds, if the debug info gives the size of the pointer and the
+    /// target holds the bytes of the pointer.
+    fn pointer_target(&self, memory: &mut dyn MemoryInterface) -> Option<u64> {
+        let byte_size = self.byte_size.filter(|byte_size| *byte_size <= 8)? as usize;
+        let mut buffer = [0u8; 8];
+
+        self.memory_location
+            .read(&mut buffer[..byte_size], memory)
+            .ok()?;
+
+        Some(u64::from_le_bytes(buffer))
     }
 
     /// The variable is considered to be an 'indexed' variable if the name starts with two
