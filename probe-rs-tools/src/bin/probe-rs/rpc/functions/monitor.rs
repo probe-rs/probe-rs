@@ -2,7 +2,9 @@ use std::time::Duration;
 
 use crate::rpc::{
     ObjectStorageSlot,
-    functions::{MultiTopicPublisher, MultiTopicWriter, RpcSpawnContext, WireTxImpl},
+    functions::{
+        MultiTopicPublisher, MultiTopicWriter, RpcSpawnContext, WireTxImpl, core_ops::convert,
+    },
     utils::{
         run_loop::{ReturnReason, RunLoop, RunLoopPoller, VectorCatchConfig},
         semihosting::SemihostingFileManager,
@@ -251,9 +253,9 @@ impl<F: FnMut(SemihostingEvent)> MonitorEventHandler<F> {
         core: &mut Core<'_>,
     ) -> anyhow::Result<Option<MonitorExitReason>> {
         let HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) = halt_reason else {
-            return Ok(Some(MonitorExitReason::UnexpectedExit(format!(
-                "{halt_reason:?}"
-            ))));
+            return Ok(Some(MonitorExitReason::Halted(
+                convert::to_wire_halt_reason(halt_reason),
+            )));
         };
 
         match cmd {
@@ -289,9 +291,11 @@ impl<F: FnMut(SemihostingEvent)> MonitorEventHandler<F> {
                     .handle(other, core, &mut self.sender)?;
                 Ok(None)
             }
-            other => Ok(Some(MonitorExitReason::UnexpectedExit(format!(
-                "Unexpected semihosting command {other:?}",
-            )))),
+            other => Ok(Some(MonitorExitReason::Halted(
+                convert::to_wire_halt_reason(HaltReason::Breakpoint(BreakpointCause::Semihosting(
+                    other,
+                ))),
+            ))),
         }
     }
 }

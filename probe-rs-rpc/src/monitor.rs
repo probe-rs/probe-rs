@@ -1,6 +1,7 @@
 use postcard_schema::Schema;
 use serde::{Deserialize, Serialize};
 
+use crate::core_ops::WireHaltReason;
 use crate::flash::BootInfo;
 use crate::semihosting_options::SemihostingOptions;
 use crate::{Key, RpcResult, RttClient, Session};
@@ -40,10 +41,11 @@ pub struct MonitorRequest {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub enum MonitorExitReason {
-    Success,
     UserExit,
     SemihostingExit(Result<(), SemihostingExitError>),
-    UnexpectedExit(String),
+    /// The core halted, and the run loop did not handle the halt. The client
+    /// decides what the halt means for the user.
+    Halted(WireHaltReason),
 }
 
 #[derive(Serialize, Deserialize, Schema)]
