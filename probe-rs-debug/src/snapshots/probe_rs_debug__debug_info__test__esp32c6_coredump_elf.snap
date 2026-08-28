@@ -1598,7 +1598,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tp: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >,\n\tthis: *const embassy_executor::raw::TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}> = *const embassy_executor::raw::TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}> @ <unknown value>,\n\tfuture: Pin<&mut coredump_c6::____embassy_main_task::{async_fn_env#0}> = Pin<&mut coredump_c6::____embassy_main_task::{async_fn_env#0}> @ <unknown value>,\n\twaker: Waker = Waker @ <unknown value>,\n\tcx: <unknown> = < <unsupported memory implementation> >}"
+      value: "<unknown> {\n\tp: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >,\n\tthis: *const embassy_executor::raw::TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}> = *const embassy_executor::raw::TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}> @ <unknown value>,\n\tfuture: Pin<&mut coredump_c6::____embassy_main_task::{async_fn_env#0}> = Pin<&mut coredump_c6::____embassy_main_task::{async_fn_env#0}> @ <unknown value>,\n\twaker: Waker = Waker @ <unknown value>,\n\tcx: Context = Context @ <composite value>}"
       children:
         - name:
             Named: p
@@ -1708,13 +1708,94 @@ expression: stack_frames
                           value: "< Location Unknown not supported for referenced variables. >"
         - name:
             Named: cx
-          type_name: Unknown
-          value: "< <unsupported memory implementation> >"
+          type_name:
+            Struct: Context
+          value: Context @ <composite value>
           source_location:
             path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
             line: 213
             column: ~
             address: ~
+          children:
+            - name:
+                Named: waker
+              type_name:
+                Pointer: "&core::task::wake::Waker"
+              value: "&core::task::wake::Waker @ <composite value>"
+              children:
+                - name:
+                    Named: "*waker"
+                  type_name:
+                    Struct: Waker
+                  value: "Waker {\n\twaker: <unknown> = < Failed to read referenced variable address from memory location <composite value> : The compiler optimized a part of this value away. >}"
+                  children:
+                    - name:
+                        Named: waker
+                      type_name: Unknown
+                      value: "< Failed to read referenced variable address from memory location <composite value> : The compiler optimized a part of this value away. >"
+            - name:
+                Named: local_waker
+              type_name:
+                Pointer: "&core::task::wake::LocalWaker"
+              value: "&core::task::wake::LocalWaker @ <composite value>"
+              children:
+                - name:
+                    Named: "*local_waker"
+                  type_name:
+                    Struct: LocalWaker
+                  value: "LocalWaker {\n\twaker: <unknown> = < Failed to read referenced variable address from memory location <composite value> : The compiler optimized a part of this value away. >}"
+                  children:
+                    - name:
+                        Named: waker
+                      type_name: Unknown
+                      value: "< Failed to read referenced variable address from memory location <composite value> : The compiler optimized a part of this value away. >"
+            - name:
+                Named: ext
+              type_name:
+                Struct: "AssertUnwindSafe<core::task::wake::ExtData>"
+              value: "AssertUnwindSafe<core::task::wake::ExtData> @ <composite value>"
+              children:
+                - name:
+                    Named: __0
+                  type_name:
+                    Struct: ExtData
+                  value: ExtData @ <composite value>
+                  children:
+                    - name:
+                        Named: Some
+                      type_name:
+                        Struct: Some
+                      value: Some @ <composite value>
+                      children:
+                        - name:
+                            Named: __0
+                          type_name:
+                            Struct: "&mut dyn core::any::Any"
+                          value: "&mut dyn core::any::Any @ <composite value>"
+                          children:
+                            - name:
+                                Named: pointer
+                              type_name:
+                                Pointer: "dyn core::any::Any"
+                              value: "*raw dyn core::any::Any @ <composite value>"
+                              children:
+                                - name:
+                                    Named: "*pointer"
+                                  type_name:
+                                    Struct: "dyn core::any::Any"
+                                  value: "dyn core::any::Any @ 0x00000000"
+                            - name:
+                                Named: vtable
+                              type_name: Unknown
+                              value: "< <value optimized away by compiler, out of scope, or dropped> >"
+            - name:
+                Named: _marker
+              type_name: Unknown
+              value: "< <value optimized away by compiler, out of scope, or dropped> >"
+            - name:
+                Named: _marker2
+              type_name: Unknown
+              value: "< <value optimized away by compiler, out of scope, or dropped> >"
   canonical_frame_address: 1082582432
 - function_name: "Option<unsafe fn(embassy_executor::raw::TaskRef)>::unwrap_unchecked"
   source_location:
