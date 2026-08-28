@@ -1230,7 +1230,7 @@ pub fn unwind_pc_without_debuginfo(
     ControlFlow::Continue(())
 }
 
-/// A per_register unwind, applying register rules and updating the [`registers::DebugRegister`] value as appropriate, before returning control to the calling function.
+/// A per_register unwind, applying register rules and updating the [`crate::DebugRegister`] value as appropriate, before returning control to the calling function.
 pub fn unwind_register(
     debug_register: &super::DebugRegister,
     // The callee_frame_registers are used to lookup values and never updated.

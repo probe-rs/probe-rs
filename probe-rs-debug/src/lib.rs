@@ -11,7 +11,7 @@ pub mod debug_step;
 pub mod function_die;
 /// Programming languages
 pub(crate) mod language;
-/// Target Register definitions, expanded from [`crate::core::registers::CoreRegister`] to include unwind specific information.
+/// Target Register definitions, expanded from [`probe_rs::CoreRegister`] to include unwind specific information.
 pub mod registers;
 /// The source statement information used while identifying haltpoints for debug stepping and breakpoints.
 pub(crate) mod source_instructions;
