@@ -93,15 +93,26 @@ impl ProgrammingLanguage for C {
             VariableType::Base(name) => match name.as_str() {
                 "_Bool" => UnsignedInt::update_value(variable, None, memory, new_value),
                 "char" => CChar::update_value(variable, memory, new_value),
-                "unsigned char" | "unsigned int" | "short unsigned int" | "long unsigned int" => {
+                "unsigned char"
+                | "unsigned int"
+                | "short unsigned int"
+                | "long unsigned int"
+                | "long long unsigned int" => {
                     UnsignedInt::update_value(variable, None, memory, new_value)
                 }
-                "signed char" | "int" | "short int" | "long int" | "signed int"
-                | "short signed int" | "long signed int" => {
+                "signed char"
+                | "int"
+                | "short int"
+                | "long int"
+                | "long long int"
+                | "signed int"
+                | "short signed int"
+                | "long signed int"
+                | "long long signed int" => {
                     SignedInt::update_value(variable, None, memory, new_value)
                 }
                 "float" => f32::update_value(variable, memory, new_value),
-                // TODO: doubles
+                "double" => f64::update_value(variable, memory, new_value),
                 other => Err(DebugError::WarnAndContinue {
                     message: format!("Updating {other} variables is not yet supported."),
                 }),
