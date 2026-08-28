@@ -1039,7 +1039,7 @@ impl UnitInfo {
 
             return Ok(());
         }
-        child_variable.type_node_offset = Some(node.offset());
+        child_variable.type_node_offset = node.offset().to_debug_info_offset(&self.unit.header);
 
         match node.tag() {
             gimli::DW_TAG_base_type => {
@@ -1067,50 +1067,54 @@ impl UnitInfo {
                 )?;
 
                 // This needs to resolve the pointer before the regular recursion can continue.
-                match node.attr_value(gimli::DW_AT_type) {
-                    Some(gimli::AttributeValue::UnitRef(unit_ref)) => {
+                match node.attr(gimli::DW_AT_type) {
+                    Some(attr) => {
                         // NOTE: surprisingly, as opposed to `void*`, this can be a `const void*`.
                         if !cache.has_children(child_variable) {
-                            let mut referenced_variable =
-                                cache.create_variable(child_variable.variable_key, Some(self))?;
+                            match debug_info.resolve_die_reference_with_unit(attr, self) {
+                                Ok((referenced_unit, referenced_node)) => {
+                                    let mut referenced_variable = cache.create_variable(
+                                        child_variable.variable_key,
+                                        Some(referenced_unit),
+                                    )?;
 
-                            // TODO: This is language specific, and should be moved to the language implementations.
-                            referenced_variable.name = match &child_variable.name {
-                                VariableName::Named(name) if name.starts_with("Some ") => {
-                                    VariableName::Named(name.replacen('&', "*", 1))
+                                    // TODO: This is language specific, and should be moved to the language implementations.
+                                    referenced_variable.name = match &child_variable.name {
+                                        VariableName::Named(name) if name.starts_with("Some ") => {
+                                            VariableName::Named(name.replacen('&', "*", 1))
+                                        }
+                                        VariableName::Named(name) => {
+                                            VariableName::Named(format!("*{name}"))
+                                        }
+                                        other => VariableName::Named(format!(
+                                            "Error: Unable to generate name, parent variable does not have a name but is special variable {other:?}"
+                                        )),
+                                    };
+
+                                    referenced_unit.extract_type(
+                                        debug_info,
+                                        &referenced_node,
+                                        child_variable,
+                                        &mut referenced_variable,
+                                        memory,
+                                        cache,
+                                        frame_info,
+                                    )?;
+
+                                    if matches!(referenced_variable.type_name.inner(), VariableType::Base(name) if name == "()")
+                                    {
+                                        // Only use this, if it is NOT a unit datatype.
+                                        cache
+                                            .remove_cache_entry(referenced_variable.variable_key)?;
+                                    }
                                 }
-                                VariableName::Named(name) => {
-                                    VariableName::Named(format!("*{name}"))
+                                Err(error) => {
+                                    child_variable.set_value(VariableValue::Error(format!(
+                                        "Failed to process DW_AT_type: {error:?}"
+                                    )));
                                 }
-                                other => VariableName::Named(format!(
-                                    "Error: Unable to generate name, parent variable does not have a name but is special variable {other:?}"
-                                )),
-                            };
-
-                            let referenced_node = self.unit.entry(unit_ref)?;
-
-                            self.extract_type(
-                                debug_info,
-                                &referenced_node,
-                                child_variable,
-                                &mut referenced_variable,
-                                memory,
-                                cache,
-                                frame_info,
-                            )?;
-
-                            if matches!(referenced_variable.type_name.inner(), VariableType::Base(name) if name == "()")
-                            {
-                                // Only use this, if it is NOT a unit datatype.
-                                cache.remove_cache_entry(referenced_variable.variable_key)?;
                             }
                         }
-                    }
-                    Some(other_attribute_value) => {
-                        child_variable.set_value(VariableValue::Error(format!(
-                            "Unimplemented: Attribute Value for DW_AT_type {:.100}",
-                            format!("{other_attribute_value:?}")
-                        )));
                     }
                     None => {
                         // NOTE: this can be a `void*` pointer. Some C compilers model `void` as
@@ -1192,27 +1196,26 @@ impl UnitInfo {
                 // The type_name will be found in the DW_AT_TYPE child of this entry.
                 // NOTE: There might be value in going beyond just getting the name, but also the parameters (children) and return type (extract_type()).
                 match node.attr(gimli::DW_AT_type) {
-                    Some(data_type_attribute) => match data_type_attribute.value() {
-                        gimli::AttributeValue::UnitRef(unit_ref) => {
-                            let subroutine_type_node =
-                                self.unit.header.entry(&self.unit.abbreviations, unit_ref)?;
-
-                            child_variable.type_name =
-                                match extract_name(debug_info, &subroutine_type_node) {
-                                    Ok(Some(name_attr)) => VariableType::Other(name_attr),
-                                    Ok(None) => VariableType::Unknown,
-                                    Err(error) => VariableType::Other(format!(
-                                        "Error: evaluating subroutine type name: {error:?} "
-                                    )),
-                                };
+                    Some(data_type_attribute) => {
+                        match debug_info.resolve_die_reference_with_unit(data_type_attribute, self)
+                        {
+                            Ok((_, subroutine_type_node)) => {
+                                child_variable.type_name =
+                                    match extract_name(debug_info, &subroutine_type_node) {
+                                        Ok(Some(name_attr)) => VariableType::Other(name_attr),
+                                        Ok(None) => VariableType::Unknown,
+                                        Err(error) => VariableType::Other(format!(
+                                            "Error: evaluating subroutine type name: {error:?} "
+                                        )),
+                                    };
+                            }
+                            Err(error) => {
+                                child_variable.set_value(VariableValue::Error(format!(
+                                    "Failed to process DW_AT_type: {error:?}"
+                                )));
+                            }
                         }
-                        other_attribute_value => {
-                            child_variable.set_value(VariableValue::Error(format!(
-                                "Unimplemented: Attribute Value for DW_AT_type {:.100}",
-                                format!("{other_attribute_value:?}")
-                            )));
-                        }
-                    },
+                    }
 
                     None => {
                         // TODO: Better indication for no return value
@@ -1372,8 +1375,8 @@ impl UnitInfo {
             }
         };
 
-        match node.attr_value(gimli::DW_AT_type) {
-            Some(gimli::AttributeValue::UnitRef(unit_ref)) => {
+        match node.attr(gimli::DW_AT_type) {
+            Some(attr) => {
                 // The memory location of array members build on top of the memory location of the child_variable.
                 self.process_memory_location(
                     debug_info,
@@ -1385,25 +1388,27 @@ impl UnitInfo {
                 )?;
 
                 // Now we can explode the array members.
-                if let Ok(array_member_type_node) = self.unit.entry(unit_ref) {
-                    // - Next, process this DW_TAG_array_type's DW_AT_type full tree.
-                    // - We have to do this repeatedly, for every array member in the range.
-                    // - We have to do this recursively because some compilers encode nested arrays as multiple subranges on the same node.
-                    self.expand_array_members(
-                        debug_info,
-                        &array_member_type_node,
-                        cache,
-                        child_variable,
-                        memory,
-                        &subranges,
-                        frame_info,
-                    )?;
-                };
-            }
-            Some(other_attribute_value) => {
-                child_variable.set_value(VariableValue::Error(format!(
-                    "Unimplemented: Attribute Value for DW_AT_type {other_attribute_value:?}"
-                )));
+                match debug_info.resolve_die_reference_with_unit(attr, self) {
+                    Ok((member_unit, array_member_type_node)) => {
+                        // - Next, process this DW_TAG_array_type's DW_AT_type full tree.
+                        // - We have to do this repeatedly, for every array member in the range.
+                        // - We have to do this recursively because some compilers encode nested arrays as multiple subranges on the same node.
+                        member_unit.expand_array_members(
+                            debug_info,
+                            &array_member_type_node,
+                            cache,
+                            child_variable,
+                            memory,
+                            &subranges,
+                            frame_info,
+                        )?;
+                    }
+                    Err(error) => {
+                        child_variable.set_value(VariableValue::Error(format!(
+                            "Failed to process DW_AT_type: {error:?}"
+                        )));
+                    }
+                }
             }
             None => {
                 child_variable.set_value(
@@ -2163,14 +2168,14 @@ impl UnitInfo {
                     return Ok(None);
                 };
 
-                let gimli::AttributeValue::UnitRef(unit_ref) = attr.value() else {
-                    // TODO: should we handle other types of references?
+                // Try to read the name of the referenced type node.
+                let Ok((referenced_unit, node)) =
+                    debug_info.resolve_die_reference_with_unit(attr, self)
+                else {
                     return Ok(None);
                 };
 
-                // Try to read the name of the referenced type node.
-                let node = self.unit.header.entry(&self.unit.abbreviations, unit_ref)?;
-                self.extract_type_name(debug_info, &node)
+                referenced_unit.extract_type_name(debug_info, &node)
             }
         }
     }

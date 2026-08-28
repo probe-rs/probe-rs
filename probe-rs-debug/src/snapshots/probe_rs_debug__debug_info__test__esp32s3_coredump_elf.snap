@@ -625,15 +625,63 @@ expression: stack_frames
               value: "&[&str] @ 0x3FCDC544"
               children:
                 - name:
-                    Named: data_ptr
-                  type_name:
-                    Pointer: ~
-                  value: "< Unimplemented: Attribute Value for DW_AT_type DebugInfoRef(DebugInfoOffset(1350655)) >"
-                - name:
                     Named: length
                   type_name:
                     Base: usize
                   value: "2"
+                - name:
+                    Named: "*data_ptr"
+                  type_name:
+                    Array:
+                      item_type_name:
+                        Struct: "&str"
+                      count: 2
+                  value: "[&str; 2] = [\n\t< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010550 : The coredump does not include the memory for address 0x3c010550 of size 0x4.\" } >,\n\t< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010558 : The coredump does not include the memory for address 0x3c010558 of size 0x4.\" } >]"
+                  children:
+                    - name:
+                        Indexed: 0
+                      type_name:
+                        Struct: "&str"
+                      value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010550 : The coredump does not include the memory for address 0x3c010550 of size 0x4.\" } >"
+                      children:
+                        - name:
+                            Named: data_ptr
+                          type_name:
+                            Pointer: u8
+                          value: "*raw u8 @ 0x3C010550"
+                          children:
+                            - name:
+                                Named: "*data_ptr"
+                              type_name:
+                                Base: u8
+                              value: "Failed to read referenced variable address from memory location 0x3C010550 : The coredump does not include the memory for address 0x3c010550 of size 0x4."
+                        - name:
+                            Named: length
+                          type_name:
+                            Base: usize
+                          value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c010554 of size 0x4\")) >"
+                    - name:
+                        Indexed: 1
+                      type_name:
+                        Struct: "&str"
+                      value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010558 : The coredump does not include the memory for address 0x3c010558 of size 0x4.\" } >"
+                      children:
+                        - name:
+                            Named: data_ptr
+                          type_name:
+                            Pointer: u8
+                          value: "*raw u8 @ 0x3C010558"
+                          children:
+                            - name:
+                                Named: "*data_ptr"
+                              type_name:
+                                Base: u8
+                              value: "Failed to read referenced variable address from memory location 0x3C010558 : The coredump does not include the memory for address 0x3c010558 of size 0x4."
+                        - name:
+                            Named: length
+                          type_name:
+                            Base: usize
+                          value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c01055c of size 0x4\")) >"
             - name:
                 Named: fmt
               type_name:
@@ -702,8 +750,9 @@ expression: stack_frames
                                   children:
                                     - name:
                                         Named: "*formatter"
-                                      type_name: Unknown
-                                      value: "< Unimplemented: Attribute Value for DW_AT_type DebugInfoRef(DebugInfoOffset(1350019)) >"
+                                      type_name:
+                                        Other: "Result<(), core::fmt::Error>"
+                                      value: "Unimplemented: Get value of type Other(\"Result<(), core::fmt::Error>\") of (None bytes) at location <unknown value>"
         - name:
             Named: pi
           type_name:
@@ -734,15 +783,63 @@ expression: stack_frames
                       value: "&[&str] @ 0x3FCDC544"
                       children:
                         - name:
-                            Named: data_ptr
-                          type_name:
-                            Pointer: ~
-                          value: "< Unimplemented: Attribute Value for DW_AT_type DebugInfoRef(DebugInfoOffset(1350655)) >"
-                        - name:
                             Named: length
                           type_name:
                             Base: usize
                           value: "2"
+                        - name:
+                            Named: "*data_ptr"
+                          type_name:
+                            Array:
+                              item_type_name:
+                                Struct: "&str"
+                              count: 2
+                          value: "[&str; 2] = [\n\t< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010550 : The coredump does not include the memory for address 0x3c010550 of size 0x4.\" } >,\n\t< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010558 : The coredump does not include the memory for address 0x3c010558 of size 0x4.\" } >]"
+                          children:
+                            - name:
+                                Indexed: 0
+                              type_name:
+                                Struct: "&str"
+                              value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010550 : The coredump does not include the memory for address 0x3c010550 of size 0x4.\" } >"
+                              children:
+                                - name:
+                                    Named: data_ptr
+                                  type_name:
+                                    Pointer: u8
+                                  value: "*raw u8 @ 0x3C010550"
+                                  children:
+                                    - name:
+                                        Named: "*data_ptr"
+                                      type_name:
+                                        Base: u8
+                                      value: "Failed to read referenced variable address from memory location 0x3C010550 : The coredump does not include the memory for address 0x3c010550 of size 0x4."
+                                - name:
+                                    Named: length
+                                  type_name:
+                                    Base: usize
+                                  value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c010554 of size 0x4\")) >"
+                            - name:
+                                Indexed: 1
+                              type_name:
+                                Struct: "&str"
+                              value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010558 : The coredump does not include the memory for address 0x3c010558 of size 0x4.\" } >"
+                              children:
+                                - name:
+                                    Named: data_ptr
+                                  type_name:
+                                    Pointer: u8
+                                  value: "*raw u8 @ 0x3C010558"
+                                  children:
+                                    - name:
+                                        Named: "*data_ptr"
+                                      type_name:
+                                        Base: u8
+                                      value: "Failed to read referenced variable address from memory location 0x3C010558 : The coredump does not include the memory for address 0x3c010558 of size 0x4."
+                                - name:
+                                    Named: length
+                                  type_name:
+                                    Base: usize
+                                  value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c01055c of size 0x4\")) >"
                     - name:
                         Named: fmt
                       type_name:
@@ -811,8 +908,9 @@ expression: stack_frames
                                           children:
                                             - name:
                                                 Named: "*formatter"
-                                              type_name: Unknown
-                                              value: "< Unimplemented: Attribute Value for DW_AT_type DebugInfoRef(DebugInfoOffset(1350019)) >"
+                                              type_name:
+                                                Other: "Result<(), core::fmt::Error>"
+                                              value: "Unimplemented: Get value of type Other(\"Result<(), core::fmt::Error>\") of (None bytes) at location <unknown value>"
             - name:
                 Named: location
               type_name:
@@ -829,13 +927,19 @@ expression: stack_frames
                         Named: file
                       type_name:
                         Struct: "&str"
-                      value: "Error: Failed to determine &str memory location"
+                      value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010570 : The coredump does not include the memory for address 0x3c010570 of size 0x4.\" } >"
                       children:
                         - name:
                             Named: data_ptr
                           type_name:
-                            Pointer: ~
-                          value: "< Unimplemented: Attribute Value for DW_AT_type DebugInfoRef(DebugInfoOffset(1345972)) >"
+                            Pointer: u8
+                          value: "*raw u8 @ 0x3C010570"
+                          children:
+                            - name:
+                                Named: "*data_ptr"
+                              type_name:
+                                Base: u8
+                              value: "Failed to read referenced variable address from memory location 0x3C010570 : The coredump does not include the memory for address 0x3c010570 of size 0x4."
                         - name:
                             Named: length
                           type_name:

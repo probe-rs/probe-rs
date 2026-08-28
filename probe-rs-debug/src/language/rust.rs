@@ -152,13 +152,11 @@ impl Rust {
 
         cache.add_variable(variable.variable_key, &mut pointee)?;
 
-        let array_member_type_node = unit_info
-            .unit
-            .entry(type_node_offset)
-            .expect("Failed to get array member type node. This is a bug, please report it!");
+        let (member_unit, array_member_type_node) =
+            debug_info.entry_at_debug_info_offset(type_node_offset)?;
 
         let member_range = 0..length;
-        unit_info.expand_array_members(
+        member_unit.expand_array_members(
             debug_info,
             &array_member_type_node,
             cache,

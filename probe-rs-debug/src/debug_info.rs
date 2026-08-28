@@ -1059,30 +1059,36 @@ impl DebugInfo {
             gimli::AttributeValue::UnitRef(unit_ref) => {
                 Ok((unit_info, unit_info.unit.entry(unit_ref)?))
             }
-            gimli::AttributeValue::DebugInfoRef(offset) => {
-                for unit_info in &self.unit_infos {
-                    let Some(unit_offset) = offset.to_unit_offset(&unit_info.unit.header) else {
-                        continue;
-                    };
-
-                    let entry = unit_info.unit.entry(unit_offset).map_err(|error| {
-                        DebugError::Other(format!(
-                            "Error reading DIE at debug info offset {:#x} : {}",
-                            offset.0, error
-                        ))
-                    })?;
-                    return Ok((unit_info, entry));
-                }
-
-                Err(DebugError::Other(format!(
-                    "Unable to find unit info for debug info offset {:#x}",
-                    offset.0
-                )))
-            }
+            gimli::AttributeValue::DebugInfoRef(offset) => self.entry_at_debug_info_offset(offset),
             other_attribute_value => Err(DebugError::Other(format!(
                 "Unimplemented attribute value {other_attribute_value:?}"
             ))),
         }
+    }
+
+    /// Returns the UnitInfo and DIE at the given offset into the debug info.
+    pub(crate) fn entry_at_debug_info_offset(
+        &self,
+        offset: gimli::DebugInfoOffset,
+    ) -> Result<(&UnitInfo, Die), DebugError> {
+        for unit_info in &self.unit_infos {
+            let Some(unit_offset) = offset.to_unit_offset(&unit_info.unit.header) else {
+                continue;
+            };
+
+            let entry = unit_info.unit.entry(unit_offset).map_err(|error| {
+                DebugError::Other(format!(
+                    "Error reading DIE at debug info offset {:#x} : {}",
+                    offset.0, error
+                ))
+            })?;
+            return Ok((unit_info, entry));
+        }
+
+        Err(DebugError::Other(format!(
+            "Unable to find unit info for debug info offset {:#x}",
+            offset.0
+        )))
     }
 }
 
