@@ -1,0 +1,1 @@
+A stack unwind without debug info now stops when the stack pointer of the caller is not above the current stack pointer, on RISC-V and on Xtensa. Such a stack pointer passed the distance check and gave frames from unrelated memory.
