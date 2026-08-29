@@ -93,13 +93,18 @@ pub trait ProgrammingLanguage {
             .is_some_and(|c| c.is_ascii_alphabetic() || c == '_' || c == '{')
     }
 
+    /// Compact a demangled or DIE function name for stack traces.
+    fn compact_debug_name(&self, name: &str) -> String {
+        name.to_string()
+    }
+
     fn format_function_name(
         &self,
         function_name: &str,
         _function_die: &FunctionDie<'_>,
         _debug_info: &super::DebugInfo,
     ) -> String {
-        function_name.to_string()
+        self.compact_debug_name(function_name)
     }
 
     fn process_tag_with_no_type(&self, _variable: &Variable, tag: gimli::DwTag) -> VariableValue {

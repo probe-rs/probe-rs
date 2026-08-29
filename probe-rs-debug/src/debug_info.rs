@@ -388,7 +388,7 @@ impl DebugInfo {
             gimli::DW_LANG_C_plus_plus_14,
         ] {
             if let Some(demangle) = addr2line::demangle(&fn_name, lang) {
-                fn_name = demangle;
+                fn_name = crate::language::from_dwarf(lang).compact_debug_name(&demangle);
                 break;
             }
         }

@@ -785,19 +785,24 @@ impl ProgrammingLanguage for Rust {
         type_name::is_path_ident(ident)
     }
 
+    fn compact_debug_name(&self, name: &str) -> String {
+        type_name::compact_debug_name(name)
+    }
+
     fn format_function_name(
         &self,
         function_name: &str,
         function_die: &crate::function_die::FunctionDie<'_>,
         debug_info: &super::DebugInfo,
     ) -> String {
+        let function_name = self.compact_debug_name(function_name);
         let parent = function_die.parent_offset();
         if let Some((parent_unit, parent_offset)) = parent
             && let Ok(die) = parent_unit.unit.entry(parent_offset)
             && is_datatype(&die)
             && let Ok(Some(typename)) = parent_unit.extract_type_name(debug_info, &die)
         {
-            // TODO: apply better heuristics to clean up the final function name
+            let typename = self.compact_debug_name(&typename);
             if let Some((_, type_generic)) = typename.split_once('<')
                 && let Some((function_without_generic, function_generic)) =
                     function_name.split_once('<')
@@ -808,7 +813,7 @@ impl ProgrammingLanguage for Rust {
                 format!("{typename}::{function_name}")
             }
         } else {
-            function_name.to_string()
+            function_name
         }
     }
 

@@ -1,6 +1,6 @@
 //! Parse a compiler type name when DWARF has no template-parameter DIEs.
 
-use crate::{GenericArg, NamedType, VariableType};
+use crate::{GenericArg, NamedType, TypeNameStyle, VariableType};
 
 pub(crate) fn parse_variable_type(input: &str) -> Option<VariableType> {
     let mut parser = Parser::new(input.trim());
@@ -429,6 +429,221 @@ fn is_primitive(name: &str) -> bool {
     )
 }
 
+/// Compact a Rust debug symbol. Keep `Type::method`. Drop crate and module
+/// prefixes on types. Compact generic arguments as types.
+pub(crate) fn compact_debug_name(name: &str) -> String {
+    compact_name(name, NameKind::Symbol)
+}
+
+fn compact_type_arg(name: &str) -> String {
+    compact_name(name, NameKind::Type)
+}
+
+#[derive(Clone, Copy)]
+enum NameKind {
+    Symbol,
+    Type,
+}
+
+fn compact_name(name: &str, kind: NameKind) -> String {
+    let name = name.trim();
+    if name.is_empty() {
+        return String::new();
+    }
+    if let Some(compacted) = compact_as_clause(name) {
+        return compacted;
+    }
+    if let Some(ty) = parse_variable_type(name) {
+        return match kind {
+            NameKind::Type => {
+                ty.display_name_with_style(&crate::language::rust::Rust, TypeNameStyle::Compact)
+            }
+            NameKind::Symbol => compact_parsed_symbol(&ty),
+        };
+    }
+    compact_method_path(name)
+}
+
+fn compact_parsed_symbol(ty: &VariableType) -> String {
+    let rust = crate::language::rust::Rust;
+    match ty {
+        VariableType::Struct(named) | VariableType::Enum(named) => {
+            let compact = named.display(&rust, TypeNameStyle::Compact);
+            if named.args.is_empty() {
+                if looks_like_method(&named.ident)
+                    && let Some(parent) = named.namespace.last()
+                {
+                    format!("{parent}::{compact}")
+                } else {
+                    compact
+                }
+            } else if named.namespace.len() == 1 {
+                format!("{}::{compact}", named.namespace[0])
+            } else {
+                compact
+            }
+        }
+        _ => ty.display_name_with_style(&rust, TypeNameStyle::Compact),
+    }
+}
+
+fn compact_method_path(name: &str) -> String {
+    let name = compact_generics(name);
+    let segments = split_path_segments(&name);
+    if segments.is_empty() {
+        return name;
+    }
+    let start = segments
+        .iter()
+        .rposition(|segment| segment.contains('<'))
+        .unwrap_or_else(|| segments.len().saturating_sub(2));
+    segments[start..].join("::")
+}
+
+fn split_path_segments(s: &str) -> Vec<&str> {
+    let mut parts = Vec::new();
+    let mut start = 0;
+    let mut depth = 0i32;
+    let mut chars = s.char_indices().peekable();
+    while let Some((i, c)) = chars.next() {
+        if c == '-' && chars.peek().is_some_and(|(_, n)| *n == '>') {
+            chars.next();
+            continue;
+        }
+        match c {
+            '<' | '(' | '[' | '{' => depth += 1,
+            '>' | ')' | ']' | '}' => depth -= 1,
+            ':' if depth == 0 && chars.peek().is_some_and(|(_, n)| *n == ':') => {
+                parts.push(&s[start..i]);
+                chars.next();
+                start = i + 2;
+            }
+            _ => {}
+        }
+    }
+    parts.push(&s[start..]);
+    parts
+}
+
+fn looks_like_method(ident: &str) -> bool {
+    ident.chars().next().is_some_and(|c| c.is_ascii_lowercase())
+}
+
+fn compact_as_clause(name: &str) -> Option<String> {
+    if !name.starts_with('<') {
+        return None;
+    }
+    let close = matching_bracket_end(name, 0)?;
+    let inner = &name[1..close];
+    let as_at = find_as_separator(inner)?;
+    let type_name = inner[..as_at].trim();
+    let trait_name = inner[as_at + 4..].trim();
+    let suffix = name[close + 1..].trim_start();
+    Some(format!(
+        "<{} as {}>{}",
+        compact_type_arg(type_name),
+        compact_type_arg(trait_name),
+        compact_generics(suffix)
+    ))
+}
+
+fn find_as_separator(inner: &str) -> Option<usize> {
+    let mut depth = 0i32;
+    let mut chars = inner.char_indices().peekable();
+    while let Some((i, c)) = chars.next() {
+        match c {
+            '<' | '(' | '[' | '{' => depth += 1,
+            '>' | ')' | ']' | '}' => depth -= 1,
+            '-' if chars.peek().is_some_and(|(_, n)| *n == '>') => {
+                chars.next();
+            }
+            ' ' if depth == 0 && inner[i..].starts_with(" as ") => return Some(i),
+            _ => {}
+        }
+    }
+    None
+}
+
+fn compact_generics(name: &str) -> String {
+    let mut out = String::with_capacity(name.len());
+    let mut rest = name;
+    while let Some(open) = rest.find('<') {
+        out.push_str(&rest[..open]);
+        let Some(close) = matching_bracket_end(rest, open) else {
+            out.push_str(&rest[open..]);
+            return out;
+        };
+        let inner = &rest[open + 1..close];
+        out.push('<');
+        let args: Vec<String> = split_top_level(inner, ',')
+            .into_iter()
+            .map(|arg| compact_type_arg(arg.trim()))
+            .collect();
+        out.push_str(&args.join(", "));
+        out.push('>');
+        rest = &rest[close + 1..];
+    }
+    out.push_str(rest);
+    out
+}
+
+fn matching_bracket_end(s: &str, open_idx: usize) -> Option<usize> {
+    let open = s[open_idx..].chars().next()?;
+    let first_close = closer(open)?;
+    let mut stack = vec![first_close];
+    let mut chars = s[open_idx..].char_indices().peekable();
+    chars.next();
+    while let Some((i, c)) = chars.next() {
+        if c == '-' && chars.peek().is_some_and(|(_, n)| *n == '>') {
+            chars.next();
+            continue;
+        }
+        if let Some(close) = closer(c) {
+            stack.push(close);
+        } else if stack.last() == Some(&c) {
+            stack.pop();
+            if stack.is_empty() {
+                return Some(open_idx + i);
+            }
+        }
+    }
+    None
+}
+
+fn closer(c: char) -> Option<char> {
+    match c {
+        '<' => Some('>'),
+        '(' => Some(')'),
+        '[' => Some(']'),
+        '{' => Some('}'),
+        _ => None,
+    }
+}
+
+fn split_top_level(s: &str, sep: char) -> Vec<&str> {
+    let mut parts = Vec::new();
+    let mut start = 0;
+    let mut depth = 0i32;
+    let mut chars = s.char_indices().peekable();
+    while let Some((i, c)) = chars.next() {
+        if c == '-' && chars.peek().is_some_and(|(_, n)| *n == '>') {
+            chars.next();
+            continue;
+        }
+        match c {
+            '<' | '(' | '[' | '{' => depth += 1,
+            '>' | ')' | ']' | '}' => depth -= 1,
+            c if c == sep && depth == 0 => {
+                parts.push(&s[start..i]);
+                start = i + c.len_utf8();
+            }
+            _ => {}
+        }
+    }
+    parts.push(&s[start..]);
+    parts
+}
+
 pub(crate) fn format_named_head(ident: &str, args: &[String]) -> Option<String> {
     match ident {
         "" => Some(format!("({})", args.join(", "))),
@@ -550,5 +765,50 @@ mod tests {
         let ty = parse_variable_type("&mut core::task::wake::Context").unwrap();
         assert_eq!(compact(&ty), "&mut Context");
         assert_eq!(qualified(&ty), "&mut core::task::wake::Context");
+    }
+
+    #[test]
+    fn compact_debug_name_shortens_types_and_methods() {
+        assert_eq!(compact_debug_name("alloc::string::String"), "String");
+        assert_eq!(
+            compact_debug_name(
+                "embassy_executor::raw::TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}>::poll"
+            ),
+            "TaskStorage<{async_fn_env#0}>::poll"
+        );
+        assert_eq!(
+            compact_debug_name(
+                "RunQueue::dequeue_all<embassy_executor::raw::{impl#9}::poll::{closure_env#0}>"
+            ),
+            "RunQueue::dequeue_all<{closure_env#0}>"
+        );
+        assert_eq!(
+            compact_debug_name("Executor::run<coredump_c6::__xtensa_lx_rt_main::{closure_env#0}>"),
+            "Executor::run<{closure_env#0}>"
+        );
+        assert_eq!(
+            compact_debug_name("core::ptr::drop_in_place<alloc::string::String>"),
+            "drop_in_place<String>"
+        );
+        assert_eq!(
+            compact_debug_name(
+                "<coredump_c6::____embassy_main_task::{async_fn#0} as core::future::future::Future>::poll"
+            ),
+            "<{async_fn#0} as Future>::poll"
+        );
+        assert_eq!(
+            compact_debug_name(
+                "Option<unsafe fn(embassy_executor::raw::TaskRef)>::unwrap_unchecked"
+            ),
+            "Option<unsafe fn(TaskRef)>::unwrap_unchecked"
+        );
+        assert_eq!(
+            compact_debug_name("with<!, panic_rtt_target::panic::{closure_env#0}>"),
+            "with<!, {closure_env#0}>"
+        );
+        assert_eq!(
+            compact_debug_name("embassy_executor::raw::SyncExecutor::poll"),
+            "SyncExecutor::poll"
+        );
     }
 }
