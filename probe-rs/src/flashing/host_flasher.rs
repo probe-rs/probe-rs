@@ -255,23 +255,26 @@ impl HostSideFlasher {
                     t = Instant::now();
                 }
                 progress.finished_programming();
+            }
+        }
 
-                // Verify if requested
-                if verify {
-                    tracing::debug!("Host-side: Verifying");
-                    for page in layout.pages() {
-                        let verified = self
-                            .flash_sequence
-                            .verify(session, page.address(), page.data())
-                            .map_err(FlashError::Core)?;
+        // Verify if requested
+        if verify {
+            tracing::debug!("Host-side: Verifying");
+            for region in &self.regions {
+                let layout = region.flash_layout();
+                for page in layout.pages() {
+                    let verified = self
+                        .flash_sequence
+                        .verify(session, page.address(), page.data())
+                        .map_err(FlashError::Core)?;
 
-                        if !verified {
-                            tracing::error!(
-                                "Host-side: Verification failed at address 0x{:08X}",
-                                page.address()
-                            );
-                            return Err(FlashError::Verify);
-                        }
+                    if !verified {
+                        tracing::error!(
+                            "Host-side: Verification failed at address 0x{:08X}",
+                            page.address()
+                        );
+                        return Err(FlashError::Verify);
                     }
                 }
             }
