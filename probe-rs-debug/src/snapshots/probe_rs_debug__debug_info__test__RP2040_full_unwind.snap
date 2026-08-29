@@ -1574,7 +1574,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tint8_minus_twenty_three: i8 = -23,\n\tlocal_reference_to_global_const: &str = This global `const` value will only show up in the debugger in the variables where it is referenced,\n\tlocal_reference_to_global_static: &str = A 'global' static variable,\n\tlocal_reference_to_global_static_struct: *const probe_rs_debugger_test::ComplexEnum = *const probe_rs_debugger_test::ComplexEnum @ 0x20000048,\n\tghosted_variable: usize = 0,\n\tghosted_variable: &str = New value and type for a different name,\n\tint8_twenty_six: i8 = 26,\n\tint128: i128 = -196710231994021419720322,\n\tu_int128: u128 = 340282366920938266753142613410348491134,\n\tfloat64: f64 = 1.7608695652173911,\n\tfloat64_ptr: &f64 = &f64 @ 0x20003438,\n\temoji: char = 💩,\n\temoji_ptr: &char = &char @ 0x20003440,\n\ttrue_bool: bool = true,\n\tany_old_string_slice: &str = How long is a piece of String.,\n\tfunction_result: Result<(), &str> = Result<(), &str> @ 0x20003CE4,\n\tglobal_types: (bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64) = (bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64) @ 0x20003448,\n\tthree_d_usize_array: Matrix<i32, 2, 3, 4> = Matrix<i32, 2, 3, 4> @ 0x20003484,\n\tthree_d_string_array: Matrix<&str, 2, 3, 6> = Matrix<&str, 2, 3, 6> @ 0x20003604,\n\tthree: SimpleEnum = SimpleEnum::Two,\n\tsimple_enum_pointer: &probe_rs_debugger_test::SimpleEnum = &probe_rs_debugger_test::SimpleEnum @ 0x20003A84,\n\tthree_level_recursive_struct: RecursiveStruct = RecursiveStruct @ 0x20003A8C,\n\tfirst_case_of_struct_variants: ComplexEnum = ComplexEnum @ 0x20003AB0,\n\tsecond_case_of_struct_variants: ComplexEnum = ComplexEnum @ 0x20003AE0,\n\tstruct_with_one_variant: Option<probe_rs_debugger_test::Univariant> = Option<probe_rs_debugger_test::Univariant> @ 0x20003B00,\n\tstuct_with_one_variant_pointer: &core::option::Option<probe_rs_debugger_test::Univariant> = &core::option::Option<probe_rs_debugger_test::Univariant> @ 0x20003B00,\n\tlong_lived: ComplexStruct = ComplexStruct @ 0x20003B68,\n\tshort_lived: ComplexStruct = ComplexStruct @ 0x20003B78,\n\ta1: Struct<i32> = Struct<i32> @ 0x20003CF0,\n\ta2: i64 = 1,\n\ta3: i64 = 2,\n\ta4: i64 = 3,\n\ta5: (i32, i64) = (i32, i64) @ 0x20003D18,\n\ta6: Enum<i32> = Enum<i32> @ 0x20003BB8,\n\ta7: Enum<i32> = Enum<i32> @ 0x20003BD8,\n\t[i32; 10] = [\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55\n\t],\n\tmy_array_ptr: &[i32; 10] = &[i32; 10] @ 0x20003BFC,\n\t[i8; 10] = [\n\t\t1,\n\t\t2,\n\t\t3,\n\t\t4,\n\t\t5,\n\t\t6,\n\t\t7,\n\t\t8,\n\t\t9,\n\t\t0\n\t],\n\theapless_vec: Vec<i8, 10> = Vec<i8, 10> @ 0x20003C30,\n\tloop_counter: Wrapping<u8> = Wrapping<u8> @ 0x20003C40,\n\trtt_channels: Channels = Channels @ 0x20003C44}"
+      value: "<unknown> {\n\tint8_minus_twenty_three: i8 = -23,\n\tlocal_reference_to_global_const: &str = This global `const` value will only show up in the debugger in the variables where it is referenced,\n\tlocal_reference_to_global_static: &str = A 'global' static variable,\n\tlocal_reference_to_global_static_struct: *const probe_rs_debugger_test::ComplexEnum = *const probe_rs_debugger_test::ComplexEnum @ 0x20000048,\n\tghosted_variable: usize = 0,\n\tghosted_variable: &str = New value and type for a different name,\n\tint8_twenty_six: i8 = 26,\n\tint128: i128 = -196710231994021419720322,\n\tu_int128: u128 = 340282366920938266753142613410348491134,\n\tfloat64: f64 = 1.7608695652173911,\n\tfloat64_ptr: &f64 = &f64 @ 0x20003438,\n\temoji: char = 💩,\n\temoji_ptr: &char = &char @ 0x20003440,\n\ttrue_bool: bool = true,\n\tany_old_string_slice: &str = How long is a piece of String.,\n\tfunction_result: Result<(), &str> = Result<(), &str> @ 0x20003CE4,\n\tglobal_types: (bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64) = (bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64) @ 0x20003448,\n\tthree_d_usize_array: Matrix<i32, 2, 3, 4> = Matrix<i32, 2, 3, 4> @ 0x20003484,\n\tthree_d_string_array: Matrix<&str, 2, 3, 6> = Matrix<&str, 2, 3, 6> @ 0x20003604,\n\tthree: SimpleEnum = SimpleEnum::Two,\n\tsimple_enum_pointer: &probe_rs_debugger_test::SimpleEnum = &probe_rs_debugger_test::SimpleEnum @ 0x20003A84,\n\tthree_level_recursive_struct: RecursiveStruct = RecursiveStruct @ 0x20003A8C,\n\tfirst_case_of_struct_variants: ComplexEnum = ComplexEnum @ 0x20003AB0,\n\tsecond_case_of_struct_variants: ComplexEnum = ComplexEnum @ 0x20003AE0,\n\tstruct_with_one_variant: Option<probe_rs_debugger_test::Univariant> = Option<probe_rs_debugger_test::Univariant> @ 0x20003B00,\n\tstuct_with_one_variant_pointer: &core::option::Option<probe_rs_debugger_test::Univariant> = &core::option::Option<probe_rs_debugger_test::Univariant> @ 0x20003B00,\n\tlong_lived: ComplexStruct = ComplexStruct @ 0x20003B68,\n\tshort_lived: ComplexStruct = ComplexStruct @ 0x20003B78,\n\ta1: Struct<i32> = Struct<i32> @ 0x20003CF0,\n\ta2: i64 = 1,\n\ta3: i64 = 2,\n\ta4: i64 = 3,\n\ta5: (i32, i64) = (i32, i64) @ 0x20003D18,\n\ta6: Enum<i32> = Enum<i32> @ 0x20003BB8,\n\ta7: Enum<i32> = Enum<i32> @ 0x20003BD8,\n\t[i32; 10] = [\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55\n\t],\n\tmy_array_ptr: &[i32; 10] = &[i32; 10] @ 0x20003BFC,\n\t[i8; 10] = [\n\t\t1,\n\t\t2,\n\t\t3,\n\t\t4,\n\t\t5,\n\t\t6,\n\t\t7,\n\t\t8,\n\t\t9,\n\t\t0\n\t],\n\theapless_vec: Vec<i8, 10> = Vec<i8, 10> @ 0x20003C30,\n\tloop_counter: Wrapping<u8> = 0,\n\trtt_channels: Channels = Channels @ 0x20003C44}"
       children:
         - name:
             Named: int8_minus_twenty_three
@@ -4060,235 +4060,30 @@ expression: stack_frames
               type_name:
                 Array:
                   item_type_name:
-                    Base: MaybeUninit<i8>
-                  count: 10
-              value: "[MaybeUninit<i8>; 10] = [\n\tMaybeUninit<i8> @ 0x20003C34,\n\tMaybeUninit<i8> @ 0x20003C35,\n\tMaybeUninit<i8> @ 0x20003C36,\n\tMaybeUninit<i8> @ 0x20003C37,\n\tMaybeUninit<i8> @ 0x20003C38,\n\tMaybeUninit<i8> @ 0x20003C39,\n\tMaybeUninit<i8> @ 0x20003C3A,\n\tMaybeUninit<i8> @ 0x20003C3B,\n\tMaybeUninit<i8> @ 0x20003C3C,\n\tMaybeUninit<i8> @ 0x20003C3D]"
+                    Base: i8
+                  count: 3
+              value: "[i8; 3] = [\n\t1,\n\t2,\n\t3]"
               children:
                 - name:
                     Indexed: 0
                   type_name:
-                    Base: MaybeUninit<i8>
-                  value: MaybeUninit<i8> @ 0x20003C34
-                  children:
-                    - name:
-                        Named: uninit
-                      type_name:
-                        Base: ()
-                      value: ()
-                    - name:
-                        Named: value
-                      type_name:
-                        Struct: ManuallyDrop<i8>
-                      value: ManuallyDrop<i8> @ 0x20003C34
-                      children:
-                        - name:
-                            Named: value
-                          type_name:
-                            Base: i8
-                          value: "1"
+                    Base: i8
+                  value: "1"
                 - name:
                     Indexed: 1
                   type_name:
-                    Base: MaybeUninit<i8>
-                  value: MaybeUninit<i8> @ 0x20003C35
-                  children:
-                    - name:
-                        Named: uninit
-                      type_name:
-                        Base: ()
-                      value: ()
-                    - name:
-                        Named: value
-                      type_name:
-                        Struct: ManuallyDrop<i8>
-                      value: ManuallyDrop<i8> @ 0x20003C35
-                      children:
-                        - name:
-                            Named: value
-                          type_name:
-                            Base: i8
-                          value: "2"
+                    Base: i8
+                  value: "2"
                 - name:
                     Indexed: 2
                   type_name:
-                    Base: MaybeUninit<i8>
-                  value: MaybeUninit<i8> @ 0x20003C36
-                  children:
-                    - name:
-                        Named: uninit
-                      type_name:
-                        Base: ()
-                      value: ()
-                    - name:
-                        Named: value
-                      type_name:
-                        Struct: ManuallyDrop<i8>
-                      value: ManuallyDrop<i8> @ 0x20003C36
-                      children:
-                        - name:
-                            Named: value
-                          type_name:
-                            Base: i8
-                          value: "3"
-                - name:
-                    Indexed: 3
-                  type_name:
-                    Base: MaybeUninit<i8>
-                  value: MaybeUninit<i8> @ 0x20003C37
-                  children:
-                    - name:
-                        Named: uninit
-                      type_name:
-                        Base: ()
-                      value: ()
-                    - name:
-                        Named: value
-                      type_name:
-                        Struct: ManuallyDrop<i8>
-                      value: ManuallyDrop<i8> @ 0x20003C37
-                      children:
-                        - name:
-                            Named: value
-                          type_name:
-                            Base: i8
-                          value: "0"
-                - name:
-                    Indexed: 4
-                  type_name:
-                    Base: MaybeUninit<i8>
-                  value: MaybeUninit<i8> @ 0x20003C38
-                  children:
-                    - name:
-                        Named: uninit
-                      type_name:
-                        Base: ()
-                      value: ()
-                    - name:
-                        Named: value
-                      type_name:
-                        Struct: ManuallyDrop<i8>
-                      value: ManuallyDrop<i8> @ 0x20003C38
-                      children:
-                        - name:
-                            Named: value
-                          type_name:
-                            Base: i8
-                          value: "0"
-                - name:
-                    Indexed: 5
-                  type_name:
-                    Base: MaybeUninit<i8>
-                  value: MaybeUninit<i8> @ 0x20003C39
-                  children:
-                    - name:
-                        Named: uninit
-                      type_name:
-                        Base: ()
-                      value: ()
-                    - name:
-                        Named: value
-                      type_name:
-                        Struct: ManuallyDrop<i8>
-                      value: ManuallyDrop<i8> @ 0x20003C39
-                      children:
-                        - name:
-                            Named: value
-                          type_name:
-                            Base: i8
-                          value: "0"
-                - name:
-                    Indexed: 6
-                  type_name:
-                    Base: MaybeUninit<i8>
-                  value: MaybeUninit<i8> @ 0x20003C3A
-                  children:
-                    - name:
-                        Named: uninit
-                      type_name:
-                        Base: ()
-                      value: ()
-                    - name:
-                        Named: value
-                      type_name:
-                        Struct: ManuallyDrop<i8>
-                      value: ManuallyDrop<i8> @ 0x20003C3A
-                      children:
-                        - name:
-                            Named: value
-                          type_name:
-                            Base: i8
-                          value: "0"
-                - name:
-                    Indexed: 7
-                  type_name:
-                    Base: MaybeUninit<i8>
-                  value: MaybeUninit<i8> @ 0x20003C3B
-                  children:
-                    - name:
-                        Named: uninit
-                      type_name:
-                        Base: ()
-                      value: ()
-                    - name:
-                        Named: value
-                      type_name:
-                        Struct: ManuallyDrop<i8>
-                      value: ManuallyDrop<i8> @ 0x20003C3B
-                      children:
-                        - name:
-                            Named: value
-                          type_name:
-                            Base: i8
-                          value: "0"
-                - name:
-                    Indexed: 8
-                  type_name:
-                    Base: MaybeUninit<i8>
-                  value: MaybeUninit<i8> @ 0x20003C3C
-                  children:
-                    - name:
-                        Named: uninit
-                      type_name:
-                        Base: ()
-                      value: ()
-                    - name:
-                        Named: value
-                      type_name:
-                        Struct: ManuallyDrop<i8>
-                      value: ManuallyDrop<i8> @ 0x20003C3C
-                      children:
-                        - name:
-                            Named: value
-                          type_name:
-                            Base: i8
-                          value: "0"
-                - name:
-                    Indexed: 9
-                  type_name:
-                    Base: MaybeUninit<i8>
-                  value: MaybeUninit<i8> @ 0x20003C3D
-                  children:
-                    - name:
-                        Named: uninit
-                      type_name:
-                        Base: ()
-                      value: ()
-                    - name:
-                        Named: value
-                      type_name:
-                        Struct: ManuallyDrop<i8>
-                      value: ManuallyDrop<i8> @ 0x20003C3D
-                      children:
-                        - name:
-                            Named: value
-                          type_name:
-                            Base: i8
-                          value: "0"
+                    Base: i8
+                  value: "3"
         - name:
             Named: loop_counter
           type_name:
             Struct: Wrapping<u8>
-          value: Wrapping<u8> @ 0x20003C40
+          value: "0"
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 305
@@ -4366,53 +4161,35 @@ expression: stack_frames
                                 Named: write
                               type_name:
                                 Struct: AtomicUsize
-                              value: AtomicUsize @ 0x200000A0
+                              value: "363"
                               children:
                                 - name:
-                                    Named: v
+                                    Named: value
                                   type_name:
-                                    Struct: UnsafeCell<usize>
-                                  value: UnsafeCell<usize> @ 0x200000A0
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "363"
+                                    Base: usize
+                                  value: "363"
                             - name:
                                 Named: read
                               type_name:
                                 Struct: AtomicUsize
-                              value: AtomicUsize @ 0x200000A4
+                              value: "363"
                               children:
                                 - name:
-                                    Named: v
+                                    Named: value
                                   type_name:
-                                    Struct: UnsafeCell<usize>
-                                  value: UnsafeCell<usize> @ 0x200000A4
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "363"
+                                    Base: usize
+                                  value: "363"
                             - name:
                                 Named: flags
                               type_name:
                                 Struct: AtomicUsize
-                              value: AtomicUsize @ 0x200000A8
+                              value: "1"
                               children:
                                 - name:
-                                    Named: v
+                                    Named: value
                                   type_name:
-                                    Struct: UnsafeCell<usize>
-                                  value: UnsafeCell<usize> @ 0x200000A8
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "1"
+                                    Base: usize
+                                  value: "1"
                 - name:
                     Named: __1
                   type_name:
@@ -4462,53 +4239,35 @@ expression: stack_frames
                                 Named: write
                               type_name:
                                 Struct: AtomicUsize
-                              value: AtomicUsize @ 0x200000B8
+                              value: "0"
                               children:
                                 - name:
-                                    Named: v
+                                    Named: value
                                   type_name:
-                                    Struct: UnsafeCell<usize>
-                                  value: UnsafeCell<usize> @ 0x200000B8
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "0"
+                                    Base: usize
+                                  value: "0"
                             - name:
                                 Named: read
                               type_name:
                                 Struct: AtomicUsize
-                              value: AtomicUsize @ 0x200000BC
+                              value: "0"
                               children:
                                 - name:
-                                    Named: v
+                                    Named: value
                                   type_name:
-                                    Struct: UnsafeCell<usize>
-                                  value: UnsafeCell<usize> @ 0x200000BC
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "0"
+                                    Base: usize
+                                  value: "0"
                             - name:
                                 Named: flags
                               type_name:
                                 Struct: AtomicUsize
-                              value: AtomicUsize @ 0x200000C0
+                              value: "1"
                               children:
                                 - name:
-                                    Named: v
+                                    Named: value
                                   type_name:
-                                    Struct: UnsafeCell<usize>
-                                  value: UnsafeCell<usize> @ 0x200000C0
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "1"
+                                    Base: usize
+                                  value: "1"
   canonical_frame_address: 536886968
 - function_name: __cortex_m_rt_main
   source_location:

@@ -2,7 +2,7 @@
 source: probe-rs-debug/src/debug_info.rs
 expression: stack_frames
 ---
-- function_name: "panic_handler : ERROR : Error using the probe"
+- function_name: "panic_handler : ERROR : The coredump does not include the memory for address 0x3fceb320 of size 0x10"
   source_location:
     path: "C:\\_Espressif\\esp-coredump\\src\\lib.rs"
     line: 34
@@ -245,13 +245,13 @@ expression: stack_frames
                                   item_type_name:
                                     Struct: "&str"
                                   count: 2
-                              value: "[&str; 2] = [\n\t< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010550 : The coredump does not include the memory for address 0x3c010550 of size 0x4.\" } >,\n\t< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010558 : The coredump does not include the memory for address 0x3c010558 of size 0x4.\" } >]"
+                              value: "[&str; 2] = [\n\t< Failed to read referenced variable address from memory location 0x3C010550 : The coredump does not include the memory for address 0x3c010550 of size 0x4. >,\n\t< Failed to read referenced variable address from memory location 0x3C010558 : The coredump does not include the memory for address 0x3c010558 of size 0x4. >]"
                               children:
                                 - name:
                                     Indexed: 0
                                   type_name:
                                     Struct: "&str"
-                                  value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010550 : The coredump does not include the memory for address 0x3c010550 of size 0x4.\" } >"
+                                  value: "< Failed to read referenced variable address from memory location 0x3C010550 : The coredump does not include the memory for address 0x3c010550 of size 0x4. >"
                                   children:
                                     - name:
                                         Named: data_ptr
@@ -268,12 +268,12 @@ expression: stack_frames
                                         Named: length
                                       type_name:
                                         Base: usize
-                                      value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c010554 of size 0x4\")) >"
+                                      value: "< The coredump does not include the memory for address 0x3c010554 of size 0x4 >"
                                 - name:
                                     Indexed: 1
                                   type_name:
                                     Struct: "&str"
-                                  value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010558 : The coredump does not include the memory for address 0x3c010558 of size 0x4.\" } >"
+                                  value: "< Failed to read referenced variable address from memory location 0x3C010558 : The coredump does not include the memory for address 0x3c010558 of size 0x4. >"
                                   children:
                                     - name:
                                         Named: data_ptr
@@ -290,7 +290,7 @@ expression: stack_frames
                                         Named: length
                                       type_name:
                                         Base: usize
-                                      value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c01055c of size 0x4\")) >"
+                                      value: "< The coredump does not include the memory for address 0x3c01055c of size 0x4 >"
                         - name:
                             Named: fmt
                           type_name:
@@ -350,12 +350,6 @@ expression: stack_frames
                                               type_name:
                                                 Pointer: "unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error>"
                                               value: "*raw unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> @ 0x42000DB0"
-                                              children:
-                                                - name:
-                                                    Named: "*formatter"
-                                                  type_name:
-                                                    Other: "Result<(), core::fmt::Error>"
-                                                  value: "Unimplemented: Get value of type Other(\"Result<(), core::fmt::Error>\") of (None bytes) at location <unknown value>"
                 - name:
                     Named: location
                   type_name:
@@ -372,7 +366,7 @@ expression: stack_frames
                             Named: file
                           type_name:
                             Struct: "&str"
-                          value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010570 : The coredump does not include the memory for address 0x3c010570 of size 0x4.\" } >"
+                          value: "< Failed to read referenced variable address from memory location 0x3C010570 : The coredump does not include the memory for address 0x3c010570 of size 0x4. >"
                           children:
                             - name:
                                 Named: data_ptr
@@ -389,17 +383,17 @@ expression: stack_frames
                                 Named: length
                               type_name:
                                 Base: usize
-                              value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c010574 of size 0x4\")) >"
+                              value: "< The coredump does not include the memory for address 0x3c010574 of size 0x4 >"
                         - name:
                             Named: line
                           type_name:
                             Base: u32
-                          value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c010578 of size 0x4\")) >"
+                          value: "< The coredump does not include the memory for address 0x3c010578 of size 0x4 >"
                         - name:
                             Named: col
                           type_name:
                             Base: u32
-                          value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c01057c of size 0x4\")) >"
+                          value: "< The coredump does not include the memory for address 0x3c01057c of size 0x4 >"
                 - name:
                     Named: can_unwind
                   type_name:
@@ -636,13 +630,13 @@ expression: stack_frames
                       item_type_name:
                         Struct: "&str"
                       count: 2
-                  value: "[&str; 2] = [\n\t< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010550 : The coredump does not include the memory for address 0x3c010550 of size 0x4.\" } >,\n\t< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010558 : The coredump does not include the memory for address 0x3c010558 of size 0x4.\" } >]"
+                  value: "[&str; 2] = [\n\t< Failed to read referenced variable address from memory location 0x3C010550 : The coredump does not include the memory for address 0x3c010550 of size 0x4. >,\n\t< Failed to read referenced variable address from memory location 0x3C010558 : The coredump does not include the memory for address 0x3c010558 of size 0x4. >]"
                   children:
                     - name:
                         Indexed: 0
                       type_name:
                         Struct: "&str"
-                      value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010550 : The coredump does not include the memory for address 0x3c010550 of size 0x4.\" } >"
+                      value: "< Failed to read referenced variable address from memory location 0x3C010550 : The coredump does not include the memory for address 0x3c010550 of size 0x4. >"
                       children:
                         - name:
                             Named: data_ptr
@@ -659,12 +653,12 @@ expression: stack_frames
                             Named: length
                           type_name:
                             Base: usize
-                          value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c010554 of size 0x4\")) >"
+                          value: "< The coredump does not include the memory for address 0x3c010554 of size 0x4 >"
                     - name:
                         Indexed: 1
                       type_name:
                         Struct: "&str"
-                      value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010558 : The coredump does not include the memory for address 0x3c010558 of size 0x4.\" } >"
+                      value: "< Failed to read referenced variable address from memory location 0x3C010558 : The coredump does not include the memory for address 0x3c010558 of size 0x4. >"
                       children:
                         - name:
                             Named: data_ptr
@@ -681,7 +675,7 @@ expression: stack_frames
                             Named: length
                           type_name:
                             Base: usize
-                          value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c01055c of size 0x4\")) >"
+                          value: "< The coredump does not include the memory for address 0x3c01055c of size 0x4 >"
             - name:
                 Named: fmt
               type_name:
@@ -747,12 +741,6 @@ expression: stack_frames
                                   type_name:
                                     Pointer: "unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error>"
                                   value: "*raw unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> @ 0x42000DB0"
-                                  children:
-                                    - name:
-                                        Named: "*formatter"
-                                      type_name:
-                                        Other: "Result<(), core::fmt::Error>"
-                                      value: "Unimplemented: Get value of type Other(\"Result<(), core::fmt::Error>\") of (None bytes) at location <unknown value>"
         - name:
             Named: pi
           type_name:
@@ -794,13 +782,13 @@ expression: stack_frames
                               item_type_name:
                                 Struct: "&str"
                               count: 2
-                          value: "[&str; 2] = [\n\t< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010550 : The coredump does not include the memory for address 0x3c010550 of size 0x4.\" } >,\n\t< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010558 : The coredump does not include the memory for address 0x3c010558 of size 0x4.\" } >]"
+                          value: "[&str; 2] = [\n\t< Failed to read referenced variable address from memory location 0x3C010550 : The coredump does not include the memory for address 0x3c010550 of size 0x4. >,\n\t< Failed to read referenced variable address from memory location 0x3C010558 : The coredump does not include the memory for address 0x3c010558 of size 0x4. >]"
                           children:
                             - name:
                                 Indexed: 0
                               type_name:
                                 Struct: "&str"
-                              value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010550 : The coredump does not include the memory for address 0x3c010550 of size 0x4.\" } >"
+                              value: "< Failed to read referenced variable address from memory location 0x3C010550 : The coredump does not include the memory for address 0x3c010550 of size 0x4. >"
                               children:
                                 - name:
                                     Named: data_ptr
@@ -817,12 +805,12 @@ expression: stack_frames
                                     Named: length
                                   type_name:
                                     Base: usize
-                                  value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c010554 of size 0x4\")) >"
+                                  value: "< The coredump does not include the memory for address 0x3c010554 of size 0x4 >"
                             - name:
                                 Indexed: 1
                               type_name:
                                 Struct: "&str"
-                              value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010558 : The coredump does not include the memory for address 0x3c010558 of size 0x4.\" } >"
+                              value: "< Failed to read referenced variable address from memory location 0x3C010558 : The coredump does not include the memory for address 0x3c010558 of size 0x4. >"
                               children:
                                 - name:
                                     Named: data_ptr
@@ -839,7 +827,7 @@ expression: stack_frames
                                     Named: length
                                   type_name:
                                     Base: usize
-                                  value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c01055c of size 0x4\")) >"
+                                  value: "< The coredump does not include the memory for address 0x3c01055c of size 0x4 >"
                     - name:
                         Named: fmt
                       type_name:
@@ -905,12 +893,6 @@ expression: stack_frames
                                           type_name:
                                             Pointer: "unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error>"
                                           value: "*raw unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> @ 0x42000DB0"
-                                          children:
-                                            - name:
-                                                Named: "*formatter"
-                                              type_name:
-                                                Other: "Result<(), core::fmt::Error>"
-                                              value: "Unimplemented: Get value of type Other(\"Result<(), core::fmt::Error>\") of (None bytes) at location <unknown value>"
             - name:
                 Named: location
               type_name:
@@ -927,7 +909,7 @@ expression: stack_frames
                         Named: file
                       type_name:
                         Struct: "&str"
-                      value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010570 : The coredump does not include the memory for address 0x3c010570 of size 0x4.\" } >"
+                      value: "< Failed to read referenced variable address from memory location 0x3C010570 : The coredump does not include the memory for address 0x3c010570 of size 0x4. >"
                       children:
                         - name:
                             Named: data_ptr
@@ -944,17 +926,17 @@ expression: stack_frames
                             Named: length
                           type_name:
                             Base: usize
-                          value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c010574 of size 0x4\")) >"
+                          value: "< The coredump does not include the memory for address 0x3c010574 of size 0x4 >"
                     - name:
                         Named: line
                       type_name:
                         Base: u32
-                      value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c010578 of size 0x4\")) >"
+                      value: "< The coredump does not include the memory for address 0x3c010578 of size 0x4 >"
                     - name:
                         Named: col
                       type_name:
                         Base: u32
-                      value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c01057c of size 0x4\")) >"
+                      value: "< The coredump does not include the memory for address 0x3c01057c of size 0x4 >"
             - name:
                 Named: can_unwind
               type_name:
@@ -1195,7 +1177,7 @@ expression: stack_frames
                 Named: "*message"
               type_name:
                 Struct: "&str"
-              value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C0101CC : The coredump does not include the memory for address 0x3c0101cc of size 0x4.\" } >"
+              value: "< Failed to read referenced variable address from memory location 0x3C0101CC : The coredump does not include the memory for address 0x3c0101cc of size 0x4. >"
               children:
                 - name:
                     Named: data_ptr
@@ -1212,7 +1194,7 @@ expression: stack_frames
                     Named: length
                   type_name:
                     Base: usize
-                  value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c0101d0 of size 0x4\")) >"
+                  value: "< The coredump does not include the memory for address 0x3c0101d0 of size 0x4 >"
   canonical_frame_address: ~
 - function_name: "{async_fn#0}"
   source_location:
@@ -1466,42 +1448,21 @@ expression: stack_frames
                                       type_name:
                                         Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
                                       value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker @ 0x3C013574"
-                                      children:
-                                        - name:
-                                            Named: "*clone"
-                                          type_name:
-                                            Other: RawWaker
-                                          value: "Unimplemented: Get value of type Other(\"RawWaker\") of (None bytes) at location <unknown value>"
                                     - name:
                                         Named: wake
                                       type_name:
                                         Pointer: unsafe fn(*const ())
                                       value: "*raw unsafe fn(*const ()) @ 0x3FC89F00"
-                                      children:
-                                        - name:
-                                            Named: "*wake"
-                                          type_name: Unknown
-                                          value: "<No Return Value>"
                                     - name:
                                         Named: wake_by_ref
                                       type_name:
                                         Pointer: unsafe fn(*const ())
                                       value: "*raw unsafe fn(*const ()) @ 0x3FCDC598"
-                                      children:
-                                        - name:
-                                            Named: "*wake_by_ref"
-                                          type_name: Unknown
-                                          value: "<No Return Value>"
                                     - name:
                                         Named: drop
                                       type_name:
                                         Pointer: unsafe fn(*const ())
                                       value: "*raw unsafe fn(*const ()) @ 0x3FCDC598"
-                                      children:
-                                        - name:
-                                            Named: "*drop"
-                                          type_name: Unknown
-                                          value: "<No Return Value>"
                 - name:
                     Named: local_waker
                   type_name:
@@ -1512,7 +1473,7 @@ expression: stack_frames
                         Named: "*local_waker"
                       type_name:
                         Struct: LocalWaker
-                      value: "<null pointer>"
+                      value: LocalWaker @ <null pointer>
                 - name:
                     Named: ext
                   type_name:
@@ -1593,42 +1554,21 @@ expression: stack_frames
                                       type_name:
                                         Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
                                       value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker"
-                                      children:
-                                        - name:
-                                            Named: "*clone"
-                                          type_name:
-                                            Other: RawWaker
-                                          value: "Unimplemented: Get value of type Other(\"RawWaker\") of (None bytes) at location <unknown value>"
                                     - name:
                                         Named: wake
                                       type_name:
                                         Pointer: unsafe fn(*const ())
                                       value: "*raw unsafe fn(*const ())"
-                                      children:
-                                        - name:
-                                            Named: "*wake"
-                                          type_name: Unknown
-                                          value: "<No Return Value>"
                                     - name:
                                         Named: wake_by_ref
                                       type_name:
                                         Pointer: unsafe fn(*const ())
                                       value: "*raw unsafe fn(*const ())"
-                                      children:
-                                        - name:
-                                            Named: "*wake_by_ref"
-                                          type_name: Unknown
-                                          value: "<No Return Value>"
                                     - name:
                                         Named: drop
                                       type_name:
                                         Pointer: unsafe fn(*const ())
                                       value: "*raw unsafe fn(*const ())"
-                                      children:
-                                        - name:
-                                            Named: "*drop"
-                                          type_name: Unknown
-                                          value: "<No Return Value>"
                 - name:
                     Named: local_waker
                   type_name:
@@ -1669,42 +1609,21 @@ expression: stack_frames
                                       type_name:
                                         Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
                                       value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker"
-                                      children:
-                                        - name:
-                                            Named: "*clone"
-                                          type_name:
-                                            Other: RawWaker
-                                          value: "Unimplemented: Get value of type Other(\"RawWaker\") of (None bytes) at location <unknown value>"
                                     - name:
                                         Named: wake
                                       type_name:
                                         Pointer: unsafe fn(*const ())
                                       value: "*raw unsafe fn(*const ())"
-                                      children:
-                                        - name:
-                                            Named: "*wake"
-                                          type_name: Unknown
-                                          value: "<No Return Value>"
                                     - name:
                                         Named: wake_by_ref
                                       type_name:
                                         Pointer: unsafe fn(*const ())
                                       value: "*raw unsafe fn(*const ())"
-                                      children:
-                                        - name:
-                                            Named: "*wake_by_ref"
-                                          type_name: Unknown
-                                          value: "<No Return Value>"
                                     - name:
                                         Named: drop
                                       type_name:
                                         Pointer: unsafe fn(*const ())
                                       value: "*raw unsafe fn(*const ())"
-                                      children:
-                                        - name:
-                                            Named: "*drop"
-                                          type_name: Unknown
-                                          value: "<No Return Value>"
                 - name:
                     Named: ext
                   type_name:
@@ -2086,16 +2005,10 @@ expression: stack_frames
                               value: AtomicU32 @ 0x3FC89F10
                               children:
                                 - name:
-                                    Named: v
+                                    Named: value
                                   type_name:
-                                    Struct: UnsafeCell<u32>
-                                  value: UnsafeCell<u32> @ 0x3FC89F10
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: u32
-                                      value: "< Probe(Other(\"The coredump does not include the memory for address 0x3fc89f10 of size 0x4\")) >"
+                                    Base: u32
+                                  value: "< The coredump does not include the memory for address 0x3fc89f10 of size 0x4 >"
                         - name:
                             Named: run_queue_item
                           type_name:
@@ -2111,26 +2024,26 @@ expression: stack_frames
                                 - name:
                                     Named: value
                                   type_name:
-                                    Struct: "UnsafeCell<core::option::Option<embassy_executor::raw::TaskRef>>"
-                                  value: "UnsafeCell<core::option::Option<embassy_executor::raw::TaskRef>> @ 0x3FC89F14"
+                                    Struct: "Option<embassy_executor::raw::TaskRef>"
+                                  value: "Option<embassy_executor::raw::TaskRef> @ 0x3FC89F14"
                                   children:
                                     - name:
-                                        Named: value
+                                        Named: Some
                                       type_name:
-                                        Struct: "Option<embassy_executor::raw::TaskRef>"
-                                      value: "Option<embassy_executor::raw::TaskRef> @ 0x3FC89F14"
+                                        Struct: Some
+                                      value: Some @ 0x3FC89F14
                                       children:
                                         - name:
-                                            Named: Some
+                                            Named: __0
                                           type_name:
-                                            Struct: Some
-                                          value: Some @ 0x3FC89F14
+                                            Struct: TaskRef
+                                          value: TaskRef @ 0x3FC89F14
                                           children:
                                             - name:
-                                                Named: __0
+                                                Named: ptr
                                               type_name:
-                                                Struct: TaskRef
-                                              value: TaskRef @ 0x3FC89F14
+                                                Struct: "NonNull<embassy_executor::raw::TaskHeader>"
+                                              value: "NonNull<embassy_executor::raw::TaskHeader> @ 0x3FC89F14"
                         - name:
                             Named: executor
                           type_name:
@@ -2138,22 +2051,16 @@ expression: stack_frames
                           value: "AtomicPtr<embassy_executor::raw::SyncExecutor> @ 0x3FC89F18"
                           children:
                             - name:
-                                Named: p
+                                Named: value
                               type_name:
-                                Struct: "UnsafeCell<*mut embassy_executor::raw::SyncExecutor>"
-                              value: "UnsafeCell<*mut embassy_executor::raw::SyncExecutor> @ 0x3FC89F18"
+                                Pointer: "*mut embassy_executor::raw::SyncExecutor"
+                              value: "*mut embassy_executor::raw::SyncExecutor"
                               children:
                                 - name:
-                                    Named: value
+                                    Named: "*value"
                                   type_name:
-                                    Pointer: "*mut embassy_executor::raw::SyncExecutor"
-                                  value: "*mut embassy_executor::raw::SyncExecutor"
-                                  children:
-                                    - name:
-                                        Named: "*value"
-                                      type_name:
-                                        Struct: SyncExecutor
-                                      value: "Failed to read referenced variable address from memory location 0x3FC89F18 : The coredump does not include the memory for address 0x3fc89f18 of size 0x4."
+                                    Struct: SyncExecutor
+                                  value: "SyncExecutor @ Failed to read referenced variable address from memory location 0x3FC89F18 : The coredump does not include the memory for address 0x3fc89f18 of size 0x4."
                         - name:
                             Named: poll_fn
                           type_name:
@@ -2163,31 +2070,20 @@ expression: stack_frames
                             - name:
                                 Named: value
                               type_name:
-                                Struct: "UnsafeCell<core::option::Option<unsafe fn(embassy_executor::raw::TaskRef)>>"
-                              value: "UnsafeCell<core::option::Option<unsafe fn(embassy_executor::raw::TaskRef)>> @ 0x3FC89F1C"
+                                Struct: "Option<unsafe fn(embassy_executor::raw::TaskRef)>"
+                              value: "Option<unsafe fn(embassy_executor::raw::TaskRef)> @ 0x3FC89F1C"
                               children:
                                 - name:
-                                    Named: value
+                                    Named: Some
                                   type_name:
-                                    Struct: "Option<unsafe fn(embassy_executor::raw::TaskRef)>"
-                                  value: "Option<unsafe fn(embassy_executor::raw::TaskRef)> @ 0x3FC89F1C"
+                                    Struct: Some
+                                  value: Some @ 0x3FC89F1C
                                   children:
                                     - name:
-                                        Named: Some
+                                        Named: __0
                                       type_name:
-                                        Struct: Some
-                                      value: Some @ 0x3FC89F1C
-                                      children:
-                                        - name:
-                                            Named: __0
-                                          type_name:
-                                            Pointer: "unsafe fn(embassy_executor::raw::TaskRef)"
-                                          value: "*raw unsafe fn(embassy_executor::raw::TaskRef)"
-                                          children:
-                                            - name:
-                                                Named: "*__0"
-                                              type_name: Unknown
-                                              value: "<No Return Value>"
+                                        Pointer: "unsafe fn(embassy_executor::raw::TaskRef)"
+                                      value: "*raw unsafe fn(embassy_executor::raw::TaskRef)"
                         - name:
                             Named: timer_queue_item
                           type_name:
@@ -2203,26 +2099,26 @@ expression: stack_frames
                                 - name:
                                     Named: value
                                   type_name:
-                                    Struct: "UnsafeCell<core::option::Option<embassy_executor::raw::TaskRef>>"
-                                  value: "UnsafeCell<core::option::Option<embassy_executor::raw::TaskRef>> @ 0x3FC89F08"
+                                    Struct: "Option<embassy_executor::raw::TaskRef>"
+                                  value: "Option<embassy_executor::raw::TaskRef> @ 0x3FC89F08"
                                   children:
                                     - name:
-                                        Named: value
+                                        Named: Some
                                       type_name:
-                                        Struct: "Option<embassy_executor::raw::TaskRef>"
-                                      value: "Option<embassy_executor::raw::TaskRef> @ 0x3FC89F08"
+                                        Struct: Some
+                                      value: Some @ 0x3FC89F08
                                       children:
                                         - name:
-                                            Named: Some
+                                            Named: __0
                                           type_name:
-                                            Struct: Some
-                                          value: Some @ 0x3FC89F08
+                                            Struct: TaskRef
+                                          value: TaskRef @ 0x3FC89F08
                                           children:
                                             - name:
-                                                Named: __0
+                                                Named: ptr
                                               type_name:
-                                                Struct: TaskRef
-                                              value: TaskRef @ 0x3FC89F08
+                                                Struct: "NonNull<embassy_executor::raw::TaskHeader>"
+                                              value: "NonNull<embassy_executor::raw::TaskHeader> @ 0x3FC89F08"
                             - name:
                                 Named: expires_at
                               type_name:
@@ -2232,14 +2128,8 @@ expression: stack_frames
                                 - name:
                                     Named: value
                                   type_name:
-                                    Struct: UnsafeCell<u64>
-                                  value: UnsafeCell<u64> @ 0x3FC89F00
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: u64
-                                      value: "< Probe(Other(\"The coredump does not include the memory for address 0x3fc89f00 of size 0x8\")) >"
+                                    Base: u64
+                                  value: "< The coredump does not include the memory for address 0x3fc89f00 of size 0x8 >"
                             - name:
                                 Named: payload
                               type_name:
@@ -2253,28 +2143,28 @@ expression: stack_frames
                                       item_type_name:
                                         Base: u8
                                       count: 4
-                                  value: "[u8; 4] = [\n\t< Probe(Other(\"The coredump does not include the memory for address 0x3fc89f0c of size 0x4\")) >,\n\t< Probe(Other(\"The coredump does not include the memory for address 0x3fc89f0c of size 0x4\")) >,\n\t< Probe(Other(\"The coredump does not include the memory for address 0x3fc89f0c of size 0x4\")) >,\n\t< Probe(Other(\"The coredump does not include the memory for address 0x3fc89f0c of size 0x4\")) >]"
+                                  value: "[u8; 4] = [\n\t< The coredump does not include the memory for address 0x3fc89f0c of size 0x4 >,\n\t< The coredump does not include the memory for address 0x3fc89f0c of size 0x4 >,\n\t< The coredump does not include the memory for address 0x3fc89f0c of size 0x4 >,\n\t< The coredump does not include the memory for address 0x3fc89f0c of size 0x4 >]"
                                   children:
                                     - name:
                                         Indexed: 0
                                       type_name:
                                         Base: u8
-                                      value: "< Probe(Other(\"The coredump does not include the memory for address 0x3fc89f0c of size 0x4\")) >"
+                                      value: "< The coredump does not include the memory for address 0x3fc89f0c of size 0x4 >"
                                     - name:
                                         Indexed: 1
                                       type_name:
                                         Base: u8
-                                      value: "< Probe(Other(\"The coredump does not include the memory for address 0x3fc89f0c of size 0x4\")) >"
+                                      value: "< The coredump does not include the memory for address 0x3fc89f0c of size 0x4 >"
                                     - name:
                                         Indexed: 2
                                       type_name:
                                         Base: u8
-                                      value: "< Probe(Other(\"The coredump does not include the memory for address 0x3fc89f0c of size 0x4\")) >"
+                                      value: "< The coredump does not include the memory for address 0x3fc89f0c of size 0x4 >"
                                     - name:
                                         Indexed: 3
                                       type_name:
                                         Base: u8
-                                      value: "< Probe(Other(\"The coredump does not include the memory for address 0x3fc89f0c of size 0x4\")) >"
+                                      value: "< The coredump does not include the memory for address 0x3fc89f0c of size 0x4 >"
         - name:
             Named: this
           type_name:
@@ -2311,16 +2201,10 @@ expression: stack_frames
                           value: AtomicU32 @ 0x3FC89F10
                           children:
                             - name:
-                                Named: v
+                                Named: value
                               type_name:
-                                Struct: UnsafeCell<u32>
-                              value: UnsafeCell<u32> @ 0x3FC89F10
-                              children:
-                                - name:
-                                    Named: value
-                                  type_name:
-                                    Base: u32
-                                  value: "< Probe(Other(\"The coredump does not include the memory for address 0x3fc89f10 of size 0x4\")) >"
+                                Base: u32
+                              value: "< The coredump does not include the memory for address 0x3fc89f10 of size 0x4 >"
                     - name:
                         Named: run_queue_item
                       type_name:
@@ -2336,32 +2220,38 @@ expression: stack_frames
                             - name:
                                 Named: value
                               type_name:
-                                Struct: "UnsafeCell<core::option::Option<embassy_executor::raw::TaskRef>>"
-                              value: "UnsafeCell<core::option::Option<embassy_executor::raw::TaskRef>> @ 0x3FC89F14"
+                                Struct: "Option<embassy_executor::raw::TaskRef>"
+                              value: "Option<embassy_executor::raw::TaskRef> @ 0x3FC89F14"
                               children:
                                 - name:
-                                    Named: value
+                                    Named: Some
                                   type_name:
-                                    Struct: "Option<embassy_executor::raw::TaskRef>"
-                                  value: "Option<embassy_executor::raw::TaskRef> @ 0x3FC89F14"
+                                    Struct: Some
+                                  value: Some @ 0x3FC89F14
                                   children:
                                     - name:
-                                        Named: Some
+                                        Named: __0
                                       type_name:
-                                        Struct: Some
-                                      value: Some @ 0x3FC89F14
+                                        Struct: TaskRef
+                                      value: TaskRef @ 0x3FC89F14
                                       children:
                                         - name:
-                                            Named: __0
+                                            Named: ptr
                                           type_name:
-                                            Struct: TaskRef
-                                          value: TaskRef @ 0x3FC89F14
+                                            Struct: "NonNull<embassy_executor::raw::TaskHeader>"
+                                          value: "NonNull<embassy_executor::raw::TaskHeader> @ 0x3FC89F14"
                                           children:
                                             - name:
-                                                Named: ptr
+                                                Named: pointer
                                               type_name:
-                                                Struct: "NonNull<embassy_executor::raw::TaskHeader>"
-                                              value: "NonNull<embassy_executor::raw::TaskHeader> @ 0x3FC89F14"
+                                                Pointer: "*const embassy_executor::raw::TaskHeader"
+                                              value: "*const embassy_executor::raw::TaskHeader"
+                                              children:
+                                                - name:
+                                                    Named: "*pointer"
+                                                  type_name:
+                                                    Struct: TaskHeader
+                                                  value: "TaskHeader @ Failed to read referenced variable address from memory location 0x3FC89F14 : The coredump does not include the memory for address 0x3fc89f14 of size 0x4."
                     - name:
                         Named: executor
                       type_name:
@@ -2369,22 +2259,16 @@ expression: stack_frames
                       value: "AtomicPtr<embassy_executor::raw::SyncExecutor> @ 0x3FC89F18"
                       children:
                         - name:
-                            Named: p
+                            Named: value
                           type_name:
-                            Struct: "UnsafeCell<*mut embassy_executor::raw::SyncExecutor>"
-                          value: "UnsafeCell<*mut embassy_executor::raw::SyncExecutor> @ 0x3FC89F18"
+                            Pointer: "*mut embassy_executor::raw::SyncExecutor"
+                          value: "*mut embassy_executor::raw::SyncExecutor"
                           children:
                             - name:
-                                Named: value
+                                Named: "*value"
                               type_name:
-                                Pointer: "*mut embassy_executor::raw::SyncExecutor"
-                              value: "*mut embassy_executor::raw::SyncExecutor"
-                              children:
-                                - name:
-                                    Named: "*value"
-                                  type_name:
-                                    Struct: SyncExecutor
-                                  value: "Failed to read referenced variable address from memory location 0x3FC89F18 : The coredump does not include the memory for address 0x3fc89f18 of size 0x4."
+                                Struct: SyncExecutor
+                              value: "SyncExecutor @ Failed to read referenced variable address from memory location 0x3FC89F18 : The coredump does not include the memory for address 0x3fc89f18 of size 0x4."
                     - name:
                         Named: poll_fn
                       type_name:
@@ -2394,31 +2278,20 @@ expression: stack_frames
                         - name:
                             Named: value
                           type_name:
-                            Struct: "UnsafeCell<core::option::Option<unsafe fn(embassy_executor::raw::TaskRef)>>"
-                          value: "UnsafeCell<core::option::Option<unsafe fn(embassy_executor::raw::TaskRef)>> @ 0x3FC89F1C"
+                            Struct: "Option<unsafe fn(embassy_executor::raw::TaskRef)>"
+                          value: "Option<unsafe fn(embassy_executor::raw::TaskRef)> @ 0x3FC89F1C"
                           children:
                             - name:
-                                Named: value
+                                Named: Some
                               type_name:
-                                Struct: "Option<unsafe fn(embassy_executor::raw::TaskRef)>"
-                              value: "Option<unsafe fn(embassy_executor::raw::TaskRef)> @ 0x3FC89F1C"
+                                Struct: Some
+                              value: Some @ 0x3FC89F1C
                               children:
                                 - name:
-                                    Named: Some
+                                    Named: __0
                                   type_name:
-                                    Struct: Some
-                                  value: Some @ 0x3FC89F1C
-                                  children:
-                                    - name:
-                                        Named: __0
-                                      type_name:
-                                        Pointer: "unsafe fn(embassy_executor::raw::TaskRef)"
-                                      value: "*raw unsafe fn(embassy_executor::raw::TaskRef)"
-                                      children:
-                                        - name:
-                                            Named: "*__0"
-                                          type_name: Unknown
-                                          value: "<No Return Value>"
+                                    Pointer: "unsafe fn(embassy_executor::raw::TaskRef)"
+                                  value: "*raw unsafe fn(embassy_executor::raw::TaskRef)"
                     - name:
                         Named: timer_queue_item
                       type_name:
@@ -2434,32 +2307,38 @@ expression: stack_frames
                             - name:
                                 Named: value
                               type_name:
-                                Struct: "UnsafeCell<core::option::Option<embassy_executor::raw::TaskRef>>"
-                              value: "UnsafeCell<core::option::Option<embassy_executor::raw::TaskRef>> @ 0x3FC89F08"
+                                Struct: "Option<embassy_executor::raw::TaskRef>"
+                              value: "Option<embassy_executor::raw::TaskRef> @ 0x3FC89F08"
                               children:
                                 - name:
-                                    Named: value
+                                    Named: Some
                                   type_name:
-                                    Struct: "Option<embassy_executor::raw::TaskRef>"
-                                  value: "Option<embassy_executor::raw::TaskRef> @ 0x3FC89F08"
+                                    Struct: Some
+                                  value: Some @ 0x3FC89F08
                                   children:
                                     - name:
-                                        Named: Some
+                                        Named: __0
                                       type_name:
-                                        Struct: Some
-                                      value: Some @ 0x3FC89F08
+                                        Struct: TaskRef
+                                      value: TaskRef @ 0x3FC89F08
                                       children:
                                         - name:
-                                            Named: __0
+                                            Named: ptr
                                           type_name:
-                                            Struct: TaskRef
-                                          value: TaskRef @ 0x3FC89F08
+                                            Struct: "NonNull<embassy_executor::raw::TaskHeader>"
+                                          value: "NonNull<embassy_executor::raw::TaskHeader> @ 0x3FC89F08"
                                           children:
                                             - name:
-                                                Named: ptr
+                                                Named: pointer
                                               type_name:
-                                                Struct: "NonNull<embassy_executor::raw::TaskHeader>"
-                                              value: "NonNull<embassy_executor::raw::TaskHeader> @ 0x3FC89F08"
+                                                Pointer: "*const embassy_executor::raw::TaskHeader"
+                                              value: "*const embassy_executor::raw::TaskHeader"
+                                              children:
+                                                - name:
+                                                    Named: "*pointer"
+                                                  type_name:
+                                                    Struct: TaskHeader
+                                                  value: "TaskHeader @ Failed to read referenced variable address from memory location 0x3FC89F08 : The coredump does not include the memory for address 0x3fc89f08 of size 0x4."
                         - name:
                             Named: expires_at
                           type_name:
@@ -2469,14 +2348,8 @@ expression: stack_frames
                             - name:
                                 Named: value
                               type_name:
-                                Struct: UnsafeCell<u64>
-                              value: UnsafeCell<u64> @ 0x3FC89F00
-                              children:
-                                - name:
-                                    Named: value
-                                  type_name:
-                                    Base: u64
-                                  value: "< Probe(Other(\"The coredump does not include the memory for address 0x3fc89f00 of size 0x8\")) >"
+                                Base: u64
+                              value: "< The coredump does not include the memory for address 0x3fc89f00 of size 0x8 >"
                         - name:
                             Named: payload
                           type_name:
@@ -2490,28 +2363,28 @@ expression: stack_frames
                                   item_type_name:
                                     Base: u8
                                   count: 4
-                              value: "[u8; 4] = [\n\t< Probe(Other(\"The coredump does not include the memory for address 0x3fc89f0c of size 0x4\")) >,\n\t< Probe(Other(\"The coredump does not include the memory for address 0x3fc89f0c of size 0x4\")) >,\n\t< Probe(Other(\"The coredump does not include the memory for address 0x3fc89f0c of size 0x4\")) >,\n\t< Probe(Other(\"The coredump does not include the memory for address 0x3fc89f0c of size 0x4\")) >]"
+                              value: "[u8; 4] = [\n\t< The coredump does not include the memory for address 0x3fc89f0c of size 0x4 >,\n\t< The coredump does not include the memory for address 0x3fc89f0c of size 0x4 >,\n\t< The coredump does not include the memory for address 0x3fc89f0c of size 0x4 >,\n\t< The coredump does not include the memory for address 0x3fc89f0c of size 0x4 >]"
                               children:
                                 - name:
                                     Indexed: 0
                                   type_name:
                                     Base: u8
-                                  value: "< Probe(Other(\"The coredump does not include the memory for address 0x3fc89f0c of size 0x4\")) >"
+                                  value: "< The coredump does not include the memory for address 0x3fc89f0c of size 0x4 >"
                                 - name:
                                     Indexed: 1
                                   type_name:
                                     Base: u8
-                                  value: "< Probe(Other(\"The coredump does not include the memory for address 0x3fc89f0c of size 0x4\")) >"
+                                  value: "< The coredump does not include the memory for address 0x3fc89f0c of size 0x4 >"
                                 - name:
                                     Indexed: 2
                                   type_name:
                                     Base: u8
-                                  value: "< Probe(Other(\"The coredump does not include the memory for address 0x3fc89f0c of size 0x4\")) >"
+                                  value: "< The coredump does not include the memory for address 0x3fc89f0c of size 0x4 >"
                                 - name:
                                     Indexed: 3
                                   type_name:
                                     Base: u8
-                                  value: "< Probe(Other(\"The coredump does not include the memory for address 0x3fc89f0c of size 0x4\")) >"
+                                  value: "< The coredump does not include the memory for address 0x3fc89f0c of size 0x4 >"
                 - name:
                     Named: future
                   type_name:
@@ -2532,20 +2405,14 @@ expression: stack_frames
                         - name:
                             Named: value
                           type_name:
-                            Struct: "ManuallyDrop<core::cell::UnsafeCell<coredump_c6::____embassy_main_task::{async_fn_env#0}>>"
-                          value: "ManuallyDrop<core::cell::UnsafeCell<coredump_c6::____embassy_main_task::{async_fn_env#0}>> @ 0x3FC89F20"
+                            Struct: "{async_fn_env#0}"
+                          value: "{async_fn_env#0} @ 0x3FC89F20"
                           children:
                             - name:
                                 Named: value
                               type_name:
-                                Struct: "UnsafeCell<coredump_c6::____embassy_main_task::{async_fn_env#0}>"
-                              value: "UnsafeCell<coredump_c6::____embassy_main_task::{async_fn_env#0}> @ 0x3FC89F20"
-                              children:
-                                - name:
-                                    Named: value
-                                  type_name:
-                                    Struct: "{async_fn_env#0}"
-                                  value: "{async_fn_env#0} @ 0x3FC89F20"
+                                Struct: "{async_fn_env#0}"
+                              value: "{async_fn_env#0} @ 0x3FC89F20"
         - name:
             Named: future
           type_name:
@@ -2607,42 +2474,21 @@ expression: stack_frames
                           type_name:
                             Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
                           value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker"
-                          children:
-                            - name:
-                                Named: "*clone"
-                              type_name:
-                                Other: RawWaker
-                              value: "Unimplemented: Get value of type Other(\"RawWaker\") of (None bytes) at location <unknown value>"
                         - name:
                             Named: wake
                           type_name:
                             Pointer: unsafe fn(*const ())
                           value: "*raw unsafe fn(*const ())"
-                          children:
-                            - name:
-                                Named: "*wake"
-                              type_name: Unknown
-                              value: "<No Return Value>"
                         - name:
                             Named: wake_by_ref
                           type_name:
                             Pointer: unsafe fn(*const ())
                           value: "*raw unsafe fn(*const ())"
-                          children:
-                            - name:
-                                Named: "*wake_by_ref"
-                              type_name: Unknown
-                              value: "<No Return Value>"
                         - name:
                             Named: drop
                           type_name:
                             Pointer: unsafe fn(*const ())
                           value: "*raw unsafe fn(*const ())"
-                          children:
-                            - name:
-                                Named: "*drop"
-                              type_name: Unknown
-                              value: "<No Return Value>"
         - name:
             Named: cx
           type_name:
@@ -2694,42 +2540,21 @@ expression: stack_frames
                                   type_name:
                                     Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
                                   value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker"
-                                  children:
-                                    - name:
-                                        Named: "*clone"
-                                      type_name:
-                                        Other: RawWaker
-                                      value: "Unimplemented: Get value of type Other(\"RawWaker\") of (None bytes) at location <unknown value>"
                                 - name:
                                     Named: wake
                                   type_name:
                                     Pointer: unsafe fn(*const ())
                                   value: "*raw unsafe fn(*const ())"
-                                  children:
-                                    - name:
-                                        Named: "*wake"
-                                      type_name: Unknown
-                                      value: "<No Return Value>"
                                 - name:
                                     Named: wake_by_ref
                                   type_name:
                                     Pointer: unsafe fn(*const ())
                                   value: "*raw unsafe fn(*const ())"
-                                  children:
-                                    - name:
-                                        Named: "*wake_by_ref"
-                                      type_name: Unknown
-                                      value: "<No Return Value>"
                                 - name:
                                     Named: drop
                                   type_name:
                                     Pointer: unsafe fn(*const ())
                                   value: "*raw unsafe fn(*const ())"
-                                  children:
-                                    - name:
-                                        Named: "*drop"
-                                      type_name: Unknown
-                                      value: "<No Return Value>"
             - name:
                 Named: local_waker
               type_name:
@@ -2770,42 +2595,21 @@ expression: stack_frames
                                   type_name:
                                     Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
                                   value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker"
-                                  children:
-                                    - name:
-                                        Named: "*clone"
-                                      type_name:
-                                        Other: RawWaker
-                                      value: "Unimplemented: Get value of type Other(\"RawWaker\") of (None bytes) at location <unknown value>"
                                 - name:
                                     Named: wake
                                   type_name:
                                     Pointer: unsafe fn(*const ())
                                   value: "*raw unsafe fn(*const ())"
-                                  children:
-                                    - name:
-                                        Named: "*wake"
-                                      type_name: Unknown
-                                      value: "<No Return Value>"
                                 - name:
                                     Named: wake_by_ref
                                   type_name:
                                     Pointer: unsafe fn(*const ())
                                   value: "*raw unsafe fn(*const ())"
-                                  children:
-                                    - name:
-                                        Named: "*wake_by_ref"
-                                      type_name: Unknown
-                                      value: "<No Return Value>"
                                 - name:
                                     Named: drop
                                   type_name:
                                     Pointer: unsafe fn(*const ())
                                   value: "*raw unsafe fn(*const ())"
-                                  children:
-                                    - name:
-                                        Named: "*drop"
-                                      type_name: Unknown
-                                      value: "<No Return Value>"
             - name:
                 Named: ext
               type_name:
@@ -3053,7 +2857,7 @@ expression: stack_frames
                         Named: "*pointer"
                       type_name:
                         Struct: TaskHeader
-                      value: "<null pointer>"
+                      value: TaskHeader @ <null pointer>
         - name:
             Named: task
           type_name:
@@ -3069,7 +2873,7 @@ expression: stack_frames
                 Named: "*task"
               type_name:
                 Struct: TaskHeader
-              value: "<null pointer>"
+              value: TaskHeader @ <null pointer>
   canonical_frame_address: ~
 - function_name: "RunQueue::dequeue_all<embassy_executor::raw::{impl#9}::poll::{closure_env#0}>"
   source_location:
@@ -3291,22 +3095,16 @@ expression: stack_frames
                   value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
                   children:
                     - name:
-                        Named: p
+                        Named: value
                       type_name:
-                        Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
-                      value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
+                        Pointer: "*mut embassy_executor::raw::TaskHeader"
+                      value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                       children:
                         - name:
-                            Named: value
+                            Named: "*value"
                           type_name:
-                            Pointer: "*mut embassy_executor::raw::TaskHeader"
-                          value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
-                          children:
-                            - name:
-                                Named: "*value"
-                              type_name:
-                                Struct: TaskHeader
-                              value: "<null pointer>"
+                            Struct: TaskHeader
+                          value: TaskHeader @ <null pointer>
         - name:
             Named: ptr
           type_name: Unknown
@@ -3359,7 +3157,7 @@ expression: stack_frames
                         Named: "*pointer"
                       type_name:
                         Struct: TaskHeader
-                      value: "<null pointer>"
+                      value: TaskHeader @ <null pointer>
   canonical_frame_address: ~
 - function_name: "SyncExecutor::poll"
   source_location:
@@ -3587,22 +3385,16 @@ expression: stack_frames
                       value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
                       children:
                         - name:
-                            Named: p
+                            Named: value
                           type_name:
-                            Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
-                          value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
+                            Pointer: "*mut embassy_executor::raw::TaskHeader"
+                          value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                           children:
                             - name:
-                                Named: value
+                                Named: "*value"
                               type_name:
-                                Pointer: "*mut embassy_executor::raw::TaskHeader"
-                              value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
-                              children:
-                                - name:
-                                    Named: "*value"
-                                  type_name:
-                                    Struct: TaskHeader
-                                  value: "<null pointer>"
+                                Struct: TaskHeader
+                              value: TaskHeader @ <null pointer>
                 - name:
                     Named: pender
                   type_name:
@@ -3847,22 +3639,16 @@ expression: stack_frames
                           value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
                           children:
                             - name:
-                                Named: p
+                                Named: value
                               type_name:
-                                Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
-                              value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
+                                Pointer: "*mut embassy_executor::raw::TaskHeader"
+                              value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                               children:
                                 - name:
-                                    Named: value
+                                    Named: "*value"
                                   type_name:
-                                    Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                  value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
-                                  children:
-                                    - name:
-                                        Named: "*value"
-                                      type_name:
-                                        Struct: TaskHeader
-                                      value: "<null pointer>"
+                                    Struct: TaskHeader
+                                  value: TaskHeader @ <null pointer>
                     - name:
                         Named: pender
                       type_name:
@@ -4069,7 +3855,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tself: &mut esp_hal_embassy::executor::thread::Executor = &mut esp_hal_embassy::executor::thread::Executor @ 0x3FCDC6B0,\n\tinit: {closure_env#0} = {closure_env#0},\n\tcpu: usize = 0}"
+      value: "<unknown> {\n\tself: &mut esp_hal_embassy::executor::thread::Executor = &mut esp_hal_embassy::executor::thread::Executor @ 0x3FCDC6B0,\n\tinit: {closure_env#0} = {closure_env#0} @ <unknown value>,\n\tcpu: usize = 0}"
       children:
         - name:
             Named: self
@@ -4119,22 +3905,16 @@ expression: stack_frames
                                   value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
                                   children:
                                     - name:
-                                        Named: p
+                                        Named: value
                                       type_name:
-                                        Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
-                                      value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
+                                        Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                      value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                                       children:
                                         - name:
-                                            Named: value
+                                            Named: "*value"
                                           type_name:
-                                            Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                          value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
-                                          children:
-                                            - name:
-                                                Named: "*value"
-                                              type_name:
-                                                Struct: TaskHeader
-                                              value: "<null pointer>"
+                                            Struct: TaskHeader
+                                          value: TaskHeader @ <null pointer>
                             - name:
                                 Named: pender
                               type_name:
@@ -4150,7 +3930,7 @@ expression: stack_frames
             Named: init
           type_name:
             Struct: "{closure_env#0}"
-          value: "{closure_env#0}"
+          value: "{closure_env#0} @ <unknown value>"
           source_location:
             path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-hal-embassy-0.7.0\\src\\executor\\thread.rs"
             line: 96
@@ -4405,22 +4185,16 @@ expression: stack_frames
                               value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
                               children:
                                 - name:
-                                    Named: p
+                                    Named: value
                                   type_name:
-                                    Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
-                                  value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
+                                    Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                  value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                                   children:
                                     - name:
-                                        Named: value
+                                        Named: "*value"
                                       type_name:
-                                        Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                      value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
-                                      children:
-                                        - name:
-                                            Named: "*value"
-                                          type_name:
-                                            Struct: TaskHeader
-                                          value: "<null pointer>"
+                                        Struct: TaskHeader
+                                      value: TaskHeader @ <null pointer>
                         - name:
                             Named: pender
                           type_name:
@@ -4480,22 +4254,16 @@ expression: stack_frames
                                   value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
                                   children:
                                     - name:
-                                        Named: p
+                                        Named: value
                                       type_name:
-                                        Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
-                                      value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
+                                        Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                      value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                                       children:
                                         - name:
-                                            Named: value
+                                            Named: "*value"
                                           type_name:
-                                            Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                          value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
-                                          children:
-                                            - name:
-                                                Named: "*value"
-                                              type_name:
-                                                Struct: TaskHeader
-                                              value: "<null pointer>"
+                                            Struct: TaskHeader
+                                          value: TaskHeader @ <null pointer>
                             - name:
                                 Named: pender
                               type_name:

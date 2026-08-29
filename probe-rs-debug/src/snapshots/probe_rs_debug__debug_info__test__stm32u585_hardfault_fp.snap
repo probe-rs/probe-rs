@@ -1079,7 +1079,7 @@ expression: stack_frames
             Named: src
           type_name:
             Base: u32
-          value: "Unimplemented: Get value of type Base(\"u32\") of (Some(4) bytes) at location <unknown value>"
+          value: "<unknown value>"
           source_location:
             path: /home/dirbaio/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs
             line: 2171

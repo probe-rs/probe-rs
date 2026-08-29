@@ -1340,21 +1340,26 @@ impl UnitInfo {
                                         )),
                                     };
 
-                                    referenced_unit.extract_type(
-                                        debug_info,
-                                        &referenced_node,
-                                        child_variable,
-                                        &mut referenced_variable,
-                                        memory,
-                                        cache,
-                                        frame_info,
-                                    )?;
-
-                                    if matches!(referenced_variable.type_name.inner(), VariableType::Base(name) if name == "()")
-                                    {
-                                        // Only use this, if it is NOT a unit datatype.
+                                    if referenced_node.tag() == gimli::DW_TAG_subroutine_type {
                                         cache
                                             .remove_cache_entry(referenced_variable.variable_key)?;
+                                    } else {
+                                        referenced_unit.extract_type(
+                                            debug_info,
+                                            &referenced_node,
+                                            child_variable,
+                                            &mut referenced_variable,
+                                            memory,
+                                            cache,
+                                            frame_info,
+                                        )?;
+
+                                        if matches!(referenced_variable.type_name.inner(), VariableType::Base(name) if name == "()")
+                                        {
+                                            cache.remove_cache_entry(
+                                                referenced_variable.variable_key,
+                                            )?;
+                                        }
                                     }
                                 }
                                 Err(error) => {
@@ -1425,7 +1430,7 @@ impl UnitInfo {
                     frame_info,
                 )?;
 
-                if child_variable.memory_location.valid() {
+                if child_variable.memory_location.holds_value() {
                     child_variable.variable_node_type =
                         VariableNodeType::TypeOffset(self.debug_info_offset()?, node.offset());
                 } else {
@@ -1573,7 +1578,7 @@ impl UnitInfo {
             frame_info,
         )?;
 
-        if child_variable.memory_location.valid() {
+        if child_variable.memory_location.holds_value() {
             if self.has_structured_children(node)? {
                 // The default behaviour is to defer the processing of child types.
                 child_variable.variable_node_type =
@@ -1605,19 +1610,29 @@ impl UnitInfo {
                 child_variable.set_value(VariableValue::Valid(type_name));
             }
         } else {
-            // If something is already broken, then do nothing ...
             child_variable.variable_node_type = VariableNodeType::DoNotRecurse;
+            child_variable.set_value(VariableValue::Valid(format!(
+                "{} @ {}",
+                child_variable.type_name(),
+                child_variable.memory_location
+            )));
         }
 
-        self.language.process_struct(
-            self,
-            debug_info,
-            node,
-            child_variable,
-            memory,
-            cache,
-            frame_info,
-        )
+        self.process_struct(debug_info, node, child_variable, memory, cache, frame_info)
+    }
+
+    /// Language-specific rewrite after a struct's members are in the cache.
+    pub(crate) fn process_struct(
+        &self,
+        debug_info: &DebugInfo,
+        node: &DebuggingInformationEntry<GimliReader>,
+        variable: &mut Variable,
+        memory: &mut dyn MemoryInterface,
+        cache: &mut VariableCache,
+        frame_info: StackFrameInfo<'_>,
+    ) -> Result<(), DebugError> {
+        self.language
+            .process_struct(self, debug_info, node, variable, memory, cache, frame_info)
     }
 
     #[expect(clippy::too_many_arguments)]
@@ -2378,17 +2393,12 @@ impl UnitInfo {
                         }
                     }
                     Err(error) => {
-                        // The Display of the error hides the cause, which holds the
-                        // detail of the failure.
-                        let cause = std::error::Error::source(&error)
-                            .map_or_else(|| error.to_string(), |cause| cause.to_string());
-
                         tracing::debug!(
-                            "Failed to read referenced variable address from memory location {} : {cause}.",
+                            "Failed to read referenced variable address from memory location {} : {error}.",
                             parent_variable.memory_location
                         );
                         VariableLocation::Error(format!(
-                            "Failed to read referenced variable address from memory location {} : {cause}.",
+                            "Failed to read referenced variable address from memory location {} : {error}.",
                             parent_variable.memory_location
                         ))
                     }
@@ -2661,6 +2671,28 @@ impl UnitInfo {
     pub(crate) fn parent_offset(&self, offset: UnitOffset) -> Option<UnitOffset> {
         self.parents.get(&offset).copied()
     }
+
+    /// Names of enclosing `DW_TAG_namespace` / `DW_TAG_module` DIEs, crate first.
+    pub(crate) fn namespace_path(
+        &self,
+        debug_info: &DebugInfo,
+        entry: &DebuggingInformationEntry<GimliReader>,
+    ) -> Vec<String> {
+        let mut segments = Vec::new();
+        let mut offset = self.parent_offset(entry.offset());
+        while let Some(parent) = offset {
+            if let Ok(die) = self.unit.entry(parent)
+                && matches!(die.tag(), gimli::DW_TAG_namespace | gimli::DW_TAG_module)
+                && let Ok(Some(name)) = extract_name(debug_info, &self.unit, &die)
+            {
+                segments.push(name);
+            }
+
+            offset = self.parent_offset(parent);
+        }
+        segments.reverse();
+        segments
+    }
 }
 
 fn extract_name(
@@ -2766,6 +2798,13 @@ fn object_at(address: u64, alignment: Option<u64>, byte_size: Option<u64>) -> Op
         return None;
     }
 
+    if let Some(alignment) = alignment
+        && alignment > 1
+        && !address.is_multiple_of(alignment)
+    {
+        return None;
+    }
+
     let dangling = match alignment {
         Some(alignment) => address == alignment,
         // Without the alignment of the type, take every address that an alignment can be: a
@@ -2774,7 +2813,7 @@ fn object_at(address: u64, alignment: Option<u64>, byte_size: Option<u64>) -> Op
         None => {
             address.is_power_of_two()
                 && address <= MAX_ALIGNMENT
-                && byte_size.is_some_and(|byte_size| address <= byte_size)
+                && byte_size.is_none_or(|byte_size| address <= byte_size)
         }
     };
 
@@ -2930,6 +2969,12 @@ mod test {
     }
 
     #[test]
+    fn a_pointer_that_is_not_aligned_to_the_type_points_at_no_object() {
+        assert_eq!(object_at(1, Some(4), Some(32)), None);
+        assert_eq!(object_at(0x2000_0005, Some(4), Some(32)), None);
+    }
+
+    #[test]
     fn without_the_alignment_a_pointer_that_holds_no_more_than_the_size_of_the_type_points_at_no_object()
      {
         assert_eq!(object_at(1, None, Some(1)), None);
@@ -2944,8 +2989,8 @@ mod test {
         assert_eq!(object_at(12, None, Some(32)), Some(12));
         // Greater than the largest alignment of a target type.
         assert_eq!(object_at(32, None, Some(1024)), Some(32));
-        // Without the size of the type.
-        assert_eq!(object_at(4, None, None), Some(4));
+        // Without the size of the type, a small power of two can still be a dangling pointer.
+        assert_eq!(object_at(4, None, None), None);
     }
 
     #[test]

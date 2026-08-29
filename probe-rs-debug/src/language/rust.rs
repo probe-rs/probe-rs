@@ -23,7 +23,7 @@ pub struct Rust;
 impl Rust {
     fn try_get_slice<'a>(variable: &'a Variable, cache: &'a VariableCache) -> Option<Slice<'a>> {
         fn is_field(var: &Variable, name: &str) -> bool {
-            matches!(var.name, VariableName::Named(ref var_name) if var_name == name)
+            is_named(var, name)
         }
 
         Some(Slice {
@@ -102,6 +102,448 @@ impl Rust {
             Some(16) => i128::update_value(variable, memory, new_value),
             _ => i32::update_value(variable, memory, new_value),
         }
+    }
+
+    /// Unwraps some common newtypes after their member DIE is in the cache.
+    #[expect(clippy::too_many_arguments)]
+    fn flatten_known_wrapper(
+        &self,
+        unit_info: &UnitInfo,
+        debug_info: &DebugInfo,
+        node: &DebuggingInformationEntry<GimliReader>,
+        variable: &mut Variable,
+        memory: &mut dyn MemoryInterface,
+        cache: &mut VariableCache,
+        frame_info: StackFrameInfo<'_>,
+    ) -> Result<(), DebugError> {
+        let Some(path) = RustPath::from_die(unit_info, debug_info, node) else {
+            return Ok(());
+        };
+        if !path.is_transparent_wrapper() {
+            return Ok(());
+        }
+
+        // `Atomic<T>` wraps `UnsafeCell<AlignN<T>>`. Each pass peels one layer.
+        for _ in 0..8 {
+            let children: Vec<_> = cache.get_children(variable.variable_key).cloned().collect();
+            let [inner] = children.as_slice() else {
+                return Ok(());
+            };
+
+            let mut inner = inner.clone();
+            debug_info.cache_deferred_variables(cache, memory, &mut inner, frame_info)?;
+            let Some(inner) = cache.get_variable_by_key(inner.variable_key) else {
+                return Ok(());
+            };
+
+            let inner_path = RustPath::from_variable(debug_info, &inner);
+            if inner_path
+                .as_ref()
+                .is_some_and(|path| path.is_core_unsafe_cell())
+                || (inner_path
+                    .as_ref()
+                    .is_some_and(|path| path.is_transparent_wrapper())
+                    && cache.has_children(&inner))
+            {
+                let inner_key = inner.variable_key;
+                cache.adopt_grand_children(variable, &inner)?;
+                if cache.get_variable_by_key(inner_key).is_some() {
+                    return Ok(());
+                }
+                continue;
+            }
+
+            if !cache.has_children(&inner) && inner.value.is_valid() && !inner.value.is_empty() {
+                if path.ident == "ManuallyDrop" {
+                    variable.type_name = inner.type_name;
+                }
+                variable.set_value(inner.value.clone());
+                cache.update_variable(variable)?;
+            }
+
+            return Ok(());
+        }
+
+        Ok(())
+    }
+
+    /// Shows the initialized prefix of a `heapless::Vec` buffer as a slice.
+    #[expect(clippy::too_many_arguments)]
+    fn expand_heapless_vec(
+        &self,
+        unit_info: &UnitInfo,
+        debug_info: &DebugInfo,
+        node: &DebuggingInformationEntry<GimliReader>,
+        variable: &mut Variable,
+        memory: &mut dyn MemoryInterface,
+        cache: &mut VariableCache,
+        frame_info: StackFrameInfo<'_>,
+    ) -> Result<(), DebugError> {
+        let Some(path) = RustPath::from_die(unit_info, debug_info, node) else {
+            return Ok(());
+        };
+        if !path.is_heapless_vec() {
+            return Ok(());
+        }
+
+        let children: Vec<_> = cache.get_children(variable.variable_key).cloned().collect();
+        let Some(len) = children
+            .iter()
+            .find(|c| is_named(c, "len"))
+            .and_then(|field| match &field.value {
+                VariableValue::Valid(len) => len.parse::<u64>().ok(),
+                _ => None,
+            })
+        else {
+            return Ok(());
+        };
+        let Some(mut buffer) = children.iter().find(|c| is_named(c, "buffer")).cloned() else {
+            return Ok(());
+        };
+
+        debug_info.cache_deferred_variables(cache, memory, &mut buffer, frame_info)?;
+        let Some(buffer_field) = cache.get_variable_by_key(buffer.variable_key) else {
+            return Ok(());
+        };
+        let Some(array) =
+            Self::storage_array(debug_info, memory, cache, frame_info, buffer_field.clone())?
+        else {
+            return Ok(());
+        };
+
+        let elements: Vec<_> = cache
+            .get_children(array.variable_key)
+            .filter(|c| matches!(c.name, VariableName::Indexed(_)))
+            .cloned()
+            .collect();
+
+        for element in &elements {
+            let VariableName::Indexed(index) = element.name else {
+                continue;
+            };
+            if index >= len {
+                cache.remove_cache_entry(element.variable_key)?;
+            }
+        }
+
+        let live = cache
+            .get_children(array.variable_key)
+            .filter(|c| matches!(c.name, VariableName::Indexed(index) if index < len))
+            .cloned()
+            .collect::<Vec<_>>();
+
+        for mut element in live {
+            self.unwrap_storage_slot(debug_info, memory, cache, frame_info, &mut element)?;
+        }
+
+        let buffer_key = if array.variable_key != buffer_field.variable_key {
+            cache.adopt_grand_children(&buffer_field, &array)?;
+            buffer_field.variable_key
+        } else {
+            array.variable_key
+        };
+        let Some(mut buffer) = cache.get_variable_by_key(buffer_key) else {
+            return Ok(());
+        };
+
+        if let Some(first) = cache.get_children(buffer.variable_key).next().cloned() {
+            buffer.type_name = VariableType::Array {
+                item_type_name: Box::new(first.type_name.clone()),
+                count: len as usize,
+            };
+            if let Some(item_size) = first.byte_size {
+                buffer.byte_size = Some(item_size * len);
+            }
+        } else if let VariableType::Array { count, .. } = &mut buffer.type_name {
+            *count = 0;
+            buffer.byte_size = Some(0);
+        }
+        buffer.value = VariableValue::Empty;
+        cache.update_variable(&buffer)?;
+
+        Ok(())
+    }
+
+    /// Moves captured locals out of a compiler-generated async environment into the frame scope.
+    fn promote_async_env_locals(
+        &self,
+        debug_info: &DebugInfo,
+        scope: &Variable,
+        memory: &mut dyn MemoryInterface,
+        cache: &mut VariableCache,
+        frame_info: StackFrameInfo<'_>,
+    ) -> Result<(), DebugError> {
+        let params: Vec<_> = cache.get_children(scope.variable_key).cloned().collect();
+        let Some(env_param) = params.into_iter().find(looks_like_async_env_param) else {
+            return Ok(());
+        };
+
+        let Some(payload) =
+            self.async_env_payload(debug_info, memory, cache, frame_info, env_param.clone())?
+        else {
+            return Ok(());
+        };
+
+        let existing: Vec<_> = cache
+            .get_children(scope.variable_key)
+            .filter_map(|child| match &child.name {
+                VariableName::Named(name) => Some(name.clone()),
+                _ => None,
+            })
+            .collect();
+
+        let locals: Vec<_> = cache.get_children(payload.variable_key).cloned().collect();
+        let mut awaitee = None;
+        for mut local in locals {
+            let VariableName::Named(name) = &local.name else {
+                continue;
+            };
+            if name == "__awaitee" {
+                awaitee = Some(local);
+                continue;
+            }
+            if name.starts_with("__") || existing.iter().any(|existing| existing == name) {
+                continue;
+            }
+            local.parent_key = scope.variable_key;
+            cache.update_variable(&local)?;
+        }
+
+        let task_context = cache
+            .get_children(scope.variable_key)
+            .find(|child| is_named(child, "_task_context"))
+            .cloned();
+
+        if (is_suspend_payload_name(&payload.name) || awaitee.is_some() || task_context.is_some())
+            && !existing.iter().any(|name| name == FUTURE_STATE)
+        {
+            let mut future_state = cache.create_variable(scope.variable_key, None)?;
+            future_state.name = VariableName::Named(FUTURE_STATE.to_string());
+            future_state.type_name = payload.type_name.clone();
+            future_state.source_location = payload.source_location.clone();
+            future_state.memory_location = payload.memory_location.clone();
+            future_state.byte_size = payload.byte_size;
+            future_state.set_value(VariableValue::Valid(payload.type_name()));
+
+            let mut has_child = false;
+            if let Some(mut awaitee) = awaitee {
+                awaitee.parent_key = future_state.variable_key;
+                cache.update_variable(&awaitee)?;
+                has_child = true;
+            }
+            if let Some(mut task_context) = task_context {
+                task_context.parent_key = future_state.variable_key;
+                cache.update_variable(&task_context)?;
+                has_child = true;
+            }
+            if !has_child {
+                future_state.variable_node_type = VariableNodeType::DoNotRecurse;
+            }
+            cache.update_variable(&future_state)?;
+        }
+
+        cache.remove_cache_entry(env_param.variable_key)?;
+        Ok(())
+    }
+
+    fn async_env_payload(
+        &self,
+        debug_info: &DebugInfo,
+        memory: &mut dyn MemoryInterface,
+        cache: &mut VariableCache,
+        frame_info: StackFrameInfo<'_>,
+        mut current: Variable,
+    ) -> Result<Option<Variable>, DebugError> {
+        for _ in 0..8 {
+            debug_info.cache_deferred_variables(cache, memory, &mut current, frame_info)?;
+            let Some(current_now) = cache.get_variable_by_key(current.variable_key) else {
+                return Ok(None);
+            };
+            current = current_now;
+
+            if matches!(current.type_name, VariableType::Pointer(_)) {
+                let Some(pointee) = cache.get_children(current.variable_key).next().cloned() else {
+                    return Ok(None);
+                };
+                current = pointee;
+                continue;
+            }
+
+            if type_ident(&current.type_name()) == "Pin" {
+                let Some(pointer) = cache
+                    .get_children(current.variable_key)
+                    .find(|child| matches!(child.type_name, VariableType::Pointer(_)))
+                    .cloned()
+                else {
+                    return Ok(None);
+                };
+                current = pointer;
+                continue;
+            }
+
+            if is_async_env_ident(&current.type_name()) {
+                return self.async_suspend_payload(debug_info, memory, cache, frame_info, current);
+            }
+
+            return Ok(None);
+        }
+
+        Ok(None)
+    }
+
+    fn async_suspend_payload(
+        &self,
+        debug_info: &DebugInfo,
+        memory: &mut dyn MemoryInterface,
+        cache: &mut VariableCache,
+        frame_info: StackFrameInfo<'_>,
+        mut env: Variable,
+    ) -> Result<Option<Variable>, DebugError> {
+        debug_info.cache_deferred_variables(cache, memory, &mut env, frame_info)?;
+        let Some(env) = cache.get_variable_by_key(env.variable_key) else {
+            return Ok(None);
+        };
+
+        let children: Vec<_> = cache.get_children(env.variable_key).cloned().collect();
+        for mut child in children {
+            if !is_suspend_payload_name(&child.name) {
+                continue;
+            }
+            debug_info.cache_deferred_variables(cache, memory, &mut child, frame_info)?;
+            let Some(child) = cache.get_variable_by_key(child.variable_key) else {
+                continue;
+            };
+            if cache.has_children(&child) {
+                return Ok(Some(child));
+            }
+        }
+
+        Ok(Some(env))
+    }
+
+    fn storage_array(
+        debug_info: &DebugInfo,
+        memory: &mut dyn MemoryInterface,
+        cache: &mut VariableCache,
+        frame_info: StackFrameInfo<'_>,
+        mut buffer: Variable,
+    ) -> Result<Option<Variable>, DebugError> {
+        // Walk down a few levels to cover both old and new heapless::Vec layouts
+        for _ in 0..4 {
+            if matches!(buffer.type_name, VariableType::Array { .. }) {
+                return Ok(Some(buffer));
+            }
+
+            debug_info.cache_deferred_variables(cache, memory, &mut buffer, frame_info)?;
+            let Some(current) = cache.get_variable_by_key(buffer.variable_key) else {
+                return Ok(None);
+            };
+            let inner: Vec<_> = cache.get_children(current.variable_key).cloned().collect();
+            let [inner] = inner.as_slice() else {
+                return Ok(None);
+            };
+            let mut inner = inner.clone();
+            debug_info.cache_deferred_variables(cache, memory, &mut inner, frame_info)?;
+            let Some(inner) = cache.get_variable_by_key(inner.variable_key) else {
+                return Ok(None);
+            };
+            buffer = inner;
+        }
+
+        Ok(None)
+    }
+
+    fn unwrap_storage_slot(
+        &self,
+        debug_info: &DebugInfo,
+        memory: &mut dyn MemoryInterface,
+        cache: &mut VariableCache,
+        frame_info: StackFrameInfo<'_>,
+        element: &mut Variable,
+    ) -> Result<(), DebugError> {
+        self.unwrap_maybe_uninit_slot(debug_info, memory, cache, frame_info, element)?;
+        let Some(mut element) = cache.get_variable_by_key(element.variable_key) else {
+            return Ok(());
+        };
+        let Some(offset) = element.type_node_offset else {
+            return Ok(());
+        };
+        let Ok((unit_info, entry)) = debug_info.entry_at_debug_info_offset(offset) else {
+            return Ok(());
+        };
+        self.flatten_known_wrapper(
+            unit_info,
+            debug_info,
+            &entry,
+            &mut element,
+            memory,
+            cache,
+            frame_info,
+        )?;
+        let Some(mut element) = cache.get_variable_by_key(element.variable_key) else {
+            return Ok(());
+        };
+        if element.value.is_valid() && !element.value.is_empty() {
+            cache.remove_cache_entry_children(element.variable_key)?;
+            element.variable_node_type = VariableNodeType::DoNotRecurse;
+            cache.update_variable(&element)?;
+        }
+        Ok(())
+    }
+
+    fn unwrap_maybe_uninit_slot(
+        &self,
+        debug_info: &DebugInfo,
+        memory: &mut dyn MemoryInterface,
+        cache: &mut VariableCache,
+        frame_info: StackFrameInfo<'_>,
+        element: &mut Variable,
+    ) -> Result<(), DebugError> {
+        debug_info.cache_deferred_variables(cache, memory, element, frame_info)?;
+        let Some(element_now) = cache.get_variable_by_key(element.variable_key) else {
+            return Ok(());
+        };
+        let Some(path) = RustPath::from_variable(debug_info, &element_now) else {
+            return Ok(());
+        };
+        if !path.is_maybe_uninit() {
+            return Ok(());
+        }
+
+        let children: Vec<_> = cache
+            .get_children(element_now.variable_key)
+            .cloned()
+            .collect();
+        let Some(mut value) = children.iter().find(|c| is_named(c, "value")).cloned() else {
+            return Ok(());
+        };
+
+        debug_info.cache_deferred_variables(cache, memory, &mut value, frame_info)?;
+        let Some(value) = cache.get_variable_by_key(value.variable_key) else {
+            return Ok(());
+        };
+
+        let mut element = element_now;
+        element.type_name = value.type_name.clone();
+        element.type_node_offset = value.type_node_offset;
+        element.byte_size = value.byte_size;
+
+        if cache.has_children(&value) {
+            for child in &children {
+                if child.variable_key != value.variable_key {
+                    cache.remove_cache_entry(child.variable_key)?;
+                }
+            }
+            cache.adopt_grand_children(&element, &value)?;
+            element.value = VariableValue::Empty;
+        } else {
+            element.set_value(value.value.clone());
+            cache.remove_cache_entry_children(element.variable_key)?;
+            element.variable_node_type = VariableNodeType::DoNotRecurse;
+        }
+
+        cache.update_variable(&element)?;
+        Ok(())
     }
 
     /// Replaces *const data pointer with *const [data; len] in slices.
@@ -183,7 +625,7 @@ impl ProgrammingLanguage for Rust {
                 "!" => VariableValue::Valid("<Never returns>".to_string()),
                 "()" => VariableValue::Valid("()".to_string()),
                 "bool" => bool::get_value(variable, memory, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{err:?}")),
+                    |err| VariableValue::Error(err.to_string()),
                     |value| VariableValue::Valid(value.to_string()),
                 ),
                 "char" => char::get_value(variable, memory, variable_cache).into(),
@@ -211,6 +653,9 @@ impl ProgrammingLanguage for Rust {
             },
             VariableType::Struct(name) if name == "&str" => {
                 String::get_value(variable, memory, variable_cache).into()
+            }
+            VariableType::Other(name) if name == "!" => {
+                VariableValue::Valid("<Never returns>".to_string())
             }
             _other => VariableValue::Empty,
         }
@@ -308,9 +753,9 @@ impl ProgrammingLanguage for Rust {
 
     fn process_struct(
         &self,
-        _unit_info: &UnitInfo,
+        unit_info: &UnitInfo,
         debug_info: &DebugInfo,
-        _node: &DebuggingInformationEntry<GimliReader>,
+        node: &DebuggingInformationEntry<GimliReader>,
         variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
@@ -318,6 +763,16 @@ impl ProgrammingLanguage for Rust {
     ) -> Result<(), DebugError> {
         if variable.type_name().starts_with("&[") {
             self.expand_slice(debug_info, variable, memory, cache, frame_info)?;
+        }
+
+        self.flatten_known_wrapper(
+            unit_info, debug_info, node, variable, memory, cache, frame_info,
+        )?;
+        self.expand_heapless_vec(
+            unit_info, debug_info, node, variable, memory, cache, frame_info,
+        )?;
+        if matches!(variable.name, VariableName::LocalScopeRoot) {
+            self.promote_async_env_locals(debug_info, variable, memory, cache, frame_info)?;
         }
 
         Ok(())
@@ -328,28 +783,222 @@ fn is_datatype(entry: &Die) -> bool {
     [gimli::DW_TAG_structure_type, gimli::DW_TAG_enumeration_type].contains(&entry.tag())
 }
 
-/// `type_name`, `prefix::type_name`, or those names with a generic argument list.
-fn is_rust_type(name: &str, type_name: &str) -> bool {
-    fn ident_matches(segment: &str, type_name: &str) -> bool {
-        segment == type_name
-            || segment
-                .strip_prefix(type_name)
-                .is_some_and(|tail| tail.starts_with('<'))
-    }
-
-    if ident_matches(name, type_name) {
-        return true;
-    }
-
+/// Last path segment of a rust type name, without generic arguments.
+fn type_ident(name: &str) -> &str {
     let before_generics = name.split_once('<').map_or(name, |(head, _)| head);
     before_generics
         .rsplit_once("::")
-        .is_some_and(|(_, ident)| ident_matches(ident, type_name))
+        .map_or(before_generics, |(_, ident)| ident)
+}
+
+/// Crate, modules, and ident from DWARF namespaces plus `DW_AT_name`.
+struct RustPath {
+    crate_name: String,
+    modules: Vec<String>,
+    ident: String,
+}
+
+const RUSTC_LIBS: &[&str] = &["core", "alloc", "std"];
+
+enum ModulePath {
+    Prefix(&'static [&'static str]),
+    Exact(&'static [&'static str]),
+}
+
+enum Ident {
+    Exact(&'static str),
+    Prefix(&'static str),
+}
+
+struct TransparentWrapper {
+    crates: &'static [&'static str],
+    modules: ModulePath,
+    ident: Ident,
+}
+
+impl TransparentWrapper {
+    fn matches(&self, path: &RustPath) -> bool {
+        if !self.crates.contains(&path.crate_name.as_str()) {
+            return false;
+        }
+
+        let modules_match = match self.modules {
+            ModulePath::Prefix(prefix) => path.modules_start_with(prefix),
+            ModulePath::Exact(modules) => path.modules_eq(modules),
+        };
+        if !modules_match {
+            return false;
+        }
+
+        match self.ident {
+            Ident::Exact(ident) => path.ident == ident,
+            Ident::Prefix(prefix) => path.ident.starts_with(prefix),
+        }
+    }
+}
+
+impl RustPath {
+    fn from_die(
+        unit_info: &UnitInfo,
+        debug_info: &DebugInfo,
+        entry: &DebuggingInformationEntry<GimliReader>,
+    ) -> Option<Self> {
+        let name = unit_info.extract_type_name(debug_info, entry).ok()??;
+        let mut namespaces = unit_info.namespace_path(debug_info, entry);
+        if namespaces.is_empty() {
+            return None;
+        }
+        let ident = type_ident(&name).to_string();
+        let crate_name = namespaces.remove(0);
+        Some(Self {
+            crate_name,
+            modules: namespaces,
+            ident,
+        })
+    }
+
+    fn from_variable(debug_info: &DebugInfo, variable: &Variable) -> Option<Self> {
+        let offset = variable.type_node_offset?;
+        let (unit_info, entry) = debug_info.entry_at_debug_info_offset(offset).ok()?;
+        Self::from_die(unit_info, debug_info, &entry)
+    }
+
+    fn is_rustc_lib(&self) -> bool {
+        RUSTC_LIBS.contains(&self.crate_name.as_str())
+    }
+
+    fn modules_start_with(&self, prefix: &[&str]) -> bool {
+        self.modules.len() >= prefix.len()
+            && self
+                .modules
+                .iter()
+                .zip(prefix)
+                .all(|(segment, expected)| segment == expected)
+    }
+
+    fn modules_eq(&self, modules: &[&str]) -> bool {
+        self.modules.len() == modules.len()
+            && self
+                .modules
+                .iter()
+                .zip(modules)
+                .all(|(segment, expected)| segment == expected)
+    }
+
+    fn is_transparent_wrapper(&self) -> bool {
+        [
+            TransparentWrapper {
+                crates: RUSTC_LIBS,
+                modules: ModulePath::Prefix(&["cell"]),
+                ident: Ident::Exact("Cell"),
+            },
+            TransparentWrapper {
+                crates: RUSTC_LIBS,
+                modules: ModulePath::Prefix(&["cell"]),
+                ident: Ident::Exact("SyncUnsafeCell"),
+            },
+            TransparentWrapper {
+                crates: RUSTC_LIBS,
+                modules: ModulePath::Prefix(&["mem"]),
+                ident: Ident::Exact("ManuallyDrop"),
+            },
+            TransparentWrapper {
+                crates: RUSTC_LIBS,
+                modules: ModulePath::Prefix(&["mem"]),
+                ident: Ident::Exact("MaybeDangling"),
+            },
+            TransparentWrapper {
+                crates: RUSTC_LIBS,
+                modules: ModulePath::Prefix(&["num"]),
+                ident: Ident::Exact("Wrapping"),
+            },
+            TransparentWrapper {
+                crates: RUSTC_LIBS,
+                modules: ModulePath::Prefix(&["num"]),
+                ident: Ident::Exact("NonZero"),
+            },
+            TransparentWrapper {
+                crates: RUSTC_LIBS,
+                modules: ModulePath::Prefix(&["sync", "atomic"]),
+                ident: Ident::Prefix("Atomic"),
+            },
+            TransparentWrapper {
+                crates: &["embassy_executor"],
+                modules: ModulePath::Prefix(&["raw", "util"]),
+                ident: Ident::Exact("SyncUnsafeCell"),
+            },
+            TransparentWrapper {
+                crates: &["vcell"],
+                modules: ModulePath::Exact(&[]),
+                ident: Ident::Exact("VolatileCell"),
+            },
+            TransparentWrapper {
+                crates: &["portable_atomic"],
+                modules: ModulePath::Prefix(&[]),
+                ident: Ident::Prefix("Atomic"),
+            },
+            TransparentWrapper {
+                crates: RUSTC_LIBS,
+                modules: ModulePath::Prefix(&["sync", "atomic"]),
+                ident: Ident::Prefix("Align"),
+            },
+        ]
+        .iter()
+        .any(|wrapper| wrapper.matches(self))
+    }
+
+    fn is_core_unsafe_cell(&self) -> bool {
+        self.is_rustc_lib() && self.ident == "UnsafeCell" && self.modules_start_with(&["cell"])
+    }
+
+    fn is_maybe_uninit(&self) -> bool {
+        self.is_rustc_lib() && self.ident == "MaybeUninit" && self.modules_start_with(&["mem"])
+    }
+
+    fn is_heapless_vec(&self) -> bool {
+        self.crate_name == "heapless" && matches!(self.ident.as_str(), "Vec" | "VecInner")
+    }
+}
+
+fn is_named(variable: &Variable, name: &str) -> bool {
+    matches!(variable.name, VariableName::Named(ref var_name) if var_name == name)
+}
+
+const FUTURE_STATE: &str = "Future state";
+
+fn looks_like_async_env_param(variable: &Variable) -> bool {
+    if !matches!(variable.name, VariableName::Unknown) {
+        return false;
+    }
+    let name = variable.type_name();
+    name.contains("{async_fn_env")
+        || name.contains("{async_block_env")
+        || name.contains("{async_closure_env")
+}
+
+fn is_async_env_ident(type_name: &str) -> bool {
+    let ident = type_ident(type_name);
+    ident.starts_with("{async_fn_env")
+        || ident.starts_with("{async_block_env")
+        || ident.starts_with("{async_closure_env")
+}
+
+fn is_suspend_payload_name(name: &VariableName) -> bool {
+    let VariableName::Named(name) = name else {
+        return false;
+    };
+    name.bytes().all(|byte| byte.is_ascii_digit()) || name.starts_with("Suspend")
+}
+
+/// `type_name`, `prefix::type_name`, or those names with a generic argument list.
+fn is_rust_type(name: &str, type_name: &str) -> bool {
+    type_ident(name) == type_name
 }
 
 #[cfg(test)]
 mod tests {
-    use super::is_rust_type;
+    use super::{RustPath, is_async_env_ident, is_rust_type, is_suspend_payload_name};
+    use crate::DebugInfo;
 
     #[test]
     fn rust_type_name_matches() {
@@ -362,5 +1011,110 @@ mod tests {
         assert!(!is_rust_type("Error", "Err"));
         assert!(!is_rust_type("Optional<u32>", "Option"));
         assert!(is_rust_type("Result<T, E>", "Result"));
+        assert!(is_rust_type("UnsafeCell<u32>", "UnsafeCell"));
+    }
+
+    #[test]
+    fn async_env_type_names_are_compiler_generated() {
+        assert!(is_async_env_ident("{async_fn_env#0}"));
+        assert!(is_async_env_ident("s3_debug::__main::{async_fn_env#0}"));
+        assert!(!is_async_env_ident(
+            "Pin<&mut s3_debug::__main::{async_fn_env#0}>"
+        ));
+        assert!(is_suspend_payload_name(&crate::VariableName::Named(
+            "3".into()
+        )));
+        assert!(is_suspend_payload_name(&crate::VariableName::Named(
+            "Suspend0".into()
+        )));
+        assert!(!is_suspend_payload_name(&crate::VariableName::Named(
+            "spawner".into()
+        )));
+    }
+
+    #[test]
+    fn rustc_and_embassy_wrappers_match_their_namespaces() {
+        assert!(path("core", &["cell"], "Cell").is_transparent_wrapper());
+        assert!(!path("core", &["cell"], "UnsafeCell").is_transparent_wrapper());
+        assert!(path("core", &["cell"], "UnsafeCell").is_core_unsafe_cell());
+        assert!(path("core", &["sync", "atomic"], "AtomicU32").is_transparent_wrapper());
+        assert!(path("core", &["mem", "manually_drop"], "ManuallyDrop").is_transparent_wrapper());
+        assert!(path("core", &["mem", "maybe_dangling"], "MaybeDangling").is_transparent_wrapper());
+        assert!(path("core", &["num", "wrapping"], "Wrapping").is_transparent_wrapper());
+        assert!(path("core", &["num", "nonzero"], "NonZero").is_transparent_wrapper());
+        assert!(
+            path("embassy_executor", &["raw", "util"], "SyncUnsafeCell").is_transparent_wrapper()
+        );
+
+        assert!(path("portable_atomic", &[], "AtomicU32").is_transparent_wrapper());
+        assert!(
+            path("portable_atomic", &["imp", "core_atomic"], "AtomicU32").is_transparent_wrapper()
+        );
+        assert!(path("portable_atomic", &[], "Atomic").is_transparent_wrapper());
+        assert!(path("core", &["sync", "atomic", "private"], "Align4").is_transparent_wrapper());
+        assert!(
+            !path(
+                "embassy_sync",
+                &["waitqueue", "atomic_waker"],
+                "AtomicWaker"
+            )
+            .is_transparent_wrapper()
+        );
+        assert!(!path("esp_hal", &["sync", "multicore"], "AtomicLock").is_transparent_wrapper());
+        assert!(!path("core", &["cell"], "RefCell").is_transparent_wrapper());
+        assert!(!path("core", &["pin"], "Pin").is_transparent_wrapper());
+        assert!(!path("core", &["ptr", "non_null"], "NonNull").is_transparent_wrapper());
+        assert!(path("heapless", &["vec"], "Vec").is_heapless_vec());
+        assert!(path("heapless", &["vec"], "VecInner").is_heapless_vec());
+        assert!(!path("heapless", &["vec", "storage"], "VecStorageInner").is_heapless_vec());
+        assert!(!path("alloc", &["vec"], "Vec").is_heapless_vec());
+        assert!(path("vcell", &[], "VolatileCell").is_transparent_wrapper());
+    }
+
+    #[test]
+    fn dwarf_namespaces_identify_the_crate() {
+        let elf = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/debug-unwind-tests/esp32s3_esp_hal_panic.elf");
+        let debug_info = DebugInfo::from_file(&elf).unwrap();
+
+        let mut saw_core_cell = false;
+        let mut saw_core_atomic = false;
+        let mut saw_portable_atomic = false;
+        for unit in &debug_info.unit_infos {
+            let mut cursor = unit.unit.entries();
+            while let Ok(Some(entry)) = cursor.next_dfs() {
+                if entry.tag() != gimli::DW_TAG_structure_type {
+                    continue;
+                }
+                let Some(path) = RustPath::from_die(unit, &debug_info, entry) else {
+                    continue;
+                };
+                if path.ident == "Cell" && path.crate_name == "core" {
+                    saw_core_cell = true;
+                    assert_eq!(path.modules, ["cell"]);
+                    assert!(path.is_transparent_wrapper());
+                }
+                if path.ident == "AtomicU32" && path.crate_name == "core" {
+                    saw_core_atomic = true;
+                    assert_eq!(path.modules, ["sync", "atomic"]);
+                    assert!(path.is_transparent_wrapper());
+                }
+                if path.ident == "AtomicU32" && path.crate_name == "portable_atomic" {
+                    saw_portable_atomic = true;
+                    assert!(path.is_transparent_wrapper());
+                }
+            }
+        }
+        assert!(saw_core_cell);
+        assert!(saw_core_atomic);
+        assert!(saw_portable_atomic);
+    }
+
+    fn path(crate_name: &str, modules: &[&str], ident: &str) -> RustPath {
+        RustPath {
+            crate_name: crate_name.to_string(),
+            modules: modules.iter().map(|s| (*s).to_string()).collect(),
+            ident: ident.to_string(),
+        }
     }
 }

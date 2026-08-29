@@ -34,7 +34,7 @@ where
 {
     fn from(val: Result<V, DebugError>) -> Self {
         val.map_or_else(
-            |err| VariableValue::Error(format!("{err:?}")),
+            |err| VariableValue::Error(err.to_string()),
             |value| VariableValue::Valid(value.to_string()),
         )
     }

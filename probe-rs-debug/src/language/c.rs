@@ -366,7 +366,7 @@ impl SignedInt {
 impl From<Result<UnsignedInt, DebugError>> for VariableValue {
     fn from(val: Result<UnsignedInt, DebugError>) -> Self {
         val.map_or_else(
-            |err| VariableValue::Error(format!("{err:?}")),
+            |err| VariableValue::Error(err.to_string()),
             |value| VariableValue::Valid(value.to_string()),
         )
     }
@@ -375,7 +375,7 @@ impl From<Result<UnsignedInt, DebugError>> for VariableValue {
 impl From<Result<SignedInt, DebugError>> for VariableValue {
     fn from(val: Result<SignedInt, DebugError>) -> Self {
         val.map_or_else(
-            |err| VariableValue::Error(format!("{err:?}")),
+            |err| VariableValue::Error(err.to_string()),
             |value| VariableValue::Valid(value.to_string()),
         )
     }

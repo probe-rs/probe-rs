@@ -667,6 +667,17 @@ impl VariableLocation {
         }
     }
 
+    /// Target storage holds this value, so members can be expanded.
+    pub fn holds_value(&self) -> bool {
+        matches!(
+            self,
+            VariableLocation::Address(_)
+                | VariableLocation::RegisterValue(_)
+                | VariableLocation::Composite(_)
+                | VariableLocation::Value
+        )
+    }
+
     /// The location of a value of `byte_size` bytes, `byte_offset` bytes into this location.
     pub fn offset_by(&self, byte_offset: u64, byte_size: Option<u64>) -> VariableLocation {
         let bit_offset = byte_offset.saturating_mul(8);
@@ -933,12 +944,12 @@ impl Variable {
             // An empty array has no bytes, so it needs no location.
             self.formatted_variable_value(variable_cache, 0, false)
                 .unwrap_or_default()
-        } else if self.type_name == VariableType::Unknown || !self.memory_location.valid() {
+        } else if self.type_name == VariableType::Unknown || !self.memory_location.holds_value() {
             if self.variable_node_type.is_deferred() {
                 // When we will do a lazy-load of variable children, and they have not yet been
                 // requested by the user, just display the type_name as the value
                 self.type_name()
-            } else if !self.memory_location.valid() {
+            } else if !self.memory_location.holds_value() {
                 // The location explains why the variable has no value.
                 self.memory_location.to_string()
             } else {

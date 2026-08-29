@@ -399,13 +399,13 @@ expression: stack_frames
                                   item_type_name:
                                     Struct: "&str"
                                   count: 1
-                              value: "[&str; 1] = [\n\t< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x420068BC : The coredump does not include the memory for address 0x420068bc of size 0x4.\" } >]"
+                              value: "[&str; 1] = [\n\t< Failed to read referenced variable address from memory location 0x420068BC : The coredump does not include the memory for address 0x420068bc of size 0x4. >]"
                               children:
                                 - name:
                                     Indexed: 0
                                   type_name:
                                     Struct: "&str"
-                                  value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x420068BC : The coredump does not include the memory for address 0x420068bc of size 0x4.\" } >"
+                                  value: "< Failed to read referenced variable address from memory location 0x420068BC : The coredump does not include the memory for address 0x420068bc of size 0x4. >"
                                   children:
                                     - name:
                                         Named: data_ptr
@@ -422,7 +422,7 @@ expression: stack_frames
                                         Named: length
                                       type_name:
                                         Base: usize
-                                      value: "< Probe(Other(\"The coredump does not include the memory for address 0x420068c0 of size 0x4\")) >"
+                                      value: "< The coredump does not include the memory for address 0x420068c0 of size 0x4 >"
                         - name:
                             Named: fmt
                           type_name:
@@ -469,7 +469,7 @@ expression: stack_frames
                             Named: file
                           type_name:
                             Struct: "&str"
-                          value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x420068D4 : The coredump does not include the memory for address 0x420068d4 of size 0x4.\" } >"
+                          value: "< Failed to read referenced variable address from memory location 0x420068D4 : The coredump does not include the memory for address 0x420068d4 of size 0x4. >"
                           children:
                             - name:
                                 Named: data_ptr
@@ -486,17 +486,17 @@ expression: stack_frames
                                 Named: length
                               type_name:
                                 Base: usize
-                              value: "< Probe(Other(\"The coredump does not include the memory for address 0x420068d8 of size 0x4\")) >"
+                              value: "< The coredump does not include the memory for address 0x420068d8 of size 0x4 >"
                         - name:
                             Named: line
                           type_name:
                             Base: u32
-                          value: "< Probe(Other(\"The coredump does not include the memory for address 0x420068dc of size 0x4\")) >"
+                          value: "< The coredump does not include the memory for address 0x420068dc of size 0x4 >"
                         - name:
                             Named: col
                           type_name:
                             Base: u32
-                          value: "< Probe(Other(\"The coredump does not include the memory for address 0x420068e0 of size 0x4\")) >"
+                          value: "< The coredump does not include the memory for address 0x420068e0 of size 0x4 >"
                 - name:
                     Named: can_unwind
                   type_name:
@@ -1624,7 +1624,7 @@ expression: stack_frames
                 Named: "*this"
               type_name:
                 Struct: "TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}>"
-              value: Location Unknown not supported for referenced variables.
+              value: "TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}> @ Location Unknown not supported for referenced variables."
         - name:
             Named: future
           type_name:
@@ -1635,18 +1635,6 @@ expression: stack_frames
             line: 211
             column: ~
             address: ~
-          children:
-            - name:
-                Named: __pointer
-              type_name:
-                Pointer: "&mut coredump_c6::____embassy_main_task::{async_fn_env#0}"
-              value: "&mut coredump_c6::____embassy_main_task::{async_fn_env#0}"
-              children:
-                - name:
-                    Named: "*__pointer"
-                  type_name:
-                    Struct: "{async_fn_env#0}"
-                  value: Location Unknown not supported for referenced variables.
         - name:
             Named: waker
           type_name:
@@ -1657,29 +1645,6 @@ expression: stack_frames
             line: 212
             column: ~
             address: ~
-          children:
-            - name:
-                Named: waker
-              type_name:
-                Struct: RawWaker
-              value: RawWaker @ <unknown value>
-              children:
-                - name:
-                    Named: data
-                  type_name:
-                    Pointer: "*const ()"
-                  value: "*const ()"
-                - name:
-                    Named: vtable
-                  type_name:
-                    Pointer: "&core::task::wake::RawWakerVTable"
-                  value: "&core::task::wake::RawWakerVTable"
-                  children:
-                    - name:
-                        Named: "*vtable"
-                      type_name:
-                        Struct: RawWakerVTable
-                      value: Location Unknown not supported for referenced variables.
         - name:
             Named: cx
           type_name:
@@ -1701,7 +1666,7 @@ expression: stack_frames
                     Named: "*waker"
                   type_name:
                     Struct: Waker
-                  value: "Failed to read referenced variable address from memory location <composite value> : The compiler optimized a part of this value away."
+                  value: "Waker @ Failed to read referenced variable address from memory location <composite value> : The compiler optimized a part of this value away."
             - name:
                 Named: local_waker
               type_name:
@@ -1712,7 +1677,7 @@ expression: stack_frames
                     Named: "*local_waker"
                   type_name:
                     Struct: LocalWaker
-                  value: "Failed to read referenced variable address from memory location <composite value> : The compiler optimized a part of this value away."
+                  value: "LocalWaker @ Failed to read referenced variable address from memory location <composite value> : The compiler optimized a part of this value away."
             - name:
                 Named: ext
               type_name:
@@ -3780,7 +3745,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tself: &mut esp_hal_embassy::executor::thread::Executor = &mut esp_hal_embassy::executor::thread::Executor @ 0x4086E5C0,\n\tinit: {closure_env#0} = {closure_env#0},\n\tcpu: usize = 0}"
+      value: "<unknown> {\n\tself: &mut esp_hal_embassy::executor::thread::Executor = &mut esp_hal_embassy::executor::thread::Executor @ 0x4086E5C0,\n\tinit: {closure_env#0} = {closure_env#0} @ <unknown value>,\n\tcpu: usize = 0}"
       children:
         - name:
             Named: self
@@ -3830,22 +3795,16 @@ expression: stack_frames
                                   value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x4086E5C0"
                                   children:
                                     - name:
-                                        Named: p
+                                        Named: value
                                       type_name:
-                                        Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
-                                      value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x4086E5C0"
+                                        Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                      value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                                       children:
                                         - name:
-                                            Named: value
+                                            Named: "*value"
                                           type_name:
-                                            Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                          value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
-                                          children:
-                                            - name:
-                                                Named: "*value"
-                                              type_name:
-                                                Struct: TaskHeader
-                                              value: "<null pointer>"
+                                            Struct: TaskHeader
+                                          value: TaskHeader @ <null pointer>
                             - name:
                                 Named: pender
                               type_name:
@@ -3861,7 +3820,7 @@ expression: stack_frames
             Named: init
           type_name:
             Struct: "{closure_env#0}"
-          value: "{closure_env#0}"
+          value: "{closure_env#0} @ <unknown value>"
           source_location:
             path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-hal-embassy-0.7.0\\src\\executor\\thread.rs"
             line: 96
@@ -4243,22 +4202,16 @@ expression: stack_frames
                               value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x4086E5C0"
                               children:
                                 - name:
-                                    Named: p
+                                    Named: value
                                   type_name:
-                                    Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
-                                  value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x4086E5C0"
+                                    Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                  value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                                   children:
                                     - name:
-                                        Named: value
+                                        Named: "*value"
                                       type_name:
-                                        Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                      value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
-                                      children:
-                                        - name:
-                                            Named: "*value"
-                                          type_name:
-                                            Struct: TaskHeader
-                                          value: "<null pointer>"
+                                        Struct: TaskHeader
+                                      value: TaskHeader @ <null pointer>
                         - name:
                             Named: pender
                           type_name:
@@ -4318,22 +4271,16 @@ expression: stack_frames
                                   value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x4086E5C0"
                                   children:
                                     - name:
-                                        Named: p
+                                        Named: value
                                       type_name:
-                                        Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
-                                      value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x4086E5C0"
+                                        Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                      value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                                       children:
                                         - name:
-                                            Named: value
+                                            Named: "*value"
                                           type_name:
-                                            Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                          value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
-                                          children:
-                                            - name:
-                                                Named: "*value"
-                                              type_name:
-                                                Struct: TaskHeader
-                                              value: "<null pointer>"
+                                            Struct: TaskHeader
+                                          value: TaskHeader @ <null pointer>
                             - name:
                                 Named: pender
                               type_name:

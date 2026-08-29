@@ -576,7 +576,7 @@ Child Variables:
                         Named: CACHED_PTR
                       type_name:
                         Struct: AtomicU16
-                      value: AtomicU16 @ 0x20000070
+                      value: "9937"
                       source_location:
                         path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
                         line: 132
@@ -584,16 +584,10 @@ Child Variables:
                         address: ~
                       children:
                         - name:
-                            Named: v
+                            Named: value
                           type_name:
-                            Struct: UnsafeCell<u16>
-                          value: UnsafeCell<u16> @ 0x20000070
-                          children:
-                            - name:
-                                Named: value
-                              type_name:
-                                Base: u16
-                              value: "9937"
+                            Base: u16
+                          value: "9937"
             - name:
                 Namespace: memcpy
               type_name: Namespace
@@ -608,7 +602,7 @@ Child Variables:
                         Named: CACHED_PTR
                       type_name:
                         Struct: AtomicU16
-                      value: AtomicU16 @ 0x20000072
+                      value: "9793"
                       source_location:
                         path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
                         line: 132
@@ -616,16 +610,10 @@ Child Variables:
                         address: ~
                       children:
                         - name:
-                            Named: v
+                            Named: value
                           type_name:
-                            Struct: UnsafeCell<u16>
-                          value: UnsafeCell<u16> @ 0x20000072
-                          children:
-                            - name:
-                                Named: value
-                              type_name:
-                                Base: u16
-                              value: "9793"
+                            Base: u16
+                          value: "9793"
             - name:
                 Namespace: connect_internal_flash
               type_name: Namespace
@@ -1866,7 +1854,7 @@ Child Variables:
                         Named: CACHED_PTR
                       type_name:
                         Struct: AtomicU16
-                      value: AtomicU16 @ 0x20000076
+                      value: "9769"
                       source_location:
                         path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
                         line: 132
@@ -1874,16 +1862,10 @@ Child Variables:
                         address: ~
                       children:
                         - name:
-                            Named: v
+                            Named: value
                           type_name:
-                            Struct: UnsafeCell<u16>
-                          value: UnsafeCell<u16> @ 0x20000076
-                          children:
-                            - name:
-                                Named: value
-                              type_name:
-                                Base: u16
-                              value: "9769"
+                            Base: u16
+                          value: "9769"
             - name:
                 Namespace: wait_for_vector
               type_name: Namespace
@@ -1936,7 +1918,7 @@ Child Variables:
                         Named: CACHED_PTR
                       type_name:
                         Struct: AtomicU16
-                      value: AtomicU16 @ 0x20000078
+                      value: "0"
                       source_location:
                         path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
                         line: 80
@@ -1944,16 +1926,10 @@ Child Variables:
                         address: ~
                       children:
                         - name:
-                            Named: v
+                            Named: value
                           type_name:
-                            Struct: UnsafeCell<u16>
-                          value: UnsafeCell<u16> @ 0x20000078
-                          children:
-                            - name:
-                                Named: value
-                              type_name:
-                                Base: u16
-                              value: "0"
+                            Base: u16
+                          value: "0"
             - name:
                 Namespace: flash_flush_cache
               type_name: Namespace
@@ -2020,7 +1996,7 @@ Child Variables:
                 Named: LOCK_OWNER
               type_name:
                 Struct: AtomicU8
-              value: AtomicU8 @ 0x20000074
+              value: "0"
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/critical_section_impl.rs
                 line: 14
@@ -2028,16 +2004,10 @@ Child Variables:
                 address: ~
               children:
                 - name:
-                    Named: v
+                    Named: value
                   type_name:
-                    Struct: UnsafeCell<u8>
-                  value: UnsafeCell<u8> @ 0x20000074
-                  children:
-                    - name:
-                        Named: value
-                      type_name:
-                        Base: u8
-                      value: "0"
+                    Base: u8
+                  value: "0"
         - name:
             Namespace: timer
           type_name: Namespace
@@ -2095,11 +2065,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2121,11 +2086,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2147,11 +2107,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2173,11 +2128,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2199,11 +2149,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2225,11 +2170,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2251,11 +2191,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2277,11 +2212,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2303,11 +2233,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2329,11 +2254,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2355,11 +2275,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2381,11 +2296,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2407,11 +2317,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2433,11 +2338,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2459,11 +2359,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2485,11 +2380,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2511,11 +2401,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2537,11 +2422,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2563,11 +2443,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2589,11 +2464,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2615,11 +2485,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2641,11 +2506,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2667,11 +2527,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2693,11 +2548,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2719,11 +2569,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2745,11 +2590,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2771,11 +2611,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2797,11 +2632,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2823,11 +2653,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2849,11 +2674,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2875,11 +2695,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2901,11 +2716,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2945,12 +2755,6 @@ Child Variables:
             line: 1048
             column: ~
             address: ~
-          children:
-            - name:
-                Named: "*__RESET_VECTOR"
-              type_name:
-                Other: "!"
-              value: "Unimplemented: Get value of type Other(\"!\") of (None bytes) at location <unknown value>"
         - name:
             Named: __EXCEPTIONS
           type_name:
@@ -2981,11 +2785,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:
@@ -3007,11 +2806,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000B8F3"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:
@@ -3033,11 +2827,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:
@@ -3059,11 +2848,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:
@@ -3085,11 +2869,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:
@@ -3111,11 +2890,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:
@@ -3137,11 +2911,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:
@@ -3163,11 +2932,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:
@@ -3189,11 +2953,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:
@@ -3215,11 +2974,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000035F"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:
@@ -3241,11 +2995,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:
@@ -3267,11 +3016,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:
@@ -3293,11 +3037,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:
@@ -3319,11 +3058,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000034D"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:
@@ -3759,53 +3493,35 @@ Child Variables:
                                     Named: write
                                   type_name:
                                     Struct: AtomicUsize
-                                  value: AtomicUsize @ 0x200000A0
+                                  value: "363"
                                   children:
                                     - name:
-                                        Named: v
+                                        Named: value
                                       type_name:
-                                        Struct: UnsafeCell<usize>
-                                      value: UnsafeCell<usize> @ 0x200000A0
-                                      children:
-                                        - name:
-                                            Named: value
-                                          type_name:
-                                            Base: usize
-                                          value: "363"
+                                        Base: usize
+                                      value: "363"
                                 - name:
                                     Named: read
                                   type_name:
                                     Struct: AtomicUsize
-                                  value: AtomicUsize @ 0x200000A4
+                                  value: "363"
                                   children:
                                     - name:
-                                        Named: v
+                                        Named: value
                                       type_name:
-                                        Struct: UnsafeCell<usize>
-                                      value: UnsafeCell<usize> @ 0x200000A4
-                                      children:
-                                        - name:
-                                            Named: value
-                                          type_name:
-                                            Base: usize
-                                          value: "363"
+                                        Base: usize
+                                      value: "363"
                                 - name:
                                     Named: flags
                                   type_name:
                                     Struct: AtomicUsize
-                                  value: AtomicUsize @ 0x200000A8
+                                  value: "1"
                                   children:
                                     - name:
-                                        Named: v
+                                        Named: value
                                       type_name:
-                                        Struct: UnsafeCell<usize>
-                                      value: UnsafeCell<usize> @ 0x200000A8
-                                      children:
-                                        - name:
-                                            Named: value
-                                          type_name:
-                                            Base: usize
-                                          value: "1"
+                                        Base: usize
+                                      value: "1"
                             - name:
                                 Indexed: 1
                               type_name:
@@ -3843,53 +3559,35 @@ Child Variables:
                                     Named: write
                                   type_name:
                                     Struct: AtomicUsize
-                                  value: AtomicUsize @ 0x200000B8
+                                  value: "0"
                                   children:
                                     - name:
-                                        Named: v
+                                        Named: value
                                       type_name:
-                                        Struct: UnsafeCell<usize>
-                                      value: UnsafeCell<usize> @ 0x200000B8
-                                      children:
-                                        - name:
-                                            Named: value
-                                          type_name:
-                                            Base: usize
-                                          value: "0"
+                                        Base: usize
+                                      value: "0"
                                 - name:
                                     Named: read
                                   type_name:
                                     Struct: AtomicUsize
-                                  value: AtomicUsize @ 0x200000BC
+                                  value: "0"
                                   children:
                                     - name:
-                                        Named: v
+                                        Named: value
                                       type_name:
-                                        Struct: UnsafeCell<usize>
-                                      value: UnsafeCell<usize> @ 0x200000BC
-                                      children:
-                                        - name:
-                                            Named: value
-                                          type_name:
-                                            Base: usize
-                                          value: "0"
+                                        Base: usize
+                                      value: "0"
                                 - name:
                                     Named: flags
                                   type_name:
                                     Struct: AtomicUsize
-                                  value: AtomicUsize @ 0x200000C0
+                                  value: "1"
                                   children:
                                     - name:
-                                        Named: v
+                                        Named: value
                                       type_name:
-                                        Struct: UnsafeCell<usize>
-                                      value: UnsafeCell<usize> @ 0x200000C0
-                                      children:
-                                        - name:
-                                            Named: value
-                                          type_name:
-                                            Base: usize
-                                          value: "1"
+                                        Base: usize
+                                      value: "1"
                         - name:
                             Named: down_channels
                           type_name:
@@ -4741,19 +4439,13 @@ Child Variables:
                             Named: borrow
                           type_name:
                             Struct: Cell<isize>
-                          value: Cell<isize> @ 0x200008C4
+                          value: "0"
                           children:
                             - name:
                                 Named: value
                               type_name:
-                                Struct: UnsafeCell<isize>
-                              value: UnsafeCell<isize> @ 0x200008C4
-                              children:
-                                - name:
-                                    Named: value
-                                  type_name:
-                                    Base: isize
-                                  value: "0"
+                                Base: isize
+                              value: "0"
                         - name:
                             Named: value
                           type_name:
