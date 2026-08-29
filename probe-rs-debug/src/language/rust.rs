@@ -264,6 +264,163 @@ impl Rust {
         Ok(())
     }
 
+    /// Moves captured locals out of a compiler-generated async environment into the frame scope.
+    fn promote_async_env_locals(
+        &self,
+        debug_info: &DebugInfo,
+        scope: &Variable,
+        memory: &mut dyn MemoryInterface,
+        cache: &mut VariableCache,
+        frame_info: StackFrameInfo<'_>,
+    ) -> Result<(), DebugError> {
+        let params: Vec<_> = cache.get_children(scope.variable_key).cloned().collect();
+        let Some(env_param) = params.into_iter().find(looks_like_async_env_param) else {
+            return Ok(());
+        };
+
+        let Some(payload) =
+            self.async_env_payload(debug_info, memory, cache, frame_info, env_param.clone())?
+        else {
+            return Ok(());
+        };
+
+        let existing: Vec<_> = cache
+            .get_children(scope.variable_key)
+            .filter_map(|child| match &child.name {
+                VariableName::Named(name) => Some(name.clone()),
+                _ => None,
+            })
+            .collect();
+
+        let locals: Vec<_> = cache.get_children(payload.variable_key).cloned().collect();
+        let mut awaitee = None;
+        for mut local in locals {
+            let VariableName::Named(name) = &local.name else {
+                continue;
+            };
+            if name == "__awaitee" {
+                awaitee = Some(local);
+                continue;
+            }
+            if name.starts_with("__") || existing.iter().any(|existing| existing == name) {
+                continue;
+            }
+            local.parent_key = scope.variable_key;
+            cache.update_variable(&local)?;
+        }
+
+        let task_context = cache
+            .get_children(scope.variable_key)
+            .find(|child| is_named(child, "_task_context"))
+            .cloned();
+
+        if (is_suspend_payload_name(&payload.name) || awaitee.is_some() || task_context.is_some())
+            && !existing.iter().any(|name| name == FUTURE_STATE)
+        {
+            let mut future_state = cache.create_variable(scope.variable_key, None)?;
+            future_state.name = VariableName::Named(FUTURE_STATE.to_string());
+            future_state.type_name = payload.type_name.clone();
+            future_state.source_location = payload.source_location.clone();
+            future_state.memory_location = payload.memory_location.clone();
+            future_state.byte_size = payload.byte_size;
+            future_state.set_value(VariableValue::Valid(payload.type_name()));
+
+            let mut has_child = false;
+            if let Some(mut awaitee) = awaitee {
+                awaitee.parent_key = future_state.variable_key;
+                cache.update_variable(&awaitee)?;
+                has_child = true;
+            }
+            if let Some(mut task_context) = task_context {
+                task_context.parent_key = future_state.variable_key;
+                cache.update_variable(&task_context)?;
+                has_child = true;
+            }
+            if !has_child {
+                future_state.variable_node_type = VariableNodeType::DoNotRecurse;
+            }
+            cache.update_variable(&future_state)?;
+        }
+
+        cache.remove_cache_entry(env_param.variable_key)?;
+        Ok(())
+    }
+
+    fn async_env_payload(
+        &self,
+        debug_info: &DebugInfo,
+        memory: &mut dyn MemoryInterface,
+        cache: &mut VariableCache,
+        frame_info: StackFrameInfo<'_>,
+        mut current: Variable,
+    ) -> Result<Option<Variable>, DebugError> {
+        for _ in 0..8 {
+            debug_info.cache_deferred_variables(cache, memory, &mut current, frame_info)?;
+            let Some(current_now) = cache.get_variable_by_key(current.variable_key) else {
+                return Ok(None);
+            };
+            current = current_now;
+
+            if matches!(current.type_name, VariableType::Pointer(_)) {
+                let Some(pointee) = cache.get_children(current.variable_key).next().cloned() else {
+                    return Ok(None);
+                };
+                current = pointee;
+                continue;
+            }
+
+            if type_ident(&current.type_name()) == "Pin" {
+                let Some(pointer) = cache
+                    .get_children(current.variable_key)
+                    .find(|child| matches!(child.type_name, VariableType::Pointer(_)))
+                    .cloned()
+                else {
+                    return Ok(None);
+                };
+                current = pointer;
+                continue;
+            }
+
+            if is_async_env_ident(&current.type_name()) {
+                return self.async_suspend_payload(debug_info, memory, cache, frame_info, current);
+            }
+
+            return Ok(None);
+        }
+
+        Ok(None)
+    }
+
+    fn async_suspend_payload(
+        &self,
+        debug_info: &DebugInfo,
+        memory: &mut dyn MemoryInterface,
+        cache: &mut VariableCache,
+        frame_info: StackFrameInfo<'_>,
+        mut env: Variable,
+    ) -> Result<Option<Variable>, DebugError> {
+        debug_info.cache_deferred_variables(cache, memory, &mut env, frame_info)?;
+        let Some(env) = cache.get_variable_by_key(env.variable_key) else {
+            return Ok(None);
+        };
+
+        let children: Vec<_> = cache.get_children(env.variable_key).cloned().collect();
+        for mut child in children {
+            if !is_suspend_payload_name(&child.name) {
+                continue;
+            }
+            debug_info.cache_deferred_variables(cache, memory, &mut child, frame_info)?;
+            let Some(child) = cache.get_variable_by_key(child.variable_key) else {
+                continue;
+            };
+            if cache.has_children(&child) {
+                return Ok(Some(child));
+            }
+        }
+
+        Ok(Some(env))
+    }
+
     fn storage_array(
         debug_info: &DebugInfo,
         memory: &mut dyn MemoryInterface,
@@ -614,6 +771,9 @@ impl ProgrammingLanguage for Rust {
         self.expand_heapless_vec(
             unit_info, debug_info, node, variable, memory, cache, frame_info,
         )?;
+        if matches!(variable.name, VariableName::LocalScopeRoot) {
+            self.promote_async_env_locals(debug_info, variable, memory, cache, frame_info)?;
+        }
 
         Ok(())
     }
@@ -804,6 +964,32 @@ fn is_named(variable: &Variable, name: &str) -> bool {
     matches!(variable.name, VariableName::Named(ref var_name) if var_name == name)
 }
 
+const FUTURE_STATE: &str = "Future state";
+
+fn looks_like_async_env_param(variable: &Variable) -> bool {
+    if !matches!(variable.name, VariableName::Unknown) {
+        return false;
+    }
+    let name = variable.type_name();
+    name.contains("{async_fn_env")
+        || name.contains("{async_block_env")
+        || name.contains("{async_closure_env")
+}
+
+fn is_async_env_ident(type_name: &str) -> bool {
+    let ident = type_ident(type_name);
+    ident.starts_with("{async_fn_env")
+        || ident.starts_with("{async_block_env")
+        || ident.starts_with("{async_closure_env")
+}
+
+fn is_suspend_payload_name(name: &VariableName) -> bool {
+    let VariableName::Named(name) = name else {
+        return false;
+    };
+    name.bytes().all(|byte| byte.is_ascii_digit()) || name.starts_with("Suspend")
+}
+
 /// `type_name`, `prefix::type_name`, or those names with a generic argument list.
 fn is_rust_type(name: &str, type_name: &str) -> bool {
     type_ident(name) == type_name
@@ -811,7 +997,7 @@ fn is_rust_type(name: &str, type_name: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{RustPath, is_rust_type};
+    use super::{RustPath, is_async_env_ident, is_rust_type, is_suspend_payload_name};
     use crate::DebugInfo;
 
     #[test]
@@ -826,6 +1012,24 @@ mod tests {
         assert!(!is_rust_type("Optional<u32>", "Option"));
         assert!(is_rust_type("Result<T, E>", "Result"));
         assert!(is_rust_type("UnsafeCell<u32>", "UnsafeCell"));
+    }
+
+    #[test]
+    fn async_env_type_names_are_compiler_generated() {
+        assert!(is_async_env_ident("{async_fn_env#0}"));
+        assert!(is_async_env_ident("s3_debug::__main::{async_fn_env#0}"));
+        assert!(!is_async_env_ident(
+            "Pin<&mut s3_debug::__main::{async_fn_env#0}>"
+        ));
+        assert!(is_suspend_payload_name(&crate::VariableName::Named(
+            "3".into()
+        )));
+        assert!(is_suspend_payload_name(&crate::VariableName::Named(
+            "Suspend0".into()
+        )));
+        assert!(!is_suspend_payload_name(&crate::VariableName::Named(
+            "spawner".into()
+        )));
     }
 
     #[test]

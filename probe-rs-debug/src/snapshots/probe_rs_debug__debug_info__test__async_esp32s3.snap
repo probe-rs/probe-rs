@@ -196,281 +196,8 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\t<unknown>: Pin<&mut s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}> = Pin<&mut s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}> @ 0x3FC8C118,\n\t_task_context: &mut core::task::wake::Context = &mut core::task::wake::Context @ 0x3FCDB5C0,\n\tconfig: Config = Config @ 0x3FCDB5D0,\n\ttimg0: TimerGroup<esp_hal::peripherals::TIMG0> = TimerGroup<esp_hal::peripherals::TIMG0> @ 0x3FCDB600}"
+      value: "<unknown> {\n\tconfig: Config = Config @ 0x3FCDB5D0,\n\ttimg0: TimerGroup<esp_hal::peripherals::TIMG0> = TimerGroup<esp_hal::peripherals::TIMG0> @ 0x3FCDB600,\n\tportable_atomic_u32: AtomicU32 = 41,\n\tcore_atomic_u32: Atomic<u32> = 41,\n\tspawner: Spawner = Spawner @ 0x3FC8C128,\n\tFuture state: Suspend0 = Suspend0}"
       children:
-        - name: Unknown
-          type_name:
-            Struct: "Pin<&mut s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}>"
-          value: "Pin<&mut s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}> @ 0x3FC8C118"
-          source_location:
-            path: "C:\\_Espressif\\_Demos\\s3-debug\\src\\bin\\main.rs"
-            line: 26
-            column: ~
-            address: ~
-          children:
-            - name:
-                Named: pointer
-              type_name:
-                Pointer: "&mut s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}"
-              value: "&mut s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0} @ 0x3FC8C118"
-              children:
-                - name:
-                    Named: "*pointer"
-                  type_name:
-                    Struct: "{async_fn_env#0}"
-                  value: "{async_fn_env#0} @ 0x3FC8C118"
-                  children:
-                    - name:
-                        Named: "3"
-                      type_name:
-                        Struct: Suspend0
-                      value: Suspend0 @ 0x3FC8C118
-                      source_location:
-                        path: "C:\\_Espressif\\_Demos\\s3-debug\\src\\bin\\main.rs"
-                        line: 55
-                        column: ~
-                        address: ~
-                      children:
-                        - name:
-                            Named: portable_atomic_u32
-                          type_name:
-                            Struct: AtomicU32
-                          value: "41"
-                          children:
-                            - name:
-                                Named: __0
-                              type_name:
-                                Base: u32
-                              value: "41"
-                        - name:
-                            Named: core_atomic_u32
-                          type_name:
-                            Struct: Atomic<u32>
-                          value: "41"
-                          children:
-                            - name:
-                                Named: __0
-                              type_name:
-                                Base: u32
-                              value: "41"
-                        - name:
-                            Named: __awaitee
-                          type_name:
-                            Struct: Timer
-                          value: Timer @ 0x3FC8C118
-                          children:
-                            - name:
-                                Named: expires_at
-                              type_name:
-                                Struct: Instant
-                              value: Instant @ 0x3FC8C118
-                              children:
-                                - name:
-                                    Named: ticks
-                                  type_name:
-                                    Base: u64
-                                  value: "7501480"
-                            - name:
-                                Named: yielded_once
-                              type_name:
-                                Base: bool
-                              value: "true"
-                        - name:
-                            Named: spawner
-                          type_name:
-                            Struct: Spawner
-                          value: Spawner @ 0x3FC8C128
-                          children:
-                            - name:
-                                Named: executor
-                              type_name:
-                                Pointer: "&embassy_executor::raw::Executor"
-                              value: "&embassy_executor::raw::Executor @ 0x3FCDB6D0"
-                              children:
-                                - name:
-                                    Named: "*executor"
-                                  type_name:
-                                    Struct: Executor
-                                  value: Executor @ 0x3FCDB6D0
-                                  children:
-                                    - name:
-                                        Named: inner
-                                      type_name:
-                                        Struct: SyncExecutor
-                                      value: SyncExecutor @ 0x3FCDB6D0
-                                      children:
-                                        - name:
-                                            Named: run_queue
-                                          type_name:
-                                            Struct: RunQueue
-                                          value: RunQueue @ 0x3FCDB6D0
-                                          children:
-                                            - name:
-                                                Named: stack
-                                              type_name:
-                                                Struct: "TransferStack<embassy_executor::raw::TaskHeader>"
-                                              value: "TransferStack<embassy_executor::raw::TaskHeader> @ 0x3FCDB6D0"
-                                        - name:
-                                            Named: pender
-                                          type_name:
-                                            Struct: Pender
-                                          value: Pender @ 0x3FCDB6D4
-                                          children:
-                                            - name:
-                                                Named: __0
-                                              type_name:
-                                                Pointer: "*mut ()"
-                                              value: "*mut () @ 0x3FCDB6A0"
-        - name:
-            Named: _task_context
-          type_name:
-            Pointer: "&mut core::task::wake::Context"
-          value: "&mut core::task::wake::Context @ 0x3FCDB5C0"
-          source_location:
-            path: "C:\\_Espressif\\_Demos\\s3-debug\\src\\bin\\main.rs"
-            line: 26
-            column: ~
-            address: ~
-          children:
-            - name:
-                Named: "*_task_context"
-              type_name:
-                Struct: Context
-              value: Context @ 0x3FCDB5C0
-              children:
-                - name:
-                    Named: waker
-                  type_name:
-                    Pointer: "&core::task::wake::Waker"
-                  value: "&core::task::wake::Waker @ 0x3FCDB5B8"
-                  children:
-                    - name:
-                        Named: "*waker"
-                      type_name:
-                        Struct: Waker
-                      value: Waker @ 0x3FCDB5B8
-                      children:
-                        - name:
-                            Named: waker
-                          type_name:
-                            Struct: RawWaker
-                          value: RawWaker @ 0x3FCDB5B8
-                          children:
-                            - name:
-                                Named: data
-                              type_name:
-                                Pointer: "*const ()"
-                              value: "*const () @ 0x3FC8C0F0"
-                            - name:
-                                Named: vtable
-                              type_name:
-                                Pointer: "&core::task::wake::RawWakerVTable"
-                              value: "&core::task::wake::RawWakerVTable @ 0x3C005AD0"
-                              children:
-                                - name:
-                                    Named: "*vtable"
-                                  type_name:
-                                    Struct: RawWakerVTable
-                                  value: RawWakerVTable @ 0x3C005AD0
-                                  children:
-                                    - name:
-                                        Named: clone
-                                      type_name:
-                                        Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
-                                      value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker"
-                                    - name:
-                                        Named: wake
-                                      type_name:
-                                        Pointer: unsafe fn(*const ())
-                                      value: "*raw unsafe fn(*const ())"
-                                    - name:
-                                        Named: wake_by_ref
-                                      type_name:
-                                        Pointer: unsafe fn(*const ())
-                                      value: "*raw unsafe fn(*const ())"
-                                    - name:
-                                        Named: drop
-                                      type_name:
-                                        Pointer: unsafe fn(*const ())
-                                      value: "*raw unsafe fn(*const ())"
-                - name:
-                    Named: local_waker
-                  type_name:
-                    Pointer: "&core::task::wake::LocalWaker"
-                  value: "&core::task::wake::LocalWaker @ 0x3FCDB5B8"
-                  children:
-                    - name:
-                        Named: "*local_waker"
-                      type_name:
-                        Struct: LocalWaker
-                      value: LocalWaker @ 0x3FCDB5B8
-                      children:
-                        - name:
-                            Named: waker
-                          type_name:
-                            Struct: RawWaker
-                          value: RawWaker @ 0x3FCDB5B8
-                          children:
-                            - name:
-                                Named: data
-                              type_name:
-                                Pointer: "*const ()"
-                              value: "*const () @ 0x3FC8C0F0"
-                            - name:
-                                Named: vtable
-                              type_name:
-                                Pointer: "&core::task::wake::RawWakerVTable"
-                              value: "&core::task::wake::RawWakerVTable @ 0x3C005AD0"
-                              children:
-                                - name:
-                                    Named: "*vtable"
-                                  type_name:
-                                    Struct: RawWakerVTable
-                                  value: RawWakerVTable @ 0x3C005AD0
-                                  children:
-                                    - name:
-                                        Named: clone
-                                      type_name:
-                                        Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
-                                      value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker"
-                                    - name:
-                                        Named: wake
-                                      type_name:
-                                        Pointer: unsafe fn(*const ())
-                                      value: "*raw unsafe fn(*const ())"
-                                    - name:
-                                        Named: wake_by_ref
-                                      type_name:
-                                        Pointer: unsafe fn(*const ())
-                                      value: "*raw unsafe fn(*const ())"
-                                    - name:
-                                        Named: drop
-                                      type_name:
-                                        Pointer: unsafe fn(*const ())
-                                      value: "*raw unsafe fn(*const ())"
-                - name:
-                    Named: ext
-                  type_name:
-                    Struct: "AssertUnwindSafe<core::task::wake::ExtData>"
-                  value: "AssertUnwindSafe<core::task::wake::ExtData> @ 0x3FCDB5C8"
-                  children:
-                    - name:
-                        Named: __0
-                      type_name:
-                        Struct: ExtData
-                      value: ExtData @ 0x3FCDB5C8
-                      children:
-                        - name:
-                            Named: None
-                          type_name:
-                            Struct: None
-                          value: None @ 0x3FCDB5C8
-                          children:
-                            - name:
-                                Named: __0
-                              type_name:
-                                Base: ()
-                              value: ()
         - name:
             Named: config
           type_name:
@@ -1598,6 +1325,275 @@ expression: stack_frames
               type_name:
                 Struct: "Wdt<esp_hal::peripherals::TIMG0>"
               value: "Wdt<esp_hal::peripherals::TIMG0> @ 0x3FCDB610"
+        - name:
+            Named: portable_atomic_u32
+          type_name:
+            Struct: AtomicU32
+          value: "41"
+          children:
+            - name:
+                Named: __0
+              type_name:
+                Base: u32
+              value: "41"
+        - name:
+            Named: core_atomic_u32
+          type_name:
+            Struct: Atomic<u32>
+          value: "41"
+          children:
+            - name:
+                Named: __0
+              type_name:
+                Base: u32
+              value: "41"
+        - name:
+            Named: spawner
+          type_name:
+            Struct: Spawner
+          value: Spawner @ 0x3FC8C128
+          children:
+            - name:
+                Named: executor
+              type_name:
+                Pointer: "&embassy_executor::raw::Executor"
+              value: "&embassy_executor::raw::Executor @ 0x3FCDB6D0"
+              children:
+                - name:
+                    Named: "*executor"
+                  type_name:
+                    Struct: Executor
+                  value: Executor @ 0x3FCDB6D0
+                  children:
+                    - name:
+                        Named: inner
+                      type_name:
+                        Struct: SyncExecutor
+                      value: SyncExecutor @ 0x3FCDB6D0
+                      children:
+                        - name:
+                            Named: run_queue
+                          type_name:
+                            Struct: RunQueue
+                          value: RunQueue @ 0x3FCDB6D0
+                          children:
+                            - name:
+                                Named: stack
+                              type_name:
+                                Struct: "TransferStack<embassy_executor::raw::TaskHeader>"
+                              value: "TransferStack<embassy_executor::raw::TaskHeader> @ 0x3FCDB6D0"
+                              children:
+                                - name:
+                                    Named: head
+                                  type_name:
+                                    Struct: "Atomic<*mut embassy_executor::raw::TaskHeader>"
+                                  value: "Atomic<*mut embassy_executor::raw::TaskHeader> @ 0x3FCDB6D0"
+                                  children:
+                                    - name:
+                                        Named: __0
+                                      type_name:
+                                        Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                      value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
+                                      children:
+                                        - name:
+                                            Named: "*__0"
+                                          type_name:
+                                            Struct: TaskHeader
+                                          value: TaskHeader @ <null pointer>
+                        - name:
+                            Named: pender
+                          type_name:
+                            Struct: Pender
+                          value: Pender @ 0x3FCDB6D4
+                          children:
+                            - name:
+                                Named: __0
+                              type_name:
+                                Pointer: "*mut ()"
+                              value: "*mut () @ 0x3FCDB6A0"
+        - name:
+            Named: Future state
+          type_name:
+            Struct: Suspend0
+          value: Suspend0
+          source_location:
+            path: "C:\\_Espressif\\_Demos\\s3-debug\\src\\bin\\main.rs"
+            line: 55
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: _task_context
+              type_name:
+                Pointer: "&mut core::task::wake::Context"
+              value: "&mut core::task::wake::Context @ 0x3FCDB5C0"
+              source_location:
+                path: "C:\\_Espressif\\_Demos\\s3-debug\\src\\bin\\main.rs"
+                line: 26
+                column: ~
+                address: ~
+              children:
+                - name:
+                    Named: "*_task_context"
+                  type_name:
+                    Struct: Context
+                  value: Context @ 0x3FCDB5C0
+                  children:
+                    - name:
+                        Named: waker
+                      type_name:
+                        Pointer: "&core::task::wake::Waker"
+                      value: "&core::task::wake::Waker @ 0x3FCDB5B8"
+                      children:
+                        - name:
+                            Named: "*waker"
+                          type_name:
+                            Struct: Waker
+                          value: Waker @ 0x3FCDB5B8
+                          children:
+                            - name:
+                                Named: waker
+                              type_name:
+                                Struct: RawWaker
+                              value: RawWaker @ 0x3FCDB5B8
+                              children:
+                                - name:
+                                    Named: data
+                                  type_name:
+                                    Pointer: "*const ()"
+                                  value: "*const () @ 0x3FC8C0F0"
+                                - name:
+                                    Named: vtable
+                                  type_name:
+                                    Pointer: "&core::task::wake::RawWakerVTable"
+                                  value: "&core::task::wake::RawWakerVTable @ 0x3C005AD0"
+                                  children:
+                                    - name:
+                                        Named: "*vtable"
+                                      type_name:
+                                        Struct: RawWakerVTable
+                                      value: RawWakerVTable @ 0x3C005AD0
+                                      children:
+                                        - name:
+                                            Named: clone
+                                          type_name:
+                                            Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
+                                          value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker"
+                                        - name:
+                                            Named: wake
+                                          type_name:
+                                            Pointer: unsafe fn(*const ())
+                                          value: "*raw unsafe fn(*const ())"
+                                        - name:
+                                            Named: wake_by_ref
+                                          type_name:
+                                            Pointer: unsafe fn(*const ())
+                                          value: "*raw unsafe fn(*const ())"
+                                        - name:
+                                            Named: drop
+                                          type_name:
+                                            Pointer: unsafe fn(*const ())
+                                          value: "*raw unsafe fn(*const ())"
+                    - name:
+                        Named: local_waker
+                      type_name:
+                        Pointer: "&core::task::wake::LocalWaker"
+                      value: "&core::task::wake::LocalWaker @ 0x3FCDB5B8"
+                      children:
+                        - name:
+                            Named: "*local_waker"
+                          type_name:
+                            Struct: LocalWaker
+                          value: LocalWaker @ 0x3FCDB5B8
+                          children:
+                            - name:
+                                Named: waker
+                              type_name:
+                                Struct: RawWaker
+                              value: RawWaker @ 0x3FCDB5B8
+                              children:
+                                - name:
+                                    Named: data
+                                  type_name:
+                                    Pointer: "*const ()"
+                                  value: "*const () @ 0x3FC8C0F0"
+                                - name:
+                                    Named: vtable
+                                  type_name:
+                                    Pointer: "&core::task::wake::RawWakerVTable"
+                                  value: "&core::task::wake::RawWakerVTable @ 0x3C005AD0"
+                                  children:
+                                    - name:
+                                        Named: "*vtable"
+                                      type_name:
+                                        Struct: RawWakerVTable
+                                      value: RawWakerVTable @ 0x3C005AD0
+                                      children:
+                                        - name:
+                                            Named: clone
+                                          type_name:
+                                            Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
+                                          value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker"
+                                        - name:
+                                            Named: wake
+                                          type_name:
+                                            Pointer: unsafe fn(*const ())
+                                          value: "*raw unsafe fn(*const ())"
+                                        - name:
+                                            Named: wake_by_ref
+                                          type_name:
+                                            Pointer: unsafe fn(*const ())
+                                          value: "*raw unsafe fn(*const ())"
+                                        - name:
+                                            Named: drop
+                                          type_name:
+                                            Pointer: unsafe fn(*const ())
+                                          value: "*raw unsafe fn(*const ())"
+                    - name:
+                        Named: ext
+                      type_name:
+                        Struct: "AssertUnwindSafe<core::task::wake::ExtData>"
+                      value: "AssertUnwindSafe<core::task::wake::ExtData> @ 0x3FCDB5C8"
+                      children:
+                        - name:
+                            Named: __0
+                          type_name:
+                            Struct: ExtData
+                          value: ExtData @ 0x3FCDB5C8
+                          children:
+                            - name:
+                                Named: None
+                              type_name:
+                                Struct: None
+                              value: None @ 0x3FCDB5C8
+                              children:
+                                - name:
+                                    Named: __0
+                                  type_name:
+                                    Base: ()
+                                  value: ()
+            - name:
+                Named: __awaitee
+              type_name:
+                Struct: Timer
+              value: Timer @ 0x3FC8C118
+              children:
+                - name:
+                    Named: expires_at
+                  type_name:
+                    Struct: Instant
+                  value: Instant @ 0x3FC8C118
+                  children:
+                    - name:
+                        Named: ticks
+                      type_name:
+                        Base: u64
+                      value: "7501480"
+                - name:
+                    Named: yielded_once
+                  type_name:
+                    Base: bool
+                  value: "true"
   canonical_frame_address: 1070446144
 - function_name: "TaskStorage<s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}>::poll"
   source_location:
