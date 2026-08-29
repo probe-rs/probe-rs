@@ -104,7 +104,7 @@ impl Rust {
         }
     }
 
-    /// Unwraps rustc (and known embassy) newtypes after their member DIE is in the cache.
+    /// Unwraps some common newtypes after their member DIE is in the cache.
     #[expect(clippy::too_many_arguments)]
     fn flatten_known_wrapper(
         &self,
@@ -621,6 +621,9 @@ impl RustPath {
         {
             return true;
         }
+        if self.crate_name == "vcell" && self.modules.is_empty() && self.ident == "VolatileCell" {
+            return true;
+        }
 
         if !self.is_rustc_lib() {
             return false;
@@ -704,6 +707,7 @@ mod tests {
         assert!(!path("core", &["ptr", "non_null"], "NonNull").is_transparent_wrapper());
         assert!(path("heapless", &["vec"], "Vec").is_heapless_vec());
         assert!(!path("alloc", &["vec"], "Vec").is_heapless_vec());
+        assert!(path("vcell", &[], "VolatileCell").is_transparent_wrapper());
     }
 
     #[test]
