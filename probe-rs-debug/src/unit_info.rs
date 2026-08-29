@@ -30,6 +30,8 @@ pub struct UnitInfo {
     parents: HashMap<UnitOffset, UnitOffset>,
     // Address => function DIE offset
     function_dies: Vec<(Range<u64>, UnitOffset)>,
+    // Return PC => DW_TAG_call_site_parameter (DW_AT_location bytes, DW_AT_call_value)
+    call_sites: HashMap<u64, Vec<CallSiteParameter>>,
 }
 
 impl UnitInfo {
@@ -52,6 +54,7 @@ impl UnitInfo {
             language: language::from_dwarf(dwarf_language),
             parents: HashMap::new(),
             function_dies: Vec::new(),
+            call_sites: HashMap::new(),
         };
 
         this.process_unit(dwarf);
@@ -64,6 +67,7 @@ impl UnitInfo {
 
         let mut prev_offset = None;
         let mut previous_depth = entries_cursor.depth();
+        let mut active_call_site: Option<(isize, u64)> = None;
         while let Ok(Some(current)) = entries_cursor.next_dfs() {
             let parent_offset = match current.depth() - previous_depth {
                 1 => {
@@ -101,8 +105,32 @@ impl UnitInfo {
                 }
             }
 
+            collect_call_site(
+                current,
+                dwarf,
+                &self.unit,
+                &mut active_call_site,
+                &mut self.call_sites,
+            );
+
             // TODO: assuming the ranges don't overlap, sort function dies by start address
         }
+    }
+
+    pub(crate) fn call_site_value(
+        &self,
+        return_pc: u64,
+        location: &gimli::Expression<GimliReader>,
+    ) -> Option<gimli::Expression<GimliReader>> {
+        let location = expression_bytes(location)?;
+        let params = self
+            .call_sites
+            .get(&return_pc)
+            .or_else(|| self.call_sites.get(&(return_pc & !1)))?;
+        params
+            .iter()
+            .find(|param| param.location == location)
+            .map(|param| param.value.clone())
     }
 
     /// Retrieve the value of the `DW_AT_language` attribute of the compilation unit.
@@ -2076,7 +2104,7 @@ impl UnitInfo {
                 | gimli::DW_AT_frame_base
                 | gimli::DW_AT_data_member_location => match attr.value() {
                     gimli::AttributeValue::Exprloc(expression) => self
-                        .evaluate_expression(memory, expression, frame_info)
+                        .evaluate_expression(debug_info, memory, expression, frame_info)
                         .convert_incomplete()?,
 
                     gimli::AttributeValue::Udata(offset_from_location) => {
@@ -2193,7 +2221,7 @@ impl UnitInfo {
             return Ok(ExpressionResult::Location(VariableLocation::Unavailable));
         };
 
-        self.evaluate_expression(memory, valid_expression, frame_info)
+        self.evaluate_expression(debug_info, memory, valid_expression, frame_info)
     }
 
     /// Evaluate a [`gimli::Expression`] as a valid memory location.
@@ -2202,6 +2230,7 @@ impl UnitInfo {
     /// - `Result<ExpressionResult::Location(),_>`: One of the variants of VariableLocation, and needs to be interpreted for handling the 'expected' errors we encounter during evaluation.
     pub(crate) fn evaluate_expression(
         &self,
+        debug_info: &DebugInfo,
         memory: &mut dyn MemoryInterface,
         expression: gimli::Expression<GimliReader>,
         frame_info: StackFrameInfo<'_>,
@@ -2218,7 +2247,7 @@ impl UnitInfo {
             ExpressionResult::Location(location)
         }
 
-        let pieces = self.expression_to_piece(memory, expression, frame_info)?;
+        let pieces = self.expression_to_piece(debug_info, memory, expression, frame_info, 0)?;
 
         let [piece] = &pieces[..] else {
             if pieces.is_empty() {
@@ -2320,9 +2349,11 @@ impl UnitInfo {
     /// Tries to get the result of a DWARF expression in the form of a Piece.
     pub(crate) fn expression_to_piece(
         &self,
+        debug_info: &DebugInfo,
         memory: &mut dyn MemoryInterface,
         expression: gimli::Expression<GimliReader>,
         frame_info: StackFrameInfo<'_>,
+        entry_value_depth: u8,
     ) -> Result<Vec<gimli::Piece<GimliReader, usize>>, DebugError> {
         let mut evaluation = expression.evaluation(self.unit.encoding());
         let mut result = evaluation.evaluate()?;
@@ -2346,6 +2377,107 @@ impl UnitInfo {
                 }
                 EvaluationResult::RequiresCallFrameCfa => {
                     provide_cfa(frame_info.canonical_frame_address, &mut evaluation)?
+                }
+                EvaluationResult::RequiresEntryValue(inner) => {
+                    let value = self.resolve_entry_value(
+                        debug_info,
+                        memory,
+                        inner,
+                        frame_info,
+                        entry_value_depth,
+                    )?;
+                    evaluation.resume_with_entry_value(value)?
+                }
+                unimplemented_expression => {
+                    return Err(DebugError::WarnAndContinue {
+                        message: unsupported_evaluation_result(&unimplemented_expression),
+                    });
+                }
+            }
+        }
+    }
+
+    fn resolve_entry_value(
+        &self,
+        debug_info: &DebugInfo,
+        memory: &mut dyn MemoryInterface,
+        inner: gimli::Expression<GimliReader>,
+        frame_info: StackFrameInfo<'_>,
+        entry_value_depth: u8,
+    ) -> Result<gimli::Value, DebugError> {
+        if entry_value_depth >= 4 {
+            return Err(DebugError::WarnAndContinue {
+                message: "Nested DW_OP_entry_value is not supported.".to_string(),
+            });
+        }
+
+        let Some(caller) = frame_info.caller else {
+            return Err(DebugError::WarnAndContinue {
+                message: "DW_OP_entry_value requires a caller frame.".to_string(),
+            });
+        };
+
+        let expression = caller
+            .program_counter()
+            .and_then(|pc| debug_info.call_site_value(pc, &inner));
+
+        if let Some((unit, expression)) = expression {
+            unit.expression_to_value(
+                debug_info,
+                memory,
+                expression,
+                *caller,
+                entry_value_depth + 1,
+            )
+        } else {
+            self.expression_to_value(debug_info, memory, inner, *caller, entry_value_depth + 1)
+        }
+    }
+
+    fn expression_to_value(
+        &self,
+        debug_info: &DebugInfo,
+        memory: &mut dyn MemoryInterface,
+        expression: gimli::Expression<GimliReader>,
+        frame_info: StackFrameInfo<'_>,
+        entry_value_depth: u8,
+    ) -> Result<gimli::Value, DebugError> {
+        let mut evaluation = expression.evaluation(self.unit.encoding());
+        let mut result = evaluation.evaluate()?;
+
+        loop {
+            result = match result {
+                EvaluationResult::Complete => {
+                    if let Some(value) = evaluation.value_result() {
+                        return Ok(value);
+                    }
+                    return pieces_to_value(&evaluation.result(), frame_info);
+                }
+                EvaluationResult::RequiresMemory { address, size, .. } => {
+                    read_memory(size, memory, address, &mut evaluation)?
+                }
+                EvaluationResult::RequiresFrameBase => {
+                    provide_frame_base(frame_info.frame_base, &mut evaluation)?
+                }
+                EvaluationResult::RequiresRegister {
+                    register,
+                    base_type,
+                } => provide_register(frame_info.registers, register, base_type, &mut evaluation)?,
+                EvaluationResult::RequiresRelocatedAddress(address_index) => {
+                    evaluation.resume_with_relocated_address(address_index)?
+                }
+                EvaluationResult::RequiresCallFrameCfa => {
+                    provide_cfa(frame_info.canonical_frame_address, &mut evaluation)?
+                }
+                EvaluationResult::RequiresEntryValue(inner) => {
+                    let value = self.resolve_entry_value(
+                        debug_info,
+                        memory,
+                        inner,
+                        frame_info,
+                        entry_value_depth,
+                    )?;
+                    evaluation.resume_with_entry_value(value)?
                 }
                 unimplemented_expression => {
                     return Err(DebugError::WarnAndContinue {
@@ -2968,6 +3100,143 @@ fn attribute_string(
     match debug_info.dwarf.attr_string(unit, attr) {
         Ok(raw) => String::from_utf8_lossy(&raw).to_string(),
         Err(error) => format!("Invalid string attribute value: {error}"),
+    }
+}
+
+struct CallSiteParameter {
+    location: Vec<u8>,
+    value: gimli::Expression<GimliReader>,
+}
+
+fn collect_call_site(
+    die: &gimli::DebuggingInformationEntry<GimliReader>,
+    dwarf: &gimli::Dwarf<GimliReader>,
+    unit: &gimli::Unit<GimliReader>,
+    active_call_site: &mut Option<(isize, u64)>,
+    call_sites: &mut HashMap<u64, Vec<CallSiteParameter>>,
+) {
+    let tag = die.tag();
+    if tag == gimli::DW_TAG_call_site || tag == gimli::DW_TAG_GNU_call_site {
+        *active_call_site = call_site_return_pc(die, dwarf, unit).map(|pc| (die.depth(), pc));
+        return;
+    }
+
+    let Some((site_depth, pc)) = *active_call_site else {
+        return;
+    };
+
+    if die.depth() <= site_depth {
+        *active_call_site = None;
+        return;
+    }
+
+    if die.depth() != site_depth + 1 {
+        return;
+    }
+
+    if tag != gimli::DW_TAG_call_site_parameter && tag != gimli::DW_TAG_GNU_call_site_parameter {
+        return;
+    }
+
+    let Some(param) = call_site_parameter(die) else {
+        return;
+    };
+    call_sites.entry(pc).or_default().push(param);
+}
+
+fn call_site_return_pc(
+    die: &gimli::DebuggingInformationEntry<GimliReader>,
+    dwarf: &gimli::Dwarf<GimliReader>,
+    unit: &gimli::Unit<GimliReader>,
+) -> Option<u64> {
+    die_address(die, dwarf, unit, gimli::DW_AT_call_return_pc)
+        .or_else(|| die_address(die, dwarf, unit, gimli::DW_AT_low_pc))
+        .or_else(|| die_address(die, dwarf, unit, gimli::DW_AT_call_pc))
+}
+
+fn die_address(
+    die: &gimli::DebuggingInformationEntry<GimliReader>,
+    dwarf: &gimli::Dwarf<GimliReader>,
+    unit: &gimli::Unit<GimliReader>,
+    attr: gimli::DwAt,
+) -> Option<u64> {
+    match die.attr_value(attr)? {
+        AttributeValue::Addr(address) => Some(address),
+        AttributeValue::DebugAddrIndex(index) => dwarf.address(unit, index).ok(),
+        AttributeValue::Udata(value) => Some(value),
+        _ => None,
+    }
+}
+
+fn call_site_parameter(
+    die: &gimli::DebuggingInformationEntry<GimliReader>,
+) -> Option<CallSiteParameter> {
+    let location = exprloc(die, gimli::DW_AT_location)?;
+    let value = exprloc(die, gimli::DW_AT_call_value)
+        .or_else(|| exprloc(die, gimli::DW_AT_GNU_call_site_value))?;
+    Some(CallSiteParameter {
+        location: expression_bytes(&location)?,
+        value,
+    })
+}
+
+fn exprloc(
+    die: &gimli::DebuggingInformationEntry<GimliReader>,
+    attr: gimli::DwAt,
+) -> Option<gimli::Expression<GimliReader>> {
+    match die.attr_value(attr)? {
+        AttributeValue::Exprloc(expression) => Some(expression),
+        _ => None,
+    }
+}
+
+fn expression_bytes(expression: &gimli::Expression<GimliReader>) -> Option<Vec<u8>> {
+    gimli::Reader::to_slice(&expression.0)
+        .ok()
+        .map(|bytes| bytes.to_vec())
+}
+
+fn pieces_to_value(
+    pieces: &[gimli::Piece<GimliReader, usize>],
+    frame_info: StackFrameInfo<'_>,
+) -> Result<gimli::Value, DebugError> {
+    let [piece] = pieces else {
+        return Err(DebugError::WarnAndContinue {
+            message: "DW_OP_entry_value produced a composite location.".to_string(),
+        });
+    };
+
+    match &piece.location {
+        Location::Value { value } => Ok(*value),
+        Location::Register { register } => {
+            let Some(raw_value) = frame_info
+                .registers
+                .get_register_by_dwarf_id(register.0)
+                .and_then(|register| register.value)
+            else {
+                return Err(DebugError::WarnAndContinue {
+                    message: format!(
+                        "DW_OP_entry_value has no value for register #:{}.",
+                        register.0
+                    ),
+                });
+            };
+            Ok(gimli::Value::Generic(raw_value.try_into()?))
+        }
+        Location::Address { address } => Ok(gimli::Value::Generic(*address)),
+        Location::Bytes { value } => {
+            let bytes = gimli::Reader::to_slice(value)?;
+            let mut buf = [0u8; 8];
+            let len = bytes.len().min(8);
+            buf[..len].copy_from_slice(&bytes[..len]);
+            Ok(gimli::Value::Generic(u64::from_le_bytes(buf)))
+        }
+        Location::Empty => Err(DebugError::WarnAndContinue {
+            message: "DW_OP_entry_value produced an empty location.".to_string(),
+        }),
+        Location::ImplicitPointer { .. } => Err(DebugError::WarnAndContinue {
+            message: "DW_OP_entry_value produced an implicit pointer.".to_string(),
+        }),
     }
 }
 
