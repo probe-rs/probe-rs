@@ -1057,13 +1057,13 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tdst: *mut u32 = *mut u32 @ <unknown value>,u32}"
+      value: "<unknown> {\n\tdst: *mut u32 = *mut u32,u32}"
       children:
         - name:
             Named: dst
           type_name:
             Pointer: "*mut u32"
-          value: "*mut u32 @ <unknown value>"
+          value: "*mut u32"
           source_location:
             path: /home/dirbaio/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs
             line: 2171

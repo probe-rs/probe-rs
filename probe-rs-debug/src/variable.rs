@@ -809,6 +809,8 @@ pub struct Variable {
     pub memory_location: VariableLocation,
     /// The size of this variable in bytes.
     pub byte_size: Option<u64>,
+    /// The address size of the compilation unit, in bytes.
+    address_size: Option<u8>,
     /// The role of this variable.
     pub role: VariantRole,
 }
@@ -832,6 +834,7 @@ impl Variable {
             variable_node_type: Default::default(),
             memory_location: Default::default(),
             byte_size: None,
+            address_size: unit_info.map(|info| info.unit.encoding().address_size),
             role: Default::default(),
         }
     }
@@ -980,10 +983,14 @@ impl Variable {
         if matches!(self.type_name, VariableType::Pointer(_)) {
             // The value of a pointer is the address that it holds, not the place that holds the
             // pointer.
-            let location = self
-                .pointer_target(memory)
-                .map_or_else(|| self.memory_location.clone(), VariableLocation::Address);
-            self.value = VariableValue::Valid(format!("{} @ {location}", self.type_name()));
+            let value = if let Some(location) =
+                self.pointer_target(memory).map(VariableLocation::Address)
+            {
+                format!("{} @ {location}", self.type_name())
+            } else {
+                self.type_name().to_string()
+            };
+            self.value = VariableValue::Valid(value);
             return;
         }
 
@@ -1039,19 +1046,17 @@ impl Variable {
     }
 
     fn pointer_byte_size(&self) -> Option<usize> {
-        if let Some(size) = self.byte_size
-            && (1..=8).contains(&size)
-        {
-            return Some(size as usize);
-        }
-
-        match &self.memory_location {
-            VariableLocation::RegisterValue(value) => {
-                Some((register_bit_size(*value) / 8) as usize)
-            }
-            VariableLocation::Composite(pieces) => implicit_byte_size(pieces),
-            _ => None,
-        }
+        self.byte_size
+            .or(self.address_size.map(u64::from))
+            .filter(|size| (1..=8).contains(size))
+            .map(|size| size as usize)
+            .or_else(|| match &self.memory_location {
+                VariableLocation::RegisterValue(value) => {
+                    Some((register_bit_size(*value) / 8) as usize)
+                }
+                VariableLocation::Composite(pieces) => implicit_byte_size(pieces),
+                _ => None,
+            })
     }
 
     /// The variable is considered to be an 'indexed' variable if the name starts with two

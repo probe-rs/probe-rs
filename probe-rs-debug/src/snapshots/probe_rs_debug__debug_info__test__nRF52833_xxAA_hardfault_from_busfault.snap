@@ -835,13 +835,13 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tsrc: *const u32 = *const u32 @ 0x20003F48}"
+      value: "<unknown> {\n\tsrc: *const u32 = *const u32 @ 0x3FFFFFFC}"
       children:
         - name:
             Named: src
           type_name:
             Pointer: "*const u32"
-          value: "*const u32 @ 0x20003F48"
+          value: "*const u32 @ 0x3FFFFFFC"
           source_location:
             path: /rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/ptr/mod.rs
             line: 1667

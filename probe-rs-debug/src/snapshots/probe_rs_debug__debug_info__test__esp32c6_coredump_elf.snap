@@ -350,13 +350,13 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tinfo: &core::panic::panic_info::PanicInfo = &core::panic::panic_info::PanicInfo @ 0x4086E4C8}"
+      value: "<unknown> {\n\tinfo: &core::panic::panic_info::PanicInfo = &core::panic::panic_info::PanicInfo @ 0x4086E50C}"
       children:
         - name:
             Named: info
           type_name:
             Pointer: "&core::panic::panic_info::PanicInfo"
-          value: "&core::panic::panic_info::PanicInfo @ 0x4086E4C8"
+          value: "&core::panic::panic_info::PanicInfo @ 0x4086E50C"
           source_location:
             path: "C:\\_Espressif\\esp-coredump\\src\\lib.rs"
             line: 24
@@ -373,7 +373,7 @@ expression: stack_frames
                     Named: message
                   type_name:
                     Pointer: "&core::fmt::Arguments"
-                  value: "&core::fmt::Arguments @ 0x4086E50C"
+                  value: "&core::fmt::Arguments @ 0x4086E574"
                   children:
                     - name:
                         Named: "*message"
@@ -411,7 +411,7 @@ expression: stack_frames
                                         Named: data_ptr
                                       type_name:
                                         Pointer: u8
-                                      value: "*raw u8 @ 0x420068BC"
+                                      value: "*raw u8"
                                       children:
                                         - name:
                                             Named: "*data_ptr"
@@ -457,7 +457,7 @@ expression: stack_frames
                     Named: location
                   type_name:
                     Pointer: "&core::panic::location::Location"
-                  value: "&core::panic::location::Location @ 0x4086E510"
+                  value: "&core::panic::location::Location @ 0x420068D4"
                   children:
                     - name:
                         Named: "*location"
@@ -475,7 +475,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x420068D4"
+                              value: "*raw u8"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -1598,7 +1598,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tp: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >,\n\tthis: *const embassy_executor::raw::TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}> = *const embassy_executor::raw::TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}> @ <unknown value>,\n\tfuture: Pin<&mut coredump_c6::____embassy_main_task::{async_fn_env#0}> = Pin<&mut coredump_c6::____embassy_main_task::{async_fn_env#0}> @ <unknown value>,\n\twaker: Waker = Waker @ <unknown value>,\n\tcx: Context = Context @ <composite value>}"
+      value: "<unknown> {\n\tp: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >,\n\tthis: *const embassy_executor::raw::TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}> = *const embassy_executor::raw::TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}>,\n\tfuture: Pin<&mut coredump_c6::____embassy_main_task::{async_fn_env#0}> = Pin<&mut coredump_c6::____embassy_main_task::{async_fn_env#0}> @ <unknown value>,\n\twaker: Waker = Waker @ <unknown value>,\n\tcx: Context = Context @ <composite value>}"
       children:
         - name:
             Named: p
@@ -1613,7 +1613,7 @@ expression: stack_frames
             Named: this
           type_name:
             Pointer: "*const embassy_executor::raw::TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}>"
-          value: "*const embassy_executor::raw::TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}> @ <unknown value>"
+          value: "*const embassy_executor::raw::TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}>"
           source_location:
             path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
             line: 209
@@ -1640,7 +1640,7 @@ expression: stack_frames
                 Named: __pointer
               type_name:
                 Pointer: "&mut coredump_c6::____embassy_main_task::{async_fn_env#0}"
-              value: "&mut coredump_c6::____embassy_main_task::{async_fn_env#0} @ <unknown value>"
+              value: "&mut coredump_c6::____embassy_main_task::{async_fn_env#0}"
               children:
                 - name:
                     Named: "*__pointer"
@@ -1668,12 +1668,12 @@ expression: stack_frames
                     Named: data
                   type_name:
                     Pointer: "*const ()"
-                  value: "*const () @ <unknown value>"
+                  value: "*const ()"
                 - name:
                     Named: vtable
                   type_name:
                     Pointer: "&core::task::wake::RawWakerVTable"
-                  value: "&core::task::wake::RawWakerVTable @ <unknown value>"
+                  value: "&core::task::wake::RawWakerVTable"
                   children:
                     - name:
                         Named: "*vtable"
@@ -1695,7 +1695,7 @@ expression: stack_frames
                 Named: waker
               type_name:
                 Pointer: "&core::task::wake::Waker"
-              value: "&core::task::wake::Waker @ <composite value>"
+              value: "&core::task::wake::Waker"
               children:
                 - name:
                     Named: "*waker"
@@ -1706,7 +1706,7 @@ expression: stack_frames
                 Named: local_waker
               type_name:
                 Pointer: "&core::task::wake::LocalWaker"
-              value: "&core::task::wake::LocalWaker @ <composite value>"
+              value: "&core::task::wake::LocalWaker"
               children:
                 - name:
                     Named: "*local_waker"
@@ -3839,7 +3839,7 @@ expression: stack_frames
                                             Named: value
                                           type_name:
                                             Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                          value: "*mut embassy_executor::raw::TaskHeader @ 0x4086E5C0"
+                                          value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                                           children:
                                             - name:
                                                 Named: "*value"
@@ -3856,7 +3856,7 @@ expression: stack_frames
                                     Named: __0
                                   type_name:
                                     Pointer: "*mut ()"
-                                  value: "*mut () @ 0x4086E5C4"
+                                  value: "*mut () @ 0x00000010"
         - name:
             Named: init
           type_name:
@@ -4252,7 +4252,7 @@ expression: stack_frames
                                         Named: value
                                       type_name:
                                         Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                      value: "*mut embassy_executor::raw::TaskHeader @ 0x4086E5C0"
+                                      value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                                       children:
                                         - name:
                                             Named: "*value"
@@ -4269,7 +4269,7 @@ expression: stack_frames
                                 Named: __0
                               type_name:
                                 Pointer: "*mut ()"
-                              value: "*mut () @ 0x4086E5C4"
+                              value: "*mut () @ 0x00000010"
         - name:
             Named: executor
           type_name:
@@ -4327,7 +4327,7 @@ expression: stack_frames
                                             Named: value
                                           type_name:
                                             Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                          value: "*mut embassy_executor::raw::TaskHeader @ 0x4086E5C0"
+                                          value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                                           children:
                                             - name:
                                                 Named: "*value"
@@ -4344,7 +4344,7 @@ expression: stack_frames
                                     Named: __0
                                   type_name:
                                     Pointer: "*mut ()"
-                                  value: "*mut () @ 0x4086E5C4"
+                                  value: "*mut () @ 0x00000010"
   canonical_frame_address: 1082582480
 - function_name: hal_main
   source_location:
@@ -4666,7 +4666,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\ta0: <unknown> = < Error: Cannot resolve register: Register(10) >,\n\ta1: <unknown> = < Error: Cannot resolve register: Register(11) >,\n\ta2: <unknown> = < Error: Cannot resolve register: Register(12) >,\n\tstack_chk_guard: *mut u32 = *mut u32 @ <unknown value>}"
+      value: "<unknown> {\n\ta0: <unknown> = < Error: Cannot resolve register: Register(10) >,\n\ta1: <unknown> = < Error: Cannot resolve register: Register(11) >,\n\ta2: <unknown> = < Error: Cannot resolve register: Register(12) >,\n\tstack_chk_guard: *mut u32 = *mut u32}"
       children:
         - name:
             Named: a0
@@ -4699,7 +4699,7 @@ expression: stack_frames
             Named: stack_chk_guard
           type_name:
             Pointer: "*mut u32"
-          value: "*mut u32 @ <unknown value>"
+          value: "*mut u32"
           source_location:
             path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-hal-1.0.0-beta.0\\src\\lib.rs"
             line: 418
