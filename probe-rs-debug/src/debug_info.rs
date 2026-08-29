@@ -2024,6 +2024,7 @@ mod test {
     #[test_case("esp32c6_coredump_elf"; "Unwind using a RISC-V coredump in ELF format")]
     #[test_case("esp32s3_coredump_elf"; "Unwind using an Xtensa coredump in ELF format")]
     #[test_case("async_esp32s3"; "Unwind an async embassy task on an ESP32-S3")]
+    #[test_case("async_esp32c6"; "Unwind an async embassy task on an ESP32-C6")]
     fn full_unwind(test_name: &str) {
         let debug_info =
             load_test_elf_as_debug_info(format!("debug-unwind-tests/{test_name}.elf").as_str());

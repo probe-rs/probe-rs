@@ -274,7 +274,10 @@ impl Rust {
         frame_info: StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         let params: Vec<_> = cache.get_children(scope.variable_key).cloned().collect();
-        let Some(env_param) = params.into_iter().find(looks_like_async_env_param) else {
+        let Some(env_param) = params
+            .into_iter()
+            .find(|child| looks_like_async_env_param(debug_info, child))
+        else {
             return Ok(());
         };
 
@@ -294,12 +297,30 @@ impl Rust {
 
         let locals: Vec<_> = cache.get_children(payload.variable_key).cloned().collect();
         let mut awaitee = None;
+        let mut resume_ty = None;
+        let mut context_refs = Vec::new();
         for mut local in locals {
+            if is_resume_ty(debug_info, &local) {
+                resume_ty = Some(local);
+                continue;
+            }
+            if is_poll_context_ref(debug_info, &local) {
+                context_refs.push(local);
+                continue;
+            }
             let VariableName::Named(name) = &local.name else {
                 continue;
             };
             if name == "__awaitee" {
                 awaitee = Some(local);
+                continue;
+            }
+            if name == "_task_context" {
+                if is_resume_ty(debug_info, &local) {
+                    resume_ty = Some(local);
+                } else {
+                    context_refs.push(local);
+                }
                 continue;
             }
             if name.starts_with("__") || existing.iter().any(|existing| existing == name) {
@@ -309,12 +330,44 @@ impl Rust {
             cache.update_variable(&local)?;
         }
 
-        let task_context = cache
-            .get_children(scope.variable_key)
-            .find(|child| is_named(child, "_task_context"))
-            .cloned();
+        // rust-lang/rust#157166: `poll` keeps `&mut Context`, and the env keeps `ResumeTy`
+        // as `ResumeTy(transmute(context))`. Older rustc rewrote the env slot to `&mut Context`.
+        let frame_children: Vec<_> = cache.get_children(scope.variable_key).cloned().collect();
+        for child in &frame_children {
+            if is_resume_ty(debug_info, child)
+                && resume_ty
+                    .as_ref()
+                    .is_none_or(|existing| existing.variable_key != child.variable_key)
+            {
+                resume_ty = Some(child.clone());
+            }
+        }
 
-        if (is_suspend_payload_name(&payload.name) || awaitee.is_some() || task_context.is_some())
+        let task_contexts = if let Some(resume_ty) = resume_ty {
+            for child in &frame_children {
+                if is_poll_context_ref(debug_info, child) {
+                    cache.remove_cache_entry(child.variable_key)?;
+                }
+            }
+            vec![resume_ty]
+        } else {
+            let mut contexts = context_refs;
+            for child in frame_children {
+                if !is_poll_context_ref(debug_info, &child) {
+                    continue;
+                }
+                if contexts
+                    .iter()
+                    .any(|context| context.variable_key == child.variable_key)
+                {
+                    continue;
+                }
+                contexts.push(child);
+            }
+            contexts
+        };
+
+        if (is_generator_variant(&payload) || awaitee.is_some() || !task_contexts.is_empty())
             && !existing.iter().any(|name| name == FUTURE_STATE)
         {
             let mut future_state = cache.create_variable(scope.variable_key, None)?;
@@ -331,7 +384,7 @@ impl Rust {
                 cache.update_variable(&awaitee)?;
                 has_child = true;
             }
-            if let Some(mut task_context) = task_context {
+            for mut task_context in task_contexts {
                 task_context.parent_key = future_state.variable_key;
                 cache.update_variable(&task_context)?;
                 has_child = true;
@@ -369,7 +422,7 @@ impl Rust {
                 continue;
             }
 
-            if type_ident(&current.type_name()) == "Pin" {
+            if is_pin_type(debug_info, &current) {
                 let Some(pointer) = cache
                     .get_children(current.variable_key)
                     .find(|child| matches!(child.type_name, VariableType::Pointer(_)))
@@ -381,7 +434,7 @@ impl Rust {
                 continue;
             }
 
-            if is_async_env_ident(&current.type_name()) {
+            if is_async_env_type(debug_info, &current) {
                 return self.async_suspend_payload(debug_info, memory, cache, frame_info, current);
             }
 
@@ -406,7 +459,7 @@ impl Rust {
 
         let children: Vec<_> = cache.get_children(env.variable_key).cloned().collect();
         for mut child in children {
-            if !is_suspend_payload_name(&child.name) {
+            if !is_generator_variant(&child) {
                 continue;
             }
             debug_info.cache_deferred_variables(cache, memory, &mut child, frame_info)?;
@@ -966,14 +1019,57 @@ fn is_named(variable: &Variable, name: &str) -> bool {
 
 const FUTURE_STATE: &str = "Future state";
 
-fn looks_like_async_env_param(variable: &Variable) -> bool {
-    if !matches!(variable.name, VariableName::Unknown) {
+fn looks_like_async_env_param(debug_info: &DebugInfo, variable: &Variable) -> bool {
+    // `poll` names its `Pin<&mut {async_fn_env}>` argument `future`. The compiler
+    // argument on the async fn itself has no name.
+    if matches!(variable.name, VariableName::Named(_)) {
         return false;
     }
-    let name = variable.type_name();
-    name.contains("{async_fn_env")
-        || name.contains("{async_block_env")
-        || name.contains("{async_closure_env")
+    is_async_env_type(debug_info, variable) || type_contains_async_env(&variable.type_name())
+}
+
+fn type_contains_async_env(type_name: &str) -> bool {
+    let mut rest = type_name;
+    for _ in 0..8 {
+        if is_async_env_ident(rest) {
+            return true;
+        }
+        if let Some(inner) = rest.strip_prefix("&mut ") {
+            rest = inner;
+            continue;
+        }
+        if let Some(inner) = rest.strip_prefix('&') {
+            rest = inner;
+            continue;
+        }
+        if let Some(inner) = rest.strip_prefix("*mut ") {
+            rest = inner;
+            continue;
+        }
+        if let Some(inner) = rest.strip_prefix("*const ") {
+            rest = inner;
+            continue;
+        }
+        let Some((_, inner)) = rest.split_once('<') else {
+            return false;
+        };
+        rest = inner.trim_end_matches('>').trim();
+    }
+    false
+}
+
+fn is_async_env_type(debug_info: &DebugInfo, variable: &Variable) -> bool {
+    if let Some(path) = RustPath::from_variable(debug_info, variable) {
+        return is_async_env_ident(&path.ident);
+    }
+    is_async_env_ident(&variable.type_name())
+}
+
+fn is_pin_type(debug_info: &DebugInfo, variable: &Variable) -> bool {
+    if let Some(path) = RustPath::from_variable(debug_info, variable) {
+        return path.ident == "Pin" && path.is_rustc_lib();
+    }
+    type_ident(&variable.type_name()) == "Pin"
 }
 
 fn is_async_env_ident(type_name: &str) -> bool {
@@ -983,11 +1079,36 @@ fn is_async_env_ident(type_name: &str) -> bool {
         || ident.starts_with("{async_closure_env")
 }
 
-fn is_suspend_payload_name(name: &VariableName) -> bool {
-    let VariableName::Named(name) = name else {
+fn is_generator_variant(variable: &Variable) -> bool {
+    is_generator_variant_ident(&variable.type_name())
+}
+
+fn is_generator_variant_ident(type_name: &str) -> bool {
+    let ident = type_ident(type_name);
+    ident.starts_with("Suspend") || matches!(ident, "Unresumed" | "Returned" | "Panicked")
+}
+
+fn is_resume_ty(debug_info: &DebugInfo, variable: &Variable) -> bool {
+    if let Some(path) = RustPath::from_variable(debug_info, variable)
+        && path.ident == "ResumeTy"
+    {
+        return true;
+    }
+    type_ident(&variable.type_name()) == "ResumeTy"
+}
+
+fn is_poll_context_ref(debug_info: &DebugInfo, variable: &Variable) -> bool {
+    if is_resume_ty(debug_info, variable) {
         return false;
-    };
-    name.bytes().all(|byte| byte.is_ascii_digit()) || name.starts_with("Suspend")
+    }
+    if let Some(path) = RustPath::from_variable(debug_info, variable)
+        && path.ident == "Context"
+        && path.crate_name == "core"
+        && path.modules_eq(&["task", "wake"])
+    {
+        return true;
+    }
+    variable.type_name().contains("task::wake::Context")
 }
 
 /// `type_name`, `prefix::type_name`, or those names with a generic argument list.
@@ -997,7 +1118,10 @@ fn is_rust_type(name: &str, type_name: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{RustPath, is_async_env_ident, is_rust_type, is_suspend_payload_name};
+    use super::{
+        RustPath, is_async_env_ident, is_generator_variant_ident, is_rust_type,
+        type_contains_async_env,
+    };
     use crate::DebugInfo;
 
     #[test]
@@ -1021,15 +1145,12 @@ mod tests {
         assert!(!is_async_env_ident(
             "Pin<&mut s3_debug::__main::{async_fn_env#0}>"
         ));
-        assert!(is_suspend_payload_name(&crate::VariableName::Named(
-            "3".into()
-        )));
-        assert!(is_suspend_payload_name(&crate::VariableName::Named(
-            "Suspend0".into()
-        )));
-        assert!(!is_suspend_payload_name(&crate::VariableName::Named(
-            "spawner".into()
-        )));
+        assert!(type_contains_async_env(
+            "Pin<&mut s3_debug::__main::{async_fn_env#0}>"
+        ));
+        assert!(is_generator_variant_ident("Suspend0"));
+        assert!(is_generator_variant_ident("Unresumed"));
+        assert!(!is_generator_variant_ident("Spawner"));
     }
 
     #[test]
