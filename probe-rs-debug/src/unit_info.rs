@@ -2349,9 +2349,7 @@ impl UnitInfo {
                 }
                 unimplemented_expression => {
                     return Err(DebugError::WarnAndContinue {
-                        message: format!(
-                            "Unimplemented: Expressions that include {unimplemented_expression:?} are not currently supported."
-                        ),
+                        message: unsupported_evaluation_result(&unimplemented_expression),
                     });
                 }
             }
@@ -2971,6 +2969,19 @@ fn attribute_string(
         Ok(raw) => String::from_utf8_lossy(&raw).to_string(),
         Err(error) => format!("Invalid string attribute value: {error}"),
     }
+}
+
+fn unsupported_evaluation_result<R: gimli::Reader>(result: &EvaluationResult<R>) -> String {
+    let kind = match result {
+        EvaluationResult::RequiresTls(_) => "DW_OP_form_tls_address",
+        EvaluationResult::RequiresAtLocation(_) => "DW_OP_call",
+        EvaluationResult::RequiresParameterRef(_) => "DW_OP_parameter_ref",
+        EvaluationResult::RequiresIndexedAddress { .. } => "an indexed address",
+        EvaluationResult::RequiresBaseType(_) => "a typed DWARF value",
+        EvaluationResult::RequiresEntryValue(_) => "DW_OP_entry_value",
+        _ => "this DWARF evaluation request",
+    };
+    format!("Unimplemented: {kind} is not currently supported.")
 }
 
 /// Gets necessary register information for the DWARF resolver.
