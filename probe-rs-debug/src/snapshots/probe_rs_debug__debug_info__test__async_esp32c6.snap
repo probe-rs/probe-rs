@@ -351,7 +351,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tconfig: Config = Config @ 0x4086E528,\n\ttimg0: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >,\n\tportable_atomic_u32: AtomicU32 = 44,\n\tcore_atomic_u32: Atomic<u32> = 44,\n\tvec: VecInner<u32, usize, VecStorageInner<[MaybeUninit<u32>; 10]>> = VecInner<u32, usize, VecStorageInner<[MaybeUninit<u32>; 10]>> @ 0x40801B9C,\n\tspawner: Spawner = Spawner @ 0x40801B90,\n\tFuture state: Suspend0 = Suspend0}"
+      value: "<unknown> { config = Config @ 0x4086E528, timg0 = < <value optimized away by compiler, out of scope, or dropped> >, portable_atomic_u32 = 44, core_atomic_u32 = 44, vec = VecInner<u32, usize, VecStorageInner<[MaybeUninit<u32>; 10]>> @ 0x40801B9C, spawner = Spawner @ 0x40801B90, Future state = Suspend0 }"
       children:
         - name:
             Named: config
@@ -1198,7 +1198,7 @@ expression: stack_frames
                   item_type_name:
                     Base: u32
                   count: 4
-              value: "[u32; 4] = [\n\t41,\n\t42,\n\t43,\n\t44]"
+              value: "[u32; 4] = [41, 42, 43, 44]"
               children:
                 - name:
                     Indexed: 0
@@ -2054,7 +2054,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tp: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >,\n\tthis: *const TaskStorage<{async_fn_env#0}> = *const TaskStorage<{async_fn_env#0}> @ 0x40801B58,\n\tfuture: Pin<&mut {async_fn_env#0}> = Pin<&mut {async_fn_env#0}> @ 0x40801B80,\n\twaker: Waker = Waker @ 0x4086E510,\n\tcx: Context = Context @ 0x4086E518}"
+      value: "<unknown> { p = < <value optimized away by compiler, out of scope, or dropped> >, this = *const TaskStorage<{async_fn_env#0}> @ 0x40801B58, future = Pin<&mut {async_fn_env#0}> @ 0x40801B80, waker = Waker @ 0x4086E510, cx = Context @ 0x4086E518 }"
       children:
         - name:
             Named: p
@@ -2574,7 +2574,7 @@ expression: stack_frames
                               item_type_name:
                                 Base: usize
                               count: 6
-                          value: "[usize; 6] = [\n\t5851346,\n\t0,\n\t0,\n\t1082137432,\n\t0,\n\t0]"
+                          value: "[usize; 6] = [5851346, 0, 0, 1082137432, 0, 0]"
                           children:
                             - name:
                                 Indexed: 0
@@ -2781,7 +2781,7 @@ expression: stack_frames
                                               item_type_name:
                                                 Base: u32
                                               count: 4
-                                          value: "[u32; 4] = [\n\t41,\n\t42,\n\t43,\n\t44]"
+                                          value: "[u32; 4] = [41, 42, 43, 44]"
                                           children:
                                             - name:
                                                 Indexed: 0
@@ -3028,7 +3028,7 @@ expression: stack_frames
                                   item_type_name:
                                     Base: u32
                                   count: 4
-                              value: "[u32; 4] = [\n\t41,\n\t42,\n\t43,\n\t44]"
+                              value: "[u32; 4] = [41, 42, 43, 44]"
                               children:
                                 - name:
                                     Indexed: 0
@@ -4029,7 +4029,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tp: <unknown> = < Error: Cannot resolve register: Register(10) >,\n\ttask: <unknown> = < Error: Cannot resolve register: Register(10) >}"
+      value: "<unknown> { p = < Error: Cannot resolve register: Register(10) >, task = < Error: Cannot resolve register: Register(10) > }"
       children:
         - name:
             Named: p
@@ -4376,7 +4376,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tself: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >,\n\ttaken: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >,\n\titer: Stack<TaskHeader> = Stack<TaskHeader> @ 0x00000000,\n\ttaskref: <unknown> = < Error: Cannot resolve register: Register(10) >}"
+      value: "<unknown> { self = < <value optimized away by compiler, out of scope, or dropped> >, taken = < <value optimized away by compiler, out of scope, or dropped> >, iter = Stack<TaskHeader> @ 0x00000000, taskref = < Error: Cannot resolve register: Register(10) > }"
       children:
         - name:
             Named: self
@@ -4806,7 +4806,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tself: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >}"
+      value: "<unknown> { self = < <value optimized away by compiler, out of scope, or dropped> > }"
       children:
         - name:
             Named: self
@@ -5144,7 +5144,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tself: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >}"
+      value: "<unknown> { self = < <value optimized away by compiler, out of scope, or dropped> > }"
       children:
         - name:
             Named: self
@@ -5479,7 +5479,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tself: &Executor = &Executor @ 0x4086E5D0,\n\tinit: {closure_env#0} = {closure_env#0} @ <unknown value>,\n\tflags: &ThreadFlag = &ThreadFlag @ 0x4086E5B8,\n\thooks: NoHooks = NoHooks @ <unknown value>,\n\texecutor: &mut Executor = &mut Executor @ 0x4086E5D0}"
+      value: "<unknown> { self = &Executor @ 0x4086E5D0, init = {closure_env#0} @ <unknown value>, flags = &ThreadFlag @ 0x4086E5B8, hooks = NoHooks @ <unknown value>, executor = &mut Executor @ 0x4086E5D0 }"
       children:
         - name:
             Named: self
@@ -6840,7 +6840,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tself: <unknown> = < Error: Cannot resolve register: Register(10) >,\n\tinit: {closure_env#0} = {closure_env#0} @ <unknown value>,\n\tflags: ThreadFlag = ThreadFlag @ 0x4086E5B8}"
+      value: "<unknown> { self = < Error: Cannot resolve register: Register(10) >, init = {closure_env#0} @ <unknown value>, flags = ThreadFlag @ 0x4086E5B8 }"
       children:
         - name:
             Named: self
@@ -7850,7 +7850,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\texecutor: Executor = Executor @ 0x4086E5D0,\n\texecutor: &mut Executor = &mut Executor @ 0x4086E5D0}"
+      value: "<unknown> { executor = Executor @ 0x4086E5D0, executor = &mut Executor @ 0x4086E5D0 }"
       children:
         - name:
             Named: executor
@@ -8534,7 +8534,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\ta0: <unknown> = < Error: Cannot resolve register: Register(10) >,\n\ta1: <unknown> = < Error: Cannot resolve register: Register(11) >,\n\ta2: <unknown> = < Error: Cannot resolve register: Register(12) >}"
+      value: "<unknown> { a0 = < Error: Cannot resolve register: Register(10) >, a1 = < Error: Cannot resolve register: Register(11) >, a2 = < Error: Cannot resolve register: Register(12) > }"
       children:
         - name:
             Named: a0
@@ -8884,7 +8884,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\ta0: <unknown> = < Error: Cannot resolve register: Register(10) >,\n\ta1: <unknown> = < Error: Cannot resolve register: Register(11) >,\n\ta2: <unknown> = < Error: Cannot resolve register: Register(12) >}"
+      value: "<unknown> { a0 = < Error: Cannot resolve register: Register(10) >, a1 = < Error: Cannot resolve register: Register(11) >, a2 = < Error: Cannot resolve register: Register(12) > }"
       children:
         - name:
             Named: a0

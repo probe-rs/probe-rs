@@ -1123,11 +1123,11 @@ impl Variable {
         // We need to construct a 'human readable' value using `fmt::Display` to represent the
         // values of complex types and pointers.
         if variable_cache.has_children(self) {
-            self.formatted_variable_value(variable_cache, 0, false)
+            self.formatted_variable_value(variable_cache, false)
                 .unwrap_or_default()
         } else if matches!(self.type_name, VariableType::Array { count: 0, .. }) {
             // An empty array has no bytes, so it needs no location.
-            self.formatted_variable_value(variable_cache, 0, false)
+            self.formatted_variable_value(variable_cache, false)
                 .unwrap_or_default()
         } else if self.type_name == VariableType::Unknown || !self.memory_location.holds_value() {
             if self.variable_node_type.is_deferred() {
@@ -1290,7 +1290,6 @@ impl Variable {
     fn formatted_variable_value(
         &self,
         variable_cache: &VariableCache,
-        indentation: usize,
         show_name: bool,
     ) -> Option<String> {
         let type_name = self.compact_type_name();
@@ -1298,11 +1297,10 @@ impl Variable {
         if !self.value.is_empty() {
             // This is the end of the recursion where we already have a scalar
             // value for a variable and we can just move it up.
-            let line_start = line_indent_string(indentation);
             return Some(if show_name {
-                format!("{line_start}{}: {} = {}", self.name, type_name, self.value)
+                format!("{} = {}", self.name, self.value)
             } else {
-                format!("{line_start}{}", self.value)
+                format!("{}", self.value)
             });
         } else if matches!(
             self.name,
@@ -1319,14 +1317,10 @@ impl Variable {
 
         // Make sure we can safely unwrap() children.
         Some(match self.type_name.inner() {
-            VariableType::Pointer(_) => {
-                format_pointer_value(variable_cache, indentation, first_child)
-            }
-            VariableType::Array { .. } => {
-                format_array_value(variable_cache, indentation, children, &type_name)
-            }
+            VariableType::Pointer(_) => format_pointer_value(variable_cache, first_child),
+            VariableType::Array { .. } => format_array_value(variable_cache, children, &type_name),
             VariableType::Struct(name) if matches!(name.ident_stem(), "Some" | "Ok" | "Err") => {
-                format_struct_value(variable_cache, indentation, children, &type_name)
+                format_struct_value(variable_cache, children, &type_name)
             }
             _ if first_child.is_none() => {
                 // This is a struct with no children, so just print the type name.
@@ -1340,16 +1334,9 @@ impl Variable {
                     | VariableName::RegistersRoot
             ) =>
             {
-                format_root_value(variable_cache, indentation, children, &type_name)
+                format_root_value(variable_cache, children, &type_name)
             }
-            _ => format_default_value(
-                variable_cache,
-                indentation,
-                &self.name,
-                children,
-                &type_name,
-                show_name,
-            ),
+            _ => format_default_value(variable_cache, &self.name, children, &type_name, show_name),
         })
     }
 
@@ -1377,22 +1364,14 @@ impl Variable {
 /// Format a pointer value
 ///
 /// Formats the pointed to value and potential subsequent children as well.
-fn format_pointer_value(
-    variable_cache: &VariableCache,
-    indentation: usize,
-    first_child: Option<&Variable>,
-) -> String {
-    let line_start = line_indent_string(indentation);
-
-    let value = if let Some(first_child) = first_child {
+fn format_pointer_value(variable_cache: &VariableCache, first_child: Option<&Variable>) -> String {
+    if let Some(first_child) = first_child {
         first_child
-            .formatted_variable_value(variable_cache, indentation + 1, true)
+            .formatted_variable_value(variable_cache, true)
             .expect("a child. This is a bug. Please report it.")
     } else {
         "Unable to resolve referenced variable value".to_string()
-    };
-
-    format!("{line_start}{value}")
+    }
 }
 
 /// Format any array like value.
@@ -1400,12 +1379,9 @@ fn format_pointer_value(
 /// Recursively formats all child values.
 fn format_array_value<'a>(
     variable_cache: &VariableCache,
-    indentation: usize,
     children: &mut (impl Iterator<Item = &'a Variable> + Clone),
     type_name: &str,
 ) -> String {
-    let line_start = line_indent_string(indentation);
-
     // Limit arrays to 10 elements
     const ARRAY_MAX_LENGTH: usize = 10;
 
@@ -1423,16 +1399,16 @@ fn format_array_value<'a>(
     let children_values = children
         .by_ref()
         .take(take)
-        .filter_map(|child| child.formatted_variable_value(variable_cache, indentation + 1, false))
-        .join(",");
+        .filter_map(|child| child.formatted_variable_value(variable_cache, false))
+        .join(", ");
 
     let remainder = if count > ARRAY_MAX_LENGTH + 1 {
-        format!(",\n{line_start}\t... and {} more", count - take)
+        format!(", ... and {} more", count - take)
     } else {
         String::new()
     };
 
-    format!("{line_start}{type_name} = [{children_values}{remainder}{line_start}]")
+    format!("{type_name} = [{children_values}{remainder}]")
 }
 
 /// Format any struct like value .
@@ -1440,18 +1416,15 @@ fn format_array_value<'a>(
 /// Recursively formats all child values.
 fn format_struct_value<'a>(
     variable_cache: &VariableCache,
-    indentation: usize,
     children: &mut (impl Iterator<Item = &'a Variable> + Clone),
     type_name: &str,
 ) -> String {
-    let line_start = line_indent_string(indentation);
-
     // FIXME: this is not hit by any of the unwind tests, which is weird because
     // some of them contain `Some` structs.
     // Handle special structure types like the variant values of `Option<>` and `Result<>`
-    let children_values = format_children_values(variable_cache, indentation, children, false);
+    let children_values = format_children_values(variable_cache, children, false);
 
-    format!("{line_start}{type_name} = ({children_values})")
+    format!("{type_name} = ({children_values})")
 }
 
 /// Format any root value.
@@ -1459,14 +1432,13 @@ fn format_struct_value<'a>(
 /// Recursively formats all child values.
 fn format_root_value<'a>(
     variable_cache: &VariableCache,
-    indentation: usize,
     children: &mut (impl Iterator<Item = &'a Variable> + Clone),
     type_name: &str,
 ) -> String {
-    let line_start = line_indent_string(indentation);
-
-    let children_values = format_children_values(variable_cache, indentation, children, true);
-    format!("{line_start}{type_name} {{{children_values}{line_start}}}")
+    format!(
+        "{type_name} {}",
+        brace_list(&format_children_values(variable_cache, children, true))
+    )
 }
 
 /// Format any value that has no type that requires special handling.
@@ -1474,14 +1446,11 @@ fn format_root_value<'a>(
 /// Recursively formats all child values.
 fn format_default_value<'a>(
     variable_cache: &VariableCache,
-    indentation: usize,
     name: &VariableName,
     children: &mut (impl Iterator<Item = &'a Variable> + Clone),
     type_name: &String,
     show_name: bool,
 ) -> String {
-    let line_start = line_indent_string(indentation);
-
     // Find the first child of the structure if it exists.
     let child = children.clone().find(|v| v.is_named());
 
@@ -1494,44 +1463,42 @@ fn format_default_value<'a>(
     let child_type_name = child.compact_type_name();
     if child.is_indexed() {
         // Treat this structure as a tuple
-        let children_values = format_children_values(variable_cache, indentation, children, false);
+        let children_values = format_children_values(variable_cache, children, false);
         let name = if show_name {
             format!("{name}: {type_name}({child_type_name}) = ")
         } else {
             String::new()
         };
-        format!("{line_start}{name}{type_name}({children_values}{line_start})")
+        format!("{name}{type_name}({children_values})")
     } else {
         // Treat this structure as a `struct`
-        let children_values = format_children_values(variable_cache, indentation, children, true);
+        let children_values = format_children_values(variable_cache, children, true);
         let name = if show_name {
             format!("{name}: {type_name} = ")
         } else {
             String::new()
         };
-        format!("{line_start}{name}{type_name} {{{children_values}{line_start}}}")
+        format!("{name}{type_name} {}", brace_list(&children_values))
     }
 }
 
 /// Concatenate all children values with a comma.
 fn format_children_values<'a>(
     variable_cache: &VariableCache,
-    indentation: usize,
     children: &mut (impl Iterator<Item = &'a Variable> + Clone),
     show_name: bool,
 ) -> String {
     children
-        .filter_map(|child| {
-            child.formatted_variable_value(variable_cache, indentation + 1, show_name)
-        })
-        .join(",")
+        .filter_map(|child| child.formatted_variable_value(variable_cache, show_name))
+        .join(", ")
 }
 
-/// Generate a string that indents the line exactly the right amount.
-/// Includes a newline at the start if the indentation is bigger than 0.
-fn line_indent_string(indentation: usize) -> String {
-    let line_feed = if indentation == 0 { "" } else { "\n" };
-    format!("{line_feed}{:\t<indentation$}", "")
+fn brace_list(inner: &str) -> String {
+    if inner.is_empty() {
+        "{}".to_string()
+    } else {
+        format!("{{ {inner} }}")
+    }
 }
 
 #[cfg(test)]

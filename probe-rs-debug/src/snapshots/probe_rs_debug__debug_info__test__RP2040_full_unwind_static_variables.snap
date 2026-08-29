@@ -5,7 +5,7 @@ expression: static_variables
 Child Variables:
   name: StaticScopeRoot
   type_name: Unknown
-  value: "<unknown> {\n\t<core::convert::Infallible as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<core::convert::Infallible as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<core::convert::Infallible as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<cortex_m_rt::{impl#1}::fmt::Hex as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&(dyn core::any::Any + core::marker::Send) as core::fmt::Debug>::{vtable}: <&(dyn core::any::Any + core::marker::Send) as core::fmt::Debug>::{vtable_type} = <&(dyn core::any::Any + core::marker::Send) as core::fmt::Debug>::{vtable_type} @ 0x1000C8C4,\n\t<core::option::Option<&core::fmt::Arguments> as core::fmt::Debug>::{vtable}: <core::option::Option<&core::fmt::Arguments> as core::fmt::Debug>::{vtable_type} = <core::option::Option<&core::fmt::Arguments> as core::fmt::Debug>::{vtable_type} @ 0x1000C8DC,\n\t<&core::panic::location::Location as core::fmt::Debug>::{vtable}: <&core::panic::location::Location as core::fmt::Debug>::{vtable_type} = <&core::panic::location::Location as core::fmt::Debug>::{vtable_type} @ 0x1000C8EC,\n\t<bool as core::fmt::Debug>::{vtable}: <bool as core::fmt::Debug>::{vtable_type} = <bool as core::fmt::Debug>::{vtable_type} @ 0x1000C908,\n\t<&bool as core::fmt::Debug>::{vtable}: <&bool as core::fmt::Debug>::{vtable_type} = <&bool as core::fmt::Debug>::{vtable_type} @ 0x1000C92C,\n\t<&&core::fmt::Arguments as core::fmt::Debug>::{vtable}: <&&core::fmt::Arguments as core::fmt::Debug>::{vtable_type} = <&&core::fmt::Arguments as core::fmt::Debug>::{vtable_type} @ 0x1000C93C,\n\t<&str as core::fmt::Debug>::{vtable}: <&str as core::fmt::Debug>::{vtable_type} = <&str as core::fmt::Debug>::{vtable_type} @ 0x1000C94C,\n\t<u32 as core::fmt::Debug>::{vtable}: <u32 as core::fmt::Debug>::{vtable_type} = <u32 as core::fmt::Debug>::{vtable_type} @ 0x1000C95C,\n\t<&u32 as core::fmt::Debug>::{vtable}: <&u32 as core::fmt::Debug>::{vtable_type} = <&u32 as core::fmt::Debug>::{vtable_type} @ 0x1000C970,\n\t<rtt_target::rtt::RttWriter as core::fmt::Write>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<rtt_target::TerminalWriter as core::fmt::Write>::{vtable}: <rtt_target::TerminalWriter as core::fmt::Write>::{vtable_type} = <rtt_target::TerminalWriter as core::fmt::Write>::{vtable_type} @ 0x1000D008}"
+  value: "<unknown> { <core::convert::Infallible as core::fmt::Debug>::{vtable} = < The value of this variable may have been optimized out of the debug info, by the compiler. >, <core::convert::Infallible as core::fmt::Debug>::{vtable} = < The value of this variable may have been optimized out of the debug info, by the compiler. >, <core::convert::Infallible as core::fmt::Debug>::{vtable} = < The value of this variable may have been optimized out of the debug info, by the compiler. >, <cortex_m_rt::{impl#1}::fmt::Hex as core::fmt::Debug>::{vtable} = < The value of this variable may have been optimized out of the debug info, by the compiler. >, <&(dyn core::any::Any + core::marker::Send) as core::fmt::Debug>::{vtable} = <&(dyn core::any::Any + core::marker::Send) as core::fmt::Debug>::{vtable_type} @ 0x1000C8C4, <core::option::Option<&core::fmt::Arguments> as core::fmt::Debug>::{vtable} = <core::option::Option<&core::fmt::Arguments> as core::fmt::Debug>::{vtable_type} @ 0x1000C8DC, <&core::panic::location::Location as core::fmt::Debug>::{vtable} = <&core::panic::location::Location as core::fmt::Debug>::{vtable_type} @ 0x1000C8EC, <bool as core::fmt::Debug>::{vtable} = <bool as core::fmt::Debug>::{vtable_type} @ 0x1000C908, <&bool as core::fmt::Debug>::{vtable} = <&bool as core::fmt::Debug>::{vtable_type} @ 0x1000C92C, <&&core::fmt::Arguments as core::fmt::Debug>::{vtable} = <&&core::fmt::Arguments as core::fmt::Debug>::{vtable_type} @ 0x1000C93C, <&str as core::fmt::Debug>::{vtable} = <&str as core::fmt::Debug>::{vtable_type} @ 0x1000C94C, <u32 as core::fmt::Debug>::{vtable} = <u32 as core::fmt::Debug>::{vtable_type} @ 0x1000C95C, <&u32 as core::fmt::Debug>::{vtable} = <&u32 as core::fmt::Debug>::{vtable_type} @ 0x1000C970, <rtt_target::rtt::RttWriter as core::fmt::Write>::{vtable} = < The value of this variable may have been optimized out of the debug info, by the compiler. >, <rtt_target::TerminalWriter as core::fmt::Write>::{vtable} = <rtt_target::TerminalWriter as core::fmt::Write>::{vtable_type} @ 0x1000D008 }"
   children:
     - name:
         Namespace: rp_pico
@@ -19,7 +19,7 @@ Child Variables:
               item_type_name:
                 Base: u8
               count: 256
-          value: "[u8; 256] = [\n\t0,\n\t181,\n\t50,\n\t75,\n\t33,\n\t32,\n\t88,\n\t96,\n\t152,\n\t104,\n\t... and 246 more]"
+          value: "[u8; 256] = [0, 181, 50, 75, 33, 32, 88, 96, 152, 104, ... and 246 more]"
           source_location:
             path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
             line: 67
@@ -2072,7 +2072,7 @@ Child Variables:
               item_type_name:
                 Base: Vector
               count: 32
-          value: "[Vector; 32] = [\n\tVector @ 0x10000140,\n\tVector @ 0x10000144,\n\tVector @ 0x10000148,\n\tVector @ 0x1000014C,\n\tVector @ 0x10000150,\n\tVector @ 0x10000154,\n\tVector @ 0x10000158,\n\tVector @ 0x1000015C,\n\tVector @ 0x10000160,\n\tVector @ 0x10000164,\n\t... and 22 more]"
+          value: "[Vector; 32] = [Vector @ 0x10000140, Vector @ 0x10000144, Vector @ 0x10000148, Vector @ 0x1000014C, Vector @ 0x10000150, Vector @ 0x10000154, Vector @ 0x10000158, Vector @ 0x1000015C, Vector @ 0x10000160, Vector @ 0x10000164, ... and 22 more]"
           source_location:
             path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
             line: 86
@@ -2926,7 +2926,7 @@ Child Variables:
               item_type_name:
                 Base: Vector
               count: 14
-          value: "[Vector; 14] = [\n\tVector @ 0x10000108,\n\tVector @ 0x1000010C,\n\tVector @ 0x10000110,\n\tVector @ 0x10000114,\n\tVector @ 0x10000118,\n\tVector @ 0x1000011C,\n\tVector @ 0x10000120,\n\tVector @ 0x10000124,\n\tVector @ 0x10000128,\n\tVector @ 0x1000012C,\n\t... and 4 more]"
+          value: "[Vector; 14] = [Vector @ 0x10000108, Vector @ 0x1000010C, Vector @ 0x10000110, Vector @ 0x10000114, Vector @ 0x10000118, Vector @ 0x1000011C, Vector @ 0x10000120, Vector @ 0x10000124, Vector @ 0x10000128, Vector @ 0x1000012C, ... and 4 more]"
           source_location:
             path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
             line: 1140
@@ -3622,7 +3622,7 @@ Child Variables:
                                   item_type_name:
                                     Base: u8
                                   count: 16
-                              value: "[u8; 16] = [\n\t83,\n\t69,\n\t71,\n\t71,\n\t69,\n\t82,\n\t32,\n\t82,\n\t84,\n\t84,\n\t... and 6 more]"
+                              value: "[u8; 16] = [83, 69, 71, 71, 69, 82, 32, 82, 84, 84, ... and 6 more]"
                               children:
                                 - name:
                                     Indexed: 0
@@ -3726,7 +3726,7 @@ Child Variables:
                                     - rtt
                                   args: []
                               count: 2
-                          value: "[RttChannel; 2] = [\n\tRttChannel @ 0x20000094,\n\tRttChannel @ 0x200000AC]"
+                          value: "[RttChannel; 2] = [RttChannel @ 0x20000094, RttChannel @ 0x200000AC]"
                           children:
                             - name:
                                 Indexed: 0
@@ -3983,7 +3983,7 @@ Child Variables:
                           item_type_name:
                             Base: u8
                           count: 1024
-                      value: "[u8; 1024] = [\n\t70,\n\t111,\n\t114,\n\t99,\n\t105,\n\t110,\n\t103,\n\t32,\n\t117,\n\t115,\n\t... and 1014 more]"
+                      value: "[u8; 1024] = [70, 111, 114, 99, 105, 110, 103, 32, 117, 115, ... and 1014 more]"
                       children:
                         - name:
                             Indexed: 0
@@ -4278,7 +4278,7 @@ Child Variables:
                           item_type_name:
                             Base: u8
                           count: 1024
-                      value: "[u8; 1024] = [\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t... and 1014 more]"
+                      value: "[u8; 1024] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ... and 1014 more]"
                       children:
                         - name:
                             Indexed: 0

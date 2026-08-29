@@ -212,7 +212,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tstack_depth: usize = 5,\n\tinternal_depth_measure: usize = 6}"
+      value: "<unknown> { stack_depth = 5, internal_depth_measure = 6 }"
       children:
         - name:
             Named: stack_depth
@@ -439,7 +439,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tstack_depth: usize = 4,\n\tinternal_depth_measure: usize = 5}"
+      value: "<unknown> { stack_depth = 4, internal_depth_measure = 5 }"
       children:
         - name:
             Named: stack_depth
@@ -666,7 +666,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tstack_depth: usize = 3,\n\tinternal_depth_measure: usize = 4}"
+      value: "<unknown> { stack_depth = 3, internal_depth_measure = 4 }"
       children:
         - name:
             Named: stack_depth
@@ -893,7 +893,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tstack_depth: usize = 2,\n\tinternal_depth_measure: usize = 3}"
+      value: "<unknown> { stack_depth = 2, internal_depth_measure = 3 }"
       children:
         - name:
             Named: stack_depth
@@ -1120,7 +1120,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tstack_depth: usize = 1,\n\tinternal_depth_measure: usize = 2}"
+      value: "<unknown> { stack_depth = 1, internal_depth_measure = 2 }"
       children:
         - name:
             Named: stack_depth
@@ -1347,7 +1347,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tstack_depth: usize = 0,\n\tinternal_depth_measure: usize = 1}"
+      value: "<unknown> { stack_depth = 0, internal_depth_measure = 1 }"
       children:
         - name:
             Named: stack_depth
@@ -1574,7 +1574,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tint8_minus_twenty_three: i8 = -23,\n\tlocal_reference_to_global_const: &str = &str @ 0x20003498,\n\tlocal_reference_to_global_static: &str = &str @ 0x20003D5C,\n\tlocal_reference_to_global_static_struct: *const ComplexEnum = *const ComplexEnum @ 0x20000048,\n\tghosted_variable: usize = 0,\n\tghosted_variable: &str = &str @ 0x200034A4,\n\tint8_twenty_six: i8 = 26,\n\tint128: i128 = -196710231994021419720322,\n\tu_int128: u128 = 340282366920938266753142613410348491134,\n\tfloat64: f64 = 1.7608695652173911,\n\tfloat64_ptr: &f64 = &f64 @ 0x200034D8,\n\temoji: char = 💩,\n\temoji_ptr: &char = &char @ 0x200034E0,\n\ttrue_bool: bool = true,\n\tany_old_string_slice: &str = &str @ 0x200034C8,\n\tfunction_result: Result<(), &str> = Result<(), &str> @ 0x20003D84,\n\tglobal_types: (bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64) = (bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64) @ 0x200034E8,\n\tthree_d_usize_array: Matrix<i32> = Matrix<i32> @ 0x20003524,\n\tthree_d_string_array: Matrix<&str> = Matrix<&str> @ 0x200036A4,\n\tthree: SimpleEnum = SimpleEnum::Two,\n\tsimple_enum_pointer: &SimpleEnum = &SimpleEnum @ 0x20003B27,\n\tthree_level_recursive_struct: RecursiveStruct = RecursiveStruct @ 0x20003B2C,\n\tfirst_case_of_struct_variants: ComplexEnum = ComplexEnum @ 0x20003B50,\n\tsecond_case_of_struct_variants: ComplexEnum = ComplexEnum @ 0x20003B80,\n\tstruct_with_one_variant: Option<Univariant> = Option<Univariant> @ 0x20003BA0,\n\tstuct_with_one_variant_pointer: &Option<Univariant> = &Option<Univariant> @ 0x20003BA0,\n\tlong_lived: ComplexStruct = ComplexStruct @ 0x20003C08,\n\tshort_lived: ComplexStruct = ComplexStruct @ 0x20003C18,\n\ta1: Struct<i32> = Struct<i32> @ 0x20003D90,\n\ta2: i64 = 1,\n\ta3: i64 = 2,\n\ta4: i64 = 3,\n\ta5: (i32, i64) = (i32, i64) @ 0x20003DB8,\n\ta6: Enum<i32> = Enum<i32> @ 0x20003C58,\n\ta7: Enum<i32> = Enum<i32> @ 0x20003C78,\n\t[i32; 10] = [\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55\n\t],\n\tmy_array_ptr: &[i32; 10] = &[i32; 10] @ 0x20003C9C,\n\t[i8; 10] = [\n\t\t1,\n\t\t2,\n\t\t3,\n\t\t4,\n\t\t5,\n\t\t6,\n\t\t7,\n\t\t8,\n\t\t9,\n\t\t0\n\t],\n\theapless_vec: Vec<i8> = Vec<i8> @ 0x20003CD0,\n\tloop_counter: Wrapping<u8> = 0,\n\trtt_channels: Channels = Channels @ 0x20003CE4}"
+      value: "<unknown> { int8_minus_twenty_three = -23, local_reference_to_global_const = &str @ 0x20003498, local_reference_to_global_static = &str @ 0x20003D5C, local_reference_to_global_static_struct = *const ComplexEnum @ 0x20000048, ghosted_variable = 0, ghosted_variable = &str @ 0x200034A4, int8_twenty_six = 26, int128 = -196710231994021419720322, u_int128 = 340282366920938266753142613410348491134, float64 = 1.7608695652173911, float64_ptr = &f64 @ 0x200034D8, emoji = 💩, emoji_ptr = &char @ 0x200034E0, true_bool = true, any_old_string_slice = &str @ 0x200034C8, function_result = Result<(), &str> @ 0x20003D84, global_types = (bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64) @ 0x200034E8, three_d_usize_array = Matrix<i32> @ 0x20003524, three_d_string_array = Matrix<&str> @ 0x200036A4, three = SimpleEnum::Two, simple_enum_pointer = &SimpleEnum @ 0x20003B27, three_level_recursive_struct = RecursiveStruct @ 0x20003B2C, first_case_of_struct_variants = ComplexEnum @ 0x20003B50, second_case_of_struct_variants = ComplexEnum @ 0x20003B80, struct_with_one_variant = Option<Univariant> @ 0x20003BA0, stuct_with_one_variant_pointer = &Option<Univariant> @ 0x20003BA0, long_lived = ComplexStruct @ 0x20003C08, short_lived = ComplexStruct @ 0x20003C18, a1 = Struct<i32> @ 0x20003D90, a2 = 1, a3 = 2, a4 = 3, a5 = (i32, i64) @ 0x20003DB8, a6 = Enum<i32> @ 0x20003C58, a7 = Enum<i32> @ 0x20003C78, [i32; 10] = [55, 55, 55, 55, 55, 55, 55, 55, 55, 55], my_array_ptr = &[i32; 10] @ 0x20003C9C, [i8; 10] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0], heapless_vec = Vec<i8> @ 0x20003CD0, loop_counter = 0, rtt_channels = Channels @ 0x20003CE4 }"
       children:
         - name:
             Named: int8_minus_twenty_three
@@ -2118,7 +2118,7 @@ expression: stack_frames
                           count: 3
                       count: 2
                   count: 4
-              value: "[[[i32; 3]; 2]; 4] = [\n\t[[i32; 3]; 2] = [\n\t\t[i32; 3] = [\n\t\t\t0,\n\t\t\t1,\n\t\t\t2\n\t\t],\n\t\t[i32; 3] = [\n\t\t\t3,\n\t\t\t4,\n\t\t\t5\n\t\t]\n\t],\n\t[[i32; 3]; 2] = [\n\t\t[i32; 3] = [\n\t\t\t6,\n\t\t\t7,\n\t\t\t8\n\t\t],\n\t\t[i32; 3] = [\n\t\t\t9,\n\t\t\t10,\n\t\t\t11\n\t\t]\n\t],\n\t[[i32; 3]; 2] = [\n\t\t[i32; 3] = [\n\t\t\t12,\n\t\t\t13,\n\t\t\t14\n\t\t],\n\t\t[i32; 3] = [\n\t\t\t15,\n\t\t\t16,\n\t\t\t17\n\t\t]\n\t],\n\t[[i32; 3]; 2] = [\n\t\t[i32; 3] = [\n\t\t\t18,\n\t\t\t19,\n\t\t\t20\n\t\t],\n\t\t[i32; 3] = [\n\t\t\t21,\n\t\t\t22,\n\t\t\t23\n\t\t]\n\t]]"
+              value: "[[[i32; 3]; 2]; 4] = [[[i32; 3]; 2] = [[i32; 3] = [0, 1, 2], [i32; 3] = [3, 4, 5]], [[i32; 3]; 2] = [[i32; 3] = [6, 7, 8], [i32; 3] = [9, 10, 11]], [[i32; 3]; 2] = [[i32; 3] = [12, 13, 14], [i32; 3] = [15, 16, 17]], [[i32; 3]; 2] = [[i32; 3] = [18, 19, 20], [i32; 3] = [21, 22, 23]]]"
               children:
                 - name:
                     Indexed: 0
@@ -2130,7 +2130,7 @@ expression: stack_frames
                             Base: i32
                           count: 3
                       count: 2
-                  value: "[[i32; 3]; 2] = [\n\t[i32; 3] = [\n\t\t0,\n\t\t1,\n\t\t2\n\t],\n\t[i32; 3] = [\n\t\t3,\n\t\t4,\n\t\t5\n\t]]"
+                  value: "[[i32; 3]; 2] = [[i32; 3] = [0, 1, 2], [i32; 3] = [3, 4, 5]]"
                   children:
                     - name:
                         Indexed: 0
@@ -2139,7 +2139,7 @@ expression: stack_frames
                           item_type_name:
                             Base: i32
                           count: 3
-                      value: "[i32; 3] = [\n\t0,\n\t1,\n\t2]"
+                      value: "[i32; 3] = [0, 1, 2]"
                       children:
                         - name:
                             Indexed: 0
@@ -2163,7 +2163,7 @@ expression: stack_frames
                           item_type_name:
                             Base: i32
                           count: 3
-                      value: "[i32; 3] = [\n\t3,\n\t4,\n\t5]"
+                      value: "[i32; 3] = [3, 4, 5]"
                       children:
                         - name:
                             Indexed: 0
@@ -2190,7 +2190,7 @@ expression: stack_frames
                             Base: i32
                           count: 3
                       count: 2
-                  value: "[[i32; 3]; 2] = [\n\t[i32; 3] = [\n\t\t6,\n\t\t7,\n\t\t8\n\t],\n\t[i32; 3] = [\n\t\t9,\n\t\t10,\n\t\t11\n\t]]"
+                  value: "[[i32; 3]; 2] = [[i32; 3] = [6, 7, 8], [i32; 3] = [9, 10, 11]]"
                   children:
                     - name:
                         Indexed: 0
@@ -2199,7 +2199,7 @@ expression: stack_frames
                           item_type_name:
                             Base: i32
                           count: 3
-                      value: "[i32; 3] = [\n\t6,\n\t7,\n\t8]"
+                      value: "[i32; 3] = [6, 7, 8]"
                       children:
                         - name:
                             Indexed: 0
@@ -2223,7 +2223,7 @@ expression: stack_frames
                           item_type_name:
                             Base: i32
                           count: 3
-                      value: "[i32; 3] = [\n\t9,\n\t10,\n\t11]"
+                      value: "[i32; 3] = [9, 10, 11]"
                       children:
                         - name:
                             Indexed: 0
@@ -2250,7 +2250,7 @@ expression: stack_frames
                             Base: i32
                           count: 3
                       count: 2
-                  value: "[[i32; 3]; 2] = [\n\t[i32; 3] = [\n\t\t12,\n\t\t13,\n\t\t14\n\t],\n\t[i32; 3] = [\n\t\t15,\n\t\t16,\n\t\t17\n\t]]"
+                  value: "[[i32; 3]; 2] = [[i32; 3] = [12, 13, 14], [i32; 3] = [15, 16, 17]]"
                   children:
                     - name:
                         Indexed: 0
@@ -2259,7 +2259,7 @@ expression: stack_frames
                           item_type_name:
                             Base: i32
                           count: 3
-                      value: "[i32; 3] = [\n\t12,\n\t13,\n\t14]"
+                      value: "[i32; 3] = [12, 13, 14]"
                       children:
                         - name:
                             Indexed: 0
@@ -2283,7 +2283,7 @@ expression: stack_frames
                           item_type_name:
                             Base: i32
                           count: 3
-                      value: "[i32; 3] = [\n\t15,\n\t16,\n\t17]"
+                      value: "[i32; 3] = [15, 16, 17]"
                       children:
                         - name:
                             Indexed: 0
@@ -2310,7 +2310,7 @@ expression: stack_frames
                             Base: i32
                           count: 3
                       count: 2
-                  value: "[[i32; 3]; 2] = [\n\t[i32; 3] = [\n\t\t18,\n\t\t19,\n\t\t20\n\t],\n\t[i32; 3] = [\n\t\t21,\n\t\t22,\n\t\t23\n\t]]"
+                  value: "[[i32; 3]; 2] = [[i32; 3] = [18, 19, 20], [i32; 3] = [21, 22, 23]]"
                   children:
                     - name:
                         Indexed: 0
@@ -2319,7 +2319,7 @@ expression: stack_frames
                           item_type_name:
                             Base: i32
                           count: 3
-                      value: "[i32; 3] = [\n\t18,\n\t19,\n\t20]"
+                      value: "[i32; 3] = [18, 19, 20]"
                       children:
                         - name:
                             Indexed: 0
@@ -2343,7 +2343,7 @@ expression: stack_frames
                           item_type_name:
                             Base: i32
                           count: 3
-                      value: "[i32; 3] = [\n\t21,\n\t22,\n\t23]"
+                      value: "[i32; 3] = [21, 22, 23]"
                       children:
                         - name:
                             Indexed: 0
@@ -2400,7 +2400,7 @@ expression: stack_frames
                           count: 3
                       count: 2
                   count: 6
-              value: "[[[&str; 3]; 2]; 6] = [\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\t&str @ 0x200036A4,\n\t\t\t&str @ 0x200036AC,\n\t\t\t&str @ 0x200036B4\n\t\t],\n\t\t[&str; 3] = [\n\t\t\t&str @ 0x200036BC,\n\t\t\t&str @ 0x200036C4,\n\t\t\t&str @ 0x200036CC\n\t\t]\n\t],\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\t&str @ 0x200036D4,\n\t\t\t&str @ 0x200036DC,\n\t\t\t&str @ 0x200036E4\n\t\t],\n\t\t[&str; 3] = [\n\t\t\t&str @ 0x200036EC,\n\t\t\t&str @ 0x200036F4,\n\t\t\t&str @ 0x200036FC\n\t\t]\n\t],\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\t&str @ 0x20003704,\n\t\t\t&str @ 0x2000370C,\n\t\t\t&str @ 0x20003714\n\t\t],\n\t\t[&str; 3] = [\n\t\t\t&str @ 0x2000371C,\n\t\t\t&str @ 0x20003724,\n\t\t\t&str @ 0x2000372C\n\t\t]\n\t],\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\t&str @ 0x20003734,\n\t\t\t&str @ 0x2000373C,\n\t\t\t&str @ 0x20003744\n\t\t],\n\t\t[&str; 3] = [\n\t\t\t&str @ 0x2000374C,\n\t\t\t&str @ 0x20003754,\n\t\t\t&str @ 0x2000375C\n\t\t]\n\t],\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\t&str @ 0x20003764,\n\t\t\t&str @ 0x2000376C,\n\t\t\t&str @ 0x20003774\n\t\t],\n\t\t[&str; 3] = [\n\t\t\t&str @ 0x2000377C,\n\t\t\t&str @ 0x20003784,\n\t\t\t&str @ 0x2000378C\n\t\t]\n\t],\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\t&str @ 0x20003794,\n\t\t\t&str @ 0x2000379C,\n\t\t\t&str @ 0x200037A4\n\t\t],\n\t\t[&str; 3] = [\n\t\t\t&str @ 0x200037AC,\n\t\t\t&str @ 0x200037B4,\n\t\t\t&str @ 0x200037BC\n\t\t]\n\t]]"
+              value: "[[[&str; 3]; 2]; 6] = [[[&str; 3]; 2] = [[&str; 3] = [&str @ 0x200036A4, &str @ 0x200036AC, &str @ 0x200036B4], [&str; 3] = [&str @ 0x200036BC, &str @ 0x200036C4, &str @ 0x200036CC]], [[&str; 3]; 2] = [[&str; 3] = [&str @ 0x200036D4, &str @ 0x200036DC, &str @ 0x200036E4], [&str; 3] = [&str @ 0x200036EC, &str @ 0x200036F4, &str @ 0x200036FC]], [[&str; 3]; 2] = [[&str; 3] = [&str @ 0x20003704, &str @ 0x2000370C, &str @ 0x20003714], [&str; 3] = [&str @ 0x2000371C, &str @ 0x20003724, &str @ 0x2000372C]], [[&str; 3]; 2] = [[&str; 3] = [&str @ 0x20003734, &str @ 0x2000373C, &str @ 0x20003744], [&str; 3] = [&str @ 0x2000374C, &str @ 0x20003754, &str @ 0x2000375C]], [[&str; 3]; 2] = [[&str; 3] = [&str @ 0x20003764, &str @ 0x2000376C, &str @ 0x20003774], [&str; 3] = [&str @ 0x2000377C, &str @ 0x20003784, &str @ 0x2000378C]], [[&str; 3]; 2] = [[&str; 3] = [&str @ 0x20003794, &str @ 0x2000379C, &str @ 0x200037A4], [&str; 3] = [&str @ 0x200037AC, &str @ 0x200037B4, &str @ 0x200037BC]]]"
               children:
                 - name:
                     Indexed: 0
@@ -2417,7 +2417,7 @@ expression: stack_frames
                                     Base: str
                           count: 3
                       count: 2
-                  value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\t&str @ 0x200036A4,\n\t\t&str @ 0x200036AC,\n\t\t&str @ 0x200036B4\n\t],\n\t[&str; 3] = [\n\t\t&str @ 0x200036BC,\n\t\t&str @ 0x200036C4,\n\t\t&str @ 0x200036CC\n\t]]"
+                  value: "[[&str; 3]; 2] = [[&str; 3] = [&str @ 0x200036A4, &str @ 0x200036AC, &str @ 0x200036B4], [&str; 3] = [&str @ 0x200036BC, &str @ 0x200036C4, &str @ 0x200036CC]]"
                   children:
                     - name:
                         Indexed: 0
@@ -2431,7 +2431,7 @@ expression: stack_frames
                                 - Type:
                                     Base: str
                           count: 3
-                      value: "[&str; 3] = [\n\t&str @ 0x200036A4,\n\t&str @ 0x200036AC,\n\t&str @ 0x200036B4]"
+                      value: "[&str; 3] = [&str @ 0x200036A4, &str @ 0x200036AC, &str @ 0x200036B4]"
                       children:
                         - name:
                             Indexed: 0
@@ -2529,7 +2529,7 @@ expression: stack_frames
                                 - Type:
                                     Base: str
                           count: 3
-                      value: "[&str; 3] = [\n\t&str @ 0x200036BC,\n\t&str @ 0x200036C4,\n\t&str @ 0x200036CC]"
+                      value: "[&str; 3] = [&str @ 0x200036BC, &str @ 0x200036C4, &str @ 0x200036CC]"
                       children:
                         - name:
                             Indexed: 0
@@ -2630,7 +2630,7 @@ expression: stack_frames
                                     Base: str
                           count: 3
                       count: 2
-                  value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\t&str @ 0x200036D4,\n\t\t&str @ 0x200036DC,\n\t\t&str @ 0x200036E4\n\t],\n\t[&str; 3] = [\n\t\t&str @ 0x200036EC,\n\t\t&str @ 0x200036F4,\n\t\t&str @ 0x200036FC\n\t]]"
+                  value: "[[&str; 3]; 2] = [[&str; 3] = [&str @ 0x200036D4, &str @ 0x200036DC, &str @ 0x200036E4], [&str; 3] = [&str @ 0x200036EC, &str @ 0x200036F4, &str @ 0x200036FC]]"
                   children:
                     - name:
                         Indexed: 0
@@ -2644,7 +2644,7 @@ expression: stack_frames
                                 - Type:
                                     Base: str
                           count: 3
-                      value: "[&str; 3] = [\n\t&str @ 0x200036D4,\n\t&str @ 0x200036DC,\n\t&str @ 0x200036E4]"
+                      value: "[&str; 3] = [&str @ 0x200036D4, &str @ 0x200036DC, &str @ 0x200036E4]"
                       children:
                         - name:
                             Indexed: 0
@@ -2742,7 +2742,7 @@ expression: stack_frames
                                 - Type:
                                     Base: str
                           count: 3
-                      value: "[&str; 3] = [\n\t&str @ 0x200036EC,\n\t&str @ 0x200036F4,\n\t&str @ 0x200036FC]"
+                      value: "[&str; 3] = [&str @ 0x200036EC, &str @ 0x200036F4, &str @ 0x200036FC]"
                       children:
                         - name:
                             Indexed: 0
@@ -2843,7 +2843,7 @@ expression: stack_frames
                                     Base: str
                           count: 3
                       count: 2
-                  value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\t&str @ 0x20003704,\n\t\t&str @ 0x2000370C,\n\t\t&str @ 0x20003714\n\t],\n\t[&str; 3] = [\n\t\t&str @ 0x2000371C,\n\t\t&str @ 0x20003724,\n\t\t&str @ 0x2000372C\n\t]]"
+                  value: "[[&str; 3]; 2] = [[&str; 3] = [&str @ 0x20003704, &str @ 0x2000370C, &str @ 0x20003714], [&str; 3] = [&str @ 0x2000371C, &str @ 0x20003724, &str @ 0x2000372C]]"
                   children:
                     - name:
                         Indexed: 0
@@ -2857,7 +2857,7 @@ expression: stack_frames
                                 - Type:
                                     Base: str
                           count: 3
-                      value: "[&str; 3] = [\n\t&str @ 0x20003704,\n\t&str @ 0x2000370C,\n\t&str @ 0x20003714]"
+                      value: "[&str; 3] = [&str @ 0x20003704, &str @ 0x2000370C, &str @ 0x20003714]"
                       children:
                         - name:
                             Indexed: 0
@@ -2955,7 +2955,7 @@ expression: stack_frames
                                 - Type:
                                     Base: str
                           count: 3
-                      value: "[&str; 3] = [\n\t&str @ 0x2000371C,\n\t&str @ 0x20003724,\n\t&str @ 0x2000372C]"
+                      value: "[&str; 3] = [&str @ 0x2000371C, &str @ 0x20003724, &str @ 0x2000372C]"
                       children:
                         - name:
                             Indexed: 0
@@ -3056,7 +3056,7 @@ expression: stack_frames
                                     Base: str
                           count: 3
                       count: 2
-                  value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\t&str @ 0x20003734,\n\t\t&str @ 0x2000373C,\n\t\t&str @ 0x20003744\n\t],\n\t[&str; 3] = [\n\t\t&str @ 0x2000374C,\n\t\t&str @ 0x20003754,\n\t\t&str @ 0x2000375C\n\t]]"
+                  value: "[[&str; 3]; 2] = [[&str; 3] = [&str @ 0x20003734, &str @ 0x2000373C, &str @ 0x20003744], [&str; 3] = [&str @ 0x2000374C, &str @ 0x20003754, &str @ 0x2000375C]]"
                   children:
                     - name:
                         Indexed: 0
@@ -3070,7 +3070,7 @@ expression: stack_frames
                                 - Type:
                                     Base: str
                           count: 3
-                      value: "[&str; 3] = [\n\t&str @ 0x20003734,\n\t&str @ 0x2000373C,\n\t&str @ 0x20003744]"
+                      value: "[&str; 3] = [&str @ 0x20003734, &str @ 0x2000373C, &str @ 0x20003744]"
                       children:
                         - name:
                             Indexed: 0
@@ -3168,7 +3168,7 @@ expression: stack_frames
                                 - Type:
                                     Base: str
                           count: 3
-                      value: "[&str; 3] = [\n\t&str @ 0x2000374C,\n\t&str @ 0x20003754,\n\t&str @ 0x2000375C]"
+                      value: "[&str; 3] = [&str @ 0x2000374C, &str @ 0x20003754, &str @ 0x2000375C]"
                       children:
                         - name:
                             Indexed: 0
@@ -3269,7 +3269,7 @@ expression: stack_frames
                                     Base: str
                           count: 3
                       count: 2
-                  value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\t&str @ 0x20003764,\n\t\t&str @ 0x2000376C,\n\t\t&str @ 0x20003774\n\t],\n\t[&str; 3] = [\n\t\t&str @ 0x2000377C,\n\t\t&str @ 0x20003784,\n\t\t&str @ 0x2000378C\n\t]]"
+                  value: "[[&str; 3]; 2] = [[&str; 3] = [&str @ 0x20003764, &str @ 0x2000376C, &str @ 0x20003774], [&str; 3] = [&str @ 0x2000377C, &str @ 0x20003784, &str @ 0x2000378C]]"
                   children:
                     - name:
                         Indexed: 0
@@ -3283,7 +3283,7 @@ expression: stack_frames
                                 - Type:
                                     Base: str
                           count: 3
-                      value: "[&str; 3] = [\n\t&str @ 0x20003764,\n\t&str @ 0x2000376C,\n\t&str @ 0x20003774]"
+                      value: "[&str; 3] = [&str @ 0x20003764, &str @ 0x2000376C, &str @ 0x20003774]"
                       children:
                         - name:
                             Indexed: 0
@@ -3381,7 +3381,7 @@ expression: stack_frames
                                 - Type:
                                     Base: str
                           count: 3
-                      value: "[&str; 3] = [\n\t&str @ 0x2000377C,\n\t&str @ 0x20003784,\n\t&str @ 0x2000378C]"
+                      value: "[&str; 3] = [&str @ 0x2000377C, &str @ 0x20003784, &str @ 0x2000378C]"
                       children:
                         - name:
                             Indexed: 0
@@ -3482,7 +3482,7 @@ expression: stack_frames
                                     Base: str
                           count: 3
                       count: 2
-                  value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\t&str @ 0x20003794,\n\t\t&str @ 0x2000379C,\n\t\t&str @ 0x200037A4\n\t],\n\t[&str; 3] = [\n\t\t&str @ 0x200037AC,\n\t\t&str @ 0x200037B4,\n\t\t&str @ 0x200037BC\n\t]]"
+                  value: "[[&str; 3]; 2] = [[&str; 3] = [&str @ 0x20003794, &str @ 0x2000379C, &str @ 0x200037A4], [&str; 3] = [&str @ 0x200037AC, &str @ 0x200037B4, &str @ 0x200037BC]]"
                   children:
                     - name:
                         Indexed: 0
@@ -3496,7 +3496,7 @@ expression: stack_frames
                                 - Type:
                                     Base: str
                           count: 3
-                      value: "[&str; 3] = [\n\t&str @ 0x20003794,\n\t&str @ 0x2000379C,\n\t&str @ 0x200037A4]"
+                      value: "[&str; 3] = [&str @ 0x20003794, &str @ 0x2000379C, &str @ 0x200037A4]"
                       children:
                         - name:
                             Indexed: 0
@@ -3594,7 +3594,7 @@ expression: stack_frames
                                 - Type:
                                     Base: str
                           count: 3
-                      value: "[&str; 3] = [\n\t&str @ 0x200037AC,\n\t&str @ 0x200037B4,\n\t&str @ 0x200037BC]"
+                      value: "[&str; 3] = [&str @ 0x200037AC, &str @ 0x200037B4, &str @ 0x200037BC]"
                       children:
                         - name:
                             Indexed: 0
@@ -4506,7 +4506,7 @@ expression: stack_frames
               item_type_name:
                 Base: i32
               count: 10
-          value: "[i32; 10] = [\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55]"
+          value: "[i32; 10] = [55, 55, 55, 55, 55, 55, 55, 55, 55, 55]"
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 298
@@ -4640,7 +4640,7 @@ expression: stack_frames
                   item_type_name:
                     Base: i32
                   count: 10
-              value: "[i32; 10] = [\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55]"
+              value: "[i32; 10] = [55, 55, 55, 55, 55, 55, 55, 55, 55, 55]"
               children:
                 - name:
                     Indexed: 0
@@ -4699,7 +4699,7 @@ expression: stack_frames
               item_type_name:
                 Base: i8
               count: 10
-          value: "[i8; 10] = [\n\t1,\n\t2,\n\t3,\n\t4,\n\t5,\n\t6,\n\t7,\n\t8,\n\t9,\n\t0]"
+          value: "[i8; 10] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]"
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 300
@@ -4836,7 +4836,7 @@ expression: stack_frames
                   item_type_name:
                     Base: i8
                   count: 3
-              value: "[i8; 3] = [\n\t1,\n\t2,\n\t3]"
+              value: "[i8; 3] = [1, 2, 3]"
               children:
                 - name:
                     Indexed: 0
@@ -5376,7 +5376,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tpac: Peripherals = Peripherals @ 0x20003F74,\n\tcore: Peripherals = Peripherals @ 0x20003F75,\n\tclocks: Clocks<ExternalOscillator, Internal, LfOscStopped> = Clocks<ExternalOscillator, Internal, LfOscStopped> @ 0x20003F76}"
+      value: "<unknown> { pac = Peripherals @ 0x20003F74, core = Peripherals @ 0x20003F75, clocks = Clocks<ExternalOscillator, Internal, LfOscStopped> @ 0x20003F76 }"
       children:
         - name:
             Named: pac

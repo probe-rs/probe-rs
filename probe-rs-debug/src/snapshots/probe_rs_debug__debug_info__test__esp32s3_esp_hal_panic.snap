@@ -195,7 +195,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\t<unknown>: CriticalSection = CriticalSection @ <unknown value>,\n\tinfo: &PanicInfo = &PanicInfo @ 0x3FCDC3E0}"
+      value: "<unknown> { <unknown> = CriticalSection @ <unknown value>, info = &PanicInfo @ 0x3FCDC3E0 }"
       children:
         - name: Unknown
           type_name:
@@ -716,7 +716,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tf: {closure_env#0} = {closure_env#0} @ 0x3FCDC3B0,\n\tstate: RestoreState = RestoreState @ <unknown value>,\n\t_guard: Guard = Guard @ <unknown value>}"
+      value: "<unknown> { f = {closure_env#0} @ 0x3FCDC3B0, state = RestoreState @ <unknown value>, _guard = Guard @ <unknown value> }"
       children:
         - name:
             Named: f
@@ -1287,7 +1287,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tinfo: &PanicInfo = &PanicInfo @ 0x3FCDC3E0}"
+      value: "<unknown> { info = &PanicInfo @ 0x3FCDC3E0 }"
       children:
         - name:
             Named: info
@@ -1795,7 +1795,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tfmt: Arguments = Arguments @ 0x3FCDC414,\n\tpi: PanicInfo = PanicInfo @ 0x3FCDC3E0}"
+      value: "<unknown> { fmt = Arguments @ 0x3FCDC414, pi = PanicInfo @ 0x3FCDC3E0 }"
       children:
         - name:
             Named: fmt
@@ -2472,7 +2472,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tn: u32 = 0}"
+      value: "<unknown> { n = 0 }"
       children:
         - name:
             Named: n
@@ -2678,7 +2678,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tn: u32 = 1}"
+      value: "<unknown> { n = 1 }"
       children:
         - name:
             Named: n
@@ -2884,7 +2884,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tn: u32 = 2}"
+      value: "<unknown> { n = 2 }"
       children:
         - name:
             Named: n
@@ -3090,7 +3090,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tn: u32 = 3}"
+      value: "<unknown> { n = 3 }"
       children:
         - name:
             Named: n
@@ -3296,7 +3296,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tn: u32 = 4}"
+      value: "<unknown> { n = 4 }"
       children:
         - name:
             Named: n
@@ -3502,7 +3502,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tn: u32 = 5}"
+      value: "<unknown> { n = 5 }"
       children:
         - name:
             Named: n
@@ -3708,7 +3708,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\t<unknown>: &mut Context = &mut Context @ 0x3FCDC5A0,\n\t_task_context: &mut Context = &mut Context @ 0x3FCDC5A0,\n\tconfig: Config = Config @ 0x3FCDC5B0,\n\ttimer0: SystemTimer = SystemTimer @ 0x3FCDC612,\n\ttimer1: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >}"
+      value: "<unknown> { <unknown> = &mut Context @ 0x3FCDC5A0, _task_context = &mut Context @ 0x3FCDC5A0, config = Config @ 0x3FCDC5B0, timer0 = SystemTimer @ 0x3FCDC612, timer1 = < <value optimized away by compiler, out of scope, or dropped> > }"
       children:
         - name: Unknown
           type_name:
@@ -4779,7 +4779,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tp: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >,\n\tthis: *const TaskStorage<{async_fn_env#0}> = *const TaskStorage<{async_fn_env#0}> @ 0x3FC9C0B8,\n\tfuture: Pin<&mut {async_fn_env#0}> = Pin<&mut {async_fn_env#0}> @ 0x3FC9C0D8,\n\twaker: Waker = Waker @ 0x3FCDC598,\n\tcx: Context = Context @ 0x3FCDC5A0}"
+      value: "<unknown> { p = < <value optimized away by compiler, out of scope, or dropped> >, this = *const TaskStorage<{async_fn_env#0}> @ 0x3FC9C0B8, future = Pin<&mut {async_fn_env#0}> @ 0x3FC9C0D8, waker = Waker @ 0x3FCDC598, cx = Context @ 0x3FCDC5A0 }"
       children:
         - name:
             Named: p
@@ -5280,7 +5280,7 @@ expression: stack_frames
                                   item_type_name:
                                     Base: u8
                                   count: 4
-                              value: "[u8; 4] = [\n\t0,\n\t0,\n\t0,\n\t0]"
+                              value: "[u8; 4] = [0, 0, 0, 0]"
                               children:
                                 - name:
                                     Indexed: 0
@@ -6310,7 +6310,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tp: TaskRef = TaskRef @ 0x3FCDC3B0,\n\ttask: &TaskHeader = &TaskHeader @ 0x3FCDC3B0}"
+      value: "<unknown> { p = TaskRef @ 0x3FCDC3B0, task = &TaskHeader @ 0x3FCDC3B0 }"
       children:
         - name:
             Named: p
@@ -6867,7 +6867,7 @@ expression: stack_frames
                                       item_type_name:
                                         Base: u8
                                       count: 4
-                                  value: "[u8; 4] = [\n\t152,\n\t191,\n\t201,\n\t63]"
+                                  value: "[u8; 4] = [152, 191, 201, 63]"
                                   children:
                                     - name:
                                         Indexed: 0
@@ -7470,7 +7470,7 @@ expression: stack_frames
                               item_type_name:
                                 Base: u8
                               count: 4
-                          value: "[u8; 4] = [\n\t152,\n\t191,\n\t201,\n\t63]"
+                          value: "[u8; 4] = [152, 191, 201, 63]"
                           children:
                             - name:
                                 Indexed: 0
@@ -7686,7 +7686,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tself: &RunQueue = &RunQueue @ 0x3FCDC6B0,\n\tptr: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >,\n\tnext: Option<TaskRef> = Option<TaskRef> @ 0x00000000,\n\ttask: TaskRef = TaskRef @ 0x3FCDC3B0}"
+      value: "<unknown> { self = &RunQueue @ 0x3FCDC6B0, ptr = < <value optimized away by compiler, out of scope, or dropped> >, next = Option<TaskRef> @ 0x00000000, task = TaskRef @ 0x3FCDC3B0 }"
       children:
         - name:
             Named: self
@@ -8373,7 +8373,7 @@ expression: stack_frames
                                       item_type_name:
                                         Base: u8
                                       count: 4
-                                  value: "[u8; 4] = [\n\t152,\n\t191,\n\t201,\n\t63]"
+                                  value: "[u8; 4] = [152, 191, 201, 63]"
                                   children:
                                     - name:
                                         Indexed: 0
@@ -8589,7 +8589,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tself: &SyncExecutor = &SyncExecutor @ 0x3FCDC6B0}"
+      value: "<unknown> { self = &SyncExecutor @ 0x3FCDC6B0 }"
       children:
         - name:
             Named: self
@@ -8898,7 +8898,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tself: &Executor = &Executor @ 0x3FCDC6B0}"
+      value: "<unknown> { self = &Executor @ 0x3FCDC6B0 }"
       children:
         - name:
             Named: self
@@ -9218,7 +9218,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tself: &mut Executor = &mut Executor @ 0x3FCDC6B0,\n\tinit: {closure_env#0} = {closure_env#0} @ <unknown value>,\n\tcpu: usize = 0}"
+      value: "<unknown> { self = &mut Executor @ 0x3FCDC6B0, init = {closure_env#0} @ <unknown value>, cpu = 0 }"
       children:
         - name:
             Named: self
@@ -9587,7 +9587,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\texecutor: Executor = Executor @ 0x3FCDC6B0,\n\texecutor: &mut Executor = &mut Executor @ 0x3FCDC6B0}"
+      value: "<unknown> { executor = Executor @ 0x3FCDC6B0, executor = &mut Executor @ 0x3FCDC6B0 }"
       children:
         - name:
             Named: executor

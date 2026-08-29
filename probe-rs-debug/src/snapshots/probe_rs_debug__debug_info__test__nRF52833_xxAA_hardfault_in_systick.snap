@@ -835,7 +835,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tsrc: *const u32 = *const u32 @ 0x3FFFFFFC}"
+      value: "<unknown> { src = *const u32 @ 0x3FFFFFFC }"
       children:
         - name:
             Named: src
@@ -1888,7 +1888,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tcyc: u32 = 1000000,\n\treal_cyc: u32 = 500001}"
+      value: "<unknown> { cyc = 1000000, real_cyc = 500001 }"
       children:
         - name:
             Named: cyc
@@ -2119,7 +2119,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tcycles: u32 = 1000000}"
+      value: "<unknown> { cycles = 1000000 }"
       children:
         - name:
             Named: cycles
@@ -2336,7 +2336,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\t<unknown>: Peripherals = Peripherals @ 0x20003F57,\n\tcore: Peripherals = Peripherals @ 0x20003F53,\n\tsyst: SYST = SYST @ 0x20003F54}"
+      value: "<unknown> { <unknown> = Peripherals @ 0x20003F57, core = Peripherals @ 0x20003F53, syst = SYST @ 0x20003F54 }"
       children:
         - name: Unknown
           type_name:
@@ -2879,7 +2879,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tpac: Peripherals = Peripherals @ 0x20003F74,\n\tcore: Peripherals = Peripherals @ 0x20003F75,\n\tclocks: Clocks<ExternalOscillator, Internal, LfOscStopped> = Clocks<ExternalOscillator, Internal, LfOscStopped> @ 0x20003F76}"
+      value: "<unknown> { pac = Peripherals @ 0x20003F74, core = Peripherals @ 0x20003F75, clocks = Clocks<ExternalOscillator, Internal, LfOscStopped> @ 0x20003F76 }"
       children:
         - name:
             Named: pac

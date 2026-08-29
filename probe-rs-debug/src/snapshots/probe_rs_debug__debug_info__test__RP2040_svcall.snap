@@ -1247,7 +1247,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tcore: Peripherals = Peripherals @ 0x20003EDF,\n\texternal_xtal_freq_hz: u32 = 12000000,\n\tpac: Peripherals = Peripherals @ 0x20003EE7,\n\twatchdog: Watchdog = Watchdog @ 0x20003EEC,\n\tclocks: ClocksManager = ClocksManager @ 0x20003EF0}"
+      value: "<unknown> { core = Peripherals @ 0x20003EDF, external_xtal_freq_hz = 12000000, pac = Peripherals @ 0x20003EE7, watchdog = Watchdog @ 0x20003EEC, clocks = ClocksManager @ 0x20003EF0 }"
       children:
         - name:
             Named: core

@@ -196,7 +196,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tconfig: Config = Config @ 0x3FCDB5D0,\n\ttimg0: TimerGroup<TIMG0> = TimerGroup<TIMG0> @ 0x3FCDB600,\n\tportable_atomic_u32: AtomicU32 = 41,\n\tcore_atomic_u32: Atomic<u32> = 41,\n\tspawner: Spawner = Spawner @ 0x3FC8C128,\n\tFuture state: Suspend0 = Suspend0}"
+      value: "<unknown> { config = Config @ 0x3FCDB5D0, timg0 = TimerGroup<TIMG0> @ 0x3FCDB600, portable_atomic_u32 = 41, core_atomic_u32 = 41, spawner = Spawner @ 0x3FC8C128, Future state = Suspend0 }"
       children:
         - name:
             Named: config
@@ -770,7 +770,7 @@ expression: stack_frames
                                     - t
                                   args: []
                               count: 2
-                          value: "[T; 2] = [\n\tT @ 0x3FC8B718,\n\tT @ 0x3FC8B73C]"
+                          value: "[T; 2] = [T @ 0x3FC8B718, T @ 0x3FC8B73C]"
                           children:
                             - name:
                                 Indexed: 0
@@ -1554,7 +1554,7 @@ expression: stack_frames
                                             - wdtconfig
                                           args: []
                               count: 4
-                          value: "[Reg<WDTCONFIG_SPEC>; 4] = [\n\tReg<WDTCONFIG_SPEC> @ 0x3FC8B768,\n\tReg<WDTCONFIG_SPEC> @ 0x3FC8B76C,\n\tReg<WDTCONFIG_SPEC> @ 0x3FC8B770,\n\tReg<WDTCONFIG_SPEC> @ 0x3FC8B774]"
+                          value: "[Reg<WDTCONFIG_SPEC>; 4] = [Reg<WDTCONFIG_SPEC> @ 0x3FC8B768, Reg<WDTCONFIG_SPEC> @ 0x3FC8B76C, Reg<WDTCONFIG_SPEC> @ 0x3FC8B770, Reg<WDTCONFIG_SPEC> @ 0x3FC8B774]"
                           children:
                             - name:
                                 Indexed: 0
@@ -2031,7 +2031,7 @@ expression: stack_frames
                               item_type_name:
                                 Base: u8
                               count: 116
-                          value: "[u8; 116] = [\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t... and 106 more]"
+                          value: "[u8; 116] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ... and 106 more]"
                           children:
                             - name:
                                 Indexed: 0
@@ -3275,7 +3275,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tp: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >,\n\tthis: *const TaskStorage<{async_fn_env#0}> = *const TaskStorage<{async_fn_env#0}> @ 0x3FC8C0F0,\n\tfuture: Pin<&mut {async_fn_env#0}> = Pin<&mut {async_fn_env#0}> @ 0x3FC8C118,\n\twaker: Waker = Waker @ 0x3FCDB5B8,\n\tcx: Context = Context @ 0x3FCDB5C0}"
+      value: "<unknown> { p = < <value optimized away by compiler, out of scope, or dropped> >, this = *const TaskStorage<{async_fn_env#0}> @ 0x3FC8C0F0, future = Pin<&mut {async_fn_env#0}> @ 0x3FC8C118, waker = Waker @ 0x3FCDB5B8, cx = Context @ 0x3FCDB5C0 }"
       children:
         - name:
             Named: p
@@ -3795,7 +3795,7 @@ expression: stack_frames
                               item_type_name:
                                 Base: usize
                               count: 6
-                          value: "[usize; 6] = [\n\t7501480,\n\t0,\n\t0,\n\t1070121200,\n\t0,\n\t0]"
+                          value: "[usize; 6] = [7501480, 0, 0, 1070121200, 0, 0]"
                           children:
                             - name:
                                 Indexed: 0
@@ -4984,7 +4984,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tself: &Executor = &Executor @ 0x3FCDB6D0,\n\tinit: {closure_env#0} = {closure_env#0} @ <unknown value>,\n\tflags: &ThreadFlag = &ThreadFlag @ 0x00000000,\n\thooks: NoHooks = NoHooks @ <unknown value>,\n\texecutor: &mut Executor = &mut Executor @ 0x3FCDB6D0}"
+      value: "<unknown> { self = &Executor @ 0x3FCDB6D0, init = {closure_env#0} @ <unknown value>, flags = &ThreadFlag @ 0x00000000, hooks = NoHooks @ <unknown value>, executor = &mut Executor @ 0x3FCDB6D0 }"
       children:
         - name:
             Named: self
@@ -5560,7 +5560,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tself: <unknown> = < Error: Cannot resolve register: Register(10) >,\n\tinit: {closure_env#0} = {closure_env#0} @ <unknown value>,\n\tflags: ThreadFlag = ThreadFlag @ 0x3FCDB670}"
+      value: "<unknown> { self = < Error: Cannot resolve register: Register(10) >, init = {closure_env#0} @ <unknown value>, flags = ThreadFlag @ 0x3FCDB670 }"
       children:
         - name:
             Named: self
@@ -6319,7 +6319,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\texecutor: Executor = Executor @ 0x3FCDB6A0,\n\texecutor: &mut Executor = &mut Executor @ 0x3FCDB6A0}"
+      value: "<unknown> { executor = Executor @ 0x3FCDB6A0, executor = &mut Executor @ 0x3FCDB6A0 }"
       children:
         - name:
             Named: executor

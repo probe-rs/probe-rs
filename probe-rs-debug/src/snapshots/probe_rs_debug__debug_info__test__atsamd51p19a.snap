@@ -212,7 +212,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tconst_void_pointer: void* = void* @ 0x20000000,\n\tconst_void_const_pointer: const void* = void* @ 0x20000000}"
+      value: "<unknown> { const_void_pointer = void* @ 0x20000000, const_void_const_pointer = void* @ 0x20000000 }"
       children:
         - name:
             Named: const_void_pointer
@@ -453,7 +453,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tvoid_pointer: void* = void* @ 20000050,\n\tvoid_const_pointer: const void* = void* @ 1764}"
+      value: "<unknown> { void_pointer = void* @ 20000050, void_const_pointer = void* @ 1764 }"
       children:
         - name:
             Named: void_pointer
@@ -684,7 +684,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tstring: int* = int* @ 0x00001750}"
+      value: "<unknown> { string = int* @ 0x00001750 }"
       children:
         - name:
             Named: string
@@ -911,7 +911,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tpSrc: uint32_t* = uint32_t* @ 0x00000000,\n\tpDest: uint32_t* = uint32_t* @ 0x20000074}"
+      value: "<unknown> { pSrc = uint32_t* @ 0x00000000, pDest = uint32_t* @ 0x20000074 }"
       children:
         - name:
             Named: pSrc

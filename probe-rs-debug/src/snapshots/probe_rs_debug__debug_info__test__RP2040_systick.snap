@@ -1041,7 +1041,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tcyc: u32 = 1000000}"
+      value: "<unknown> { cyc = 1000000 }"
       children:
         - name:
             Named: cyc
@@ -1262,7 +1262,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tcycles: u32 = 1000000}"
+      value: "<unknown> { cycles = 1000000 }"
       children:
         - name:
             Named: cycles
@@ -1479,7 +1479,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\t<unknown>: Peripherals = Peripherals @ 0x20003EAF,\n\tcore: Peripherals = Peripherals @ 0x20003EA6,\n\tsyst: SYST = SYST @ 0x20003EA7}"
+      value: "<unknown> { <unknown> = Peripherals @ 0x20003EAF, core = Peripherals @ 0x20003EA6, syst = SYST @ 0x20003EA7 }"
       children:
         - name: Unknown
           type_name:
@@ -2022,7 +2022,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tcore: Peripherals = Peripherals @ 0x20003EDF,\n\texternal_xtal_freq_hz: u32 = 12000000,\n\tpac: Peripherals = Peripherals @ 0x20003EE7,\n\twatchdog: Watchdog = Watchdog @ 0x20003EEC,\n\tclocks: ClocksManager = ClocksManager @ 0x20003EF0}"
+      value: "<unknown> { core = Peripherals @ 0x20003EDF, external_xtal_freq_hz = 12000000, pac = Peripherals @ 0x20003EE7, watchdog = Watchdog @ 0x20003EEC, clocks = ClocksManager @ 0x20003EF0 }"
       children:
         - name:
             Named: core

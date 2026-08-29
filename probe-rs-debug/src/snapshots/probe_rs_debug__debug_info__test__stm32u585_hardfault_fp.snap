@@ -636,7 +636,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tframe: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >}"
+      value: "<unknown> { frame = < <value optimized away by compiler, out of scope, or dropped> > }"
       children:
         - name:
             Named: frame
@@ -1057,7 +1057,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tdst: *mut u32 = *mut u32,u32}"
+      value: "<unknown> { dst = *mut u32, u32 }"
       children:
         - name:
             Named: dst
