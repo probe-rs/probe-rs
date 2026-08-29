@@ -1624,7 +1624,7 @@ expression: stack_frames
                 Named: "*this"
               type_name:
                 Struct: "TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}>"
-              value: Location Unknown not supported for referenced variables.
+              value: "TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}> @ Location Unknown not supported for referenced variables."
         - name:
             Named: future
           type_name:
@@ -1635,18 +1635,6 @@ expression: stack_frames
             line: 211
             column: ~
             address: ~
-          children:
-            - name:
-                Named: __pointer
-              type_name:
-                Pointer: "&mut coredump_c6::____embassy_main_task::{async_fn_env#0}"
-              value: "&mut coredump_c6::____embassy_main_task::{async_fn_env#0}"
-              children:
-                - name:
-                    Named: "*__pointer"
-                  type_name:
-                    Struct: "{async_fn_env#0}"
-                  value: Location Unknown not supported for referenced variables.
         - name:
             Named: waker
           type_name:
@@ -1657,29 +1645,6 @@ expression: stack_frames
             line: 212
             column: ~
             address: ~
-          children:
-            - name:
-                Named: waker
-              type_name:
-                Struct: RawWaker
-              value: RawWaker @ <unknown value>
-              children:
-                - name:
-                    Named: data
-                  type_name:
-                    Pointer: "*const ()"
-                  value: "*const ()"
-                - name:
-                    Named: vtable
-                  type_name:
-                    Pointer: "&core::task::wake::RawWakerVTable"
-                  value: "&core::task::wake::RawWakerVTable"
-                  children:
-                    - name:
-                        Named: "*vtable"
-                      type_name:
-                        Struct: RawWakerVTable
-                      value: Location Unknown not supported for referenced variables.
         - name:
             Named: cx
           type_name:
@@ -1701,7 +1666,7 @@ expression: stack_frames
                     Named: "*waker"
                   type_name:
                     Struct: Waker
-                  value: "Failed to read referenced variable address from memory location <composite value> : The compiler optimized a part of this value away."
+                  value: "Waker @ Failed to read referenced variable address from memory location <composite value> : The compiler optimized a part of this value away."
             - name:
                 Named: local_waker
               type_name:
@@ -1712,7 +1677,7 @@ expression: stack_frames
                     Named: "*local_waker"
                   type_name:
                     Struct: LocalWaker
-                  value: "Failed to read referenced variable address from memory location <composite value> : The compiler optimized a part of this value away."
+                  value: "LocalWaker @ Failed to read referenced variable address from memory location <composite value> : The compiler optimized a part of this value away."
             - name:
                 Named: ext
               type_name:
@@ -3780,7 +3745,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tself: &mut esp_hal_embassy::executor::thread::Executor = &mut esp_hal_embassy::executor::thread::Executor @ 0x4086E5C0,\n\tinit: {closure_env#0} = {closure_env#0},\n\tcpu: usize = 0}"
+      value: "<unknown> {\n\tself: &mut esp_hal_embassy::executor::thread::Executor = &mut esp_hal_embassy::executor::thread::Executor @ 0x4086E5C0,\n\tinit: {closure_env#0} = {closure_env#0} @ <unknown value>,\n\tcpu: usize = 0}"
       children:
         - name:
             Named: self
@@ -3845,7 +3810,7 @@ expression: stack_frames
                                                 Named: "*value"
                                               type_name:
                                                 Struct: TaskHeader
-                                              value: "<null pointer>"
+                                              value: TaskHeader @ <null pointer>
                             - name:
                                 Named: pender
                               type_name:
@@ -3861,7 +3826,7 @@ expression: stack_frames
             Named: init
           type_name:
             Struct: "{closure_env#0}"
-          value: "{closure_env#0}"
+          value: "{closure_env#0} @ <unknown value>"
           source_location:
             path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-hal-embassy-0.7.0\\src\\executor\\thread.rs"
             line: 96
@@ -4258,7 +4223,7 @@ expression: stack_frames
                                             Named: "*value"
                                           type_name:
                                             Struct: TaskHeader
-                                          value: "<null pointer>"
+                                          value: TaskHeader @ <null pointer>
                         - name:
                             Named: pender
                           type_name:
@@ -4333,7 +4298,7 @@ expression: stack_frames
                                                 Named: "*value"
                                               type_name:
                                                 Struct: TaskHeader
-                                              value: "<null pointer>"
+                                              value: TaskHeader @ <null pointer>
                             - name:
                                 Named: pender
                               type_name:

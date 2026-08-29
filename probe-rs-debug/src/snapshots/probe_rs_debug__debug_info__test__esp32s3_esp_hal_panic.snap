@@ -734,12 +734,6 @@ expression: stack_frames
             line: 245
             column: ~
             address: ~
-          children:
-            - name:
-                Named: __0
-              type_name:
-                Base: u32
-              value: "Unimplemented: Get value of type Base(\"u32\") of (Some(4) bytes) at location <unknown value>"
         - name:
             Named: _guard
           type_name:
@@ -750,18 +744,6 @@ expression: stack_frames
             line: 246
             column: ~
             address: ~
-          children:
-            - name:
-                Named: state
-              type_name:
-                Struct: RestoreState
-              value: RestoreState @ <unknown value>
-              children:
-                - name:
-                    Named: __0
-                  type_name:
-                    Base: u32
-                  value: "Unimplemented: Get value of type Base(\"u32\") of (Some(4) bytes) at location <unknown value>"
   canonical_frame_address: ~
 - function_name: panic
   source_location:
@@ -3034,7 +3016,7 @@ expression: stack_frames
                                             Named: "*clone"
                                           type_name:
                                             Other: RawWaker
-                                          value: "Unimplemented: Get value of type Other(\"RawWaker\") of (None bytes) at location <unknown value>"
+                                          value: "<unknown value>"
                                     - name:
                                         Named: wake
                                       type_name:
@@ -3075,7 +3057,7 @@ expression: stack_frames
                         Named: "*local_waker"
                       type_name:
                         Struct: LocalWaker
-                      value: "<null pointer>"
+                      value: LocalWaker @ <null pointer>
                 - name:
                     Named: ext
                   type_name:
@@ -3161,7 +3143,7 @@ expression: stack_frames
                                             Named: "*clone"
                                           type_name:
                                             Other: RawWaker
-                                          value: "Unimplemented: Get value of type Other(\"RawWaker\") of (None bytes) at location <unknown value>"
+                                          value: "<unknown value>"
                                     - name:
                                         Named: wake
                                       type_name:
@@ -3237,7 +3219,7 @@ expression: stack_frames
                                             Named: "*clone"
                                           type_name:
                                             Other: RawWaker
-                                          value: "Unimplemented: Get value of type Other(\"RawWaker\") of (None bytes) at location <unknown value>"
+                                          value: "<unknown value>"
                                     - name:
                                         Named: wake
                                       type_name:
@@ -4053,7 +4035,7 @@ expression: stack_frames
                                 Named: "*clone"
                               type_name:
                                 Other: RawWaker
-                              value: "Unimplemented: Get value of type Other(\"RawWaker\") of (None bytes) at location <unknown value>"
+                              value: "<unknown value>"
                         - name:
                             Named: wake
                           type_name:
@@ -4140,7 +4122,7 @@ expression: stack_frames
                                         Named: "*clone"
                                       type_name:
                                         Other: RawWaker
-                                      value: "Unimplemented: Get value of type Other(\"RawWaker\") of (None bytes) at location <unknown value>"
+                                      value: "<unknown value>"
                                 - name:
                                     Named: wake
                                   type_name:
@@ -4216,7 +4198,7 @@ expression: stack_frames
                                         Named: "*clone"
                                       type_name:
                                         Other: RawWaker
-                                      value: "Unimplemented: Get value of type Other(\"RawWaker\") of (None bytes) at location <unknown value>"
+                                      value: "<unknown value>"
                                 - name:
                                     Named: wake
                                   type_name:
@@ -4812,7 +4794,7 @@ expression: stack_frames
                                                     Named: "*pointer"
                                                   type_name:
                                                     Struct: TaskHeader
-                                                  value: "<dangling pointer: 0x00000001>"
+                                                  value: "TaskHeader @ <dangling pointer: 0x00000001>"
                 - name:
                     Named: executor
                   type_name:
@@ -4865,7 +4847,7 @@ expression: stack_frames
                                                     Named: "*value"
                                                   type_name:
                                                     Struct: TaskHeader
-                                                  value: "<dangling pointer: 0x00000001>"
+                                                  value: "TaskHeader @ <dangling pointer: 0x00000001>"
                                 - name:
                                     Named: pender
                                   type_name:
@@ -4963,7 +4945,7 @@ expression: stack_frames
                                                     Named: "*pointer"
                                                   type_name:
                                                     Struct: TaskHeader
-                                                  value: "<dangling pointer: 0x00000004>"
+                                                  value: "TaskHeader @ <dangling pointer: 0x00000004>"
                     - name:
                         Named: expires_at
                       type_name:
@@ -5251,7 +5233,7 @@ expression: stack_frames
                                 Named: "*value"
                               type_name:
                                 Struct: TaskHeader
-                              value: "<null pointer>"
+                              value: TaskHeader @ <null pointer>
         - name:
             Named: ptr
           type_name: Unknown
@@ -5772,7 +5754,7 @@ expression: stack_frames
                                     Named: "*value"
                                   type_name:
                                     Struct: TaskHeader
-                                  value: "<null pointer>"
+                                  value: TaskHeader @ <null pointer>
                 - name:
                     Named: pender
                   type_name:
@@ -6031,7 +6013,7 @@ expression: stack_frames
                                         Named: "*value"
                                       type_name:
                                         Struct: TaskHeader
-                                      value: "<null pointer>"
+                                      value: TaskHeader @ <null pointer>
                     - name:
                         Named: pender
                       type_name:
@@ -6237,7 +6219,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tself: &mut esp_hal_embassy::executor::thread::Executor = &mut esp_hal_embassy::executor::thread::Executor @ 0x3FCDC6B0,\n\tinit: {closure_env#0} = {closure_env#0},\n\tcpu: usize = 0}"
+      value: "<unknown> {\n\tself: &mut esp_hal_embassy::executor::thread::Executor = &mut esp_hal_embassy::executor::thread::Executor @ 0x3FCDC6B0,\n\tinit: {closure_env#0} = {closure_env#0} @ <unknown value>,\n\tcpu: usize = 0}"
       children:
         - name:
             Named: self
@@ -6302,7 +6284,7 @@ expression: stack_frames
                                                 Named: "*value"
                                               type_name:
                                                 Struct: TaskHeader
-                                              value: "<null pointer>"
+                                              value: TaskHeader @ <null pointer>
                             - name:
                                 Named: pender
                               type_name:
@@ -6318,7 +6300,7 @@ expression: stack_frames
             Named: init
           type_name:
             Struct: "{closure_env#0}"
-          value: "{closure_env#0}"
+          value: "{closure_env#0} @ <unknown value>"
           source_location:
             path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-hal-embassy-0.7.0\\src\\executor\\thread.rs"
             line: 96
@@ -6587,7 +6569,7 @@ expression: stack_frames
                                             Named: "*value"
                                           type_name:
                                             Struct: TaskHeader
-                                          value: "<null pointer>"
+                                          value: TaskHeader @ <null pointer>
                         - name:
                             Named: pender
                           type_name:
@@ -6662,7 +6644,7 @@ expression: stack_frames
                                                 Named: "*value"
                                               type_name:
                                                 Struct: TaskHeader
-                                              value: "<null pointer>"
+                                              value: TaskHeader @ <null pointer>
                             - name:
                                 Named: pender
                               type_name:

@@ -1425,7 +1425,7 @@ impl UnitInfo {
                     frame_info,
                 )?;
 
-                if child_variable.memory_location.valid() {
+                if child_variable.memory_location.holds_value() {
                     child_variable.variable_node_type =
                         VariableNodeType::TypeOffset(self.debug_info_offset()?, node.offset());
                 } else {
@@ -1573,7 +1573,7 @@ impl UnitInfo {
             frame_info,
         )?;
 
-        if child_variable.memory_location.valid() {
+        if child_variable.memory_location.holds_value() {
             if self.has_structured_children(node)? {
                 // The default behaviour is to defer the processing of child types.
                 child_variable.variable_node_type =
@@ -1605,8 +1605,12 @@ impl UnitInfo {
                 child_variable.set_value(VariableValue::Valid(type_name));
             }
         } else {
-            // If something is already broken, then do nothing ...
             child_variable.variable_node_type = VariableNodeType::DoNotRecurse;
+            child_variable.set_value(VariableValue::Valid(format!(
+                "{} @ {}",
+                child_variable.type_name(),
+                child_variable.memory_location
+            )));
         }
 
         self.language.process_struct(

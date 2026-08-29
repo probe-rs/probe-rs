@@ -355,7 +355,7 @@ expression: stack_frames
                                                     Named: "*formatter"
                                                   type_name:
                                                     Other: "Result<(), core::fmt::Error>"
-                                                  value: "Unimplemented: Get value of type Other(\"Result<(), core::fmt::Error>\") of (None bytes) at location <unknown value>"
+                                                  value: "<unknown value>"
                 - name:
                     Named: location
                   type_name:
@@ -752,7 +752,7 @@ expression: stack_frames
                                         Named: "*formatter"
                                       type_name:
                                         Other: "Result<(), core::fmt::Error>"
-                                      value: "Unimplemented: Get value of type Other(\"Result<(), core::fmt::Error>\") of (None bytes) at location <unknown value>"
+                                      value: "<unknown value>"
         - name:
             Named: pi
           type_name:
@@ -910,7 +910,7 @@ expression: stack_frames
                                                 Named: "*formatter"
                                               type_name:
                                                 Other: "Result<(), core::fmt::Error>"
-                                              value: "Unimplemented: Get value of type Other(\"Result<(), core::fmt::Error>\") of (None bytes) at location <unknown value>"
+                                              value: "<unknown value>"
             - name:
                 Named: location
               type_name:
@@ -1471,7 +1471,7 @@ expression: stack_frames
                                             Named: "*clone"
                                           type_name:
                                             Other: RawWaker
-                                          value: "Unimplemented: Get value of type Other(\"RawWaker\") of (None bytes) at location <unknown value>"
+                                          value: "<unknown value>"
                                     - name:
                                         Named: wake
                                       type_name:
@@ -1512,7 +1512,7 @@ expression: stack_frames
                         Named: "*local_waker"
                       type_name:
                         Struct: LocalWaker
-                      value: "<null pointer>"
+                      value: LocalWaker @ <null pointer>
                 - name:
                     Named: ext
                   type_name:
@@ -1598,7 +1598,7 @@ expression: stack_frames
                                             Named: "*clone"
                                           type_name:
                                             Other: RawWaker
-                                          value: "Unimplemented: Get value of type Other(\"RawWaker\") of (None bytes) at location <unknown value>"
+                                          value: "<unknown value>"
                                     - name:
                                         Named: wake
                                       type_name:
@@ -1674,7 +1674,7 @@ expression: stack_frames
                                             Named: "*clone"
                                           type_name:
                                             Other: RawWaker
-                                          value: "Unimplemented: Get value of type Other(\"RawWaker\") of (None bytes) at location <unknown value>"
+                                          value: "<unknown value>"
                                     - name:
                                         Named: wake
                                       type_name:
@@ -2153,7 +2153,7 @@ expression: stack_frames
                                         Named: "*value"
                                       type_name:
                                         Struct: SyncExecutor
-                                      value: "Failed to read referenced variable address from memory location 0x3FC89F18 : The coredump does not include the memory for address 0x3fc89f18 of size 0x4."
+                                      value: "SyncExecutor @ Failed to read referenced variable address from memory location 0x3FC89F18 : The coredump does not include the memory for address 0x3fc89f18 of size 0x4."
                         - name:
                             Named: poll_fn
                           type_name:
@@ -2384,7 +2384,7 @@ expression: stack_frames
                                     Named: "*value"
                                   type_name:
                                     Struct: SyncExecutor
-                                  value: "Failed to read referenced variable address from memory location 0x3FC89F18 : The coredump does not include the memory for address 0x3fc89f18 of size 0x4."
+                                  value: "SyncExecutor @ Failed to read referenced variable address from memory location 0x3FC89F18 : The coredump does not include the memory for address 0x3fc89f18 of size 0x4."
                     - name:
                         Named: poll_fn
                       type_name:
@@ -2612,7 +2612,7 @@ expression: stack_frames
                                 Named: "*clone"
                               type_name:
                                 Other: RawWaker
-                              value: "Unimplemented: Get value of type Other(\"RawWaker\") of (None bytes) at location <unknown value>"
+                              value: "<unknown value>"
                         - name:
                             Named: wake
                           type_name:
@@ -2699,7 +2699,7 @@ expression: stack_frames
                                         Named: "*clone"
                                       type_name:
                                         Other: RawWaker
-                                      value: "Unimplemented: Get value of type Other(\"RawWaker\") of (None bytes) at location <unknown value>"
+                                      value: "<unknown value>"
                                 - name:
                                     Named: wake
                                   type_name:
@@ -2775,7 +2775,7 @@ expression: stack_frames
                                         Named: "*clone"
                                       type_name:
                                         Other: RawWaker
-                                      value: "Unimplemented: Get value of type Other(\"RawWaker\") of (None bytes) at location <unknown value>"
+                                      value: "<unknown value>"
                                 - name:
                                     Named: wake
                                   type_name:
@@ -3053,7 +3053,7 @@ expression: stack_frames
                         Named: "*pointer"
                       type_name:
                         Struct: TaskHeader
-                      value: "<null pointer>"
+                      value: TaskHeader @ <null pointer>
         - name:
             Named: task
           type_name:
@@ -3069,7 +3069,7 @@ expression: stack_frames
                 Named: "*task"
               type_name:
                 Struct: TaskHeader
-              value: "<null pointer>"
+              value: TaskHeader @ <null pointer>
   canonical_frame_address: ~
 - function_name: "RunQueue::dequeue_all<embassy_executor::raw::{impl#9}::poll::{closure_env#0}>"
   source_location:
@@ -3306,7 +3306,7 @@ expression: stack_frames
                                 Named: "*value"
                               type_name:
                                 Struct: TaskHeader
-                              value: "<null pointer>"
+                              value: TaskHeader @ <null pointer>
         - name:
             Named: ptr
           type_name: Unknown
@@ -3359,7 +3359,7 @@ expression: stack_frames
                         Named: "*pointer"
                       type_name:
                         Struct: TaskHeader
-                      value: "<null pointer>"
+                      value: TaskHeader @ <null pointer>
   canonical_frame_address: ~
 - function_name: "SyncExecutor::poll"
   source_location:
@@ -3602,7 +3602,7 @@ expression: stack_frames
                                     Named: "*value"
                                   type_name:
                                     Struct: TaskHeader
-                                  value: "<null pointer>"
+                                  value: TaskHeader @ <null pointer>
                 - name:
                     Named: pender
                   type_name:
@@ -3862,7 +3862,7 @@ expression: stack_frames
                                         Named: "*value"
                                       type_name:
                                         Struct: TaskHeader
-                                      value: "<null pointer>"
+                                      value: TaskHeader @ <null pointer>
                     - name:
                         Named: pender
                       type_name:
@@ -4069,7 +4069,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tself: &mut esp_hal_embassy::executor::thread::Executor = &mut esp_hal_embassy::executor::thread::Executor @ 0x3FCDC6B0,\n\tinit: {closure_env#0} = {closure_env#0},\n\tcpu: usize = 0}"
+      value: "<unknown> {\n\tself: &mut esp_hal_embassy::executor::thread::Executor = &mut esp_hal_embassy::executor::thread::Executor @ 0x3FCDC6B0,\n\tinit: {closure_env#0} = {closure_env#0} @ <unknown value>,\n\tcpu: usize = 0}"
       children:
         - name:
             Named: self
@@ -4134,7 +4134,7 @@ expression: stack_frames
                                                 Named: "*value"
                                               type_name:
                                                 Struct: TaskHeader
-                                              value: "<null pointer>"
+                                              value: TaskHeader @ <null pointer>
                             - name:
                                 Named: pender
                               type_name:
@@ -4150,7 +4150,7 @@ expression: stack_frames
             Named: init
           type_name:
             Struct: "{closure_env#0}"
-          value: "{closure_env#0}"
+          value: "{closure_env#0} @ <unknown value>"
           source_location:
             path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-hal-embassy-0.7.0\\src\\executor\\thread.rs"
             line: 96
@@ -4420,7 +4420,7 @@ expression: stack_frames
                                             Named: "*value"
                                           type_name:
                                             Struct: TaskHeader
-                                          value: "<null pointer>"
+                                          value: TaskHeader @ <null pointer>
                         - name:
                             Named: pender
                           type_name:
@@ -4495,7 +4495,7 @@ expression: stack_frames
                                                 Named: "*value"
                                               type_name:
                                                 Struct: TaskHeader
-                                              value: "<null pointer>"
+                                              value: TaskHeader @ <null pointer>
                             - name:
                                 Named: pender
                               type_name:
