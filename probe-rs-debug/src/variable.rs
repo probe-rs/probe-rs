@@ -577,6 +577,22 @@ fn register_bit_size(value: RegisterValue) -> u64 {
     }
 }
 
+fn implicit_byte_size(pieces: &[LocationPiece]) -> Option<usize> {
+    let [
+        LocationPiece {
+            source: PieceSource::Implicit(bytes),
+            bit_size,
+            ..
+        },
+    ] = pieces
+    else {
+        return None;
+    };
+
+    let size = bit_size.map_or(bytes.len() as u64, |bits| bits.div_ceil(8));
+    (1..=8).contains(&size).then_some(size as usize)
+}
+
 /// Copy `bits` bits out of a little endian buffer, starting at `bit_offset`.
 fn extract_bits(source: &[u8], bit_offset: u64, bits: u64) -> Vec<u8> {
     let mut destination = vec![0u8; bits.div_ceil(8) as usize];
@@ -990,10 +1006,9 @@ impl Variable {
             language::from_dwarf(self.language).read_variable_value(self, memory, variable_cache);
     }
 
-    /// The address that a pointer holds, if the debug info gives the size of the pointer and the
-    /// target holds the bytes of the pointer.
+    /// The address that a pointer holds, if the location of the pointer can be read.
     fn pointer_target(&self, memory: &mut dyn MemoryInterface) -> Option<u64> {
-        let byte_size = self.byte_size.filter(|byte_size| *byte_size <= 8)? as usize;
+        let byte_size = self.pointer_byte_size()?;
         let mut buffer = [0u8; 8];
 
         self.memory_location
@@ -1001,6 +1016,22 @@ impl Variable {
             .ok()?;
 
         Some(u64::from_le_bytes(buffer))
+    }
+
+    fn pointer_byte_size(&self) -> Option<usize> {
+        if let Some(size) = self.byte_size
+            && (1..=8).contains(&size)
+        {
+            return Some(size as usize);
+        }
+
+        match &self.memory_location {
+            VariableLocation::RegisterValue(value) => {
+                Some((register_bit_size(*value) / 8) as usize)
+            }
+            VariableLocation::Composite(pieces) => implicit_byte_size(pieces),
+            _ => None,
+        }
     }
 
     /// The variable is considered to be an 'indexed' variable if the name starts with two

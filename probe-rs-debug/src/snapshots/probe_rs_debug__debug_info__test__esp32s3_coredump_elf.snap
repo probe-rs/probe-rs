@@ -1408,12 +1408,12 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\t<unknown>: &mut core::task::wake::Context = 1070450080,\n\t_task_context: &mut core::task::wake::Context = 1070450080,\n\tconfig: Config = Config @ 0x3FCDC5B0,\n\ttimer0: SystemTimer = SystemTimer @ 0x3FCDC5F2}"
+      value: "<unknown> {\n\t<unknown>: &mut core::task::wake::Context = &mut core::task::wake::Context @ 0x3FCDC5A0,\n\t_task_context: &mut core::task::wake::Context = &mut core::task::wake::Context @ 0x3FCDC5A0,\n\tconfig: Config = Config @ 0x3FCDC5B0,\n\ttimer0: SystemTimer = SystemTimer @ 0x3FCDC5F2}"
       children:
         - name: Unknown
           type_name:
             Pointer: "&mut core::task::wake::Context"
-          value: "1070450080"
+          value: "&mut core::task::wake::Context @ 0x3FCDC5A0"
           source_location:
             path: "C:\\_Espressif\\_Demos\\coredump-c6\\src\\bin\\main.rs"
             line: 14
@@ -1424,70 +1424,135 @@ expression: stack_frames
                 Named: "Error: Unable to generate name, parent variable does not have a name but is special variable Unknown"
               type_name:
                 Struct: Context
-              value: Context @ <not applicable - statically stored value>
+              value: Context @ <composite value>
               children:
                 - name:
                     Named: waker
                   type_name:
                     Pointer: "&core::task::wake::Waker"
-                  value: "&core::task::wake::Waker @ <not applicable - statically stored value>"
+                  value: "&core::task::wake::Waker @ 0x3FCDC5A0"
                   children:
                     - name:
                         Named: "*waker"
                       type_name:
                         Struct: Waker
-                      value: Location Value not supported for referenced variables.
+                      value: Waker @ 0x3FCDC5A0
+                      children:
+                        - name:
+                            Named: waker
+                          type_name:
+                            Struct: RawWaker
+                          value: RawWaker @ 0x3FCDC5A0
+                          children:
+                            - name:
+                                Named: data
+                              type_name:
+                                Pointer: "*const ()"
+                              value: "*const () @ 0x3FCDC5A4"
+                            - name:
+                                Named: vtable
+                              type_name:
+                                Pointer: "&core::task::wake::RawWakerVTable"
+                              value: "&core::task::wake::RawWakerVTable @ 0x3FCDC5A0"
+                              children:
+                                - name:
+                                    Named: "*vtable"
+                                  type_name:
+                                    Struct: RawWakerVTable
+                                  value: RawWakerVTable @ 0x3FCDC598
+                                  children:
+                                    - name:
+                                        Named: clone
+                                      type_name:
+                                        Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
+                                      value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker @ 0x3FCDC598"
+                                      children:
+                                        - name:
+                                            Named: "*clone"
+                                          type_name:
+                                            Other: RawWaker
+                                          value: "Unimplemented: Get value of type Other(\"RawWaker\") of (None bytes) at location <unknown value>"
+                                    - name:
+                                        Named: wake
+                                      type_name:
+                                        Pointer: unsafe fn(*const ())
+                                      value: "*raw unsafe fn(*const ()) @ 0x3FCDC59C"
+                                      children:
+                                        - name:
+                                            Named: "*wake"
+                                          type_name: Unknown
+                                          value: "<No Return Value>"
+                                    - name:
+                                        Named: wake_by_ref
+                                      type_name:
+                                        Pointer: unsafe fn(*const ())
+                                      value: "*raw unsafe fn(*const ()) @ 0x3FCDC5A0"
+                                      children:
+                                        - name:
+                                            Named: "*wake_by_ref"
+                                          type_name: Unknown
+                                          value: "<No Return Value>"
+                                    - name:
+                                        Named: drop
+                                      type_name:
+                                        Pointer: unsafe fn(*const ())
+                                      value: "*raw unsafe fn(*const ()) @ 0x3FCDC5A4"
+                                      children:
+                                        - name:
+                                            Named: "*drop"
+                                          type_name: Unknown
+                                          value: "<No Return Value>"
                 - name:
                     Named: local_waker
                   type_name:
                     Pointer: "&core::task::wake::LocalWaker"
-                  value: "&core::task::wake::LocalWaker @ <not applicable - statically stored value>"
+                  value: "&core::task::wake::LocalWaker @ 0x00000000"
                   children:
                     - name:
                         Named: "*local_waker"
                       type_name:
                         Struct: LocalWaker
-                      value: Location Value not supported for referenced variables.
+                      value: "<null pointer>"
                 - name:
                     Named: ext
                   type_name:
                     Struct: "AssertUnwindSafe<core::task::wake::ExtData>"
-                  value: "AssertUnwindSafe<core::task::wake::ExtData> @ <not applicable - statically stored value>"
+                  value: "AssertUnwindSafe<core::task::wake::ExtData> @ <composite value>"
                   children:
                     - name:
                         Named: __0
                       type_name:
                         Struct: ExtData
-                      value: ExtData @ <not applicable - statically stored value>
+                      value: ExtData @ <composite value>
                       children:
                         - name:
                             Named: Some
                           type_name:
                             Struct: Some
-                          value: Some @ <not applicable - statically stored value>
+                          value: Some @ <composite value>
                           children:
                             - name:
                                 Named: __0
                               type_name:
                                 Struct: "&mut dyn core::any::Any"
-                              value: "&mut dyn core::any::Any @ <not applicable - statically stored value>"
+                              value: "&mut dyn core::any::Any @ <composite value>"
                               children:
                                 - name:
                                     Named: pointer
                                   type_name:
                                     Pointer: "dyn core::any::Any"
-                                  value: "*raw dyn core::any::Any @ <not applicable - statically stored value>"
+                                  value: "*raw dyn core::any::Any @ 0x00000000"
                                   children:
                                     - name:
                                         Named: "*pointer"
                                       type_name:
                                         Struct: "dyn core::any::Any"
-                                      value: Location Value not supported for referenced variables.
+                                      value: "<null pointer>"
                                 - name:
                                     Named: vtable
                                   type_name:
                                     Pointer: "&[usize; 4]"
-                                  value: "&[usize; 4] @ <not applicable - statically stored value>"
+                                  value: "&[usize; 4] @ 0x00000000"
                                   children:
                                     - name:
                                         Named: "*vtable"
@@ -1522,7 +1587,7 @@ expression: stack_frames
             Named: _task_context
           type_name:
             Pointer: "&mut core::task::wake::Context"
-          value: "1070450080"
+          value: "&mut core::task::wake::Context @ 0x3FCDC5A0"
           source_location:
             path: "C:\\_Espressif\\_Demos\\coredump-c6\\src\\bin\\main.rs"
             line: 14
@@ -1533,7 +1598,230 @@ expression: stack_frames
                 Named: "*_task_context"
               type_name:
                 Struct: Context
-              value: Location Value not supported for referenced variables.
+              value: Context @ 0x3FCDC5A0
+              children:
+                - name:
+                    Named: waker
+                  type_name:
+                    Pointer: "&core::task::wake::Waker"
+                  value: "&core::task::wake::Waker @ 0x3FCDC5A0"
+                  children:
+                    - name:
+                        Named: "*waker"
+                      type_name:
+                        Struct: Waker
+                      value: Waker @ 0x3FCDC598
+                      children:
+                        - name:
+                            Named: waker
+                          type_name:
+                            Struct: RawWaker
+                          value: RawWaker @ 0x3FCDC598
+                          children:
+                            - name:
+                                Named: data
+                              type_name:
+                                Pointer: "*const ()"
+                              value: "*const () @ 0x3FCDC59C"
+                            - name:
+                                Named: vtable
+                              type_name:
+                                Pointer: "&core::task::wake::RawWakerVTable"
+                              value: "&core::task::wake::RawWakerVTable @ 0x3FCDC598"
+                              children:
+                                - name:
+                                    Named: "*vtable"
+                                  type_name:
+                                    Struct: RawWakerVTable
+                                  value: RawWakerVTable @ 0x3C013574
+                                  children:
+                                    - name:
+                                        Named: clone
+                                      type_name:
+                                        Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
+                                      value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker @ 0x3C013574"
+                                      children:
+                                        - name:
+                                            Named: "*clone"
+                                          type_name:
+                                            Other: RawWaker
+                                          value: "Unimplemented: Get value of type Other(\"RawWaker\") of (None bytes) at location <unknown value>"
+                                    - name:
+                                        Named: wake
+                                      type_name:
+                                        Pointer: unsafe fn(*const ())
+                                      value: "*raw unsafe fn(*const ()) @ 0x3C013578"
+                                      children:
+                                        - name:
+                                            Named: "*wake"
+                                          type_name: Unknown
+                                          value: "<No Return Value>"
+                                    - name:
+                                        Named: wake_by_ref
+                                      type_name:
+                                        Pointer: unsafe fn(*const ())
+                                      value: "*raw unsafe fn(*const ()) @ 0x3C01357C"
+                                      children:
+                                        - name:
+                                            Named: "*wake_by_ref"
+                                          type_name: Unknown
+                                          value: "<No Return Value>"
+                                    - name:
+                                        Named: drop
+                                      type_name:
+                                        Pointer: unsafe fn(*const ())
+                                      value: "*raw unsafe fn(*const ()) @ 0x3C013580"
+                                      children:
+                                        - name:
+                                            Named: "*drop"
+                                          type_name: Unknown
+                                          value: "<No Return Value>"
+                - name:
+                    Named: local_waker
+                  type_name:
+                    Pointer: "&core::task::wake::LocalWaker"
+                  value: "&core::task::wake::LocalWaker @ 0x3FCDC5A4"
+                  children:
+                    - name:
+                        Named: "*local_waker"
+                      type_name:
+                        Struct: LocalWaker
+                      value: LocalWaker @ 0x3FCDC598
+                      children:
+                        - name:
+                            Named: waker
+                          type_name:
+                            Struct: RawWaker
+                          value: RawWaker @ 0x3FCDC598
+                          children:
+                            - name:
+                                Named: data
+                              type_name:
+                                Pointer: "*const ()"
+                              value: "*const () @ 0x3FCDC59C"
+                            - name:
+                                Named: vtable
+                              type_name:
+                                Pointer: "&core::task::wake::RawWakerVTable"
+                              value: "&core::task::wake::RawWakerVTable @ 0x3FCDC598"
+                              children:
+                                - name:
+                                    Named: "*vtable"
+                                  type_name:
+                                    Struct: RawWakerVTable
+                                  value: RawWakerVTable @ 0x3C013574
+                                  children:
+                                    - name:
+                                        Named: clone
+                                      type_name:
+                                        Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
+                                      value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker @ 0x3C013574"
+                                      children:
+                                        - name:
+                                            Named: "*clone"
+                                          type_name:
+                                            Other: RawWaker
+                                          value: "Unimplemented: Get value of type Other(\"RawWaker\") of (None bytes) at location <unknown value>"
+                                    - name:
+                                        Named: wake
+                                      type_name:
+                                        Pointer: unsafe fn(*const ())
+                                      value: "*raw unsafe fn(*const ()) @ 0x3C013578"
+                                      children:
+                                        - name:
+                                            Named: "*wake"
+                                          type_name: Unknown
+                                          value: "<No Return Value>"
+                                    - name:
+                                        Named: wake_by_ref
+                                      type_name:
+                                        Pointer: unsafe fn(*const ())
+                                      value: "*raw unsafe fn(*const ()) @ 0x3C01357C"
+                                      children:
+                                        - name:
+                                            Named: "*wake_by_ref"
+                                          type_name: Unknown
+                                          value: "<No Return Value>"
+                                    - name:
+                                        Named: drop
+                                      type_name:
+                                        Pointer: unsafe fn(*const ())
+                                      value: "*raw unsafe fn(*const ()) @ 0x3C013580"
+                                      children:
+                                        - name:
+                                            Named: "*drop"
+                                          type_name: Unknown
+                                          value: "<No Return Value>"
+                - name:
+                    Named: ext
+                  type_name:
+                    Struct: "AssertUnwindSafe<core::task::wake::ExtData>"
+                  value: "AssertUnwindSafe<core::task::wake::ExtData> @ 0x3FCDC5A8"
+                  children:
+                    - name:
+                        Named: __0
+                      type_name:
+                        Struct: ExtData
+                      value: ExtData @ 0x3FCDC5A8
+                      children:
+                        - name:
+                            Named: Some
+                          type_name:
+                            Struct: Some
+                          value: Some @ 0x3FCDC5A8
+                          children:
+                            - name:
+                                Named: __0
+                              type_name:
+                                Struct: "&mut dyn core::any::Any"
+                              value: "&mut dyn core::any::Any @ 0x3FCDC5A8"
+                              children:
+                                - name:
+                                    Named: pointer
+                                  type_name:
+                                    Pointer: "dyn core::any::Any"
+                                  value: "*raw dyn core::any::Any @ 0x3FCDC5A8"
+                                  children:
+                                    - name:
+                                        Named: "*pointer"
+                                      type_name:
+                                        Struct: "dyn core::any::Any"
+                                      value: "<null pointer>"
+                                - name:
+                                    Named: vtable
+                                  type_name:
+                                    Pointer: "&[usize; 4]"
+                                  value: "&[usize; 4] @ 0x3FCDC5AC"
+                                  children:
+                                    - name:
+                                        Named: "*vtable"
+                                      type_name:
+                                        Array:
+                                          item_type_name:
+                                            Base: usize
+                                          count: 4
+                                      value: "[usize; 4] = [usize,usize,usize,usize]"
+                                      children:
+                                        - name:
+                                            Indexed: 0
+                                          type_name:
+                                            Base: usize
+                                          value: "<value not available>"
+                                        - name:
+                                            Indexed: 1
+                                          type_name:
+                                            Base: usize
+                                          value: "<value not available>"
+                                        - name:
+                                            Indexed: 2
+                                          type_name:
+                                            Base: usize
+                                          value: "<value not available>"
+                                        - name:
+                                            Indexed: 3
+                                          type_name:
+                                            Base: usize
+                                          value: "<value not available>"
         - name:
             Named: config
           type_name:

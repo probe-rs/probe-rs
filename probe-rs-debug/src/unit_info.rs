@@ -12,10 +12,9 @@ use gimli::{
 };
 use probe_rs::MemoryInterface;
 
-/// The result of `UnitInfo::evaluate_expression()` can be the value of a variable, or a memory location.
+/// The result of `UnitInfo::evaluate_expression()` is a memory location of a variable.
 #[derive(Debug)]
 pub(crate) enum ExpressionResult {
-    Value(VariableValue),
     Location(VariableLocation),
 }
 
@@ -1714,14 +1713,6 @@ impl UnitInfo {
             };
 
             match expression_result {
-                ExpressionResult::Value(value_from_expression @ VariableValue::Valid(_)) => {
-                    // The ELF contained the actual value, not just a location to it.
-                    child_variable.memory_location = VariableLocation::Value;
-                    child_variable.set_value(value_from_expression);
-                }
-                ExpressionResult::Value(value_from_expression) => {
-                    child_variable.set_value(value_from_expression);
-                }
                 ExpressionResult::Location(VariableLocation::Unavailable) => {
                     child_variable.set_value(VariableValue::Error(
                         "<value optimized away by compiler, out of scope, or dropped>".to_string(),
@@ -1754,7 +1745,6 @@ impl UnitInfo {
     ///
     /// Return values are implemented as follows:
     /// - `Result<_, DebugError>`: This happens when we encounter an error we did not expect, and will propagate upwards until the debugger request is failed. **NOT GRACEFUL**, and should be avoided.
-    /// - `Result<ExpressionResult::Value(),_>`: The value is statically stored in the binary, and can be returned, and has no relevant memory location.
     /// - `Result<ExpressionResult::Location(),_>`: One of the variants of VariableLocation, and needs to be interpreted for handling the 'expected' errors we encounter during evaluation.
     pub(crate) fn extract_location(
         &self,
@@ -1909,7 +1899,6 @@ impl UnitInfo {
     /// Evaluate a [`gimli::Expression`] as a valid memory location.
     /// Return values are implemented as follows:
     /// - `Result<_, DebugError>`: This happens when we encounter an error we did not expect, and will propagate upwards until the debugger request is failed. NOT GRACEFUL, and should be avoided.
-    /// - `Result<ExpressionResult::Value(),_>`: The value is statically stored in the binary, and can be returned, and has no relevant memory location.
     /// - `Result<ExpressionResult::Location(),_>`: One of the variants of VariableLocation, and needs to be interpreted for handling the 'expected' errors we encounter during evaluation.
     pub(crate) fn evaluate_expression(
         &self,
@@ -1957,23 +1946,6 @@ impl UnitInfo {
             }
             Location::Address { address } if aligned => {
                 evaluate_address(address + bit_offset / 8, memory)
-            }
-            Location::Value { value } => {
-                let value = match value {
-                    gimli::Value::Generic(value) => value.to_string(),
-                    gimli::Value::I8(value) => value.to_string(),
-                    gimli::Value::U8(value) => value.to_string(),
-                    gimli::Value::I16(value) => value.to_string(),
-                    gimli::Value::U16(value) => value.to_string(),
-                    gimli::Value::I32(value) => value.to_string(),
-                    gimli::Value::U32(value) => value.to_string(),
-                    gimli::Value::I64(value) => value.to_string(),
-                    gimli::Value::U64(value) => value.to_string(),
-                    gimli::Value::F32(value) => value.to_string(),
-                    gimli::Value::F64(value) => value.to_string(),
-                };
-
-                ExpressionResult::Value(VariableValue::Valid(value))
             }
             Location::Register { register } if aligned && bit_offset == 0 => {
                 if let Some(value) = frame_info
@@ -2119,48 +2091,43 @@ impl UnitInfo {
             }
         } else if self.is_pointer(child_variable, parent_variable, unit_ref) {
             match &parent_variable.memory_location {
-                location @ (VariableLocation::Address(_)
+                VariableLocation::Address(_)
                 | VariableLocation::RegisterValue(_)
-                | VariableLocation::Composite(_)) => {
-                    let mut buffer = [0u8; 8];
-                    let address_size = (self.unit.encoding().address_size as usize).min(8);
+                | VariableLocation::Composite(_)
+                | VariableLocation::Value => match self.pointer_address(parent_variable, memory) {
+                    Ok(address) => {
+                        let alignment = self
+                            .unit
+                            .entry(unit_ref)
+                            .ok()
+                            .and_then(|entry| extract_alignment(&entry));
 
-                    match location.read(&mut buffer[..address_size], memory) {
-                        Ok(()) => {
-                            let address = u64::from_le_bytes(buffer);
-                            let alignment = self
-                                .unit
-                                .entry(unit_ref)
-                                .ok()
-                                .and_then(|entry| extract_alignment(&entry));
-
-                            match object_at(address, alignment, child_variable.byte_size) {
-                                Some(address) => VariableLocation::Address(address),
-                                None if address == 0 => {
-                                    VariableLocation::Error("<null pointer>".to_string())
-                                }
-                                None => VariableLocation::Error(format!(
-                                    "<dangling pointer: {address:#010X}>"
-                                )),
+                        match object_at(address, alignment, child_variable.byte_size) {
+                            Some(address) => VariableLocation::Address(address),
+                            None if address == 0 => {
+                                VariableLocation::Error("<null pointer>".to_string())
                             }
-                        }
-                        Err(error) => {
-                            // The Display of the error hides the cause, which holds the
-                            // detail of the failure.
-                            let cause = std::error::Error::source(&error)
-                                .map_or_else(|| error.to_string(), |cause| cause.to_string());
-
-                            tracing::debug!(
-                                "Failed to read referenced variable address from memory location {} : {cause}.",
-                                parent_variable.memory_location
-                            );
-                            VariableLocation::Error(format!(
-                                "Failed to read referenced variable address from memory location {} : {cause}.",
-                                parent_variable.memory_location
-                            ))
+                            None => VariableLocation::Error(format!(
+                                "<dangling pointer: {address:#010X}>"
+                            )),
                         }
                     }
-                }
+                    Err(error) => {
+                        // The Display of the error hides the cause, which holds the
+                        // detail of the failure.
+                        let cause = std::error::Error::source(&error)
+                            .map_or_else(|| error.to_string(), |cause| cause.to_string());
+
+                        tracing::debug!(
+                            "Failed to read referenced variable address from memory location {} : {cause}.",
+                            parent_variable.memory_location
+                        );
+                        VariableLocation::Error(format!(
+                            "Failed to read referenced variable address from memory location {} : {cause}.",
+                            parent_variable.memory_location
+                        ))
+                    }
+                },
                 other => VariableLocation::Unsupported(format!(
                     "Location {other:?} not supported for referenced variables."
                 )),
@@ -2174,6 +2141,40 @@ impl UnitInfo {
         };
 
         child_variable.memory_location = location;
+    }
+
+    /// The address that a pointer holds.
+    fn pointer_address(
+        &self,
+        pointer: &Variable,
+        memory: &mut dyn MemoryInterface,
+    ) -> Result<u64, DebugError> {
+        let mut buffer = [0u8; 8];
+        let address_size = (self.unit.encoding().address_size as usize).min(8);
+
+        match &pointer.memory_location {
+            VariableLocation::Address(_)
+            | VariableLocation::RegisterValue(_)
+            | VariableLocation::Composite(_) => {
+                pointer
+                    .memory_location
+                    .read(&mut buffer[..address_size], memory)?;
+                Ok(u64::from_le_bytes(buffer))
+            }
+            VariableLocation::Value => match &pointer.value {
+                VariableValue::Valid(value) => {
+                    value.parse().map_err(|_| DebugError::WarnAndContinue {
+                        message: format!("The pointer value `{value}` is not an address"),
+                    })
+                }
+                other => Err(DebugError::WarnAndContinue {
+                    message: format!("The pointer has no address: {other}"),
+                }),
+            },
+            other => Err(DebugError::WarnAndContinue {
+                message: format!("Location {other:?} not supported for referenced variables."),
+            }),
+        }
     }
 
     /// Returns `true` if the variable is a pointer, `false` otherwise.
