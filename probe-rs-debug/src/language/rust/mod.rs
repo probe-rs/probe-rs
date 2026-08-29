@@ -795,6 +795,10 @@ impl ProgrammingLanguage for Rust {
         function_die: &crate::function_die::FunctionDie<'_>,
         debug_info: &super::DebugInfo,
     ) -> String {
+        if let Some(name) = synthesise_generated_fn(function_name, function_die, debug_info) {
+            return name;
+        }
+
         let function_name = self.compact_debug_name(function_name);
         let parent = function_die.parent_offset();
         if let Some((parent_unit, parent_offset)) = parent
@@ -812,6 +816,8 @@ impl ProgrammingLanguage for Rust {
             } else {
                 format!("{typename}::{function_name}")
             }
+        } else if let Some(name) = qualified_method_name(function_die, debug_info, &function_name) {
+            name
         } else {
             function_name
         }
@@ -862,7 +868,83 @@ impl ProgrammingLanguage for Rust {
 }
 
 fn is_datatype(entry: &Die) -> bool {
-    [gimli::DW_TAG_structure_type, gimli::DW_TAG_enumeration_type].contains(&entry.tag())
+    matches!(
+        entry.tag(),
+        gimli::DW_TAG_structure_type
+            | gimli::DW_TAG_class_type
+            | gimli::DW_TAG_union_type
+            | gimli::DW_TAG_enumeration_type
+    )
+}
+
+fn synthesise_generated_fn(
+    function_name: &str,
+    function_die: &crate::function_die::FunctionDie<'_>,
+    debug_info: &DebugInfo,
+) -> Option<String> {
+    let ident = type_ident(function_name);
+    let mut segments = declaration_enclosing_path(function_die, debug_info);
+    segments.push(ident.to_string());
+
+    if let Some(name) = type_name::synthesise_async_name(&segments) {
+        return Some(name);
+    }
+    if type_name::is_closure_ident(ident) {
+        let from_die = type_name::synthesise_closure_name(&segments);
+        let from_link = demangled_linkage_name(function_die, debug_info).and_then(|name| {
+            let compact = type_name::compact_debug_name(&name);
+            (compact.contains("::") || compact.starts_with('<')).then_some(compact)
+        });
+        return match (from_die, from_link) {
+            (Some(die), Some(link)) if link.contains("{impl") && !die.contains("{impl") => {
+                Some(die)
+            }
+            (Some(die), Some(link)) if die.contains("{impl") && !link.contains("{impl") => {
+                Some(link)
+            }
+            (die, link) => link.or(die),
+        };
+    }
+    None
+}
+
+fn qualified_method_name(
+    function_die: &crate::function_die::FunctionDie<'_>,
+    debug_info: &DebugInfo,
+    function_name: &str,
+) -> Option<String> {
+    if function_name.contains("::") || function_name.starts_with('<') {
+        return None;
+    }
+    let demangled = demangled_linkage_name(function_die, debug_info)?;
+    let label = type_name::associated_method_label(&demangled)?;
+    Some(type_name::apply_dwarf_generics(&label, function_name))
+}
+
+fn declaration_enclosing_path(
+    function_die: &crate::function_die::FunctionDie<'_>,
+    debug_info: &DebugInfo,
+) -> Vec<String> {
+    let (unit, die) = function_die
+        .abstract_die
+        .as_ref()
+        .or(function_die.specification_die.as_ref())
+        .map(|(unit, die)| (*unit, die))
+        .unwrap_or((function_die.unit_info, &function_die.function_die));
+    unit.enclosing_path(debug_info, die)
+}
+
+fn demangled_linkage_name(
+    function_die: &crate::function_die::FunctionDie<'_>,
+    debug_info: &DebugInfo,
+) -> Option<String> {
+    let (unit, attr) = function_die.attribute_with_unit(debug_info, gimli::DW_AT_linkage_name)?;
+    let raw = debug_info
+        .dwarf
+        .attr_string(&unit.unit, attr.value())
+        .ok()?;
+    let mangled = String::from_utf8_lossy(&raw);
+    addr2line::demangle(mangled.as_ref(), gimli::DW_LANG_Rust)
 }
 
 /// Last path segment of a rust type name, without generic arguments.

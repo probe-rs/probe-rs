@@ -1,6 +1,9 @@
 //! Parse a compiler type name when DWARF has no template-parameter DIEs.
 
-use crate::{GenericArg, NamedType, TypeNameStyle, VariableType};
+use crate::{
+    GenericArg, NamedType, TypeNameStyle, VariableType,
+    language::{ProgrammingLanguage, rust::Rust},
+};
 
 pub(crate) fn parse_variable_type(input: &str) -> Option<VariableType> {
     let mut parser = Parser::new(input.trim());
@@ -453,10 +456,18 @@ fn compact_name(name: &str, kind: NameKind) -> String {
     if let Some(compacted) = compact_as_clause(name) {
         return compacted;
     }
+    if let Some(compacted) = compact_inherent_ufcs(name) {
+        return compacted;
+    }
     if let Some(ty) = parse_variable_type(name) {
         return match kind {
             NameKind::Type => {
-                ty.display_name_with_style(&crate::language::rust::Rust, TypeNameStyle::Compact)
+                if let Some(name) =
+                    synthesise_async_type(&ty).or_else(|| synthesise_closure_type(&ty))
+                {
+                    return name;
+                }
+                ty.display_name_with_style(&Rust, TypeNameStyle::Compact)
             }
             NameKind::Symbol => compact_parsed_symbol(&ty),
         };
@@ -465,10 +476,13 @@ fn compact_name(name: &str, kind: NameKind) -> String {
 }
 
 fn compact_parsed_symbol(ty: &VariableType) -> String {
-    let rust = crate::language::rust::Rust;
+    if let Some(name) = synthesise_async_type(ty).or_else(|| synthesise_closure_type(ty)) {
+        return name;
+    }
+    let rust = Rust;
     match ty {
         VariableType::Struct(named) | VariableType::Enum(named) => {
-            let compact = named.display(&rust, TypeNameStyle::Compact);
+            let compact = compact_named_symbol(named);
             if named.args.is_empty() {
                 if looks_like_method(&named.ident)
                     && let Some(parent) = named.namespace.last()
@@ -484,6 +498,27 @@ fn compact_parsed_symbol(ty: &VariableType) -> String {
             }
         }
         _ => ty.display_name_with_style(&rust, TypeNameStyle::Compact),
+    }
+}
+
+fn compact_named_symbol(named: &NamedType) -> String {
+    let rust = Rust;
+    if named.args.is_empty() {
+        return named.display(&rust, TypeNameStyle::Compact);
+    }
+    let args: Vec<String> = named.args.iter().map(compact_generic_arg).collect();
+    if let Some(head) = rust.format_named_head(&named.ident, &args) {
+        return head;
+    }
+    rust.format_generic_type(&named.ident, &args)
+}
+
+fn compact_generic_arg(arg: &GenericArg) -> String {
+    match arg {
+        GenericArg::Type(ty) => synthesise_async_type(ty)
+            .or_else(|| synthesise_closure_type(ty))
+            .unwrap_or_else(|| ty.display_name_with_style(&Rust, TypeNameStyle::Compact)),
+        GenericArg::Const(value) => value.clone(),
     }
 }
 
@@ -526,7 +561,269 @@ fn split_path_segments(s: &str) -> Vec<&str> {
 }
 
 fn looks_like_method(ident: &str) -> bool {
-    ident.chars().next().is_some_and(|c| c.is_ascii_lowercase())
+    ident_head(ident)
+        .chars()
+        .next()
+        .is_some_and(|c| c.is_ascii_lowercase())
+}
+
+fn looks_like_type_ident(ident: &str) -> bool {
+    let ident = ident_head(ident);
+    ident.starts_with('{') || ident.chars().next().is_some_and(|c| c.is_ascii_uppercase())
+}
+
+fn ident_head(segment: &str) -> &str {
+    segment.split_once('<').map_or(segment, |(head, _)| head)
+}
+
+/// Compact demangled linkage when it names a type method or a trait impl.
+pub(crate) fn associated_method_label(demangled: &str) -> Option<String> {
+    let compact = compact_debug_name(demangled);
+    if compact.starts_with('<') || demangled.trim_start().starts_with('<') {
+        return Some(compact);
+    }
+    let segs = split_path_segments(&compact);
+    if segs.len() < 2 {
+        return None;
+    }
+    let receiver = segs[segs.len() - 2];
+    let method = segs[segs.len() - 1];
+    if !looks_like_method(method) || !looks_like_type_ident(receiver) {
+        return None;
+    }
+    let full_segs = split_path_segments(demangled);
+    if full_segs.len() > 2 || receiver.starts_with('{') || receiver.contains('<') {
+        Some(compact)
+    } else {
+        None
+    }
+}
+
+fn looks_like_generic_param(s: &str) -> bool {
+    let s = s.trim();
+    if s.is_empty() || s == "Self" || is_primitive(s) || s.starts_with('{') {
+        return false;
+    }
+    if s.contains("::") || s.contains('<') || s.starts_with('&') || s.starts_with('*') {
+        return false;
+    }
+    let mut chars = s.chars();
+    matches!(chars.next(), Some('A'..='Z')) && chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
+}
+
+fn generic_suffix_args(name: &str) -> Option<Vec<String>> {
+    let open = name.find('<')?;
+    let close = matching_bracket_end(name, open)?;
+    if close + 1 != name.len() {
+        return None;
+    }
+    let inner = name[open + 1..close].trim();
+    if inner.is_empty() {
+        return Some(Vec::new());
+    }
+    Some(
+        split_top_level(inner, ',')
+            .into_iter()
+            .map(|arg| arg.trim().to_string())
+            .filter(|arg| !arg.is_empty())
+            .collect(),
+    )
+}
+
+fn replace_placeholder_args(ty: &str, concrete: &[String]) -> Option<String> {
+    let open = ty.find('<')?;
+    let close = matching_bracket_end(ty, open)?;
+    if close + 1 != ty.len() {
+        return None;
+    }
+    let params: Vec<&str> = split_top_level(&ty[open + 1..close], ',')
+        .into_iter()
+        .map(str::trim)
+        .collect();
+    if params.len() != concrete.len() || !params.iter().copied().all(looks_like_generic_param) {
+        return None;
+    }
+    Some(format!("{}<{}>", &ty[..open], concrete.join(", ")))
+}
+
+fn substitute_receiver_generic_params(qualified: &str, concrete: &[String]) -> Option<String> {
+    if qualified.starts_with('<') {
+        let close = matching_bracket_end(qualified, 0)?;
+        let inner = &qualified[1..close];
+        let suffix = &qualified[close + 1..];
+        if let Some(as_at) = find_as_separator(inner) {
+            let self_ty = inner[..as_at].trim();
+            let trait_name = inner[as_at + 4..].trim();
+            let new_self = replace_placeholder_args(self_ty, concrete)?;
+            return Some(format!("<{new_self} as {trait_name}>{suffix}"));
+        }
+        let new_self = replace_placeholder_args(inner.trim(), concrete)?;
+        return Some(format!("<{new_self}>{suffix}"));
+    }
+
+    let segs = split_path_segments(qualified);
+    if segs.len() < 2 {
+        return None;
+    }
+    let new_receiver = replace_placeholder_args(segs[segs.len() - 2], concrete)?;
+    let mut out = segs[..segs.len() - 2].join("::");
+    if !out.is_empty() {
+        out.push_str("::");
+    }
+    out.push_str(&new_receiver);
+    out.push_str("::");
+    out.push_str(segs[segs.len() - 1]);
+    Some(out)
+}
+
+fn receiver_generic_args(qualified: &str) -> Option<Vec<String>> {
+    let ty = if qualified.starts_with('<') {
+        let close = matching_bracket_end(qualified, 0)?;
+        let inner = &qualified[1..close];
+        if let Some(as_at) = find_as_separator(inner) {
+            inner[..as_at].trim().to_string()
+        } else {
+            inner.trim().to_string()
+        }
+    } else {
+        let segs = split_path_segments(qualified);
+        segs.get(segs.len().checked_sub(2)?).copied()?.to_string()
+    };
+    generic_suffix_args(&ty)
+}
+
+/// Put monomorphized arguments from `DW_AT_name` onto a compact linkage name.
+pub(crate) fn apply_dwarf_generics(qualified: &str, dwarf_name: &str) -> String {
+    let Some(args) = generic_suffix_args(dwarf_name).filter(|args| !args.is_empty()) else {
+        return qualified.to_string();
+    };
+    let last = split_path_segments(qualified).pop().unwrap_or(qualified);
+    if generic_suffix_args(last).is_some() {
+        return qualified.to_string();
+    }
+    if let Some(replaced) = substitute_receiver_generic_params(qualified, &args) {
+        return replaced;
+    }
+    if receiver_generic_args(qualified).as_ref() == Some(&args) {
+        return qualified.to_string();
+    }
+    format!("{qualified}<{}>", args.join(", "))
+}
+
+/// `{async_fn#0}` / `{async_fn_env#0}` → `async main` using the enclosing function.
+pub(crate) fn synthesise_async_name(segments: &[impl AsRef<str>]) -> Option<String> {
+    let ident = segments.last()?.as_ref();
+    if !is_async_compiler_ident(ident) {
+        return None;
+    }
+    let parent = async_fn_parent(&segments[..segments.len() - 1])?;
+    Some(format!("async {parent}"))
+}
+
+fn synthesise_async_type(ty: &VariableType) -> Option<String> {
+    match ty {
+        VariableType::Struct(named) | VariableType::Enum(named) => {
+            let mut segments = named.namespace.clone();
+            segments.push(named.ident.clone());
+            synthesise_async_name(&segments)
+        }
+        VariableType::Pointer(Some(inner)) => synthesise_async_type(inner),
+        _ => None,
+    }
+}
+
+pub(crate) fn is_async_compiler_ident(ident: &str) -> bool {
+    ident.starts_with("{async_fn") || ident.starts_with("{async_block")
+}
+
+pub(crate) fn is_closure_ident(ident: &str) -> bool {
+    ident.starts_with("{closure") || ident.starts_with("{async_closure")
+}
+
+/// `{closure#0}` / `{async_closure#0}` → `Outer::fn::{closure#0}`.
+pub(crate) fn synthesise_closure_name(segments: &[impl AsRef<str>]) -> Option<String> {
+    let ident = segments.last()?.as_ref();
+    if !is_closure_ident(ident) || segments.len() < 2 {
+        return None;
+    }
+    let prefix: Vec<&str> = segments[..segments.len() - 1]
+        .iter()
+        .map(AsRef::as_ref)
+        .collect();
+    let outer = compact_debug_name(&prefix.join("::"));
+    if outer.is_empty() || outer == ident {
+        return None;
+    }
+    Some(format!("{outer}::{ident}"))
+}
+
+fn synthesise_closure_type(ty: &VariableType) -> Option<String> {
+    match ty {
+        VariableType::Struct(named) | VariableType::Enum(named) => {
+            let mut segments = named.namespace.clone();
+            segments.push(named.ident.clone());
+            synthesise_closure_name(&segments)
+        }
+        VariableType::Pointer(Some(inner)) => synthesise_closure_type(inner),
+        _ => None,
+    }
+}
+
+fn is_compiler_ident(ident: &str) -> bool {
+    ident.starts_with('{') && ident.ends_with('}')
+}
+
+fn async_fn_parent(segments: &[impl AsRef<str>]) -> Option<String> {
+    let crate_name = segments
+        .first()
+        .and_then(|segment| clean_fn_ident(segment.as_ref()));
+    let cleaned: Vec<String> = segments
+        .iter()
+        .rev()
+        .map(|segment| segment.as_ref())
+        .filter(|ident| !is_compiler_ident(ident))
+        .filter_map(clean_fn_ident)
+        .collect();
+
+    cleaned
+        .iter()
+        .find(|ident| !is_macro_generated_fn(ident) && crate_name.as_ref() != Some(ident))
+        .or_else(|| cleaned.iter().find(|ident| is_macro_generated_fn(ident)))
+        .or(cleaned.first())
+        .cloned()
+}
+
+fn clean_fn_ident(ident: &str) -> Option<String> {
+    let ident = ident.trim_start_matches('_');
+    if ident.is_empty() {
+        return None;
+    }
+    let ident = ident.strip_suffix("_inner_function").unwrap_or(ident);
+    Some(ident.to_string())
+}
+
+fn is_macro_generated_fn(ident: &str) -> bool {
+    ident == "embassy_main_task" || ident.starts_with("embassy_main_task_")
+}
+
+fn compact_inherent_ufcs(name: &str) -> Option<String> {
+    if !name.starts_with('<') {
+        return None;
+    }
+    let close = matching_bracket_end(name, 0)?;
+    let inner = name[1..close].trim();
+    if find_as_separator(inner).is_some() {
+        return None;
+    }
+    let suffix = name[close + 1..].trim_start();
+    if !suffix.starts_with("::") {
+        return None;
+    }
+    Some(format!(
+        "{}{}",
+        compact_type_arg(inner),
+        compact_generics(suffix)
+    ))
 }
 
 fn compact_as_clause(name: &str) -> Option<String> {
@@ -774,17 +1071,17 @@ mod tests {
             compact_debug_name(
                 "embassy_executor::raw::TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}>::poll"
             ),
-            "TaskStorage<{async_fn_env#0}>::poll"
+            "TaskStorage<async embassy_main_task>::poll"
         );
         assert_eq!(
             compact_debug_name(
                 "RunQueue::dequeue_all<embassy_executor::raw::{impl#9}::poll::{closure_env#0}>"
             ),
-            "RunQueue::dequeue_all<{closure_env#0}>"
+            "RunQueue::dequeue_all<{impl#9}::poll::{closure_env#0}>"
         );
         assert_eq!(
             compact_debug_name("Executor::run<coredump_c6::__xtensa_lx_rt_main::{closure_env#0}>"),
-            "Executor::run<{closure_env#0}>"
+            "Executor::run<__xtensa_lx_rt_main::{closure_env#0}>"
         );
         assert_eq!(
             compact_debug_name("core::ptr::drop_in_place<alloc::string::String>"),
@@ -794,7 +1091,7 @@ mod tests {
             compact_debug_name(
                 "<coredump_c6::____embassy_main_task::{async_fn#0} as core::future::future::Future>::poll"
             ),
-            "<{async_fn#0} as Future>::poll"
+            "<async embassy_main_task as Future>::poll"
         );
         assert_eq!(
             compact_debug_name(
@@ -804,11 +1101,102 @@ mod tests {
         );
         assert_eq!(
             compact_debug_name("with<!, panic_rtt_target::panic::{closure_env#0}>"),
-            "with<!, {closure_env#0}>"
+            "with<!, panic_rtt_target::panic::{closure_env#0}>"
         );
         assert_eq!(
             compact_debug_name("embassy_executor::raw::SyncExecutor::poll"),
             "SyncExecutor::poll"
         );
+        assert_eq!(
+            compact_debug_name(
+                "c6_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn#0}"
+            ),
+            "async main"
+        );
+        assert_eq!(
+            synthesise_async_name(&["my_app", "worker", "{async_fn#0}",]),
+            Some("async worker".to_string())
+        );
+        assert_eq!(
+            compact_debug_name("embassy_executor::raw::SyncExecutor::poll::{closure#0}"),
+            "SyncExecutor::poll::{closure#0}"
+        );
+        assert_eq!(
+            compact_debug_name("<embassy_executor::raw::SyncExecutor>::poll::{closure#0}"),
+            "SyncExecutor::poll::{closure#0}"
+        );
+        assert_eq!(
+            associated_method_label("<embassy_executor::raw::SyncExecutor>::poll").as_deref(),
+            Some("SyncExecutor::poll")
+        );
+        assert_eq!(
+            compact_debug_name("embassy_time::timer::Timer::poll"),
+            "Timer::poll"
+        );
+        assert_eq!(
+            compact_debug_name(
+                "<embassy_time::timer::Timer as core::future::future::Future>::poll"
+            ),
+            "<Timer as Future>::poll"
+        );
+        assert_eq!(
+            synthesise_closure_name(&["SyncExecutor", "poll", "{closure#0}"]),
+            Some("SyncExecutor::poll::{closure#0}".to_string())
+        );
+        assert_eq!(
+            associated_method_label("embassy_time::timer::Timer::poll").as_deref(),
+            Some("Timer::poll")
+        );
+        assert_eq!(
+            associated_method_label(
+                "<embassy_time::timer::Timer as core::future::future::Future>::poll"
+            )
+            .as_deref(),
+            Some("<Timer as Future>::poll")
+        );
+        assert_eq!(
+            associated_method_label("probe_rs_debugger_test::test_deep_stack"),
+            None
+        );
+        assert_eq!(associated_method_label("core::ptr::read_volatile"), None);
+        assert_eq!(associated_method_label("RP2040::enable_systick"), None);
+        assert_eq!(
+            apply_dwarf_generics(
+                "<Timer<T, U> as DelayUs<u32>>::delay_us",
+                "delay_us<TIMER0, OneShot>"
+            ),
+            "<Timer<TIMER0, OneShot> as DelayUs<u32>>::delay_us"
+        );
+        assert_eq!(
+            apply_dwarf_generics("<Timer<T, U> as CountDown>::wait", "wait<TIMER0, OneShot>"),
+            "<Timer<TIMER0, OneShot> as CountDown>::wait"
+        );
+        assert_eq!(
+            apply_dwarf_generics("Instance::timer_running", "timer_running<TIMER0>"),
+            "Instance::timer_running<TIMER0>"
+        );
+        assert_eq!(
+            apply_dwarf_generics(
+                "<Timer<TIMER0, OneShot> as DelayUs<u32>>::delay_us",
+                "delay_us<TIMER0, OneShot>"
+            ),
+            "<Timer<TIMER0, OneShot> as DelayUs<u32>>::delay_us"
+        );
+        assert_eq!(
+            apply_dwarf_generics(
+                "<Timer<TIM, MODE> as DelayUs<u32>>::delay_us",
+                "delay_us<TIMER0, OneShot>"
+            ),
+            "<Timer<TIMER0, OneShot> as DelayUs<u32>>::delay_us"
+        );
+        assert_eq!(
+            apply_dwarf_generics("HashMap<K, V>::insert", "insert<String, u32>"),
+            "HashMap<String, u32>::insert"
+        );
+        assert_eq!(
+            apply_dwarf_generics("<Pin<MODE> as OutputPin>::set_high", "set_high<Output>"),
+            "<Pin<Output> as OutputPin>::set_high"
+        );
+        assert_eq!(apply_dwarf_generics("Timer::poll", "poll"), "Timer::poll");
     }
 }

@@ -2,7 +2,7 @@
 source: probe-rs-debug/src/debug_info.rs
 expression: stack_frames
 ---
-- function_name: "{async_fn#0}"
+- function_name: async main
   source_location:
     path: "C:\\_Espressif\\_Demos\\s3-debug\\src\\bin\\main.rs"
     line: 55
@@ -3081,7 +3081,7 @@ expression: stack_frames
                     Base: bool
                   value: "true"
   canonical_frame_address: 1070446144
-- function_name: "TaskStorage<{async_fn_env#0}>::poll"
+- function_name: "TaskStorage<async main>::poll"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.10.0\\src\\raw\\mod.rs"
     line: 253
@@ -4800,7 +4800,7 @@ expression: stack_frames
                             Base: ()
                           value: ()
   canonical_frame_address: 1070446144
-- function_name: "Executor::run_inner<{closure_env#0}, NoHooks>"
+- function_name: "Executor::run_inner<__xtensa_lx_rt_main::{closure_env#0}, NoHooks>"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-rtos-0.3.0\\src\\embassy\\mod.rs"
     line: 286
@@ -5376,7 +5376,7 @@ expression: stack_frames
                                       Base: ()
                           value: "*mut () @ 0x3FCDB6A0"
   canonical_frame_address: 1070446192
-- function_name: "Executor::run<{closure_env#0}>"
+- function_name: "Executor::run<__xtensa_lx_rt_main::{closure_env#0}>"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-rtos-0.3.0\\src\\embassy\\mod.rs"
     line: 227

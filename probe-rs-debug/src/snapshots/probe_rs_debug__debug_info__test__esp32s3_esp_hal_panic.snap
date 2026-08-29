@@ -2,7 +2,7 @@
 source: probe-rs-debug/src/debug_info.rs
 expression: stack_frames
 ---
-- function_name: "{closure#0}"
+- function_name: "panic_rtt_target::panic::{closure#0}"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\panic-rtt-target-0.2.0\\src\\lib.rs"
     line: 64
@@ -523,7 +523,7 @@ expression: stack_frames
                     Base: bool
                   value: "false"
   canonical_frame_address: ~
-- function_name: "with<!, {closure_env#0}>"
+- function_name: "with<!, panic_rtt_target::panic::{closure_env#0}>"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\critical-section-1.2.0\\src\\lib.rs"
     line: 248
@@ -3515,7 +3515,7 @@ expression: stack_frames
             column: ~
             address: ~
   canonical_frame_address: ~
-- function_name: "{async_fn#0}"
+- function_name: async embassy_main_task
   source_location:
     path: "C:\\_Espressif\\bug-repros\\generate\\s3\\src\\bin\\main.rs"
     line: 87
@@ -4586,7 +4586,7 @@ expression: stack_frames
             column: ~
             address: ~
   canonical_frame_address: ~
-- function_name: "TaskStorage<{async_fn_env#0}>::poll"
+- function_name: "TaskStorage<async embassy_main_task>::poll"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
     line: 214
@@ -6117,7 +6117,7 @@ expression: stack_frames
                             Base: ()
                           value: ()
   canonical_frame_address: ~
-- function_name: "{closure#0}"
+- function_name: "{impl#9}::poll::{closure#0}"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
     line: 430
@@ -7493,7 +7493,7 @@ expression: stack_frames
                                 Base: u8
                               value: "63"
   canonical_frame_address: ~
-- function_name: "RunQueue::dequeue_all<{closure_env#0}>"
+- function_name: "RunQueue::dequeue_all<{impl#9}::poll::{closure_env#0}>"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\run_queue_atomics.rs"
     line: 85
@@ -9025,7 +9025,7 @@ expression: stack_frames
                                       Base: ()
                           value: "*mut () @ 0x00000010"
   canonical_frame_address: ~
-- function_name: "Executor::run<{closure_env#0}>"
+- function_name: "Executor::run<__xtensa_lx_rt_main::{closure_env#0}>"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-hal-embassy-0.7.0\\src\\executor\\thread.rs"
     line: 111

@@ -3056,6 +3056,28 @@ impl UnitInfo {
         self.parents.get(&offset).copied()
     }
 
+    /// Names of enclosing namespace, module, function, and type DIEs, crate first.
+    pub(crate) fn enclosing_path(
+        &self,
+        debug_info: &DebugInfo,
+        entry: &DebuggingInformationEntry<GimliReader>,
+    ) -> Vec<String> {
+        let mut segments = Vec::new();
+        let mut offset = self.parent_offset(entry.offset());
+        while let Some(parent) = offset {
+            if let Ok(die) = self.unit.entry(parent)
+                && is_enclosing_name_tag(die.tag())
+                && let Ok(Some(name)) = extract_name(debug_info, &self.unit, &die)
+            {
+                segments.push(name);
+            }
+
+            offset = self.parent_offset(parent);
+        }
+        segments.reverse();
+        segments
+    }
+
     /// Names of enclosing `DW_TAG_namespace` / `DW_TAG_module` DIEs, crate first.
     pub(crate) fn namespace_path(
         &self,
@@ -3077,6 +3099,20 @@ impl UnitInfo {
         segments.reverse();
         segments
     }
+}
+
+fn is_enclosing_name_tag(tag: gimli::DwTag) -> bool {
+    matches!(
+        tag,
+        gimli::DW_TAG_namespace
+            | gimli::DW_TAG_module
+            | gimli::DW_TAG_subprogram
+            | gimli::DW_TAG_inlined_subroutine
+            | gimli::DW_TAG_structure_type
+            | gimli::DW_TAG_class_type
+            | gimli::DW_TAG_union_type
+            | gimli::DW_TAG_enumeration_type
+    )
 }
 
 fn extract_name(

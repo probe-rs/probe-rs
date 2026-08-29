@@ -2,7 +2,7 @@
 source: probe-rs-debug/src/debug_info.rs
 expression: stack_frames
 ---
-- function_name: "{async_fn#0}"
+- function_name: async main
   source_location:
     path: "C:\\_Espressif\\_Demos\\c6-debug\\src\\bin\\main.rs"
     line: 60
@@ -1705,7 +1705,7 @@ expression: stack_frames
                     Base: bool
                   value: "true"
   canonical_frame_address: 1082582384
-- function_name: "TaskStorage<{async_fn_env#0}>::poll"
+- function_name: "TaskStorage<async main>::poll"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.10.0\\src\\raw\\mod.rs"
     line: 253
@@ -3703,7 +3703,7 @@ expression: stack_frames
                             Base: ()
                           value: ()
   canonical_frame_address: 1082582384
-- function_name: "{closure#0}"
+- function_name: "SyncExecutor::poll::{closure#0}"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.10.0\\src\\raw\\mod.rs"
     line: 479
@@ -4050,7 +4050,7 @@ expression: stack_frames
             column: ~
             address: ~
   canonical_frame_address: 1082582416
-- function_name: "RunQueue::dequeue_all<{closure_env#0}>"
+- function_name: "RunQueue::dequeue_all<{impl#9}::poll::{closure_env#0}>"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.10.0\\src\\raw\\run_queue.rs"
     line: 91
@@ -5156,7 +5156,7 @@ expression: stack_frames
             column: ~
             address: ~
   canonical_frame_address: 1082582416
-- function_name: "Executor::run_inner<{closure_env#0}, NoHooks>"
+- function_name: "Executor::run_inner<__risc_v_rt__main::{closure_env#0}, NoHooks>"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-rtos-0.3.0\\src\\embassy\\mod.rs"
     line: 286
@@ -6517,7 +6517,7 @@ expression: stack_frames
                                       Base: ()
                           value: "*mut () @ 0x4086E5B8"
   canonical_frame_address: 1082582448
-- function_name: "Executor::run<{closure_env#0}>"
+- function_name: "Executor::run<__risc_v_rt__main::{closure_env#0}>"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-rtos-0.3.0\\src\\embassy\\mod.rs"
     line: 227
