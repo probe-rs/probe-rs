@@ -1,4 +1,7 @@
-use std::{collections::HashMap, ops::Range};
+use std::{
+    collections::{HashMap, HashSet},
+    ops::Range,
+};
 
 use super::{
     DebugError, DebugRegisters, EndianReader, SourceLocation, VariableCache, debug_info::*,
@@ -349,8 +352,9 @@ impl UnitInfo {
                     }
                     gimli::DW_AT_enum_class => match attr.value() {
                         gimli::AttributeValue::Flag(true) => {
-                            child_variable
-                                .set_value(VariableValue::Valid(child_variable.type_name()));
+                            child_variable.set_value(VariableValue::Valid(
+                                child_variable.compact_type_name(),
+                            ));
                         }
                         gimli::AttributeValue::Flag(false) => {
                             child_variable.set_value(VariableValue::Error(
@@ -1305,7 +1309,7 @@ impl UnitInfo {
                 )?;
             }
             gimli::DW_TAG_pointer_type => {
-                child_variable.type_name = VariableType::Pointer(type_name);
+                child_variable.type_name = self.pointer_from_name(type_name);
                 self.process_memory_location(
                     debug_info,
                     node,
@@ -1568,7 +1572,12 @@ impl UnitInfo {
         frame_info: StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         let type_name = type_name.unwrap_or_else(|| "<unnamed struct>".to_string());
-        child_variable.type_name = VariableType::Struct(type_name.clone());
+        let mut visiting = HashSet::new();
+        if let Some(offset) = node.offset().to_debug_info_offset(&self.unit.header) {
+            visiting.insert(offset);
+        }
+        let named = self.extract_named_type(debug_info, node, type_name, &mut visiting);
+        child_variable.type_name = VariableType::Struct(named);
         self.process_memory_location(
             debug_info,
             node,
@@ -1585,7 +1594,10 @@ impl UnitInfo {
                     VariableNodeType::TypeOffset(self.debug_info_offset()?, node.offset());
                 // In some cases, it really simplifies the UX if we can auto resolve the
                 // children and derive a value that is visible at first glance to the user.
-                if self.language.auto_resolve_children(&type_name) {
+                if self
+                    .language
+                    .auto_resolve_children(&child_variable.type_name)
+                {
                     let temp_node_type = std::mem::replace(
                         &mut child_variable.variable_node_type,
                         VariableNodeType::RecurseToBaseType,
@@ -1607,13 +1619,13 @@ impl UnitInfo {
                 // Unit structs such as `None` have no members. A deferred node would still
                 // get a DAP `variables_reference`, so the client offers to expand it.
                 child_variable.variable_node_type = VariableNodeType::DoNotRecurse;
-                child_variable.set_value(VariableValue::Valid(type_name));
+                child_variable.set_value(VariableValue::Valid(child_variable.compact_type_name()));
             }
         } else {
             child_variable.variable_node_type = VariableNodeType::DoNotRecurse;
             child_variable.set_value(VariableValue::Valid(format!(
                 "{} @ {}",
-                child_variable.type_name(),
+                child_variable.compact_type_name(),
                 child_variable.memory_location
             )));
         }
@@ -1713,8 +1725,16 @@ impl UnitInfo {
         memory: &mut dyn MemoryInterface,
         frame_info: StackFrameInfo,
     ) -> Result<(), DebugError> {
-        child_variable.type_name =
-            VariableType::Enum(type_name.unwrap_or_else(|| "<unnamed enum>".to_string()));
+        let mut visiting = HashSet::new();
+        if let Some(offset) = node.offset().to_debug_info_offset(&self.unit.header) {
+            visiting.insert(offset);
+        }
+        child_variable.type_name = VariableType::Enum(self.extract_named_type(
+            debug_info,
+            node,
+            type_name.unwrap_or_else(|| "<unnamed enum>".to_string()),
+            &mut visiting,
+        ));
 
         self.process_memory_location(
             debug_info,
@@ -2467,10 +2487,13 @@ impl UnitInfo {
         // 5. Pointers to types with referenced memory addresses (e.g. variants, generics, arrays, etc.)
         (matches!(child_variable.name, VariableName::Named(ref var_name) if var_name.starts_with('*'))
                 && matches!(parent_variable.role, VariantRole::VariantPart(_)))
-            || matches!(&parent_variable.type_name, VariableType::Pointer(Some(pointer_name)) if pointer_name.starts_with('*'))
+            || parent_variable
+                .type_name
+                .ident()
+                .is_some_and(|name| name.starts_with('*'))
             || (matches!(&parent_variable.type_name, VariableType::Pointer(_))
                 && (matches!(child_variable.type_name, VariableType::Base(_))
-                    || matches!(child_variable.type_name, VariableType::Struct(ref type_name) if type_name.starts_with("&str"))
+                    || matches!(child_variable.type_name, VariableType::Struct(ref type_name) if type_name.ident_stem().starts_with("&str"))
                     || matches!(child_variable.name, VariableName::Named(ref var_name) if var_name.starts_with('*'))
                     || self.has_address_pointer(unit_ref).unwrap_or_else(|error| {
                         child_variable.set_value(VariableValue::Error(format!("Failed to determine if a struct has variant or generic type fields: {error}")));
@@ -2498,7 +2521,238 @@ impl UnitInfo {
         Ok(false)
     }
 
-    /// Returns the `DW_AT_name` attribute in the subtree of a given node or recurses into the node referenced by the `DW_AT_type` attribute.
+    fn extract_named_type(
+        &self,
+        debug_info: &DebugInfo,
+        node: &gimli::DebuggingInformationEntry<GimliReader>,
+        raw_name: String,
+        visiting: &mut HashSet<DebugInfoOffset>,
+    ) -> NamedType {
+        let namespace = self.namespace_path(debug_info, node);
+        let args = self.extract_generic_args(debug_info, node, visiting);
+        NamedType::from_dwarf(raw_name, namespace, args, self.language.as_ref())
+    }
+
+    fn parse_or_base(&self, name: String) -> VariableType {
+        self.language
+            .parse_type_name(&name)
+            .unwrap_or(VariableType::Base(name))
+    }
+
+    fn pointer_from_name(&self, name: Option<String>) -> VariableType {
+        VariableType::Pointer(name.map(|name| {
+            Box::new(
+                self.language
+                    .parse_type_name(&name)
+                    .unwrap_or(VariableType::Other(name)),
+            )
+        }))
+    }
+
+    fn extract_generic_args(
+        &self,
+        debug_info: &DebugInfo,
+        node: &gimli::DebuggingInformationEntry<GimliReader>,
+        visiting: &mut HashSet<DebugInfoOffset>,
+    ) -> Vec<GenericArg> {
+        let Ok(mut tree) = self.unit.entries_tree(Some(node.offset())) else {
+            return Vec::new();
+        };
+        let Ok(root) = tree.root() else {
+            return Vec::new();
+        };
+        let mut args = Vec::new();
+        self.collect_generic_args(debug_info, root, visiting, &mut args);
+        args
+    }
+
+    fn collect_generic_args(
+        &self,
+        debug_info: &DebugInfo,
+        node: gimli::EntriesTreeNode<'_, '_, GimliReader>,
+        visiting: &mut HashSet<DebugInfoOffset>,
+        args: &mut Vec<GenericArg>,
+    ) {
+        let mut children = node.children();
+        while let Ok(Some(child)) = children.next() {
+            match child.entry().tag() {
+                gimli::DW_TAG_template_type_parameter => {
+                    if let Some(arg) = self.template_type_arg(debug_info, child.entry(), visiting) {
+                        args.push(arg);
+                    }
+                }
+                gimli::DW_TAG_template_value_parameter => {
+                    args.push(GenericArg::Const(self.template_const_arg(child.entry())));
+                }
+                gimli::DW_TAG_GNU_template_parameter_pack => {
+                    self.collect_generic_args(debug_info, child, visiting, args);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    fn template_type_arg(
+        &self,
+        debug_info: &DebugInfo,
+        entry: &gimli::DebuggingInformationEntry<GimliReader>,
+        visiting: &mut HashSet<DebugInfoOffset>,
+    ) -> Option<GenericArg> {
+        let attr = entry.attr(gimli::DW_AT_type)?;
+        let (unit, ty_node) = debug_info
+            .resolve_die_reference_with_unit(attr, self)
+            .ok()?;
+        Some(GenericArg::Type(
+            unit.extract_variable_type(debug_info, &ty_node, visiting),
+        ))
+    }
+
+    fn template_const_arg(&self, entry: &gimli::DebuggingInformationEntry<GimliReader>) -> String {
+        let Some(attr) = entry.attr(gimli::DW_AT_const_value) else {
+            return "<const>".to_string();
+        };
+        let value = attr.value();
+        if let Some(const_value) = value.udata_value() {
+            const_value.to_string()
+        } else if let Some(const_value) = value.sdata_value() {
+            const_value.to_string()
+        } else {
+            "<const>".to_string()
+        }
+    }
+
+    fn extract_variable_type(
+        &self,
+        debug_info: &DebugInfo,
+        node: &gimli::DebuggingInformationEntry<GimliReader>,
+        visiting: &mut HashSet<DebugInfoOffset>,
+    ) -> VariableType {
+        let Some(offset) = node.offset().to_debug_info_offset(&self.unit.header) else {
+            return VariableType::Unknown;
+        };
+        if !visiting.insert(offset) {
+            return self.cycle_break_type(debug_info, node);
+        }
+        let ty = self.extract_variable_type_inner(debug_info, node, visiting);
+        visiting.remove(&offset);
+        ty
+    }
+
+    fn cycle_break_type(
+        &self,
+        debug_info: &DebugInfo,
+        node: &gimli::DebuggingInformationEntry<GimliReader>,
+    ) -> VariableType {
+        let name = self
+            .extract_type_name(debug_info, node)
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "<recursive>".to_string());
+        let named = NamedType::from_dwarf(
+            name,
+            self.namespace_path(debug_info, node),
+            Vec::new(),
+            self.language.as_ref(),
+        );
+        match node.tag() {
+            gimli::DW_TAG_structure_type => VariableType::Struct(named),
+            gimli::DW_TAG_enumeration_type => VariableType::Enum(named),
+            gimli::DW_TAG_base_type => VariableType::Base(named.ident),
+            gimli::DW_TAG_pointer_type => self.pointer_from_name(Some(named.ident)),
+            _ => VariableType::Other(named.ident),
+        }
+    }
+
+    fn extract_variable_type_inner(
+        &self,
+        debug_info: &DebugInfo,
+        node: &gimli::DebuggingInformationEntry<GimliReader>,
+        visiting: &mut HashSet<DebugInfoOffset>,
+    ) -> VariableType {
+        let name = self.extract_type_name(debug_info, node).ok().flatten();
+
+        match node.tag() {
+            gimli::DW_TAG_base_type => {
+                self.parse_or_base(name.unwrap_or_else(|| "<unnamed base type>".to_string()))
+            }
+            gimli::DW_TAG_pointer_type => self.pointer_from_name(name),
+            gimli::DW_TAG_structure_type => VariableType::Struct(self.extract_named_type(
+                debug_info,
+                node,
+                name.unwrap_or_else(|| "<unnamed struct>".to_string()),
+                visiting,
+            )),
+            gimli::DW_TAG_enumeration_type => VariableType::Enum(self.extract_named_type(
+                debug_info,
+                node,
+                name.unwrap_or_else(|| "<unnamed enum>".to_string()),
+                visiting,
+            )),
+            gimli::DW_TAG_union_type => {
+                VariableType::Base(name.unwrap_or_else(|| "<unnamed union>".to_string()))
+            }
+            gimli::DW_TAG_array_type => {
+                self.extract_array_variable_type(debug_info, node, visiting)
+            }
+            other @ (gimli::DW_TAG_typedef
+            | gimli::DW_TAG_const_type
+            | gimli::DW_TAG_volatile_type
+            | gimli::DW_TAG_restrict_type
+            | gimli::DW_TAG_atomic_type) => {
+                let inner = match node.attr(gimli::DW_AT_type) {
+                    Some(attr) => debug_info
+                        .resolve_die_reference_with_unit(attr, self)
+                        .map(|(unit, ty_node)| {
+                            unit.extract_variable_type(debug_info, &ty_node, visiting)
+                        })
+                        .unwrap_or(VariableType::Unknown),
+                    None => VariableType::Unknown,
+                };
+                let modifier = match other {
+                    gimli::DW_TAG_typedef => {
+                        Modifier::Typedef(name.unwrap_or_else(|| "<unnamed typedef>".to_string()))
+                    }
+                    gimli::DW_TAG_const_type => Modifier::Const,
+                    gimli::DW_TAG_volatile_type => Modifier::Volatile,
+                    gimli::DW_TAG_restrict_type => Modifier::Restrict,
+                    gimli::DW_TAG_atomic_type => Modifier::Atomic,
+                    _ => unreachable!(),
+                };
+                VariableType::Modified(modifier, Box::new(inner))
+            }
+            _ => VariableType::Other(name.unwrap_or_else(|| "unimplemented".to_string())),
+        }
+    }
+
+    fn extract_array_variable_type(
+        &self,
+        debug_info: &DebugInfo,
+        node: &gimli::DebuggingInformationEntry<GimliReader>,
+        visiting: &mut HashSet<DebugInfoOffset>,
+    ) -> VariableType {
+        let count = self
+            .extract_array_range(node.offset())
+            .ok()
+            .and_then(|ranges| ranges.into_iter().next())
+            .map(|range| range.count())
+            .unwrap_or(0);
+
+        let item_type_name = match node.attr(gimli::DW_AT_type) {
+            Some(attr) => debug_info
+                .resolve_die_reference_with_unit(attr, self)
+                .map(|(unit, item_node)| {
+                    unit.extract_variable_type(debug_info, &item_node, visiting)
+                })
+                .unwrap_or(VariableType::Unknown),
+            None => VariableType::Unknown,
+        };
+
+        VariableType::Array {
+            item_type_name: Box::new(item_type_name),
+            count,
+        }
+    }
+
     pub(crate) fn extract_type_name(
         &self,
         debug_info: &DebugInfo,

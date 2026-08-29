@@ -488,7 +488,8 @@ impl VariableCache {
 
             // The datatype &str is a special case, because it is stores a pointer to the string data,
             // and the length of the string.
-            if matches!(variable.type_name, VariableType::Struct(ref name) if name == "&str") {
+            if matches!(variable.type_name, VariableType::Struct(ref name) if name.ident_stem() == "&str")
+            {
                 let children: Vec<_> = self.get_children(variable.variable_key).collect();
                 if !children.is_empty() {
                     let string_length = match children.iter().find(|child_variable| {

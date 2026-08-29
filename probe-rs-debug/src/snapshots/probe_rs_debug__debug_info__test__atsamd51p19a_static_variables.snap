@@ -32,7 +32,10 @@ Child Variables:
       type_name:
         Modified:
           - Typedef: SEGGER_RTT_CB
-          - Struct: "<unnamed struct>"
+          - Struct:
+              ident: "<unnamed struct>"
+              namespace: []
+              args: []
       value: SEGGER_RTT_CB @ 0x20002000
       source_location:
         path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
@@ -261,7 +264,10 @@ Child Variables:
               item_type_name:
                 Modified:
                   - Typedef: SEGGER_RTT_BUFFER_UP
-                  - Struct: "<unnamed struct>"
+                  - Struct:
+                      ident: "<unnamed struct>"
+                      namespace: []
+                      args: []
               count: 1
           value: "SEGGER_RTT_BUFFER_UP[1] = [\n\tSEGGER_RTT_BUFFER_UP @ 0x20002018]"
           source_location:
@@ -276,7 +282,10 @@ Child Variables:
               type_name:
                 Modified:
                   - Typedef: SEGGER_RTT_BUFFER_UP
-                  - Struct: "<unnamed struct>"
+                  - Struct:
+                      ident: "<unnamed struct>"
+                      namespace: []
+                      args: []
               value: SEGGER_RTT_BUFFER_UP @ 0x20002018
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
@@ -288,7 +297,8 @@ Child Variables:
                 - name:
                     Named: sName
                   type_name:
-                    Pointer: char
+                    Pointer:
+                      Other: char
                   value: char* @ 0x00001654
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
@@ -307,7 +317,8 @@ Child Variables:
                 - name:
                     Named: pBuffer
                   type_name:
-                    Pointer: char
+                    Pointer:
+                      Other: char
                   value: char* @ 0x20002048
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
@@ -374,7 +385,10 @@ Child Variables:
               item_type_name:
                 Modified:
                   - Typedef: SEGGER_RTT_BUFFER_DOWN
-                  - Struct: "<unnamed struct>"
+                  - Struct:
+                      ident: "<unnamed struct>"
+                      namespace: []
+                      args: []
               count: 1
           value: "SEGGER_RTT_BUFFER_DOWN[1] = [\n\tSEGGER_RTT_BUFFER_DOWN @ 0x20002030]"
           source_location:
@@ -389,7 +403,10 @@ Child Variables:
               type_name:
                 Modified:
                   - Typedef: SEGGER_RTT_BUFFER_DOWN
-                  - Struct: "<unnamed struct>"
+                  - Struct:
+                      ident: "<unnamed struct>"
+                      namespace: []
+                      args: []
               value: SEGGER_RTT_BUFFER_DOWN @ 0x20002030
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
@@ -401,7 +418,8 @@ Child Variables:
                 - name:
                     Named: sName
                   type_name:
-                    Pointer: char
+                    Pointer:
+                      Other: char
                   value: char* @ 0x00001654
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
@@ -420,7 +438,8 @@ Child Variables:
                 - name:
                     Named: pBuffer
                   type_name:
-                    Pointer: char
+                    Pointer:
+                      Other: char
                   value: char* @ 0x20002448
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
@@ -1254,7 +1273,10 @@ Child Variables:
       type_name:
         Modified:
           - Typedef: Foo_t
-          - Struct: "<unnamed struct>"
+          - Struct:
+              ident: "<unnamed struct>"
+              namespace: []
+              args: []
       value: Foo_t @ 0x20000000
       source_location:
         path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
@@ -1270,7 +1292,10 @@ Child Variables:
           children:
             - name: Unknown
               type_name:
-                Struct: "<unnamed struct>"
+                Struct:
+                  ident: "<unnamed struct>"
+                  namespace: []
+                  args: []
               value: "<unnamed struct> @ 0x20000000"
               children:
                 - name:
@@ -1351,7 +1376,10 @@ Child Variables:
         - name:
             Named: unsigned_bitfields
           type_name:
-            Struct: "<unnamed struct>"
+            Struct:
+              ident: "<unnamed struct>"
+              namespace: []
+              args: []
           value: "<unnamed struct> @ 0x20000004"
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
@@ -1401,7 +1429,10 @@ Child Variables:
         - name:
             Named: signed_bitfields
           type_name:
-            Struct: "<unnamed struct>"
+            Struct:
+              ident: "<unnamed struct>"
+              namespace: []
+              args: []
           value: "<unnamed struct> @ 0x20000005"
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
@@ -1459,7 +1490,10 @@ Child Variables:
                   - Const
                   - Modified:
                       - Typedef: Foo_t
-                      - Struct: "<unnamed struct>"
+                      - Struct:
+                          ident: "<unnamed struct>"
+                          namespace: []
+                          args: []
               count: 2
       value: "const Foo_t[2] = [\n\tFoo_t @ 0x00001684,\n\tFoo_t @ 0x0000168C]"
       source_location:
@@ -1476,7 +1510,10 @@ Child Variables:
               - Const
               - Modified:
                   - Typedef: Foo_t
-                  - Struct: "<unnamed struct>"
+                  - Struct:
+                      ident: "<unnamed struct>"
+                      namespace: []
+                      args: []
           value: Foo_t @ 0x00001684
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
@@ -1492,7 +1529,10 @@ Child Variables:
               children:
                 - name: Unknown
                   type_name:
-                    Struct: "<unnamed struct>"
+                    Struct:
+                      ident: "<unnamed struct>"
+                      namespace: []
+                      args: []
                   value: "<unnamed struct> @ 0x00001684"
                   children:
                     - name:
@@ -1573,7 +1613,10 @@ Child Variables:
             - name:
                 Named: unsigned_bitfields
               type_name:
-                Struct: "<unnamed struct>"
+                Struct:
+                  ident: "<unnamed struct>"
+                  namespace: []
+                  args: []
               value: "<unnamed struct> @ 0x00001688"
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
@@ -1623,7 +1666,10 @@ Child Variables:
             - name:
                 Named: signed_bitfields
               type_name:
-                Struct: "<unnamed struct>"
+                Struct:
+                  ident: "<unnamed struct>"
+                  namespace: []
+                  args: []
               value: "<unnamed struct> @ 0x00001689"
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
@@ -1677,7 +1723,10 @@ Child Variables:
               - Const
               - Modified:
                   - Typedef: Foo_t
-                  - Struct: "<unnamed struct>"
+                  - Struct:
+                      ident: "<unnamed struct>"
+                      namespace: []
+                      args: []
           value: Foo_t @ 0x0000168C
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
@@ -1693,7 +1742,10 @@ Child Variables:
               children:
                 - name: Unknown
                   type_name:
-                    Struct: "<unnamed struct>"
+                    Struct:
+                      ident: "<unnamed struct>"
+                      namespace: []
+                      args: []
                   value: "<unnamed struct> @ 0x0000168C"
                   children:
                     - name:
@@ -1774,7 +1826,10 @@ Child Variables:
             - name:
                 Named: unsigned_bitfields
               type_name:
-                Struct: "<unnamed struct>"
+                Struct:
+                  ident: "<unnamed struct>"
+                  namespace: []
+                  args: []
               value: "<unnamed struct> @ 0x00001690"
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
@@ -1824,7 +1879,10 @@ Child Variables:
             - name:
                 Named: signed_bitfields
               type_name:
-                Struct: "<unnamed struct>"
+                Struct:
+                  ident: "<unnamed struct>"
+                  namespace: []
+                  args: []
               value: "<unnamed struct> @ 0x00001691"
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"

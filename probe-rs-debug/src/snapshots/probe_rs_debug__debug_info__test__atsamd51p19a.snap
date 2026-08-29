@@ -689,7 +689,8 @@ expression: stack_frames
         - name:
             Named: string
           type_name:
-            Pointer: int
+            Pointer:
+              Other: int
           value: int* @ 0x00001750
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
@@ -915,7 +916,8 @@ expression: stack_frames
         - name:
             Named: pSrc
           type_name:
-            Pointer: uint32_t
+            Pointer:
+              Other: uint32_t
           value: uint32_t* @ 0x00000000
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\Atmel\\Device_Startup\\startup_samd51.c"
@@ -936,7 +938,8 @@ expression: stack_frames
         - name:
             Named: pDest
           type_name:
-            Pointer: uint32_t
+            Pointer:
+              Other: uint32_t
           value: uint32_t* @ 0x20000074
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\Atmel\\Device_Startup\\startup_samd51.c"

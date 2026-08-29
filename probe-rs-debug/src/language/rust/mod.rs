@@ -1,3 +1,5 @@
+mod type_name;
+
 use crate::{
     DebugError, DebugInfo, GimliReader, ObjectRef, Variable, VariableCache, VariableLocation,
     VariableName, VariableNodeType, VariableType, VariableValue,
@@ -376,7 +378,7 @@ impl Rust {
             future_state.source_location = payload.source_location.clone();
             future_state.memory_location = payload.memory_location.clone();
             future_state.byte_size = payload.byte_size;
-            future_state.set_value(VariableValue::Valid(payload.type_name()));
+            future_state.set_value(VariableValue::Valid(payload.compact_type_name()));
 
             let mut has_child = false;
             if let Some(mut awaitee) = awaitee {
@@ -704,7 +706,7 @@ impl ProgrammingLanguage for Rust {
 
                 _undetermined_value => VariableValue::Empty,
             },
-            VariableType::Struct(name) if name == "&str" => {
+            VariableType::Struct(name) if name.ident_stem() == "&str" => {
                 String::get_value(variable, memory, variable_cache).into()
             }
             VariableType::Other(name) if name == "!" => {
@@ -749,7 +751,11 @@ impl ProgrammingLanguage for Rust {
     }
 
     fn format_enum_value(&self, type_name: &VariableType, value: &VariableName) -> VariableValue {
-        VariableValue::Valid(format!("{}::{}", type_name.display_name(self), value))
+        VariableValue::Valid(format!(
+            "{}::{}",
+            type_name.display_name_with_style(self, crate::TypeNameStyle::Compact),
+            value
+        ))
     }
 
     fn format_array_type(&self, item_type: &str, length: usize) -> String {
@@ -765,6 +771,18 @@ impl ProgrammingLanguage for Rust {
             // FIXME: we should track where the type name came from - the pointer node, or the pointee.
             format!("*raw {ptr_type}")
         }
+    }
+
+    fn parse_type_name(&self, name: &str) -> Option<VariableType> {
+        type_name::parse_variable_type(name)
+    }
+
+    fn format_named_head(&self, ident: &str, args: &[String]) -> Option<String> {
+        type_name::format_named_head(ident, args)
+    }
+
+    fn is_path_ident(&self, ident: &str) -> bool {
+        type_name::is_path_ident(ident)
     }
 
     fn format_function_name(
@@ -794,14 +812,16 @@ impl ProgrammingLanguage for Rust {
         }
     }
 
-    fn auto_resolve_children(&self, name: &str) -> bool {
+    fn auto_resolve_children(&self, ty: &VariableType) -> bool {
         // Do not match `Some`, `Ok`, or `Err`. `process_variant` already expands the
-        // active variant. `starts_with("Err")` also matched `Error` and walked
-        // those types on the first expand.
-        name.starts_with("&str")
-            || name.starts_with("&[")
-            || is_rust_type(name, "Option")
-            || is_rust_type(name, "Result")
+        // active variant. Matching `Err` as a prefix also matched `Error`.
+        let Some(ident) = ty.ident() else {
+            return false;
+        };
+        ident.starts_with("&str")
+            || ident.starts_with("&[")
+            || ident == "Option"
+            || ident == "Result"
     }
 
     fn process_struct(
@@ -814,7 +834,11 @@ impl ProgrammingLanguage for Rust {
         cache: &mut VariableCache,
         frame_info: StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
-        if variable.type_name().starts_with("&[") {
+        if variable
+            .type_name
+            .ident()
+            .is_some_and(|ident| ident.starts_with("&["))
+        {
             self.expand_slice(debug_info, variable, memory, cache, frame_info)?;
         }
 
@@ -911,9 +935,25 @@ impl RustPath {
     }
 
     fn from_variable(debug_info: &DebugInfo, variable: &Variable) -> Option<Self> {
+        if let Some(named) = variable.type_name.named() {
+            return Self::from_named(named);
+        }
         let offset = variable.type_node_offset?;
         let (unit_info, entry) = debug_info.entry_at_debug_info_offset(offset).ok()?;
         Self::from_die(unit_info, debug_info, &entry)
+    }
+
+    fn from_named(named: &crate::NamedType) -> Option<Self> {
+        let mut namespaces = named.namespace.clone();
+        if namespaces.is_empty() {
+            return None;
+        }
+        let crate_name = namespaces.remove(0);
+        Some(Self {
+            crate_name,
+            modules: namespaces,
+            ident: named.ident_stem().to_string(),
+        })
     }
 
     fn is_rustc_lib(&self) -> bool {
@@ -1112,6 +1152,7 @@ fn is_poll_context_ref(debug_info: &DebugInfo, variable: &Variable) -> bool {
 }
 
 /// `type_name`, `prefix::type_name`, or those names with a generic argument list.
+#[cfg(test)]
 fn is_rust_type(name: &str, type_name: &str) -> bool {
     type_ident(name) == type_name
 }
