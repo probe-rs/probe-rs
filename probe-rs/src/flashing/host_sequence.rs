@@ -67,21 +67,21 @@ pub trait DebugFlashSequence: Send + Sync + Debug {
     /// Program data to flash at the given address.
     ///
     /// Called once per page by [`HostSideFlasher`](super::HostSideFlasher) unless
-    /// [`program_image`](Self::program_image) returns `Some`.
+    /// [`program_image`](Self::program_image) returns `Ok(true)`.
     fn program(&self, session: &mut Session, address: u64, data: &[u8]) -> Result<(), Error>;
 
     /// Program the entire flash image in one operation.
     ///
     /// Devices that require a whole-image operation (e.g. toolbox-based devices like CC35xx)
-    /// override this method.  When it returns `Some`, the per-page `program()` loop is skipped.
+    /// override this method.  When it returns `Ok(true)`, the per-page `program()` loop is skipped.
     ///
-    /// The default returns `None`, falling back to the per-page `program()` calls.
+    /// The default returns `Ok(false)`, falling back to the per-page `program()` calls.
     fn program_image(
         &self,
         _session: &mut Session,
         _regions: &[(&NvmRegion, &FlashLayout)],
-    ) -> Option<Result<(), Error>> {
-        None
+    ) -> Result<bool, Error> {
+        Ok(false)
     }
 
     /// Verify that the data at the given address matches `data`.

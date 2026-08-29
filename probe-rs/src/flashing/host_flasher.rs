@@ -220,8 +220,11 @@ impl HostSideFlasher {
                 .map(|r| (&r.region, r.flash_layout()))
                 .collect();
 
-            if let Some(result) = this.flash_sequence.program_image(session, &region_layouts) {
-                result.map_err(FlashError::Core)?;
+            if this
+                .flash_sequence
+                .program_image(session, &region_layouts)
+                .map_err(FlashError::Core)?
+            {
                 // Progress reporting for whole-image: report all pages as programmed.
                 for r in &this.regions {
                     let layout = r.flash_layout();
