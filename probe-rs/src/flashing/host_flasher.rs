@@ -151,16 +151,18 @@ impl HostSideFlasher {
         session: &mut Session,
         progress: &mut FlashProgress<'_>,
     ) -> Result<(), FlashError> {
-        tracing::info!("Host-side: Running chip erase");
+        self.run_with_flash(session, |this, session| {
+            tracing::info!("Host-side: Running chip erase");
 
-        self.flash_sequence
-            .erase_all(session)
-            .map_err(|e| FlashError::ChipEraseFailed {
-                source: Box::new(e),
-            })?;
+            this.flash_sequence
+                .erase_all(session)
+                .map_err(|e| FlashError::ChipEraseFailed {
+                    source: Box::new(e),
+                })?;
 
-        progress.finished_erasing();
-        Ok(())
+            progress.finished_erasing();
+            Ok(())
+        })
     }
 
     fn run_with_flash<R>(
