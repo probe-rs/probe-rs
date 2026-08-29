@@ -3011,42 +3011,21 @@ expression: stack_frames
                                       type_name:
                                         Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
                                       value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker @ 0x3C013AD4"
-                                      children:
-                                        - name:
-                                            Named: "*clone"
-                                          type_name:
-                                            Other: RawWaker
-                                          value: "<unknown value>"
                                     - name:
                                         Named: wake
                                       type_name:
                                         Pointer: unsafe fn(*const ())
                                       value: "*raw unsafe fn(*const ()) @ 0x3FC9C0B8"
-                                      children:
-                                        - name:
-                                            Named: "*wake"
-                                          type_name: Unknown
-                                          value: "<No Return Value>"
                                     - name:
                                         Named: wake_by_ref
                                       type_name:
                                         Pointer: unsafe fn(*const ())
                                       value: "*raw unsafe fn(*const ()) @ 0x3FCDC598"
-                                      children:
-                                        - name:
-                                            Named: "*wake_by_ref"
-                                          type_name: Unknown
-                                          value: "<No Return Value>"
                                     - name:
                                         Named: drop
                                       type_name:
                                         Pointer: unsafe fn(*const ())
                                       value: "*raw unsafe fn(*const ()) @ 0x3FCDC598"
-                                      children:
-                                        - name:
-                                            Named: "*drop"
-                                          type_name: Unknown
-                                          value: "<No Return Value>"
                 - name:
                     Named: local_waker
                   type_name:
@@ -3138,42 +3117,21 @@ expression: stack_frames
                                       type_name:
                                         Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
                                       value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker"
-                                      children:
-                                        - name:
-                                            Named: "*clone"
-                                          type_name:
-                                            Other: RawWaker
-                                          value: "<unknown value>"
                                     - name:
                                         Named: wake
                                       type_name:
                                         Pointer: unsafe fn(*const ())
                                       value: "*raw unsafe fn(*const ())"
-                                      children:
-                                        - name:
-                                            Named: "*wake"
-                                          type_name: Unknown
-                                          value: "<No Return Value>"
                                     - name:
                                         Named: wake_by_ref
                                       type_name:
                                         Pointer: unsafe fn(*const ())
                                       value: "*raw unsafe fn(*const ())"
-                                      children:
-                                        - name:
-                                            Named: "*wake_by_ref"
-                                          type_name: Unknown
-                                          value: "<No Return Value>"
                                     - name:
                                         Named: drop
                                       type_name:
                                         Pointer: unsafe fn(*const ())
                                       value: "*raw unsafe fn(*const ())"
-                                      children:
-                                        - name:
-                                            Named: "*drop"
-                                          type_name: Unknown
-                                          value: "<No Return Value>"
                 - name:
                     Named: local_waker
                   type_name:
@@ -3214,42 +3172,21 @@ expression: stack_frames
                                       type_name:
                                         Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
                                       value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker"
-                                      children:
-                                        - name:
-                                            Named: "*clone"
-                                          type_name:
-                                            Other: RawWaker
-                                          value: "<unknown value>"
                                     - name:
                                         Named: wake
                                       type_name:
                                         Pointer: unsafe fn(*const ())
                                       value: "*raw unsafe fn(*const ())"
-                                      children:
-                                        - name:
-                                            Named: "*wake"
-                                          type_name: Unknown
-                                          value: "<No Return Value>"
                                     - name:
                                         Named: wake_by_ref
                                       type_name:
                                         Pointer: unsafe fn(*const ())
                                       value: "*raw unsafe fn(*const ())"
-                                      children:
-                                        - name:
-                                            Named: "*wake_by_ref"
-                                          type_name: Unknown
-                                          value: "<No Return Value>"
                                     - name:
                                         Named: drop
                                       type_name:
                                         Pointer: unsafe fn(*const ())
                                       value: "*raw unsafe fn(*const ())"
-                                      children:
-                                        - name:
-                                            Named: "*drop"
-                                          type_name: Unknown
-                                          value: "<No Return Value>"
                 - name:
                     Named: ext
                   type_name:
@@ -3762,11 +3699,6 @@ expression: stack_frames
                                       type_name:
                                         Pointer: "unsafe fn(embassy_executor::raw::TaskRef)"
                                       value: "*raw unsafe fn(embassy_executor::raw::TaskRef) @ 0x4200109C"
-                                      children:
-                                        - name:
-                                            Named: "*__0"
-                                          type_name: Unknown
-                                          value: "<No Return Value>"
                     - name:
                         Named: timer_queue_item
                       type_name:
@@ -4030,42 +3962,21 @@ expression: stack_frames
                           type_name:
                             Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
                           value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker"
-                          children:
-                            - name:
-                                Named: "*clone"
-                              type_name:
-                                Other: RawWaker
-                              value: "<unknown value>"
                         - name:
                             Named: wake
                           type_name:
                             Pointer: unsafe fn(*const ())
                           value: "*raw unsafe fn(*const ())"
-                          children:
-                            - name:
-                                Named: "*wake"
-                              type_name: Unknown
-                              value: "<No Return Value>"
                         - name:
                             Named: wake_by_ref
                           type_name:
                             Pointer: unsafe fn(*const ())
                           value: "*raw unsafe fn(*const ())"
-                          children:
-                            - name:
-                                Named: "*wake_by_ref"
-                              type_name: Unknown
-                              value: "<No Return Value>"
                         - name:
                             Named: drop
                           type_name:
                             Pointer: unsafe fn(*const ())
                           value: "*raw unsafe fn(*const ())"
-                          children:
-                            - name:
-                                Named: "*drop"
-                              type_name: Unknown
-                              value: "<No Return Value>"
         - name:
             Named: cx
           type_name:
@@ -4117,42 +4028,21 @@ expression: stack_frames
                                   type_name:
                                     Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
                                   value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker"
-                                  children:
-                                    - name:
-                                        Named: "*clone"
-                                      type_name:
-                                        Other: RawWaker
-                                      value: "<unknown value>"
                                 - name:
                                     Named: wake
                                   type_name:
                                     Pointer: unsafe fn(*const ())
                                   value: "*raw unsafe fn(*const ())"
-                                  children:
-                                    - name:
-                                        Named: "*wake"
-                                      type_name: Unknown
-                                      value: "<No Return Value>"
                                 - name:
                                     Named: wake_by_ref
                                   type_name:
                                     Pointer: unsafe fn(*const ())
                                   value: "*raw unsafe fn(*const ())"
-                                  children:
-                                    - name:
-                                        Named: "*wake_by_ref"
-                                      type_name: Unknown
-                                      value: "<No Return Value>"
                                 - name:
                                     Named: drop
                                   type_name:
                                     Pointer: unsafe fn(*const ())
                                   value: "*raw unsafe fn(*const ())"
-                                  children:
-                                    - name:
-                                        Named: "*drop"
-                                      type_name: Unknown
-                                      value: "<No Return Value>"
             - name:
                 Named: local_waker
               type_name:
@@ -4193,42 +4083,21 @@ expression: stack_frames
                                   type_name:
                                     Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
                                   value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker"
-                                  children:
-                                    - name:
-                                        Named: "*clone"
-                                      type_name:
-                                        Other: RawWaker
-                                      value: "<unknown value>"
                                 - name:
                                     Named: wake
                                   type_name:
                                     Pointer: unsafe fn(*const ())
                                   value: "*raw unsafe fn(*const ())"
-                                  children:
-                                    - name:
-                                        Named: "*wake"
-                                      type_name: Unknown
-                                      value: "<No Return Value>"
                                 - name:
                                     Named: wake_by_ref
                                   type_name:
                                     Pointer: unsafe fn(*const ())
                                   value: "*raw unsafe fn(*const ())"
-                                  children:
-                                    - name:
-                                        Named: "*wake_by_ref"
-                                      type_name: Unknown
-                                      value: "<No Return Value>"
                                 - name:
                                     Named: drop
                                   type_name:
                                     Pointer: unsafe fn(*const ())
                                   value: "*raw unsafe fn(*const ())"
-                                  children:
-                                    - name:
-                                        Named: "*drop"
-                                      type_name: Unknown
-                                      value: "<No Return Value>"
             - name:
                 Named: ext
               type_name:
@@ -4610,11 +4479,6 @@ expression: stack_frames
                                           type_name:
                                             Pointer: "unsafe fn(embassy_executor::raw::TaskRef)"
                                           value: "*raw unsafe fn(embassy_executor::raw::TaskRef) @ 0x3FC89820"
-                                          children:
-                                            - name:
-                                                Named: "*__0"
-                                              type_name: Unknown
-                                              value: "<No Return Value>"
                         - name:
                             Named: timer_queue_item
                           type_name:
@@ -4888,11 +4752,6 @@ expression: stack_frames
                                   type_name:
                                     Pointer: "unsafe fn(embassy_executor::raw::TaskRef)"
                                   value: "*raw unsafe fn(embassy_executor::raw::TaskRef) @ 0x3FC89820"
-                                  children:
-                                    - name:
-                                        Named: "*__0"
-                                      type_name: Unknown
-                                      value: "<No Return Value>"
                 - name:
                     Named: timer_queue_item
                   type_name:
@@ -5421,11 +5280,6 @@ expression: stack_frames
                                           type_name:
                                             Pointer: "unsafe fn(embassy_executor::raw::TaskRef)"
                                           value: "*raw unsafe fn(embassy_executor::raw::TaskRef) @ 0x3FC89820"
-                                          children:
-                                            - name:
-                                                Named: "*__0"
-                                              type_name: Unknown
-                                              value: "<No Return Value>"
                         - name:
                             Named: timer_queue_item
                           type_name:

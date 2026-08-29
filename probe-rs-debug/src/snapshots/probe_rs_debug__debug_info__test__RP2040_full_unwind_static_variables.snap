@@ -2095,11 +2095,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2121,11 +2116,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2147,11 +2137,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2173,11 +2158,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2199,11 +2179,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2225,11 +2200,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2251,11 +2221,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2277,11 +2242,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2303,11 +2263,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2329,11 +2284,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2355,11 +2305,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2381,11 +2326,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2407,11 +2347,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2433,11 +2368,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2459,11 +2389,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2485,11 +2410,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2511,11 +2431,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2537,11 +2452,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2563,11 +2473,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2589,11 +2494,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2615,11 +2515,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2641,11 +2536,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2667,11 +2557,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2693,11 +2578,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2719,11 +2599,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2745,11 +2620,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2771,11 +2641,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2797,11 +2662,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2823,11 +2683,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2849,11 +2704,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2875,11 +2725,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2901,11 +2746,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*_handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: _reserved
                   type_name:
@@ -2945,12 +2785,6 @@ Child Variables:
             line: 1048
             column: ~
             address: ~
-          children:
-            - name:
-                Named: "*__RESET_VECTOR"
-              type_name:
-                Other: "!"
-              value: "<unknown value>"
         - name:
             Named: __EXCEPTIONS
           type_name:
@@ -2981,11 +2815,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:
@@ -3007,11 +2836,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000B8F3"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:
@@ -3033,11 +2857,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:
@@ -3059,11 +2878,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:
@@ -3085,11 +2899,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:
@@ -3111,11 +2920,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:
@@ -3137,11 +2941,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:
@@ -3163,11 +2962,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:
@@ -3189,11 +2983,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:
@@ -3215,11 +3004,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000035F"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:
@@ -3241,11 +3025,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:
@@ -3267,11 +3046,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:
@@ -3293,11 +3067,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:
@@ -3319,11 +3088,6 @@ Child Variables:
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000034D"
-                  children:
-                    - name:
-                        Named: "*handler"
-                      type_name: Unknown
-                      value: "<No Return Value>"
                 - name:
                     Named: reserved
                   type_name:

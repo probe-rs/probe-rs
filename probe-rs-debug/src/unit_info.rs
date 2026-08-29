@@ -1340,21 +1340,26 @@ impl UnitInfo {
                                         )),
                                     };
 
-                                    referenced_unit.extract_type(
-                                        debug_info,
-                                        &referenced_node,
-                                        child_variable,
-                                        &mut referenced_variable,
-                                        memory,
-                                        cache,
-                                        frame_info,
-                                    )?;
-
-                                    if matches!(referenced_variable.type_name.inner(), VariableType::Base(name) if name == "()")
-                                    {
-                                        // Only use this, if it is NOT a unit datatype.
+                                    if referenced_node.tag() == gimli::DW_TAG_subroutine_type {
                                         cache
                                             .remove_cache_entry(referenced_variable.variable_key)?;
+                                    } else {
+                                        referenced_unit.extract_type(
+                                            debug_info,
+                                            &referenced_node,
+                                            child_variable,
+                                            &mut referenced_variable,
+                                            memory,
+                                            cache,
+                                            frame_info,
+                                        )?;
+
+                                        if matches!(referenced_variable.type_name.inner(), VariableType::Base(name) if name == "()")
+                                        {
+                                            cache.remove_cache_entry(
+                                                referenced_variable.variable_key,
+                                            )?;
+                                        }
                                     }
                                 }
                                 Err(error) => {

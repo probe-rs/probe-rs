@@ -212,6 +212,9 @@ impl ProgrammingLanguage for Rust {
             VariableType::Struct(name) if name == "&str" => {
                 String::get_value(variable, memory, variable_cache).into()
             }
+            VariableType::Other(name) if name == "!" => {
+                VariableValue::Valid("<Never returns>".to_string())
+            }
             _other => VariableValue::Empty,
         }
     }
