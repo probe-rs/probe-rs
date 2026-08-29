@@ -4812,7 +4812,7 @@ expression: stack_frames
                                                     Named: "*pointer"
                                                   type_name:
                                                     Struct: TaskHeader
-                                                  value: TaskHeader @ 0x00000001
+                                                  value: "<dangling pointer: 0x00000001>"
                 - name:
                     Named: executor
                   type_name:
@@ -4865,7 +4865,7 @@ expression: stack_frames
                                                     Named: "*value"
                                                   type_name:
                                                     Struct: TaskHeader
-                                                  value: TaskHeader @ 0x00000001
+                                                  value: "<dangling pointer: 0x00000001>"
                                 - name:
                                     Named: pender
                                   type_name:
@@ -4963,7 +4963,7 @@ expression: stack_frames
                                                     Named: "*pointer"
                                                   type_name:
                                                     Struct: TaskHeader
-                                                  value: TaskHeader @ 0x00000004
+                                                  value: "<dangling pointer: 0x00000004>"
                     - name:
                         Named: expires_at
                       type_name:

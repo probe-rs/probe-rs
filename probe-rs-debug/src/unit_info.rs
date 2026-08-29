@@ -2766,6 +2766,13 @@ fn object_at(address: u64, alignment: Option<u64>, byte_size: Option<u64>) -> Op
         return None;
     }
 
+    if let Some(alignment) = alignment
+        && alignment > 1
+        && !address.is_multiple_of(alignment)
+    {
+        return None;
+    }
+
     let dangling = match alignment {
         Some(alignment) => address == alignment,
         // Without the alignment of the type, take every address that an alignment can be: a
@@ -2774,7 +2781,7 @@ fn object_at(address: u64, alignment: Option<u64>, byte_size: Option<u64>) -> Op
         None => {
             address.is_power_of_two()
                 && address <= MAX_ALIGNMENT
-                && byte_size.is_some_and(|byte_size| address <= byte_size)
+                && byte_size.is_none_or(|byte_size| address <= byte_size)
         }
     };
 
@@ -2930,6 +2937,12 @@ mod test {
     }
 
     #[test]
+    fn a_pointer_that_is_not_aligned_to_the_type_points_at_no_object() {
+        assert_eq!(object_at(1, Some(4), Some(32)), None);
+        assert_eq!(object_at(0x2000_0005, Some(4), Some(32)), None);
+    }
+
+    #[test]
     fn without_the_alignment_a_pointer_that_holds_no_more_than_the_size_of_the_type_points_at_no_object()
      {
         assert_eq!(object_at(1, None, Some(1)), None);
@@ -2944,8 +2957,8 @@ mod test {
         assert_eq!(object_at(12, None, Some(32)), Some(12));
         // Greater than the largest alignment of a target type.
         assert_eq!(object_at(32, None, Some(1024)), Some(32));
-        // Without the size of the type.
-        assert_eq!(object_at(4, None, None), Some(4));
+        // Without the size of the type, a small power of two can still be a dangling pointer.
+        assert_eq!(object_at(4, None, None), None);
     }
 
     #[test]
