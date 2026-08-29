@@ -126,11 +126,9 @@ pub trait DebugFlashSequence: Send + Sync + Debug {
         Ok(())
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
 
     /// A minimal no-op implementation used to verify default method behaviour.
     #[derive(Debug)]
@@ -158,6 +156,12 @@ mod tests {
         }
     }
 
+    #[allow(unused, reason = "Test")]
+    fn compile_tests() {
+        fn assert_is_dyn(_: &mut dyn DebugFlashSequence) {}
+        assert_is_dyn(&mut NoOpSequence);
+    }
+
     /// Verifies that optional methods have sensible defaults without needing a real device.
     #[test]
     fn default_methods_do_not_require_override() {
@@ -171,27 +175,5 @@ mod tests {
 
         // prepare_flash, finish_flash, erase_sector all have defaults
         // (compilation proves the defaults exist and have the expected signatures)
-    }
-
-    /// Verifies that the trait is object-safe (can be used as dyn DebugFlashSequence).
-    #[test]
-    fn trait_is_object_safe() {
-        let seq: Arc<dyn DebugFlashSequence> = Arc::new(NoOpSequence);
-        assert!(seq.supports_sector_erase());
-    }
-
-    /// Verifies that a sequence satisfies the Send + Sync bounds.
-    #[test]
-    fn sequence_is_send_sync() {
-        fn assert_send_sync<T: Send + Sync>() {}
-        assert_send_sync::<NoOpSequence>();
-    }
-
-    /// Verifies the Debug bound is satisfied.
-    #[test]
-    fn sequence_implements_debug() {
-        let seq = NoOpSequence;
-        let s = format!("{seq:?}");
-        assert!(!s.is_empty());
     }
 }
