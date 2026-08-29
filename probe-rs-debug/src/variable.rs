@@ -1006,6 +1006,27 @@ impl Variable {
             language::from_dwarf(self.language).read_variable_value(self, memory, variable_cache);
     }
 
+    /// The integer that this variable holds, if the location of the variable can be read as an
+    /// integer of at most 8 bytes. A pointer holds the address that it refers to.
+    pub(crate) fn integer_value(&self, memory: &mut dyn MemoryInterface) -> Option<u64> {
+        if matches!(self.type_name.inner(), VariableType::Pointer(_)) {
+            return self.pointer_target(memory);
+        }
+
+        if let VariableValue::Valid(value) = &self.value
+            && let Ok(value) = value.parse()
+        {
+            return Some(value);
+        }
+
+        let byte_size = self.byte_size.filter(|size| (1..=8).contains(size))? as usize;
+        let mut buffer = [0u8; 8];
+        self.memory_location
+            .read(&mut buffer[..byte_size], memory)
+            .ok()?;
+        Some(u64::from_le_bytes(buffer))
+    }
+
     /// The address that a pointer holds, if the location of the pointer can be read.
     fn pointer_target(&self, memory: &mut dyn MemoryInterface) -> Option<u64> {
         let byte_size = self.pointer_byte_size()?;

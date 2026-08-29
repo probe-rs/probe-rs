@@ -401,16 +401,11 @@ impl UnitInfo {
                                 frame_info,
                             )?;
 
-                            let variant_part = if discriminant_variable.is_valid() {
+                            parent_variable.role = VariantRole::VariantPart(
                                 discriminant_variable
-                                    .to_string(cache)
-                                    .parse()
-                                    .unwrap_or(u64::MAX)
-                            } else {
-                                u64::MAX
-                            };
-
-                            parent_variable.role = VariantRole::VariantPart(variant_part);
+                                    .integer_value(memory)
+                                    .unwrap_or(u64::MAX),
+                            );
                             cache.remove_cache_entry(discriminant_variable.variable_key)?;
                         }
                         other_attribute_value => {
@@ -544,6 +539,7 @@ impl UnitInfo {
 
         tracing::trace!("process_tree for parent {:?}", parent_variable.variable_key);
 
+        let mut default_variant = None;
         let mut child_nodes = parent_node.children();
         while let Some(child_node) = child_nodes.next()? {
             match child_node.entry().tag() {
@@ -689,53 +685,30 @@ impl UnitInfo {
                 // Variant is a child of a structure, and one of them should have a discriminant value to match the
                 // DW_TAG_variant_part
                 gimli::DW_TAG_variant => {
-                    // We only need to do this if we have not already found our variant,
+                    // We only need to do this if we have not already found our variant.
+                    // The default variant (no DW_AT_discr_value) matches every discriminant that has
+                    // no exact variant. Process it after the other variants, so that a niche of 0 on a
+                    // reference type is None, not Some with a null pointer.
                     if !cache.has_children(parent_variable) {
                         let mut child_variable =
                             cache.create_variable(parent_variable.variable_key, Some(self))?;
                         self.extract_variant_discriminant(&child_node, &mut child_variable)?;
-                        self.process_tree_node_attributes(
-                            debug_info,
-                            child_node.entry(),
-                            parent_variable,
-                            &mut child_variable,
-                            memory,
-                            cache,
-                            frame_info,
-                        )?;
-                        if child_variable.is_valid() {
-                            if let VariantRole::Variant(discriminant) = child_variable.role {
-                                // Only process the discriminant variants or when we eventually   encounter the default
-                                if parent_variable.role == VariantRole::VariantPart(discriminant)
-                                    || discriminant == u64::MAX
-                                {
-                                    self.process_memory_location(
-                                        debug_info,
-                                        child_node.entry(),
-                                        parent_variable,
-                                        &mut child_variable,
-                                        memory,
-                                        frame_info,
-                                    )?;
-                                    // Recursively process each relevant child node.
-                                    self.process_tree(
-                                        debug_info,
-                                        child_node,
-                                        &mut child_variable,
-                                        memory,
-                                        cache,
-                                        frame_info,
-                                    )?;
-                                    if child_variable.is_valid() {
-                                        // Eliminate intermediate DWARF nodes, but keep their children
-                                        cache.adopt_grand_children(
-                                            parent_variable,
-                                            &child_variable,
-                                        )?;
-                                    }
-                                } else {
-                                    cache.remove_cache_entry(child_variable.variable_key)?;
+                        if let VariantRole::Variant(discriminant) = child_variable.role {
+                            if parent_variable.role == VariantRole::VariantPart(discriminant) {
+                                self.process_variant(
+                                    debug_info,
+                                    child_node,
+                                    parent_variable,
+                                    &mut child_variable,
+                                    memory,
+                                    cache,
+                                    frame_info,
+                                )?;
+                            } else {
+                                if discriminant == u64::MAX {
+                                    default_variant = Some(child_node.entry().offset());
                                 }
+                                cache.remove_cache_entry(child_variable.variable_key)?;
                             }
                         } else {
                             cache.remove_cache_entry(child_variable.variable_key)?;
@@ -868,8 +841,75 @@ impl UnitInfo {
             }
         }
 
+        if let Some(offset) = default_variant
+            && !cache.has_children(parent_variable)
+        {
+            let mut tree = self.unit.entries_tree(Some(offset))?;
+            let child_node = tree.root()?;
+            let mut child_variable =
+                cache.create_variable(parent_variable.variable_key, Some(self))?;
+            self.process_variant(
+                debug_info,
+                child_node,
+                parent_variable,
+                &mut child_variable,
+                memory,
+                cache,
+                frame_info,
+            )?;
+        }
+
         parent_variable.extract_value(memory, cache);
         cache.update_variable(parent_variable)?;
+
+        Ok(())
+    }
+
+    /// Expand a matching `DW_TAG_variant` and attach its children to the parent.
+    #[expect(clippy::too_many_arguments)]
+    fn process_variant(
+        &self,
+        debug_info: &DebugInfo,
+        child_node: gimli::EntriesTreeNode<GimliReader>,
+        parent_variable: &mut Variable,
+        child_variable: &mut Variable,
+        memory: &mut dyn MemoryInterface,
+        cache: &mut VariableCache,
+        frame_info: StackFrameInfo<'_>,
+    ) -> Result<(), DebugError> {
+        self.process_tree_node_attributes(
+            debug_info,
+            child_node.entry(),
+            parent_variable,
+            child_variable,
+            memory,
+            cache,
+            frame_info,
+        )?;
+        if !child_variable.is_valid() {
+            cache.remove_cache_entry(child_variable.variable_key)?;
+            return Ok(());
+        }
+
+        self.process_memory_location(
+            debug_info,
+            child_node.entry(),
+            parent_variable,
+            child_variable,
+            memory,
+            frame_info,
+        )?;
+        self.process_tree(
+            debug_info,
+            child_node,
+            child_variable,
+            memory,
+            cache,
+            frame_info,
+        )?;
+        if child_variable.is_valid() {
+            cache.adopt_grand_children(parent_variable, child_variable)?;
+        }
 
         Ok(())
     }

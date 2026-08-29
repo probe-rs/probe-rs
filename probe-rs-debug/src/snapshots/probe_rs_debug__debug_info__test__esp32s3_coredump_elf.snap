@@ -1526,63 +1526,16 @@ expression: stack_frames
                       value: ExtData @ <composite value>
                       children:
                         - name:
-                            Named: Some
+                            Named: None
                           type_name:
-                            Struct: Some
-                          value: Some @ <composite value>
+                            Struct: None
+                          value: None @ <composite value>
                           children:
                             - name:
                                 Named: __0
                               type_name:
-                                Struct: "&mut dyn core::any::Any"
-                              value: "&mut dyn core::any::Any @ <composite value>"
-                              children:
-                                - name:
-                                    Named: pointer
-                                  type_name:
-                                    Pointer: "dyn core::any::Any"
-                                  value: "*raw dyn core::any::Any @ 0x00000000"
-                                  children:
-                                    - name:
-                                        Named: "*pointer"
-                                      type_name:
-                                        Struct: "dyn core::any::Any"
-                                      value: "<null pointer>"
-                                - name:
-                                    Named: vtable
-                                  type_name:
-                                    Pointer: "&[usize; 4]"
-                                  value: "&[usize; 4] @ 0x00000000"
-                                  children:
-                                    - name:
-                                        Named: "*vtable"
-                                      type_name:
-                                        Array:
-                                          item_type_name:
-                                            Base: usize
-                                          count: 4
-                                      value: "[usize; 4] = [usize,usize,usize,usize]"
-                                      children:
-                                        - name:
-                                            Indexed: 0
-                                          type_name:
-                                            Base: usize
-                                          value: "<value not available>"
-                                        - name:
-                                            Indexed: 1
-                                          type_name:
-                                            Base: usize
-                                          value: "<value not available>"
-                                        - name:
-                                            Indexed: 2
-                                          type_name:
-                                            Base: usize
-                                          value: "<value not available>"
-                                        - name:
-                                            Indexed: 3
-                                          type_name:
-                                            Base: usize
-                                          value: "<value not available>"
+                                Base: ()
+                              value: ()
         - name:
             Named: _task_context
           type_name:
@@ -1765,63 +1718,16 @@ expression: stack_frames
                       value: ExtData @ 0x3FCDC5A8
                       children:
                         - name:
-                            Named: Some
+                            Named: None
                           type_name:
-                            Struct: Some
-                          value: Some @ 0x3FCDC5A8
+                            Struct: None
+                          value: None @ 0x3FCDC5A8
                           children:
                             - name:
                                 Named: __0
                               type_name:
-                                Struct: "&mut dyn core::any::Any"
-                              value: "&mut dyn core::any::Any @ 0x3FCDC5A8"
-                              children:
-                                - name:
-                                    Named: pointer
-                                  type_name:
-                                    Pointer: "dyn core::any::Any"
-                                  value: "*raw dyn core::any::Any @ 0x3FCDC5A8"
-                                  children:
-                                    - name:
-                                        Named: "*pointer"
-                                      type_name:
-                                        Struct: "dyn core::any::Any"
-                                      value: "<null pointer>"
-                                - name:
-                                    Named: vtable
-                                  type_name:
-                                    Pointer: "&[usize; 4]"
-                                  value: "&[usize; 4] @ 0x3FCDC5AC"
-                                  children:
-                                    - name:
-                                        Named: "*vtable"
-                                      type_name:
-                                        Array:
-                                          item_type_name:
-                                            Base: usize
-                                          count: 4
-                                      value: "[usize; 4] = [usize,usize,usize,usize]"
-                                      children:
-                                        - name:
-                                            Indexed: 0
-                                          type_name:
-                                            Base: usize
-                                          value: "<value not available>"
-                                        - name:
-                                            Indexed: 1
-                                          type_name:
-                                            Base: usize
-                                          value: "<value not available>"
-                                        - name:
-                                            Indexed: 2
-                                          type_name:
-                                            Base: usize
-                                          value: "<value not available>"
-                                        - name:
-                                            Indexed: 3
-                                          type_name:
-                                            Base: usize
-                                          value: "<value not available>"
+                                Base: ()
+                              value: ()
         - name:
             Named: config
           type_name:
@@ -2913,63 +2819,16 @@ expression: stack_frames
                   value: ExtData @ 0x3FCDC5A8
                   children:
                     - name:
-                        Named: Some
+                        Named: None
                       type_name:
-                        Struct: Some
-                      value: Some @ 0x3FCDC5A8
+                        Struct: None
+                      value: None @ 0x3FCDC5A8
                       children:
                         - name:
                             Named: __0
                           type_name:
-                            Struct: "&mut dyn core::any::Any"
-                          value: "&mut dyn core::any::Any @ 0x3FCDC5A8"
-                          children:
-                            - name:
-                                Named: pointer
-                              type_name:
-                                Pointer: "dyn core::any::Any"
-                              value: "*raw dyn core::any::Any @ 0x3FCDC5A8"
-                              children:
-                                - name:
-                                    Named: "*pointer"
-                                  type_name:
-                                    Struct: "dyn core::any::Any"
-                                  value: "<null pointer>"
-                            - name:
-                                Named: vtable
-                              type_name:
-                                Pointer: "&[usize; 4]"
-                              value: "&[usize; 4] @ 0x3FCDC5AC"
-                              children:
-                                - name:
-                                    Named: "*vtable"
-                                  type_name:
-                                    Array:
-                                      item_type_name:
-                                        Base: usize
-                                      count: 4
-                                  value: "[usize; 4] = [usize,usize,usize,usize]"
-                                  children:
-                                    - name:
-                                        Indexed: 0
-                                      type_name:
-                                        Base: usize
-                                      value: "<value not available>"
-                                    - name:
-                                        Indexed: 1
-                                      type_name:
-                                        Base: usize
-                                      value: "<value not available>"
-                                    - name:
-                                        Indexed: 2
-                                      type_name:
-                                        Base: usize
-                                      value: "<value not available>"
-                                    - name:
-                                        Indexed: 3
-                                      type_name:
-                                        Base: usize
-                                      value: "<value not available>"
+                            Base: ()
+                          value: ()
   canonical_frame_address: ~
 - function_name: "{closure#0}"
   source_location:

@@ -1726,32 +1726,16 @@ expression: stack_frames
                   value: ExtData @ <composite value>
                   children:
                     - name:
-                        Named: Some
+                        Named: None
                       type_name:
-                        Struct: Some
-                      value: Some @ <composite value>
+                        Struct: None
+                      value: None @ <composite value>
                       children:
                         - name:
                             Named: __0
                           type_name:
-                            Struct: "&mut dyn core::any::Any"
-                          value: "&mut dyn core::any::Any @ <composite value>"
-                          children:
-                            - name:
-                                Named: pointer
-                              type_name:
-                                Pointer: "dyn core::any::Any"
-                              value: "*raw dyn core::any::Any @ 0x00000000"
-                              children:
-                                - name:
-                                    Named: "*pointer"
-                                  type_name:
-                                    Struct: "dyn core::any::Any"
-                                  value: "<null pointer>"
-                            - name:
-                                Named: vtable
-                              type_name: Unknown
-                              value: "< <value optimized away by compiler, out of scope, or dropped> >"
+                            Base: ()
+                          value: ()
             - name:
                 Named: _marker
               type_name: Unknown
