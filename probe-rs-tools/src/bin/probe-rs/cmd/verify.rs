@@ -41,6 +41,7 @@ impl Cmd {
                 self.format_options,
                 None,
                 self.read_flasher_rtt,
+                None,
             )
             .await?;
 

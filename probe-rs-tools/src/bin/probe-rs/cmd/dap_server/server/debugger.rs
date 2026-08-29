@@ -679,24 +679,41 @@ impl Debugger {
             )));
         };
 
-        if self.config.flashing_config.flashing_enabled {
-            let Some(path_to_elf) = target_core_config.program_binary.clone() else {
-                return Err(DebuggerError::Other(anyhow!(
-                    "Please specify use the `program-binary` option in `launch.json` to specify an executable"
-                )));
-            };
+        // A launch starts the program binary, whether this server writes it to
+        // the target or the client wrote it before it connected. Both cases
+        // need the same preparation of the target.
+        if requested_target_session_type == TargetSessionType::LaunchRequest {
+            if self.config.flashing_config.flashing_enabled {
+                let Some(path_to_elf) = target_core_config.program_binary.clone() else {
+                    return Err(DebuggerError::Other(anyhow!(
+                        "Please specify use the `program-binary` option in `launch.json` to specify an executable"
+                    )));
+                };
 
-            // Store timestamp of flashed binary
-            self.binary_timestamp = get_file_timestamp(&path_to_elf);
+                // Store timestamp of flashed binary
+                self.binary_timestamp = get_file_timestamp(&path_to_elf);
 
-            Self::flash(
-                &self.config,
-                &path_to_elf,
-                debug_adapter,
-                launch_attach_request,
-                &mut session_data,
-            )
-            .await?;
+                Self::flash(
+                    &self.config,
+                    &path_to_elf,
+                    debug_adapter,
+                    launch_attach_request,
+                    &mut session_data,
+                )
+                .await?;
+            } else {
+                self.binary_timestamp = target_core_config
+                    .program_binary
+                    .as_deref()
+                    .and_then(get_file_timestamp);
+
+                // The program that ran before the launch left an RTT control
+                // block in RAM. A download by another tool does not clear it,
+                // thus the debugger can attach to the stale block before the
+                // reset below lets the new program initialize its own.
+                session_data.configure_rtt_from_image(&self.config).await?;
+                session_data.clear_rtt_block(&self.config).await?;
+            }
         }
 
         // First, halt the core so we can finish initialization without
@@ -871,7 +888,7 @@ impl Debugger {
             cd.rtt_connection = None;
         }
 
-        session_data.clear_rtt_blocks(&self.config).await?;
+        session_data.clear_rtt_block(&self.config).await?;
 
         // Do not poll the cores here. The reset discards the state of the
         // target, thus a poll would unwind the stack, tell the client that the
@@ -939,9 +956,9 @@ impl Debugger {
         }
         type ProgressState = HashMap<Operation, ProgressBarState>;
 
-        // Clear stale RTT control blocks before reflashing so that the old
-        // control block header does not leak into the first poll cycle.
-        session_data.clear_rtt_blocks(config).await?;
+        // The backend clears the stale control block of this client between
+        // building the image and writing it.
+        let rtt_client = session_data.rtt_client(config).await?;
 
         let mut flash_progress_state = ProgressState::default();
         let describe_op = |operation| match operation {
@@ -1012,7 +1029,7 @@ impl Debugger {
 
             session_data
                 .backend
-                .flash_binary_resolved(upload, &config.flashing_config, &mut on_event)
+                .flash_binary_resolved(upload, &config.flashing_config, rtt_client, &mut on_event)
                 .await
         };
 

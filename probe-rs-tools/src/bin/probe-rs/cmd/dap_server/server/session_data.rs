@@ -283,18 +283,12 @@ impl SessionData {
         Ok(data.handle)
     }
 
-    /// Clear stale RTT control blocks for every RTT-enabled core.
-    ///
-    /// This should be called while the core is halted, before a reset, to wipe
-    /// stale RTT data from a previous debug session. After reset, the firmware
-    /// startup code will reinitialize the block from `.data`.
-    ///
-    /// The clear is routed through the server-side `RttClient`, so a control
-    /// block that the flash loader initializes in RAM is left alone.
-    pub(crate) async fn clear_rtt_blocks(
+    /// The first RTT-enabled core configuration that matches a core of the
+    /// target, together with the server-side `RttClient` of that core.
+    async fn rtt_core<'config>(
         &mut self,
-        config: &SessionConfig,
-    ) -> Result<(), DebuggerError> {
+        config: &'config SessionConfig,
+    ) -> Result<Option<(&'config CoreConfig, Key<RttClient>)>, DebuggerError> {
         for core_config in config.core_configs.iter() {
             if !core_config.rtt_config.enabled {
                 continue;
@@ -311,14 +305,79 @@ impl SessionData {
                 .ensure_rtt_client(cd_idx, &core_config.rtt_config)
                 .await?;
 
-            self.backend
-                .session_interface()
-                .clear_rtt_control_block(rtt_key)
-                .await
-                .map_err(rpc_err)
-                .map_err(DebuggerError::ProbeRs)?;
+            return Ok(Some((core_config, rtt_key)));
         }
+
+        Ok(None)
+    }
+
+    /// The server-side `RttClient` of the debugged core, or `None` when RTT is
+    /// disabled.
+    pub(crate) async fn rtt_client(
+        &mut self,
+        config: &SessionConfig,
+    ) -> Result<Option<Key<RttClient>>, DebuggerError> {
+        Ok(self.rtt_core(config).await?.map(|(_, rtt_key)| rtt_key))
+    }
+
+    /// Tell the RTT client which program the target holds, so that it knows
+    /// whether the download writes the control block.
+    ///
+    /// The image, not the download, carries this information, thus this runs
+    /// for a program that another tool flashed as well.
+    pub(crate) async fn configure_rtt_from_image(
+        &mut self,
+        config: &SessionConfig,
+    ) -> Result<(), DebuggerError> {
+        let Some((core_config, rtt_key)) = self.rtt_core(config).await? else {
+            return Ok(());
+        };
+        let Some(program_binary) = core_config.program_binary.clone() else {
+            return Ok(());
+        };
+
+        // An image that probe-rs cannot load also cannot have written the
+        // control block, thus a failure here leaves clearing enabled.
+        if let Err(error) = self
+            .backend
+            .session_interface()
+            .build_flash_loader(
+                program_binary,
+                config.flashing_config.format_options.clone(),
+                None,
+                false,
+                Some(rtt_key),
+            )
+            .await
+        {
+            tracing::warn!("Failed to inspect the program binary for RTT: {error}");
+        }
+
         Ok(())
+    }
+
+    /// Clear the stale RTT control block of the debugged core.
+    ///
+    /// This should be called while the core is halted, before a reset, to wipe
+    /// stale RTT data from a previous debug session. After reset, the firmware
+    /// startup code will reinitialize the block from `.data`.
+    ///
+    /// The clear is routed through the server-side `RttClient`, so a control
+    /// block that the flash loader initializes in RAM is left alone.
+    pub(crate) async fn clear_rtt_block(
+        &mut self,
+        config: &SessionConfig,
+    ) -> Result<(), DebuggerError> {
+        let Some(rtt_key) = self.rtt_client(config).await? else {
+            return Ok(());
+        };
+
+        self.backend
+            .session_interface()
+            .clear_rtt_control_block(rtt_key)
+            .await
+            .map_err(rpc_err)
+            .map_err(DebuggerError::ProbeRs)
     }
 
     /// Recompute source breakpoint addresses after a restart that flashed a

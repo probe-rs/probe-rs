@@ -523,6 +523,7 @@ pub async fn flash(
             format,
             image_target,
             download_options.read_flasher_rtt,
+            rtt_client,
         )
         .await?;
 
@@ -560,7 +561,7 @@ pub async fn flash(
             Some(CliProgressBars::new())
         };
         session
-            .flash(options, loader.loader, rtt_client, async |event| {
+            .flash(options, loader.loader, async |event| {
                 if let ProgressEvent::FlashLayoutReady {
                     flash_layout: layout,
                 } = &event

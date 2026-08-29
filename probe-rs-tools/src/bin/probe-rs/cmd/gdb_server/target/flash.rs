@@ -87,7 +87,7 @@ impl Flash for RuntimeTarget {
             ..DownloadOptions::default()
         };
 
-        self.block_on(self.session.flash(options, loader, None, async |_| {}))
+        self.block_on(self.session.flash(options, loader, async |_| {}))
             .map_err(|e| {
                 tracing::error!("GDB flash_done failed to commit flash programming: {e:#}");
                 TargetError::NonFatal

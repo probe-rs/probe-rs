@@ -790,10 +790,17 @@ impl SessionInterface {
         format: FormatOptions,
         image_target: Option<String>,
         read_flasher_rtt: bool,
+        rtt_client: Option<Key<RttClient>>,
     ) -> Result<BuildResult, ClientError> {
         let upload = self.client.resolve_upload(&path).await?;
-        self.build_flash_loader_resolved(&upload, format, image_target, read_flasher_rtt)
-            .await
+        self.build_flash_loader_resolved(
+            &upload,
+            format,
+            image_target,
+            read_flasher_rtt,
+            rtt_client,
+        )
+        .await
     }
 
     pub async fn build_flash_loader_resolved(
@@ -802,6 +809,7 @@ impl SessionInterface {
         mut format: FormatOptions,
         image_target: Option<String>,
         read_flasher_rtt: bool,
+        rtt_client: Option<Key<RttClient>>,
     ) -> Result<BuildResult, ClientError> {
         let path = upload.server_path().to_path_buf();
 
@@ -830,6 +838,7 @@ impl SessionInterface {
                 format,
                 image_target,
                 read_flasher_rtt,
+                rtt_client,
             })
             .await
     }
@@ -838,7 +847,6 @@ impl SessionInterface {
         &self,
         options: DownloadOptions,
         loader: Key<FlashLoader>,
-        rtt_client: Option<Key<RttClient>>,
         on_msg: impl AsyncFnMut(ProgressEvent),
     ) -> Result<(), ClientError> {
         self.client
@@ -847,7 +855,6 @@ impl SessionInterface {
                     sessid: self.sessid,
                     loader,
                     options,
-                    rtt_client,
                 },
                 on_msg,
             )

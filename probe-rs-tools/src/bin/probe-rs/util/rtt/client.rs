@@ -52,23 +52,25 @@ impl RttClient {
         }
     }
 
-    pub fn disallow_clearing_rtt_header(&mut self) {
-        self.disallow_clearing_rtt_header = true;
-    }
-
+    /// Learn from `loader` whether the download initializes the RTT control
+    /// block, and allow or disallow clearing the block accordingly.
+    ///
+    /// When using RTT with a program in flash, the RTT header will be moved to RAM on
+    /// startup, so clearing it before startup is ok. However, if we're downloading to the
+    /// header's final address in RAM, then it's not relocated on startup and we should not
+    /// clear it. This impacts static RTT headers, like used in defmt_rtt.
     pub fn configure_from_loader(&mut self, loader: &FlashLoader) {
-        // When using RTT with a program in flash, the RTT header will be moved to RAM on
-        // startup, so clearing it before startup is ok. However, if we're downloading to the
-        // header's final address in RAM, then it's not relocated on startup and we should not
-        // clear it. This impacts static RTT headers, like used in defmt_rtt.
+        // An image replaces the one this client learned from, thus this
+        // assigns rather than only disallows.
+        self.disallow_clearing_rtt_header = match self.scan_region {
+            ScanRegion::Exact(address) => loader.has_data_for_address(address),
+            _ => false,
+        };
 
-        if let ScanRegion::Exact(address) = self.scan_region
-            && loader.has_data_for_address(address)
-        {
+        if self.disallow_clearing_rtt_header {
             tracing::debug!(
                 "RTT control block is initialized by flash loader. Disabling clearing."
             );
-            self.disallow_clearing_rtt_header()
         }
     }
 
@@ -294,5 +296,75 @@ impl RttClient {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use probe_rs::config::Registry;
+
+    const CONTROL_BLOCK: u64 = 0x2000_0000;
+    const ELSEWHERE: u64 = 0x2000_1000;
+
+    fn target() -> Target {
+        Registry::from_builtin_families()
+            .get_target_by_name("nRF52833_xxAA")
+            .unwrap()
+    }
+
+    fn loader_writing(target: &Target, address: u64) -> FlashLoader {
+        let mut loader = target.flash_loader();
+        loader.add_data(address, &[0; 16]).unwrap();
+        loader
+    }
+
+    fn client(target: &Target) -> RttClient {
+        RttClient::new(
+            RttConfig::default(),
+            ScanRegion::Exact(CONTROL_BLOCK),
+            target,
+        )
+    }
+
+    #[test]
+    fn a_control_block_that_the_download_writes_is_not_cleared() {
+        let target = target();
+        let mut client = client(&target);
+
+        client.configure_from_loader(&loader_writing(&target, CONTROL_BLOCK));
+
+        assert!(client.disallow_clearing_rtt_header);
+    }
+
+    #[test]
+    fn a_control_block_that_the_program_initializes_is_cleared() {
+        let target = target();
+        let mut client = client(&target);
+
+        client.configure_from_loader(&loader_writing(&target, ELSEWHERE));
+
+        assert!(!client.disallow_clearing_rtt_header);
+    }
+
+    #[test]
+    fn a_later_image_decides_again_whether_the_control_block_is_cleared() {
+        let target = target();
+        let mut client = client(&target);
+
+        client.configure_from_loader(&loader_writing(&target, CONTROL_BLOCK));
+        client.configure_from_loader(&loader_writing(&target, ELSEWHERE));
+
+        assert!(!client.disallow_clearing_rtt_header);
+    }
+
+    #[test]
+    fn a_scanned_control_block_is_cleared() {
+        let target = target();
+        let mut client = RttClient::new(RttConfig::default(), ScanRegion::Ram, &target);
+
+        client.configure_from_loader(&loader_writing(&target, CONTROL_BLOCK));
+
+        assert!(!client.disallow_clearing_rtt_header);
     }
 }

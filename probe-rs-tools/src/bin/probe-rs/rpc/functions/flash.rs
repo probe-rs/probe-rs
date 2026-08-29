@@ -135,6 +135,16 @@ pub async fn build(
 
     loader.read_rtt_output(request.read_flasher_rtt);
 
+    // The image decides whether the RTT control block survives a download, so
+    // this must happen for every image we build, not only for one we write:
+    // `preverify` can skip the write, and the DAP server builds an image it
+    // has not flashed itself.
+    if let Some(rtt_client) = request.rtt_client {
+        ctx.object_mut(rtt_client)
+            .await
+            .configure_from_loader(&loader);
+    }
+
     Ok(BuildResult {
         boot_info: convert::to_wire_boot_info(loader.boot_info()),
         loader: ctx.store_object(loader).await,
@@ -172,15 +182,7 @@ fn flash_impl(
     let dry_run = ctx.dry_run(request.sessid);
     let mut session = ctx.session_blocking(request.sessid);
 
-    let mut rtt_client = request
-        .rtt_client
-        .map(|rtt_client| ctx.object_mut_blocking(rtt_client));
-
     let loader = ctx.object_mut_blocking(request.loader);
-
-    if let Some(rtt_client) = rtt_client.as_mut() {
-        rtt_client.configure_from_loader(&loader);
-    }
 
     let mut options = flash_request_download_options(&request);
     options.dry_run = dry_run;
