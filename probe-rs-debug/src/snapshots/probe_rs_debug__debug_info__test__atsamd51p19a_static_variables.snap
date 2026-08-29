@@ -1266,7 +1266,7 @@ Child Variables:
         - name: Unknown
           type_name:
             Base: "<unnamed union>"
-          value: "<unnamed union> {\n\t<unknown>: <unnamed struct> = <unnamed struct> @ 0x20000000,\n\tx: uint32_t = 1200000}"
+          value: "<unnamed union> @ 0x20000000"
           children:
             - name: Unknown
               type_name:
@@ -1488,7 +1488,7 @@ Child Variables:
             - name: Unknown
               type_name:
                 Base: "<unnamed union>"
-              value: "<unnamed union> {\n\t<unknown>: <unnamed struct> = <unnamed struct> @ 0x00001684,\n\tx: uint32_t = 0}"
+              value: "<unnamed union> @ 0x00001684"
               children:
                 - name: Unknown
                   type_name:
@@ -1689,7 +1689,7 @@ Child Variables:
             - name: Unknown
               type_name:
                 Base: "<unnamed union>"
-              value: "<unnamed union> {\n\t<unknown>: <unnamed struct> = <unnamed struct> @ 0x0000168C,\n\tx: uint32_t = 0}"
+              value: "<unnamed union> @ 0x0000168C"
               children:
                 - name: Unknown
                   type_name:

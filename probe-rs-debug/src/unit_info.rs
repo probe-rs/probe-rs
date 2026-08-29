@@ -1217,20 +1217,11 @@ impl UnitInfo {
                     frame_info,
                 )?;
 
-                let mut tree = self.unit.entries_tree(Some(node.offset()))?;
-
-                // Recursively process a child types.
-                self.process_tree(
-                    debug_info,
-                    tree.root()?,
-                    child_variable,
-                    memory,
-                    cache,
-                    frame_info,
-                )?;
-                if child_variable.is_valid() && !cache.has_children(child_variable) {
-                    // Empty structs don't have values.
-                    child_variable.set_value(VariableValue::Valid(child_variable.type_name()));
+                if child_variable.memory_location.valid() {
+                    child_variable.variable_node_type =
+                        VariableNodeType::TypeOffset(self.debug_info_offset()?, node.offset());
+                } else {
+                    child_variable.variable_node_type = VariableNodeType::DoNotRecurse;
                 }
             }
             gimli::DW_TAG_subroutine_type => {

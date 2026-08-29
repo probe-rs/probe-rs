@@ -1,6 +1,5 @@
 ---
 source: probe-rs-debug/src/debug_info.rs
-assertion_line: 1999
 expression: stack_frames
 ---
 - function_name: test_deep_stack
@@ -4898,13 +4897,13 @@ expression: stack_frames
                   item_type_name:
                     Base: MaybeUninit<i8>
                   count: 10
-              value: "[MaybeUninit<i8>; 10] = [\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC5C\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC5D\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC5E\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC5F\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC60\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC61\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC62\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC63\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC64\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC65\n\t}]"
+              value: "[MaybeUninit<i8>; 10] = [\n\tMaybeUninit<i8> @ 0x3FCCFC5C,\n\tMaybeUninit<i8> @ 0x3FCCFC5D,\n\tMaybeUninit<i8> @ 0x3FCCFC5E,\n\tMaybeUninit<i8> @ 0x3FCCFC5F,\n\tMaybeUninit<i8> @ 0x3FCCFC60,\n\tMaybeUninit<i8> @ 0x3FCCFC61,\n\tMaybeUninit<i8> @ 0x3FCCFC62,\n\tMaybeUninit<i8> @ 0x3FCCFC63,\n\tMaybeUninit<i8> @ 0x3FCCFC64,\n\tMaybeUninit<i8> @ 0x3FCCFC65]"
               children:
                 - name:
                     Indexed: 0
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC5C}"
+                  value: MaybeUninit<i8> @ 0x3FCCFC5C
                   children:
                     - name:
                         Named: uninit
@@ -4926,7 +4925,7 @@ expression: stack_frames
                     Indexed: 1
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC5D}"
+                  value: MaybeUninit<i8> @ 0x3FCCFC5D
                   children:
                     - name:
                         Named: uninit
@@ -4948,7 +4947,7 @@ expression: stack_frames
                     Indexed: 2
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC5E}"
+                  value: MaybeUninit<i8> @ 0x3FCCFC5E
                   children:
                     - name:
                         Named: uninit
@@ -4970,7 +4969,7 @@ expression: stack_frames
                     Indexed: 3
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC5F}"
+                  value: MaybeUninit<i8> @ 0x3FCCFC5F
                   children:
                     - name:
                         Named: uninit
@@ -4992,7 +4991,7 @@ expression: stack_frames
                     Indexed: 4
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC60}"
+                  value: MaybeUninit<i8> @ 0x3FCCFC60
                   children:
                     - name:
                         Named: uninit
@@ -5014,7 +5013,7 @@ expression: stack_frames
                     Indexed: 5
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC61}"
+                  value: MaybeUninit<i8> @ 0x3FCCFC61
                   children:
                     - name:
                         Named: uninit
@@ -5036,7 +5035,7 @@ expression: stack_frames
                     Indexed: 6
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC62}"
+                  value: MaybeUninit<i8> @ 0x3FCCFC62
                   children:
                     - name:
                         Named: uninit
@@ -5058,7 +5057,7 @@ expression: stack_frames
                     Indexed: 7
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC63}"
+                  value: MaybeUninit<i8> @ 0x3FCCFC63
                   children:
                     - name:
                         Named: uninit
@@ -5080,7 +5079,7 @@ expression: stack_frames
                     Indexed: 8
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC64}"
+                  value: MaybeUninit<i8> @ 0x3FCCFC64
                   children:
                     - name:
                         Named: uninit
@@ -5102,7 +5101,7 @@ expression: stack_frames
                     Indexed: 9
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC65}"
+                  value: MaybeUninit<i8> @ 0x3FCCFC65
                   children:
                     - name:
                         Named: uninit

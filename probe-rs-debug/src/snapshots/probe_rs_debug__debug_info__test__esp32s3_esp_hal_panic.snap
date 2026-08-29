@@ -3876,7 +3876,7 @@ expression: stack_frames
                         Named: __0
                       type_name:
                         Base: "MaybeUninit<core::cell::UnsafeCell<s3::____embassy_main_task::{async_fn_env#0}>>"
-                      value: "MaybeUninit<core::cell::UnsafeCell<s3::____embassy_main_task::{async_fn_env#0}>> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<core::cell::UnsafeCell<s3::____embassy_main_task::{async_fn_env#0}>> = ManuallyDrop<core::cell::UnsafeCell<s3::____embassy_main_task::{async_fn_env#0}>> @ 0x3FC9C0D8}"
+                      value: "MaybeUninit<core::cell::UnsafeCell<s3::____embassy_main_task::{async_fn_env#0}>> @ 0x3FC9C0D8"
                       children:
                         - name:
                             Named: uninit

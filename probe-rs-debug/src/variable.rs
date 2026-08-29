@@ -151,8 +151,7 @@ pub enum VariableNodeType {
     ///   'active' child as the value.
     /// - Rule: For now, Array types WILL ALWAYS BE recursed. TODO: Evaluate if it is beneficial to
     ///   defer these.
-    /// - Rule: For now, Union types WILL ALWAYS BE recursed. TODO: Evaluate if it is beneficial to
-    ///   defer these.
+    /// - Rule: Union types are deferred, like structured types.
     #[default]
     RecurseToBaseType,
 }
