@@ -4089,6 +4089,12 @@ expression: stack_frames
             line: 305
             column: ~
             address: ~
+          children:
+            - name:
+                Named: __0
+              type_name:
+                Base: u8
+              value: "0"
         - name:
             Named: rtt_channels
           type_name:
@@ -4155,7 +4161,7 @@ expression: stack_frames
                                 Named: write
                               type_name:
                                 Struct: AtomicUsize
-                              value: AtomicUsize @ 0x200000A0
+                              value: "363"
                               children:
                                 - name:
                                     Named: value
@@ -4166,7 +4172,7 @@ expression: stack_frames
                                 Named: read
                               type_name:
                                 Struct: AtomicUsize
-                              value: AtomicUsize @ 0x200000A4
+                              value: "363"
                               children:
                                 - name:
                                     Named: value
@@ -4177,7 +4183,7 @@ expression: stack_frames
                                 Named: flags
                               type_name:
                                 Struct: AtomicUsize
-                              value: AtomicUsize @ 0x200000A8
+                              value: "1"
                               children:
                                 - name:
                                     Named: value
@@ -4233,7 +4239,7 @@ expression: stack_frames
                                 Named: write
                               type_name:
                                 Struct: AtomicUsize
-                              value: AtomicUsize @ 0x200000B8
+                              value: "0"
                               children:
                                 - name:
                                     Named: value
@@ -4244,7 +4250,7 @@ expression: stack_frames
                                 Named: read
                               type_name:
                                 Struct: AtomicUsize
-                              value: AtomicUsize @ 0x200000BC
+                              value: "0"
                               children:
                                 - name:
                                     Named: value
@@ -4255,7 +4261,7 @@ expression: stack_frames
                                 Named: flags
                               type_name:
                                 Struct: AtomicUsize
-                              value: AtomicUsize @ 0x200000C0
+                              value: "1"
                               children:
                                 - name:
                                     Named: value

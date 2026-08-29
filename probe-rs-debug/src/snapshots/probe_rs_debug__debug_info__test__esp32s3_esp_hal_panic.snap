@@ -3576,7 +3576,7 @@ expression: stack_frames
                             Named: state
                           type_name:
                             Struct: AtomicU32
-                          value: AtomicU32 @ 0x3FC9C0C8
+                          value: "1"
                           children:
                             - name:
                                 Named: value
@@ -3708,7 +3708,7 @@ expression: stack_frames
                             Named: expires_at
                           type_name:
                             Struct: Cell<u64>
-                          value: Cell<u64> @ 0x3FC9C0B8
+                          value: "0"
                           children:
                             - name:
                                 Named: value
@@ -4320,7 +4320,7 @@ expression: stack_frames
                                 Named: state
                               type_name:
                                 Struct: AtomicU32
-                              value: AtomicU32 @ 0x3FCDC3C0
+                              value: "1"
                               children:
                                 - name:
                                     Named: value
@@ -4476,7 +4476,7 @@ expression: stack_frames
                                 Named: expires_at
                               type_name:
                                 Struct: Cell<u64>
-                              value: Cell<u64> @ 0x3FCDC3B0
+                              value: "4755850530978120672"
                               children:
                                 - name:
                                     Named: value
@@ -4545,7 +4545,7 @@ expression: stack_frames
                         Named: state
                       type_name:
                         Struct: AtomicU32
-                      value: AtomicU32 @ 0x3FCDC3C0
+                      value: "1"
                       children:
                         - name:
                             Named: value
@@ -4725,7 +4725,7 @@ expression: stack_frames
                         Named: expires_at
                       type_name:
                         Struct: Cell<u64>
-                      value: Cell<u64> @ 0x3FCDC3B0
+                      value: "4755850530978120672"
                       children:
                         - name:
                             Named: value
@@ -5061,7 +5061,7 @@ expression: stack_frames
                                 Named: state
                               type_name:
                                 Struct: AtomicU32
-                              value: AtomicU32 @ 0x3FCDC3C0
+                              value: "1"
                               children:
                                 - name:
                                     Named: value
@@ -5217,7 +5217,7 @@ expression: stack_frames
                                 Named: expires_at
                               type_name:
                                 Struct: Cell<u64>
-                              value: Cell<u64> @ 0x3FCDC3B0
+                              value: "4755850530978120672"
                               children:
                                 - name:
                                     Named: value

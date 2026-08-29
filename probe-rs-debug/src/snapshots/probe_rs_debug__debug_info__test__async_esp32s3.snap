@@ -1,0 +1,4087 @@
+---
+source: probe-rs-debug/src/debug_info.rs
+expression: stack_frames
+---
+- function_name: "{async_fn#0}"
+  source_location:
+    path: "C:\\_Espressif\\_Demos\\s3-debug\\src\\bin\\main.rs"
+    line: 55
+    column:
+      Column: 9
+    address: 1107366681
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: a0
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value:
+        U32: 2181147097
+    - core_register:
+        id: 1
+        roles:
+          - Core: sp
+          - Core: a1
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value:
+        U32: 1070445984
+    - core_register:
+        id: 2
+        roles:
+          - Core: a2
+          - Argument: a2
+          - Return: a2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value:
+        U32: 0
+    - core_register:
+        id: 3
+        roles:
+          - Core: a3
+          - Argument: a3
+          - Return: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value:
+        U32: 1
+    - core_register:
+        id: 4
+        roles:
+          - Core: a4
+          - Argument: a4
+          - Return: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 1
+    - core_register:
+        id: 5
+        roles:
+          - Core: a5
+          - Argument: a5
+          - Return: a5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 1070122480
+    - core_register:
+        id: 6
+        roles:
+          - Core: a6
+          - Argument: a6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 1070121240
+    - core_register:
+        id: 7
+        roles:
+          - Core: fp
+          - Core: a7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 1070121200
+    - core_register:
+        id: 8
+        roles:
+          - Core: a8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 2181108497
+    - core_register:
+        id: 9
+        roles:
+          - Core: a9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value:
+        U32: 1070445936
+    - core_register:
+        id: 10
+        roles:
+          - Core: a10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 1070446056
+    - core_register:
+        id: 11
+        roles:
+          - Core: a11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 40
+    - core_register:
+        id: 12
+        roles:
+          - Core: a12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 1000000
+    - core_register:
+        id: 13
+        roles:
+          - Core: a13
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 0
+    - core_register:
+        id: 14
+        roles:
+          - Core: a14
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 1070122480
+    - core_register:
+        id: 15
+        roles:
+          - Core: a15
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 1070122480
+    - core_register:
+        id: 65280
+        roles:
+          - Core: pc
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 1107366681
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value:
+        U32: 397088
+  pc:
+    U32: 1107366681
+  frame_base: 1070445984
+  is_inlined: true
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown> {\n\t<unknown>: Pin<&mut s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}> = Pin<&mut s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}> @ 0x3FC8C118,\n\t_task_context: &mut core::task::wake::Context = &mut core::task::wake::Context @ 0x3FCDB5C0,\n\tconfig: Config = Config @ 0x3FCDB5D0,\n\ttimg0: TimerGroup<esp_hal::peripherals::TIMG0> = TimerGroup<esp_hal::peripherals::TIMG0> @ 0x3FCDB600}"
+      children:
+        - name: Unknown
+          type_name:
+            Struct: "Pin<&mut s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}>"
+          value: "Pin<&mut s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}> @ 0x3FC8C118"
+          source_location:
+            path: "C:\\_Espressif\\_Demos\\s3-debug\\src\\bin\\main.rs"
+            line: 26
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: pointer
+              type_name:
+                Pointer: "&mut s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}"
+              value: "&mut s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0} @ 0x3FC8C118"
+              children:
+                - name:
+                    Named: "*pointer"
+                  type_name:
+                    Struct: "{async_fn_env#0}"
+                  value: "{async_fn_env#0} @ 0x3FC8C118"
+                  children:
+                    - name:
+                        Named: "3"
+                      type_name:
+                        Struct: Suspend0
+                      value: Suspend0 @ 0x3FC8C118
+                      source_location:
+                        path: "C:\\_Espressif\\_Demos\\s3-debug\\src\\bin\\main.rs"
+                        line: 55
+                        column: ~
+                        address: ~
+                      children:
+                        - name:
+                            Named: portable_atomic_u32
+                          type_name:
+                            Struct: AtomicU32
+                          value: "41"
+                          children:
+                            - name:
+                                Named: __0
+                              type_name:
+                                Base: u32
+                              value: "41"
+                        - name:
+                            Named: core_atomic_u32
+                          type_name:
+                            Struct: Atomic<u32>
+                          value: "41"
+                          children:
+                            - name:
+                                Named: __0
+                              type_name:
+                                Base: u32
+                              value: "41"
+                        - name:
+                            Named: __awaitee
+                          type_name:
+                            Struct: Timer
+                          value: Timer @ 0x3FC8C118
+                          children:
+                            - name:
+                                Named: expires_at
+                              type_name:
+                                Struct: Instant
+                              value: Instant @ 0x3FC8C118
+                              children:
+                                - name:
+                                    Named: ticks
+                                  type_name:
+                                    Base: u64
+                                  value: "7501480"
+                            - name:
+                                Named: yielded_once
+                              type_name:
+                                Base: bool
+                              value: "true"
+                        - name:
+                            Named: spawner
+                          type_name:
+                            Struct: Spawner
+                          value: Spawner @ 0x3FC8C128
+                          children:
+                            - name:
+                                Named: executor
+                              type_name:
+                                Pointer: "&embassy_executor::raw::Executor"
+                              value: "&embassy_executor::raw::Executor @ 0x3FCDB6D0"
+                              children:
+                                - name:
+                                    Named: "*executor"
+                                  type_name:
+                                    Struct: Executor
+                                  value: Executor @ 0x3FCDB6D0
+                                  children:
+                                    - name:
+                                        Named: inner
+                                      type_name:
+                                        Struct: SyncExecutor
+                                      value: SyncExecutor @ 0x3FCDB6D0
+                                      children:
+                                        - name:
+                                            Named: run_queue
+                                          type_name:
+                                            Struct: RunQueue
+                                          value: RunQueue @ 0x3FCDB6D0
+                                          children:
+                                            - name:
+                                                Named: stack
+                                              type_name:
+                                                Struct: "TransferStack<embassy_executor::raw::TaskHeader>"
+                                              value: "TransferStack<embassy_executor::raw::TaskHeader> @ 0x3FCDB6D0"
+                                        - name:
+                                            Named: pender
+                                          type_name:
+                                            Struct: Pender
+                                          value: Pender @ 0x3FCDB6D4
+                                          children:
+                                            - name:
+                                                Named: __0
+                                              type_name:
+                                                Pointer: "*mut ()"
+                                              value: "*mut () @ 0x3FCDB6A0"
+        - name:
+            Named: _task_context
+          type_name:
+            Pointer: "&mut core::task::wake::Context"
+          value: "&mut core::task::wake::Context @ 0x3FCDB5C0"
+          source_location:
+            path: "C:\\_Espressif\\_Demos\\s3-debug\\src\\bin\\main.rs"
+            line: 26
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: "*_task_context"
+              type_name:
+                Struct: Context
+              value: Context @ 0x3FCDB5C0
+              children:
+                - name:
+                    Named: waker
+                  type_name:
+                    Pointer: "&core::task::wake::Waker"
+                  value: "&core::task::wake::Waker @ 0x3FCDB5B8"
+                  children:
+                    - name:
+                        Named: "*waker"
+                      type_name:
+                        Struct: Waker
+                      value: Waker @ 0x3FCDB5B8
+                      children:
+                        - name:
+                            Named: waker
+                          type_name:
+                            Struct: RawWaker
+                          value: RawWaker @ 0x3FCDB5B8
+                          children:
+                            - name:
+                                Named: data
+                              type_name:
+                                Pointer: "*const ()"
+                              value: "*const () @ 0x3FC8C0F0"
+                            - name:
+                                Named: vtable
+                              type_name:
+                                Pointer: "&core::task::wake::RawWakerVTable"
+                              value: "&core::task::wake::RawWakerVTable @ 0x3C005AD0"
+                              children:
+                                - name:
+                                    Named: "*vtable"
+                                  type_name:
+                                    Struct: RawWakerVTable
+                                  value: RawWakerVTable @ 0x3C005AD0
+                                  children:
+                                    - name:
+                                        Named: clone
+                                      type_name:
+                                        Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
+                                      value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker"
+                                    - name:
+                                        Named: wake
+                                      type_name:
+                                        Pointer: unsafe fn(*const ())
+                                      value: "*raw unsafe fn(*const ())"
+                                    - name:
+                                        Named: wake_by_ref
+                                      type_name:
+                                        Pointer: unsafe fn(*const ())
+                                      value: "*raw unsafe fn(*const ())"
+                                    - name:
+                                        Named: drop
+                                      type_name:
+                                        Pointer: unsafe fn(*const ())
+                                      value: "*raw unsafe fn(*const ())"
+                - name:
+                    Named: local_waker
+                  type_name:
+                    Pointer: "&core::task::wake::LocalWaker"
+                  value: "&core::task::wake::LocalWaker @ 0x3FCDB5B8"
+                  children:
+                    - name:
+                        Named: "*local_waker"
+                      type_name:
+                        Struct: LocalWaker
+                      value: LocalWaker @ 0x3FCDB5B8
+                      children:
+                        - name:
+                            Named: waker
+                          type_name:
+                            Struct: RawWaker
+                          value: RawWaker @ 0x3FCDB5B8
+                          children:
+                            - name:
+                                Named: data
+                              type_name:
+                                Pointer: "*const ()"
+                              value: "*const () @ 0x3FC8C0F0"
+                            - name:
+                                Named: vtable
+                              type_name:
+                                Pointer: "&core::task::wake::RawWakerVTable"
+                              value: "&core::task::wake::RawWakerVTable @ 0x3C005AD0"
+                              children:
+                                - name:
+                                    Named: "*vtable"
+                                  type_name:
+                                    Struct: RawWakerVTable
+                                  value: RawWakerVTable @ 0x3C005AD0
+                                  children:
+                                    - name:
+                                        Named: clone
+                                      type_name:
+                                        Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
+                                      value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker"
+                                    - name:
+                                        Named: wake
+                                      type_name:
+                                        Pointer: unsafe fn(*const ())
+                                      value: "*raw unsafe fn(*const ())"
+                                    - name:
+                                        Named: wake_by_ref
+                                      type_name:
+                                        Pointer: unsafe fn(*const ())
+                                      value: "*raw unsafe fn(*const ())"
+                                    - name:
+                                        Named: drop
+                                      type_name:
+                                        Pointer: unsafe fn(*const ())
+                                      value: "*raw unsafe fn(*const ())"
+                - name:
+                    Named: ext
+                  type_name:
+                    Struct: "AssertUnwindSafe<core::task::wake::ExtData>"
+                  value: "AssertUnwindSafe<core::task::wake::ExtData> @ 0x3FCDB5C8"
+                  children:
+                    - name:
+                        Named: __0
+                      type_name:
+                        Struct: ExtData
+                      value: ExtData @ 0x3FCDB5C8
+                      children:
+                        - name:
+                            Named: None
+                          type_name:
+                            Struct: None
+                          value: None @ 0x3FCDB5C8
+                          children:
+                            - name:
+                                Named: __0
+                              type_name:
+                                Base: ()
+                              value: ()
+        - name:
+            Named: config
+          type_name:
+            Struct: Config
+          value: Config @ 0x3FCDB5D0
+          source_location:
+            path: "C:\\_Espressif\\_Demos\\s3-debug\\src\\bin\\main.rs"
+            line: 33
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: cpu_clock
+              type_name:
+                Struct: ClockConfig
+              value: ClockConfig @ 0x3FCDB5D0
+              children:
+                - name:
+                    Named: xtal_clk
+                  type_name:
+                    Struct: "Option<esp_hal::soc::implementation::clocks::XtalClkConfig>"
+                  value: "Option<esp_hal::soc::implementation::clocks::XtalClkConfig> @ 0x3FCDB5E0"
+                  children:
+                    - name:
+                        Named: None
+                      type_name:
+                        Struct: None
+                      value: None
+                - name:
+                    Named: pll_clk
+                  type_name:
+                    Struct: "Option<esp_hal::soc::implementation::clocks::PllClkConfig>"
+                  value: "Option<esp_hal::soc::implementation::clocks::PllClkConfig> @ 0x3FCDB5E1"
+                  children:
+                    - name:
+                        Named: Some
+                      type_name:
+                        Struct: Some
+                      value: Some @ 0x3FCDB5E1
+                      children:
+                        - name:
+                            Named: __0
+                          type_name:
+                            Enum: PllClkConfig
+                          value: "PllClkConfig::_480"
+                - name:
+                    Named: system_pre_div
+                  type_name:
+                    Struct: "Option<esp_hal::soc::implementation::clocks::SystemPreDivConfig>"
+                  value: "Option<esp_hal::soc::implementation::clocks::SystemPreDivConfig> @ 0x3FCDB5D0"
+                - name:
+                    Named: cpu_pll_div_out
+                  type_name:
+                    Struct: "Option<esp_hal::soc::implementation::clocks::CpuPllDivOutConfig>"
+                  value: "Option<esp_hal::soc::implementation::clocks::CpuPllDivOutConfig> @ 0x3FCDB5E3"
+                  children:
+                    - name:
+                        Named: Some
+                      type_name:
+                        Struct: Some
+                      value: Some @ 0x3FCDB5E3
+                      children:
+                        - name:
+                            Named: __0
+                          type_name:
+                            Enum: CpuPllDivOutConfig
+                          value: "CpuPllDivOutConfig::_240"
+                - name:
+                    Named: cpu_clk
+                  type_name:
+                    Struct: "Option<esp_hal::soc::implementation::clocks::CpuClkConfig>"
+                  value: "Option<esp_hal::soc::implementation::clocks::CpuClkConfig> @ 0x3FCDB5E4"
+                  children:
+                    - name:
+                        Named: Some
+                      type_name:
+                        Struct: Some
+                      value: Some @ 0x3FCDB5E4
+                      children:
+                        - name:
+                            Named: __0
+                          type_name:
+                            Enum: CpuClkConfig
+                          value: "CpuClkConfig::Pll"
+                - name:
+                    Named: rc_fast_clk_div_n
+                  type_name:
+                    Struct: "Option<esp_hal::soc::implementation::clocks::RcFastClkDivNConfig>"
+                  value: "Option<esp_hal::soc::implementation::clocks::RcFastClkDivNConfig> @ 0x3FCDB5D8"
+                  children:
+                    - name:
+                        Named: Some
+                      type_name:
+                        Struct: Some
+                      value: Some @ 0x3FCDB5D8
+                      children:
+                        - name:
+                            Named: __0
+                          type_name:
+                            Struct: RcFastClkDivNConfig
+                          value: RcFastClkDivNConfig @ 0x3FCDB5DC
+                          children:
+                            - name:
+                                Named: divisor
+                              type_name:
+                                Base: u32
+                              value: "0"
+                - name:
+                    Named: rtc_slow_clk
+                  type_name:
+                    Struct: "Option<esp_hal::soc::implementation::clocks::RtcSlowClkConfig>"
+                  value: "Option<esp_hal::soc::implementation::clocks::RtcSlowClkConfig> @ 0x3FCDB5E5"
+                  children:
+                    - name:
+                        Named: Some
+                      type_name:
+                        Struct: Some
+                      value: Some @ 0x3FCDB5E5
+                      children:
+                        - name:
+                            Named: __0
+                          type_name:
+                            Enum: RtcSlowClkConfig
+                          value: "RtcSlowClkConfig::RcSlow"
+                - name:
+                    Named: rtc_fast_clk
+                  type_name:
+                    Struct: "Option<esp_hal::soc::implementation::clocks::RtcFastClkConfig>"
+                  value: "Option<esp_hal::soc::implementation::clocks::RtcFastClkConfig> @ 0x3FCDB5E2"
+                  children:
+                    - name:
+                        Named: Some
+                      type_name:
+                        Struct: Some
+                      value: Some @ 0x3FCDB5E2
+                      children:
+                        - name:
+                            Named: __0
+                          type_name:
+                            Enum: RtcFastClkConfig
+                          value: "RtcFastClkConfig::Rc"
+                - name:
+                    Named: low_power_clk
+                  type_name:
+                    Struct: "Option<esp_hal::soc::implementation::clocks::LowPowerClkConfig>"
+                  value: "Option<esp_hal::soc::implementation::clocks::LowPowerClkConfig> @ 0x3FCDB5E7"
+                  children:
+                    - name:
+                        Named: Some
+                      type_name:
+                        Struct: Some
+                      value: Some @ 0x3FCDB5E7
+                      children:
+                        - name:
+                            Named: __0
+                          type_name:
+                            Enum: LowPowerClkConfig
+                          value: "LowPowerClkConfig::RtcSlow"
+                - name:
+                    Named: timg_calibration_clock
+                  type_name:
+                    Struct: "Option<esp_hal::soc::implementation::clocks::TimgCalibrationClockConfig>"
+                  value: "Option<esp_hal::soc::implementation::clocks::TimgCalibrationClockConfig> @ 0x3FCDB5E6"
+                  children:
+                    - name:
+                        Named: None
+                      type_name:
+                        Struct: None
+                      value: None
+        - name:
+            Named: timg0
+          type_name:
+            Struct: "TimerGroup<esp_hal::peripherals::TIMG0>"
+          value: "TimerGroup<esp_hal::peripherals::TIMG0> @ 0x3FCDB600"
+          source_location:
+            path: "C:\\_Espressif\\_Demos\\s3-debug\\src\\bin\\main.rs"
+            line: 36
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: timer0
+              type_name:
+                Struct: Timer
+              value: Timer @ 0x3FCDB600
+              children:
+                - name:
+                    Named: register_block
+                  type_name:
+                    Pointer: "*const esp32s3::timg0::RegisterBlock"
+                  value: "*const esp32s3::timg0::RegisterBlock @ 0x3FC8B718"
+                  children:
+                    - name:
+                        Named: "*register_block"
+                      type_name:
+                        Struct: RegisterBlock
+                      value: RegisterBlock @ 0x3FC8B718
+                      children:
+                        - name:
+                            Named: t
+                          type_name:
+                            Array:
+                              item_type_name:
+                                Struct: T
+                              count: 2
+                          value: "[T; 2] = [\n\tT @ 0x3FC8B718,\n\tT @ 0x3FC8B73C]"
+                          children:
+                            - name:
+                                Indexed: 0
+                              type_name:
+                                Struct: T
+                              value: T @ 0x3FC8B718
+                              children:
+                                - name:
+                                    Named: config
+                                  type_name:
+                                    Struct: "Reg<esp32s3::timg0::t::config::CONFIG_SPEC>"
+                                  value: "Reg<esp32s3::timg0::t::config::CONFIG_SPEC> @ 0x3FC8B718"
+                                  children:
+                                    - name:
+                                        Named: register
+                                      type_name:
+                                        Struct: VolatileCell<u32>
+                                      value: "256"
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "256"
+                                - name:
+                                    Named: lo
+                                  type_name:
+                                    Struct: "Reg<esp32s3::timg0::t::lo::LO_SPEC>"
+                                  value: "Reg<esp32s3::timg0::t::lo::LO_SPEC> @ 0x3FC8B71C"
+                                  children:
+                                    - name:
+                                        Named: register
+                                      type_name:
+                                        Struct: VolatileCell<u32>
+                                      value: "0"
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
+                                - name:
+                                    Named: hi
+                                  type_name:
+                                    Struct: "Reg<esp32s3::timg0::t::hi::HI_SPEC>"
+                                  value: "Reg<esp32s3::timg0::t::hi::HI_SPEC> @ 0x3FC8B720"
+                                  children:
+                                    - name:
+                                        Named: register
+                                      type_name:
+                                        Struct: VolatileCell<u32>
+                                      value: "0"
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
+                                - name:
+                                    Named: update
+                                  type_name:
+                                    Struct: "Reg<esp32s3::timg0::t::update::UPDATE_SPEC>"
+                                  value: "Reg<esp32s3::timg0::t::update::UPDATE_SPEC> @ 0x3FC8B724"
+                                  children:
+                                    - name:
+                                        Named: register
+                                      type_name:
+                                        Struct: VolatileCell<u32>
+                                      value: "0"
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
+                                - name:
+                                    Named: alarmlo
+                                  type_name:
+                                    Struct: "Reg<esp32s3::timg0::t::alarmlo::ALARMLO_SPEC>"
+                                  value: "Reg<esp32s3::timg0::t::alarmlo::ALARMLO_SPEC> @ 0x3FC8B728"
+                                  children:
+                                    - name:
+                                        Named: register
+                                      type_name:
+                                        Struct: VolatileCell<u32>
+                                      value: "1107373132"
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "1107373132"
+                                - name:
+                                    Named: alarmhi
+                                  type_name:
+                                    Struct: "Reg<esp32s3::timg0::t::alarmhi::ALARMHI_SPEC>"
+                                  value: "Reg<esp32s3::timg0::t::alarmhi::ALARMHI_SPEC> @ 0x3FC8B72C"
+                                  children:
+                                    - name:
+                                        Named: register
+                                      type_name:
+                                        Struct: VolatileCell<u32>
+                                      value: "262192"
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "262192"
+                                - name:
+                                    Named: loadlo
+                                  type_name:
+                                    Struct: "Reg<esp32s3::timg0::t::loadlo::LOADLO_SPEC>"
+                                  value: "Reg<esp32s3::timg0::t::loadlo::LOADLO_SPEC> @ 0x3FC8B730"
+                                  children:
+                                    - name:
+                                        Named: register
+                                      type_name:
+                                        Struct: VolatileCell<u32>
+                                      value: "0"
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
+                                - name:
+                                    Named: loadhi
+                                  type_name:
+                                    Struct: "Reg<esp32s3::timg0::t::loadhi::LOADHI_SPEC>"
+                                  value: "Reg<esp32s3::timg0::t::loadhi::LOADHI_SPEC> @ 0x3FC8B734"
+                                  children:
+                                    - name:
+                                        Named: register
+                                      type_name:
+                                        Struct: VolatileCell<u32>
+                                      value: "1070445472"
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "1070445472"
+                                - name:
+                                    Named: load
+                                  type_name:
+                                    Struct: "Reg<esp32s3::timg0::t::load::LOAD_SPEC>"
+                                  value: "Reg<esp32s3::timg0::t::load::LOAD_SPEC> @ 0x3FC8B738"
+                                  children:
+                                    - name:
+                                        Named: register
+                                      type_name:
+                                        Struct: VolatileCell<u32>
+                                      value: "0"
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
+                            - name:
+                                Indexed: 1
+                              type_name:
+                                Struct: T
+                              value: T @ 0x3FC8B73C
+                              children:
+                                - name:
+                                    Named: config
+                                  type_name:
+                                    Struct: "Reg<esp32s3::timg0::t::config::CONFIG_SPEC>"
+                                  value: "Reg<esp32s3::timg0::t::config::CONFIG_SPEC> @ 0x3FC8B73C"
+                                  children:
+                                    - name:
+                                        Named: register
+                                      type_name:
+                                        Struct: VolatileCell<u32>
+                                      value: "0"
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
+                                - name:
+                                    Named: lo
+                                  type_name:
+                                    Struct: "Reg<esp32s3::timg0::t::lo::LO_SPEC>"
+                                  value: "Reg<esp32s3::timg0::t::lo::LO_SPEC> @ 0x3FC8B740"
+                                  children:
+                                    - name:
+                                        Named: register
+                                      type_name:
+                                        Struct: VolatileCell<u32>
+                                      value: "0"
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
+                                - name:
+                                    Named: hi
+                                  type_name:
+                                    Struct: "Reg<esp32s3::timg0::t::hi::HI_SPEC>"
+                                  value: "Reg<esp32s3::timg0::t::hi::HI_SPEC> @ 0x3FC8B744"
+                                  children:
+                                    - name:
+                                        Named: register
+                                      type_name:
+                                        Struct: VolatileCell<u32>
+                                      value: "0"
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
+                                - name:
+                                    Named: update
+                                  type_name:
+                                    Struct: "Reg<esp32s3::timg0::t::update::UPDATE_SPEC>"
+                                  value: "Reg<esp32s3::timg0::t::update::UPDATE_SPEC> @ 0x3FC8B748"
+                                  children:
+                                    - name:
+                                        Named: register
+                                      type_name:
+                                        Struct: VolatileCell<u32>
+                                      value: "0"
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
+                                - name:
+                                    Named: alarmlo
+                                  type_name:
+                                    Struct: "Reg<esp32s3::timg0::t::alarmlo::ALARMLO_SPEC>"
+                                  value: "Reg<esp32s3::timg0::t::alarmlo::ALARMLO_SPEC> @ 0x3FC8B74C"
+                                  children:
+                                    - name:
+                                        Named: register
+                                      type_name:
+                                        Struct: VolatileCell<u32>
+                                      value: "0"
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
+                                - name:
+                                    Named: alarmhi
+                                  type_name:
+                                    Struct: "Reg<esp32s3::timg0::t::alarmhi::ALARMHI_SPEC>"
+                                  value: "Reg<esp32s3::timg0::t::alarmhi::ALARMHI_SPEC> @ 0x3FC8B750"
+                                  children:
+                                    - name:
+                                        Named: register
+                                      type_name:
+                                        Struct: VolatileCell<u32>
+                                      value: "0"
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
+                                - name:
+                                    Named: loadlo
+                                  type_name:
+                                    Struct: "Reg<esp32s3::timg0::t::loadlo::LOADLO_SPEC>"
+                                  value: "Reg<esp32s3::timg0::t::loadlo::LOADLO_SPEC> @ 0x3FC8B754"
+                                  children:
+                                    - name:
+                                        Named: register
+                                      type_name:
+                                        Struct: VolatileCell<u32>
+                                      value: "0"
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
+                                - name:
+                                    Named: loadhi
+                                  type_name:
+                                    Struct: "Reg<esp32s3::timg0::t::loadhi::LOADHI_SPEC>"
+                                  value: "Reg<esp32s3::timg0::t::loadhi::LOADHI_SPEC> @ 0x3FC8B758"
+                                  children:
+                                    - name:
+                                        Named: register
+                                      type_name:
+                                        Struct: VolatileCell<u32>
+                                      value: "0"
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
+                                - name:
+                                    Named: load
+                                  type_name:
+                                    Struct: "Reg<esp32s3::timg0::t::load::LOAD_SPEC>"
+                                  value: "Reg<esp32s3::timg0::t::load::LOAD_SPEC> @ 0x3FC8B75C"
+                                  children:
+                                    - name:
+                                        Named: register
+                                      type_name:
+                                        Struct: VolatileCell<u32>
+                                      value: "0"
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
+                        - name:
+                            Named: wdtconfig0
+                          type_name:
+                            Struct: "Reg<esp32s3::timg0::wdtconfig0::WDTCONFIG0_SPEC>"
+                          value: "Reg<esp32s3::timg0::wdtconfig0::WDTCONFIG0_SPEC> @ 0x3FC8B760"
+                          children:
+                            - name:
+                                Named: register
+                              type_name:
+                                Struct: VolatileCell<u32>
+                              value: "0"
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Base: u32
+                                  value: "0"
+                        - name:
+                            Named: wdtconfig1
+                          type_name:
+                            Struct: "Reg<esp32s3::timg0::wdtconfig1::WDTCONFIG1_SPEC>"
+                          value: "Reg<esp32s3::timg0::wdtconfig1::WDTCONFIG1_SPEC> @ 0x3FC8B764"
+                          children:
+                            - name:
+                                Named: register
+                              type_name:
+                                Struct: VolatileCell<u32>
+                              value: "0"
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Base: u32
+                                  value: "0"
+                        - name:
+                            Named: wdtconfig
+                          type_name:
+                            Array:
+                              item_type_name:
+                                Struct: "Reg<esp32s3::timg0::wdtconfig::WDTCONFIG_SPEC>"
+                              count: 4
+                          value: "[Reg<esp32s3::timg0::wdtconfig::WDTCONFIG_SPEC>; 4] = [\n\tReg<esp32s3::timg0::wdtconfig::WDTCONFIG_SPEC> @ 0x3FC8B768,\n\tReg<esp32s3::timg0::wdtconfig::WDTCONFIG_SPEC> @ 0x3FC8B76C,\n\tReg<esp32s3::timg0::wdtconfig::WDTCONFIG_SPEC> @ 0x3FC8B770,\n\tReg<esp32s3::timg0::wdtconfig::WDTCONFIG_SPEC> @ 0x3FC8B774]"
+                          children:
+                            - name:
+                                Indexed: 0
+                              type_name:
+                                Struct: "Reg<esp32s3::timg0::wdtconfig::WDTCONFIG_SPEC>"
+                              value: "Reg<esp32s3::timg0::wdtconfig::WDTCONFIG_SPEC> @ 0x3FC8B768"
+                              children:
+                                - name:
+                                    Named: register
+                                  type_name:
+                                    Struct: VolatileCell<u32>
+                                  value: "0"
+                                  children:
+                                    - name:
+                                        Named: value
+                                      type_name:
+                                        Base: u32
+                                      value: "0"
+                            - name:
+                                Indexed: 1
+                              type_name:
+                                Struct: "Reg<esp32s3::timg0::wdtconfig::WDTCONFIG_SPEC>"
+                              value: "Reg<esp32s3::timg0::wdtconfig::WDTCONFIG_SPEC> @ 0x3FC8B76C"
+                              children:
+                                - name:
+                                    Named: register
+                                  type_name:
+                                    Struct: VolatileCell<u32>
+                                  value: "0"
+                                  children:
+                                    - name:
+                                        Named: value
+                                      type_name:
+                                        Base: u32
+                                      value: "0"
+                            - name:
+                                Indexed: 2
+                              type_name:
+                                Struct: "Reg<esp32s3::timg0::wdtconfig::WDTCONFIG_SPEC>"
+                              value: "Reg<esp32s3::timg0::wdtconfig::WDTCONFIG_SPEC> @ 0x3FC8B770"
+                              children:
+                                - name:
+                                    Named: register
+                                  type_name:
+                                    Struct: VolatileCell<u32>
+                                  value: "0"
+                                  children:
+                                    - name:
+                                        Named: value
+                                      type_name:
+                                        Base: u32
+                                      value: "0"
+                            - name:
+                                Indexed: 3
+                              type_name:
+                                Struct: "Reg<esp32s3::timg0::wdtconfig::WDTCONFIG_SPEC>"
+                              value: "Reg<esp32s3::timg0::wdtconfig::WDTCONFIG_SPEC> @ 0x3FC8B774"
+                              children:
+                                - name:
+                                    Named: register
+                                  type_name:
+                                    Struct: VolatileCell<u32>
+                                  value: "0"
+                                  children:
+                                    - name:
+                                        Named: value
+                                      type_name:
+                                        Base: u32
+                                      value: "0"
+                        - name:
+                            Named: wdtfeed
+                          type_name:
+                            Struct: "Reg<esp32s3::timg0::wdtfeed::WDTFEED_SPEC>"
+                          value: "Reg<esp32s3::timg0::wdtfeed::WDTFEED_SPEC> @ 0x3FC8B778"
+                          children:
+                            - name:
+                                Named: register
+                              type_name:
+                                Struct: VolatileCell<u32>
+                              value: "0"
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Base: u32
+                                  value: "0"
+                        - name:
+                            Named: wdtwprotect
+                          type_name:
+                            Struct: "Reg<esp32s3::timg0::wdtwprotect::WDTWPROTECT_SPEC>"
+                          value: "Reg<esp32s3::timg0::wdtwprotect::WDTWPROTECT_SPEC> @ 0x3FC8B77C"
+                          children:
+                            - name:
+                                Named: register
+                              type_name:
+                                Struct: VolatileCell<u32>
+                              value: "0"
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Base: u32
+                                  value: "0"
+                        - name:
+                            Named: rtccalicfg
+                          type_name:
+                            Struct: "Reg<esp32s3::timg0::rtccalicfg::RTCCALICFG_SPEC>"
+                          value: "Reg<esp32s3::timg0::rtccalicfg::RTCCALICFG_SPEC> @ 0x3FC8B780"
+                          children:
+                            - name:
+                                Named: register
+                              type_name:
+                                Struct: VolatileCell<u32>
+                              value: "0"
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Base: u32
+                                  value: "0"
+                        - name:
+                            Named: rtccalicfg1
+                          type_name:
+                            Struct: "Reg<esp32s3::timg0::rtccalicfg1::RTCCALICFG1_SPEC>"
+                          value: "Reg<esp32s3::timg0::rtccalicfg1::RTCCALICFG1_SPEC> @ 0x3FC8B784"
+                          children:
+                            - name:
+                                Named: register
+                              type_name:
+                                Struct: VolatileCell<u32>
+                              value: "0"
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Base: u32
+                                  value: "0"
+                        - name:
+                            Named: int_ena
+                          type_name:
+                            Struct: "Reg<esp32s3::timg0::int_ena::INT_ENA_SPEC>"
+                          value: "Reg<esp32s3::timg0::int_ena::INT_ENA_SPEC> @ 0x3FC8B788"
+                          children:
+                            - name:
+                                Named: register
+                              type_name:
+                                Struct: VolatileCell<u32>
+                              value: "0"
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Base: u32
+                                  value: "0"
+                        - name:
+                            Named: int_raw
+                          type_name:
+                            Struct: "Reg<esp32s3::timg0::int_raw::INT_RAW_SPEC>"
+                          value: "Reg<esp32s3::timg0::int_raw::INT_RAW_SPEC> @ 0x3FC8B78C"
+                          children:
+                            - name:
+                                Named: register
+                              type_name:
+                                Struct: VolatileCell<u32>
+                              value: "0"
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Base: u32
+                                  value: "0"
+                        - name:
+                            Named: int_st
+                          type_name:
+                            Struct: "Reg<esp32s3::timg0::int_st::INT_ST_SPEC>"
+                          value: "Reg<esp32s3::timg0::int_st::INT_ST_SPEC> @ 0x3FC8B790"
+                          children:
+                            - name:
+                                Named: register
+                              type_name:
+                                Struct: VolatileCell<u32>
+                              value: "0"
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Base: u32
+                                  value: "0"
+                        - name:
+                            Named: int_clr
+                          type_name:
+                            Struct: "Reg<esp32s3::timg0::int_clr::INT_CLR_SPEC>"
+                          value: "Reg<esp32s3::timg0::int_clr::INT_CLR_SPEC> @ 0x3FC8B794"
+                          children:
+                            - name:
+                                Named: register
+                              type_name:
+                                Struct: VolatileCell<u32>
+                              value: "0"
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Base: u32
+                                  value: "0"
+                        - name:
+                            Named: rtccalicfg2
+                          type_name:
+                            Struct: "Reg<esp32s3::timg0::rtccalicfg2::RTCCALICFG2_SPEC>"
+                          value: "Reg<esp32s3::timg0::rtccalicfg2::RTCCALICFG2_SPEC> @ 0x3FC8B798"
+                          children:
+                            - name:
+                                Named: register
+                              type_name:
+                                Struct: VolatileCell<u32>
+                              value: "0"
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Base: u32
+                                  value: "0"
+                        - name:
+                            Named: _reserved13
+                          type_name:
+                            Array:
+                              item_type_name:
+                                Base: u8
+                              count: 116
+                          value: "[u8; 116] = [\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t... and 106 more]"
+                          children:
+                            - name:
+                                Indexed: 0
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 1
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 2
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 3
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 4
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 5
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 6
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 7
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 8
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 9
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 10
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 11
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 12
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 13
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 14
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 15
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 16
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 17
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 18
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 19
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 20
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 21
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 22
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 23
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 24
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 25
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 26
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 27
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 28
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 29
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 30
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 31
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 32
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 33
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 34
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 35
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 36
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 37
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 38
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 39
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 40
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 41
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 42
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 43
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 44
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 45
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 46
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 47
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 48
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name:
+                                Indexed: 49
+                              type_name:
+                                Base: u8
+                              value: "0"
+                            - name: Artificial
+                              type_name: Unknown
+                              value: "... and 66 more"
+                        - name:
+                            Named: ntimers_date
+                          type_name:
+                            Struct: "Reg<esp32s3::aes::date::DATE_SPEC>"
+                          value: "Reg<esp32s3::aes::date::DATE_SPEC> @ 0x3FC8B810"
+                          children:
+                            - name:
+                                Named: register
+                              type_name:
+                                Struct: VolatileCell<u32>
+                              value: "1070446080"
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Base: u32
+                                  value: "1070446080"
+                        - name:
+                            Named: regclk
+                          type_name:
+                            Struct: "Reg<esp32s3::timg0::regclk::REGCLK_SPEC>"
+                          value: "Reg<esp32s3::timg0::regclk::REGCLK_SPEC> @ 0x3FC8B814"
+                          children:
+                            - name:
+                                Named: register
+                              type_name:
+                                Struct: VolatileCell<u32>
+                              value: "1070118912"
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Base: u32
+                                  value: "1070118912"
+                - name:
+                    Named: timer
+                  type_name:
+                    Enum: TimerId
+                  value: "TimerId::<Error: Unresolved enum value 2>"
+                - name:
+                    Named: tg
+                  type_name:
+                    Base: u8
+                  value: "32"
+            - name:
+                Named: timer1
+              type_name:
+                Struct: Timer
+              value: Timer @ 0x3FCDB608
+              children:
+                - name:
+                    Named: register_block
+                  type_name:
+                    Pointer: "*const esp32s3::timg0::RegisterBlock"
+                  value: "*const esp32s3::timg0::RegisterBlock @ 0x00000001"
+                  children:
+                    - name:
+                        Named: "*register_block"
+                      type_name:
+                        Struct: RegisterBlock
+                      value: "RegisterBlock @ <dangling pointer: 0x00000001>"
+                - name:
+                    Named: timer
+                  type_name:
+                    Enum: TimerId
+                  value: "TimerId::Timer0"
+                - name:
+                    Named: tg
+                  type_name:
+                    Base: u8
+                  value: "0"
+            - name:
+                Named: wdt
+              type_name:
+                Struct: "Wdt<esp_hal::peripherals::TIMG0>"
+              value: "Wdt<esp_hal::peripherals::TIMG0> @ 0x3FCDB610"
+  canonical_frame_address: 1070446144
+- function_name: "TaskStorage<s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}>::poll"
+  source_location:
+    path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.10.0\\src\\raw\\mod.rs"
+    line: 253
+    column:
+      Column: 22
+    address: 1107366417
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: a0
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value:
+        U32: 2181147097
+    - core_register:
+        id: 1
+        roles:
+          - Core: sp
+          - Core: a1
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value:
+        U32: 1070445984
+    - core_register:
+        id: 2
+        roles:
+          - Core: a2
+          - Argument: a2
+          - Return: a2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value:
+        U32: 0
+    - core_register:
+        id: 3
+        roles:
+          - Core: a3
+          - Argument: a3
+          - Return: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value:
+        U32: 1
+    - core_register:
+        id: 4
+        roles:
+          - Core: a4
+          - Argument: a4
+          - Return: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 1
+    - core_register:
+        id: 5
+        roles:
+          - Core: a5
+          - Argument: a5
+          - Return: a5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 1070122480
+    - core_register:
+        id: 6
+        roles:
+          - Core: a6
+          - Argument: a6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 1070121240
+    - core_register:
+        id: 7
+        roles:
+          - Core: fp
+          - Core: a7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 1070121200
+    - core_register:
+        id: 8
+        roles:
+          - Core: a8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 2181108497
+    - core_register:
+        id: 9
+        roles:
+          - Core: a9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value:
+        U32: 1070445936
+    - core_register:
+        id: 10
+        roles:
+          - Core: a10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 1070446056
+    - core_register:
+        id: 11
+        roles:
+          - Core: a11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 40
+    - core_register:
+        id: 12
+        roles:
+          - Core: a12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 1000000
+    - core_register:
+        id: 13
+        roles:
+          - Core: a13
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 0
+    - core_register:
+        id: 14
+        roles:
+          - Core: a14
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 1070122480
+    - core_register:
+        id: 15
+        roles:
+          - Core: a15
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 1070122480
+    - core_register:
+        id: 65280
+        roles:
+          - Core: pc
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 1107366681
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value:
+        U32: 397088
+  pc:
+    U32: 1107366417
+  frame_base: 1070445984
+  is_inlined: false
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown> {\n\tp: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >,\n\tthis: *const embassy_executor::raw::TaskStorage<s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}> = *const embassy_executor::raw::TaskStorage<s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}> @ 0x3FC8C0F0,\n\tfuture: Pin<&mut s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}> = Pin<&mut s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}> @ 0x3FC8C118,\n\twaker: Waker = Waker @ 0x3FCDB5B8,\n\tcx: Context = Context @ 0x3FCDB5C0}"
+      children:
+        - name:
+            Named: p
+          type_name: Unknown
+          value: "< <value optimized away by compiler, out of scope, or dropped> >"
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.10.0\\src\\raw\\mod.rs"
+            line: 247
+            column: ~
+            address: ~
+        - name:
+            Named: this
+          type_name:
+            Pointer: "*const embassy_executor::raw::TaskStorage<s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}>"
+          value: "*const embassy_executor::raw::TaskStorage<s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}> @ 0x3FC8C0F0"
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.10.0\\src\\raw\\mod.rs"
+            line: 248
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: "*this"
+              type_name:
+                Struct: "TaskStorage<s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}>"
+              value: "TaskStorage<s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}> @ 0x3FC8C0F0"
+              children:
+                - name:
+                    Named: raw
+                  type_name:
+                    Struct: TaskHeader
+                  value: TaskHeader @ 0x3FC8C0F0
+                  children:
+                    - name:
+                        Named: state
+                      type_name:
+                        Struct: State
+                      value: State @ 0x3FC8C108
+                      children:
+                        - name:
+                            Named: state
+                          type_name:
+                            Struct: Atomic<u32>
+                          value: "1"
+                          children:
+                            - name:
+                                Named: __0
+                              type_name:
+                                Base: u32
+                              value: "1"
+                    - name:
+                        Named: run_queue_item
+                      type_name:
+                        Struct: "Links<embassy_executor::raw::TaskHeader>"
+                      value: "Links<embassy_executor::raw::TaskHeader> @ 0x3FC8C10C"
+                      children:
+                        - name:
+                            Named: next
+                          type_name:
+                            Struct: "UnsafeCell<core::option::Option<core::ptr::non_null::NonNull<embassy_executor::raw::TaskHeader>>>"
+                          value: "UnsafeCell<core::option::Option<core::ptr::non_null::NonNull<embassy_executor::raw::TaskHeader>>> @ 0x3FC8C10C"
+                          children:
+                            - name:
+                                Named: __0
+                              type_name:
+                                Struct: "UnsafeCell<core::option::Option<core::ptr::non_null::NonNull<embassy_executor::raw::TaskHeader>>>"
+                              value: "UnsafeCell<core::option::Option<core::ptr::non_null::NonNull<embassy_executor::raw::TaskHeader>>> @ 0x3FC8C10C"
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Struct: "Option<core::ptr::non_null::NonNull<embassy_executor::raw::TaskHeader>>"
+                                  value: "Option<core::ptr::non_null::NonNull<embassy_executor::raw::TaskHeader>> @ 0x3FC8C10C"
+                                  children:
+                                    - name:
+                                        Named: None
+                                      type_name:
+                                        Struct: None
+                                      value: None
+                        - name:
+                            Named: _unpin
+                          type_name:
+                            Struct: PhantomPinned
+                          value: PhantomPinned
+                    - name:
+                        Named: executor
+                      type_name:
+                        Struct: "Atomic<*mut embassy_executor::raw::SyncExecutor>"
+                      value: "Atomic<*mut embassy_executor::raw::SyncExecutor> @ 0x3FC8C110"
+                      children:
+                        - name:
+                            Named: __0
+                          type_name:
+                            Pointer: "*mut embassy_executor::raw::SyncExecutor"
+                          value: "*mut embassy_executor::raw::SyncExecutor @ 0x3FCDB6D0"
+                          children:
+                            - name:
+                                Named: "*__0"
+                              type_name:
+                                Struct: SyncExecutor
+                              value: SyncExecutor @ 0x3FCDB6D0
+                              children:
+                                - name:
+                                    Named: run_queue
+                                  type_name:
+                                    Struct: RunQueue
+                                  value: RunQueue @ 0x3FCDB6D0
+                                  children:
+                                    - name:
+                                        Named: stack
+                                      type_name:
+                                        Struct: "TransferStack<embassy_executor::raw::TaskHeader>"
+                                      value: "TransferStack<embassy_executor::raw::TaskHeader> @ 0x3FCDB6D0"
+                                      children:
+                                        - name:
+                                            Named: head
+                                          type_name:
+                                            Struct: "Atomic<*mut embassy_executor::raw::TaskHeader>"
+                                          value: "Atomic<*mut embassy_executor::raw::TaskHeader> @ 0x3FCDB6D0"
+                                          children:
+                                            - name:
+                                                Named: __0
+                                              type_name:
+                                                Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                              value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
+                                              children:
+                                                - name:
+                                                    Named: "*__0"
+                                                  type_name:
+                                                    Struct: TaskHeader
+                                                  value: TaskHeader @ <null pointer>
+                                - name:
+                                    Named: pender
+                                  type_name:
+                                    Struct: Pender
+                                  value: Pender @ 0x3FCDB6D4
+                                  children:
+                                    - name:
+                                        Named: __0
+                                      type_name:
+                                        Pointer: "*mut ()"
+                                      value: "*mut () @ 0x3FCDB6A0"
+                    - name:
+                        Named: poll_fn
+                      type_name:
+                        Struct: "SyncUnsafeCell<core::option::Option<unsafe fn(embassy_executor::raw::TaskRef)>>"
+                      value: "SyncUnsafeCell<core::option::Option<unsafe fn(embassy_executor::raw::TaskRef)>> @ 0x3FC8C114"
+                      children:
+                        - name:
+                            Named: value
+                          type_name:
+                            Struct: "Option<unsafe fn(embassy_executor::raw::TaskRef)>"
+                          value: "Option<unsafe fn(embassy_executor::raw::TaskRef)> @ 0x3FC8C114"
+                          children:
+                            - name:
+                                Named: Some
+                              type_name:
+                                Struct: Some
+                              value: Some @ 0x3FC8C114
+                              children:
+                                - name:
+                                    Named: __0
+                                  type_name:
+                                    Pointer: "unsafe fn(embassy_executor::raw::TaskRef)"
+                                  value: "*raw unsafe fn(embassy_executor::raw::TaskRef) @ 0x420111DC"
+                    - name:
+                        Named: timer_queue_item
+                      type_name:
+                        Struct: TimerQueueItem
+                      value: TimerQueueItem @ 0x3FC8C0F0
+                      children:
+                        - name:
+                            Named: data
+                          type_name:
+                            Array:
+                              item_type_name:
+                                Base: usize
+                              count: 6
+                          value: "[usize; 6] = [\n\t7501480,\n\t0,\n\t0,\n\t1070121200,\n\t0,\n\t0]"
+                          children:
+                            - name:
+                                Indexed: 0
+                              type_name:
+                                Base: usize
+                              value: "7501480"
+                            - name:
+                                Indexed: 1
+                              type_name:
+                                Base: usize
+                              value: "0"
+                            - name:
+                                Indexed: 2
+                              type_name:
+                                Base: usize
+                              value: "0"
+                            - name:
+                                Indexed: 3
+                              type_name:
+                                Base: usize
+                              value: "1070121200"
+                            - name:
+                                Indexed: 4
+                              type_name:
+                                Base: usize
+                              value: "0"
+                            - name:
+                                Indexed: 5
+                              type_name:
+                                Base: usize
+                              value: "0"
+                    - name:
+                        Named: metadata
+                      type_name:
+                        Struct: Metadata
+                      value: Metadata
+                - name:
+                    Named: future
+                  type_name:
+                    Struct: "UninitCell<s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}>"
+                  value: "UninitCell<s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}> @ 0x3FC8C118"
+                  children:
+                    - name:
+                        Named: __0
+                      type_name:
+                        Base: "MaybeUninit<core::cell::UnsafeCell<s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}>>"
+                      value: "MaybeUninit<core::cell::UnsafeCell<s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}>> @ 0x3FC8C118"
+                      children:
+                        - name:
+                            Named: uninit
+                          type_name:
+                            Base: ()
+                          value: ()
+                        - name:
+                            Named: value
+                          type_name:
+                            Struct: "ManuallyDrop<core::cell::UnsafeCell<s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}>>"
+                          value: "ManuallyDrop<core::cell::UnsafeCell<s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}>> @ 0x3FC8C118"
+                          children:
+                            - name:
+                                Named: value
+                              type_name:
+                                Struct: "{async_fn_env#0}"
+                              value: "{async_fn_env#0} @ 0x3FC8C118"
+                              children:
+                                - name:
+                                    Named: "3"
+                                  type_name:
+                                    Struct: Suspend0
+                                  value: Suspend0 @ 0x3FC8C118
+                                  source_location:
+                                    path: "C:\\_Espressif\\_Demos\\s3-debug\\src\\bin\\main.rs"
+                                    line: 55
+                                    column: ~
+                                    address: ~
+                                  children:
+                                    - name:
+                                        Named: portable_atomic_u32
+                                      type_name:
+                                        Struct: AtomicU32
+                                      value: "41"
+                                      children:
+                                        - name:
+                                            Named: __0
+                                          type_name:
+                                            Base: u32
+                                          value: "41"
+                                    - name:
+                                        Named: core_atomic_u32
+                                      type_name:
+                                        Struct: Atomic<u32>
+                                      value: "41"
+                                      children:
+                                        - name:
+                                            Named: __0
+                                          type_name:
+                                            Base: u32
+                                          value: "41"
+                                    - name:
+                                        Named: __awaitee
+                                      type_name:
+                                        Struct: Timer
+                                      value: Timer @ 0x3FC8C118
+                                      children:
+                                        - name:
+                                            Named: expires_at
+                                          type_name:
+                                            Struct: Instant
+                                          value: Instant @ 0x3FC8C118
+                                          children:
+                                            - name:
+                                                Named: ticks
+                                              type_name:
+                                                Base: u64
+                                              value: "7501480"
+                                        - name:
+                                            Named: yielded_once
+                                          type_name:
+                                            Base: bool
+                                          value: "true"
+                                    - name:
+                                        Named: spawner
+                                      type_name:
+                                        Struct: Spawner
+                                      value: Spawner @ 0x3FC8C128
+                                      children:
+                                        - name:
+                                            Named: executor
+                                          type_name:
+                                            Pointer: "&embassy_executor::raw::Executor"
+                                          value: "&embassy_executor::raw::Executor @ 0x3FCDB6D0"
+                                          children:
+                                            - name:
+                                                Named: "*executor"
+                                              type_name:
+                                                Struct: Executor
+                                              value: Executor @ 0x3FCDB6D0
+        - name:
+            Named: future
+          type_name:
+            Struct: "Pin<&mut s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}>"
+          value: "Pin<&mut s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}> @ 0x3FC8C118"
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.10.0\\src\\raw\\mod.rs"
+            line: 250
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: pointer
+              type_name:
+                Pointer: "&mut s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0}"
+              value: "&mut s3_debug::__main::____embassy_main_task::____embassy_main_task_inner_function::{async_fn_env#0} @ 0x3FC8C118"
+              children:
+                - name:
+                    Named: "*pointer"
+                  type_name:
+                    Struct: "{async_fn_env#0}"
+                  value: "{async_fn_env#0} @ 0x3FC8C118"
+                  children:
+                    - name:
+                        Named: "3"
+                      type_name:
+                        Struct: Suspend0
+                      value: Suspend0 @ 0x3FC8C118
+                      source_location:
+                        path: "C:\\_Espressif\\_Demos\\s3-debug\\src\\bin\\main.rs"
+                        line: 55
+                        column: ~
+                        address: ~
+                      children:
+                        - name:
+                            Named: portable_atomic_u32
+                          type_name:
+                            Struct: AtomicU32
+                          value: "41"
+                          children:
+                            - name:
+                                Named: __0
+                              type_name:
+                                Base: u32
+                              value: "41"
+                        - name:
+                            Named: core_atomic_u32
+                          type_name:
+                            Struct: Atomic<u32>
+                          value: "41"
+                          children:
+                            - name:
+                                Named: __0
+                              type_name:
+                                Base: u32
+                              value: "41"
+                        - name:
+                            Named: __awaitee
+                          type_name:
+                            Struct: Timer
+                          value: Timer @ 0x3FC8C118
+                          children:
+                            - name:
+                                Named: expires_at
+                              type_name:
+                                Struct: Instant
+                              value: Instant @ 0x3FC8C118
+                              children:
+                                - name:
+                                    Named: ticks
+                                  type_name:
+                                    Base: u64
+                                  value: "7501480"
+                            - name:
+                                Named: yielded_once
+                              type_name:
+                                Base: bool
+                              value: "true"
+                        - name:
+                            Named: spawner
+                          type_name:
+                            Struct: Spawner
+                          value: Spawner @ 0x3FC8C128
+                          children:
+                            - name:
+                                Named: executor
+                              type_name:
+                                Pointer: "&embassy_executor::raw::Executor"
+                              value: "&embassy_executor::raw::Executor @ 0x3FCDB6D0"
+                              children:
+                                - name:
+                                    Named: "*executor"
+                                  type_name:
+                                    Struct: Executor
+                                  value: Executor @ 0x3FCDB6D0
+                                  children:
+                                    - name:
+                                        Named: inner
+                                      type_name:
+                                        Struct: SyncExecutor
+                                      value: SyncExecutor @ 0x3FCDB6D0
+                                      children:
+                                        - name:
+                                            Named: run_queue
+                                          type_name:
+                                            Struct: RunQueue
+                                          value: RunQueue @ 0x3FCDB6D0
+                                          children:
+                                            - name:
+                                                Named: stack
+                                              type_name:
+                                                Struct: "TransferStack<embassy_executor::raw::TaskHeader>"
+                                              value: "TransferStack<embassy_executor::raw::TaskHeader> @ 0x3FCDB6D0"
+                                        - name:
+                                            Named: pender
+                                          type_name:
+                                            Struct: Pender
+                                          value: Pender @ 0x3FCDB6D4
+                                          children:
+                                            - name:
+                                                Named: __0
+                                              type_name:
+                                                Pointer: "*mut ()"
+                                              value: "*mut () @ 0x3FCDB6A0"
+        - name:
+            Named: waker
+          type_name:
+            Struct: Waker
+          value: Waker @ 0x3FCDB5B8
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.10.0\\src\\raw\\mod.rs"
+            line: 251
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: waker
+              type_name:
+                Struct: RawWaker
+              value: RawWaker @ 0x3FCDB5B8
+              children:
+                - name:
+                    Named: data
+                  type_name:
+                    Pointer: "*const ()"
+                  value: "*const () @ 0x3FC8C0F0"
+                - name:
+                    Named: vtable
+                  type_name:
+                    Pointer: "&core::task::wake::RawWakerVTable"
+                  value: "&core::task::wake::RawWakerVTable @ 0x3C005AD0"
+                  children:
+                    - name:
+                        Named: "*vtable"
+                      type_name:
+                        Struct: RawWakerVTable
+                      value: RawWakerVTable @ 0x3C005AD0
+                      children:
+                        - name:
+                            Named: clone
+                          type_name:
+                            Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
+                          value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker"
+                        - name:
+                            Named: wake
+                          type_name:
+                            Pointer: unsafe fn(*const ())
+                          value: "*raw unsafe fn(*const ())"
+                        - name:
+                            Named: wake_by_ref
+                          type_name:
+                            Pointer: unsafe fn(*const ())
+                          value: "*raw unsafe fn(*const ())"
+                        - name:
+                            Named: drop
+                          type_name:
+                            Pointer: unsafe fn(*const ())
+                          value: "*raw unsafe fn(*const ())"
+        - name:
+            Named: cx
+          type_name:
+            Struct: Context
+          value: Context @ 0x3FCDB5C0
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.10.0\\src\\raw\\mod.rs"
+            line: 252
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: waker
+              type_name:
+                Pointer: "&core::task::wake::Waker"
+              value: "&core::task::wake::Waker @ 0x3FCDB5B8"
+              children:
+                - name:
+                    Named: "*waker"
+                  type_name:
+                    Struct: Waker
+                  value: Waker @ 0x3FCDB5B8
+                  children:
+                    - name:
+                        Named: waker
+                      type_name:
+                        Struct: RawWaker
+                      value: RawWaker @ 0x3FCDB5B8
+                      children:
+                        - name:
+                            Named: data
+                          type_name:
+                            Pointer: "*const ()"
+                          value: "*const () @ 0x3FC8C0F0"
+                        - name:
+                            Named: vtable
+                          type_name:
+                            Pointer: "&core::task::wake::RawWakerVTable"
+                          value: "&core::task::wake::RawWakerVTable @ 0x3C005AD0"
+                          children:
+                            - name:
+                                Named: "*vtable"
+                              type_name:
+                                Struct: RawWakerVTable
+                              value: RawWakerVTable @ 0x3C005AD0
+                              children:
+                                - name:
+                                    Named: clone
+                                  type_name:
+                                    Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
+                                  value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker"
+                                - name:
+                                    Named: wake
+                                  type_name:
+                                    Pointer: unsafe fn(*const ())
+                                  value: "*raw unsafe fn(*const ())"
+                                - name:
+                                    Named: wake_by_ref
+                                  type_name:
+                                    Pointer: unsafe fn(*const ())
+                                  value: "*raw unsafe fn(*const ())"
+                                - name:
+                                    Named: drop
+                                  type_name:
+                                    Pointer: unsafe fn(*const ())
+                                  value: "*raw unsafe fn(*const ())"
+            - name:
+                Named: local_waker
+              type_name:
+                Pointer: "&core::task::wake::LocalWaker"
+              value: "&core::task::wake::LocalWaker @ 0x3FCDB5B8"
+              children:
+                - name:
+                    Named: "*local_waker"
+                  type_name:
+                    Struct: LocalWaker
+                  value: LocalWaker @ 0x3FCDB5B8
+                  children:
+                    - name:
+                        Named: waker
+                      type_name:
+                        Struct: RawWaker
+                      value: RawWaker @ 0x3FCDB5B8
+                      children:
+                        - name:
+                            Named: data
+                          type_name:
+                            Pointer: "*const ()"
+                          value: "*const () @ 0x3FC8C0F0"
+                        - name:
+                            Named: vtable
+                          type_name:
+                            Pointer: "&core::task::wake::RawWakerVTable"
+                          value: "&core::task::wake::RawWakerVTable @ 0x3C005AD0"
+                          children:
+                            - name:
+                                Named: "*vtable"
+                              type_name:
+                                Struct: RawWakerVTable
+                              value: RawWakerVTable @ 0x3C005AD0
+                              children:
+                                - name:
+                                    Named: clone
+                                  type_name:
+                                    Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
+                                  value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker"
+                                - name:
+                                    Named: wake
+                                  type_name:
+                                    Pointer: unsafe fn(*const ())
+                                  value: "*raw unsafe fn(*const ())"
+                                - name:
+                                    Named: wake_by_ref
+                                  type_name:
+                                    Pointer: unsafe fn(*const ())
+                                  value: "*raw unsafe fn(*const ())"
+                                - name:
+                                    Named: drop
+                                  type_name:
+                                    Pointer: unsafe fn(*const ())
+                                  value: "*raw unsafe fn(*const ())"
+            - name:
+                Named: ext
+              type_name:
+                Struct: "AssertUnwindSafe<core::task::wake::ExtData>"
+              value: "AssertUnwindSafe<core::task::wake::ExtData> @ 0x3FCDB5C8"
+              children:
+                - name:
+                    Named: __0
+                  type_name:
+                    Struct: ExtData
+                  value: ExtData @ 0x3FCDB5C8
+                  children:
+                    - name:
+                        Named: None
+                      type_name:
+                        Struct: None
+                      value: None @ 0x3FCDB5C8
+                      children:
+                        - name:
+                            Named: __0
+                          type_name:
+                            Base: ()
+                          value: ()
+  canonical_frame_address: 1070446144
+- function_name: "Executor::run_inner<s3_debug::__main::__xtensa_lx_rt_main::{closure_env#0}, esp_rtos::embassy::{impl#5}::run::NoHooks>"
+  source_location:
+    path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-rtos-0.3.0\\src\\embassy\\mod.rs"
+    line: 286
+    column:
+      Column: 31
+    address: 1107367040
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: a0
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value:
+        U32: 2181108869
+    - core_register:
+        id: 1
+        roles:
+          - Core: sp
+          - Core: a1
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value:
+        U32: 1070446144
+    - core_register:
+        id: 2
+        roles:
+          - Core: a2
+          - Argument: a2
+          - Return: a2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value:
+        U32: 1070446288
+    - core_register:
+        id: 3
+        roles:
+          - Core: a3
+          - Argument: a3
+          - Return: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value:
+        U32: 0
+    - core_register:
+        id: 4
+        roles:
+          - Core: a4
+          - Argument: a4
+          - Return: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value: ~
+    - core_register:
+        id: 5
+        roles:
+          - Core: a5
+          - Argument: a5
+          - Return: a5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 4294967293
+    - core_register:
+        id: 6
+        roles:
+          - Core: a6
+          - Argument: a6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 0
+    - core_register:
+        id: 7
+        roles:
+          - Core: fp
+          - Core: a7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 1070122480
+    - core_register:
+        id: 8
+        roles:
+          - Core: a8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value: ~
+    - core_register:
+        id: 9
+        roles:
+          - Core: a9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value: ~
+    - core_register:
+        id: 10
+        roles:
+          - Core: a10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value: ~
+    - core_register:
+        id: 11
+        roles:
+          - Core: a11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value: ~
+    - core_register:
+        id: 12
+        roles:
+          - Core: a12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value: ~
+    - core_register:
+        id: 13
+        roles:
+          - Core: a13
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value: ~
+    - core_register:
+        id: 14
+        roles:
+          - Core: a14
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value: ~
+    - core_register:
+        id: 15
+        roles:
+          - Core: a15
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value: ~
+    - core_register:
+        id: 65280
+        roles:
+          - Core: pc
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 1107367042
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
+  pc:
+    U32: 1107367042
+  frame_base: 1070446144
+  is_inlined: false
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown> {\n\tself: &esp_rtos::embassy::Executor = &esp_rtos::embassy::Executor @ 0x3FCDB6D0,\n\tinit: {closure_env#0} = {closure_env#0} @ <unknown value>,\n\tflags: &esp_rtos::embassy::ThreadFlag = &esp_rtos::embassy::ThreadFlag @ 0x00000000,\n\thooks: NoHooks = NoHooks @ <unknown value>,\n\texecutor: &mut embassy_executor::raw::Executor = &mut embassy_executor::raw::Executor @ 0x3FCDB6D0}"
+      children:
+        - name:
+            Named: self
+          type_name:
+            Pointer: "&esp_rtos::embassy::Executor"
+          value: "&esp_rtos::embassy::Executor @ 0x3FCDB6D0"
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-rtos-0.3.0\\src\\embassy\\mod.rs"
+            line: 262
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: "*self"
+              type_name:
+                Struct: Executor
+              value: Executor @ 0x3FCDB6D0
+              children:
+                - name:
+                    Named: executor
+                  type_name:
+                    Struct: "UnsafeCell<core::mem::maybe_uninit::MaybeUninit<embassy_executor::raw::Executor>>"
+                  value: "UnsafeCell<core::mem::maybe_uninit::MaybeUninit<embassy_executor::raw::Executor>> @ 0x3FCDB6D0"
+                  children:
+                    - name:
+                        Named: value
+                      type_name:
+                        Base: "MaybeUninit<embassy_executor::raw::Executor>"
+                      value: "MaybeUninit<embassy_executor::raw::Executor> @ 0x3FCDB6D0"
+                      children:
+                        - name:
+                            Named: uninit
+                          type_name:
+                            Base: ()
+                          value: ()
+                        - name:
+                            Named: value
+                          type_name:
+                            Struct: "ManuallyDrop<embassy_executor::raw::Executor>"
+                          value: "ManuallyDrop<embassy_executor::raw::Executor> @ 0x3FCDB6D0"
+                          children:
+                            - name:
+                                Named: __0
+                              type_name:
+                                Struct: Executor
+                              value: Executor @ 0x3FCDB6D0
+                              children:
+                                - name:
+                                    Named: inner
+                                  type_name:
+                                    Struct: SyncExecutor
+                                  value: SyncExecutor @ 0x3FCDB6D0
+                                  children:
+                                    - name:
+                                        Named: run_queue
+                                      type_name:
+                                        Struct: RunQueue
+                                      value: RunQueue @ 0x3FCDB6D0
+                                      children:
+                                        - name:
+                                            Named: stack
+                                          type_name:
+                                            Struct: "TransferStack<embassy_executor::raw::TaskHeader>"
+                                          value: "TransferStack<embassy_executor::raw::TaskHeader> @ 0x3FCDB6D0"
+                                          children:
+                                            - name:
+                                                Named: head
+                                              type_name:
+                                                Struct: "Atomic<*mut embassy_executor::raw::TaskHeader>"
+                                              value: "Atomic<*mut embassy_executor::raw::TaskHeader> @ 0x3FCDB6D0"
+                                    - name:
+                                        Named: pender
+                                      type_name:
+                                        Struct: Pender
+                                      value: Pender @ 0x3FCDB6D4
+                                      children:
+                                        - name:
+                                            Named: __0
+                                          type_name:
+                                            Pointer: "*mut ()"
+                                          value: "*mut () @ 0x3FCDB6A0"
+        - name:
+            Named: init
+          type_name:
+            Struct: "{closure_env#0}"
+          value: "{closure_env#0} @ <unknown value>"
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-rtos-0.3.0\\src\\embassy\\mod.rs"
+            line: 263
+            column: ~
+            address: ~
+        - name:
+            Named: flags
+          type_name:
+            Pointer: "&esp_rtos::embassy::ThreadFlag"
+          value: "&esp_rtos::embassy::ThreadFlag @ 0x00000000"
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-rtos-0.3.0\\src\\embassy\\mod.rs"
+            line: 264
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: "*flags"
+              type_name:
+                Struct: ThreadFlag
+              value: ThreadFlag @ <null pointer>
+        - name:
+            Named: hooks
+          type_name:
+            Struct: NoHooks
+          value: NoHooks @ <unknown value>
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-rtos-0.3.0\\src\\embassy\\mod.rs"
+            line: 265
+            column: ~
+            address: ~
+        - name:
+            Named: executor
+          type_name:
+            Pointer: "&mut embassy_executor::raw::Executor"
+          value: "&mut embassy_executor::raw::Executor @ 0x3FCDB6D0"
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-rtos-0.3.0\\src\\embassy\\mod.rs"
+            line: 267
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: "*executor"
+              type_name:
+                Struct: Executor
+              value: Executor @ 0x3FCDB6D0
+              children:
+                - name:
+                    Named: inner
+                  type_name:
+                    Struct: SyncExecutor
+                  value: SyncExecutor @ 0x3FCDB6D0
+                  children:
+                    - name:
+                        Named: run_queue
+                      type_name:
+                        Struct: RunQueue
+                      value: RunQueue @ 0x3FCDB6D0
+                      children:
+                        - name:
+                            Named: stack
+                          type_name:
+                            Struct: "TransferStack<embassy_executor::raw::TaskHeader>"
+                          value: "TransferStack<embassy_executor::raw::TaskHeader> @ 0x3FCDB6D0"
+                          children:
+                            - name:
+                                Named: head
+                              type_name:
+                                Struct: "Atomic<*mut embassy_executor::raw::TaskHeader>"
+                              value: "Atomic<*mut embassy_executor::raw::TaskHeader> @ 0x3FCDB6D0"
+                              children:
+                                - name:
+                                    Named: __0
+                                  type_name:
+                                    Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                  value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
+                                  children:
+                                    - name:
+                                        Named: "*__0"
+                                      type_name:
+                                        Struct: TaskHeader
+                                      value: TaskHeader @ <null pointer>
+                    - name:
+                        Named: pender
+                      type_name:
+                        Struct: Pender
+                      value: Pender @ 0x3FCDB6D4
+                      children:
+                        - name:
+                            Named: __0
+                          type_name:
+                            Pointer: "*mut ()"
+                          value: "*mut () @ 0x3FCDB6A0"
+  canonical_frame_address: 1070446192
+- function_name: "Executor::run<s3_debug::__main::__xtensa_lx_rt_main::{closure_env#0}>"
+  source_location:
+    path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-rtos-0.3.0\\src\\embassy\\mod.rs"
+    line: 227
+    column:
+      Column: 14
+    address: 1107366942
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: a0
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value:
+        U32: 2181108776
+    - core_register:
+        id: 1
+        roles:
+          - Core: sp
+          - Core: a1
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value:
+        U32: 1070446192
+    - core_register:
+        id: 2
+        roles:
+          - Core: a2
+          - Argument: a2
+          - Return: a2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value: ~
+    - core_register:
+        id: 3
+        roles:
+          - Core: a3
+          - Argument: a3
+          - Return: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value:
+        U32: 1070446240
+    - core_register:
+        id: 4
+        roles:
+          - Core: a4
+          - Argument: a4
+          - Return: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 3740121773
+    - core_register:
+        id: 5
+        roles:
+          - Core: a5
+          - Argument: a5
+          - Return: a5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 3740121773
+    - core_register:
+        id: 6
+        roles:
+          - Core: a6
+          - Argument: a6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 1107371752
+    - core_register:
+        id: 7
+        roles:
+          - Core: fp
+          - Core: a7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 1107405172
+    - core_register:
+        id: 8
+        roles:
+          - Core: a8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value: ~
+    - core_register:
+        id: 9
+        roles:
+          - Core: a9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value: ~
+    - core_register:
+        id: 10
+        roles:
+          - Core: a10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value: ~
+    - core_register:
+        id: 11
+        roles:
+          - Core: a11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value: ~
+    - core_register:
+        id: 12
+        roles:
+          - Core: a12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value: ~
+    - core_register:
+        id: 13
+        roles:
+          - Core: a13
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value: ~
+    - core_register:
+        id: 14
+        roles:
+          - Core: a14
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value: ~
+    - core_register:
+        id: 15
+        roles:
+          - Core: a15
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value: ~
+    - core_register:
+        id: 65280
+        roles:
+          - Core: pc
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 1107366949
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
+  pc:
+    U32: 1107366949
+  frame_base: 1070446192
+  is_inlined: false
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown> {\n\tself: <unknown> = < Error: Cannot resolve register: Register(10) >,\n\tinit: {closure_env#0} = {closure_env#0} @ <unknown value>,\n\tflags: ThreadFlag = ThreadFlag @ 0x3FCDB670}"
+      children:
+        - name:
+            Named: self
+          type_name: Unknown
+          value: "< Error: Cannot resolve register: Register(10) >"
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-rtos-0.3.0\\src\\embassy\\mod.rs"
+            line: 217
+            column: ~
+            address: ~
+        - name:
+            Named: init
+          type_name:
+            Struct: "{closure_env#0}"
+          value: "{closure_env#0} @ <unknown value>"
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-rtos-0.3.0\\src\\embassy\\mod.rs"
+            line: 217
+            column: ~
+            address: ~
+        - name:
+            Named: flags
+          type_name:
+            Struct: ThreadFlag
+          value: ThreadFlag @ 0x3FCDB670
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-rtos-0.3.0\\src\\embassy\\mod.rs"
+            line: 218
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: inner
+              type_name:
+                Struct: "SchedulerLocked<esp_rtos::embassy::FlagsInner>"
+              value: "SchedulerLocked<esp_rtos::embassy::FlagsInner> @ 0x3FCDB670"
+              children:
+                - name:
+                    Named: inner
+                  type_name:
+                    Struct: "UnsafeCell<esp_rtos::embassy::FlagsInner>"
+                  value: "UnsafeCell<esp_rtos::embassy::FlagsInner> @ 0x3FCDB670"
+                  children:
+                    - name:
+                        Named: value
+                      type_name:
+                        Struct: FlagsInner
+                      value: FlagsInner @ 0x3FCDB670
+                      children:
+                        - name:
+                            Named: owner
+                          type_name:
+                            Struct: "NonNull<esp_rtos::task::Task>"
+                          value: "NonNull<esp_rtos::task::Task> @ 0x3FCDB670"
+                          children:
+                            - name:
+                                Named: pointer
+                              type_name:
+                                Pointer: "*const esp_rtos::task::Task"
+                              value: "*const esp_rtos::task::Task @ 0x00000000"
+                              children:
+                                - name:
+                                    Named: "*pointer"
+                                  type_name:
+                                    Struct: Task
+                                  value: Task @ <null pointer>
+                        - name:
+                            Named: waiting
+                          type_name:
+                            Struct: "Option<core::ptr::non_null::NonNull<esp_rtos::task::Task>>"
+                          value: "Option<core::ptr::non_null::NonNull<esp_rtos::task::Task>> @ 0x3FCDB674"
+                          children:
+                            - name:
+                                Named: Some
+                              type_name:
+                                Struct: Some
+                              value: Some @ 0x3FCDB674
+                              children:
+                                - name:
+                                    Named: __0
+                                  type_name:
+                                    Struct: "NonNull<esp_rtos::task::Task>"
+                                  value: "NonNull<esp_rtos::task::Task> @ 0x3FCDB674"
+                                  children:
+                                    - name:
+                                        Named: pointer
+                                      type_name:
+                                        Pointer: "*const esp_rtos::task::Task"
+                                      value: "*const esp_rtos::task::Task @ 0x3FCDB6A0"
+                                      children:
+                                        - name:
+                                            Named: "*pointer"
+                                          type_name:
+                                            Struct: Task
+                                          value: Task @ 0x3FCDB6A0
+                                          children:
+                                            - name:
+                                                Named: cpu_context
+                                              type_name:
+                                                Struct: Context
+                                              value: Context @ 0x3FCDB6A0
+                                            - name:
+                                                Named: thread_local
+                                              type_name:
+                                                Struct: ThreadLocalData
+                                              value: ThreadLocalData
+                                            - name:
+                                                Named: state
+                                              type_name:
+                                                Enum: TaskState
+                                              value: "TaskState::<Error: Unresolved enum value 24>"
+                                            - name:
+                                                Named: stack
+                                              type_name:
+                                                Struct: "*mut [core::mem::maybe_uninit::MaybeUninit<u32>]"
+                                              value: "*mut [core::mem::maybe_uninit::MaybeUninit<u32>] @ 0x3FCDB77C"
+                                            - name:
+                                                Named: stack_guard
+                                              type_name:
+                                                Pointer: "*mut u32"
+                                              value: "*mut u32 @ 0x3FCE354E"
+                                              children:
+                                                - name:
+                                                    Named: "*stack_guard"
+                                                  type_name:
+                                                    Base: u32
+                                                  value: "1953460066"
+                                            - name:
+                                                Named: priority
+                                              type_name:
+                                                Struct: Priority
+                                              value: Priority @ 0x3FCDB788
+                                            - name:
+                                                Named: pinned_to
+                                              type_name:
+                                                Struct: "Option<esp_hal::system::Cpu>"
+                                              value: "Option<esp_hal::system::Cpu> @ 0x3FCDB78C"
+                                              children:
+                                                - name:
+                                                    Named: Some
+                                                  type_name:
+                                                    Struct: Some
+                                                  value: Some @ 0x3FCDB78C
+                                            - name:
+                                                Named: wakeup_at
+                                              type_name:
+                                                Base: u64
+                                              value: "4611717458658473379"
+                                            - name:
+                                                Named: in_run_or_wait_queue
+                                              type_name:
+                                                Base: bool
+                                              value: "true"
+                                            - name:
+                                                Named: timer_queued
+                                              type_name:
+                                                Base: bool
+                                              value: "true"
+                                            - name:
+                                                Named: alloc_list_item
+                                              type_name:
+                                                Struct: "Option<core::ptr::non_null::NonNull<esp_rtos::task::Task>>"
+                                              value: "Option<core::ptr::non_null::NonNull<esp_rtos::task::Task>> @ 0x3FCDB79C"
+                                              children:
+                                                - name:
+                                                    Named: Some
+                                                  type_name:
+                                                    Struct: Some
+                                                  value: Some @ 0x3FCDB79C
+                                            - name:
+                                                Named: ready_queue_item
+                                              type_name:
+                                                Struct: "Option<core::ptr::non_null::NonNull<esp_rtos::task::Task>>"
+                                              value: "Option<core::ptr::non_null::NonNull<esp_rtos::task::Task>> @ 0x3FCDB7A0"
+                                              children:
+                                                - name:
+                                                    Named: Some
+                                                  type_name:
+                                                    Struct: Some
+                                                  value: Some @ 0x3FCDB7A0
+                                            - name:
+                                                Named: timer_queue_item
+                                              type_name:
+                                                Struct: "Option<core::ptr::non_null::NonNull<esp_rtos::task::Task>>"
+                                              value: "Option<core::ptr::non_null::NonNull<esp_rtos::task::Task>> @ 0x3FCDB7A4"
+                                              children:
+                                                - name:
+                                                    Named: Some
+                                                  type_name:
+                                                    Struct: Some
+                                                  value: Some @ 0x3FCDB7A4
+                                            - name:
+                                                Named: delete_list_item
+                                              type_name:
+                                                Struct: "Option<core::ptr::non_null::NonNull<esp_rtos::task::Task>>"
+                                              value: "Option<core::ptr::non_null::NonNull<esp_rtos::task::Task>> @ 0x3FCDB7A8"
+                                              children:
+                                                - name:
+                                                    Named: Some
+                                                  type_name:
+                                                    Struct: Some
+                                                  value: Some @ 0x3FCDB7A8
+                        - name:
+                            Named: set
+                          type_name:
+                            Base: bool
+                          value: "true"
+  canonical_frame_address: 1070446240
+- function_name: __xtensa_lx_rt_main
+  source_location:
+    path: "C:\\_Espressif\\_Demos\\s3-debug\\src\\bin\\main.rs"
+    line: 26
+    column:
+      Column: 1
+    address: 1107366918
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: a0
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value:
+        U32: 2181108750
+    - core_register:
+        id: 1
+        roles:
+          - Core: sp
+          - Core: a1
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value:
+        U32: 1070446240
+    - core_register:
+        id: 2
+        roles:
+          - Core: a2
+          - Argument: a2
+          - Return: a2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value:
+        U32: 1070446288
+    - core_register:
+        id: 3
+        roles:
+          - Core: a3
+          - Argument: a3
+          - Return: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value:
+        U32: 1070122480
+    - core_register:
+        id: 4
+        roles:
+          - Core: a4
+          - Argument: a4
+          - Return: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value: ~
+    - core_register:
+        id: 5
+        roles:
+          - Core: a5
+          - Argument: a5
+          - Return: a5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value: ~
+    - core_register:
+        id: 6
+        roles:
+          - Core: a6
+          - Argument: a6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 3
+    - core_register:
+        id: 7
+        roles:
+          - Core: fp
+          - Core: a7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 1070446240
+    - core_register:
+        id: 8
+        roles:
+          - Core: a8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value: ~
+    - core_register:
+        id: 9
+        roles:
+          - Core: a9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value: ~
+    - core_register:
+        id: 10
+        roles:
+          - Core: a10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value: ~
+    - core_register:
+        id: 11
+        roles:
+          - Core: a11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value: ~
+    - core_register:
+        id: 12
+        roles:
+          - Core: a12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value: ~
+    - core_register:
+        id: 13
+        roles:
+          - Core: a13
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value: ~
+    - core_register:
+        id: 14
+        roles:
+          - Core: a14
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value: ~
+    - core_register:
+        id: 15
+        roles:
+          - Core: a15
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value: ~
+    - core_register:
+        id: 65280
+        roles:
+          - Core: pc
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 1107366923
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
+  pc:
+    U32: 1107366923
+  frame_base: 1070446240
+  is_inlined: true
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown> {\n\texecutor: Executor = Executor @ 0x3FCDB6A0,\n\texecutor: &mut esp_rtos::embassy::Executor = &mut esp_rtos::embassy::Executor @ 0x3FCDB6A0}"
+      children:
+        - name:
+            Named: executor
+          type_name:
+            Struct: Executor
+          value: Executor @ 0x3FCDB6A0
+          source_location:
+            path: "C:\\_Espressif\\_Demos\\s3-debug\\src\\bin\\main.rs"
+            line: 26
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: executor
+              type_name:
+                Struct: "UnsafeCell<core::mem::maybe_uninit::MaybeUninit<embassy_executor::raw::Executor>>"
+              value: "UnsafeCell<core::mem::maybe_uninit::MaybeUninit<embassy_executor::raw::Executor>> @ 0x3FCDB6A0"
+              children:
+                - name:
+                    Named: value
+                  type_name:
+                    Base: "MaybeUninit<embassy_executor::raw::Executor>"
+                  value: "MaybeUninit<embassy_executor::raw::Executor> @ 0x3FCDB6A0"
+                  children:
+                    - name:
+                        Named: uninit
+                      type_name:
+                        Base: ()
+                      value: ()
+                    - name:
+                        Named: value
+                      type_name:
+                        Struct: "ManuallyDrop<embassy_executor::raw::Executor>"
+                      value: "ManuallyDrop<embassy_executor::raw::Executor> @ 0x3FCDB6A0"
+                      children:
+                        - name:
+                            Named: __0
+                          type_name:
+                            Struct: Executor
+                          value: Executor @ 0x3FCDB6A0
+                          children:
+                            - name:
+                                Named: inner
+                              type_name:
+                                Struct: SyncExecutor
+                              value: SyncExecutor @ 0x3FCDB6A0
+                              children:
+                                - name:
+                                    Named: run_queue
+                                  type_name:
+                                    Struct: RunQueue
+                                  value: RunQueue @ 0x3FCDB6A0
+                                  children:
+                                    - name:
+                                        Named: stack
+                                      type_name:
+                                        Struct: "TransferStack<embassy_executor::raw::TaskHeader>"
+                                      value: "TransferStack<embassy_executor::raw::TaskHeader> @ 0x3FCDB6A0"
+                                      children:
+                                        - name:
+                                            Named: head
+                                          type_name:
+                                            Struct: "Atomic<*mut embassy_executor::raw::TaskHeader>"
+                                          value: "Atomic<*mut embassy_executor::raw::TaskHeader> @ 0x3FCDB6A0"
+                                          children:
+                                            - name:
+                                                Named: __0
+                                              type_name:
+                                                Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                              value: "*mut embassy_executor::raw::TaskHeader @ 0x3FC8B800"
+                                              children:
+                                                - name:
+                                                    Named: "*__0"
+                                                  type_name:
+                                                    Struct: TaskHeader
+                                                  value: TaskHeader @ 0x3FC8B800
+                                - name:
+                                    Named: pender
+                                  type_name:
+                                    Struct: Pender
+                                  value: Pender @ 0x3FCDB6A4
+                                  children:
+                                    - name:
+                                        Named: __0
+                                      type_name:
+                                        Pointer: "*mut ()"
+                                      value: "*mut () @ 0x00000000"
+        - name:
+            Named: executor
+          type_name:
+            Pointer: "&mut esp_rtos::embassy::Executor"
+          value: "&mut esp_rtos::embassy::Executor @ 0x3FCDB6A0"
+          source_location:
+            path: "C:\\_Espressif\\_Demos\\s3-debug\\src\\bin\\main.rs"
+            line: 26
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: "*executor"
+              type_name:
+                Struct: Executor
+              value: Executor @ 0x3FCDB6A0
+              children:
+                - name:
+                    Named: executor
+                  type_name:
+                    Struct: "UnsafeCell<core::mem::maybe_uninit::MaybeUninit<embassy_executor::raw::Executor>>"
+                  value: "UnsafeCell<core::mem::maybe_uninit::MaybeUninit<embassy_executor::raw::Executor>> @ 0x3FCDB6A0"
+                  children:
+                    - name:
+                        Named: value
+                      type_name:
+                        Base: "MaybeUninit<embassy_executor::raw::Executor>"
+                      value: "MaybeUninit<embassy_executor::raw::Executor> @ 0x3FCDB6A0"
+                      children:
+                        - name:
+                            Named: uninit
+                          type_name:
+                            Base: ()
+                          value: ()
+                        - name:
+                            Named: value
+                          type_name:
+                            Struct: "ManuallyDrop<embassy_executor::raw::Executor>"
+                          value: "ManuallyDrop<embassy_executor::raw::Executor> @ 0x3FCDB6A0"
+                          children:
+                            - name:
+                                Named: __0
+                              type_name:
+                                Struct: Executor
+                              value: Executor @ 0x3FCDB6A0
+                              children:
+                                - name:
+                                    Named: inner
+                                  type_name:
+                                    Struct: SyncExecutor
+                                  value: SyncExecutor @ 0x3FCDB6A0
+                                  children:
+                                    - name:
+                                        Named: run_queue
+                                      type_name:
+                                        Struct: RunQueue
+                                      value: RunQueue @ 0x3FCDB6A0
+                                      children:
+                                        - name:
+                                            Named: stack
+                                          type_name:
+                                            Struct: "TransferStack<embassy_executor::raw::TaskHeader>"
+                                          value: "TransferStack<embassy_executor::raw::TaskHeader> @ 0x3FCDB6A0"
+                                          children:
+                                            - name:
+                                                Named: head
+                                              type_name:
+                                                Struct: "Atomic<*mut embassy_executor::raw::TaskHeader>"
+                                              value: "Atomic<*mut embassy_executor::raw::TaskHeader> @ 0x3FCDB6A0"
+                                    - name:
+                                        Named: pender
+                                      type_name:
+                                        Struct: Pender
+                                      value: Pender @ 0x3FCDB6A4
+                                      children:
+                                        - name:
+                                            Named: __0
+                                          type_name:
+                                            Pointer: "*mut ()"
+                                          value: "*mut () @ 0x00000000"
+  canonical_frame_address: 1070446288
+- function_name: __xtensa_lx_rt_main_trampoline
+  source_location:
+    path: "C:\\_Espressif\\_Demos\\s3-debug\\src\\bin\\main.rs"
+    line: 26
+    column:
+      Column: 1
+    address: 1107366910
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: a0
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value:
+        U32: 2181108750
+    - core_register:
+        id: 1
+        roles:
+          - Core: sp
+          - Core: a1
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value:
+        U32: 1070446240
+    - core_register:
+        id: 2
+        roles:
+          - Core: a2
+          - Argument: a2
+          - Return: a2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value:
+        U32: 1070446288
+    - core_register:
+        id: 3
+        roles:
+          - Core: a3
+          - Argument: a3
+          - Return: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value:
+        U32: 1070122480
+    - core_register:
+        id: 4
+        roles:
+          - Core: a4
+          - Argument: a4
+          - Return: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value: ~
+    - core_register:
+        id: 5
+        roles:
+          - Core: a5
+          - Argument: a5
+          - Return: a5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value: ~
+    - core_register:
+        id: 6
+        roles:
+          - Core: a6
+          - Argument: a6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 3
+    - core_register:
+        id: 7
+        roles:
+          - Core: fp
+          - Core: a7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 1070446240
+    - core_register:
+        id: 8
+        roles:
+          - Core: a8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value: ~
+    - core_register:
+        id: 9
+        roles:
+          - Core: a9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value: ~
+    - core_register:
+        id: 10
+        roles:
+          - Core: a10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value: ~
+    - core_register:
+        id: 11
+        roles:
+          - Core: a11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value: ~
+    - core_register:
+        id: 12
+        roles:
+          - Core: a12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value: ~
+    - core_register:
+        id: 13
+        roles:
+          - Core: a13
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value: ~
+    - core_register:
+        id: 14
+        roles:
+          - Core: a14
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value: ~
+    - core_register:
+        id: 15
+        roles:
+          - Core: a15
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value: ~
+    - core_register:
+        id: 65280
+        roles:
+          - Core: pc
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 1107366923
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
+  pc:
+    U32: 1107366910
+  frame_base: 1070446240
+  is_inlined: false
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown>"
+  canonical_frame_address: 1070446288
+- function_name: Reset
+  source_location: ~
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: a0
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value:
+        U32: 1077390373
+    - core_register:
+        id: 1
+        roles:
+          - Core: sp
+          - Core: a1
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value:
+        U32: 1070446288
+    - core_register:
+        id: 2
+        roles:
+          - Core: a2
+          - Argument: a2
+          - Return: a2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value:
+        U32: 1077390240
+    - core_register:
+        id: 3
+        roles:
+          - Core: a3
+          - Argument: a3
+          - Return: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value:
+        U32: 1107383056
+    - core_register:
+        id: 4
+        roles:
+          - Core: a4
+          - Argument: a4
+          - Return: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 1107382818
+    - core_register:
+        id: 5
+        roles:
+          - Core: a5
+          - Argument: a5
+          - Return: a5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 1070446272
+    - core_register:
+        id: 6
+        roles:
+          - Core: a6
+          - Argument: a6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 0
+    - core_register:
+        id: 7
+        roles:
+          - Core: fp
+          - Core: a7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 1070446288
+    - core_register:
+        id: 8
+        roles:
+          - Core: a8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value: ~
+    - core_register:
+        id: 9
+        roles:
+          - Core: a9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value: ~
+    - core_register:
+        id: 10
+        roles:
+          - Core: a10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value: ~
+    - core_register:
+        id: 11
+        roles:
+          - Core: a11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value: ~
+    - core_register:
+        id: 12
+        roles:
+          - Core: a12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value: ~
+    - core_register:
+        id: 13
+        roles:
+          - Core: a13
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value: ~
+    - core_register:
+        id: 14
+        roles:
+          - Core: a14
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value: ~
+    - core_register:
+        id: 15
+        roles:
+          - Core: a15
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value: ~
+    - core_register:
+        id: 65280
+        roles:
+          - Core: pc
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 1077390370
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
+  pc:
+    U32: 1077390370
+  frame_base: ~
+  is_inlined: false
+  local_variables: ~
+  canonical_frame_address: ~
+- function_name: Reset
+  source_location: ~
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: a0
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value:
+        U32: 0
+    - core_register:
+        id: 1
+        roles:
+          - Core: sp
+          - Core: a1
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value:
+        U32: 1070446336
+    - core_register:
+        id: 2
+        roles:
+          - Core: a2
+          - Argument: a2
+          - Return: a2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value:
+        U32: 1107366904
+    - core_register:
+        id: 3
+        roles:
+          - Core: a3
+          - Argument: a3
+          - Return: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value:
+        U32: 2
+    - core_register:
+        id: 4
+        roles:
+          - Core: a4
+          - Argument: a4
+          - Return: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 1107382818
+    - core_register:
+        id: 5
+        roles:
+          - Core: a5
+          - Argument: a5
+          - Return: a5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 1070446272
+    - core_register:
+        id: 6
+        roles:
+          - Core: a6
+          - Argument: a6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 0
+    - core_register:
+        id: 7
+        roles:
+          - Core: fp
+          - Core: a7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 1070446288
+    - core_register:
+        id: 8
+        roles:
+          - Core: a8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value: ~
+    - core_register:
+        id: 9
+        roles:
+          - Core: a9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value: ~
+    - core_register:
+        id: 10
+        roles:
+          - Core: a10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value: ~
+    - core_register:
+        id: 11
+        roles:
+          - Core: a11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value: ~
+    - core_register:
+        id: 12
+        roles:
+          - Core: a12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value: ~
+    - core_register:
+        id: 13
+        roles:
+          - Core: a13
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value: ~
+    - core_register:
+        id: 14
+        roles:
+          - Core: a14
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value: ~
+    - core_register:
+        id: 15
+        roles:
+          - Core: a15
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value: ~
+    - core_register:
+        id: 65280
+        roles:
+          - Core: pc
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 1077390370
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
+  pc:
+    U32: 1077390370
+  frame_base: ~
+  is_inlined: false
+  local_variables: ~
+  canonical_frame_address: ~

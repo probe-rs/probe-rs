@@ -1933,7 +1933,7 @@ Child Variables:
                                     Named: write
                                   type_name:
                                     Struct: AtomicUsize
-                                  value: AtomicUsize @ 0x20000098
+                                  value: "363"
                                   children:
                                     - name:
                                         Named: value
@@ -1944,7 +1944,7 @@ Child Variables:
                                     Named: read
                                   type_name:
                                     Struct: AtomicUsize
-                                  value: AtomicUsize @ 0x2000009C
+                                  value: "363"
                                   children:
                                     - name:
                                         Named: value
@@ -1955,7 +1955,7 @@ Child Variables:
                                     Named: flags
                                   type_name:
                                     Struct: AtomicUsize
-                                  value: AtomicUsize @ 0x200000A0
+                                  value: "1"
                                   children:
                                     - name:
                                         Named: value
@@ -1999,7 +1999,7 @@ Child Variables:
                                     Named: write
                                   type_name:
                                     Struct: AtomicUsize
-                                  value: AtomicUsize @ 0x200000B0
+                                  value: "0"
                                   children:
                                     - name:
                                         Named: value
@@ -2010,7 +2010,7 @@ Child Variables:
                                     Named: read
                                   type_name:
                                     Struct: AtomicUsize
-                                  value: AtomicUsize @ 0x200000B4
+                                  value: "0"
                                   children:
                                     - name:
                                         Named: value
@@ -2021,7 +2021,7 @@ Child Variables:
                                     Named: flags
                                   type_name:
                                     Struct: AtomicUsize
-                                  value: AtomicUsize @ 0x200000B8
+                                  value: "1"
                                   children:
                                     - name:
                                         Named: value
@@ -2879,7 +2879,7 @@ Child Variables:
                             Named: borrow
                           type_name:
                             Struct: Cell<isize>
-                          value: Cell<isize> @ 0x200008BC
+                          value: "0"
                           children:
                             - name:
                                 Named: value

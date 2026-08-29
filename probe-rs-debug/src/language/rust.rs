@@ -123,33 +123,45 @@ impl Rust {
             return Ok(());
         }
 
-        let children: Vec<_> = cache.get_children(variable.variable_key).cloned().collect();
-        let [inner] = children.as_slice() else {
-            return Ok(());
-        };
+        // `Atomic<T>` wraps `UnsafeCell<AlignN<T>>`. Each pass peels one layer.
+        for _ in 0..8 {
+            let children: Vec<_> = cache.get_children(variable.variable_key).cloned().collect();
+            let [inner] = children.as_slice() else {
+                return Ok(());
+            };
 
-        let mut inner = inner.clone();
-        debug_info.cache_deferred_variables(cache, memory, &mut inner, frame_info)?;
-        let Some(inner) = cache.get_variable_by_key(inner.variable_key) else {
-            return Ok(());
-        };
+            let mut inner = inner.clone();
+            debug_info.cache_deferred_variables(cache, memory, &mut inner, frame_info)?;
+            let Some(inner) = cache.get_variable_by_key(inner.variable_key) else {
+                return Ok(());
+            };
 
-        let inner_is_unsafe_cell = RustPath::from_variable(debug_info, &inner)
-            .is_some_and(|path| path.is_core_unsafe_cell());
-
-        if inner_is_unsafe_cell {
-            cache.adopt_grand_children(variable, &inner)?;
-            return Ok(());
-        }
-
-        if !cache.has_children(&inner) && inner.value.is_valid() && !inner.value.is_empty() {
-            if path.ident == "ManuallyDrop" {
-                variable.type_name = inner.type_name;
+            let inner_path = RustPath::from_variable(debug_info, &inner);
+            if inner_path
+                .as_ref()
+                .is_some_and(|path| path.is_core_unsafe_cell())
+                || (inner_path
+                    .as_ref()
+                    .is_some_and(|path| path.is_transparent_wrapper())
+                    && cache.has_children(&inner))
+            {
+                let inner_key = inner.variable_key;
+                cache.adopt_grand_children(variable, &inner)?;
+                if cache.get_variable_by_key(inner_key).is_some() {
+                    return Ok(());
+                }
+                continue;
             }
-            variable.set_value(inner.value.clone());
-            cache.remove_cache_entry(inner.variable_key)?;
-            variable.variable_node_type = VariableNodeType::DoNotRecurse;
-            cache.update_variable(variable)?;
+
+            if !cache.has_children(&inner) && inner.value.is_valid() && !inner.value.is_empty() {
+                if path.ident == "ManuallyDrop" {
+                    variable.type_name = inner.type_name;
+                }
+                variable.set_value(inner.value.clone());
+                cache.update_variable(variable)?;
+            }
+
+            return Ok(());
         }
 
         Ok(())
@@ -190,16 +202,17 @@ impl Rust {
         };
 
         debug_info.cache_deferred_variables(cache, memory, &mut buffer, frame_info)?;
-        let Some(buffer) = cache.get_variable_by_key(buffer.variable_key) else {
+        let Some(buffer_field) = cache.get_variable_by_key(buffer.variable_key) else {
             return Ok(());
         };
-        let Some(buffer) = Self::storage_array(debug_info, memory, cache, frame_info, buffer)?
+        let Some(array) =
+            Self::storage_array(debug_info, memory, cache, frame_info, buffer_field.clone())?
         else {
             return Ok(());
         };
 
         let elements: Vec<_> = cache
-            .get_children(buffer.variable_key)
+            .get_children(array.variable_key)
             .filter(|c| matches!(c.name, VariableName::Indexed(_)))
             .cloned()
             .collect();
@@ -213,17 +226,23 @@ impl Rust {
             }
         }
 
-        let live: Vec<_> = cache
-            .get_children(buffer.variable_key)
+        let live = cache
+            .get_children(array.variable_key)
             .filter(|c| matches!(c.name, VariableName::Indexed(index) if index < len))
             .cloned()
-            .collect();
+            .collect::<Vec<_>>();
 
         for mut element in live {
-            self.unwrap_maybe_uninit_slot(debug_info, memory, cache, frame_info, &mut element)?;
+            self.unwrap_storage_slot(debug_info, memory, cache, frame_info, &mut element)?;
         }
 
-        let Some(mut buffer) = cache.get_variable_by_key(buffer.variable_key) else {
+        let buffer_key = if array.variable_key != buffer_field.variable_key {
+            cache.adopt_grand_children(&buffer_field, &array)?;
+            buffer_field.variable_key
+        } else {
+            array.variable_key
+        };
+        let Some(mut buffer) = cache.get_variable_by_key(buffer_key) else {
             return Ok(());
         };
 
@@ -250,26 +269,69 @@ impl Rust {
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
         frame_info: StackFrameInfo<'_>,
-        buffer: Variable,
+        mut buffer: Variable,
     ) -> Result<Option<Variable>, DebugError> {
-        if matches!(buffer.type_name, VariableType::Array { .. }) {
-            return Ok(Some(buffer));
+        // Walk down a few levels to cover both old and new heapless::Vec layouts
+        for _ in 0..4 {
+            if matches!(buffer.type_name, VariableType::Array { .. }) {
+                return Ok(Some(buffer));
+            }
+
+            debug_info.cache_deferred_variables(cache, memory, &mut buffer, frame_info)?;
+            let Some(current) = cache.get_variable_by_key(buffer.variable_key) else {
+                return Ok(None);
+            };
+            let inner: Vec<_> = cache.get_children(current.variable_key).cloned().collect();
+            let [inner] = inner.as_slice() else {
+                return Ok(None);
+            };
+            let mut inner = inner.clone();
+            debug_info.cache_deferred_variables(cache, memory, &mut inner, frame_info)?;
+            let Some(inner) = cache.get_variable_by_key(inner.variable_key) else {
+                return Ok(None);
+            };
+            buffer = inner;
         }
 
-        let inner: Vec<_> = cache.get_children(buffer.variable_key).cloned().collect();
-        let [inner] = inner.as_slice() else {
-            return Ok(None);
+        Ok(None)
+    }
+
+    fn unwrap_storage_slot(
+        &self,
+        debug_info: &DebugInfo,
+        memory: &mut dyn MemoryInterface,
+        cache: &mut VariableCache,
+        frame_info: StackFrameInfo<'_>,
+        element: &mut Variable,
+    ) -> Result<(), DebugError> {
+        self.unwrap_maybe_uninit_slot(debug_info, memory, cache, frame_info, element)?;
+        let Some(mut element) = cache.get_variable_by_key(element.variable_key) else {
+            return Ok(());
         };
-        let mut inner = inner.clone();
-        debug_info.cache_deferred_variables(cache, memory, &mut inner, frame_info)?;
-        let Some(inner) = cache.get_variable_by_key(inner.variable_key) else {
-            return Ok(None);
+        let Some(offset) = element.type_node_offset else {
+            return Ok(());
         };
-        if matches!(inner.type_name, VariableType::Array { .. }) {
-            Ok(Some(inner))
-        } else {
-            Ok(None)
+        let Ok((unit_info, entry)) = debug_info.entry_at_debug_info_offset(offset) else {
+            return Ok(());
+        };
+        self.flatten_known_wrapper(
+            unit_info,
+            debug_info,
+            &entry,
+            &mut element,
+            memory,
+            cache,
+            frame_info,
+        )?;
+        let Some(mut element) = cache.get_variable_by_key(element.variable_key) else {
+            return Ok(());
+        };
+        if element.value.is_valid() && !element.value.is_empty() {
+            cache.remove_cache_entry_children(element.variable_key)?;
+            element.variable_node_type = VariableNodeType::DoNotRecurse;
+            cache.update_variable(&element)?;
         }
+        Ok(())
     }
 
     fn unwrap_maybe_uninit_slot(
@@ -306,6 +368,7 @@ impl Rust {
 
         let mut element = element_now;
         element.type_name = value.type_name.clone();
+        element.type_node_offset = value.type_node_offset;
         element.byte_size = value.byte_size;
 
         if cache.has_children(&value) {
@@ -681,6 +744,11 @@ impl RustPath {
             },
             TransparentWrapper {
                 crates: RUSTC_LIBS,
+                modules: ModulePath::Prefix(&["mem"]),
+                ident: Ident::Exact("MaybeDangling"),
+            },
+            TransparentWrapper {
+                crates: RUSTC_LIBS,
                 modules: ModulePath::Prefix(&["num"]),
                 ident: Ident::Exact("Wrapping"),
             },
@@ -704,6 +772,16 @@ impl RustPath {
                 modules: ModulePath::Exact(&[]),
                 ident: Ident::Exact("VolatileCell"),
             },
+            TransparentWrapper {
+                crates: &["portable_atomic"],
+                modules: ModulePath::Prefix(&[]),
+                ident: Ident::Prefix("Atomic"),
+            },
+            TransparentWrapper {
+                crates: RUSTC_LIBS,
+                modules: ModulePath::Prefix(&["sync", "atomic"]),
+                ident: Ident::Prefix("Align"),
+            },
         ]
         .iter()
         .any(|wrapper| wrapper.matches(self))
@@ -718,7 +796,7 @@ impl RustPath {
     }
 
     fn is_heapless_vec(&self) -> bool {
-        self.crate_name == "heapless" && self.ident == "Vec"
+        self.crate_name == "heapless" && matches!(self.ident.as_str(), "Vec" | "VecInner")
     }
 }
 
@@ -757,13 +835,19 @@ mod tests {
         assert!(path("core", &["cell"], "UnsafeCell").is_core_unsafe_cell());
         assert!(path("core", &["sync", "atomic"], "AtomicU32").is_transparent_wrapper());
         assert!(path("core", &["mem", "manually_drop"], "ManuallyDrop").is_transparent_wrapper());
+        assert!(path("core", &["mem", "maybe_dangling"], "MaybeDangling").is_transparent_wrapper());
         assert!(path("core", &["num", "wrapping"], "Wrapping").is_transparent_wrapper());
         assert!(path("core", &["num", "nonzero"], "NonZero").is_transparent_wrapper());
         assert!(
             path("embassy_executor", &["raw", "util"], "SyncUnsafeCell").is_transparent_wrapper()
         );
 
-        assert!(!path("portable_atomic", &[], "AtomicU32").is_transparent_wrapper());
+        assert!(path("portable_atomic", &[], "AtomicU32").is_transparent_wrapper());
+        assert!(
+            path("portable_atomic", &["imp", "core_atomic"], "AtomicU32").is_transparent_wrapper()
+        );
+        assert!(path("portable_atomic", &[], "Atomic").is_transparent_wrapper());
+        assert!(path("core", &["sync", "atomic", "private"], "Align4").is_transparent_wrapper());
         assert!(
             !path(
                 "embassy_sync",
@@ -777,6 +861,8 @@ mod tests {
         assert!(!path("core", &["pin"], "Pin").is_transparent_wrapper());
         assert!(!path("core", &["ptr", "non_null"], "NonNull").is_transparent_wrapper());
         assert!(path("heapless", &["vec"], "Vec").is_heapless_vec());
+        assert!(path("heapless", &["vec"], "VecInner").is_heapless_vec());
+        assert!(!path("heapless", &["vec", "storage"], "VecStorageInner").is_heapless_vec());
         assert!(!path("alloc", &["vec"], "Vec").is_heapless_vec());
         assert!(path("vcell", &[], "VolatileCell").is_transparent_wrapper());
     }
@@ -811,7 +897,7 @@ mod tests {
                 }
                 if path.ident == "AtomicU32" && path.crate_name == "portable_atomic" {
                     saw_portable_atomic = true;
-                    assert!(!path.is_transparent_wrapper());
+                    assert!(path.is_transparent_wrapper());
                 }
             }
         }

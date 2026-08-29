@@ -2405,8 +2405,8 @@ expression: stack_frames
                         - name:
                             Named: value
                           type_name:
-                            Struct: "ManuallyDrop<core::cell::UnsafeCell<coredump_c6::____embassy_main_task::{async_fn_env#0}>>"
-                          value: "ManuallyDrop<core::cell::UnsafeCell<coredump_c6::____embassy_main_task::{async_fn_env#0}>> @ 0x3FC89F20"
+                            Struct: "{async_fn_env#0}"
+                          value: "{async_fn_env#0} @ 0x3FC89F20"
                           children:
                             - name:
                                 Named: value

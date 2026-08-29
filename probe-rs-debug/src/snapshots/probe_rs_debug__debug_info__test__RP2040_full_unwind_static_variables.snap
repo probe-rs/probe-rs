@@ -576,7 +576,7 @@ Child Variables:
                         Named: CACHED_PTR
                       type_name:
                         Struct: AtomicU16
-                      value: AtomicU16 @ 0x20000070
+                      value: "9937"
                       source_location:
                         path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
                         line: 132
@@ -602,7 +602,7 @@ Child Variables:
                         Named: CACHED_PTR
                       type_name:
                         Struct: AtomicU16
-                      value: AtomicU16 @ 0x20000072
+                      value: "9793"
                       source_location:
                         path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
                         line: 132
@@ -1854,7 +1854,7 @@ Child Variables:
                         Named: CACHED_PTR
                       type_name:
                         Struct: AtomicU16
-                      value: AtomicU16 @ 0x20000076
+                      value: "9769"
                       source_location:
                         path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
                         line: 132
@@ -1918,7 +1918,7 @@ Child Variables:
                         Named: CACHED_PTR
                       type_name:
                         Struct: AtomicU16
-                      value: AtomicU16 @ 0x20000078
+                      value: "0"
                       source_location:
                         path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
                         line: 80
@@ -1996,7 +1996,7 @@ Child Variables:
                 Named: LOCK_OWNER
               type_name:
                 Struct: AtomicU8
-              value: AtomicU8 @ 0x20000074
+              value: "0"
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/critical_section_impl.rs
                 line: 14
@@ -3493,7 +3493,7 @@ Child Variables:
                                     Named: write
                                   type_name:
                                     Struct: AtomicUsize
-                                  value: AtomicUsize @ 0x200000A0
+                                  value: "363"
                                   children:
                                     - name:
                                         Named: value
@@ -3504,7 +3504,7 @@ Child Variables:
                                     Named: read
                                   type_name:
                                     Struct: AtomicUsize
-                                  value: AtomicUsize @ 0x200000A4
+                                  value: "363"
                                   children:
                                     - name:
                                         Named: value
@@ -3515,7 +3515,7 @@ Child Variables:
                                     Named: flags
                                   type_name:
                                     Struct: AtomicUsize
-                                  value: AtomicUsize @ 0x200000A8
+                                  value: "1"
                                   children:
                                     - name:
                                         Named: value
@@ -3559,7 +3559,7 @@ Child Variables:
                                     Named: write
                                   type_name:
                                     Struct: AtomicUsize
-                                  value: AtomicUsize @ 0x200000B8
+                                  value: "0"
                                   children:
                                     - name:
                                         Named: value
@@ -3570,7 +3570,7 @@ Child Variables:
                                     Named: read
                                   type_name:
                                     Struct: AtomicUsize
-                                  value: AtomicUsize @ 0x200000BC
+                                  value: "0"
                                   children:
                                     - name:
                                         Named: value
@@ -3581,7 +3581,7 @@ Child Variables:
                                     Named: flags
                                   type_name:
                                     Struct: AtomicUsize
-                                  value: AtomicUsize @ 0x200000C0
+                                  value: "1"
                                   children:
                                     - name:
                                         Named: value
@@ -4439,7 +4439,7 @@ Child Variables:
                             Named: borrow
                           type_name:
                             Struct: Cell<isize>
-                          value: Cell<isize> @ 0x200008C4
+                          value: "0"
                           children:
                             - name:
                                 Named: value
