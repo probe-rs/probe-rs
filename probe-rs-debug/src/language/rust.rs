@@ -104,16 +104,21 @@ impl Rust {
         }
     }
 
-    /// Drops the `UnsafeCell` member of an `Atomic*` newtype so the stored value is a direct child.
-    fn hide_unsafe_cell_in_atomic(
+    /// Unwraps rustc (and known embassy) newtypes after their member DIE is in the cache.
+    fn flatten_known_wrapper(
         &self,
+        unit_info: &UnitInfo,
         debug_info: &DebugInfo,
+        node: &DebuggingInformationEntry<GimliReader>,
         variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
         frame_info: StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
-        if !is_atomic_type(&variable.type_name()) {
+        let Some(path) = RustPath::from_die(unit_info, debug_info, node) else {
+            return Ok(());
+        };
+        if !path.is_transparent_wrapper() {
             return Ok(());
         }
 
@@ -121,17 +126,27 @@ impl Rust {
         let [inner] = children.as_slice() else {
             return Ok(());
         };
-        if !is_rust_type(&inner.type_name(), "UnsafeCell") {
-            return Ok(());
-        }
 
         let mut inner = inner.clone();
         debug_info.cache_deferred_variables(cache, memory, &mut inner, frame_info)?;
-
         let Some(inner) = cache.get_variable_by_key(inner.variable_key) else {
             return Ok(());
         };
-        cache.adopt_grand_children(variable, &inner)?;
+
+        let inner_is_unsafe_cell = RustPath::from_variable(debug_info, &inner)
+            .is_some_and(|path| path.is_core_unsafe_cell());
+
+        if inner_is_unsafe_cell {
+            cache.adopt_grand_children(variable, &inner)?;
+            return Ok(());
+        }
+
+        if !cache.has_children(&inner) && inner.value.is_valid() && !inner.value.is_empty() {
+            variable.set_value(inner.value.clone());
+            cache.remove_cache_entry(inner.variable_key)?;
+            variable.variable_node_type = VariableNodeType::DoNotRecurse;
+            cache.update_variable(variable)?;
+        }
 
         Ok(())
     }
@@ -343,9 +358,9 @@ impl ProgrammingLanguage for Rust {
 
     fn process_struct(
         &self,
-        _unit_info: &UnitInfo,
+        unit_info: &UnitInfo,
         debug_info: &DebugInfo,
-        _node: &DebuggingInformationEntry<GimliReader>,
+        node: &DebuggingInformationEntry<GimliReader>,
         variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
@@ -355,7 +370,9 @@ impl ProgrammingLanguage for Rust {
             self.expand_slice(debug_info, variable, memory, cache, frame_info)?;
         }
 
-        self.hide_unsafe_cell_in_atomic(debug_info, variable, memory, cache, frame_info)?;
+        self.flatten_known_wrapper(
+            unit_info, debug_info, node, variable, memory, cache, frame_info,
+        )?;
 
         Ok(())
     }
@@ -373,19 +390,87 @@ fn type_ident(name: &str) -> &str {
         .map_or(before_generics, |(_, ident)| ident)
 }
 
+/// Crate, modules, and ident from DWARF namespaces plus `DW_AT_name`.
+struct RustPath {
+    crate_name: String,
+    modules: Vec<String>,
+    ident: String,
+}
+
+impl RustPath {
+    fn from_die(
+        unit_info: &UnitInfo,
+        debug_info: &DebugInfo,
+        entry: &DebuggingInformationEntry<GimliReader>,
+    ) -> Option<Self> {
+        let name = unit_info.extract_type_name(debug_info, entry).ok()??;
+        let mut namespaces = unit_info.namespace_path(debug_info, entry);
+        if namespaces.is_empty() {
+            return None;
+        }
+        let ident = type_ident(&name).to_string();
+        let crate_name = namespaces.remove(0);
+        Some(Self {
+            crate_name: crate_name,
+            modules: namespaces,
+            ident,
+        })
+    }
+
+    fn from_variable(debug_info: &DebugInfo, variable: &Variable) -> Option<Self> {
+        let offset = variable.type_node_offset?;
+        let (unit_info, entry) = debug_info.entry_at_debug_info_offset(offset).ok()?;
+        Self::from_die(unit_info, debug_info, &entry)
+    }
+
+    fn is_rustc_lib(&self) -> bool {
+        matches!(self.crate_name.as_str(), "core" | "alloc" | "std")
+    }
+
+    fn modules_start_with(&self, prefix: &[&str]) -> bool {
+        self.modules.len() >= prefix.len()
+            && self
+                .modules
+                .iter()
+                .zip(prefix)
+                .all(|(segment, expected)| segment == expected)
+    }
+
+    fn is_transparent_wrapper(&self) -> bool {
+        if self.crate_name == "embassy_executor"
+            && self.modules_start_with(&["raw", "util"])
+            && self.ident == "SyncUnsafeCell"
+        {
+            return true;
+        }
+
+        if !self.is_rustc_lib() {
+            return false;
+        }
+
+        match self.ident.as_str() {
+            "Cell" | "SyncUnsafeCell" => self.modules_start_with(&["cell"]),
+            "ManuallyDrop" => self.modules_start_with(&["mem"]),
+            "Wrapping" | "NonZero" => self.modules_start_with(&["num"]),
+            ident if ident.starts_with("Atomic") => self.modules_start_with(&["sync", "atomic"]),
+            _ => false,
+        }
+    }
+
+    fn is_core_unsafe_cell(&self) -> bool {
+        self.is_rustc_lib() && self.ident == "UnsafeCell" && self.modules_start_with(&["cell"])
+    }
+}
+
 /// `type_name`, `prefix::type_name`, or those names with a generic argument list.
 fn is_rust_type(name: &str, type_name: &str) -> bool {
     type_ident(name) == type_name
 }
 
-/// `AtomicU32`, `core::sync::atomic::AtomicPtr<T>`, and similar std newtypes.
-fn is_atomic_type(name: &str) -> bool {
-    type_ident(name).starts_with("Atomic")
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{is_atomic_type, is_rust_type};
+    use super::{RustPath, is_rust_type};
+    use crate::DebugInfo;
 
     #[test]
     fn rust_type_name_matches() {
@@ -402,10 +487,77 @@ mod tests {
     }
 
     #[test]
-    fn atomic_type_name_matches() {
-        assert!(is_atomic_type("AtomicU32"));
-        assert!(is_atomic_type("core::sync::atomic::AtomicPtr<u8>"));
-        assert!(!is_atomic_type("Option<u32>"));
-        assert!(!is_atomic_type("UnsafeCell<u32>"));
+    fn rustc_and_embassy_wrappers_match_their_namespaces() {
+        assert!(path("core", &["cell"], "Cell").is_transparent_wrapper());
+        assert!(!path("core", &["cell"], "UnsafeCell").is_transparent_wrapper());
+        assert!(path("core", &["cell"], "UnsafeCell").is_core_unsafe_cell());
+        assert!(path("core", &["sync", "atomic"], "AtomicU32").is_transparent_wrapper());
+        assert!(path("core", &["mem", "manually_drop"], "ManuallyDrop").is_transparent_wrapper());
+        assert!(path("core", &["num", "wrapping"], "Wrapping").is_transparent_wrapper());
+        assert!(path("core", &["num", "nonzero"], "NonZero").is_transparent_wrapper());
+        assert!(
+            path("embassy_executor", &["raw", "util"], "SyncUnsafeCell").is_transparent_wrapper()
+        );
+
+        assert!(!path("portable_atomic", &[], "AtomicU32").is_transparent_wrapper());
+        assert!(
+            !path(
+                "embassy_sync",
+                &["waitqueue", "atomic_waker"],
+                "AtomicWaker"
+            )
+            .is_transparent_wrapper()
+        );
+        assert!(!path("esp_hal", &["sync", "multicore"], "AtomicLock").is_transparent_wrapper());
+        assert!(!path("core", &["cell"], "RefCell").is_transparent_wrapper());
+        assert!(!path("core", &["pin"], "Pin").is_transparent_wrapper());
+        assert!(!path("core", &["ptr", "non_null"], "NonNull").is_transparent_wrapper());
+    }
+
+    #[test]
+    fn dwarf_namespaces_identify_the_crate() {
+        let elf = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/debug-unwind-tests/esp32s3_esp_hal_panic.elf");
+        let debug_info = DebugInfo::from_file(&elf).unwrap();
+
+        let mut saw_core_cell = false;
+        let mut saw_core_atomic = false;
+        let mut saw_portable_atomic = false;
+        for unit in &debug_info.unit_infos {
+            let mut cursor = unit.unit.entries();
+            while let Ok(Some(entry)) = cursor.next_dfs() {
+                if entry.tag() != gimli::DW_TAG_structure_type {
+                    continue;
+                }
+                let Some(path) = RustPath::from_die(unit, &debug_info, entry) else {
+                    continue;
+                };
+                if path.ident == "Cell" && path.crate_name == "core" {
+                    saw_core_cell = true;
+                    assert_eq!(path.modules, ["cell"]);
+                    assert!(path.is_transparent_wrapper());
+                }
+                if path.ident == "AtomicU32" && path.crate_name == "core" {
+                    saw_core_atomic = true;
+                    assert_eq!(path.modules, ["sync", "atomic"]);
+                    assert!(path.is_transparent_wrapper());
+                }
+                if path.ident == "AtomicU32" && path.crate_name == "portable_atomic" {
+                    saw_portable_atomic = true;
+                    assert!(!path.is_transparent_wrapper());
+                }
+            }
+        }
+        assert!(saw_core_cell);
+        assert!(saw_core_atomic);
+        assert!(saw_portable_atomic);
+    }
+
+    fn path(crate_name: &str, modules: &[&str], ident: &str) -> RustPath {
+        RustPath {
+            crate_name: crate_name.to_string(),
+            modules: modules.iter().map(|s| (*s).to_string()).collect(),
+            ident: ident.to_string(),
+        }
     }
 }

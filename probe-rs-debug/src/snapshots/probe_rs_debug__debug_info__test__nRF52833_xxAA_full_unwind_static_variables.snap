@@ -2884,14 +2884,8 @@ Child Variables:
                             - name:
                                 Named: value
                               type_name:
-                                Struct: UnsafeCell<isize>
-                              value: UnsafeCell<isize> @ 0x200008BC
-                              children:
-                                - name:
-                                    Named: value
-                                  type_name:
-                                    Base: isize
-                                  value: "0"
+                                Base: isize
+                              value: "0"
                         - name:
                             Named: value
                           type_name:
