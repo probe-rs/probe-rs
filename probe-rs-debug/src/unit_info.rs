@@ -2387,17 +2387,12 @@ impl UnitInfo {
                         }
                     }
                     Err(error) => {
-                        // The Display of the error hides the cause, which holds the
-                        // detail of the failure.
-                        let cause = std::error::Error::source(&error)
-                            .map_or_else(|| error.to_string(), |cause| cause.to_string());
-
                         tracing::debug!(
-                            "Failed to read referenced variable address from memory location {} : {cause}.",
+                            "Failed to read referenced variable address from memory location {} : {error}.",
                             parent_variable.memory_location
                         );
                         VariableLocation::Error(format!(
-                            "Failed to read referenced variable address from memory location {} : {cause}.",
+                            "Failed to read referenced variable address from memory location {} : {error}.",
                             parent_variable.memory_location
                         ))
                     }

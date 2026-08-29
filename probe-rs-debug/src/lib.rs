@@ -83,7 +83,7 @@ pub enum DebugError {
     #[error("Non-UTF8 data found in debug data")]
     NonUtf8(#[from] Utf8Error),
     /// A probe-rs error occurred.
-    #[error("Error using the probe")]
+    #[error(transparent)]
     Probe(#[from] probe_rs::Error),
     /// A char could not be created from the given string.
     #[error(transparent)]

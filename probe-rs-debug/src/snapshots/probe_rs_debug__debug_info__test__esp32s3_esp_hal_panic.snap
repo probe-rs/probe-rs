@@ -276,7 +276,7 @@ expression: stack_frames
                                         Named: length
                                       type_name:
                                         Base: usize
-                                      value: "< Error using the probe >"
+                                      value: "< The coredump does not include the memory for address 0x3c010688 of size 0x4 >"
                         - name:
                             Named: fmt
                           type_name:
@@ -340,17 +340,17 @@ expression: stack_frames
                                 Named: length
                               type_name:
                                 Base: usize
-                              value: "< Error using the probe >"
+                              value: "< The coredump does not include the memory for address 0x3c0106a0 of size 0x4 >"
                         - name:
                             Named: line
                           type_name:
                             Base: u32
-                          value: "< Error using the probe >"
+                          value: "< The coredump does not include the memory for address 0x3c0106a4 of size 0x4 >"
                         - name:
                             Named: col
                           type_name:
                             Base: u32
-                          value: "< Error using the probe >"
+                          value: "< The coredump does not include the memory for address 0x3c0106a8 of size 0x4 >"
                 - name:
                     Named: can_unwind
                   type_name:
@@ -639,7 +639,7 @@ expression: stack_frames
                                                 Named: length
                                               type_name:
                                                 Base: usize
-                                              value: "< Error using the probe >"
+                                              value: "< The coredump does not include the memory for address 0x3c010688 of size 0x4 >"
                                 - name:
                                     Named: fmt
                                   type_name:
@@ -703,17 +703,17 @@ expression: stack_frames
                                         Named: length
                                       type_name:
                                         Base: usize
-                                      value: "< Error using the probe >"
+                                      value: "< The coredump does not include the memory for address 0x3c0106a0 of size 0x4 >"
                                 - name:
                                     Named: line
                                   type_name:
                                     Base: u32
-                                  value: "< Error using the probe >"
+                                  value: "< The coredump does not include the memory for address 0x3c0106a4 of size 0x4 >"
                                 - name:
                                     Named: col
                                   type_name:
                                     Base: u32
-                                  value: "< Error using the probe >"
+                                  value: "< The coredump does not include the memory for address 0x3c0106a8 of size 0x4 >"
                         - name:
                             Named: can_unwind
                           type_name:
@@ -1010,7 +1010,7 @@ expression: stack_frames
                                         Named: length
                                       type_name:
                                         Base: usize
-                                      value: "< Error using the probe >"
+                                      value: "< The coredump does not include the memory for address 0x3c010688 of size 0x4 >"
                         - name:
                             Named: fmt
                           type_name:
@@ -1074,17 +1074,17 @@ expression: stack_frames
                                 Named: length
                               type_name:
                                 Base: usize
-                              value: "< Error using the probe >"
+                              value: "< The coredump does not include the memory for address 0x3c0106a0 of size 0x4 >"
                         - name:
                             Named: line
                           type_name:
                             Base: u32
-                          value: "< Error using the probe >"
+                          value: "< The coredump does not include the memory for address 0x3c0106a4 of size 0x4 >"
                         - name:
                             Named: col
                           type_name:
                             Base: u32
-                          value: "< Error using the probe >"
+                          value: "< The coredump does not include the memory for address 0x3c0106a8 of size 0x4 >"
                 - name:
                     Named: can_unwind
                   type_name:
@@ -1343,7 +1343,7 @@ expression: stack_frames
                             Named: length
                           type_name:
                             Base: usize
-                          value: "< Error using the probe >"
+                          value: "< The coredump does not include the memory for address 0x3c010688 of size 0x4 >"
             - name:
                 Named: fmt
               type_name:
@@ -1438,7 +1438,7 @@ expression: stack_frames
                                     Named: length
                                   type_name:
                                     Base: usize
-                                  value: "< Error using the probe >"
+                                  value: "< The coredump does not include the memory for address 0x3c010688 of size 0x4 >"
                     - name:
                         Named: fmt
                       type_name:
@@ -1502,17 +1502,17 @@ expression: stack_frames
                             Named: length
                           type_name:
                             Base: usize
-                          value: "< Error using the probe >"
+                          value: "< The coredump does not include the memory for address 0x3c0106a0 of size 0x4 >"
                     - name:
                         Named: line
                       type_name:
                         Base: u32
-                      value: "< Error using the probe >"
+                      value: "< The coredump does not include the memory for address 0x3c0106a4 of size 0x4 >"
                     - name:
                         Named: col
                       type_name:
                         Base: u32
-                      value: "< Error using the probe >"
+                      value: "< The coredump does not include the memory for address 0x3c0106a8 of size 0x4 >"
             - name:
                 Named: can_unwind
               type_name:
