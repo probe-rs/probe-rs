@@ -77,10 +77,10 @@ impl FlashAlgorithm {
     /// If the `address` is not part of the flash, None will
     /// be returned.
     pub fn sector_info(&self, address: u64) -> Option<SectorInfo> {
-        if self.flash_properties.sector_info(address).is_none() {
-            tracing::trace!("Address {:08x} not contained in this flash device", address);
-        }
-        self.flash_properties.sector_info(address)
+        self.flash_properties.sector_info(address).or_else(|| {
+            tracing::debug!("Address {:08x} not contained in this flash device", address);
+            None
+        })
     }
 
     /// Returns the necessary information about the page which `address` resides in
