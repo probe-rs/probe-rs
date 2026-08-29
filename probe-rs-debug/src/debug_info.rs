@@ -347,13 +347,10 @@ impl DebugInfo {
                     let unit_node = entries.next_dfs()?.unwrap();
                     let unit_offset = unit_node.offset();
 
-                    let mut type_tree = unit_info.unit.entries_tree(Some(unit_offset))?;
-                    let parent_node = type_tree.root()?;
-
-                    unit_info.process_tree(
+                    unit_info.collect_static_variables(
                         self,
-                        parent_node,
-                        parent_variable,
+                        unit_offset,
+                        parent_variable.variable_key(),
                         memory,
                         cache,
                         frame_info,

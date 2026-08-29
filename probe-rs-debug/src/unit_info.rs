@@ -519,6 +519,178 @@ impl UnitInfo {
         Ok(())
     }
 
+    /// Walk the compilation unit for static variables without nested `process_tree`
+    /// frames. Nested namespaces on the RPC task stack overflow on Windows.
+    pub(crate) fn collect_static_variables(
+        &self,
+        debug_info: &DebugInfo,
+        unit_offset: UnitOffset,
+        parent_key: crate::ObjectRef,
+        memory: &mut dyn MemoryInterface,
+        cache: &mut VariableCache,
+        frame_info: StackFrameInfo<'_>,
+    ) -> Result<(), DebugError> {
+        enum Job {
+            /// The compilation unit or a namespace whose children should be walked.
+            Visit {
+                offset: UnitOffset,
+                parent_key: crate::ObjectRef,
+            },
+            /// Create the namespace, then walk its children.
+            VisitNamespace {
+                offset: UnitOffset,
+                parent_key: crate::ObjectRef,
+            },
+            DropEmptyNamespace(crate::ObjectRef),
+            AddDie {
+                offset: UnitOffset,
+                parent_key: crate::ObjectRef,
+            },
+        }
+
+        let mut stack = vec![Job::Visit {
+            offset: unit_offset,
+            parent_key,
+        }];
+
+        while let Some(job) = stack.pop() {
+            match job {
+                Job::DropEmptyNamespace(key) => {
+                    if let Some(namespace) = cache.get_variable_by_key(key)
+                        && !cache.has_children(&namespace)
+                    {
+                        cache.remove_cache_entry(key)?;
+                    }
+                }
+                Job::AddDie { offset, parent_key } => {
+                    self.add_static_die(debug_info, cache, parent_key, offset, memory, frame_info)?;
+                }
+                Job::VisitNamespace { offset, parent_key } => {
+                    let namespace_key =
+                        self.ensure_namespace(debug_info, cache, parent_key, offset)?;
+                    stack.push(Job::DropEmptyNamespace(namespace_key));
+                    stack.push(Job::Visit {
+                        offset,
+                        parent_key: namespace_key,
+                    });
+                }
+                Job::Visit { offset, parent_key } => {
+                    let mut child_dies = Vec::new();
+                    {
+                        let mut tree = self.unit.entries_tree(Some(offset))?;
+                        let mut children = tree.root()?.children();
+                        while let Some(child) = children.next()? {
+                            child_dies.push((child.entry().offset(), child.entry().tag()));
+                        }
+                    }
+
+                    for (child_offset, tag) in child_dies.into_iter().rev() {
+                        match tag {
+                            gimli::DW_TAG_namespace => {
+                                stack.push(Job::VisitNamespace {
+                                    offset: child_offset,
+                                    parent_key,
+                                });
+                            }
+                            gimli::DW_TAG_formal_parameter
+                            | gimli::DW_TAG_variable
+                            | gimli::DW_TAG_member => {
+                                stack.push(Job::AddDie {
+                                    offset: child_offset,
+                                    parent_key,
+                                });
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn ensure_namespace(
+        &self,
+        debug_info: &DebugInfo,
+        cache: &mut VariableCache,
+        parent_key: crate::ObjectRef,
+        namespace_offset: UnitOffset,
+    ) -> Result<crate::ObjectRef, DebugError> {
+        let entry = self.unit.entry(namespace_offset)?;
+        let variable_name = if let Ok(Some(name)) = extract_name(debug_info, &self.unit, &entry) {
+            VariableName::Namespace(name)
+        } else {
+            VariableName::AnonymousNamespace
+        };
+
+        if let Some(existing) = cache.get_variable_by_name_and_parent(&variable_name, parent_key) {
+            return Ok(existing.variable_key());
+        }
+
+        let mut namespace_variable = Variable::new(Some(self));
+        namespace_variable.name = variable_name;
+        namespace_variable.type_name = VariableType::Namespace;
+        namespace_variable.memory_location = VariableLocation::Unavailable;
+        cache.add_variable(parent_key, &mut namespace_variable)?;
+        Ok(namespace_variable.variable_key())
+    }
+
+    #[expect(clippy::too_many_arguments)]
+    fn add_static_die(
+        &self,
+        debug_info: &DebugInfo,
+        cache: &mut VariableCache,
+        parent_key: crate::ObjectRef,
+        die_offset: UnitOffset,
+        memory: &mut dyn MemoryInterface,
+        frame_info: StackFrameInfo<'_>,
+    ) -> Result<(), DebugError> {
+        let Some(mut parent_variable) = cache.get_variable_by_key(parent_key) else {
+            return Err(DebugError::Other(
+                "Failed to find parent variable for static DIE.".to_string(),
+            ));
+        };
+        let mut child_variable = cache.create_variable(parent_key, Some(self))?;
+        let die = self.unit.entry(die_offset)?;
+        self.process_tree_node_attributes(
+            debug_info,
+            &die,
+            &mut parent_variable,
+            &mut child_variable,
+            memory,
+            cache,
+            frame_info,
+        )?;
+        cache.update_variable(&parent_variable)?;
+
+        let is_declaration =
+            if let Some(AttributeValue::Flag(value)) = die.attr_value(gimli::DW_AT_declaration) {
+                value
+            } else {
+                false
+            };
+
+        if is_declaration
+            || child_variable.type_name.is_phantom_data()
+            || child_variable.name == VariableName::Artificial
+        {
+            cache.remove_cache_entry(child_variable.variable_key)?;
+        } else if child_variable.is_valid() {
+            let mut tree = self.unit.entries_tree(Some(die_offset))?;
+            self.process_tree(
+                debug_info,
+                tree.root()?,
+                &mut child_variable,
+                memory,
+                cache,
+                frame_info,
+            )?;
+        }
+
+        Ok(())
+    }
+
     /// Recurse the ELF structure below the `parent_node`, and ...
     /// - Consumes the `parent_variable`.
     /// - Updates the `DebugInfo::VariableCache` with all descendant `Variable`s.
