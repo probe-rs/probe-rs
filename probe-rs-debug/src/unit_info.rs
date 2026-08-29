@@ -304,7 +304,7 @@ impl UnitInfo {
             child_variable.name = VariableName::Named(name);
         }
 
-        if let Some(attributes_entry) = attributes_entry {
+        if let Some(attributes_entry) = attributes_entry.as_ref() {
             child_variable.source_location =
                 self.extract_source_location(debug_info, attributes_entry)?;
 
@@ -452,6 +452,9 @@ impl UnitInfo {
                     | gimli::DW_AT_bit_size => {
                         // Processed by `extract_bitfield_info()`
                     }
+                    gimli::DW_AT_start_scope => {
+                        // Processed by `apply_start_scope()`.
+                    }
                     other_attribute => {
                         tracing::info!(
                             "Unimplemented: Variable Attribute {:.100} : {:.100}, with children = {}",
@@ -467,10 +470,98 @@ impl UnitInfo {
         // Need to process bitfields last as they need type information to be resolved first.
         self.process_bitfield_info(child_variable, tree_node, cache)?;
 
+        self.apply_start_scope(
+            debug_info,
+            tree_node,
+            attributes_entry,
+            child_variable,
+            frame_info,
+        )?;
+
         child_variable.extract_value(memory, cache);
         cache.update_variable(child_variable)?;
 
         Ok(())
+    }
+
+    /// Limit the variable to `DW_AT_start_scope` of the definition DIE, or of the abstract origin
+    /// or specification DIE when the definition has no start scope.
+    fn apply_start_scope(
+        &self,
+        debug_info: &DebugInfo,
+        tree_node: &gimli::DebuggingInformationEntry<GimliReader>,
+        attributes_entry: Option<&gimli::DebuggingInformationEntry<GimliReader>>,
+        child_variable: &mut Variable,
+        frame_info: StackFrameInfo<'_>,
+    ) -> Result<(), DebugError> {
+        let die = if tree_node.attr(gimli::DW_AT_start_scope).is_some() {
+            tree_node
+        } else if let Some(entry) = attributes_entry {
+            entry
+        } else {
+            return Ok(());
+        };
+
+        if self.pc_in_start_scope(debug_info, die, frame_info)? {
+            return Ok(());
+        }
+
+        child_variable.memory_location = VariableLocation::Unavailable;
+        child_variable.set_value(VariableValue::Error(
+            "<value optimized away by compiler, out of scope, or dropped>".to_string(),
+        ));
+        Ok(())
+    }
+
+    fn pc_in_start_scope(
+        &self,
+        debug_info: &DebugInfo,
+        die: &gimli::DebuggingInformationEntry<GimliReader>,
+        frame_info: StackFrameInfo<'_>,
+    ) -> Result<bool, DebugError> {
+        let Some(attr) = die.attr(gimli::DW_AT_start_scope) else {
+            return Ok(true);
+        };
+        let Some(program_counter) = frame_info
+            .registers
+            .get_program_counter()
+            .and_then(|reg| reg.value)
+        else {
+            return Ok(true);
+        };
+        let program_counter = program_counter.try_into()?;
+
+        let value = attr.value();
+        if let Ok(Some(mut ranges)) = debug_info.dwarf.attr_ranges(&self.unit, value.clone()) {
+            return Ok(ranges.contains(program_counter));
+        }
+
+        let Some(offset) = value.udata_value() else {
+            tracing::debug!("Unimplemented: DW_AT_start_scope value {value:?}");
+            return Ok(true);
+        };
+
+        let Some(scope_begin) = self.enclosing_scope_begin(debug_info, die.offset()) else {
+            return Ok(true);
+        };
+
+        Ok(start_scope_constant_is_active(
+            program_counter,
+            scope_begin,
+            offset,
+        ))
+    }
+
+    fn enclosing_scope_begin(&self, debug_info: &DebugInfo, die_offset: UnitOffset) -> Option<u64> {
+        let mut offset = die_offset;
+        loop {
+            offset = self.parent_offset(offset)?;
+            let entry = self.unit.entry(offset).ok()?;
+            let mut ranges = debug_info.dwarf.die_ranges(&self.unit, &entry).ok()?;
+            if let Ok(Some(range)) = ranges.next() {
+                return Some(range.begin);
+            }
+        }
     }
 
     #[expect(clippy::too_many_arguments)]
@@ -636,7 +727,6 @@ impl UnitInfo {
         Ok(namespace_variable.variable_key())
     }
 
-    #[expect(clippy::too_many_arguments)]
     fn add_static_die(
         &self,
         debug_info: &DebugInfo,
@@ -900,66 +990,12 @@ impl UnitInfo {
                         });
                     };
                     let program_counter = program_counter.try_into()?;
-
-                    // Determine the low and high ranges for which this DIE and children are in scope. These can be
-                    // specified discreetly, or in ranges.
-                    let mut in_scope = false;
-                    if let Some(low_pc_attr) = child_node.entry().attr(gimli::DW_AT_low_pc) {
-                        let low_pc = match low_pc_attr.value() {
-                            gimli::AttributeValue::Addr(value) => value,
-                            _other => u64::MAX,
-                        };
-                        let high_pc = if let Some(high_pc_attr) =
-                            child_node.entry().attr(gimli::DW_AT_high_pc)
-                        {
-                            match high_pc_attr.value() {
-                                gimli::AttributeValue::Addr(addr) => addr,
-                                gimli::AttributeValue::Udata(unsigned_offset) => {
-                                    low_pc + unsigned_offset
-                                }
-                                _other => 0_u64,
-                            }
-                        } else {
-                            0_u64
-                        };
-                        if low_pc == u64::MAX || high_pc == 0_u64 {
-                            // These have not been specified correctly ... something went wrong.
-                            parent_variable.set_value(VariableValue::Error("Error: Processing of variables failed because of invalid/unsupported scope information. Please log a bug at 'https://github.com/probe-rs/probe-rs/issues'".to_string()));
-                        }
-                        let block_range = gimli::Range {
-                            begin: low_pc,
-                            end: high_pc,
-                        };
-                        if block_range.contains(program_counter) {
-                            // We have established positive scope, so no need to continue.
-                            in_scope = true;
-                        }
-                        // No scope info yet, so keep looking.
-                    };
-                    // Searching for ranges has a bit more overhead, so ONLY do this if do not have scope confirmed yet.
-                    if !in_scope && let Some(ranges) = child_node.entry().attr(gimli::DW_AT_ranges)
-                    {
-                        match ranges.value() {
-                            gimli::AttributeValue::RangeListsRef(raw_range_lists_offset) => {
-                                let range_lists_offset = debug_info
-                                    .dwarf
-                                    .ranges_offset_from_raw(&self.unit, raw_range_lists_offset);
-
-                                if let Ok(mut range_iter) =
-                                    debug_info.dwarf.ranges(&self.unit, range_lists_offset)
-                                {
-                                    in_scope = range_iter.contains(program_counter);
-                                }
-                            }
-                            other_range_attribute => {
-                                let error = format!(
-                                    "Found unexpected scope attribute: {:?} for variable {:?}",
-                                    other_range_attribute, parent_variable.name
-                                );
-                                parent_variable.set_value(VariableValue::Error(error));
-                            }
-                        }
-                    }
+                    let in_scope = die_contains_pc(
+                        debug_info,
+                        &self.unit,
+                        child_node.entry(),
+                        program_counter,
+                    )?;
                     if in_scope {
                         // This is IN scope.
                         // Recursively process each child, but pass the parent_variable, so that we don't create
@@ -2014,20 +2050,29 @@ impl UnitInfo {
                         )
                     }
 
-                    gimli::AttributeValue::LocationListsRef(location_list_offset) => self
-                        .evaluate_location_list_ref(
-                            debug_info,
-                            location_list_offset,
-                            frame_info,
-                            memory,
-                        )
-                        .convert_incomplete()?,
-
                     other_attribute_value => {
-                        ExpressionResult::Location(VariableLocation::Unsupported(format!(
-                            "Unimplemented: extract_location() Could not extract location from: {:.100}",
-                            format!("{other_attribute_value:?}")
-                        )))
+                        match debug_info
+                            .dwarf
+                            .attr_locations_offset(&self.unit, other_attribute_value.clone())
+                        {
+                            Ok(Some(location_list_offset)) => self
+                                .evaluate_location_list_ref(
+                                    debug_info,
+                                    location_list_offset,
+                                    frame_info,
+                                    memory,
+                                )
+                                .convert_incomplete()?,
+                            Ok(None) => {
+                                ExpressionResult::Location(VariableLocation::Unsupported(format!(
+                                    "Unimplemented: extract_location() Could not extract location from: {:.100}",
+                                    format!("{other_attribute_value:?}")
+                                )))
+                            }
+                            Err(error) => ExpressionResult::Location(VariableLocation::Error(
+                                format!("Error: Resolving variable Location: {error:?}"),
+                            )),
+                        }
                     }
                 },
 
@@ -2071,13 +2116,7 @@ impl UnitInfo {
         frame_info: StackFrameInfo<'_>,
         memory: &mut dyn MemoryInterface,
     ) -> Result<ExpressionResult, DebugError> {
-        let mut locations = match debug_info.locations_section.locations(
-            location_list_offset,
-            self.unit.header.encoding(),
-            self.unit.low_pc,
-            &debug_info.address_section,
-            self.unit.addr_base,
-        ) {
+        let mut locations = match debug_info.dwarf.locations(&self.unit, location_list_offset) {
             Ok(locations) => locations,
             Err(error) => {
                 return Ok(ExpressionResult::Location(VariableLocation::Error(
@@ -2821,6 +2860,29 @@ fn read_memory(
     Ok(evaluation.resume_with_memory(val)?)
 }
 
+/// A `DW_AT_start_scope` constant is an offset from the first address of the enclosing scope.
+fn start_scope_constant_is_active(program_counter: u64, scope_begin: u64, offset: u64) -> bool {
+    program_counter
+        .checked_sub(scope_begin)
+        .is_some_and(|relative| relative >= offset)
+}
+
+fn die_contains_pc(
+    debug_info: &DebugInfo,
+    unit: &gimli::Unit<GimliReader>,
+    entry: &gimli::DebuggingInformationEntry<GimliReader>,
+    program_counter: u64,
+) -> Result<bool, DebugError> {
+    let mut ranges = debug_info.dwarf.die_ranges(unit, entry)?;
+    Ok(loop {
+        match ranges.next()? {
+            Some(range) if range.contains(program_counter) => break true,
+            Some(_) => {}
+            None => break false,
+        }
+    })
+}
+
 pub(crate) trait RangeExt {
     fn contains(self, addr: u64) -> bool;
 }
@@ -2845,7 +2907,7 @@ impl RangeExt for gimli::Range {
 
 #[cfg(test)]
 mod test {
-    use super::object_at;
+    use super::{object_at, start_scope_constant_is_active};
 
     #[test]
     fn a_null_pointer_points_at_no_object() {
@@ -2884,5 +2946,14 @@ mod test {
         assert_eq!(object_at(32, None, Some(1024)), Some(32));
         // Without the size of the type.
         assert_eq!(object_at(4, None, None), Some(4));
+    }
+
+    #[test]
+    fn a_constant_start_scope_is_active_from_the_offset_of_the_enclosing_scope() {
+        assert!(!start_scope_constant_is_active(0x1000, 0x1000, 0x20));
+        assert!(!start_scope_constant_is_active(0x101F, 0x1000, 0x20));
+        assert!(start_scope_constant_is_active(0x1020, 0x1000, 0x20));
+        assert!(start_scope_constant_is_active(0x10FF, 0x1000, 0x20));
+        assert!(!start_scope_constant_is_active(0x0FFF, 0x1000, 0x20));
     }
 }

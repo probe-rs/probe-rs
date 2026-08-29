@@ -38,8 +38,6 @@ pub(crate) type DwarfReader = gimli::read::EndianArcSlice<RunTimeEndian>;
 pub struct DebugInfo {
     pub(crate) dwarf: gimli::Dwarf<DwarfReader>,
     pub(crate) frame_section: gimli::DebugFrame<DwarfReader>,
-    pub(crate) locations_section: gimli::LocationLists<DwarfReader>,
-    pub(crate) address_section: gimli::DebugAddr<DwarfReader>,
     pub(crate) debug_line_section: gimli::DebugLine<DwarfReader>,
 
     pub(crate) unit_infos: Vec<UnitInfo>,
@@ -90,10 +88,6 @@ impl DebugInfo {
 
         use gimli::Section;
         let mut frame_section = gimli::DebugFrame::load(load_section)?;
-        let address_section = gimli::DebugAddr::load(load_section)?;
-        let debug_loc = gimli::DebugLoc::load(load_section)?;
-        let debug_loc_lists = gimli::DebugLocLists::load(load_section)?;
-        let locations_section = gimli::LocationLists::new(debug_loc, debug_loc_lists);
         let debug_line_section = gimli::DebugLine::load(load_section)?;
 
         let mut unit_infos = Vec::new();
@@ -117,8 +111,6 @@ impl DebugInfo {
         Ok(DebugInfo {
             dwarf: dwarf_cow,
             frame_section,
-            locations_section,
-            address_section,
             debug_line_section,
             unit_infos,
             endianness,
@@ -146,14 +138,9 @@ impl DebugInfo {
 
         use gimli::Section;
         let load = || -> Result<Self, gimli::Error> {
-            let debug_loc = gimli::DebugLoc::load(load_section)?;
-            let debug_loc_lists = gimli::DebugLocLists::load(load_section)?;
-
             Ok(DebugInfo {
                 dwarf: gimli::Dwarf::load(&load_section)?,
                 frame_section: gimli::DebugFrame::load(load_section)?,
-                locations_section: gimli::LocationLists::new(debug_loc, debug_loc_lists),
-                address_section: gimli::DebugAddr::load(load_section)?,
                 debug_line_section: gimli::DebugLine::load(load_section)?,
                 unit_infos: Vec::new(),
                 endianness,
