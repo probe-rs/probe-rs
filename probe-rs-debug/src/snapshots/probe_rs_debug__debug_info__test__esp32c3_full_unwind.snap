@@ -351,7 +351,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tstack_depth: usize = 5,\n\tinternal_depth_measure: usize = 6}"
+      value: "<unknown> { stack_depth = 5, internal_depth_measure = 6 }"
       children:
         - name:
             Named: stack_depth
@@ -694,7 +694,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tstack_depth: usize = 4,\n\tinternal_depth_measure: usize = 5}"
+      value: "<unknown> { stack_depth = 4, internal_depth_measure = 5 }"
       children:
         - name:
             Named: stack_depth
@@ -1037,7 +1037,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tstack_depth: usize = 3,\n\tinternal_depth_measure: usize = 4}"
+      value: "<unknown> { stack_depth = 3, internal_depth_measure = 4 }"
       children:
         - name:
             Named: stack_depth
@@ -1380,7 +1380,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tstack_depth: usize = 2,\n\tinternal_depth_measure: usize = 3}"
+      value: "<unknown> { stack_depth = 2, internal_depth_measure = 3 }"
       children:
         - name:
             Named: stack_depth
@@ -1723,7 +1723,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tstack_depth: usize = 1,\n\tinternal_depth_measure: usize = 2}"
+      value: "<unknown> { stack_depth = 1, internal_depth_measure = 2 }"
       children:
         - name:
             Named: stack_depth
@@ -2066,7 +2066,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tstack_depth: usize = 0,\n\tinternal_depth_measure: usize = 1}"
+      value: "<unknown> { stack_depth = 0, internal_depth_measure = 1 }"
       children:
         - name:
             Named: stack_depth
@@ -2409,7 +2409,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tint8_minus_twenty_three: i8 = -23,\n\tlocal_reference_to_global_const: &str = This global `const` value will only show up in the debugger in the variables where it is referenced,\n\tlocal_reference_to_global_static: &str = A 'global' static variable,\n\tlocal_reference_to_global_static_struct: *const probe_rs_debugger_test::ComplexEnum = *const probe_rs_debugger_test::ComplexEnum @ 0x3FC80D70,\n\tghosted_variable: usize = 0,\n\tghosted_variable: &str = New value and type for a different name,\n\tint8_twenty_six: i8 = 26,\n\tint128: i128 = -196710231994021419720322,\n\tu_int128: u128 = 340282366920938266753142613410348491134,\n\tfloat64: f64 = 1.7608695652173911,\n\tfloat64_ptr: &f64 = &f64 @ 0x3FCCF460,\n\temoji: char = 💩,\n\temoji_ptr: &char = &char @ 0x3FCCF468,\n\ttrue_bool: bool = true,\n\tany_old_string_slice: &str = How long is a piece of String.,\n\tfunction_result: Result<(), &str> = Result<(), &str> @ 0x3FCCFD0C,\n\tglobal_types: (bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64) = (bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64) @ 0x3FCCF470,\n\tthree_d_usize_array: Matrix<i32, 2, 3, 4> = Matrix<i32, 2, 3, 4> @ 0x3FCCF4AC,\n\tthree_d_string_array: Matrix<&str, 2, 3, 6> = Matrix<&str, 2, 3, 6> @ 0x3FCCF62C,\n\tthree: SimpleEnum = SimpleEnum::Two,\n\tsimple_enum_pointer: &probe_rs_debugger_test::SimpleEnum = &probe_rs_debugger_test::SimpleEnum @ 0x3FCCFAAF,\n\tthree_level_recursive_struct: RecursiveStruct = RecursiveStruct @ 0x3FCCFAB4,\n\tfirst_case_of_struct_variants: ComplexEnum = ComplexEnum @ 0x3FCCFAD8,\n\tsecond_case_of_struct_variants: ComplexEnum = ComplexEnum @ 0x3FCCFB08,\n\tstruct_with_one_variant: Option<probe_rs_debugger_test::Univariant> = Option<probe_rs_debugger_test::Univariant> @ 0x3FCCFB28,\n\tstuct_with_one_variant_pointer: &core::option::Option<probe_rs_debugger_test::Univariant> = &core::option::Option<probe_rs_debugger_test::Univariant> @ 0x3FCCFB28,\n\tlong_lived: ComplexStruct = ComplexStruct @ 0x3FCCFB90,\n\tshort_lived: ComplexStruct = ComplexStruct @ 0x3FCCFBA0,\n\ta1: Struct<i32> = Struct<i32> @ 0x3FCCFD18,\n\ta2: i64 = 1,\n\ta3: i64 = 2,\n\ta4: i64 = 3,\n\ta5: (i32, i64) = (i32, i64) @ 0x3FCCFD40,\n\ta6: Enum<i32> = Enum<i32> @ 0x3FCCFBE0,\n\ta7: Enum<i32> = Enum<i32> @ 0x3FCCFC00,\n\t[i32; 10] = [\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55\n\t],\n\tmy_array_ptr: &[i32; 10] = &[i32; 10] @ 0x3FCCFC24,\n\t[i8; 10] = [\n\t\t1,\n\t\t2,\n\t\t3,\n\t\t4,\n\t\t5,\n\t\t6,\n\t\t7,\n\t\t8,\n\t\t9,\n\t\t0\n\t],\n\theapless_vec: Vec<i8, 10> = Vec<i8, 10> @ 0x3FCCFC58,\n\tloop_counter: Wrapping<u8> = 0,\n\trtt_channels: Channels = Channels @ 0x3FCCFC6C}"
+      value: "<unknown> { int8_minus_twenty_three = -23, local_reference_to_global_const = &str @ 0x3FCCF420, local_reference_to_global_static = &str @ 0x3FCCFCE4, local_reference_to_global_static_struct = *const ComplexEnum @ 0x3FC80D70, ghosted_variable = 0, ghosted_variable = &str @ 0x3FCCF42C, int8_twenty_six = 26, int128 = -196710231994021419720322, u_int128 = 340282366920938266753142613410348491134, float64 = 1.7608695652173911, float64_ptr = &f64 @ 0x3FCCF460, emoji = 💩, emoji_ptr = &char @ 0x3FCCF468, true_bool = true, any_old_string_slice = &str @ 0x3FCCF450, function_result = Result<(), &str> @ 0x3FCCFD0C, global_types = (bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64) @ 0x3FCCF470, three_d_usize_array = Matrix<i32> @ 0x3FCCF4AC, three_d_string_array = Matrix<&str> @ 0x3FCCF62C, three = SimpleEnum::Two, simple_enum_pointer = &SimpleEnum @ 0x3FCCFAAF, three_level_recursive_struct = RecursiveStruct @ 0x3FCCFAB4, first_case_of_struct_variants = ComplexEnum @ 0x3FCCFAD8, second_case_of_struct_variants = ComplexEnum @ 0x3FCCFB08, struct_with_one_variant = Option<Univariant> @ 0x3FCCFB28, stuct_with_one_variant_pointer = &Option<Univariant> @ 0x3FCCFB28, long_lived = ComplexStruct @ 0x3FCCFB90, short_lived = ComplexStruct @ 0x3FCCFBA0, a1 = Struct<i32> @ 0x3FCCFD18, a2 = 1, a3 = 2, a4 = 3, a5 = (i32, i64) @ 0x3FCCFD40, a6 = Enum<i32> @ 0x3FCCFBE0, a7 = Enum<i32> @ 0x3FCCFC00, [i32; 10] = [55, 55, 55, 55, 55, 55, 55, 55, 55, 55], my_array_ptr = &[i32; 10] @ 0x3FCCFC24, [i8; 10] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0], heapless_vec = Vec<i8> @ 0x3FCCFC58, loop_counter = 0, rtt_channels = Channels @ 0x3FCCFC6C }"
       children:
         - name:
             Named: int8_minus_twenty_three
@@ -2424,8 +2424,13 @@ expression: stack_frames
         - name:
             Named: local_reference_to_global_const
           type_name:
-            Struct: "&str"
-          value: "This global `const` value will only show up in the debugger in the variables where it is referenced"
+            Struct:
+              ident: "&"
+              namespace: []
+              args:
+                - Type:
+                    Base: str
+          value: "&str @ 0x3FCCF420"
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 207
@@ -2435,7 +2440,8 @@ expression: stack_frames
             - name:
                 Named: data_ptr
               type_name:
-                Pointer: u8
+                Pointer:
+                  Base: u8
               value: "*raw u8 @ 0x3C021290"
               children:
                 - name:
@@ -2451,8 +2457,13 @@ expression: stack_frames
         - name:
             Named: local_reference_to_global_static
           type_name:
-            Struct: "&str"
-          value: "A 'global' static variable"
+            Struct:
+              ident: "&"
+              namespace: []
+              args:
+                - Type:
+                    Base: str
+          value: "&str @ 0x3FCCFCE4"
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 208
@@ -2462,7 +2473,8 @@ expression: stack_frames
             - name:
                 Named: data_ptr
               type_name:
-                Pointer: u8
+                Pointer:
+                  Base: u8
               value: "*raw u8 @ 0x3C021218"
               children:
                 - name:
@@ -2478,8 +2490,18 @@ expression: stack_frames
         - name:
             Named: local_reference_to_global_static_struct
           type_name:
-            Pointer: "*const probe_rs_debugger_test::ComplexEnum"
-          value: "*const probe_rs_debugger_test::ComplexEnum @ 0x3FC80D70"
+            Pointer:
+              Struct:
+                ident: "*const"
+                namespace: []
+                args:
+                  - Type:
+                      Struct:
+                        ident: ComplexEnum
+                        namespace:
+                          - probe_rs_debugger_test
+                        args: []
+          value: "*const ComplexEnum @ 0x3FC80D70"
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 209
@@ -2489,13 +2511,21 @@ expression: stack_frames
             - name:
                 Named: "*local_reference_to_global_static_struct"
               type_name:
-                Struct: ComplexEnum
+                Struct:
+                  ident: ComplexEnum
+                  namespace:
+                    - probe_rs_debugger_test
+                  args: []
               value: ComplexEnum @ 0x3FC80D70
               children:
                 - name:
                     Named: Case1
                   type_name:
-                    Struct: Case1
+                    Struct:
+                      ident: Case1
+                      namespace:
+                        - probe_rs_debugger_test
+                      args: []
                   value: Case1 @ 0x3FC80D70
                   children:
                     - name:
@@ -2506,7 +2536,11 @@ expression: stack_frames
                     - name:
                         Named: __1
                       type_name:
-                        Struct: ComplexStruct
+                        Struct:
+                          ident: ComplexStruct
+                          namespace:
+                            - probe_rs_debugger_test
+                          args: []
                       value: ComplexStruct @ 0x3FC80D80
                       children:
                         - name:
@@ -2537,8 +2571,13 @@ expression: stack_frames
         - name:
             Named: ghosted_variable
           type_name:
-            Struct: "&str"
-          value: New value and type for a different name
+            Struct:
+              ident: "&"
+              namespace: []
+              args:
+                - Type:
+                    Base: str
+          value: "&str @ 0x3FCCF42C"
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 211
@@ -2548,7 +2587,8 @@ expression: stack_frames
             - name:
                 Named: data_ptr
               type_name:
-                Pointer: u8
+                Pointer:
+                  Base: u8
               value: "*raw u8 @ 0x3C0212F3"
               children:
                 - name:
@@ -2604,7 +2644,13 @@ expression: stack_frames
         - name:
             Named: float64_ptr
           type_name:
-            Pointer: "&f64"
+            Pointer:
+              Struct:
+                ident: "&"
+                namespace: []
+                args:
+                  - Type:
+                      Base: f64
           value: "&f64 @ 0x3FCCF460"
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
@@ -2630,7 +2676,13 @@ expression: stack_frames
         - name:
             Named: emoji_ptr
           type_name:
-            Pointer: "&char"
+            Pointer:
+              Struct:
+                ident: "&"
+                namespace: []
+                args:
+                  - Type:
+                      Base: char
           value: "&char @ 0x3FCCF468"
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
@@ -2656,8 +2708,13 @@ expression: stack_frames
         - name:
             Named: any_old_string_slice
           type_name:
-            Struct: "&str"
-          value: How long is a piece of String.
+            Struct:
+              ident: "&"
+              namespace: []
+              args:
+                - Type:
+                    Base: str
+          value: "&str @ 0x3FCCF450"
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 221
@@ -2667,7 +2724,8 @@ expression: stack_frames
             - name:
                 Named: data_ptr
               type_name:
-                Pointer: u8
+                Pointer:
+                  Base: u8
               value: "*raw u8 @ 0x3C02131A"
               children:
                 - name:
@@ -2683,7 +2741,21 @@ expression: stack_frames
         - name:
             Named: function_result
           type_name:
-            Struct: "Result<(), &str>"
+            Struct:
+              ident: Result
+              namespace:
+                - core
+                - result
+              args:
+                - Type:
+                    Base: ()
+                - Type:
+                    Struct:
+                      ident: "&"
+                      namespace: []
+                      args:
+                        - Type:
+                            Base: str
           value: "Result<(), &str> @ 0x3FCCFD0C"
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
@@ -2694,19 +2766,39 @@ expression: stack_frames
             - name:
                 Named: Err
               type_name:
-                Struct: Err
-              value: Err @ 0x3FCCFD0C
+                Struct:
+                  ident: Err
+                  namespace:
+                    - core
+                    - result
+                  args:
+                    - Type:
+                        Base: ()
+                    - Type:
+                        Struct:
+                          ident: "&"
+                          namespace: []
+                          args:
+                            - Type:
+                                Base: str
+              value: "Err<(), &str> @ 0x3FCCFD0C"
               children:
                 - name:
                     Named: __0
                   type_name:
-                    Struct: "&str"
-                  value: Forcing the return of an Error variant
+                    Struct:
+                      ident: "&"
+                      namespace: []
+                      args:
+                        - Type:
+                            Base: str
+                  value: "&str @ 0x3FCCFD0C"
                   children:
                     - name:
                         Named: data_ptr
                       type_name:
-                        Pointer: u8
+                        Pointer:
+                          Base: u8
                       value: "*raw u8 @ 0x3C021232"
                       children:
                         - name:
@@ -2722,7 +2814,38 @@ expression: stack_frames
         - name:
             Named: global_types
           type_name:
-            Struct: "(bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64)"
+            Struct:
+              ident: ""
+              namespace: []
+              args:
+                - Type:
+                    Base: bool
+                - Type:
+                    Base: isize
+                - Type:
+                    Base: char
+                - Type:
+                    Base: i8
+                - Type:
+                    Base: i16
+                - Type:
+                    Base: i32
+                - Type:
+                    Base: i64
+                - Type:
+                    Base: usize
+                - Type:
+                    Base: u8
+                - Type:
+                    Base: u16
+                - Type:
+                    Base: u32
+                - Type:
+                    Base: u64
+                - Type:
+                    Base: f32
+                - Type:
+                    Base: f64
           value: "(bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64) @ 0x3FCCF470"
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
@@ -2803,8 +2926,14 @@ expression: stack_frames
         - name:
             Named: three_d_usize_array
           type_name:
-            Struct: "Matrix<i32, 2, 3, 4>"
-          value: "Matrix<i32, 2, 3, 4> @ 0x3FCCF4AC"
+            Struct:
+              ident: Matrix
+              namespace:
+                - probe_rs_debugger_test
+              args:
+                - Type:
+                    Base: i32
+          value: Matrix<i32> @ 0x3FCCF4AC
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 224
@@ -2824,7 +2953,7 @@ expression: stack_frames
                           count: 3
                       count: 2
                   count: 4
-              value: "[[[i32; 3]; 2]; 4] = [\n\t[[i32; 3]; 2] = [\n\t\t[i32; 3] = [\n\t\t\t0,\n\t\t\t1,\n\t\t\t2\n\t\t],\n\t\t[i32; 3] = [\n\t\t\t3,\n\t\t\t4,\n\t\t\t5\n\t\t]\n\t],\n\t[[i32; 3]; 2] = [\n\t\t[i32; 3] = [\n\t\t\t6,\n\t\t\t7,\n\t\t\t8\n\t\t],\n\t\t[i32; 3] = [\n\t\t\t9,\n\t\t\t10,\n\t\t\t11\n\t\t]\n\t],\n\t[[i32; 3]; 2] = [\n\t\t[i32; 3] = [\n\t\t\t12,\n\t\t\t13,\n\t\t\t14\n\t\t],\n\t\t[i32; 3] = [\n\t\t\t15,\n\t\t\t16,\n\t\t\t17\n\t\t]\n\t],\n\t[[i32; 3]; 2] = [\n\t\t[i32; 3] = [\n\t\t\t18,\n\t\t\t19,\n\t\t\t20\n\t\t],\n\t\t[i32; 3] = [\n\t\t\t21,\n\t\t\t22,\n\t\t\t23\n\t\t]\n\t]]"
+              value: "[[[i32; 3]; 2]; 4] = [[[i32; 3]; 2] = [[i32; 3] = [0, 1, 2], [i32; 3] = [3, 4, 5]], [[i32; 3]; 2] = [[i32; 3] = [6, 7, 8], [i32; 3] = [9, 10, 11]], [[i32; 3]; 2] = [[i32; 3] = [12, 13, 14], [i32; 3] = [15, 16, 17]], [[i32; 3]; 2] = [[i32; 3] = [18, 19, 20], [i32; 3] = [21, 22, 23]]]"
               children:
                 - name:
                     Indexed: 0
@@ -2836,7 +2965,7 @@ expression: stack_frames
                             Base: i32
                           count: 3
                       count: 2
-                  value: "[[i32; 3]; 2] = [\n\t[i32; 3] = [\n\t\t0,\n\t\t1,\n\t\t2\n\t],\n\t[i32; 3] = [\n\t\t3,\n\t\t4,\n\t\t5\n\t]]"
+                  value: "[[i32; 3]; 2] = [[i32; 3] = [0, 1, 2], [i32; 3] = [3, 4, 5]]"
                   children:
                     - name:
                         Indexed: 0
@@ -2845,7 +2974,7 @@ expression: stack_frames
                           item_type_name:
                             Base: i32
                           count: 3
-                      value: "[i32; 3] = [\n\t0,\n\t1,\n\t2]"
+                      value: "[i32; 3] = [0, 1, 2]"
                       children:
                         - name:
                             Indexed: 0
@@ -2869,7 +2998,7 @@ expression: stack_frames
                           item_type_name:
                             Base: i32
                           count: 3
-                      value: "[i32; 3] = [\n\t3,\n\t4,\n\t5]"
+                      value: "[i32; 3] = [3, 4, 5]"
                       children:
                         - name:
                             Indexed: 0
@@ -2896,7 +3025,7 @@ expression: stack_frames
                             Base: i32
                           count: 3
                       count: 2
-                  value: "[[i32; 3]; 2] = [\n\t[i32; 3] = [\n\t\t6,\n\t\t7,\n\t\t8\n\t],\n\t[i32; 3] = [\n\t\t9,\n\t\t10,\n\t\t11\n\t]]"
+                  value: "[[i32; 3]; 2] = [[i32; 3] = [6, 7, 8], [i32; 3] = [9, 10, 11]]"
                   children:
                     - name:
                         Indexed: 0
@@ -2905,7 +3034,7 @@ expression: stack_frames
                           item_type_name:
                             Base: i32
                           count: 3
-                      value: "[i32; 3] = [\n\t6,\n\t7,\n\t8]"
+                      value: "[i32; 3] = [6, 7, 8]"
                       children:
                         - name:
                             Indexed: 0
@@ -2929,7 +3058,7 @@ expression: stack_frames
                           item_type_name:
                             Base: i32
                           count: 3
-                      value: "[i32; 3] = [\n\t9,\n\t10,\n\t11]"
+                      value: "[i32; 3] = [9, 10, 11]"
                       children:
                         - name:
                             Indexed: 0
@@ -2956,7 +3085,7 @@ expression: stack_frames
                             Base: i32
                           count: 3
                       count: 2
-                  value: "[[i32; 3]; 2] = [\n\t[i32; 3] = [\n\t\t12,\n\t\t13,\n\t\t14\n\t],\n\t[i32; 3] = [\n\t\t15,\n\t\t16,\n\t\t17\n\t]]"
+                  value: "[[i32; 3]; 2] = [[i32; 3] = [12, 13, 14], [i32; 3] = [15, 16, 17]]"
                   children:
                     - name:
                         Indexed: 0
@@ -2965,7 +3094,7 @@ expression: stack_frames
                           item_type_name:
                             Base: i32
                           count: 3
-                      value: "[i32; 3] = [\n\t12,\n\t13,\n\t14]"
+                      value: "[i32; 3] = [12, 13, 14]"
                       children:
                         - name:
                             Indexed: 0
@@ -2989,7 +3118,7 @@ expression: stack_frames
                           item_type_name:
                             Base: i32
                           count: 3
-                      value: "[i32; 3] = [\n\t15,\n\t16,\n\t17]"
+                      value: "[i32; 3] = [15, 16, 17]"
                       children:
                         - name:
                             Indexed: 0
@@ -3016,7 +3145,7 @@ expression: stack_frames
                             Base: i32
                           count: 3
                       count: 2
-                  value: "[[i32; 3]; 2] = [\n\t[i32; 3] = [\n\t\t18,\n\t\t19,\n\t\t20\n\t],\n\t[i32; 3] = [\n\t\t21,\n\t\t22,\n\t\t23\n\t]]"
+                  value: "[[i32; 3]; 2] = [[i32; 3] = [18, 19, 20], [i32; 3] = [21, 22, 23]]"
                   children:
                     - name:
                         Indexed: 0
@@ -3025,7 +3154,7 @@ expression: stack_frames
                           item_type_name:
                             Base: i32
                           count: 3
-                      value: "[i32; 3] = [\n\t18,\n\t19,\n\t20]"
+                      value: "[i32; 3] = [18, 19, 20]"
                       children:
                         - name:
                             Indexed: 0
@@ -3049,7 +3178,7 @@ expression: stack_frames
                           item_type_name:
                             Base: i32
                           count: 3
-                      value: "[i32; 3] = [\n\t21,\n\t22,\n\t23]"
+                      value: "[i32; 3] = [21, 22, 23]"
                       children:
                         - name:
                             Indexed: 0
@@ -3069,8 +3198,19 @@ expression: stack_frames
         - name:
             Named: three_d_string_array
           type_name:
-            Struct: "Matrix<&str, 2, 3, 6>"
-          value: "Matrix<&str, 2, 3, 6> @ 0x3FCCF62C"
+            Struct:
+              ident: Matrix
+              namespace:
+                - probe_rs_debugger_test
+              args:
+                - Type:
+                    Struct:
+                      ident: "&"
+                      namespace: []
+                      args:
+                        - Type:
+                            Base: str
+          value: Matrix<&str> @ 0x3FCCF62C
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 232
@@ -3086,11 +3226,16 @@ expression: stack_frames
                       item_type_name:
                         Array:
                           item_type_name:
-                            Struct: "&str"
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
                           count: 3
                       count: 2
                   count: 6
-              value: "[[[&str; 3]; 2]; 6] = [\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\tApple,\n\t\t\tBanana,\n\t\t\tCherry\n\t\t],\n\t\t[&str; 3] = [\n\t\t\tDog,\n\t\t\tElephant,\n\t\t\tFish\n\t\t]\n\t],\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\tGuitar,\n\t\t\tHorse,\n\t\t\tIce Cream\n\t\t],\n\t\t[&str; 3] = [\n\t\t\tJaguar,\n\t\t\tKangaroo,\n\t\t\tLion\n\t\t]\n\t],\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\tMoon,\n\t\t\tNewton,\n\t\t\tOwl\n\t\t],\n\t\t[&str; 3] = [\n\t\t\tPencil,\n\t\t\tQueen,\n\t\t\tRainbow\n\t\t]\n\t],\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\tSun,\n\t\t\tTree,\n\t\t\tUmbrella\n\t\t],\n\t\t[&str; 3] = [\n\t\t\tViolin,\n\t\t\tWatch,\n\t\t\tXylophone\n\t\t]\n\t],\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\tYellow,\n\t\t\tZebra,\n\t\t\tAlpha\n\t\t],\n\t\t[&str; 3] = [\n\t\t\tBravo,\n\t\t\tCharlie,\n\t\t\tDelta\n\t\t]\n\t],\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\tEcho,\n\t\t\tFoxtrot,\n\t\t\tGolf\n\t\t],\n\t\t[&str; 3] = [\n\t\t\tHotel,\n\t\t\tIndia,\n\t\t\tJuliet\n\t\t]\n\t]]"
+              value: "[[[&str; 3]; 2]; 6] = [[[&str; 3]; 2] = [[&str; 3] = [&str @ 0x3FCCF62C, &str @ 0x3FCCF634, &str @ 0x3FCCF63C], [&str; 3] = [&str @ 0x3FCCF644, &str @ 0x3FCCF64C, &str @ 0x3FCCF654]], [[&str; 3]; 2] = [[&str; 3] = [&str @ 0x3FCCF65C, &str @ 0x3FCCF664, &str @ 0x3FCCF66C], [&str; 3] = [&str @ 0x3FCCF674, &str @ 0x3FCCF67C, &str @ 0x3FCCF684]], [[&str; 3]; 2] = [[&str; 3] = [&str @ 0x3FCCF68C, &str @ 0x3FCCF694, &str @ 0x3FCCF69C], [&str; 3] = [&str @ 0x3FCCF6A4, &str @ 0x3FCCF6AC, &str @ 0x3FCCF6B4]], [[&str; 3]; 2] = [[&str; 3] = [&str @ 0x3FCCF6BC, &str @ 0x3FCCF6C4, &str @ 0x3FCCF6CC], [&str; 3] = [&str @ 0x3FCCF6D4, &str @ 0x3FCCF6DC, &str @ 0x3FCCF6E4]], [[&str; 3]; 2] = [[&str; 3] = [&str @ 0x3FCCF6EC, &str @ 0x3FCCF6F4, &str @ 0x3FCCF6FC], [&str; 3] = [&str @ 0x3FCCF704, &str @ 0x3FCCF70C, &str @ 0x3FCCF714]], [[&str; 3]; 2] = [[&str; 3] = [&str @ 0x3FCCF71C, &str @ 0x3FCCF724, &str @ 0x3FCCF72C], [&str; 3] = [&str @ 0x3FCCF734, &str @ 0x3FCCF73C, &str @ 0x3FCCF744]]]"
               children:
                 - name:
                     Indexed: 0
@@ -3099,30 +3244,46 @@ expression: stack_frames
                       item_type_name:
                         Array:
                           item_type_name:
-                            Struct: "&str"
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
                           count: 3
                       count: 2
-                  value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\tApple,\n\t\tBanana,\n\t\tCherry\n\t],\n\t[&str; 3] = [\n\t\tDog,\n\t\tElephant,\n\t\tFish\n\t]]"
+                  value: "[[&str; 3]; 2] = [[&str; 3] = [&str @ 0x3FCCF62C, &str @ 0x3FCCF634, &str @ 0x3FCCF63C], [&str; 3] = [&str @ 0x3FCCF644, &str @ 0x3FCCF64C, &str @ 0x3FCCF654]]"
                   children:
                     - name:
                         Indexed: 0
                       type_name:
                         Array:
                           item_type_name:
-                            Struct: "&str"
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
                           count: 3
-                      value: "[&str; 3] = [\n\tApple,\n\tBanana,\n\tCherry]"
+                      value: "[&str; 3] = [&str @ 0x3FCCF62C, &str @ 0x3FCCF634, &str @ 0x3FCCF63C]"
                       children:
                         - name:
                             Indexed: 0
                           type_name:
-                            Struct: "&str"
-                          value: Apple
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF62C"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C021344"
                               children:
                                 - name:
@@ -3138,13 +3299,19 @@ expression: stack_frames
                         - name:
                             Indexed: 1
                           type_name:
-                            Struct: "&str"
-                          value: Banana
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF634"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C021338"
                               children:
                                 - name:
@@ -3160,13 +3327,19 @@ expression: stack_frames
                         - name:
                             Indexed: 2
                           type_name:
-                            Struct: "&str"
-                          value: Cherry
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF63C"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C02133E"
                               children:
                                 - name:
@@ -3184,20 +3357,31 @@ expression: stack_frames
                       type_name:
                         Array:
                           item_type_name:
-                            Struct: "&str"
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
                           count: 3
-                      value: "[&str; 3] = [\n\tDog,\n\tElephant,\n\tFish]"
+                      value: "[&str; 3] = [&str @ 0x3FCCF644, &str @ 0x3FCCF64C, &str @ 0x3FCCF654]"
                       children:
                         - name:
                             Indexed: 0
                           type_name:
-                            Struct: "&str"
-                          value: Dog
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF644"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C021349"
                               children:
                                 - name:
@@ -3213,13 +3397,19 @@ expression: stack_frames
                         - name:
                             Indexed: 1
                           type_name:
-                            Struct: "&str"
-                          value: Elephant
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF64C"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C020138"
                               children:
                                 - name:
@@ -3235,13 +3425,19 @@ expression: stack_frames
                         - name:
                             Indexed: 2
                           type_name:
-                            Struct: "&str"
-                          value: Fish
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF654"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C0206F4"
                               children:
                                 - name:
@@ -3261,30 +3457,46 @@ expression: stack_frames
                       item_type_name:
                         Array:
                           item_type_name:
-                            Struct: "&str"
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
                           count: 3
                       count: 2
-                  value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\tGuitar,\n\t\tHorse,\n\t\tIce Cream\n\t],\n\t[&str; 3] = [\n\t\tJaguar,\n\t\tKangaroo,\n\t\tLion\n\t]]"
+                  value: "[[&str; 3]; 2] = [[&str; 3] = [&str @ 0x3FCCF65C, &str @ 0x3FCCF664, &str @ 0x3FCCF66C], [&str; 3] = [&str @ 0x3FCCF674, &str @ 0x3FCCF67C, &str @ 0x3FCCF684]]"
                   children:
                     - name:
                         Indexed: 0
                       type_name:
                         Array:
                           item_type_name:
-                            Struct: "&str"
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
                           count: 3
-                      value: "[&str; 3] = [\n\tGuitar,\n\tHorse,\n\tIce Cream]"
+                      value: "[&str; 3] = [&str @ 0x3FCCF65C, &str @ 0x3FCCF664, &str @ 0x3FCCF66C]"
                       children:
                         - name:
                             Indexed: 0
                           type_name:
-                            Struct: "&str"
-                          value: Guitar
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF65C"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C02134C"
                               children:
                                 - name:
@@ -3300,13 +3512,19 @@ expression: stack_frames
                         - name:
                             Indexed: 1
                           type_name:
-                            Struct: "&str"
-                          value: Horse
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF664"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C021352"
                               children:
                                 - name:
@@ -3322,13 +3540,19 @@ expression: stack_frames
                         - name:
                             Indexed: 2
                           type_name:
-                            Struct: "&str"
-                          value: Ice Cream
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF66C"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C021357"
                               children:
                                 - name:
@@ -3346,20 +3570,31 @@ expression: stack_frames
                       type_name:
                         Array:
                           item_type_name:
-                            Struct: "&str"
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
                           count: 3
-                      value: "[&str; 3] = [\n\tJaguar,\n\tKangaroo,\n\tLion]"
+                      value: "[&str; 3] = [&str @ 0x3FCCF674, &str @ 0x3FCCF67C, &str @ 0x3FCCF684]"
                       children:
                         - name:
                             Indexed: 0
                           type_name:
-                            Struct: "&str"
-                          value: Jaguar
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF674"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C021360"
                               children:
                                 - name:
@@ -3375,13 +3610,19 @@ expression: stack_frames
                         - name:
                             Indexed: 1
                           type_name:
-                            Struct: "&str"
-                          value: Kangaroo
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF67C"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C0200E8"
                               children:
                                 - name:
@@ -3397,13 +3638,19 @@ expression: stack_frames
                         - name:
                             Indexed: 2
                           type_name:
-                            Struct: "&str"
-                          value: Lion
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF684"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C020704"
                               children:
                                 - name:
@@ -3423,30 +3670,46 @@ expression: stack_frames
                       item_type_name:
                         Array:
                           item_type_name:
-                            Struct: "&str"
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
                           count: 3
                       count: 2
-                  value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\tMoon,\n\t\tNewton,\n\t\tOwl\n\t],\n\t[&str; 3] = [\n\t\tPencil,\n\t\tQueen,\n\t\tRainbow\n\t]]"
+                  value: "[[&str; 3]; 2] = [[&str; 3] = [&str @ 0x3FCCF68C, &str @ 0x3FCCF694, &str @ 0x3FCCF69C], [&str; 3] = [&str @ 0x3FCCF6A4, &str @ 0x3FCCF6AC, &str @ 0x3FCCF6B4]]"
                   children:
                     - name:
                         Indexed: 0
                       type_name:
                         Array:
                           item_type_name:
-                            Struct: "&str"
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
                           count: 3
-                      value: "[&str; 3] = [\n\tMoon,\n\tNewton,\n\tOwl]"
+                      value: "[&str; 3] = [&str @ 0x3FCCF68C, &str @ 0x3FCCF694, &str @ 0x3FCCF69C]"
                       children:
                         - name:
                             Indexed: 0
                           type_name:
-                            Struct: "&str"
-                          value: Moon
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF68C"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C0206F8"
                               children:
                                 - name:
@@ -3462,13 +3725,19 @@ expression: stack_frames
                         - name:
                             Indexed: 1
                           type_name:
-                            Struct: "&str"
-                          value: Newton
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF694"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C021366"
                               children:
                                 - name:
@@ -3484,13 +3753,19 @@ expression: stack_frames
                         - name:
                             Indexed: 2
                           type_name:
-                            Struct: "&str"
-                          value: Owl
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF69C"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C02136C"
                               children:
                                 - name:
@@ -3508,20 +3783,31 @@ expression: stack_frames
                       type_name:
                         Array:
                           item_type_name:
-                            Struct: "&str"
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
                           count: 3
-                      value: "[&str; 3] = [\n\tPencil,\n\tQueen,\n\tRainbow]"
+                      value: "[&str; 3] = [&str @ 0x3FCCF6A4, &str @ 0x3FCCF6AC, &str @ 0x3FCCF6B4]"
                       children:
                         - name:
                             Indexed: 0
                           type_name:
-                            Struct: "&str"
-                          value: Pencil
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF6A4"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C02136F"
                               children:
                                 - name:
@@ -3537,13 +3823,19 @@ expression: stack_frames
                         - name:
                             Indexed: 1
                           type_name:
-                            Struct: "&str"
-                          value: Queen
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF6AC"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C021375"
                               children:
                                 - name:
@@ -3559,13 +3851,19 @@ expression: stack_frames
                         - name:
                             Indexed: 2
                           type_name:
-                            Struct: "&str"
-                          value: Rainbow
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF6B4"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C02137A"
                               children:
                                 - name:
@@ -3585,30 +3883,46 @@ expression: stack_frames
                       item_type_name:
                         Array:
                           item_type_name:
-                            Struct: "&str"
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
                           count: 3
                       count: 2
-                  value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\tSun,\n\t\tTree,\n\t\tUmbrella\n\t],\n\t[&str; 3] = [\n\t\tViolin,\n\t\tWatch,\n\t\tXylophone\n\t]]"
+                  value: "[[&str; 3]; 2] = [[&str; 3] = [&str @ 0x3FCCF6BC, &str @ 0x3FCCF6C4, &str @ 0x3FCCF6CC], [&str; 3] = [&str @ 0x3FCCF6D4, &str @ 0x3FCCF6DC, &str @ 0x3FCCF6E4]]"
                   children:
                     - name:
                         Indexed: 0
                       type_name:
                         Array:
                           item_type_name:
-                            Struct: "&str"
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
                           count: 3
-                      value: "[&str; 3] = [\n\tSun,\n\tTree,\n\tUmbrella]"
+                      value: "[&str; 3] = [&str @ 0x3FCCF6BC, &str @ 0x3FCCF6C4, &str @ 0x3FCCF6CC]"
                       children:
                         - name:
                             Indexed: 0
                           type_name:
-                            Struct: "&str"
-                          value: Sun
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF6BC"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C021381"
                               children:
                                 - name:
@@ -3624,13 +3938,19 @@ expression: stack_frames
                         - name:
                             Indexed: 1
                           type_name:
-                            Struct: "&str"
-                          value: Tree
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF6C4"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C0206EC"
                               children:
                                 - name:
@@ -3646,13 +3966,19 @@ expression: stack_frames
                         - name:
                             Indexed: 2
                           type_name:
-                            Struct: "&str"
-                          value: Umbrella
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF6CC"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C020130"
                               children:
                                 - name:
@@ -3670,20 +3996,31 @@ expression: stack_frames
                       type_name:
                         Array:
                           item_type_name:
-                            Struct: "&str"
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
                           count: 3
-                      value: "[&str; 3] = [\n\tViolin,\n\tWatch,\n\tXylophone]"
+                      value: "[&str; 3] = [&str @ 0x3FCCF6D4, &str @ 0x3FCCF6DC, &str @ 0x3FCCF6E4]"
                       children:
                         - name:
                             Indexed: 0
                           type_name:
-                            Struct: "&str"
-                          value: Violin
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF6D4"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C021384"
                               children:
                                 - name:
@@ -3699,13 +4036,19 @@ expression: stack_frames
                         - name:
                             Indexed: 1
                           type_name:
-                            Struct: "&str"
-                          value: Watch
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF6DC"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C02138A"
                               children:
                                 - name:
@@ -3721,13 +4064,19 @@ expression: stack_frames
                         - name:
                             Indexed: 2
                           type_name:
-                            Struct: "&str"
-                          value: Xylophone
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF6E4"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C02138F"
                               children:
                                 - name:
@@ -3747,30 +4096,46 @@ expression: stack_frames
                       item_type_name:
                         Array:
                           item_type_name:
-                            Struct: "&str"
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
                           count: 3
                       count: 2
-                  value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\tYellow,\n\t\tZebra,\n\t\tAlpha\n\t],\n\t[&str; 3] = [\n\t\tBravo,\n\t\tCharlie,\n\t\tDelta\n\t]]"
+                  value: "[[&str; 3]; 2] = [[&str; 3] = [&str @ 0x3FCCF6EC, &str @ 0x3FCCF6F4, &str @ 0x3FCCF6FC], [&str; 3] = [&str @ 0x3FCCF704, &str @ 0x3FCCF70C, &str @ 0x3FCCF714]]"
                   children:
                     - name:
                         Indexed: 0
                       type_name:
                         Array:
                           item_type_name:
-                            Struct: "&str"
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
                           count: 3
-                      value: "[&str; 3] = [\n\tYellow,\n\tZebra,\n\tAlpha]"
+                      value: "[&str; 3] = [&str @ 0x3FCCF6EC, &str @ 0x3FCCF6F4, &str @ 0x3FCCF6FC]"
                       children:
                         - name:
                             Indexed: 0
                           type_name:
-                            Struct: "&str"
-                          value: Yellow
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF6EC"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C021398"
                               children:
                                 - name:
@@ -3786,13 +4151,19 @@ expression: stack_frames
                         - name:
                             Indexed: 1
                           type_name:
-                            Struct: "&str"
-                          value: Zebra
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF6F4"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C02139E"
                               children:
                                 - name:
@@ -3808,13 +4179,19 @@ expression: stack_frames
                         - name:
                             Indexed: 2
                           type_name:
-                            Struct: "&str"
-                          value: Alpha
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF6FC"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C0213A3"
                               children:
                                 - name:
@@ -3832,20 +4209,31 @@ expression: stack_frames
                       type_name:
                         Array:
                           item_type_name:
-                            Struct: "&str"
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
                           count: 3
-                      value: "[&str; 3] = [\n\tBravo,\n\tCharlie,\n\tDelta]"
+                      value: "[&str; 3] = [&str @ 0x3FCCF704, &str @ 0x3FCCF70C, &str @ 0x3FCCF714]"
                       children:
                         - name:
                             Indexed: 0
                           type_name:
-                            Struct: "&str"
-                          value: Bravo
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF704"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C0213A8"
                               children:
                                 - name:
@@ -3861,13 +4249,19 @@ expression: stack_frames
                         - name:
                             Indexed: 1
                           type_name:
-                            Struct: "&str"
-                          value: Charlie
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF70C"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C0213AD"
                               children:
                                 - name:
@@ -3883,13 +4277,19 @@ expression: stack_frames
                         - name:
                             Indexed: 2
                           type_name:
-                            Struct: "&str"
-                          value: Delta
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF714"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C0213B4"
                               children:
                                 - name:
@@ -3909,30 +4309,46 @@ expression: stack_frames
                       item_type_name:
                         Array:
                           item_type_name:
-                            Struct: "&str"
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
                           count: 3
                       count: 2
-                  value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\tEcho,\n\t\tFoxtrot,\n\t\tGolf\n\t],\n\t[&str; 3] = [\n\t\tHotel,\n\t\tIndia,\n\t\tJuliet\n\t]]"
+                  value: "[[&str; 3]; 2] = [[&str; 3] = [&str @ 0x3FCCF71C, &str @ 0x3FCCF724, &str @ 0x3FCCF72C], [&str; 3] = [&str @ 0x3FCCF734, &str @ 0x3FCCF73C, &str @ 0x3FCCF744]]"
                   children:
                     - name:
                         Indexed: 0
                       type_name:
                         Array:
                           item_type_name:
-                            Struct: "&str"
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
                           count: 3
-                      value: "[&str; 3] = [\n\tEcho,\n\tFoxtrot,\n\tGolf]"
+                      value: "[&str; 3] = [&str @ 0x3FCCF71C, &str @ 0x3FCCF724, &str @ 0x3FCCF72C]"
                       children:
                         - name:
                             Indexed: 0
                           type_name:
-                            Struct: "&str"
-                          value: Echo
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF71C"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C0206D8"
                               children:
                                 - name:
@@ -3948,13 +4364,19 @@ expression: stack_frames
                         - name:
                             Indexed: 1
                           type_name:
-                            Struct: "&str"
-                          value: Foxtrot
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF724"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C0213B9"
                               children:
                                 - name:
@@ -3970,13 +4392,19 @@ expression: stack_frames
                         - name:
                             Indexed: 2
                           type_name:
-                            Struct: "&str"
-                          value: Golf
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF72C"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C0206DC"
                               children:
                                 - name:
@@ -3994,20 +4422,31 @@ expression: stack_frames
                       type_name:
                         Array:
                           item_type_name:
-                            Struct: "&str"
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
                           count: 3
-                      value: "[&str; 3] = [\n\tHotel,\n\tIndia,\n\tJuliet]"
+                      value: "[&str; 3] = [&str @ 0x3FCCF734, &str @ 0x3FCCF73C, &str @ 0x3FCCF744]"
                       children:
                         - name:
                             Indexed: 0
                           type_name:
-                            Struct: "&str"
-                          value: Hotel
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF734"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C0213C0"
                               children:
                                 - name:
@@ -4023,13 +4462,19 @@ expression: stack_frames
                         - name:
                             Indexed: 1
                           type_name:
-                            Struct: "&str"
-                          value: India
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF73C"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C0213C5"
                               children:
                                 - name:
@@ -4045,13 +4490,19 @@ expression: stack_frames
                         - name:
                             Indexed: 2
                           type_name:
-                            Struct: "&str"
-                          value: Juliet
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x3FCCF744"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8 @ 0x3C0213CA"
                               children:
                                 - name:
@@ -4067,7 +4518,11 @@ expression: stack_frames
         - name:
             Named: three
           type_name:
-            Enum: SimpleEnum
+            Enum:
+              ident: SimpleEnum
+              namespace:
+                - probe_rs_debugger_test
+              args: []
           value: "SimpleEnum::Two"
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
@@ -4077,8 +4532,18 @@ expression: stack_frames
         - name:
             Named: simple_enum_pointer
           type_name:
-            Pointer: "&probe_rs_debugger_test::SimpleEnum"
-          value: "&probe_rs_debugger_test::SimpleEnum @ 0x3FCCFAAF"
+            Pointer:
+              Struct:
+                ident: "&"
+                namespace: []
+                args:
+                  - Type:
+                      Struct:
+                        ident: SimpleEnum
+                        namespace:
+                          - probe_rs_debugger_test
+                        args: []
+          value: "&SimpleEnum @ 0x3FCCFAAF"
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 250
@@ -4088,12 +4553,20 @@ expression: stack_frames
             - name:
                 Named: "*simple_enum_pointer"
               type_name:
-                Enum: SimpleEnum
+                Enum:
+                  ident: SimpleEnum
+                  namespace:
+                    - probe_rs_debugger_test
+                  args: []
               value: "SimpleEnum::Two"
         - name:
             Named: three_level_recursive_struct
           type_name:
-            Struct: RecursiveStruct
+            Struct:
+              ident: RecursiveStruct
+              namespace:
+                - probe_rs_debugger_test
+              args: []
           value: RecursiveStruct @ 0x3FCCFAB4
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
@@ -4109,25 +4582,72 @@ expression: stack_frames
             - name:
                 Named: next_self
               type_name:
-                Struct: "Option<&mut probe_rs_debugger_test::RecursiveStruct>"
-              value: "Option<&mut probe_rs_debugger_test::RecursiveStruct> @ 0x3FCCFAB8"
+                Struct:
+                  ident: Option
+                  namespace:
+                    - core
+                    - option
+                  args:
+                    - Type:
+                        Struct:
+                          ident: "&mut"
+                          namespace: []
+                          args:
+                            - Type:
+                                Struct:
+                                  ident: RecursiveStruct
+                                  namespace:
+                                    - probe_rs_debugger_test
+                                  args: []
+              value: Option<&mut RecursiveStruct> @ 0x3FCCFAB8
               children:
                 - name:
                     Named: Some
                   type_name:
-                    Struct: Some
-                  value: Some @ 0x3FCCFAB8
+                    Struct:
+                      ident: Some
+                      namespace:
+                        - core
+                        - option
+                      args:
+                        - Type:
+                            Pointer:
+                              Struct:
+                                ident: "&mut"
+                                namespace: []
+                                args:
+                                  - Type:
+                                      Struct:
+                                        ident: RecursiveStruct
+                                        namespace:
+                                          - probe_rs_debugger_test
+                                        args: []
+                  value: Some<&mut RecursiveStruct> @ 0x3FCCFAB8
                   children:
                     - name:
                         Named: __0
                       type_name:
-                        Pointer: "&mut probe_rs_debugger_test::RecursiveStruct"
-                      value: "&mut probe_rs_debugger_test::RecursiveStruct @ 0x3FCCFAC0"
+                        Pointer:
+                          Struct:
+                            ident: "&mut"
+                            namespace: []
+                            args:
+                              - Type:
+                                  Struct:
+                                    ident: RecursiveStruct
+                                    namespace:
+                                      - probe_rs_debugger_test
+                                    args: []
+                      value: "&mut RecursiveStruct @ 0x3FCCFAC0"
                       children:
                         - name:
                             Named: "*__0"
                           type_name:
-                            Struct: RecursiveStruct
+                            Struct:
+                              ident: RecursiveStruct
+                              namespace:
+                                - probe_rs_debugger_test
+                              args: []
                           value: RecursiveStruct @ 0x3FCCFAC0
                           children:
                             - name:
@@ -4138,25 +4658,72 @@ expression: stack_frames
                             - name:
                                 Named: next_self
                               type_name:
-                                Struct: "Option<&mut probe_rs_debugger_test::RecursiveStruct>"
-                              value: "Option<&mut probe_rs_debugger_test::RecursiveStruct> @ 0x3FCCFAC4"
+                                Struct:
+                                  ident: Option
+                                  namespace:
+                                    - core
+                                    - option
+                                  args:
+                                    - Type:
+                                        Struct:
+                                          ident: "&mut"
+                                          namespace: []
+                                          args:
+                                            - Type:
+                                                Struct:
+                                                  ident: RecursiveStruct
+                                                  namespace:
+                                                    - probe_rs_debugger_test
+                                                  args: []
+                              value: Option<&mut RecursiveStruct> @ 0x3FCCFAC4
                               children:
                                 - name:
                                     Named: Some
                                   type_name:
-                                    Struct: Some
-                                  value: Some @ 0x3FCCFAC4
+                                    Struct:
+                                      ident: Some
+                                      namespace:
+                                        - core
+                                        - option
+                                      args:
+                                        - Type:
+                                            Pointer:
+                                              Struct:
+                                                ident: "&mut"
+                                                namespace: []
+                                                args:
+                                                  - Type:
+                                                      Struct:
+                                                        ident: RecursiveStruct
+                                                        namespace:
+                                                          - probe_rs_debugger_test
+                                                        args: []
+                                  value: Some<&mut RecursiveStruct> @ 0x3FCCFAC4
                                   children:
                                     - name:
                                         Named: __0
                                       type_name:
-                                        Pointer: "&mut probe_rs_debugger_test::RecursiveStruct"
-                                      value: "&mut probe_rs_debugger_test::RecursiveStruct @ 0x3FCCFACC"
+                                        Pointer:
+                                          Struct:
+                                            ident: "&mut"
+                                            namespace: []
+                                            args:
+                                              - Type:
+                                                  Struct:
+                                                    ident: RecursiveStruct
+                                                    namespace:
+                                                      - probe_rs_debugger_test
+                                                    args: []
+                                      value: "&mut RecursiveStruct @ 0x3FCCFACC"
                                       children:
                                         - name:
                                             Named: "*__0"
                                           type_name:
-                                            Struct: RecursiveStruct
+                                            Struct:
+                                              ident: RecursiveStruct
+                                              namespace:
+                                                - probe_rs_debugger_test
+                                              args: []
                                           value: RecursiveStruct @ 0x3FCCFACC
                                           children:
                                             - name:
@@ -4167,18 +4734,55 @@ expression: stack_frames
                                             - name:
                                                 Named: next_self
                                               type_name:
-                                                Struct: "Option<&mut probe_rs_debugger_test::RecursiveStruct>"
-                                              value: "Option<&mut probe_rs_debugger_test::RecursiveStruct> @ 0x3FCCFAD0"
+                                                Struct:
+                                                  ident: Option
+                                                  namespace:
+                                                    - core
+                                                    - option
+                                                  args:
+                                                    - Type:
+                                                        Struct:
+                                                          ident: "&mut"
+                                                          namespace: []
+                                                          args:
+                                                            - Type:
+                                                                Struct:
+                                                                  ident: RecursiveStruct
+                                                                  namespace:
+                                                                    - probe_rs_debugger_test
+                                                                  args: []
+                                              value: Option<&mut RecursiveStruct> @ 0x3FCCFAD0
                                               children:
                                                 - name:
                                                     Named: None
                                                   type_name:
-                                                    Struct: None
-                                                  value: None
+                                                    Struct:
+                                                      ident: None
+                                                      namespace:
+                                                        - core
+                                                        - option
+                                                      args:
+                                                        - Type:
+                                                            Pointer:
+                                                              Struct:
+                                                                ident: "&mut"
+                                                                namespace: []
+                                                                args:
+                                                                  - Type:
+                                                                      Struct:
+                                                                        ident: RecursiveStruct
+                                                                        namespace:
+                                                                          - probe_rs_debugger_test
+                                                                        args: []
+                                                  value: None<&mut RecursiveStruct>
         - name:
             Named: first_case_of_struct_variants
           type_name:
-            Struct: ComplexEnum
+            Struct:
+              ident: ComplexEnum
+              namespace:
+                - probe_rs_debugger_test
+              args: []
           value: ComplexEnum @ 0x3FCCFAD8
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
@@ -4189,7 +4793,11 @@ expression: stack_frames
             - name:
                 Named: Case1
               type_name:
-                Struct: Case1
+                Struct:
+                  ident: Case1
+                  namespace:
+                    - probe_rs_debugger_test
+                  args: []
               value: Case1 @ 0x3FCCFAD8
               children:
                 - name:
@@ -4200,7 +4808,11 @@ expression: stack_frames
                 - name:
                     Named: __1
                   type_name:
-                    Struct: ComplexStruct
+                    Struct:
+                      ident: ComplexStruct
+                      namespace:
+                        - probe_rs_debugger_test
+                      args: []
                   value: ComplexStruct @ 0x3FCCFAE8
                   children:
                     - name:
@@ -4221,7 +4833,11 @@ expression: stack_frames
         - name:
             Named: second_case_of_struct_variants
           type_name:
-            Struct: ComplexEnum
+            Struct:
+              ident: ComplexEnum
+              namespace:
+                - probe_rs_debugger_test
+              args: []
           value: ComplexEnum @ 0x3FCCFB08
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
@@ -4232,7 +4848,11 @@ expression: stack_frames
             - name:
                 Named: Case2
               type_name:
-                Struct: Case2
+                Struct:
+                  ident: Case2
+                  namespace:
+                    - probe_rs_debugger_test
+                  args: []
               value: Case2 @ 0x3FCCFB08
               children:
                 - name:
@@ -4253,8 +4873,19 @@ expression: stack_frames
         - name:
             Named: struct_with_one_variant
           type_name:
-            Struct: "Option<probe_rs_debugger_test::Univariant>"
-          value: "Option<probe_rs_debugger_test::Univariant> @ 0x3FCCFB28"
+            Struct:
+              ident: Option
+              namespace:
+                - core
+                - option
+              args:
+                - Type:
+                    Struct:
+                      ident: Univariant
+                      namespace:
+                        - probe_rs_debugger_test
+                      args: []
+          value: Option<Univariant> @ 0x3FCCFB28
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 273
@@ -4264,25 +4895,48 @@ expression: stack_frames
             - name:
                 Named: Some
               type_name:
-                Struct: Some
-              value: Some @ 0x3FCCFB28
+                Struct:
+                  ident: Some
+                  namespace:
+                    - core
+                    - option
+                  args:
+                    - Type:
+                        Struct:
+                          ident: Univariant
+                          namespace:
+                            - probe_rs_debugger_test
+                          args: []
+              value: Some<Univariant> @ 0x3FCCFB28
               children:
                 - name:
                     Named: __0
                   type_name:
-                    Struct: Univariant
+                    Struct:
+                      ident: Univariant
+                      namespace:
+                        - probe_rs_debugger_test
+                      args: []
                   value: Univariant @ 0x3FCCFB30
                   children:
                     - name:
                         Named: TupleOfComplexStruct
                       type_name:
-                        Struct: TupleOfComplexStruct
+                        Struct:
+                          ident: TupleOfComplexStruct
+                          namespace:
+                            - probe_rs_debugger_test
+                          args: []
                       value: TupleOfComplexStruct @ 0x3FCCFB30
                       children:
                         - name:
                             Named: __0
                           type_name:
-                            Struct: ComplexStruct
+                            Struct:
+                              ident: ComplexStruct
+                              namespace:
+                                - probe_rs_debugger_test
+                              args: []
                           value: ComplexStruct @ 0x3FCCFB30
                           children:
                             - name:
@@ -4303,7 +4957,11 @@ expression: stack_frames
                         - name:
                             Named: __1
                           type_name:
-                            Struct: ComplexStruct
+                            Struct:
+                              ident: ComplexStruct
+                              namespace:
+                                - probe_rs_debugger_test
+                              args: []
                           value: ComplexStruct @ 0x3FCCFB40
                           children:
                             - name:
@@ -4324,8 +4982,25 @@ expression: stack_frames
         - name:
             Named: stuct_with_one_variant_pointer
           type_name:
-            Pointer: "&core::option::Option<probe_rs_debugger_test::Univariant>"
-          value: "&core::option::Option<probe_rs_debugger_test::Univariant> @ 0x3FCCFB28"
+            Pointer:
+              Struct:
+                ident: "&"
+                namespace: []
+                args:
+                  - Type:
+                      Struct:
+                        ident: Option
+                        namespace:
+                          - core
+                          - option
+                        args:
+                          - Type:
+                              Struct:
+                                ident: Univariant
+                                namespace:
+                                  - probe_rs_debugger_test
+                                args: []
+          value: "&Option<Univariant> @ 0x3FCCFB28"
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 285
@@ -4335,31 +5010,65 @@ expression: stack_frames
             - name:
                 Named: "*stuct_with_one_variant_pointer"
               type_name:
-                Struct: "Option<probe_rs_debugger_test::Univariant>"
-              value: "Option<probe_rs_debugger_test::Univariant> @ 0x3FCCFB28"
+                Struct:
+                  ident: Option
+                  namespace:
+                    - core
+                    - option
+                  args:
+                    - Type:
+                        Struct:
+                          ident: Univariant
+                          namespace:
+                            - probe_rs_debugger_test
+                          args: []
+              value: Option<Univariant> @ 0x3FCCFB28
               children:
                 - name:
                     Named: Some
                   type_name:
-                    Struct: Some
-                  value: Some @ 0x3FCCFB28
+                    Struct:
+                      ident: Some
+                      namespace:
+                        - core
+                        - option
+                      args:
+                        - Type:
+                            Struct:
+                              ident: Univariant
+                              namespace:
+                                - probe_rs_debugger_test
+                              args: []
+                  value: Some<Univariant> @ 0x3FCCFB28
                   children:
                     - name:
                         Named: __0
                       type_name:
-                        Struct: Univariant
+                        Struct:
+                          ident: Univariant
+                          namespace:
+                            - probe_rs_debugger_test
+                          args: []
                       value: Univariant @ 0x3FCCFB30
                       children:
                         - name:
                             Named: TupleOfComplexStruct
                           type_name:
-                            Struct: TupleOfComplexStruct
+                            Struct:
+                              ident: TupleOfComplexStruct
+                              namespace:
+                                - probe_rs_debugger_test
+                              args: []
                           value: TupleOfComplexStruct @ 0x3FCCFB30
                           children:
                             - name:
                                 Named: __0
                               type_name:
-                                Struct: ComplexStruct
+                                Struct:
+                                  ident: ComplexStruct
+                                  namespace:
+                                    - probe_rs_debugger_test
+                                  args: []
                               value: ComplexStruct @ 0x3FCCFB30
                               children:
                                 - name:
@@ -4380,7 +5089,11 @@ expression: stack_frames
                             - name:
                                 Named: __1
                               type_name:
-                                Struct: ComplexStruct
+                                Struct:
+                                  ident: ComplexStruct
+                                  namespace:
+                                    - probe_rs_debugger_test
+                                  args: []
                               value: ComplexStruct @ 0x3FCCFB40
                               children:
                                 - name:
@@ -4401,7 +5114,11 @@ expression: stack_frames
         - name:
             Named: long_lived
           type_name:
-            Struct: ComplexStruct
+            Struct:
+              ident: ComplexStruct
+              namespace:
+                - probe_rs_debugger_test
+              args: []
           value: ComplexStruct @ 0x3FCCFB90
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
@@ -4427,7 +5144,11 @@ expression: stack_frames
         - name:
             Named: short_lived
           type_name:
-            Struct: ComplexStruct
+            Struct:
+              ident: ComplexStruct
+              namespace:
+                - probe_rs_debugger_test
+              args: []
           value: ComplexStruct @ 0x3FCCFBA0
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
@@ -4453,7 +5174,13 @@ expression: stack_frames
         - name:
             Named: a1
           type_name:
-            Struct: Struct<i32>
+            Struct:
+              ident: Struct
+              namespace:
+                - probe_rs_debugger_test
+              args:
+                - Type:
+                    Base: i32
           value: Struct<i32> @ 0x3FCCFD18
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
@@ -4504,7 +5231,14 @@ expression: stack_frames
         - name:
             Named: a5
           type_name:
-            Struct: "(i32, i64)"
+            Struct:
+              ident: ""
+              namespace: []
+              args:
+                - Type:
+                    Base: i32
+                - Type:
+                    Base: i64
           value: "(i32, i64) @ 0x3FCCFD40"
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
@@ -4525,7 +5259,13 @@ expression: stack_frames
         - name:
             Named: a6
           type_name:
-            Struct: Enum<i32>
+            Struct:
+              ident: Enum
+              namespace:
+                - probe_rs_debugger_test
+              args:
+                - Type:
+                    Base: i32
           value: Enum<i32> @ 0x3FCCFBE0
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
@@ -4536,8 +5276,14 @@ expression: stack_frames
             - name:
                 Named: Variant2
               type_name:
-                Struct: Variant2
-              value: Variant2 @ 0x3FCCFBE0
+                Struct:
+                  ident: Variant2
+                  namespace:
+                    - probe_rs_debugger_test
+                  args:
+                    - Type:
+                        Base: i32
+              value: Variant2<i32> @ 0x3FCCFBE0
               children:
                 - name:
                     Named: __0
@@ -4552,7 +5298,13 @@ expression: stack_frames
         - name:
             Named: a7
           type_name:
-            Struct: Enum<i32>
+            Struct:
+              ident: Enum
+              namespace:
+                - probe_rs_debugger_test
+              args:
+                - Type:
+                    Base: i32
           value: Enum<i32> @ 0x3FCCFC00
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
@@ -4563,8 +5315,14 @@ expression: stack_frames
             - name:
                 Named: Variant1
               type_name:
-                Struct: Variant1
-              value: Variant1 @ 0x3FCCFC00
+                Struct:
+                  ident: Variant1
+                  namespace:
+                    - probe_rs_debugger_test
+                  args:
+                    - Type:
+                        Base: i32
+              value: Variant1<i32> @ 0x3FCCFC00
               children:
                 - name:
                     Named: __0
@@ -4583,7 +5341,7 @@ expression: stack_frames
               item_type_name:
                 Base: i32
               count: 10
-          value: "[i32; 10] = [\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55]"
+          value: "[i32; 10] = [55, 55, 55, 55, 55, 55, 55, 55, 55, 55]"
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 298
@@ -4693,7 +5451,16 @@ expression: stack_frames
         - name:
             Named: my_array_ptr
           type_name:
-            Pointer: "&[i32; 10]"
+            Pointer:
+              Struct:
+                ident: "&"
+                namespace: []
+                args:
+                  - Type:
+                      Array:
+                        item_type_name:
+                          Base: i32
+                        count: 10
           value: "&[i32; 10] @ 0x3FCCFC24"
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
@@ -4708,7 +5475,7 @@ expression: stack_frames
                   item_type_name:
                     Base: i32
                   count: 10
-              value: "[i32; 10] = [\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55]"
+              value: "[i32; 10] = [55, 55, 55, 55, 55, 55, 55, 55, 55, 55]"
               children:
                 - name:
                     Indexed: 0
@@ -4767,7 +5534,7 @@ expression: stack_frames
               item_type_name:
                 Base: i8
               count: 10
-          value: "[i8; 10] = [\n\t1,\n\t2,\n\t3,\n\t4,\n\t5,\n\t6,\n\t7,\n\t8,\n\t9,\n\t0]"
+          value: "[i8; 10] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]"
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 300
@@ -4877,8 +5644,15 @@ expression: stack_frames
         - name:
             Named: heapless_vec
           type_name:
-            Struct: "Vec<i8, 10>"
-          value: "Vec<i8, 10> @ 0x3FCCFC58"
+            Struct:
+              ident: Vec
+              namespace:
+                - heapless
+                - vec
+              args:
+                - Type:
+                    Base: i8
+          value: Vec<i8> @ 0x3FCCFC58
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 301
@@ -4897,7 +5671,7 @@ expression: stack_frames
                   item_type_name:
                     Base: i8
                   count: 3
-              value: "[i8; 3] = [\n\t1,\n\t2,\n\t3]"
+              value: "[i8; 3] = [1, 2, 3]"
               children:
                 - name:
                     Indexed: 0
@@ -4917,7 +5691,15 @@ expression: stack_frames
         - name:
             Named: loop_counter
           type_name:
-            Struct: Wrapping<u8>
+            Struct:
+              ident: Wrapping
+              namespace:
+                - core
+                - num
+                - wrapping
+              args:
+                - Type:
+                    Base: u8
           value: "0"
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
@@ -4933,7 +5715,12 @@ expression: stack_frames
         - name:
             Named: rtt_channels
           type_name:
-            Struct: Channels
+            Struct:
+              ident: Channels
+              namespace:
+                - probe_rs_debugger_test
+                - setup_data_types
+              args: []
           value: Channels @ 0x3FCCFC6C
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
@@ -4944,31 +5731,72 @@ expression: stack_frames
             - name:
                 Named: up
               type_name:
-                Struct: "(rtt_target::UpChannel, rtt_target::UpChannel)"
-              value: "(rtt_target::UpChannel, rtt_target::UpChannel) @ 0x3FCCFC6C"
+                Struct:
+                  ident: ""
+                  namespace: []
+                  args:
+                    - Type:
+                        Struct:
+                          ident: UpChannel
+                          namespace:
+                            - rtt_target
+                          args: []
+                    - Type:
+                        Struct:
+                          ident: UpChannel
+                          namespace:
+                            - rtt_target
+                          args: []
+              value: "(UpChannel, UpChannel) @ 0x3FCCFC6C"
               children:
                 - name:
                     Named: __0
                   type_name:
-                    Struct: UpChannel
+                    Struct:
+                      ident: UpChannel
+                      namespace:
+                        - rtt_target
+                      args: []
                   value: UpChannel @ 0x3FCCFC6C
                   children:
                     - name:
                         Named: __0
                       type_name:
-                        Pointer: "*mut rtt_target::rtt::RttChannel"
-                      value: "*mut rtt_target::rtt::RttChannel @ 0x3FC80DB4"
+                        Pointer:
+                          Struct:
+                            ident: "*mut"
+                            namespace: []
+                            args:
+                              - Type:
+                                  Struct:
+                                    ident: RttChannel
+                                    namespace:
+                                      - rtt_target
+                                      - rtt
+                                    args: []
+                      value: "*mut RttChannel @ 0x3FC80DB4"
                       children:
                         - name:
                             Named: "*__0"
                           type_name:
-                            Struct: RttChannel
+                            Struct:
+                              ident: RttChannel
+                              namespace:
+                                - rtt_target
+                                - rtt
+                              args: []
                           value: RttChannel @ 0x3FC80DB4
                           children:
                             - name:
                                 Named: name
                               type_name:
-                                Pointer: "*const u8"
+                                Pointer:
+                                  Struct:
+                                    ident: "*const"
+                                    namespace: []
+                                    args:
+                                      - Type:
+                                          Base: u8
                               value: "*const u8 @ 0x3C0213D0"
                               children:
                                 - name:
@@ -4979,7 +5807,13 @@ expression: stack_frames
                             - name:
                                 Named: buffer
                               type_name:
-                                Pointer: "*mut u8"
+                                Pointer:
+                                  Struct:
+                                    ident: "*mut"
+                                    namespace: []
+                                    args:
+                                      - Type:
+                                          Base: u8
                               value: "*mut u8 @ 0x3FC80DE4"
                               children:
                                 - name:
@@ -4995,7 +5829,13 @@ expression: stack_frames
                             - name:
                                 Named: write
                               type_name:
-                                Struct: AtomicUsize
+                                Struct:
+                                  ident: AtomicUsize
+                                  namespace:
+                                    - core
+                                    - sync
+                                    - atomic
+                                  args: []
                               value: "363"
                               children:
                                 - name:
@@ -5006,7 +5846,13 @@ expression: stack_frames
                             - name:
                                 Named: read
                               type_name:
-                                Struct: AtomicUsize
+                                Struct:
+                                  ident: AtomicUsize
+                                  namespace:
+                                    - core
+                                    - sync
+                                    - atomic
+                                  args: []
                               value: "363"
                               children:
                                 - name:
@@ -5017,7 +5863,13 @@ expression: stack_frames
                             - name:
                                 Named: flags
                               type_name:
-                                Struct: AtomicUsize
+                                Struct:
+                                  ident: AtomicUsize
+                                  namespace:
+                                    - core
+                                    - sync
+                                    - atomic
+                                  args: []
                               value: "1"
                               children:
                                 - name:
@@ -5028,25 +5880,51 @@ expression: stack_frames
                 - name:
                     Named: __1
                   type_name:
-                    Struct: UpChannel
+                    Struct:
+                      ident: UpChannel
+                      namespace:
+                        - rtt_target
+                      args: []
                   value: UpChannel @ 0x3FCCFC70
                   children:
                     - name:
                         Named: __0
                       type_name:
-                        Pointer: "*mut rtt_target::rtt::RttChannel"
-                      value: "*mut rtt_target::rtt::RttChannel @ 0x3FC80DCC"
+                        Pointer:
+                          Struct:
+                            ident: "*mut"
+                            namespace: []
+                            args:
+                              - Type:
+                                  Struct:
+                                    ident: RttChannel
+                                    namespace:
+                                      - rtt_target
+                                      - rtt
+                                    args: []
+                      value: "*mut RttChannel @ 0x3FC80DCC"
                       children:
                         - name:
                             Named: "*__0"
                           type_name:
-                            Struct: RttChannel
+                            Struct:
+                              ident: RttChannel
+                              namespace:
+                                - rtt_target
+                                - rtt
+                              args: []
                           value: RttChannel @ 0x3FC80DCC
                           children:
                             - name:
                                 Named: name
                               type_name:
-                                Pointer: "*const u8"
+                                Pointer:
+                                  Struct:
+                                    ident: "*const"
+                                    namespace: []
+                                    args:
+                                      - Type:
+                                          Base: u8
                               value: "*const u8 @ 0x3C0213E3"
                               children:
                                 - name:
@@ -5057,7 +5935,13 @@ expression: stack_frames
                             - name:
                                 Named: buffer
                               type_name:
-                                Pointer: "*mut u8"
+                                Pointer:
+                                  Struct:
+                                    ident: "*mut"
+                                    namespace: []
+                                    args:
+                                      - Type:
+                                          Base: u8
                               value: "*mut u8 @ 0x3FC811E4"
                               children:
                                 - name:
@@ -5073,7 +5957,13 @@ expression: stack_frames
                             - name:
                                 Named: write
                               type_name:
-                                Struct: AtomicUsize
+                                Struct:
+                                  ident: AtomicUsize
+                                  namespace:
+                                    - core
+                                    - sync
+                                    - atomic
+                                  args: []
                               value: "0"
                               children:
                                 - name:
@@ -5084,7 +5974,13 @@ expression: stack_frames
                             - name:
                                 Named: read
                               type_name:
-                                Struct: AtomicUsize
+                                Struct:
+                                  ident: AtomicUsize
+                                  namespace:
+                                    - core
+                                    - sync
+                                    - atomic
+                                  args: []
                               value: "0"
                               children:
                                 - name:
@@ -5095,7 +5991,13 @@ expression: stack_frames
                             - name:
                                 Named: flags
                               type_name:
-                                Struct: AtomicUsize
+                                Struct:
+                                  ident: AtomicUsize
+                                  namespace:
+                                    - core
+                                    - sync
+                                    - atomic
+                                  args: []
                               value: "1"
                               children:
                                 - name:
@@ -5429,12 +6331,19 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tperipherals: Peripherals = Peripherals @ 0x3FCCFEFE,\n\tsystem: SystemParts = SystemParts @ 0x3FCCFEFF,\n\tclocks: Clocks = Clocks @ 0x3FCCFF00,\n\tdelay: Delay = Delay @ 0x3FCCFF18}"
+      value: "<unknown> { peripherals = Peripherals @ 0x3FCCFEFE, system = SystemParts @ 0x3FCCFEFF, clocks = Clocks @ 0x3FCCFF00, delay = Delay @ 0x3FCCFF18 }"
       children:
         - name:
             Named: peripherals
           type_name:
-            Struct: Peripherals
+            Struct:
+              ident: Peripherals
+              namespace:
+                - esp_hal
+                - soc
+                - implementation
+                - peripherals
+              args: []
           value: Peripherals @ 0x3FCCFEFE
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/esp32c3.rs
@@ -5445,7 +6354,15 @@ expression: stack_frames
             - name:
                 Named: ADC1
               type_name:
-                Struct: ADC1
+                Struct:
+                  ident: ADC1
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: ADC1 @ 0x3FCCFEFE
               children:
                 - name:
@@ -5456,7 +6373,15 @@ expression: stack_frames
             - name:
                 Named: ADC2
               type_name:
-                Struct: ADC2
+                Struct:
+                  ident: ADC2
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: ADC2 @ 0x3FCCFEFE
               children:
                 - name:
@@ -5467,7 +6392,15 @@ expression: stack_frames
             - name:
                 Named: AES
               type_name:
-                Struct: AES
+                Struct:
+                  ident: AES
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: AES @ 0x3FCCFEFE
               children:
                 - name:
@@ -5478,7 +6411,15 @@ expression: stack_frames
             - name:
                 Named: APB_CTRL
               type_name:
-                Struct: APB_CTRL
+                Struct:
+                  ident: APB_CTRL
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: APB_CTRL @ 0x3FCCFEFE
               children:
                 - name:
@@ -5489,7 +6430,15 @@ expression: stack_frames
             - name:
                 Named: ASSIST_DEBUG
               type_name:
-                Struct: ASSIST_DEBUG
+                Struct:
+                  ident: ASSIST_DEBUG
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: ASSIST_DEBUG @ 0x3FCCFEFE
               children:
                 - name:
@@ -5500,7 +6449,15 @@ expression: stack_frames
             - name:
                 Named: BT
               type_name:
-                Struct: BT
+                Struct:
+                  ident: BT
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: BT @ 0x3FCCFEFE
               children:
                 - name:
@@ -5511,7 +6468,15 @@ expression: stack_frames
             - name:
                 Named: DMA
               type_name:
-                Struct: DMA
+                Struct:
+                  ident: DMA
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: DMA @ 0x3FCCFEFE
               children:
                 - name:
@@ -5522,7 +6487,15 @@ expression: stack_frames
             - name:
                 Named: DS
               type_name:
-                Struct: DS
+                Struct:
+                  ident: DS
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: DS @ 0x3FCCFEFE
               children:
                 - name:
@@ -5533,7 +6506,15 @@ expression: stack_frames
             - name:
                 Named: EFUSE
               type_name:
-                Struct: EFUSE
+                Struct:
+                  ident: EFUSE
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: EFUSE @ 0x3FCCFEFE
               children:
                 - name:
@@ -5544,7 +6525,15 @@ expression: stack_frames
             - name:
                 Named: EXTMEM
               type_name:
-                Struct: EXTMEM
+                Struct:
+                  ident: EXTMEM
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: EXTMEM @ 0x3FCCFEFE
               children:
                 - name:
@@ -5555,7 +6544,15 @@ expression: stack_frames
             - name:
                 Named: GPIO
               type_name:
-                Struct: GPIO
+                Struct:
+                  ident: GPIO
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: GPIO @ 0x3FCCFEFE
               children:
                 - name:
@@ -5566,7 +6563,15 @@ expression: stack_frames
             - name:
                 Named: GPIO_SD
               type_name:
-                Struct: GPIO_SD
+                Struct:
+                  ident: GPIO_SD
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: GPIO_SD @ 0x3FCCFEFE
               children:
                 - name:
@@ -5577,7 +6582,15 @@ expression: stack_frames
             - name:
                 Named: HMAC
               type_name:
-                Struct: HMAC
+                Struct:
+                  ident: HMAC
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: HMAC @ 0x3FCCFEFE
               children:
                 - name:
@@ -5588,7 +6601,15 @@ expression: stack_frames
             - name:
                 Named: I2C0
               type_name:
-                Struct: I2C0
+                Struct:
+                  ident: I2C0
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: I2C0 @ 0x3FCCFEFE
               children:
                 - name:
@@ -5599,7 +6620,15 @@ expression: stack_frames
             - name:
                 Named: I2S0
               type_name:
-                Struct: I2S0
+                Struct:
+                  ident: I2S0
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: I2S0 @ 0x3FCCFEFE
               children:
                 - name:
@@ -5610,7 +6639,15 @@ expression: stack_frames
             - name:
                 Named: INTERRUPT_CORE0
               type_name:
-                Struct: INTERRUPT_CORE0
+                Struct:
+                  ident: INTERRUPT_CORE0
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: INTERRUPT_CORE0 @ 0x3FCCFEFE
               children:
                 - name:
@@ -5621,7 +6658,15 @@ expression: stack_frames
             - name:
                 Named: IO_MUX
               type_name:
-                Struct: IO_MUX
+                Struct:
+                  ident: IO_MUX
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: IO_MUX @ 0x3FCCFEFE
               children:
                 - name:
@@ -5632,7 +6677,15 @@ expression: stack_frames
             - name:
                 Named: LEDC
               type_name:
-                Struct: LEDC
+                Struct:
+                  ident: LEDC
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: LEDC @ 0x3FCCFEFE
               children:
                 - name:
@@ -5643,7 +6696,15 @@ expression: stack_frames
             - name:
                 Named: LPWR
               type_name:
-                Struct: LPWR
+                Struct:
+                  ident: LPWR
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: LPWR @ 0x3FCCFEFE
               children:
                 - name:
@@ -5654,7 +6715,15 @@ expression: stack_frames
             - name:
                 Named: RMT
               type_name:
-                Struct: RMT
+                Struct:
+                  ident: RMT
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: RMT @ 0x3FCCFEFE
               children:
                 - name:
@@ -5665,7 +6734,15 @@ expression: stack_frames
             - name:
                 Named: RNG
               type_name:
-                Struct: RNG
+                Struct:
+                  ident: RNG
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: RNG @ 0x3FCCFEFE
               children:
                 - name:
@@ -5676,7 +6753,15 @@ expression: stack_frames
             - name:
                 Named: RSA
               type_name:
-                Struct: RSA
+                Struct:
+                  ident: RSA
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: RSA @ 0x3FCCFEFE
               children:
                 - name:
@@ -5687,7 +6772,15 @@ expression: stack_frames
             - name:
                 Named: SENSITIVE
               type_name:
-                Struct: SENSITIVE
+                Struct:
+                  ident: SENSITIVE
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: SENSITIVE @ 0x3FCCFEFE
               children:
                 - name:
@@ -5698,7 +6791,15 @@ expression: stack_frames
             - name:
                 Named: SHA
               type_name:
-                Struct: SHA
+                Struct:
+                  ident: SHA
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: SHA @ 0x3FCCFEFE
               children:
                 - name:
@@ -5709,7 +6810,15 @@ expression: stack_frames
             - name:
                 Named: SPI0
               type_name:
-                Struct: SPI0
+                Struct:
+                  ident: SPI0
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: SPI0 @ 0x3FCCFEFE
               children:
                 - name:
@@ -5720,7 +6829,15 @@ expression: stack_frames
             - name:
                 Named: SPI1
               type_name:
-                Struct: SPI1
+                Struct:
+                  ident: SPI1
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: SPI1 @ 0x3FCCFEFE
               children:
                 - name:
@@ -5731,7 +6848,15 @@ expression: stack_frames
             - name:
                 Named: SPI2
               type_name:
-                Struct: SPI2
+                Struct:
+                  ident: SPI2
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: SPI2 @ 0x3FCCFEFE
               children:
                 - name:
@@ -5742,7 +6867,15 @@ expression: stack_frames
             - name:
                 Named: SYSTEM
               type_name:
-                Struct: SYSTEM
+                Struct:
+                  ident: SYSTEM
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: SYSTEM @ 0x3FCCFEFE
               children:
                 - name:
@@ -5753,7 +6886,15 @@ expression: stack_frames
             - name:
                 Named: SYSTIMER
               type_name:
-                Struct: SYSTIMER
+                Struct:
+                  ident: SYSTIMER
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: SYSTIMER @ 0x3FCCFEFE
               children:
                 - name:
@@ -5764,7 +6905,15 @@ expression: stack_frames
             - name:
                 Named: TIMG0
               type_name:
-                Struct: TIMG0
+                Struct:
+                  ident: TIMG0
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: TIMG0 @ 0x3FCCFEFE
               children:
                 - name:
@@ -5775,7 +6924,15 @@ expression: stack_frames
             - name:
                 Named: TIMG1
               type_name:
-                Struct: TIMG1
+                Struct:
+                  ident: TIMG1
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: TIMG1 @ 0x3FCCFEFE
               children:
                 - name:
@@ -5786,7 +6943,15 @@ expression: stack_frames
             - name:
                 Named: TWAI0
               type_name:
-                Struct: TWAI0
+                Struct:
+                  ident: TWAI0
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: TWAI0 @ 0x3FCCFEFE
               children:
                 - name:
@@ -5797,7 +6962,15 @@ expression: stack_frames
             - name:
                 Named: UART0
               type_name:
-                Struct: UART0
+                Struct:
+                  ident: UART0
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: UART0 @ 0x3FCCFEFE
               children:
                 - name:
@@ -5808,7 +6981,15 @@ expression: stack_frames
             - name:
                 Named: UART1
               type_name:
-                Struct: UART1
+                Struct:
+                  ident: UART1
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: UART1 @ 0x3FCCFEFE
               children:
                 - name:
@@ -5819,7 +7000,15 @@ expression: stack_frames
             - name:
                 Named: UHCI0
               type_name:
-                Struct: UHCI0
+                Struct:
+                  ident: UHCI0
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: UHCI0 @ 0x3FCCFEFE
               children:
                 - name:
@@ -5830,7 +7019,15 @@ expression: stack_frames
             - name:
                 Named: UHCI1
               type_name:
-                Struct: UHCI1
+                Struct:
+                  ident: UHCI1
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: UHCI1 @ 0x3FCCFEFE
               children:
                 - name:
@@ -5841,7 +7038,15 @@ expression: stack_frames
             - name:
                 Named: USB_DEVICE
               type_name:
-                Struct: USB_DEVICE
+                Struct:
+                  ident: USB_DEVICE
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: USB_DEVICE @ 0x3FCCFEFE
               children:
                 - name:
@@ -5852,7 +7057,15 @@ expression: stack_frames
             - name:
                 Named: WIFI
               type_name:
-                Struct: WIFI
+                Struct:
+                  ident: WIFI
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: WIFI @ 0x3FCCFEFE
               children:
                 - name:
@@ -5863,7 +7076,15 @@ expression: stack_frames
             - name:
                 Named: XTS_AES
               type_name:
-                Struct: XTS_AES
+                Struct:
+                  ident: XTS_AES
+                  namespace:
+                    - esp_hal
+                    - soc
+                    - implementation
+                    - peripherals
+                    - peripherals
+                  args: []
               value: XTS_AES @ 0x3FCCFEFE
               children:
                 - name:
@@ -5874,7 +7095,12 @@ expression: stack_frames
         - name:
             Named: system
           type_name:
-            Struct: SystemParts
+            Struct:
+              ident: SystemParts
+              namespace:
+                - esp_hal
+                - system
+              args: []
           value: SystemParts @ 0x3FCCFEFF
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/esp32c3.rs
@@ -5885,13 +7111,36 @@ expression: stack_frames
             - name:
                 Named: _private
               type_name:
-                Struct: "PeripheralRef<esp_hal::soc::implementation::peripherals::peripherals::SYSTEM>"
-              value: "PeripheralRef<esp_hal::soc::implementation::peripherals::peripherals::SYSTEM> @ 0x3FCCFEFF"
+                Struct:
+                  ident: PeripheralRef
+                  namespace:
+                    - esp_hal
+                    - peripheral
+                  args:
+                    - Type:
+                        Struct:
+                          ident: SYSTEM
+                          namespace:
+                            - esp_hal
+                            - soc
+                            - implementation
+                            - peripherals
+                            - peripherals
+                          args: []
+              value: PeripheralRef<SYSTEM> @ 0x3FCCFEFF
               children:
                 - name:
                     Named: inner
                   type_name:
-                    Struct: SYSTEM
+                    Struct:
+                      ident: SYSTEM
+                      namespace:
+                        - esp_hal
+                        - soc
+                        - implementation
+                        - peripherals
+                        - peripherals
+                      args: []
                   value: SYSTEM @ 0x3FCCFEFF
                   children:
                     - name:
@@ -5902,7 +7151,12 @@ expression: stack_frames
             - name:
                 Named: clock_control
               type_name:
-                Struct: SystemClockControl
+                Struct:
+                  ident: SystemClockControl
+                  namespace:
+                    - esp_hal
+                    - system
+                  args: []
               value: SystemClockControl @ 0x3FCCFEFF
               children:
                 - name:
@@ -5913,7 +7167,12 @@ expression: stack_frames
             - name:
                 Named: cpu_control
               type_name:
-                Struct: CpuControl
+                Struct:
+                  ident: CpuControl
+                  namespace:
+                    - esp_hal
+                    - system
+                  args: []
               value: CpuControl @ 0x3FCCFEFF
               children:
                 - name:
@@ -5924,7 +7183,12 @@ expression: stack_frames
             - name:
                 Named: radio_clock_control
               type_name:
-                Struct: RadioClockControl
+                Struct:
+                  ident: RadioClockControl
+                  namespace:
+                    - esp_hal
+                    - system
+                  args: []
               value: RadioClockControl @ 0x3FCCFEFF
               children:
                 - name:
@@ -5935,33 +7199,67 @@ expression: stack_frames
             - name:
                 Named: software_interrupt_control
               type_name:
-                Struct: SoftwareInterruptControl
+                Struct:
+                  ident: SoftwareInterruptControl
+                  namespace:
+                    - esp_hal
+                    - system
+                  args: []
               value: SoftwareInterruptControl @ 0x3FCCFEFF
               children:
                 - name:
                     Named: software_interrupt0
                   type_name:
-                    Struct: SoftwareInterrupt<0>
+                    Struct:
+                      ident: SoftwareInterrupt
+                      namespace:
+                        - esp_hal
+                        - system
+                      args:
+                        - Const: "0"
                   value: SoftwareInterrupt<0>
                 - name:
                     Named: software_interrupt1
                   type_name:
-                    Struct: SoftwareInterrupt<1>
+                    Struct:
+                      ident: SoftwareInterrupt
+                      namespace:
+                        - esp_hal
+                        - system
+                      args:
+                        - Const: "1"
                   value: SoftwareInterrupt<1>
                 - name:
                     Named: software_interrupt2
                   type_name:
-                    Struct: SoftwareInterrupt<2>
+                    Struct:
+                      ident: SoftwareInterrupt
+                      namespace:
+                        - esp_hal
+                        - system
+                      args:
+                        - Const: "2"
                   value: SoftwareInterrupt<2>
                 - name:
                     Named: software_interrupt3
                   type_name:
-                    Struct: SoftwareInterrupt<3>
+                    Struct:
+                      ident: SoftwareInterrupt
+                      namespace:
+                        - esp_hal
+                        - system
+                      args:
+                        - Const: "3"
                   value: SoftwareInterrupt<3>
         - name:
             Named: clocks
           type_name:
-            Struct: Clocks
+            Struct:
+              ident: Clocks
+              namespace:
+                - esp_hal
+                - clock
+              args: []
           value: Clocks @ 0x3FCCFF00
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/esp32c3.rs
@@ -5972,13 +7270,30 @@ expression: stack_frames
             - name:
                 Named: _private
               type_name:
-                Struct: "PeripheralRef<esp_hal::system::SystemClockControl>"
-              value: "PeripheralRef<esp_hal::system::SystemClockControl> @ 0x3FCCFF0C"
+                Struct:
+                  ident: PeripheralRef
+                  namespace:
+                    - esp_hal
+                    - peripheral
+                  args:
+                    - Type:
+                        Struct:
+                          ident: SystemClockControl
+                          namespace:
+                            - esp_hal
+                            - system
+                          args: []
+              value: PeripheralRef<SystemClockControl> @ 0x3FCCFF0C
               children:
                 - name:
                     Named: inner
                   type_name:
-                    Struct: SystemClockControl
+                    Struct:
+                      ident: SystemClockControl
+                      namespace:
+                        - esp_hal
+                        - system
+                      args: []
                   value: SystemClockControl @ 0x3FCCFF0C
                   children:
                     - name:
@@ -5989,8 +7304,15 @@ expression: stack_frames
             - name:
                 Named: cpu_clock
               type_name:
-                Struct: "Rate<u32, 1, 1>"
-              value: "Rate<u32, 1, 1> @ 0x3FCCFF00"
+                Struct:
+                  ident: Rate
+                  namespace:
+                    - fugit
+                    - rate
+                  args:
+                    - Type:
+                        Base: u32
+              value: Rate<u32> @ 0x3FCCFF00
               children:
                 - name:
                     Named: raw
@@ -6000,8 +7322,15 @@ expression: stack_frames
             - name:
                 Named: apb_clock
               type_name:
-                Struct: "Rate<u32, 1, 1>"
-              value: "Rate<u32, 1, 1> @ 0x3FCCFF04"
+                Struct:
+                  ident: Rate
+                  namespace:
+                    - fugit
+                    - rate
+                  args:
+                    - Type:
+                        Base: u32
+              value: Rate<u32> @ 0x3FCCFF04
               children:
                 - name:
                     Named: raw
@@ -6011,8 +7340,15 @@ expression: stack_frames
             - name:
                 Named: xtal_clock
               type_name:
-                Struct: "Rate<u32, 1, 1>"
-              value: "Rate<u32, 1, 1> @ 0x3FCCFF08"
+                Struct:
+                  ident: Rate
+                  namespace:
+                    - fugit
+                    - rate
+                  args:
+                    - Type:
+                        Base: u32
+              value: Rate<u32> @ 0x3FCCFF08
               children:
                 - name:
                     Named: raw
@@ -6022,7 +7358,12 @@ expression: stack_frames
         - name:
             Named: delay
           type_name:
-            Struct: Delay
+            Struct:
+              ident: Delay
+              namespace:
+                - esp_hal
+                - delay
+              args: []
           value: Delay @ 0x3FCCFF18
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/esp32c3.rs
@@ -6033,8 +7374,15 @@ expression: stack_frames
             - name:
                 Named: freq
               type_name:
-                Struct: "Rate<u64, 1, 1>"
-              value: "Rate<u64, 1, 1> @ 0x3FCCFF18"
+                Struct:
+                  ident: Rate
+                  namespace:
+                    - fugit
+                    - rate
+                  args:
+                    - Type:
+                        Base: u64
+              value: Rate<u64> @ 0x3FCCFF18
               children:
                 - name:
                     Named: raw
@@ -6362,7 +7710,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\ta0: usize = 0,\n\ta1: usize = 0,\n\ta2: usize = 0,\n\tstack_chk_guard: *mut u32 = *mut u32 @ 0x3FC825F4}"
+      value: "<unknown> { a0 = 0, a1 = 0, a2 = 0, stack_chk_guard = *mut u32 @ 0x3FC825F4 }"
       children:
         - name:
             Named: a0
@@ -6397,7 +7745,13 @@ expression: stack_frames
         - name:
             Named: stack_chk_guard
           type_name:
-            Pointer: "*mut u32"
+            Pointer:
+              Struct:
+                ident: "*mut"
+                namespace: []
+                args:
+                  - Type:
+                      Base: u32
           value: "*mut u32 @ 0x3FC825F4"
           source_location:
             path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/esp-hal-0.17.0/src/lib.rs
@@ -6731,7 +8085,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\ta0: usize = 0,\n\ta1: usize = 0,\n\ta2: usize = 0}"
+      value: "<unknown> { a0 = 0, a1 = 0, a2 = 0 }"
       children:
         - name:
             Named: a0

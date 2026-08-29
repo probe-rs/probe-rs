@@ -1,3 +1,5 @@
+mod type_name;
+
 use crate::{
     DebugError, DebugInfo, GimliReader, ObjectRef, Variable, VariableCache, VariableLocation,
     VariableName, VariableNodeType, VariableType, VariableValue,
@@ -376,7 +378,7 @@ impl Rust {
             future_state.source_location = payload.source_location.clone();
             future_state.memory_location = payload.memory_location.clone();
             future_state.byte_size = payload.byte_size;
-            future_state.set_value(VariableValue::Valid(payload.type_name()));
+            future_state.set_value(VariableValue::Valid(payload.compact_type_name()));
 
             let mut has_child = false;
             if let Some(mut awaitee) = awaitee {
@@ -704,7 +706,7 @@ impl ProgrammingLanguage for Rust {
 
                 _undetermined_value => VariableValue::Empty,
             },
-            VariableType::Struct(name) if name == "&str" => {
+            VariableType::Struct(name) if name.ident_stem() == "&str" => {
                 String::get_value(variable, memory, variable_cache).into()
             }
             VariableType::Other(name) if name == "!" => {
@@ -749,7 +751,11 @@ impl ProgrammingLanguage for Rust {
     }
 
     fn format_enum_value(&self, type_name: &VariableType, value: &VariableName) -> VariableValue {
-        VariableValue::Valid(format!("{}::{}", type_name.display_name(self), value))
+        VariableValue::Valid(format!(
+            "{}::{}",
+            type_name.display_name_with_style(self, crate::TypeNameStyle::Compact),
+            value
+        ))
     }
 
     fn format_array_type(&self, item_type: &str, length: usize) -> String {
@@ -767,19 +773,40 @@ impl ProgrammingLanguage for Rust {
         }
     }
 
+    fn parse_type_name(&self, name: &str) -> Option<VariableType> {
+        type_name::parse_variable_type(name)
+    }
+
+    fn format_named_head(&self, ident: &str, args: &[String]) -> Option<String> {
+        type_name::format_named_head(ident, args)
+    }
+
+    fn is_path_ident(&self, ident: &str) -> bool {
+        type_name::is_path_ident(ident)
+    }
+
+    fn compact_debug_name(&self, name: &str) -> String {
+        type_name::compact_debug_name(name)
+    }
+
     fn format_function_name(
         &self,
         function_name: &str,
         function_die: &crate::function_die::FunctionDie<'_>,
         debug_info: &super::DebugInfo,
     ) -> String {
+        if let Some(name) = synthesise_generated_fn(function_name, function_die, debug_info) {
+            return name;
+        }
+
+        let function_name = self.compact_debug_name(function_name);
         let parent = function_die.parent_offset();
         if let Some((parent_unit, parent_offset)) = parent
             && let Ok(die) = parent_unit.unit.entry(parent_offset)
             && is_datatype(&die)
             && let Ok(Some(typename)) = parent_unit.extract_type_name(debug_info, &die)
         {
-            // TODO: apply better heuristics to clean up the final function name
+            let typename = self.compact_debug_name(&typename);
             if let Some((_, type_generic)) = typename.split_once('<')
                 && let Some((function_without_generic, function_generic)) =
                     function_name.split_once('<')
@@ -789,19 +816,23 @@ impl ProgrammingLanguage for Rust {
             } else {
                 format!("{typename}::{function_name}")
             }
+        } else if let Some(name) = qualified_method_name(function_die, debug_info, &function_name) {
+            name
         } else {
-            function_name.to_string()
+            function_name
         }
     }
 
-    fn auto_resolve_children(&self, name: &str) -> bool {
+    fn auto_resolve_children(&self, ty: &VariableType) -> bool {
         // Do not match `Some`, `Ok`, or `Err`. `process_variant` already expands the
-        // active variant. `starts_with("Err")` also matched `Error` and walked
-        // those types on the first expand.
-        name.starts_with("&str")
-            || name.starts_with("&[")
-            || is_rust_type(name, "Option")
-            || is_rust_type(name, "Result")
+        // active variant. Matching `Err` as a prefix also matched `Error`.
+        let Some(ident) = ty.ident() else {
+            return false;
+        };
+        ident.starts_with("&str")
+            || ident.starts_with("&[")
+            || ident == "Option"
+            || ident == "Result"
     }
 
     fn process_struct(
@@ -814,7 +845,11 @@ impl ProgrammingLanguage for Rust {
         cache: &mut VariableCache,
         frame_info: StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
-        if variable.type_name().starts_with("&[") {
+        if variable
+            .type_name
+            .ident()
+            .is_some_and(|ident| ident.starts_with("&["))
+        {
             self.expand_slice(debug_info, variable, memory, cache, frame_info)?;
         }
 
@@ -833,7 +868,83 @@ impl ProgrammingLanguage for Rust {
 }
 
 fn is_datatype(entry: &Die) -> bool {
-    [gimli::DW_TAG_structure_type, gimli::DW_TAG_enumeration_type].contains(&entry.tag())
+    matches!(
+        entry.tag(),
+        gimli::DW_TAG_structure_type
+            | gimli::DW_TAG_class_type
+            | gimli::DW_TAG_union_type
+            | gimli::DW_TAG_enumeration_type
+    )
+}
+
+fn synthesise_generated_fn(
+    function_name: &str,
+    function_die: &crate::function_die::FunctionDie<'_>,
+    debug_info: &DebugInfo,
+) -> Option<String> {
+    let ident = type_ident(function_name);
+    let mut segments = declaration_enclosing_path(function_die, debug_info);
+    segments.push(ident.to_string());
+
+    if let Some(name) = type_name::synthesise_async_name(&segments) {
+        return Some(name);
+    }
+    if type_name::is_closure_ident(ident) {
+        let from_die = type_name::synthesise_closure_name(&segments);
+        let from_link = demangled_linkage_name(function_die, debug_info).and_then(|name| {
+            let compact = type_name::compact_debug_name(&name);
+            (compact.contains("::") || compact.starts_with('<')).then_some(compact)
+        });
+        return match (from_die, from_link) {
+            (Some(die), Some(link)) if link.contains("{impl") && !die.contains("{impl") => {
+                Some(die)
+            }
+            (Some(die), Some(link)) if die.contains("{impl") && !link.contains("{impl") => {
+                Some(link)
+            }
+            (die, link) => link.or(die),
+        };
+    }
+    None
+}
+
+fn qualified_method_name(
+    function_die: &crate::function_die::FunctionDie<'_>,
+    debug_info: &DebugInfo,
+    function_name: &str,
+) -> Option<String> {
+    if function_name.contains("::") || function_name.starts_with('<') {
+        return None;
+    }
+    let demangled = demangled_linkage_name(function_die, debug_info)?;
+    let label = type_name::associated_method_label(&demangled)?;
+    Some(type_name::apply_dwarf_generics(&label, function_name))
+}
+
+fn declaration_enclosing_path(
+    function_die: &crate::function_die::FunctionDie<'_>,
+    debug_info: &DebugInfo,
+) -> Vec<String> {
+    let (unit, die) = function_die
+        .abstract_die
+        .as_ref()
+        .or(function_die.specification_die.as_ref())
+        .map(|(unit, die)| (*unit, die))
+        .unwrap_or((function_die.unit_info, &function_die.function_die));
+    unit.enclosing_path(debug_info, die)
+}
+
+fn demangled_linkage_name(
+    function_die: &crate::function_die::FunctionDie<'_>,
+    debug_info: &DebugInfo,
+) -> Option<String> {
+    let (unit, attr) = function_die.attribute_with_unit(debug_info, gimli::DW_AT_linkage_name)?;
+    let raw = debug_info
+        .dwarf
+        .attr_string(&unit.unit, attr.value())
+        .ok()?;
+    let mangled = String::from_utf8_lossy(&raw);
+    addr2line::demangle(mangled.as_ref(), gimli::DW_LANG_Rust)
 }
 
 /// Last path segment of a rust type name, without generic arguments.
@@ -911,9 +1022,25 @@ impl RustPath {
     }
 
     fn from_variable(debug_info: &DebugInfo, variable: &Variable) -> Option<Self> {
+        if let Some(named) = variable.type_name.named() {
+            return Self::from_named(named);
+        }
         let offset = variable.type_node_offset?;
         let (unit_info, entry) = debug_info.entry_at_debug_info_offset(offset).ok()?;
         Self::from_die(unit_info, debug_info, &entry)
+    }
+
+    fn from_named(named: &crate::NamedType) -> Option<Self> {
+        let mut namespaces = named.namespace.clone();
+        if namespaces.is_empty() {
+            return None;
+        }
+        let crate_name = namespaces.remove(0);
+        Some(Self {
+            crate_name,
+            modules: namespaces,
+            ident: named.ident_stem().to_string(),
+        })
     }
 
     fn is_rustc_lib(&self) -> bool {
@@ -1112,6 +1239,7 @@ fn is_poll_context_ref(debug_info: &DebugInfo, variable: &Variable) -> bool {
 }
 
 /// `type_name`, `prefix::type_name`, or those names with a generic argument list.
+#[cfg(test)]
 fn is_rust_type(name: &str, type_name: &str) -> bool {
     type_ident(name) == type_name
 }

@@ -118,6 +118,17 @@ impl DebugInfo {
         })
     }
 
+    pub(crate) fn call_site_value(
+        &self,
+        return_pc: u64,
+        location: &gimli::Expression<GimliReader>,
+    ) -> Option<(&UnitInfo, gimli::Expression<GimliReader>)> {
+        self.unit_infos.iter().find_map(|unit| {
+            unit.call_site_value(return_pc, location)
+                .map(|expression| (unit, expression))
+        })
+    }
+
     /// Create a [`DebugInfo`] that contains no debug information, for a target of the given
     /// endianness.
     ///
@@ -388,7 +399,7 @@ impl DebugInfo {
             gimli::DW_LANG_C_plus_plus_14,
         ] {
             if let Some(demangle) = addr2line::demangle(&fn_name, lang) {
-                fn_name = demangle;
+                fn_name = crate::language::from_dwarf(lang).compact_debug_name(&demangle);
                 break;
             }
         }
@@ -443,6 +454,7 @@ impl DebugInfo {
                 registers: unwind_registers,
                 frame_base: None,
                 canonical_frame_address: cfa,
+                caller: None,
             },
         )?;
 
@@ -2049,7 +2061,20 @@ mod test {
             .unwrap();
 
         // Expand and validate the static and local variables for each stack frame.
-        for frame in stack_frames.iter_mut() {
+        for i in 0..stack_frames.len() {
+            let caller_registers = stack_frames.get(i + 1).map(|frame| frame.registers.clone());
+            let caller_frame_base = stack_frames.get(i + 1).and_then(|frame| frame.frame_base);
+            let caller_cfa = stack_frames
+                .get(i + 1)
+                .and_then(|frame| frame.canonical_frame_address);
+            let caller = caller_registers.as_ref().map(|registers| StackFrameInfo {
+                registers,
+                frame_base: caller_frame_base,
+                canonical_frame_address: caller_cfa,
+                caller: None,
+            });
+
+            let frame = &mut stack_frames[i];
             let mut variable_caches = Vec::new();
             if let Some(local_variables) = &mut frame.local_variables {
                 variable_caches.push(local_variables);
@@ -2064,6 +2089,7 @@ mod test {
                         registers: &frame.registers,
                         frame_base: frame.frame_base,
                         canonical_frame_address: frame.canonical_frame_address,
+                        caller: caller.as_ref(),
                     },
                 );
             }
@@ -2101,6 +2127,7 @@ mod test {
                 registers: &initial_registers,
                 frame_base: None,
                 canonical_frame_address: None,
+                caller: None,
             },
         );
         // Using YAML output because it is easier to read than the default snapshot output,

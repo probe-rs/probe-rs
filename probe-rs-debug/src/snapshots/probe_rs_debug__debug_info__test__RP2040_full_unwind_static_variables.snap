@@ -5,7 +5,7 @@ expression: static_variables
 Child Variables:
   name: StaticScopeRoot
   type_name: Unknown
-  value: "<unknown> {\n\t<core::convert::Infallible as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<core::convert::Infallible as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<core::convert::Infallible as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<cortex_m_rt::{impl#1}::fmt::Hex as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<&(dyn core::any::Any + core::marker::Send) as core::fmt::Debug>::{vtable}: <&(dyn core::any::Any + core::marker::Send) as core::fmt::Debug>::{vtable_type} = <&(dyn core::any::Any + core::marker::Send) as core::fmt::Debug>::{vtable_type} @ 0x1000C8C4,\n\t<core::option::Option<&core::fmt::Arguments> as core::fmt::Debug>::{vtable}: <core::option::Option<&core::fmt::Arguments> as core::fmt::Debug>::{vtable_type} = <core::option::Option<&core::fmt::Arguments> as core::fmt::Debug>::{vtable_type} @ 0x1000C8DC,\n\t<&core::panic::location::Location as core::fmt::Debug>::{vtable}: <&core::panic::location::Location as core::fmt::Debug>::{vtable_type} = <&core::panic::location::Location as core::fmt::Debug>::{vtable_type} @ 0x1000C8EC,\n\t<bool as core::fmt::Debug>::{vtable}: <bool as core::fmt::Debug>::{vtable_type} = <bool as core::fmt::Debug>::{vtable_type} @ 0x1000C908,\n\t<&bool as core::fmt::Debug>::{vtable}: <&bool as core::fmt::Debug>::{vtable_type} = <&bool as core::fmt::Debug>::{vtable_type} @ 0x1000C92C,\n\t<&&core::fmt::Arguments as core::fmt::Debug>::{vtable}: <&&core::fmt::Arguments as core::fmt::Debug>::{vtable_type} = <&&core::fmt::Arguments as core::fmt::Debug>::{vtable_type} @ 0x1000C93C,\n\t<&str as core::fmt::Debug>::{vtable}: <&str as core::fmt::Debug>::{vtable_type} = <&str as core::fmt::Debug>::{vtable_type} @ 0x1000C94C,\n\t<u32 as core::fmt::Debug>::{vtable}: <u32 as core::fmt::Debug>::{vtable_type} = <u32 as core::fmt::Debug>::{vtable_type} @ 0x1000C95C,\n\t<&u32 as core::fmt::Debug>::{vtable}: <&u32 as core::fmt::Debug>::{vtable_type} = <&u32 as core::fmt::Debug>::{vtable_type} @ 0x1000C970,\n\t<rtt_target::rtt::RttWriter as core::fmt::Write>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t<rtt_target::TerminalWriter as core::fmt::Write>::{vtable}: <rtt_target::TerminalWriter as core::fmt::Write>::{vtable_type} = <rtt_target::TerminalWriter as core::fmt::Write>::{vtable_type} @ 0x1000D008}"
+  value: "<unknown> { <core::convert::Infallible as core::fmt::Debug>::{vtable} = < The value of this variable may have been optimized out of the debug info, by the compiler. >, <core::convert::Infallible as core::fmt::Debug>::{vtable} = < The value of this variable may have been optimized out of the debug info, by the compiler. >, <core::convert::Infallible as core::fmt::Debug>::{vtable} = < The value of this variable may have been optimized out of the debug info, by the compiler. >, <cortex_m_rt::{impl#1}::fmt::Hex as core::fmt::Debug>::{vtable} = < The value of this variable may have been optimized out of the debug info, by the compiler. >, <&(dyn core::any::Any + core::marker::Send) as core::fmt::Debug>::{vtable} = <&(dyn core::any::Any + core::marker::Send) as core::fmt::Debug>::{vtable_type} @ 0x1000C8C4, <core::option::Option<&core::fmt::Arguments> as core::fmt::Debug>::{vtable} = <core::option::Option<&core::fmt::Arguments> as core::fmt::Debug>::{vtable_type} @ 0x1000C8DC, <&core::panic::location::Location as core::fmt::Debug>::{vtable} = <&core::panic::location::Location as core::fmt::Debug>::{vtable_type} @ 0x1000C8EC, <bool as core::fmt::Debug>::{vtable} = <bool as core::fmt::Debug>::{vtable_type} @ 0x1000C908, <&bool as core::fmt::Debug>::{vtable} = <&bool as core::fmt::Debug>::{vtable_type} @ 0x1000C92C, <&&core::fmt::Arguments as core::fmt::Debug>::{vtable} = <&&core::fmt::Arguments as core::fmt::Debug>::{vtable_type} @ 0x1000C93C, <&str as core::fmt::Debug>::{vtable} = <&str as core::fmt::Debug>::{vtable_type} @ 0x1000C94C, <u32 as core::fmt::Debug>::{vtable} = <u32 as core::fmt::Debug>::{vtable_type} @ 0x1000C95C, <&u32 as core::fmt::Debug>::{vtable} = <&u32 as core::fmt::Debug>::{vtable_type} @ 0x1000C970, <rtt_target::rtt::RttWriter as core::fmt::Write>::{vtable} = < The value of this variable may have been optimized out of the debug info, by the compiler. >, <rtt_target::TerminalWriter as core::fmt::Write>::{vtable} = <rtt_target::TerminalWriter as core::fmt::Write>::{vtable_type} @ 0x1000D008 }"
   children:
     - name:
         Namespace: rp_pico
@@ -19,7 +19,7 @@ Child Variables:
               item_type_name:
                 Base: u8
               count: 256
-          value: "[u8; 256] = [\n\t0,\n\t181,\n\t50,\n\t75,\n\t33,\n\t32,\n\t88,\n\t96,\n\t152,\n\t104,\n\t... and 246 more]"
+          value: "[u8; 256] = [0, 181, 50, 75, 33, 32, 88, 96, 152, 104, ... and 246 more]"
           source_location:
             path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
             line: 67
@@ -575,7 +575,13 @@ Child Variables:
                     - name:
                         Named: CACHED_PTR
                       type_name:
-                        Struct: AtomicU16
+                        Struct:
+                          ident: AtomicU16
+                          namespace:
+                            - core
+                            - sync
+                            - atomic
+                          args: []
                       value: "9937"
                       source_location:
                         path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
@@ -601,7 +607,13 @@ Child Variables:
                     - name:
                         Named: CACHED_PTR
                       type_name:
-                        Struct: AtomicU16
+                        Struct:
+                          ident: AtomicU16
+                          namespace:
+                            - core
+                            - sync
+                            - atomic
+                          args: []
                       value: "9793"
                       source_location:
                         path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
@@ -1853,7 +1865,13 @@ Child Variables:
                     - name:
                         Named: CACHED_PTR
                       type_name:
-                        Struct: AtomicU16
+                        Struct:
+                          ident: AtomicU16
+                          namespace:
+                            - core
+                            - sync
+                            - atomic
+                          args: []
                       value: "9769"
                       source_location:
                         path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
@@ -1917,7 +1935,13 @@ Child Variables:
                     - name:
                         Named: CACHED_PTR
                       type_name:
-                        Struct: AtomicU16
+                        Struct:
+                          ident: AtomicU16
+                          namespace:
+                            - core
+                            - sync
+                            - atomic
+                          args: []
                       value: "0"
                       source_location:
                         path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
@@ -1995,7 +2019,13 @@ Child Variables:
             - name:
                 Named: LOCK_OWNER
               type_name:
-                Struct: AtomicU8
+                Struct:
+                  ident: AtomicU8
+                  namespace:
+                    - core
+                    - sync
+                    - atomic
+                  args: []
               value: "0"
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/critical_section_impl.rs
@@ -2042,7 +2072,7 @@ Child Variables:
               item_type_name:
                 Base: Vector
               count: 32
-          value: "[Vector; 32] = [\n\tVector @ 0x10000140,\n\tVector @ 0x10000144,\n\tVector @ 0x10000148,\n\tVector @ 0x1000014C,\n\tVector @ 0x10000150,\n\tVector @ 0x10000154,\n\tVector @ 0x10000158,\n\tVector @ 0x1000015C,\n\tVector @ 0x10000160,\n\tVector @ 0x10000164,\n\t... and 22 more]"
+          value: "[Vector; 32] = [Vector @ 0x10000140, Vector @ 0x10000144, Vector @ 0x10000148, Vector @ 0x1000014C, Vector @ 0x10000150, Vector @ 0x10000154, Vector @ 0x10000158, Vector @ 0x1000015C, Vector @ 0x10000160, Vector @ 0x10000164, ... and 22 more]"
           source_location:
             path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
             line: 86
@@ -2063,7 +2093,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2084,7 +2118,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2105,7 +2143,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2126,7 +2168,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2147,7 +2193,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2168,7 +2218,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2189,7 +2243,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2210,7 +2268,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2231,7 +2293,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2252,7 +2318,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2273,7 +2343,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2294,7 +2368,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2315,7 +2393,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2336,7 +2418,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2357,7 +2443,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2378,7 +2468,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2399,7 +2493,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2420,7 +2518,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2441,7 +2543,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2462,7 +2568,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2483,7 +2593,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2504,7 +2618,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2525,7 +2643,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2546,7 +2668,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2567,7 +2693,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2588,7 +2718,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2609,7 +2743,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2630,7 +2768,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2651,7 +2793,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2672,7 +2818,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2693,7 +2843,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2714,7 +2868,11 @@ Child Variables:
                 - name:
                     Named: _handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: _reserved
@@ -2748,7 +2906,13 @@ Child Variables:
         - name:
             Named: __RESET_VECTOR
           type_name:
-            Pointer: "unsafe extern \"C\" fn() -> !"
+            Pointer:
+              Struct:
+                ident: "unsafe extern \"C\" fn ->"
+                namespace: []
+                args:
+                  - Type:
+                      Base: "!"
           value: "*raw unsafe extern \"C\" fn() -> ! @ 0x100001C1"
           source_location:
             path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
@@ -2762,7 +2926,7 @@ Child Variables:
               item_type_name:
                 Base: Vector
               count: 14
-          value: "[Vector; 14] = [\n\tVector @ 0x10000108,\n\tVector @ 0x1000010C,\n\tVector @ 0x10000110,\n\tVector @ 0x10000114,\n\tVector @ 0x10000118,\n\tVector @ 0x1000011C,\n\tVector @ 0x10000120,\n\tVector @ 0x10000124,\n\tVector @ 0x10000128,\n\tVector @ 0x1000012C,\n\t... and 4 more]"
+          value: "[Vector; 14] = [Vector @ 0x10000108, Vector @ 0x1000010C, Vector @ 0x10000110, Vector @ 0x10000114, Vector @ 0x10000118, Vector @ 0x1000011C, Vector @ 0x10000120, Vector @ 0x10000124, Vector @ 0x10000128, Vector @ 0x1000012C, ... and 4 more]"
           source_location:
             path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
             line: 1140
@@ -2783,7 +2947,11 @@ Child Variables:
                 - name:
                     Named: handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: reserved
@@ -2804,7 +2972,11 @@ Child Variables:
                 - name:
                     Named: handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000B8F3"
                 - name:
                     Named: reserved
@@ -2825,7 +2997,11 @@ Child Variables:
                 - name:
                     Named: handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
                 - name:
                     Named: reserved
@@ -2846,7 +3022,11 @@ Child Variables:
                 - name:
                     Named: handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
                 - name:
                     Named: reserved
@@ -2867,7 +3047,11 @@ Child Variables:
                 - name:
                     Named: handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
                 - name:
                     Named: reserved
@@ -2888,7 +3072,11 @@ Child Variables:
                 - name:
                     Named: handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
                 - name:
                     Named: reserved
@@ -2909,7 +3097,11 @@ Child Variables:
                 - name:
                     Named: handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
                 - name:
                     Named: reserved
@@ -2930,7 +3122,11 @@ Child Variables:
                 - name:
                     Named: handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
                 - name:
                     Named: reserved
@@ -2951,7 +3147,11 @@ Child Variables:
                 - name:
                     Named: handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
                 - name:
                     Named: reserved
@@ -2972,7 +3172,11 @@ Child Variables:
                 - name:
                     Named: handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000035F"
                 - name:
                     Named: reserved
@@ -2993,7 +3197,11 @@ Child Variables:
                 - name:
                     Named: handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
                 - name:
                     Named: reserved
@@ -3014,7 +3222,11 @@ Child Variables:
                 - name:
                     Named: handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
                 - name:
                     Named: reserved
@@ -3035,7 +3247,11 @@ Child Variables:
                 - name:
                     Named: handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                 - name:
                     Named: reserved
@@ -3056,7 +3272,11 @@ Child Variables:
                 - name:
                     Named: handler
                   type_name:
-                    Pointer: "unsafe extern \"C\" fn()"
+                    Pointer:
+                      Struct:
+                        ident: "unsafe extern \"C\" fn"
+                        namespace: []
+                        args: []
                   value: "*raw unsafe extern \"C\" fn() @ 0x1000034D"
                 - name:
                     Named: reserved
@@ -3215,8 +3435,13 @@ Child Variables:
         - name:
             Named: GLOBAL_STATIC
           type_name:
-            Struct: "&str"
-          value: "A 'global' static variable"
+            Struct:
+              ident: "&"
+              namespace: []
+              args:
+                - Type:
+                    Base: str
+          value: "&str @ 0x20000040"
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 30
@@ -3226,7 +3451,8 @@ Child Variables:
             - name:
                 Named: data_ptr
               type_name:
-                Pointer: u8
+                Pointer:
+                  Base: u8
               value: "*raw u8 @ 0x1000C2E8"
               children:
                 - name:
@@ -3242,7 +3468,11 @@ Child Variables:
         - name:
             Named: REGULAR_STRUCT
           type_name:
-            Struct: ComplexEnum
+            Struct:
+              ident: ComplexEnum
+              namespace:
+                - probe_rs_debugger_test
+              args: []
           value: ComplexEnum @ 0x20000048
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
@@ -3253,7 +3483,11 @@ Child Variables:
             - name:
                 Named: Case1
               type_name:
-                Struct: Case1
+                Struct:
+                  ident: Case1
+                  namespace:
+                    - probe_rs_debugger_test
+                  args: []
               value: Case1 @ 0x20000048
               children:
                 - name:
@@ -3264,7 +3498,11 @@ Child Variables:
                 - name:
                     Named: __1
                   type_name:
-                    Struct: ComplexStruct
+                    Struct:
+                      ident: ComplexStruct
+                      namespace:
+                        - probe_rs_debugger_test
+                      args: []
                   value: ComplexStruct @ 0x20000058
                   children:
                     - name:
@@ -3290,8 +3528,13 @@ Child Variables:
             - name:
                 Named: LOCAL_STATIC
               type_name:
-                Struct: "&str"
-              value: "A 'local' to main() static variable ...will be optimized out if not used in the code."
+                Struct:
+                  ident: "&"
+                  namespace: []
+                  args:
+                    - Type:
+                        Base: str
+              value: "&str @ 0x20000068"
               source_location:
                 path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
                 line: 205
@@ -3301,7 +3544,8 @@ Child Variables:
                 - name:
                     Named: data_ptr
                   type_name:
-                    Pointer: u8
+                    Pointer:
+                      Base: u8
                   value: "*raw u8 @ 0x1000C53C"
                   children:
                     - name:
@@ -3333,19 +3577,42 @@ Child Variables:
                 - name:
                     Named: value
                   type_name:
-                    Struct: "ManuallyDrop<probe_rs_debugger_test::setup_data_types::RttControlBlock>"
-                  value: "ManuallyDrop<probe_rs_debugger_test::setup_data_types::RttControlBlock> @ 0x2000007C"
+                    Struct:
+                      ident: ManuallyDrop
+                      namespace:
+                        - core
+                        - mem
+                        - manually_drop
+                      args:
+                        - Type:
+                            Struct:
+                              ident: RttControlBlock
+                              namespace:
+                                - probe_rs_debugger_test
+                                - setup_data_types
+                              args: []
+                  value: ManuallyDrop<RttControlBlock> @ 0x2000007C
                   children:
                     - name:
                         Named: value
                       type_name:
-                        Struct: RttControlBlock
+                        Struct:
+                          ident: RttControlBlock
+                          namespace:
+                            - probe_rs_debugger_test
+                            - setup_data_types
+                          args: []
                       value: RttControlBlock @ 0x2000007C
                       children:
                         - name:
                             Named: header
                           type_name:
-                            Struct: RttHeader
+                            Struct:
+                              ident: RttHeader
+                              namespace:
+                                - rtt_target
+                                - rtt
+                              args: []
                           value: RttHeader @ 0x2000007C
                           children:
                             - name:
@@ -3355,7 +3622,7 @@ Child Variables:
                                   item_type_name:
                                     Base: u8
                                   count: 16
-                              value: "[u8; 16] = [\n\t83,\n\t69,\n\t71,\n\t71,\n\t69,\n\t82,\n\t32,\n\t82,\n\t84,\n\t84,\n\t... and 6 more]"
+                              value: "[u8; 16] = [83, 69, 71, 71, 69, 82, 32, 82, 84, 84, ... and 6 more]"
                               children:
                                 - name:
                                     Indexed: 0
@@ -3452,20 +3719,36 @@ Child Variables:
                           type_name:
                             Array:
                               item_type_name:
-                                Struct: RttChannel
+                                Struct:
+                                  ident: RttChannel
+                                  namespace:
+                                    - rtt_target
+                                    - rtt
+                                  args: []
                               count: 2
-                          value: "[RttChannel; 2] = [\n\tRttChannel @ 0x20000094,\n\tRttChannel @ 0x200000AC]"
+                          value: "[RttChannel; 2] = [RttChannel @ 0x20000094, RttChannel @ 0x200000AC]"
                           children:
                             - name:
                                 Indexed: 0
                               type_name:
-                                Struct: RttChannel
+                                Struct:
+                                  ident: RttChannel
+                                  namespace:
+                                    - rtt_target
+                                    - rtt
+                                  args: []
                               value: RttChannel @ 0x20000094
                               children:
                                 - name:
                                     Named: name
                                   type_name:
-                                    Pointer: "*const u8"
+                                    Pointer:
+                                      Struct:
+                                        ident: "*const"
+                                        namespace: []
+                                        args:
+                                          - Type:
+                                              Base: u8
                                   value: "*const u8 @ 0x1000C4A0"
                                   children:
                                     - name:
@@ -3476,7 +3759,13 @@ Child Variables:
                                 - name:
                                     Named: buffer
                                   type_name:
-                                    Pointer: "*mut u8"
+                                    Pointer:
+                                      Struct:
+                                        ident: "*mut"
+                                        namespace: []
+                                        args:
+                                          - Type:
+                                              Base: u8
                                   value: "*mut u8 @ 0x200000C4"
                                   children:
                                     - name:
@@ -3492,7 +3781,13 @@ Child Variables:
                                 - name:
                                     Named: write
                                   type_name:
-                                    Struct: AtomicUsize
+                                    Struct:
+                                      ident: AtomicUsize
+                                      namespace:
+                                        - core
+                                        - sync
+                                        - atomic
+                                      args: []
                                   value: "363"
                                   children:
                                     - name:
@@ -3503,7 +3798,13 @@ Child Variables:
                                 - name:
                                     Named: read
                                   type_name:
-                                    Struct: AtomicUsize
+                                    Struct:
+                                      ident: AtomicUsize
+                                      namespace:
+                                        - core
+                                        - sync
+                                        - atomic
+                                      args: []
                                   value: "363"
                                   children:
                                     - name:
@@ -3514,7 +3815,13 @@ Child Variables:
                                 - name:
                                     Named: flags
                                   type_name:
-                                    Struct: AtomicUsize
+                                    Struct:
+                                      ident: AtomicUsize
+                                      namespace:
+                                        - core
+                                        - sync
+                                        - atomic
+                                      args: []
                                   value: "1"
                                   children:
                                     - name:
@@ -3525,13 +3832,24 @@ Child Variables:
                             - name:
                                 Indexed: 1
                               type_name:
-                                Struct: RttChannel
+                                Struct:
+                                  ident: RttChannel
+                                  namespace:
+                                    - rtt_target
+                                    - rtt
+                                  args: []
                               value: RttChannel @ 0x200000AC
                               children:
                                 - name:
                                     Named: name
                                   type_name:
-                                    Pointer: "*const u8"
+                                    Pointer:
+                                      Struct:
+                                        ident: "*const"
+                                        namespace: []
+                                        args:
+                                          - Type:
+                                              Base: u8
                                   value: "*const u8 @ 0x1000C4B3"
                                   children:
                                     - name:
@@ -3542,7 +3860,13 @@ Child Variables:
                                 - name:
                                     Named: buffer
                                   type_name:
-                                    Pointer: "*mut u8"
+                                    Pointer:
+                                      Struct:
+                                        ident: "*mut"
+                                        namespace: []
+                                        args:
+                                          - Type:
+                                              Base: u8
                                   value: "*mut u8 @ 0x200004C4"
                                   children:
                                     - name:
@@ -3558,7 +3882,13 @@ Child Variables:
                                 - name:
                                     Named: write
                                   type_name:
-                                    Struct: AtomicUsize
+                                    Struct:
+                                      ident: AtomicUsize
+                                      namespace:
+                                        - core
+                                        - sync
+                                        - atomic
+                                      args: []
                                   value: "0"
                                   children:
                                     - name:
@@ -3569,7 +3899,13 @@ Child Variables:
                                 - name:
                                     Named: read
                                   type_name:
-                                    Struct: AtomicUsize
+                                    Struct:
+                                      ident: AtomicUsize
+                                      namespace:
+                                        - core
+                                        - sync
+                                        - atomic
+                                      args: []
                                   value: "0"
                                   children:
                                     - name:
@@ -3580,7 +3916,13 @@ Child Variables:
                                 - name:
                                     Named: flags
                                   type_name:
-                                    Struct: AtomicUsize
+                                    Struct:
+                                      ident: AtomicUsize
+                                      namespace:
+                                        - core
+                                        - sync
+                                        - atomic
+                                      args: []
                                   value: "1"
                                   children:
                                     - name:
@@ -3593,7 +3935,12 @@ Child Variables:
                           type_name:
                             Array:
                               item_type_name:
-                                Struct: RttChannel
+                                Struct:
+                                  ident: RttChannel
+                                  namespace:
+                                    - rtt_target
+                                    - rtt
+                                  args: []
                               count: 0
                           value: "[RttChannel; 0] = []"
             - name:
@@ -3615,7 +3962,18 @@ Child Variables:
                 - name:
                     Named: value
                   type_name:
-                    Struct: "ManuallyDrop<[u8; 1024]>"
+                    Struct:
+                      ident: ManuallyDrop
+                      namespace:
+                        - core
+                        - mem
+                        - manually_drop
+                      args:
+                        - Type:
+                            Array:
+                              item_type_name:
+                                Base: u8
+                              count: 1024
                   value: "ManuallyDrop<[u8; 1024]> @ 0x200000C4"
                   children:
                     - name:
@@ -3625,7 +3983,7 @@ Child Variables:
                           item_type_name:
                             Base: u8
                           count: 1024
-                      value: "[u8; 1024] = [\n\t70,\n\t111,\n\t114,\n\t99,\n\t105,\n\t110,\n\t103,\n\t32,\n\t117,\n\t115,\n\t... and 1014 more]"
+                      value: "[u8; 1024] = [70, 111, 114, 99, 105, 110, 103, 32, 117, 115, ... and 1014 more]"
                       children:
                         - name:
                             Indexed: 0
@@ -3899,7 +4257,18 @@ Child Variables:
                 - name:
                     Named: value
                   type_name:
-                    Struct: "ManuallyDrop<[u8; 1024]>"
+                    Struct:
+                      ident: ManuallyDrop
+                      namespace:
+                        - core
+                        - mem
+                        - manually_drop
+                      args:
+                        - Type:
+                            Array:
+                              item_type_name:
+                                Base: u8
+                              count: 1024
                   value: "ManuallyDrop<[u8; 1024]> @ 0x200004C4"
                   children:
                     - name:
@@ -3909,7 +4278,7 @@ Child Variables:
                           item_type_name:
                             Base: u8
                           count: 1024
-                      value: "[u8; 1024] = [\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t... and 1014 more]"
+                      value: "[u8; 1024] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ... and 1014 more]"
                       children:
                         - name:
                             Indexed: 0
@@ -4167,13 +4536,22 @@ Child Variables:
     - name:
         Named: "<&(dyn core::any::Any + core::marker::Send) as core::fmt::Debug>::{vtable}"
       type_name:
-        Struct: "<&(dyn core::any::Any + core::marker::Send) as core::fmt::Debug>::{vtable_type}"
+        Struct:
+          ident: "<&(dyn core::any::Any + core::marker::Send) as core::fmt::Debug>::{vtable_type}"
+          namespace: []
+          args: []
       value: "<&(dyn core::any::Any + core::marker::Send) as core::fmt::Debug>::{vtable_type} @ 0x1000C8C4"
       children:
         - name:
             Named: drop_in_place
           type_name:
-            Pointer: "*const ()"
+            Pointer:
+              Struct:
+                ident: "*const"
+                namespace: []
+                args:
+                  - Type:
+                      Base: ()
           value: "*const () @ 0x100076C1"
         - name:
             Named: size
@@ -4188,18 +4566,33 @@ Child Variables:
         - name:
             Named: __method3
           type_name:
-            Pointer: "*const ()"
+            Pointer:
+              Struct:
+                ident: "*const"
+                namespace: []
+                args:
+                  - Type:
+                      Base: ()
           value: "*const () @ 0x10007A0D"
     - name:
         Named: "<core::option::Option<&core::fmt::Arguments> as core::fmt::Debug>::{vtable}"
       type_name:
-        Struct: "<core::option::Option<&core::fmt::Arguments> as core::fmt::Debug>::{vtable_type}"
+        Struct:
+          ident: "<core::option::Option<&core::fmt::Arguments> as core::fmt::Debug>::{vtable_type}"
+          namespace: []
+          args: []
       value: "<core::option::Option<&core::fmt::Arguments> as core::fmt::Debug>::{vtable_type} @ 0x1000C8DC"
       children:
         - name:
             Named: drop_in_place
           type_name:
-            Pointer: "*const ()"
+            Pointer:
+              Struct:
+                ident: "*const"
+                namespace: []
+                args:
+                  - Type:
+                      Base: ()
           value: "*const () @ 0x100076C9"
         - name:
             Named: size
@@ -4214,18 +4607,33 @@ Child Variables:
         - name:
             Named: __method3
           type_name:
-            Pointer: "*const ()"
+            Pointer:
+              Struct:
+                ident: "*const"
+                namespace: []
+                args:
+                  - Type:
+                      Base: ()
           value: "*const () @ 0x10007A29"
     - name:
         Named: "<&core::panic::location::Location as core::fmt::Debug>::{vtable}"
       type_name:
-        Struct: "<&core::panic::location::Location as core::fmt::Debug>::{vtable_type}"
+        Struct:
+          ident: "<&core::panic::location::Location as core::fmt::Debug>::{vtable_type}"
+          namespace: []
+          args: []
       value: "<&core::panic::location::Location as core::fmt::Debug>::{vtable_type} @ 0x1000C8EC"
       children:
         - name:
             Named: drop_in_place
           type_name:
-            Pointer: "*const ()"
+            Pointer:
+              Struct:
+                ident: "*const"
+                namespace: []
+                args:
+                  - Type:
+                      Base: ()
           value: "*const () @ 0x100076A9"
         - name:
             Named: size
@@ -4240,18 +4648,33 @@ Child Variables:
         - name:
             Named: __method3
           type_name:
-            Pointer: "*const ()"
+            Pointer:
+              Struct:
+                ident: "*const"
+                namespace: []
+                args:
+                  - Type:
+                      Base: ()
           value: "*const () @ 0x10007A81"
     - name:
         Named: "<bool as core::fmt::Debug>::{vtable}"
       type_name:
-        Struct: "<bool as core::fmt::Debug>::{vtable_type}"
+        Struct:
+          ident: "<bool as core::fmt::Debug>::{vtable_type}"
+          namespace: []
+          args: []
       value: "<bool as core::fmt::Debug>::{vtable_type} @ 0x1000C908"
       children:
         - name:
             Named: drop_in_place
           type_name:
-            Pointer: "*const ()"
+            Pointer:
+              Struct:
+                ident: "*const"
+                namespace: []
+                args:
+                  - Type:
+                      Base: ()
           value: "*const () @ 0x10007681"
         - name:
             Named: size
@@ -4266,18 +4689,33 @@ Child Variables:
         - name:
             Named: __method3
           type_name:
-            Pointer: "*const ()"
+            Pointer:
+              Struct:
+                ident: "*const"
+                namespace: []
+                args:
+                  - Type:
+                      Base: ()
           value: "*const () @ 0x100078D9"
     - name:
         Named: "<&bool as core::fmt::Debug>::{vtable}"
       type_name:
-        Struct: "<&bool as core::fmt::Debug>::{vtable_type}"
+        Struct:
+          ident: "<&bool as core::fmt::Debug>::{vtable_type}"
+          namespace: []
+          args: []
       value: "<&bool as core::fmt::Debug>::{vtable_type} @ 0x1000C92C"
       children:
         - name:
             Named: drop_in_place
           type_name:
-            Pointer: "*const ()"
+            Pointer:
+              Struct:
+                ident: "*const"
+                namespace: []
+                args:
+                  - Type:
+                      Base: ()
           value: "*const () @ 0x10007699"
         - name:
             Named: size
@@ -4292,18 +4730,33 @@ Child Variables:
         - name:
             Named: __method3
           type_name:
-            Pointer: "*const ()"
+            Pointer:
+              Struct:
+                ident: "*const"
+                namespace: []
+                args:
+                  - Type:
+                      Base: ()
           value: "*const () @ 0x10007841"
     - name:
         Named: "<&&core::fmt::Arguments as core::fmt::Debug>::{vtable}"
       type_name:
-        Struct: "<&&core::fmt::Arguments as core::fmt::Debug>::{vtable_type}"
+        Struct:
+          ident: "<&&core::fmt::Arguments as core::fmt::Debug>::{vtable_type}"
+          namespace: []
+          args: []
       value: "<&&core::fmt::Arguments as core::fmt::Debug>::{vtable_type} @ 0x1000C93C"
       children:
         - name:
             Named: drop_in_place
           type_name:
-            Pointer: "*const ()"
+            Pointer:
+              Struct:
+                ident: "*const"
+                namespace: []
+                args:
+                  - Type:
+                      Base: ()
           value: "*const () @ 0x100076A1"
         - name:
             Named: size
@@ -4318,18 +4771,33 @@ Child Variables:
         - name:
             Named: __method3
           type_name:
-            Pointer: "*const ()"
+            Pointer:
+              Struct:
+                ident: "*const"
+                namespace: []
+                args:
+                  - Type:
+                      Base: ()
           value: "*const () @ 0x10007855"
     - name:
         Named: "<&str as core::fmt::Debug>::{vtable}"
       type_name:
-        Struct: "<&str as core::fmt::Debug>::{vtable_type}"
+        Struct:
+          ident: "<&str as core::fmt::Debug>::{vtable_type}"
+          namespace: []
+          args: []
       value: "<&str as core::fmt::Debug>::{vtable_type} @ 0x1000C94C"
       children:
         - name:
             Named: drop_in_place
           type_name:
-            Pointer: "*const ()"
+            Pointer:
+              Struct:
+                ident: "*const"
+                namespace: []
+                args:
+                  - Type:
+                      Base: ()
           value: "*const () @ 0x10007689"
         - name:
             Named: size
@@ -4344,18 +4812,33 @@ Child Variables:
         - name:
             Named: __method3
           type_name:
-            Pointer: "*const ()"
+            Pointer:
+              Struct:
+                ident: "*const"
+                namespace: []
+                args:
+                  - Type:
+                      Base: ()
           value: "*const () @ 0x100077FF"
     - name:
         Named: "<u32 as core::fmt::Debug>::{vtable}"
       type_name:
-        Struct: "<u32 as core::fmt::Debug>::{vtable_type}"
+        Struct:
+          ident: "<u32 as core::fmt::Debug>::{vtable_type}"
+          namespace: []
+          args: []
       value: "<u32 as core::fmt::Debug>::{vtable_type} @ 0x1000C95C"
       children:
         - name:
             Named: drop_in_place
           type_name:
-            Pointer: "*const ()"
+            Pointer:
+              Struct:
+                ident: "*const"
+                namespace: []
+                args:
+                  - Type:
+                      Base: ()
           value: "*const () @ 0x10007679"
         - name:
             Named: size
@@ -4370,18 +4853,33 @@ Child Variables:
         - name:
             Named: __method3
           type_name:
-            Pointer: "*const ()"
+            Pointer:
+              Struct:
+                ident: "*const"
+                namespace: []
+                args:
+                  - Type:
+                      Base: ()
           value: "*const () @ 0x10007BA5"
     - name:
         Named: "<&u32 as core::fmt::Debug>::{vtable}"
       type_name:
-        Struct: "<&u32 as core::fmt::Debug>::{vtable_type}"
+        Struct:
+          ident: "<&u32 as core::fmt::Debug>::{vtable_type}"
+          namespace: []
+          args: []
       value: "<&u32 as core::fmt::Debug>::{vtable_type} @ 0x1000C970"
       children:
         - name:
             Named: drop_in_place
           type_name:
-            Pointer: "*const ()"
+            Pointer:
+              Struct:
+                ident: "*const"
+                namespace: []
+                args:
+                  - Type:
+                      Base: ()
           value: "*const () @ 0x10007691"
         - name:
             Named: size
@@ -4396,7 +4894,13 @@ Child Variables:
         - name:
             Named: __method3
           type_name:
-            Pointer: "*const ()"
+            Pointer:
+              Struct:
+                ident: "*const"
+                namespace: []
+                args:
+                  - Type:
+                      Base: ()
           value: "*const () @ 0x1000782D"
     - name:
         Named: "<rtt_target::rtt::RttWriter as core::fmt::Write>::{vtable}"
@@ -4415,8 +4919,33 @@ Child Variables:
             - name:
                 Named: PRINT_TERMINAL
               type_name:
-                Struct: "Mutex<core::cell::RefCell<core::option::Option<rtt_target::TerminalChannel>>>"
-              value: "Mutex<core::cell::RefCell<core::option::Option<rtt_target::TerminalChannel>>> @ 0x200008C4"
+                Struct:
+                  ident: Mutex
+                  namespace:
+                    - critical_section
+                    - mutex
+                  args:
+                    - Type:
+                        Struct:
+                          ident: RefCell
+                          namespace:
+                            - core
+                            - cell
+                          args:
+                            - Type:
+                                Struct:
+                                  ident: Option
+                                  namespace:
+                                    - core
+                                    - option
+                                  args:
+                                    - Type:
+                                        Struct:
+                                          ident: TerminalChannel
+                                          namespace:
+                                            - rtt_target
+                                          args: []
+              value: Mutex<RefCell<Option<TerminalChannel>>> @ 0x200008C4
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rtt-target-0.5.0/src/print.rs
                 line: 7
@@ -4426,19 +4955,69 @@ Child Variables:
                 - name:
                     Named: inner
                   type_name:
-                    Struct: "UnsafeCell<core::cell::RefCell<core::option::Option<rtt_target::TerminalChannel>>>"
-                  value: "UnsafeCell<core::cell::RefCell<core::option::Option<rtt_target::TerminalChannel>>> @ 0x200008C4"
+                    Struct:
+                      ident: UnsafeCell
+                      namespace:
+                        - core
+                        - cell
+                      args:
+                        - Type:
+                            Struct:
+                              ident: RefCell
+                              namespace:
+                                - core
+                                - cell
+                              args:
+                                - Type:
+                                    Struct:
+                                      ident: Option
+                                      namespace:
+                                        - core
+                                        - option
+                                      args:
+                                        - Type:
+                                            Struct:
+                                              ident: TerminalChannel
+                                              namespace:
+                                                - rtt_target
+                                              args: []
+                  value: UnsafeCell<RefCell<Option<TerminalChannel>>> @ 0x200008C4
                   children:
                     - name:
                         Named: value
                       type_name:
-                        Struct: "RefCell<core::option::Option<rtt_target::TerminalChannel>>"
-                      value: "RefCell<core::option::Option<rtt_target::TerminalChannel>> @ 0x200008C4"
+                        Struct:
+                          ident: RefCell
+                          namespace:
+                            - core
+                            - cell
+                          args:
+                            - Type:
+                                Struct:
+                                  ident: Option
+                                  namespace:
+                                    - core
+                                    - option
+                                  args:
+                                    - Type:
+                                        Struct:
+                                          ident: TerminalChannel
+                                          namespace:
+                                            - rtt_target
+                                          args: []
+                      value: RefCell<Option<TerminalChannel>> @ 0x200008C4
                       children:
                         - name:
                             Named: borrow
                           type_name:
-                            Struct: Cell<isize>
+                            Struct:
+                              ident: Cell
+                              namespace:
+                                - core
+                                - cell
+                              args:
+                                - Type:
+                                    Base: isize
                           value: "0"
                           children:
                             - name:
@@ -4449,31 +5028,79 @@ Child Variables:
                         - name:
                             Named: value
                           type_name:
-                            Struct: "UnsafeCell<core::option::Option<rtt_target::TerminalChannel>>"
-                          value: "UnsafeCell<core::option::Option<rtt_target::TerminalChannel>> @ 0x200008C8"
+                            Struct:
+                              ident: UnsafeCell
+                              namespace:
+                                - core
+                                - cell
+                              args:
+                                - Type:
+                                    Struct:
+                                      ident: Option
+                                      namespace:
+                                        - core
+                                        - option
+                                      args:
+                                        - Type:
+                                            Struct:
+                                              ident: TerminalChannel
+                                              namespace:
+                                                - rtt_target
+                                              args: []
+                          value: UnsafeCell<Option<TerminalChannel>> @ 0x200008C8
                           children:
                             - name:
                                 Named: value
                               type_name:
-                                Struct: "Option<rtt_target::TerminalChannel>"
-                              value: "Option<rtt_target::TerminalChannel> @ 0x200008C8"
+                                Struct:
+                                  ident: Option
+                                  namespace:
+                                    - core
+                                    - option
+                                  args:
+                                    - Type:
+                                        Struct:
+                                          ident: TerminalChannel
+                                          namespace:
+                                            - rtt_target
+                                          args: []
+                              value: Option<TerminalChannel> @ 0x200008C8
                               children:
                                 - name:
                                     Named: Some
                                   type_name:
-                                    Struct: Some
-                                  value: Some @ 0x200008C8
+                                    Struct:
+                                      ident: Some
+                                      namespace:
+                                        - core
+                                        - option
+                                      args:
+                                        - Type:
+                                            Struct:
+                                              ident: TerminalChannel
+                                              namespace:
+                                                - rtt_target
+                                              args: []
+                                  value: Some<TerminalChannel> @ 0x200008C8
                                   children:
                                     - name:
                                         Named: __0
                                       type_name:
-                                        Struct: TerminalChannel
+                                        Struct:
+                                          ident: TerminalChannel
+                                          namespace:
+                                            - rtt_target
+                                          args: []
                                       value: TerminalChannel @ 0x200008CC
                                       children:
                                         - name:
                                             Named: channel
                                           type_name:
-                                            Struct: UpChannel
+                                            Struct:
+                                              ident: UpChannel
+                                              namespace:
+                                                - rtt_target
+                                              args: []
                                           value: UpChannel @ 0x200008CC
                                         - name:
                                             Named: current
@@ -4483,13 +5110,22 @@ Child Variables:
     - name:
         Named: "<rtt_target::TerminalWriter as core::fmt::Write>::{vtable}"
       type_name:
-        Struct: "<rtt_target::TerminalWriter as core::fmt::Write>::{vtable_type}"
+        Struct:
+          ident: "<rtt_target::TerminalWriter as core::fmt::Write>::{vtable_type}"
+          namespace: []
+          args: []
       value: "<rtt_target::TerminalWriter as core::fmt::Write>::{vtable_type} @ 0x1000D008"
       children:
         - name:
             Named: drop_in_place
           type_name:
-            Pointer: "*const ()"
+            Pointer:
+              Struct:
+                ident: "*const"
+                namespace: []
+                args:
+                  - Type:
+                      Base: ()
           value: "*const () @ 0x10008199"
         - name:
             Named: size
@@ -4504,17 +5140,35 @@ Child Variables:
         - name:
             Named: __method3
           type_name:
-            Pointer: "*const ()"
+            Pointer:
+              Struct:
+                ident: "*const"
+                namespace: []
+                args:
+                  - Type:
+                      Base: ()
           value: "*const () @ 0x10009175"
         - name:
             Named: __method4
           type_name:
-            Pointer: "*const ()"
+            Pointer:
+              Struct:
+                ident: "*const"
+                namespace: []
+                args:
+                  - Type:
+                      Base: ()
           value: "*const () @ 0x10007FE3"
         - name:
             Named: __method5
           type_name:
-            Pointer: "*const ()"
+            Pointer:
+              Struct:
+                ident: "*const"
+                namespace: []
+                args:
+                  - Type:
+                      Base: ()
           value: "*const () @ 0x1000801B"
     - name:
         Namespace: cortex_m

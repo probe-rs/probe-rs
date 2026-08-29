@@ -835,12 +835,18 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tsrc: *const u32 = *const u32 @ 0x3FFFFFFC}"
+      value: "<unknown> { src = *const u32 @ 0x3FFFFFFC }"
       children:
         - name:
             Named: src
           type_name:
-            Pointer: "*const u32"
+            Pointer:
+              Struct:
+                ident: "*const"
+                namespace: []
+                args:
+                  - Type:
+                      Base: u32
           value: "*const u32 @ 0x3FFFFFFC"
           source_location:
             path: /rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/ptr/mod.rs
@@ -1882,7 +1888,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tcyc: u32 = 1000000,\n\treal_cyc: u32 = 500001}"
+      value: "<unknown> { cyc = 1000000, real_cyc = 500001 }"
       children:
         - name:
             Named: cyc
@@ -2113,7 +2119,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tcycles: u32 = 1000000}"
+      value: "<unknown> { cycles = 1000000 }"
       children:
         - name:
             Named: cycles
@@ -2330,11 +2336,16 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\t<unknown>: Peripherals = Peripherals @ 0x20003F57,\n\tcore: Peripherals = Peripherals @ 0x20003F53,\n\tsyst: SYST = SYST @ 0x20003F54}"
+      value: "<unknown> { <unknown> = Peripherals @ 0x20003F57, core = Peripherals @ 0x20003F53, syst = SYST @ 0x20003F54 }"
       children:
         - name: Unknown
           type_name:
-            Struct: Peripherals
+            Struct:
+              ident: Peripherals
+              namespace:
+                - cortex_m
+                - peripheral
+              args: []
           value: Peripherals @ 0x20003F57
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
@@ -2345,72 +2356,142 @@ expression: stack_frames
             - name:
                 Named: CBP
               type_name:
-                Struct: CBP
+                Struct:
+                  ident: CBP
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: CBP @ 0x20003F57
             - name:
                 Named: CPUID
               type_name:
-                Struct: CPUID
+                Struct:
+                  ident: CPUID
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: CPUID @ 0x20003F57
             - name:
                 Named: DCB
               type_name:
-                Struct: DCB
+                Struct:
+                  ident: DCB
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: DCB @ 0x20003F57
             - name:
                 Named: DWT
               type_name:
-                Struct: DWT
+                Struct:
+                  ident: DWT
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: DWT @ 0x20003F57
             - name:
                 Named: FPB
               type_name:
-                Struct: FPB
+                Struct:
+                  ident: FPB
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: FPB @ 0x20003F57
             - name:
                 Named: FPU
               type_name:
-                Struct: FPU
+                Struct:
+                  ident: FPU
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: FPU @ 0x20003F57
             - name:
                 Named: ICB
               type_name:
-                Struct: ICB
+                Struct:
+                  ident: ICB
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: ICB @ 0x20003F57
             - name:
                 Named: ITM
               type_name:
-                Struct: ITM
+                Struct:
+                  ident: ITM
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: ITM @ 0x20003F57
             - name:
                 Named: MPU
               type_name:
-                Struct: MPU
+                Struct:
+                  ident: MPU
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: MPU @ 0x20003F57
             - name:
                 Named: NVIC
               type_name:
-                Struct: NVIC
+                Struct:
+                  ident: NVIC
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: NVIC @ 0x20003F57
             - name:
                 Named: SAU
               type_name:
-                Struct: SAU
+                Struct:
+                  ident: SAU
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: SAU @ 0x20003F57
             - name:
                 Named: SCB
               type_name:
-                Struct: SCB
+                Struct:
+                  ident: SCB
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: SCB @ 0x20003F57
             - name:
                 Named: SYST
               type_name:
-                Struct: SYST
+                Struct:
+                  ident: SYST
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: SYST @ 0x20003F57
             - name:
                 Named: TPIU
               type_name:
-                Struct: TPIU
+                Struct:
+                  ident: TPIU
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: TPIU @ 0x20003F57
             - name:
                 Named: _priv
@@ -2420,7 +2501,12 @@ expression: stack_frames
         - name:
             Named: core
           type_name:
-            Struct: Peripherals
+            Struct:
+              ident: Peripherals
+              namespace:
+                - cortex_m
+                - peripheral
+              args: []
           value: Peripherals @ 0x20003F53
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
@@ -2431,72 +2517,142 @@ expression: stack_frames
             - name:
                 Named: CBP
               type_name:
-                Struct: CBP
+                Struct:
+                  ident: CBP
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: CBP @ 0x20003F53
             - name:
                 Named: CPUID
               type_name:
-                Struct: CPUID
+                Struct:
+                  ident: CPUID
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: CPUID @ 0x20003F53
             - name:
                 Named: DCB
               type_name:
-                Struct: DCB
+                Struct:
+                  ident: DCB
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: DCB @ 0x20003F53
             - name:
                 Named: DWT
               type_name:
-                Struct: DWT
+                Struct:
+                  ident: DWT
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: DWT @ 0x20003F53
             - name:
                 Named: FPB
               type_name:
-                Struct: FPB
+                Struct:
+                  ident: FPB
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: FPB @ 0x20003F53
             - name:
                 Named: FPU
               type_name:
-                Struct: FPU
+                Struct:
+                  ident: FPU
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: FPU @ 0x20003F53
             - name:
                 Named: ICB
               type_name:
-                Struct: ICB
+                Struct:
+                  ident: ICB
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: ICB @ 0x20003F53
             - name:
                 Named: ITM
               type_name:
-                Struct: ITM
+                Struct:
+                  ident: ITM
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: ITM @ 0x20003F53
             - name:
                 Named: MPU
               type_name:
-                Struct: MPU
+                Struct:
+                  ident: MPU
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: MPU @ 0x20003F53
             - name:
                 Named: NVIC
               type_name:
-                Struct: NVIC
+                Struct:
+                  ident: NVIC
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: NVIC @ 0x20003F53
             - name:
                 Named: SAU
               type_name:
-                Struct: SAU
+                Struct:
+                  ident: SAU
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: SAU @ 0x20003F53
             - name:
                 Named: SCB
               type_name:
-                Struct: SCB
+                Struct:
+                  ident: SCB
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: SCB @ 0x20003F53
             - name:
                 Named: SYST
               type_name:
-                Struct: SYST
+                Struct:
+                  ident: SYST
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: SYST @ 0x20003F53
             - name:
                 Named: TPIU
               type_name:
-                Struct: TPIU
+                Struct:
+                  ident: TPIU
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: TPIU @ 0x20003F53
             - name:
                 Named: _priv
@@ -2506,7 +2662,12 @@ expression: stack_frames
         - name:
             Named: syst
           type_name:
-            Struct: SYST
+            Struct:
+              ident: SYST
+              namespace:
+                - cortex_m
+                - peripheral
+              args: []
           value: SYST @ 0x20003F54
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
@@ -2718,12 +2879,16 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tpac: Peripherals = Peripherals @ 0x20003F74,\n\tcore: Peripherals = Peripherals @ 0x20003F75,\n\tclocks: Clocks<nrf_hal_common::clocks::ExternalOscillator, nrf_hal_common::clocks::Internal, nrf_hal_common::clocks::LfOscStopped> = Clocks<nrf_hal_common::clocks::ExternalOscillator, nrf_hal_common::clocks::Internal, nrf_hal_common::clocks::LfOscStopped> @ 0x20003F76}"
+      value: "<unknown> { pac = Peripherals @ 0x20003F74, core = Peripherals @ 0x20003F75, clocks = Clocks<ExternalOscillator, Internal, LfOscStopped> @ 0x20003F76 }"
       children:
         - name:
             Named: pac
           type_name:
-            Struct: Peripherals
+            Struct:
+              ident: Peripherals
+              namespace:
+                - nrf52833_pac
+              args: []
           value: Peripherals @ 0x20003F74
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
@@ -2734,352 +2899,633 @@ expression: stack_frames
             - name:
                 Named: FICR
               type_name:
-                Struct: FICR
+                Struct:
+                  ident: FICR
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: FICR @ 0x20003F74
             - name:
                 Named: UICR
               type_name:
-                Struct: UICR
+                Struct:
+                  ident: UICR
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: UICR @ 0x20003F74
             - name:
                 Named: CLOCK
               type_name:
-                Struct: CLOCK
+                Struct:
+                  ident: CLOCK
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: CLOCK @ 0x20003F74
             - name:
                 Named: POWER
               type_name:
-                Struct: POWER
+                Struct:
+                  ident: POWER
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: POWER @ 0x20003F74
             - name:
                 Named: P0
               type_name:
-                Struct: P0
+                Struct:
+                  ident: P0
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: P0 @ 0x20003F74
             - name:
                 Named: P1
               type_name:
-                Struct: P1
+                Struct:
+                  ident: P1
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: P1 @ 0x20003F74
             - name:
                 Named: RADIO
               type_name:
-                Struct: RADIO
+                Struct:
+                  ident: RADIO
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: RADIO @ 0x20003F74
             - name:
                 Named: UART0
               type_name:
-                Struct: UART0
+                Struct:
+                  ident: UART0
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: UART0 @ 0x20003F74
             - name:
                 Named: UARTE0
               type_name:
-                Struct: UARTE0
+                Struct:
+                  ident: UARTE0
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: UARTE0 @ 0x20003F74
             - name:
                 Named: SPI0
               type_name:
-                Struct: SPI0
+                Struct:
+                  ident: SPI0
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: SPI0 @ 0x20003F74
             - name:
                 Named: SPIM0
               type_name:
-                Struct: SPIM0
+                Struct:
+                  ident: SPIM0
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: SPIM0 @ 0x20003F74
             - name:
                 Named: SPIS0
               type_name:
-                Struct: SPIS0
+                Struct:
+                  ident: SPIS0
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: SPIS0 @ 0x20003F74
             - name:
                 Named: TWI0
               type_name:
-                Struct: TWI0
+                Struct:
+                  ident: TWI0
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: TWI0 @ 0x20003F74
             - name:
                 Named: TWIM0
               type_name:
-                Struct: TWIM0
+                Struct:
+                  ident: TWIM0
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: TWIM0 @ 0x20003F74
             - name:
                 Named: TWIS0
               type_name:
-                Struct: TWIS0
+                Struct:
+                  ident: TWIS0
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: TWIS0 @ 0x20003F74
             - name:
                 Named: SPI1
               type_name:
-                Struct: SPI1
+                Struct:
+                  ident: SPI1
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: SPI1 @ 0x20003F74
             - name:
                 Named: SPIM1
               type_name:
-                Struct: SPIM1
+                Struct:
+                  ident: SPIM1
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: SPIM1 @ 0x20003F74
             - name:
                 Named: SPIS1
               type_name:
-                Struct: SPIS1
+                Struct:
+                  ident: SPIS1
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: SPIS1 @ 0x20003F74
             - name:
                 Named: TWI1
               type_name:
-                Struct: TWI1
+                Struct:
+                  ident: TWI1
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: TWI1 @ 0x20003F74
             - name:
                 Named: TWIM1
               type_name:
-                Struct: TWIM1
+                Struct:
+                  ident: TWIM1
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: TWIM1 @ 0x20003F74
             - name:
                 Named: TWIS1
               type_name:
-                Struct: TWIS1
+                Struct:
+                  ident: TWIS1
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: TWIS1 @ 0x20003F74
             - name:
                 Named: NFCT
               type_name:
-                Struct: NFCT
+                Struct:
+                  ident: NFCT
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: NFCT @ 0x20003F74
             - name:
                 Named: GPIOTE
               type_name:
-                Struct: GPIOTE
+                Struct:
+                  ident: GPIOTE
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: GPIOTE @ 0x20003F74
             - name:
                 Named: SAADC
               type_name:
-                Struct: SAADC
+                Struct:
+                  ident: SAADC
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: SAADC @ 0x20003F74
             - name:
                 Named: TIMER0
               type_name:
-                Struct: TIMER0
+                Struct:
+                  ident: TIMER0
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: TIMER0 @ 0x20003F74
             - name:
                 Named: TIMER1
               type_name:
-                Struct: TIMER1
+                Struct:
+                  ident: TIMER1
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: TIMER1 @ 0x20003F74
             - name:
                 Named: TIMER2
               type_name:
-                Struct: TIMER2
+                Struct:
+                  ident: TIMER2
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: TIMER2 @ 0x20003F74
             - name:
                 Named: RTC0
               type_name:
-                Struct: RTC0
+                Struct:
+                  ident: RTC0
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: RTC0 @ 0x20003F74
             - name:
                 Named: TEMP
               type_name:
-                Struct: TEMP
+                Struct:
+                  ident: TEMP
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: TEMP @ 0x20003F74
             - name:
                 Named: RNG
               type_name:
-                Struct: RNG
+                Struct:
+                  ident: RNG
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: RNG @ 0x20003F74
             - name:
                 Named: ECB
               type_name:
-                Struct: ECB
+                Struct:
+                  ident: ECB
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: ECB @ 0x20003F74
             - name:
                 Named: AAR
               type_name:
-                Struct: AAR
+                Struct:
+                  ident: AAR
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: AAR @ 0x20003F74
             - name:
                 Named: CCM
               type_name:
-                Struct: CCM
+                Struct:
+                  ident: CCM
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: CCM @ 0x20003F74
             - name:
                 Named: WDT
               type_name:
-                Struct: WDT
+                Struct:
+                  ident: WDT
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: WDT @ 0x20003F74
             - name:
                 Named: RTC1
               type_name:
-                Struct: RTC1
+                Struct:
+                  ident: RTC1
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: RTC1 @ 0x20003F74
             - name:
                 Named: QDEC
               type_name:
-                Struct: QDEC
+                Struct:
+                  ident: QDEC
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: QDEC @ 0x20003F74
             - name:
                 Named: COMP
               type_name:
-                Struct: COMP
+                Struct:
+                  ident: COMP
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: COMP @ 0x20003F74
             - name:
                 Named: LPCOMP
               type_name:
-                Struct: LPCOMP
+                Struct:
+                  ident: LPCOMP
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: LPCOMP @ 0x20003F74
             - name:
                 Named: EGU0
               type_name:
-                Struct: EGU0
+                Struct:
+                  ident: EGU0
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: EGU0 @ 0x20003F74
             - name:
                 Named: SWI0
               type_name:
-                Struct: SWI0
+                Struct:
+                  ident: SWI0
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: SWI0 @ 0x20003F74
             - name:
                 Named: EGU1
               type_name:
-                Struct: EGU1
+                Struct:
+                  ident: EGU1
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: EGU1 @ 0x20003F74
             - name:
                 Named: SWI1
               type_name:
-                Struct: SWI1
+                Struct:
+                  ident: SWI1
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: SWI1 @ 0x20003F74
             - name:
                 Named: EGU2
               type_name:
-                Struct: EGU2
+                Struct:
+                  ident: EGU2
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: EGU2 @ 0x20003F74
             - name:
                 Named: SWI2
               type_name:
-                Struct: SWI2
+                Struct:
+                  ident: SWI2
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: SWI2 @ 0x20003F74
             - name:
                 Named: EGU3
               type_name:
-                Struct: EGU3
+                Struct:
+                  ident: EGU3
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: EGU3 @ 0x20003F74
             - name:
                 Named: SWI3
               type_name:
-                Struct: SWI3
+                Struct:
+                  ident: SWI3
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: SWI3 @ 0x20003F74
             - name:
                 Named: EGU4
               type_name:
-                Struct: EGU4
+                Struct:
+                  ident: EGU4
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: EGU4 @ 0x20003F74
             - name:
                 Named: SWI4
               type_name:
-                Struct: SWI4
+                Struct:
+                  ident: SWI4
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: SWI4 @ 0x20003F74
             - name:
                 Named: EGU5
               type_name:
-                Struct: EGU5
+                Struct:
+                  ident: EGU5
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: EGU5 @ 0x20003F74
             - name:
                 Named: SWI5
               type_name:
-                Struct: SWI5
+                Struct:
+                  ident: SWI5
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: SWI5 @ 0x20003F74
             - name:
                 Named: TIMER3
               type_name:
-                Struct: TIMER3
+                Struct:
+                  ident: TIMER3
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: TIMER3 @ 0x20003F74
             - name:
                 Named: TIMER4
               type_name:
-                Struct: TIMER4
+                Struct:
+                  ident: TIMER4
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: TIMER4 @ 0x20003F74
             - name:
                 Named: PWM0
               type_name:
-                Struct: PWM0
+                Struct:
+                  ident: PWM0
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: PWM0 @ 0x20003F74
             - name:
                 Named: PDM
               type_name:
-                Struct: PDM
+                Struct:
+                  ident: PDM
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: PDM @ 0x20003F74
             - name:
                 Named: ACL
               type_name:
-                Struct: ACL
+                Struct:
+                  ident: ACL
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: ACL @ 0x20003F74
             - name:
                 Named: NVMC
               type_name:
-                Struct: NVMC
+                Struct:
+                  ident: NVMC
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: NVMC @ 0x20003F74
             - name:
                 Named: PPI
               type_name:
-                Struct: PPI
+                Struct:
+                  ident: PPI
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: PPI @ 0x20003F74
             - name:
                 Named: MWU
               type_name:
-                Struct: MWU
+                Struct:
+                  ident: MWU
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: MWU @ 0x20003F74
             - name:
                 Named: PWM1
               type_name:
-                Struct: PWM1
+                Struct:
+                  ident: PWM1
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: PWM1 @ 0x20003F74
             - name:
                 Named: PWM2
               type_name:
-                Struct: PWM2
+                Struct:
+                  ident: PWM2
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: PWM2 @ 0x20003F74
             - name:
                 Named: SPI2
               type_name:
-                Struct: SPI2
+                Struct:
+                  ident: SPI2
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: SPI2 @ 0x20003F74
             - name:
                 Named: SPIM2
               type_name:
-                Struct: SPIM2
+                Struct:
+                  ident: SPIM2
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: SPIM2 @ 0x20003F74
             - name:
                 Named: SPIS2
               type_name:
-                Struct: SPIS2
+                Struct:
+                  ident: SPIS2
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: SPIS2 @ 0x20003F74
             - name:
                 Named: RTC2
               type_name:
-                Struct: RTC2
+                Struct:
+                  ident: RTC2
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: RTC2 @ 0x20003F74
             - name:
                 Named: I2S
               type_name:
-                Struct: I2S
+                Struct:
+                  ident: I2S
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: I2S @ 0x20003F74
             - name:
                 Named: USBD
               type_name:
-                Struct: USBD
+                Struct:
+                  ident: USBD
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: USBD @ 0x20003F74
             - name:
                 Named: UARTE1
               type_name:
-                Struct: UARTE1
+                Struct:
+                  ident: UARTE1
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: UARTE1 @ 0x20003F74
             - name:
                 Named: PWM3
               type_name:
-                Struct: PWM3
+                Struct:
+                  ident: PWM3
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: PWM3 @ 0x20003F74
             - name:
                 Named: SPIM3
               type_name:
-                Struct: SPIM3
+                Struct:
+                  ident: SPIM3
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: SPIM3 @ 0x20003F74
         - name:
             Named: core
           type_name:
-            Struct: Peripherals
+            Struct:
+              ident: Peripherals
+              namespace:
+                - cortex_m
+                - peripheral
+              args: []
           value: Peripherals @ 0x20003F75
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
@@ -3090,72 +3536,142 @@ expression: stack_frames
             - name:
                 Named: CBP
               type_name:
-                Struct: CBP
+                Struct:
+                  ident: CBP
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: CBP @ 0x20003F75
             - name:
                 Named: CPUID
               type_name:
-                Struct: CPUID
+                Struct:
+                  ident: CPUID
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: CPUID @ 0x20003F75
             - name:
                 Named: DCB
               type_name:
-                Struct: DCB
+                Struct:
+                  ident: DCB
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: DCB @ 0x20003F75
             - name:
                 Named: DWT
               type_name:
-                Struct: DWT
+                Struct:
+                  ident: DWT
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: DWT @ 0x20003F75
             - name:
                 Named: FPB
               type_name:
-                Struct: FPB
+                Struct:
+                  ident: FPB
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: FPB @ 0x20003F75
             - name:
                 Named: FPU
               type_name:
-                Struct: FPU
+                Struct:
+                  ident: FPU
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: FPU @ 0x20003F75
             - name:
                 Named: ICB
               type_name:
-                Struct: ICB
+                Struct:
+                  ident: ICB
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: ICB @ 0x20003F75
             - name:
                 Named: ITM
               type_name:
-                Struct: ITM
+                Struct:
+                  ident: ITM
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: ITM @ 0x20003F75
             - name:
                 Named: MPU
               type_name:
-                Struct: MPU
+                Struct:
+                  ident: MPU
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: MPU @ 0x20003F75
             - name:
                 Named: NVIC
               type_name:
-                Struct: NVIC
+                Struct:
+                  ident: NVIC
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: NVIC @ 0x20003F75
             - name:
                 Named: SAU
               type_name:
-                Struct: SAU
+                Struct:
+                  ident: SAU
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: SAU @ 0x20003F75
             - name:
                 Named: SCB
               type_name:
-                Struct: SCB
+                Struct:
+                  ident: SCB
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: SCB @ 0x20003F75
             - name:
                 Named: SYST
               type_name:
-                Struct: SYST
+                Struct:
+                  ident: SYST
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: SYST @ 0x20003F75
             - name:
                 Named: TPIU
               type_name:
-                Struct: TPIU
+                Struct:
+                  ident: TPIU
+                  namespace:
+                    - cortex_m
+                    - peripheral
+                  args: []
               value: TPIU @ 0x20003F75
             - name:
                 Named: _priv
@@ -3165,8 +3681,34 @@ expression: stack_frames
         - name:
             Named: clocks
           type_name:
-            Struct: "Clocks<nrf_hal_common::clocks::ExternalOscillator, nrf_hal_common::clocks::Internal, nrf_hal_common::clocks::LfOscStopped>"
-          value: "Clocks<nrf_hal_common::clocks::ExternalOscillator, nrf_hal_common::clocks::Internal, nrf_hal_common::clocks::LfOscStopped> @ 0x20003F76"
+            Struct:
+              ident: Clocks
+              namespace:
+                - nrf_hal_common
+                - clocks
+              args:
+                - Type:
+                    Struct:
+                      ident: ExternalOscillator
+                      namespace:
+                        - nrf_hal_common
+                        - clocks
+                      args: []
+                - Type:
+                    Struct:
+                      ident: Internal
+                      namespace:
+                        - nrf_hal_common
+                        - clocks
+                      args: []
+                - Type:
+                    Struct:
+                      ident: LfOscStopped
+                      namespace:
+                        - nrf_hal_common
+                        - clocks
+                      args: []
+          value: "Clocks<ExternalOscillator, Internal, LfOscStopped> @ 0x20003F76"
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
             line: 23
@@ -3176,22 +3718,41 @@ expression: stack_frames
             - name:
                 Named: hfclk
               type_name:
-                Struct: ExternalOscillator
+                Struct:
+                  ident: ExternalOscillator
+                  namespace:
+                    - nrf_hal_common
+                    - clocks
+                  args: []
               value: ExternalOscillator
             - name:
                 Named: lfclk
               type_name:
-                Struct: Internal
+                Struct:
+                  ident: Internal
+                  namespace:
+                    - nrf_hal_common
+                    - clocks
+                  args: []
               value: Internal
             - name:
                 Named: lfstat
               type_name:
-                Struct: LfOscStopped
+                Struct:
+                  ident: LfOscStopped
+                  namespace:
+                    - nrf_hal_common
+                    - clocks
+                  args: []
               value: LfOscStopped
             - name:
                 Named: periph
               type_name:
-                Struct: CLOCK
+                Struct:
+                  ident: CLOCK
+                  namespace:
+                    - nrf52833_pac
+                  args: []
               value: CLOCK @ 0x20003F76
   canonical_frame_address: 536887288
 - function_name: "__cortex_m_rt_main_trampoline : ERROR: UNWIND: Failed to read value for register R14/LR from address 0x0000000020003ffc (4 bytes): The coredump does not include the memory for address 0x20003ffc of size 0x4"

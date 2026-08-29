@@ -1,4 +1,7 @@
-use std::{collections::HashMap, ops::Range};
+use std::{
+    collections::{HashMap, HashSet},
+    ops::Range,
+};
 
 use super::{
     DebugError, DebugRegisters, EndianReader, SourceLocation, VariableCache, debug_info::*,
@@ -27,6 +30,8 @@ pub struct UnitInfo {
     parents: HashMap<UnitOffset, UnitOffset>,
     // Address => function DIE offset
     function_dies: Vec<(Range<u64>, UnitOffset)>,
+    // Return PC => DW_TAG_call_site_parameter (DW_AT_location bytes, DW_AT_call_value)
+    call_sites: HashMap<u64, Vec<CallSiteParameter>>,
 }
 
 impl UnitInfo {
@@ -49,6 +54,7 @@ impl UnitInfo {
             language: language::from_dwarf(dwarf_language),
             parents: HashMap::new(),
             function_dies: Vec::new(),
+            call_sites: HashMap::new(),
         };
 
         this.process_unit(dwarf);
@@ -61,6 +67,7 @@ impl UnitInfo {
 
         let mut prev_offset = None;
         let mut previous_depth = entries_cursor.depth();
+        let mut active_call_site: Option<(isize, u64)> = None;
         while let Ok(Some(current)) = entries_cursor.next_dfs() {
             let parent_offset = match current.depth() - previous_depth {
                 1 => {
@@ -98,8 +105,32 @@ impl UnitInfo {
                 }
             }
 
+            collect_call_site(
+                current,
+                dwarf,
+                &self.unit,
+                &mut active_call_site,
+                &mut self.call_sites,
+            );
+
             // TODO: assuming the ranges don't overlap, sort function dies by start address
         }
+    }
+
+    pub(crate) fn call_site_value(
+        &self,
+        return_pc: u64,
+        location: &gimli::Expression<GimliReader>,
+    ) -> Option<gimli::Expression<GimliReader>> {
+        let location = expression_bytes(location)?;
+        let params = self
+            .call_sites
+            .get(&return_pc)
+            .or_else(|| self.call_sites.get(&(return_pc & !1)))?;
+        params
+            .iter()
+            .find(|param| param.location == location)
+            .map(|param| param.value.clone())
     }
 
     /// Retrieve the value of the `DW_AT_language` attribute of the compilation unit.
@@ -349,8 +380,9 @@ impl UnitInfo {
                     }
                     gimli::DW_AT_enum_class => match attr.value() {
                         gimli::AttributeValue::Flag(true) => {
-                            child_variable
-                                .set_value(VariableValue::Valid(child_variable.type_name()));
+                            child_variable.set_value(VariableValue::Valid(
+                                child_variable.compact_type_name(),
+                            ));
                         }
                         gimli::AttributeValue::Flag(false) => {
                             child_variable.set_value(VariableValue::Error(
@@ -1305,7 +1337,7 @@ impl UnitInfo {
                 )?;
             }
             gimli::DW_TAG_pointer_type => {
-                child_variable.type_name = VariableType::Pointer(type_name);
+                child_variable.type_name = self.pointer_from_name(type_name);
                 self.process_memory_location(
                     debug_info,
                     node,
@@ -1568,7 +1600,12 @@ impl UnitInfo {
         frame_info: StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         let type_name = type_name.unwrap_or_else(|| "<unnamed struct>".to_string());
-        child_variable.type_name = VariableType::Struct(type_name.clone());
+        let mut visiting = HashSet::new();
+        if let Some(offset) = node.offset().to_debug_info_offset(&self.unit.header) {
+            visiting.insert(offset);
+        }
+        let named = self.extract_named_type(debug_info, node, type_name, &mut visiting);
+        child_variable.type_name = VariableType::Struct(named);
         self.process_memory_location(
             debug_info,
             node,
@@ -1585,7 +1622,10 @@ impl UnitInfo {
                     VariableNodeType::TypeOffset(self.debug_info_offset()?, node.offset());
                 // In some cases, it really simplifies the UX if we can auto resolve the
                 // children and derive a value that is visible at first glance to the user.
-                if self.language.auto_resolve_children(&type_name) {
+                if self
+                    .language
+                    .auto_resolve_children(&child_variable.type_name)
+                {
                     let temp_node_type = std::mem::replace(
                         &mut child_variable.variable_node_type,
                         VariableNodeType::RecurseToBaseType,
@@ -1607,13 +1647,13 @@ impl UnitInfo {
                 // Unit structs such as `None` have no members. A deferred node would still
                 // get a DAP `variables_reference`, so the client offers to expand it.
                 child_variable.variable_node_type = VariableNodeType::DoNotRecurse;
-                child_variable.set_value(VariableValue::Valid(type_name));
+                child_variable.set_value(VariableValue::Valid(child_variable.compact_type_name()));
             }
         } else {
             child_variable.variable_node_type = VariableNodeType::DoNotRecurse;
             child_variable.set_value(VariableValue::Valid(format!(
                 "{} @ {}",
-                child_variable.type_name(),
+                child_variable.compact_type_name(),
                 child_variable.memory_location
             )));
         }
@@ -1713,8 +1753,16 @@ impl UnitInfo {
         memory: &mut dyn MemoryInterface,
         frame_info: StackFrameInfo,
     ) -> Result<(), DebugError> {
-        child_variable.type_name =
-            VariableType::Enum(type_name.unwrap_or_else(|| "<unnamed enum>".to_string()));
+        let mut visiting = HashSet::new();
+        if let Some(offset) = node.offset().to_debug_info_offset(&self.unit.header) {
+            visiting.insert(offset);
+        }
+        child_variable.type_name = VariableType::Enum(self.extract_named_type(
+            debug_info,
+            node,
+            type_name.unwrap_or_else(|| "<unnamed enum>".to_string()),
+            &mut visiting,
+        ));
 
         self.process_memory_location(
             debug_info,
@@ -2056,7 +2104,7 @@ impl UnitInfo {
                 | gimli::DW_AT_frame_base
                 | gimli::DW_AT_data_member_location => match attr.value() {
                     gimli::AttributeValue::Exprloc(expression) => self
-                        .evaluate_expression(memory, expression, frame_info)
+                        .evaluate_expression(debug_info, memory, expression, frame_info)
                         .convert_incomplete()?,
 
                     gimli::AttributeValue::Udata(offset_from_location) => {
@@ -2173,7 +2221,7 @@ impl UnitInfo {
             return Ok(ExpressionResult::Location(VariableLocation::Unavailable));
         };
 
-        self.evaluate_expression(memory, valid_expression, frame_info)
+        self.evaluate_expression(debug_info, memory, valid_expression, frame_info)
     }
 
     /// Evaluate a [`gimli::Expression`] as a valid memory location.
@@ -2182,6 +2230,7 @@ impl UnitInfo {
     /// - `Result<ExpressionResult::Location(),_>`: One of the variants of VariableLocation, and needs to be interpreted for handling the 'expected' errors we encounter during evaluation.
     pub(crate) fn evaluate_expression(
         &self,
+        debug_info: &DebugInfo,
         memory: &mut dyn MemoryInterface,
         expression: gimli::Expression<GimliReader>,
         frame_info: StackFrameInfo<'_>,
@@ -2198,7 +2247,7 @@ impl UnitInfo {
             ExpressionResult::Location(location)
         }
 
-        let pieces = self.expression_to_piece(memory, expression, frame_info)?;
+        let pieces = self.expression_to_piece(debug_info, memory, expression, frame_info, 0)?;
 
         let [piece] = &pieces[..] else {
             if pieces.is_empty() {
@@ -2300,9 +2349,11 @@ impl UnitInfo {
     /// Tries to get the result of a DWARF expression in the form of a Piece.
     pub(crate) fn expression_to_piece(
         &self,
+        debug_info: &DebugInfo,
         memory: &mut dyn MemoryInterface,
         expression: gimli::Expression<GimliReader>,
         frame_info: StackFrameInfo<'_>,
+        entry_value_depth: u8,
     ) -> Result<Vec<gimli::Piece<GimliReader, usize>>, DebugError> {
         let mut evaluation = expression.evaluation(self.unit.encoding());
         let mut result = evaluation.evaluate()?;
@@ -2327,11 +2378,110 @@ impl UnitInfo {
                 EvaluationResult::RequiresCallFrameCfa => {
                     provide_cfa(frame_info.canonical_frame_address, &mut evaluation)?
                 }
+                EvaluationResult::RequiresEntryValue(inner) => {
+                    let value = self.resolve_entry_value(
+                        debug_info,
+                        memory,
+                        inner,
+                        frame_info,
+                        entry_value_depth,
+                    )?;
+                    evaluation.resume_with_entry_value(value)?
+                }
                 unimplemented_expression => {
                     return Err(DebugError::WarnAndContinue {
-                        message: format!(
-                            "Unimplemented: Expressions that include {unimplemented_expression:?} are not currently supported."
-                        ),
+                        message: unsupported_evaluation_result(&unimplemented_expression),
+                    });
+                }
+            }
+        }
+    }
+
+    fn resolve_entry_value(
+        &self,
+        debug_info: &DebugInfo,
+        memory: &mut dyn MemoryInterface,
+        inner: gimli::Expression<GimliReader>,
+        frame_info: StackFrameInfo<'_>,
+        entry_value_depth: u8,
+    ) -> Result<gimli::Value, DebugError> {
+        if entry_value_depth >= 4 {
+            return Err(DebugError::WarnAndContinue {
+                message: "Nested DW_OP_entry_value is not supported.".to_string(),
+            });
+        }
+
+        let Some(caller) = frame_info.caller else {
+            return Err(DebugError::WarnAndContinue {
+                message: "DW_OP_entry_value requires a caller frame.".to_string(),
+            });
+        };
+
+        let expression = caller
+            .program_counter()
+            .and_then(|pc| debug_info.call_site_value(pc, &inner));
+
+        if let Some((unit, expression)) = expression {
+            unit.expression_to_value(
+                debug_info,
+                memory,
+                expression,
+                *caller,
+                entry_value_depth + 1,
+            )
+        } else {
+            self.expression_to_value(debug_info, memory, inner, *caller, entry_value_depth + 1)
+        }
+    }
+
+    fn expression_to_value(
+        &self,
+        debug_info: &DebugInfo,
+        memory: &mut dyn MemoryInterface,
+        expression: gimli::Expression<GimliReader>,
+        frame_info: StackFrameInfo<'_>,
+        entry_value_depth: u8,
+    ) -> Result<gimli::Value, DebugError> {
+        let mut evaluation = expression.evaluation(self.unit.encoding());
+        let mut result = evaluation.evaluate()?;
+
+        loop {
+            result = match result {
+                EvaluationResult::Complete => {
+                    if let Some(value) = evaluation.value_result() {
+                        return Ok(value);
+                    }
+                    return pieces_to_value(&evaluation.result(), frame_info);
+                }
+                EvaluationResult::RequiresMemory { address, size, .. } => {
+                    read_memory(size, memory, address, &mut evaluation)?
+                }
+                EvaluationResult::RequiresFrameBase => {
+                    provide_frame_base(frame_info.frame_base, &mut evaluation)?
+                }
+                EvaluationResult::RequiresRegister {
+                    register,
+                    base_type,
+                } => provide_register(frame_info.registers, register, base_type, &mut evaluation)?,
+                EvaluationResult::RequiresRelocatedAddress(address_index) => {
+                    evaluation.resume_with_relocated_address(address_index)?
+                }
+                EvaluationResult::RequiresCallFrameCfa => {
+                    provide_cfa(frame_info.canonical_frame_address, &mut evaluation)?
+                }
+                EvaluationResult::RequiresEntryValue(inner) => {
+                    let value = self.resolve_entry_value(
+                        debug_info,
+                        memory,
+                        inner,
+                        frame_info,
+                        entry_value_depth,
+                    )?;
+                    evaluation.resume_with_entry_value(value)?
+                }
+                unimplemented_expression => {
+                    return Err(DebugError::WarnAndContinue {
+                        message: unsupported_evaluation_result(&unimplemented_expression),
                     });
                 }
             }
@@ -2467,10 +2617,13 @@ impl UnitInfo {
         // 5. Pointers to types with referenced memory addresses (e.g. variants, generics, arrays, etc.)
         (matches!(child_variable.name, VariableName::Named(ref var_name) if var_name.starts_with('*'))
                 && matches!(parent_variable.role, VariantRole::VariantPart(_)))
-            || matches!(&parent_variable.type_name, VariableType::Pointer(Some(pointer_name)) if pointer_name.starts_with('*'))
+            || parent_variable
+                .type_name
+                .ident()
+                .is_some_and(|name| name.starts_with('*'))
             || (matches!(&parent_variable.type_name, VariableType::Pointer(_))
                 && (matches!(child_variable.type_name, VariableType::Base(_))
-                    || matches!(child_variable.type_name, VariableType::Struct(ref type_name) if type_name.starts_with("&str"))
+                    || matches!(child_variable.type_name, VariableType::Struct(ref type_name) if type_name.ident_stem().starts_with("&str"))
                     || matches!(child_variable.name, VariableName::Named(ref var_name) if var_name.starts_with('*'))
                     || self.has_address_pointer(unit_ref).unwrap_or_else(|error| {
                         child_variable.set_value(VariableValue::Error(format!("Failed to determine if a struct has variant or generic type fields: {error}")));
@@ -2498,7 +2651,238 @@ impl UnitInfo {
         Ok(false)
     }
 
-    /// Returns the `DW_AT_name` attribute in the subtree of a given node or recurses into the node referenced by the `DW_AT_type` attribute.
+    fn extract_named_type(
+        &self,
+        debug_info: &DebugInfo,
+        node: &gimli::DebuggingInformationEntry<GimliReader>,
+        raw_name: String,
+        visiting: &mut HashSet<DebugInfoOffset>,
+    ) -> NamedType {
+        let namespace = self.namespace_path(debug_info, node);
+        let args = self.extract_generic_args(debug_info, node, visiting);
+        NamedType::from_dwarf(raw_name, namespace, args, self.language.as_ref())
+    }
+
+    fn parse_or_base(&self, name: String) -> VariableType {
+        self.language
+            .parse_type_name(&name)
+            .unwrap_or(VariableType::Base(name))
+    }
+
+    fn pointer_from_name(&self, name: Option<String>) -> VariableType {
+        VariableType::Pointer(name.map(|name| {
+            Box::new(
+                self.language
+                    .parse_type_name(&name)
+                    .unwrap_or(VariableType::Other(name)),
+            )
+        }))
+    }
+
+    fn extract_generic_args(
+        &self,
+        debug_info: &DebugInfo,
+        node: &gimli::DebuggingInformationEntry<GimliReader>,
+        visiting: &mut HashSet<DebugInfoOffset>,
+    ) -> Vec<GenericArg> {
+        let Ok(mut tree) = self.unit.entries_tree(Some(node.offset())) else {
+            return Vec::new();
+        };
+        let Ok(root) = tree.root() else {
+            return Vec::new();
+        };
+        let mut args = Vec::new();
+        self.collect_generic_args(debug_info, root, visiting, &mut args);
+        args
+    }
+
+    fn collect_generic_args(
+        &self,
+        debug_info: &DebugInfo,
+        node: gimli::EntriesTreeNode<'_, '_, GimliReader>,
+        visiting: &mut HashSet<DebugInfoOffset>,
+        args: &mut Vec<GenericArg>,
+    ) {
+        let mut children = node.children();
+        while let Ok(Some(child)) = children.next() {
+            match child.entry().tag() {
+                gimli::DW_TAG_template_type_parameter => {
+                    if let Some(arg) = self.template_type_arg(debug_info, child.entry(), visiting) {
+                        args.push(arg);
+                    }
+                }
+                gimli::DW_TAG_template_value_parameter => {
+                    args.push(GenericArg::Const(self.template_const_arg(child.entry())));
+                }
+                gimli::DW_TAG_GNU_template_parameter_pack => {
+                    self.collect_generic_args(debug_info, child, visiting, args);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    fn template_type_arg(
+        &self,
+        debug_info: &DebugInfo,
+        entry: &gimli::DebuggingInformationEntry<GimliReader>,
+        visiting: &mut HashSet<DebugInfoOffset>,
+    ) -> Option<GenericArg> {
+        let attr = entry.attr(gimli::DW_AT_type)?;
+        let (unit, ty_node) = debug_info
+            .resolve_die_reference_with_unit(attr, self)
+            .ok()?;
+        Some(GenericArg::Type(
+            unit.extract_variable_type(debug_info, &ty_node, visiting),
+        ))
+    }
+
+    fn template_const_arg(&self, entry: &gimli::DebuggingInformationEntry<GimliReader>) -> String {
+        let Some(attr) = entry.attr(gimli::DW_AT_const_value) else {
+            return "<const>".to_string();
+        };
+        let value = attr.value();
+        if let Some(const_value) = value.udata_value() {
+            const_value.to_string()
+        } else if let Some(const_value) = value.sdata_value() {
+            const_value.to_string()
+        } else {
+            "<const>".to_string()
+        }
+    }
+
+    fn extract_variable_type(
+        &self,
+        debug_info: &DebugInfo,
+        node: &gimli::DebuggingInformationEntry<GimliReader>,
+        visiting: &mut HashSet<DebugInfoOffset>,
+    ) -> VariableType {
+        let Some(offset) = node.offset().to_debug_info_offset(&self.unit.header) else {
+            return VariableType::Unknown;
+        };
+        if !visiting.insert(offset) {
+            return self.cycle_break_type(debug_info, node);
+        }
+        let ty = self.extract_variable_type_inner(debug_info, node, visiting);
+        visiting.remove(&offset);
+        ty
+    }
+
+    fn cycle_break_type(
+        &self,
+        debug_info: &DebugInfo,
+        node: &gimli::DebuggingInformationEntry<GimliReader>,
+    ) -> VariableType {
+        let name = self
+            .extract_type_name(debug_info, node)
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "<recursive>".to_string());
+        let named = NamedType::from_dwarf(
+            name,
+            self.namespace_path(debug_info, node),
+            Vec::new(),
+            self.language.as_ref(),
+        );
+        match node.tag() {
+            gimli::DW_TAG_structure_type => VariableType::Struct(named),
+            gimli::DW_TAG_enumeration_type => VariableType::Enum(named),
+            gimli::DW_TAG_base_type => VariableType::Base(named.ident),
+            gimli::DW_TAG_pointer_type => self.pointer_from_name(Some(named.ident)),
+            _ => VariableType::Other(named.ident),
+        }
+    }
+
+    fn extract_variable_type_inner(
+        &self,
+        debug_info: &DebugInfo,
+        node: &gimli::DebuggingInformationEntry<GimliReader>,
+        visiting: &mut HashSet<DebugInfoOffset>,
+    ) -> VariableType {
+        let name = self.extract_type_name(debug_info, node).ok().flatten();
+
+        match node.tag() {
+            gimli::DW_TAG_base_type => {
+                self.parse_or_base(name.unwrap_or_else(|| "<unnamed base type>".to_string()))
+            }
+            gimli::DW_TAG_pointer_type => self.pointer_from_name(name),
+            gimli::DW_TAG_structure_type => VariableType::Struct(self.extract_named_type(
+                debug_info,
+                node,
+                name.unwrap_or_else(|| "<unnamed struct>".to_string()),
+                visiting,
+            )),
+            gimli::DW_TAG_enumeration_type => VariableType::Enum(self.extract_named_type(
+                debug_info,
+                node,
+                name.unwrap_or_else(|| "<unnamed enum>".to_string()),
+                visiting,
+            )),
+            gimli::DW_TAG_union_type => {
+                VariableType::Base(name.unwrap_or_else(|| "<unnamed union>".to_string()))
+            }
+            gimli::DW_TAG_array_type => {
+                self.extract_array_variable_type(debug_info, node, visiting)
+            }
+            other @ (gimli::DW_TAG_typedef
+            | gimli::DW_TAG_const_type
+            | gimli::DW_TAG_volatile_type
+            | gimli::DW_TAG_restrict_type
+            | gimli::DW_TAG_atomic_type) => {
+                let inner = match node.attr(gimli::DW_AT_type) {
+                    Some(attr) => debug_info
+                        .resolve_die_reference_with_unit(attr, self)
+                        .map(|(unit, ty_node)| {
+                            unit.extract_variable_type(debug_info, &ty_node, visiting)
+                        })
+                        .unwrap_or(VariableType::Unknown),
+                    None => VariableType::Unknown,
+                };
+                let modifier = match other {
+                    gimli::DW_TAG_typedef => {
+                        Modifier::Typedef(name.unwrap_or_else(|| "<unnamed typedef>".to_string()))
+                    }
+                    gimli::DW_TAG_const_type => Modifier::Const,
+                    gimli::DW_TAG_volatile_type => Modifier::Volatile,
+                    gimli::DW_TAG_restrict_type => Modifier::Restrict,
+                    gimli::DW_TAG_atomic_type => Modifier::Atomic,
+                    _ => unreachable!(),
+                };
+                VariableType::Modified(modifier, Box::new(inner))
+            }
+            _ => VariableType::Other(name.unwrap_or_else(|| "unimplemented".to_string())),
+        }
+    }
+
+    fn extract_array_variable_type(
+        &self,
+        debug_info: &DebugInfo,
+        node: &gimli::DebuggingInformationEntry<GimliReader>,
+        visiting: &mut HashSet<DebugInfoOffset>,
+    ) -> VariableType {
+        let count = self
+            .extract_array_range(node.offset())
+            .ok()
+            .and_then(|ranges| ranges.into_iter().next())
+            .map(|range| range.count())
+            .unwrap_or(0);
+
+        let item_type_name = match node.attr(gimli::DW_AT_type) {
+            Some(attr) => debug_info
+                .resolve_die_reference_with_unit(attr, self)
+                .map(|(unit, item_node)| {
+                    unit.extract_variable_type(debug_info, &item_node, visiting)
+                })
+                .unwrap_or(VariableType::Unknown),
+            None => VariableType::Unknown,
+        };
+
+        VariableType::Array {
+            item_type_name: Box::new(item_type_name),
+            count,
+        }
+    }
+
     pub(crate) fn extract_type_name(
         &self,
         debug_info: &DebugInfo,
@@ -2672,6 +3056,28 @@ impl UnitInfo {
         self.parents.get(&offset).copied()
     }
 
+    /// Names of enclosing namespace, module, function, and type DIEs, crate first.
+    pub(crate) fn enclosing_path(
+        &self,
+        debug_info: &DebugInfo,
+        entry: &DebuggingInformationEntry<GimliReader>,
+    ) -> Vec<String> {
+        let mut segments = Vec::new();
+        let mut offset = self.parent_offset(entry.offset());
+        while let Some(parent) = offset {
+            if let Ok(die) = self.unit.entry(parent)
+                && is_enclosing_name_tag(die.tag())
+                && let Ok(Some(name)) = extract_name(debug_info, &self.unit, &die)
+            {
+                segments.push(name);
+            }
+
+            offset = self.parent_offset(parent);
+        }
+        segments.reverse();
+        segments
+    }
+
     /// Names of enclosing `DW_TAG_namespace` / `DW_TAG_module` DIEs, crate first.
     pub(crate) fn namespace_path(
         &self,
@@ -2693,6 +3099,20 @@ impl UnitInfo {
         segments.reverse();
         segments
     }
+}
+
+fn is_enclosing_name_tag(tag: gimli::DwTag) -> bool {
+    matches!(
+        tag,
+        gimli::DW_TAG_namespace
+            | gimli::DW_TAG_module
+            | gimli::DW_TAG_subprogram
+            | gimli::DW_TAG_inlined_subroutine
+            | gimli::DW_TAG_structure_type
+            | gimli::DW_TAG_class_type
+            | gimli::DW_TAG_union_type
+            | gimli::DW_TAG_enumeration_type
+    )
 }
 
 fn extract_name(
@@ -2717,6 +3137,156 @@ fn attribute_string(
         Ok(raw) => String::from_utf8_lossy(&raw).to_string(),
         Err(error) => format!("Invalid string attribute value: {error}"),
     }
+}
+
+struct CallSiteParameter {
+    location: Vec<u8>,
+    value: gimli::Expression<GimliReader>,
+}
+
+fn collect_call_site(
+    die: &gimli::DebuggingInformationEntry<GimliReader>,
+    dwarf: &gimli::Dwarf<GimliReader>,
+    unit: &gimli::Unit<GimliReader>,
+    active_call_site: &mut Option<(isize, u64)>,
+    call_sites: &mut HashMap<u64, Vec<CallSiteParameter>>,
+) {
+    let tag = die.tag();
+    if tag == gimli::DW_TAG_call_site || tag == gimli::DW_TAG_GNU_call_site {
+        *active_call_site = call_site_return_pc(die, dwarf, unit).map(|pc| (die.depth(), pc));
+        return;
+    }
+
+    let Some((site_depth, pc)) = *active_call_site else {
+        return;
+    };
+
+    if die.depth() <= site_depth {
+        *active_call_site = None;
+        return;
+    }
+
+    if die.depth() != site_depth + 1 {
+        return;
+    }
+
+    if tag != gimli::DW_TAG_call_site_parameter && tag != gimli::DW_TAG_GNU_call_site_parameter {
+        return;
+    }
+
+    let Some(param) = call_site_parameter(die) else {
+        return;
+    };
+    call_sites.entry(pc).or_default().push(param);
+}
+
+fn call_site_return_pc(
+    die: &gimli::DebuggingInformationEntry<GimliReader>,
+    dwarf: &gimli::Dwarf<GimliReader>,
+    unit: &gimli::Unit<GimliReader>,
+) -> Option<u64> {
+    die_address(die, dwarf, unit, gimli::DW_AT_call_return_pc)
+        .or_else(|| die_address(die, dwarf, unit, gimli::DW_AT_low_pc))
+        .or_else(|| die_address(die, dwarf, unit, gimli::DW_AT_call_pc))
+}
+
+fn die_address(
+    die: &gimli::DebuggingInformationEntry<GimliReader>,
+    dwarf: &gimli::Dwarf<GimliReader>,
+    unit: &gimli::Unit<GimliReader>,
+    attr: gimli::DwAt,
+) -> Option<u64> {
+    match die.attr_value(attr)? {
+        AttributeValue::Addr(address) => Some(address),
+        AttributeValue::DebugAddrIndex(index) => dwarf.address(unit, index).ok(),
+        AttributeValue::Udata(value) => Some(value),
+        _ => None,
+    }
+}
+
+fn call_site_parameter(
+    die: &gimli::DebuggingInformationEntry<GimliReader>,
+) -> Option<CallSiteParameter> {
+    let location = exprloc(die, gimli::DW_AT_location)?;
+    let value = exprloc(die, gimli::DW_AT_call_value)
+        .or_else(|| exprloc(die, gimli::DW_AT_GNU_call_site_value))?;
+    Some(CallSiteParameter {
+        location: expression_bytes(&location)?,
+        value,
+    })
+}
+
+fn exprloc(
+    die: &gimli::DebuggingInformationEntry<GimliReader>,
+    attr: gimli::DwAt,
+) -> Option<gimli::Expression<GimliReader>> {
+    match die.attr_value(attr)? {
+        AttributeValue::Exprloc(expression) => Some(expression),
+        _ => None,
+    }
+}
+
+fn expression_bytes(expression: &gimli::Expression<GimliReader>) -> Option<Vec<u8>> {
+    gimli::Reader::to_slice(&expression.0)
+        .ok()
+        .map(|bytes| bytes.to_vec())
+}
+
+fn pieces_to_value(
+    pieces: &[gimli::Piece<GimliReader, usize>],
+    frame_info: StackFrameInfo<'_>,
+) -> Result<gimli::Value, DebugError> {
+    let [piece] = pieces else {
+        return Err(DebugError::WarnAndContinue {
+            message: "DW_OP_entry_value produced a composite location.".to_string(),
+        });
+    };
+
+    match &piece.location {
+        Location::Value { value } => Ok(*value),
+        Location::Register { register } => {
+            let Some(raw_value) = frame_info
+                .registers
+                .get_register_by_dwarf_id(register.0)
+                .and_then(|register| register.value)
+            else {
+                return Err(DebugError::WarnAndContinue {
+                    message: format!(
+                        "DW_OP_entry_value has no value for register #:{}.",
+                        register.0
+                    ),
+                });
+            };
+            Ok(gimli::Value::Generic(raw_value.try_into()?))
+        }
+        Location::Address { address } => Ok(gimli::Value::Generic(*address)),
+        Location::Bytes { value } => {
+            let bytes = gimli::Reader::to_slice(value)?;
+            let mut buf = [0u8; 8];
+            let len = bytes.len().min(8);
+            buf[..len].copy_from_slice(&bytes[..len]);
+            Ok(gimli::Value::Generic(u64::from_le_bytes(buf)))
+        }
+        Location::Empty => Err(DebugError::WarnAndContinue {
+            message: "DW_OP_entry_value produced an empty location.".to_string(),
+        }),
+        Location::ImplicitPointer { .. } => Err(DebugError::WarnAndContinue {
+            message: "DW_OP_entry_value produced an implicit pointer.".to_string(),
+        }),
+    }
+}
+
+fn unsupported_evaluation_result<R: gimli::Reader>(result: &EvaluationResult<R>) -> String {
+    let kind = match result {
+        EvaluationResult::RequiresTls(_) => "DW_OP_form_tls_address",
+        EvaluationResult::RequiresAtLocation(_) => "DW_OP_call",
+        EvaluationResult::RequiresParameterRef(_) => "DW_OP_parameter_ref",
+        EvaluationResult::RequiresIndexedAddress { .. } => "an indexed address",
+        EvaluationResult::RequiresBaseType(_) => "a typed DWARF value",
+        EvaluationResult::RequiresEntryValue(_) => "DW_OP_entry_value",
+        _ => "this DWARF evaluation request",
+    };
+    format!("Unimplemented: {kind} is not currently supported.")
 }
 
 /// Gets necessary register information for the DWARF resolver.

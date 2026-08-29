@@ -63,20 +63,55 @@ pub trait ProgrammingLanguage {
     }
     fn format_pointer_type(&self, pointee: Option<&str>) -> String;
 
+    fn type_path_separator(&self) -> &str {
+        "::"
+    }
+
+    fn format_generic_type(&self, ident: &str, args: &[String]) -> String {
+        if args.is_empty() {
+            ident.to_string()
+        } else {
+            format!("{ident}<{}>", args.join(", "))
+        }
+    }
+
+    /// Parse a compiler type name when DWARF has no structured template parameters.
+    fn parse_type_name(&self, _name: &str) -> Option<VariableType> {
+        None
+    }
+
+    /// Language-specific head of a named type, for example `&mut T` or `fn(T)`.
+    fn format_named_head(&self, _ident: &str, _args: &[String]) -> Option<String> {
+        None
+    }
+
+    /// `true` if `ident` is a path segment that may follow a namespace.
+    fn is_path_ident(&self, ident: &str) -> bool {
+        ident
+            .chars()
+            .next()
+            .is_some_and(|c| c.is_ascii_alphabetic() || c == '_' || c == '{')
+    }
+
+    /// Compact a demangled or DIE function name for stack traces.
+    fn compact_debug_name(&self, name: &str) -> String {
+        name.to_string()
+    }
+
     fn format_function_name(
         &self,
         function_name: &str,
         _function_die: &FunctionDie<'_>,
         _debug_info: &super::DebugInfo,
     ) -> String {
-        function_name.to_string()
+        self.compact_debug_name(function_name)
     }
 
     fn process_tag_with_no_type(&self, _variable: &Variable, tag: gimli::DwTag) -> VariableValue {
         VariableValue::Error(format!("Error: Failed to decode {tag} type reference"))
     }
 
-    fn auto_resolve_children(&self, _name: &str) -> bool {
+    fn auto_resolve_children(&self, _ty: &VariableType) -> bool {
         false
     }
 
@@ -135,7 +170,11 @@ impl ProgrammingLanguage for UnknownLanguage {
     }
 
     fn format_enum_value(&self, type_name: &VariableType, value: &VariableName) -> VariableValue {
-        VariableValue::Valid(format!("{}::{}", type_name.display_name(self), value))
+        VariableValue::Valid(format!(
+            "{}::{}",
+            type_name.display_name_with_style(self, crate::TypeNameStyle::Compact),
+            value
+        ))
     }
 
     fn format_array_type(&self, item_type: &str, length: usize) -> String {

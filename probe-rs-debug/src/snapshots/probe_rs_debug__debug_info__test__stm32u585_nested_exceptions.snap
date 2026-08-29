@@ -1041,7 +1041,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\t_ef: <unknown> = < Error: Cannot resolve register: Register(0) >}"
+      value: "<unknown> { _ef = < Error: Cannot resolve register: Register(0) > }"
       children:
         - name:
             Named: _ef
@@ -1257,7 +1257,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tframe: <unknown> = < Error: Cannot resolve register: Register(0) >}"
+      value: "<unknown> { frame = < Error: Cannot resolve register: Register(0) > }"
       children:
         - name:
             Named: frame
@@ -1678,12 +1678,18 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tdst: *mut u32 = *mut u32,u32}"
+      value: "<unknown> { dst = *mut u32, u32 }"
       children:
         - name:
             Named: dst
           type_name:
-            Pointer: "*mut u32"
+            Pointer:
+              Struct:
+                ident: "*mut"
+                namespace: []
+                args:
+                  - Type:
+                      Base: u32
           value: "*mut u32"
           source_location:
             path: /home/dirbaio/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/mod.rs
@@ -2326,7 +2332,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tsrc: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >}"
+      value: "<unknown> { src = < <value optimized away by compiler, out of scope, or dropped> > }"
       children:
         - name:
             Named: src

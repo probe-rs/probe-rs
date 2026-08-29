@@ -350,13 +350,25 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tinfo: &core::panic::panic_info::PanicInfo = &core::panic::panic_info::PanicInfo @ 0x4086E50C}"
+      value: "<unknown> { info = &PanicInfo @ 0x4086E50C }"
       children:
         - name:
             Named: info
           type_name:
-            Pointer: "&core::panic::panic_info::PanicInfo"
-          value: "&core::panic::panic_info::PanicInfo @ 0x4086E50C"
+            Pointer:
+              Struct:
+                ident: "&"
+                namespace: []
+                args:
+                  - Type:
+                      Struct:
+                        ident: PanicInfo
+                        namespace:
+                          - core
+                          - panic
+                          - panic_info
+                        args: []
+          value: "&PanicInfo @ 0x4086E50C"
           source_location:
             path: "C:\\_Espressif\\esp-coredump\\src\\lib.rs"
             line: 24
@@ -366,51 +378,92 @@ expression: stack_frames
             - name:
                 Named: "*info"
               type_name:
-                Struct: PanicInfo
+                Struct:
+                  ident: PanicInfo
+                  namespace:
+                    - core
+                    - panic
+                    - panic_info
+                  args: []
               value: PanicInfo @ 0x4086E50C
               children:
                 - name:
                     Named: message
                   type_name:
-                    Pointer: "&core::fmt::Arguments"
-                  value: "&core::fmt::Arguments @ 0x4086E574"
+                    Pointer:
+                      Struct:
+                        ident: "&"
+                        namespace: []
+                        args:
+                          - Type:
+                              Struct:
+                                ident: Arguments
+                                namespace:
+                                  - core
+                                  - fmt
+                                args: []
+                  value: "&Arguments @ 0x4086E574"
                   children:
                     - name:
                         Named: "*message"
                       type_name:
-                        Struct: Arguments
+                        Struct:
+                          ident: Arguments
+                          namespace:
+                            - core
+                            - fmt
+                          args: []
                       value: Arguments @ 0x4086E574
                       children:
                         - name:
                             Named: pieces
                           type_name:
-                            Struct: "&[&str]"
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Struct:
+                                      ident: "[]"
+                                      namespace: []
+                                      args:
+                                        - Type:
+                                            Struct:
+                                              ident: "&"
+                                              namespace: []
+                                              args:
+                                                - Type:
+                                                    Base: str
                           value: "&[&str] @ 0x4086E574"
                           children:
                             - name:
-                                Named: length
+                                Named: data_ptr
                               type_name:
-                                Base: usize
-                              value: "1"
-                            - name:
-                                Named: "*data_ptr"
-                              type_name:
-                                Array:
-                                  item_type_name:
-                                    Struct: "&str"
-                                  count: 1
-                              value: "[&str; 1] = [\n\t< Failed to read referenced variable address from memory location 0x420068BC : The coredump does not include the memory for address 0x420068bc of size 0x4. >]"
+                                Pointer:
+                                  Struct:
+                                    ident: "&"
+                                    namespace: []
+                                    args:
+                                      - Type:
+                                          Base: str
+                              value: "&str @ 0x420068BC"
                               children:
                                 - name:
-                                    Indexed: 0
+                                    Named: "*data_ptr"
                                   type_name:
-                                    Struct: "&str"
-                                  value: "< Failed to read referenced variable address from memory location 0x420068BC : The coredump does not include the memory for address 0x420068bc of size 0x4. >"
+                                    Struct:
+                                      ident: "&"
+                                      namespace: []
+                                      args:
+                                        - Type:
+                                            Base: str
+                                  value: "&str @ 0x420068BC"
                                   children:
                                     - name:
                                         Named: data_ptr
                                       type_name:
-                                        Pointer: u8
+                                        Pointer:
+                                          Base: u8
                                       value: "*raw u8"
                                       children:
                                         - name:
@@ -423,58 +476,162 @@ expression: stack_frames
                                       type_name:
                                         Base: usize
                                       value: "< The coredump does not include the memory for address 0x420068c0 of size 0x4 >"
+                            - name:
+                                Named: length
+                              type_name:
+                                Base: usize
+                              value: "1"
                         - name:
                             Named: fmt
                           type_name:
-                            Struct: "Option<&[core::fmt::rt::Placeholder]>"
-                          value: "Option<&[core::fmt::rt::Placeholder]> @ 0x4086E584"
+                            Struct:
+                              ident: Option
+                              namespace:
+                                - core
+                                - option
+                              args:
+                                - Type:
+                                    Struct:
+                                      ident: "&"
+                                      namespace: []
+                                      args:
+                                        - Type:
+                                            Struct:
+                                              ident: "[]"
+                                              namespace: []
+                                              args:
+                                                - Type:
+                                                    Struct:
+                                                      ident: Placeholder
+                                                      namespace:
+                                                        - core
+                                                        - fmt
+                                                        - rt
+                                                      args: []
+                          value: "Option<&[Placeholder]> @ 0x4086E584"
                           children:
                             - name:
                                 Named: None
                               type_name:
-                                Struct: None
-                              value: None
+                                Struct:
+                                  ident: None
+                                  namespace:
+                                    - core
+                                    - option
+                                  args:
+                                    - Type:
+                                        Struct:
+                                          ident: "&"
+                                          namespace: []
+                                          args:
+                                            - Type:
+                                                Struct:
+                                                  ident: "[]"
+                                                  namespace: []
+                                                  args:
+                                                    - Type:
+                                                        Struct:
+                                                          ident: Placeholder
+                                                          namespace:
+                                                            - core
+                                                            - fmt
+                                                            - rt
+                                                          args: []
+                              value: "None<&[Placeholder]>"
                         - name:
                             Named: args
                           type_name:
-                            Struct: "&[core::fmt::rt::Argument]"
-                          value: "&[core::fmt::rt::Argument] @ 0x4086E57C"
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Struct:
+                                      ident: "[]"
+                                      namespace: []
+                                      args:
+                                        - Type:
+                                            Struct:
+                                              ident: Argument
+                                              namespace:
+                                                - core
+                                                - fmt
+                                                - rt
+                                              args: []
+                          value: "&[Argument] @ 0x4086E57C"
                           children:
+                            - name:
+                                Named: data_ptr
+                              type_name:
+                                Pointer:
+                                  Struct:
+                                    ident: Argument
+                                    namespace: []
+                                    args: []
+                              value: "*raw Argument @ 0x00000004"
+                              children:
+                                - name:
+                                    Named: "*data_ptr"
+                                  type_name:
+                                    Struct:
+                                      ident: Argument
+                                      namespace:
+                                        - core
+                                        - fmt
+                                        - rt
+                                      args: []
+                                  value: "Argument @ <dangling pointer: 0x00000004>"
                             - name:
                                 Named: length
                               type_name:
                                 Base: usize
                               value: "0"
-                            - name:
-                                Named: "*data_ptr"
-                              type_name:
-                                Array:
-                                  item_type_name:
-                                    Struct: Argument
-                                  count: 0
-                              value: "[Argument; 0] = []"
                 - name:
                     Named: location
                   type_name:
-                    Pointer: "&core::panic::location::Location"
-                  value: "&core::panic::location::Location @ 0x420068D4"
+                    Pointer:
+                      Struct:
+                        ident: "&"
+                        namespace: []
+                        args:
+                          - Type:
+                              Struct:
+                                ident: Location
+                                namespace:
+                                  - core
+                                  - panic
+                                  - location
+                                args: []
+                  value: "&Location @ 0x420068D4"
                   children:
                     - name:
                         Named: "*location"
                       type_name:
-                        Struct: Location
+                        Struct:
+                          ident: Location
+                          namespace:
+                            - core
+                            - panic
+                            - location
+                          args: []
                       value: Location @ 0x420068D4
                       children:
                         - name:
                             Named: file
                           type_name:
-                            Struct: "&str"
-                          value: "< Failed to read referenced variable address from memory location 0x420068D4 : The coredump does not include the memory for address 0x420068d4 of size 0x4. >"
+                            Struct:
+                              ident: "&"
+                              namespace: []
+                              args:
+                                - Type:
+                                    Base: str
+                          value: "&str @ 0x420068D4"
                           children:
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: u8
+                                Pointer:
+                                  Base: u8
                               value: "*raw u8"
                               children:
                                 - name:
@@ -832,7 +989,7 @@ expression: stack_frames
       type_name: Unknown
       value: "<unknown>"
   canonical_frame_address: ~
-- function_name: "{async_fn#0}"
+- function_name: async embassy_main_task
   source_location:
     path: "C:\\_Espressif\\_Demos\\coredump-c6\\src\\bin\\main.rs"
     line: 26
@@ -1154,12 +1311,16 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tconfig: Config = Config @ 0x4086E528,\n\ttimer0: SystemTimer = SystemTimer @ 0x4086E56E}"
+      value: "<unknown> { config = Config @ 0x4086E528, timer0 = SystemTimer @ 0x4086E56E }"
       children:
         - name:
             Named: config
           type_name:
-            Struct: Config
+            Struct:
+              ident: Config
+              namespace:
+                - esp_hal
+              args: []
           value: Config @ 0x4086E528
           source_location:
             path: "C:\\_Espressif\\_Demos\\coredump-c6\\src\\bin\\main.rs"
@@ -1170,12 +1331,22 @@ expression: stack_frames
             - name:
                 Named: cpu_clock
               type_name:
-                Enum: CpuClock
+                Enum:
+                  ident: CpuClock
+                  namespace:
+                    - esp_hal
+                    - clock
+                  args: []
               value: "CpuClock::_160MHz"
             - name:
                 Named: watchdog
               type_name:
-                Struct: WatchdogConfig
+                Struct:
+                  ident: WatchdogConfig
+                  namespace:
+                    - esp_hal
+                    - config
+                  args: []
               value: WatchdogConfig @ 0x4086E528
               children:
                 - name:
@@ -1186,40 +1357,76 @@ expression: stack_frames
                 - name:
                     Named: rwdt
                   type_name:
-                    Struct: WatchdogStatus
+                    Struct:
+                      ident: WatchdogStatus
+                      namespace:
+                        - esp_hal
+                        - config
+                      args: []
                   value: WatchdogStatus @ 0x4086E528
                   children:
                     - name:
                         Named: Disabled
                       type_name:
-                        Struct: Disabled
+                        Struct:
+                          ident: Disabled
+                          namespace:
+                            - esp_hal
+                            - config
+                          args: []
                       value: Disabled
                 - name:
                     Named: timg0
                   type_name:
-                    Struct: WatchdogStatus
+                    Struct:
+                      ident: WatchdogStatus
+                      namespace:
+                        - esp_hal
+                        - config
+                      args: []
                   value: WatchdogStatus @ 0x4086E538
                   children:
                     - name:
                         Named: Disabled
                       type_name:
-                        Struct: Disabled
+                        Struct:
+                          ident: Disabled
+                          namespace:
+                            - esp_hal
+                            - config
+                          args: []
                       value: Disabled
                 - name:
                     Named: timg1
                   type_name:
-                    Struct: WatchdogStatus
+                    Struct:
+                      ident: WatchdogStatus
+                      namespace:
+                        - esp_hal
+                        - config
+                      args: []
                   value: WatchdogStatus @ 0x4086E548
                   children:
                     - name:
                         Named: Disabled
                       type_name:
-                        Struct: Disabled
+                        Struct:
+                          ident: Disabled
+                          namespace:
+                            - esp_hal
+                            - config
+                          args: []
                       value: Disabled
         - name:
             Named: timer0
           type_name:
-            Struct: SystemTimer
+            Struct:
+              ident: SystemTimer
+              namespace:
+                - esp_hal
+                - timer
+                - systimer
+              args: []
           value: SystemTimer @ 0x4086E56E
           source_location:
             path: "C:\\_Espressif\\_Demos\\coredump-c6\\src\\bin\\main.rs"
@@ -1230,7 +1437,13 @@ expression: stack_frames
             - name:
                 Named: alarm0
               type_name:
-                Struct: Alarm
+                Struct:
+                  ident: Alarm
+                  namespace:
+                    - esp_hal
+                    - timer
+                    - systimer
+                  args: []
               value: Alarm @ 0x4086E56E
               children:
                 - name:
@@ -1241,12 +1454,24 @@ expression: stack_frames
                 - name:
                     Named: unit
                   type_name:
-                    Enum: Unit
+                    Enum:
+                      ident: Unit
+                      namespace:
+                        - esp_hal
+                        - timer
+                        - systimer
+                      args: []
                   value: "Unit::Unit0"
             - name:
                 Named: alarm1
               type_name:
-                Struct: Alarm
+                Struct:
+                  ident: Alarm
+                  namespace:
+                    - esp_hal
+                    - timer
+                    - systimer
+                  args: []
               value: Alarm @ 0x4086E570
               children:
                 - name:
@@ -1257,12 +1482,24 @@ expression: stack_frames
                 - name:
                     Named: unit
                   type_name:
-                    Enum: Unit
+                    Enum:
+                      ident: Unit
+                      namespace:
+                        - esp_hal
+                        - timer
+                        - systimer
+                      args: []
                   value: "Unit::Unit0"
             - name:
                 Named: alarm2
               type_name:
-                Struct: Alarm
+                Struct:
+                  ident: Alarm
+                  namespace:
+                    - esp_hal
+                    - timer
+                    - systimer
+                  args: []
               value: Alarm @ 0x4086E572
               children:
                 - name:
@@ -1273,10 +1510,16 @@ expression: stack_frames
                 - name:
                     Named: unit
                   type_name:
-                    Enum: Unit
+                    Enum:
+                      ident: Unit
+                      namespace:
+                        - esp_hal
+                        - timer
+                        - systimer
+                      args: []
                   value: "Unit::Unit0"
   canonical_frame_address: 1082582432
-- function_name: "TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}>::poll"
+- function_name: "TaskStorage<async embassy_main_task>::poll"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
     line: 214
@@ -1598,7 +1841,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tp: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >,\n\tthis: *const embassy_executor::raw::TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}> = *const embassy_executor::raw::TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}>,\n\tfuture: Pin<&mut coredump_c6::____embassy_main_task::{async_fn_env#0}> = Pin<&mut coredump_c6::____embassy_main_task::{async_fn_env#0}> @ <unknown value>,\n\twaker: Waker = Waker @ <unknown value>,\n\tcx: Context = Context @ <composite value>}"
+      value: "<unknown> { p = < <value optimized away by compiler, out of scope, or dropped> >, this = *const TaskStorage<{async_fn_env#0}>, future = Pin<&mut {async_fn_env#0}> @ <unknown value>, waker = Waker @ <unknown value>, cx = Context @ <composite value> }"
       children:
         - name:
             Named: p
@@ -1612,8 +1855,26 @@ expression: stack_frames
         - name:
             Named: this
           type_name:
-            Pointer: "*const embassy_executor::raw::TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}>"
-          value: "*const embassy_executor::raw::TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}>"
+            Pointer:
+              Struct:
+                ident: "*const"
+                namespace: []
+                args:
+                  - Type:
+                      Struct:
+                        ident: TaskStorage
+                        namespace:
+                          - embassy_executor
+                          - raw
+                        args:
+                          - Type:
+                              Struct:
+                                ident: "{async_fn_env#0}"
+                                namespace:
+                                  - coredump_c6
+                                  - ____embassy_main_task
+                                args: []
+          value: "*const TaskStorage<{async_fn_env#0}>"
           source_location:
             path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
             line: 209
@@ -1623,13 +1884,43 @@ expression: stack_frames
             - name:
                 Named: "*this"
               type_name:
-                Struct: "TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}>"
-              value: "TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}> @ Location Unknown not supported for referenced variables."
+                Struct:
+                  ident: TaskStorage
+                  namespace:
+                    - embassy_executor
+                    - raw
+                  args:
+                    - Type:
+                        Struct:
+                          ident: "{async_fn_env#0}"
+                          namespace:
+                            - coredump_c6
+                            - ____embassy_main_task
+                          args: []
+              value: "TaskStorage<{async_fn_env#0}> @ Location Unknown not supported for referenced variables."
         - name:
             Named: future
           type_name:
-            Struct: "Pin<&mut coredump_c6::____embassy_main_task::{async_fn_env#0}>"
-          value: "Pin<&mut coredump_c6::____embassy_main_task::{async_fn_env#0}> @ <unknown value>"
+            Struct:
+              ident: Pin
+              namespace:
+                - core
+                - pin
+              args:
+                - Type:
+                    Pointer:
+                      Struct:
+                        ident: "&mut"
+                        namespace: []
+                        args:
+                          - Type:
+                              Struct:
+                                ident: "{async_fn_env#0}"
+                                namespace:
+                                  - coredump_c6
+                                  - ____embassy_main_task
+                                args: []
+          value: "Pin<&mut {async_fn_env#0}> @ <unknown value>"
           source_location:
             path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
             line: 211
@@ -1638,7 +1929,13 @@ expression: stack_frames
         - name:
             Named: waker
           type_name:
-            Struct: Waker
+            Struct:
+              ident: Waker
+              namespace:
+                - core
+                - task
+                - wake
+              args: []
           value: Waker @ <unknown value>
           source_location:
             path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
@@ -1648,7 +1945,13 @@ expression: stack_frames
         - name:
             Named: cx
           type_name:
-            Struct: Context
+            Struct:
+              ident: Context
+              namespace:
+                - core
+                - task
+                - wake
+              args: []
           value: Context @ <composite value>
           source_location:
             path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
@@ -1659,41 +1962,103 @@ expression: stack_frames
             - name:
                 Named: waker
               type_name:
-                Pointer: "&core::task::wake::Waker"
-              value: "&core::task::wake::Waker"
+                Pointer:
+                  Struct:
+                    ident: "&"
+                    namespace: []
+                    args:
+                      - Type:
+                          Struct:
+                            ident: Waker
+                            namespace:
+                              - core
+                              - task
+                              - wake
+                            args: []
+              value: "&Waker"
               children:
                 - name:
                     Named: "*waker"
                   type_name:
-                    Struct: Waker
+                    Struct:
+                      ident: Waker
+                      namespace:
+                        - core
+                        - task
+                        - wake
+                      args: []
                   value: "Waker @ Failed to read referenced variable address from memory location <composite value> : The compiler optimized a part of this value away."
             - name:
                 Named: local_waker
               type_name:
-                Pointer: "&core::task::wake::LocalWaker"
-              value: "&core::task::wake::LocalWaker"
+                Pointer:
+                  Struct:
+                    ident: "&"
+                    namespace: []
+                    args:
+                      - Type:
+                          Struct:
+                            ident: LocalWaker
+                            namespace:
+                              - core
+                              - task
+                              - wake
+                            args: []
+              value: "&LocalWaker"
               children:
                 - name:
                     Named: "*local_waker"
                   type_name:
-                    Struct: LocalWaker
+                    Struct:
+                      ident: LocalWaker
+                      namespace:
+                        - core
+                        - task
+                        - wake
+                      args: []
                   value: "LocalWaker @ Failed to read referenced variable address from memory location <composite value> : The compiler optimized a part of this value away."
             - name:
                 Named: ext
               type_name:
-                Struct: "AssertUnwindSafe<core::task::wake::ExtData>"
-              value: "AssertUnwindSafe<core::task::wake::ExtData> @ <composite value>"
+                Struct:
+                  ident: AssertUnwindSafe
+                  namespace:
+                    - core
+                    - panic
+                    - unwind_safe
+                  args:
+                    - Type:
+                        Struct:
+                          ident: ExtData
+                          namespace:
+                            - core
+                            - task
+                            - wake
+                          args: []
+              value: AssertUnwindSafe<ExtData> @ <composite value>
               children:
                 - name:
                     Named: __0
                   type_name:
-                    Struct: ExtData
+                    Struct:
+                      ident: ExtData
+                      namespace:
+                        - core
+                        - task
+                        - wake
+                      args: []
                   value: ExtData @ <composite value>
                   children:
                     - name:
                         Named: None
                       type_name:
-                        Struct: None
+                        Struct:
+                          ident: None
+                          namespace:
+                            - core
+                            - task
+                            - wake
+                          args: []
                       value: None @ <composite value>
                       children:
                         - name:
@@ -1710,7 +2075,7 @@ expression: stack_frames
               type_name: Unknown
               value: "< <value optimized away by compiler, out of scope, or dropped> >"
   canonical_frame_address: 1082582432
-- function_name: "Option<unsafe fn(embassy_executor::raw::TaskRef)>::unwrap_unchecked"
+- function_name: "Option<unsafe fn(TaskRef)>::unwrap_unchecked"
   source_location:
     path: "C:\\Users\\bugad\\.rustup\\toolchains\\stable-x86_64-pc-windows-msvc\\lib\\rustlib\\src\\rust\\library\\core\\src\\option.rs"
     line: 1084
@@ -2032,7 +2397,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tself: <unknown> = < Error: Cannot resolve register: Register(11) >}"
+      value: "<unknown> { self = < Error: Cannot resolve register: Register(11) > }"
       children:
         - name:
             Named: self
@@ -2044,7 +2409,7 @@ expression: stack_frames
             column: ~
             address: ~
   canonical_frame_address: 1082582448
-- function_name: "{closure#0}"
+- function_name: "{impl#9}::poll::{closure#0}"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
     line: 430
@@ -2366,7 +2731,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tp: <unknown> = < Error: Cannot resolve register: Register(10) >,\n\ttask: <unknown> = < Error: Cannot resolve register: Register(10) >}"
+      value: "<unknown> { p = < Error: Cannot resolve register: Register(10) >, task = < Error: Cannot resolve register: Register(10) > }"
       children:
         - name:
             Named: p
@@ -2387,7 +2752,7 @@ expression: stack_frames
             column: ~
             address: ~
   canonical_frame_address: 1082582448
-- function_name: "RunQueue::dequeue_all<embassy_executor::raw::{impl#9}::poll::{closure_env#0}>"
+- function_name: "RunQueue::dequeue_all<{impl#9}::poll::{closure_env#0}>"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\run_queue_atomics.rs"
     line: 85
@@ -2709,7 +3074,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tself: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >,\n\tptr: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >,\n\tnext: Option<embassy_executor::raw::TaskRef> = Option<embassy_executor::raw::TaskRef> @ 0x00000000,\n\ttask: <unknown> = < Error: Cannot resolve register: Register(10) >}"
+      value: "<unknown> { self = < <value optimized away by compiler, out of scope, or dropped> >, ptr = < <value optimized away by compiler, out of scope, or dropped> >, next = Option<TaskRef> @ 0x00000000, task = < Error: Cannot resolve register: Register(10) > }"
       children:
         - name:
             Named: self
@@ -2732,8 +3097,20 @@ expression: stack_frames
         - name:
             Named: next
           type_name:
-            Struct: "Option<embassy_executor::raw::TaskRef>"
-          value: "Option<embassy_executor::raw::TaskRef> @ 0x00000000"
+            Struct:
+              ident: Option
+              namespace:
+                - core
+                - option
+              args:
+                - Type:
+                    Struct:
+                      ident: TaskRef
+                      namespace:
+                        - embassy_executor
+                        - raw
+                      args: []
+          value: Option<TaskRef> @ 0x00000000
           source_location:
             path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\run_queue_atomics.rs"
             line: 75
@@ -2743,8 +3120,20 @@ expression: stack_frames
             - name:
                 Named: None
               type_name:
-                Struct: None
-              value: None
+                Struct:
+                  ident: None
+                  namespace:
+                    - core
+                    - option
+                  args:
+                    - Type:
+                        Struct:
+                          ident: TaskRef
+                          namespace:
+                            - embassy_executor
+                            - raw
+                          args: []
+              value: None<TaskRef>
         - name:
             Named: task
           type_name: Unknown
@@ -3077,7 +3466,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tself: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >}"
+      value: "<unknown> { self = < <value optimized away by compiler, out of scope, or dropped> > }"
       children:
         - name:
             Named: self
@@ -3411,7 +3800,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tself: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >}"
+      value: "<unknown> { self = < <value optimized away by compiler, out of scope, or dropped> > }"
       children:
         - name:
             Named: self
@@ -3423,7 +3812,7 @@ expression: stack_frames
             column: ~
             address: ~
   canonical_frame_address: 1082582448
-- function_name: "Executor::run<coredump_c6::__risc_v_rt__main::{closure_env#0}>"
+- function_name: "Executor::run<__risc_v_rt__main::{closure_env#0}>"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-hal-embassy-0.7.0\\src\\executor\\thread.rs"
     line: 111
@@ -3745,13 +4134,25 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tself: &mut esp_hal_embassy::executor::thread::Executor = &mut esp_hal_embassy::executor::thread::Executor @ 0x4086E5C0,\n\tinit: {closure_env#0} = {closure_env#0} @ <unknown value>,\n\tcpu: usize = 0}"
+      value: "<unknown> { self = &mut Executor @ 0x4086E5C0, init = {closure_env#0} @ <unknown value>, cpu = 0 }"
       children:
         - name:
             Named: self
           type_name:
-            Pointer: "&mut esp_hal_embassy::executor::thread::Executor"
-          value: "&mut esp_hal_embassy::executor::thread::Executor @ 0x4086E5C0"
+            Pointer:
+              Struct:
+                ident: "&mut"
+                namespace: []
+                args:
+                  - Type:
+                      Struct:
+                        ident: Executor
+                        namespace:
+                          - esp_hal_embassy
+                          - executor
+                          - thread
+                        args: []
+          value: "&mut Executor @ 0x4086E5C0"
           source_location:
             path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-hal-embassy-0.7.0\\src\\executor\\thread.rs"
             line: 96
@@ -3761,65 +4162,137 @@ expression: stack_frames
             - name:
                 Named: "*self"
               type_name:
-                Struct: Executor
+                Struct:
+                  ident: Executor
+                  namespace:
+                    - esp_hal_embassy
+                    - executor
+                    - thread
+                  args: []
               value: Executor @ 0x4086E5C0
               children:
                 - name:
                     Named: inner
                   type_name:
-                    Struct: InnerExecutor
+                    Struct:
+                      ident: InnerExecutor
+                      namespace:
+                        - esp_hal_embassy
+                        - executor
+                      args: []
                   value: InnerExecutor @ 0x4086E5C0
                   children:
                     - name:
                         Named: inner
                       type_name:
-                        Struct: Executor
+                        Struct:
+                          ident: Executor
+                          namespace:
+                            - embassy_executor
+                            - raw
+                          args: []
                       value: Executor @ 0x4086E5C0
                       children:
                         - name:
                             Named: inner
                           type_name:
-                            Struct: SyncExecutor
+                            Struct:
+                              ident: SyncExecutor
+                              namespace:
+                                - embassy_executor
+                                - raw
+                              args: []
                           value: SyncExecutor @ 0x4086E5C0
                           children:
                             - name:
                                 Named: run_queue
                               type_name:
-                                Struct: RunQueue
+                                Struct:
+                                  ident: RunQueue
+                                  namespace:
+                                    - embassy_executor
+                                    - raw
+                                    - run_queue
+                                  args: []
                               value: RunQueue @ 0x4086E5C0
                               children:
                                 - name:
                                     Named: head
                                   type_name:
-                                    Struct: "AtomicPtr<embassy_executor::raw::TaskHeader>"
-                                  value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x4086E5C0"
+                                    Struct:
+                                      ident: AtomicPtr
+                                      namespace:
+                                        - core
+                                        - sync
+                                        - atomic
+                                      args:
+                                        - Type:
+                                            Struct:
+                                              ident: TaskHeader
+                                              namespace:
+                                                - embassy_executor
+                                                - raw
+                                              args: []
+                                  value: AtomicPtr<TaskHeader> @ 0x4086E5C0
                                   children:
                                     - name:
                                         Named: value
                                       type_name:
-                                        Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                      value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
+                                        Pointer:
+                                          Struct:
+                                            ident: "*mut"
+                                            namespace: []
+                                            args:
+                                              - Type:
+                                                  Struct:
+                                                    ident: TaskHeader
+                                                    namespace:
+                                                      - embassy_executor
+                                                      - raw
+                                                    args: []
+                                      value: "*mut TaskHeader @ 0x00000000"
                                       children:
                                         - name:
                                             Named: "*value"
                                           type_name:
-                                            Struct: TaskHeader
+                                            Struct:
+                                              ident: TaskHeader
+                                              namespace:
+                                                - embassy_executor
+                                                - raw
+                                              args: []
                                           value: TaskHeader @ <null pointer>
                             - name:
                                 Named: pender
                               type_name:
-                                Struct: Pender
+                                Struct:
+                                  ident: Pender
+                                  namespace:
+                                    - embassy_executor
+                                    - raw
+                                  args: []
                               value: Pender @ 0x4086E5C4
                               children:
                                 - name:
                                     Named: __0
                                   type_name:
-                                    Pointer: "*mut ()"
+                                    Pointer:
+                                      Struct:
+                                        ident: "*mut"
+                                        namespace: []
+                                        args:
+                                          - Type:
+                                              Base: ()
                                   value: "*mut () @ 0x00000010"
         - name:
             Named: init
           type_name:
-            Struct: "{closure_env#0}"
+            Struct:
+              ident: "{closure_env#0}"
+              namespace:
+                - coredump_c6
+                - __risc_v_rt__main
+              args: []
           value: "{closure_env#0} @ <unknown value>"
           source_location:
             path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-hal-embassy-0.7.0\\src\\executor\\thread.rs"
@@ -4158,12 +4631,18 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\texecutor: Executor = Executor @ 0x4086E5C0,\n\texecutor: &mut esp_hal_embassy::executor::thread::Executor = &mut esp_hal_embassy::executor::thread::Executor @ 0x4086E5C0}"
+      value: "<unknown> { executor = Executor @ 0x4086E5C0, executor = &mut Executor @ 0x4086E5C0 }"
       children:
         - name:
             Named: executor
           type_name:
-            Struct: Executor
+            Struct:
+              ident: Executor
+              namespace:
+                - esp_hal_embassy
+                - executor
+                - thread
+              args: []
           value: Executor @ 0x4086E5C0
           source_location:
             path: "C:\\_Espressif\\_Demos\\coredump-c6\\src\\bin\\main.rs"
@@ -4174,60 +4653,133 @@ expression: stack_frames
             - name:
                 Named: inner
               type_name:
-                Struct: InnerExecutor
+                Struct:
+                  ident: InnerExecutor
+                  namespace:
+                    - esp_hal_embassy
+                    - executor
+                  args: []
               value: InnerExecutor @ 0x4086E5C0
               children:
                 - name:
                     Named: inner
                   type_name:
-                    Struct: Executor
+                    Struct:
+                      ident: Executor
+                      namespace:
+                        - embassy_executor
+                        - raw
+                      args: []
                   value: Executor @ 0x4086E5C0
                   children:
                     - name:
                         Named: inner
                       type_name:
-                        Struct: SyncExecutor
+                        Struct:
+                          ident: SyncExecutor
+                          namespace:
+                            - embassy_executor
+                            - raw
+                          args: []
                       value: SyncExecutor @ 0x4086E5C0
                       children:
                         - name:
                             Named: run_queue
                           type_name:
-                            Struct: RunQueue
+                            Struct:
+                              ident: RunQueue
+                              namespace:
+                                - embassy_executor
+                                - raw
+                                - run_queue
+                              args: []
                           value: RunQueue @ 0x4086E5C0
                           children:
                             - name:
                                 Named: head
                               type_name:
-                                Struct: "AtomicPtr<embassy_executor::raw::TaskHeader>"
-                              value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x4086E5C0"
+                                Struct:
+                                  ident: AtomicPtr
+                                  namespace:
+                                    - core
+                                    - sync
+                                    - atomic
+                                  args:
+                                    - Type:
+                                        Struct:
+                                          ident: TaskHeader
+                                          namespace:
+                                            - embassy_executor
+                                            - raw
+                                          args: []
+                              value: AtomicPtr<TaskHeader> @ 0x4086E5C0
                               children:
                                 - name:
                                     Named: value
                                   type_name:
-                                    Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                  value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
+                                    Pointer:
+                                      Struct:
+                                        ident: "*mut"
+                                        namespace: []
+                                        args:
+                                          - Type:
+                                              Struct:
+                                                ident: TaskHeader
+                                                namespace:
+                                                  - embassy_executor
+                                                  - raw
+                                                args: []
+                                  value: "*mut TaskHeader @ 0x00000000"
                                   children:
                                     - name:
                                         Named: "*value"
                                       type_name:
-                                        Struct: TaskHeader
+                                        Struct:
+                                          ident: TaskHeader
+                                          namespace:
+                                            - embassy_executor
+                                            - raw
+                                          args: []
                                       value: TaskHeader @ <null pointer>
                         - name:
                             Named: pender
                           type_name:
-                            Struct: Pender
+                            Struct:
+                              ident: Pender
+                              namespace:
+                                - embassy_executor
+                                - raw
+                              args: []
                           value: Pender @ 0x4086E5C4
                           children:
                             - name:
                                 Named: __0
                               type_name:
-                                Pointer: "*mut ()"
+                                Pointer:
+                                  Struct:
+                                    ident: "*mut"
+                                    namespace: []
+                                    args:
+                                      - Type:
+                                          Base: ()
                               value: "*mut () @ 0x00000010"
         - name:
             Named: executor
           type_name:
-            Pointer: "&mut esp_hal_embassy::executor::thread::Executor"
-          value: "&mut esp_hal_embassy::executor::thread::Executor @ 0x4086E5C0"
+            Pointer:
+              Struct:
+                ident: "&mut"
+                namespace: []
+                args:
+                  - Type:
+                      Struct:
+                        ident: Executor
+                        namespace:
+                          - esp_hal_embassy
+                          - executor
+                          - thread
+                        args: []
+          value: "&mut Executor @ 0x4086E5C0"
           source_location:
             path: "C:\\_Espressif\\_Demos\\coredump-c6\\src\\bin\\main.rs"
             line: 10
@@ -4237,60 +4789,127 @@ expression: stack_frames
             - name:
                 Named: "*executor"
               type_name:
-                Struct: Executor
+                Struct:
+                  ident: Executor
+                  namespace:
+                    - esp_hal_embassy
+                    - executor
+                    - thread
+                  args: []
               value: Executor @ 0x4086E5C0
               children:
                 - name:
                     Named: inner
                   type_name:
-                    Struct: InnerExecutor
+                    Struct:
+                      ident: InnerExecutor
+                      namespace:
+                        - esp_hal_embassy
+                        - executor
+                      args: []
                   value: InnerExecutor @ 0x4086E5C0
                   children:
                     - name:
                         Named: inner
                       type_name:
-                        Struct: Executor
+                        Struct:
+                          ident: Executor
+                          namespace:
+                            - embassy_executor
+                            - raw
+                          args: []
                       value: Executor @ 0x4086E5C0
                       children:
                         - name:
                             Named: inner
                           type_name:
-                            Struct: SyncExecutor
+                            Struct:
+                              ident: SyncExecutor
+                              namespace:
+                                - embassy_executor
+                                - raw
+                              args: []
                           value: SyncExecutor @ 0x4086E5C0
                           children:
                             - name:
                                 Named: run_queue
                               type_name:
-                                Struct: RunQueue
+                                Struct:
+                                  ident: RunQueue
+                                  namespace:
+                                    - embassy_executor
+                                    - raw
+                                    - run_queue
+                                  args: []
                               value: RunQueue @ 0x4086E5C0
                               children:
                                 - name:
                                     Named: head
                                   type_name:
-                                    Struct: "AtomicPtr<embassy_executor::raw::TaskHeader>"
-                                  value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x4086E5C0"
+                                    Struct:
+                                      ident: AtomicPtr
+                                      namespace:
+                                        - core
+                                        - sync
+                                        - atomic
+                                      args:
+                                        - Type:
+                                            Struct:
+                                              ident: TaskHeader
+                                              namespace:
+                                                - embassy_executor
+                                                - raw
+                                              args: []
+                                  value: AtomicPtr<TaskHeader> @ 0x4086E5C0
                                   children:
                                     - name:
                                         Named: value
                                       type_name:
-                                        Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                      value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
+                                        Pointer:
+                                          Struct:
+                                            ident: "*mut"
+                                            namespace: []
+                                            args:
+                                              - Type:
+                                                  Struct:
+                                                    ident: TaskHeader
+                                                    namespace:
+                                                      - embassy_executor
+                                                      - raw
+                                                    args: []
+                                      value: "*mut TaskHeader @ 0x00000000"
                                       children:
                                         - name:
                                             Named: "*value"
                                           type_name:
-                                            Struct: TaskHeader
+                                            Struct:
+                                              ident: TaskHeader
+                                              namespace:
+                                                - embassy_executor
+                                                - raw
+                                              args: []
                                           value: TaskHeader @ <null pointer>
                             - name:
                                 Named: pender
                               type_name:
-                                Struct: Pender
+                                Struct:
+                                  ident: Pender
+                                  namespace:
+                                    - embassy_executor
+                                    - raw
+                                  args: []
                               value: Pender @ 0x4086E5C4
                               children:
                                 - name:
                                     Named: __0
                                   type_name:
-                                    Pointer: "*mut ()"
+                                    Pointer:
+                                      Struct:
+                                        ident: "*mut"
+                                        namespace: []
+                                        args:
+                                          - Type:
+                                              Base: ()
                                   value: "*mut () @ 0x00000010"
   canonical_frame_address: 1082582480
 - function_name: hal_main
@@ -4613,7 +5232,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\ta0: <unknown> = < Error: Cannot resolve register: Register(10) >,\n\ta1: <unknown> = < Error: Cannot resolve register: Register(11) >,\n\ta2: <unknown> = < Error: Cannot resolve register: Register(12) >,\n\tstack_chk_guard: *mut u32 = *mut u32}"
+      value: "<unknown> { a0 = < Error: Cannot resolve register: Register(10) >, a1 = < Error: Cannot resolve register: Register(11) >, a2 = < Error: Cannot resolve register: Register(12) >, stack_chk_guard = *mut u32 }"
       children:
         - name:
             Named: a0
@@ -4645,7 +5264,13 @@ expression: stack_frames
         - name:
             Named: stack_chk_guard
           type_name:
-            Pointer: "*mut u32"
+            Pointer:
+              Struct:
+                ident: "*mut"
+                namespace: []
+                args:
+                  - Type:
+                      Base: u32
           value: "*mut u32"
           source_location:
             path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-hal-1.0.0-beta.0\\src\\lib.rs"
@@ -4979,7 +5604,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\ta0: <unknown> = < Error: Cannot resolve register: Register(10) >,\n\ta1: <unknown> = < Error: Cannot resolve register: Register(11) >,\n\ta2: <unknown> = < Error: Cannot resolve register: Register(12) >}"
+      value: "<unknown> { a0 = < Error: Cannot resolve register: Register(10) >, a1 = < Error: Cannot resolve register: Register(11) >, a2 = < Error: Cannot resolve register: Register(12) > }"
       children:
         - name:
             Named: a0

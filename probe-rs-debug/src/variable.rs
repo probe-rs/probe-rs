@@ -248,6 +248,151 @@ impl Bitfield {
     }
 }
 
+/// How a [`VariableType`] name is formatted for the debugger UI.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum TypeNameStyle {
+    /// Crate and module path, plus generic arguments in the same style.
+    Qualified,
+    /// Ident plus generic arguments in the same style, with no path.
+    Compact,
+}
+
+/// A type or const generic argument of a named type.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub enum GenericArg {
+    /// A type argument.
+    Type(VariableType),
+    /// A const generic value.
+    Const(String),
+}
+
+impl GenericArg {
+    fn display(&self, language: &dyn ProgrammingLanguage, style: TypeNameStyle) -> String {
+        match self {
+            GenericArg::Type(ty) => ty.display_name_with_style(language, style),
+            GenericArg::Const(value) => value.clone(),
+        }
+    }
+}
+
+/// Ident, namespace, and generic arguments of a struct or enum.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
+pub struct NamedType {
+    /// The type ident, without a crate or module path.
+    pub ident: String,
+    /// Enclosing namespace segments, crate first.
+    pub namespace: Vec<String>,
+    /// Generic arguments from DWARF template parameter DIEs.
+    pub args: Vec<GenericArg>,
+}
+
+impl NamedType {
+    /// Last path segment of `ident`, without a generic argument list.
+    pub fn ident_stem(&self) -> &str {
+        self.ident
+            .split_once('<')
+            .map_or(self.ident.as_str(), |(head, _)| head)
+    }
+
+    /// Build a named type from a DWARF `DW_AT_name` and namespace DIEs.
+    pub(crate) fn from_dwarf(
+        raw_name: String,
+        namespace: Vec<String>,
+        args: Vec<GenericArg>,
+        language: &dyn ProgrammingLanguage,
+    ) -> Self {
+        let remainder = if namespace.is_empty() {
+            raw_name
+        } else {
+            let prefix = namespace.join(language.type_path_separator());
+            raw_name
+                .strip_prefix(&prefix)
+                .and_then(|rest| rest.strip_prefix(language.type_path_separator()))
+                .map(str::to_string)
+                .unwrap_or(raw_name)
+        };
+
+        if !args.is_empty() {
+            let ident = remainder
+                .split_once('<')
+                .map(|(head, _)| head.to_string())
+                .unwrap_or(remainder);
+            return Self {
+                ident,
+                namespace,
+                args,
+            };
+        }
+
+        if let Some(VariableType::Struct(parsed) | VariableType::Enum(parsed)) =
+            language.parse_type_name(&remainder)
+        {
+            return Self {
+                ident: parsed.ident,
+                namespace: if namespace.is_empty() {
+                    parsed.namespace
+                } else {
+                    namespace
+                },
+                args: parsed.args,
+            };
+        }
+
+        Self {
+            ident: remainder,
+            namespace,
+            args,
+        }
+    }
+
+    pub(crate) fn display(
+        &self,
+        language: &dyn ProgrammingLanguage,
+        style: TypeNameStyle,
+    ) -> String {
+        let args: Vec<String> = self
+            .args
+            .iter()
+            .map(|arg| arg.display(language, style))
+            .collect();
+        let head = language
+            .format_named_head(&self.ident, &args)
+            .unwrap_or_else(|| language.format_generic_type(&self.ident, &args));
+        match style {
+            TypeNameStyle::Compact => head,
+            TypeNameStyle::Qualified
+                if self.namespace.is_empty() || !language.is_path_ident(&self.ident) =>
+            {
+                head
+            }
+            TypeNameStyle::Qualified => {
+                let separator = language.type_path_separator();
+                format!("{}{separator}{head}", self.namespace.join(separator))
+            }
+        }
+    }
+}
+
+impl From<&str> for NamedType {
+    fn from(ident: &str) -> Self {
+        Self {
+            ident: ident.to_string(),
+            namespace: Vec::new(),
+            args: Vec::new(),
+        }
+    }
+}
+
+impl From<String> for NamedType {
+    fn from(ident: String) -> Self {
+        Self {
+            ident,
+            namespace: Vec::new(),
+            args: Vec::new(),
+        }
+    }
+}
+
 /// A modifier to a variable type. Currently only used to format the type name.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Modifier {
@@ -276,15 +421,15 @@ pub enum VariableType {
     /// The variable is a range of bits in a wider (integer) type.
     Bitfield(Bitfield, Box<VariableType>),
     /// A Rust struct.
-    Struct(String),
+    Struct(NamedType),
     /// A Rust enum.
-    Enum(String),
+    Enum(NamedType),
     /// Namespace refers to the path that qualifies a variable. e.g. "std::string" is the namespace
     /// for the struct "String"
     Namespace,
     /// A Pointer is a variable that contains a reference to another variable, and the type of the
     /// referenced variable may not be known until the reference has been resolved.
-    Pointer(Option<String>),
+    Pointer(Option<Box<VariableType>>),
     /// A Rust array.
     Array {
         /// The type name of the variable.
@@ -323,9 +468,25 @@ impl VariableType {
 
     /// Is this variable of a Rust PhantomData marker type?
     pub fn is_phantom_data(&self) -> bool {
-        match self {
-            VariableType::Struct(name) => name.starts_with("PhantomData"),
-            _ => false,
+        self.ident()
+            .is_some_and(|ident| ident.starts_with("PhantomData"))
+    }
+
+    /// The ident of a named type, without a crate or module path.
+    pub fn ident(&self) -> Option<&str> {
+        match self.inner() {
+            VariableType::Base(name) | VariableType::Other(name) => Some(name.as_str()),
+            VariableType::Struct(name) | VariableType::Enum(name) => Some(name.ident_stem()),
+            VariableType::Pointer(Some(ty)) => ty.ident(),
+            _ => None,
+        }
+    }
+
+    /// Named type data for a struct or enum.
+    pub fn named(&self) -> Option<&NamedType> {
+        match self.inner() {
+            VariableType::Struct(name) | VariableType::Enum(name) => Some(name),
+            _ => None,
         }
     }
 
@@ -351,10 +512,18 @@ impl VariableType {
     }
 
     pub(crate) fn display_name(&self, language: &dyn ProgrammingLanguage) -> String {
+        self.display_name_with_style(language, TypeNameStyle::Qualified)
+    }
+
+    pub(crate) fn display_name_with_style(
+        &self,
+        language: &dyn ProgrammingLanguage,
+        style: TypeNameStyle,
+    ) -> String {
         match self {
             VariableType::Modified(Modifier::Typedef(name), _) => name.clone(),
             VariableType::Modified(modifier, ty) => {
-                language.modified_type_name(modifier, &ty.display_name(language))
+                language.modified_type_name(modifier, &ty.display_name_with_style(language, style))
             }
 
             VariableType::Array {
@@ -363,45 +532,53 @@ impl VariableType {
             } => language.format_array_type(
                 // In case the compiler points at a modified item type (e.g. const), skip the
                 // modifier.
-                &item_type_name.skip_modifiers().display_name(language),
+                &item_type_name
+                    .skip_modifiers()
+                    .display_name_with_style(language, style),
                 *count,
             ),
 
-            VariableType::Bitfield(bitfield, name) => {
-                language.format_bitfield_type(&name.display_name(language), *bitfield)
-            }
+            VariableType::Bitfield(bitfield, name) => language
+                .format_bitfield_type(&name.display_name_with_style(language, style), *bitfield),
 
-            _ => self.type_name(language),
+            VariableType::Struct(name) | VariableType::Enum(name) => name.display(language, style),
+
+            _ => self.type_name_with_style(language, style),
         }
     }
 
-    /// Returns the type name after resolving aliases.
-    pub(crate) fn type_name(&self, language: &dyn ProgrammingLanguage) -> String {
-        let type_name = match self {
-            VariableType::Base(name)
-            | VariableType::Struct(name)
-            | VariableType::Enum(name)
-            | VariableType::Other(name) => Some(name.as_str()),
-
-            VariableType::Namespace => Some("namespace"),
-            VariableType::Unknown => None,
-
-            VariableType::Pointer(pointee) => {
-                // TODO: we should also carry the constness
-                return language.format_pointer_type(pointee.as_deref());
-            }
-
+    fn type_name_with_style(
+        &self,
+        language: &dyn ProgrammingLanguage,
+        style: TypeNameStyle,
+    ) -> String {
+        match self {
+            VariableType::Base(name) | VariableType::Other(name) => name.clone(),
+            VariableType::Struct(name) | VariableType::Enum(name) => name.display(language, style),
+            VariableType::Namespace => "namespace".to_string(),
+            VariableType::Unknown => "<unknown>".to_string(),
+            VariableType::Pointer(pointee) => match pointee {
+                Some(ty) => {
+                    let inner = ty.display_name_with_style(language, style);
+                    if inner.starts_with(['*', '&']) {
+                        inner
+                    } else {
+                        language.format_pointer_type(Some(&inner))
+                    }
+                }
+                None => language.format_pointer_type(None),
+            },
             VariableType::Array {
                 item_type_name,
                 count,
-            } => return language.format_array_type(&item_type_name.type_name(language), *count),
-
+            } => language.format_array_type(
+                &item_type_name.type_name_with_style(language, style),
+                *count,
+            ),
             VariableType::Bitfield(_, ty) | VariableType::Modified(_, ty) => {
-                return ty.type_name(language);
+                ty.type_name_with_style(language, style)
             }
-        };
-
-        type_name.unwrap_or("<unknown>").to_string()
+        }
     }
 }
 
@@ -856,6 +1033,14 @@ impl Variable {
             .display_name(language::from_dwarf(self.language).as_ref())
     }
 
+    /// Returns a short type name for use inside a variable value.
+    pub fn compact_type_name(&self) -> String {
+        self.type_name.display_name_with_style(
+            language::from_dwarf(self.language).as_ref(),
+            TypeNameStyle::Compact,
+        )
+    }
+
     /// Get a unique key for this variable.
     pub fn variable_key(&self) -> ObjectRef {
         self.variable_key
@@ -938,17 +1123,17 @@ impl Variable {
         // We need to construct a 'human readable' value using `fmt::Display` to represent the
         // values of complex types and pointers.
         if variable_cache.has_children(self) {
-            self.formatted_variable_value(variable_cache, 0, false)
+            self.formatted_variable_value(variable_cache, false)
                 .unwrap_or_default()
         } else if matches!(self.type_name, VariableType::Array { count: 0, .. }) {
             // An empty array has no bytes, so it needs no location.
-            self.formatted_variable_value(variable_cache, 0, false)
+            self.formatted_variable_value(variable_cache, false)
                 .unwrap_or_default()
         } else if self.type_name == VariableType::Unknown || !self.memory_location.holds_value() {
             if self.variable_node_type.is_deferred() {
                 // When we will do a lazy-load of variable children, and they have not yet been
                 // requested by the user, just display the type_name as the value
-                self.type_name()
+                self.compact_type_name()
             } else if !self.memory_location.holds_value() {
                 // The location explains why the variable has no value.
                 self.memory_location.to_string()
@@ -959,7 +1144,8 @@ impl Variable {
                 // a logic problem in the stack unwind
                 "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location".to_string()
             }
-        } else if matches!(self.type_name, VariableType::Struct(ref name) if name == "None") {
+        } else if matches!(self.type_name, VariableType::Struct(ref name) if name.ident_stem() == "None")
+        {
             "None".to_string()
         } else {
             format!(
@@ -997,9 +1183,9 @@ impl Variable {
             let value = if let Some(location) =
                 self.pointer_target(memory).map(VariableLocation::Address)
             {
-                format!("{} @ {location}", self.type_name())
+                format!("{} @ {location}", self.compact_type_name())
             } else {
-                self.type_name().to_string()
+                self.compact_type_name()
             };
             self.value = VariableValue::Valid(value);
             return;
@@ -1008,8 +1194,11 @@ impl Variable {
         if self.variable_node_type.is_deferred() {
             // And we have not previously assigned the value, then assign the type and address as
             // the value.
-            self.value =
-                VariableValue::Valid(format!("{} @ {}", self.type_name(), self.memory_location));
+            self.value = VariableValue::Valid(format!(
+                "{} @ {}",
+                self.compact_type_name(),
+                self.memory_location
+            ));
             return;
         }
 
@@ -1101,19 +1290,17 @@ impl Variable {
     fn formatted_variable_value(
         &self,
         variable_cache: &VariableCache,
-        indentation: usize,
         show_name: bool,
     ) -> Option<String> {
-        let type_name = self.type_name();
+        let type_name = self.compact_type_name();
 
         if !self.value.is_empty() {
             // This is the end of the recursion where we already have a scalar
             // value for a variable and we can just move it up.
-            let line_start = line_indent_string(indentation);
             return Some(if show_name {
-                format!("{line_start}{}: {} = {}", self.name, type_name, self.value)
+                format!("{} = {}", self.name, self.value)
             } else {
-                format!("{line_start}{}", self.value)
+                format!("{}", self.value)
             });
         } else if matches!(
             self.name,
@@ -1130,14 +1317,10 @@ impl Variable {
 
         // Make sure we can safely unwrap() children.
         Some(match self.type_name.inner() {
-            VariableType::Pointer(_) => {
-                format_pointer_value(variable_cache, indentation, first_child)
-            }
-            VariableType::Array { .. } => {
-                format_array_value(variable_cache, indentation, children, &type_name)
-            }
-            VariableType::Struct(name) if name == "Some" || name == "Ok" || name == "Err" => {
-                format_struct_value(variable_cache, indentation, children, &type_name)
+            VariableType::Pointer(_) => format_pointer_value(variable_cache, first_child),
+            VariableType::Array { .. } => format_array_value(variable_cache, children, &type_name),
+            VariableType::Struct(name) if matches!(name.ident_stem(), "Some" | "Ok" | "Err") => {
+                format_struct_value(variable_cache, children, &type_name)
             }
             _ if first_child.is_none() => {
                 // This is a struct with no children, so just print the type name.
@@ -1151,16 +1334,9 @@ impl Variable {
                     | VariableName::RegistersRoot
             ) =>
             {
-                format_root_value(variable_cache, indentation, children, &type_name)
+                format_root_value(variable_cache, children, &type_name)
             }
-            _ => format_default_value(
-                variable_cache,
-                indentation,
-                &self.name,
-                children,
-                &type_name,
-                show_name,
-            ),
+            _ => format_default_value(variable_cache, &self.name, children, &type_name, show_name),
         })
     }
 
@@ -1188,22 +1364,14 @@ impl Variable {
 /// Format a pointer value
 ///
 /// Formats the pointed to value and potential subsequent children as well.
-fn format_pointer_value(
-    variable_cache: &VariableCache,
-    indentation: usize,
-    first_child: Option<&Variable>,
-) -> String {
-    let line_start = line_indent_string(indentation);
-
-    let value = if let Some(first_child) = first_child {
+fn format_pointer_value(variable_cache: &VariableCache, first_child: Option<&Variable>) -> String {
+    if let Some(first_child) = first_child {
         first_child
-            .formatted_variable_value(variable_cache, indentation + 1, true)
+            .formatted_variable_value(variable_cache, true)
             .expect("a child. This is a bug. Please report it.")
     } else {
         "Unable to resolve referenced variable value".to_string()
-    };
-
-    format!("{line_start}{value}")
+    }
 }
 
 /// Format any array like value.
@@ -1211,12 +1379,9 @@ fn format_pointer_value(
 /// Recursively formats all child values.
 fn format_array_value<'a>(
     variable_cache: &VariableCache,
-    indentation: usize,
     children: &mut (impl Iterator<Item = &'a Variable> + Clone),
     type_name: &str,
 ) -> String {
-    let line_start = line_indent_string(indentation);
-
     // Limit arrays to 10 elements
     const ARRAY_MAX_LENGTH: usize = 10;
 
@@ -1234,16 +1399,16 @@ fn format_array_value<'a>(
     let children_values = children
         .by_ref()
         .take(take)
-        .filter_map(|child| child.formatted_variable_value(variable_cache, indentation + 1, false))
-        .join(",");
+        .filter_map(|child| child.formatted_variable_value(variable_cache, false))
+        .join(", ");
 
     let remainder = if count > ARRAY_MAX_LENGTH + 1 {
-        format!(",\n{line_start}\t... and {} more", count - take)
+        format!(", ... and {} more", count - take)
     } else {
         String::new()
     };
 
-    format!("{line_start}{type_name} = [{children_values}{remainder}{line_start}]")
+    format!("{type_name} = [{children_values}{remainder}]")
 }
 
 /// Format any struct like value .
@@ -1251,18 +1416,15 @@ fn format_array_value<'a>(
 /// Recursively formats all child values.
 fn format_struct_value<'a>(
     variable_cache: &VariableCache,
-    indentation: usize,
     children: &mut (impl Iterator<Item = &'a Variable> + Clone),
     type_name: &str,
 ) -> String {
-    let line_start = line_indent_string(indentation);
-
     // FIXME: this is not hit by any of the unwind tests, which is weird because
     // some of them contain `Some` structs.
     // Handle special structure types like the variant values of `Option<>` and `Result<>`
-    let children_values = format_children_values(variable_cache, indentation, children, false);
+    let children_values = format_children_values(variable_cache, children, false);
 
-    format!("{line_start}{type_name} = ({children_values})")
+    format!("{type_name} = ({children_values})")
 }
 
 /// Format any root value.
@@ -1270,14 +1432,13 @@ fn format_struct_value<'a>(
 /// Recursively formats all child values.
 fn format_root_value<'a>(
     variable_cache: &VariableCache,
-    indentation: usize,
     children: &mut (impl Iterator<Item = &'a Variable> + Clone),
     type_name: &str,
 ) -> String {
-    let line_start = line_indent_string(indentation);
-
-    let children_values = format_children_values(variable_cache, indentation, children, true);
-    format!("{line_start}{type_name} {{{children_values}{line_start}}}")
+    format!(
+        "{type_name} {}",
+        brace_list(&format_children_values(variable_cache, children, true))
+    )
 }
 
 /// Format any value that has no type that requires special handling.
@@ -1285,14 +1446,11 @@ fn format_root_value<'a>(
 /// Recursively formats all child values.
 fn format_default_value<'a>(
     variable_cache: &VariableCache,
-    indentation: usize,
     name: &VariableName,
     children: &mut (impl Iterator<Item = &'a Variable> + Clone),
     type_name: &String,
     show_name: bool,
 ) -> String {
-    let line_start = line_indent_string(indentation);
-
     // Find the first child of the structure if it exists.
     let child = children.clone().find(|v| v.is_named());
 
@@ -1302,47 +1460,45 @@ fn format_default_value<'a>(
         return "()".to_string();
     };
 
-    let child_type_name = child.type_name();
+    let child_type_name = child.compact_type_name();
     if child.is_indexed() {
         // Treat this structure as a tuple
-        let children_values = format_children_values(variable_cache, indentation, children, false);
+        let children_values = format_children_values(variable_cache, children, false);
         let name = if show_name {
             format!("{name}: {type_name}({child_type_name}) = ")
         } else {
             String::new()
         };
-        format!("{line_start}{name}{type_name}({children_values}{line_start})")
+        format!("{name}{type_name}({children_values})")
     } else {
         // Treat this structure as a `struct`
-        let children_values = format_children_values(variable_cache, indentation, children, true);
+        let children_values = format_children_values(variable_cache, children, true);
         let name = if show_name {
             format!("{name}: {type_name} = ")
         } else {
             String::new()
         };
-        format!("{line_start}{name}{type_name} {{{children_values}{line_start}}}")
+        format!("{name}{type_name} {}", brace_list(&children_values))
     }
 }
 
 /// Concatenate all children values with a comma.
 fn format_children_values<'a>(
     variable_cache: &VariableCache,
-    indentation: usize,
     children: &mut (impl Iterator<Item = &'a Variable> + Clone),
     show_name: bool,
 ) -> String {
     children
-        .filter_map(|child| {
-            child.formatted_variable_value(variable_cache, indentation + 1, show_name)
-        })
-        .join(",")
+        .filter_map(|child| child.formatted_variable_value(variable_cache, show_name))
+        .join(", ")
 }
 
-/// Generate a string that indents the line exactly the right amount.
-/// Includes a newline at the start if the indentation is bigger than 0.
-fn line_indent_string(indentation: usize) -> String {
-    let line_feed = if indentation == 0 { "" } else { "\n" };
-    format!("{line_feed}{:\t<indentation$}", "")
+fn brace_list(inner: &str) -> String {
+    if inner.is_empty() {
+        "{}".to_string()
+    } else {
+        format!("{{ {inner} }}")
+    }
 }
 
 #[cfg(test)]
@@ -1537,6 +1693,58 @@ mod test {
         assert!(
             error.to_string().contains("register"),
             "the error must name the register as the reason: {error}"
+        );
+    }
+
+    fn rust_lang() -> crate::language::rust::Rust {
+        crate::language::rust::Rust
+    }
+
+    #[test]
+    fn a_named_type_strips_the_dwarf_namespace_prefix() {
+        let language = rust_lang();
+        let string = NamedType::from_dwarf(
+            "alloc::string::String".to_string(),
+            vec!["alloc".to_string(), "string".to_string()],
+            Vec::new(),
+            &language,
+        );
+        let option = NamedType::from_dwarf(
+            "core::option::Option<alloc::string::String>".to_string(),
+            vec!["core".to_string(), "option".to_string()],
+            vec![GenericArg::Type(VariableType::Struct(string))],
+            &language,
+        );
+
+        assert_eq!(
+            option.display(&language, TypeNameStyle::Compact),
+            "Option<String>"
+        );
+        assert_eq!(
+            option.display(&language, TypeNameStyle::Qualified),
+            "core::option::Option<alloc::string::String>"
+        );
+    }
+
+    #[test]
+    fn a_named_type_parses_generic_arguments_when_dwarf_has_no_template_parameters() {
+        let language = rust_lang();
+        let option = NamedType::from_dwarf(
+            "Option<esp_hal::clocks::XtalClkConfig>".to_string(),
+            vec!["core".to_string(), "option".to_string()],
+            Vec::new(),
+            &language,
+        );
+
+        assert_eq!(option.ident, "Option");
+        assert_eq!(option.ident_stem(), "Option");
+        assert_eq!(
+            option.display(&language, TypeNameStyle::Compact),
+            "Option<XtalClkConfig>"
+        );
+        assert_eq!(
+            option.display(&language, TypeNameStyle::Qualified),
+            "core::option::Option<esp_hal::clocks::XtalClkConfig>"
         );
     }
 }

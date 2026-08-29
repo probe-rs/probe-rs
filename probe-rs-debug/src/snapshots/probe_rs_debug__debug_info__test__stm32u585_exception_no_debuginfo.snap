@@ -618,7 +618,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tsrc: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >}"
+      value: "<unknown> { src = < <value optimized away by compiler, out of scope, or dropped> > }"
       children:
         - name:
             Named: src

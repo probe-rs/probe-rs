@@ -201,24 +201,54 @@ pub async fn variables(
                 registers: regs,
                 frame_base: top_frame.frame_base,
                 canonical_frame_address: top_frame.canonical_frame_address,
+                caller: None,
             });
         }
     }
 
+    let mut caller_registers: Option<DebugRegisters> = None;
+    let mut caller_frame_base = None;
+    let mut caller_cfa = None;
+    let mut found_frame = None;
     if parent_variable.is_none() {
-        for frame in core_state.stack_frames.iter_mut() {
-            if let Some(search_cache) = frame.local_variables.as_mut()
-                && let Some(search_variable) = search_cache.get_variable_by_key(variable_ref)
-            {
-                parent_variable = Some(search_variable);
-                variable_cache = Some(search_cache);
-                frame_info = Some(StackFrameInfo {
-                    registers: &frame.registers,
-                    frame_base: frame.frame_base,
-                    canonical_frame_address: frame.canonical_frame_address,
-                });
-                break;
+        for i in 0..core_state.stack_frames.len() {
+            let has_variable = core_state.stack_frames[i]
+                .local_variables
+                .as_ref()
+                .is_some_and(|cache| cache.get_variable_by_key(variable_ref).is_some());
+            if !has_variable {
+                continue;
             }
+            if let Some(caller_frame) = core_state.stack_frames.get(i + 1) {
+                caller_registers = Some(caller_frame.registers.clone());
+                caller_frame_base = caller_frame.frame_base;
+                caller_cfa = caller_frame.canonical_frame_address;
+            }
+            found_frame = Some(i);
+            break;
+        }
+    }
+
+    let caller = caller_registers.as_ref().map(|registers| StackFrameInfo {
+        registers,
+        frame_base: caller_frame_base,
+        canonical_frame_address: caller_cfa,
+        caller: None,
+    });
+
+    if let Some(i) = found_frame {
+        let frame = &mut core_state.stack_frames[i];
+        if let Some(search_cache) = frame.local_variables.as_mut()
+            && let Some(search_variable) = search_cache.get_variable_by_key(variable_ref)
+        {
+            parent_variable = Some(search_variable);
+            variable_cache = Some(search_cache);
+            frame_info = Some(StackFrameInfo {
+                registers: &frame.registers,
+                frame_base: frame.frame_base,
+                canonical_frame_address: frame.canonical_frame_address,
+                caller: caller.as_ref(),
+            });
         }
     }
 
@@ -476,6 +506,24 @@ pub async fn evaluate(
     let frame_base = core_state.stack_frames[frame_index].frame_base;
     let cfa = core_state.stack_frames[frame_index].canonical_frame_address;
     let frame_regs = core_state.stack_frames[frame_index].registers.clone();
+    let caller_registers = core_state
+        .stack_frames
+        .get(frame_index + 1)
+        .map(|frame| frame.registers.clone());
+    let caller_frame_base = core_state
+        .stack_frames
+        .get(frame_index + 1)
+        .and_then(|frame| frame.frame_base);
+    let caller_cfa = core_state
+        .stack_frames
+        .get(frame_index + 1)
+        .and_then(|frame| frame.canonical_frame_address);
+    let caller = caller_registers.as_ref().map(|registers| StackFrameInfo {
+        registers,
+        frame_base: caller_frame_base,
+        canonical_frame_address: caller_cfa,
+        caller: None,
+    });
 
     if let Some(cache) = core_state.stack_frames[frame_index]
         .local_variables
@@ -489,6 +537,7 @@ pub async fn evaluate(
                 registers: &frame_regs,
                 frame_base,
                 canonical_frame_address: cfa,
+                caller: caller.as_ref(),
             },
         )
     {
@@ -511,6 +560,7 @@ pub async fn evaluate(
                     registers: &top_regs,
                     frame_base: top_base,
                     canonical_frame_address: top_cfa,
+                    caller: None,
                 },
             )
         }
