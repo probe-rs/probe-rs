@@ -575,6 +575,45 @@ struct RustPath {
     ident: String,
 }
 
+const RUSTC_LIBS: &[&str] = &["core", "alloc", "std"];
+
+enum ModulePath {
+    Prefix(&'static [&'static str]),
+    Exact(&'static [&'static str]),
+}
+
+enum Ident {
+    Exact(&'static str),
+    Prefix(&'static str),
+}
+
+struct TransparentWrapper {
+    crates: &'static [&'static str],
+    modules: ModulePath,
+    ident: Ident,
+}
+
+impl TransparentWrapper {
+    fn matches(&self, path: &RustPath) -> bool {
+        if !self.crates.contains(&path.crate_name.as_str()) {
+            return false;
+        }
+
+        let modules_match = match self.modules {
+            ModulePath::Prefix(prefix) => path.modules_start_with(prefix),
+            ModulePath::Exact(modules) => path.modules_eq(modules),
+        };
+        if !modules_match {
+            return false;
+        }
+
+        match self.ident {
+            Ident::Exact(ident) => path.ident == ident,
+            Ident::Prefix(prefix) => path.ident.starts_with(prefix),
+        }
+    }
+}
+
 impl RustPath {
     fn from_die(
         unit_info: &UnitInfo,
@@ -602,7 +641,7 @@ impl RustPath {
     }
 
     fn is_rustc_lib(&self) -> bool {
-        matches!(self.crate_name.as_str(), "core" | "alloc" | "std")
+        RUSTC_LIBS.contains(&self.crate_name.as_str())
     }
 
     fn modules_start_with(&self, prefix: &[&str]) -> bool {
@@ -614,28 +653,60 @@ impl RustPath {
                 .all(|(segment, expected)| segment == expected)
     }
 
+    fn modules_eq(&self, modules: &[&str]) -> bool {
+        self.modules.len() == modules.len()
+            && self
+                .modules
+                .iter()
+                .zip(modules)
+                .all(|(segment, expected)| segment == expected)
+    }
+
     fn is_transparent_wrapper(&self) -> bool {
-        if self.crate_name == "embassy_executor"
-            && self.modules_start_with(&["raw", "util"])
-            && self.ident == "SyncUnsafeCell"
-        {
-            return true;
-        }
-        if self.crate_name == "vcell" && self.modules.is_empty() && self.ident == "VolatileCell" {
-            return true;
-        }
-
-        if !self.is_rustc_lib() {
-            return false;
-        }
-
-        match self.ident.as_str() {
-            "Cell" | "SyncUnsafeCell" => self.modules_start_with(&["cell"]),
-            "ManuallyDrop" => self.modules_start_with(&["mem"]),
-            "Wrapping" | "NonZero" => self.modules_start_with(&["num"]),
-            ident if ident.starts_with("Atomic") => self.modules_start_with(&["sync", "atomic"]),
-            _ => false,
-        }
+        [
+            TransparentWrapper {
+                crates: RUSTC_LIBS,
+                modules: ModulePath::Prefix(&["cell"]),
+                ident: Ident::Exact("Cell"),
+            },
+            TransparentWrapper {
+                crates: RUSTC_LIBS,
+                modules: ModulePath::Prefix(&["cell"]),
+                ident: Ident::Exact("SyncUnsafeCell"),
+            },
+            TransparentWrapper {
+                crates: RUSTC_LIBS,
+                modules: ModulePath::Prefix(&["mem"]),
+                ident: Ident::Exact("ManuallyDrop"),
+            },
+            TransparentWrapper {
+                crates: RUSTC_LIBS,
+                modules: ModulePath::Prefix(&["num"]),
+                ident: Ident::Exact("Wrapping"),
+            },
+            TransparentWrapper {
+                crates: RUSTC_LIBS,
+                modules: ModulePath::Prefix(&["num"]),
+                ident: Ident::Exact("NonZero"),
+            },
+            TransparentWrapper {
+                crates: RUSTC_LIBS,
+                modules: ModulePath::Prefix(&["sync", "atomic"]),
+                ident: Ident::Prefix("Atomic"),
+            },
+            TransparentWrapper {
+                crates: &["embassy_executor"],
+                modules: ModulePath::Prefix(&["raw", "util"]),
+                ident: Ident::Exact("SyncUnsafeCell"),
+            },
+            TransparentWrapper {
+                crates: &["vcell"],
+                modules: ModulePath::Exact(&[]),
+                ident: Ident::Exact("VolatileCell"),
+            },
+        ]
+        .iter()
+        .any(|wrapper| wrapper.matches(self))
     }
 
     fn is_core_unsafe_cell(&self) -> bool {
