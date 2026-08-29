@@ -54,6 +54,10 @@ pub struct BuildRequest {
     pub format: FormatOptions,
     pub image_target: Option<String>,
     pub read_flasher_rtt: bool,
+    /// RTT client to configure from the image. The image tells the client
+    /// whether the download writes the RTT control block, which the client
+    /// must then not clear.
+    pub rtt_client: Option<Key<RttClient>>,
 }
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -69,7 +73,6 @@ pub struct FlashRequest {
     pub sessid: Key<Session>,
     pub loader: Key<FlashLoader>,
     pub options: DownloadOptions,
-    pub rtt_client: Option<Key<RttClient>>,
 }
 
 #[derive(Default, Clone, Serialize, Deserialize, Schema)]

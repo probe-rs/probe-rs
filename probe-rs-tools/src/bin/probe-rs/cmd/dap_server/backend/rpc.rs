@@ -15,7 +15,7 @@ use crate::cmd::dap_server::debug_adapter::dap::dap_types::{
 };
 use crate::cmd::dap_server::server::configuration::FlashingConfig;
 use crate::rpc::{
-    Key, Session,
+    Key, RttClient, Session,
     functions::{
         breakpoints::convert::from_wire_source_location,
         core_ops::convert::{
@@ -810,16 +810,34 @@ impl RpcBackend {
         &mut self,
         upload: &ResolvedUpload,
         config: &FlashingConfig,
+        rtt_client: Option<Key<RttClient>>,
         progress: &mut dyn FnMut(WireProgressEvent),
     ) -> Result<(), DebuggerError> {
         let session = self.session_interface();
 
         let build_result = session
-            .build_flash_loader_resolved(upload, config.format_options.clone(), None, false)
+            .build_flash_loader_resolved(
+                upload,
+                config.format_options.clone(),
+                None,
+                false,
+                rtt_client,
+            )
             .await
             .map_err(|e| DebuggerError::Other(anyhow::anyhow!(e)))?;
 
         let loader_key = build_result.loader;
+
+        // Clear the control block of the program that ran before, so that its
+        // header does not leak into the first poll cycle. The build above told
+        // the client whether this image writes the block itself, in which case
+        // the clear is skipped.
+        if let Some(rtt_client) = rtt_client {
+            session
+                .clear_rtt_control_block(rtt_client)
+                .await
+                .map_err(|e| DebuggerError::Other(anyhow::anyhow!(e)))?;
+        }
 
         let run_flash = if config.verify_before_flashing {
             match session
@@ -848,7 +866,7 @@ impl RpcBackend {
             };
 
             session
-                .flash(options, loader_key, None, async |event| {
+                .flash(options, loader_key, async |event| {
                     progress(event);
                 })
                 .await
