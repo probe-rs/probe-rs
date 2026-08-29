@@ -297,13 +297,13 @@ impl ProgrammingLanguage for Rust {
     }
 
     fn auto_resolve_children(&self, name: &str) -> bool {
+        // Do not match `Some`, `Ok`, or `Err`. `process_variant` already expands the
+        // active variant. `starts_with("Err")` also matched `Error` and walked
+        // those types on the first expand.
         name.starts_with("&str")
             || name.starts_with("&[")
-            || name.starts_with("Option")
-            || name.starts_with("Some")
-            || name.starts_with("Result")
-            || name.starts_with("Ok")
-            || name.starts_with("Err")
+            || is_rust_type(name, "Option")
+            || is_rust_type(name, "Result")
     }
 
     fn process_struct(
@@ -326,4 +326,41 @@ impl ProgrammingLanguage for Rust {
 
 fn is_datatype(entry: &Die) -> bool {
     [gimli::DW_TAG_structure_type, gimli::DW_TAG_enumeration_type].contains(&entry.tag())
+}
+
+/// `type_name`, `prefix::type_name`, or those names with a generic argument list.
+fn is_rust_type(name: &str, type_name: &str) -> bool {
+    fn ident_matches(segment: &str, type_name: &str) -> bool {
+        segment == type_name
+            || segment
+                .strip_prefix(type_name)
+                .is_some_and(|tail| tail.starts_with('<'))
+    }
+
+    if ident_matches(name, type_name) {
+        return true;
+    }
+
+    let before_generics = name.split_once('<').map_or(name, |(head, _)| head);
+    before_generics
+        .rsplit_once("::")
+        .is_some_and(|(_, ident)| ident_matches(ident, type_name))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_rust_type;
+
+    #[test]
+    fn rust_type_name_matches() {
+        assert!(is_rust_type("Option", "Option"));
+        assert!(is_rust_type(
+            "Option<&mut probe_rs_debugger_test::RecursiveStruct>",
+            "Option"
+        ));
+        assert!(is_rust_type("core::option::Option<u32>", "Option"));
+        assert!(!is_rust_type("Error", "Err"));
+        assert!(!is_rust_type("Optional<u32>", "Option"));
+        assert!(is_rust_type("Result<T, E>", "Result"));
+    }
 }

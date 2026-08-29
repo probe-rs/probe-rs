@@ -196,13 +196,13 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tinfo: &core::panic::panic_info::PanicInfo = &core::panic::panic_info::PanicInfo @ 0x3FCDC4C0}"
+      value: "<unknown> {\n\tinfo: &core::panic::panic_info::PanicInfo = &core::panic::panic_info::PanicInfo @ 0x3FCDC510}"
       children:
         - name:
             Named: info
           type_name:
             Pointer: "&core::panic::panic_info::PanicInfo"
-          value: "&core::panic::panic_info::PanicInfo @ 0x3FCDC4C0"
+          value: "&core::panic::panic_info::PanicInfo @ 0x3FCDC510"
           source_location:
             path: "C:\\_Espressif\\esp-coredump\\src\\lib.rs"
             line: 24
@@ -219,7 +219,7 @@ expression: stack_frames
                     Named: message
                   type_name:
                     Pointer: "&core::fmt::Arguments"
-                  value: "&core::fmt::Arguments @ 0x3FCDC510"
+                  value: "&core::fmt::Arguments @ 0x3FCDC544"
                   children:
                     - name:
                         Named: "*message"
@@ -257,7 +257,7 @@ expression: stack_frames
                                         Named: data_ptr
                                       type_name:
                                         Pointer: u8
-                                      value: "*raw u8 @ 0x3C010550"
+                                      value: "*raw u8"
                                       children:
                                         - name:
                                             Named: "*data_ptr"
@@ -279,7 +279,7 @@ expression: stack_frames
                                         Named: data_ptr
                                       type_name:
                                         Pointer: u8
-                                      value: "*raw u8 @ 0x3C010558"
+                                      value: "*raw u8"
                                       children:
                                         - name:
                                             Named: "*data_ptr"
@@ -301,7 +301,7 @@ expression: stack_frames
                                 Named: None
                               type_name:
                                 Struct: None
-                              value: None @ 0x3FCDC554
+                              value: None
                         - name:
                             Named: args
                           type_name:
@@ -349,7 +349,7 @@ expression: stack_frames
                                                 Named: formatter
                                               type_name:
                                                 Pointer: "unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error>"
-                                              value: "*raw unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> @ 0x3FCDC560"
+                                              value: "*raw unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> @ 0x42000DB0"
                                               children:
                                                 - name:
                                                     Named: "*formatter"
@@ -360,7 +360,7 @@ expression: stack_frames
                     Named: location
                   type_name:
                     Pointer: "&core::panic::location::Location"
-                  value: "&core::panic::location::Location @ 0x3FCDC514"
+                  value: "&core::panic::location::Location @ 0x3C010570"
                   children:
                     - name:
                         Named: "*location"
@@ -378,7 +378,7 @@ expression: stack_frames
                                 Named: data_ptr
                               type_name:
                                 Pointer: u8
-                              value: "*raw u8 @ 0x3C010570"
+                              value: "*raw u8"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -648,7 +648,7 @@ expression: stack_frames
                             Named: data_ptr
                           type_name:
                             Pointer: u8
-                          value: "*raw u8 @ 0x3C010550"
+                          value: "*raw u8"
                           children:
                             - name:
                                 Named: "*data_ptr"
@@ -670,7 +670,7 @@ expression: stack_frames
                             Named: data_ptr
                           type_name:
                             Pointer: u8
-                          value: "*raw u8 @ 0x3C010558"
+                          value: "*raw u8"
                           children:
                             - name:
                                 Named: "*data_ptr"
@@ -692,7 +692,7 @@ expression: stack_frames
                     Named: None
                   type_name:
                     Struct: None
-                  value: None @ 0x3FCDC554
+                  value: None
             - name:
                 Named: args
               type_name:
@@ -741,12 +741,12 @@ expression: stack_frames
                                         Named: pointer
                                       type_name:
                                         Pointer: "*const ()"
-                                      value: "*const () @ 0x3FCDC55C"
+                                      value: "*const () @ 0x3FCDC540"
                                 - name:
                                     Named: formatter
                                   type_name:
                                     Pointer: "unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error>"
-                                  value: "*raw unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> @ 0x3FCDC560"
+                                  value: "*raw unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> @ 0x42000DB0"
                                   children:
                                     - name:
                                         Named: "*formatter"
@@ -768,7 +768,7 @@ expression: stack_frames
                 Named: message
               type_name:
                 Pointer: "&core::fmt::Arguments"
-              value: "&core::fmt::Arguments @ 0x3FCDC510"
+              value: "&core::fmt::Arguments @ 0x3FCDC544"
               children:
                 - name:
                     Named: "*message"
@@ -806,7 +806,7 @@ expression: stack_frames
                                     Named: data_ptr
                                   type_name:
                                     Pointer: u8
-                                  value: "*raw u8 @ 0x3C010550"
+                                  value: "*raw u8"
                                   children:
                                     - name:
                                         Named: "*data_ptr"
@@ -828,7 +828,7 @@ expression: stack_frames
                                     Named: data_ptr
                                   type_name:
                                     Pointer: u8
-                                  value: "*raw u8 @ 0x3C010558"
+                                  value: "*raw u8"
                                   children:
                                     - name:
                                         Named: "*data_ptr"
@@ -850,7 +850,7 @@ expression: stack_frames
                             Named: None
                           type_name:
                             Struct: None
-                          value: None @ 0x3FCDC554
+                          value: None
                     - name:
                         Named: args
                       type_name:
@@ -899,12 +899,12 @@ expression: stack_frames
                                                 Named: pointer
                                               type_name:
                                                 Pointer: "*const ()"
-                                              value: "*const () @ 0x3FCDC55C"
+                                              value: "*const () @ 0x3FCDC540"
                                         - name:
                                             Named: formatter
                                           type_name:
                                             Pointer: "unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error>"
-                                          value: "*raw unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> @ 0x3FCDC560"
+                                          value: "*raw unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> @ 0x42000DB0"
                                           children:
                                             - name:
                                                 Named: "*formatter"
@@ -915,7 +915,7 @@ expression: stack_frames
                 Named: location
               type_name:
                 Pointer: "&core::panic::location::Location"
-              value: "&core::panic::location::Location @ 0x3FCDC514"
+              value: "&core::panic::location::Location @ 0x3C010570"
               children:
                 - name:
                     Named: "*location"
@@ -933,7 +933,7 @@ expression: stack_frames
                             Named: data_ptr
                           type_name:
                             Pointer: u8
-                          value: "*raw u8 @ 0x3C010570"
+                          value: "*raw u8"
                           children:
                             - name:
                                 Named: "*data_ptr"
@@ -1160,7 +1160,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tmessages: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >,\n\titer: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >,\n\tmessage: &&str = &&str @ 0x3FCDC540}"
+      value: "<unknown> {\n\tmessages: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >,\n\titer: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >,\n\tmessage: &&str = &&str @ 0x3C0101CC}"
       children:
         - name:
             Named: messages
@@ -1184,7 +1184,7 @@ expression: stack_frames
             Named: message
           type_name:
             Pointer: "&&str"
-          value: "&&str @ 0x3FCDC540"
+          value: "&&str @ 0x3C0101CC"
           source_location:
             path: "C:\\_Espressif\\_Demos\\coredump-c6\\src\\bin\\main.rs"
             line: 40
@@ -1201,7 +1201,7 @@ expression: stack_frames
                     Named: data_ptr
                   type_name:
                     Pointer: u8
-                  value: "*raw u8 @ 0x3C0101CC"
+                  value: "*raw u8"
                   children:
                     - name:
                         Named: "*data_ptr"
@@ -1408,12 +1408,12 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\t<unknown>: &mut core::task::wake::Context = 1070450080,\n\t_task_context: &mut core::task::wake::Context = 1070450080,\n\tconfig: Config = Config @ 0x3FCDC5B0,\n\ttimer0: SystemTimer = SystemTimer @ 0x3FCDC5F2}"
+      value: "<unknown> {\n\t<unknown>: &mut core::task::wake::Context = &mut core::task::wake::Context @ 0x3FCDC5A0,\n\t_task_context: &mut core::task::wake::Context = &mut core::task::wake::Context @ 0x3FCDC5A0,\n\tconfig: Config = Config @ 0x3FCDC5B0,\n\ttimer0: SystemTimer = SystemTimer @ 0x3FCDC5F2}"
       children:
         - name: Unknown
           type_name:
             Pointer: "&mut core::task::wake::Context"
-          value: "1070450080"
+          value: "&mut core::task::wake::Context @ 0x3FCDC5A0"
           source_location:
             path: "C:\\_Espressif\\_Demos\\coredump-c6\\src\\bin\\main.rs"
             line: 14
@@ -1424,105 +1424,123 @@ expression: stack_frames
                 Named: "Error: Unable to generate name, parent variable does not have a name but is special variable Unknown"
               type_name:
                 Struct: Context
-              value: Context @ <not applicable - statically stored value>
+              value: Context @ <composite value>
               children:
                 - name:
                     Named: waker
                   type_name:
                     Pointer: "&core::task::wake::Waker"
-                  value: "&core::task::wake::Waker @ <not applicable - statically stored value>"
+                  value: "&core::task::wake::Waker @ 0x3FCDC5A0"
                   children:
                     - name:
                         Named: "*waker"
                       type_name:
                         Struct: Waker
-                      value: Location Value not supported for referenced variables.
+                      value: Waker @ 0x3FCDC5A0
+                      children:
+                        - name:
+                            Named: waker
+                          type_name:
+                            Struct: RawWaker
+                          value: RawWaker @ 0x3FCDC5A0
+                          children:
+                            - name:
+                                Named: data
+                              type_name:
+                                Pointer: "*const ()"
+                              value: "*const () @ 0x3FCDC598"
+                            - name:
+                                Named: vtable
+                              type_name:
+                                Pointer: "&core::task::wake::RawWakerVTable"
+                              value: "&core::task::wake::RawWakerVTable @ 0x3FCDC598"
+                              children:
+                                - name:
+                                    Named: "*vtable"
+                                  type_name:
+                                    Struct: RawWakerVTable
+                                  value: RawWakerVTable @ 0x3FCDC598
+                                  children:
+                                    - name:
+                                        Named: clone
+                                      type_name:
+                                        Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
+                                      value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker @ 0x3C013574"
+                                      children:
+                                        - name:
+                                            Named: "*clone"
+                                          type_name:
+                                            Other: RawWaker
+                                          value: "Unimplemented: Get value of type Other(\"RawWaker\") of (None bytes) at location <unknown value>"
+                                    - name:
+                                        Named: wake
+                                      type_name:
+                                        Pointer: unsafe fn(*const ())
+                                      value: "*raw unsafe fn(*const ()) @ 0x3FC89F00"
+                                      children:
+                                        - name:
+                                            Named: "*wake"
+                                          type_name: Unknown
+                                          value: "<No Return Value>"
+                                    - name:
+                                        Named: wake_by_ref
+                                      type_name:
+                                        Pointer: unsafe fn(*const ())
+                                      value: "*raw unsafe fn(*const ()) @ 0x3FCDC598"
+                                      children:
+                                        - name:
+                                            Named: "*wake_by_ref"
+                                          type_name: Unknown
+                                          value: "<No Return Value>"
+                                    - name:
+                                        Named: drop
+                                      type_name:
+                                        Pointer: unsafe fn(*const ())
+                                      value: "*raw unsafe fn(*const ()) @ 0x3FCDC598"
+                                      children:
+                                        - name:
+                                            Named: "*drop"
+                                          type_name: Unknown
+                                          value: "<No Return Value>"
                 - name:
                     Named: local_waker
                   type_name:
                     Pointer: "&core::task::wake::LocalWaker"
-                  value: "&core::task::wake::LocalWaker @ <not applicable - statically stored value>"
+                  value: "&core::task::wake::LocalWaker @ 0x00000000"
                   children:
                     - name:
                         Named: "*local_waker"
                       type_name:
                         Struct: LocalWaker
-                      value: Location Value not supported for referenced variables.
+                      value: "<null pointer>"
                 - name:
                     Named: ext
                   type_name:
                     Struct: "AssertUnwindSafe<core::task::wake::ExtData>"
-                  value: "AssertUnwindSafe<core::task::wake::ExtData> @ <not applicable - statically stored value>"
+                  value: "AssertUnwindSafe<core::task::wake::ExtData> @ <composite value>"
                   children:
                     - name:
                         Named: __0
                       type_name:
                         Struct: ExtData
-                      value: ExtData @ <not applicable - statically stored value>
+                      value: ExtData @ <composite value>
                       children:
                         - name:
-                            Named: Some
+                            Named: None
                           type_name:
-                            Struct: Some
-                          value: Some @ <not applicable - statically stored value>
+                            Struct: None
+                          value: None @ <composite value>
                           children:
                             - name:
                                 Named: __0
                               type_name:
-                                Struct: "&mut dyn core::any::Any"
-                              value: "&mut dyn core::any::Any @ <not applicable - statically stored value>"
-                              children:
-                                - name:
-                                    Named: pointer
-                                  type_name:
-                                    Pointer: "dyn core::any::Any"
-                                  value: "*raw dyn core::any::Any @ <not applicable - statically stored value>"
-                                  children:
-                                    - name:
-                                        Named: "*pointer"
-                                      type_name:
-                                        Struct: "dyn core::any::Any"
-                                      value: Location Value not supported for referenced variables.
-                                - name:
-                                    Named: vtable
-                                  type_name:
-                                    Pointer: "&[usize; 4]"
-                                  value: "&[usize; 4] @ <not applicable - statically stored value>"
-                                  children:
-                                    - name:
-                                        Named: "*vtable"
-                                      type_name:
-                                        Array:
-                                          item_type_name:
-                                            Base: usize
-                                          count: 4
-                                      value: "[usize; 4] = [usize,usize,usize,usize]"
-                                      children:
-                                        - name:
-                                            Indexed: 0
-                                          type_name:
-                                            Base: usize
-                                          value: "<value not available>"
-                                        - name:
-                                            Indexed: 1
-                                          type_name:
-                                            Base: usize
-                                          value: "<value not available>"
-                                        - name:
-                                            Indexed: 2
-                                          type_name:
-                                            Base: usize
-                                          value: "<value not available>"
-                                        - name:
-                                            Indexed: 3
-                                          type_name:
-                                            Base: usize
-                                          value: "<value not available>"
+                                Base: ()
+                              value: ()
         - name:
             Named: _task_context
           type_name:
             Pointer: "&mut core::task::wake::Context"
-          value: "1070450080"
+          value: "&mut core::task::wake::Context @ 0x3FCDC5A0"
           source_location:
             path: "C:\\_Espressif\\_Demos\\coredump-c6\\src\\bin\\main.rs"
             line: 14
@@ -1533,7 +1551,183 @@ expression: stack_frames
                 Named: "*_task_context"
               type_name:
                 Struct: Context
-              value: Location Value not supported for referenced variables.
+              value: Context @ 0x3FCDC5A0
+              children:
+                - name:
+                    Named: waker
+                  type_name:
+                    Pointer: "&core::task::wake::Waker"
+                  value: "&core::task::wake::Waker @ 0x3FCDC598"
+                  children:
+                    - name:
+                        Named: "*waker"
+                      type_name:
+                        Struct: Waker
+                      value: Waker @ 0x3FCDC598
+                      children:
+                        - name:
+                            Named: waker
+                          type_name:
+                            Struct: RawWaker
+                          value: RawWaker @ 0x3FCDC598
+                          children:
+                            - name:
+                                Named: data
+                              type_name:
+                                Pointer: "*const ()"
+                              value: "*const () @ 0x3FC89F00"
+                            - name:
+                                Named: vtable
+                              type_name:
+                                Pointer: "&core::task::wake::RawWakerVTable"
+                              value: "&core::task::wake::RawWakerVTable @ 0x3C013574"
+                              children:
+                                - name:
+                                    Named: "*vtable"
+                                  type_name:
+                                    Struct: RawWakerVTable
+                                  value: RawWakerVTable @ 0x3C013574
+                                  children:
+                                    - name:
+                                        Named: clone
+                                      type_name:
+                                        Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
+                                      value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker"
+                                      children:
+                                        - name:
+                                            Named: "*clone"
+                                          type_name:
+                                            Other: RawWaker
+                                          value: "Unimplemented: Get value of type Other(\"RawWaker\") of (None bytes) at location <unknown value>"
+                                    - name:
+                                        Named: wake
+                                      type_name:
+                                        Pointer: unsafe fn(*const ())
+                                      value: "*raw unsafe fn(*const ())"
+                                      children:
+                                        - name:
+                                            Named: "*wake"
+                                          type_name: Unknown
+                                          value: "<No Return Value>"
+                                    - name:
+                                        Named: wake_by_ref
+                                      type_name:
+                                        Pointer: unsafe fn(*const ())
+                                      value: "*raw unsafe fn(*const ())"
+                                      children:
+                                        - name:
+                                            Named: "*wake_by_ref"
+                                          type_name: Unknown
+                                          value: "<No Return Value>"
+                                    - name:
+                                        Named: drop
+                                      type_name:
+                                        Pointer: unsafe fn(*const ())
+                                      value: "*raw unsafe fn(*const ())"
+                                      children:
+                                        - name:
+                                            Named: "*drop"
+                                          type_name: Unknown
+                                          value: "<No Return Value>"
+                - name:
+                    Named: local_waker
+                  type_name:
+                    Pointer: "&core::task::wake::LocalWaker"
+                  value: "&core::task::wake::LocalWaker @ 0x3FCDC598"
+                  children:
+                    - name:
+                        Named: "*local_waker"
+                      type_name:
+                        Struct: LocalWaker
+                      value: LocalWaker @ 0x3FCDC598
+                      children:
+                        - name:
+                            Named: waker
+                          type_name:
+                            Struct: RawWaker
+                          value: RawWaker @ 0x3FCDC598
+                          children:
+                            - name:
+                                Named: data
+                              type_name:
+                                Pointer: "*const ()"
+                              value: "*const () @ 0x3FC89F00"
+                            - name:
+                                Named: vtable
+                              type_name:
+                                Pointer: "&core::task::wake::RawWakerVTable"
+                              value: "&core::task::wake::RawWakerVTable @ 0x3C013574"
+                              children:
+                                - name:
+                                    Named: "*vtable"
+                                  type_name:
+                                    Struct: RawWakerVTable
+                                  value: RawWakerVTable @ 0x3C013574
+                                  children:
+                                    - name:
+                                        Named: clone
+                                      type_name:
+                                        Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
+                                      value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker"
+                                      children:
+                                        - name:
+                                            Named: "*clone"
+                                          type_name:
+                                            Other: RawWaker
+                                          value: "Unimplemented: Get value of type Other(\"RawWaker\") of (None bytes) at location <unknown value>"
+                                    - name:
+                                        Named: wake
+                                      type_name:
+                                        Pointer: unsafe fn(*const ())
+                                      value: "*raw unsafe fn(*const ())"
+                                      children:
+                                        - name:
+                                            Named: "*wake"
+                                          type_name: Unknown
+                                          value: "<No Return Value>"
+                                    - name:
+                                        Named: wake_by_ref
+                                      type_name:
+                                        Pointer: unsafe fn(*const ())
+                                      value: "*raw unsafe fn(*const ())"
+                                      children:
+                                        - name:
+                                            Named: "*wake_by_ref"
+                                          type_name: Unknown
+                                          value: "<No Return Value>"
+                                    - name:
+                                        Named: drop
+                                      type_name:
+                                        Pointer: unsafe fn(*const ())
+                                      value: "*raw unsafe fn(*const ())"
+                                      children:
+                                        - name:
+                                            Named: "*drop"
+                                          type_name: Unknown
+                                          value: "<No Return Value>"
+                - name:
+                    Named: ext
+                  type_name:
+                    Struct: "AssertUnwindSafe<core::task::wake::ExtData>"
+                  value: "AssertUnwindSafe<core::task::wake::ExtData> @ 0x3FCDC5A8"
+                  children:
+                    - name:
+                        Named: __0
+                      type_name:
+                        Struct: ExtData
+                      value: ExtData @ 0x3FCDC5A8
+                      children:
+                        - name:
+                            Named: None
+                          type_name:
+                            Struct: None
+                          value: None @ 0x3FCDC5A8
+                          children:
+                            - name:
+                                Named: __0
+                              type_name:
+                                Base: ()
+                              value: ()
         - name:
             Named: config
           type_name:
@@ -1571,7 +1765,7 @@ expression: stack_frames
                         Named: Disabled
                       type_name:
                         Struct: Disabled
-                      value: Disabled @ 0x3FCDC5B0
+                      value: Disabled
                 - name:
                     Named: timg0
                   type_name:
@@ -1582,7 +1776,7 @@ expression: stack_frames
                         Named: Disabled
                       type_name:
                         Struct: Disabled
-                      value: Disabled @ 0x3FCDC5C0
+                      value: Disabled
                 - name:
                     Named: timg1
                   type_name:
@@ -1593,7 +1787,7 @@ expression: stack_frames
                         Named: Disabled
                       type_name:
                         Struct: Disabled
-                      value: Disabled @ 0x3FCDC5D0
+                      value: Disabled
         - name:
             Named: timer0
           type_name:
@@ -1953,7 +2147,7 @@ expression: stack_frames
                                     Named: value
                                   type_name:
                                     Pointer: "*mut embassy_executor::raw::SyncExecutor"
-                                  value: "*mut embassy_executor::raw::SyncExecutor @ 0x3FC89F18"
+                                  value: "*mut embassy_executor::raw::SyncExecutor"
                                   children:
                                     - name:
                                         Named: "*value"
@@ -1988,7 +2182,7 @@ expression: stack_frames
                                             Named: __0
                                           type_name:
                                             Pointer: "unsafe fn(embassy_executor::raw::TaskRef)"
-                                          value: "*raw unsafe fn(embassy_executor::raw::TaskRef) @ 0x3FC89F1C"
+                                          value: "*raw unsafe fn(embassy_executor::raw::TaskRef)"
                                           children:
                                             - name:
                                                 Named: "*__0"
@@ -2184,7 +2378,7 @@ expression: stack_frames
                                 Named: value
                               type_name:
                                 Pointer: "*mut embassy_executor::raw::SyncExecutor"
-                              value: "*mut embassy_executor::raw::SyncExecutor @ 0x3FC89F18"
+                              value: "*mut embassy_executor::raw::SyncExecutor"
                               children:
                                 - name:
                                     Named: "*value"
@@ -2219,7 +2413,7 @@ expression: stack_frames
                                         Named: __0
                                       type_name:
                                         Pointer: "unsafe fn(embassy_executor::raw::TaskRef)"
-                                      value: "*raw unsafe fn(embassy_executor::raw::TaskRef) @ 0x3FC89F1C"
+                                      value: "*raw unsafe fn(embassy_executor::raw::TaskRef)"
                                       children:
                                         - name:
                                             Named: "*__0"
@@ -2328,7 +2522,7 @@ expression: stack_frames
                         Named: __0
                       type_name:
                         Base: "MaybeUninit<core::cell::UnsafeCell<coredump_c6::____embassy_main_task::{async_fn_env#0}>>"
-                      value: "MaybeUninit<core::cell::UnsafeCell<coredump_c6::____embassy_main_task::{async_fn_env#0}>> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<core::cell::UnsafeCell<coredump_c6::____embassy_main_task::{async_fn_env#0}>> = ManuallyDrop<core::cell::UnsafeCell<coredump_c6::____embassy_main_task::{async_fn_env#0}>> @ 0x3FC89F20}"
+                      value: "MaybeUninit<core::cell::UnsafeCell<coredump_c6::____embassy_main_task::{async_fn_env#0}>> @ 0x3FC89F20"
                       children:
                         - name:
                             Named: uninit
@@ -2395,12 +2589,12 @@ expression: stack_frames
                     Named: data
                   type_name:
                     Pointer: "*const ()"
-                  value: "*const () @ 0x3FCDC59C"
+                  value: "*const () @ 0x3FC89F00"
                 - name:
                     Named: vtable
                   type_name:
                     Pointer: "&core::task::wake::RawWakerVTable"
-                  value: "&core::task::wake::RawWakerVTable @ 0x3FCDC598"
+                  value: "&core::task::wake::RawWakerVTable @ 0x3C013574"
                   children:
                     - name:
                         Named: "*vtable"
@@ -2412,7 +2606,7 @@ expression: stack_frames
                             Named: clone
                           type_name:
                             Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
-                          value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker @ 0x3C013574"
+                          value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker"
                           children:
                             - name:
                                 Named: "*clone"
@@ -2423,7 +2617,7 @@ expression: stack_frames
                             Named: wake
                           type_name:
                             Pointer: unsafe fn(*const ())
-                          value: "*raw unsafe fn(*const ()) @ 0x3C013578"
+                          value: "*raw unsafe fn(*const ())"
                           children:
                             - name:
                                 Named: "*wake"
@@ -2433,7 +2627,7 @@ expression: stack_frames
                             Named: wake_by_ref
                           type_name:
                             Pointer: unsafe fn(*const ())
-                          value: "*raw unsafe fn(*const ()) @ 0x3C01357C"
+                          value: "*raw unsafe fn(*const ())"
                           children:
                             - name:
                                 Named: "*wake_by_ref"
@@ -2443,7 +2637,7 @@ expression: stack_frames
                             Named: drop
                           type_name:
                             Pointer: unsafe fn(*const ())
-                          value: "*raw unsafe fn(*const ()) @ 0x3C013580"
+                          value: "*raw unsafe fn(*const ())"
                           children:
                             - name:
                                 Named: "*drop"
@@ -2464,7 +2658,7 @@ expression: stack_frames
                 Named: waker
               type_name:
                 Pointer: "&core::task::wake::Waker"
-              value: "&core::task::wake::Waker @ 0x3FCDC5A0"
+              value: "&core::task::wake::Waker @ 0x3FCDC598"
               children:
                 - name:
                     Named: "*waker"
@@ -2482,12 +2676,12 @@ expression: stack_frames
                             Named: data
                           type_name:
                             Pointer: "*const ()"
-                          value: "*const () @ 0x3FCDC59C"
+                          value: "*const () @ 0x3FC89F00"
                         - name:
                             Named: vtable
                           type_name:
                             Pointer: "&core::task::wake::RawWakerVTable"
-                          value: "&core::task::wake::RawWakerVTable @ 0x3FCDC598"
+                          value: "&core::task::wake::RawWakerVTable @ 0x3C013574"
                           children:
                             - name:
                                 Named: "*vtable"
@@ -2499,7 +2693,7 @@ expression: stack_frames
                                     Named: clone
                                   type_name:
                                     Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
-                                  value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker @ 0x3C013574"
+                                  value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker"
                                   children:
                                     - name:
                                         Named: "*clone"
@@ -2510,7 +2704,7 @@ expression: stack_frames
                                     Named: wake
                                   type_name:
                                     Pointer: unsafe fn(*const ())
-                                  value: "*raw unsafe fn(*const ()) @ 0x3C013578"
+                                  value: "*raw unsafe fn(*const ())"
                                   children:
                                     - name:
                                         Named: "*wake"
@@ -2520,7 +2714,7 @@ expression: stack_frames
                                     Named: wake_by_ref
                                   type_name:
                                     Pointer: unsafe fn(*const ())
-                                  value: "*raw unsafe fn(*const ()) @ 0x3C01357C"
+                                  value: "*raw unsafe fn(*const ())"
                                   children:
                                     - name:
                                         Named: "*wake_by_ref"
@@ -2530,7 +2724,7 @@ expression: stack_frames
                                     Named: drop
                                   type_name:
                                     Pointer: unsafe fn(*const ())
-                                  value: "*raw unsafe fn(*const ()) @ 0x3C013580"
+                                  value: "*raw unsafe fn(*const ())"
                                   children:
                                     - name:
                                         Named: "*drop"
@@ -2540,7 +2734,7 @@ expression: stack_frames
                 Named: local_waker
               type_name:
                 Pointer: "&core::task::wake::LocalWaker"
-              value: "&core::task::wake::LocalWaker @ 0x3FCDC5A4"
+              value: "&core::task::wake::LocalWaker @ 0x3FCDC598"
               children:
                 - name:
                     Named: "*local_waker"
@@ -2558,12 +2752,12 @@ expression: stack_frames
                             Named: data
                           type_name:
                             Pointer: "*const ()"
-                          value: "*const () @ 0x3FCDC59C"
+                          value: "*const () @ 0x3FC89F00"
                         - name:
                             Named: vtable
                           type_name:
                             Pointer: "&core::task::wake::RawWakerVTable"
-                          value: "&core::task::wake::RawWakerVTable @ 0x3FCDC598"
+                          value: "&core::task::wake::RawWakerVTable @ 0x3C013574"
                           children:
                             - name:
                                 Named: "*vtable"
@@ -2575,7 +2769,7 @@ expression: stack_frames
                                     Named: clone
                                   type_name:
                                     Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
-                                  value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker @ 0x3C013574"
+                                  value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker"
                                   children:
                                     - name:
                                         Named: "*clone"
@@ -2586,7 +2780,7 @@ expression: stack_frames
                                     Named: wake
                                   type_name:
                                     Pointer: unsafe fn(*const ())
-                                  value: "*raw unsafe fn(*const ()) @ 0x3C013578"
+                                  value: "*raw unsafe fn(*const ())"
                                   children:
                                     - name:
                                         Named: "*wake"
@@ -2596,7 +2790,7 @@ expression: stack_frames
                                     Named: wake_by_ref
                                   type_name:
                                     Pointer: unsafe fn(*const ())
-                                  value: "*raw unsafe fn(*const ()) @ 0x3C01357C"
+                                  value: "*raw unsafe fn(*const ())"
                                   children:
                                     - name:
                                         Named: "*wake_by_ref"
@@ -2606,7 +2800,7 @@ expression: stack_frames
                                     Named: drop
                                   type_name:
                                     Pointer: unsafe fn(*const ())
-                                  value: "*raw unsafe fn(*const ()) @ 0x3C013580"
+                                  value: "*raw unsafe fn(*const ())"
                                   children:
                                     - name:
                                         Named: "*drop"
@@ -2625,63 +2819,16 @@ expression: stack_frames
                   value: ExtData @ 0x3FCDC5A8
                   children:
                     - name:
-                        Named: Some
+                        Named: None
                       type_name:
-                        Struct: Some
-                      value: Some @ 0x3FCDC5A8
+                        Struct: None
+                      value: None @ 0x3FCDC5A8
                       children:
                         - name:
                             Named: __0
                           type_name:
-                            Struct: "&mut dyn core::any::Any"
-                          value: "&mut dyn core::any::Any @ 0x3FCDC5A8"
-                          children:
-                            - name:
-                                Named: pointer
-                              type_name:
-                                Pointer: "dyn core::any::Any"
-                              value: "*raw dyn core::any::Any @ 0x3FCDC5A8"
-                              children:
-                                - name:
-                                    Named: "*pointer"
-                                  type_name:
-                                    Struct: "dyn core::any::Any"
-                                  value: "<null pointer>"
-                            - name:
-                                Named: vtable
-                              type_name:
-                                Pointer: "&[usize; 4]"
-                              value: "&[usize; 4] @ 0x3FCDC5AC"
-                              children:
-                                - name:
-                                    Named: "*vtable"
-                                  type_name:
-                                    Array:
-                                      item_type_name:
-                                        Base: usize
-                                      count: 4
-                                  value: "[usize; 4] = [usize,usize,usize,usize]"
-                                  children:
-                                    - name:
-                                        Indexed: 0
-                                      type_name:
-                                        Base: usize
-                                      value: "<value not available>"
-                                    - name:
-                                        Indexed: 1
-                                      type_name:
-                                        Base: usize
-                                      value: "<value not available>"
-                                    - name:
-                                        Indexed: 2
-                                      type_name:
-                                        Base: usize
-                                      value: "<value not available>"
-                                    - name:
-                                        Indexed: 3
-                                      type_name:
-                                        Base: usize
-                                      value: "<value not available>"
+                            Base: ()
+                          value: ()
   canonical_frame_address: ~
 - function_name: "{closure#0}"
   source_location:
@@ -3153,7 +3300,7 @@ expression: stack_frames
                             Named: value
                           type_name:
                             Pointer: "*mut embassy_executor::raw::TaskHeader"
-                          value: "*mut embassy_executor::raw::TaskHeader @ 0x3FCDC6B0"
+                          value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                           children:
                             - name:
                                 Named: "*value"
@@ -3184,7 +3331,7 @@ expression: stack_frames
                 Named: None
               type_name:
                 Struct: None
-              value: None @ 0x00000000
+              value: None
         - name:
             Named: task
           type_name:
@@ -3449,7 +3596,7 @@ expression: stack_frames
                                 Named: value
                               type_name:
                                 Pointer: "*mut embassy_executor::raw::TaskHeader"
-                              value: "*mut embassy_executor::raw::TaskHeader @ 0x3FCDC6B0"
+                              value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                               children:
                                 - name:
                                     Named: "*value"
@@ -3466,7 +3613,7 @@ expression: stack_frames
                         Named: __0
                       type_name:
                         Pointer: "*mut ()"
-                      value: "*mut () @ 0x3FCDC6B4"
+                      value: "*mut () @ 0x00000010"
   canonical_frame_address: ~
 - function_name: "Executor::poll"
   source_location:
@@ -3709,7 +3856,7 @@ expression: stack_frames
                                     Named: value
                                   type_name:
                                     Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                  value: "*mut embassy_executor::raw::TaskHeader @ 0x3FCDC6B0"
+                                  value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                                   children:
                                     - name:
                                         Named: "*value"
@@ -3726,7 +3873,7 @@ expression: stack_frames
                             Named: __0
                           type_name:
                             Pointer: "*mut ()"
-                          value: "*mut () @ 0x3FCDC6B4"
+                          value: "*mut () @ 0x00000010"
   canonical_frame_address: ~
 - function_name: "Executor::run<coredump_c6::__xtensa_lx_rt_main::{closure_env#0}>"
   source_location:
@@ -3922,7 +4069,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tself: &mut esp_hal_embassy::executor::thread::Executor = &mut esp_hal_embassy::executor::thread::Executor @ 0x3FCDC6B0,\n\tinit: {closure_env#0} = {closure_env#0} @ <unknown value>,\n\tcpu: usize = 0}"
+      value: "<unknown> {\n\tself: &mut esp_hal_embassy::executor::thread::Executor = &mut esp_hal_embassy::executor::thread::Executor @ 0x3FCDC6B0,\n\tinit: {closure_env#0} = {closure_env#0},\n\tcpu: usize = 0}"
       children:
         - name:
             Named: self
@@ -3981,7 +4128,7 @@ expression: stack_frames
                                             Named: value
                                           type_name:
                                             Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                          value: "*mut embassy_executor::raw::TaskHeader @ 0x3FCDC6B0"
+                                          value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                                           children:
                                             - name:
                                                 Named: "*value"
@@ -3998,12 +4145,12 @@ expression: stack_frames
                                     Named: __0
                                   type_name:
                                     Pointer: "*mut ()"
-                                  value: "*mut () @ 0x3FCDC6B4"
+                                  value: "*mut () @ 0x00000010"
         - name:
             Named: init
           type_name:
             Struct: "{closure_env#0}"
-          value: "{closure_env#0} @ <unknown value>"
+          value: "{closure_env#0}"
           source_location:
             path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-hal-embassy-0.7.0\\src\\executor\\thread.rs"
             line: 96
@@ -4267,7 +4414,7 @@ expression: stack_frames
                                         Named: value
                                       type_name:
                                         Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                      value: "*mut embassy_executor::raw::TaskHeader @ 0x3FCDC6B0"
+                                      value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                                       children:
                                         - name:
                                             Named: "*value"
@@ -4284,7 +4431,7 @@ expression: stack_frames
                                 Named: __0
                               type_name:
                                 Pointer: "*mut ()"
-                              value: "*mut () @ 0x3FCDC6B4"
+                              value: "*mut () @ 0x00000010"
         - name:
             Named: executor
           type_name:
@@ -4342,7 +4489,7 @@ expression: stack_frames
                                             Named: value
                                           type_name:
                                             Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                          value: "*mut embassy_executor::raw::TaskHeader @ 0x3FCDC6B0"
+                                          value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                                           children:
                                             - name:
                                                 Named: "*value"
@@ -4359,7 +4506,7 @@ expression: stack_frames
                                     Named: __0
                                   type_name:
                                     Pointer: "*mut ()"
-                                  value: "*mut () @ 0x3FCDC6B4"
+                                  value: "*mut () @ 0x00000010"
   canonical_frame_address: ~
 - function_name: __xtensa_lx_rt_main_trampoline
   source_location:

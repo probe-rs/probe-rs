@@ -1,6 +1,5 @@
 ---
 source: probe-rs-debug/src/debug_info.rs
-assertion_line: 2035
 expression: static_variables
 ---
 Child Variables:
@@ -2073,7 +2072,7 @@ Child Variables:
               item_type_name:
                 Base: Vector
               count: 32
-          value: "[Vector; 32] = [\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000140,\n\t\t_reserved: u32 = 268461611\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000144,\n\t\t_reserved: u32 = 268461611\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000148,\n\t\t_reserved: u32 = 268461611\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000014C,\n\t\t_reserved: u32 = 268461611\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000150,\n\t\t_reserved: u32 = 268461611\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000154,\n\t\t_reserved: u32 = 268461611\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000158,\n\t\t_reserved: u32 = 268461611\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000015C,\n\t\t_reserved: u32 = 268461611\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000160,\n\t\t_reserved: u32 = 268461611\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000164,\n\t\t_reserved: u32 = 268461611\n\t},\n\t... and 22 more]"
+          value: "[Vector; 32] = [\n\tVector @ 0x10000140,\n\tVector @ 0x10000144,\n\tVector @ 0x10000148,\n\tVector @ 0x1000014C,\n\tVector @ 0x10000150,\n\tVector @ 0x10000154,\n\tVector @ 0x10000158,\n\tVector @ 0x1000015C,\n\tVector @ 0x10000160,\n\tVector @ 0x10000164,\n\t... and 22 more]"
           source_location:
             path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
             line: 86
@@ -2084,7 +2083,7 @@ Child Variables:
                 Indexed: 0
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000140,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x10000140
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2095,7 +2094,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000140"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2110,7 +2109,7 @@ Child Variables:
                 Indexed: 1
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000144,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x10000144
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2121,7 +2120,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000144"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2136,7 +2135,7 @@ Child Variables:
                 Indexed: 2
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000148,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x10000148
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2147,7 +2146,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000148"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2162,7 +2161,7 @@ Child Variables:
                 Indexed: 3
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000014C,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x1000014C
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2173,7 +2172,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x1000014C"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2188,7 +2187,7 @@ Child Variables:
                 Indexed: 4
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000150,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x10000150
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2199,7 +2198,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000150"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2214,7 +2213,7 @@ Child Variables:
                 Indexed: 5
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000154,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x10000154
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2225,7 +2224,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000154"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2240,7 +2239,7 @@ Child Variables:
                 Indexed: 6
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000158,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x10000158
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2251,7 +2250,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000158"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2266,7 +2265,7 @@ Child Variables:
                 Indexed: 7
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000015C,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x1000015C
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2277,7 +2276,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x1000015C"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2292,7 +2291,7 @@ Child Variables:
                 Indexed: 8
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000160,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x10000160
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2303,7 +2302,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000160"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2318,7 +2317,7 @@ Child Variables:
                 Indexed: 9
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000164,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x10000164
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2329,7 +2328,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000164"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2344,7 +2343,7 @@ Child Variables:
                 Indexed: 10
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000168,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x10000168
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2355,7 +2354,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000168"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2370,7 +2369,7 @@ Child Variables:
                 Indexed: 11
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000016C,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x1000016C
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2381,7 +2380,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x1000016C"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2396,7 +2395,7 @@ Child Variables:
                 Indexed: 12
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000170,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x10000170
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2407,7 +2406,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000170"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2422,7 +2421,7 @@ Child Variables:
                 Indexed: 13
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000174,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x10000174
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2433,7 +2432,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000174"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2448,7 +2447,7 @@ Child Variables:
                 Indexed: 14
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000178,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x10000178
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2459,7 +2458,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000178"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2474,7 +2473,7 @@ Child Variables:
                 Indexed: 15
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000017C,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x1000017C
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2485,7 +2484,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x1000017C"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2500,7 +2499,7 @@ Child Variables:
                 Indexed: 16
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000180,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x10000180
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2511,7 +2510,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000180"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2526,7 +2525,7 @@ Child Variables:
                 Indexed: 17
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000184,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x10000184
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2537,7 +2536,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000184"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2552,7 +2551,7 @@ Child Variables:
                 Indexed: 18
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000188,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x10000188
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2563,7 +2562,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000188"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2578,7 +2577,7 @@ Child Variables:
                 Indexed: 19
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000018C,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x1000018C
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2589,7 +2588,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x1000018C"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2604,7 +2603,7 @@ Child Variables:
                 Indexed: 20
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000190,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x10000190
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2615,7 +2614,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000190"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2630,7 +2629,7 @@ Child Variables:
                 Indexed: 21
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000194,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x10000194
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2641,7 +2640,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000194"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2656,7 +2655,7 @@ Child Variables:
                 Indexed: 22
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000198,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x10000198
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2667,7 +2666,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000198"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2682,7 +2681,7 @@ Child Variables:
                 Indexed: 23
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000019C,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x1000019C
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2693,7 +2692,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x1000019C"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2708,7 +2707,7 @@ Child Variables:
                 Indexed: 24
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x100001A0,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x100001A0
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2719,7 +2718,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x100001A0"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2734,7 +2733,7 @@ Child Variables:
                 Indexed: 25
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x100001A4,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x100001A4
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2745,7 +2744,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x100001A4"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2760,7 +2759,7 @@ Child Variables:
                 Indexed: 26
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x100001A8,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x100001A8
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2771,7 +2770,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x100001A8"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2786,7 +2785,7 @@ Child Variables:
                 Indexed: 27
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x100001AC,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x100001AC
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2797,7 +2796,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x100001AC"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2812,7 +2811,7 @@ Child Variables:
                 Indexed: 28
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x100001B0,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x100001B0
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2823,7 +2822,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x100001B0"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2838,7 +2837,7 @@ Child Variables:
                 Indexed: 29
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x100001B4,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x100001B4
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2849,7 +2848,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x100001B4"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2864,7 +2863,7 @@ Child Variables:
                 Indexed: 30
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x100001B8,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x100001B8
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2875,7 +2874,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x100001B8"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2890,7 +2889,7 @@ Child Variables:
                 Indexed: 31
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x100001BC,\n\t_reserved: u32 = 268461611}"
+              value: Vector @ 0x100001BC
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
                 line: 86
@@ -2901,7 +2900,7 @@ Child Variables:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x100001BC"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*_handler"
@@ -2940,7 +2939,7 @@ Child Variables:
             Named: __RESET_VECTOR
           type_name:
             Pointer: "unsafe extern \"C\" fn() -> !"
-          value: "*raw unsafe extern \"C\" fn() -> ! @ 0x10000104"
+          value: "*raw unsafe extern \"C\" fn() -> ! @ 0x100001C1"
           source_location:
             path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
             line: 1048
@@ -2959,7 +2958,7 @@ Child Variables:
               item_type_name:
                 Base: Vector
               count: 14
-          value: "[Vector; 14] = [\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000108,\n\t\treserved: usize = 268461611\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000010C,\n\t\treserved: usize = 268482803\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000110,\n\t\treserved: usize = 0\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000114,\n\t\treserved: usize = 0\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000118,\n\t\treserved: usize = 0\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000011C,\n\t\treserved: usize = 0\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000120,\n\t\treserved: usize = 0\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000124,\n\t\treserved: usize = 0\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000128,\n\t\treserved: usize = 0\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000012C,\n\t\treserved: usize = 268436319\n\t},\n\t... and 4 more]"
+          value: "[Vector; 14] = [\n\tVector @ 0x10000108,\n\tVector @ 0x1000010C,\n\tVector @ 0x10000110,\n\tVector @ 0x10000114,\n\tVector @ 0x10000118,\n\tVector @ 0x1000011C,\n\tVector @ 0x10000120,\n\tVector @ 0x10000124,\n\tVector @ 0x10000128,\n\tVector @ 0x1000012C,\n\t... and 4 more]"
           source_location:
             path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
             line: 1140
@@ -2970,7 +2969,7 @@ Child Variables:
                 Indexed: 0
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000108,\n\treserved: usize = 268461611}"
+              value: Vector @ 0x10000108
               source_location:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
@@ -2981,7 +2980,7 @@ Child Variables:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000108"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*handler"
@@ -2996,7 +2995,7 @@ Child Variables:
                 Indexed: 1
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000010C,\n\treserved: usize = 268482803}"
+              value: Vector @ 0x1000010C
               source_location:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
@@ -3007,7 +3006,7 @@ Child Variables:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x1000010C"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000B8F3"
                   children:
                     - name:
                         Named: "*handler"
@@ -3022,7 +3021,7 @@ Child Variables:
                 Indexed: 2
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000110,\n\treserved: usize = 0}"
+              value: Vector @ 0x10000110
               source_location:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
@@ -3033,7 +3032,7 @@ Child Variables:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000110"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
                   children:
                     - name:
                         Named: "*handler"
@@ -3048,7 +3047,7 @@ Child Variables:
                 Indexed: 3
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000114,\n\treserved: usize = 0}"
+              value: Vector @ 0x10000114
               source_location:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
@@ -3059,7 +3058,7 @@ Child Variables:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000114"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
                   children:
                     - name:
                         Named: "*handler"
@@ -3074,7 +3073,7 @@ Child Variables:
                 Indexed: 4
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000118,\n\treserved: usize = 0}"
+              value: Vector @ 0x10000118
               source_location:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
@@ -3085,7 +3084,7 @@ Child Variables:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000118"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
                   children:
                     - name:
                         Named: "*handler"
@@ -3100,7 +3099,7 @@ Child Variables:
                 Indexed: 5
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000011C,\n\treserved: usize = 0}"
+              value: Vector @ 0x1000011C
               source_location:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
@@ -3111,7 +3110,7 @@ Child Variables:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x1000011C"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
                   children:
                     - name:
                         Named: "*handler"
@@ -3126,7 +3125,7 @@ Child Variables:
                 Indexed: 6
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000120,\n\treserved: usize = 0}"
+              value: Vector @ 0x10000120
               source_location:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
@@ -3137,7 +3136,7 @@ Child Variables:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000120"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
                   children:
                     - name:
                         Named: "*handler"
@@ -3152,7 +3151,7 @@ Child Variables:
                 Indexed: 7
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000124,\n\treserved: usize = 0}"
+              value: Vector @ 0x10000124
               source_location:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
@@ -3163,7 +3162,7 @@ Child Variables:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000124"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
                   children:
                     - name:
                         Named: "*handler"
@@ -3178,7 +3177,7 @@ Child Variables:
                 Indexed: 8
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000128,\n\treserved: usize = 0}"
+              value: Vector @ 0x10000128
               source_location:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
@@ -3189,7 +3188,7 @@ Child Variables:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000128"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
                   children:
                     - name:
                         Named: "*handler"
@@ -3204,7 +3203,7 @@ Child Variables:
                 Indexed: 9
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000012C,\n\treserved: usize = 268436319}"
+              value: Vector @ 0x1000012C
               source_location:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
@@ -3215,7 +3214,7 @@ Child Variables:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x1000012C"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000035F"
                   children:
                     - name:
                         Named: "*handler"
@@ -3230,7 +3229,7 @@ Child Variables:
                 Indexed: 10
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000130,\n\treserved: usize = 0}"
+              value: Vector @ 0x10000130
               source_location:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
@@ -3241,7 +3240,7 @@ Child Variables:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000130"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
                   children:
                     - name:
                         Named: "*handler"
@@ -3256,7 +3255,7 @@ Child Variables:
                 Indexed: 11
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000134,\n\treserved: usize = 0}"
+              value: Vector @ 0x10000134
               source_location:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
@@ -3267,7 +3266,7 @@ Child Variables:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000134"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000000"
                   children:
                     - name:
                         Named: "*handler"
@@ -3282,7 +3281,7 @@ Child Variables:
                 Indexed: 12
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000138,\n\treserved: usize = 268461611}"
+              value: Vector @ 0x10000138
               source_location:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
@@ -3293,7 +3292,7 @@ Child Variables:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x10000138"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000662B"
                   children:
                     - name:
                         Named: "*handler"
@@ -3308,7 +3307,7 @@ Child Variables:
                 Indexed: 13
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000013C,\n\treserved: usize = 268436301}"
+              value: Vector @ 0x1000013C
               source_location:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
@@ -3319,7 +3318,7 @@ Child Variables:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "*raw unsafe extern \"C\" fn() @ 0x1000013C"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x1000034D"
                   children:
                     - name:
                         Named: "*handler"
@@ -3494,7 +3493,7 @@ Child Variables:
                 Named: data_ptr
               type_name:
                 Pointer: u8
-              value: "*raw u8 @ 0x20000040"
+              value: "*raw u8 @ 0x1000C2E8"
               children:
                 - name:
                     Named: "*data_ptr"
@@ -3569,7 +3568,7 @@ Child Variables:
                     Named: data_ptr
                   type_name:
                     Pointer: u8
-                  value: "*raw u8 @ 0x20000068"
+                  value: "*raw u8 @ 0x1000C53C"
                   children:
                     - name:
                         Named: "*data_ptr"
@@ -3585,7 +3584,7 @@ Child Variables:
                 Named: CONTROL_BLOCK
               type_name:
                 Base: "MaybeUninit<probe_rs_debugger_test::setup_data_types::RttControlBlock>"
-              value: "MaybeUninit<probe_rs_debugger_test::setup_data_types::RttControlBlock> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<probe_rs_debugger_test::setup_data_types::RttControlBlock> = ManuallyDrop<probe_rs_debugger_test::setup_data_types::RttControlBlock> @ 0x2000007C}"
+              value: "MaybeUninit<probe_rs_debugger_test::setup_data_types::RttControlBlock> @ 0x2000007C"
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rtt-target-0.5.0/src/init.rs
                 line: 138
@@ -3733,7 +3732,7 @@ Child Variables:
                                     Named: name
                                   type_name:
                                     Pointer: "*const u8"
-                                  value: "*const u8 @ 0x20000094"
+                                  value: "*const u8 @ 0x1000C4A0"
                                   children:
                                     - name:
                                         Named: "*name"
@@ -3744,7 +3743,7 @@ Child Variables:
                                     Named: buffer
                                   type_name:
                                     Pointer: "*mut u8"
-                                  value: "*mut u8 @ 0x20000098"
+                                  value: "*mut u8 @ 0x200000C4"
                                   children:
                                     - name:
                                         Named: "*buffer"
@@ -3817,7 +3816,7 @@ Child Variables:
                                     Named: name
                                   type_name:
                                     Pointer: "*const u8"
-                                  value: "*const u8 @ 0x200000AC"
+                                  value: "*const u8 @ 0x1000C4B3"
                                   children:
                                     - name:
                                         Named: "*name"
@@ -3828,7 +3827,7 @@ Child Variables:
                                     Named: buffer
                                   type_name:
                                     Pointer: "*mut u8"
-                                  value: "*mut u8 @ 0x200000B0"
+                                  value: "*mut u8 @ 0x200004C4"
                                   children:
                                     - name:
                                         Named: "*buffer"
@@ -3903,7 +3902,7 @@ Child Variables:
                 Named: _RTT_CHANNEL_BUFFER
               type_name:
                 Base: "MaybeUninit<[u8; 1024]>"
-              value: "MaybeUninit<[u8; 1024]> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<[u8; 1024]> = ManuallyDrop<[u8; 1024]> @ 0x200000C4}"
+              value: "MaybeUninit<[u8; 1024]> @ 0x200000C4"
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rtt-target-0.5.0/src/init.rs
                 line: 34
@@ -4187,7 +4186,7 @@ Child Variables:
                 Named: _RTT_CHANNEL_BUFFER
               type_name:
                 Base: "MaybeUninit<[u8; 1024]>"
-              value: "MaybeUninit<[u8; 1024]> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<[u8; 1024]> = ManuallyDrop<[u8; 1024]> @ 0x200004C4}"
+              value: "MaybeUninit<[u8; 1024]> @ 0x200004C4"
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rtt-target-0.5.0/src/init.rs
                 line: 34
@@ -4477,7 +4476,7 @@ Child Variables:
             Named: drop_in_place
           type_name:
             Pointer: "*const ()"
-          value: "*const () @ 0x1000C8C4"
+          value: "*const () @ 0x100076C1"
         - name:
             Named: size
           type_name:
@@ -4492,7 +4491,7 @@ Child Variables:
             Named: __method3
           type_name:
             Pointer: "*const ()"
-          value: "*const () @ 0x1000C8D0"
+          value: "*const () @ 0x10007A0D"
     - name:
         Named: "<core::option::Option<&core::fmt::Arguments> as core::fmt::Debug>::{vtable}"
       type_name:
@@ -4503,7 +4502,7 @@ Child Variables:
             Named: drop_in_place
           type_name:
             Pointer: "*const ()"
-          value: "*const () @ 0x1000C8DC"
+          value: "*const () @ 0x100076C9"
         - name:
             Named: size
           type_name:
@@ -4518,7 +4517,7 @@ Child Variables:
             Named: __method3
           type_name:
             Pointer: "*const ()"
-          value: "*const () @ 0x1000C8E8"
+          value: "*const () @ 0x10007A29"
     - name:
         Named: "<&core::panic::location::Location as core::fmt::Debug>::{vtable}"
       type_name:
@@ -4529,7 +4528,7 @@ Child Variables:
             Named: drop_in_place
           type_name:
             Pointer: "*const ()"
-          value: "*const () @ 0x1000C8EC"
+          value: "*const () @ 0x100076A9"
         - name:
             Named: size
           type_name:
@@ -4544,7 +4543,7 @@ Child Variables:
             Named: __method3
           type_name:
             Pointer: "*const ()"
-          value: "*const () @ 0x1000C8F8"
+          value: "*const () @ 0x10007A81"
     - name:
         Named: "<bool as core::fmt::Debug>::{vtable}"
       type_name:
@@ -4555,7 +4554,7 @@ Child Variables:
             Named: drop_in_place
           type_name:
             Pointer: "*const ()"
-          value: "*const () @ 0x1000C908"
+          value: "*const () @ 0x10007681"
         - name:
             Named: size
           type_name:
@@ -4570,7 +4569,7 @@ Child Variables:
             Named: __method3
           type_name:
             Pointer: "*const ()"
-          value: "*const () @ 0x1000C914"
+          value: "*const () @ 0x100078D9"
     - name:
         Named: "<&bool as core::fmt::Debug>::{vtable}"
       type_name:
@@ -4581,7 +4580,7 @@ Child Variables:
             Named: drop_in_place
           type_name:
             Pointer: "*const ()"
-          value: "*const () @ 0x1000C92C"
+          value: "*const () @ 0x10007699"
         - name:
             Named: size
           type_name:
@@ -4596,7 +4595,7 @@ Child Variables:
             Named: __method3
           type_name:
             Pointer: "*const ()"
-          value: "*const () @ 0x1000C938"
+          value: "*const () @ 0x10007841"
     - name:
         Named: "<&&core::fmt::Arguments as core::fmt::Debug>::{vtable}"
       type_name:
@@ -4607,7 +4606,7 @@ Child Variables:
             Named: drop_in_place
           type_name:
             Pointer: "*const ()"
-          value: "*const () @ 0x1000C93C"
+          value: "*const () @ 0x100076A1"
         - name:
             Named: size
           type_name:
@@ -4622,7 +4621,7 @@ Child Variables:
             Named: __method3
           type_name:
             Pointer: "*const ()"
-          value: "*const () @ 0x1000C948"
+          value: "*const () @ 0x10007855"
     - name:
         Named: "<&str as core::fmt::Debug>::{vtable}"
       type_name:
@@ -4633,7 +4632,7 @@ Child Variables:
             Named: drop_in_place
           type_name:
             Pointer: "*const ()"
-          value: "*const () @ 0x1000C94C"
+          value: "*const () @ 0x10007689"
         - name:
             Named: size
           type_name:
@@ -4648,7 +4647,7 @@ Child Variables:
             Named: __method3
           type_name:
             Pointer: "*const ()"
-          value: "*const () @ 0x1000C958"
+          value: "*const () @ 0x100077FF"
     - name:
         Named: "<u32 as core::fmt::Debug>::{vtable}"
       type_name:
@@ -4659,7 +4658,7 @@ Child Variables:
             Named: drop_in_place
           type_name:
             Pointer: "*const ()"
-          value: "*const () @ 0x1000C95C"
+          value: "*const () @ 0x10007679"
         - name:
             Named: size
           type_name:
@@ -4674,7 +4673,7 @@ Child Variables:
             Named: __method3
           type_name:
             Pointer: "*const ()"
-          value: "*const () @ 0x1000C968"
+          value: "*const () @ 0x10007BA5"
     - name:
         Named: "<&u32 as core::fmt::Debug>::{vtable}"
       type_name:
@@ -4685,7 +4684,7 @@ Child Variables:
             Named: drop_in_place
           type_name:
             Pointer: "*const ()"
-          value: "*const () @ 0x1000C970"
+          value: "*const () @ 0x10007691"
         - name:
             Named: size
           type_name:
@@ -4700,7 +4699,7 @@ Child Variables:
             Named: __method3
           type_name:
             Pointer: "*const ()"
-          value: "*const () @ 0x1000C97C"
+          value: "*const () @ 0x1000782D"
     - name:
         Named: "<rtt_target::rtt::RttWriter as core::fmt::Write>::{vtable}"
       type_name: Unknown
@@ -4799,7 +4798,7 @@ Child Variables:
             Named: drop_in_place
           type_name:
             Pointer: "*const ()"
-          value: "*const () @ 0x1000D008"
+          value: "*const () @ 0x10008199"
         - name:
             Named: size
           type_name:
@@ -4814,17 +4813,17 @@ Child Variables:
             Named: __method3
           type_name:
             Pointer: "*const ()"
-          value: "*const () @ 0x1000D014"
+          value: "*const () @ 0x10009175"
         - name:
             Named: __method4
           type_name:
             Pointer: "*const ()"
-          value: "*const () @ 0x1000D018"
+          value: "*const () @ 0x10007FE3"
         - name:
             Named: __method5
           type_name:
             Pointer: "*const ()"
-          value: "*const () @ 0x1000D01C"
+          value: "*const () @ 0x1000801B"
     - name:
         Namespace: cortex_m
       type_name: Namespace

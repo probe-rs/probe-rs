@@ -34,6 +34,23 @@
     {
       "type": "lldb",
       "request": "launch",
+      "name": "probe-rs RPC server", // Use this to test the RPC server .
+      "cargo": {
+        "args": ["build", "--package", "probe-rs-tools"],
+        "filter": {
+          "name": "probe-rs",
+          "kind": "bin"
+        }
+      },
+      "args": ["serve"],
+      // "env": {
+      //     "RUST_LOG": "error",
+      //     "DEFMT_LOG": "info"
+      // },
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
       "name": "list supported chips",
       "cargo": {
         "args": ["build", "--package", "probe-rs-tools"],
