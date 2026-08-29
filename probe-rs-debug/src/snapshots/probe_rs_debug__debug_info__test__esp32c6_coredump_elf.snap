@@ -3795,22 +3795,16 @@ expression: stack_frames
                                   value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x4086E5C0"
                                   children:
                                     - name:
-                                        Named: p
+                                        Named: value
                                       type_name:
-                                        Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
-                                      value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x4086E5C0"
+                                        Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                      value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                                       children:
                                         - name:
-                                            Named: value
+                                            Named: "*value"
                                           type_name:
-                                            Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                          value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
-                                          children:
-                                            - name:
-                                                Named: "*value"
-                                              type_name:
-                                                Struct: TaskHeader
-                                              value: TaskHeader @ <null pointer>
+                                            Struct: TaskHeader
+                                          value: TaskHeader @ <null pointer>
                             - name:
                                 Named: pender
                               type_name:
@@ -4208,22 +4202,16 @@ expression: stack_frames
                               value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x4086E5C0"
                               children:
                                 - name:
-                                    Named: p
+                                    Named: value
                                   type_name:
-                                    Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
-                                  value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x4086E5C0"
+                                    Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                  value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                                   children:
                                     - name:
-                                        Named: value
+                                        Named: "*value"
                                       type_name:
-                                        Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                      value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
-                                      children:
-                                        - name:
-                                            Named: "*value"
-                                          type_name:
-                                            Struct: TaskHeader
-                                          value: TaskHeader @ <null pointer>
+                                        Struct: TaskHeader
+                                      value: TaskHeader @ <null pointer>
                         - name:
                             Named: pender
                           type_name:
@@ -4283,22 +4271,16 @@ expression: stack_frames
                                   value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x4086E5C0"
                                   children:
                                     - name:
-                                        Named: p
+                                        Named: value
                                       type_name:
-                                        Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
-                                      value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x4086E5C0"
+                                        Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                      value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                                       children:
                                         - name:
-                                            Named: value
+                                            Named: "*value"
                                           type_name:
-                                            Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                          value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
-                                          children:
-                                            - name:
-                                                Named: "*value"
-                                              type_name:
-                                                Struct: TaskHeader
-                                              value: TaskHeader @ <null pointer>
+                                            Struct: TaskHeader
+                                          value: TaskHeader @ <null pointer>
                             - name:
                                 Named: pender
                               type_name:

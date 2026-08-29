@@ -318,6 +318,17 @@ impl DebugInfo {
                     cache,
                     frame_info,
                 )?;
+
+                // Members are in the cache. `process_struct` can rewrite them now.
+                let mut type_tree = unit_info.unit.entries_tree(Some(unit_offset))?;
+                unit_info.process_struct(
+                    self,
+                    type_tree.root()?.entry(),
+                    parent_variable,
+                    memory,
+                    cache,
+                    frame_info,
+                )?;
             }
             VariableNodeType::UnitsLookup => {
                 if self.unit_infos.is_empty() {

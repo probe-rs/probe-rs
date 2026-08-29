@@ -3579,16 +3579,10 @@ expression: stack_frames
                           value: AtomicU32 @ 0x3FC9C0C8
                           children:
                             - name:
-                                Named: v
+                                Named: value
                               type_name:
-                                Struct: UnsafeCell<u32>
-                              value: UnsafeCell<u32> @ 0x3FC9C0C8
-                              children:
-                                - name:
-                                    Named: value
-                                  type_name:
-                                    Base: u32
-                                  value: "1"
+                                Base: u32
+                              value: "1"
                     - name:
                         Named: run_queue_item
                       type_name:
@@ -3625,51 +3619,51 @@ expression: stack_frames
                       value: "AtomicPtr<embassy_executor::raw::SyncExecutor> @ 0x3FC9C0D0"
                       children:
                         - name:
-                            Named: p
+                            Named: value
                           type_name:
-                            Struct: "UnsafeCell<*mut embassy_executor::raw::SyncExecutor>"
-                          value: "UnsafeCell<*mut embassy_executor::raw::SyncExecutor> @ 0x3FC9C0D0"
+                            Pointer: "*mut embassy_executor::raw::SyncExecutor"
+                          value: "*mut embassy_executor::raw::SyncExecutor @ 0x3FCDC6B0"
                           children:
                             - name:
-                                Named: value
+                                Named: "*value"
                               type_name:
-                                Pointer: "*mut embassy_executor::raw::SyncExecutor"
-                              value: "*mut embassy_executor::raw::SyncExecutor @ 0x3FCDC6B0"
+                                Struct: SyncExecutor
+                              value: SyncExecutor @ 0x3FCDC6B0
                               children:
                                 - name:
-                                    Named: "*value"
+                                    Named: run_queue
                                   type_name:
-                                    Struct: SyncExecutor
-                                  value: SyncExecutor @ 0x3FCDC6B0
+                                    Struct: RunQueue
+                                  value: RunQueue @ 0x3FCDC6B0
                                   children:
                                     - name:
-                                        Named: run_queue
+                                        Named: head
                                       type_name:
-                                        Struct: RunQueue
-                                      value: RunQueue @ 0x3FCDC6B0
+                                        Struct: "AtomicPtr<embassy_executor::raw::TaskHeader>"
+                                      value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
                                       children:
                                         - name:
-                                            Named: head
+                                            Named: value
                                           type_name:
-                                            Struct: "AtomicPtr<embassy_executor::raw::TaskHeader>"
-                                          value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
+                                            Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                          value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                                           children:
                                             - name:
-                                                Named: p
+                                                Named: "*value"
                                               type_name:
-                                                Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
-                                              value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
+                                                Struct: TaskHeader
+                                              value: TaskHeader @ <null pointer>
+                                - name:
+                                    Named: pender
+                                  type_name:
+                                    Struct: Pender
+                                  value: Pender @ 0x3FCDC6B4
+                                  children:
                                     - name:
-                                        Named: pender
+                                        Named: __0
                                       type_name:
-                                        Struct: Pender
-                                      value: Pender @ 0x3FCDC6B4
-                                      children:
-                                        - name:
-                                            Named: __0
-                                          type_name:
-                                            Pointer: "*mut ()"
-                                          value: "*mut () @ 0x00000010"
+                                        Pointer: "*mut ()"
+                                      value: "*mut () @ 0x00000010"
                     - name:
                         Named: poll_fn
                       type_name:
@@ -4359,16 +4353,10 @@ expression: stack_frames
                               value: AtomicU32 @ 0x3FCDC3C0
                               children:
                                 - name:
-                                    Named: v
+                                    Named: value
                                   type_name:
-                                    Struct: UnsafeCell<u32>
-                                  value: UnsafeCell<u32> @ 0x3FCDC3C0
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: u32
-                                      value: "1"
+                                    Base: u32
+                                  value: "1"
                         - name:
                             Named: run_queue_item
                           type_name:
@@ -4411,45 +4399,51 @@ expression: stack_frames
                           value: "AtomicPtr<embassy_executor::raw::SyncExecutor> @ 0x3FCDC3C8"
                           children:
                             - name:
-                                Named: p
+                                Named: value
                               type_name:
-                                Struct: "UnsafeCell<*mut embassy_executor::raw::SyncExecutor>"
-                              value: "UnsafeCell<*mut embassy_executor::raw::SyncExecutor> @ 0x3FCDC3C8"
+                                Pointer: "*mut embassy_executor::raw::SyncExecutor"
+                              value: "*mut embassy_executor::raw::SyncExecutor @ 0x3FC9C004"
                               children:
                                 - name:
-                                    Named: value
+                                    Named: "*value"
                                   type_name:
-                                    Pointer: "*mut embassy_executor::raw::SyncExecutor"
-                                  value: "*mut embassy_executor::raw::SyncExecutor @ 0x3FC9C004"
+                                    Struct: SyncExecutor
+                                  value: SyncExecutor @ 0x3FC9C004
                                   children:
                                     - name:
-                                        Named: "*value"
+                                        Named: run_queue
                                       type_name:
-                                        Struct: SyncExecutor
-                                      value: SyncExecutor @ 0x3FC9C004
+                                        Struct: RunQueue
+                                      value: RunQueue @ 0x3FC9C004
                                       children:
                                         - name:
-                                            Named: run_queue
+                                            Named: head
                                           type_name:
-                                            Struct: RunQueue
-                                          value: RunQueue @ 0x3FC9C004
+                                            Struct: "AtomicPtr<embassy_executor::raw::TaskHeader>"
+                                          value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x3FC9C004"
                                           children:
                                             - name:
-                                                Named: head
+                                                Named: value
                                               type_name:
-                                                Struct: "AtomicPtr<embassy_executor::raw::TaskHeader>"
-                                              value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x3FC9C004"
+                                                Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                              value: "*mut embassy_executor::raw::TaskHeader @ 0x00000001"
+                                              children:
+                                                - name:
+                                                    Named: "*value"
+                                                  type_name:
+                                                    Struct: TaskHeader
+                                                  value: "TaskHeader @ <dangling pointer: 0x00000001>"
+                                    - name:
+                                        Named: pender
+                                      type_name:
+                                        Struct: Pender
+                                      value: Pender @ 0x3FC9C008
+                                      children:
                                         - name:
-                                            Named: pender
+                                            Named: __0
                                           type_name:
-                                            Struct: Pender
-                                          value: Pender @ 0x3FC9C008
-                                          children:
-                                            - name:
-                                                Named: __0
-                                              type_name:
-                                                Pointer: "*mut ()"
-                                              value: "*mut () @ 0x3FC89AFC"
+                                            Pointer: "*mut ()"
+                                          value: "*mut () @ 0x3FC89AFC"
                         - name:
                             Named: poll_fn
                           type_name:
@@ -4596,16 +4590,10 @@ expression: stack_frames
                       value: AtomicU32 @ 0x3FCDC3C0
                       children:
                         - name:
-                            Named: v
+                            Named: value
                           type_name:
-                            Struct: UnsafeCell<u32>
-                          value: UnsafeCell<u32> @ 0x3FCDC3C0
-                          children:
-                            - name:
-                                Named: value
-                              type_name:
-                                Base: u32
-                              value: "1"
+                            Base: u32
+                          value: "1"
                 - name:
                     Named: run_queue_item
                   type_name:
@@ -4666,63 +4654,51 @@ expression: stack_frames
                   value: "AtomicPtr<embassy_executor::raw::SyncExecutor> @ 0x3FCDC3C8"
                   children:
                     - name:
-                        Named: p
+                        Named: value
                       type_name:
-                        Struct: "UnsafeCell<*mut embassy_executor::raw::SyncExecutor>"
-                      value: "UnsafeCell<*mut embassy_executor::raw::SyncExecutor> @ 0x3FCDC3C8"
+                        Pointer: "*mut embassy_executor::raw::SyncExecutor"
+                      value: "*mut embassy_executor::raw::SyncExecutor @ 0x3FC9C004"
                       children:
                         - name:
-                            Named: value
+                            Named: "*value"
                           type_name:
-                            Pointer: "*mut embassy_executor::raw::SyncExecutor"
-                          value: "*mut embassy_executor::raw::SyncExecutor @ 0x3FC9C004"
+                            Struct: SyncExecutor
+                          value: SyncExecutor @ 0x3FC9C004
                           children:
                             - name:
-                                Named: "*value"
+                                Named: run_queue
                               type_name:
-                                Struct: SyncExecutor
-                              value: SyncExecutor @ 0x3FC9C004
+                                Struct: RunQueue
+                              value: RunQueue @ 0x3FC9C004
                               children:
                                 - name:
-                                    Named: run_queue
+                                    Named: head
                                   type_name:
-                                    Struct: RunQueue
-                                  value: RunQueue @ 0x3FC9C004
+                                    Struct: "AtomicPtr<embassy_executor::raw::TaskHeader>"
+                                  value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x3FC9C004"
                                   children:
                                     - name:
-                                        Named: head
+                                        Named: value
                                       type_name:
-                                        Struct: "AtomicPtr<embassy_executor::raw::TaskHeader>"
-                                      value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x3FC9C004"
+                                        Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                      value: "*mut embassy_executor::raw::TaskHeader @ 0x00000001"
                                       children:
                                         - name:
-                                            Named: p
+                                            Named: "*value"
                                           type_name:
-                                            Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
-                                          value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x3FC9C004"
-                                          children:
-                                            - name:
-                                                Named: value
-                                              type_name:
-                                                Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                              value: "*mut embassy_executor::raw::TaskHeader @ 0x00000001"
-                                              children:
-                                                - name:
-                                                    Named: "*value"
-                                                  type_name:
-                                                    Struct: TaskHeader
-                                                  value: "TaskHeader @ <dangling pointer: 0x00000001>"
+                                            Struct: TaskHeader
+                                          value: "TaskHeader @ <dangling pointer: 0x00000001>"
+                            - name:
+                                Named: pender
+                              type_name:
+                                Struct: Pender
+                              value: Pender @ 0x3FC9C008
+                              children:
                                 - name:
-                                    Named: pender
+                                    Named: __0
                                   type_name:
-                                    Struct: Pender
-                                  value: Pender @ 0x3FC9C008
-                                  children:
-                                    - name:
-                                        Named: __0
-                                      type_name:
-                                        Pointer: "*mut ()"
-                                      value: "*mut () @ 0x3FC89AFC"
+                                    Pointer: "*mut ()"
+                                  value: "*mut () @ 0x3FC89AFC"
                 - name:
                     Named: poll_fn
                   type_name:
@@ -5077,22 +5053,16 @@ expression: stack_frames
                   value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
                   children:
                     - name:
-                        Named: p
+                        Named: value
                       type_name:
-                        Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
-                      value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
+                        Pointer: "*mut embassy_executor::raw::TaskHeader"
+                      value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                       children:
                         - name:
-                            Named: value
+                            Named: "*value"
                           type_name:
-                            Pointer: "*mut embassy_executor::raw::TaskHeader"
-                          value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
-                          children:
-                            - name:
-                                Named: "*value"
-                              type_name:
-                                Struct: TaskHeader
-                              value: TaskHeader @ <null pointer>
+                            Struct: TaskHeader
+                          value: TaskHeader @ <null pointer>
         - name:
             Named: ptr
           type_name: Unknown
@@ -5160,16 +5130,10 @@ expression: stack_frames
                               value: AtomicU32 @ 0x3FCDC3C0
                               children:
                                 - name:
-                                    Named: v
+                                    Named: value
                                   type_name:
-                                    Struct: UnsafeCell<u32>
-                                  value: UnsafeCell<u32> @ 0x3FCDC3C0
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: u32
-                                      value: "1"
+                                    Base: u32
+                                  value: "1"
                         - name:
                             Named: run_queue_item
                           type_name:
@@ -5212,45 +5176,51 @@ expression: stack_frames
                           value: "AtomicPtr<embassy_executor::raw::SyncExecutor> @ 0x3FCDC3C8"
                           children:
                             - name:
-                                Named: p
+                                Named: value
                               type_name:
-                                Struct: "UnsafeCell<*mut embassy_executor::raw::SyncExecutor>"
-                              value: "UnsafeCell<*mut embassy_executor::raw::SyncExecutor> @ 0x3FCDC3C8"
+                                Pointer: "*mut embassy_executor::raw::SyncExecutor"
+                              value: "*mut embassy_executor::raw::SyncExecutor @ 0x3FC9C004"
                               children:
                                 - name:
-                                    Named: value
+                                    Named: "*value"
                                   type_name:
-                                    Pointer: "*mut embassy_executor::raw::SyncExecutor"
-                                  value: "*mut embassy_executor::raw::SyncExecutor @ 0x3FC9C004"
+                                    Struct: SyncExecutor
+                                  value: SyncExecutor @ 0x3FC9C004
                                   children:
                                     - name:
-                                        Named: "*value"
+                                        Named: run_queue
                                       type_name:
-                                        Struct: SyncExecutor
-                                      value: SyncExecutor @ 0x3FC9C004
+                                        Struct: RunQueue
+                                      value: RunQueue @ 0x3FC9C004
                                       children:
                                         - name:
-                                            Named: run_queue
+                                            Named: head
                                           type_name:
-                                            Struct: RunQueue
-                                          value: RunQueue @ 0x3FC9C004
+                                            Struct: "AtomicPtr<embassy_executor::raw::TaskHeader>"
+                                          value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x3FC9C004"
                                           children:
                                             - name:
-                                                Named: head
+                                                Named: value
                                               type_name:
-                                                Struct: "AtomicPtr<embassy_executor::raw::TaskHeader>"
-                                              value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x3FC9C004"
+                                                Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                              value: "*mut embassy_executor::raw::TaskHeader @ 0x00000001"
+                                              children:
+                                                - name:
+                                                    Named: "*value"
+                                                  type_name:
+                                                    Struct: TaskHeader
+                                                  value: "TaskHeader @ <dangling pointer: 0x00000001>"
+                                    - name:
+                                        Named: pender
+                                      type_name:
+                                        Struct: Pender
+                                      value: Pender @ 0x3FC9C008
+                                      children:
                                         - name:
-                                            Named: pender
+                                            Named: __0
                                           type_name:
-                                            Struct: Pender
-                                          value: Pender @ 0x3FC9C008
-                                          children:
-                                            - name:
-                                                Named: __0
-                                              type_name:
-                                                Pointer: "*mut ()"
-                                              value: "*mut () @ 0x3FC89AFC"
+                                            Pointer: "*mut ()"
+                                          value: "*mut () @ 0x3FC89AFC"
                         - name:
                             Named: poll_fn
                           type_name:
@@ -5593,22 +5563,16 @@ expression: stack_frames
                       value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
                       children:
                         - name:
-                            Named: p
+                            Named: value
                           type_name:
-                            Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
-                          value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
+                            Pointer: "*mut embassy_executor::raw::TaskHeader"
+                          value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                           children:
                             - name:
-                                Named: value
+                                Named: "*value"
                               type_name:
-                                Pointer: "*mut embassy_executor::raw::TaskHeader"
-                              value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
-                              children:
-                                - name:
-                                    Named: "*value"
-                                  type_name:
-                                    Struct: TaskHeader
-                                  value: TaskHeader @ <null pointer>
+                                Struct: TaskHeader
+                              value: TaskHeader @ <null pointer>
                 - name:
                     Named: pender
                   type_name:
@@ -5852,22 +5816,16 @@ expression: stack_frames
                           value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
                           children:
                             - name:
-                                Named: p
+                                Named: value
                               type_name:
-                                Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
-                              value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
+                                Pointer: "*mut embassy_executor::raw::TaskHeader"
+                              value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                               children:
                                 - name:
-                                    Named: value
+                                    Named: "*value"
                                   type_name:
-                                    Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                  value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
-                                  children:
-                                    - name:
-                                        Named: "*value"
-                                      type_name:
-                                        Struct: TaskHeader
-                                      value: TaskHeader @ <null pointer>
+                                    Struct: TaskHeader
+                                  value: TaskHeader @ <null pointer>
                     - name:
                         Named: pender
                       type_name:
@@ -6123,22 +6081,16 @@ expression: stack_frames
                                   value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
                                   children:
                                     - name:
-                                        Named: p
+                                        Named: value
                                       type_name:
-                                        Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
-                                      value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
+                                        Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                      value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                                       children:
                                         - name:
-                                            Named: value
+                                            Named: "*value"
                                           type_name:
-                                            Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                          value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
-                                          children:
-                                            - name:
-                                                Named: "*value"
-                                              type_name:
-                                                Struct: TaskHeader
-                                              value: TaskHeader @ <null pointer>
+                                            Struct: TaskHeader
+                                          value: TaskHeader @ <null pointer>
                             - name:
                                 Named: pender
                               type_name:
@@ -6408,22 +6360,16 @@ expression: stack_frames
                               value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
                               children:
                                 - name:
-                                    Named: p
+                                    Named: value
                                   type_name:
-                                    Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
-                                  value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
+                                    Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                  value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                                   children:
                                     - name:
-                                        Named: value
+                                        Named: "*value"
                                       type_name:
-                                        Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                      value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
-                                      children:
-                                        - name:
-                                            Named: "*value"
-                                          type_name:
-                                            Struct: TaskHeader
-                                          value: TaskHeader @ <null pointer>
+                                        Struct: TaskHeader
+                                      value: TaskHeader @ <null pointer>
                         - name:
                             Named: pender
                           type_name:
@@ -6483,22 +6429,16 @@ expression: stack_frames
                                   value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
                                   children:
                                     - name:
-                                        Named: p
+                                        Named: value
                                       type_name:
-                                        Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
-                                      value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
+                                        Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                      value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                                       children:
                                         - name:
-                                            Named: value
+                                            Named: "*value"
                                           type_name:
-                                            Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                          value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
-                                          children:
-                                            - name:
-                                                Named: "*value"
-                                              type_name:
-                                                Struct: TaskHeader
-                                              value: TaskHeader @ <null pointer>
+                                            Struct: TaskHeader
+                                          value: TaskHeader @ <null pointer>
                             - name:
                                 Named: pender
                               type_name:

@@ -1618,15 +1618,22 @@ impl UnitInfo {
             )));
         }
 
-        self.language.process_struct(
-            self,
-            debug_info,
-            node,
-            child_variable,
-            memory,
-            cache,
-            frame_info,
-        )
+        self.process_struct(debug_info, node, child_variable, memory, cache, frame_info)
+    }
+
+    /// Language-specific rewrite after a struct's members are in the cache.
+    #[expect(clippy::too_many_arguments)]
+    pub(crate) fn process_struct(
+        &self,
+        debug_info: &DebugInfo,
+        node: &DebuggingInformationEntry<GimliReader>,
+        variable: &mut Variable,
+        memory: &mut dyn MemoryInterface,
+        cache: &mut VariableCache,
+        frame_info: StackFrameInfo<'_>,
+    ) -> Result<(), DebugError> {
+        self.language
+            .process_struct(self, debug_info, node, variable, memory, cache, frame_info)
     }
 
     #[expect(clippy::too_many_arguments)]

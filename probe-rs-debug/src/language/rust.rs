@@ -104,6 +104,38 @@ impl Rust {
         }
     }
 
+    /// Drops the `UnsafeCell` member of an `Atomic*` newtype so the stored value is a direct child.
+    fn hide_unsafe_cell_in_atomic(
+        &self,
+        debug_info: &DebugInfo,
+        variable: &mut Variable,
+        memory: &mut dyn MemoryInterface,
+        cache: &mut VariableCache,
+        frame_info: StackFrameInfo<'_>,
+    ) -> Result<(), DebugError> {
+        if !is_atomic_type(&variable.type_name()) {
+            return Ok(());
+        }
+
+        let children: Vec<_> = cache.get_children(variable.variable_key).cloned().collect();
+        let [inner] = children.as_slice() else {
+            return Ok(());
+        };
+        if !is_rust_type(&inner.type_name(), "UnsafeCell") {
+            return Ok(());
+        }
+
+        let mut inner = inner.clone();
+        debug_info.cache_deferred_variables(cache, memory, &mut inner, frame_info)?;
+
+        let Some(inner) = cache.get_variable_by_key(inner.variable_key) else {
+            return Ok(());
+        };
+        cache.adopt_grand_children(variable, &inner)?;
+
+        Ok(())
+    }
+
     /// Replaces *const data pointer with *const [data; len] in slices.
     ///
     /// This function may return `Ok(())` even if it does not modify the variable.
@@ -323,6 +355,8 @@ impl ProgrammingLanguage for Rust {
             self.expand_slice(debug_info, variable, memory, cache, frame_info)?;
         }
 
+        self.hide_unsafe_cell_in_atomic(debug_info, variable, memory, cache, frame_info)?;
+
         Ok(())
     }
 }
@@ -331,28 +365,27 @@ fn is_datatype(entry: &Die) -> bool {
     [gimli::DW_TAG_structure_type, gimli::DW_TAG_enumeration_type].contains(&entry.tag())
 }
 
-/// `type_name`, `prefix::type_name`, or those names with a generic argument list.
-fn is_rust_type(name: &str, type_name: &str) -> bool {
-    fn ident_matches(segment: &str, type_name: &str) -> bool {
-        segment == type_name
-            || segment
-                .strip_prefix(type_name)
-                .is_some_and(|tail| tail.starts_with('<'))
-    }
-
-    if ident_matches(name, type_name) {
-        return true;
-    }
-
+/// Last path segment of a rust type name, without generic arguments.
+fn type_ident(name: &str) -> &str {
     let before_generics = name.split_once('<').map_or(name, |(head, _)| head);
     before_generics
         .rsplit_once("::")
-        .is_some_and(|(_, ident)| ident_matches(ident, type_name))
+        .map_or(before_generics, |(_, ident)| ident)
+}
+
+/// `type_name`, `prefix::type_name`, or those names with a generic argument list.
+fn is_rust_type(name: &str, type_name: &str) -> bool {
+    type_ident(name) == type_name
+}
+
+/// `AtomicU32`, `core::sync::atomic::AtomicPtr<T>`, and similar std newtypes.
+fn is_atomic_type(name: &str) -> bool {
+    type_ident(name).starts_with("Atomic")
 }
 
 #[cfg(test)]
 mod tests {
-    use super::is_rust_type;
+    use super::{is_atomic_type, is_rust_type};
 
     #[test]
     fn rust_type_name_matches() {
@@ -365,5 +398,14 @@ mod tests {
         assert!(!is_rust_type("Error", "Err"));
         assert!(!is_rust_type("Optional<u32>", "Option"));
         assert!(is_rust_type("Result<T, E>", "Result"));
+        assert!(is_rust_type("UnsafeCell<u32>", "UnsafeCell"));
+    }
+
+    #[test]
+    fn atomic_type_name_matches() {
+        assert!(is_atomic_type("AtomicU32"));
+        assert!(is_atomic_type("core::sync::atomic::AtomicPtr<u8>"));
+        assert!(!is_atomic_type("Option<u32>"));
+        assert!(!is_atomic_type("UnsafeCell<u32>"));
     }
 }
