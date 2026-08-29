@@ -253,13 +253,13 @@ expression: stack_frames
                                   item_type_name:
                                     Struct: "&str"
                                   count: 1
-                              value: "[&str; 1] = [\n\t< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4.\" } >]"
+                              value: "[&str; 1] = [\n\t< Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4. >]"
                               children:
                                 - name:
                                     Indexed: 0
                                   type_name:
                                     Struct: "&str"
-                                  value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4.\" } >"
+                                  value: "< Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4. >"
                                   children:
                                     - name:
                                         Named: data_ptr
@@ -276,7 +276,7 @@ expression: stack_frames
                                         Named: length
                                       type_name:
                                         Base: usize
-                                      value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c010688 of size 0x4\")) >"
+                                      value: "< Error using the probe >"
                         - name:
                             Named: fmt
                           type_name:
@@ -323,7 +323,7 @@ expression: stack_frames
                             Named: file
                           type_name:
                             Struct: "&str"
-                          value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C01069C : The coredump does not include the memory for address 0x3c01069c of size 0x4.\" } >"
+                          value: "< Failed to read referenced variable address from memory location 0x3C01069C : The coredump does not include the memory for address 0x3c01069c of size 0x4. >"
                           children:
                             - name:
                                 Named: data_ptr
@@ -340,17 +340,17 @@ expression: stack_frames
                                 Named: length
                               type_name:
                                 Base: usize
-                              value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c0106a0 of size 0x4\")) >"
+                              value: "< Error using the probe >"
                         - name:
                             Named: line
                           type_name:
                             Base: u32
-                          value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c0106a4 of size 0x4\")) >"
+                          value: "< Error using the probe >"
                         - name:
                             Named: col
                           type_name:
                             Base: u32
-                          value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c0106a8 of size 0x4\")) >"
+                          value: "< Error using the probe >"
                 - name:
                     Named: can_unwind
                   type_name:
@@ -616,13 +616,13 @@ expression: stack_frames
                                           item_type_name:
                                             Struct: "&str"
                                           count: 1
-                                      value: "[&str; 1] = [\n\t< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4.\" } >]"
+                                      value: "[&str; 1] = [\n\t< Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4. >]"
                                       children:
                                         - name:
                                             Indexed: 0
                                           type_name:
                                             Struct: "&str"
-                                          value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4.\" } >"
+                                          value: "< Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4. >"
                                           children:
                                             - name:
                                                 Named: data_ptr
@@ -639,7 +639,7 @@ expression: stack_frames
                                                 Named: length
                                               type_name:
                                                 Base: usize
-                                              value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c010688 of size 0x4\")) >"
+                                              value: "< Error using the probe >"
                                 - name:
                                     Named: fmt
                                   type_name:
@@ -686,7 +686,7 @@ expression: stack_frames
                                     Named: file
                                   type_name:
                                     Struct: "&str"
-                                  value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C01069C : The coredump does not include the memory for address 0x3c01069c of size 0x4.\" } >"
+                                  value: "< Failed to read referenced variable address from memory location 0x3C01069C : The coredump does not include the memory for address 0x3c01069c of size 0x4. >"
                                   children:
                                     - name:
                                         Named: data_ptr
@@ -703,17 +703,17 @@ expression: stack_frames
                                         Named: length
                                       type_name:
                                         Base: usize
-                                      value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c0106a0 of size 0x4\")) >"
+                                      value: "< Error using the probe >"
                                 - name:
                                     Named: line
                                   type_name:
                                     Base: u32
-                                  value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c0106a4 of size 0x4\")) >"
+                                  value: "< Error using the probe >"
                                 - name:
                                     Named: col
                                   type_name:
                                     Base: u32
-                                  value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c0106a8 of size 0x4\")) >"
+                                  value: "< Error using the probe >"
                         - name:
                             Named: can_unwind
                           type_name:
@@ -1005,13 +1005,13 @@ expression: stack_frames
                                   item_type_name:
                                     Struct: "&str"
                                   count: 1
-                              value: "[&str; 1] = [\n\t< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4.\" } >]"
+                              value: "[&str; 1] = [\n\t< Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4. >]"
                               children:
                                 - name:
                                     Indexed: 0
                                   type_name:
                                     Struct: "&str"
-                                  value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4.\" } >"
+                                  value: "< Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4. >"
                                   children:
                                     - name:
                                         Named: data_ptr
@@ -1028,7 +1028,7 @@ expression: stack_frames
                                         Named: length
                                       type_name:
                                         Base: usize
-                                      value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c010688 of size 0x4\")) >"
+                                      value: "< Error using the probe >"
                         - name:
                             Named: fmt
                           type_name:
@@ -1075,7 +1075,7 @@ expression: stack_frames
                             Named: file
                           type_name:
                             Struct: "&str"
-                          value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C01069C : The coredump does not include the memory for address 0x3c01069c of size 0x4.\" } >"
+                          value: "< Failed to read referenced variable address from memory location 0x3C01069C : The coredump does not include the memory for address 0x3c01069c of size 0x4. >"
                           children:
                             - name:
                                 Named: data_ptr
@@ -1092,17 +1092,17 @@ expression: stack_frames
                                 Named: length
                               type_name:
                                 Base: usize
-                              value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c0106a0 of size 0x4\")) >"
+                              value: "< Error using the probe >"
                         - name:
                             Named: line
                           type_name:
                             Base: u32
-                          value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c0106a4 of size 0x4\")) >"
+                          value: "< Error using the probe >"
                         - name:
                             Named: col
                           type_name:
                             Base: u32
-                          value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c0106a8 of size 0x4\")) >"
+                          value: "< Error using the probe >"
                 - name:
                     Named: can_unwind
                   type_name:
@@ -1338,13 +1338,13 @@ expression: stack_frames
                       item_type_name:
                         Struct: "&str"
                       count: 1
-                  value: "[&str; 1] = [\n\t< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4.\" } >]"
+                  value: "[&str; 1] = [\n\t< Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4. >]"
                   children:
                     - name:
                         Indexed: 0
                       type_name:
                         Struct: "&str"
-                      value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4.\" } >"
+                      value: "< Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4. >"
                       children:
                         - name:
                             Named: data_ptr
@@ -1361,7 +1361,7 @@ expression: stack_frames
                             Named: length
                           type_name:
                             Base: usize
-                          value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c010688 of size 0x4\")) >"
+                          value: "< Error using the probe >"
             - name:
                 Named: fmt
               type_name:
@@ -1433,13 +1433,13 @@ expression: stack_frames
                               item_type_name:
                                 Struct: "&str"
                               count: 1
-                          value: "[&str; 1] = [\n\t< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4.\" } >]"
+                          value: "[&str; 1] = [\n\t< Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4. >]"
                           children:
                             - name:
                                 Indexed: 0
                               type_name:
                                 Struct: "&str"
-                              value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4.\" } >"
+                              value: "< Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4. >"
                               children:
                                 - name:
                                     Named: data_ptr
@@ -1456,7 +1456,7 @@ expression: stack_frames
                                     Named: length
                                   type_name:
                                     Base: usize
-                                  value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c010688 of size 0x4\")) >"
+                                  value: "< Error using the probe >"
                     - name:
                         Named: fmt
                       type_name:
@@ -1503,7 +1503,7 @@ expression: stack_frames
                         Named: file
                       type_name:
                         Struct: "&str"
-                      value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C01069C : The coredump does not include the memory for address 0x3c01069c of size 0x4.\" } >"
+                      value: "< Failed to read referenced variable address from memory location 0x3C01069C : The coredump does not include the memory for address 0x3c01069c of size 0x4. >"
                       children:
                         - name:
                             Named: data_ptr
@@ -1520,17 +1520,17 @@ expression: stack_frames
                             Named: length
                           type_name:
                             Base: usize
-                          value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c0106a0 of size 0x4\")) >"
+                          value: "< Error using the probe >"
                     - name:
                         Named: line
                       type_name:
                         Base: u32
-                      value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c0106a4 of size 0x4\")) >"
+                      value: "< Error using the probe >"
                     - name:
                         Named: col
                       type_name:
                         Base: u32
-                      value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c0106a8 of size 0x4\")) >"
+                      value: "< Error using the probe >"
             - name:
                 Named: can_unwind
               type_name:

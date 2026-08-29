@@ -183,7 +183,7 @@ impl ProgrammingLanguage for Rust {
                 "!" => VariableValue::Valid("<Never returns>".to_string()),
                 "()" => VariableValue::Valid("()".to_string()),
                 "bool" => bool::get_value(variable, memory, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{err:?}")),
+                    |err| VariableValue::Error(err.to_string()),
                     |value| VariableValue::Valid(value.to_string()),
                 ),
                 "char" => char::get_value(variable, memory, variable_cache).into(),
