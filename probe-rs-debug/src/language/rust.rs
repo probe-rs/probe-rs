@@ -23,7 +23,7 @@ pub struct Rust;
 impl Rust {
     fn try_get_slice<'a>(variable: &'a Variable, cache: &'a VariableCache) -> Option<Slice<'a>> {
         fn is_field(var: &Variable, name: &str) -> bool {
-            matches!(var.name, VariableName::Named(ref var_name) if var_name == name)
+            is_named(var, name)
         }
 
         Some(Slice {
@@ -105,6 +105,7 @@ impl Rust {
     }
 
     /// Unwraps rustc (and known embassy) newtypes after their member DIE is in the cache.
+    #[expect(clippy::too_many_arguments)]
     fn flatten_known_wrapper(
         &self,
         unit_info: &UnitInfo,
@@ -142,12 +143,186 @@ impl Rust {
         }
 
         if !cache.has_children(&inner) && inner.value.is_valid() && !inner.value.is_empty() {
+            if path.ident == "ManuallyDrop" {
+                variable.type_name = inner.type_name;
+            }
             variable.set_value(inner.value.clone());
             cache.remove_cache_entry(inner.variable_key)?;
             variable.variable_node_type = VariableNodeType::DoNotRecurse;
             cache.update_variable(variable)?;
         }
 
+        Ok(())
+    }
+
+    /// Shows the initialized prefix of a `heapless::Vec` buffer as a slice.
+    #[expect(clippy::too_many_arguments)]
+    fn expand_heapless_vec(
+        &self,
+        unit_info: &UnitInfo,
+        debug_info: &DebugInfo,
+        node: &DebuggingInformationEntry<GimliReader>,
+        variable: &mut Variable,
+        memory: &mut dyn MemoryInterface,
+        cache: &mut VariableCache,
+        frame_info: StackFrameInfo<'_>,
+    ) -> Result<(), DebugError> {
+        let Some(path) = RustPath::from_die(unit_info, debug_info, node) else {
+            return Ok(());
+        };
+        if !path.is_heapless_vec() {
+            return Ok(());
+        }
+
+        let children: Vec<_> = cache.get_children(variable.variable_key).cloned().collect();
+        let Some(len) = children
+            .iter()
+            .find(|c| is_named(c, "len"))
+            .and_then(|field| match &field.value {
+                VariableValue::Valid(len) => len.parse::<u64>().ok(),
+                _ => None,
+            })
+        else {
+            return Ok(());
+        };
+        let Some(mut buffer) = children.iter().find(|c| is_named(c, "buffer")).cloned() else {
+            return Ok(());
+        };
+
+        debug_info.cache_deferred_variables(cache, memory, &mut buffer, frame_info)?;
+        let Some(buffer) = cache.get_variable_by_key(buffer.variable_key) else {
+            return Ok(());
+        };
+        let Some(buffer) = Self::storage_array(debug_info, memory, cache, frame_info, buffer)?
+        else {
+            return Ok(());
+        };
+
+        let elements: Vec<_> = cache
+            .get_children(buffer.variable_key)
+            .filter(|c| matches!(c.name, VariableName::Indexed(_)))
+            .cloned()
+            .collect();
+
+        for element in &elements {
+            let VariableName::Indexed(index) = element.name else {
+                continue;
+            };
+            if index >= len {
+                cache.remove_cache_entry(element.variable_key)?;
+            }
+        }
+
+        let live: Vec<_> = cache
+            .get_children(buffer.variable_key)
+            .filter(|c| matches!(c.name, VariableName::Indexed(index) if index < len))
+            .cloned()
+            .collect();
+
+        for mut element in live {
+            self.unwrap_maybe_uninit_slot(debug_info, memory, cache, frame_info, &mut element)?;
+        }
+
+        let Some(mut buffer) = cache.get_variable_by_key(buffer.variable_key) else {
+            return Ok(());
+        };
+
+        if let Some(first) = cache.get_children(buffer.variable_key).next().cloned() {
+            buffer.type_name = VariableType::Array {
+                item_type_name: Box::new(first.type_name.clone()),
+                count: len as usize,
+            };
+            if let Some(item_size) = first.byte_size {
+                buffer.byte_size = Some(item_size * len);
+            }
+        } else if let VariableType::Array { count, .. } = &mut buffer.type_name {
+            *count = 0;
+            buffer.byte_size = Some(0);
+        }
+        buffer.value = VariableValue::Empty;
+        cache.update_variable(&buffer)?;
+
+        Ok(())
+    }
+
+    fn storage_array(
+        debug_info: &DebugInfo,
+        memory: &mut dyn MemoryInterface,
+        cache: &mut VariableCache,
+        frame_info: StackFrameInfo<'_>,
+        buffer: Variable,
+    ) -> Result<Option<Variable>, DebugError> {
+        if matches!(buffer.type_name, VariableType::Array { .. }) {
+            return Ok(Some(buffer));
+        }
+
+        let inner: Vec<_> = cache.get_children(buffer.variable_key).cloned().collect();
+        let [inner] = inner.as_slice() else {
+            return Ok(None);
+        };
+        let mut inner = inner.clone();
+        debug_info.cache_deferred_variables(cache, memory, &mut inner, frame_info)?;
+        let Some(inner) = cache.get_variable_by_key(inner.variable_key) else {
+            return Ok(None);
+        };
+        if matches!(inner.type_name, VariableType::Array { .. }) {
+            Ok(Some(inner))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn unwrap_maybe_uninit_slot(
+        &self,
+        debug_info: &DebugInfo,
+        memory: &mut dyn MemoryInterface,
+        cache: &mut VariableCache,
+        frame_info: StackFrameInfo<'_>,
+        element: &mut Variable,
+    ) -> Result<(), DebugError> {
+        debug_info.cache_deferred_variables(cache, memory, element, frame_info)?;
+        let Some(element_now) = cache.get_variable_by_key(element.variable_key) else {
+            return Ok(());
+        };
+        let Some(path) = RustPath::from_variable(debug_info, &element_now) else {
+            return Ok(());
+        };
+        if !path.is_maybe_uninit() {
+            return Ok(());
+        }
+
+        let children: Vec<_> = cache
+            .get_children(element_now.variable_key)
+            .cloned()
+            .collect();
+        let Some(mut value) = children.iter().find(|c| is_named(c, "value")).cloned() else {
+            return Ok(());
+        };
+
+        debug_info.cache_deferred_variables(cache, memory, &mut value, frame_info)?;
+        let Some(value) = cache.get_variable_by_key(value.variable_key) else {
+            return Ok(());
+        };
+
+        let mut element = element_now;
+        element.type_name = value.type_name.clone();
+        element.byte_size = value.byte_size;
+
+        if cache.has_children(&value) {
+            for child in &children {
+                if child.variable_key != value.variable_key {
+                    cache.remove_cache_entry(child.variable_key)?;
+                }
+            }
+            cache.adopt_grand_children(&element, &value)?;
+            element.value = VariableValue::Empty;
+        } else {
+            element.set_value(value.value.clone());
+            cache.remove_cache_entry_children(element.variable_key)?;
+            element.variable_node_type = VariableNodeType::DoNotRecurse;
+        }
+
+        cache.update_variable(&element)?;
         Ok(())
     }
 
@@ -373,6 +548,9 @@ impl ProgrammingLanguage for Rust {
         self.flatten_known_wrapper(
             unit_info, debug_info, node, variable, memory, cache, frame_info,
         )?;
+        self.expand_heapless_vec(
+            unit_info, debug_info, node, variable, memory, cache, frame_info,
+        )?;
 
         Ok(())
     }
@@ -411,7 +589,7 @@ impl RustPath {
         let ident = type_ident(&name).to_string();
         let crate_name = namespaces.remove(0);
         Some(Self {
-            crate_name: crate_name,
+            crate_name,
             modules: namespaces,
             ident,
         })
@@ -460,6 +638,18 @@ impl RustPath {
     fn is_core_unsafe_cell(&self) -> bool {
         self.is_rustc_lib() && self.ident == "UnsafeCell" && self.modules_start_with(&["cell"])
     }
+
+    fn is_maybe_uninit(&self) -> bool {
+        self.is_rustc_lib() && self.ident == "MaybeUninit" && self.modules_start_with(&["mem"])
+    }
+
+    fn is_heapless_vec(&self) -> bool {
+        self.crate_name == "heapless" && self.ident == "Vec"
+    }
+}
+
+fn is_named(variable: &Variable, name: &str) -> bool {
+    matches!(variable.name, VariableName::Named(ref var_name) if var_name == name)
 }
 
 /// `type_name`, `prefix::type_name`, or those names with a generic argument list.
@@ -512,6 +702,8 @@ mod tests {
         assert!(!path("core", &["cell"], "RefCell").is_transparent_wrapper());
         assert!(!path("core", &["pin"], "Pin").is_transparent_wrapper());
         assert!(!path("core", &["ptr", "non_null"], "NonNull").is_transparent_wrapper());
+        assert!(path("heapless", &["vec"], "Vec").is_heapless_vec());
+        assert!(!path("alloc", &["vec"], "Vec").is_heapless_vec());
     }
 
     #[test]

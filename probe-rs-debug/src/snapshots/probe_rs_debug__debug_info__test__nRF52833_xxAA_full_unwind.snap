@@ -4060,170 +4060,25 @@ expression: stack_frames
               type_name:
                 Array:
                   item_type_name:
-                    Base: MaybeUninit<i8>
-                  count: 10
-              value: "[MaybeUninit<i8>; 10] = [\n\tMaybeUninit<i8> @ 0x20003CD4,\n\tMaybeUninit<i8> @ 0x20003CD5,\n\tMaybeUninit<i8> @ 0x20003CD6,\n\tMaybeUninit<i8> @ 0x20003CD7,\n\tMaybeUninit<i8> @ 0x20003CD8,\n\tMaybeUninit<i8> @ 0x20003CD9,\n\tMaybeUninit<i8> @ 0x20003CDA,\n\tMaybeUninit<i8> @ 0x20003CDB,\n\tMaybeUninit<i8> @ 0x20003CDC,\n\tMaybeUninit<i8> @ 0x20003CDD]"
+                    Base: i8
+                  count: 3
+              value: "[i8; 3] = [\n\t1,\n\t2,\n\t3]"
               children:
                 - name:
                     Indexed: 0
                   type_name:
-                    Base: MaybeUninit<i8>
-                  value: MaybeUninit<i8> @ 0x20003CD4
-                  children:
-                    - name:
-                        Named: uninit
-                      type_name:
-                        Base: ()
-                      value: ()
-                    - name:
-                        Named: value
-                      type_name:
-                        Struct: ManuallyDrop<i8>
-                      value: "1"
+                    Base: i8
+                  value: "1"
                 - name:
                     Indexed: 1
                   type_name:
-                    Base: MaybeUninit<i8>
-                  value: MaybeUninit<i8> @ 0x20003CD5
-                  children:
-                    - name:
-                        Named: uninit
-                      type_name:
-                        Base: ()
-                      value: ()
-                    - name:
-                        Named: value
-                      type_name:
-                        Struct: ManuallyDrop<i8>
-                      value: "2"
+                    Base: i8
+                  value: "2"
                 - name:
                     Indexed: 2
                   type_name:
-                    Base: MaybeUninit<i8>
-                  value: MaybeUninit<i8> @ 0x20003CD6
-                  children:
-                    - name:
-                        Named: uninit
-                      type_name:
-                        Base: ()
-                      value: ()
-                    - name:
-                        Named: value
-                      type_name:
-                        Struct: ManuallyDrop<i8>
-                      value: "3"
-                - name:
-                    Indexed: 3
-                  type_name:
-                    Base: MaybeUninit<i8>
-                  value: MaybeUninit<i8> @ 0x20003CD7
-                  children:
-                    - name:
-                        Named: uninit
-                      type_name:
-                        Base: ()
-                      value: ()
-                    - name:
-                        Named: value
-                      type_name:
-                        Struct: ManuallyDrop<i8>
-                      value: "0"
-                - name:
-                    Indexed: 4
-                  type_name:
-                    Base: MaybeUninit<i8>
-                  value: MaybeUninit<i8> @ 0x20003CD8
-                  children:
-                    - name:
-                        Named: uninit
-                      type_name:
-                        Base: ()
-                      value: ()
-                    - name:
-                        Named: value
-                      type_name:
-                        Struct: ManuallyDrop<i8>
-                      value: "0"
-                - name:
-                    Indexed: 5
-                  type_name:
-                    Base: MaybeUninit<i8>
-                  value: MaybeUninit<i8> @ 0x20003CD9
-                  children:
-                    - name:
-                        Named: uninit
-                      type_name:
-                        Base: ()
-                      value: ()
-                    - name:
-                        Named: value
-                      type_name:
-                        Struct: ManuallyDrop<i8>
-                      value: "0"
-                - name:
-                    Indexed: 6
-                  type_name:
-                    Base: MaybeUninit<i8>
-                  value: MaybeUninit<i8> @ 0x20003CDA
-                  children:
-                    - name:
-                        Named: uninit
-                      type_name:
-                        Base: ()
-                      value: ()
-                    - name:
-                        Named: value
-                      type_name:
-                        Struct: ManuallyDrop<i8>
-                      value: "0"
-                - name:
-                    Indexed: 7
-                  type_name:
-                    Base: MaybeUninit<i8>
-                  value: MaybeUninit<i8> @ 0x20003CDB
-                  children:
-                    - name:
-                        Named: uninit
-                      type_name:
-                        Base: ()
-                      value: ()
-                    - name:
-                        Named: value
-                      type_name:
-                        Struct: ManuallyDrop<i8>
-                      value: "0"
-                - name:
-                    Indexed: 8
-                  type_name:
-                    Base: MaybeUninit<i8>
-                  value: MaybeUninit<i8> @ 0x20003CDC
-                  children:
-                    - name:
-                        Named: uninit
-                      type_name:
-                        Base: ()
-                      value: ()
-                    - name:
-                        Named: value
-                      type_name:
-                        Struct: ManuallyDrop<i8>
-                      value: "0"
-                - name:
-                    Indexed: 9
-                  type_name:
-                    Base: MaybeUninit<i8>
-                  value: MaybeUninit<i8> @ 0x20003CDD
-                  children:
-                    - name:
-                        Named: uninit
-                      type_name:
-                        Base: ()
-                      value: ()
-                    - name:
-                        Named: value
-                      type_name:
-                        Struct: ManuallyDrop<i8>
-                      value: "0"
+                    Base: i8
+                  value: "3"
         - name:
             Named: loop_counter
           type_name:

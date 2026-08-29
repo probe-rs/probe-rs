@@ -1622,7 +1622,6 @@ impl UnitInfo {
     }
 
     /// Language-specific rewrite after a struct's members are in the cache.
-    #[expect(clippy::too_many_arguments)]
     pub(crate) fn process_struct(
         &self,
         debug_info: &DebugInfo,
@@ -2682,13 +2681,13 @@ impl UnitInfo {
         let mut segments = Vec::new();
         let mut offset = self.parent_offset(entry.offset());
         while let Some(parent) = offset {
-            if let Ok(die) = self.unit.entry(parent) {
-                if matches!(die.tag(), gimli::DW_TAG_namespace | gimli::DW_TAG_module)
-                    && let Ok(Some(name)) = extract_name(debug_info, &self.unit, &die)
-                {
-                    segments.push(name);
-                }
+            if let Ok(die) = self.unit.entry(parent)
+                && matches!(die.tag(), gimli::DW_TAG_namespace | gimli::DW_TAG_module)
+                && let Ok(Some(name)) = extract_name(debug_info, &self.unit, &die)
+            {
+                segments.push(name);
             }
+
             offset = self.parent_offset(parent);
         }
         segments.reverse();
