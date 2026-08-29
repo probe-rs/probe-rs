@@ -1326,6 +1326,22 @@ impl UnitInfo {
         Ok(())
     }
 
+    /// `true` if this structure DIE has members or a variant part.
+    fn has_structured_children(
+        &self,
+        node: &DebuggingInformationEntry<GimliReader>,
+    ) -> Result<bool, DebugError> {
+        let mut tree = self.unit.entries_tree(Some(node.offset()))?;
+        let mut children = tree.root()?.children();
+        while let Some(child) = children.next()? {
+            match child.entry().tag() {
+                gimli::DW_TAG_member | gimli::DW_TAG_variant_part => return Ok(true),
+                _ => {}
+            }
+        }
+        Ok(false)
+    }
+
     #[expect(clippy::too_many_arguments)]
     fn extract_struct(
         &self,
@@ -1350,28 +1366,35 @@ impl UnitInfo {
         )?;
 
         if child_variable.memory_location.valid() {
-            // The default behaviour is to defer the processing of child types.
-            child_variable.variable_node_type =
-                VariableNodeType::TypeOffset(self.debug_info_offset()?, node.offset());
-            // In some cases, it really simplifies the UX if we can auto resolve the
-            // children and derive a value that is visible at first glance to the user.
-            if self.language.auto_resolve_children(&type_name) {
-                let temp_node_type = std::mem::replace(
-                    &mut child_variable.variable_node_type,
-                    VariableNodeType::RecurseToBaseType,
-                );
+            if self.has_structured_children(node)? {
+                // The default behaviour is to defer the processing of child types.
+                child_variable.variable_node_type =
+                    VariableNodeType::TypeOffset(self.debug_info_offset()?, node.offset());
+                // In some cases, it really simplifies the UX if we can auto resolve the
+                // children and derive a value that is visible at first glance to the user.
+                if self.language.auto_resolve_children(&type_name) {
+                    let temp_node_type = std::mem::replace(
+                        &mut child_variable.variable_node_type,
+                        VariableNodeType::RecurseToBaseType,
+                    );
 
-                let mut tree = self.unit.entries_tree(Some(node.offset()))?;
+                    let mut tree = self.unit.entries_tree(Some(node.offset()))?;
 
-                self.process_tree(
-                    debug_info,
-                    tree.root()?,
-                    child_variable,
-                    memory,
-                    cache,
-                    frame_info,
-                )?;
-                child_variable.variable_node_type = temp_node_type;
+                    self.process_tree(
+                        debug_info,
+                        tree.root()?,
+                        child_variable,
+                        memory,
+                        cache,
+                        frame_info,
+                    )?;
+                    child_variable.variable_node_type = temp_node_type;
+                }
+            } else {
+                // Unit structs such as `None` have no members. A deferred node would still
+                // get a DAP `variables_reference`, so the client offers to expand it.
+                child_variable.variable_node_type = VariableNodeType::DoNotRecurse;
+                child_variable.set_value(VariableValue::Valid(type_name));
             }
         } else {
             // If something is already broken, then do nothing ...

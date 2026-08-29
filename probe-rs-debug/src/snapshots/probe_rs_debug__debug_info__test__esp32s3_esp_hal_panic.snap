@@ -287,7 +287,7 @@ expression: stack_frames
                                 Named: None
                               type_name:
                                 Struct: None
-                              value: None @ 0x3FCDC424
+                              value: None
                         - name:
                             Named: args
                           type_name:
@@ -650,7 +650,7 @@ expression: stack_frames
                                         Named: None
                                       type_name:
                                         Struct: None
-                                      value: None @ 0x3FCDC424
+                                      value: None
                                 - name:
                                     Named: args
                                   type_name:
@@ -1039,7 +1039,7 @@ expression: stack_frames
                                 Named: None
                               type_name:
                                 Struct: None
-                              value: None @ 0x3FCDC424
+                              value: None
                         - name:
                             Named: args
                           type_name:
@@ -1372,7 +1372,7 @@ expression: stack_frames
                     Named: None
                   type_name:
                     Struct: None
-                  value: None @ 0x3FCDC424
+                  value: None
             - name:
                 Named: args
               type_name:
@@ -1467,7 +1467,7 @@ expression: stack_frames
                             Named: None
                           type_name:
                             Struct: None
-                          value: None @ 0x3FCDC424
+                          value: None
                     - name:
                         Named: args
                       type_name:
@@ -3328,7 +3328,7 @@ expression: stack_frames
                         Named: Disabled
                       type_name:
                         Struct: Disabled
-                      value: Disabled @ 0x3FCDC5B0
+                      value: Disabled
                 - name:
                     Named: timg0
                   type_name:
@@ -3339,7 +3339,7 @@ expression: stack_frames
                         Named: Disabled
                       type_name:
                         Struct: Disabled
-                      value: Disabled @ 0x3FCDC5C0
+                      value: Disabled
                 - name:
                     Named: timg1
                   type_name:
@@ -3350,7 +3350,7 @@ expression: stack_frames
                         Named: Disabled
                       type_name:
                         Struct: Disabled
-                      value: Disabled @ 0x3FCDC5D0
+                      value: Disabled
         - name:
             Named: timer0
           type_name:
@@ -3698,7 +3698,7 @@ expression: stack_frames
                                         Named: None
                                       type_name:
                                         Struct: None
-                                      value: None @ 0x3FC9C0CC
+                                      value: None
                     - name:
                         Named: executor
                       type_name:
@@ -3813,7 +3813,7 @@ expression: stack_frames
                                         Named: None
                                       type_name:
                                         Struct: None
-                                      value: None @ 0x3FC9C0C0
+                                      value: None
                         - name:
                             Named: expires_at
                           type_name:
@@ -5276,7 +5276,7 @@ expression: stack_frames
                 Named: None
               type_name:
                 Struct: None
-              value: None @ 0x00000000
+              value: None
         - name:
             Named: task
           type_name:
@@ -6237,7 +6237,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tself: &mut esp_hal_embassy::executor::thread::Executor = &mut esp_hal_embassy::executor::thread::Executor @ 0x3FCDC6B0,\n\tinit: {closure_env#0} = {closure_env#0} @ <unknown value>,\n\tcpu: usize = 0}"
+      value: "<unknown> {\n\tself: &mut esp_hal_embassy::executor::thread::Executor = &mut esp_hal_embassy::executor::thread::Executor @ 0x3FCDC6B0,\n\tinit: {closure_env#0} = {closure_env#0},\n\tcpu: usize = 0}"
       children:
         - name:
             Named: self
@@ -6318,7 +6318,7 @@ expression: stack_frames
             Named: init
           type_name:
             Struct: "{closure_env#0}"
-          value: "{closure_env#0} @ <unknown value>"
+          value: "{closure_env#0}"
           source_location:
             path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-hal-embassy-0.7.0\\src\\executor\\thread.rs"
             line: 96

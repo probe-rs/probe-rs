@@ -4174,7 +4174,7 @@ expression: stack_frames
                                                     Named: None
                                                   type_name:
                                                     Struct: None
-                                                  value: None @ 0x3FCCFAD0
+                                                  value: None
         - name:
             Named: first_case_of_struct_variants
           type_name:
@@ -6183,22 +6183,22 @@ expression: stack_frames
                     Named: software_interrupt0
                   type_name:
                     Struct: SoftwareInterrupt<0>
-                  value: SoftwareInterrupt<0> @ 0x3FCCFEFF
+                  value: SoftwareInterrupt<0>
                 - name:
                     Named: software_interrupt1
                   type_name:
                     Struct: SoftwareInterrupt<1>
-                  value: SoftwareInterrupt<1> @ 0x3FCCFEFF
+                  value: SoftwareInterrupt<1>
                 - name:
                     Named: software_interrupt2
                   type_name:
                     Struct: SoftwareInterrupt<2>
-                  value: SoftwareInterrupt<2> @ 0x3FCCFEFF
+                  value: SoftwareInterrupt<2>
                 - name:
                     Named: software_interrupt3
                   type_name:
                     Struct: SoftwareInterrupt<3>
-                  value: SoftwareInterrupt<3> @ 0x3FCCFEFF
+                  value: SoftwareInterrupt<3>
         - name:
             Named: clocks
           type_name:

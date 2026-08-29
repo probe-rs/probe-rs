@@ -3339,7 +3339,7 @@ expression: stack_frames
                                                     Named: None
                                                   type_name:
                                                     Struct: None
-                                                  value: None @ 0x20003B48
+                                                  value: None
         - name:
             Named: first_case_of_struct_variants
           type_name:
@@ -5174,17 +5174,17 @@ expression: stack_frames
                 Named: hfclk
               type_name:
                 Struct: ExternalOscillator
-              value: ExternalOscillator @ 0x20003F76
+              value: ExternalOscillator
             - name:
                 Named: lfclk
               type_name:
                 Struct: Internal
-              value: Internal @ 0x20003F76
+              value: Internal
             - name:
                 Named: lfstat
               type_name:
                 Struct: LfOscStopped
-              value: LfOscStopped @ 0x20003F76
+              value: LfOscStopped
             - name:
                 Named: periph
               type_name:
