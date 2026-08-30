@@ -2263,12 +2263,6 @@ Child Variables:
                                         - atomic
                                       args: []
                                   value: "363"
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "363"
                                 - name:
                                     Named: read
                                   type_name:
@@ -2280,12 +2274,6 @@ Child Variables:
                                         - atomic
                                       args: []
                                   value: "363"
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "363"
                                 - name:
                                     Named: flags
                                   type_name:
@@ -2297,12 +2285,6 @@ Child Variables:
                                         - atomic
                                       args: []
                                   value: "1"
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "1"
                             - name:
                                 Indexed: 1
                               type_name:
@@ -2364,12 +2346,6 @@ Child Variables:
                                         - atomic
                                       args: []
                                   value: "0"
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "0"
                                 - name:
                                     Named: read
                                   type_name:
@@ -2381,12 +2357,6 @@ Child Variables:
                                         - atomic
                                       args: []
                                   value: "0"
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "0"
                                 - name:
                                     Named: flags
                                   type_name:
@@ -2398,12 +2368,6 @@ Child Variables:
                                         - atomic
                                       args: []
                                   value: "1"
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "1"
                         - name:
                             Named: down_channels
                           type_name:
@@ -3493,12 +3457,6 @@ Child Variables:
                                 - Type:
                                     Base: isize
                           value: "0"
-                          children:
-                            - name:
-                                Named: value
-                              type_name:
-                                Base: isize
-                              value: "0"
                         - name:
                             Named: value
                           type_name:
@@ -3655,12 +3613,6 @@ Child Variables:
                                                             - atomic
                                                           args: []
                                                       value: "363"
-                                                      children:
-                                                        - name:
-                                                            Named: value
-                                                          type_name:
-                                                            Base: usize
-                                                          value: "363"
                                                     - name:
                                                         Named: read
                                                       type_name:
@@ -3672,12 +3624,6 @@ Child Variables:
                                                             - atomic
                                                           args: []
                                                       value: "363"
-                                                      children:
-                                                        - name:
-                                                            Named: value
-                                                          type_name:
-                                                            Base: usize
-                                                          value: "363"
                                                     - name:
                                                         Named: flags
                                                       type_name:
@@ -3689,12 +3635,6 @@ Child Variables:
                                                             - atomic
                                                           args: []
                                                       value: "1"
-                                                      children:
-                                                        - name:
-                                                            Named: value
-                                                          type_name:
-                                                            Base: usize
-                                                          value: "1"
                                         - name:
                                             Named: current
                                           type_name:

@@ -4871,12 +4871,6 @@ expression: stack_frames
                                 - atomic
                               args: []
                           value: "1"
-                          children:
-                            - name:
-                                Named: value
-                              type_name:
-                                Base: u32
-                              value: "1"
                     - name:
                         Named: run_queue_item
                       type_name:
@@ -5255,12 +5249,6 @@ expression: stack_frames
                                 - Type:
                                     Base: u64
                           value: "0"
-                          children:
-                            - name:
-                                Named: value
-                              type_name:
-                                Base: u64
-                              value: "0"
                         - name:
                             Named: payload
                           type_name:
@@ -6518,12 +6506,6 @@ expression: stack_frames
                                     - atomic
                                   args: []
                               value: "1"
-                              children:
-                                - name:
-                                    Named: value
-                                  type_name:
-                                    Base: u32
-                                  value: "1"
                         - name:
                             Named: run_queue_item
                           type_name:
@@ -7018,12 +7000,6 @@ expression: stack_frames
                                     - Type:
                                         Base: u64
                               value: "4755850530978120672"
-                              children:
-                                - name:
-                                    Named: value
-                                  type_name:
-                                    Base: u64
-                                  value: "4755850530978120672"
                             - name:
                                 Named: payload
                               type_name:
@@ -7121,12 +7097,6 @@ expression: stack_frames
                             - atomic
                           args: []
                       value: "1"
-                      children:
-                        - name:
-                            Named: value
-                          type_name:
-                            Base: u32
-                          value: "1"
                 - name:
                     Named: run_queue_item
                   type_name:
@@ -7621,12 +7591,6 @@ expression: stack_frames
                             - Type:
                                 Base: u64
                       value: "4755850530978120672"
-                      children:
-                        - name:
-                            Named: value
-                          type_name:
-                            Base: u64
-                          value: "4755850530978120672"
                     - name:
                         Named: payload
                       type_name:
@@ -8080,12 +8044,6 @@ expression: stack_frames
                                     - atomic
                                   args: []
                               value: "1"
-                              children:
-                                - name:
-                                    Named: value
-                                  type_name:
-                                    Base: u32
-                                  value: "1"
                         - name:
                             Named: run_queue_item
                           type_name:
@@ -8580,12 +8538,6 @@ expression: stack_frames
                                     - Type:
                                         Base: u64
                               value: "4755850530978120672"
-                              children:
-                                - name:
-                                    Named: value
-                                  type_name:
-                                    Base: u64
-                                  value: "4755850530978120672"
                             - name:
                                 Named: payload
                               type_name:

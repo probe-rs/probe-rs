@@ -340,17 +340,19 @@ impl<'a> Walker<'a> {
         self.cache.update_variable(child_variable)?;
 
         let key = child_variable.variable_key;
-        self.jobs.push(Job::ExtractValue { key });
-        self.jobs.push(Job::ProcessStruct { unit, offset, key });
-        self.jobs.push(Job::RestoreNodeType {
-            key,
-            node_type: deferred,
-        });
-        self.jobs.push(Job::ProcessTree {
-            unit,
-            offset,
-            parent_key: key,
-        });
+        self.jobs.extend([
+            Job::ExtractValue { key },
+            Job::ProcessStruct { unit, offset, key },
+            Job::RestoreNodeType {
+                key,
+                node_type: deferred,
+            },
+            Job::ProcessTree {
+                unit,
+                offset,
+                parent_key: key,
+            },
+        ]);
         Ok(())
     }
 

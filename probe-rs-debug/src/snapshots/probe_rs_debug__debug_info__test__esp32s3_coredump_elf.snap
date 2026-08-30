@@ -4143,17 +4143,6 @@ expression: stack_frames
                                 - ____embassy_main_task
                               args: []
                           value: "{async_fn_env#0} @ 0x3FC89F20"
-                          children:
-                            - name:
-                                Named: value
-                              type_name:
-                                Struct:
-                                  ident: "{async_fn_env#0}"
-                                  namespace:
-                                    - coredump_c6
-                                    - ____embassy_main_task
-                                  args: []
-                              value: "{async_fn_env#0} @ 0x3FC89F20"
         - name:
             Named: future
           type_name:

@@ -1133,12 +1133,6 @@ expression: stack_frames
                 - portable_atomic
               args: []
           value: "44"
-          children:
-            - name:
-                Named: __0
-              type_name:
-                Base: u32
-              value: "44"
         - name:
             Named: core_atomic_u32
           type_name:
@@ -1152,12 +1146,6 @@ expression: stack_frames
                 - Type:
                     Base: u32
           value: "44"
-          children:
-            - name:
-                Named: __0
-              type_name:
-                Base: u32
-              value: "44"
         - name:
             Named: vec
           type_name:
@@ -1196,29 +1184,69 @@ expression: stack_frames
               type_name:
                 Array:
                   item_type_name:
-                    Base: u32
+                    Struct:
+                      ident: MaybeDangling
+                      namespace:
+                        - core
+                        - mem
+                        - maybe_dangling
+                      args:
+                        - Type:
+                            Base: u32
                   count: 4
-              value: "[u32; 4] = [41, 42, 43, 44]"
+              value: "[MaybeDangling<u32>; 4] = [41, 42, 43, 44]"
               children:
                 - name:
                     Indexed: 0
                   type_name:
-                    Base: u32
+                    Struct:
+                      ident: MaybeDangling
+                      namespace:
+                        - core
+                        - mem
+                        - maybe_dangling
+                      args:
+                        - Type:
+                            Base: u32
                   value: "41"
                 - name:
                     Indexed: 1
                   type_name:
-                    Base: u32
+                    Struct:
+                      ident: MaybeDangling
+                      namespace:
+                        - core
+                        - mem
+                        - maybe_dangling
+                      args:
+                        - Type:
+                            Base: u32
                   value: "42"
                 - name:
                     Indexed: 2
                   type_name:
-                    Base: u32
+                    Struct:
+                      ident: MaybeDangling
+                      namespace:
+                        - core
+                        - mem
+                        - maybe_dangling
+                      args:
+                        - Type:
+                            Base: u32
                   value: "43"
                 - name:
                     Indexed: 3
                   type_name:
-                    Base: u32
+                    Struct:
+                      ident: MaybeDangling
+                      namespace:
+                        - core
+                        - mem
+                        - maybe_dangling
+                      args:
+                        - Type:
+                            Base: u32
                   value: "44"
         - name:
             Named: spawner
@@ -2298,12 +2326,6 @@ expression: stack_frames
                                 - Type:
                                     Base: u32
                           value: "1"
-                          children:
-                            - name:
-                                Named: __0
-                              type_name:
-                                Base: u32
-                              value: "1"
                     - name:
                         Named: run_queue_item
                       type_name:
@@ -2862,12 +2884,6 @@ expression: stack_frames
                                             - portable_atomic
                                           args: []
                                       value: "44"
-                                      children:
-                                        - name:
-                                            Named: __0
-                                          type_name:
-                                            Base: u32
-                                          value: "44"
                                     - name:
                                         Named: core_atomic_u32
                                       type_name:
@@ -2881,12 +2897,6 @@ expression: stack_frames
                                             - Type:
                                                 Base: u32
                                       value: "44"
-                                      children:
-                                        - name:
-                                            Named: __0
-                                          type_name:
-                                            Base: u32
-                                          value: "44"
                                     - name:
                                         Named: vec
                                       type_name:
@@ -2925,29 +2935,69 @@ expression: stack_frames
                                           type_name:
                                             Array:
                                               item_type_name:
-                                                Base: u32
+                                                Struct:
+                                                  ident: MaybeDangling
+                                                  namespace:
+                                                    - core
+                                                    - mem
+                                                    - maybe_dangling
+                                                  args:
+                                                    - Type:
+                                                        Base: u32
                                               count: 4
-                                          value: "[u32; 4] = [41, 42, 43, 44]"
+                                          value: "[MaybeDangling<u32>; 4] = [41, 42, 43, 44]"
                                           children:
                                             - name:
                                                 Indexed: 0
                                               type_name:
-                                                Base: u32
+                                                Struct:
+                                                  ident: MaybeDangling
+                                                  namespace:
+                                                    - core
+                                                    - mem
+                                                    - maybe_dangling
+                                                  args:
+                                                    - Type:
+                                                        Base: u32
                                               value: "41"
                                             - name:
                                                 Indexed: 1
                                               type_name:
-                                                Base: u32
+                                                Struct:
+                                                  ident: MaybeDangling
+                                                  namespace:
+                                                    - core
+                                                    - mem
+                                                    - maybe_dangling
+                                                  args:
+                                                    - Type:
+                                                        Base: u32
                                               value: "42"
                                             - name:
                                                 Indexed: 2
                                               type_name:
-                                                Base: u32
+                                                Struct:
+                                                  ident: MaybeDangling
+                                                  namespace:
+                                                    - core
+                                                    - mem
+                                                    - maybe_dangling
+                                                  args:
+                                                    - Type:
+                                                        Base: u32
                                               value: "43"
                                             - name:
                                                 Indexed: 3
                                               type_name:
-                                                Base: u32
+                                                Struct:
+                                                  ident: MaybeDangling
+                                                  namespace:
+                                                    - core
+                                                    - mem
+                                                    - maybe_dangling
+                                                  args:
+                                                    - Type:
+                                                        Base: u32
                                               value: "44"
                                     - name:
                                         Named: __awaitee
@@ -3226,12 +3276,6 @@ expression: stack_frames
                                 - portable_atomic
                               args: []
                           value: "44"
-                          children:
-                            - name:
-                                Named: __0
-                              type_name:
-                                Base: u32
-                              value: "44"
                         - name:
                             Named: core_atomic_u32
                           type_name:
@@ -3245,12 +3289,6 @@ expression: stack_frames
                                 - Type:
                                     Base: u32
                           value: "44"
-                          children:
-                            - name:
-                                Named: __0
-                              type_name:
-                                Base: u32
-                              value: "44"
                         - name:
                             Named: vec
                           type_name:
@@ -3289,29 +3327,69 @@ expression: stack_frames
                               type_name:
                                 Array:
                                   item_type_name:
-                                    Base: u32
+                                    Struct:
+                                      ident: MaybeDangling
+                                      namespace:
+                                        - core
+                                        - mem
+                                        - maybe_dangling
+                                      args:
+                                        - Type:
+                                            Base: u32
                                   count: 4
-                              value: "[u32; 4] = [41, 42, 43, 44]"
+                              value: "[MaybeDangling<u32>; 4] = [41, 42, 43, 44]"
                               children:
                                 - name:
                                     Indexed: 0
                                   type_name:
-                                    Base: u32
+                                    Struct:
+                                      ident: MaybeDangling
+                                      namespace:
+                                        - core
+                                        - mem
+                                        - maybe_dangling
+                                      args:
+                                        - Type:
+                                            Base: u32
                                   value: "41"
                                 - name:
                                     Indexed: 1
                                   type_name:
-                                    Base: u32
+                                    Struct:
+                                      ident: MaybeDangling
+                                      namespace:
+                                        - core
+                                        - mem
+                                        - maybe_dangling
+                                      args:
+                                        - Type:
+                                            Base: u32
                                   value: "42"
                                 - name:
                                     Indexed: 2
                                   type_name:
-                                    Base: u32
+                                    Struct:
+                                      ident: MaybeDangling
+                                      namespace:
+                                        - core
+                                        - mem
+                                        - maybe_dangling
+                                      args:
+                                        - Type:
+                                            Base: u32
                                   value: "43"
                                 - name:
                                     Indexed: 3
                                   type_name:
-                                    Base: u32
+                                    Struct:
+                                      ident: MaybeDangling
+                                      namespace:
+                                        - core
+                                        - mem
+                                        - maybe_dangling
+                                      args:
+                                        - Type:
+                                            Base: u32
                                   value: "44"
                         - name:
                             Named: __awaitee

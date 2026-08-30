@@ -5706,12 +5706,6 @@ expression: stack_frames
             line: 305
             column: ~
             address: ~
-          children:
-            - name:
-                Named: __0
-              type_name:
-                Base: u8
-              value: "0"
         - name:
             Named: rtt_channels
           type_name:
@@ -5837,12 +5831,6 @@ expression: stack_frames
                                     - atomic
                                   args: []
                               value: "363"
-                              children:
-                                - name:
-                                    Named: value
-                                  type_name:
-                                    Base: usize
-                                  value: "363"
                             - name:
                                 Named: read
                               type_name:
@@ -5854,12 +5842,6 @@ expression: stack_frames
                                     - atomic
                                   args: []
                               value: "363"
-                              children:
-                                - name:
-                                    Named: value
-                                  type_name:
-                                    Base: usize
-                                  value: "363"
                             - name:
                                 Named: flags
                               type_name:
@@ -5871,12 +5853,6 @@ expression: stack_frames
                                     - atomic
                                   args: []
                               value: "1"
-                              children:
-                                - name:
-                                    Named: value
-                                  type_name:
-                                    Base: usize
-                                  value: "1"
                 - name:
                     Named: __1
                   type_name:
@@ -5965,12 +5941,6 @@ expression: stack_frames
                                     - atomic
                                   args: []
                               value: "0"
-                              children:
-                                - name:
-                                    Named: value
-                                  type_name:
-                                    Base: usize
-                                  value: "0"
                             - name:
                                 Named: read
                               type_name:
@@ -5982,12 +5952,6 @@ expression: stack_frames
                                     - atomic
                                   args: []
                               value: "0"
-                              children:
-                                - name:
-                                    Named: value
-                                  type_name:
-                                    Base: usize
-                                  value: "0"
                             - name:
                                 Named: flags
                               type_name:
@@ -5999,12 +5963,6 @@ expression: stack_frames
                                     - atomic
                                   args: []
                               value: "1"
-                              children:
-                                - name:
-                                    Named: value
-                                  type_name:
-                                    Base: usize
-                                  value: "1"
   canonical_frame_address: 1070399200
 - function_name: __risc_v_rt__main
   source_location:

@@ -160,6 +160,8 @@ impl Rust {
                     variable.type_name = inner.type_name;
                 }
                 variable.set_value(inner.value.clone());
+                cache.remove_cache_entry(inner.variable_key)?;
+                variable.variable_node_type = VariableNodeType::DoNotRecurse;
                 cache.update_variable(variable)?;
             }
 
