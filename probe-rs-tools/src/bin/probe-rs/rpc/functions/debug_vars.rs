@@ -140,10 +140,6 @@ pub async fn variables(
 
     let variable_ref = ObjectRef::from(request.variables_reference as i64);
 
-    let mut parent_variable: Option<Variable> = None;
-    let mut variable_cache: Option<&mut VariableCache> = None;
-    let mut frame_info: Option<StackFrameInfo<'_>> = None;
-    let cloned_registers = core_state.stack_frames.first().map(|f| f.registers.clone());
     if let Some(frame) = core_state
         .stack_frames
         .iter()
@@ -190,6 +186,10 @@ pub async fn variables(
         return Ok(dap_variables);
     }
 
+    let mut parent_variable: Option<Variable> = None;
+    let mut variable_cache: Option<&mut VariableCache> = None;
+    let mut frame_info: Option<StackFrameInfo<'_>> = None;
+    let cloned_registers = core_state.stack_frames.first().map(|f| f.registers.clone());
     if let Some(search_cache) = core_state.static_variables.as_mut()
         && let Some(search_variable) = search_cache.get_variable_by_key(variable_ref)
     {
