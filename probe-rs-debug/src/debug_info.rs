@@ -47,7 +47,7 @@ pub struct DebugInfo {
     ///
     /// Wrapped in a [`Mutex`] because `addr2line::Loader` is `Send` but not
     /// `Sync`, while [`DebugInfo`] must be both so an RPC server can share it.
-    pub(crate) addr2line: Option<Mutex<addr2line::Loader>>,
+    pub(crate) addr2line: Option<Mutex<Box<addr2line::Loader>>>,
 }
 
 impl DebugInfo {
@@ -56,7 +56,10 @@ impl DebugInfo {
         let data = std::fs::read(path.as_ref())?;
 
         let mut this = DebugInfo::from_raw(&data)?;
-        this.addr2line = addr2line::Loader::new(path).ok().map(Mutex::new);
+        this.addr2line = addr2line::Loader::new(path)
+            .ok()
+            .map(Box::new)
+            .map(Mutex::new);
         Ok(this)
     }
 
