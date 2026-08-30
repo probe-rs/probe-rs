@@ -597,21 +597,6 @@ impl UnitInfo {
     }
 
     /// `true` if this structure DIE has members or a variant part.
-    fn has_structured_children(
-        &self,
-        node: &DebuggingInformationEntry<GimliReader>,
-    ) -> Result<bool, DebugError> {
-        let mut tree = self.unit.entries_tree(Some(node.offset()))?;
-        let mut children = tree.root()?.children();
-        while let Some(child) = children.next()? {
-            match child.entry().tag() {
-                gimli::DW_TAG_member | gimli::DW_TAG_variant_part => return Ok(true),
-                _ => {}
-            }
-        }
-        Ok(false)
-    }
-
     /// Language-specific rewrite after a struct's members are in the cache.
     pub(crate) fn process_struct(
         &self,

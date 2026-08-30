@@ -18,6 +18,61 @@ use crate::{
     },
 };
 
+/// A type with more members than this does not consume the expansion budget. A chain of
+/// transparent wrappers must expand in full, so that language post-processing can remove it.
+const NARROW_MEMBERS: usize = 2;
+
+/// The number of wide types that a single walk expands.
+const WIDE_BUDGET: usize = 32;
+
+/// The number of types that a single walk expands, whatever their width. A type that holds two
+/// members of a type that holds two members grows without a limit of this kind.
+const TOTAL_BUDGET: usize = 4096;
+
+/// Limits how many types a single walk expands without a request from the debugger client.
+struct Budget {
+    wide: usize,
+    total: usize,
+}
+
+impl Budget {
+    /// Report whether a type of `width` members may expand, and charge it if it may. A narrow type
+    /// does not draw on the `wide` budget, so that a chain of transparent wrappers reaches the
+    /// type that it wraps however deep the chain is.
+    fn affords(&mut self, width: usize) -> bool {
+        if self.total == 0 {
+            return false;
+        }
+        if width > NARROW_MEMBERS {
+            if self.wide == 0 {
+                return false;
+            }
+            self.wide -= 1;
+        }
+        self.total -= 1;
+        true
+    }
+}
+
+/// Count the members that an expansion of `node` adds. A `DW_TAG_variant_part` adds the members of
+/// whichever variant is active, so it never counts as narrow.
+fn expansion_width(
+    unit: &UnitInfo,
+    node: &gimli::DebuggingInformationEntry<GimliReader>,
+) -> Result<usize, DebugError> {
+    let mut tree = unit.unit.entries_tree(Some(node.offset()))?;
+    let mut children = tree.root()?.children();
+    let mut width = 0;
+    while let Some(child) = children.next()? {
+        width += match child.entry().tag() {
+            gimli::DW_TAG_member => 1,
+            gimli::DW_TAG_variant_part => NARROW_MEMBERS + 1,
+            _ => 0,
+        };
+    }
+    Ok(width)
+}
+
 // TODO: This is language specific, and should be moved to the language implementations.
 fn target_name(pointer_name: &VariableName) -> VariableName {
     match pointer_name {
@@ -174,6 +229,7 @@ pub(super) struct Walker<'a> {
     frame_info: &'a StackFrameInfo<'a>,
     jobs: Vec<Job<'a>>,
     default_variants: HashMap<ObjectRef, UnitOffset>,
+    budget: Budget,
 }
 
 impl<'a> Walker<'a> {
@@ -190,6 +246,10 @@ impl<'a> Walker<'a> {
             frame_info,
             jobs: Vec::new(),
             default_variants: HashMap::new(),
+            budget: Budget {
+                wide: WIDE_BUDGET,
+                total: TOTAL_BUDGET,
+            },
         }
     }
 
@@ -263,6 +323,35 @@ impl<'a> Walker<'a> {
             child_key: target.variable_key,
         });
         self.run()
+    }
+
+    /// Add the members of a structured type now. The variable keeps its deferred node type, so
+    /// that the cache does not expand it a second time.
+    fn expand_now(
+        &mut self,
+        unit: &'a UnitInfo,
+        offset: UnitOffset,
+        child_variable: &mut Variable,
+    ) -> Result<(), DebugError> {
+        let deferred = std::mem::replace(
+            &mut child_variable.variable_node_type,
+            VariableNodeType::RecurseToBaseType,
+        );
+        self.cache.update_variable(child_variable)?;
+
+        let key = child_variable.variable_key;
+        self.jobs.push(Job::ExtractValue { key });
+        self.jobs.push(Job::ProcessStruct { unit, offset, key });
+        self.jobs.push(Job::RestoreNodeType {
+            key,
+            node_type: deferred,
+        });
+        self.jobs.push(Job::ProcessTree {
+            unit,
+            offset,
+            parent_key: key,
+        });
+        Ok(())
     }
 
     fn run(&mut self) -> Result<(), DebugError> {
@@ -1252,6 +1341,10 @@ impl<'a> Walker<'a> {
                 if child_variable.memory_location.holds_value() {
                     child_variable.variable_node_type =
                         VariableNodeType::TypeOffset(unit.debug_info_offset()?, node.offset());
+                    let width = expansion_width(unit, node)?;
+                    if width > 0 && self.budget.affords(width) {
+                        self.expand_now(unit, node.offset(), child_variable)?;
+                    }
                 } else {
                     child_variable.variable_node_type = VariableNodeType::DoNotRecurse;
                 }
@@ -1364,37 +1457,16 @@ impl<'a> Walker<'a> {
         )?;
 
         if child_variable.memory_location.holds_value() {
-            if unit.has_structured_children(node)? {
+            let width = expansion_width(unit, node)?;
+            if width > 0 {
                 child_variable.variable_node_type =
                     VariableNodeType::TypeOffset(unit.debug_info_offset()?, node.offset());
                 if unit
                     .language
                     .auto_resolve_children(&child_variable.type_name)
+                    || self.budget.affords(width)
                 {
-                    let temp_node_type = std::mem::replace(
-                        &mut child_variable.variable_node_type,
-                        VariableNodeType::RecurseToBaseType,
-                    );
-
-                    self.cache.update_variable(child_variable)?;
-                    self.jobs.push(Job::ExtractValue {
-                        key: child_variable.variable_key,
-                    });
-                    self.jobs.push(Job::ProcessStruct {
-                        unit,
-                        offset: node.offset(),
-                        key: child_variable.variable_key,
-                    });
-                    self.jobs.push(Job::RestoreNodeType {
-                        key: child_variable.variable_key,
-                        node_type: temp_node_type,
-                    });
-                    self.jobs.push(Job::ProcessTree {
-                        unit,
-                        offset: node.offset(),
-                        parent_key: child_variable.variable_key,
-                    });
-                    return Ok(());
+                    return self.expand_now(unit, node.offset(), child_variable);
                 }
             } else {
                 child_variable.variable_node_type = VariableNodeType::DoNotRecurse;
@@ -1781,4 +1853,46 @@ fn child_offsets(
         child_dies.push((child.entry().offset(), child.entry().tag()));
     }
     Ok(child_dies)
+}
+
+#[cfg(test)]
+mod test {
+    use super::{Budget, NARROW_MEMBERS};
+
+    #[test]
+    fn a_narrow_type_expands_after_the_wide_budget_runs_out() {
+        let mut budget = Budget {
+            wide: 1,
+            total: 1000,
+        };
+
+        assert!(budget.affords(NARROW_MEMBERS + 1));
+        assert!(!budget.affords(NARROW_MEMBERS + 1));
+
+        for _ in 0..100 {
+            assert!(budget.affords(NARROW_MEMBERS));
+        }
+    }
+
+    #[test]
+    fn a_wide_type_expands_while_the_wide_budget_lasts() {
+        let mut budget = Budget {
+            wide: 3,
+            total: 1000,
+        };
+
+        for _ in 0..3 {
+            assert!(budget.affords(100));
+        }
+        assert!(!budget.affords(100));
+    }
+
+    #[test]
+    fn no_type_expands_after_the_total_budget_runs_out() {
+        let mut budget = Budget { wide: 1, total: 2 };
+
+        assert!(budget.affords(NARROW_MEMBERS));
+        assert!(budget.affords(NARROW_MEMBERS));
+        assert!(!budget.affords(NARROW_MEMBERS));
+    }
 }

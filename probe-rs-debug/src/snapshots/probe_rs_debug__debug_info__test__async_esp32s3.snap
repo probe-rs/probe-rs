@@ -4099,6 +4099,34 @@ expression: stack_frames
                                                                                       - raw
                                                                                     args: []
                                                               value: Atomic<*mut TaskHeader> @ 0x3FCDB6D0
+                                                              children:
+                                                                - name:
+                                                                    Named: __0
+                                                                  type_name:
+                                                                    Pointer:
+                                                                      Struct:
+                                                                        ident: "*mut"
+                                                                        namespace: []
+                                                                        args:
+                                                                          - Type:
+                                                                              Struct:
+                                                                                ident: TaskHeader
+                                                                                namespace:
+                                                                                  - embassy_executor
+                                                                                  - raw
+                                                                                args: []
+                                                                  value: "*mut TaskHeader @ 0x00000000"
+                                                                  children:
+                                                                    - name:
+                                                                        Named: "*__0"
+                                                                      type_name:
+                                                                        Struct:
+                                                                          ident: TaskHeader
+                                                                          namespace:
+                                                                            - embassy_executor
+                                                                            - raw
+                                                                          args: []
+                                                                      value: TaskHeader @ <null pointer>
                                                     - name:
                                                         Named: pender
                                                       type_name:
@@ -6804,6 +6832,796 @@ expression: stack_frames
                                                                     - task
                                                                   args: []
                                                               value: Task @ 0x3FCE27E8
+                                                              children:
+                                                                - name:
+                                                                    Named: cpu_context
+                                                                  type_name:
+                                                                    Struct:
+                                                                      ident: Context
+                                                                      namespace:
+                                                                        - xtensa_lx_rt
+                                                                        - exception
+                                                                        - context
+                                                                      args: []
+                                                                  value: Context @ 0x3FCE27E8
+                                                                  children:
+                                                                    - name:
+                                                                        Named: PC
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "0"
+                                                                    - name:
+                                                                        Named: PS
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "805438441"
+                                                                    - name:
+                                                                        Named: A0
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "1077709092"
+                                                                    - name:
+                                                                        Named: A1
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "238"
+                                                                    - name:
+                                                                        Named: A2
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "9"
+                                                                    - name:
+                                                                        Named: A3
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "25344"
+                                                                    - name:
+                                                                        Named: A4
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "16777216"
+                                                                    - name:
+                                                                        Named: A5
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "0"
+                                                                    - name:
+                                                                        Named: A6
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "80000000"
+                                                                    - name:
+                                                                        Named: A7
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "480"
+                                                                    - name:
+                                                                        Named: A8
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "0"
+                                                                    - name:
+                                                                        Named: A9
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "0"
+                                                                    - name:
+                                                                        Named: A10
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "1674568902"
+                                                                    - name:
+                                                                        Named: A11
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "588161618"
+                                                                    - name:
+                                                                        Named: A12
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "80"
+                                                                    - name:
+                                                                        Named: A13
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "1"
+                                                                    - name:
+                                                                        Named: A14
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "892220790"
+                                                                    - name:
+                                                                        Named: A15
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "942485806"
+                                                                    - name:
+                                                                        Named: SAR
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "1731016755"
+                                                                    - name:
+                                                                        Named: EXCCAUSE
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "1698051684"
+                                                                    - name:
+                                                                        Named: EXCVADDR
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "909664866"
+                                                                    - name:
+                                                                        Named: LBEG
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "6632036"
+                                                                    - name:
+                                                                        Named: LEND
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "0"
+                                                                    - name:
+                                                                        Named: LCOUNT
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "0"
+                                                                    - name:
+                                                                        Named: THREADPTR
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "544632654"
+                                                                    - name:
+                                                                        Named: SCOMPARE1
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "840971826"
+                                                                    - name:
+                                                                        Named: BR
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "540357168"
+                                                                    - name:
+                                                                        Named: ACCLO
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "842674737"
+                                                                    - name:
+                                                                        Named: ACCHI
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "909457975"
+                                                                    - name:
+                                                                        Named: M0
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "0"
+                                                                    - name:
+                                                                        Named: M1
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "0"
+                                                                    - name:
+                                                                        Named: M2
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "0"
+                                                                    - name:
+                                                                        Named: M3
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "0"
+                                                                    - name:
+                                                                        Named: F64R_LO_CPENABLE
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "0"
+                                                                    - name:
+                                                                        Named: F64R_HI
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "4294967295"
+                                                                    - name:
+                                                                        Named: F64S
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "27"
+                                                                    - name:
+                                                                        Named: FCR
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "27"
+                                                                    - name:
+                                                                        Named: FSR
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "28"
+                                                                    - name:
+                                                                        Named: F0
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "28"
+                                                                    - name:
+                                                                        Named: F1
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "1073743540"
+                                                                    - name:
+                                                                        Named: F2
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "282664"
+                                                                    - name:
+                                                                        Named: F3
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "206840"
+                                                                    - name:
+                                                                        Named: F4
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "1"
+                                                                    - name:
+                                                                        Named: F5
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "1610739712"
+                                                                    - name:
+                                                                        Named: F6
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "0"
+                                                                    - name:
+                                                                        Named: F7
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "4"
+                                                                    - name:
+                                                                        Named: F8
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "5"
+                                                                    - name:
+                                                                        Named: F9
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "6"
+                                                                    - name:
+                                                                        Named: F10
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "7"
+                                                                    - name:
+                                                                        Named: F11
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "1702064961"
+                                                                    - name:
+                                                                        Named: F12
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "1713402994"
+                                                                    - name:
+                                                                        Named: F13
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "1701603681"
+                                                                    - name:
+                                                                        Named: F14
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "1852383332"
+                                                                    - name:
+                                                                        Named: F15
+                                                                      type_name:
+                                                                        Base: u32
+                                                                      value: "745743648"
+                                                                - name:
+                                                                    Named: thread_local
+                                                                  type_name:
+                                                                    Struct:
+                                                                      ident: ThreadLocalData
+                                                                      namespace:
+                                                                        - esp_rtos
+                                                                        - task
+                                                                      args: []
+                                                                  value: ThreadLocalData
+                                                                - name:
+                                                                    Named: state
+                                                                  type_name:
+                                                                    Enum:
+                                                                      ident: TaskState
+                                                                      namespace:
+                                                                        - esp_rtos
+                                                                        - task
+                                                                      args: []
+                                                                  value: "TaskState::<Error: Unresolved enum value 32>"
+                                                                - name:
+                                                                    Named: stack
+                                                                  type_name:
+                                                                    Struct:
+                                                                      ident: "*mut"
+                                                                      namespace: []
+                                                                      args:
+                                                                        - Type:
+                                                                            Struct:
+                                                                              ident: "[]"
+                                                                              namespace: []
+                                                                              args:
+                                                                                - Type:
+                                                                                    Struct:
+                                                                                      ident: MaybeUninit
+                                                                                      namespace:
+                                                                                        - core
+                                                                                        - mem
+                                                                                        - maybe_uninit
+                                                                                      args:
+                                                                                        - Type:
+                                                                                            Base: u32
+                                                                  value: "*mut [MaybeUninit<u32>] @ 0x3FCE28C4"
+                                                                  children:
+                                                                    - name:
+                                                                        Named: data_ptr
+                                                                      type_name:
+                                                                        Pointer:
+                                                                          Struct:
+                                                                            ident: MaybeUninit
+                                                                            namespace: []
+                                                                            args:
+                                                                              - Type:
+                                                                                  Base: u32
+                                                                      value: "*raw MaybeUninit<u32>"
+                                                                      children:
+                                                                        - name:
+                                                                            Named: "*data_ptr"
+                                                                          type_name:
+                                                                            Base: MaybeUninit<u32>
+                                                                          value: "Failed to read referenced variable address from memory location 0x28206425 : The coredump does not include the memory for address 0x28206424 of size 0x8."
+                                                                    - name:
+                                                                        Named: length
+                                                                      type_name:
+                                                                        Base: usize
+                                                                      value: "< The coredump does not include the memory for address 0x28206424 of size 0x8 >"
+                                                                - name:
+                                                                    Named: stack_guard
+                                                                  type_name:
+                                                                    Pointer:
+                                                                      Struct:
+                                                                        ident: "*mut"
+                                                                        namespace: []
+                                                                        args:
+                                                                          - Type:
+                                                                              Base: u32
+                                                                  value: "*mut u32 @ 0x6261000A"
+                                                                - name:
+                                                                    Named: priority
+                                                                  type_name:
+                                                                    Struct:
+                                                                      ident: Priority
+                                                                      namespace:
+                                                                        - esp_rtos
+                                                                        - run_queue
+                                                                      args: []
+                                                                  value: Priority @ 0x3FCE28D0
+                                                                  children:
+                                                                    - name:
+                                                                        Named: __0
+                                                                      type_name:
+                                                                        Enum:
+                                                                          ident: P
+                                                                          namespace:
+                                                                            - esp_rtos
+                                                                            - run_queue
+                                                                          args: []
+                                                                      value: "P::<Error: Unresolved enum value 678720111>"
+                                                                - name:
+                                                                    Named: pinned_to
+                                                                  type_name:
+                                                                    Struct:
+                                                                      ident: Option
+                                                                      namespace:
+                                                                        - core
+                                                                        - option
+                                                                      args:
+                                                                        - Type:
+                                                                            Struct:
+                                                                              ident: Cpu
+                                                                              namespace:
+                                                                                - esp_hal
+                                                                                - system
+                                                                              args: []
+                                                                  value: Option<Cpu> @ 0x3FCE28D4
+                                                                  children:
+                                                                    - name:
+                                                                        Named: Some
+                                                                      type_name:
+                                                                        Struct:
+                                                                          ident: Some
+                                                                          namespace:
+                                                                            - core
+                                                                            - option
+                                                                          args:
+                                                                            - Type:
+                                                                                Enum:
+                                                                                  ident: Cpu
+                                                                                  namespace:
+                                                                                    - esp_hal
+                                                                                    - system
+                                                                                  args: []
+                                                                      value: Some<Cpu> @ 0x3FCE28D4
+                                                                      children:
+                                                                        - name:
+                                                                            Named: __0
+                                                                          type_name:
+                                                                            Enum:
+                                                                              ident: Cpu
+                                                                              namespace:
+                                                                                - esp_hal
+                                                                                - system
+                                                                              args: []
+                                                                          value: "Cpu::<Error: Unresolved enum value 1635196969>"
+                                                                - name:
+                                                                    Named: wakeup_at
+                                                                  type_name:
+                                                                    Base: u64
+                                                                  value: "7234307589186723955"
+                                                                - name:
+                                                                    Named: in_run_or_wait_queue
+                                                                  type_name:
+                                                                    Base: bool
+                                                                  value: "true"
+                                                                - name:
+                                                                    Named: timer_queued
+                                                                  type_name:
+                                                                    Base: bool
+                                                                  value: "true"
+                                                                - name:
+                                                                    Named: alloc_list_item
+                                                                  type_name:
+                                                                    Struct:
+                                                                      ident: Option
+                                                                      namespace:
+                                                                        - core
+                                                                        - option
+                                                                      args:
+                                                                        - Type:
+                                                                            Struct:
+                                                                              ident: NonNull
+                                                                              namespace:
+                                                                                - core
+                                                                                - ptr
+                                                                                - non_null
+                                                                              args:
+                                                                                - Type:
+                                                                                    Struct:
+                                                                                      ident: Task
+                                                                                      namespace:
+                                                                                        - esp_rtos
+                                                                                        - task
+                                                                                      args: []
+                                                                  value: Option<NonNull<Task>> @ 0x3FCE28E4
+                                                                  children:
+                                                                    - name:
+                                                                        Named: Some
+                                                                      type_name:
+                                                                        Struct:
+                                                                          ident: Some
+                                                                          namespace:
+                                                                            - core
+                                                                            - option
+                                                                          args:
+                                                                            - Type:
+                                                                                Struct:
+                                                                                  ident: NonNull
+                                                                                  namespace:
+                                                                                    - core
+                                                                                    - ptr
+                                                                                    - non_null
+                                                                                  args:
+                                                                                    - Type:
+                                                                                        Struct:
+                                                                                          ident: Task
+                                                                                          namespace:
+                                                                                            - esp_rtos
+                                                                                            - task
+                                                                                          args: []
+                                                                      value: Some<NonNull<Task>> @ 0x3FCE28E4
+                                                                      children:
+                                                                        - name:
+                                                                            Named: __0
+                                                                          type_name:
+                                                                            Struct:
+                                                                              ident: NonNull
+                                                                              namespace:
+                                                                                - core
+                                                                                - ptr
+                                                                                - non_null
+                                                                              args:
+                                                                                - Type:
+                                                                                    Struct:
+                                                                                      ident: Task
+                                                                                      namespace:
+                                                                                        - esp_rtos
+                                                                                        - task
+                                                                                      args: []
+                                                                          value: NonNull<Task> @ 0x3FCE28E4
+                                                                          children:
+                                                                            - name:
+                                                                                Named: pointer
+                                                                              type_name:
+                                                                                Pointer:
+                                                                                  Struct:
+                                                                                    ident: "*const"
+                                                                                    namespace: []
+                                                                                    args:
+                                                                                      - Type:
+                                                                                          Struct:
+                                                                                            ident: Task
+                                                                                            namespace:
+                                                                                              - esp_rtos
+                                                                                              - task
+                                                                                            args: []
+                                                                              value: "*const Task @ 0x30204350"
+                                                                - name:
+                                                                    Named: ready_queue_item
+                                                                  type_name:
+                                                                    Struct:
+                                                                      ident: Option
+                                                                      namespace:
+                                                                        - core
+                                                                        - option
+                                                                      args:
+                                                                        - Type:
+                                                                            Struct:
+                                                                              ident: NonNull
+                                                                              namespace:
+                                                                                - core
+                                                                                - ptr
+                                                                                - non_null
+                                                                              args:
+                                                                                - Type:
+                                                                                    Struct:
+                                                                                      ident: Task
+                                                                                      namespace:
+                                                                                        - esp_rtos
+                                                                                        - task
+                                                                                      args: []
+                                                                  value: Option<NonNull<Task>> @ 0x3FCE28E8
+                                                                  children:
+                                                                    - name:
+                                                                        Named: Some
+                                                                      type_name:
+                                                                        Struct:
+                                                                          ident: Some
+                                                                          namespace:
+                                                                            - core
+                                                                            - option
+                                                                          args:
+                                                                            - Type:
+                                                                                Struct:
+                                                                                  ident: NonNull
+                                                                                  namespace:
+                                                                                    - core
+                                                                                    - ptr
+                                                                                    - non_null
+                                                                                  args:
+                                                                                    - Type:
+                                                                                        Struct:
+                                                                                          ident: Task
+                                                                                          namespace:
+                                                                                            - esp_rtos
+                                                                                            - task
+                                                                                          args: []
+                                                                      value: Some<NonNull<Task>> @ 0x3FCE28E8
+                                                                      children:
+                                                                        - name:
+                                                                            Named: __0
+                                                                          type_name:
+                                                                            Struct:
+                                                                              ident: NonNull
+                                                                              namespace:
+                                                                                - core
+                                                                                - ptr
+                                                                                - non_null
+                                                                              args:
+                                                                                - Type:
+                                                                                    Struct:
+                                                                                      ident: Task
+                                                                                      namespace:
+                                                                                        - esp_rtos
+                                                                                        - task
+                                                                                      args: []
+                                                                          value: NonNull<Task> @ 0x3FCE28E8
+                                                                          children:
+                                                                            - name:
+                                                                                Named: pointer
+                                                                              type_name:
+                                                                                Pointer:
+                                                                                  Struct:
+                                                                                    ident: "*const"
+                                                                                    namespace: []
+                                                                                    args:
+                                                                                      - Type:
+                                                                                          Struct:
+                                                                                            ident: Task
+                                                                                            namespace:
+                                                                                              - esp_rtos
+                                                                                              - task
+                                                                                            args: []
+                                                                              value: "*const Task @ 0x38302578"
+                                                                - name:
+                                                                    Named: timer_queue_item
+                                                                  type_name:
+                                                                    Struct:
+                                                                      ident: Option
+                                                                      namespace:
+                                                                        - core
+                                                                        - option
+                                                                      args:
+                                                                        - Type:
+                                                                            Struct:
+                                                                              ident: NonNull
+                                                                              namespace:
+                                                                                - core
+                                                                                - ptr
+                                                                                - non_null
+                                                                              args:
+                                                                                - Type:
+                                                                                    Struct:
+                                                                                      ident: Task
+                                                                                      namespace:
+                                                                                        - esp_rtos
+                                                                                        - task
+                                                                                      args: []
+                                                                  value: Option<NonNull<Task>> @ 0x3FCE28EC
+                                                                  children:
+                                                                    - name:
+                                                                        Named: Some
+                                                                      type_name:
+                                                                        Struct:
+                                                                          ident: Some
+                                                                          namespace:
+                                                                            - core
+                                                                            - option
+                                                                          args:
+                                                                            - Type:
+                                                                                Struct:
+                                                                                  ident: NonNull
+                                                                                  namespace:
+                                                                                    - core
+                                                                                    - ptr
+                                                                                    - non_null
+                                                                                  args:
+                                                                                    - Type:
+                                                                                        Struct:
+                                                                                          ident: Task
+                                                                                          namespace:
+                                                                                            - esp_rtos
+                                                                                            - task
+                                                                                          args: []
+                                                                      value: Some<NonNull<Task>> @ 0x3FCE28EC
+                                                                      children:
+                                                                        - name:
+                                                                            Named: __0
+                                                                          type_name:
+                                                                            Struct:
+                                                                              ident: NonNull
+                                                                              namespace:
+                                                                                - core
+                                                                                - ptr
+                                                                                - non_null
+                                                                              args:
+                                                                                - Type:
+                                                                                    Struct:
+                                                                                      ident: Task
+                                                                                      namespace:
+                                                                                        - esp_rtos
+                                                                                        - task
+                                                                                      args: []
+                                                                          value: NonNull<Task> @ 0x3FCE28EC
+                                                                          children:
+                                                                            - name:
+                                                                                Named: pointer
+                                                                              type_name:
+                                                                                Pointer:
+                                                                                  Struct:
+                                                                                    ident: "*const"
+                                                                                    namespace: []
+                                                                                    args:
+                                                                                      - Type:
+                                                                                          Struct:
+                                                                                            ident: Task
+                                                                                            namespace:
+                                                                                              - esp_rtos
+                                                                                              - task
+                                                                                            args: []
+                                                                              value: "*const Task @ 0x000A0D78"
+                                                                - name:
+                                                                    Named: delete_list_item
+                                                                  type_name:
+                                                                    Struct:
+                                                                      ident: Option
+                                                                      namespace:
+                                                                        - core
+                                                                        - option
+                                                                      args:
+                                                                        - Type:
+                                                                            Struct:
+                                                                              ident: NonNull
+                                                                              namespace:
+                                                                                - core
+                                                                                - ptr
+                                                                                - non_null
+                                                                              args:
+                                                                                - Type:
+                                                                                    Struct:
+                                                                                      ident: Task
+                                                                                      namespace:
+                                                                                        - esp_rtos
+                                                                                        - task
+                                                                                      args: []
+                                                                  value: Option<NonNull<Task>> @ 0x3FCE28F0
+                                                                  children:
+                                                                    - name:
+                                                                        Named: Some
+                                                                      type_name:
+                                                                        Struct:
+                                                                          ident: Some
+                                                                          namespace:
+                                                                            - core
+                                                                            - option
+                                                                          args:
+                                                                            - Type:
+                                                                                Struct:
+                                                                                  ident: NonNull
+                                                                                  namespace:
+                                                                                    - core
+                                                                                    - ptr
+                                                                                    - non_null
+                                                                                  args:
+                                                                                    - Type:
+                                                                                        Struct:
+                                                                                          ident: Task
+                                                                                          namespace:
+                                                                                            - esp_rtos
+                                                                                            - task
+                                                                                          args: []
+                                                                      value: Some<NonNull<Task>> @ 0x3FCE28F0
+                                                                      children:
+                                                                        - name:
+                                                                            Named: __0
+                                                                          type_name:
+                                                                            Struct:
+                                                                              ident: NonNull
+                                                                              namespace:
+                                                                                - core
+                                                                                - ptr
+                                                                                - non_null
+                                                                              args:
+                                                                                - Type:
+                                                                                    Struct:
+                                                                                      ident: Task
+                                                                                      namespace:
+                                                                                        - esp_rtos
+                                                                                        - task
+                                                                                      args: []
+                                                                          value: NonNull<Task> @ 0x3FCE28F0
+                                                                          children:
+                                                                            - name:
+                                                                                Named: pointer
+                                                                              type_name:
+                                                                                Pointer:
+                                                                                  Struct:
+                                                                                    ident: "*const"
+                                                                                    namespace: []
+                                                                                    args:
+                                                                                      - Type:
+                                                                                          Struct:
+                                                                                            ident: Task
+                                                                                            namespace:
+                                                                                              - esp_rtos
+                                                                                              - task
+                                                                                            args: []
+                                                                              value: "*const Task @ 0x746F6F62"
                         - name:
                             Named: set
                           type_name:
@@ -7276,6 +8094,94 @@ expression: stack_frames
                                                                                             - raw
                                                                                           args: []
                                                               value: UnsafeCell<Option<NonNull<TaskHeader>>> @ 0x3FC8B81C
+                                                              children:
+                                                                - name:
+                                                                    Named: value
+                                                                  type_name:
+                                                                    Struct:
+                                                                      ident: Option
+                                                                      namespace:
+                                                                        - core
+                                                                        - option
+                                                                      args:
+                                                                        - Type:
+                                                                            Struct:
+                                                                              ident: NonNull
+                                                                              namespace:
+                                                                                - core
+                                                                                - ptr
+                                                                                - non_null
+                                                                              args:
+                                                                                - Type:
+                                                                                    Struct:
+                                                                                      ident: TaskHeader
+                                                                                      namespace:
+                                                                                        - embassy_executor
+                                                                                        - raw
+                                                                                      args: []
+                                                                  value: Option<NonNull<TaskHeader>> @ 0x3FC8B81C
+                                                                  children:
+                                                                    - name:
+                                                                        Named: Some
+                                                                      type_name:
+                                                                        Struct:
+                                                                          ident: Some
+                                                                          namespace:
+                                                                            - core
+                                                                            - option
+                                                                          args:
+                                                                            - Type:
+                                                                                Struct:
+                                                                                  ident: NonNull
+                                                                                  namespace:
+                                                                                    - core
+                                                                                    - ptr
+                                                                                    - non_null
+                                                                                  args:
+                                                                                    - Type:
+                                                                                        Struct:
+                                                                                          ident: TaskHeader
+                                                                                          namespace:
+                                                                                            - embassy_executor
+                                                                                            - raw
+                                                                                          args: []
+                                                                      value: Some<NonNull<TaskHeader>> @ 0x3FC8B81C
+                                                                      children:
+                                                                        - name:
+                                                                            Named: __0
+                                                                          type_name:
+                                                                            Struct:
+                                                                              ident: NonNull
+                                                                              namespace:
+                                                                                - core
+                                                                                - ptr
+                                                                                - non_null
+                                                                              args:
+                                                                                - Type:
+                                                                                    Struct:
+                                                                                      ident: TaskHeader
+                                                                                      namespace:
+                                                                                        - embassy_executor
+                                                                                        - raw
+                                                                                      args: []
+                                                                          value: NonNull<TaskHeader> @ 0x3FC8B81C
+                                                                          children:
+                                                                            - name:
+                                                                                Named: pointer
+                                                                              type_name:
+                                                                                Pointer:
+                                                                                  Struct:
+                                                                                    ident: "*const"
+                                                                                    namespace: []
+                                                                                    args:
+                                                                                      - Type:
+                                                                                          Struct:
+                                                                                            ident: TaskHeader
+                                                                                            namespace:
+                                                                                              - embassy_executor
+                                                                                              - raw
+                                                                                            args: []
+                                                                              value: "*const TaskHeader @ 0xFFFFFFFF"
                                                         - name:
                                                             Named: _unpin
                                                           type_name:
@@ -7338,6 +8244,112 @@ expression: stack_frames
                                                                     - raw
                                                                   args: []
                                                               value: SyncExecutor @ 0x00060220
+                                                              children:
+                                                                - name:
+                                                                    Named: run_queue
+                                                                  type_name:
+                                                                    Struct:
+                                                                      ident: RunQueue
+                                                                      namespace:
+                                                                        - embassy_executor
+                                                                        - raw
+                                                                        - run_queue
+                                                                      args: []
+                                                                  value: RunQueue @ 0x00060220
+                                                                  children:
+                                                                    - name:
+                                                                        Named: stack
+                                                                      type_name:
+                                                                        Struct:
+                                                                          ident: TransferStack
+                                                                          namespace:
+                                                                            - cordyceps
+                                                                            - stack
+                                                                            - has_cas_atomics
+                                                                          args:
+                                                                            - Type:
+                                                                                Struct:
+                                                                                  ident: TaskHeader
+                                                                                  namespace:
+                                                                                    - embassy_executor
+                                                                                    - raw
+                                                                                  args: []
+                                                                      value: TransferStack<TaskHeader> @ 0x00060220
+                                                                      children:
+                                                                        - name:
+                                                                            Named: head
+                                                                          type_name:
+                                                                            Struct:
+                                                                              ident: Atomic
+                                                                              namespace:
+                                                                                - core
+                                                                                - sync
+                                                                                - atomic
+                                                                              args:
+                                                                                - Type:
+                                                                                    Pointer:
+                                                                                      Struct:
+                                                                                        ident: "*mut"
+                                                                                        namespace: []
+                                                                                        args:
+                                                                                          - Type:
+                                                                                              Struct:
+                                                                                                ident: TaskHeader
+                                                                                                namespace:
+                                                                                                  - embassy_executor
+                                                                                                  - raw
+                                                                                                args: []
+                                                                          value: Atomic<*mut TaskHeader> @ 0x00060220
+                                                                          children:
+                                                                            - name:
+                                                                                Named: __0
+                                                                              type_name:
+                                                                                Pointer:
+                                                                                  Struct:
+                                                                                    ident: "*mut"
+                                                                                    namespace: []
+                                                                                    args:
+                                                                                      - Type:
+                                                                                          Struct:
+                                                                                            ident: TaskHeader
+                                                                                            namespace:
+                                                                                              - embassy_executor
+                                                                                              - raw
+                                                                                            args: []
+                                                                              value: "*mut TaskHeader"
+                                                                              children:
+                                                                                - name:
+                                                                                    Named: "*__0"
+                                                                                  type_name:
+                                                                                    Struct:
+                                                                                      ident: TaskHeader
+                                                                                      namespace:
+                                                                                        - embassy_executor
+                                                                                        - raw
+                                                                                      args: []
+                                                                                  value: "TaskHeader @ Failed to read referenced variable address from memory location 0x00060220 : The coredump does not include the memory for address 0x60220 of size 0x4."
+                                                                - name:
+                                                                    Named: pender
+                                                                  type_name:
+                                                                    Struct:
+                                                                      ident: Pender
+                                                                      namespace:
+                                                                        - embassy_executor
+                                                                        - raw
+                                                                      args: []
+                                                                  value: Pender @ 0x00060224
+                                                                  children:
+                                                                    - name:
+                                                                        Named: __0
+                                                                      type_name:
+                                                                        Pointer:
+                                                                          Struct:
+                                                                            ident: "*mut"
+                                                                            namespace: []
+                                                                            args:
+                                                                              - Type:
+                                                                                  Base: ()
+                                                                      value: "*mut ()"
                                                     - name:
                                                         Named: poll_fn
                                                       type_name:
@@ -7415,6 +8427,23 @@ expression: stack_frames
                                                                                       - raw
                                                                                     args: []
                                                               value: Some<*raw unsafe fn(TaskRef)> @ 0x3FC8B824
+                                                              children:
+                                                                - name:
+                                                                    Named: __0
+                                                                  type_name:
+                                                                    Pointer:
+                                                                      Struct:
+                                                                        ident: unsafe fn
+                                                                        namespace: []
+                                                                        args:
+                                                                          - Type:
+                                                                              Struct:
+                                                                                ident: TaskRef
+                                                                                namespace:
+                                                                                  - embassy_executor
+                                                                                  - raw
+                                                                                args: []
+                                                                  value: "*raw unsafe fn(TaskRef) @ 0x3FC8C5F0"
                                                     - name:
                                                         Named: timer_queue_item
                                                       type_name:
@@ -7702,7 +8731,13 @@ expression: stack_frames
                                                                   args:
                                                                     - Type:
                                                                         Base: u32
-                                                              value: Atomic<u32> @ 0x3FC8B818
+                                                              value: "4294967295"
+                                                              children:
+                                                                - name:
+                                                                    Named: __0
+                                                                  type_name:
+                                                                    Base: u32
+                                                                  value: "4294967295"
                                                         - name:
                                                             Named: run_queue_item
                                                           type_name:
@@ -7755,6 +8790,127 @@ expression: stack_frames
                                                                                             - raw
                                                                                           args: []
                                                               value: UnsafeCell<Option<NonNull<TaskHeader>>> @ 0x3FC8B81C
+                                                              children:
+                                                                - name:
+                                                                    Named: __0
+                                                                  type_name:
+                                                                    Struct:
+                                                                      ident: UnsafeCell
+                                                                      namespace:
+                                                                        - core
+                                                                        - cell
+                                                                      args:
+                                                                        - Type:
+                                                                            Struct:
+                                                                              ident: Option
+                                                                              namespace:
+                                                                                - core
+                                                                                - option
+                                                                              args:
+                                                                                - Type:
+                                                                                    Struct:
+                                                                                      ident: NonNull
+                                                                                      namespace:
+                                                                                        - core
+                                                                                        - ptr
+                                                                                        - non_null
+                                                                                      args:
+                                                                                        - Type:
+                                                                                            Struct:
+                                                                                              ident: TaskHeader
+                                                                                              namespace:
+                                                                                                - embassy_executor
+                                                                                                - raw
+                                                                                              args: []
+                                                                  value: UnsafeCell<Option<NonNull<TaskHeader>>> @ 0x3FC8B81C
+                                                                  children:
+                                                                    - name:
+                                                                        Named: value
+                                                                      type_name:
+                                                                        Struct:
+                                                                          ident: Option
+                                                                          namespace:
+                                                                            - core
+                                                                            - option
+                                                                          args:
+                                                                            - Type:
+                                                                                Struct:
+                                                                                  ident: NonNull
+                                                                                  namespace:
+                                                                                    - core
+                                                                                    - ptr
+                                                                                    - non_null
+                                                                                  args:
+                                                                                    - Type:
+                                                                                        Struct:
+                                                                                          ident: TaskHeader
+                                                                                          namespace:
+                                                                                            - embassy_executor
+                                                                                            - raw
+                                                                                          args: []
+                                                                      value: Option<NonNull<TaskHeader>> @ 0x3FC8B81C
+                                                                      children:
+                                                                        - name:
+                                                                            Named: Some
+                                                                          type_name:
+                                                                            Struct:
+                                                                              ident: Some
+                                                                              namespace:
+                                                                                - core
+                                                                                - option
+                                                                              args:
+                                                                                - Type:
+                                                                                    Struct:
+                                                                                      ident: NonNull
+                                                                                      namespace:
+                                                                                        - core
+                                                                                        - ptr
+                                                                                        - non_null
+                                                                                      args:
+                                                                                        - Type:
+                                                                                            Struct:
+                                                                                              ident: TaskHeader
+                                                                                              namespace:
+                                                                                                - embassy_executor
+                                                                                                - raw
+                                                                                              args: []
+                                                                          value: Some<NonNull<TaskHeader>> @ 0x3FC8B81C
+                                                                          children:
+                                                                            - name:
+                                                                                Named: __0
+                                                                              type_name:
+                                                                                Struct:
+                                                                                  ident: NonNull
+                                                                                  namespace:
+                                                                                    - core
+                                                                                    - ptr
+                                                                                    - non_null
+                                                                                  args:
+                                                                                    - Type:
+                                                                                        Struct:
+                                                                                          ident: TaskHeader
+                                                                                          namespace:
+                                                                                            - embassy_executor
+                                                                                            - raw
+                                                                                          args: []
+                                                                              value: NonNull<TaskHeader> @ 0x3FC8B81C
+                                                                              children:
+                                                                                - name:
+                                                                                    Named: pointer
+                                                                                  type_name:
+                                                                                    Pointer:
+                                                                                      Struct:
+                                                                                        ident: "*const"
+                                                                                        namespace: []
+                                                                                        args:
+                                                                                          - Type:
+                                                                                              Struct:
+                                                                                                ident: TaskHeader
+                                                                                                namespace:
+                                                                                                  - embassy_executor
+                                                                                                  - raw
+                                                                                                args: []
+                                                                                  value: "*const TaskHeader @ 0xFFFFFFFF"
                                                             - name:
                                                                 Named: _unpin
                                                               type_name:
@@ -7817,6 +8973,112 @@ expression: stack_frames
                                                                         - raw
                                                                       args: []
                                                                   value: SyncExecutor @ 0x00060220
+                                                                  children:
+                                                                    - name:
+                                                                        Named: run_queue
+                                                                      type_name:
+                                                                        Struct:
+                                                                          ident: RunQueue
+                                                                          namespace:
+                                                                            - embassy_executor
+                                                                            - raw
+                                                                            - run_queue
+                                                                          args: []
+                                                                      value: RunQueue @ 0x00060220
+                                                                      children:
+                                                                        - name:
+                                                                            Named: stack
+                                                                          type_name:
+                                                                            Struct:
+                                                                              ident: TransferStack
+                                                                              namespace:
+                                                                                - cordyceps
+                                                                                - stack
+                                                                                - has_cas_atomics
+                                                                              args:
+                                                                                - Type:
+                                                                                    Struct:
+                                                                                      ident: TaskHeader
+                                                                                      namespace:
+                                                                                        - embassy_executor
+                                                                                        - raw
+                                                                                      args: []
+                                                                          value: TransferStack<TaskHeader> @ 0x00060220
+                                                                          children:
+                                                                            - name:
+                                                                                Named: head
+                                                                              type_name:
+                                                                                Struct:
+                                                                                  ident: Atomic
+                                                                                  namespace:
+                                                                                    - core
+                                                                                    - sync
+                                                                                    - atomic
+                                                                                  args:
+                                                                                    - Type:
+                                                                                        Pointer:
+                                                                                          Struct:
+                                                                                            ident: "*mut"
+                                                                                            namespace: []
+                                                                                            args:
+                                                                                              - Type:
+                                                                                                  Struct:
+                                                                                                    ident: TaskHeader
+                                                                                                    namespace:
+                                                                                                      - embassy_executor
+                                                                                                      - raw
+                                                                                                    args: []
+                                                                              value: Atomic<*mut TaskHeader> @ 0x00060220
+                                                                              children:
+                                                                                - name:
+                                                                                    Named: __0
+                                                                                  type_name:
+                                                                                    Pointer:
+                                                                                      Struct:
+                                                                                        ident: "*mut"
+                                                                                        namespace: []
+                                                                                        args:
+                                                                                          - Type:
+                                                                                              Struct:
+                                                                                                ident: TaskHeader
+                                                                                                namespace:
+                                                                                                  - embassy_executor
+                                                                                                  - raw
+                                                                                                args: []
+                                                                                  value: "*mut TaskHeader"
+                                                                                  children:
+                                                                                    - name:
+                                                                                        Named: "*__0"
+                                                                                      type_name:
+                                                                                        Struct:
+                                                                                          ident: TaskHeader
+                                                                                          namespace:
+                                                                                            - embassy_executor
+                                                                                            - raw
+                                                                                          args: []
+                                                                                      value: "TaskHeader @ Failed to read referenced variable address from memory location 0x00060220 : The coredump does not include the memory for address 0x60220 of size 0x4."
+                                                                    - name:
+                                                                        Named: pender
+                                                                      type_name:
+                                                                        Struct:
+                                                                          ident: Pender
+                                                                          namespace:
+                                                                            - embassy_executor
+                                                                            - raw
+                                                                          args: []
+                                                                      value: Pender @ 0x00060224
+                                                                      children:
+                                                                        - name:
+                                                                            Named: __0
+                                                                          type_name:
+                                                                            Pointer:
+                                                                              Struct:
+                                                                                ident: "*mut"
+                                                                                namespace: []
+                                                                                args:
+                                                                                  - Type:
+                                                                                      Base: ()
+                                                                          value: "*mut ()"
                                                         - name:
                                                             Named: poll_fn
                                                           type_name:
@@ -7894,6 +9156,23 @@ expression: stack_frames
                                                                                           - raw
                                                                                         args: []
                                                                   value: Some<*raw unsafe fn(TaskRef)> @ 0x3FC8B824
+                                                                  children:
+                                                                    - name:
+                                                                        Named: __0
+                                                                      type_name:
+                                                                        Pointer:
+                                                                          Struct:
+                                                                            ident: unsafe fn
+                                                                            namespace: []
+                                                                            args:
+                                                                              - Type:
+                                                                                  Struct:
+                                                                                    ident: TaskRef
+                                                                                    namespace:
+                                                                                      - embassy_executor
+                                                                                      - raw
+                                                                                    args: []
+                                                                      value: "*raw unsafe fn(TaskRef) @ 0x3FC8C5F0"
                                                         - name:
                                                             Named: timer_queue_item
                                                           type_name:
