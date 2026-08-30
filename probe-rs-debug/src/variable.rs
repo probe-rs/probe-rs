@@ -279,11 +279,11 @@ impl GenericArg {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
 pub struct NamedType {
     /// The type ident, without a crate or module path.
-    pub ident: String,
+    pub ident: Box<str>,
     /// Enclosing namespace segments, crate first.
-    pub namespace: Vec<String>,
+    pub namespace: Box<[String]>,
     /// Generic arguments from DWARF template parameter DIEs.
-    pub args: Vec<GenericArg>,
+    pub args: Box<[GenericArg]>,
 }
 
 impl NamedType {
@@ -291,7 +291,7 @@ impl NamedType {
     pub fn ident_stem(&self) -> &str {
         self.ident
             .split_once('<')
-            .map_or(self.ident.as_str(), |(head, _)| head)
+            .map_or(self.ident.as_ref(), |(head, _)| head)
     }
 
     /// Build a named type from a DWARF `DW_AT_name` and namespace DIEs.
@@ -318,9 +318,9 @@ impl NamedType {
                 .map(|(head, _)| head.to_string())
                 .unwrap_or(remainder);
             return Self {
-                ident,
-                namespace,
-                args,
+                ident: ident.into_boxed_str(),
+                namespace: namespace.into_boxed_slice(),
+                args: args.into_boxed_slice(),
             };
         }
 
@@ -332,16 +332,16 @@ impl NamedType {
                 namespace: if namespace.is_empty() {
                     parsed.namespace
                 } else {
-                    namespace
+                    namespace.into_boxed_slice()
                 },
                 args: parsed.args,
             };
         }
 
         Self {
-            ident: remainder,
-            namespace,
-            args,
+            ident: remainder.into_boxed_str(),
+            namespace: namespace.into_boxed_slice(),
+            args: args.into_boxed_slice(),
         }
     }
 
@@ -375,20 +375,16 @@ impl NamedType {
 
 impl From<&str> for NamedType {
     fn from(ident: &str) -> Self {
-        Self {
-            ident: ident.to_string(),
-            namespace: Vec::new(),
-            args: Vec::new(),
-        }
+        Self::from(ident.to_string())
     }
 }
 
 impl From<String> for NamedType {
     fn from(ident: String) -> Self {
         Self {
-            ident,
-            namespace: Vec::new(),
-            args: Vec::new(),
+            ident: ident.into_boxed_str(),
+            namespace: Vec::new().into_boxed_slice(),
+            args: Vec::new().into_boxed_slice(),
         }
     }
 }
@@ -1736,7 +1732,7 @@ mod test {
             &language,
         );
 
-        assert_eq!(option.ident, "Option");
+        assert_eq!(option.ident.as_ref(), "Option");
         assert_eq!(option.ident_stem(), "Option");
         assert_eq!(
             option.display(&language, TypeNameStyle::Compact),

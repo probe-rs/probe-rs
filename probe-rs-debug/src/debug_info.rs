@@ -47,7 +47,7 @@ pub struct DebugInfo {
     ///
     /// Wrapped in a [`Mutex`] because `addr2line::Loader` is `Send` but not
     /// `Sync`, while [`DebugInfo`] must be both so an RPC server can share it.
-    pub(crate) addr2line: Option<Mutex<addr2line::Loader>>,
+    pub(crate) addr2line: Option<Mutex<Box<addr2line::Loader>>>,
 }
 
 impl DebugInfo {
@@ -56,7 +56,10 @@ impl DebugInfo {
         let data = std::fs::read(path.as_ref())?;
 
         let mut this = DebugInfo::from_raw(&data)?;
-        this.addr2line = addr2line::Loader::new(path).ok().map(Mutex::new);
+        this.addr2line = addr2line::Loader::new(path)
+            .ok()
+            .map(Box::new)
+            .map(Mutex::new);
         Ok(this)
     }
 
@@ -289,7 +292,7 @@ impl DebugInfo {
         cache: &mut VariableCache,
         memory: &mut dyn MemoryInterface,
         parent_variable: &mut Variable,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         if !parent_variable.is_valid() {
             // Do nothing. The parent_variable.get_value() will already report back the debug_error value.
@@ -450,7 +453,7 @@ impl DebugInfo {
         let frame_base = functions[0].frame_base(
             self,
             memory,
-            StackFrameInfo {
+            &StackFrameInfo {
                 registers: unwind_registers,
                 frame_base: None,
                 canonical_frame_address: cfa,
@@ -2085,7 +2088,7 @@ mod test {
                     &debug_info,
                     &mut adapter,
                     10,
-                    StackFrameInfo {
+                    &StackFrameInfo {
                         registers: &frame.registers,
                         frame_base: frame.frame_base,
                         canonical_frame_address: frame.canonical_frame_address,
@@ -2123,7 +2126,7 @@ mod test {
             &debug_info,
             &mut adapter,
             10,
-            StackFrameInfo {
+            &StackFrameInfo {
                 registers: &initial_registers,
                 frame_base: None,
                 canonical_frame_address: None,

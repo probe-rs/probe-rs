@@ -116,7 +116,7 @@ impl Rust {
         variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         let Some(path) = RustPath::from_die(unit_info, debug_info, node) else {
             return Ok(());
@@ -179,7 +179,7 @@ impl Rust {
         variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         let Some(path) = RustPath::from_die(unit_info, debug_info, node) else {
             return Ok(());
@@ -273,7 +273,7 @@ impl Rust {
         scope: &Variable,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         let params: Vec<_> = cache.get_children(scope.variable_key).cloned().collect();
         let Some(env_param) = params
@@ -406,7 +406,7 @@ impl Rust {
         debug_info: &DebugInfo,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
         mut current: Variable,
     ) -> Result<Option<Variable>, DebugError> {
         for _ in 0..8 {
@@ -451,7 +451,7 @@ impl Rust {
         debug_info: &DebugInfo,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
         mut env: Variable,
     ) -> Result<Option<Variable>, DebugError> {
         debug_info.cache_deferred_variables(cache, memory, &mut env, frame_info)?;
@@ -480,7 +480,7 @@ impl Rust {
         debug_info: &DebugInfo,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
         mut buffer: Variable,
     ) -> Result<Option<Variable>, DebugError> {
         // Walk down a few levels to cover both old and new heapless::Vec layouts
@@ -513,7 +513,7 @@ impl Rust {
         debug_info: &DebugInfo,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
         element: &mut Variable,
     ) -> Result<(), DebugError> {
         self.unwrap_maybe_uninit_slot(debug_info, memory, cache, frame_info, element)?;
@@ -551,7 +551,7 @@ impl Rust {
         debug_info: &DebugInfo,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
         element: &mut Variable,
     ) -> Result<(), DebugError> {
         debug_info.cache_deferred_variables(cache, memory, element, frame_info)?;
@@ -610,7 +610,7 @@ impl Rust {
         variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         let Some(slice) = Self::try_get_slice(variable, cache) else {
             return Ok(());
@@ -843,7 +843,7 @@ impl ProgrammingLanguage for Rust {
         variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         if variable
             .type_name
@@ -1031,7 +1031,7 @@ impl RustPath {
     }
 
     fn from_named(named: &crate::NamedType) -> Option<Self> {
-        let mut namespaces = named.namespace.clone();
+        let mut namespaces = named.namespace.to_vec();
         if namespaces.is_empty() {
             return None;
         }

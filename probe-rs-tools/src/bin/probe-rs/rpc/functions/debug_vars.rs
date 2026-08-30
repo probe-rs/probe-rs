@@ -18,7 +18,9 @@ fn memory_reference(location: &VariableLocation) -> Option<String> {
     location.address().map(|address| format!("{address:#010x}"))
 }
 
-/// Mirrors `request_helpers::get_variable_reference` for the server-side path.
+/// The DAP protocol uses three related values to determine how to invoke the `Variables` request.
+/// This function retrieves that information from the `DebugInfo::VariableCache` and returns it as
+/// (`variable_reference`, `named_child_variables_cnt`, `indexed_child_variables_cnt`)
 fn variable_reference(parent: &Variable, cache: &VariableCache) -> (ObjectRef, i64, i64) {
     if !parent.is_valid() {
         return (ObjectRef::Invalid, 0, 0);
@@ -46,69 +48,74 @@ pub async fn scopes(
     _header: VarHeader,
     request: ScopesRequest,
 ) -> ScopesResponse {
-    Ok(ctx
-        .with_core_debug_state_mut(request.sessid, request.core, |core_state| {
-            let frame_ref = ObjectRef::from(request.frame_id as i64);
-            let mut scopes: Vec<WireScope> = Vec::new();
+    let states = ctx.debug_states();
+    let mut guard = states.lock().await;
+    let state = guard
+        .get_mut(&request.sessid)
+        .ok_or("No debug state for session")?;
+    let core_state = state
+        .per_core
+        .get_mut(&(request.core as usize))
+        .ok_or("No debug state for core")?;
+    let frame_ref = ObjectRef::from(request.frame_id as i64);
+    let mut scopes: Vec<WireScope> = Vec::new();
 
-            if let Some(static_cache) = &core_state.static_variables {
-                scopes.push(WireScope {
-                    name: "Static".to_string(),
-                    presentation_hint: Some("statics".to_string()),
-                    variables_reference: i64::from(static_cache.root_variable().variable_key()),
-                    expensive: true,
-                    line: None,
-                    column: None,
-                });
-            }
+    if let Some(static_cache) = &core_state.static_variables {
+        scopes.push(WireScope {
+            name: "Static".to_string(),
+            presentation_hint: Some("statics".to_string()),
+            variables_reference: i64::from(static_cache.root_variable().variable_key()),
+            expensive: true,
+            line: None,
+            column: None,
+        });
+    }
 
-            if let Some(svd_cache) = &core_state.svd_variables {
-                scopes.push(WireScope {
-                    name: "Peripherals".to_string(),
-                    presentation_hint: None,
-                    variables_reference: i64::from(svd_cache.root_variable_key()),
-                    expensive: true,
-                    line: None,
-                    column: None,
-                });
-            }
+    if let Some(svd_cache) = &core_state.svd_variables {
+        scopes.push(WireScope {
+            name: "Peripherals".to_string(),
+            presentation_hint: None,
+            variables_reference: i64::from(svd_cache.root_variable_key()),
+            expensive: true,
+            line: None,
+            column: None,
+        });
+    }
 
-            if let Some(frame) = core_state.stack_frames.iter().find(|f| f.id == frame_ref) {
-                // Registers scope: reuse the frame id as its variables_reference.
-                scopes.push(WireScope {
-                    name: "Registers".to_string(),
-                    presentation_hint: Some("registers".to_string()),
-                    variables_reference: i64::from(frame.id),
-                    expensive: true,
-                    line: None,
-                    column: None,
-                });
+    if let Some(frame) = core_state.stack_frames.iter().find(|f| f.id == frame_ref) {
+        // Registers scope: reuse the frame id as its variables_reference.
+        scopes.push(WireScope {
+            name: "Registers".to_string(),
+            presentation_hint: Some("registers".to_string()),
+            variables_reference: i64::from(frame.id),
+            expensive: true,
+            line: None,
+            column: None,
+        });
 
-                if let Some(locals) = &frame.local_variables {
-                    let line = frame
-                        .source_location
-                        .as_ref()
-                        .and_then(|l| l.line.map(|l| l as i64));
-                    let column = frame.source_location.as_ref().and_then(|l| {
-                        l.column.map(|c| match c {
-                            probe_rs_debug::ColumnType::LeftEdge => 0,
-                            probe_rs_debug::ColumnType::Column(c) => c as i64,
-                        })
-                    });
-                    scopes.push(WireScope {
-                        name: "Variables".to_string(),
-                        presentation_hint: Some("locals".to_string()),
-                        variables_reference: i64::from(locals.root_variable().variable_key()),
-                        expensive: false,
-                        line,
-                        column,
-                    });
-                }
-            }
+        if let Some(locals) = &frame.local_variables {
+            let line = frame
+                .source_location
+                .as_ref()
+                .and_then(|l| l.line.map(|l| l as i64));
+            let column = frame.source_location.as_ref().and_then(|l| {
+                l.column.map(|c| match c {
+                    probe_rs_debug::ColumnType::LeftEdge => 0,
+                    probe_rs_debug::ColumnType::Column(c) => c as i64,
+                })
+            });
+            scopes.push(WireScope {
+                name: "Variables".to_string(),
+                presentation_hint: Some("locals".to_string()),
+                variables_reference: i64::from(locals.root_variable().variable_key()),
+                expensive: false,
+                line,
+                column,
+            });
+        }
+    }
 
-            scopes
-        })
-        .await?)
+    Ok(scopes)
 }
 
 pub async fn variables(
@@ -140,10 +147,6 @@ pub async fn variables(
 
     let variable_ref = ObjectRef::from(request.variables_reference as i64);
 
-    let mut parent_variable: Option<Variable> = None;
-    let mut variable_cache: Option<&mut VariableCache> = None;
-    let mut frame_info: Option<StackFrameInfo<'_>> = None;
-    let cloned_registers = core_state.stack_frames.first().map(|f| f.registers.clone());
     if let Some(frame) = core_state
         .stack_frames
         .iter()
@@ -190,6 +193,10 @@ pub async fn variables(
         return Ok(dap_variables);
     }
 
+    let mut parent_variable: Option<Variable> = None;
+    let mut variable_cache: Option<&mut VariableCache> = None;
+    let mut frame_info: Option<StackFrameInfo<'_>> = None;
+    let cloned_registers = core_state.stack_frames.first().map(|f| f.registers.clone());
     if let Some(search_cache) = core_state.static_variables.as_mut()
         && let Some(search_variable) = search_cache.get_variable_by_key(variable_ref)
     {
@@ -264,7 +271,7 @@ pub async fn variables(
         && !variable_cache.has_children(parent)
         && let Some(frame_info) = frame_info
     {
-        lift(debug_info.cache_deferred_variables(variable_cache, &mut core, parent, frame_info))?;
+        lift(debug_info.cache_deferred_variables(variable_cache, &mut core, parent, &frame_info))?;
     }
 
     Ok(variable_cache
@@ -408,7 +415,7 @@ fn resolve_expression(
     core: &mut probe_rs::Core,
     cache: &mut VariableCache,
     expression: &str,
-    frame_info: StackFrameInfo<'_>,
+    frame_info: &StackFrameInfo<'_>,
 ) -> Option<WireEvaluateResponse> {
     if cache.len() == 1 {
         let mut root = cache.root_variable().clone();
@@ -533,7 +540,7 @@ pub async fn evaluate(
             &mut core,
             cache,
             &request.expression,
-            StackFrameInfo {
+            &StackFrameInfo {
                 registers: &frame_regs,
                 frame_base,
                 canonical_frame_address: cfa,
@@ -556,7 +563,7 @@ pub async fn evaluate(
                 &mut core,
                 cache,
                 &request.expression,
-                StackFrameInfo {
+                &StackFrameInfo {
                     registers: &top_regs,
                     frame_base: top_base,
                     canonical_frame_address: top_cfa,

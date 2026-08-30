@@ -272,7 +272,7 @@ impl<'a> FunctionDie<'a> {
         &self,
         debug_info: &super::DebugInfo,
         memory: &mut dyn MemoryInterface,
-        frame_info: StackFrameInfo,
+        frame_info: &StackFrameInfo,
     ) -> Result<Option<u64>, DebugError> {
         match self.unit_info.extract_location(
             debug_info,

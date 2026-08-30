@@ -41,9 +41,7 @@ impl DapRpcConnection {
 
         let probe_broker = Arc::new(crate::rpc::probe_broker::ProbeBroker::new());
         let (local_server, tx, rx) = RpcApp::create_server(16, ProbeAccess::All, probe_broker);
-        let handle = tokio::spawn(async move {
-            local_server.run().await;
-        });
+        let handle = tokio::spawn(local_server.run());
         let client = RpcClient::new_local_from_wire(tx, rx);
         Ok(Self {
             client: Some(client),
