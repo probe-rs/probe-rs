@@ -121,9 +121,8 @@ impl DebugProbe for XvcProbe {
     }
 
     fn attach(&mut self) -> Result<(), DebugProbeError> {
-        // The TCP connection is established when the probe is opened, so there
-        // is nothing to initialize here.
-        Ok(())
+        // Performs initial scan_chain, and sets non zero IR length.
+        self.select_target(0)
     }
 
     fn detach(&mut self) -> Result<(), crate::Error> {
