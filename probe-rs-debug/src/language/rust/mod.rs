@@ -106,7 +106,7 @@ impl Rust {
         }
     }
 
-    /// Unwraps some common newtypes after their member DIE is in the cache.
+    /// Rewrites known nested type chains after their member DIE is in the cache.
     #[expect(clippy::too_many_arguments)]
     fn flatten_known_wrapper(
         &self,
@@ -121,56 +121,97 @@ impl Rust {
         let Some(path) = RustPath::from_die(unit_info, debug_info, node) else {
             return Ok(());
         };
-        if !path.is_transparent_wrapper() {
+        if !WRAPPER_CHAINS.iter().any(|rule| rule.outer.matches(&path)) {
             return Ok(());
         }
 
-        // `Atomic<T>` wraps `UnsafeCell<AlignN<T>>`. Each pass peels one layer.
-        for _ in 0..8 {
-            let children: Vec<_> = cache.get_children(variable.variable_key).cloned().collect();
-            let [inner] = children.as_slice() else {
-                return Ok(());
-            };
-
-            let mut inner = inner.clone();
-            debug_info.cache_deferred_variables(cache, memory, &mut inner, frame_info)?;
-            let Some(inner) = cache.get_variable_by_key(inner.variable_key) else {
-                return Ok(());
-            };
-
-            let inner_path = RustPath::from_variable(debug_info, &inner);
-            if inner_path
-                .as_ref()
-                .is_some_and(|path| path.is_core_unsafe_cell())
-                || (inner_path
-                    .as_ref()
-                    .is_some_and(|path| path.is_transparent_wrapper())
-                    && cache.has_children(&inner))
-            {
-                let inner_key = inner.variable_key;
-                cache.adopt_grand_children(variable, &inner)?;
-                if cache.get_variable_by_key(inner_key).is_some() {
-                    return Ok(());
-                }
-                continue;
+        let inners = collect_single_child_chain(debug_info, variable, memory, cache, frame_info)?;
+        let inner_paths: Vec<_> = inners
+            .iter()
+            .map(|inner| RustPath::from_variable(debug_info, inner))
+            .collect();
+        let Some((rule, skip)) = WRAPPER_CHAINS.iter().find_map(|rule| {
+            if !rule.outer.matches(&path) {
+                return None;
             }
+            Some((rule, rule.skip_inner_indices(&inner_paths)?))
+        }) else {
+            return Ok(());
+        };
 
-            if !cache.has_children(&inner) && inner.value.is_valid() && !inner.value.is_empty() {
-                // The client expands a device register in order to read it. A value that moved up
-                // to the cell would leave the expansion empty.
-                if path.is_volatile_cell() {
+        let mut skipped_value = None;
+        let mut skipped_type = None;
+        for idx in skip {
+            let Some(skipped) = cache.get_variable_by_key(inners[idx].variable_key) else {
+                return Ok(());
+            };
+            if !cache.has_children(&skipped)
+                && skipped.value.is_valid()
+                && !skipped.value.is_empty()
+            {
+                skipped_value = Some(skipped.value.clone());
+                skipped_type = Some(skipped.type_name.clone());
+            }
+            let skipped_key = skipped.variable_key;
+            cache.adopt_grand_children(variable, &skipped)?;
+            if cache.get_variable_by_key(skipped_key).is_some() {
+                // `adopt_grand_children` keeps a node that already holds an inlined base value.
+                if skipped.value.is_valid() && !skipped.value.is_empty() {
+                    skipped_value = Some(skipped.value.clone());
+                    skipped_type = Some(skipped.type_name.clone());
+                    cache.remove_cache_entry(skipped_key)?;
+                } else {
                     return Ok(());
                 }
-                if path.hides_its_type() {
-                    variable.type_name = inner.type_name;
+            }
+        }
+
+        let children: Vec<_> = cache.get_children(variable.variable_key).cloned().collect();
+        let inner = match children.as_slice() {
+            [inner] => inner,
+            [] => {
+                if rule.hide_outer
+                    && let Some(ty) = skipped_type
+                {
+                    variable.type_name = ty;
                 }
+                if (rule.inline_leaf || rule.hide_outer)
+                    && let Some(value) = skipped_value
+                {
+                    variable.set_value(value);
+                    variable.variable_node_type = VariableNodeType::DoNotRecurse;
+                    cache.update_variable(variable)?;
+                }
+                return Ok(());
+            }
+            _ => return Ok(()),
+        };
+
+        if rule.hide_outer {
+            if matches!(inner.type_name, VariableType::Base(_)) {
+                variable.type_name = inner.type_name.clone();
+            }
+            if !cache.has_children(inner) && inner.value.is_valid() && !inner.value.is_empty() {
+                variable.type_name = inner.type_name.clone();
                 variable.set_value(inner.value.clone());
                 cache.remove_cache_entry(inner.variable_key)?;
                 variable.variable_node_type = VariableNodeType::DoNotRecurse;
-                cache.update_variable(variable)?;
             }
-
+            cache.update_variable(variable)?;
             return Ok(());
+        }
+
+        // Only a base type inlines. A nested `Cell` or `Wrapping` stays visible.
+        if rule.inline_leaf
+            && matches!(inner.type_name, VariableType::Base(_))
+            && !cache.has_children(inner)
+            && inner.value.is_valid()
+            && !inner.value.is_empty()
+        {
+            variable.set_value(inner.value.clone());
+            cache.remove_cache_entry(inner.variable_key)?;
+            variable.variable_node_type = VariableNodeType::DoNotRecurse;
+            cache.update_variable(variable)?;
         }
 
         Ok(())
@@ -992,6 +1033,7 @@ fn type_ident(name: &str) -> &str {
 }
 
 /// Crate, modules, and ident from DWARF namespaces plus `DW_AT_name`.
+#[derive(Clone)]
 struct RustPath {
     crate_name: String,
     modules: Vec<String>,
@@ -1000,23 +1042,26 @@ struct RustPath {
 
 const RUSTC_LIBS: &[&str] = &["core", "alloc", "std"];
 
+#[derive(Clone, Copy)]
 enum ModulePath {
     Prefix(&'static [&'static str]),
     Exact(&'static [&'static str]),
 }
 
+#[derive(Clone, Copy)]
 enum Ident {
     Exact(&'static str),
     Prefix(&'static str),
 }
 
-struct TransparentWrapper {
+#[derive(Clone, Copy)]
+struct TypeMatch {
     crates: &'static [&'static str],
     modules: ModulePath,
     ident: Ident,
 }
 
-impl TransparentWrapper {
+impl TypeMatch {
     fn matches(&self, path: &RustPath) -> bool {
         if !self.crates.contains(&path.crate_name.as_str()) {
             return false;
@@ -1035,6 +1080,233 @@ impl TransparentWrapper {
             Ident::Prefix(prefix) => path.ident.starts_with(prefix),
         }
     }
+}
+
+#[derive(Clone, Copy)]
+enum InnerLayer {
+    /// Remove this type when it is the next layer.
+    Skip(TypeMatch),
+    /// Remove this type when it is the next layer. If it is not, try the next pattern layer.
+    SkipOpt(TypeMatch),
+    /// The remaining inner type. The rewrite keeps it.
+    Payload,
+}
+
+/// Match a nested type chain and drop implementation layers.
+struct WrapperChain {
+    outer: TypeMatch,
+    inners: &'static [InnerLayer],
+    /// Copy a base-type payload onto `outer`. A `VolatileCell` must not do this.
+    inline_leaf: bool,
+    /// Use the payload type name on `outer`.
+    hide_outer: bool,
+}
+
+impl WrapperChain {
+    fn skip_inner_indices(&self, inners: &[Option<RustPath>]) -> Option<Vec<usize>> {
+        let mut i = 0;
+        let mut skip = Vec::new();
+        for layer in self.inners {
+            match layer {
+                InnerLayer::Skip(type_match) => {
+                    let path = inners.get(i)?.as_ref()?;
+                    if !type_match.matches(path) {
+                        return None;
+                    }
+                    skip.push(i);
+                    i += 1;
+                }
+                InnerLayer::SkipOpt(type_match) => {
+                    if inners
+                        .get(i)
+                        .and_then(|path| path.as_ref())
+                        .is_some_and(|path| type_match.matches(path))
+                    {
+                        skip.push(i);
+                        i += 1;
+                    }
+                }
+                InnerLayer::Payload => {
+                    if inners.get(i).is_some() || !skip.is_empty() {
+                        return Some(skip);
+                    }
+                    return None;
+                }
+            }
+        }
+        Some(skip)
+    }
+}
+
+const CORE_CELL: TypeMatch = TypeMatch {
+    crates: RUSTC_LIBS,
+    modules: ModulePath::Prefix(&["cell"]),
+    ident: Ident::Exact("Cell"),
+};
+const CORE_SYNC_UNSAFE_CELL: TypeMatch = TypeMatch {
+    crates: RUSTC_LIBS,
+    modules: ModulePath::Prefix(&["cell"]),
+    ident: Ident::Exact("SyncUnsafeCell"),
+};
+const CORE_UNSAFE_CELL: TypeMatch = TypeMatch {
+    crates: RUSTC_LIBS,
+    modules: ModulePath::Prefix(&["cell"]),
+    ident: Ident::Exact("UnsafeCell"),
+};
+const CORE_MANUALLY_DROP: TypeMatch = TypeMatch {
+    crates: RUSTC_LIBS,
+    modules: ModulePath::Prefix(&["mem"]),
+    ident: Ident::Exact("ManuallyDrop"),
+};
+const CORE_MAYBE_DANGLING: TypeMatch = TypeMatch {
+    crates: RUSTC_LIBS,
+    modules: ModulePath::Prefix(&["mem"]),
+    ident: Ident::Exact("MaybeDangling"),
+};
+const CORE_WRAPPING: TypeMatch = TypeMatch {
+    crates: RUSTC_LIBS,
+    modules: ModulePath::Prefix(&["num"]),
+    ident: Ident::Exact("Wrapping"),
+};
+const CORE_NON_ZERO: TypeMatch = TypeMatch {
+    crates: RUSTC_LIBS,
+    modules: ModulePath::Prefix(&["num"]),
+    ident: Ident::Exact("NonZero"),
+};
+const CORE_ATOMIC: TypeMatch = TypeMatch {
+    crates: RUSTC_LIBS,
+    modules: ModulePath::Prefix(&["sync", "atomic"]),
+    ident: Ident::Prefix("Atomic"),
+};
+const CORE_ATOMIC_ALIGN: TypeMatch = TypeMatch {
+    crates: RUSTC_LIBS,
+    modules: ModulePath::Prefix(&["sync", "atomic"]),
+    ident: Ident::Prefix("Align"),
+};
+const EMBASSY_SYNC_UNSAFE_CELL: TypeMatch = TypeMatch {
+    crates: &["embassy_executor"],
+    modules: ModulePath::Prefix(&["raw", "util"]),
+    ident: Ident::Exact("SyncUnsafeCell"),
+};
+const VCELL: TypeMatch = TypeMatch {
+    crates: &["vcell"],
+    modules: ModulePath::Exact(&[]),
+    ident: Ident::Exact("VolatileCell"),
+};
+const PORTABLE_ATOMIC: TypeMatch = TypeMatch {
+    crates: &["portable_atomic"],
+    modules: ModulePath::Prefix(&[]),
+    ident: Ident::Prefix("Atomic"),
+};
+
+/// `Cell - UnsafeCell - T` becomes `Cell - T`. `Atomic* - Align* - UnsafeCell - T` becomes
+/// `Atomic* - T`. The outer type stays when it is useful.
+const WRAPPER_CHAINS: &[WrapperChain] = &[
+    WrapperChain {
+        outer: CORE_CELL,
+        inners: &[InnerLayer::Skip(CORE_UNSAFE_CELL), InnerLayer::Payload],
+        inline_leaf: true,
+        hide_outer: false,
+    },
+    WrapperChain {
+        outer: CORE_SYNC_UNSAFE_CELL,
+        inners: &[InnerLayer::Skip(CORE_UNSAFE_CELL), InnerLayer::Payload],
+        inline_leaf: true,
+        hide_outer: false,
+    },
+    WrapperChain {
+        outer: CORE_MANUALLY_DROP,
+        inners: &[
+            InnerLayer::SkipOpt(CORE_MAYBE_DANGLING),
+            InnerLayer::SkipOpt(CORE_UNSAFE_CELL),
+            InnerLayer::Payload,
+        ],
+        inline_leaf: true,
+        hide_outer: true,
+    },
+    WrapperChain {
+        outer: CORE_MAYBE_DANGLING,
+        inners: &[
+            InnerLayer::SkipOpt(CORE_MANUALLY_DROP),
+            InnerLayer::SkipOpt(CORE_UNSAFE_CELL),
+            InnerLayer::Payload,
+        ],
+        inline_leaf: true,
+        hide_outer: true,
+    },
+    WrapperChain {
+        outer: CORE_WRAPPING,
+        inners: &[InnerLayer::Payload],
+        inline_leaf: true,
+        hide_outer: false,
+    },
+    WrapperChain {
+        outer: CORE_NON_ZERO,
+        inners: &[InnerLayer::Payload],
+        inline_leaf: true,
+        hide_outer: false,
+    },
+    WrapperChain {
+        outer: CORE_ATOMIC,
+        inners: &[
+            InnerLayer::SkipOpt(CORE_ATOMIC_ALIGN),
+            InnerLayer::SkipOpt(CORE_UNSAFE_CELL),
+            InnerLayer::SkipOpt(CORE_ATOMIC_ALIGN),
+            InnerLayer::Payload,
+        ],
+        inline_leaf: true,
+        hide_outer: false,
+    },
+    WrapperChain {
+        outer: EMBASSY_SYNC_UNSAFE_CELL,
+        inners: &[InnerLayer::Skip(CORE_UNSAFE_CELL), InnerLayer::Payload],
+        inline_leaf: true,
+        hide_outer: false,
+    },
+    WrapperChain {
+        outer: VCELL,
+        inners: &[InnerLayer::Skip(CORE_UNSAFE_CELL), InnerLayer::Payload],
+        inline_leaf: false,
+        hide_outer: false,
+    },
+    WrapperChain {
+        outer: PORTABLE_ATOMIC,
+        inners: &[
+            InnerLayer::SkipOpt(PORTABLE_ATOMIC),
+            InnerLayer::SkipOpt(CORE_ATOMIC),
+            InnerLayer::SkipOpt(CORE_ATOMIC_ALIGN),
+            InnerLayer::SkipOpt(CORE_UNSAFE_CELL),
+            InnerLayer::SkipOpt(CORE_ATOMIC_ALIGN),
+            InnerLayer::Payload,
+        ],
+        inline_leaf: true,
+        hide_outer: false,
+    },
+];
+
+fn collect_single_child_chain(
+    debug_info: &DebugInfo,
+    variable: &Variable,
+    memory: &mut dyn MemoryInterface,
+    cache: &mut VariableCache,
+    frame_info: &StackFrameInfo<'_>,
+) -> Result<Vec<Variable>, DebugError> {
+    let mut inners = Vec::new();
+    let mut current = variable.clone();
+    for _ in 0..8 {
+        let children: Vec<_> = cache.get_children(current.variable_key).cloned().collect();
+        let [inner] = children.as_slice() else {
+            break;
+        };
+        let mut inner = inner.clone();
+        debug_info.cache_deferred_variables(cache, memory, &mut inner, frame_info)?;
+        let Some(inner) = cache.get_variable_by_key(inner.variable_key) else {
+            break;
+        };
+        inners.push(inner.clone());
+        current = inner;
+    }
+    Ok(inners)
 }
 
 impl RustPath {
@@ -1101,82 +1373,10 @@ impl RustPath {
                 .all(|(segment, expected)| segment == expected)
     }
 
-    fn is_transparent_wrapper(&self) -> bool {
-        [
-            TransparentWrapper {
-                crates: RUSTC_LIBS,
-                modules: ModulePath::Prefix(&["cell"]),
-                ident: Ident::Exact("Cell"),
-            },
-            TransparentWrapper {
-                crates: RUSTC_LIBS,
-                modules: ModulePath::Prefix(&["cell"]),
-                ident: Ident::Exact("SyncUnsafeCell"),
-            },
-            TransparentWrapper {
-                crates: RUSTC_LIBS,
-                modules: ModulePath::Prefix(&["mem"]),
-                ident: Ident::Exact("ManuallyDrop"),
-            },
-            TransparentWrapper {
-                crates: RUSTC_LIBS,
-                modules: ModulePath::Prefix(&["mem"]),
-                ident: Ident::Exact("MaybeDangling"),
-            },
-            TransparentWrapper {
-                crates: RUSTC_LIBS,
-                modules: ModulePath::Prefix(&["num"]),
-                ident: Ident::Exact("Wrapping"),
-            },
-            TransparentWrapper {
-                crates: RUSTC_LIBS,
-                modules: ModulePath::Prefix(&["num"]),
-                ident: Ident::Exact("NonZero"),
-            },
-            TransparentWrapper {
-                crates: RUSTC_LIBS,
-                modules: ModulePath::Prefix(&["sync", "atomic"]),
-                ident: Ident::Prefix("Atomic"),
-            },
-            TransparentWrapper {
-                crates: &["embassy_executor"],
-                modules: ModulePath::Prefix(&["raw", "util"]),
-                ident: Ident::Exact("SyncUnsafeCell"),
-            },
-            TransparentWrapper {
-                crates: &["vcell"],
-                modules: ModulePath::Exact(&[]),
-                ident: Ident::Exact("VolatileCell"),
-            },
-            TransparentWrapper {
-                crates: &["portable_atomic"],
-                modules: ModulePath::Prefix(&[]),
-                ident: Ident::Prefix("Atomic"),
-            },
-            TransparentWrapper {
-                crates: RUSTC_LIBS,
-                modules: ModulePath::Prefix(&["sync", "atomic"]),
-                ident: Ident::Prefix("Align"),
-            },
-        ]
-        .iter()
-        .any(|wrapper| wrapper.matches(self))
-    }
-
-    /// A wrapper that the standard library uses to describe how it holds a value. The name of the
-    /// type that it wraps is the name that the user wrote.
-    fn hides_its_type(&self) -> bool {
-        self.is_rustc_lib() && matches!(self.ident.as_str(), "ManuallyDrop" | "MaybeDangling")
-    }
-
     /// `VolatileCell` holds a device register. A read of the register can clear a flag, or move a
     /// FIFO on, so the debugger must not read it on its own.
     fn is_volatile_cell(&self) -> bool {
         self.crate_name == "vcell" && self.ident == "VolatileCell"
-    }
-
-    fn is_core_unsafe_cell(&self) -> bool {
-        self.is_rustc_lib() && self.ident == "UnsafeCell" && self.modules_start_with(&["cell"])
     }
 
     fn is_maybe_uninit(&self) -> bool {
@@ -1295,8 +1495,8 @@ fn is_rust_type(name: &str, type_name: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        RustPath, is_async_env_ident, is_generator_variant_ident, is_rust_type,
-        type_contains_async_env,
+        CORE_ATOMIC_ALIGN, CORE_UNSAFE_CELL, RustPath, WRAPPER_CHAINS, is_async_env_ident,
+        is_generator_variant_ident, is_rust_type, type_contains_async_env,
     };
     use crate::DebugInfo;
 
@@ -1331,43 +1531,155 @@ mod tests {
 
     #[test]
     fn rustc_and_embassy_wrappers_match_their_namespaces() {
-        assert!(path("core", &["cell"], "Cell").is_transparent_wrapper());
-        assert!(!path("core", &["cell"], "UnsafeCell").is_transparent_wrapper());
-        assert!(path("core", &["cell"], "UnsafeCell").is_core_unsafe_cell());
-        assert!(path("core", &["sync", "atomic"], "AtomicU32").is_transparent_wrapper());
-        assert!(path("core", &["mem", "manually_drop"], "ManuallyDrop").is_transparent_wrapper());
-        assert!(path("core", &["mem", "maybe_dangling"], "MaybeDangling").is_transparent_wrapper());
-        assert!(path("core", &["num", "wrapping"], "Wrapping").is_transparent_wrapper());
-        assert!(path("core", &["num", "nonzero"], "NonZero").is_transparent_wrapper());
-        assert!(
-            path("embassy_executor", &["raw", "util"], "SyncUnsafeCell").is_transparent_wrapper()
-        );
+        assert!(starts_wrapper_chain(&path("core", &["cell"], "Cell")));
+        assert!(!starts_wrapper_chain(&path(
+            "core",
+            &["cell"],
+            "UnsafeCell"
+        )));
+        assert!(CORE_UNSAFE_CELL.matches(&path("core", &["cell"], "UnsafeCell")));
+        assert!(starts_wrapper_chain(&path(
+            "core",
+            &["sync", "atomic"],
+            "AtomicU32"
+        )));
+        assert!(starts_wrapper_chain(&path(
+            "core",
+            &["mem", "manually_drop"],
+            "ManuallyDrop"
+        )));
+        assert!(starts_wrapper_chain(&path(
+            "core",
+            &["mem", "maybe_dangling"],
+            "MaybeDangling"
+        )));
+        assert!(starts_wrapper_chain(&path(
+            "core",
+            &["num", "wrapping"],
+            "Wrapping"
+        )));
+        assert!(starts_wrapper_chain(&path(
+            "core",
+            &["num", "nonzero"],
+            "NonZero"
+        )));
+        assert!(starts_wrapper_chain(&path(
+            "embassy_executor",
+            &["raw", "util"],
+            "SyncUnsafeCell"
+        )));
 
-        assert!(path("portable_atomic", &[], "AtomicU32").is_transparent_wrapper());
-        assert!(
-            path("portable_atomic", &["imp", "core_atomic"], "AtomicU32").is_transparent_wrapper()
-        );
-        assert!(path("portable_atomic", &[], "Atomic").is_transparent_wrapper());
-        assert!(path("core", &["sync", "atomic", "private"], "Align4").is_transparent_wrapper());
-        assert!(
-            !path(
-                "embassy_sync",
-                &["waitqueue", "atomic_waker"],
-                "AtomicWaker"
-            )
-            .is_transparent_wrapper()
-        );
-        assert!(!path("esp_hal", &["sync", "multicore"], "AtomicLock").is_transparent_wrapper());
-        assert!(!path("core", &["cell"], "RefCell").is_transparent_wrapper());
-        assert!(!path("core", &["pin"], "Pin").is_transparent_wrapper());
-        assert!(!path("core", &["ptr", "non_null"], "NonNull").is_transparent_wrapper());
+        assert!(starts_wrapper_chain(&path(
+            "portable_atomic",
+            &[],
+            "AtomicU32"
+        )));
+        assert!(starts_wrapper_chain(&path(
+            "portable_atomic",
+            &["imp", "core_atomic"],
+            "AtomicU32"
+        )));
+        assert!(starts_wrapper_chain(&path(
+            "portable_atomic",
+            &[],
+            "Atomic"
+        )));
+        assert!(!starts_wrapper_chain(&path(
+            "core",
+            &["sync", "atomic", "private"],
+            "Align4"
+        )));
+        assert!(CORE_ATOMIC_ALIGN.matches(&path("core", &["sync", "atomic", "private"], "Align4")));
+        assert!(!starts_wrapper_chain(&path(
+            "embassy_sync",
+            &["waitqueue", "atomic_waker"],
+            "AtomicWaker"
+        )));
+        assert!(!starts_wrapper_chain(&path(
+            "esp_hal",
+            &["sync", "multicore"],
+            "AtomicLock"
+        )));
+        assert!(!starts_wrapper_chain(&path("core", &["cell"], "RefCell")));
+        assert!(!starts_wrapper_chain(&path("core", &["pin"], "Pin")));
+        assert!(!starts_wrapper_chain(&path(
+            "core",
+            &["ptr", "non_null"],
+            "NonNull"
+        )));
         assert!(path("heapless", &["vec"], "Vec").is_heapless_vec());
         assert!(path("heapless", &["vec"], "VecInner").is_heapless_vec());
         assert!(!path("heapless", &["vec", "storage"], "VecStorageInner").is_heapless_vec());
         assert!(!path("alloc", &["vec"], "Vec").is_heapless_vec());
-        assert!(path("vcell", &[], "VolatileCell").is_transparent_wrapper());
+        assert!(starts_wrapper_chain(&path("vcell", &[], "VolatileCell")));
         assert!(path("vcell", &[], "VolatileCell").is_volatile_cell());
         assert!(!path("core", &["cell"], "UnsafeCell").is_volatile_cell());
+    }
+
+    #[test]
+    fn wrapper_chains_skip_implementation_layers() {
+        assert_eq!(
+            chain_skips(&[
+                path("core", &["cell"], "Cell"),
+                path("core", &["cell"], "UnsafeCell"),
+                path("core", &["option"], "Option"),
+            ]),
+            Some(vec![0])
+        );
+        assert_eq!(
+            chain_skips(&[
+                path("core", &["cell"], "Cell"),
+                path("core", &["num", "wrapping"], "Wrapping"),
+            ]),
+            None
+        );
+        assert_eq!(
+            chain_skips(&[
+                path("core", &["sync", "atomic"], "AtomicU32"),
+                path("core", &["sync", "atomic", "private"], "Align4"),
+                path("core", &["cell"], "UnsafeCell"),
+                path("core", &["option"], "Option"),
+            ]),
+            Some(vec![0, 1])
+        );
+        assert_eq!(
+            chain_skips(&[
+                path("core", &["sync", "atomic"], "AtomicU32"),
+                path("core", &["cell"], "UnsafeCell"),
+                path("core", &["sync", "atomic", "private"], "Align4"),
+                path("core", &["option"], "Option"),
+            ]),
+            Some(vec![0, 1])
+        );
+        assert_eq!(
+            chain_skips(&[
+                path("core", &["sync", "atomic"], "AtomicU32"),
+                path("core", &["cell"], "UnsafeCell"),
+                path("core", &["option"], "Option"),
+            ]),
+            Some(vec![0])
+        );
+        assert_eq!(
+            chain_skips(&[
+                path("portable_atomic", &[], "AtomicU32"),
+                path("core", &["cell"], "UnsafeCell"),
+                path("core", &["option"], "Option"),
+            ]),
+            Some(vec![0])
+        );
+        assert_eq!(
+            chain_skips(&[
+                path("portable_atomic", &[], "AtomicU32"),
+                path("portable_atomic", &["imp", "core_atomic"], "AtomicU32"),
+                path("core", &["sync", "atomic"], "Atomic"),
+                path("core", &["option"], "Option"),
+            ]),
+            Some(vec![0, 1])
+        );
+        assert_eq!(
+            chain_skips(&[path("core", &["sync", "atomic", "private"], "Align4")]),
+            None
+        );
     }
 
     #[test]
@@ -1391,22 +1703,37 @@ mod tests {
                 if path.ident == "Cell" && path.crate_name == "core" {
                     saw_core_cell = true;
                     assert_eq!(path.modules, ["cell"]);
-                    assert!(path.is_transparent_wrapper());
+                    assert!(starts_wrapper_chain(&path));
                 }
                 if path.ident == "AtomicU32" && path.crate_name == "core" {
                     saw_core_atomic = true;
                     assert_eq!(path.modules, ["sync", "atomic"]);
-                    assert!(path.is_transparent_wrapper());
+                    assert!(starts_wrapper_chain(&path));
                 }
                 if path.ident == "AtomicU32" && path.crate_name == "portable_atomic" {
                     saw_portable_atomic = true;
-                    assert!(path.is_transparent_wrapper());
+                    assert!(starts_wrapper_chain(&path));
                 }
             }
         }
         assert!(saw_core_cell);
         assert!(saw_core_atomic);
         assert!(saw_portable_atomic);
+    }
+
+    fn starts_wrapper_chain(path: &RustPath) -> bool {
+        WRAPPER_CHAINS.iter().any(|chain| chain.outer.matches(path))
+    }
+
+    fn chain_skips(chain: &[RustPath]) -> Option<Vec<usize>> {
+        let (outer, inners) = chain.split_first()?;
+        let inners: Vec<_> = inners.iter().cloned().map(Some).collect();
+        WRAPPER_CHAINS.iter().find_map(|rule| {
+            if !rule.outer.matches(outer) {
+                return None;
+            }
+            rule.skip_inner_indices(&inners)
+        })
     }
 
     fn path(crate_name: &str, modules: &[&str], ident: &str) -> RustPath {
