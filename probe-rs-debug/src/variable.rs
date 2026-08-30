@@ -1732,7 +1732,7 @@ mod test {
             &language,
         );
 
-        assert_eq!(option.ident, "Option");
+        assert_eq!(option.ident.as_ref(), "Option");
         assert_eq!(option.ident_stem(), "Option");
         assert_eq!(
             option.display(&language, TypeNameStyle::Compact),

@@ -2126,7 +2126,7 @@ mod test {
             &debug_info,
             &mut adapter,
             10,
-            StackFrameInfo {
+            &StackFrameInfo {
                 registers: &initial_registers,
                 frame_base: None,
                 canonical_frame_address: None,

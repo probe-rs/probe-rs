@@ -996,8 +996,8 @@ mod tests {
     fn option_with_a_qualified_argument_splits_into_ident_and_args() {
         let named = parse_named_type("Option<esp_hal::soc::implementation::clocks::XtalClkConfig>")
             .unwrap();
-        assert_eq!(named.ident, "Option");
-        assert_eq!(named.namespace, [] as [String; 0]);
+        assert_eq!(named.ident.as_ref(), "Option");
+        assert_eq!(named.namespace.as_ref(), [] as [String; 0]);
         assert_eq!(
             named.display(&rust(), TypeNameStyle::Compact),
             "Option<XtalClkConfig>"
@@ -1036,7 +1036,7 @@ mod tests {
     #[test]
     fn a_mut_slice_pointer_keeps_the_pointer_syntax() {
         let named = parse_named_type("*mut [core::mem::maybe_uninit::MaybeUninit<u32>]").unwrap();
-        assert_eq!(named.ident, "*mut");
+        assert_eq!(named.ident.as_ref(), "*mut");
         assert_eq!(
             named.display(&rust(), TypeNameStyle::Compact),
             "*mut [MaybeUninit<u32>]"
