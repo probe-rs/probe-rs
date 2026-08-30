@@ -5,9 +5,8 @@ manufacturer:
 chip_detection:
 - !Espressif
   idcode: 0x10c25
-  variants:
-    0xd7b73e80: esp32h2
-    0x97e30068: esp32h2
+  magic_address: 0x40001000
+  variants: {} # IDCODE is unique to ESP32-H2
 variants:
 - name: esp32h2
   cores:

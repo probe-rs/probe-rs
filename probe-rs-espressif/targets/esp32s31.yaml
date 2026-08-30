@@ -5,8 +5,8 @@ manufacturer:
 chip_detection:
 - !Espressif
   idcode: 0x20c25
-  variants:
-    0x0: esp32s31
+  magic_address: 0x2F801000
+  variants: {} # IDCODE is unique to ESP32-S31
 variants:
 - name: esp32s31
   cores:
