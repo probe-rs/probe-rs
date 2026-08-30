@@ -1,7 +1,7 @@
 use std::{any::Any, ops::DerefMut, panic::AssertUnwindSafe, sync::Arc};
 use std::{collections::HashMap, convert::Infallible, future::Future};
 
-use crate::rpc::debug_state::{CoreDebugState, ServerDebugState};
+use crate::rpc::debug_state::ServerDebugState;
 use crate::rpc::functions::file::{append_temp_file, create_temp_file};
 use crate::rpc::probe_broker::ProbeBroker;
 use crate::rpc::{
@@ -398,22 +398,6 @@ impl RpcContext {
         let states = self.debug_states();
         let mut guard = states.lock().await;
         f(guard.entry(sessid).or_default())
-    }
-
-    pub async fn with_core_debug_state_mut<R>(
-        &self,
-        sessid: Key<Session>,
-        core: u32,
-        f: impl FnOnce(&mut CoreDebugState) -> R,
-    ) -> Result<R, &'static str> {
-        let states = self.debug_states();
-        let mut guard = states.lock().await;
-        let state = guard.get_mut(&sessid).ok_or("No debug state for session")?;
-        let core_state = state
-            .per_core
-            .get_mut(&(core as usize))
-            .ok_or("No debug state for core")?;
-        Ok(f(core_state))
     }
 
     pub fn lister(&self) -> Lister {
