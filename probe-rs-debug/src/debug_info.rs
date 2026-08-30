@@ -1490,7 +1490,7 @@ fn add_to_address(address: u64, offset: i64, address_size_in_bytes: usize) -> u6
 #[cfg(test)]
 mod test {
     use crate::{
-        DebugInfo, DebugRegister, DebugRegisters,
+        DebugInfo, DebugRegister, DebugRegisters, ObjectRef, VariableCache,
         exception_handling::{
             armv6m::ArmV6MExceptionHandler, armv7m::ArmV7MExceptionHandler,
             exception_handler_for_core,
@@ -1500,7 +1500,7 @@ mod test {
 
     use gimli::RegisterRule;
     use probe_rs::{
-        CoreDump, RegisterValue,
+        CoreDump, MemoryInterface, RegisterValue,
         architecture::arm::core::registers::cortex_m::{self, CORTEX_M_CORE_REGISTERS},
         test::MockMemory,
     };
@@ -2120,6 +2120,97 @@ mod test {
         // Using YAML output because it is easier to read than the default snapshot output,
         // and also because they provide better diffs.
         insta::assert_yaml_snapshot!(snapshot_name, stack_frames);
+    }
+
+    /// Expand every variable below `key` except a device register, and report how many device
+    /// registers the walk left unexpanded.
+    fn expand_around_registers(
+        cache: &mut VariableCache,
+        debug_info: &DebugInfo,
+        memory: &mut dyn MemoryInterface,
+        frame_info: &StackFrameInfo<'_>,
+        key: ObjectRef,
+        depth: usize,
+    ) -> usize {
+        let Some(mut variable) = cache.get_variable_by_key(key) else {
+            return 0;
+        };
+
+        if variable.type_name.ident() == Some("VolatileCell") {
+            // A read of the register flattens the wrapper away and replaces the value, so a
+            // deferred node is the proof that the walk left the register alone.
+            assert!(
+                variable.variable_node_type.is_deferred(),
+                "{:?} holds a device register, so the walk must not read it, but it read {:?}",
+                variable.name,
+                variable.value
+            );
+            return 1;
+        }
+
+        if depth == 0 {
+            return 0;
+        }
+
+        if debug_info
+            .cache_deferred_variables(cache, memory, &mut variable, frame_info)
+            .is_err()
+        {
+            return 0;
+        }
+
+        let children: Vec<_> = cache.get_children(key).map(|c| c.variable_key).collect();
+        children
+            .into_iter()
+            .map(|child| {
+                expand_around_registers(cache, debug_info, memory, frame_info, child, depth - 1)
+            })
+            .sum()
+    }
+
+    #[test]
+    fn a_device_register_does_not_expand_without_a_request() {
+        let debug_info = load_test_elf_as_debug_info("debug-unwind-tests/async_esp32s3.elf");
+        let coredump_path = coredump_path("debug-unwind-tests/async_esp32s3".to_string());
+        let mut adapter = CoreDump::load(&coredump_path).unwrap();
+
+        let initial_registers = DebugRegisters::from_coredump(&adapter);
+        let exception_handler = exception_handler_for_core(adapter.core_type());
+        let instruction_set = adapter.instruction_set();
+
+        let mut stack_frames = debug_info
+            .unwind(
+                &mut adapter,
+                initial_registers,
+                exception_handler.as_ref(),
+                Some(instruction_set),
+                1000,
+            )
+            .unwrap();
+
+        let mut registers = 0;
+        for frame in &mut stack_frames {
+            let frame_info = StackFrameInfo {
+                registers: &frame.registers,
+                frame_base: frame.frame_base,
+                canonical_frame_address: frame.canonical_frame_address,
+                caller: None,
+            };
+            let Some(cache) = &mut frame.local_variables else {
+                continue;
+            };
+            let root = cache.root_variable().variable_key;
+            registers += expand_around_registers(
+                cache,
+                &debug_info,
+                &mut adapter,
+                &frame_info,
+                root,
+                MAX_VARIABLE_DEPTH,
+            );
+        }
+
+        assert!(registers > 0, "the test found no device register to check");
     }
 
     #[test_case("RP2040_full_unwind"; "Armv6-m using RP2040")]

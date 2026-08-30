@@ -115,6 +115,13 @@ pub trait ProgrammingLanguage {
         false
     }
 
+    /// Report whether a read of the members of `ty` can change the state of the target, because
+    /// the members are memory mapped device registers. Such a type only expands when the client
+    /// asks for it.
+    fn is_side_effecting(&self, _ty: &VariableType) -> bool {
+        false
+    }
+
     fn modified_type_name(&self, modifier: &Modifier, name: &str) -> String {
         match modifier {
             Modifier::Const => format!("const {name}"),

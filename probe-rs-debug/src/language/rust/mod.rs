@@ -858,6 +858,12 @@ impl ProgrammingLanguage for Rust {
             || ident == "Result"
     }
 
+    fn is_side_effecting(&self, ty: &VariableType) -> bool {
+        ty.named()
+            .and_then(RustPath::from_named)
+            .is_some_and(|path| path.is_volatile_cell())
+    }
+
     fn process_struct(
         &self,
         unit_info: &UnitInfo,
@@ -1152,6 +1158,12 @@ impl RustPath {
         .any(|wrapper| wrapper.matches(self))
     }
 
+    /// `VolatileCell` holds a device register. A read of the register can clear a flag, or move a
+    /// FIFO on, so the debugger must not read it on its own.
+    fn is_volatile_cell(&self) -> bool {
+        self.crate_name == "vcell" && self.ident == "VolatileCell"
+    }
+
     fn is_core_unsafe_cell(&self) -> bool {
         self.is_rustc_lib() && self.ident == "UnsafeCell" && self.modules_start_with(&["cell"])
     }
@@ -1343,6 +1355,8 @@ mod tests {
         assert!(!path("heapless", &["vec", "storage"], "VecStorageInner").is_heapless_vec());
         assert!(!path("alloc", &["vec"], "Vec").is_heapless_vec());
         assert!(path("vcell", &[], "VolatileCell").is_transparent_wrapper());
+        assert!(path("vcell", &[], "VolatileCell").is_volatile_cell());
+        assert!(!path("core", &["cell"], "UnsafeCell").is_volatile_cell());
     }
 
     #[test]

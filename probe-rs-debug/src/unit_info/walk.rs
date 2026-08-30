@@ -1463,10 +1463,11 @@ impl<'a> Walker<'a> {
             if width > 0 {
                 child_variable.variable_node_type =
                     VariableNodeType::TypeOffset(unit.debug_info_offset()?, node.offset());
-                if unit
-                    .language
-                    .auto_resolve_children(&child_variable.type_name)
-                    || self.budget.affords(width)
+                if !unit.language.is_side_effecting(&child_variable.type_name)
+                    && (unit
+                        .language
+                        .auto_resolve_children(&child_variable.type_name)
+                        || self.budget.affords(width))
                 {
                     return self.expand_now(unit, node.offset(), child_variable);
                 }
