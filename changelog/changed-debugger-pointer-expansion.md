@@ -1,0 +1,1 @@
+The debugger now reads what a pointer points at when you expand the pointer, and not when it reads the variable that holds the pointer. This removes the target memory reads for pointer targets that you do not look at.

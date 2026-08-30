@@ -582,18 +582,12 @@ Child Variables:
                             - sync
                             - atomic
                           args: []
-                      value: "9937"
+                      value: AtomicU16 = 9937
                       source_location:
                         path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
                         line: 132
                         column: ~
                         address: ~
-                      children:
-                        - name:
-                            Named: value
-                          type_name:
-                            Base: u16
-                          value: "9937"
             - name:
                 Namespace: memcpy
               type_name: Namespace
@@ -614,18 +608,12 @@ Child Variables:
                             - sync
                             - atomic
                           args: []
-                      value: "9793"
+                      value: AtomicU16 = 9793
                       source_location:
                         path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
                         line: 132
                         column: ~
                         address: ~
-                      children:
-                        - name:
-                            Named: value
-                          type_name:
-                            Base: u16
-                          value: "9793"
             - name:
                 Namespace: connect_internal_flash
               type_name: Namespace
@@ -1872,18 +1860,12 @@ Child Variables:
                             - sync
                             - atomic
                           args: []
-                      value: "9769"
+                      value: AtomicU16 = 9769
                       source_location:
                         path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
                         line: 132
                         column: ~
                         address: ~
-                      children:
-                        - name:
-                            Named: value
-                          type_name:
-                            Base: u16
-                          value: "9769"
             - name:
                 Namespace: wait_for_vector
               type_name: Namespace
@@ -1942,18 +1924,12 @@ Child Variables:
                             - sync
                             - atomic
                           args: []
-                      value: "0"
+                      value: AtomicU16 = 0
                       source_location:
                         path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
                         line: 80
                         column: ~
                         address: ~
-                      children:
-                        - name:
-                            Named: value
-                          type_name:
-                            Base: u16
-                          value: "0"
             - name:
                 Namespace: flash_flush_cache
               type_name: Namespace
@@ -2026,18 +2002,12 @@ Child Variables:
                     - sync
                     - atomic
                   args: []
-              value: "0"
+              value: AtomicU8 = 0
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/critical_section_impl.rs
                 line: 14
                 column: ~
                 address: ~
-              children:
-                - name:
-                    Named: value
-                  type_name:
-                    Base: u8
-                  value: "0"
         - name:
             Namespace: timer
           type_name: Namespace
@@ -3788,13 +3758,7 @@ Child Variables:
                                         - sync
                                         - atomic
                                       args: []
-                                  value: "363"
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "363"
+                                  value: AtomicUsize = 363
                                 - name:
                                     Named: read
                                   type_name:
@@ -3805,13 +3769,7 @@ Child Variables:
                                         - sync
                                         - atomic
                                       args: []
-                                  value: "363"
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "363"
+                                  value: AtomicUsize = 363
                                 - name:
                                     Named: flags
                                   type_name:
@@ -3822,13 +3780,7 @@ Child Variables:
                                         - sync
                                         - atomic
                                       args: []
-                                  value: "1"
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "1"
+                                  value: AtomicUsize = 1
                             - name:
                                 Indexed: 1
                               type_name:
@@ -3889,13 +3841,7 @@ Child Variables:
                                         - sync
                                         - atomic
                                       args: []
-                                  value: "0"
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "0"
+                                  value: AtomicUsize = 0
                                 - name:
                                     Named: read
                                   type_name:
@@ -3906,13 +3852,7 @@ Child Variables:
                                         - sync
                                         - atomic
                                       args: []
-                                  value: "0"
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "0"
+                                  value: AtomicUsize = 0
                                 - name:
                                     Named: flags
                                   type_name:
@@ -3923,13 +3863,7 @@ Child Variables:
                                         - sync
                                         - atomic
                                       args: []
-                                  value: "1"
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "1"
+                                  value: AtomicUsize = 1
                         - name:
                             Named: down_channels
                           type_name:
@@ -5018,13 +4952,7 @@ Child Variables:
                               args:
                                 - Type:
                                     Base: isize
-                          value: "0"
-                          children:
-                            - name:
-                                Named: value
-                              type_name:
-                                Base: isize
-                              value: "0"
+                          value: Cell<isize> = 0
                         - name:
                             Named: value
                           type_name:
@@ -5102,6 +5030,96 @@ Child Variables:
                                                 - rtt_target
                                               args: []
                                           value: UpChannel @ 0x200008CC
+                                          children:
+                                            - name:
+                                                Named: __0
+                                              type_name:
+                                                Pointer:
+                                                  Struct:
+                                                    ident: "*mut"
+                                                    namespace: []
+                                                    args:
+                                                      - Type:
+                                                          Struct:
+                                                            ident: RttChannel
+                                                            namespace:
+                                                              - rtt_target
+                                                              - rtt
+                                                            args: []
+                                              value: "*mut RttChannel @ 0x20000094"
+                                              children:
+                                                - name:
+                                                    Named: name
+                                                  type_name:
+                                                    Pointer:
+                                                      Struct:
+                                                        ident: "*const"
+                                                        namespace: []
+                                                        args:
+                                                          - Type:
+                                                              Base: u8
+                                                  value: "*const u8 @ 0x1000C4A0"
+                                                  children:
+                                                    - name:
+                                                        Named: "*name"
+                                                      type_name:
+                                                        Base: u8
+                                                      value: "83"
+                                                - name:
+                                                    Named: buffer
+                                                  type_name:
+                                                    Pointer:
+                                                      Struct:
+                                                        ident: "*mut"
+                                                        namespace: []
+                                                        args:
+                                                          - Type:
+                                                              Base: u8
+                                                  value: "*mut u8 @ 0x200000C4"
+                                                  children:
+                                                    - name:
+                                                        Named: "*buffer"
+                                                      type_name:
+                                                        Base: u8
+                                                      value: "70"
+                                                - name:
+                                                    Named: size
+                                                  type_name:
+                                                    Base: usize
+                                                  value: "1024"
+                                                - name:
+                                                    Named: write
+                                                  type_name:
+                                                    Struct:
+                                                      ident: AtomicUsize
+                                                      namespace:
+                                                        - core
+                                                        - sync
+                                                        - atomic
+                                                      args: []
+                                                  value: AtomicUsize = 363
+                                                - name:
+                                                    Named: read
+                                                  type_name:
+                                                    Struct:
+                                                      ident: AtomicUsize
+                                                      namespace:
+                                                        - core
+                                                        - sync
+                                                        - atomic
+                                                      args: []
+                                                  value: AtomicUsize = 363
+                                                - name:
+                                                    Named: flags
+                                                  type_name:
+                                                    Struct:
+                                                      ident: AtomicUsize
+                                                      namespace:
+                                                        - core
+                                                        - sync
+                                                        - atomic
+                                                      args: []
+                                                  value: AtomicUsize = 1
                                         - name:
                                             Named: current
                                           type_name:

@@ -2409,7 +2409,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> { int8_minus_twenty_three = -23, local_reference_to_global_const = &str @ 0x3FCCF420, local_reference_to_global_static = &str @ 0x3FCCFCE4, local_reference_to_global_static_struct = *const ComplexEnum @ 0x3FC80D70, ghosted_variable = 0, ghosted_variable = &str @ 0x3FCCF42C, int8_twenty_six = 26, int128 = -196710231994021419720322, u_int128 = 340282366920938266753142613410348491134, float64 = 1.7608695652173911, float64_ptr = &f64 @ 0x3FCCF460, emoji = 💩, emoji_ptr = &char @ 0x3FCCF468, true_bool = true, any_old_string_slice = &str @ 0x3FCCF450, function_result = Result<(), &str> @ 0x3FCCFD0C, global_types = (bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64) @ 0x3FCCF470, three_d_usize_array = Matrix<i32> @ 0x3FCCF4AC, three_d_string_array = Matrix<&str> @ 0x3FCCF62C, three = SimpleEnum::Two, simple_enum_pointer = &SimpleEnum @ 0x3FCCFAAF, three_level_recursive_struct = RecursiveStruct @ 0x3FCCFAB4, first_case_of_struct_variants = ComplexEnum @ 0x3FCCFAD8, second_case_of_struct_variants = ComplexEnum @ 0x3FCCFB08, struct_with_one_variant = Option<Univariant> @ 0x3FCCFB28, stuct_with_one_variant_pointer = &Option<Univariant> @ 0x3FCCFB28, long_lived = ComplexStruct @ 0x3FCCFB90, short_lived = ComplexStruct @ 0x3FCCFBA0, a1 = Struct<i32> @ 0x3FCCFD18, a2 = 1, a3 = 2, a4 = 3, a5 = (i32, i64) @ 0x3FCCFD40, a6 = Enum<i32> @ 0x3FCCFBE0, a7 = Enum<i32> @ 0x3FCCFC00, [i32; 10] = [55, 55, 55, 55, 55, 55, 55, 55, 55, 55], my_array_ptr = &[i32; 10] @ 0x3FCCFC24, [i8; 10] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0], heapless_vec = Vec<i8> @ 0x3FCCFC58, loop_counter = 0, rtt_channels = Channels @ 0x3FCCFC6C }"
+      value: "<unknown> { int8_minus_twenty_three = -23, local_reference_to_global_const = &str @ 0x3FCCF420, local_reference_to_global_static = &str @ 0x3FCCFCE4, local_reference_to_global_static_struct = *const ComplexEnum @ 0x3FC80D70, ghosted_variable = 0, ghosted_variable = &str @ 0x3FCCF42C, int8_twenty_six = 26, int128 = -196710231994021419720322, u_int128 = 340282366920938266753142613410348491134, float64 = 1.7608695652173911, float64_ptr = &f64 @ 0x3FCCF460, emoji = 💩, emoji_ptr = &char @ 0x3FCCF468, true_bool = true, any_old_string_slice = &str @ 0x3FCCF450, function_result = Result<(), &str> @ 0x3FCCFD0C, global_types = (bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64) @ 0x3FCCF470, three_d_usize_array = Matrix<i32> @ 0x3FCCF4AC, three_d_string_array = Matrix<&str> @ 0x3FCCF62C, three = SimpleEnum::Two, simple_enum_pointer = &SimpleEnum @ 0x3FCCFAAF, three_level_recursive_struct = RecursiveStruct @ 0x3FCCFAB4, first_case_of_struct_variants = ComplexEnum @ 0x3FCCFAD8, second_case_of_struct_variants = ComplexEnum @ 0x3FCCFB08, struct_with_one_variant = Option<Univariant> @ 0x3FCCFB28, stuct_with_one_variant_pointer = &Option<Univariant> @ 0x3FCCFB28, long_lived = ComplexStruct @ 0x3FCCFB90, short_lived = ComplexStruct @ 0x3FCCFBA0, a1 = Struct<i32> @ 0x3FCCFD18, a2 = 1, a3 = 2, a4 = 3, a5 = (i32, i64) @ 0x3FCCFD40, a6 = Enum<i32> @ 0x3FCCFBE0, a7 = Enum<i32> @ 0x3FCCFC00, [i32; 10] = [55, 55, 55, 55, 55, 55, 55, 55, 55, 55], my_array_ptr = &[i32; 10] @ 0x3FCCFC24, [i8; 10] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0], heapless_vec = Vec<i8> @ 0x3FCCFC58, loop_counter = Wrapping<u8> = 0, rtt_channels = Channels @ 0x3FCCFC6C }"
       children:
         - name:
             Named: int8_minus_twenty_three
@@ -2509,55 +2509,45 @@ expression: stack_frames
             address: ~
           children:
             - name:
-                Named: "*local_reference_to_global_static_struct"
+                Named: Case1
               type_name:
                 Struct:
-                  ident: ComplexEnum
+                  ident: Case1
                   namespace:
                     - probe_rs_debugger_test
                   args: []
-              value: ComplexEnum @ 0x3FC80D70
+              value: Case1 @ 0x3FC80D70
               children:
                 - name:
-                    Named: Case1
+                    Named: __0
+                  type_name:
+                    Base: u64
+                  value: "0"
+                - name:
+                    Named: __1
                   type_name:
                     Struct:
-                      ident: Case1
+                      ident: ComplexStruct
                       namespace:
                         - probe_rs_debugger_test
                       args: []
-                  value: Case1 @ 0x3FC80D70
+                  value: ComplexStruct @ 0x3FC80D80
                   children:
                     - name:
-                        Named: __0
+                        Named: x
                       type_name:
-                        Base: u64
-                      value: "0"
+                        Base: i64
+                      value: "24"
                     - name:
-                        Named: __1
+                        Named: y
                       type_name:
-                        Struct:
-                          ident: ComplexStruct
-                          namespace:
-                            - probe_rs_debugger_test
-                          args: []
-                      value: ComplexStruct @ 0x3FC80D80
-                      children:
-                        - name:
-                            Named: x
-                          type_name:
-                            Base: i64
-                          value: "24"
-                        - name:
-                            Named: y
-                          type_name:
-                            Base: i32
-                          value: "25"
-                        - name:
-                            Named: z
-                          type_name:
-                            Base: i16
-                          value: "26"
+                        Base: i32
+                      value: "25"
+                    - name:
+                        Named: z
+                      type_name:
+                        Base: i16
+                      value: "26"
         - name:
             Named: ghosted_variable
           type_name:
@@ -4641,68 +4631,42 @@ expression: stack_frames
                       value: "&mut RecursiveStruct @ 0x3FCCFAC0"
                       children:
                         - name:
-                            Named: "*__0"
+                            Named: depth
+                          type_name:
+                            Base: u32
+                          value: "2"
+                        - name:
+                            Named: next_self
                           type_name:
                             Struct:
-                              ident: RecursiveStruct
+                              ident: Option
                               namespace:
-                                - probe_rs_debugger_test
-                              args: []
-                          value: RecursiveStruct @ 0x3FCCFAC0
+                                - core
+                                - option
+                              args:
+                                - Type:
+                                    Struct:
+                                      ident: "&mut"
+                                      namespace: []
+                                      args:
+                                        - Type:
+                                            Struct:
+                                              ident: RecursiveStruct
+                                              namespace:
+                                                - probe_rs_debugger_test
+                                              args: []
+                          value: Option<&mut RecursiveStruct> @ 0x3FCCFAC4
                           children:
                             - name:
-                                Named: depth
-                              type_name:
-                                Base: u32
-                              value: "2"
-                            - name:
-                                Named: next_self
+                                Named: Some
                               type_name:
                                 Struct:
-                                  ident: Option
+                                  ident: Some
                                   namespace:
                                     - core
                                     - option
                                   args:
                                     - Type:
-                                        Struct:
-                                          ident: "&mut"
-                                          namespace: []
-                                          args:
-                                            - Type:
-                                                Struct:
-                                                  ident: RecursiveStruct
-                                                  namespace:
-                                                    - probe_rs_debugger_test
-                                                  args: []
-                              value: Option<&mut RecursiveStruct> @ 0x3FCCFAC4
-                              children:
-                                - name:
-                                    Named: Some
-                                  type_name:
-                                    Struct:
-                                      ident: Some
-                                      namespace:
-                                        - core
-                                        - option
-                                      args:
-                                        - Type:
-                                            Pointer:
-                                              Struct:
-                                                ident: "&mut"
-                                                namespace: []
-                                                args:
-                                                  - Type:
-                                                      Struct:
-                                                        ident: RecursiveStruct
-                                                        namespace:
-                                                          - probe_rs_debugger_test
-                                                        args: []
-                                  value: Some<&mut RecursiveStruct> @ 0x3FCCFAC4
-                                  children:
-                                    - name:
-                                        Named: __0
-                                      type_name:
                                         Pointer:
                                           Struct:
                                             ident: "&mut"
@@ -4714,67 +4678,73 @@ expression: stack_frames
                                                     namespace:
                                                       - probe_rs_debugger_test
                                                     args: []
-                                      value: "&mut RecursiveStruct @ 0x3FCCFACC"
-                                      children:
-                                        - name:
-                                            Named: "*__0"
-                                          type_name:
-                                            Struct:
-                                              ident: RecursiveStruct
-                                              namespace:
-                                                - probe_rs_debugger_test
-                                              args: []
-                                          value: RecursiveStruct @ 0x3FCCFACC
-                                          children:
-                                            - name:
-                                                Named: depth
-                                              type_name:
-                                                Base: u32
-                                              value: "3"
-                                            - name:
-                                                Named: next_self
-                                              type_name:
+                              value: Some<&mut RecursiveStruct> @ 0x3FCCFAC4
+                              children:
+                                - name:
+                                    Named: __0
+                                  type_name:
+                                    Pointer:
+                                      Struct:
+                                        ident: "&mut"
+                                        namespace: []
+                                        args:
+                                          - Type:
+                                              Struct:
+                                                ident: RecursiveStruct
+                                                namespace:
+                                                  - probe_rs_debugger_test
+                                                args: []
+                                  value: "&mut RecursiveStruct @ 0x3FCCFACC"
+                                  children:
+                                    - name:
+                                        Named: depth
+                                      type_name:
+                                        Base: u32
+                                      value: "3"
+                                    - name:
+                                        Named: next_self
+                                      type_name:
+                                        Struct:
+                                          ident: Option
+                                          namespace:
+                                            - core
+                                            - option
+                                          args:
+                                            - Type:
                                                 Struct:
-                                                  ident: Option
-                                                  namespace:
-                                                    - core
-                                                    - option
+                                                  ident: "&mut"
+                                                  namespace: []
                                                   args:
                                                     - Type:
                                                         Struct:
-                                                          ident: "&mut"
-                                                          namespace: []
-                                                          args:
-                                                            - Type:
-                                                                Struct:
-                                                                  ident: RecursiveStruct
-                                                                  namespace:
-                                                                    - probe_rs_debugger_test
-                                                                  args: []
-                                              value: Option<&mut RecursiveStruct> @ 0x3FCCFAD0
-                                              children:
-                                                - name:
-                                                    Named: None
-                                                  type_name:
-                                                    Struct:
-                                                      ident: None
-                                                      namespace:
-                                                        - core
-                                                        - option
-                                                      args:
-                                                        - Type:
-                                                            Pointer:
+                                                          ident: RecursiveStruct
+                                                          namespace:
+                                                            - probe_rs_debugger_test
+                                                          args: []
+                                      value: Option<&mut RecursiveStruct> @ 0x3FCCFAD0
+                                      children:
+                                        - name:
+                                            Named: None
+                                          type_name:
+                                            Struct:
+                                              ident: None
+                                              namespace:
+                                                - core
+                                                - option
+                                              args:
+                                                - Type:
+                                                    Pointer:
+                                                      Struct:
+                                                        ident: "&mut"
+                                                        namespace: []
+                                                        args:
+                                                          - Type:
                                                               Struct:
-                                                                ident: "&mut"
-                                                                namespace: []
-                                                                args:
-                                                                  - Type:
-                                                                      Struct:
-                                                                        ident: RecursiveStruct
-                                                                        namespace:
-                                                                          - probe_rs_debugger_test
-                                                                        args: []
-                                                  value: None<&mut RecursiveStruct>
+                                                                ident: RecursiveStruct
+                                                                namespace:
+                                                                  - probe_rs_debugger_test
+                                                                args: []
+                                          value: None<&mut RecursiveStruct>
         - name:
             Named: first_case_of_struct_variants
           type_name:
@@ -5008,10 +4978,10 @@ expression: stack_frames
             address: ~
           children:
             - name:
-                Named: "*stuct_with_one_variant_pointer"
+                Named: Some
               type_name:
                 Struct:
-                  ident: Option
+                  ident: Some
                   namespace:
                     - core
                     - option
@@ -5022,95 +4992,78 @@ expression: stack_frames
                           namespace:
                             - probe_rs_debugger_test
                           args: []
-              value: Option<Univariant> @ 0x3FCCFB28
+              value: Some<Univariant> @ 0x3FCCFB28
               children:
                 - name:
-                    Named: Some
+                    Named: __0
                   type_name:
                     Struct:
-                      ident: Some
+                      ident: Univariant
                       namespace:
-                        - core
-                        - option
-                      args:
-                        - Type:
-                            Struct:
-                              ident: Univariant
-                              namespace:
-                                - probe_rs_debugger_test
-                              args: []
-                  value: Some<Univariant> @ 0x3FCCFB28
+                        - probe_rs_debugger_test
+                      args: []
+                  value: Univariant @ 0x3FCCFB30
                   children:
                     - name:
-                        Named: __0
+                        Named: TupleOfComplexStruct
                       type_name:
                         Struct:
-                          ident: Univariant
+                          ident: TupleOfComplexStruct
                           namespace:
                             - probe_rs_debugger_test
                           args: []
-                      value: Univariant @ 0x3FCCFB30
+                      value: TupleOfComplexStruct @ 0x3FCCFB30
                       children:
                         - name:
-                            Named: TupleOfComplexStruct
+                            Named: __0
                           type_name:
                             Struct:
-                              ident: TupleOfComplexStruct
+                              ident: ComplexStruct
                               namespace:
                                 - probe_rs_debugger_test
                               args: []
-                          value: TupleOfComplexStruct @ 0x3FCCFB30
+                          value: ComplexStruct @ 0x3FCCFB30
                           children:
                             - name:
-                                Named: __0
+                                Named: x
                               type_name:
-                                Struct:
-                                  ident: ComplexStruct
-                                  namespace:
-                                    - probe_rs_debugger_test
-                                  args: []
-                              value: ComplexStruct @ 0x3FCCFB30
-                              children:
-                                - name:
-                                    Named: x
-                                  type_name:
-                                    Base: i64
-                                  value: "24"
-                                - name:
-                                    Named: y
-                                  type_name:
-                                    Base: i32
-                                  value: "25"
-                                - name:
-                                    Named: z
-                                  type_name:
-                                    Base: i16
-                                  value: "26"
+                                Base: i64
+                              value: "24"
                             - name:
-                                Named: __1
+                                Named: y
                               type_name:
-                                Struct:
-                                  ident: ComplexStruct
-                                  namespace:
-                                    - probe_rs_debugger_test
-                                  args: []
-                              value: ComplexStruct @ 0x3FCCFB40
-                              children:
-                                - name:
-                                    Named: x
-                                  type_name:
-                                    Base: i64
-                                  value: "-3"
-                                - name:
-                                    Named: y
-                                  type_name:
-                                    Base: i32
-                                  value: "-2"
-                                - name:
-                                    Named: z
-                                  type_name:
-                                    Base: i16
-                                  value: "-1"
+                                Base: i32
+                              value: "25"
+                            - name:
+                                Named: z
+                              type_name:
+                                Base: i16
+                              value: "26"
+                        - name:
+                            Named: __1
+                          type_name:
+                            Struct:
+                              ident: ComplexStruct
+                              namespace:
+                                - probe_rs_debugger_test
+                              args: []
+                          value: ComplexStruct @ 0x3FCCFB40
+                          children:
+                            - name:
+                                Named: x
+                              type_name:
+                                Base: i64
+                              value: "-3"
+                            - name:
+                                Named: y
+                              type_name:
+                                Base: i32
+                              value: "-2"
+                            - name:
+                                Named: z
+                              type_name:
+                                Base: i16
+                              value: "-1"
         - name:
             Named: long_lived
           type_name:
@@ -5700,18 +5653,12 @@ expression: stack_frames
               args:
                 - Type:
                     Base: u8
-          value: "0"
+          value: Wrapping<u8> = 0
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 305
             column: ~
             address: ~
-          children:
-            - name:
-                Named: __0
-              type_name:
-                Base: u8
-              value: "0"
         - name:
             Named: rtt_channels
           type_name:
@@ -5777,106 +5724,77 @@ expression: stack_frames
                       value: "*mut RttChannel @ 0x3FC80DB4"
                       children:
                         - name:
-                            Named: "*__0"
+                            Named: name
                           type_name:
-                            Struct:
-                              ident: RttChannel
-                              namespace:
-                                - rtt_target
-                                - rtt
-                              args: []
-                          value: RttChannel @ 0x3FC80DB4
+                            Pointer:
+                              Struct:
+                                ident: "*const"
+                                namespace: []
+                                args:
+                                  - Type:
+                                      Base: u8
+                          value: "*const u8 @ 0x3C0213D0"
                           children:
                             - name:
-                                Named: name
+                                Named: "*name"
                               type_name:
-                                Pointer:
-                                  Struct:
-                                    ident: "*const"
-                                    namespace: []
-                                    args:
-                                      - Type:
-                                          Base: u8
-                              value: "*const u8 @ 0x3C0213D0"
-                              children:
-                                - name:
-                                    Named: "*name"
-                                  type_name:
-                                    Base: u8
-                                  value: "83"
+                                Base: u8
+                              value: "83"
+                        - name:
+                            Named: buffer
+                          type_name:
+                            Pointer:
+                              Struct:
+                                ident: "*mut"
+                                namespace: []
+                                args:
+                                  - Type:
+                                      Base: u8
+                          value: "*mut u8 @ 0x3FC80DE4"
+                          children:
                             - name:
-                                Named: buffer
+                                Named: "*buffer"
                               type_name:
-                                Pointer:
-                                  Struct:
-                                    ident: "*mut"
-                                    namespace: []
-                                    args:
-                                      - Type:
-                                          Base: u8
-                              value: "*mut u8 @ 0x3FC80DE4"
-                              children:
-                                - name:
-                                    Named: "*buffer"
-                                  type_name:
-                                    Base: u8
-                                  value: "70"
-                            - name:
-                                Named: size
-                              type_name:
-                                Base: usize
-                              value: "1024"
-                            - name:
-                                Named: write
-                              type_name:
-                                Struct:
-                                  ident: AtomicUsize
-                                  namespace:
-                                    - core
-                                    - sync
-                                    - atomic
-                                  args: []
-                              value: "363"
-                              children:
-                                - name:
-                                    Named: value
-                                  type_name:
-                                    Base: usize
-                                  value: "363"
-                            - name:
-                                Named: read
-                              type_name:
-                                Struct:
-                                  ident: AtomicUsize
-                                  namespace:
-                                    - core
-                                    - sync
-                                    - atomic
-                                  args: []
-                              value: "363"
-                              children:
-                                - name:
-                                    Named: value
-                                  type_name:
-                                    Base: usize
-                                  value: "363"
-                            - name:
-                                Named: flags
-                              type_name:
-                                Struct:
-                                  ident: AtomicUsize
-                                  namespace:
-                                    - core
-                                    - sync
-                                    - atomic
-                                  args: []
-                              value: "1"
-                              children:
-                                - name:
-                                    Named: value
-                                  type_name:
-                                    Base: usize
-                                  value: "1"
+                                Base: u8
+                              value: "70"
+                        - name:
+                            Named: size
+                          type_name:
+                            Base: usize
+                          value: "1024"
+                        - name:
+                            Named: write
+                          type_name:
+                            Struct:
+                              ident: AtomicUsize
+                              namespace:
+                                - core
+                                - sync
+                                - atomic
+                              args: []
+                          value: AtomicUsize = 363
+                        - name:
+                            Named: read
+                          type_name:
+                            Struct:
+                              ident: AtomicUsize
+                              namespace:
+                                - core
+                                - sync
+                                - atomic
+                              args: []
+                          value: AtomicUsize = 363
+                        - name:
+                            Named: flags
+                          type_name:
+                            Struct:
+                              ident: AtomicUsize
+                              namespace:
+                                - core
+                                - sync
+                                - atomic
+                              args: []
+                          value: AtomicUsize = 1
                 - name:
                     Named: __1
                   type_name:
@@ -5905,106 +5823,77 @@ expression: stack_frames
                       value: "*mut RttChannel @ 0x3FC80DCC"
                       children:
                         - name:
-                            Named: "*__0"
+                            Named: name
                           type_name:
-                            Struct:
-                              ident: RttChannel
-                              namespace:
-                                - rtt_target
-                                - rtt
-                              args: []
-                          value: RttChannel @ 0x3FC80DCC
+                            Pointer:
+                              Struct:
+                                ident: "*const"
+                                namespace: []
+                                args:
+                                  - Type:
+                                      Base: u8
+                          value: "*const u8 @ 0x3C0213E3"
                           children:
                             - name:
-                                Named: name
+                                Named: "*name"
                               type_name:
-                                Pointer:
-                                  Struct:
-                                    ident: "*const"
-                                    namespace: []
-                                    args:
-                                      - Type:
-                                          Base: u8
-                              value: "*const u8 @ 0x3C0213E3"
-                              children:
-                                - name:
-                                    Named: "*name"
-                                  type_name:
-                                    Base: u8
-                                  value: "66"
+                                Base: u8
+                              value: "66"
+                        - name:
+                            Named: buffer
+                          type_name:
+                            Pointer:
+                              Struct:
+                                ident: "*mut"
+                                namespace: []
+                                args:
+                                  - Type:
+                                      Base: u8
+                          value: "*mut u8 @ 0x3FC811E4"
+                          children:
                             - name:
-                                Named: buffer
+                                Named: "*buffer"
                               type_name:
-                                Pointer:
-                                  Struct:
-                                    ident: "*mut"
-                                    namespace: []
-                                    args:
-                                      - Type:
-                                          Base: u8
-                              value: "*mut u8 @ 0x3FC811E4"
-                              children:
-                                - name:
-                                    Named: "*buffer"
-                                  type_name:
-                                    Base: u8
-                                  value: "0"
-                            - name:
-                                Named: size
-                              type_name:
-                                Base: usize
-                              value: "1024"
-                            - name:
-                                Named: write
-                              type_name:
-                                Struct:
-                                  ident: AtomicUsize
-                                  namespace:
-                                    - core
-                                    - sync
-                                    - atomic
-                                  args: []
+                                Base: u8
                               value: "0"
-                              children:
-                                - name:
-                                    Named: value
-                                  type_name:
-                                    Base: usize
-                                  value: "0"
-                            - name:
-                                Named: read
-                              type_name:
-                                Struct:
-                                  ident: AtomicUsize
-                                  namespace:
-                                    - core
-                                    - sync
-                                    - atomic
-                                  args: []
-                              value: "0"
-                              children:
-                                - name:
-                                    Named: value
-                                  type_name:
-                                    Base: usize
-                                  value: "0"
-                            - name:
-                                Named: flags
-                              type_name:
-                                Struct:
-                                  ident: AtomicUsize
-                                  namespace:
-                                    - core
-                                    - sync
-                                    - atomic
-                                  args: []
-                              value: "1"
-                              children:
-                                - name:
-                                    Named: value
-                                  type_name:
-                                    Base: usize
-                                  value: "1"
+                        - name:
+                            Named: size
+                          type_name:
+                            Base: usize
+                          value: "1024"
+                        - name:
+                            Named: write
+                          type_name:
+                            Struct:
+                              ident: AtomicUsize
+                              namespace:
+                                - core
+                                - sync
+                                - atomic
+                              args: []
+                          value: AtomicUsize = 0
+                        - name:
+                            Named: read
+                          type_name:
+                            Struct:
+                              ident: AtomicUsize
+                              namespace:
+                                - core
+                                - sync
+                                - atomic
+                              args: []
+                          value: AtomicUsize = 0
+                        - name:
+                            Named: flags
+                          type_name:
+                            Struct:
+                              ident: AtomicUsize
+                              namespace:
+                                - core
+                                - sync
+                                - atomic
+                              args: []
+                          value: AtomicUsize = 1
   canonical_frame_address: 1070399200
 - function_name: __risc_v_rt__main
   source_location:

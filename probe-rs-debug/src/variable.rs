@@ -130,6 +130,12 @@ pub enum VariableNodeType {
     /// Look up information from all compilation units. This is used to resolve static variables, so
     /// when [`VariableName::StaticScopeRoot`] is used.
     UnitsLookup,
+    /// Use the `header_offset` and `type_offset` to resolve what a pointer points at.
+    /// - Rule: Following a pointer is the only step of the walk that can return to a type it has
+    ///   already expanded, so it is the only step that is deferred.
+    /// - Rule: A pointer that holds no object, a null pointer, a dangling pointer, or a pointer to
+    ///   a zero sized type, is not deferred.
+    PointerTarget(DebugInfoOffset, UnitOffset),
     /// Sometimes it doesn't make sense to recurse the children of a specific node type
     /// - Rule: Pointers to `unit` datatypes WILL NOT BE resolved, because it doesn't make sense.
     /// - Rule: Once we determine that a variable can not be recursed further, we update the
@@ -163,7 +169,8 @@ impl VariableNodeType {
         match self {
             VariableNodeType::TypeOffset(_, _)
             | VariableNodeType::DirectLookup(_, _)
-            | VariableNodeType::UnitsLookup => true,
+            | VariableNodeType::UnitsLookup
+            | VariableNodeType::PointerTarget(_, _) => true,
             VariableNodeType::DoNotRecurse | VariableNodeType::RecurseToBaseType => false,
         }
     }

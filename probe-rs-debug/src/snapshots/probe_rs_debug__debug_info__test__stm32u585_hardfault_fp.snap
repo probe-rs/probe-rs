@@ -1075,12 +1075,6 @@ expression: stack_frames
             line: 2171
             column: ~
             address: ~
-          children:
-            - name:
-                Named: "*dst"
-              type_name:
-                Base: u32
-              value: Location Unknown not supported for referenced variables.
         - name:
             Named: src
           type_name:

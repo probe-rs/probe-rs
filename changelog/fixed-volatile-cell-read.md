@@ -1,0 +1,1 @@
+The debugger no longer reads a `vcell::VolatileCell` on its own. The cell holds a memory mapped device register, where a read can clear a flag or move a FIFO on, so the debugger reads it only when you expand it.
