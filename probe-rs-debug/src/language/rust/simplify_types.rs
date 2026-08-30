@@ -484,6 +484,13 @@ impl Rust {
             current = current_now;
 
             if matches!(current.type_name, VariableType::Pointer(_)) {
+                if cache
+                    .get_children(current.variable_key)
+                    .any(is_generator_variant)
+                {
+                    return self
+                        .async_suspend_payload(debug_info, memory, cache, frame_info, current);
+                }
                 let Some(pointee) = cache.get_children(current.variable_key).next().cloned() else {
                     return Ok(None);
                 };

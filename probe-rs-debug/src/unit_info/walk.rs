@@ -331,7 +331,34 @@ impl<'a> Walker<'a> {
             parent_key: pointer_key,
             child_key: target.variable_key,
         });
-        self.run()
+        self.run()?;
+        self.skip_pointee_type_node(pointer_key)
+    }
+
+    /// A pointer already names the type that it points at. A child that only repeats that type is
+    /// noise, so the members of the type move up to the pointer.
+    fn skip_pointee_type_node(&mut self, pointer_key: ObjectRef) -> Result<(), DebugError> {
+        let pointer = self.load(pointer_key)?;
+        if matches!(&pointer.name, VariableName::Named(name) if name == "data_ptr") {
+            return Ok(());
+        }
+
+        let children: Vec<_> = self.cache.get_children(pointer_key).cloned().collect();
+        let [pointee] = children.as_slice() else {
+            return Ok(());
+        };
+        if !matches!(
+            pointee.type_name.inner(),
+            VariableType::Struct(_) | VariableType::Enum(_)
+        ) {
+            return Ok(());
+        }
+        if !self.cache.has_children(pointee) {
+            return Ok(());
+        }
+
+        self.cache.adopt_grand_children(&pointer, pointee)?;
+        Ok(())
     }
 
     /// Add the members of a structured type now. The variable keeps its deferred node type, so
