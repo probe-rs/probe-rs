@@ -389,7 +389,7 @@ impl VariableCache {
             .get(&parent_key)
             .into_iter()
             .flatten()
-            .map(|child_key| &self.variable_hash_map[child_key])
+            .filter_map(|child_key| self.variable_hash_map.get(child_key))
     }
 
     /// Check if variable has children. If the variable doesn't exist, it will return false.
