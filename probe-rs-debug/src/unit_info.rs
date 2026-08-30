@@ -10,7 +10,7 @@ use super::{
 };
 use crate::{language, stack_frame::StackFrameInfo};
 use gimli::{
-    AttributeValue, DebugInfoOffset, DebuggingInformationEntry, EvaluationResult, Location,
+    AttributeValue, DebugInfoOffset, DebuggingInformationEntry, DwAt, EvaluationResult, Location,
     UnitOffset,
 };
 use probe_rs::MemoryInterface;
@@ -19,6 +19,12 @@ use probe_rs::MemoryInterface;
 #[derive(Debug)]
 pub(crate) enum ExpressionResult {
     Location(VariableLocation),
+}
+
+enum AttributesEntry {
+    Found(DebuggingInformationEntry<GimliReader, usize>),
+    Unsupported,
+    NotFound,
 }
 
 /// A struct containing information about a single compilation unit.
@@ -258,73 +264,35 @@ impl UnitInfo {
         // Identify the parent.
         child_variable.parent_key = parent_variable.variable_key;
 
-        let abstract_entry;
-
         // We need to determine if we are working with a 'abstract` location, and use that node for the attributes we need
-        let attributes_entry = if let Some(abstract_origin) =
-            tree_node.attr(gimli::DW_AT_abstract_origin)
-        {
-            match abstract_origin.value() {
-                gimli::AttributeValue::UnitRef(unit_ref) => {
-                    // The abstract origin is a reference to another DIE, so we need to resolve that,
-                    // but first we need to process the (optional) memory location using the current DIE.
-                    self.process_memory_location(
-                        debug_info,
-                        tree_node,
-                        parent_variable,
-                        child_variable,
-                        memory,
-                        frame_info,
-                    )?;
-
-                    abstract_entry = self.unit.entry(unit_ref)?;
-
-                    Some(&abstract_entry)
-                }
-                other_attribute_value => {
-                    child_variable.set_value(VariableValue::Error(format!(
-                        "Unimplemented: Attribute Value for DW_AT_abstract_origin {other_attribute_value:?}"
-                    )));
-                    None
-                }
-            }
-        } else {
-            Some(tree_node)
+        let abstract_origin = match self.attributes_entry(
+            gimli::DW_AT_abstract_origin,
+            debug_info,
+            tree_node,
+            parent_variable,
+            child_variable,
+            memory,
+            frame_info,
+        )? {
+            AttributesEntry::Found(entry) => Some(entry),
+            AttributesEntry::Unsupported => None,
+            AttributesEntry::NotFound => Some(tree_node.clone()),
         };
-
-        let specification_entry;
 
         // We need to determine if we are working with a variable definition which refers to a declaration,
         // and use that node for the attributes we need
-        let attributes_entry = if let Some(specification) =
-            tree_node.attr(gimli::DW_AT_specification)
-        {
-            match specification.value() {
-                gimli::AttributeValue::UnitRef(unit_ref) => {
-                    // The abstract origin is a reference to another DIE, so we need to resolve that,
-                    // but first we need to process the (optional) memory location using the current DIE.
-                    self.process_memory_location(
-                        debug_info,
-                        tree_node,
-                        parent_variable,
-                        child_variable,
-                        memory,
-                        frame_info,
-                    )?;
-
-                    specification_entry = self.unit.entry(unit_ref)?;
-
-                    Some(&specification_entry)
-                }
-                other_attribute_value => {
-                    child_variable.set_value(VariableValue::Error(format!(
-                        "Unimplemented: Attribute Value for DW_AT_specification {other_attribute_value:?}"
-                    )));
-                    None
-                }
-            }
-        } else {
-            attributes_entry
+        let attributes_entry = match self.attributes_entry(
+            gimli::DW_AT_specification,
+            debug_info,
+            tree_node,
+            parent_variable,
+            child_variable,
+            memory,
+            frame_info,
+        )? {
+            AttributesEntry::Found(entry) => Some(entry),
+            AttributesEntry::Unsupported => None,
+            AttributesEntry::NotFound => abstract_origin,
         };
 
         // For variable attribute resolution, we need to resolve a few attributes in advance of looping through all the other ones.
@@ -378,23 +346,21 @@ impl UnitInfo {
                             cache,
                         )?;
                     }
-                    gimli::DW_AT_enum_class => match attr.value() {
-                        gimli::AttributeValue::Flag(true) => {
-                            child_variable.set_value(VariableValue::Valid(
-                                child_variable.compact_type_name(),
-                            ));
-                        }
-                        gimli::AttributeValue::Flag(false) => {
-                            child_variable.set_value(VariableValue::Error(
+                    gimli::DW_AT_enum_class => {
+                        let value = match attr.value() {
+                            AttributeValue::Flag(true) => {
+                                VariableValue::Valid(child_variable.compact_type_name())
+                            }
+                            AttributeValue::Flag(false) => VariableValue::Error(
                                 "Unimplemented: DW_AT_enum_class(false)".to_string(),
-                            ));
-                        }
-                        other_attribute_value => {
-                            child_variable.set_value(VariableValue::Error(format!(
+                            ),
+                            other_attribute_value => VariableValue::Error(format!(
                                 "Unimplemented: Attribute Value for DW_AT_enum_class: {other_attribute_value:?}"
-                            )));
-                        }
-                    },
+                            )),
+                        };
+
+                        child_variable.set_value(value);
+                    }
                     gimli::DW_AT_const_value => {
                         let attr_value = attr.value();
                         let variable_value = if let Some(const_value) = attr_value.udata_value() {
@@ -417,35 +383,15 @@ impl UnitInfo {
                         // These are references for entries like discriminant values of `VariantParts`.
                         child_variable.name = VariableName::Artificial;
                     }
-                    gimli::DW_AT_discr => match attr.value() {
-                        // This calculates the active discriminant value for the `VariantPart`.
-                        gimli::AttributeValue::UnitRef(unit_ref) => {
-                            let discriminant_node = self.unit.entry(unit_ref)?;
-                            let mut discriminant_variable =
-                                cache.create_variable(parent_variable.variable_key, Some(self))?;
-                            self.process_tree_node_attributes(
-                                debug_info,
-                                &discriminant_node,
-                                parent_variable,
-                                &mut discriminant_variable,
-                                memory,
-                                cache,
-                                frame_info,
-                            )?;
-
-                            parent_variable.role = VariantRole::VariantPart(
-                                discriminant_variable
-                                    .integer_value(memory)
-                                    .unwrap_or(u64::MAX),
-                            );
-                            cache.remove_cache_entry(discriminant_variable.variable_key)?;
-                        }
-                        other_attribute_value => {
-                            child_variable.set_value(VariableValue::Error(format!(
-                                "Unimplemented: Attribute Value for DW_AT_discr {other_attribute_value:?}"
-                            )));
-                        }
-                    },
+                    gimli::DW_AT_discr => self.process_discriminant(
+                        debug_info,
+                        parent_variable,
+                        child_variable,
+                        memory,
+                        cache,
+                        frame_info,
+                        attr,
+                    )?,
                     gimli::DW_AT_linkage_name => {
                         let value = attr.value();
                         let raw_str = debug_info.dwarf.attr_string(&self.unit, value).ok();
@@ -505,7 +451,7 @@ impl UnitInfo {
         self.apply_start_scope(
             debug_info,
             tree_node,
-            attributes_entry,
+            attributes_entry.as_ref(),
             child_variable,
             frame_info,
         )?;
@@ -513,6 +459,88 @@ impl UnitInfo {
         child_variable.extract_value(memory, cache);
         cache.update_variable(child_variable)?;
 
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn attributes_entry(
+        &self,
+        attr: DwAt,
+        debug_info: &DebugInfo,
+        tree_node: &DebuggingInformationEntry<GimliReader, usize>,
+        parent_variable: &mut Variable,
+        child_variable: &mut Variable,
+        memory: &mut dyn MemoryInterface,
+        frame_info: &StackFrameInfo<'_>,
+    ) -> Result<AttributesEntry, DebugError> {
+        let Some(abstract_origin) = tree_node.attr(attr) else {
+            return Ok(AttributesEntry::NotFound);
+        };
+
+        match abstract_origin.value() {
+            AttributeValue::UnitRef(unit_ref) => {
+                // The abstract origin is a reference to another DIE, so we need to resolve that,
+                // but first we need to process the (optional) memory location using the current DIE.
+                self.process_memory_location(
+                    debug_info,
+                    tree_node,
+                    parent_variable,
+                    child_variable,
+                    memory,
+                    frame_info,
+                )?;
+
+                Ok(AttributesEntry::Found(self.unit.entry(unit_ref)?))
+            }
+            other_attribute_value => {
+                child_variable.set_value(VariableValue::Error(format!(
+                    "Unimplemented: Attribute Value for {attr} {other_attribute_value:?}"
+                )));
+                Ok(AttributesEntry::Unsupported)
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn process_discriminant(
+        &self,
+        debug_info: &DebugInfo,
+        parent_variable: &mut Variable,
+        child_variable: &mut Variable,
+        memory: &mut dyn MemoryInterface,
+        cache: &mut VariableCache,
+        frame_info: &StackFrameInfo<'_>,
+        attr: &gimli::Attribute<GimliReader>,
+    ) -> Result<(), DebugError> {
+        match attr.value() {
+            // This calculates the active discriminant value for the `VariantPart`.
+            AttributeValue::UnitRef(unit_ref) => {
+                let discriminant_node = self.unit.entry(unit_ref)?;
+                let mut discriminant_variable =
+                    cache.create_variable(parent_variable.variable_key, Some(self))?;
+                self.process_tree_node_attributes(
+                    debug_info,
+                    &discriminant_node,
+                    parent_variable,
+                    &mut discriminant_variable,
+                    memory,
+                    cache,
+                    frame_info,
+                )?;
+
+                parent_variable.role = VariantRole::VariantPart(
+                    discriminant_variable
+                        .integer_value(memory)
+                        .unwrap_or(u64::MAX),
+                );
+                cache.remove_cache_entry(discriminant_variable.variable_key)?;
+            }
+            other_attribute_value => {
+                child_variable.set_value(VariableValue::Error(format!(
+                    "Unimplemented: Attribute Value for DW_AT_discr {other_attribute_value:?}"
+                )));
+            }
+        }
         Ok(())
     }
 
@@ -2151,15 +2179,13 @@ impl UnitInfo {
                 gimli::DW_AT_location
                 | gimli::DW_AT_frame_base
                 | gimli::DW_AT_data_member_location => match attr.value() {
-                    gimli::AttributeValue::Exprloc(expression) => self
+                    AttributeValue::Exprloc(expression) => self
                         .evaluate_expression(debug_info, memory, expression, frame_info)
                         .convert_incomplete()?,
 
-                    gimli::AttributeValue::Udata(offset_from_location) => {
-                        ExpressionResult::Location(
-                            parent_location.offset_by(offset_from_location, byte_size),
-                        )
-                    }
+                    AttributeValue::Udata(offset_from_location) => ExpressionResult::Location(
+                        parent_location.offset_by(offset_from_location, byte_size),
+                    ),
 
                     other_attribute_value => {
                         match debug_info
@@ -2189,11 +2215,11 @@ impl UnitInfo {
 
                 gimli::DW_AT_address_class => {
                     let location = match attr.value() {
-                        gimli::AttributeValue::AddressClass(gimli::DwAddr(0)) => {
+                        AttributeValue::AddressClass(gimli::DwAddr(0)) => {
                             // We pass on the location of the parent, which will later to be used along with DW_AT_data_member_location to calculate the location of this variable.
                             parent_location.clone()
                         }
-                        gimli::AttributeValue::AddressClass(address_class) => {
+                        AttributeValue::AddressClass(address_class) => {
                             VariableLocation::Unsupported(format!(
                                 "Unimplemented: extract_location() found unsupported DW_AT_address_class(gimli::DwAddr({address_class:?}))"
                             ))
@@ -3179,7 +3205,7 @@ fn extract_name(
 fn attribute_string(
     debug_info: &DebugInfo,
     unit: &gimli::Unit<GimliReader>,
-    attr: gimli::AttributeValue<GimliReader>,
+    attr: AttributeValue<GimliReader>,
 ) -> String {
     match debug_info.dwarf.attr_string(unit, attr) {
         Ok(raw) => String::from_utf8_lossy(&raw).to_string(),
