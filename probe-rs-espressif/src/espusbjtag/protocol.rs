@@ -299,53 +299,98 @@ impl ProtocolHandler {
             div_max,
         };
 
-        // We need to flush the device's response buffer, but we don't always succeed in doing so.
-        // This nonsense if supposed to help us recover from some errors.
-        // Not bulletproof, but significantly reduces error rate.
-        let start_flushing = Instant::now();
-        let flush_ep = |this: &mut Self| {
-            let mut incoming = [0; IN_EP_BUFFER_SIZE];
-            let read_bulk = this
-                .ep_in
-                .read_bulk(&mut incoming, Duration::from_millis(100));
+        this.sync_capture_stream().map_err(|error| match error {
+            DebugProbeError::Usb(error) => ProbeCreationError::Usb(error),
+            DebugProbeError::ProbeCouldNotBeCreated(error) => error,
+            other => EspError::JtagReset(other).into(),
+        })?;
 
-            // Stop after half a second, if we silently didn't succeed don't loop indefinitely
-            if start_flushing.elapsed() > Duration::from_millis(500) {
-                return false;
-            }
+        Ok(this)
+    }
 
-            if let Ok(flushed) = read_bulk {
-                flushed != 0
-            } else {
-                false
-            }
-        };
+    /// Discard leftover capture data and put the TAP in Test-Logic-Reset.
+    ///
+    /// Two capture lengths are used so that a leftover packet of the first size cannot satisfy
+    /// the second check.
+    fn sync_capture_stream(&mut self) -> Result<(), DebugProbeError> {
+        const PING_A_BITS: usize = 16;
+        const PING_B_BITS: usize = 24;
+        const FOLLOW_UP_TIMEOUT: Duration = Duration::from_millis(50);
 
-        if flush_ep(&mut this) {
-            while flush_ep(&mut this) {}
-        } else {
-            // Just returning here would end us up with Invalid IDCODE.
-            let mut reset_jtag = || -> Result<(), DebugProbeError> {
-                for _ in 0..16 {
-                    this.shift_bit(true, true, false)?;
+        self.discard_until_exact_packet(PING_A_BITS, FOLLOW_UP_TIMEOUT)?;
+        self.discard_until_exact_packet(PING_B_BITS, FOLLOW_UP_TIMEOUT)?;
+
+        self.pending_in_bits = 0;
+        self.response.clear();
+
+        Ok(())
+    }
+
+    fn discard_until_exact_packet(
+        &mut self,
+        capture_bits: usize,
+        follow_up_timeout: Duration,
+    ) -> Result<(), DebugProbeError> {
+        let expected_bytes = capture_bits.div_ceil(8);
+        const MAX_PINGS: usize = 8;
+        const MAX_PACKETS_PER_PING: usize = 16;
+
+        for _ in 0..MAX_PINGS {
+            self.ping_capture(capture_bits)?;
+
+            let mut saw_packet = false;
+            for _ in 0..MAX_PACKETS_PER_PING {
+                let timeout = if saw_packet {
+                    follow_up_timeout
+                } else {
+                    USB_TIMEOUT
+                };
+
+                match self.read_in_packet(timeout)? {
+                    Some(n) if n == expected_bytes => return Ok(()),
+                    Some(_) => saw_packet = true,
+                    None if saw_packet => break,
+                    None => {
+                        return Err(DebugProbeError::Usb(io::Error::new(
+                            io::ErrorKind::TimedOut,
+                            "USB JTAG adapter did not return capture data",
+                        )));
+                    }
                 }
-
-                this.flush()
-            };
-
-            reset_jtag().map_err(|error| match error {
-                DebugProbeError::Usb(error) => ProbeCreationError::Usb(error),
-                DebugProbeError::ProbeCouldNotBeCreated(error) => error,
-                other => EspError::JtagReset(other).into(),
-            })?;
-            this.response.clear();
-
-            if flush_ep(&mut this) {
-                while flush_ep(&mut this) {}
             }
         }
 
-        Ok(this)
+        Err(DebugProbeError::Timeout)
+    }
+
+    fn ping_capture(&mut self, capture_bits: usize) -> Result<(), DebugProbeError> {
+        self.pending_in_bits = 0;
+        self.response.clear();
+
+        for _ in 0..capture_bits {
+            self.shift_bit(true, true, true)?;
+        }
+
+        self.finalize_previous_command()?;
+        self.add_raw_command(Command::Flush)?;
+        if self.half_byte_used {
+            self.push_raw_command(Command::Flush);
+        }
+        self.send_buffer()?;
+        self.complete_writes(0)?;
+        self.pending_in_bits = 0;
+
+        Ok(())
+    }
+
+    fn read_in_packet(&mut self, timeout: Duration) -> Result<Option<usize>, DebugProbeError> {
+        let mut incoming = [0; IN_EP_BUFFER_SIZE];
+        match self.ep_in.read_bulk(&mut incoming, timeout) {
+            Ok(0) => Ok(None),
+            Ok(n) => Ok(Some(n)),
+            Err(error) if error.kind() == io::ErrorKind::TimedOut => Ok(None),
+            Err(error) => Err(DebugProbeError::Usb(error)),
+        }
     }
 
     /// Put a bit on TDI and possibly read one from TDO.
