@@ -18,7 +18,9 @@ fn memory_reference(location: &VariableLocation) -> Option<String> {
     location.address().map(|address| format!("{address:#010x}"))
 }
 
-/// Mirrors `request_helpers::get_variable_reference` for the server-side path.
+/// The DAP protocol uses three related values to determine how to invoke the `Variables` request.
+/// This function retrieves that information from the `DebugInfo::VariableCache` and returns it as
+/// (`variable_reference`, `named_child_variables_cnt`, `indexed_child_variables_cnt`)
 fn variable_reference(parent: &Variable, cache: &VariableCache) -> (ObjectRef, i64, i64) {
     if !parent.is_valid() {
         return (ObjectRef::Invalid, 0, 0);
