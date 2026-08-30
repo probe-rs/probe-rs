@@ -5,9 +5,8 @@ manufacturer:
 chip_detection:
 - !Espressif
   idcode: 0x12c25
-  variants:
-    0x0: esp32p4
-    0xaddbad0: esp32p4
+  magic_address: 0x4fc01000 # A random ROM code address
+  variants: {} # IDCODE is unique to ESP32-P4, although covers both v1.x and v3.x
 variants:
 - name: esp32p4
   cores:

@@ -5,6 +5,7 @@ manufacturer:
 chip_detection:
 - !Espressif
   idcode: 0x120034e5
+  magic_address: 0x40001000
   variants:
     0x7c6: esp32s2
 variants:

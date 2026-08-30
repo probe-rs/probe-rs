@@ -47,15 +47,6 @@ fn targets() -> Vec<ChipFamily> {
         .0
 }
 
-// A magic number that resides in the ROM of Espressif chips. This points to 4 bytes that are mostly
-// unique to each chip variant. There may be some overlap between revisions (e.g. esp32c3)
-// and chips may be placed on modules that are configured significantly
-// differently (esp32 with 1.8V or 3.3V VDD_SDIO).
-// See:
-// - https://github.com/esp-rs/espflash/blob/5c898ac7a37fd6ec7d7c4562585818ac878e5a2f/espflash/src/flasher/stubs.rs#L23
-// - https://github.com/esp-rs/espflash/blob/5c898ac7a37fd6ec7d7c4562585818ac878e5a2f/espflash/src/flasher/mod.rs#L589-L590
-const MAGIC_VALUE_ADDRESS: u64 = 0x4000_1000;
-
 fn get_target_by_magic(info: &EspressifDetection, read_magic: u32) -> Option<String> {
     for (magic, target) in info.variants.iter() {
         if *magic == read_magic {
@@ -82,7 +73,12 @@ fn try_detect_espressif_chip(
                 continue;
             }
 
-            let Some(read_magic) = read_magic(MAGIC_VALUE_ADDRESS) else {
+            // Magic values omitted and there's one chip variant -> trust IDCODE
+            if info.variants.is_empty() && family.variants.len() == 1 {
+                return Some(family.variants[0].name.clone());
+            }
+
+            let Some(read_magic) = read_magic(info.magic_address as u64) else {
                 continue;
             };
             tracing::debug!("Read magic value: {read_magic:#010x}");
