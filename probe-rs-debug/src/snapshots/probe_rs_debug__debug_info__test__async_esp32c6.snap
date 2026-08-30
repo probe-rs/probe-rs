@@ -351,7 +351,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> { config = Config @ 0x4086E528, timg0 = < <value optimized away by compiler, out of scope, or dropped> >, portable_atomic_u32 = 44, core_atomic_u32 = 44, vec = VecInner<u32, usize, VecStorageInner<[MaybeUninit<u32>; 10]>> @ 0x40801B9C, spawner = Spawner @ 0x40801B90, Future state = Suspend0 }"
+      value: "<unknown> { config = Config @ 0x4086E528, timg0 = < <value optimized away by compiler, out of scope, or dropped> >, portable_atomic_u32 = Atomic<u32> = 44, core_atomic_u32 = Atomic<u32> = 44, vec = VecInner<u32, usize, VecStorageInner<[MaybeUninit<u32>; 10]>> @ 0x40801B9C, spawner = Spawner @ 0x40801B90, Future state = Suspend0 }"
       children:
         - name:
             Named: config
@@ -1132,7 +1132,7 @@ expression: stack_frames
               namespace:
                 - portable_atomic
               args: []
-          value: "44"
+          value: Atomic<u32> = 44
         - name:
             Named: core_atomic_u32
           type_name:
@@ -1145,7 +1145,7 @@ expression: stack_frames
               args:
                 - Type:
                     Base: u32
-          value: "44"
+          value: Atomic<u32> = 44
         - name:
             Named: vec
           type_name:
@@ -2285,7 +2285,7 @@ expression: stack_frames
                               args:
                                 - Type:
                                     Base: u32
-                          value: "1"
+                          value: Atomic<u32> = 1
                     - name:
                         Named: run_queue_item
                       type_name:
@@ -2843,7 +2843,7 @@ expression: stack_frames
                                           namespace:
                                             - portable_atomic
                                           args: []
-                                      value: "44"
+                                      value: Atomic<u32> = 44
                                     - name:
                                         Named: core_atomic_u32
                                       type_name:
@@ -2856,7 +2856,7 @@ expression: stack_frames
                                           args:
                                             - Type:
                                                 Base: u32
-                                      value: "44"
+                                      value: Atomic<u32> = 44
                                     - name:
                                         Named: vec
                                       type_name:
@@ -3195,7 +3195,7 @@ expression: stack_frames
                               namespace:
                                 - portable_atomic
                               args: []
-                          value: "44"
+                          value: Atomic<u32> = 44
                         - name:
                             Named: core_atomic_u32
                           type_name:
@@ -3208,7 +3208,7 @@ expression: stack_frames
                               args:
                                 - Type:
                                     Base: u32
-                          value: "44"
+                          value: Atomic<u32> = 44
                         - name:
                             Named: vec
                           type_name:

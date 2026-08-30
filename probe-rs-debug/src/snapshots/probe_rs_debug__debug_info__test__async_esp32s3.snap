@@ -196,7 +196,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> { config = Config @ 0x3FCDB5D0, timg0 = TimerGroup<TIMG0> @ 0x3FCDB600, portable_atomic_u32 = 41, core_atomic_u32 = 41, spawner = Spawner @ 0x3FC8C128, Future state = Suspend0 }"
+      value: "<unknown> { config = Config @ 0x3FCDB5D0, timg0 = TimerGroup<TIMG0> @ 0x3FCDB600, portable_atomic_u32 = Atomic<u32> = 41, core_atomic_u32 = Atomic<u32> = 41, spawner = Spawner @ 0x3FC8C128, Future state = Suspend0 }"
       children:
         - name:
             Named: config
@@ -2455,7 +2455,7 @@ expression: stack_frames
               namespace:
                 - portable_atomic
               args: []
-          value: "41"
+          value: Atomic<u32> = 41
         - name:
             Named: core_atomic_u32
           type_name:
@@ -2468,7 +2468,7 @@ expression: stack_frames
               args:
                 - Type:
                     Base: u32
-          value: "41"
+          value: Atomic<u32> = 41
         - name:
             Named: spawner
           type_name:
@@ -3360,7 +3360,7 @@ expression: stack_frames
                               args:
                                 - Type:
                                     Base: u32
-                          value: "1"
+                          value: Atomic<u32> = 1
                     - name:
                         Named: run_queue_item
                       type_name:
@@ -3918,7 +3918,7 @@ expression: stack_frames
                                           namespace:
                                             - portable_atomic
                                           args: []
-                                      value: "41"
+                                      value: Atomic<u32> = 41
                                     - name:
                                         Named: core_atomic_u32
                                       type_name:
@@ -3931,7 +3931,7 @@ expression: stack_frames
                                           args:
                                             - Type:
                                                 Base: u32
-                                      value: "41"
+                                      value: Atomic<u32> = 41
                                     - name:
                                         Named: __awaitee
                                       type_name:
@@ -4208,7 +4208,7 @@ expression: stack_frames
                               namespace:
                                 - portable_atomic
                               args: []
-                          value: "41"
+                          value: Atomic<u32> = 41
                         - name:
                             Named: core_atomic_u32
                           type_name:
@@ -4221,7 +4221,7 @@ expression: stack_frames
                               args:
                                 - Type:
                                     Base: u32
-                          value: "41"
+                          value: Atomic<u32> = 41
                         - name:
                             Named: __awaitee
                           type_name:
@@ -7960,7 +7960,7 @@ expression: stack_frames
                                                               args:
                                                                 - Type:
                                                                     Base: u32
-                                                          value: "4294967295"
+                                                          value: Atomic<u32> = 4294967295
                                                     - name:
                                                         Named: run_queue_item
                                                       type_name:
@@ -8683,7 +8683,7 @@ expression: stack_frames
                                                                   args:
                                                                     - Type:
                                                                         Base: u32
-                                                              value: "4294967295"
+                                                              value: Atomic<u32> = 4294967295
                                                         - name:
                                                             Named: run_queue_item
                                                           type_name:

@@ -219,7 +219,13 @@ impl Rust {
             && inner.value.is_valid()
             && !inner.value.is_empty()
         {
-            variable.set_value(inner.value.clone());
+            variable.set_value(match inner.value.clone() {
+                VariableValue::Valid(value) => {
+                    VariableValue::Valid(format!("{} = {value}", variable.compact_type_name()))
+                }
+                VariableValue::Error(value) => VariableValue::Error(value),
+                VariableValue::Empty => VariableValue::Empty,
+            });
             cache.remove_cache_entry(inner.variable_key)?;
             variable.variable_node_type = VariableNodeType::DoNotRecurse;
             cache.update_variable(variable)?;

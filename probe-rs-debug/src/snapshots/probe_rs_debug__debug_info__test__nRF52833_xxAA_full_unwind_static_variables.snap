@@ -2262,7 +2262,7 @@ Child Variables:
                                         - sync
                                         - atomic
                                       args: []
-                                  value: "363"
+                                  value: AtomicUsize = 363
                                 - name:
                                     Named: read
                                   type_name:
@@ -2273,7 +2273,7 @@ Child Variables:
                                         - sync
                                         - atomic
                                       args: []
-                                  value: "363"
+                                  value: AtomicUsize = 363
                                 - name:
                                     Named: flags
                                   type_name:
@@ -2284,7 +2284,7 @@ Child Variables:
                                         - sync
                                         - atomic
                                       args: []
-                                  value: "1"
+                                  value: AtomicUsize = 1
                             - name:
                                 Indexed: 1
                               type_name:
@@ -2345,7 +2345,7 @@ Child Variables:
                                         - sync
                                         - atomic
                                       args: []
-                                  value: "0"
+                                  value: AtomicUsize = 0
                                 - name:
                                     Named: read
                                   type_name:
@@ -2356,7 +2356,7 @@ Child Variables:
                                         - sync
                                         - atomic
                                       args: []
-                                  value: "0"
+                                  value: AtomicUsize = 0
                                 - name:
                                     Named: flags
                                   type_name:
@@ -2367,7 +2367,7 @@ Child Variables:
                                         - sync
                                         - atomic
                                       args: []
-                                  value: "1"
+                                  value: AtomicUsize = 1
                         - name:
                             Named: down_channels
                           type_name:
@@ -3456,7 +3456,7 @@ Child Variables:
                               args:
                                 - Type:
                                     Base: isize
-                          value: "0"
+                          value: Cell<isize> = 0
                         - name:
                             Named: value
                           type_name:
@@ -3612,7 +3612,7 @@ Child Variables:
                                                             - sync
                                                             - atomic
                                                           args: []
-                                                      value: "363"
+                                                      value: AtomicUsize = 363
                                                     - name:
                                                         Named: read
                                                       type_name:
@@ -3623,7 +3623,7 @@ Child Variables:
                                                             - sync
                                                             - atomic
                                                           args: []
-                                                      value: "363"
+                                                      value: AtomicUsize = 363
                                                     - name:
                                                         Named: flags
                                                       type_name:
@@ -3634,7 +3634,7 @@ Child Variables:
                                                             - sync
                                                             - atomic
                                                           args: []
-                                                      value: "1"
+                                                      value: AtomicUsize = 1
                                         - name:
                                             Named: current
                                           type_name:

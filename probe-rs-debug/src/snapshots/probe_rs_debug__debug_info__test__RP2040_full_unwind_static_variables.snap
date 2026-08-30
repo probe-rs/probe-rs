@@ -582,7 +582,7 @@ Child Variables:
                             - sync
                             - atomic
                           args: []
-                      value: "9937"
+                      value: AtomicU16 = 9937
                       source_location:
                         path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
                         line: 132
@@ -608,7 +608,7 @@ Child Variables:
                             - sync
                             - atomic
                           args: []
-                      value: "9793"
+                      value: AtomicU16 = 9793
                       source_location:
                         path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
                         line: 132
@@ -1860,7 +1860,7 @@ Child Variables:
                             - sync
                             - atomic
                           args: []
-                      value: "9769"
+                      value: AtomicU16 = 9769
                       source_location:
                         path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
                         line: 132
@@ -1924,7 +1924,7 @@ Child Variables:
                             - sync
                             - atomic
                           args: []
-                      value: "0"
+                      value: AtomicU16 = 0
                       source_location:
                         path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
                         line: 80
@@ -2002,7 +2002,7 @@ Child Variables:
                     - sync
                     - atomic
                   args: []
-              value: "0"
+              value: AtomicU8 = 0
               source_location:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/critical_section_impl.rs
                 line: 14
@@ -3758,7 +3758,7 @@ Child Variables:
                                         - sync
                                         - atomic
                                       args: []
-                                  value: "363"
+                                  value: AtomicUsize = 363
                                 - name:
                                     Named: read
                                   type_name:
@@ -3769,7 +3769,7 @@ Child Variables:
                                         - sync
                                         - atomic
                                       args: []
-                                  value: "363"
+                                  value: AtomicUsize = 363
                                 - name:
                                     Named: flags
                                   type_name:
@@ -3780,7 +3780,7 @@ Child Variables:
                                         - sync
                                         - atomic
                                       args: []
-                                  value: "1"
+                                  value: AtomicUsize = 1
                             - name:
                                 Indexed: 1
                               type_name:
@@ -3841,7 +3841,7 @@ Child Variables:
                                         - sync
                                         - atomic
                                       args: []
-                                  value: "0"
+                                  value: AtomicUsize = 0
                                 - name:
                                     Named: read
                                   type_name:
@@ -3852,7 +3852,7 @@ Child Variables:
                                         - sync
                                         - atomic
                                       args: []
-                                  value: "0"
+                                  value: AtomicUsize = 0
                                 - name:
                                     Named: flags
                                   type_name:
@@ -3863,7 +3863,7 @@ Child Variables:
                                         - sync
                                         - atomic
                                       args: []
-                                  value: "1"
+                                  value: AtomicUsize = 1
                         - name:
                             Named: down_channels
                           type_name:
@@ -4952,7 +4952,7 @@ Child Variables:
                               args:
                                 - Type:
                                     Base: isize
-                          value: "0"
+                          value: Cell<isize> = 0
                         - name:
                             Named: value
                           type_name:
@@ -5108,7 +5108,7 @@ Child Variables:
                                                             - sync
                                                             - atomic
                                                           args: []
-                                                      value: "363"
+                                                      value: AtomicUsize = 363
                                                     - name:
                                                         Named: read
                                                       type_name:
@@ -5119,7 +5119,7 @@ Child Variables:
                                                             - sync
                                                             - atomic
                                                           args: []
-                                                      value: "363"
+                                                      value: AtomicUsize = 363
                                                     - name:
                                                         Named: flags
                                                       type_name:
@@ -5130,7 +5130,7 @@ Child Variables:
                                                             - sync
                                                             - atomic
                                                           args: []
-                                                      value: "1"
+                                                      value: AtomicUsize = 1
                                         - name:
                                             Named: current
                                           type_name:

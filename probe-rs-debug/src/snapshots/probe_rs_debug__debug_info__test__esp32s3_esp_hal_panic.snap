@@ -4870,7 +4870,7 @@ expression: stack_frames
                                 - sync
                                 - atomic
                               args: []
-                          value: "1"
+                          value: AtomicU32 = 1
                     - name:
                         Named: run_queue_item
                       type_name:
@@ -5248,7 +5248,7 @@ expression: stack_frames
                               args:
                                 - Type:
                                     Base: u64
-                          value: "0"
+                          value: Cell<u64> = 0
                         - name:
                             Named: payload
                           type_name:
@@ -6505,7 +6505,7 @@ expression: stack_frames
                                     - sync
                                     - atomic
                                   args: []
-                              value: "1"
+                              value: AtomicU32 = 1
                         - name:
                             Named: run_queue_item
                           type_name:
@@ -6999,7 +6999,7 @@ expression: stack_frames
                                   args:
                                     - Type:
                                         Base: u64
-                              value: "4755850530978120672"
+                              value: Cell<u64> = 4755850530978120672
                             - name:
                                 Named: payload
                               type_name:
@@ -7096,7 +7096,7 @@ expression: stack_frames
                             - sync
                             - atomic
                           args: []
-                      value: "1"
+                      value: AtomicU32 = 1
                 - name:
                     Named: run_queue_item
                   type_name:
@@ -7590,7 +7590,7 @@ expression: stack_frames
                           args:
                             - Type:
                                 Base: u64
-                      value: "4755850530978120672"
+                      value: Cell<u64> = 4755850530978120672
                     - name:
                         Named: payload
                       type_name:
@@ -8043,7 +8043,7 @@ expression: stack_frames
                                     - sync
                                     - atomic
                                   args: []
-                              value: "1"
+                              value: AtomicU32 = 1
                         - name:
                             Named: run_queue_item
                           type_name:
@@ -8537,7 +8537,7 @@ expression: stack_frames
                                   args:
                                     - Type:
                                         Base: u64
-                              value: "4755850530978120672"
+                              value: Cell<u64> = 4755850530978120672
                             - name:
                                 Named: payload
                               type_name:

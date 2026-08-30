@@ -2409,7 +2409,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> { int8_minus_twenty_three = -23, local_reference_to_global_const = &str @ 0x3FCCF420, local_reference_to_global_static = &str @ 0x3FCCFCE4, local_reference_to_global_static_struct = *const ComplexEnum @ 0x3FC80D70, ghosted_variable = 0, ghosted_variable = &str @ 0x3FCCF42C, int8_twenty_six = 26, int128 = -196710231994021419720322, u_int128 = 340282366920938266753142613410348491134, float64 = 1.7608695652173911, float64_ptr = &f64 @ 0x3FCCF460, emoji = 💩, emoji_ptr = &char @ 0x3FCCF468, true_bool = true, any_old_string_slice = &str @ 0x3FCCF450, function_result = Result<(), &str> @ 0x3FCCFD0C, global_types = (bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64) @ 0x3FCCF470, three_d_usize_array = Matrix<i32> @ 0x3FCCF4AC, three_d_string_array = Matrix<&str> @ 0x3FCCF62C, three = SimpleEnum::Two, simple_enum_pointer = &SimpleEnum @ 0x3FCCFAAF, three_level_recursive_struct = RecursiveStruct @ 0x3FCCFAB4, first_case_of_struct_variants = ComplexEnum @ 0x3FCCFAD8, second_case_of_struct_variants = ComplexEnum @ 0x3FCCFB08, struct_with_one_variant = Option<Univariant> @ 0x3FCCFB28, stuct_with_one_variant_pointer = &Option<Univariant> @ 0x3FCCFB28, long_lived = ComplexStruct @ 0x3FCCFB90, short_lived = ComplexStruct @ 0x3FCCFBA0, a1 = Struct<i32> @ 0x3FCCFD18, a2 = 1, a3 = 2, a4 = 3, a5 = (i32, i64) @ 0x3FCCFD40, a6 = Enum<i32> @ 0x3FCCFBE0, a7 = Enum<i32> @ 0x3FCCFC00, [i32; 10] = [55, 55, 55, 55, 55, 55, 55, 55, 55, 55], my_array_ptr = &[i32; 10] @ 0x3FCCFC24, [i8; 10] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0], heapless_vec = Vec<i8> @ 0x3FCCFC58, loop_counter = 0, rtt_channels = Channels @ 0x3FCCFC6C }"
+      value: "<unknown> { int8_minus_twenty_three = -23, local_reference_to_global_const = &str @ 0x3FCCF420, local_reference_to_global_static = &str @ 0x3FCCFCE4, local_reference_to_global_static_struct = *const ComplexEnum @ 0x3FC80D70, ghosted_variable = 0, ghosted_variable = &str @ 0x3FCCF42C, int8_twenty_six = 26, int128 = -196710231994021419720322, u_int128 = 340282366920938266753142613410348491134, float64 = 1.7608695652173911, float64_ptr = &f64 @ 0x3FCCF460, emoji = 💩, emoji_ptr = &char @ 0x3FCCF468, true_bool = true, any_old_string_slice = &str @ 0x3FCCF450, function_result = Result<(), &str> @ 0x3FCCFD0C, global_types = (bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64) @ 0x3FCCF470, three_d_usize_array = Matrix<i32> @ 0x3FCCF4AC, three_d_string_array = Matrix<&str> @ 0x3FCCF62C, three = SimpleEnum::Two, simple_enum_pointer = &SimpleEnum @ 0x3FCCFAAF, three_level_recursive_struct = RecursiveStruct @ 0x3FCCFAB4, first_case_of_struct_variants = ComplexEnum @ 0x3FCCFAD8, second_case_of_struct_variants = ComplexEnum @ 0x3FCCFB08, struct_with_one_variant = Option<Univariant> @ 0x3FCCFB28, stuct_with_one_variant_pointer = &Option<Univariant> @ 0x3FCCFB28, long_lived = ComplexStruct @ 0x3FCCFB90, short_lived = ComplexStruct @ 0x3FCCFBA0, a1 = Struct<i32> @ 0x3FCCFD18, a2 = 1, a3 = 2, a4 = 3, a5 = (i32, i64) @ 0x3FCCFD40, a6 = Enum<i32> @ 0x3FCCFBE0, a7 = Enum<i32> @ 0x3FCCFC00, [i32; 10] = [55, 55, 55, 55, 55, 55, 55, 55, 55, 55], my_array_ptr = &[i32; 10] @ 0x3FCCFC24, [i8; 10] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0], heapless_vec = Vec<i8> @ 0x3FCCFC58, loop_counter = Wrapping<u8> = 0, rtt_channels = Channels @ 0x3FCCFC6C }"
       children:
         - name:
             Named: int8_minus_twenty_three
@@ -5700,7 +5700,7 @@ expression: stack_frames
               args:
                 - Type:
                     Base: u8
-          value: "0"
+          value: Wrapping<u8> = 0
           source_location:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 305
@@ -5830,7 +5830,7 @@ expression: stack_frames
                                     - sync
                                     - atomic
                                   args: []
-                              value: "363"
+                              value: AtomicUsize = 363
                             - name:
                                 Named: read
                               type_name:
@@ -5841,7 +5841,7 @@ expression: stack_frames
                                     - sync
                                     - atomic
                                   args: []
-                              value: "363"
+                              value: AtomicUsize = 363
                             - name:
                                 Named: flags
                               type_name:
@@ -5852,7 +5852,7 @@ expression: stack_frames
                                     - sync
                                     - atomic
                                   args: []
-                              value: "1"
+                              value: AtomicUsize = 1
                 - name:
                     Named: __1
                   type_name:
@@ -5940,7 +5940,7 @@ expression: stack_frames
                                     - sync
                                     - atomic
                                   args: []
-                              value: "0"
+                              value: AtomicUsize = 0
                             - name:
                                 Named: read
                               type_name:
@@ -5951,7 +5951,7 @@ expression: stack_frames
                                     - sync
                                     - atomic
                                   args: []
-                              value: "0"
+                              value: AtomicUsize = 0
                             - name:
                                 Named: flags
                               type_name:
@@ -5962,7 +5962,7 @@ expression: stack_frames
                                     - sync
                                     - atomic
                                   args: []
-                              value: "1"
+                              value: AtomicUsize = 1
   canonical_frame_address: 1070399200
 - function_name: __risc_v_rt__main
   source_location:
