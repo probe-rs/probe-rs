@@ -15,6 +15,15 @@ use gimli::{
 };
 use probe_rs::MemoryInterface;
 
+/// Replace `variable` with the copy the walk left in the `cache`.
+fn refresh(variable: &mut Variable, cache: &VariableCache) -> Result<(), DebugError> {
+    let key = variable.variable_key;
+    *variable = cache
+        .get_variable_by_key(key)
+        .ok_or_else(|| DebugError::Other(format!("Failed to find variable {key:?}.")))?;
+    Ok(())
+}
+
 /// The result of `UnitInfo::evaluate_expression()` is a memory location of a variable.
 #[derive(Debug)]
 pub(crate) enum ExpressionResult {
@@ -40,7 +49,7 @@ pub struct UnitInfo {
     call_sites: HashMap<u64, Vec<CallSiteParameter>>,
 }
 
-include!("unit_info/walk.rs");
+mod walk;
 
 impl UnitInfo {
     /// Create a new `UnitInfo` from a `gimli::Unit`.
@@ -379,13 +388,11 @@ impl UnitInfo {
         cache: &mut VariableCache,
         frame_info: &StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
-        let mut walker = Walker::new(debug_info, memory, cache, frame_info);
-        walker.jobs.push(Job::VisitStatics {
-            unit: self,
-            offset: unit_offset,
+        walk::Walker::new(debug_info, memory, cache, frame_info).statics(
+            self,
+            unit_offset,
             parent_key,
-        });
-        walker.run()
+        )
     }
 
     fn ensure_namespace(
@@ -431,19 +438,28 @@ impl UnitInfo {
         }
 
         cache.update_variable(parent_variable)?;
-        let offset = parent_node.entry().offset();
         let parent_key = parent_variable.variable_key;
-        let mut walker = Walker::new(debug_info, memory, cache, frame_info);
-        walker.jobs.push(Job::ProcessTree {
-            unit: self,
-            offset,
-            parent_key,
-        });
-        walker.run()?;
-        *parent_variable = cache
-            .get_variable_by_key(parent_key)
-            .ok_or_else(|| DebugError::Other(format!("Failed to find variable {parent_key:?}.")))?;
-        Ok(())
+        let offset = parent_node.entry().offset();
+        walk::Walker::new(debug_info, memory, cache, frame_info).tree(self, offset, parent_key)?;
+        refresh(parent_variable, cache)
+    }
+
+    /// Add the variable that `pointer` points at, and resolve its type.
+    pub(crate) fn resolve_pointer_target(
+        &self,
+        debug_info: &DebugInfo,
+        type_offset: UnitOffset,
+        pointer: &mut Variable,
+        memory: &mut dyn MemoryInterface,
+        cache: &mut VariableCache,
+        frame_info: &StackFrameInfo<'_>,
+    ) -> Result<(), DebugError> {
+        walk::Walker::new(debug_info, memory, cache, frame_info).pointer_target(
+            self,
+            type_offset,
+            pointer,
+        )?;
+        refresh(pointer, cache)
     }
 
     /// Extract the range information for an array.
@@ -774,19 +790,13 @@ impl UnitInfo {
         frame_info: &StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         cache.update_variable(array_variable)?;
-        let array_key = array_variable.variable_key;
-        let mut walker = Walker::new(debug_info, memory, cache, frame_info);
-        walker.jobs.push(Job::ExpandArray {
-            member_unit: self,
-            type_offset: array_member_type_node.offset(),
-            array_key,
-            subranges: subranges.to_vec(),
-        });
-        walker.run()?;
-        *array_variable = cache
-            .get_variable_by_key(array_key)
-            .ok_or_else(|| DebugError::Other(format!("Failed to find variable {array_key:?}.")))?;
-        Ok(())
+        walk::Walker::new(debug_info, memory, cache, frame_info).array_members(
+            self,
+            array_member_type_node.offset(),
+            array_variable.variable_key,
+            subranges.to_vec(),
+        )?;
+        refresh(array_variable, cache)
     }
 
     /// Process a memory location for a variable, by first evaluating the `byte_size`, and then calling the `self.extract_location`.

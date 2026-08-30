@@ -1,3 +1,36 @@
+use std::{
+    collections::{HashMap, HashSet},
+    ops::Range,
+};
+
+use gimli::{AttributeValue, UnitOffset};
+use probe_rs::MemoryInterface;
+
+use super::{
+    AttributesEntry, DebugError, DebugInfo, GimliReader, StackFrameInfo, UnitInfo, VariableCache,
+    die_contains_pc, extract_name,
+};
+use crate::{
+    ObjectRef,
+    variable::{
+        Modifier, Variable, VariableName, VariableNodeType, VariableType, VariableValue,
+        VariantRole,
+    },
+};
+
+// TODO: This is language specific, and should be moved to the language implementations.
+fn target_name(pointer_name: &VariableName) -> VariableName {
+    match pointer_name {
+        VariableName::Named(name) if name.starts_with("Some ") => {
+            VariableName::Named(name.replacen('&', "*", 1))
+        }
+        VariableName::Named(name) => VariableName::Named(format!("*{name}")),
+        other => VariableName::Named(format!(
+            "Error: Unable to generate name, parent variable does not have a name but is special variable {other:?}"
+        )),
+    }
+}
+
 struct AttrResume<'a> {
     unit: &'a UnitInfo,
     die_offset: UnitOffset,
@@ -134,7 +167,7 @@ enum Job<'a> {
     },
 }
 
-struct Walker<'a> {
+pub(super) struct Walker<'a> {
     debug_info: &'a DebugInfo,
     memory: &'a mut dyn MemoryInterface,
     cache: &'a mut VariableCache,
@@ -144,7 +177,7 @@ struct Walker<'a> {
 }
 
 impl<'a> Walker<'a> {
-    fn new(
+    pub(super) fn new(
         debug_info: &'a DebugInfo,
         memory: &'a mut dyn MemoryInterface,
         cache: &'a mut VariableCache,
@@ -158,6 +191,78 @@ impl<'a> Walker<'a> {
             jobs: Vec::new(),
             default_variants: HashMap::new(),
         }
+    }
+
+    /// Walk the DIE tree below `offset` and add every descendant variable to the cache.
+    pub(super) fn tree(
+        mut self,
+        unit: &'a UnitInfo,
+        offset: UnitOffset,
+        parent_key: ObjectRef,
+    ) -> Result<(), DebugError> {
+        self.jobs.push(Job::ProcessTree {
+            unit,
+            offset,
+            parent_key,
+        });
+        self.run()
+    }
+
+    /// Walk the compilation unit below `offset` and add the static variables it declares.
+    pub(super) fn statics(
+        mut self,
+        unit: &'a UnitInfo,
+        offset: UnitOffset,
+        parent_key: ObjectRef,
+    ) -> Result<(), DebugError> {
+        self.jobs.push(Job::VisitStatics {
+            unit,
+            offset,
+            parent_key,
+        });
+        self.run()
+    }
+
+    /// Add a variable for every member of an array.
+    pub(super) fn array_members(
+        mut self,
+        member_unit: &'a UnitInfo,
+        type_offset: UnitOffset,
+        array_key: ObjectRef,
+        subranges: Vec<Range<u64>>,
+    ) -> Result<(), DebugError> {
+        self.jobs.push(Job::ExpandArray {
+            member_unit,
+            type_offset,
+            array_key,
+            subranges,
+        });
+        self.run()
+    }
+
+    /// Add the variable that `pointer` points at, and resolve its type.
+    pub(super) fn pointer_target(
+        mut self,
+        unit: &'a UnitInfo,
+        type_offset: UnitOffset,
+        pointer: &Variable,
+    ) -> Result<(), DebugError> {
+        let pointer_key = pointer.variable_key;
+        let mut target = self.cache.create_variable(pointer_key, Some(unit))?;
+        target.name = target_name(&pointer.name);
+        self.cache.update_variable(&target)?;
+
+        self.jobs.push(Job::ExtractValue { key: pointer_key });
+        self.jobs.push(Job::RemoveIfUnit {
+            key: target.variable_key,
+        });
+        self.jobs.push(Job::ExtractType {
+            unit,
+            offset: type_offset,
+            parent_key: pointer_key,
+            child_key: target.variable_key,
+        });
+        self.run()
     }
 
     fn run(&mut self) -> Result<(), DebugError> {
@@ -357,9 +462,8 @@ impl<'a> Walker<'a> {
     ) -> Result<(), DebugError> {
         let mut parent = self.load(parent_key)?;
         let discriminant = self.load(discriminant_key)?;
-        parent.role = VariantRole::VariantPart(
-            discriminant.integer_value(self.memory).unwrap_or(u64::MAX),
-        );
+        parent.role =
+            VariantRole::VariantPart(discriminant.integer_value(self.memory).unwrap_or(u64::MAX));
         self.cache.remove_cache_entry(discriminant_key)?;
         self.cache.update_variable(&parent)
     }
@@ -451,11 +555,7 @@ impl<'a> Walker<'a> {
         Ok(())
     }
 
-    fn finish_tree(
-        &mut self,
-        unit: &'a UnitInfo,
-        parent_key: ObjectRef,
-    ) -> Result<(), DebugError> {
+    fn finish_tree(&mut self, unit: &'a UnitInfo, parent_key: ObjectRef) -> Result<(), DebugError> {
         let parent = self.load(parent_key)?;
         if let Some(offset) = self.default_variants.remove(&parent_key)
             && !self.cache.has_children(&parent)
@@ -528,7 +628,8 @@ impl<'a> Walker<'a> {
         offset: UnitOffset,
         parent_key: ObjectRef,
     ) -> Result<(), DebugError> {
-        let namespace_key = unit.ensure_namespace(self.debug_info, self.cache, parent_key, offset)?;
+        let namespace_key =
+            unit.ensure_namespace(self.debug_info, self.cache, parent_key, offset)?;
         self.jobs.push(Job::DropEmptyNamespace(namespace_key));
         self.jobs.push(Job::ProcessTree {
             unit,
@@ -1056,10 +1157,7 @@ impl<'a> Walker<'a> {
             self.frame_info,
         )?;
 
-        match self
-            .debug_info
-            .resolve_die_reference_with_unit(attr, unit)
-        {
+        match self.debug_info.resolve_die_reference_with_unit(attr, unit) {
             Ok((unit_info, referenced_type_tree_node)) => self.extract_type(
                 unit_info,
                 &referenced_type_tree_node,
@@ -1119,20 +1217,12 @@ impl<'a> Walker<'a> {
                     self.frame_info,
                 )?;
             }
-            gimli::DW_TAG_pointer_type => self.extract_pointer_type(
-                unit,
-                node,
-                parent_variable,
-                child_variable,
-                type_name,
-            )?,
-            gimli::DW_TAG_structure_type => self.extract_struct(
-                unit,
-                type_name,
-                node,
-                parent_variable,
-                child_variable,
-            )?,
+            gimli::DW_TAG_pointer_type => {
+                self.extract_pointer_type(unit, node, parent_variable, child_variable, type_name)?
+            }
+            gimli::DW_TAG_structure_type => {
+                self.extract_struct(unit, type_name, node, parent_variable, child_variable)?
+            }
             gimli::DW_TAG_enumeration_type => {
                 unit.extract_enumeration_type(
                     child_variable,
@@ -1223,42 +1313,11 @@ impl<'a> Walker<'a> {
                 if !self.cache.has_children(child_variable) {
                     match self.debug_info.resolve_die_reference_with_unit(attr, unit) {
                         Ok((referenced_unit, referenced_node)) => {
-                            let mut referenced_variable = self.cache.create_variable(
-                                child_variable.variable_key,
-                                Some(referenced_unit),
-                            )?;
-
-                            referenced_variable.name = match &child_variable.name {
-                                VariableName::Named(name) if name.starts_with("Some ") => {
-                                    VariableName::Named(name.replacen('&', "*", 1))
-                                }
-                                VariableName::Named(name) => {
-                                    VariableName::Named(format!("*{name}"))
-                                }
-                                other => VariableName::Named(format!(
-                                    "Error: Unable to generate name, parent variable does not have a name but is special variable {other:?}"
-                                )),
-                            };
-
-                            if referenced_node.tag() == gimli::DW_TAG_subroutine_type {
-                                self.cache
-                                    .remove_cache_entry(referenced_variable.variable_key)?;
-                            } else {
-                                self.cache.update_variable(child_variable)?;
-                                self.cache.update_variable(&referenced_variable)?;
-                                self.jobs.push(Job::ExtractValue {
-                                    key: child_variable.variable_key,
-                                });
-                                self.jobs.push(Job::RemoveIfUnit {
-                                    key: referenced_variable.variable_key,
-                                });
-                                self.jobs.push(Job::ExtractType {
-                                    unit: referenced_unit,
-                                    offset: referenced_node.offset(),
-                                    parent_key: child_variable.variable_key,
-                                    child_key: referenced_variable.variable_key,
-                                });
-                                return Ok(());
+                            if referenced_node.tag() != gimli::DW_TAG_subroutine_type {
+                                child_variable.variable_node_type = VariableNodeType::PointerTarget(
+                                    referenced_unit.debug_info_offset()?,
+                                    referenced_node.offset(),
+                                );
                             }
                         }
                         Err(error) => {
@@ -1271,10 +1330,8 @@ impl<'a> Walker<'a> {
             }
             None => {
                 child_variable.set_value(
-                    unit.language.process_tag_with_no_type(
-                        child_variable,
-                        gimli::DW_TAG_pointer_type,
-                    ),
+                    unit.language
+                        .process_tag_with_no_type(child_variable, gimli::DW_TAG_pointer_type),
                 );
             }
         }
@@ -1701,7 +1758,8 @@ impl<'a> Walker<'a> {
         offset: UnitOffset,
         parent_key: ObjectRef,
     ) -> Result<(), DebugError> {
-        let namespace_key = unit.ensure_namespace(self.debug_info, self.cache, parent_key, offset)?;
+        let namespace_key =
+            unit.ensure_namespace(self.debug_info, self.cache, parent_key, offset)?;
         self.jobs.push(Job::DropEmptyNamespace(namespace_key));
         self.jobs.push(Job::VisitStatics {
             unit,

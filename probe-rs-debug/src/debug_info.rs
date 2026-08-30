@@ -8,8 +8,8 @@ use super::{
 };
 use crate::{SourceLocation, VerifiedBreakpoint, stack_frame::StackFrameInfo, unit_info::RangeExt};
 use gimli::{
-    BaseAddresses, DebugFrame, RunTimeEndian, UnwindContext, UnwindSection, UnwindTableRow,
-    read::RegisterRule,
+    BaseAddresses, DebugFrame, DebugInfoOffset, RunTimeEndian, UnwindContext, UnwindSection,
+    UnwindTableRow, read::RegisterRule,
 };
 use object::read::{Object, ObjectSection};
 use probe_rs::{
@@ -285,6 +285,22 @@ impl DebugInfo {
         Ok(function_variable_cache)
     }
 
+    fn unit_info_at(&self, header_offset: DebugInfoOffset) -> Result<&UnitInfo, DebugError> {
+        self.unit_infos
+            .iter()
+            .find(|unit_info| {
+                unit_info
+                    .unit
+                    .header
+                    .offset()
+                    .to_debug_info_offset(&unit_info.unit)
+                    == Some(header_offset)
+            })
+            .ok_or_else(|| {
+                DebugError::Other("Failed to find unit info for offset lookup.".to_string())
+            })
+    }
+
     /// This effects the on-demand expansion of lazy/deferred load of all the 'child' `Variable`s for a given 'parent'.
     #[tracing::instrument(level = "trace", skip_all, fields(parent_variable = ?parent_variable.variable_key()))]
     pub fn cache_deferred_variables(
@@ -305,20 +321,20 @@ impl DebugInfo {
         }
 
         match parent_variable.variable_node_type {
+            VariableNodeType::PointerTarget(header_offset, type_offset) => {
+                let unit_info = self.unit_info_at(header_offset)?;
+                unit_info.resolve_pointer_target(
+                    self,
+                    type_offset,
+                    parent_variable,
+                    memory,
+                    cache,
+                    frame_info,
+                )?;
+            }
             VariableNodeType::TypeOffset(header_offset, unit_offset)
             | VariableNodeType::DirectLookup(header_offset, unit_offset) => {
-                let Some(unit_info) = self.unit_infos.iter().find(|unit_info| {
-                    unit_info
-                        .unit
-                        .header
-                        .offset()
-                        .to_debug_info_offset(&unit_info.unit)
-                        == Some(header_offset)
-                }) else {
-                    return Err(DebugError::Other(
-                        "Failed to find unit info for offset lookup.".to_string(),
-                    ));
-                };
+                let unit_info = self.unit_info_at(header_offset)?;
 
                 // Find the parent node
                 let mut type_tree = unit_info.unit.entries_tree(Some(unit_offset))?;

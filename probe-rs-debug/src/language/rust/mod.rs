@@ -601,6 +601,27 @@ impl Rust {
         Ok(())
     }
 
+    /// The value of a `&str` or a slice is read through its data pointer, so the pointer must be
+    /// resolved before the value of the enclosing variable is read.
+    fn resolve_data_pointer(
+        &self,
+        debug_info: &DebugInfo,
+        variable: &Variable,
+        memory: &mut dyn MemoryInterface,
+        cache: &mut VariableCache,
+        frame_info: &StackFrameInfo<'_>,
+    ) -> Result<(), DebugError> {
+        let Some(mut data_ptr) = cache
+            .get_children(variable.variable_key)
+            .find(|child| is_named(child, "data_ptr"))
+            .cloned()
+        else {
+            return Ok(());
+        };
+
+        debug_info.cache_deferred_variables(cache, memory, &mut data_ptr, frame_info)
+    }
+
     /// Replaces *const data pointer with *const [data; len] in slices.
     ///
     /// This function may return `Ok(())` even if it does not modify the variable.
@@ -845,6 +866,8 @@ impl ProgrammingLanguage for Rust {
         cache: &mut VariableCache,
         frame_info: &StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
+        self.resolve_data_pointer(debug_info, variable, memory, cache, frame_info)?;
+
         if variable
             .type_name
             .ident()
