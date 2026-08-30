@@ -156,6 +156,11 @@ impl Rust {
             }
 
             if !cache.has_children(&inner) && inner.value.is_valid() && !inner.value.is_empty() {
+                // The client expands a device register in order to read it. A value that moved up
+                // to the cell would leave the expansion empty.
+                if path.is_volatile_cell() {
+                    return Ok(());
+                }
                 if path.hides_its_type() {
                     variable.type_name = inner.type_name;
                 }

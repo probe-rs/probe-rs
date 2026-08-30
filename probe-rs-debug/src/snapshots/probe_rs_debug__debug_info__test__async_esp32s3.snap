@@ -814,7 +814,13 @@ expression: stack_frames
                                           args:
                                             - Type:
                                                 Base: u32
-                                      value: "256"
+                                      value: VolatileCell<u32> @ 0x3FC8B718
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "256"
                                 - name:
                                     Named: lo
                                   type_name:
@@ -845,7 +851,13 @@ expression: stack_frames
                                           args:
                                             - Type:
                                                 Base: u32
-                                      value: "0"
+                                      value: VolatileCell<u32> @ 0x3FC8B71C
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
                                 - name:
                                     Named: hi
                                   type_name:
@@ -876,7 +888,13 @@ expression: stack_frames
                                           args:
                                             - Type:
                                                 Base: u32
-                                      value: "0"
+                                      value: VolatileCell<u32> @ 0x3FC8B720
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
                                 - name:
                                     Named: update
                                   type_name:
@@ -907,7 +925,13 @@ expression: stack_frames
                                           args:
                                             - Type:
                                                 Base: u32
-                                      value: "0"
+                                      value: VolatileCell<u32> @ 0x3FC8B724
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
                                 - name:
                                     Named: alarmlo
                                   type_name:
@@ -938,7 +962,13 @@ expression: stack_frames
                                           args:
                                             - Type:
                                                 Base: u32
-                                      value: "1107373132"
+                                      value: VolatileCell<u32> @ 0x3FC8B728
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "1107373132"
                                 - name:
                                     Named: alarmhi
                                   type_name:
@@ -969,7 +999,13 @@ expression: stack_frames
                                           args:
                                             - Type:
                                                 Base: u32
-                                      value: "262192"
+                                      value: VolatileCell<u32> @ 0x3FC8B72C
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "262192"
                                 - name:
                                     Named: loadlo
                                   type_name:
@@ -1000,7 +1036,13 @@ expression: stack_frames
                                           args:
                                             - Type:
                                                 Base: u32
-                                      value: "0"
+                                      value: VolatileCell<u32> @ 0x3FC8B730
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
                                 - name:
                                     Named: loadhi
                                   type_name:
@@ -1031,7 +1073,13 @@ expression: stack_frames
                                           args:
                                             - Type:
                                                 Base: u32
-                                      value: "1070445472"
+                                      value: VolatileCell<u32> @ 0x3FC8B734
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "1070445472"
                                 - name:
                                     Named: load
                                   type_name:
@@ -1062,7 +1110,13 @@ expression: stack_frames
                                           args:
                                             - Type:
                                                 Base: u32
-                                      value: "0"
+                                      value: VolatileCell<u32> @ 0x3FC8B738
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
                             - name:
                                 Indexed: 1
                               type_name:
@@ -1105,7 +1159,13 @@ expression: stack_frames
                                           args:
                                             - Type:
                                                 Base: u32
-                                      value: "0"
+                                      value: VolatileCell<u32> @ 0x3FC8B73C
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
                                 - name:
                                     Named: lo
                                   type_name:
@@ -1136,7 +1196,13 @@ expression: stack_frames
                                           args:
                                             - Type:
                                                 Base: u32
-                                      value: "0"
+                                      value: VolatileCell<u32> @ 0x3FC8B740
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
                                 - name:
                                     Named: hi
                                   type_name:
@@ -1167,7 +1233,13 @@ expression: stack_frames
                                           args:
                                             - Type:
                                                 Base: u32
-                                      value: "0"
+                                      value: VolatileCell<u32> @ 0x3FC8B744
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
                                 - name:
                                     Named: update
                                   type_name:
@@ -1198,7 +1270,13 @@ expression: stack_frames
                                           args:
                                             - Type:
                                                 Base: u32
-                                      value: "0"
+                                      value: VolatileCell<u32> @ 0x3FC8B748
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
                                 - name:
                                     Named: alarmlo
                                   type_name:
@@ -1229,7 +1307,13 @@ expression: stack_frames
                                           args:
                                             - Type:
                                                 Base: u32
-                                      value: "0"
+                                      value: VolatileCell<u32> @ 0x3FC8B74C
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
                                 - name:
                                     Named: alarmhi
                                   type_name:
@@ -1260,7 +1344,13 @@ expression: stack_frames
                                           args:
                                             - Type:
                                                 Base: u32
-                                      value: "0"
+                                      value: VolatileCell<u32> @ 0x3FC8B750
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
                                 - name:
                                     Named: loadlo
                                   type_name:
@@ -1291,7 +1381,13 @@ expression: stack_frames
                                           args:
                                             - Type:
                                                 Base: u32
-                                      value: "0"
+                                      value: VolatileCell<u32> @ 0x3FC8B754
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
                                 - name:
                                     Named: loadhi
                                   type_name:
@@ -1322,7 +1418,13 @@ expression: stack_frames
                                           args:
                                             - Type:
                                                 Base: u32
-                                      value: "0"
+                                      value: VolatileCell<u32> @ 0x3FC8B758
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
                                 - name:
                                     Named: load
                                   type_name:
@@ -1353,7 +1455,13 @@ expression: stack_frames
                                           args:
                                             - Type:
                                                 Base: u32
-                                      value: "0"
+                                      value: VolatileCell<u32> @ 0x3FC8B75C
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Base: u32
+                                          value: "0"
                         - name:
                             Named: wdtconfig0
                           type_name:
@@ -1383,7 +1491,13 @@ expression: stack_frames
                                   args:
                                     - Type:
                                         Base: u32
-                              value: "0"
+                              value: VolatileCell<u32> @ 0x3FC8B760
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Base: u32
+                                  value: "0"
                         - name:
                             Named: wdtconfig1
                           type_name:
@@ -1413,7 +1527,13 @@ expression: stack_frames
                                   args:
                                     - Type:
                                         Base: u32
-                              value: "0"
+                              value: VolatileCell<u32> @ 0x3FC8B764
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Base: u32
+                                  value: "0"
                         - name:
                             Named: wdtconfig
                           type_name:
@@ -1465,7 +1585,13 @@ expression: stack_frames
                                       args:
                                         - Type:
                                             Base: u32
-                                  value: "0"
+                                  value: VolatileCell<u32> @ 0x3FC8B768
+                                  children:
+                                    - name:
+                                        Named: value
+                                      type_name:
+                                        Base: u32
+                                      value: "0"
                             - name:
                                 Indexed: 1
                               type_name:
@@ -1495,7 +1621,13 @@ expression: stack_frames
                                       args:
                                         - Type:
                                             Base: u32
-                                  value: "0"
+                                  value: VolatileCell<u32> @ 0x3FC8B76C
+                                  children:
+                                    - name:
+                                        Named: value
+                                      type_name:
+                                        Base: u32
+                                      value: "0"
                             - name:
                                 Indexed: 2
                               type_name:
@@ -1525,7 +1657,13 @@ expression: stack_frames
                                       args:
                                         - Type:
                                             Base: u32
-                                  value: "0"
+                                  value: VolatileCell<u32> @ 0x3FC8B770
+                                  children:
+                                    - name:
+                                        Named: value
+                                      type_name:
+                                        Base: u32
+                                      value: "0"
                             - name:
                                 Indexed: 3
                               type_name:
@@ -1555,7 +1693,13 @@ expression: stack_frames
                                       args:
                                         - Type:
                                             Base: u32
-                                  value: "0"
+                                  value: VolatileCell<u32> @ 0x3FC8B774
+                                  children:
+                                    - name:
+                                        Named: value
+                                      type_name:
+                                        Base: u32
+                                      value: "0"
                         - name:
                             Named: wdtfeed
                           type_name:
@@ -1585,7 +1729,13 @@ expression: stack_frames
                                   args:
                                     - Type:
                                         Base: u32
-                              value: "0"
+                              value: VolatileCell<u32> @ 0x3FC8B778
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Base: u32
+                                  value: "0"
                         - name:
                             Named: wdtwprotect
                           type_name:
@@ -1615,7 +1765,13 @@ expression: stack_frames
                                   args:
                                     - Type:
                                         Base: u32
-                              value: "0"
+                              value: VolatileCell<u32> @ 0x3FC8B77C
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Base: u32
+                                  value: "0"
                         - name:
                             Named: rtccalicfg
                           type_name:
@@ -1645,7 +1801,13 @@ expression: stack_frames
                                   args:
                                     - Type:
                                         Base: u32
-                              value: "0"
+                              value: VolatileCell<u32> @ 0x3FC8B780
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Base: u32
+                                  value: "0"
                         - name:
                             Named: rtccalicfg1
                           type_name:
@@ -1675,7 +1837,13 @@ expression: stack_frames
                                   args:
                                     - Type:
                                         Base: u32
-                              value: "0"
+                              value: VolatileCell<u32> @ 0x3FC8B784
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Base: u32
+                                  value: "0"
                         - name:
                             Named: int_ena
                           type_name:
@@ -1705,7 +1873,13 @@ expression: stack_frames
                                   args:
                                     - Type:
                                         Base: u32
-                              value: "0"
+                              value: VolatileCell<u32> @ 0x3FC8B788
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Base: u32
+                                  value: "0"
                         - name:
                             Named: int_raw
                           type_name:
@@ -1735,7 +1909,13 @@ expression: stack_frames
                                   args:
                                     - Type:
                                         Base: u32
-                              value: "0"
+                              value: VolatileCell<u32> @ 0x3FC8B78C
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Base: u32
+                                  value: "0"
                         - name:
                             Named: int_st
                           type_name:
@@ -1765,7 +1945,13 @@ expression: stack_frames
                                   args:
                                     - Type:
                                         Base: u32
-                              value: "0"
+                              value: VolatileCell<u32> @ 0x3FC8B790
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Base: u32
+                                  value: "0"
                         - name:
                             Named: int_clr
                           type_name:
@@ -1795,7 +1981,13 @@ expression: stack_frames
                                   args:
                                     - Type:
                                         Base: u32
-                              value: "0"
+                              value: VolatileCell<u32> @ 0x3FC8B794
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Base: u32
+                                  value: "0"
                         - name:
                             Named: rtccalicfg2
                           type_name:
@@ -1825,7 +2017,13 @@ expression: stack_frames
                                   args:
                                     - Type:
                                         Base: u32
-                              value: "0"
+                              value: VolatileCell<u32> @ 0x3FC8B798
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Base: u32
+                                  value: "0"
                         - name:
                             Named: _reserved13
                           type_name:
@@ -2117,7 +2315,13 @@ expression: stack_frames
                                   args:
                                     - Type:
                                         Base: u32
-                              value: "1070446080"
+                              value: VolatileCell<u32> @ 0x3FC8B810
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Base: u32
+                                  value: "1070446080"
                         - name:
                             Named: regclk
                           type_name:
@@ -2147,7 +2351,13 @@ expression: stack_frames
                                   args:
                                     - Type:
                                         Base: u32
-                              value: "1070118912"
+                              value: VolatileCell<u32> @ 0x3FC8B814
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Base: u32
+                                  value: "1070118912"
                 - name:
                     Named: timer
                   type_name:
