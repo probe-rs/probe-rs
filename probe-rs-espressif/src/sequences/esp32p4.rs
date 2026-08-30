@@ -180,7 +180,7 @@ impl ESP32P4 {
                 memory_access_config.set_region_override(
                     access,
                     0x8ff0_0000..0x8ffc_0000,
-                    MemoryAccessMethod::ProgramBuffer,
+                    MemoryAccessMethod::SystemBus,
                 );
                 // CPU peripherals
                 memory_access_config.set_region_override(
