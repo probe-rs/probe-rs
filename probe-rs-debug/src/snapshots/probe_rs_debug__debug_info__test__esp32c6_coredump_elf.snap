@@ -465,12 +465,6 @@ expression: stack_frames
                                         Pointer:
                                           Base: u8
                                       value: "*raw u8"
-                                      children:
-                                        - name:
-                                            Named: "*data_ptr"
-                                          type_name:
-                                            Base: u8
-                                          value: "Failed to read referenced variable address from memory location 0x420068BC : The coredump does not include the memory for address 0x420068bc of size 0x4."
                                     - name:
                                         Named: length
                                       type_name:
@@ -569,18 +563,6 @@ expression: stack_frames
                                     namespace: []
                                     args: []
                               value: "*raw Argument @ 0x00000004"
-                              children:
-                                - name:
-                                    Named: "*data_ptr"
-                                  type_name:
-                                    Struct:
-                                      ident: Argument
-                                      namespace:
-                                        - core
-                                        - fmt
-                                        - rt
-                                      args: []
-                                  value: "Argument @ <dangling pointer: 0x00000004>"
                             - name:
                                 Named: length
                               type_name:
@@ -633,12 +615,6 @@ expression: stack_frames
                                 Pointer:
                                   Base: u8
                               value: "*raw u8"
-                              children:
-                                - name:
-                                    Named: "*data_ptr"
-                                  type_name:
-                                    Base: u8
-                                  value: "Failed to read referenced variable address from memory location 0x420068D4 : The coredump does not include the memory for address 0x420068d4 of size 0x4."
                             - name:
                                 Named: length
                               type_name:
@@ -1880,24 +1856,6 @@ expression: stack_frames
             line: 209
             column: ~
             address: ~
-          children:
-            - name:
-                Named: "*this"
-              type_name:
-                Struct:
-                  ident: TaskStorage
-                  namespace:
-                    - embassy_executor
-                    - raw
-                  args:
-                    - Type:
-                        Struct:
-                          ident: "{async_fn_env#0}"
-                          namespace:
-                            - coredump_c6
-                            - ____embassy_main_task
-                          args: []
-              value: "TaskStorage<{async_fn_env#0}> @ Location Unknown not supported for referenced variables."
         - name:
             Named: future
           type_name:
@@ -1976,18 +1934,6 @@ expression: stack_frames
                               - wake
                             args: []
               value: "&Waker"
-              children:
-                - name:
-                    Named: "*waker"
-                  type_name:
-                    Struct:
-                      ident: Waker
-                      namespace:
-                        - core
-                        - task
-                        - wake
-                      args: []
-                  value: "Waker @ Failed to read referenced variable address from memory location <composite value> : The compiler optimized a part of this value away."
             - name:
                 Named: local_waker
               type_name:
@@ -2005,18 +1951,6 @@ expression: stack_frames
                               - wake
                             args: []
               value: "&LocalWaker"
-              children:
-                - name:
-                    Named: "*local_waker"
-                  type_name:
-                    Struct:
-                      ident: LocalWaker
-                      namespace:
-                        - core
-                        - task
-                        - wake
-                      args: []
-                  value: "LocalWaker @ Failed to read referenced variable address from memory location <composite value> : The compiler optimized a part of this value away."
             - name:
                 Named: ext
               type_name:
@@ -4251,17 +4185,6 @@ expression: stack_frames
                                                       - raw
                                                     args: []
                                       value: "*mut TaskHeader @ 0x00000000"
-                                      children:
-                                        - name:
-                                            Named: "*value"
-                                          type_name:
-                                            Struct:
-                                              ident: TaskHeader
-                                              namespace:
-                                                - embassy_executor
-                                                - raw
-                                              args: []
-                                          value: TaskHeader @ <null pointer>
                             - name:
                                 Named: pender
                               type_name:
@@ -4730,17 +4653,6 @@ expression: stack_frames
                                                   - raw
                                                 args: []
                                   value: "*mut TaskHeader @ 0x00000000"
-                                  children:
-                                    - name:
-                                        Named: "*value"
-                                      type_name:
-                                        Struct:
-                                          ident: TaskHeader
-                                          namespace:
-                                            - embassy_executor
-                                            - raw
-                                          args: []
-                                      value: TaskHeader @ <null pointer>
                         - name:
                             Named: pender
                           type_name:
@@ -4878,17 +4790,6 @@ expression: stack_frames
                                                       - raw
                                                     args: []
                                       value: "*mut TaskHeader @ 0x00000000"
-                                      children:
-                                        - name:
-                                            Named: "*value"
-                                          type_name:
-                                            Struct:
-                                              ident: TaskHeader
-                                              namespace:
-                                                - embassy_executor
-                                                - raw
-                                              args: []
-                                          value: TaskHeader @ <null pointer>
                             - name:
                                 Named: pender
                               type_name:
@@ -5277,12 +5178,6 @@ expression: stack_frames
             line: 418
             column: ~
             address: ~
-          children:
-            - name:
-                Named: "*stack_chk_guard"
-              type_name:
-                Base: u32
-              value: Location Unknown not supported for referenced variables.
   canonical_frame_address: 1082582496
 - function_name: start_rust
   source_location:

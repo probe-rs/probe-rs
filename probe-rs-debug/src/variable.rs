@@ -133,6 +133,8 @@ pub enum VariableNodeType {
     /// Use the `header_offset` and `type_offset` to resolve what a pointer points at.
     /// - Rule: Following a pointer is the only step of the walk that can return to a type it has
     ///   already expanded, so it is the only step that is deferred.
+    /// - Rule: A pointer that holds no object, a null pointer, a dangling pointer, or a pointer to
+    ///   a zero sized type, is not deferred.
     PointerTarget(DebugInfoOffset, UnitOffset),
     /// Sometimes it doesn't make sense to recurse the children of a specific node type
     /// - Rule: Pointers to `unit` datatypes WILL NOT BE resolved, because it doesn't make sense.

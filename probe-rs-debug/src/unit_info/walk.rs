@@ -307,6 +307,15 @@ impl<'a> Walker<'a> {
         type_offset: UnitOffset,
         pointer: &Variable,
     ) -> Result<(), DebugError> {
+        if !unit.points_at_an_object(self.debug_info, pointer, self.memory, unit, type_offset) {
+            let pointer_key = pointer.variable_key;
+            if let Some(mut pointer) = self.cache.get_variable_by_key(pointer_key) {
+                pointer.variable_node_type = VariableNodeType::DoNotRecurse;
+                self.cache.update_variable(&pointer)?;
+            }
+            return Ok(());
+        }
+
         let pointer_key = pointer.variable_key;
         let mut target = self.cache.create_variable(pointer_key, Some(unit))?;
         target.name = target_name(&pointer.name);
@@ -1408,7 +1417,15 @@ impl<'a> Walker<'a> {
                 if !self.cache.has_children(child_variable) {
                     match self.debug_info.resolve_die_reference_with_unit(attr, unit) {
                         Ok((referenced_unit, referenced_node)) => {
-                            if referenced_node.tag() != gimli::DW_TAG_subroutine_type {
+                            if referenced_node.tag() != gimli::DW_TAG_subroutine_type
+                                && unit.points_at_an_object(
+                                    self.debug_info,
+                                    child_variable,
+                                    self.memory,
+                                    referenced_unit,
+                                    referenced_node.offset(),
+                                )
+                            {
                                 child_variable.variable_node_type = VariableNodeType::PointerTarget(
                                     referenced_unit.debug_info_offset()?,
                                     referenced_node.offset(),

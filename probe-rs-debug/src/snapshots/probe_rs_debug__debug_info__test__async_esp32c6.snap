@@ -1330,17 +1330,6 @@ expression: stack_frames
                                                       - raw
                                                     args: []
                                       value: "*mut TaskHeader @ 0x00000000"
-                                      children:
-                                        - name:
-                                            Named: "*__0"
-                                          type_name:
-                                            Struct:
-                                              ident: TaskHeader
-                                              namespace:
-                                                - embassy_executor
-                                                - raw
-                                              args: []
-                                          value: TaskHeader @ <null pointer>
                         - name:
                             Named: pender
                           type_name:
@@ -2558,17 +2547,6 @@ expression: stack_frames
                                                               - raw
                                                             args: []
                                               value: "*mut TaskHeader @ 0x00000000"
-                                              children:
-                                                - name:
-                                                    Named: "*__0"
-                                                  type_name:
-                                                    Struct:
-                                                      ident: TaskHeader
-                                                      namespace:
-                                                        - embassy_executor
-                                                        - raw
-                                                      args: []
-                                                  value: TaskHeader @ <null pointer>
                                 - name:
                                     Named: pender
                                   type_name:
@@ -3073,17 +3051,6 @@ expression: stack_frames
                                                                                   - raw
                                                                                 args: []
                                                                   value: "*mut TaskHeader @ 0x00000000"
-                                                                  children:
-                                                                    - name:
-                                                                        Named: "*__0"
-                                                                      type_name:
-                                                                        Struct:
-                                                                          ident: TaskHeader
-                                                                          namespace:
-                                                                            - embassy_executor
-                                                                            - raw
-                                                                          args: []
-                                                                      value: TaskHeader @ <null pointer>
                                                     - name:
                                                         Named: pender
                                                       type_name:
@@ -3425,17 +3392,6 @@ expression: stack_frames
                                                                       - raw
                                                                     args: []
                                                       value: "*mut TaskHeader @ 0x00000000"
-                                                      children:
-                                                        - name:
-                                                            Named: "*__0"
-                                                          type_name:
-                                                            Struct:
-                                                              ident: TaskHeader
-                                                              namespace:
-                                                                - embassy_executor
-                                                                - raw
-                                                              args: []
-                                                          value: TaskHeader @ <null pointer>
                                         - name:
                                             Named: pender
                                           type_name:
@@ -5925,17 +5881,6 @@ expression: stack_frames
                                                                   - raw
                                                                 args: []
                                                   value: "*mut TaskHeader @ 0x00000000"
-                                                  children:
-                                                    - name:
-                                                        Named: "*__0"
-                                                      type_name:
-                                                        Struct:
-                                                          ident: TaskHeader
-                                                          namespace:
-                                                            - embassy_executor
-                                                            - raw
-                                                          args: []
-                                                      value: TaskHeader @ <null pointer>
                                     - name:
                                         Named: pender
                                       type_name:
@@ -6328,12 +6273,6 @@ expression: stack_frames
                                                       - Type:
                                                           Base: u32
                                               value: "*raw MaybeUninit<u32> @ 0x40804A37"
-                                              children:
-                                                - name:
-                                                    Named: "*data_ptr"
-                                                  type_name:
-                                                    Base: MaybeUninit<u32>
-                                                  value: "<dangling pointer: 0x40804A37>"
                                             - name:
                                                 Named: length
                                               type_name:
@@ -6785,17 +6724,6 @@ expression: stack_frames
                                                   - raw
                                                 args: []
                                   value: "*mut TaskHeader @ 0x00000000"
-                                  children:
-                                    - name:
-                                        Named: "*__0"
-                                      type_name:
-                                        Struct:
-                                          ident: TaskHeader
-                                          namespace:
-                                            - embassy_executor
-                                            - raw
-                                          args: []
-                                      value: TaskHeader @ <null pointer>
                     - name:
                         Named: pender
                       type_name:
@@ -7506,12 +7434,6 @@ expression: stack_frames
                                                   - Type:
                                                       Base: u32
                                           value: "*raw MaybeUninit<u32> @ 0x40804A37"
-                                          children:
-                                            - name:
-                                                Named: "*data_ptr"
-                                              type_name:
-                                                Base: MaybeUninit<u32>
-                                              value: "<dangling pointer: 0x40804A37>"
                                         - name:
                                             Named: length
                                           type_name:
@@ -8307,17 +8229,6 @@ expression: stack_frames
                                                               - raw
                                                             args: []
                                               value: "*mut TaskHeader @ 0x00000000"
-                                              children:
-                                                - name:
-                                                    Named: "*__0"
-                                                  type_name:
-                                                    Struct:
-                                                      ident: TaskHeader
-                                                      namespace:
-                                                        - embassy_executor
-                                                        - raw
-                                                      args: []
-                                                  value: TaskHeader @ <null pointer>
                                 - name:
                                     Named: pender
                                   type_name:
@@ -8510,17 +8421,6 @@ expression: stack_frames
                                                                   - raw
                                                                 args: []
                                                   value: "*mut TaskHeader @ 0x00000000"
-                                                  children:
-                                                    - name:
-                                                        Named: "*__0"
-                                                      type_name:
-                                                        Struct:
-                                                          ident: TaskHeader
-                                                          namespace:
-                                                            - embassy_executor
-                                                            - raw
-                                                          args: []
-                                                      value: TaskHeader @ <null pointer>
                                     - name:
                                         Named: pender
                                       type_name:

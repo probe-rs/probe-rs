@@ -1362,6 +1362,56 @@ impl UnitInfo {
         child_variable.memory_location = location;
     }
 
+    /// Whether following `pointer` yields an object that the debugger can read.
+    ///
+    /// A zero sized type has no object. A null pointer or a dangling pointer does not point at an
+    /// object.
+    pub(crate) fn points_at_an_object(
+        &self,
+        debug_info: &DebugInfo,
+        pointer: &Variable,
+        memory: &mut dyn MemoryInterface,
+        pointee_unit: &UnitInfo,
+        pointee_offset: UnitOffset,
+    ) -> bool {
+        let (byte_size, alignment) = pointee_unit.type_layout(debug_info, pointee_offset);
+        match self.pointer_address(pointer, memory) {
+            Ok(address) => object_at(address, alignment, byte_size).is_some(),
+            Err(_) => false,
+        }
+    }
+
+    /// The `DW_AT_byte_size` and `DW_AT_alignment` of the type at `offset`, following type
+    /// modifiers that carry none of their own.
+    fn type_layout(
+        &self,
+        debug_info: &DebugInfo,
+        mut offset: UnitOffset,
+    ) -> (Option<u64>, Option<u64>) {
+        let mut unit = self;
+        for _ in 0..16 {
+            let Ok(entry) = unit.unit.entry(offset) else {
+                return (None, None);
+            };
+            let byte_size = extract_byte_size(&entry);
+            let alignment = extract_alignment(&entry);
+            if byte_size.is_some() || !is_type_modifier(entry.tag()) {
+                return (byte_size, alignment);
+            }
+            let Some(attr) = entry.attr(gimli::DW_AT_type) else {
+                return (byte_size, alignment);
+            };
+            match debug_info.resolve_die_reference_with_unit(attr, unit) {
+                Ok((next_unit, next_entry)) => {
+                    unit = next_unit;
+                    offset = next_entry.offset();
+                }
+                Err(_) => return (byte_size, alignment),
+            }
+        }
+        (None, None)
+    }
+
     /// The address that a pointer holds.
     fn pointer_address(
         &self,
@@ -2148,6 +2198,17 @@ fn provide_cfa(
     }
 }
 
+fn is_type_modifier(tag: gimli::DwTag) -> bool {
+    matches!(
+        tag,
+        gimli::DW_TAG_typedef
+            | gimli::DW_TAG_const_type
+            | gimli::DW_TAG_volatile_type
+            | gimli::DW_TAG_restrict_type
+            | gimli::DW_TAG_atomic_type
+    )
+}
+
 /// The largest alignment that a type on a target has, in bytes.
 const MAX_ALIGNMENT: u64 = 16;
 
@@ -2156,9 +2217,10 @@ const MAX_ALIGNMENT: u64 = 16;
 ///
 /// A pointer of an empty collection holds the alignment of the type, not the address of an
 /// object. `core::ptr::NonNull::dangling` creates such a pointer. `alignment` is the alignment
-/// of the type, and `byte_size` its size, as far as the debug info gives them.
+/// of the type, and `byte_size` its size, as far as the debug info gives them. A zero sized type
+/// has no object.
 fn object_at(address: u64, alignment: Option<u64>, byte_size: Option<u64>) -> Option<u64> {
-    if address == 0 {
+    if address == 0 || byte_size == Some(0) {
         return None;
     }
 
@@ -2316,6 +2378,12 @@ mod test {
     fn a_null_pointer_points_at_no_object() {
         assert_eq!(object_at(0, Some(4), Some(32)), None);
         assert_eq!(object_at(0, None, None), None);
+    }
+
+    #[test]
+    fn a_pointer_to_a_zero_sized_type_points_at_no_object() {
+        assert_eq!(object_at(0x2000_0000, Some(1), Some(0)), None);
+        assert_eq!(object_at(1, Some(1), Some(0)), None);
     }
 
     #[test]
