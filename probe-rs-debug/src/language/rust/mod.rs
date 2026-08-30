@@ -1031,7 +1031,7 @@ impl RustPath {
     }
 
     fn from_named(named: &crate::NamedType) -> Option<Self> {
-        let mut namespaces = named.namespace.clone();
+        let mut namespaces = named.namespace.to_vec();
         if namespaces.is_empty() {
             return None;
         }

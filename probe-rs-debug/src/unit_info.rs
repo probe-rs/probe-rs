@@ -2787,9 +2787,9 @@ impl UnitInfo {
         match node.tag() {
             gimli::DW_TAG_structure_type => VariableType::Struct(named),
             gimli::DW_TAG_enumeration_type => VariableType::Enum(named),
-            gimli::DW_TAG_base_type => VariableType::Base(named.ident),
-            gimli::DW_TAG_pointer_type => self.pointer_from_name(Some(named.ident)),
-            _ => VariableType::Other(named.ident),
+            gimli::DW_TAG_base_type => VariableType::Base(named.ident.to_string()),
+            gimli::DW_TAG_pointer_type => self.pointer_from_name(Some(named.ident.to_string())),
+            _ => VariableType::Other(named.ident.to_string()),
         }
     }
 

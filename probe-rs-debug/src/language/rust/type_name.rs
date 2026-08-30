@@ -138,9 +138,9 @@ impl<'a> Parser<'a> {
             }
         } else {
             Some(VariableType::Struct(NamedType {
-                ident: String::new(),
-                namespace: Vec::new(),
-                args,
+                ident: String::new().into_boxed_str(),
+                namespace: Box::new([]),
+                args: args.into_boxed_slice(),
             }))
         }
     }
@@ -180,9 +180,9 @@ impl<'a> Parser<'a> {
             }
         }
         Some(VariableType::Struct(NamedType {
-            ident: "dyn".to_string(),
-            namespace: Vec::new(),
-            args,
+            ident: "dyn".to_string().into_boxed_str(),
+            namespace: Box::new([]),
+            args: args.into_boxed_slice(),
         }))
     }
 
@@ -226,9 +226,9 @@ impl<'a> Parser<'a> {
             args.push(GenericArg::Type(self.parse_type()?));
         }
         Some(VariableType::Struct(NamedType {
-            ident,
-            namespace: Vec::new(),
-            args,
+            ident: ident.into_boxed_str(),
+            namespace: Box::new([]),
+            args: args.into_boxed_slice(),
         }))
     }
 
@@ -281,9 +281,9 @@ impl<'a> Parser<'a> {
         }
 
         Some(VariableType::Struct(NamedType {
-            ident,
-            namespace: segments,
-            args,
+            ident: ident.into_boxed_str(),
+            namespace: segments.into_boxed_slice(),
+            args: args.into_boxed_slice(),
         }))
     }
 
@@ -401,9 +401,9 @@ impl AsPrefix for char {
 
 fn prefix_type(ident: &str, inner: VariableType) -> VariableType {
     VariableType::Struct(NamedType {
-        ident: ident.to_string(),
-        namespace: Vec::new(),
-        args: vec![GenericArg::Type(inner)],
+        ident: ident.to_string().into_boxed_str(),
+        namespace: Box::new([]),
+        args: Box::new([GenericArg::Type(inner)]),
     })
 }
 
@@ -723,8 +723,8 @@ pub(crate) fn synthesise_async_name(segments: &[impl AsRef<str>]) -> Option<Stri
 fn synthesise_async_type(ty: &VariableType) -> Option<String> {
     match ty {
         VariableType::Struct(named) | VariableType::Enum(named) => {
-            let mut segments = named.namespace.clone();
-            segments.push(named.ident.clone());
+            let mut segments = named.namespace.to_vec();
+            segments.push(named.ident.to_string());
             synthesise_async_name(&segments)
         }
         VariableType::Pointer(Some(inner)) => synthesise_async_type(inner),
@@ -760,8 +760,8 @@ pub(crate) fn synthesise_closure_name(segments: &[impl AsRef<str>]) -> Option<St
 fn synthesise_closure_type(ty: &VariableType) -> Option<String> {
     match ty {
         VariableType::Struct(named) | VariableType::Enum(named) => {
-            let mut segments = named.namespace.clone();
-            segments.push(named.ident.clone());
+            let mut segments = named.namespace.to_vec();
+            segments.push(named.ident.to_string());
             synthesise_closure_name(&segments)
         }
         VariableType::Pointer(Some(inner)) => synthesise_closure_type(inner),
