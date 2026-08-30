@@ -253,7 +253,7 @@ impl UnitInfo {
         child_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         // Identify the parent.
         child_variable.parent_key = parent_variable.variable_key;
@@ -524,7 +524,7 @@ impl UnitInfo {
         tree_node: &gimli::DebuggingInformationEntry<GimliReader>,
         attributes_entry: Option<&gimli::DebuggingInformationEntry<GimliReader>>,
         child_variable: &mut Variable,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         let die = if tree_node.attr(gimli::DW_AT_start_scope).is_some() {
             tree_node
@@ -549,7 +549,7 @@ impl UnitInfo {
         &self,
         debug_info: &DebugInfo,
         die: &gimli::DebuggingInformationEntry<GimliReader>,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
     ) -> Result<bool, DebugError> {
         let Some(attr) = die.attr(gimli::DW_AT_start_scope) else {
             return Ok(true);
@@ -605,7 +605,7 @@ impl UnitInfo {
         parent_variable: &Variable,
         child_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
         cache: &mut VariableCache,
     ) -> Result<(), DebugError> {
         // Reference to a type, or an entry to another type or a type modifier which will point to another type.
@@ -651,7 +651,7 @@ impl UnitInfo {
         parent_key: crate::ObjectRef,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         enum Job {
             /// The compilation unit or a namespace whose children should be walked.
@@ -766,7 +766,7 @@ impl UnitInfo {
         parent_key: crate::ObjectRef,
         die_offset: UnitOffset,
         memory: &mut dyn MemoryInterface,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         let Some(mut parent_variable) = cache.get_variable_by_key(parent_key) else {
             return Err(DebugError::Other(
@@ -824,7 +824,7 @@ impl UnitInfo {
         parent_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         if !parent_variable.is_valid() {
             cache.update_variable(parent_variable)?;
@@ -958,7 +958,7 @@ impl UnitInfo {
         parent_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
         child_node: gimli::EntriesTreeNode<GimliReader>,
     ) -> Result<(), DebugError> {
         let mut child_variable = cache.create_variable(parent_variable.variable_key, Some(self))?;
@@ -1004,7 +1004,7 @@ impl UnitInfo {
         parent_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
         child_node: gimli::EntriesTreeNode<GimliReader>,
     ) -> Result<(), DebugError> {
         let mut child_variable = cache.create_variable(parent_variable.variable_key, Some(self))?;
@@ -1036,7 +1036,7 @@ impl UnitInfo {
         parent_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
         default_variant: &mut Option<UnitOffset>,
         child_node: gimli::EntriesTreeNode<GimliReader>,
     ) -> Result<(), DebugError> {
@@ -1074,7 +1074,7 @@ impl UnitInfo {
         parent_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
         child_node: gimli::EntriesTreeNode<GimliReader>,
     ) -> Result<(), DebugError> {
         let Some(program_counter) = frame_info
@@ -1116,7 +1116,7 @@ impl UnitInfo {
         parent_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
         child_node: gimli::EntriesTreeNode<GimliReader>,
     ) -> Result<(), DebugError> {
         let variable_name =
@@ -1163,7 +1163,7 @@ impl UnitInfo {
         child_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         self.process_tree_node_attributes(
             debug_info,
@@ -1352,7 +1352,7 @@ impl UnitInfo {
         child_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         let type_name = match self.extract_type_name(debug_info, node) {
             Ok(name) => name,
@@ -1645,7 +1645,7 @@ impl UnitInfo {
         child_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         let type_name = type_name.unwrap_or_else(|| "<unnamed struct>".to_string());
         let mut visiting = HashSet::new();
@@ -1717,7 +1717,7 @@ impl UnitInfo {
         variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         self.language
             .process_struct(self, debug_info, node, variable, memory, cache, frame_info)
@@ -1731,7 +1731,7 @@ impl UnitInfo {
         parent_variable: &Variable,
         child_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
-        frame_info: StackFrameInfo,
+        frame_info: &StackFrameInfo,
         cache: &mut VariableCache,
     ) -> Result<(), DebugError> {
         let subranges = match self.extract_array_range(node.offset()) {
@@ -1799,7 +1799,7 @@ impl UnitInfo {
         node: &DebuggingInformationEntry<GimliReader>,
         parent_variable: &Variable,
         memory: &mut dyn MemoryInterface,
-        frame_info: StackFrameInfo,
+        frame_info: &StackFrameInfo,
     ) -> Result<(), DebugError> {
         let mut visiting = HashSet::new();
         if let Some(offset) = node.offset().to_debug_info_offset(&self.unit.header) {
@@ -1948,7 +1948,7 @@ impl UnitInfo {
         array_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         subranges: &[Range<u64>],
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         let Some((current_range, remaining_ranges)) = subranges.split_first() else {
             array_variable.set_value(VariableValue::Error(
@@ -2044,7 +2044,7 @@ impl UnitInfo {
         parent_variable: &Variable,
         child_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         // The `byte_size` is used for arrays, etc. to offset the memory location of the next element.
         // For nested arrays, the `byte_size` may need to be calculated as the product of the `byte_size` and array upper bound.
@@ -2126,7 +2126,7 @@ impl UnitInfo {
         parent_location: &VariableLocation,
         byte_size: Option<u64>,
         memory: &mut dyn MemoryInterface,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
     ) -> Result<ExpressionResult, DebugError> {
         trait ResultExt {
             /// Turns UnwindIncompleteResults into Unavailable locations
@@ -2224,7 +2224,7 @@ impl UnitInfo {
         &self,
         debug_info: &DebugInfo,
         location_list_offset: gimli::LocationListsOffset,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
         memory: &mut dyn MemoryInterface,
     ) -> Result<ExpressionResult, DebugError> {
         let mut locations = match debug_info.dwarf.locations(&self.unit, location_list_offset) {
@@ -2281,7 +2281,7 @@ impl UnitInfo {
         debug_info: &DebugInfo,
         memory: &mut dyn MemoryInterface,
         expression: gimli::Expression<GimliReader>,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
     ) -> Result<ExpressionResult, DebugError> {
         fn evaluate_address(address: u64, memory: &mut dyn MemoryInterface) -> ExpressionResult {
             let location = if address >= u32::MAX as u64 && !memory.supports_native_64bit_access() {
@@ -2347,7 +2347,7 @@ impl UnitInfo {
     fn assemble_pieces(
         &self,
         pieces: &[gimli::Piece<GimliReader, usize>],
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
     ) -> Result<ExpressionResult, DebugError> {
         let mut location_pieces = Vec::with_capacity(pieces.len());
 
@@ -2400,7 +2400,7 @@ impl UnitInfo {
         debug_info: &DebugInfo,
         memory: &mut dyn MemoryInterface,
         expression: gimli::Expression<GimliReader>,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
         entry_value_depth: u8,
     ) -> Result<Vec<gimli::Piece<GimliReader, usize>>, DebugError> {
         let mut evaluation = expression.evaluation(self.unit.encoding());
@@ -2450,7 +2450,7 @@ impl UnitInfo {
         debug_info: &DebugInfo,
         memory: &mut dyn MemoryInterface,
         inner: gimli::Expression<GimliReader>,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
         entry_value_depth: u8,
     ) -> Result<gimli::Value, DebugError> {
         if entry_value_depth >= 4 {
@@ -2474,11 +2474,11 @@ impl UnitInfo {
                 debug_info,
                 memory,
                 expression,
-                *caller,
+                caller,
                 entry_value_depth + 1,
             )
         } else {
-            self.expression_to_value(debug_info, memory, inner, *caller, entry_value_depth + 1)
+            self.expression_to_value(debug_info, memory, inner, caller, entry_value_depth + 1)
         }
     }
 
@@ -2487,7 +2487,7 @@ impl UnitInfo {
         debug_info: &DebugInfo,
         memory: &mut dyn MemoryInterface,
         expression: gimli::Expression<GimliReader>,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
         entry_value_depth: u8,
     ) -> Result<gimli::Value, DebugError> {
         let mut evaluation = expression.evaluation(self.unit.encoding());
@@ -3282,7 +3282,7 @@ fn expression_bytes(expression: &gimli::Expression<GimliReader>) -> Option<Vec<u
 
 fn pieces_to_value(
     pieces: &[gimli::Piece<GimliReader, usize>],
-    frame_info: StackFrameInfo<'_>,
+    frame_info: &StackFrameInfo<'_>,
 ) -> Result<gimli::Value, DebugError> {
     let [piece] = pieces else {
         return Err(DebugError::WarnAndContinue {

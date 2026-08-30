@@ -421,7 +421,7 @@ impl VariableCache {
         debug_info: &DebugInfo,
         memory: &mut dyn MemoryInterface,
         max_recursion_depth: usize,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
     ) {
         let mut parent_variable = self.root_variable().clone();
 
@@ -442,7 +442,7 @@ impl VariableCache {
         parent_variable: &mut Variable,
         max_recursion_depth: usize,
         current_recursion_depth: usize,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
     ) {
         if current_recursion_depth >= max_recursion_depth {
             return;

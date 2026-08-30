@@ -271,7 +271,7 @@ pub async fn variables(
         && !variable_cache.has_children(parent)
         && let Some(frame_info) = frame_info
     {
-        lift(debug_info.cache_deferred_variables(variable_cache, &mut core, parent, frame_info))?;
+        lift(debug_info.cache_deferred_variables(variable_cache, &mut core, parent, &frame_info))?;
     }
 
     Ok(variable_cache
@@ -415,7 +415,7 @@ fn resolve_expression(
     core: &mut probe_rs::Core,
     cache: &mut VariableCache,
     expression: &str,
-    frame_info: StackFrameInfo<'_>,
+    frame_info: &StackFrameInfo<'_>,
 ) -> Option<WireEvaluateResponse> {
     if cache.len() == 1 {
         let mut root = cache.root_variable().clone();
@@ -540,7 +540,7 @@ pub async fn evaluate(
             &mut core,
             cache,
             &request.expression,
-            StackFrameInfo {
+            &StackFrameInfo {
                 registers: &frame_regs,
                 frame_base,
                 canonical_frame_address: cfa,
@@ -563,7 +563,7 @@ pub async fn evaluate(
                 &mut core,
                 cache,
                 &request.expression,
-                StackFrameInfo {
+                &StackFrameInfo {
                     registers: &top_regs,
                     frame_base: top_base,
                     canonical_frame_address: top_cfa,

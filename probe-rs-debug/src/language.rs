@@ -135,7 +135,7 @@ pub trait ProgrammingLanguage {
         _variable: &mut Variable,
         _memory: &mut dyn MemoryInterface,
         _cache: &mut VariableCache,
-        _frame_info: StackFrameInfo<'_>,
+        _frame_info: &StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         Ok(())
     }

@@ -292,7 +292,7 @@ impl DebugInfo {
         cache: &mut VariableCache,
         memory: &mut dyn MemoryInterface,
         parent_variable: &mut Variable,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         if !parent_variable.is_valid() {
             // Do nothing. The parent_variable.get_value() will already report back the debug_error value.
@@ -453,7 +453,7 @@ impl DebugInfo {
         let frame_base = functions[0].frame_base(
             self,
             memory,
-            StackFrameInfo {
+            &StackFrameInfo {
                 registers: unwind_registers,
                 frame_base: None,
                 canonical_frame_address: cfa,
@@ -2088,7 +2088,7 @@ mod test {
                     &debug_info,
                     &mut adapter,
                     10,
-                    StackFrameInfo {
+                    &StackFrameInfo {
                         registers: &frame.registers,
                         frame_base: frame.frame_base,
                         canonical_frame_address: frame.canonical_frame_address,
