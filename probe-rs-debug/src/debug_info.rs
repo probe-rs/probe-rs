@@ -2036,6 +2036,9 @@ mod test {
         insta::assert_snapshot!(printed_backtrace);
     }
 
+    /// A pointer graph can be cyclic, so the walk stops at a fixed depth.
+    const MAX_VARIABLE_DEPTH: usize = 14;
+
     #[test_case("RP2040_full_unwind"; "full_unwind Armv6-m using RP2040")]
     #[test_case("RP2040_svcall"; "svcall Armv6-m using RP2040")]
     #[test_case("RP2040_systick"; "systick Armv6-m using RP2040")]
@@ -2103,7 +2106,7 @@ mod test {
                 variable_cache.recurse_deferred_variables(
                     &debug_info,
                     &mut adapter,
-                    10,
+                    MAX_VARIABLE_DEPTH,
                     &StackFrameInfo {
                         registers: &frame.registers,
                         frame_base: frame.frame_base,
@@ -2141,7 +2144,7 @@ mod test {
         static_variables.recurse_deferred_variables(
             &debug_info,
             &mut adapter,
-            10,
+            MAX_VARIABLE_DEPTH,
             &StackFrameInfo {
                 registers: &initial_registers,
                 frame_base: None,

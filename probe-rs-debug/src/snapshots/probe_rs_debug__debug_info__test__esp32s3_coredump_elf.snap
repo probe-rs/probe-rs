@@ -465,6 +465,18 @@ expression: stack_frames
                                                     - Type:
                                                         Base: ()
                                               value: NonNull<()> @ 0x3FCDC55C
+                                              children:
+                                                - name:
+                                                    Named: pointer
+                                                  type_name:
+                                                    Pointer:
+                                                      Struct:
+                                                        ident: "*const"
+                                                        namespace: []
+                                                        args:
+                                                          - Type:
+                                                              Base: ()
+                                                  value: "*const () @ 0x3FCDC540"
                                             - name:
                                                 Named: formatter
                                               type_name:
@@ -3187,6 +3199,34 @@ expression: stack_frames
                                                             - raw
                                                           args: []
                                               value: NonNull<TaskHeader> @ 0x3FC89F14
+                                              children:
+                                                - name:
+                                                    Named: pointer
+                                                  type_name:
+                                                    Pointer:
+                                                      Struct:
+                                                        ident: "*const"
+                                                        namespace: []
+                                                        args:
+                                                          - Type:
+                                                              Struct:
+                                                                ident: TaskHeader
+                                                                namespace:
+                                                                  - embassy_executor
+                                                                  - raw
+                                                                args: []
+                                                  value: "*const TaskHeader"
+                                                  children:
+                                                    - name:
+                                                        Named: "*pointer"
+                                                      type_name:
+                                                        Struct:
+                                                          ident: TaskHeader
+                                                          namespace:
+                                                            - embassy_executor
+                                                            - raw
+                                                          args: []
+                                                      value: "TaskHeader @ Failed to read referenced variable address from memory location 0x3FC89F14 : The coredump does not include the memory for address 0x3fc89f14 of size 0x4."
                         - name:
                             Named: executor
                           type_name:
@@ -3429,6 +3469,34 @@ expression: stack_frames
                                                             - raw
                                                           args: []
                                               value: NonNull<TaskHeader> @ 0x3FC89F08
+                                              children:
+                                                - name:
+                                                    Named: pointer
+                                                  type_name:
+                                                    Pointer:
+                                                      Struct:
+                                                        ident: "*const"
+                                                        namespace: []
+                                                        args:
+                                                          - Type:
+                                                              Struct:
+                                                                ident: TaskHeader
+                                                                namespace:
+                                                                  - embassy_executor
+                                                                  - raw
+                                                                args: []
+                                                  value: "*const TaskHeader"
+                                                  children:
+                                                    - name:
+                                                        Named: "*pointer"
+                                                      type_name:
+                                                        Struct:
+                                                          ident: TaskHeader
+                                                          namespace:
+                                                            - embassy_executor
+                                                            - raw
+                                                          args: []
+                                                      value: "TaskHeader @ Failed to read referenced variable address from memory location 0x3FC89F08 : The coredump does not include the memory for address 0x3fc89f08 of size 0x4."
                             - name:
                                 Named: expires_at
                               type_name:
@@ -3695,6 +3763,17 @@ expression: stack_frames
                                                               - raw
                                                             args: []
                                               value: "*const TaskHeader"
+                                              children:
+                                                - name:
+                                                    Named: "*pointer"
+                                                  type_name:
+                                                    Struct:
+                                                      ident: TaskHeader
+                                                      namespace:
+                                                        - embassy_executor
+                                                        - raw
+                                                      args: []
+                                                  value: "TaskHeader @ Failed to read referenced variable address from memory location 0x3FC89F14 : The coredump does not include the memory for address 0x3fc89f14 of size 0x4."
                     - name:
                         Named: executor
                       type_name:
@@ -3954,6 +4033,17 @@ expression: stack_frames
                                                               - raw
                                                             args: []
                                               value: "*const TaskHeader"
+                                              children:
+                                                - name:
+                                                    Named: "*pointer"
+                                                  type_name:
+                                                    Struct:
+                                                      ident: TaskHeader
+                                                      namespace:
+                                                        - embassy_executor
+                                                        - raw
+                                                      args: []
+                                                  value: "TaskHeader @ Failed to read referenced variable address from memory location 0x3FC89F08 : The coredump does not include the memory for address 0x3fc89f08 of size 0x4."
                         - name:
                             Named: expires_at
                           type_name:

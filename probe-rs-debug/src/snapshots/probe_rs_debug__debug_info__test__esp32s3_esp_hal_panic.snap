@@ -5423,6 +5423,98 @@ expression: stack_frames
                                                     - raw
                                                   args: []
                                               value: Executor @ 0x3FCDC6B0
+                                              children:
+                                                - name:
+                                                    Named: inner
+                                                  type_name:
+                                                    Struct:
+                                                      ident: SyncExecutor
+                                                      namespace:
+                                                        - embassy_executor
+                                                        - raw
+                                                      args: []
+                                                  value: SyncExecutor @ 0x3FCDC6B0
+                                                  children:
+                                                    - name:
+                                                        Named: run_queue
+                                                      type_name:
+                                                        Struct:
+                                                          ident: RunQueue
+                                                          namespace:
+                                                            - embassy_executor
+                                                            - raw
+                                                            - run_queue
+                                                          args: []
+                                                      value: RunQueue @ 0x3FCDC6B0
+                                                      children:
+                                                        - name:
+                                                            Named: head
+                                                          type_name:
+                                                            Struct:
+                                                              ident: AtomicPtr
+                                                              namespace:
+                                                                - core
+                                                                - sync
+                                                                - atomic
+                                                              args:
+                                                                - Type:
+                                                                    Struct:
+                                                                      ident: TaskHeader
+                                                                      namespace:
+                                                                        - embassy_executor
+                                                                        - raw
+                                                                      args: []
+                                                          value: AtomicPtr<TaskHeader> @ 0x3FCDC6B0
+                                                          children:
+                                                            - name:
+                                                                Named: value
+                                                              type_name:
+                                                                Pointer:
+                                                                  Struct:
+                                                                    ident: "*mut"
+                                                                    namespace: []
+                                                                    args:
+                                                                      - Type:
+                                                                          Struct:
+                                                                            ident: TaskHeader
+                                                                            namespace:
+                                                                              - embassy_executor
+                                                                              - raw
+                                                                            args: []
+                                                              value: "*mut TaskHeader @ 0x00000000"
+                                                              children:
+                                                                - name:
+                                                                    Named: "*value"
+                                                                  type_name:
+                                                                    Struct:
+                                                                      ident: TaskHeader
+                                                                      namespace:
+                                                                        - embassy_executor
+                                                                        - raw
+                                                                      args: []
+                                                                  value: TaskHeader @ <null pointer>
+                                                    - name:
+                                                        Named: pender
+                                                      type_name:
+                                                        Struct:
+                                                          ident: Pender
+                                                          namespace:
+                                                            - embassy_executor
+                                                            - raw
+                                                          args: []
+                                                      value: Pender @ 0x3FCDC6B4
+                                                      children:
+                                                        - name:
+                                                            Named: __0
+                                                          type_name:
+                                                            Pointer:
+                                                              Struct:
+                                                                ident: "*mut"
+                                                                namespace: []
+                                                                args:
+                                                                  - Type:
+                                                                      Base: ()
+                                                          value: "*mut () @ 0x00000010"
         - name:
             Named: future
           type_name:
@@ -5576,6 +5668,34 @@ expression: stack_frames
                                                             - raw
                                                           args: []
                                               value: AtomicPtr<TaskHeader> @ 0x3FCDC6B0
+                                              children:
+                                                - name:
+                                                    Named: value
+                                                  type_name:
+                                                    Pointer:
+                                                      Struct:
+                                                        ident: "*mut"
+                                                        namespace: []
+                                                        args:
+                                                          - Type:
+                                                              Struct:
+                                                                ident: TaskHeader
+                                                                namespace:
+                                                                  - embassy_executor
+                                                                  - raw
+                                                                args: []
+                                                  value: "*mut TaskHeader @ 0x00000000"
+                                                  children:
+                                                    - name:
+                                                        Named: "*value"
+                                                      type_name:
+                                                        Struct:
+                                                          ident: TaskHeader
+                                                          namespace:
+                                                            - embassy_executor
+                                                            - raw
+                                                          args: []
+                                                      value: TaskHeader @ <null pointer>
                                         - name:
                                             Named: pender
                                           type_name:
@@ -6507,6 +6627,34 @@ expression: stack_frames
                                                             - raw
                                                           args: []
                                               value: NonNull<TaskHeader> @ 0x3FCDC3C4
+                                              children:
+                                                - name:
+                                                    Named: pointer
+                                                  type_name:
+                                                    Pointer:
+                                                      Struct:
+                                                        ident: "*const"
+                                                        namespace: []
+                                                        args:
+                                                          - Type:
+                                                              Struct:
+                                                                ident: TaskHeader
+                                                                namespace:
+                                                                  - embassy_executor
+                                                                  - raw
+                                                                args: []
+                                                  value: "*const TaskHeader @ 0x00000001"
+                                                  children:
+                                                    - name:
+                                                        Named: "*pointer"
+                                                      type_name:
+                                                        Struct:
+                                                          ident: TaskHeader
+                                                          namespace:
+                                                            - embassy_executor
+                                                            - raw
+                                                          args: []
+                                                      value: "TaskHeader @ <dangling pointer: 0x00000001>"
                         - name:
                             Named: executor
                           type_name:
@@ -6830,6 +6978,34 @@ expression: stack_frames
                                                             - raw
                                                           args: []
                                               value: NonNull<TaskHeader> @ 0x3FCDC3B8
+                                              children:
+                                                - name:
+                                                    Named: pointer
+                                                  type_name:
+                                                    Pointer:
+                                                      Struct:
+                                                        ident: "*const"
+                                                        namespace: []
+                                                        args:
+                                                          - Type:
+                                                              Struct:
+                                                                ident: TaskHeader
+                                                                namespace:
+                                                                  - embassy_executor
+                                                                  - raw
+                                                                args: []
+                                                  value: "*const TaskHeader @ 0x00000004"
+                                                  children:
+                                                    - name:
+                                                        Named: "*pointer"
+                                                      type_name:
+                                                        Struct:
+                                                          ident: TaskHeader
+                                                          namespace:
+                                                            - embassy_executor
+                                                            - raw
+                                                          args: []
+                                                      value: "TaskHeader @ <dangling pointer: 0x00000004>"
                             - name:
                                 Named: expires_at
                               type_name:
@@ -8013,6 +8189,34 @@ expression: stack_frames
                                                             - raw
                                                           args: []
                                               value: NonNull<TaskHeader> @ 0x3FCDC3C4
+                                              children:
+                                                - name:
+                                                    Named: pointer
+                                                  type_name:
+                                                    Pointer:
+                                                      Struct:
+                                                        ident: "*const"
+                                                        namespace: []
+                                                        args:
+                                                          - Type:
+                                                              Struct:
+                                                                ident: TaskHeader
+                                                                namespace:
+                                                                  - embassy_executor
+                                                                  - raw
+                                                                args: []
+                                                  value: "*const TaskHeader @ 0x00000001"
+                                                  children:
+                                                    - name:
+                                                        Named: "*pointer"
+                                                      type_name:
+                                                        Struct:
+                                                          ident: TaskHeader
+                                                          namespace:
+                                                            - embassy_executor
+                                                            - raw
+                                                          args: []
+                                                      value: "TaskHeader @ <dangling pointer: 0x00000001>"
                         - name:
                             Named: executor
                           type_name:
@@ -8336,6 +8540,34 @@ expression: stack_frames
                                                             - raw
                                                           args: []
                                               value: NonNull<TaskHeader> @ 0x3FCDC3B8
+                                              children:
+                                                - name:
+                                                    Named: pointer
+                                                  type_name:
+                                                    Pointer:
+                                                      Struct:
+                                                        ident: "*const"
+                                                        namespace: []
+                                                        args:
+                                                          - Type:
+                                                              Struct:
+                                                                ident: TaskHeader
+                                                                namespace:
+                                                                  - embassy_executor
+                                                                  - raw
+                                                                args: []
+                                                  value: "*const TaskHeader @ 0x00000004"
+                                                  children:
+                                                    - name:
+                                                        Named: "*pointer"
+                                                      type_name:
+                                                        Struct:
+                                                          ident: TaskHeader
+                                                          namespace:
+                                                            - embassy_executor
+                                                            - raw
+                                                          args: []
+                                                      value: "TaskHeader @ <dangling pointer: 0x00000004>"
                             - name:
                                 Named: expires_at
                               type_name:

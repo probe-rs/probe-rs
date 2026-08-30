@@ -5102,6 +5102,125 @@ Child Variables:
                                                 - rtt_target
                                               args: []
                                           value: UpChannel @ 0x200008CC
+                                          children:
+                                            - name:
+                                                Named: __0
+                                              type_name:
+                                                Pointer:
+                                                  Struct:
+                                                    ident: "*mut"
+                                                    namespace: []
+                                                    args:
+                                                      - Type:
+                                                          Struct:
+                                                            ident: RttChannel
+                                                            namespace:
+                                                              - rtt_target
+                                                              - rtt
+                                                            args: []
+                                              value: "*mut RttChannel @ 0x20000094"
+                                              children:
+                                                - name:
+                                                    Named: "*__0"
+                                                  type_name:
+                                                    Struct:
+                                                      ident: RttChannel
+                                                      namespace:
+                                                        - rtt_target
+                                                        - rtt
+                                                      args: []
+                                                  value: RttChannel @ 0x20000094
+                                                  children:
+                                                    - name:
+                                                        Named: name
+                                                      type_name:
+                                                        Pointer:
+                                                          Struct:
+                                                            ident: "*const"
+                                                            namespace: []
+                                                            args:
+                                                              - Type:
+                                                                  Base: u8
+                                                      value: "*const u8 @ 0x1000C4A0"
+                                                      children:
+                                                        - name:
+                                                            Named: "*name"
+                                                          type_name:
+                                                            Base: u8
+                                                          value: "83"
+                                                    - name:
+                                                        Named: buffer
+                                                      type_name:
+                                                        Pointer:
+                                                          Struct:
+                                                            ident: "*mut"
+                                                            namespace: []
+                                                            args:
+                                                              - Type:
+                                                                  Base: u8
+                                                      value: "*mut u8 @ 0x200000C4"
+                                                      children:
+                                                        - name:
+                                                            Named: "*buffer"
+                                                          type_name:
+                                                            Base: u8
+                                                          value: "70"
+                                                    - name:
+                                                        Named: size
+                                                      type_name:
+                                                        Base: usize
+                                                      value: "1024"
+                                                    - name:
+                                                        Named: write
+                                                      type_name:
+                                                        Struct:
+                                                          ident: AtomicUsize
+                                                          namespace:
+                                                            - core
+                                                            - sync
+                                                            - atomic
+                                                          args: []
+                                                      value: "363"
+                                                      children:
+                                                        - name:
+                                                            Named: value
+                                                          type_name:
+                                                            Base: usize
+                                                          value: "363"
+                                                    - name:
+                                                        Named: read
+                                                      type_name:
+                                                        Struct:
+                                                          ident: AtomicUsize
+                                                          namespace:
+                                                            - core
+                                                            - sync
+                                                            - atomic
+                                                          args: []
+                                                      value: "363"
+                                                      children:
+                                                        - name:
+                                                            Named: value
+                                                          type_name:
+                                                            Base: usize
+                                                          value: "363"
+                                                    - name:
+                                                        Named: flags
+                                                      type_name:
+                                                        Struct:
+                                                          ident: AtomicUsize
+                                                          namespace:
+                                                            - core
+                                                            - sync
+                                                            - atomic
+                                                          args: []
+                                                      value: "1"
+                                                      children:
+                                                        - name:
+                                                            Named: value
+                                                          type_name:
+                                                            Base: usize
+                                                          value: "1"
                                         - name:
                                             Named: current
                                           type_name:
