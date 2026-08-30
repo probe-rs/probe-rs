@@ -4136,63 +4136,37 @@ expression: stack_frames
                 Array:
                   item_type_name:
                     Struct:
-                      ident: ManuallyDrop
+                      ident: NotZst
                       namespace:
-                        - core
-                        - mem
-                        - manually_drop
-                      args:
-                        - Type:
-                            Struct:
-                              ident: NotZst
-                              namespace:
-                                - s3_debug
-                              args: []
+                        - s3_debug
+                      args: []
                   count: 1
-              value: "[ManuallyDrop<NotZst>; 1] = [ManuallyDrop<NotZst>(NotZst @ 0x3FC8C570)]"
+              value: "[NotZst; 1] = [NotZst { zst = ZST, number = 41 }]"
               children:
                 - name:
                     Indexed: 0
                   type_name:
                     Struct:
-                      ident: ManuallyDrop
+                      ident: NotZst
                       namespace:
-                        - core
-                        - mem
-                        - manually_drop
-                      args:
-                        - Type:
-                            Struct:
-                              ident: NotZst
-                              namespace:
-                                - s3_debug
-                              args: []
-                  value: ManuallyDrop<NotZst>(NotZst @ 0x3FC8C570)
+                        - s3_debug
+                      args: []
+                  value: "NotZst { zst = ZST, number = 41 }"
                   children:
                     - name:
-                        Named: __0
+                        Named: zst
                       type_name:
                         Struct:
-                          ident: NotZst
+                          ident: ZST
                           namespace:
                             - s3_debug
                           args: []
-                      value: NotZst @ 0x3FC8C570
-                      children:
-                        - name:
-                            Named: zst
-                          type_name:
-                            Struct:
-                              ident: ZST
-                              namespace:
-                                - s3_debug
-                              args: []
-                          value: ZST
-                        - name:
-                            Named: number
-                          type_name:
-                            Base: u32
-                          value: "41"
+                      value: ZST
+                    - name:
+                        Named: number
+                      type_name:
+                        Base: u32
+                      value: "41"
         - name:
             Named: spawner
           type_name:
@@ -7221,63 +7195,37 @@ expression: stack_frames
                                         Array:
                                           item_type_name:
                                             Struct:
-                                              ident: ManuallyDrop
+                                              ident: NotZst
                                               namespace:
-                                                - core
-                                                - mem
-                                                - manually_drop
-                                              args:
-                                                - Type:
-                                                    Struct:
-                                                      ident: NotZst
-                                                      namespace:
-                                                        - s3_debug
-                                                      args: []
+                                                - s3_debug
+                                              args: []
                                           count: 1
-                                      value: "[ManuallyDrop<NotZst>; 1] = [ManuallyDrop<NotZst>(NotZst @ 0x3FC8C570)]"
+                                      value: "[NotZst; 1] = [NotZst { zst = ZST, number = 41 }]"
                                       children:
                                         - name:
                                             Indexed: 0
                                           type_name:
                                             Struct:
-                                              ident: ManuallyDrop
+                                              ident: NotZst
                                               namespace:
-                                                - core
-                                                - mem
-                                                - manually_drop
-                                              args:
-                                                - Type:
-                                                    Struct:
-                                                      ident: NotZst
-                                                      namespace:
-                                                        - s3_debug
-                                                      args: []
-                                          value: ManuallyDrop<NotZst>(NotZst @ 0x3FC8C570)
+                                                - s3_debug
+                                              args: []
+                                          value: "NotZst { zst = ZST, number = 41 }"
                                           children:
                                             - name:
-                                                Named: __0
+                                                Named: zst
                                               type_name:
                                                 Struct:
-                                                  ident: NotZst
+                                                  ident: ZST
                                                   namespace:
                                                     - s3_debug
                                                   args: []
-                                              value: NotZst @ 0x3FC8C570
-                                              children:
-                                                - name:
-                                                    Named: zst
-                                                  type_name:
-                                                    Struct:
-                                                      ident: ZST
-                                                      namespace:
-                                                        - s3_debug
-                                                      args: []
-                                                  value: ZST
-                                                - name:
-                                                    Named: number
-                                                  type_name:
-                                                    Base: u32
-                                                  value: "41"
+                                              value: ZST
+                                            - name:
+                                                Named: number
+                                              type_name:
+                                                Base: u32
+                                              value: "41"
                                 - name:
                                     Named: __awaitee
                                   type_name:
@@ -9222,63 +9170,37 @@ expression: stack_frames
                             Array:
                               item_type_name:
                                 Struct:
-                                  ident: ManuallyDrop
+                                  ident: NotZst
                                   namespace:
-                                    - core
-                                    - mem
-                                    - manually_drop
-                                  args:
-                                    - Type:
-                                        Struct:
-                                          ident: NotZst
-                                          namespace:
-                                            - s3_debug
-                                          args: []
+                                    - s3_debug
+                                  args: []
                               count: 1
-                          value: "[ManuallyDrop<NotZst>; 1] = [ManuallyDrop<NotZst>(NotZst @ 0x3FC8C570)]"
+                          value: "[NotZst; 1] = [NotZst { zst = ZST, number = 41 }]"
                           children:
                             - name:
                                 Indexed: 0
                               type_name:
                                 Struct:
-                                  ident: ManuallyDrop
+                                  ident: NotZst
                                   namespace:
-                                    - core
-                                    - mem
-                                    - manually_drop
-                                  args:
-                                    - Type:
-                                        Struct:
-                                          ident: NotZst
-                                          namespace:
-                                            - s3_debug
-                                          args: []
-                              value: ManuallyDrop<NotZst>(NotZst @ 0x3FC8C570)
+                                    - s3_debug
+                                  args: []
+                              value: "NotZst { zst = ZST, number = 41 }"
                               children:
                                 - name:
-                                    Named: __0
+                                    Named: zst
                                   type_name:
                                     Struct:
-                                      ident: NotZst
+                                      ident: ZST
                                       namespace:
                                         - s3_debug
                                       args: []
-                                  value: NotZst @ 0x3FC8C570
-                                  children:
-                                    - name:
-                                        Named: zst
-                                      type_name:
-                                        Struct:
-                                          ident: ZST
-                                          namespace:
-                                            - s3_debug
-                                          args: []
-                                      value: ZST
-                                    - name:
-                                        Named: number
-                                      type_name:
-                                        Base: u32
-                                      value: "41"
+                                  value: ZST
+                                - name:
+                                    Named: number
+                                  type_name:
+                                    Base: u32
+                                  value: "41"
                     - name:
                         Named: __awaitee
                       type_name:

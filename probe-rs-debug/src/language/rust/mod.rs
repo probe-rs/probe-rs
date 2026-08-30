@@ -473,6 +473,14 @@ impl RustPath {
         self.is_rustc_lib() && self.ident == "MaybeUninit" && self.modules_start_with(&["mem"])
     }
 
+    /// A wrapper that heapless (and the standard library) uses only to hold a value in storage.
+    fn is_storage_wrapper(&self) -> bool {
+        self.is_maybe_uninit()
+            || (self.is_rustc_lib()
+                && self.modules_start_with(&["mem"])
+                && matches!(self.ident.as_str(), "ManuallyDrop" | "MaybeDangling"))
+    }
+
     fn is_heapless_vec(&self) -> bool {
         self.crate_name == "heapless" && matches!(self.ident.as_str(), "Vec" | "VecInner")
     }

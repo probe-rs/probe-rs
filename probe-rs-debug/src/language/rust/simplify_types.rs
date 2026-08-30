@@ -590,7 +590,16 @@ impl Rust {
         frame_info: &StackFrameInfo<'_>,
         element: &mut Variable,
     ) -> Result<(), DebugError> {
-        self.unwrap_maybe_uninit_slot(debug_info, memory, cache, frame_info, element)?;
+        for _ in 0..8 {
+            if !self.unwrap_storage_wrapper(debug_info, memory, cache, frame_info, element)? {
+                break;
+            }
+            let Some(updated) = cache.get_variable_by_key(element.variable_key) else {
+                return Ok(());
+            };
+            *element = updated;
+        }
+
         let Some(mut element) = cache.get_variable_by_key(element.variable_key) else {
             return Ok(());
         };
@@ -620,36 +629,36 @@ impl Rust {
         Ok(())
     }
 
-    fn unwrap_maybe_uninit_slot(
+    fn unwrap_storage_wrapper(
         &self,
         debug_info: &DebugInfo,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
         frame_info: &StackFrameInfo<'_>,
         element: &mut Variable,
-    ) -> Result<(), DebugError> {
+    ) -> Result<bool, DebugError> {
         debug_info.cache_deferred_variables(cache, memory, element, frame_info)?;
         let Some(element_now) = cache.get_variable_by_key(element.variable_key) else {
-            return Ok(());
+            return Ok(false);
         };
         let Some(path) = RustPath::from_variable(debug_info, &element_now) else {
-            return Ok(());
+            return Ok(false);
         };
-        if !path.is_maybe_uninit() {
-            return Ok(());
+        if !path.is_storage_wrapper() {
+            return Ok(false);
         }
 
         let children: Vec<_> = cache
             .get_children(element_now.variable_key)
             .cloned()
             .collect();
-        let Some(mut value) = children.iter().find(|c| is_named(c, "value")).cloned() else {
-            return Ok(());
+        let Some(mut value) = storage_payload(&children).cloned() else {
+            return Ok(false);
         };
 
         debug_info.cache_deferred_variables(cache, memory, &mut value, frame_info)?;
         let Some(value) = cache.get_variable_by_key(value.variable_key) else {
-            return Ok(());
+            return Ok(false);
         };
 
         let mut element = element_now;
@@ -672,7 +681,7 @@ impl Rust {
         }
 
         cache.update_variable(&element)?;
-        Ok(())
+        Ok(true)
     }
 
     /// The value of a `&str` or a slice is read through its data pointer, so the pointer must be
@@ -756,6 +765,21 @@ impl Rust {
         )?;
 
         Ok(())
+    }
+}
+
+fn storage_payload(children: &[Variable]) -> Option<&Variable> {
+    if let Some(value) = children.iter().find(|child| is_named(child, "value")) {
+        return Some(value);
+    }
+
+    let rest: Vec<_> = children
+        .iter()
+        .filter(|child| !is_named(child, "uninit"))
+        .collect();
+    match rest.as_slice() {
+        [payload] => Some(*payload),
+        _ => None,
     }
 }
 
@@ -1166,6 +1190,10 @@ mod tests {
         assert!(path("heapless", &["vec"], "VecInner").is_heapless_vec());
         assert!(!path("heapless", &["vec", "storage"], "VecStorageInner").is_heapless_vec());
         assert!(!path("alloc", &["vec"], "Vec").is_heapless_vec());
+        assert!(path("core", &["mem", "maybe_uninit"], "MaybeUninit").is_storage_wrapper());
+        assert!(path("core", &["mem", "manually_drop"], "ManuallyDrop").is_storage_wrapper());
+        assert!(path("core", &["mem", "maybe_dangling"], "MaybeDangling").is_storage_wrapper());
+        assert!(!path("core", &["cell"], "Cell").is_storage_wrapper());
         assert!(starts_wrapper_chain(&path("vcell", &[], "VolatileCell")));
         assert!(path("vcell", &[], "VolatileCell").is_volatile_cell());
         assert!(!path("core", &["cell"], "UnsafeCell").is_volatile_cell());
