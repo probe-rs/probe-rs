@@ -156,7 +156,7 @@ impl Rust {
             }
 
             if !cache.has_children(&inner) && inner.value.is_valid() && !inner.value.is_empty() {
-                if path.ident == "ManuallyDrop" {
+                if path.hides_its_type() {
                     variable.type_name = inner.type_name;
                 }
                 variable.set_value(inner.value.clone());
@@ -1156,6 +1156,12 @@ impl RustPath {
         ]
         .iter()
         .any(|wrapper| wrapper.matches(self))
+    }
+
+    /// A wrapper that the standard library uses to describe how it holds a value. The name of the
+    /// type that it wraps is the name that the user wrote.
+    fn hides_its_type(&self) -> bool {
+        self.is_rustc_lib() && matches!(self.ident.as_str(), "ManuallyDrop" | "MaybeDangling")
     }
 
     /// `VolatileCell` holds a device register. A read of the register can clear a flag, or move a
