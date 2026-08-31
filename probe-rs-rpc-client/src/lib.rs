@@ -423,13 +423,6 @@ impl RpcClient {
         if schema::schema_reports_match(&expected, &actual) {
             Ok(())
         } else {
-            tracing::error!(
-                expected_endpoints = expected.endpoints.len(),
-                actual_endpoints = actual.endpoints.len(),
-                expected_types = expected.types.len(),
-                actual_types = actual.types.len(),
-                "RPC schema of the server does not match this client"
-            );
             Err(ClientError::IncompatibleServer)
         }
     }
