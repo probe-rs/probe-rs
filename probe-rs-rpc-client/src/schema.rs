@@ -106,6 +106,12 @@ fn log_list_mismatch<T: PartialEq + core::fmt::Debug>(
         .iter()
         .filter(|item| !expected.contains(item))
         .collect();
+
+    // If only the order is different, these will be empty.
+    if only_client.is_empty() && only_server.is_empty() {
+        return true;
+    }
+
     tracing::debug!(
         only_client = ?only_client,
         only_server = ?only_server,
@@ -125,22 +131,18 @@ pub fn from_schema_err(error: SchemaError<WireError>) -> ClientError {
 }
 
 fn endpoint_keys(report: &SchemaReport) -> Vec<(&str, Key, Key)> {
-    let mut keys: Vec<_> = report
+    report
         .endpoints
         .iter()
         .map(|endpoint| (endpoint.path.as_str(), endpoint.req_key, endpoint.resp_key))
-        .collect();
-    keys.sort();
-    keys
+        .collect()
 }
 
 fn topic_keys(topics: &[TopicReport]) -> Vec<(&str, Key)> {
-    let mut keys: Vec<_> = topics
+    topics
         .iter()
         .map(|topic| (topic.path.as_str(), topic.key))
-        .collect();
-    keys.sort();
-    keys
+        .collect()
 }
 
 fn schema_build_error() -> ClientError {
