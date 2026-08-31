@@ -75,7 +75,7 @@ fn log_type_mismatch(expected: &SchemaReport, actual: &SchemaReport) -> bool {
 
     let only_client = formatted_types(expected.types.difference(&actual.types));
     let only_server = formatted_types(actual.types.difference(&expected.types));
-    tracing::error!(
+    tracing::debug!(
         only_client = ?only_client,
         only_server = ?only_server,
         "RPC type set of the server does not match this client"
@@ -106,7 +106,7 @@ fn log_list_mismatch<T: PartialEq + core::fmt::Debug>(
         .iter()
         .filter(|item| !expected.contains(item))
         .collect();
-    tracing::error!(
+    tracing::debug!(
         only_client = ?only_client,
         only_server = ?only_server,
         "RPC {kind} of the server do not match this client"
