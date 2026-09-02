@@ -1,0 +1,206 @@
+name: MKL82Z7
+manufacturer:
+  id: 0x15
+  cc: 0x0
+generated_from_pack: true
+pack_file_release: 11.0.1
+variants:
+- name: MKL82Z128VLH7
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: PROGRAM_FLASH
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x1fffa000
+      end: 0x20012000
+    cores:
+    - main
+  - !Generic
+    name: USB_RAM
+    range:
+      start: 0x40100000
+      end: 0x40100800
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - mkl_p128
+- name: MKL82Z128VLK7
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: PROGRAM_FLASH
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x1fffa000
+      end: 0x20012000
+    cores:
+    - main
+  - !Generic
+    name: USB_RAM
+    range:
+      start: 0x40100000
+      end: 0x40100800
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - mkl_p128
+- name: MKL82Z128VLL7
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: PROGRAM_FLASH
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x1fffa000
+      end: 0x20012000
+    cores:
+    - main
+  - !Generic
+    name: USB_RAM
+    range:
+      start: 0x40100000
+      end: 0x40100800
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - mkl_p128
+- name: MKL82Z128VMC7
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: PROGRAM_FLASH
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x1fffa000
+      end: 0x20012000
+    cores:
+    - main
+  - !Generic
+    name: USB_RAM
+    range:
+      start: 0x40100000
+      end: 0x40100800
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - mkl_p128
+- name: MKL82Z128VMP7
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: PROGRAM_FLASH
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x1fffa000
+      end: 0x20012000
+    cores:
+    - main
+  - !Generic
+    name: USB_RAM
+    range:
+      start: 0x40100000
+      end: 0x40100800
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - mkl_p128
+flash_algorithms:
+- name: mkl_p128
+  description: MKXX 128kB Prog Flash
+  default: true
+  instructions: OUkQtUlECGA5SDhJwYE5ScGBAYhJCEkAAYA4SDZJSEQBYAEikgSCYAAhQWCSAsJgBSKSBkJhASISA4JhAkYgMhFwSR5BYgDwPvkAKADQASAQvQAgcEcqSgi1ekRJAwCSCgwBRiVIACNIRADw2/kAKADQASAIvQi1IUl5RB9IIDlIRADwpvgAKA7RHUh4RB1LMjh7RACQGUgEIhtJSEQA8H75ACgA0AEgCL0QtRRLe0QBRhJIASJUO9ICSEQA8Lv4EL0ItRNGyR3KCA1J0gB5RHQ5AJEBRglISEQA8GD5ACgA0AEgCL0AAAQAAAAgxQAAACAFQCjZAAAAAAJACAAAAK8AAACKBQAADAQAAHC1BEYAaAAlA3gbBvzVcCMDcAAgOuADAADwb/oMBwsPExcbHyMnKy8zNiZoE3jzcSrgJmhTeLNxJuAmaJN4c3Ei4CZo03gzcR7gJmgTefNyGuAmaFN5s3IW4CZok3lzchLgJmjTeTNyDuAmaBN683MK4CZoU3qzcwbgJmiTenNzAuAmaNN6M3NAHMCyiELC2SFogCAIcAPgYGpBHADQgEcgaAB4AAb31SBoAHiBBgHVBCUG4MEGAdUIJQLgwAcA0BAlKEZwvQi1C0ZEImlGCnBqRgAhmEcIvTi1FEaKBwLQ/yABMDi9QmiKQgPYg2jTGItCDdjDaItCA9gCaZoYikIB2AIgOL0BIska0gWJGADgiRoIImtGGnAKDFpwCgqacNlwakYDIaBHOL3/tYGwFUYBmgEnUmgAJkgZ/wKKQgTYAZubaNMYg0IP0gGa0miKQgTYAZsbadMYg0IB0gImKeCIGgEhyQVEGADgjBo5RiBGAPAW+QApAtD/JgE2GuA5RihGAPAN+QApEtABJhLgCSBpRghwIAxIcCAKiHDMcASbakYDIQGYmEcGAAPR7RvkGQAt7NEwRgWw8L3wtQFoACQKeBIG/NVwIgpwAmgDIdFxAWiAIopxA2gAIVlxBWj8IytxA2jZcwNoGnACaBN4Gwb81VV6EnoXBwEiPw+SBFYQOwAA8Hr5EAkJCw4RFBYJFgklKCsUCQkXAmEL4A8ikgP65wci0gP35wMiEgT05wZhAOABYSoHEg8TAADwXvkQEhIVGBseISQmKBISEhISEhMBIpID4OcBItID3ecBIhIE2ufBYSBG8L0BIQkD+ecBIckC9ucBIYkC8+cBIUkC8Of/IQEx7eeAIevnQCHp5yAh5+f+tRZGB0YdRgAgihmLBwLQ/yABMP69swcB0AEg/r17aItCA9i8aBwZlEIN0vtoi0ID2DxpHBmUQgHSAiD+vQEiyRrSBYwYG+DMGhngBiBpRghwIAxIcCAKiHDMcOh4CHGoeEhxaHiIcSh4yHEIm2pGByE4RphHACjg0SQdLR02HwAu49H+vf61FUYERkJo6ABAGB5GikID2KNo0xiLQgjY42iLQgPYJ2nbGYtCAdgCIP69gkIF2KNo0xiDQgHTjxoK4OJogkID2SNp0xiDQu7TiBoBIckFRxgIIThGAPAX+AApAtD/IAEw/r0BIGlGCHA4DEhwOAqIcM9wKAoIcU1xjnEIm2pGBiEgRphH/r0AIgMJi0Is0wMKi0IR0wAjnEZO4ANGC0M81AAiQwiLQjHTAwmLQhzTAwqLQgHTlEY/4MMJi0IB08sBwBpSQYMJi0IB04sBwBpSQUMJi0IB00sBwBpSQQMJi0IB0wsBwBpSQcMIi0IB08sAwBpSQYMIi0IB04sAwBpSQUMIi0IB00sAwBpSQUEaANIBRlJBEEZwR13gyg8A0ElCAxAA00BCU0AAIpxGAwmLQi3TAwqLQhLT/CKJARK6AwqLQgzTiQGSEYtCCNOJAZIRi0IE04kBOtCSEQDgiQnDCYtCAdPLAcAaUkGDCYtCAdOLAcAaUkFDCYtCAdNLAcAaUkEDCYtCAdMLAcAaUkHDCItCAdPLAMAaUkGDCItCAdOLAMAaUkHZ0kMIi0IB00sAwBpSQUEaANIBRmNGUkFbEBBGAdNAQgArANVJQnBHY0ZbEADTQEIBtQAgwEbARgK9MLR0RmQeJXhkHKtCANIdRmNdWwDjGDC8GEf+////AAAAAP/////+////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  load_address: 0x1fffa008
+  pc_init: 0x1
+  pc_uninit: 0x53
+  pc_program_page: 0xc3
+  pc_erase_sector: 0xab
+  pc_erase_all: 0x77
+  pc_blank_check: 0x57
+  data_section_offset: 0x630
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x20000
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x800
+      address: 0x0

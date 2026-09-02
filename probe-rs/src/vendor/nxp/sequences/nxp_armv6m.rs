@@ -3,10 +3,46 @@
 use crate::architecture::arm::ArmError;
 use crate::architecture::arm::armv6m::{Aircr, Demcr, Dhcsr};
 use crate::architecture::arm::memory::ArmMemoryInterface;
-use crate::architecture::arm::sequences::ArmDebugSequence;
+use crate::architecture::arm::sequences::{ArmDebugSequence, cortex_m_reset_system};
 use crate::core::MemoryMappedRegister;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+
+/// The sequence handle for the MKL82 family.
+#[derive(Debug)]
+pub struct MKL82(());
+
+impl MKL82 {
+    /// RCM Force Mode register. The ROM bootloader sets the sticky FORCEROM
+    /// field when it runs (for example after a mass erase leaves the flash
+    /// option byte blank), and the field survives system resets, so the chip
+    /// keeps booting into the ROM instead of the flashed firmware until a
+    /// power-on reset.
+    const RCM_FM: u64 = 0x4007_F006;
+
+    /// Create a sequence handle for the MKL82.
+    pub fn create() -> Arc<dyn ArmDebugSequence> {
+        Arc::new(Self(()))
+    }
+}
+
+impl ArmDebugSequence for MKL82 {
+    fn reset_system(
+        &self,
+        interface: &mut dyn ArmMemoryInterface,
+        _core_type: crate::CoreType,
+        _debug_base: Option<u64>,
+    ) -> Result<(), ArmError> {
+        // Clear RCM_FM so the boot source is determined by the flash
+        // configuration field again. Ignore errors: if this fails the reset
+        // itself may still succeed.
+        if let Err(e) = interface.write_word_8(Self::RCM_FM, 0) {
+            tracing::warn!("Failed to clear RCM_FM before reset: {e}");
+        }
+
+        cortex_m_reset_system(interface)
+    }
+}
 
 /// The sequence handle for the LPC80x family.
 #[derive(Debug)]
