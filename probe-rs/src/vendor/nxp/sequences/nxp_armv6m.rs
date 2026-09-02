@@ -3,7 +3,8 @@
 use crate::architecture::arm::armv6m::{Aircr, Demcr, Dhcsr};
 use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::sequences::{
-    ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence, cortex_m_reset_system,
+    ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence, cortex_m_core_start,
+    cortex_m_reset_system,
 };
 use crate::architecture::arm::{ArmDebugInterface, ArmError, FullyQualifiedApAddress};
 use crate::core::MemoryMappedRegister;
@@ -35,10 +36,13 @@ impl MKL82 {
     const MDM_STATUS_MASS_ERASE_ACK: u32 = 1 << 0;
     const MDM_STATUS_FLASH_READY: u32 = 1 << 1;
     const MDM_STATUS_SYSTEM_SECURITY: u32 = 1 << 2;
+    /// Reads 0 while the system is held in reset.
+    const MDM_STATUS_SYSTEM_RESET_RELEASED: u32 = 1 << 3;
     const MDM_STATUS_MASS_ERASE_ENABLE: u32 = 1 << 5;
 
     const MDM_CONTROL_MASS_ERASE: u32 = 1 << 0;
     const MDM_CONTROL_SYSTEM_RESET_REQUEST: u32 = 1 << 3;
+    const MDM_CONTROL_CORE_HOLD_RESET: u32 = 1 << 4;
 
     /// Create a sequence handle for the MKL82.
     pub fn create() -> Arc<Self> {
@@ -144,9 +148,123 @@ impl MKL82 {
         tracing::info!("Mass erase complete");
         Ok(())
     }
+
+    /// Halt a reset-looping target so it can be debugged and reflashed.
+    ///
+    /// Firmware that resets the chip shortly after boot (a software reset
+    /// loop, or a watchdog reset because the watchdog was never serviced)
+    /// makes AHB-AP accesses fail intermittently, so a normal attach cannot
+    /// get a foothold. The MDM-AP stays accessible throughout: request one
+    /// system reset with the core held in reset, set up halt-on-reset while
+    /// the core is held (the debug logic is not reset by a core reset), then
+    /// release the core so it halts at the reset vector before it can
+    /// trigger the next reset.
+    fn halt_looping_core(
+        interface: &mut dyn ArmDebugInterface,
+        core_ap: &FullyQualifiedApAddress,
+    ) -> Result<(), ArmError> {
+        let mdm_ap = Self::mdm_ap();
+
+        // The core-hold latches when the reset happens, so after the system
+        // reset completes the bus is accessible while the core stays in
+        // reset.
+        interface.write_raw_ap_register(
+            &mdm_ap,
+            Self::MDM_CONTROL,
+            Self::MDM_CONTROL_SYSTEM_RESET_REQUEST | Self::MDM_CONTROL_CORE_HOLD_RESET,
+        )?;
+        interface.write_raw_ap_register(
+            &mdm_ap,
+            Self::MDM_CONTROL,
+            Self::MDM_CONTROL_CORE_HOLD_RESET,
+        )?;
+        Self::wait_for_mdm_status(
+            interface,
+            Self::MDM_STATUS_FLASH_READY,
+            Duration::from_secs(1),
+        )?;
+
+        // Enable debug and catch the reset vector while the core is held.
+        {
+            let mut core = interface.memory_interface(core_ap)?;
+
+            let mut dhcsr = Dhcsr(0);
+            dhcsr.set_c_debugen(true);
+            dhcsr.enable_write();
+            core.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
+
+            let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address())?);
+            demcr.set_vc_corereset(true);
+            core.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
+        }
+
+        // Release the core; it leaves reset and immediately halts on the
+        // vector catch.
+        interface.write_raw_ap_register(&mdm_ap, Self::MDM_CONTROL, 0)?;
+
+        let mut core = interface.memory_interface(core_ap)?;
+        let start = Instant::now();
+        while !Dhcsr(core.read_word_32(Dhcsr::get_mmio_address())?).s_halt() {
+            if start.elapsed() >= Duration::from_secs(1) {
+                return Err(ArmError::Timeout);
+            }
+        }
+
+        // Clear the vector catch again so later resets behave normally.
+        let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address())?);
+        demcr.set_vc_corereset(false);
+        core.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
+
+        tracing::info!("Recovered a reset-looping target: core halted at the reset vector");
+        Ok(())
+    }
 }
 
 impl ArmDebugSequence for MKL82 {
+    fn debug_core_start(
+        &self,
+        interface: &mut dyn ArmDebugInterface,
+        core_ap: &FullyQualifiedApAddress,
+        _core_type: crate::CoreType,
+        _debug_base: Option<u64>,
+        _cti_base: Option<u64>,
+    ) -> Result<(), ArmError> {
+        // Detect a reset-looping target before touching the AHB-AP in
+        // earnest. A tight reset loop leaves the bus accessible between
+        // resets, so a single successful access proves nothing; sample the
+        // MDM-AP reset state (always readable) and probe the AHB-AP a few
+        // times instead. On a healthy target this costs a handful of
+        // register reads and stays non-intrusive.
+        let mdm_ap = Self::mdm_ap();
+        let mut resetting = false;
+        for _ in 0..8 {
+            if let Ok(status) = interface.read_raw_ap_register(&mdm_ap, Self::MDM_STATUS)
+                && status & Self::MDM_STATUS_SYSTEM_RESET_RELEASED == 0
+            {
+                // Caught the system mid-reset.
+                resetting = true;
+                break;
+            }
+
+            let ahb_ok = {
+                let mut core = interface.memory_interface(core_ap)?;
+                core.read_word_32(Dhcsr::get_mmio_address()).is_ok()
+            };
+            if !ahb_ok {
+                resetting = true;
+                break;
+            }
+        }
+
+        if resetting {
+            tracing::warn!("The target appears to be reset-looping; recovering via the MDM-AP");
+            Self::halt_looping_core(interface, core_ap)
+        } else {
+            let mut core = interface.memory_interface(core_ap)?;
+            cortex_m_core_start(&mut *core)
+        }
+    }
+
     fn debug_device_unlock(
         &self,
         interface: &mut dyn ArmDebugInterface,
