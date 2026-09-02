@@ -4,7 +4,7 @@ manufacturer:
   cc: 0xc
 chip_detection:
 - !Espressif
-  idcode: 0x20c25
+  idcode: 0x20c25 # TAP1
   magic_address: 0x2F801000
   variants: {} # IDCODE is unique to ESP32-S31
 variants:
