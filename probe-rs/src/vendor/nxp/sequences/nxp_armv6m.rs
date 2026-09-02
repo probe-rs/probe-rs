@@ -1,10 +1,13 @@
 //! Sequences for NXP chips that use ARMv6-M cores.
 
-use crate::architecture::arm::ArmError;
 use crate::architecture::arm::armv6m::{Aircr, Demcr, Dhcsr};
 use crate::architecture::arm::memory::ArmMemoryInterface;
-use crate::architecture::arm::sequences::{ArmDebugSequence, cortex_m_reset_system};
+use crate::architecture::arm::sequences::{
+    ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence, cortex_m_reset_system,
+};
+use crate::architecture::arm::{ArmDebugInterface, ArmError, FullyQualifiedApAddress};
 use crate::core::MemoryMappedRegister;
+use crate::session::MissingPermissions;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -20,13 +23,175 @@ impl MKL82 {
     /// power-on reset.
     const RCM_FM: u64 = 0x4007_F006;
 
+    /// The Kinetis MDM-AP, always accessible even when flash security blocks
+    /// the AHB-AP.
+    const MDM_AP: u8 = 1;
+    const MDM_IDR_EXPECTED: u32 = 0x001C_0020;
+
+    const MDM_STATUS: u64 = 0x00;
+    const MDM_CONTROL: u64 = 0x04;
+    const MDM_IDR: u64 = 0xFC;
+
+    const MDM_STATUS_MASS_ERASE_ACK: u32 = 1 << 0;
+    const MDM_STATUS_FLASH_READY: u32 = 1 << 1;
+    const MDM_STATUS_SYSTEM_SECURITY: u32 = 1 << 2;
+    const MDM_STATUS_MASS_ERASE_ENABLE: u32 = 1 << 5;
+
+    const MDM_CONTROL_MASS_ERASE: u32 = 1 << 0;
+    const MDM_CONTROL_SYSTEM_RESET_REQUEST: u32 = 1 << 3;
+
     /// Create a sequence handle for the MKL82.
-    pub fn create() -> Arc<dyn ArmDebugSequence> {
+    pub fn create() -> Arc<Self> {
         Arc::new(Self(()))
+    }
+
+    fn mdm_ap() -> FullyQualifiedApAddress {
+        FullyQualifiedApAddress::v1_with_default_dp(Self::MDM_AP)
+    }
+
+    /// Wait until the given MDM-AP status bits are all set. Read errors are
+    /// retried until the deadline: the MDM-AP itself stays accessible while
+    /// the system is held in reset, but individual reads can still fail on a
+    /// target that is reset-looping.
+    fn wait_for_mdm_status(
+        interface: &mut dyn ArmDebugInterface,
+        mask: u32,
+        timeout: Duration,
+    ) -> Result<u32, ArmError> {
+        let mdm_ap = Self::mdm_ap();
+        let start = Instant::now();
+        loop {
+            match interface.read_raw_ap_register(&mdm_ap, Self::MDM_STATUS) {
+                Ok(status) if status & mask == mask => return Ok(status),
+                Ok(_) => {}
+                Err(e) if start.elapsed() >= timeout => return Err(e),
+                Err(e) => tracing::trace!("MDM-AP status read failed, retrying: {e}"),
+            }
+            if start.elapsed() >= timeout {
+                return Err(ArmError::Timeout);
+            }
+        }
+    }
+
+    /// Mass erase the flash via the MDM-AP. This works even when flash
+    /// security blocks the AHB-AP, and unlocks a secured device (an erased
+    /// KL82 is treated as unsecure while its flash is fully blank).
+    fn mass_erase(interface: &mut dyn ArmDebugInterface) -> Result<(), ArmError> {
+        let mdm_ap = Self::mdm_ap();
+
+        let idr = interface.read_raw_ap_register(&mdm_ap, Self::MDM_IDR)?;
+        if idr != Self::MDM_IDR_EXPECTED {
+            return Err(ArmDebugSequenceError::custom(format!(
+                "MDM-AP IDR mismatch: expected {:#010x}, got {idr:#010x}",
+                Self::MDM_IDR_EXPECTED
+            ))
+            .into());
+        }
+
+        // Hold the system in reset for the duration of the erase so a
+        // reset-looping target cannot interfere.
+        interface.write_raw_ap_register(
+            &mdm_ap,
+            Self::MDM_CONTROL,
+            Self::MDM_CONTROL_SYSTEM_RESET_REQUEST,
+        )?;
+
+        // The flash controller must have finished initializing before it
+        // accepts a mass erase request.
+        let status = Self::wait_for_mdm_status(
+            interface,
+            Self::MDM_STATUS_FLASH_READY,
+            Duration::from_secs(1),
+        )?;
+
+        if status & Self::MDM_STATUS_MASS_ERASE_ENABLE == 0 {
+            // Release the reset request before bailing out.
+            interface.write_raw_ap_register(&mdm_ap, Self::MDM_CONTROL, 0)?;
+            return Err(ArmDebugSequenceError::custom(
+                "Mass erase is disabled (FSEC[MEEN]); the device cannot be erased or unlocked via the debug port",
+            )
+            .into());
+        }
+
+        tracing::info!("Requesting mass erase via MDM-AP");
+        interface.write_raw_ap_register(
+            &mdm_ap,
+            Self::MDM_CONTROL,
+            Self::MDM_CONTROL_SYSTEM_RESET_REQUEST | Self::MDM_CONTROL_MASS_ERASE,
+        )?;
+
+        Self::wait_for_mdm_status(
+            interface,
+            Self::MDM_STATUS_MASS_ERASE_ACK,
+            Duration::from_secs(1),
+        )?;
+
+        // The mass erase bit self-clears when the erase has finished.
+        let start = Instant::now();
+        loop {
+            let control = interface.read_raw_ap_register(&mdm_ap, Self::MDM_CONTROL)?;
+            if control & Self::MDM_CONTROL_MASS_ERASE == 0 {
+                break;
+            }
+            if start.elapsed() >= Duration::from_secs(10) {
+                return Err(ArmError::Timeout);
+            }
+        }
+
+        // Release the system reset request.
+        interface.write_raw_ap_register(&mdm_ap, Self::MDM_CONTROL, 0)?;
+
+        tracing::info!("Mass erase complete");
+        Ok(())
     }
 }
 
 impl ArmDebugSequence for MKL82 {
+    fn debug_device_unlock(
+        &self,
+        interface: &mut dyn ArmDebugInterface,
+        _default_ap: &FullyQualifiedApAddress,
+        permissions: &crate::Permissions,
+    ) -> Result<(), ArmError> {
+        // The security bit is only meaningful once the flash controller has
+        // initialized.
+        let status = Self::wait_for_mdm_status(
+            interface,
+            Self::MDM_STATUS_FLASH_READY,
+            Duration::from_secs(1),
+        )?;
+
+        if status & Self::MDM_STATUS_SYSTEM_SECURITY == 0 {
+            return Ok(());
+        }
+
+        tracing::warn!(
+            "The device is locked (flash security is enabled). A mass erase is required to unlock it."
+        );
+        permissions
+            .erase_all()
+            .map_err(|MissingPermissions(desc)| ArmError::MissingPermissions(desc))?;
+
+        Self::mass_erase(interface)?;
+
+        let status = Self::wait_for_mdm_status(
+            interface,
+            Self::MDM_STATUS_FLASH_READY,
+            Duration::from_secs(1),
+        )?;
+        if status & Self::MDM_STATUS_SYSTEM_SECURITY != 0 {
+            return Err(
+                ArmDebugSequenceError::custom("Mass erase did not unlock the device").into(),
+            );
+        }
+
+        Err(ArmError::ReAttachRequired)
+    }
+
+    fn debug_erase_sequence(&self) -> Option<Arc<dyn DebugEraseSequence>> {
+        Some(Self::create())
+    }
+
     fn reset_system(
         &self,
         interface: &mut dyn ArmMemoryInterface,
@@ -41,6 +206,12 @@ impl ArmDebugSequence for MKL82 {
         }
 
         cortex_m_reset_system(interface)
+    }
+}
+
+impl DebugEraseSequence for MKL82 {
+    fn erase_all(&self, interface: &mut dyn ArmDebugInterface) -> Result<(), ArmError> {
+        MKL82::mass_erase(interface)
     }
 }
 
