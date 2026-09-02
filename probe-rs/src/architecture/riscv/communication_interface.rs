@@ -386,6 +386,9 @@ pub struct RiscvCommunicationInterfaceState {
     /// Bitfield of enabled harts
     enabled_harts: u32,
 
+    /// When 1, `allunavail` / `anyunavail` stay set until `ackunavail` is written.
+    sticky_unavail: bool,
+
     /// The index of the last selected hart
     last_selected_hart: u32,
 
@@ -400,7 +403,8 @@ pub struct RiscvCommunicationInterfaceState {
 
     memory_access_config: MemoryAccessConfig,
 
-    sw_breakpoint_debug_enabled: bool,
+    /// Bitfield of harts that have `dcsr.ebreak*` set to enter debug mode.
+    sw_breakpoint_debug_enabled: u32,
 
     /// Whether the connected core is 64-bit (RV64). When true, memory access
     /// methods will accept 64-bit addresses and CSR access uses 64-bit data registers.
@@ -455,6 +459,7 @@ impl RiscvCommunicationInterfaceState {
             s0: ScratchState::default(),
             s1: ScratchState::default(),
             enabled_harts: 0,
+            sticky_unavail: false,
             last_selected_hart: 0,
             hasresethaltreq: None,
             is_halted: false,
@@ -463,7 +468,7 @@ impl RiscvCommunicationInterfaceState {
 
             memory_access_config: MemoryAccessConfig::default(),
 
-            sw_breakpoint_debug_enabled: false,
+            sw_breakpoint_debug_enabled: 0,
 
             xlen_64: false,
             force_machine_mode_progbuf: false,
@@ -584,11 +589,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
     /// Select current hart
     pub fn select_hart(&mut self, hart: u32) -> Result<(), RiscvError> {
-        if !self.hart_enabled(hart) {
-            return Err(RiscvError::HartUnavailable);
-        }
-
-        if self.state.last_selected_hart == hart {
+        if self.hart_enabled(hart) && self.state.last_selected_hart == hart {
             return Ok(());
         }
 
@@ -596,8 +597,45 @@ impl<'state> RiscvCommunicationInterface<'state> {
         let mut control = self.read_dm_register::<Dmcontrol>()?;
         control.set_dmactive(true);
         control.set_hartsel(hart);
+        // A hart that was unavailable at attach (for example held in reset) may now
+        // be running. `ackunavail` clears sticky unavail so we can observe that.
+        if self.state.sticky_unavail {
+            control.set_ackunavail(true);
+        }
         self.schedule_write_dm_register(control)?;
         self.state.last_selected_hart = hart;
+        self.state.is_halted = false;
+
+        let status: Dmstatus = self.read_dm_register()?;
+        if status.anynonexistent() || status.allunavail() {
+            self.state.enabled_harts &= !(1 << hart);
+            return Err(RiscvError::HartUnavailable);
+        }
+
+        self.state.enabled_harts |= 1 << hart;
+
+        if status.anyhavereset() {
+            self.acknowledge_reset(hart)?;
+        }
+
+        Ok(())
+    }
+
+    /// Acknowledge that `hart` was reset, and forget the debug configuration that the reset
+    /// cleared.
+    ///
+    /// A reset clears `dcsr`, so halt-on-`ebreak` must be enabled again. This happens when
+    /// firmware starts a secondary core: without it, an `ebreak` on that hart traps into the
+    /// firmware exception handler instead of entering debug mode.
+    fn acknowledge_reset(&mut self, hart: u32) -> Result<(), RiscvError> {
+        tracing::debug!("Hart {hart} was reset, re-applying the debug configuration");
+        self.state.sw_breakpoint_debug_enabled &= !(1 << hart);
+
+        let mut control = self.read_dm_register::<Dmcontrol>()?;
+        control.set_dmactive(true);
+        control.set_ackhavereset(true);
+        self.write_dm_register(control)?;
+
         Ok(())
     }
 
@@ -740,7 +778,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         // Spec 1.0: stickyunavail means allunavail/anyunavail stay set until
         // the debugger writes ackunavail=1. Check once and apply throughout.
-        let sticky_unavail = status.stickyunavail();
+        self.state.sticky_unavail = status.stickyunavail();
 
         if status.anynonexistent() {
             for hart_index in 1..max_hart_index {
@@ -748,7 +786,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 control.set_dmactive(true);
                 control.set_hartsel(hart_index);
                 // Clear any sticky unavail state so we read fresh availability.
-                if sticky_unavail {
+                if self.state.sticky_unavail {
                     control.set_ackunavail(true);
                 }
 
@@ -946,7 +984,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         // Both paths above guarantee the core is halted here.
         self.state.is_halted = true;
 
-        if !self.state.sw_breakpoint_debug_enabled {
+        if self.state.sw_breakpoint_debug_enabled & (1 << self.state.last_selected_hart) == 0 {
             self.debug_on_sw_breakpoint(true)?;
         }
 
@@ -3027,7 +3065,32 @@ impl<'state> RiscvCommunicationInterface<'state> {
         );
 
         self.write_csr(0x7b0, u64::from(dcsr.0))?;
-        self.state.sw_breakpoint_debug_enabled = enabled;
+        let hart_bit = 1 << self.state.last_selected_hart;
+        if enabled {
+            self.state.sw_breakpoint_debug_enabled |= hart_bit;
+        } else {
+            self.state.sw_breakpoint_debug_enabled &= !hart_bit;
+        }
+        Ok(())
+    }
+
+    /// Enable halt-on-`ebreak` for the selected hart if it is not enabled yet.
+    ///
+    /// `dcsr` is per-hart. A shared flag would skip this on a second hart after
+    /// the first hart was configured. A running hart is halted, configured, and
+    /// resumed. A hart that is already halted is left halted.
+    pub(crate) fn ensure_debug_on_sw_breakpoint(&mut self) -> Result<(), RiscvError> {
+        if self.state.sw_breakpoint_debug_enabled & (1 << self.state.last_selected_hart) != 0 {
+            return Ok(());
+        }
+
+        self.state.is_halted = false;
+        let was_running = self.halt_with_previous(Duration::from_millis(100))?;
+        self.debug_on_sw_breakpoint(true)?;
+        if was_running {
+            self.resume_core()?;
+        }
+
         Ok(())
     }
 

@@ -322,6 +322,8 @@ impl<'state, X: XlenMode> RiscvCore<'state, X> {
     ) -> Result<Self, RiscvError> {
         X::configure_interface(&mut interface);
 
+        interface.ensure_debug_on_sw_breakpoint()?;
+
         if !state.misa_read {
             // Determine FPU presence from MISA extensions (F, D, or Q)
             let misa_val = interface

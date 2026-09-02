@@ -189,8 +189,8 @@ impl RunLoop {
                     let mut core = match session.core(idx) {
                         Ok(core) => core,
                         Err(Error::CoreDisabled(_)) => {
-                            next_wakeup[idx] = Instant::now() + WATCH_POLL_INTERVAL;
-                            next_poll = next_poll.min(WATCH_POLL_INTERVAL);
+                            // Retry on the next primary poll so a hart that leaves reset is
+                            // configured before it can panic.
                             continue;
                         }
                         Err(error) => {
