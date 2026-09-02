@@ -1,0 +1,1 @@
+RISC-V harts that are unavailable at attach (for example an ESP32-P4 APP CPU still in reset) are re-checked later. When a hart becomes available, probe-rs enables halt-on-`ebreak` for that hart so a panic on a second core is observed.

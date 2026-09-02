@@ -203,10 +203,9 @@ fn identify_by_idcode(
                 .iter()
                 .filter_map(ChipDetectionMethod::as_espressif)
             {
-                if info.idcode == idcode
-                    && let Some(target) = get_target_by_magic(info, 0)
-                {
-                    return Ok(Some(target));
+                // Magic values omitted and there's one chip variant -> trust IDCODE
+                if info.idcode == idcode && info.variants.is_empty() && family.variants.len() == 1 {
+                    return Ok(Some(family.variants[0].name.clone()));
                 }
             }
         }
