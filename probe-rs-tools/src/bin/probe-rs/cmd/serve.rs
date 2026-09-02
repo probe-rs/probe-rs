@@ -145,9 +145,8 @@ async fn server_info() -> Html<String> {
         for probe in probes {
             write!(body, "<li>{probe}</li>").unwrap();
         }
+        body.push_str("</ul>");
     }
-
-    body.push_str("</ul>");
 
     write!(body, "<p>Version: {}</p>", env!("PROBE_RS_LONG_VERSION")).unwrap();
 
