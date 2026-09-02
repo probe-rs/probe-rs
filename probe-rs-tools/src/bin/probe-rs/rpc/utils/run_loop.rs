@@ -35,15 +35,26 @@ pub enum ReturnReason<R> {
     LockedUp,
 }
 
+/// Default interval between status polls of the primary core when RTT does not request a faster poll.
+const DEFAULT_POLL_INTERVAL: Duration = Duration::from_millis(100);
+
+/// Interval between status polls of other cores. Longer than the primary interval to limit probe traffic.
+const WATCH_POLL_INTERVAL: Duration = Duration::from_millis(250);
+
 impl RunLoop {
-    /// Attaches to RTT and runs the core until it halts.
+    /// Attaches to RTT and runs the primary core until it, or another enabled core, halts.
+    ///
+    /// Vector catch, the initial resume, and the poller run only on [`Self::core_id`]. Other cores
+    /// are observed with `status()` only. A disabled hart is skipped and retried later. An
+    /// unexpected halt, lock-up, or semihosting result on any observed core uses the same predicate
+    /// as the primary core.
     ///
     /// Upon halt the predicate is invoked with the halt reason:
     /// * If the predicate returns `Ok(Some(r))` the run loop returns `Ok(ReturnReason::Predicate(r))`.
-    /// * If the predicate returns `Ok(None)` the run loop will continue running the core.
+    /// * If the predicate returns `Ok(None)` the run loop will continue running the core that halted.
     /// * If the predicate returns `Err(e)` the run loop will return `Err(e)`.
     ///
-    /// The function will also return on timeout with `Ok(ReturnReason::Timeout)` or if the user presses CTRL + C with `Ok(ReturnReason::User)`.
+    /// The function will also return on timeout with `Ok(ReturnReason::Timeout)` or if the user presses CTRL + C with `Ok(ReturnReason::Cancelled)`.
     pub fn run_until<F, R>(
         &mut self,
         shared_session: &SessionState<'_>,
@@ -143,44 +154,108 @@ impl RunLoop {
         F: FnMut(HaltReason, &mut Core) -> Result<Option<R>>,
     {
         let start = Instant::now();
+        let core_count = shared_session.session_blocking().target().cores.len();
+        let mut next_wakeup = vec![start; core_count];
 
         loop {
-            match self.poll_once(shared_session, poller, predicate)? {
-                ControlFlow::Break(reason) => return Ok(reason),
-                ControlFlow::Continue(next_poll) => {
-                    if let Some(timeout) = timeout
-                        && start.elapsed() >= timeout
-                    {
-                        return Ok(ReturnReason::Timeout);
+            let mut next_poll;
+
+            {
+                let mut session = shared_session.session_blocking();
+
+                {
+                    let mut core = session.core(self.core_id)?;
+                    match self.poll_core(&mut core, true, poller, predicate)? {
+                        ControlFlow::Break(reason) => return Ok(reason),
+                        ControlFlow::Continue(duration) => next_poll = duration,
+                    }
+                }
+
+                if self.cancellation_token.is_cancelled() {
+                    return Ok(ReturnReason::Cancelled);
+                }
+
+                let now = Instant::now();
+                for (idx, wakeup) in next_wakeup.iter_mut().enumerate() {
+                    if idx == self.core_id {
+                        continue;
                     }
 
-                    // If the polling frequency is too high, the USB connection to the probe
-                    // can become unstable. Hence we only poll as little as necessary.
-                    thread::sleep(next_poll);
+                    if now < *wakeup {
+                        next_poll = next_poll.min(wakeup.saturating_duration_since(now));
+                        continue;
+                    }
+
+                    let mut core = match session.core(idx) {
+                        Ok(core) => core,
+                        Err(Error::CoreDisabled(_)) => {
+                            next_wakeup[idx] = Instant::now() + WATCH_POLL_INTERVAL;
+                            next_poll = next_poll.min(WATCH_POLL_INTERVAL);
+                            continue;
+                        }
+                        Err(error) => {
+                            tracing::debug!(
+                                "Skipping core {idx} while the run loop observes it: {error}"
+                            );
+                            *wakeup = Instant::now() + WATCH_POLL_INTERVAL;
+                            next_poll = next_poll.min(WATCH_POLL_INTERVAL);
+                            continue;
+                        }
+                    };
+
+                    match self.poll_core(&mut core, false, poller, predicate) {
+                        Ok(ControlFlow::Break(reason)) => return Ok(reason),
+                        Ok(ControlFlow::Continue(duration)) => {
+                            *wakeup = Instant::now() + duration;
+                            next_poll = next_poll.min(duration);
+                        }
+                        Err(error) => {
+                            tracing::debug!(
+                                "Skipping core {idx} while the run loop observes it: {error}"
+                            );
+                            *wakeup = Instant::now() + WATCH_POLL_INTERVAL;
+                            next_poll = next_poll.min(WATCH_POLL_INTERVAL);
+                        }
+                    }
+
+                    if self.cancellation_token.is_cancelled() {
+                        return Ok(ReturnReason::Cancelled);
+                    }
                 }
             }
+
+            if let Some(timeout) = timeout
+                && start.elapsed() >= timeout
+            {
+                return Ok(ReturnReason::Timeout);
+            }
+
+            // If the polling frequency is too high, the USB connection to the probe
+            // can become unstable. Hence we only poll as little as necessary.
+            thread::sleep(next_poll);
         }
     }
 
-    fn poll_once<F, R>(
+    fn poll_core<F, R>(
         &self,
-        shared_session: &SessionState<'_>,
+        core: &mut Core<'_>,
+        is_primary: bool,
         poller: &mut impl RunLoopPoller,
         predicate: &mut F,
     ) -> Result<ControlFlow<ReturnReason<R>, Duration>>
     where
         F: FnMut(HaltReason, &mut Core) -> Result<Option<R>>,
     {
-        let mut session = shared_session.session_blocking();
-        let mut core = session.core(self.core_id)?;
+        let mut next_poll = if is_primary {
+            DEFAULT_POLL_INTERVAL
+        } else {
+            WATCH_POLL_INTERVAL
+        };
 
-        let mut next_poll = Duration::from_millis(100);
-
-        // check for halt first, poll rtt after.
-        // this is important so we do one last poll after halt, so we flush all messages
-        // the core printed before halting, such as a panic message.
+        // Check for halt first. Poll RTT after on the primary core so one last poll after halt
+        // flushes messages the core printed before halting, such as a panic message.
         let return_reason = match core.status()? {
-            probe_rs::CoreStatus::Halted(reason) => match predicate(reason, &mut core) {
+            probe_rs::CoreStatus::Halted(reason) => match predicate(reason, core) {
                 Ok(Some(r)) => Some(Ok(ReturnReason::Predicate(r))),
                 Err(e) => Some(Err(e)),
                 Ok(None) => {
@@ -201,15 +276,16 @@ impl RunLoop {
             probe_rs::CoreStatus::LockedUp => Some(Ok(ReturnReason::LockedUp)),
         };
 
-        let poller_result = poller.poll(&mut core);
+        if is_primary {
+            let poller_result = poller.poll(core);
 
-        if let Some(reason) = return_reason {
+            if let Some(reason) = return_reason {
+                return reason.map(ControlFlow::Break);
+            }
+            next_poll = next_poll.min(poller_result?);
+        } else if let Some(reason) = return_reason {
             return reason.map(ControlFlow::Break);
         }
-        if self.cancellation_token.is_cancelled() {
-            return Ok(ControlFlow::Break(ReturnReason::Cancelled));
-        }
-        next_poll = next_poll.min(poller_result?);
 
         Ok(ControlFlow::Continue(next_poll))
     }

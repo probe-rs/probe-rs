@@ -246,7 +246,10 @@ impl<F: FnMut(SemihostingEvent)> ListEventHandler<F> {
         core: &mut Core<'_>,
     ) -> anyhow::Result<Option<Tests>> {
         let HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) = halt_reason else {
-            anyhow::bail!("CPU halted unexpectedly. Halt reason: {halt_reason:?}");
+            anyhow::bail!(
+                "Core {} halted unexpectedly. Halt reason: {halt_reason:?}",
+                core.id()
+            );
         };
 
         // When the target first invokes SYS_GET_CMDLINE (0x15), we answer "list"
@@ -335,7 +338,8 @@ impl<F: FnMut(SemihostingEvent)> RunEventHandler<F> {
             HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) => cmd,
             // Exception occurred (e.g. hardfault) => Abort testing altogether
             reason => anyhow::bail!(
-                "The CPU halted unexpectedly: {reason:?}. Test should signal failure via a panic handler that calls `semihosting::process::abort()` instead",
+                "Core {} halted unexpectedly: {reason:?}. Test should signal failure via a panic handler that calls `semihosting::process::abort()` instead",
+                core.id()
             ),
         };
 
