@@ -3,8 +3,8 @@
 use crate::architecture::arm::armv6m::{Aircr, Demcr, Dhcsr};
 use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::sequences::{
-    ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence, cortex_m_core_start,
-    cortex_m_reset_system,
+    ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence, DefaultArmSequence,
+    cortex_m_core_start, cortex_m_wait_for_reset,
 };
 use crate::architecture::arm::{ArmDebugInterface, ArmError, FullyQualifiedApAddress};
 use crate::core::MemoryMappedRegister;
@@ -149,17 +149,21 @@ impl MKL82 {
         Ok(())
     }
 
-    /// Halt a reset-looping target so it can be debugged and reflashed.
+    /// Reset the system through the MDM-AP and halt the core at the reset
+    /// vector, for a target the AHB-AP cannot get a foothold on.
     ///
-    /// Firmware that resets the chip shortly after boot (a software reset
-    /// loop, or a watchdog reset because the watchdog was never serviced)
-    /// makes AHB-AP accesses fail intermittently, so a normal attach cannot
-    /// get a foothold. The MDM-AP stays accessible throughout: request one
-    /// system reset with the core held in reset, set up halt-on-reset while
-    /// the core is held (the debug logic is not reset by a core reset), then
-    /// release the core so it halts at the reset vector before it can
-    /// trigger the next reset.
-    fn halt_looping_core(
+    /// Two kinds of target need this. Firmware that resets the chip shortly
+    /// after boot (a software reset loop, or a watchdog reset because the
+    /// watchdog was never serviced) makes AHB-AP accesses fail
+    /// intermittently. Firmware that sleeps in a stop mode (STOP, VLPS, LLS,
+    /// VLLS) takes the bus clock, and in the deepest modes the debug logic,
+    /// down with it, so accesses fail with WAIT or FAULT until the next
+    /// wake-up. The MDM-AP stays accessible throughout: request one system
+    /// reset with the core held in reset (this also leaves any low-power
+    /// mode), set up halt-on-reset while the core is held (the debug logic
+    /// is not reset by a core reset), then release the core so it halts at
+    /// the reset vector before it can sleep or trigger the next reset.
+    fn halt_via_mdm_reset(
         interface: &mut dyn ArmDebugInterface,
         core_ap: &FullyQualifiedApAddress,
     ) -> Result<(), ArmError> {
@@ -215,8 +219,34 @@ impl MKL82 {
         demcr.set_vc_corereset(false);
         core.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
 
-        tracing::info!("Recovered a reset-looping target: core halted at the reset vector");
+        tracing::info!("Target reset via the MDM-AP: core halted at the reset vector");
         Ok(())
+    }
+
+    /// Request one system reset through the MDM-AP without touching the
+    /// core's debug registers, and wait for the system to come out of reset.
+    fn system_reset_via_mdm(interface: &mut dyn ArmDebugInterface) -> Result<(), ArmError> {
+        let mdm_ap = Self::mdm_ap();
+        interface.write_raw_ap_register(
+            &mdm_ap,
+            Self::MDM_CONTROL,
+            Self::MDM_CONTROL_SYSTEM_RESET_REQUEST,
+        )?;
+        interface.write_raw_ap_register(&mdm_ap, Self::MDM_CONTROL, 0)?;
+        Self::wait_for_mdm_status(
+            interface,
+            Self::MDM_STATUS_SYSTEM_RESET_RELEASED,
+            Duration::from_secs(1),
+        )?;
+        Ok(())
+    }
+
+    /// Whether the MDM-AP reports the system as held in reset right now
+    /// (for example by an asserted nRESET pin). Read errors count as "no".
+    fn system_in_reset(interface: &mut dyn ArmDebugInterface) -> bool {
+        interface
+            .read_raw_ap_register(&Self::mdm_ap(), Self::MDM_STATUS)
+            .is_ok_and(|status| status & Self::MDM_STATUS_SYSTEM_RESET_RELEASED == 0)
     }
 }
 
@@ -246,10 +276,13 @@ impl ArmDebugSequence for MKL82 {
                 break;
             }
 
-            let ahb_ok = {
-                let mut core = interface.memory_interface(core_ap)?;
-                core.read_word_32(Dhcsr::get_mmio_address()).is_ok()
-            };
+            // Creating the memory interface touches the AHB-AP as well, so a
+            // failure there counts the same as a failed read: on a target
+            // asleep in a stop mode the first AHB-AP access is what fails.
+            let ahb_ok = interface
+                .memory_interface(core_ap)
+                .and_then(|mut core| core.read_word_32(Dhcsr::get_mmio_address()))
+                .is_ok();
             if !ahb_ok {
                 resetting = true;
                 break;
@@ -257,8 +290,10 @@ impl ArmDebugSequence for MKL82 {
         }
 
         if resetting {
-            tracing::warn!("The target appears to be reset-looping; recovering via the MDM-AP");
-            Self::halt_looping_core(interface, core_ap)
+            tracing::warn!(
+                "The target is not responding (reset-looping, or asleep in a low-power mode); recovering with a system reset via the MDM-AP"
+            );
+            Self::halt_via_mdm_reset(interface, core_ap)
         } else {
             let mut core = interface.memory_interface(core_ap)?;
             cortex_m_core_start(&mut *core)
@@ -268,16 +303,38 @@ impl ArmDebugSequence for MKL82 {
     fn debug_device_unlock(
         &self,
         interface: &mut dyn ArmDebugInterface,
-        _default_ap: &FullyQualifiedApAddress,
+        default_ap: &FullyQualifiedApAddress,
         permissions: &crate::Permissions,
     ) -> Result<(), ArmError> {
         // The security bit is only meaningful once the flash controller has
         // initialized.
-        let status = Self::wait_for_mdm_status(
+        let status = match Self::wait_for_mdm_status(
             interface,
             Self::MDM_STATUS_FLASH_READY,
             Duration::from_secs(1),
-        )?;
+        ) {
+            Ok(status) => status,
+            Err(_) if Self::system_in_reset(interface) => {
+                // Connect under reset: nRESET is asserted, so the flash
+                // controller is held in reset too. The security check moves
+                // to `reset_hardware_deassert`.
+                tracing::debug!("System held in reset; deferring the flash security check");
+                return Ok(());
+            }
+            Err(_) => {
+                // The flash controller is disabled in the stop modes, so a
+                // sleeping target never reports ready. Wake it up.
+                tracing::warn!(
+                    "The target is not responding (asleep in a low-power mode?); recovering with a system reset via the MDM-AP"
+                );
+                Self::halt_via_mdm_reset(interface, default_ap)?;
+                Self::wait_for_mdm_status(
+                    interface,
+                    Self::MDM_STATUS_FLASH_READY,
+                    Duration::from_secs(1),
+                )?
+            }
+        };
 
         if status & Self::MDM_STATUS_SYSTEM_SECURITY == 0 {
             return Ok(());
@@ -323,7 +380,64 @@ impl ArmDebugSequence for MKL82 {
             tracing::warn!("Failed to clear RCM_FM before reset: {e}");
         }
 
-        cortex_m_reset_system(interface)
+        let mut aircr = Aircr(0);
+        aircr.vectkey();
+        aircr.set_sysresetreq(true);
+        if let Err(e) = interface.write_word_32(Aircr::get_mmio_address(), aircr.into()) {
+            // A core asleep in a stop mode does not take the AIRCR write;
+            // the MDM-AP reset request works regardless.
+            tracing::warn!("SYSRESETREQ failed ({e}); resetting via the MDM-AP instead");
+            Self::system_reset_via_mdm(interface.get_arm_debug_interface()?)?;
+        }
+
+        cortex_m_wait_for_reset(interface)
+    }
+
+    fn reset_catch_set(
+        &self,
+        core: &mut dyn ArmMemoryInterface,
+        core_type: crate::CoreType,
+        debug_base: Option<u64>,
+    ) -> Result<(), ArmError> {
+        match DefaultArmSequence::create().reset_catch_set(core, core_type, debug_base) {
+            // While nRESET is asserted (connect under reset) the debug
+            // registers may be unreachable. `reset_hardware_deassert` arms
+            // the catch itself once the pin is released.
+            Err(e) if Self::system_in_reset(core.get_arm_debug_interface()?) => {
+                tracing::debug!("Cannot arm the reset catch while the system is in reset: {e}");
+                Ok(())
+            }
+            result => result,
+        }
+    }
+
+    fn reset_hardware_deassert(
+        &self,
+        interface: &mut dyn ArmDebugInterface,
+        default_ap: &FullyQualifiedApAddress,
+    ) -> Result<(), ArmError> {
+        DefaultArmSequence::create().reset_hardware_deassert(interface, default_ap)?;
+
+        // The system just left reset: the flash controller has to initialize
+        // before the security state can be trusted.
+        let status = Self::wait_for_mdm_status(
+            interface,
+            Self::MDM_STATUS_FLASH_READY,
+            Duration::from_secs(1),
+        )?;
+        if status & Self::MDM_STATUS_SYSTEM_SECURITY != 0 {
+            return Err(ArmDebugSequenceError::custom(
+                "The device is locked (flash security is enabled). Attach without connect-under-reset and with --allow-erase-all to unlock it with a mass erase",
+            )
+            .into());
+        }
+
+        // Whatever the core did after the pin was released, the vector
+        // catch armed under reset cannot be relied on (the debug logic may
+        // have been unreachable, and C_DEBUGEN is not set yet). Reset once
+        // more through the MDM-AP with the core held, so it halts at the
+        // reset vector with debug enabled, as the caller expects.
+        Self::halt_via_mdm_reset(interface, default_ap)
     }
 }
 
