@@ -329,6 +329,13 @@ impl CmsisDapDevice {
                     ..
                 }) => (),
 
+                // A reply to a command from before this device was opened. It has now been read
+                // and the rest of the queue discarded with it, so the next attempt gets its own.
+                Err(CmsisDapError::Send {
+                    source: SendError::CommandIdMismatch(..),
+                    ..
+                }) => (),
+
                 // Raise other errors.
                 Err(e) => return Err(e),
             }
@@ -554,7 +561,17 @@ fn send_command_inner<Req: Request>(
     let mut buffer = vec![0; packet_buffer_len(device)];
 
     send_request_inner(device, request, &mut buffer)?;
-    receive_response_inner(device, request, &mut buffer)
+
+    // Once the request is out the probe owes a reply, so a failure here has to take it off the
+    // device before returning. Left there, the next command reads this reply instead of its own
+    // and rejects it as the wrong command, and so does every command after that for as long as
+    // the device stays open.
+    let response = receive_response_inner(device, request, &mut buffer);
+    if response.is_err() {
+        device.drain();
+    }
+
+    response
 }
 
 /// Trace log a buffer, including only the first trailing zero.
