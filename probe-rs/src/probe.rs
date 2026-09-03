@@ -4,7 +4,7 @@ pub(crate) mod common;
 pub mod usb_util;
 
 pub mod blackmagic;
-pub mod ch347usbjtag;
+pub mod ch347;
 pub mod cmsisdap;
 pub mod fake_probe;
 pub mod ftdi;
@@ -72,7 +72,7 @@ static DRIVERS: LazyLock<RwLock<Vec<&'static dyn ProbeFactory>>> = LazyLock::new
         &wlink::WchLinkFactory,
         &sifliuart::SifliUartFactory,
         &glasgow::GlasgowFactory,
-        &ch347usbjtag::Ch347UsbJtagFactory,
+        &ch347::Ch347Factory,
         &xvc::XvcFactory,
     ];
 
