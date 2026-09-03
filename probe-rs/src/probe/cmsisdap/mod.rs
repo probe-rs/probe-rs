@@ -212,6 +212,8 @@ impl CmsisDap {
 
         // Read remaining probe information.
         let packet_count = commands::send_command(device, &PacketCountCommand {})?;
+        tracing::debug!("Probe buffers {} packets", packet_count);
+
         let capabilities: Capabilities = commands::send_command(device, &CapabilitiesCommand {})?;
         tracing::debug!("Detected probe capabilities: {:?}", capabilities);
 
