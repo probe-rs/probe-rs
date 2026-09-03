@@ -33,7 +33,7 @@ use crate::{
 };
 
 use commands::{
-    CmsisDapDevice, Status,
+    CmsisDapDevice, SendError, Status,
     general::{
         connect::{ConnectRequest, ConnectResponse},
         disconnect::{DisconnectRequest, DisconnectResponse},
@@ -127,26 +127,64 @@ impl std::fmt::Debug for CmsisDap {
     }
 }
 
+/// Times the opening sequence is restarted while the probe is still answering with replies it owes
+/// from an earlier session.
+const MAX_OPEN_ATTEMPTS: usize = 8;
+
+/// How long the probe has to stay silent before its backlog counts as drained, once one has been
+/// seen. Only paid on the recovery path.
+const BACKLOG_IDLE: Duration = Duration::from_millis(100);
+
+/// Whether an error says the probe answered with something that was not a reply to what was asked.
+///
+/// A timeout or a USB failure says the probe is gone or silent, which asking again does not fix.
+/// These say a reply arrived and made no sense as an answer to the question, which is what a
+/// backlog from an earlier session looks like.
+fn reply_is_not_ours(error: &CmsisDapError) -> bool {
+    matches!(
+        error,
+        CmsisDapError::Send {
+            source: SendError::CommandIdMismatch(..)
+                | SendError::UnexpectedAnswer
+                | SendError::NotEnoughData,
+            ..
+        }
+    )
+}
+
+/// What `new_from_device` asks the probe about itself.
+struct ProbeInfo {
+    packet_size: u16,
+    packet_count: u8,
+    capabilities: Capabilities,
+    swo_buffer_size: Option<usize>,
+}
+
 impl CmsisDap {
     fn new_from_device(mut device: CmsisDapDevice) -> Result<Self, DebugProbeError> {
         // Discard anything left in buffer, as otherwise
         // we'll get out of sync between requests and responses.
         device.drain();
 
-        // Determine and set the packet size. We do this as soon as possible after
-        // opening the probe to ensure all future communication uses the correct size.
-        let packet_size = device.find_packet_size()? as u16;
+        // A probe that still owes replies from an earlier session answers the start of this one
+        // with the previous one's data. Drain properly and ask again for as long as the answers
+        // look like they belong to someone else.
+        let mut info = Self::read_probe_info(&mut device);
+        for _ in 1..MAX_OPEN_ATTEMPTS {
+            if !matches!(&info, Err(e) if reply_is_not_ours(e)) {
+                break;
+            }
 
-        // Read remaining probe information.
-        let packet_count = commands::send_command(&mut device, &PacketCountCommand {})?;
-        let caps: Capabilities = commands::send_command(&mut device, &CapabilitiesCommand {})?;
-        tracing::debug!("Detected probe capabilities: {:?}", caps);
-        let mut swo_buffer_size = None;
-        if caps.swo_uart_implemented || caps.swo_manchester_implemented {
-            let swo_size = commands::send_command(&mut device, &SWOTraceBufferSizeCommand {})?;
-            swo_buffer_size = Some(swo_size as usize);
-            tracing::debug!("Probe SWO buffer size: {}", swo_size);
+            device.drain_idle_for(BACKLOG_IDLE);
+            info = Self::read_probe_info(&mut device);
         }
+
+        let ProbeInfo {
+            packet_size,
+            packet_count,
+            capabilities: caps,
+            swo_buffer_size,
+        } = info?;
 
         Ok(Self {
             device,
@@ -164,6 +202,38 @@ impl CmsisDap {
             transfer_wait_retry: 0,
             jtag_state: JtagChainState::default(),
             jtag_buffer: JtagBuffer::new(packet_size - 1),
+        })
+    }
+
+    fn read_probe_info(device: &mut CmsisDapDevice) -> Result<ProbeInfo, CmsisDapError> {
+        // Determine and set the packet size. We do this as soon as possible after
+        // opening the probe to ensure all future communication uses the correct size.
+        let packet_size = device.find_packet_size()? as u16;
+
+        // Read remaining probe information.
+        let packet_count = commands::send_command(device, &PacketCountCommand {})?;
+        let capabilities: Capabilities = commands::send_command(device, &CapabilitiesCommand {})?;
+        tracing::debug!("Detected probe capabilities: {:?}", capabilities);
+
+        let mut swo_buffer_size = None;
+        if capabilities.swo_uart_implemented || capabilities.swo_manchester_implemented {
+            let swo_size = commands::send_command(device, &SWOTraceBufferSizeCommand {})?;
+            swo_buffer_size = Some(swo_size as usize);
+            tracing::debug!("Probe SWO buffer size: {}", swo_size);
+        }
+
+        // Nothing above can tell its own answer from one the probe still owed. Every `DAP_Info`
+        // sub-command shares command ID 0x00 and the reply does not say which one it answers, so
+        // a stale packet count reads as a capability mask and the probe comes out not supporting
+        // SWD. A command with a different ID does say: if anything was queued ahead of it, its
+        // reply arrives under the wrong ID, and everything read above came from the backlog.
+        commands::send_command(device, &HostStatusRequest::connected(false))?;
+
+        Ok(ProbeInfo {
+            packet_size,
+            packet_count,
+            capabilities,
+            swo_buffer_size,
         })
     }
 
