@@ -507,7 +507,7 @@ impl Ch347Device {
                 });
             }
             tracing::debug!("WAIT at access {first}, retry {}", retries + 1);
-            sleep(self.wait_backoff * (1 << retries.min(6)));
+            sleep(self.timing.wait_backoff * (1 << retries.min(6)));
             retries += 1;
             outstanding = waited
                 .iter()
@@ -583,9 +583,7 @@ impl Ch347Device {
                 SwdOp::Idle { cycles } => {
                     self.line_sequence(&BitSequence::repeat(false, cycles as usize))
                 }
-                SwdOp::Pins { .. } => Err(DebugProbeError::CommandNotSupportedByProbe {
-                    command_name: "swj_pins",
-                }),
+                SwdOp::Pins { out, select, wait } => self.swj_pins(out, select, wait),
             };
             self.run_transfers(&mut transfers, &mut results)?;
             if let Err(error) = line {
@@ -642,7 +640,7 @@ impl Ch347Device {
     }
 
     /// Clocks `bits` out on SWDIO, LSB first, as its own commands.
-    fn line_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError> {
+    pub(super) fn line_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError> {
         let mut start = 0;
         while start < bits.len() {
             let len = (bits.len() - start).min(MAX_SEQUENCE_BITS);
@@ -1141,7 +1139,7 @@ mod tests {
             .iter()
             .map(|(w, r)| (w.as_slice(), r.as_slice()))
             .collect();
-        let (mut dev, script) = scripted(CH347F_1_20, &frames);
+        let (mut dev, script) = scripted(CH347F_1_20, None, &frames);
         dev.select_protocol(WireProtocol::Swd).unwrap();
         dev.set_speed(khz).unwrap();
         let values = read_block(&mut dev, DRW, total).unwrap();

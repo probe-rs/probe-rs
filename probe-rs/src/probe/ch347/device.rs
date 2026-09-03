@@ -15,13 +15,14 @@ use crate::probe::{
 };
 
 use super::Ch347Factory;
+use super::board::{Board, LedActivity};
 use super::capabilities::{Capabilities, Clock, Pack, Variant, jtag_clock};
 use super::jtag::JtagCycle;
 use super::swd::{SwdClock, WAIT_BACKOFF};
 use super::transport::{Ch347Error, Transport, UsbTransport};
 
-const VID_WCH: u16 = 0x1A86;
-const PID_CH347F: u16 = 0x55DE;
+pub(super) const VID_WCH: u16 = 0x1A86;
+pub(super) const PID_CH347F: u16 = 0x55DE;
 const PID_CH347T: u16 = 0x55DD;
 const CH34X_VID_PID: [(u16, u16); 3] = [
     (VID_WCH, PID_CH347F),
@@ -34,6 +35,29 @@ const CMD_SWD_INIT: u8 = 0xE5;
 
 const DEFAULT_JTAG_KHZ: u32 = 15000;
 
+/// The delays the driver waits out; tests set them to zero.
+#[derive(Debug, Clone, Copy)]
+pub(super) struct Timing {
+    pub wait_backoff: Duration,
+    /// Activity blink: how long the LED stays in each phase while transfers keep coming.
+    pub led_on: Duration,
+    pub led_off: Duration,
+}
+
+impl Timing {
+    const DEFAULT: Self = Self {
+        wait_backoff: WAIT_BACKOFF,
+        led_on: Duration::from_millis(100),
+        led_off: Duration::from_millis(50),
+    };
+    #[cfg(test)]
+    const INSTANT: Self = Self {
+        wait_backoff: Duration::ZERO,
+        led_on: Duration::ZERO,
+        led_off: Duration::ZERO,
+    };
+}
+
 fn is_ch34x_device(device: &DeviceInfo) -> bool {
     CH34X_VID_PID.contains(&(device.vendor_id(), device.product_id()))
 }
@@ -43,7 +67,12 @@ fn is_ch34x_device(device: &DeviceInfo) -> bool {
 pub(crate) struct Ch347Device {
     pub(super) transport: Box<dyn Transport>,
     pub(super) capabilities: Capabilities,
+    pub(super) board: Option<Board>,
     pub(super) protocol: WireProtocol,
+    pub(super) reset_asserted: bool,
+    /// Some for a session, between attach and detach.
+    pub(super) led: Option<LedActivity>,
+    pub(super) timing: Timing,
     /// Known once the first JTAG init has run.
     pub(super) pack: Option<Pack>,
     pub(super) requested_khz: Option<u32>,
@@ -51,7 +80,6 @@ pub(crate) struct Ch347Device {
     pub(super) out_of_sync: bool,
     pub(super) jtag_queue: Vec<JtagCycle>,
     pub(super) jtag_captured: BitVec,
-    pub(super) wait_backoff: Duration,
 }
 
 /// The vendor-class interface with a bulk pipe in each direction, as (number, out, in).
@@ -78,7 +106,7 @@ fn vendor_interface(device: &nusb::Device) -> Option<(u8, u8, u8)> {
 impl Ch347Device {
     pub(crate) fn new_from_selector(
         selector: &DebugProbeSelector,
-    ) -> Result<Self, ProbeCreationError> {
+    ) -> Result<Self, DebugProbeError> {
         let usb = |e: nusb::Error| ProbeCreationError::Usb(e.into());
         let devices = nusb::list_devices().wait().map_err(usb)?;
         let device = devices
@@ -105,6 +133,15 @@ impl Ch347Device {
             capabilities.firmware >> 8,
             capabilities.firmware & 0xFF
         );
+        let board = Board::detect(&device, &handle);
+        if let Some(board) = board {
+            tracing::info!(
+                "{} board: GPIO reset {}, LED {}",
+                board.name,
+                if board.reset.is_some() { "on" } else { "off" },
+                if board.led.is_some() { "on" } else { "off" }
+            );
+        }
 
         let interface = handle
             .detach_and_claim_interface(interface_number)
@@ -114,21 +151,32 @@ impl Ch347Device {
         let inp = interface.endpoint::<Bulk, In>(inp).map_err(usb)?;
         let transport = UsbTransport::open(interface, out, inp);
 
-        Ok(Self::new(Box::new(transport), capabilities))
+        let mut device = Self::new(Box::new(transport), capabilities, board);
+        // The chip keeps GPIO state across sessions, set to known state.
+        device.release_reset()?;
+        device.set_led(false)?;
+        Ok(device)
     }
 
-    pub(crate) fn new(transport: Box<dyn Transport>, capabilities: Capabilities) -> Self {
+    pub(crate) fn new(
+        transport: Box<dyn Transport>,
+        capabilities: Capabilities,
+        board: Option<Board>,
+    ) -> Self {
         Self {
             transport,
             capabilities,
+            board,
             protocol: WireProtocol::Jtag,
+            reset_asserted: false,
+            led: None,
+            timing: Timing::DEFAULT,
             pack: None,
             requested_khz: None,
             clock: None,
             out_of_sync: false,
             jtag_queue: Vec::new(),
             jtag_captured: BitVec::new(),
-            wait_backoff: WAIT_BACKOFF,
         }
     }
 
@@ -311,6 +359,7 @@ pub(crate) mod tests {
     /// A device whose transport follows the script.
     pub(crate) fn scripted(
         capabilities: Capabilities,
+        board: Option<Board>,
         frames: &[(&[u8], &[u8])],
     ) -> (Ch347Device, Arc<Script>) {
         let script = Arc::new(Script(Mutex::new(
@@ -323,14 +372,14 @@ pub(crate) mod tests {
             script: script.clone(),
             pending: None,
         };
-        let mut dev = Ch347Device::new(Box::new(transport), capabilities);
-        dev.wait_backoff = Duration::ZERO;
+        let mut dev = Ch347Device::new(Box::new(transport), capabilities, board);
+        dev.timing = Timing::INSTANT;
         (dev, script)
     }
 
-    /// A generic CH347.
+    /// A generic CH347: no board, no GPIO.
     pub(crate) fn device(frames: &[(&[u8], &[u8])]) -> (Ch347Device, Arc<Script>) {
-        scripted(CH347F_1_20, frames)
+        scripted(CH347F_1_20, None, frames)
     }
 
     pub(crate) const PACK_PROBE: &[u8] = &[0xD0, 6, 0, 0, 9, 0x22, 0x22, 0x22, 0x22];
@@ -346,7 +395,7 @@ pub(crate) mod tests {
             variant: Variant::Ch347F,
             firmware: 0x100,
         };
-        let (mut dev, _) = scripted(pre_gate, &[]);
+        let (mut dev, _) = scripted(pre_gate, None, &[]);
         dev.select_protocol(WireProtocol::Swd).unwrap();
         assert_eq!(dev.speed_khz(), 1000);
     }

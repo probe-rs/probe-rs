@@ -1,4 +1,5 @@
 //! CH347: a USB bridge with UART, I2C, SPI, GPIO and a JTAG/SWD engine.
+mod board;
 mod capabilities;
 mod device;
 mod jtag;
@@ -42,7 +43,9 @@ impl std::fmt::Display for Ch347Factory {
 
 /// A CH347-based debug probe.
 ///
-/// JTAG is bit-banged; SWD runs on the chip's transaction engine.
+/// JTAG is bit-banged; SWD runs on the chip's transaction engine. Target reset needs a
+/// board whose GPIO wiring the driver knows, recognised by its USB identity; on a generic
+/// CH347 no GPIO is ever written.
 #[derive(Debug)]
 pub struct Ch347 {
     device: Ch347Device,
@@ -138,29 +141,25 @@ impl DebugProbe for Ch347 {
     }
 
     fn attach(&mut self) -> Result<(), DebugProbeError> {
-        self.device.attach()
+        self.device.attach()?;
+        self.device.set_led(true)
     }
 
     fn detach(&mut self) -> Result<(), crate::Error> {
-        Ok(self.device.detach()?)
+        self.device.detach()?;
+        Ok(self.device.set_led(false)?)
     }
 
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::CommandNotSupportedByProbe {
-            command_name: "target_reset",
-        })
+        self.device.target_reset()
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::CommandNotSupportedByProbe {
-            command_name: "target_reset_assert",
-        })
+        self.device.target_reset_assert()
     }
 
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::CommandNotSupportedByProbe {
-            command_name: "target_reset_deassert",
-        })
+        self.device.target_reset_deassert()
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {

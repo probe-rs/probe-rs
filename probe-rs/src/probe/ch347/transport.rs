@@ -14,9 +14,10 @@ use crate::probe::{
     usb_util::{BulkReadExt, BulkWriteExt},
 };
 
+use super::board::Drive;
 use super::device::Ch347Device;
 
-const TIMEOUT: Duration = Duration::from_millis(500);
+pub(super) const TIMEOUT: Duration = Duration::from_millis(500);
 /// Long enough for a reply already in the chip to arrive.
 const DRAIN_TIMEOUT: Duration = Duration::from_millis(20);
 /// Every command and every reply starts with the command byte and a little-endian payload length.
@@ -43,6 +44,10 @@ pub(crate) enum Ch347Error {
     NoInterface,
     #[error("SWD batch exceeds the firmware's limits")]
     BatchTooLarge,
+    #[error("the reset GPIO did not switch to {0:?}")]
+    Reset(Drive),
+    #[error("target reset needs a board with a reset GPIO; this is a generic CH347")]
+    NoResetPin,
 }
 
 impl ProbeError for Ch347Error {}
@@ -152,6 +157,7 @@ impl Ch347Device {
             return Err(self.desynced(command, reply));
         }
         reply.drain(..HEADER_LEN);
+        self.led_activity(command);
         Ok(reply)
     }
 
