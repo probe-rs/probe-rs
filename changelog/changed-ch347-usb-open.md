@@ -1,0 +1,1 @@
+The CH347 probe now opens its debug interface even when a kernel driver holds it, is listed by its USB product string, and stops with an error after an unexpected USB reply instead of returning wrong data.
