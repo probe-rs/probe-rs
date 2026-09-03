@@ -26,7 +26,10 @@ use crate::{
         JtagChainState, ProbeFactory, WireProtocol,
         cmsisdap::commands::{
             CmsisDapError, RequestError,
-            general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
+            general::info::{
+                CapabilitiesCommand, PacketCountCommand, PacketSizeCommand,
+                SWOTraceBufferSizeCommand,
+            },
         },
         swd::SwdProbe,
     },
@@ -56,7 +59,7 @@ use commands::{
         sequence::{SequenceRequest, SequenceResponse},
     },
     swo,
-    transfer::{Ack, TransferRequest, configure::ConfigureRequest},
+    transfer::{Ack, TransferAbortRequest, TransferRequest, configure::ConfigureRequest},
 };
 use probe_rs_target::ScanChainElement;
 
@@ -135,6 +138,49 @@ const MAX_OPEN_ATTEMPTS: usize = 8;
 /// seen. Only paid on the recovery path.
 const BACKLOG_IDLE: Duration = Duration::from_millis(100);
 
+/// Rounds spent bringing replies back into step before giving up on the probe.
+const MAX_RESYNC_ROUNDS: usize = 32;
+
+/// How long to wait for a reply the probe was prompted to give up.
+const RESYNC_IDLE: Duration = Duration::from_millis(5);
+
+/// Bring requests and replies back into step.
+///
+/// A probe interrupted mid-transfer answers the next command with the previous one's reply, and
+/// goes on doing so across a close and reopen. Draining does not clear it: nothing is waiting on
+/// the endpoint, so a drain reads nothing and the next command is answered late all the same.
+/// Ordinary commands do not clear it either, however many are sent.
+///
+/// What does clear it, measured a reply at a time, is `DAP_TransferAbort`, which the probe answers
+/// with nothing at all.
+///
+/// Whether the stream is level has to be asked with two different commands. A repeated one cannot
+/// tell its own reply from the previous copy's, which is the same blindness that hides a slipped
+/// `DAP_Info`: all its sub-commands share one command ID. So level means a `DAP_HostStatus` sent
+/// after a `DAP_Info` comes back under its own ID.
+fn resynchronise(device: &mut CmsisDapDevice) {
+    for round in 0..MAX_RESYNC_ROUNDS {
+        // Unconditionally, and before asking anything: a probe that owes a reply does not give it
+        // up for a command that queues another one behind it, so the question cannot be asked
+        // until this has been done at least once.
+        let _ = commands::send_request(device, &TransferAbortRequest);
+        device.drain_idle_for(RESYNC_IDLE);
+
+        let _ = commands::send_command(device, &PacketSizeCommand {});
+        if commands::send_command(device, &HostStatusRequest::connected(false)).is_ok() {
+            if round > 0 {
+                tracing::debug!("Probe back in step after {round} rounds");
+            }
+            return;
+        }
+    }
+
+    tracing::warn!(
+        "Probe is still answering with replies to an earlier session's commands after \
+         {MAX_RESYNC_ROUNDS} attempts to bring it back into step."
+    );
+}
+
 /// Whether an error says the probe answered with something that was not a reply to what was asked.
 ///
 /// A timeout or a USB failure says the probe is gone or silent, which asking again does not fix.
@@ -154,7 +200,6 @@ fn reply_is_not_ours(error: &CmsisDapError) -> bool {
 
 /// What `new_from_device` asks the probe about itself.
 struct ProbeInfo {
-    packet_size: u16,
     packet_count: u8,
     capabilities: Capabilities,
     swo_buffer_size: Option<usize>,
@@ -166,9 +211,15 @@ impl CmsisDap {
         // we'll get out of sync between requests and responses.
         device.drain();
 
+        // Before anything else is asked of the probe. Until this returns, the size a report has to
+        // be to reach the device is a guess -- and some answer nothing at all until they receive a
+        // full one, which is what the retrying inside here is for. Anything sent before it can go
+        // unanswered on those probes for reasons that have nothing to do with the probe's state.
+        let packet_size = device.find_packet_size()? as u16;
+
         // A probe that still owes replies from an earlier session answers the start of this one
-        // with the previous one's data. Drain properly and ask again for as long as the answers
-        // look like they belong to someone else.
+        // with the previous one's data. Drain properly, prompt out what it is holding, and ask
+        // again for as long as the answers look like they belong to someone else.
         let mut info = Self::read_probe_info(&mut device);
         for _ in 1..MAX_OPEN_ATTEMPTS {
             if !matches!(&info, Err(e) if reply_is_not_ours(e)) {
@@ -176,11 +227,11 @@ impl CmsisDap {
             }
 
             device.drain_idle_for(BACKLOG_IDLE);
+            resynchronise(&mut device);
             info = Self::read_probe_info(&mut device);
         }
 
         let ProbeInfo {
-            packet_size,
             packet_count,
             capabilities: caps,
             swo_buffer_size,
@@ -206,10 +257,6 @@ impl CmsisDap {
     }
 
     fn read_probe_info(device: &mut CmsisDapDevice) -> Result<ProbeInfo, CmsisDapError> {
-        // Determine and set the packet size. We do this as soon as possible after
-        // opening the probe to ensure all future communication uses the correct size.
-        let packet_size = device.find_packet_size()? as u16;
-
         // Read remaining probe information.
         let packet_count = commands::send_command(device, &PacketCountCommand {})?;
         tracing::debug!("Probe buffers {} packets", packet_count);
@@ -232,7 +279,6 @@ impl CmsisDap {
         commands::send_command(device, &HostStatusRequest::connected(false))?;
 
         Ok(ProbeInfo {
-            packet_size,
             packet_count,
             capabilities,
             swo_buffer_size,
