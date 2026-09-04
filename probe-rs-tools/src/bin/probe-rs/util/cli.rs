@@ -1,6 +1,5 @@
 //! CLI-specific building blocks.
 
-use std::fmt::Display;
 use std::future::pending;
 use std::io::Write;
 use std::time::Duration;
@@ -12,7 +11,6 @@ use probe_rs::meta::ElfMetadata;
 use probe_rs::rtt::find_rtt_control_block_and_metadata_in_raw_file;
 use ratatui::crossterm::style::Stylize;
 use rustyline_async::{Readline, ReadlineError, ReadlineEvent, SharedWriter};
-use std::env::VarError;
 use time::UtcOffset;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::futures::Notified;
@@ -33,6 +31,10 @@ use crate::util::{
     flash::CliProgressBars,
     logging,
     rtt::{DefmtProcessor, DefmtState, RttDecoder},
+    style::{
+        Prompt, StackTraceAddress, StackTraceFunction, StackTraceInlineMarker,
+        StackTraceSourceLocation, probe_rs_color_enabled,
+    },
 };
 use probe_rs_rpc::CancelTopic;
 use probe_rs_rpc::core_ops::{WireBreakpointCause, WireHaltReason};
@@ -1159,7 +1161,7 @@ async fn display_stack_trace(
     for StackTrace { core, frames } in stack_trace.cores.iter() {
         println!("Core {core}");
         for (i, frame) in frames.iter().enumerate() {
-            println!("    Frame {i}: {}", format_stack_frame(frame, None));
+            println!("    Frame {i}: {}", format_stack_frame(frame));
         }
         if frames.len() >= stack_frame_limit as usize {
             println!("Use `--stack-frame-limit` to increase the number of frames displayed.");
@@ -1170,14 +1172,10 @@ async fn display_stack_trace(
 }
 
 /// Formats a single stack frame for display.
-///
-/// `colorize` controls ANSI styling: `None` uses the `PROBE_RS_COLOR` default,
-/// `Some(b)` forces a specific choice (used by DAP handlers that must honor the
-/// remote client's `supportsAnsiStyling` capability instead of the server env).
-pub(crate) fn format_stack_frame(frame: &StackTraceFrame, colorize: Option<bool>) -> String {
+pub(crate) fn format_stack_frame(frame: &StackTraceFrame) -> String {
     use std::fmt::Write as _;
 
-    let color = colorize.unwrap_or_else(probe_rs_color_enabled);
+    let color = probe_rs_color_enabled();
 
     let mut s = String::new();
     write!(
@@ -1402,59 +1400,3 @@ impl Channel {
         }
     }
 }
-
-pub(crate) fn probe_rs_color_enabled() -> bool {
-    matches!(
-        std::env::var("PROBE_RS_COLOR").as_deref(),
-        Err(VarError::NotPresent) | Ok("true" | "1" | "yes" | "on")
-    )
-}
-
-/// Defines a named style as a `Display` wrapper.
-///
-/// The style expression lives in one place. By default, each wrapper consults
-/// `probe_rs_color_enabled()` (i.e. the `PROBE_RS_COLOR` env var) when rendering.
-/// Call sites with a different rendering context — e.g. a DAP handler whose
-/// output is interpreted by a remote client — can override that decision with
-/// `.colorize(bool)` without having to know about `PROBE_RS_COLOR` at all.
-macro_rules! styled {
-    ($name:ident($var:ident) => $style:expr) => {
-        pub struct $name<S: AsRef<str>> {
-            value: S,
-            colorize: Option<bool>,
-        }
-
-        impl<S: AsRef<str>> $name<S> {
-            pub fn new(value: S) -> Self {
-                Self {
-                    value,
-                    colorize: None,
-                }
-            }
-
-            /// Explicitly turn ANSI styling on/off, bypassing the `PROBE_RS_COLOR` default.
-            #[allow(dead_code)]
-            pub fn colorize(mut self, colorize: bool) -> Self {
-                self.colorize = Some(colorize);
-                self
-            }
-        }
-
-        impl<S: AsRef<str>> Display for $name<S> {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                if self.colorize.unwrap_or_else(probe_rs_color_enabled) {
-                    let $var = self.value.as_ref();
-                    write!(f, "{}", $style)
-                } else {
-                    f.write_str(self.value.as_ref())
-                }
-            }
-        }
-    };
-}
-
-styled!(StackTraceFunction(name) => name.bold().cyan());
-styled!(StackTraceAddress(addr) => addr.yellow());
-styled!(StackTraceInlineMarker(marker) => marker.italic().dark_yellow());
-styled!(StackTraceSourceLocation(loc) => loc.dim().grey());
-styled!(Prompt(prompt) => prompt.bold().dark_green());

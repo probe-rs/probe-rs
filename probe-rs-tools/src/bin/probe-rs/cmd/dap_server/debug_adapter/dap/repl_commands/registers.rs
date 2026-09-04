@@ -12,6 +12,7 @@ use crate::cmd::dap_server::{
     },
     server::core_data::CoreData,
 };
+use crate::util::style::ReplSymbol;
 
 //  `wreg` command: "Set the value of a core or peripheral register."
 #[distributed_slice(REPL_COMMANDS)]
@@ -76,7 +77,7 @@ async fn write_register<'a>(
     core_data: &'a mut CoreData,
     command_arguments: &'a str,
     _evaluate_arguments: &'a EvaluateArguments,
-    _adapter: &'a mut DebugAdapter,
+    adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     let core_index = core_data.core_index;
     let (register_name, value) = parse_wreg_args(command_arguments)?;
@@ -113,7 +114,10 @@ async fn write_register<'a>(
         .await?;
     let read_back = backend.read_core_reg(core_index, id).await?;
 
-    Ok(EvalResponse::Message(format!("{name}: {read_back}")))
+    Ok(EvalResponse::Message(format!(
+        "{}: {read_back}",
+        ReplSymbol::new(name).colorize(adapter.supports_ansi_styling)
+    )))
 }
 
 fn too_large(value: u128, size_in_bits: usize, register_name: &str) -> DebuggerError {

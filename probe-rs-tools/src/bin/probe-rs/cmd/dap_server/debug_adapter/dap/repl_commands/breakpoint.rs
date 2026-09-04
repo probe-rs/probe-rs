@@ -17,6 +17,7 @@ use crate::cmd::dap_server::{
     server::core_data::CoreData,
     server::session_data::{ActiveBreakpoint, BreakpointType, SourceLocationScope},
 };
+use crate::util::style::ReplAddress;
 use probe_rs_rpc::breakpoints::SourceBreakpointLocation;
 
 #[distributed_slice(REPL_COMMANDS)]
@@ -214,8 +215,9 @@ async fn create_breakpoint<'a>(
             .ok();
             adapter.dyn_send_event("breakpoint", body)?;
             Ok(EvalResponse::Message(format!(
-                "Breakpoint set at {:#010X}",
-                address
+                "Breakpoint set at {}",
+                ReplAddress::new(format!("{address:#010X}"))
+                    .colorize(adapter.supports_ansi_styling)
             )))
         }
     }

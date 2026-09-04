@@ -8,6 +8,7 @@ use crate::cmd::dap_server::{
     },
     server::core_data::CoreData,
 };
+use crate::util::style::ReplCommandName;
 use linkme::distributed_slice;
 use std::fmt::Display;
 use std::future::Future;
@@ -74,20 +75,47 @@ pub(crate) struct ReplCommand {
     pub(crate) handler: ReplHandler,
 }
 
+impl ReplCommand {
+    /// Formats the command for the help output, with optional ANSI styling.
+    pub(crate) fn help(&self, colorize: bool) -> ReplCommandHelp<'_> {
+        ReplCommandHelp {
+            command: self,
+            colorize,
+        }
+    }
+}
+
 impl Display for ReplCommand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.command)?;
-        if !self.sub_commands.is_empty() {
+        self.help(false).fmt(f)
+    }
+}
+
+/// A [`ReplCommand`] rendered for the help output.
+pub(crate) struct ReplCommandHelp<'a> {
+    command: &'a ReplCommand,
+    colorize: bool,
+}
+
+impl Display for ReplCommandHelp<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let command = self.command;
+        write!(
+            f,
+            "{}",
+            ReplCommandName::new(command.command).colorize(self.colorize)
+        )?;
+        if !command.sub_commands.is_empty() {
             write!(f, " <subcommand>")?;
         }
-        for arg in self.args {
+        for arg in command.args {
             write!(f, " {arg}")?;
         }
-        write!(f, ": {}", self.help_text)?;
-        if !self.sub_commands.is_empty() {
+        write!(f, ": {}", command.help_text)?;
+        if !command.sub_commands.is_empty() {
             write!(f, "\n  Subcommands:")?;
-            for sub_command in self.sub_commands {
-                write!(f, "\n  - {sub_command}")?;
+            for sub_command in command.sub_commands {
+                write!(f, "\n  - {}", sub_command.help(self.colorize))?;
             }
         }
         Ok(())
@@ -122,8 +150,9 @@ async fn print_help<'a>(
     core_data: &'a mut CoreData,
     _: &'a str,
     _: &'a EvaluateArguments,
-    _: &'a mut DebugAdapter,
+    debug_adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
+    let colorize = debug_adapter.supports_ansi_styling;
     let mut help_text =
         "Usage:\t- Use <Ctrl+Space> to get a list of available commands.".to_string();
     help_text.push_str("\n\t- Use <Up/DownArrows> to navigate through the command list.");
@@ -133,7 +162,7 @@ async fn print_help<'a>(
     );
     help_text.push_str("\nAvailable commands:");
     for command in core_data.repl_commands.iter() {
-        help_text.push_str(&format!("\n{command}"));
+        help_text.push_str(&format!("\n{}", command.help(colorize)));
     }
     Ok(EvalResponse::Message(help_text))
 }
@@ -180,3 +209,20 @@ pub enum EvalResponse {
 }
 
 pub type EvalResult = Result<EvalResponse, DebuggerError>;
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn help_output_styles_the_command_name_only_when_the_client_supports_ansi() {
+        assert_eq!(
+            HELP.help(false).to_string(),
+            "help: Information about available commands and how to use them."
+        );
+        assert_eq!(
+            HELP.help(true).to_string(),
+            "\u{1b}[1mhelp\u{1b}[0m: Information about available commands and how to use them."
+        );
+    }
+}

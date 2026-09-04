@@ -14,7 +14,8 @@ use crate::cmd::dap_server::{
     server::core_data::CoreData,
 };
 use crate::rpc::functions::stack_trace::convert::to_wire_stack_trace_frame_ref;
-use crate::util::cli::format_stack_frame;
+use crate::util::style::{ReplAddress, ReplDim, ReplSymbol};
+use probe_rs_rpc::stack_trace::StackTraceFrame;
 
 #[distributed_slice(REPL_COMMANDS)]
 static BACKTRACE: ReplCommand = ReplCommand {
@@ -42,7 +43,7 @@ async fn print_backtrace<'a>(
     _evaluate_arguments: &'a EvaluateArguments,
     debug_adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
-    let colorize = Some(debug_adapter.supports_ansi_styling);
+    let colorize = debug_adapter.supports_ansi_styling;
 
     let mut response_message = String::new();
     for (i, frame) in core_data.stack_frames.iter().enumerate() {
@@ -51,12 +52,39 @@ async fn print_backtrace<'a>(
             &mut response_message,
             "    Frame {}: {}",
             i + 1,
-            format_stack_frame(&to_wire_stack_trace_frame_ref(frame), colorize)
+            format_frame(&to_wire_stack_trace_frame_ref(frame), colorize)
         )
         .unwrap();
     }
 
     Ok(EvalResponse::Message(response_message))
+}
+
+fn format_frame(frame: &StackTraceFrame, colorize: bool) -> String {
+    let mut frame_text = format!(
+        "{} @ {}",
+        ReplSymbol::new(frame.function_name.as_str()).colorize(colorize),
+        ReplAddress::new(format!("{:#x}", frame.program_counter)).colorize(colorize),
+    );
+    #[allow(clippy::unwrap_used, reason = "Writing to a string is infallible")]
+    if frame.is_inlined {
+        write!(
+            &mut frame_text,
+            " {}",
+            ReplDim::new("inline").colorize(colorize)
+        )
+        .unwrap();
+    }
+    #[allow(clippy::unwrap_used, reason = "Writing to a string is infallible")]
+    if let Some(location) = &frame.location {
+        write!(
+            &mut frame_text,
+            "\n        {}",
+            ReplDim::new(location.to_string()).colorize(colorize)
+        )
+        .unwrap();
+    }
+    frame_text
 }
 
 async fn save_backtrace_to_yaml<'a>(

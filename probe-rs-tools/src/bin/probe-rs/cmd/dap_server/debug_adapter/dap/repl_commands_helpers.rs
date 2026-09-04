@@ -5,6 +5,7 @@ use crate::cmd::dap_server::{
     backend::rpc::RpcBackend,
     debug_adapter::dap::repl_commands::{EvalResponse, EvalResult},
 };
+use crate::util::style::{ReplAddress, ReplDim, ReplSymbol};
 
 use super::{
     dap_types::{
@@ -86,6 +87,7 @@ pub(crate) async fn get_local_variable(
     core_data: &crate::cmd::dap_server::server::core_data::CoreData,
     variable_name: VariableName,
     gdb_nuf: GdbNuf,
+    colorize: bool,
 ) -> EvalResult {
     let frame_ref = evaluate_arguments.frame_id.map(ObjectRef::from);
 
@@ -112,7 +114,7 @@ pub(crate) async fn get_local_variable(
             .evaluate_repl_variable(core_data.core_index, frame_id, name.clone())
             .await?;
         return Ok(EvalResponse::Body(format_repl_variable(
-            &name, response, gdb_nuf,
+            &name, response, gdb_nuf, colorize,
         )));
     }
 
@@ -126,7 +128,7 @@ pub(crate) async fn get_local_variable(
     };
 
     Ok(EvalResponse::Body(format_repl_variables(
-        &variables, &gdb_nuf,
+        &variables, &gdb_nuf, colorize,
     )))
 }
 
@@ -146,10 +148,11 @@ fn empty_evaluate_response() -> EvaluateResponseBody {
 pub(crate) fn format_repl_variables(
     variables: &[Variable],
     gdb_nuf: &GdbNuf,
+    colorize: bool,
 ) -> EvaluateResponseBody {
     let mut response = empty_evaluate_response();
     for variable in variables {
-        append_repl_variable(&mut response, variable, gdb_nuf);
+        append_repl_variable(&mut response, variable, gdb_nuf, colorize);
     }
     response
 }
@@ -158,10 +161,15 @@ fn append_repl_variable(
     response: &mut EvaluateResponseBody,
     variable: &Variable,
     gdb_nuf: &GdbNuf,
+    colorize: bool,
 ) {
     if gdb_nuf.format_specifier == GdbFormat::DapReference {
         response.memory_reference = variable.memory_reference.clone();
-        response.result = format!("{} : {} ", variable.name, variable.value);
+        response.result = format!(
+            "{} : {} ",
+            ReplSymbol::new(&variable.name).colorize(colorize),
+            variable.value
+        );
         response.type_ = variable.type_.clone();
         response.variables_reference = variable.variables_reference;
         response.named_variables = variable.named_variables;
@@ -169,9 +177,10 @@ fn append_repl_variable(
     } else {
         response.result.push_str(&format!(
             "\n{} [{} @ {}]: {} ",
-            variable.name,
-            variable.type_.as_deref().unwrap_or("<unknown>"),
-            variable.memory_reference.as_deref().unwrap_or("<unknown>"),
+            ReplSymbol::new(&variable.name).colorize(colorize),
+            ReplDim::new(variable.type_.as_deref().unwrap_or("<unknown>")).colorize(colorize),
+            ReplAddress::new(variable.memory_reference.as_deref().unwrap_or("<unknown>"))
+                .colorize(colorize),
             variable.value
         ));
     }
@@ -181,15 +190,18 @@ fn format_repl_variable(
     name: &str,
     mut response: EvaluateResponseBody,
     gdb_nuf: GdbNuf,
+    colorize: bool,
 ) -> EvaluateResponseBody {
     let value = std::mem::take(&mut response.result);
+    let name = ReplSymbol::new(name).colorize(colorize);
     if gdb_nuf.format_specifier == GdbFormat::DapReference {
         response.result = format!("{name} : {value} ");
     } else {
         response.result = format!(
             "\n{name} [{} @ {}]: {value} ",
-            response.type_.as_deref().unwrap_or("<unknown>"),
-            response.memory_reference.as_deref().unwrap_or("<unknown>")
+            ReplDim::new(response.type_.as_deref().unwrap_or("<unknown>")).colorize(colorize),
+            ReplAddress::new(response.memory_reference.as_deref().unwrap_or("<unknown>"))
+                .colorize(colorize)
         );
     }
     response
@@ -201,6 +213,7 @@ pub(crate) async fn memory_read_async(
     core_index: usize,
     address: u64,
     gdb_nuf: GdbNuf,
+    colorize: bool,
 ) -> EvalResult {
     if gdb_nuf.format_specifier == GdbFormat::Instruction {
         let assembly_lines = backend
@@ -213,7 +226,7 @@ pub(crate) async fn memory_read_async(
         }
         let mut formatted_output = String::new();
         for assembly_line in &assembly_lines {
-            formatted_output.push_str(&assembly_line.to_string());
+            formatted_output.push_str(&assembly_line.styled(colorize).to_string());
         }
 
         Ok(EvalResponse::Message(formatted_output))
@@ -397,10 +410,40 @@ mod test {
                 format_specifier: GdbFormat::Native,
                 ..Default::default()
             },
+            false,
         );
 
         assert_eq!(formatted.result, "\nanswer [i32 @ 0x20000000]: 42 ");
         assert_eq!(formatted.variables_reference, 7);
+    }
+
+    #[test]
+    fn styles_the_variable_name_type_and_address_for_ansi_clients() {
+        let response = EvaluateResponseBody {
+            result: "42".to_string(),
+            type_: Some("i32".to_string()),
+            variables_reference: 7,
+            named_variables: Some(1),
+            indexed_variables: Some(0),
+            memory_reference: Some("0x20000000".to_string()),
+            presentation_hint: None,
+            value_location_reference: None,
+        };
+
+        let formatted = format_repl_variable(
+            "answer",
+            response,
+            GdbNuf {
+                format_specifier: GdbFormat::Native,
+                ..Default::default()
+            },
+            true,
+        );
+
+        assert_eq!(
+            formatted.result,
+            "\n\u{1b}[36manswer\u{1b}[0m [\u{1b}[2mi32\u{1b}[0m @ \u{1b}[33m0x20000000\u{1b}[0m]: 42 "
+        );
     }
 
     #[test]
@@ -425,6 +468,7 @@ mod test {
                 format_specifier: GdbFormat::Native,
                 ..Default::default()
             },
+            false,
         );
 
         assert_eq!(formatted.result, "\nSTATIC_COUNT [u32 @ 0x20000010]: 3 ");

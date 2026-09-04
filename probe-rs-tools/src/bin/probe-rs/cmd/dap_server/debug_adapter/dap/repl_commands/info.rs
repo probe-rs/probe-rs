@@ -21,6 +21,7 @@ use crate::cmd::dap_server::{
     },
     server::core_data::CoreData,
 };
+use crate::util::style::{ReplAddress, ReplDim, ReplSymbol};
 
 #[distributed_slice(REPL_COMMANDS)]
 static INFO: ReplCommand = ReplCommand {
@@ -78,7 +79,7 @@ async fn info_frame<'a>(
     core_data: &'a mut CoreData,
     command_arguments: &'a str,
     evaluate_arguments: &'a EvaluateArguments,
-    _adapter: &'a mut DebugAdapter,
+    adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     let frame_index = select_frame(
         &core_data.stack_frames,
@@ -88,6 +89,7 @@ async fn info_frame<'a>(
     Ok(EvalResponse::Message(format_frame(
         frame_index,
         &core_data.stack_frames[frame_index],
+        adapter.supports_ansi_styling,
     )))
 }
 
@@ -96,7 +98,7 @@ async fn info_static_variables<'a>(
     core_data: &'a mut CoreData,
     _command_arguments: &'a str,
     evaluate_arguments: &'a EvaluateArguments,
-    _adapter: &'a mut DebugAdapter,
+    adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     let frame_index = select_frame(&core_data.stack_frames, evaluate_arguments.frame_id, "")?;
     let frame_id = stack_frame_id(&core_data.stack_frames[frame_index])?;
@@ -117,43 +119,61 @@ async fn info_static_variables<'a>(
             format_specifier: GdbFormat::Native,
             ..Default::default()
         },
+        adapter.supports_ansi_styling,
     )))
 }
 
-fn format_frame(index: usize, frame: &StackFrame) -> String {
+fn format_frame(index: usize, frame: &StackFrame, colorize: bool) -> String {
     let mut response = format!(
         "Frame {}: {} @ {}",
         index + 1,
-        frame.function_name,
-        frame.pc
+        ReplSymbol::new(&frame.function_name).colorize(colorize),
+        ReplAddress::new(frame.pc.to_string()).colorize(colorize)
     );
     if frame.is_inlined {
-        response.push_str(" (inline)");
+        #[expect(clippy::unwrap_used, reason = "Writing to a string is infallible")]
+        write!(
+            &mut response,
+            " {}",
+            ReplDim::new("(inline)").colorize(colorize)
+        )
+        .unwrap();
     }
     if let Some(location) = &frame.source_location {
+        let mut source = format!("{}", location.path.to_path().display());
+        if let Some(line) = location.line {
+            #[expect(clippy::unwrap_used, reason = "Writing to a string is infallible")]
+            write!(&mut source, ":{line}").unwrap();
+            if let Some(ColumnType::Column(column)) = location.column {
+                #[expect(clippy::unwrap_used, reason = "Writing to a string is infallible")]
+                write!(&mut source, ":{column}").unwrap();
+            }
+        }
         #[expect(clippy::unwrap_used, reason = "Writing to a string is infallible")]
         write!(
             &mut response,
             "\nSource: {}",
-            location.path.to_path().display()
+            ReplDim::new(source).colorize(colorize)
         )
         .unwrap();
-        if let Some(line) = location.line {
-            #[expect(clippy::unwrap_used, reason = "Writing to a string is infallible")]
-            write!(&mut response, ":{line}").unwrap();
-            if let Some(ColumnType::Column(column)) = location.column {
-                #[expect(clippy::unwrap_used, reason = "Writing to a string is infallible")]
-                write!(&mut response, ":{column}").unwrap();
-            }
-        }
     }
     if let Some(frame_base) = frame.frame_base {
         #[expect(clippy::unwrap_used, reason = "Writing to a string is infallible")]
-        write!(&mut response, "\nFrame base: {frame_base:#x}").unwrap();
+        write!(
+            &mut response,
+            "\nFrame base: {}",
+            ReplAddress::new(format!("{frame_base:#x}")).colorize(colorize)
+        )
+        .unwrap();
     }
     if let Some(cfa) = frame.canonical_frame_address {
         #[expect(clippy::unwrap_used, reason = "Writing to a string is infallible")]
-        write!(&mut response, "\nCanonical frame address: {cfa:#x}").unwrap();
+        write!(
+            &mut response,
+            "\nCanonical frame address: {}",
+            ReplAddress::new(format!("{cfa:#x}")).colorize(colorize)
+        )
+        .unwrap();
     }
     response
 }
@@ -163,9 +183,10 @@ async fn print_registers<'a>(
     core_data: &'a mut CoreData,
     command_arguments: &'a str,
     _evaluate_arguments: &'a EvaluateArguments,
-    _adapter: &'a mut DebugAdapter,
+    adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     let core_index = core_data.core_index;
+    let colorize = adapter.supports_ansi_styling;
     let register_name = command_arguments.trim();
     let registers = backend.core_metadata[core_index]
         .registers
@@ -196,14 +217,19 @@ async fn print_registers<'a>(
         response_message.push_str("Failed to read the following registers:");
         for (reg_name, error) in &failures {
             #[expect(clippy::unwrap_used, reason = "Writing to a string is infallible")]
-            writeln!(&mut response_message, "{reg_name}: {error}").unwrap();
+            writeln!(
+                &mut response_message,
+                "{}: {error}",
+                ReplSymbol::new(reg_name).colorize(colorize)
+            )
+            .unwrap();
         }
     }
     if !results.is_empty() {
         if !response_message.is_empty() {
             response_message.push('\n');
         }
-        response_message.push_str(&reg_table(&results, 80));
+        response_message.push_str(&reg_table(&results, 80, colorize));
     }
 
     Ok(EvalResponse::Message(response_message))
@@ -214,15 +240,16 @@ async fn print_breakpoints<'a>(
     core_data: &'a mut CoreData,
     _command_arguments: &'a str,
     _evaluate_arguments: &'a EvaluateArguments,
-    _adapter: &'a mut DebugAdapter,
+    adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
+    let colorize = adapter.supports_ansi_styling;
     let mut response_message = String::new();
     for (idx, ab) in core_data.breakpoints.iter().enumerate() {
         #[expect(clippy::unwrap_used, reason = "Writing to a string is infallible")]
         writeln!(
             &mut response_message,
-            "Breakpoint #{idx} @ {:010X}",
-            ab.address
+            "Breakpoint #{idx} @ {}",
+            ReplAddress::new(format!("{:010X}", ab.address)).colorize(colorize)
         )
         .unwrap();
     }
@@ -239,7 +266,7 @@ async fn info_locals<'a>(
     core_data: &'a mut CoreData,
     _command_arguments: &'a str,
     evaluate_arguments: &'a EvaluateArguments,
-    _adapter: &'a mut DebugAdapter,
+    adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     let gdb_nuf = GdbNuf {
         format_specifier: GdbFormat::Native,
@@ -252,11 +279,12 @@ async fn info_locals<'a>(
         core_data,
         variable_name,
         gdb_nuf,
+        adapter.supports_ansi_styling,
     )
     .await
 }
 
-fn reg_table(results: &[(String, String)], max_line_length: usize) -> String {
+fn reg_table(results: &[(String, String)], max_line_length: usize, colorize: bool) -> String {
     let mut max_reg_name_width = 0;
     let mut max_value_width = 0;
 
@@ -290,7 +318,8 @@ fn reg_table(results: &[(String, String)], max_line_length: usize) -> String {
         // Format the line name and value
         write!(
             &mut response_message,
-            "{reg_name:<max_reg_name_width$} {reg_value:>max_value_width$}"
+            "{} {reg_value:>max_value_width$}",
+            ReplSymbol::new(format!("{reg_name:<max_reg_name_width$}")).colorize(colorize)
         )
         .unwrap();
 
@@ -351,8 +380,18 @@ mod test {
         let frame = frame(11, 0x1000, "main");
 
         pretty_assertions::assert_eq!(
-            super::format_frame(0, &frame),
+            super::format_frame(0, &frame, false),
             "Frame 1: main @ 0x00001000\nFrame base: 0x2000\nCanonical frame address: 0x2010"
+        );
+    }
+
+    #[test]
+    fn styles_the_frame_function_and_addresses_for_ansi_clients() {
+        let frame = frame(11, 0x1000, "main");
+
+        pretty_assertions::assert_eq!(
+            super::format_frame(0, &frame, true),
+            "Frame 1: \u{1b}[36mmain\u{1b}[0m @ \u{1b}[33m0x00001000\u{1b}[0m\nFrame base: \u{1b}[33m0x2000\u{1b}[0m\nCanonical frame address: \u{1b}[33m0x2010\u{1b}[0m"
         );
     }
 
@@ -368,15 +407,15 @@ mod test {
         ];
 
         pretty_assertions::assert_eq!(
-            super::reg_table(&results, 20),
+            super::reg_table(&results, 20, false),
             "PC/R0: 0x00000000\nR1:    0x00000001\nR2:    0x00000002\nR3:    0x00000003\nR4:    0x00000004\nR5:    0x00000005"
         );
         pretty_assertions::assert_eq!(
-            super::reg_table(&results, 40),
+            super::reg_table(&results, 40, false),
             "PC/R0: 0x00000000 R1:    0x00000001\nR2:    0x00000002 R3:    0x00000003\nR4:    0x00000004 R5:    0x00000005"
         );
         pretty_assertions::assert_eq!(
-            super::reg_table(&results, 80),
+            super::reg_table(&results, 80, false),
             "PC/R0: 0x00000000 R1:    0x00000001 R2:    0x00000002 R3:    0x00000003\nR4:    0x00000004 R5:    0x00000005"
         );
     }
