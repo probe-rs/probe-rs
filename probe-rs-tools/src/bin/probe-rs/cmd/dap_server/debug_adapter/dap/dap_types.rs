@@ -1,5 +1,6 @@
 // use crate::dap_types2 as debugserver_types;
 use crate::cmd::dap_server::DebuggerError;
+use crate::util::style::{ReplAddress, ReplDim};
 use num_traits::Num;
 use parse_int::parse;
 use probe_rs_rpc::rtt_config::DataFormat;
@@ -116,25 +117,49 @@ impl Display for Source {
     }
 }
 
+impl DisassembledInstruction {
+    /// Formats the instruction for the REPL, with optional ANSI styling.
+    pub fn styled(&self, colorize: bool) -> StyledInstruction<'_> {
+        StyledInstruction {
+            instruction: self,
+            colorize,
+        }
+    }
+}
+
 impl Display for DisassembledInstruction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.styled(false).fmt(f)
+    }
+}
+
+/// A [`DisassembledInstruction`] rendered as a line of a disassembly listing.
+pub struct StyledInstruction<'a> {
+    instruction: &'a DisassembledInstruction,
+    colorize: bool,
+}
+
+impl Display for StyledInstruction<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let instruction = self.instruction;
+        let location = if let (Some(file), Some(line), Some(column)) = (
+            instruction.location.as_ref().map(|s| s.to_string()),
+            instruction.line,
+            instruction.column,
+        ) {
+            format!("<{file}:{line}:{column}>")
+        } else {
+            String::new()
+        };
+
         writeln!(
             f,
             "{} : [{:<12}] {:<40}  {}",
-            self.address,
-            self.instruction_bytes.as_deref().unwrap_or(""),
-            self.instruction,
-            if let (Some(file), Some(line), Some(column)) = (
-                self.location.as_ref().map(|s| s.to_string()),
-                self.line,
-                self.column
-            ) {
-                format!("<{file}:{line}:{column}>")
-            } else {
-                "".to_string()
-            },
-        )?;
-        Ok(())
+            ReplAddress::new(&instruction.address).colorize(self.colorize),
+            instruction.instruction_bytes.as_deref().unwrap_or(""),
+            instruction.instruction,
+            ReplDim::new(location).colorize(self.colorize),
+        )
     }
 }
 

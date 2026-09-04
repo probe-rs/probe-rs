@@ -62,7 +62,7 @@ async fn print_variables<'a>(
     core_data: &'a mut CoreData,
     command_arguments: &'a str,
     evaluate_arguments: &'a EvaluateArguments,
-    _adapter: &'a mut DebugAdapter,
+    adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     let input_arguments = command_arguments.split_whitespace();
     let mut gdb_nuf = GdbNuf {
@@ -97,6 +97,7 @@ async fn print_variables<'a>(
         core_data,
         variable_name,
         gdb_nuf,
+        adapter.supports_ansi_styling,
     )
     .await
 }
@@ -106,7 +107,7 @@ async fn examine_memory<'a>(
     core_data: &'a mut CoreData,
     command_arguments: &'a str,
     request_arguments: &'a EvaluateArguments,
-    _adapter: &'a mut DebugAdapter,
+    adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     let core_index = core_data.core_index;
     let input_arguments = command_arguments.split_whitespace();
@@ -196,7 +197,14 @@ async fn examine_memory<'a>(
         }
     };
 
-    memory_read_async(backend, core_index, input_address, gdb_nuf).await
+    memory_read_async(
+        backend,
+        core_index,
+        input_address,
+        gdb_nuf,
+        adapter.supports_ansi_styling,
+    )
+    .await
 }
 
 async fn dump_core<'a>(

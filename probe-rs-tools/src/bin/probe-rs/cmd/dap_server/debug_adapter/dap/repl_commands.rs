@@ -8,7 +8,7 @@ use crate::cmd::dap_server::{
     },
     server::core_data::CoreData,
 };
-use crate::util::cli::ReplCommandName;
+use crate::util::style::ReplCommandName;
 use linkme::distributed_slice;
 use std::fmt::Display;
 use std::future::Future;
