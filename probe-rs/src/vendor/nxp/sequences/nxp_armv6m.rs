@@ -41,6 +41,7 @@ impl MKL82 {
     const MDM_STATUS_MASS_ERASE_ENABLE: u32 = 1 << 5;
 
     const MDM_CONTROL_MASS_ERASE: u32 = 1 << 0;
+    const MDM_CONTROL_DEBUG_REQUEST: u32 = 1 << 2;
     const MDM_CONTROL_SYSTEM_RESET_REQUEST: u32 = 1 << 3;
     const MDM_CONTROL_CORE_HOLD_RESET: u32 = 1 << 4;
 
@@ -53,26 +54,61 @@ impl MKL82 {
         FullyQualifiedApAddress::v1_with_default_dp(Self::MDM_AP)
     }
 
-    /// Wait until the given MDM-AP status bits are all set. Read errors are
-    /// retried until the deadline: the MDM-AP itself stays accessible while
-    /// the system is held in reset, but individual reads can still fail on a
-    /// target that is reset-looping.
+    /// Wait until the masked MDM-AP status bits have the requested value.
+    /// Transient read errors are retried until the deadline.
     fn wait_for_mdm_status(
         interface: &mut dyn ArmDebugInterface,
         mask: u32,
+        value: u32,
         timeout: Duration,
     ) -> Result<u32, ArmError> {
         let mdm_ap = Self::mdm_ap();
         let start = Instant::now();
         loop {
             match interface.read_raw_ap_register(&mdm_ap, Self::MDM_STATUS) {
-                Ok(status) if status & mask == mask => return Ok(status),
+                Ok(status) if status & mask == value => return Ok(status),
                 Ok(_) => {}
                 Err(e) if start.elapsed() >= timeout => return Err(e),
                 Err(e) => tracing::trace!("MDM-AP status read failed, retrying: {e}"),
             }
             if start.elapsed() >= timeout {
                 return Err(ArmError::Timeout);
+            }
+        }
+    }
+
+    /// Write the MDM-AP control register, retrying transient access errors.
+    fn write_mdm_control(
+        interface: &mut dyn ArmDebugInterface,
+        value: u32,
+        timeout: Duration,
+    ) -> Result<(), ArmError> {
+        let mdm_ap = Self::mdm_ap();
+        let start = Instant::now();
+        loop {
+            match interface.write_raw_ap_register(&mdm_ap, Self::MDM_CONTROL, value) {
+                Ok(()) => return Ok(()),
+                Err(e) if start.elapsed() >= timeout => return Err(e),
+                Err(e) => tracing::trace!("MDM-AP control write failed, retrying: {e}"),
+            }
+        }
+    }
+
+    /// Run an operation which may assert an MDM-AP control bit, then clear
+    /// the register even when the operation fails.
+    fn with_mdm_control<T>(
+        interface: &mut dyn ArmDebugInterface,
+        operation: impl FnOnce(&mut dyn ArmDebugInterface) -> Result<T, ArmError>,
+    ) -> Result<T, ArmError> {
+        let result = operation(interface);
+        let cleanup = Self::write_mdm_control(interface, 0, Duration::from_millis(100));
+
+        match (result, cleanup) {
+            (Ok(value), Ok(())) => Ok(value),
+            (Err(error), Ok(())) | (Ok(_), Err(error)) => Err(error),
+            (Err(error), Err(cleanup_error)) => {
+                tracing::warn!("Failed to clear the MDM-AP control register: {cleanup_error}");
+                Err(error)
             }
         }
     }
@@ -92,132 +128,195 @@ impl MKL82 {
             .into());
         }
 
-        // Hold the system in reset for the duration of the erase so a
-        // reset-looping target cannot interfere.
-        interface.write_raw_ap_register(
-            &mdm_ap,
-            Self::MDM_CONTROL,
-            Self::MDM_CONTROL_SYSTEM_RESET_REQUEST,
-        )?;
+        Self::with_mdm_control(interface, |interface| {
+            // Hold the system in reset for the duration of the erase so
+            // target firmware cannot interfere.
+            Self::write_mdm_control(
+                interface,
+                Self::MDM_CONTROL_SYSTEM_RESET_REQUEST,
+                Duration::from_secs(1),
+            )?;
+            Self::wait_for_mdm_status(
+                interface,
+                Self::MDM_STATUS_SYSTEM_RESET_RELEASED,
+                0,
+                Duration::from_secs(1),
+            )?;
 
-        // The flash controller must have finished initializing before it
-        // accepts a mass erase request.
-        let status = Self::wait_for_mdm_status(
-            interface,
-            Self::MDM_STATUS_FLASH_READY,
-            Duration::from_secs(1),
-        )?;
+            // Flash initialization completes while the debugger holds the
+            // system in reset.
+            let status = Self::wait_for_mdm_status(
+                interface,
+                Self::MDM_STATUS_FLASH_READY,
+                Self::MDM_STATUS_FLASH_READY,
+                Duration::from_secs(1),
+            )?;
 
-        if status & Self::MDM_STATUS_MASS_ERASE_ENABLE == 0 {
-            // Release the reset request before bailing out.
-            interface.write_raw_ap_register(&mdm_ap, Self::MDM_CONTROL, 0)?;
-            return Err(ArmDebugSequenceError::custom(
-                "Mass erase is disabled (FSEC[MEEN]); the device cannot be erased or unlocked via the debug port",
-            )
-            .into());
-        }
-
-        tracing::info!("Requesting mass erase via MDM-AP");
-        interface.write_raw_ap_register(
-            &mdm_ap,
-            Self::MDM_CONTROL,
-            Self::MDM_CONTROL_SYSTEM_RESET_REQUEST | Self::MDM_CONTROL_MASS_ERASE,
-        )?;
-
-        Self::wait_for_mdm_status(
-            interface,
-            Self::MDM_STATUS_MASS_ERASE_ACK,
-            Duration::from_secs(1),
-        )?;
-
-        // The mass erase bit self-clears when the erase has finished.
-        let start = Instant::now();
-        loop {
-            let control = interface.read_raw_ap_register(&mdm_ap, Self::MDM_CONTROL)?;
-            if control & Self::MDM_CONTROL_MASS_ERASE == 0 {
-                break;
+            if status & Self::MDM_STATUS_MASS_ERASE_ENABLE == 0 {
+                return Err(ArmDebugSequenceError::custom(
+                    "Mass erase is disabled (FSEC[MEEN]); the device cannot be erased or unlocked via the debug port",
+                )
+                .into());
             }
-            if start.elapsed() >= Duration::from_secs(10) {
-                return Err(ArmError::Timeout);
-            }
-        }
 
-        // Release the system reset request.
-        interface.write_raw_ap_register(&mdm_ap, Self::MDM_CONTROL, 0)?;
+            tracing::info!("Requesting mass erase via MDM-AP");
+            Self::write_mdm_control(
+                interface,
+                Self::MDM_CONTROL_SYSTEM_RESET_REQUEST | Self::MDM_CONTROL_MASS_ERASE,
+                Duration::from_secs(1),
+            )?;
+
+            Self::wait_for_mdm_status(
+                interface,
+                Self::MDM_STATUS_MASS_ERASE_ACK,
+                Self::MDM_STATUS_MASS_ERASE_ACK,
+                Duration::from_secs(1),
+            )?;
+
+            // The mass erase bit self-clears when the erase has finished.
+            let start = Instant::now();
+            loop {
+                match interface.read_raw_ap_register(&mdm_ap, Self::MDM_CONTROL) {
+                    Ok(control) if control & Self::MDM_CONTROL_MASS_ERASE == 0 => break,
+                    Ok(_) => {}
+                    Err(e) if start.elapsed() >= Duration::from_secs(10) => return Err(e),
+                    Err(e) => tracing::trace!("MDM-AP control read failed, retrying: {e}"),
+                }
+                if start.elapsed() >= Duration::from_secs(10) {
+                    return Err(ArmError::Timeout);
+                }
+            }
+
+            Ok(())
+        })?;
 
         tracing::info!("Mass erase complete");
         Ok(())
     }
 
-    /// Reset the system through the MDM-AP and halt the core at the reset
-    /// vector, for a target the AHB-AP cannot get a foothold on.
-    ///
-    /// Two kinds of target need this. Firmware that resets the chip shortly
-    /// after boot (a software reset loop, or a watchdog reset because the
-    /// watchdog was never serviced) makes AHB-AP accesses fail
-    /// intermittently. Firmware that sleeps in a stop mode (STOP, VLPS, LLS,
-    /// VLLS) takes the bus clock, and in the deepest modes the debug logic,
-    /// down with it, so accesses fail with WAIT or FAULT until the next
-    /// wake-up. The MDM-AP stays accessible throughout: request one system
-    /// reset with the core held in reset (this also leaves any low-power
-    /// mode), set up halt-on-reset while the core is held (the debug logic
-    /// is not reset by a core reset), then release the core so it halts at
-    /// the reset vector before it can sleep or trigger the next reset.
+    /// Request a debug halt through the MDM-AP. This wakes a core in WAIT or
+    /// STOP without resetting it.
+    fn halt_via_debug_request(
+        interface: &mut dyn ArmDebugInterface,
+        core_ap: &FullyQualifiedApAddress,
+    ) -> Result<(), ArmError> {
+        Self::with_mdm_control(interface, |interface| {
+            Self::write_mdm_control(
+                interface,
+                Self::MDM_CONTROL_DEBUG_REQUEST,
+                Duration::from_secs(1),
+            )?;
+
+            let start = Instant::now();
+            loop {
+                if let Ok(mut core) = interface.memory_interface(core_ap)
+                    && let Ok(dhcsr) = core.read_word_32(Dhcsr::get_mmio_address())
+                    && Dhcsr(dhcsr).s_halt()
+                {
+                    cortex_m_core_start(&mut *core)?;
+                    return Ok(());
+                }
+                if start.elapsed() >= Duration::from_secs(1) {
+                    return Err(ArmError::Timeout);
+                }
+            }
+        })
+    }
+
+    /// Reset the system through the MDM-AP and halt the core before target
+    /// firmware can run.
     fn halt_via_mdm_reset(
         interface: &mut dyn ArmDebugInterface,
         core_ap: &FullyQualifiedApAddress,
     ) -> Result<(), ArmError> {
-        let mdm_ap = Self::mdm_ap();
+        let mut reset_catch_armed = false;
+        let result = Self::with_mdm_control(interface, |interface| {
+            // CORE_HOLD_RESET is sampled during reset sequencing.
+            Self::write_mdm_control(
+                interface,
+                Self::MDM_CONTROL_SYSTEM_RESET_REQUEST | Self::MDM_CONTROL_CORE_HOLD_RESET,
+                Duration::from_secs(1),
+            )?;
+            Self::wait_for_mdm_status(
+                interface,
+                Self::MDM_STATUS_SYSTEM_RESET_RELEASED,
+                0,
+                Duration::from_secs(1),
+            )?;
 
-        // The core-hold latches when the reset happens, so after the system
-        // reset completes the bus is accessible while the core stays in
-        // reset.
-        interface.write_raw_ap_register(
-            &mdm_ap,
-            Self::MDM_CONTROL,
-            Self::MDM_CONTROL_SYSTEM_RESET_REQUEST | Self::MDM_CONTROL_CORE_HOLD_RESET,
-        )?;
-        interface.write_raw_ap_register(
-            &mdm_ap,
-            Self::MDM_CONTROL,
-            Self::MDM_CONTROL_CORE_HOLD_RESET,
-        )?;
-        Self::wait_for_mdm_status(
-            interface,
-            Self::MDM_STATUS_FLASH_READY,
-            Duration::from_secs(1),
-        )?;
+            // Release the system while keeping the core in reset.
+            Self::write_mdm_control(
+                interface,
+                Self::MDM_CONTROL_CORE_HOLD_RESET,
+                Duration::from_secs(1),
+            )?;
+            let ready = Self::MDM_STATUS_SYSTEM_RESET_RELEASED | Self::MDM_STATUS_FLASH_READY;
+            Self::wait_for_mdm_status(interface, ready, ready, Duration::from_secs(1))?;
 
-        // Enable debug and catch the reset vector while the core is held.
-        {
-            let mut core = interface.memory_interface(core_ap)?;
+            // Enable debug and catch the reset vector before releasing the
+            // core. C_HALT itself does not persist when CORE_HOLD_RESET is
+            // released on this device.
+            {
+                let mut core = interface.memory_interface(core_ap)?;
+                let mut dhcsr = Dhcsr(0);
+                dhcsr.set_c_debugen(true);
+                dhcsr.enable_write();
+                core.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
 
-            let mut dhcsr = Dhcsr(0);
-            dhcsr.set_c_debugen(true);
-            dhcsr.enable_write();
-            core.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
+                let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address())?);
+                demcr.set_vc_corereset(true);
+                core.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
+                reset_catch_armed = true;
+            }
 
-            let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address())?);
-            demcr.set_vc_corereset(true);
-            core.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
-        }
+            Self::write_mdm_control(interface, 0, Duration::from_secs(1))?;
 
-        // Release the core; it leaves reset and immediately halts on the
-        // vector catch.
-        interface.write_raw_ap_register(&mdm_ap, Self::MDM_CONTROL, 0)?;
+            let start = Instant::now();
+            loop {
+                if let Ok(mut core) = interface.memory_interface(core_ap)
+                    && let Ok(dhcsr) = core.read_word_32(Dhcsr::get_mmio_address())
+                    && Dhcsr(dhcsr).s_halt()
+                {
+                    break;
+                }
+                if start.elapsed() >= Duration::from_secs(1) {
+                    return Err(ArmError::Timeout);
+                }
+            }
 
-        let mut core = interface.memory_interface(core_ap)?;
-        let start = Instant::now();
-        while !Dhcsr(core.read_word_32(Dhcsr::get_mmio_address())?).s_halt() {
-            if start.elapsed() >= Duration::from_secs(1) {
-                return Err(ArmError::Timeout);
+            Ok(())
+        });
+
+        // Do not leave reset vector catch armed after either success or
+        // failure. Releasing the MDM control bits above makes the AHB-AP
+        // available again in most failure cases, so retry transient errors.
+        let cleanup = if reset_catch_armed {
+            let start = Instant::now();
+            loop {
+                let clear_result = (|| {
+                    let mut core = interface.memory_interface(core_ap)?;
+                    let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address())?);
+                    demcr.set_vc_corereset(false);
+                    core.write_word_32(Demcr::get_mmio_address(), demcr.into())
+                })();
+                match clear_result {
+                    Ok(()) => break Ok(()),
+                    Err(error) if start.elapsed() >= Duration::from_secs(1) => break Err(error),
+                    Err(error) => tracing::trace!("Reset-catch cleanup failed, retrying: {error}"),
+                }
+            }
+        } else {
+            Ok(())
+        };
+
+        match (result, cleanup) {
+            (Ok(()), Ok(())) => {}
+            (Err(error), Ok(())) | (Ok(()), Err(error)) => return Err(error),
+            (Err(error), Err(cleanup_error)) => {
+                tracing::warn!("Failed to clear reset vector catch: {cleanup_error}");
+                return Err(error);
             }
         }
-
-        // Clear the vector catch again so later resets behave normally.
-        let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address())?);
-        demcr.set_vc_corereset(false);
-        core.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
 
         tracing::info!("Target reset via the MDM-AP: core halted at the reset vector");
         Ok(())
@@ -226,19 +325,28 @@ impl MKL82 {
     /// Request one system reset through the MDM-AP without touching the
     /// core's debug registers, and wait for the system to come out of reset.
     fn system_reset_via_mdm(interface: &mut dyn ArmDebugInterface) -> Result<(), ArmError> {
-        let mdm_ap = Self::mdm_ap();
-        interface.write_raw_ap_register(
-            &mdm_ap,
-            Self::MDM_CONTROL,
-            Self::MDM_CONTROL_SYSTEM_RESET_REQUEST,
-        )?;
-        interface.write_raw_ap_register(&mdm_ap, Self::MDM_CONTROL, 0)?;
-        Self::wait_for_mdm_status(
-            interface,
-            Self::MDM_STATUS_SYSTEM_RESET_RELEASED,
-            Duration::from_secs(1),
-        )?;
-        Ok(())
+        Self::with_mdm_control(interface, |interface| {
+            Self::write_mdm_control(
+                interface,
+                Self::MDM_CONTROL_SYSTEM_RESET_REQUEST,
+                Duration::from_secs(1),
+            )?;
+            Self::wait_for_mdm_status(
+                interface,
+                Self::MDM_STATUS_SYSTEM_RESET_RELEASED,
+                0,
+                Duration::from_secs(1),
+            )?;
+
+            Self::write_mdm_control(interface, 0, Duration::from_secs(1))?;
+            Self::wait_for_mdm_status(
+                interface,
+                Self::MDM_STATUS_SYSTEM_RESET_RELEASED,
+                Self::MDM_STATUS_SYSTEM_RESET_RELEASED,
+                Duration::from_secs(1),
+            )?;
+            Ok(())
+        })
     }
 
     /// Whether the MDM-AP reports the system as held in reset right now
@@ -259,45 +367,48 @@ impl ArmDebugSequence for MKL82 {
         _debug_base: Option<u64>,
         _cti_base: Option<u64>,
     ) -> Result<(), ArmError> {
-        // Detect a reset-looping target before touching the AHB-AP in
-        // earnest. A tight reset loop leaves the bus accessible between
-        // resets, so a single successful access proves nothing; sample the
-        // MDM-AP reset state (always readable) and probe the AHB-AP a few
-        // times instead. On a healthy target this costs a handful of
-        // register reads and stays non-intrusive.
+        // A tight reset loop can leave the AHB-AP briefly accessible between
+        // resets, so sample both the MDM-AP reset state and the AHB-AP.
         let mdm_ap = Self::mdm_ap();
-        let mut resetting = false;
+        let mut unavailable = false;
+        let mut observed_reset = false;
         for _ in 0..8 {
             if let Ok(status) = interface.read_raw_ap_register(&mdm_ap, Self::MDM_STATUS)
                 && status & Self::MDM_STATUS_SYSTEM_RESET_RELEASED == 0
             {
-                // Caught the system mid-reset.
-                resetting = true;
+                observed_reset = true;
                 break;
             }
 
-            // Creating the memory interface touches the AHB-AP as well, so a
-            // failure there counts the same as a failed read: on a target
-            // asleep in a stop mode the first AHB-AP access is what fails.
             let ahb_ok = interface
                 .memory_interface(core_ap)
                 .and_then(|mut core| core.read_word_32(Dhcsr::get_mmio_address()))
                 .is_ok();
             if !ahb_ok {
-                resetting = true;
+                unavailable = true;
                 break;
             }
         }
 
-        if resetting {
-            tracing::warn!(
-                "The target is not responding (reset-looping, or asleep in a low-power mode); recovering with a system reset via the MDM-AP"
-            );
-            Self::halt_via_mdm_reset(interface, core_ap)
-        } else {
+        if !unavailable && !observed_reset {
             let mut core = interface.memory_interface(core_ap)?;
-            cortex_m_core_start(&mut *core)
+            return cortex_m_core_start(&mut *core);
         }
+
+        if !observed_reset {
+            match Self::halt_via_debug_request(interface, core_ap) {
+                Ok(()) => {
+                    tracing::info!("Target halted through the MDM-AP debug request");
+                    return Ok(());
+                }
+                Err(error) => {
+                    tracing::debug!("MDM-AP debug request failed: {error}");
+                }
+            }
+        }
+
+        tracing::warn!("Target is unresponsive; resetting and halting it through the MDM-AP");
+        Self::halt_via_mdm_reset(interface, core_ap)
     }
 
     fn debug_device_unlock(
@@ -311,6 +422,7 @@ impl ArmDebugSequence for MKL82 {
         let status = match Self::wait_for_mdm_status(
             interface,
             Self::MDM_STATUS_FLASH_READY,
+            Self::MDM_STATUS_FLASH_READY,
             Duration::from_secs(1),
         ) {
             Ok(status) => status,
@@ -322,14 +434,16 @@ impl ArmDebugSequence for MKL82 {
                 return Ok(());
             }
             Err(_) => {
-                // The flash controller is disabled in the stop modes, so a
-                // sleeping target never reports ready. Wake it up.
-                tracing::warn!(
-                    "The target is not responding (asleep in a low-power mode?); recovering with a system reset via the MDM-AP"
-                );
-                Self::halt_via_mdm_reset(interface, default_ap)?;
+                // Wake a target in WAIT or STOP without losing its state.
+                // Fall back to reset if it is inaccessible for another
+                // reason, such as reset-looping firmware.
+                if let Err(error) = Self::halt_via_debug_request(interface, default_ap) {
+                    tracing::debug!("MDM-AP debug request failed: {error}");
+                    Self::halt_via_mdm_reset(interface, default_ap)?;
+                }
                 Self::wait_for_mdm_status(
                     interface,
+                    Self::MDM_STATUS_FLASH_READY,
                     Self::MDM_STATUS_FLASH_READY,
                     Duration::from_secs(1),
                 )?
@@ -351,6 +465,7 @@ impl ArmDebugSequence for MKL82 {
 
         let status = Self::wait_for_mdm_status(
             interface,
+            Self::MDM_STATUS_FLASH_READY,
             Self::MDM_STATUS_FLASH_READY,
             Duration::from_secs(1),
         )?;
@@ -383,14 +498,18 @@ impl ArmDebugSequence for MKL82 {
         let mut aircr = Aircr(0);
         aircr.vectkey();
         aircr.set_sysresetreq(true);
-        if let Err(e) = interface.write_word_32(Aircr::get_mmio_address(), aircr.into()) {
-            // A core asleep in a stop mode does not take the AIRCR write;
-            // the MDM-AP reset request works regardless.
-            tracing::warn!("SYSRESETREQ failed ({e}); resetting via the MDM-AP instead");
-            Self::system_reset_via_mdm(interface.get_arm_debug_interface()?)?;
+        let result = interface
+            .write_word_32(Aircr::get_mmio_address(), aircr.into())
+            .and_then(|()| cortex_m_wait_for_reset(interface));
+        if let Err(error) = result {
+            // A target can enter STOP before the AHB-AP observes the reset.
+            tracing::warn!(
+                "SYSRESETREQ could not be observed ({error}); resetting via the MDM-AP instead"
+            );
+            return Self::system_reset_via_mdm(interface.get_arm_debug_interface()?);
         }
 
-        cortex_m_wait_for_reset(interface)
+        Ok(())
     }
 
     fn reset_catch_set(
@@ -418,13 +537,10 @@ impl ArmDebugSequence for MKL82 {
     ) -> Result<(), ArmError> {
         DefaultArmSequence::create().reset_hardware_deassert(interface, default_ap)?;
 
-        // The system just left reset: the flash controller has to initialize
-        // before the security state can be trusted.
-        let status = Self::wait_for_mdm_status(
-            interface,
-            Self::MDM_STATUS_FLASH_READY,
-            Duration::from_secs(1),
-        )?;
+        // Wait for both the reset pin release and flash initialization. Flash
+        // ready alone may still reflect the state before nRESET was asserted.
+        let ready = Self::MDM_STATUS_SYSTEM_RESET_RELEASED | Self::MDM_STATUS_FLASH_READY;
+        let status = Self::wait_for_mdm_status(interface, ready, ready, Duration::from_secs(1))?;
         if status & Self::MDM_STATUS_SYSTEM_SECURITY != 0 {
             return Err(ArmDebugSequenceError::custom(
                 "The device is locked (flash security is enabled). Attach without connect-under-reset and with --allow-erase-all to unlock it with a mass erase",

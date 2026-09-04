@@ -1,1 +1,2 @@
-Added support for the NXP Kinetis MKL82Z7 family (e.g. MKL82Z128VLK7 on the FRDM-KL82Z). The debug sequence unlocks a secured device via MDM-AP mass erase and automatically recovers a reset-looping target during attach.
+Added support for the NXP Kinetis MKL82Z7 family, including MDM-AP mass erase,
+reset recovery, and low-power attach handling.
