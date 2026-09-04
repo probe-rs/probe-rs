@@ -1458,3 +1458,4 @@ styled!(StackTraceAddress(addr) => addr.yellow());
 styled!(StackTraceInlineMarker(marker) => marker.italic().dark_yellow());
 styled!(StackTraceSourceLocation(loc) => loc.dim().grey());
 styled!(Prompt(prompt) => prompt.bold().dark_green());
+styled!(ReplCommandName(name) => name.bold());
