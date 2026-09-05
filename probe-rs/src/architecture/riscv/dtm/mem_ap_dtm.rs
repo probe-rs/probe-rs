@@ -113,7 +113,10 @@ impl DtmAccess for MemApDtm<'_> {
                 }
             }
         }
-        Ok(())
+
+        // The RISC-V layer uses `execute` as a barrier, so the writes must reach the target
+        // here and not with a later operation.
+        self.memory.flush().map_err(arm_error_to_riscv)
     }
 
     fn schedule_write(
@@ -122,8 +125,7 @@ impl DtmAccess for MemApDtm<'_> {
         value: u32,
     ) -> Result<Option<DeferredResultIndex>, RiscvError> {
         let index = DeferredResultIndex::new();
-        self.pending
-            .push((index.clone(), DmiOp::Write(address, value)));
+        self.pending.push((index, DmiOp::Write(address, value)));
         Ok(None)
     }
 
@@ -152,6 +154,7 @@ impl DtmAccess for MemApDtm<'_> {
         self.memory
             .write_word_32(byte_addr, value)
             .map_err(arm_error_to_riscv)?;
+        self.memory.flush().map_err(arm_error_to_riscv)?;
         Ok(None)
     }
 

@@ -109,18 +109,18 @@ impl ESP32S31 {
             RiscvBusAccess::A128,
         ];
         for access in accesses {
-            // Flash mapped at XIP addresses (IROM + DROM): use waiting program buffer
+            // Flash mapped at XIP addresses (IROM + DROM): use the program buffer
             memory_access_config.set_region_override(
                 access,
                 0x4000_0000..0x4800_0000,
-                MemoryAccessMethod::WaitingProgramBuffer,
+                MemoryAccessMethod::ProgramBuffer,
             );
 
-            // Peripheral/LP register space: use waiting program buffer
+            // Peripheral/LP register space: use the program buffer
             memory_access_config.set_region_override(
                 access,
                 0x2000_0000..0x2100_0000,
-                MemoryAccessMethod::WaitingProgramBuffer,
+                MemoryAccessMethod::ProgramBuffer,
             );
 
             // Internal HP DRAM: use program buffer to avoid bus access issues

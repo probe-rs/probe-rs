@@ -73,8 +73,9 @@ pub struct SessionConfig {
 }
 
 enum JtagInterface {
-    Riscv(RiscvDebugInterfaceState),
-    Xtensa(XtensaDebugInterfaceState),
+    // The states are boxed, because they are much larger than the `Unknown` variant.
+    Riscv(Box<RiscvDebugInterfaceState>),
+    Xtensa(Box<XtensaDebugInterfaceState>),
     Unknown,
 }
 
@@ -498,9 +499,9 @@ impl Session {
                         interface.enter_debug_mode()?;
                     }
 
-                    JtagInterface::Riscv(state)
+                    JtagInterface::Riscv(Box::new(state))
                 }
-                Architecture::Xtensa => JtagInterface::Xtensa(XtensaDebugInterfaceState::default()),
+                Architecture::Xtensa => JtagInterface::Xtensa(Box::default()),
                 _ => {
                     return Err(Error::Probe(DebugProbeError::Other(format!(
                         "Unsupported core architecture {core_arch:?}",

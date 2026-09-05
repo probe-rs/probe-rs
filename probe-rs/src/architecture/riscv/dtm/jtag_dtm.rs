@@ -164,8 +164,10 @@ impl<'probe> JtagDtm<'probe> {
                     self.probe
                         .set_idle_cycles(self.probe.idle_cycles().saturating_add(1))?;
                 }
-                Err(DmiOperationError::Reserved) => panic!("Reserved"),
-                Err(DmiOperationError::OperationFailed) => {
+                // A reserved status is defined to be interpreted like a failure.
+                Err(DmiOperationError::Reserved | DmiOperationError::OperationFailed) => {
+                    // The failure is sticky. Clear it, or the DTM ignores every later access.
+                    self.clear_error_state()?;
                     return Err(RiscvError::DtmOperationFailed);
                 }
             };
@@ -275,8 +277,9 @@ impl DtmAccess for JtagDtm<'_> {
                                         self.probe.idle_cycles().saturating_add(1),
                                     )?;
                                 }
-                                DmiOperationError::Reserved => panic!("Reserved!"),
-                                DmiOperationError::OperationFailed => {
+                                DmiOperationError::Reserved
+                                | DmiOperationError::OperationFailed => {
+                                    self.clear_error_state()?;
                                     return Err(RiscvError::DtmOperationFailed);
                                 }
                             }
@@ -293,9 +296,6 @@ impl DtmAccess for JtagDtm<'_> {
                 started = Instant::now();
                 previous_queue_len = cmds.len();
             }
-
-            // Observed with a HiFive Rev B Board: 1.4 sec to execute commands when a reset is involved.
-            const JTAG_COMMAND_TIMEOUT: Duration = Duration::from_secs(2);
 
             let elapsed_time = started.elapsed();
 
@@ -482,8 +482,10 @@ impl<'probe> TunneledJtagDtm<'probe> {
                     self.probe
                         .set_idle_cycles(self.probe.idle_cycles().saturating_add(1))?;
                 }
-                Err(DmiOperationError::Reserved) => panic!("Reserved"),
-                Err(DmiOperationError::OperationFailed) => {
+                // A reserved status is defined to be interpreted like a failure.
+                Err(DmiOperationError::Reserved | DmiOperationError::OperationFailed) => {
+                    // The failure is sticky. Clear it, or the DTM ignores every later access.
+                    self.clear_error_state()?;
                     return Err(RiscvError::DtmOperationFailed);
                 }
             };
@@ -588,8 +590,9 @@ impl DtmAccess for TunneledJtagDtm<'_> {
                                         self.probe.idle_cycles().saturating_add(1),
                                     )?;
                                 }
-                                DmiOperationError::Reserved => panic!("Reserved error"),
-                                DmiOperationError::OperationFailed => {
+                                DmiOperationError::Reserved
+                                | DmiOperationError::OperationFailed => {
+                                    self.clear_error_state()?;
                                     return Err(RiscvError::DtmOperationFailed);
                                 }
                             }
@@ -607,7 +610,12 @@ impl DtmAccess for TunneledJtagDtm<'_> {
                 previous_queue_len = cmds.len();
             }
 
-            if started.elapsed() > Duration::from_millis(500) {
+            let elapsed_time = started.elapsed();
+
+            if elapsed_time > JTAG_COMMAND_TIMEOUT {
+                tracing::error!(
+                    "Timeout ({JTAG_COMMAND_TIMEOUT:?}) exceeded executing RISCV commands (elapsed: {elapsed_time:?})"
+                );
                 return Err(RiscvError::Timeout);
             }
         }
@@ -785,6 +793,11 @@ impl DmiOperationStatus {
         Some(status)
     }
 }
+
+/// Timeout for the execution of a batch of scheduled `dmi` accesses.
+///
+/// Observed with a HiFive Rev B Board: 1.4 sec to execute commands when a reset is involved.
+const JTAG_COMMAND_TIMEOUT: Duration = Duration::from_secs(2);
 
 /// Address of the `dtmcs` JTAG register.
 const DTMCS_ADDRESS: u32 = 0x10;
