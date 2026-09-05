@@ -498,7 +498,9 @@ impl CoreRegisters {
         use crate::architecture::riscv::registers64::{
             RISCV64_CORE_REGISTERS, RISCV64_WITH_FP_CORE_REGISTERS,
         };
-        use crate::architecture::xtensa::registers::XTENSA_CORE_REGISTERS;
+        use crate::architecture::xtensa::registers::{
+            XTENSA_CORE_REGISTERS, XTENSA_WITH_FP_CORE_REGISTERS,
+        };
 
         match core_type {
             CoreType::Armv6m => &CORTEX_M_CORE_REGISTERS,
@@ -532,7 +534,13 @@ impl CoreRegisters {
                     &RISCV64_CORE_REGISTERS
                 }
             }
-            CoreType::Xtensa => &XTENSA_CORE_REGISTERS,
+            CoreType::Xtensa => {
+                if fpu_support {
+                    &XTENSA_WITH_FP_CORE_REGISTERS
+                } else {
+                    &XTENSA_CORE_REGISTERS
+                }
+            }
         }
     }
 

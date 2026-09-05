@@ -94,7 +94,7 @@ pub trait RiscvDebugSequence: Send + Sync + Debug {
         None
     }
 
-    /// This ARM sequence is called if an image was flashed to RAM directly. It should perform the
+    /// This sequence is called if an image was flashed to RAM directly. It should perform the
     /// necessary preparation to run that image on the core with the ID passed to the function.
     ///
     /// The core should already be `reset_and_halt`ed right before this call.

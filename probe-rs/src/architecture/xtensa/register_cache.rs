@@ -150,11 +150,11 @@ impl CacheEntry {
         }
 
         // If the value has been loaded, compare it with the original value
-        if let Some(current) = self.current_value {
-            return CachedValue::Value(current) != self.original_value;
-        }
+        let Some(current) = self.current_value else {
+            return false;
+        };
 
-        self.current_value.is_some()
+        CachedValue::Value(current) != self.original_value
     }
 
     fn current_value(&mut self, xdm: &mut Xdm<'_>) -> Result<u32, XtensaError> {
