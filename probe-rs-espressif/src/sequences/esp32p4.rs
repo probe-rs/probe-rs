@@ -1,6 +1,6 @@
 //! Sequences for the ESP32P4.
 
-use std::{sync::Arc, time::Duration};
+use std::{ops::Range, sync::Arc, time::Duration};
 
 use crate::sequences::esp::EspBreakpointHandler;
 use probe_rs::{
@@ -8,8 +8,8 @@ use probe_rs::{
     architecture::riscv::{
         Dmcontrol, Riscv32,
         communication_interface::{
-            MemoryAccessMethod, RiscvBusAccess, RiscvCommunicationInterface, Sbaddress0, Sbcs,
-            Sbdata0,
+            CacheSync, MemoryAccessMethod, RiscvBusAccess, RiscvCommunicationInterface, Sbaddress0,
+            Sbcs, Sbdata0,
         },
         sequences::RiscvDebugSequence,
     },
@@ -45,6 +45,110 @@ const TIMG1_WDTWPROTECT_REG: u64 = DR_REG_TIMG1_BASE + 0x64;
 const TIMG1_WDT_WKEY: u32 = 0x50d8_3aa1;
 const TIMG1_INT_CLR_TIMERS_REG: u64 = DR_REG_TIMG1_BASE + 0x7c;
 const TIMG1_INT_CLR_WDG_INT: u32 = 0x4;
+
+const CACHE_BASE: u64 = 0x3ff1_0000;
+const CACHE_SYNC_CTRL_REG: u64 = CACHE_BASE + 0x98;
+/// The map register, followed by the address register and the size register.
+const CACHE_SYNC_MAP_REG: u64 = CACHE_BASE + 0x9c;
+
+const CACHE_MAP_L1_ICACHE0: u32 = 1 << 0;
+const CACHE_MAP_L1_ICACHE1: u32 = 1 << 1;
+const CACHE_MAP_L1_DCACHE: u32 = 1 << 4;
+const CACHE_MAP_L2_CACHE: u32 = 1 << 5;
+const CACHE_MAP_L1: u32 = CACHE_MAP_L1_ICACHE0 | CACHE_MAP_L1_ICACHE1 | CACHE_MAP_L1_DCACHE;
+
+const CACHE_SYNC_INVALIDATE: u32 = 1 << 0;
+const CACHE_SYNC_WRITEBACK: u32 = 1 << 2;
+
+const CACHE_LINE_SIZE: u64 = 64;
+
+/// The distance from a cacheable address to the alias that bypasses the caches.
+const NON_CACHEABLE_OFFSET: u64 = 0x4000_0000;
+
+/// The memory that the caches hold, addressed as the cache addresses it.
+const CACHEABLE_REGIONS: [Range<u64>; 4] = [
+    // Flash
+    0x4000_0000..0x4400_0000,
+    // External RAM
+    0x4800_0000..0x4c00_0000,
+    // ROM
+    0x4fc0_0000..0x4fc2_0000,
+    // L2 memory
+    0x4ff0_0000..0x4ffc_0000,
+];
+
+/// Cache maintenance of the ESP32-P4.
+///
+/// The system bus master of the debug module does not see the caches of the
+/// core.
+#[derive(Debug)]
+struct ESP32P4CacheSync;
+
+impl ESP32P4CacheSync {
+    fn sync(
+        &self,
+        interface: &mut RiscvCommunicationInterface<'_>,
+        range: Range<u64>,
+        map: u32,
+        operation: u32,
+    ) -> Result<(), Error> {
+        let Some(start) = Self::cacheable_address(range.start) else {
+            return Ok(());
+        };
+
+        let end = (start + (range.end - range.start)).next_multiple_of(CACHE_LINE_SIZE);
+        let start = start & !(CACHE_LINE_SIZE - 1);
+
+        interface.write_32(
+            CACHE_SYNC_MAP_REG,
+            &[map, start as u32, (end - start) as u32],
+        )?;
+
+        // The operation completes before the next access reads back its status,
+        // so there is nothing to wait for.
+        interface.write_word_32(CACHE_SYNC_CTRL_REG, operation)
+    }
+
+    /// Returns the address that the cache uses for `address`, or `None` when the
+    /// caches do not hold the address.
+    fn cacheable_address(address: u64) -> Option<u64> {
+        fn is_cacheable(address: u64) -> bool {
+            CACHEABLE_REGIONS
+                .iter()
+                .any(|region| region.contains(&address))
+        }
+
+        match address.checked_sub(NON_CACHEABLE_OFFSET) {
+            Some(cacheable) if is_cacheable(cacheable) => Some(cacheable),
+            _ => is_cacheable(address).then_some(address),
+        }
+    }
+}
+
+impl CacheSync for ESP32P4CacheSync {
+    fn writeback(
+        &self,
+        interface: &mut RiscvCommunicationInterface<'_>,
+        range: Range<u64>,
+    ) -> Result<(), Error> {
+        self.sync(
+            interface,
+            range,
+            CACHE_MAP_L1_DCACHE | CACHE_MAP_L2_CACHE,
+            CACHE_SYNC_WRITEBACK,
+        )
+    }
+
+    fn invalidate(
+        &self,
+        interface: &mut RiscvCommunicationInterface<'_>,
+        range: Range<u64>,
+    ) -> Result<(), Error> {
+        // The L2 cache keeps its lines: they may hold external memory that the
+        // cache has not written back yet.
+        self.sync(interface, range, CACHE_MAP_L1, CACHE_SYNC_INVALIDATE)
+    }
+}
 
 /// A register that effects a reset when bits are set, and releases the
 /// block from reset when `0` is written.
@@ -149,8 +253,6 @@ impl ESP32P4 {
         &self,
         interface: &mut RiscvCommunicationInterface<'_>,
     ) -> Result<(), Error> {
-        let memory_access_config = interface.memory_access_config();
-
         let accesses = [
             RiscvBusAccess::A8,
             RiscvBusAccess::A16,
@@ -158,8 +260,22 @@ impl ESP32P4 {
             RiscvBusAccess::A64,
             RiscvBusAccess::A128,
         ];
+        let eco = interface.read_word_32(0x4fc00014)?;
+        let memory_access_config = interface.memory_access_config();
+
         for access in accesses {
-            if memory_access_config.default_method(access) != MemoryAccessMethod::SystemBus {
+            // CPU peripherals
+            memory_access_config.set_region_override(
+                access,
+                0x2000_0000..0x3000_0000,
+                MemoryAccessMethod::ProgramBuffer,
+            );
+        }
+
+        if eco >= 5 {
+            memory_access_config.set_cache_sync(Arc::new(ESP32P4CacheSync));
+        } else {
+            for access in accesses {
                 // External data/instruction bus
                 // Loading external memory is slower than the CPU. If we can't access something via the
                 // system bus, select the program buffer method.
@@ -168,7 +284,6 @@ impl ESP32P4 {
                     0x4000_0000..0x4400_0000,
                     MemoryAccessMethod::ProgramBuffer,
                 );
-            } else {
                 // System bus access to RAM appears broken, and returns garbage
                 // values.
                 memory_access_config.set_region_override(
@@ -180,12 +295,6 @@ impl ESP32P4 {
                 memory_access_config.set_region_override(
                     access,
                     0x8ff0_0000..0x8ffc_0000,
-                    MemoryAccessMethod::ProgramBuffer,
-                );
-                // CPU peripherals
-                memory_access_config.set_region_override(
-                    access,
-                    0x2000_0000..0x3000_0000,
                     MemoryAccessMethod::ProgramBuffer,
                 );
             }

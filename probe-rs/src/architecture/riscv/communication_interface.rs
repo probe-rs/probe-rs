@@ -12,7 +12,9 @@ use crate::{
 };
 use std::any::Any;
 use std::collections::{HashMap, HashSet};
+use std::fmt::Debug;
 use std::ops::Range;
+use std::sync::Arc;
 
 /// Some error occurred when working with the RISC-V core.
 #[derive(thiserror::Error, Debug)]
@@ -235,10 +237,34 @@ impl ScratchState {
     }
 }
 
+/// Synchronises the caches that the debug module cannot see.
+///
+/// The system bus master of a debug module is not always coherent with the
+/// caches of the core. Memory that the core caches then needs a write back
+/// before a system bus access reads it, and an invalidation after a system bus
+/// access writes it.
+pub trait CacheSync: Debug + Send + Sync {
+    /// Writes the caches that hold `range` back to memory.
+    fn writeback(
+        &self,
+        interface: &mut RiscvCommunicationInterface<'_>,
+        range: Range<u64>,
+    ) -> Result<(), crate::Error>;
+
+    /// Invalidates the caches that hold `range`.
+    fn invalidate(
+        &self,
+        interface: &mut RiscvCommunicationInterface<'_>,
+        range: Range<u64>,
+    ) -> Result<(), crate::Error>;
+}
+
 /// Describes the method which should be used to access memory.
 #[derive(Default, Debug)]
 pub struct MemoryAccessConfig {
     has_program_buffer: bool,
+
+    cache_sync: Option<Arc<dyn CacheSync>>,
 
     /// Describes, which memory access method should be used for a given access width
     default_method: HashMap<RiscvBusAccess, MemoryAccessMethod>,
@@ -264,6 +290,11 @@ impl MemoryAccessConfig {
         method: MemoryAccessMethod,
     ) {
         self.region_override.insert((range, access), method);
+    }
+
+    /// Installs the cache maintenance implementation of the target.
+    pub fn set_cache_sync(&mut self, cache_sync: Arc<dyn CacheSync>) {
+        self.cache_sync = Some(cache_sync);
     }
 
     /// Returns the default memory access method for the given access width.
@@ -405,6 +436,10 @@ pub struct RiscvCommunicationInterfaceState {
     /// Whether an abstract command is retried after halting the core.
     retrying_abstract_command: bool,
 
+    /// Whether a cache maintenance operation is in progress. The memory access
+    /// that carries the operation must not start another one.
+    syncing_caches: bool,
+
     /// The current value of the `dmcontrol` register.
     current_dmcontrol: Dmcontrol,
 
@@ -472,6 +507,7 @@ impl RiscvCommunicationInterfaceState {
             hasresethaltreq: None,
             is_halted: false,
             retrying_abstract_command: false,
+            syncing_caches: false,
 
             current_dmcontrol: Dmcontrol(0),
 
@@ -2781,13 +2817,49 @@ impl<'state> RiscvCommunicationInterface<'state> {
         })
     }
 
+    /// Runs a cache maintenance operation of the target, if it has one.
+    fn sync_caches(
+        &mut self,
+        range: Range<u64>,
+        operation: impl FnOnce(&Arc<dyn CacheSync>, &mut Self, Range<u64>) -> Result<(), crate::Error>,
+    ) -> Result<(), crate::Error> {
+        if self.state.syncing_caches {
+            return Ok(());
+        }
+        let Some(cache_sync) = self.state.memory_access_config.cache_sync.clone() else {
+            return Ok(());
+        };
+
+        self.state.syncing_caches = true;
+        let result = operation(&cache_sync, self, range);
+        self.state.syncing_caches = false;
+
+        result
+    }
+
+    fn writeback_caches(&mut self, range: Range<u64>) -> Result<(), crate::Error> {
+        self.sync_caches(range, |cache_sync, interface, range| {
+            cache_sync.writeback(interface, range)
+        })
+    }
+
+    fn invalidate_caches(&mut self, range: Range<u64>) -> Result<(), crate::Error> {
+        self.sync_caches(range, |cache_sync, interface, range| {
+            cache_sync.invalidate(interface, range)
+        })
+    }
+
     fn read_word<V: RiscvValue32>(&mut self, address: u64) -> Result<V, crate::Error> {
         if !self.state.xlen_64 {
             valid_32bit_address(address)?;
         }
         let result = match self.state.memory_access_method(V::WIDTH, address) {
             MemoryAccessMethod::ProgramBuffer => self.perform_memory_read_progbuf(address)?,
-            MemoryAccessMethod::SystemBus => self.perform_memory_read_sysbus(address)?,
+            MemoryAccessMethod::SystemBus => {
+                self.writeback_caches(address..address + V::WIDTH.byte_width() as u64)?;
+
+                self.perform_memory_read_sysbus(address)?
+            }
             MemoryAccessMethod::AbstractCommand => {
                 self.perform_memory_read_abstract_cmd(address, false)?
             }
@@ -2807,7 +2879,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         let address_range = address..(address + (data.len() * V::WIDTH.byte_width()) as u64);
         let access_method = self
             .state
-            .memory_range_access_method(V::WIDTH, address_range);
+            .memory_range_access_method(V::WIDTH, address_range.clone());
         tracing::debug!(
             "read_multiple({:?}) from {:#08x} using {:?}",
             V::WIDTH,
@@ -2820,6 +2892,8 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 self.perform_memory_read_multiple_progbuf(address, data)?;
             }
             MemoryAccessMethod::SystemBus => {
+                self.writeback_caches(address_range)?;
+
                 self.perform_memory_read_multiple_sysbus(address, data)?;
             }
             MemoryAccessMethod::AbstractCommand => {
@@ -2838,7 +2912,13 @@ impl<'state> RiscvCommunicationInterface<'state> {
             MemoryAccessMethod::ProgramBuffer => {
                 self.perform_memory_write_progbuf(address, data)?
             }
-            MemoryAccessMethod::SystemBus => self.perform_memory_write_sysbus(address, &[data])?,
+            MemoryAccessMethod::SystemBus => {
+                let range = address..address + V::WIDTH.byte_width() as u64;
+
+                self.writeback_caches(range.clone())?;
+                self.perform_memory_write_sysbus(address, &[data])?;
+                self.invalidate_caches(range)?;
+            }
             MemoryAccessMethod::AbstractCommand => {
                 self.perform_memory_write_abstract_cmd(address, &[data], false)?
             }
@@ -2858,9 +2938,13 @@ impl<'state> RiscvCommunicationInterface<'state> {
         let address_range = address..(address + (data.len() * V::WIDTH.byte_width()) as u64);
         let access_method = self
             .state
-            .memory_range_access_method(V::WIDTH, address_range);
+            .memory_range_access_method(V::WIDTH, address_range.clone());
         match access_method {
-            MemoryAccessMethod::SystemBus => self.perform_memory_write_sysbus(address, data)?,
+            MemoryAccessMethod::SystemBus => {
+                self.writeback_caches(address_range.clone())?;
+                self.perform_memory_write_sysbus(address, data)?;
+                self.invalidate_caches(address_range)?;
+            }
             MemoryAccessMethod::ProgramBuffer => {
                 self.perform_memory_write_multiple_progbuf(address, data)?
             }
