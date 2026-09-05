@@ -16,7 +16,7 @@ pub enum Instruction {
     /// Loads a 32-bit word from `s` to the address in `t`
     L32I(CpuRegister, CpuRegister, u8),
 
-    /// Stores a 32-bit word from `s` to the address in `t`
+    /// Stores a 32-bit word from `t` to the address in `s`
     S32I(CpuRegister, CpuRegister, u8),
 
     /// Reads `SpecialRegister` into `CpuRegister`

@@ -317,8 +317,6 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     }
 
     /// Waits until the core is halted.
-    ///
-    /// This function lowers the interrupt level to allow halting on debug exceptions.
     pub fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), XtensaError> {
         // Wait until halted state is active again.
         let start = Instant::now();
