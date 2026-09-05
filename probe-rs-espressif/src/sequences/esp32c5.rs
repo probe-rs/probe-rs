@@ -7,10 +7,7 @@ use probe_rs::{
     Error, MemoryInterface,
     architecture::riscv::{
         Dmcontrol, Riscv32,
-        communication_interface::{
-            MemoryAccessMethod, RiscvBusAccess, RiscvCommunicationInterface, Sbaddress0, Sbcs,
-            Sbdata0,
-        },
+        communication_interface::{RiscvCommunicationInterface, Sbaddress0, Sbcs, Sbdata0},
         sequences::RiscvDebugSequence,
     },
     semihosting::{SemihostingCommand, UnknownCommandDetails},
@@ -52,44 +49,10 @@ impl ESP32C5 {
 
         Ok(())
     }
-
-    fn configure_memory_access(
-        &self,
-        interface: &mut RiscvCommunicationInterface<'_>,
-    ) -> Result<(), Error> {
-        let memory_access_config = interface.memory_access_config();
-
-        let accesses = [
-            RiscvBusAccess::A8,
-            RiscvBusAccess::A16,
-            RiscvBusAccess::A32,
-            RiscvBusAccess::A64,
-            RiscvBusAccess::A128,
-        ];
-        for access in accesses {
-            // CPU subsystem
-            memory_access_config.set_region_override(
-                access,
-                0x2000_0000..0x3000_0000,
-                MemoryAccessMethod::ProgramBuffer,
-            );
-            // External data/instruction bus
-            // Loading external memory is slower than the CPU. If we can't access something via the
-            // system bus, select the program buffer method.
-            memory_access_config.set_region_override(
-                access,
-                0x4200_0000..0x4400_0000,
-                MemoryAccessMethod::ProgramBuffer,
-            );
-        }
-
-        Ok(())
-    }
 }
 
 impl RiscvDebugSequence for ESP32C5 {
     fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), Error> {
-        self.configure_memory_access(interface)?;
         self.disable_wdts(interface)?;
 
         Ok(())

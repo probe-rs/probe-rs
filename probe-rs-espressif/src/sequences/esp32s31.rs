@@ -7,10 +7,7 @@ use probe_rs::{
     Error, MemoryInterface,
     architecture::riscv::{
         Dmcontrol, PC, Riscv32,
-        communication_interface::{
-            MemoryAccessMethod, RiscvBusAccess, RiscvCommunicationInterface, Sbaddress0, Sbcs,
-            Sbdata0,
-        },
+        communication_interface::{RiscvCommunicationInterface, Sbaddress0, Sbcs, Sbdata0},
         sequences::RiscvDebugSequence,
     },
     semihosting::{SemihostingCommand, UnknownCommandDetails},
@@ -94,50 +91,10 @@ impl ESP32S31 {
         tracing::info!("Done disabling ESP32-S31 watchdogs");
         Ok(())
     }
-
-    fn configure_memory_access(
-        &self,
-        interface: &mut RiscvCommunicationInterface<'_>,
-    ) -> Result<(), Error> {
-        let memory_access_config = interface.memory_access_config();
-
-        let accesses = [
-            RiscvBusAccess::A8,
-            RiscvBusAccess::A16,
-            RiscvBusAccess::A32,
-            RiscvBusAccess::A64,
-            RiscvBusAccess::A128,
-        ];
-        for access in accesses {
-            // Flash mapped at XIP addresses (IROM + DROM): use the program buffer
-            memory_access_config.set_region_override(
-                access,
-                0x4000_0000..0x4800_0000,
-                MemoryAccessMethod::ProgramBuffer,
-            );
-
-            // Peripheral/LP register space: use the program buffer
-            memory_access_config.set_region_override(
-                access,
-                0x2000_0000..0x2100_0000,
-                MemoryAccessMethod::ProgramBuffer,
-            );
-
-            // Internal HP DRAM: use program buffer to avoid bus access issues
-            memory_access_config.set_region_override(
-                access,
-                0x2F00_0000..0x2F08_0000,
-                MemoryAccessMethod::ProgramBuffer,
-            );
-        }
-
-        Ok(())
-    }
 }
 
 impl RiscvDebugSequence for ESP32S31 {
     fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), Error> {
-        self.configure_memory_access(interface)?;
         self.disable_wdts(interface)?;
 
         Ok(())

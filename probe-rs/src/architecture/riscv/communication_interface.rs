@@ -1767,34 +1767,15 @@ impl<'state> RiscvCommunicationInterface<'state> {
         self.write_dm_register(clear)
     }
 
-    /// Run a memory access that uses the program buffer. Repeat the access with a
-    /// wait after each word when the debug module reports that an access came in
-    /// while the program buffer was busy.
+    /// Wait until the program that the debug module started has finished.
     ///
-    /// The access must report the state of the program buffer before it uses a
-    /// result, and it must be safe to repeat.
-    fn progbuf_access<T>(
-        &mut self,
-        mut access: impl FnMut(&mut Self, bool) -> Result<T, RiscvError>,
-    ) -> Result<T, RiscvError> {
-        match access(self, false) {
-            Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::Busy)) => {
-                tracing::debug!("The program buffer was busy, waiting for each word");
-                self.clear_abstract_command_error()?;
-
-                access(self, true)
-            }
-            result => result,
-        }
-    }
-
-    /// Wait for the program buffer, for memory that is slower than the core.
-    fn wait_for_progbuf(&mut self, wait: bool) -> Result<(), RiscvError> {
-        if wait {
-            self.wait_for_abstract_idle(PROGBUF_TIMEOUT)?;
-        }
-
-        Ok(())
+    /// A debug module accepts the command that starts the program buffer before the
+    /// program has run, and it does not always report `cmderr` for an access that
+    /// arrives while the program still runs. Such an access reads the value that a
+    /// register held before the program wrote it. Every access that depends on a
+    /// program therefore waits for the program buffer.
+    fn wait_for_progbuf(&mut self) -> Result<(), RiscvError> {
+        self.wait_for_abstract_idle(PROGBUF_TIMEOUT)
     }
 
     /// Perform memory read from a single location using the program buffer.
@@ -1813,15 +1794,10 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
             core.schedule_setup_program_buffer(&[lw_command])?;
 
-            // The read of s0 is an abstract command, which the debug module rejects
-            // while the program buffer runs. The result therefore needs no test of its
-            // own, and slow memory gets a wait after the first rejection.
-            let value = core.progbuf_access(|core, wait| {
-                core.schedule_write_address_to_s0_and_exec(address)?;
-                core.wait_for_progbuf(wait)?;
-
-                core.abstract_cmd_register_read(registers::S0)
-            });
+            let value = core
+                .schedule_write_address_to_s0_and_exec(address)
+                .and_then(|()| core.wait_for_progbuf())
+                .and_then(|()| core.abstract_cmd_register_read(registers::S0));
 
             // Restore s0 register
             core.restore_s0(s0)?;
@@ -1883,7 +1859,6 @@ impl<'state> RiscvCommunicationInterface<'state> {
         &mut self,
         address: u64,
         data: &mut [V],
-        wait: bool,
     ) -> Result<(), RiscvError> {
         let data_len = data.len();
 
@@ -1912,7 +1887,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             for _ in 0..batch_len {
                 let idx = self.schedule_read_dm_register::<Data0>()?;
                 result_idxs.push(idx);
-                self.wait_for_progbuf(wait)?;
+                self.wait_for_progbuf()?;
             }
 
             for (i, idx) in result_idxs.into_iter().enumerate() {
@@ -1971,12 +1946,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
         &mut self,
         address: u64,
         data: &mut [V],
-        wait: bool,
     ) -> Result<(), RiscvError> {
         let data_len = data.len();
 
         self.schedule_write_address_to_s0_and_exec(address)?;
-        self.wait_for_progbuf(wait)?;
+        self.wait_for_progbuf()?;
 
         let aarsize = if self.state.xlen_64 {
             RiscvBusAccess::A64
@@ -1997,13 +1971,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
             let value_idx = self.schedule_read_dm_register::<Data0>()?;
             result_idxs.push((out_idx, value_idx));
 
-            self.wait_for_progbuf(wait)?;
+            self.wait_for_progbuf()?;
         }
 
-        // The read of s1 is an abstract command, and the debug module rejects it while
-        // `cmderr` holds the sticky `busy` of a `data` read that came in too early. It
-        // therefore reports a batch that lost a word, and the batch needs no test of
-        // its own.
         let last_value = self.read_register_xlen(registers::S1)? as u32;
         data[data_len - 1] = V::from_register_value(last_value);
 
@@ -2042,13 +2012,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
             let use_autoexec = core.state.supports_autoexec && data.len() >= 16;
 
-            let read_result = core.progbuf_access(|core, wait| {
-                if use_autoexec {
-                    core.read_multiple_autoexec(address, data, wait)
-                } else {
-                    core.read_multiple_no_autoexec(address, data, wait)
-                }
-            });
+            let read_result = if use_autoexec {
+                core.read_multiple_autoexec(address, data)
+            } else {
+                core.read_multiple_no_autoexec(address, data)
+            };
 
             let _ = core.write_dm_register(Abstractauto(0));
             let _ = core.clear_abstract_command_error();
@@ -2287,12 +2255,14 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
             core.schedule_write_dm_register(command)?;
 
-            // The restore of s0 and s1 reports a program buffer that still runs, so the
-            // store needs no test of its own.
+            // The restore of s0 and s1 would change the address and the value of a
+            // store that still runs.
+            let write_result = core.wait_for_progbuf();
+
             core.restore_s0(s0)?;
             core.restore_s1(s1)?;
 
-            Ok(())
+            write_result
         })
     }
 
@@ -2398,15 +2368,14 @@ impl<'state> RiscvCommunicationInterface<'state> {
         &mut self,
         address: u64,
         data: &[V],
-        wait: bool,
     ) -> Result<(), RiscvError> {
         let width = V::WIDTH.byte_width() as u64;
 
         self.autoexec_prime_write_pipeline(address, data[0].into())?;
 
-        // The driver does not wait for a command between two writes of DATA0. If the debug module
-        // is still busy, it makes a `Busy` error and it does not store the word. The status of the
-        // command therefore gets a test after each group of words.
+        // A write of DATA0 that arrives while the debug module is busy makes a `Busy` error
+        // and it does not store the word. The status of the command therefore gets a test
+        // after each group of words, and the group that lost a word runs again.
         let chunk_size: usize = 256;
         let mut index = 1;
 
@@ -2415,7 +2384,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
             for value in &data[index..chunk_end] {
                 self.schedule_write_dm_register(Data0((*value).into()))?;
-                self.wait_for_progbuf(wait)?;
+                self.wait_for_progbuf()?;
             }
 
             match self.wait_for_abstract_idle(PROGBUF_TIMEOUT) {
@@ -2458,7 +2427,6 @@ impl<'state> RiscvCommunicationInterface<'state> {
     fn write_multiple_no_autoexec<V: RiscvValue32>(
         &mut self,
         data: &[V],
-        wait: bool,
     ) -> Result<(), RiscvError> {
         for value in data {
             // write data into data 0
@@ -2467,12 +2435,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
             // Write s0, then execute program buffer
             self.schedule_write_dm_register(Self::write_transfer_command())?;
 
-            self.wait_for_progbuf(wait)?;
+            self.wait_for_progbuf()?;
         }
 
-        // `cmderr` is sticky, so this one test covers the whole batch. A write needs
-        // the test of its own: the restore of a scratch register that follows recovers
-        // from a busy program buffer, and it would hide a word that got lost.
         if let Err(error) = self.wait_for_abstract_idle(PROGBUF_TIMEOUT) {
             tracing::error!(
                 "Executing the abstract command for write_multiple_{} failed: {:?}",
@@ -2516,14 +2481,12 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
             let use_autoexec = core.state.supports_autoexec && data.len() >= 16;
 
-            let write_result = core.progbuf_access(|core, wait| {
-                if use_autoexec {
-                    core.write_multiple_autoexec(address, data, wait)
-                } else {
-                    core.write_register_xlen(registers::S0, address)
-                        .and_then(|()| core.write_multiple_no_autoexec(data, wait))
-                }
-            });
+            let write_result = if use_autoexec {
+                core.write_multiple_autoexec(address, data)
+            } else {
+                core.write_register_xlen(registers::S0, address)
+                    .and_then(|()| core.write_multiple_no_autoexec(data))
+            };
 
             if use_autoexec {
                 let _ = core.write_dm_register(Abstractauto(0));
