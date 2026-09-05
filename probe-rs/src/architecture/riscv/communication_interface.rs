@@ -685,7 +685,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         if saved {
             let s0 = self.state.s0.pop().unwrap();
 
-            self.write_register_xlen(registers::S0, s0)?;
+            self.restore_scratch(registers::S0, s0)?;
         }
 
         Ok(())
@@ -703,10 +703,33 @@ impl<'state> RiscvCommunicationInterface<'state> {
         if saved {
             let s1 = self.state.s1.pop().unwrap();
 
-            self.write_register_xlen(registers::S1, s1)?;
+            self.restore_scratch(registers::S1, s1)?;
         }
 
         Ok(())
+    }
+
+    /// Give a scratch register its old value back.
+    ///
+    /// The program buffer may still run, and the debug module rejects an abstract
+    /// command while it runs. Wait for the program buffer and write again in that
+    /// case, so that a memory access does not need a round trip of its own to see
+    /// the program buffer finish.
+    fn restore_scratch(
+        &mut self,
+        regno: impl Into<RegisterId>,
+        value: u64,
+    ) -> Result<(), RiscvError> {
+        let regno = regno.into();
+
+        match self.write_register_xlen(regno, value) {
+            Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::Busy)) => {
+                self.clear_abstract_command_error()?;
+                self.wait_for_abstract_idle(PROGBUF_TIMEOUT)?;
+                self.write_register_xlen(regno, value)
+            }
+            other => other,
+        }
     }
 
     /// Enable the debug module on the target and detect which features
@@ -1681,31 +1704,12 @@ impl<'state> RiscvCommunicationInterface<'state> {
         }
     }
 
-    // TODO: this would be best executed on the probe. RiscvCommunicationInterface should be refactored to allow that.
-    fn wait_for_idle(&mut self, timeout: Duration) -> Result<(), RiscvError> {
-        let start = Instant::now();
-        loop {
-            let status: Abstractcs = self.read_dm_register()?;
-            match AbstractCommandErrorKind::parse(status) {
-                Ok(_) => return Ok(()),
-                Err(AbstractCommandErrorKind::Busy) => {}
-                Err(other) => return Err(other.into()),
-            }
-
-            if start.elapsed() > timeout {
-                return Err(RiscvError::Timeout);
-            }
-        }
-    }
-
-    /// Wait for an abstract command to complete by polling the `busy` bit,
-    /// then check `cmderr`.
+    /// Wait for the abstract command to complete, then report the error of the
+    /// command.
     ///
-    /// Unlike [`Self::wait_for_idle`] which only checks `cmderr` (and may
-    /// return prematurely when busy=1 and cmderr=0), this function polls
-    /// the `busy` flag to ensure the command has truly finished.  This is
-    /// critical for autoexec where the next DATA0 read must not arrive
-    /// while the previous command is still executing.
+    /// `cmderr` is sticky, so the report covers every command since the last time
+    /// that `cmderr` got cleared.
+    // TODO: this would be best executed on the probe. RiscvCommunicationInterface should be refactored to allow that.
     fn wait_for_abstract_idle(&mut self, timeout: Duration) -> Result<(), RiscvError> {
         let start = Instant::now();
         loop {
@@ -1720,12 +1724,48 @@ impl<'state> RiscvCommunicationInterface<'state> {
         }
     }
 
+    /// Clear the sticky `cmderr` field.
+    fn clear_abstract_command_error(&mut self) -> Result<(), RiscvError> {
+        let mut clear = Abstractcs(0);
+        clear.set_cmderr(0x7);
+        self.write_dm_register(clear)
+    }
+
+    /// Run a memory access that uses the program buffer. Repeat the access with a
+    /// wait after each word when the debug module reports that an access came in
+    /// while the program buffer was busy.
+    ///
+    /// The access must report the state of the program buffer before it uses a
+    /// result, and it must be safe to repeat.
+    fn progbuf_access<T>(
+        &mut self,
+        mut access: impl FnMut(&mut Self, bool) -> Result<T, RiscvError>,
+    ) -> Result<T, RiscvError> {
+        match access(self, false) {
+            Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::Busy)) => {
+                tracing::debug!("The program buffer was busy, waiting for each word");
+                self.clear_abstract_command_error()?;
+
+                access(self, true)
+            }
+            result => result,
+        }
+    }
+
+    /// Wait for the program buffer, for memory that is slower than the core.
+    fn wait_for_progbuf(&mut self, wait: bool) -> Result<(), RiscvError> {
+        if wait {
+            self.wait_for_abstract_idle(PROGBUF_TIMEOUT)?;
+        }
+
+        Ok(())
+    }
+
     /// Perform memory read from a single location using the program buffer.
     /// Only reads up to a width of 32 bits are currently supported.
     fn perform_memory_read_progbuf<V: RiscvValue32>(
         &mut self,
         address: u64,
-        wait_for_idle: bool,
     ) -> Result<V, RiscvError> {
         self.halted_access(|core| {
             // assemble
@@ -1737,19 +1777,20 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
             core.schedule_setup_program_buffer(&[lw_command])?;
 
-            core.schedule_write_address_to_s0_and_exec(address)?;
+            // The read of s0 is an abstract command, which the debug module rejects
+            // while the program buffer runs. The result therefore needs no test of its
+            // own, and slow memory gets a wait after the first rejection.
+            let value = core.progbuf_access(|core, wait| {
+                core.schedule_write_address_to_s0_and_exec(address)?;
+                core.wait_for_progbuf(wait)?;
 
-            if wait_for_idle {
-                core.wait_for_idle(Duration::from_millis(10))?;
-            }
-
-            // Read back s0
-            let value = core.abstract_cmd_register_read(registers::S0)?;
+                core.abstract_cmd_register_read(registers::S0)
+            });
 
             // Restore s0 register
             core.restore_s0(s0)?;
 
-            Ok(V::from_register_value(value))
+            Ok(V::from_register_value(value?))
         })
     }
 
@@ -1806,6 +1847,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         &mut self,
         address: u64,
         data: &mut [V],
+        wait: bool,
     ) -> Result<(), RiscvError> {
         let data_len = data.len();
 
@@ -1834,6 +1876,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             for _ in 0..batch_len {
                 let idx = self.schedule_read_dm_register::<Data0>()?;
                 result_idxs.push(idx);
+                self.wait_for_progbuf(wait)?;
             }
 
             for (i, idx) in result_idxs.into_iter().enumerate() {
@@ -1841,14 +1884,12 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 data[out_idx + i] = V::from_register_value(value);
             }
 
-            match self.wait_for_abstract_idle(Duration::from_millis(100)) {
+            match self.wait_for_abstract_idle(PROGBUF_TIMEOUT) {
                 Ok(()) => {
                     out_idx = batch_end;
                 }
                 Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::Busy)) => {
-                    let mut cs = Abstractcs(0);
-                    cs.set_cmderr(0x7);
-                    self.write_dm_register(cs)?;
+                    self.clear_abstract_command_error()?;
                     self.write_dm_register(Abstractauto(0))?;
 
                     let current_addr = self.read_register_xlen(registers::S0)?;
@@ -1894,15 +1935,12 @@ impl<'state> RiscvCommunicationInterface<'state> {
         &mut self,
         address: u64,
         data: &mut [V],
-        wait_for_idle: bool,
+        wait: bool,
     ) -> Result<(), RiscvError> {
         let data_len = data.len();
 
         self.schedule_write_address_to_s0_and_exec(address)?;
-
-        if wait_for_idle {
-            self.wait_for_idle(Duration::from_millis(10))?;
-        }
+        self.wait_for_progbuf(wait)?;
 
         let aarsize = if self.state.xlen_64 {
             RiscvBusAccess::A64
@@ -1923,13 +1961,15 @@ impl<'state> RiscvCommunicationInterface<'state> {
             let value_idx = self.schedule_read_dm_register::<Data0>()?;
             result_idxs.push((out_idx, value_idx));
 
-            if wait_for_idle {
-                self.wait_for_idle(Duration::from_millis(10))?;
-            }
+            self.wait_for_progbuf(wait)?;
         }
 
+        // The read of s1 is an abstract command, and the debug module rejects it while
+        // `cmderr` holds the sticky `busy` of a `data` read that came in too early. It
+        // therefore reports a batch that lost a word, and the batch needs no test of
+        // its own.
         let last_value = self.read_register_xlen(registers::S1)? as u32;
-        data[data.len() - 1] = V::from_register_value(last_value);
+        data[data_len - 1] = V::from_register_value(last_value);
 
         for (out_idx, value_idx) in result_idxs {
             let value = self.dtm.read_deferred_result(value_idx)?.into_u32();
@@ -1943,14 +1983,13 @@ impl<'state> RiscvCommunicationInterface<'state> {
         &mut self,
         address: u64,
         data: &mut [V],
-        wait_for_idle: bool,
     ) -> Result<(), RiscvError> {
         if data.is_empty() {
             return Ok(());
         }
 
         if data.len() == 1 {
-            data[0] = self.perform_memory_read_progbuf(address, wait_for_idle)?;
+            data[0] = self.perform_memory_read_progbuf(address)?;
             return Ok(());
         }
 
@@ -1967,16 +2006,16 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
             let use_autoexec = core.state.supports_autoexec && data.len() >= 16;
 
-            let read_result: Result<(), RiscvError> = if use_autoexec {
-                core.read_multiple_autoexec(address, data)
-            } else {
-                core.read_multiple_no_autoexec(address, data, wait_for_idle)
-            };
+            let read_result = core.progbuf_access(|core, wait| {
+                if use_autoexec {
+                    core.read_multiple_autoexec(address, data, wait)
+                } else {
+                    core.read_multiple_no_autoexec(address, data, wait)
+                }
+            });
 
             let _ = core.write_dm_register(Abstractauto(0));
-            let mut cs_clear = Abstractcs(0);
-            cs_clear.set_cmderr(0x7);
-            let _ = core.write_dm_register(cs_clear);
+            let _ = core.clear_abstract_command_error();
             core.state.invalidate_progbuf_cache();
             let _ = core.restore_s0(s0);
             let _ = core.restore_s1(s1);
@@ -2175,7 +2214,6 @@ impl<'state> RiscvCommunicationInterface<'state> {
         &mut self,
         address: u64,
         data: V,
-        wait_for_idle: bool,
     ) -> Result<(), RiscvError> {
         self.halted_access(|core| {
             tracing::debug!(
@@ -2213,16 +2251,8 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
             core.schedule_write_dm_register(command)?;
 
-            if wait_for_idle && let Err(error) = core.wait_for_idle(Duration::from_millis(10)) {
-                tracing::error!(
-                    "Executing the abstract command for write_{} failed: {:?}",
-                    V::WIDTH.byte_width() * 8,
-                    error
-                );
-
-                return Err(error);
-            }
-
+            // The restore of s0 and s1 reports a program buffer that still runs, so the
+            // store needs no test of its own.
             core.restore_s0(s0)?;
             core.restore_s1(s1)?;
 
@@ -2332,6 +2362,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         &mut self,
         address: u64,
         data: &[V],
+        wait: bool,
     ) -> Result<(), RiscvError> {
         let width = V::WIDTH.byte_width() as u64;
 
@@ -2348,14 +2379,13 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
             for value in &data[index..chunk_end] {
                 self.schedule_write_dm_register(Data0((*value).into()))?;
+                self.wait_for_progbuf(wait)?;
             }
 
-            match self.wait_for_abstract_idle(Duration::from_millis(100)) {
+            match self.wait_for_abstract_idle(PROGBUF_TIMEOUT) {
                 Ok(()) => index = chunk_end,
                 Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::Busy)) => {
-                    let mut cs = Abstractcs(0);
-                    cs.set_cmderr(0x7);
-                    self.write_dm_register(cs)?;
+                    self.clear_abstract_command_error()?;
                     self.write_dm_register(Abstractauto(0))?;
 
                     // S0 shows the number of words that the target stored.
@@ -2392,7 +2422,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
     fn write_multiple_no_autoexec<V: RiscvValue32>(
         &mut self,
         data: &[V],
-        wait_for_idle: bool,
+        wait: bool,
     ) -> Result<(), RiscvError> {
         for value in data {
             // write data into data 0
@@ -2401,15 +2431,20 @@ impl<'state> RiscvCommunicationInterface<'state> {
             // Write s0, then execute program buffer
             self.schedule_write_dm_register(Self::write_transfer_command())?;
 
-            if wait_for_idle && let Err(error) = self.wait_for_idle(Duration::from_millis(10)) {
-                tracing::error!(
-                    "Executing the abstract command for write_multiple_{} failed: {:?}",
-                    V::WIDTH.byte_width() * 8,
-                    error,
-                );
+            self.wait_for_progbuf(wait)?;
+        }
 
-                return Err(error);
-            }
+        // `cmderr` is sticky, so this one test covers the whole batch. A write needs
+        // the test of its own: the restore of a scratch register that follows recovers
+        // from a busy program buffer, and it would hide a word that got lost.
+        if let Err(error) = self.wait_for_abstract_idle(PROGBUF_TIMEOUT) {
+            tracing::error!(
+                "Executing the abstract command for write_multiple_{} failed: {:?}",
+                V::WIDTH.byte_width() * 8,
+                error,
+            );
+
+            return Err(error);
         }
 
         Ok(())
@@ -2421,14 +2456,13 @@ impl<'state> RiscvCommunicationInterface<'state> {
         &mut self,
         address: u64,
         data: &[V],
-        wait_for_idle: bool,
     ) -> Result<(), RiscvError> {
         if data.is_empty() {
             return Ok(());
         }
 
         if data.len() == 1 {
-            self.perform_memory_write_progbuf(address, data[0], wait_for_idle)?;
+            self.perform_memory_write_progbuf(address, data[0])?;
             return Ok(());
         }
 
@@ -2446,18 +2480,18 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
             let use_autoexec = core.state.supports_autoexec && data.len() >= 16;
 
-            let write_result = if use_autoexec {
-                core.write_multiple_autoexec(address, data)
-            } else {
-                core.write_register_xlen(registers::S0, address)
-                    .and_then(|()| core.write_multiple_no_autoexec(data, wait_for_idle))
-            };
+            let write_result = core.progbuf_access(|core, wait| {
+                if use_autoexec {
+                    core.write_multiple_autoexec(address, data, wait)
+                } else {
+                    core.write_register_xlen(registers::S0, address)
+                        .and_then(|()| core.write_multiple_no_autoexec(data, wait))
+                }
+            });
 
             if use_autoexec {
                 let _ = core.write_dm_register(Abstractauto(0));
-                let mut cs_clear = Abstractcs(0);
-                cs_clear.set_cmderr(0x7);
-                let _ = core.write_dm_register(cs_clear);
+                let _ = core.clear_abstract_command_error();
                 core.state.invalidate_progbuf_cache();
             }
 
@@ -2752,12 +2786,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             valid_32bit_address(address)?;
         }
         let result = match self.state.memory_access_method(V::WIDTH, address) {
-            MemoryAccessMethod::ProgramBuffer => {
-                self.perform_memory_read_progbuf(address, false)?
-            }
-            MemoryAccessMethod::WaitingProgramBuffer => {
-                self.perform_memory_read_progbuf(address, true)?
-            }
+            MemoryAccessMethod::ProgramBuffer => self.perform_memory_read_progbuf(address)?,
             MemoryAccessMethod::SystemBus => self.perform_memory_read_sysbus(address)?,
             MemoryAccessMethod::AbstractCommand => {
                 self.perform_memory_read_abstract_cmd(address, false)?
@@ -2788,10 +2817,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         match access_method {
             MemoryAccessMethod::ProgramBuffer => {
-                self.perform_memory_read_multiple_progbuf(address, data, false)?;
-            }
-            MemoryAccessMethod::WaitingProgramBuffer => {
-                self.perform_memory_read_multiple_progbuf(address, data, true)?;
+                self.perform_memory_read_multiple_progbuf(address, data)?;
             }
             MemoryAccessMethod::SystemBus => {
                 self.perform_memory_read_multiple_sysbus(address, data)?;
@@ -2810,10 +2836,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         }
         match self.state.memory_access_method(V::WIDTH, address) {
             MemoryAccessMethod::ProgramBuffer => {
-                self.perform_memory_write_progbuf(address, data, false)?
-            }
-            MemoryAccessMethod::WaitingProgramBuffer => {
-                self.perform_memory_write_progbuf(address, data, true)?
+                self.perform_memory_write_progbuf(address, data)?
             }
             MemoryAccessMethod::SystemBus => self.perform_memory_write_sysbus(address, &[data])?,
             MemoryAccessMethod::AbstractCommand => {
@@ -2839,10 +2862,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         match access_method {
             MemoryAccessMethod::SystemBus => self.perform_memory_write_sysbus(address, data)?,
             MemoryAccessMethod::ProgramBuffer => {
-                self.perform_memory_write_multiple_progbuf(address, data, false)?
-            }
-            MemoryAccessMethod::WaitingProgramBuffer => {
-                self.perform_memory_write_multiple_progbuf(address, data, true)?
+                self.perform_memory_write_multiple_progbuf(address, data)?
             }
             MemoryAccessMethod::AbstractCommand => {
                 self.perform_memory_write_abstract_cmd(address, data, false)?
@@ -3561,13 +3581,14 @@ impl From<RiscvBusAccess> for u8 {
 pub enum MemoryAccessMethod {
     /// Memory access using an abstract command is supported
     AbstractCommand,
-    /// Memory access using the program buffer is supported, with explicit waiting for the instructions to complete
-    WaitingProgramBuffer,
     /// Memory access using the program buffer is supported
     ProgramBuffer,
     /// Memory access using system bus access supported
     SystemBus,
 }
+
+/// Timeout for the execution of the program buffer.
+const PROGBUF_TIMEOUT: Duration = Duration::from_millis(100);
 
 memory_mapped_bitfield_register! {
     /// Abstract command register, located at address 0x17

@@ -162,11 +162,11 @@ impl ESP32P4 {
             if memory_access_config.default_method(access) != MemoryAccessMethod::SystemBus {
                 // External data/instruction bus
                 // Loading external memory is slower than the CPU. If we can't access something via the
-                // system bus, select the waiting program buffer method.
+                // system bus, select the program buffer method.
                 memory_access_config.set_region_override(
                     access,
                     0x4000_0000..0x4400_0000,
-                    MemoryAccessMethod::WaitingProgramBuffer,
+                    MemoryAccessMethod::ProgramBuffer,
                 );
             } else {
                 // System bus access to RAM appears broken, and returns garbage
@@ -186,7 +186,7 @@ impl ESP32P4 {
                 memory_access_config.set_region_override(
                     access,
                     0x2000_0000..0x3000_0000,
-                    MemoryAccessMethod::WaitingProgramBuffer,
+                    MemoryAccessMethod::ProgramBuffer,
                 );
             }
         }

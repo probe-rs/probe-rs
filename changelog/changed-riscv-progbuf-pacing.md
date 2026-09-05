@@ -1,0 +1,1 @@
+RISC-V memory access through the program buffer now waits for the program buffer only after the debug module reports that an access came in too early, so a debug sequence no longer needs to know which memory is slower than the core. `MemoryAccessMethod::WaitingProgramBuffer` is gone.
