@@ -1280,15 +1280,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "esp-metadata-generated"
+version = "0.4.0"
+source = "git+https://github.com/esp-rs/esp-hal?rev=d91ecc5#d91ecc513f4e7915ce239f05f24d561a81fa2f46"
+
+[[package]]
 name = "espflash"
 version = "4.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5651fc2710ac2e1b1d0f26e19cb68899d05832bf82974acab04e37805499132"
+source = "git+https://github.com/esp-rs/espflash?rev=feb3cc7#feb3cc7698b3ab7eb27d492b52888805bce1d53b"
 dependencies = [
  "base64 0.22.1",
  "bitflags 2.13.0",
  "bytemuck",
  "esp-idf-part",
+ "esp-metadata-generated",
  "flate2",
  "gimli 0.32.3",
  "libc",
