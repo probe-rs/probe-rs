@@ -3019,6 +3019,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 if start.elapsed() > timeout {
                     return Err(RiscvError::RequestNotAcknowledged);
                 }
+                std::thread::sleep(Duration::from_millis(1));
                 continue;
             }
 
@@ -3033,6 +3034,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             // Request the halt again. `dmcontrol` must no longer assert a reset here, or the
             // hart returns to reset on every iteration and never reports itself as halted.
             self.write_dm_register(dmcontrol)?;
+            std::thread::sleep(Duration::from_millis(1));
         }
 
         // clear the reset request
