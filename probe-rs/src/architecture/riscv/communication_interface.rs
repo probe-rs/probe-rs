@@ -351,6 +351,9 @@ pub struct RiscvCommunicationInterfaceState {
     /// Cache for the program buffer.
     progbuf_cache: [u32; 16],
 
+    /// Number of valid words in the program buffer cache.
+    progbuf_cache_len: usize,
+
     /// Implicit `ebreak` instruction is present after the
     /// the program buffer.
     implicit_ebreak: bool,
@@ -434,6 +437,7 @@ impl RiscvCommunicationInterfaceState {
             // Set to the minimum here, will be set to the correct value below
             progbuf_size: 0,
             progbuf_cache: [0u32; 16],
+            progbuf_cache_len: 0,
 
             debug_version: DebugModuleVersion::NonConforming,
 
@@ -474,6 +478,11 @@ impl RiscvCommunicationInterfaceState {
             xlen_64: false,
             force_machine_mode_progbuf: false,
         }
+    }
+
+    /// Forget the contents of the program buffer, so that the next program is written again.
+    fn invalidate_progbuf_cache(&mut self) {
+        self.progbuf_cache_len = 0;
     }
 
     /// Get the memory access method which should be used for an
@@ -713,7 +722,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         // read the  version of the debug module
         let status: Dmstatus = self.read_dm_register()?;
 
-        self.state.progbuf_cache.fill(0);
+        self.state.invalidate_progbuf_cache();
         self.state.memory_access_config = MemoryAccessConfig::default();
         self.state.debug_version = DebugModuleVersion::from(status.version() as u8);
         self.state.is_halted = status.allhalted();
@@ -1539,8 +1548,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
             });
         }
 
-        if data == &self.state.progbuf_cache[..data.len()] {
-            // Check if we actually have to write the program buffer
+        // The length is part of the comparison. A shorter program that is a prefix of the
+        // cached one needs a new `ebreak`, or the target executes the remaining words.
+        if self.state.progbuf_cache_len == data.len()
+            && data == &self.state.progbuf_cache[..data.len()]
+        {
             tracing::debug!("Program buffer is up-to-date, skipping write.");
             return Ok(());
         }
@@ -1559,6 +1571,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         // Update the cache
         self.state.progbuf_cache[..data.len()].copy_from_slice(data);
+        self.state.progbuf_cache_len = data.len();
 
         Ok(())
     }
@@ -1955,7 +1968,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             let mut cs_clear = Abstractcs(0);
             cs_clear.set_cmderr(0x7);
             let _ = core.write_dm_register(cs_clear);
-            core.state.progbuf_cache = [0u32; 16];
+            core.state.invalidate_progbuf_cache();
             let _ = core.restore_s0(s0);
             let _ = core.restore_s1(s1);
 
@@ -2436,7 +2449,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 let mut cs_clear = Abstractcs(0);
                 cs_clear.set_cmderr(0x7);
                 let _ = core.write_dm_register(cs_clear);
-                core.state.progbuf_cache = [0u32; 16];
+                core.state.invalidate_progbuf_cache();
             }
 
             let _ = core.restore_s0(s0);
@@ -3106,7 +3119,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             tracing::debug!("Failed to clear abstractcs cmderr: {:?}", e);
         }
         // Invalidate the progbuf cache so the next operation fully rewrites it.
-        self.state.progbuf_cache = [0u32; 16];
+        self.state.invalidate_progbuf_cache();
     }
 }
 
