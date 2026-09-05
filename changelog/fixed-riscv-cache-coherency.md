@@ -1,0 +1,1 @@
+RISC-V chips can now provide a new `CacheSync` implementation if cache maintenance is necessary before accessing memory via the system bus. ESP32-P4 accesses its L2 memory through the system bus instead of the program buffer.
