@@ -432,7 +432,16 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     }
 
     /// Steps the core by one instruction.
+    ///
+    /// Instructions that run above `intlevel` do not count, so an interrupt handler delays the
+    /// step until it returns. If a handler takes longer than `STEP_TIMEOUT`, the core stops
+    /// inside it.
     pub fn step(&mut self, by: u32, intlevel: u32) -> Result<(), XtensaError> {
+        /// How long we wait before we look at the core.
+        const POLL_INTERVAL: Duration = Duration::from_millis(100);
+        /// How long we let interrupt handlers delay a step.
+        const STEP_TIMEOUT: Duration = Duration::from_secs(1);
+
         // Instructions executed below icountlevel increment the ICOUNT register.
         self.schedule_write_register(ICountLevel(
             (intlevel + 1).min(self.core_properties.debug_level as u32),
@@ -442,13 +451,32 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         self.schedule_write_register(ICount(-((1 + by) as i32) as u32))?;
 
         self.resume_core()?;
-        // TODO: a long-running interrupt handler runs above `intlevel` and does not increment
-        // ICOUNT, so the step does not finish while it runs. Forcing a halt on timeout stops in
-        // the handler, which isn't necessarily what the user wants.
-        match self.wait_for_core_halted(Duration::from_millis(100)) {
-            Ok(()) => {}
-            Err(XtensaError::Timeout) => self.halt(Duration::from_millis(100))?,
-            Err(e) => return Err(e),
+
+        let start = Instant::now();
+        loop {
+            match self.wait_for_core_halted(POLL_INTERVAL) {
+                Ok(()) => break,
+                Err(XtensaError::Timeout) => {}
+                Err(e) => return Err(e),
+            }
+
+            // Reading why the core has not stopped needs the core stopped. Halting does not
+            // disturb the step: ICOUNT is not restored on resume, so it keeps counting.
+            self.halt(POLL_INTERVAL)?;
+
+            if self.read_register::<DebugCause>()?.halt_reason() != HaltReason::Request {
+                // Something other than our halt request stopped the core.
+                break;
+            }
+
+            if start.elapsed() >= STEP_TIMEOUT {
+                tracing::warn!(
+                    "Timeout while stepping, the core is likely in an interrupt handler"
+                );
+                break;
+            }
+
+            self.resume_core()?;
         }
 
         // Avoid stopping again
