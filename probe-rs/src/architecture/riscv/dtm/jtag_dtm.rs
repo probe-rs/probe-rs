@@ -164,8 +164,10 @@ impl<'probe> JtagDtm<'probe> {
                     self.probe
                         .set_idle_cycles(self.probe.idle_cycles().saturating_add(1))?;
                 }
-                Err(DmiOperationError::Reserved) => panic!("Reserved"),
-                Err(DmiOperationError::OperationFailed) => {
+                // A reserved status is defined to be interpreted like a failure.
+                Err(DmiOperationError::Reserved | DmiOperationError::OperationFailed) => {
+                    // The failure is sticky. Clear it, or the DTM ignores every later access.
+                    self.clear_error_state()?;
                     return Err(RiscvError::DtmOperationFailed);
                 }
             };
@@ -275,8 +277,9 @@ impl DtmAccess for JtagDtm<'_> {
                                         self.probe.idle_cycles().saturating_add(1),
                                     )?;
                                 }
-                                DmiOperationError::Reserved => panic!("Reserved!"),
-                                DmiOperationError::OperationFailed => {
+                                DmiOperationError::Reserved
+                                | DmiOperationError::OperationFailed => {
+                                    self.clear_error_state()?;
                                     return Err(RiscvError::DtmOperationFailed);
                                 }
                             }
@@ -482,8 +485,10 @@ impl<'probe> TunneledJtagDtm<'probe> {
                     self.probe
                         .set_idle_cycles(self.probe.idle_cycles().saturating_add(1))?;
                 }
-                Err(DmiOperationError::Reserved) => panic!("Reserved"),
-                Err(DmiOperationError::OperationFailed) => {
+                // A reserved status is defined to be interpreted like a failure.
+                Err(DmiOperationError::Reserved | DmiOperationError::OperationFailed) => {
+                    // The failure is sticky. Clear it, or the DTM ignores every later access.
+                    self.clear_error_state()?;
                     return Err(RiscvError::DtmOperationFailed);
                 }
             };
@@ -588,8 +593,9 @@ impl DtmAccess for TunneledJtagDtm<'_> {
                                         self.probe.idle_cycles().saturating_add(1),
                                     )?;
                                 }
-                                DmiOperationError::Reserved => panic!("Reserved error"),
-                                DmiOperationError::OperationFailed => {
+                                DmiOperationError::Reserved
+                                | DmiOperationError::OperationFailed => {
+                                    self.clear_error_state()?;
                                     return Err(RiscvError::DtmOperationFailed);
                                 }
                             }
