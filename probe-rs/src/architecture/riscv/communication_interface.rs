@@ -825,6 +825,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         }
 
         self.schedule_write_dm_register(control)?;
+        self.state.last_selected_hart = 0;
 
         // determine size of the program buffer, and number of data
         // registers for abstract commands
