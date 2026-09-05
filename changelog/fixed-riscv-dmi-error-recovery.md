@@ -1,1 +1,1 @@
-A failed DMI operation on a RISC-V target no longer makes all later debug module accesses fail. The failure status is sticky, and probe-rs did not clear it. A reserved status now also reports an error instead of a panic.
+probe-rs now clears the sticky DMI failure status of a RISC-V target, so one failed operation no longer makes every later debug module access fail. A reserved status reports an error instead of a panic.

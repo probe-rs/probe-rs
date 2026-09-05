@@ -1,1 +1,1 @@
-Reset of a RISC-V hart no longer fails when the hart needs more than one debug module access to reset and halt. The retry put the hart back into reset, so `dmstatus` never reported it as halted and the reset timed out.
+A RISC-V hart reset no longer asserts `hartreset` again while it waits for the halt, so a hart that needs more than one debug module access to reset and halt no longer times out.
