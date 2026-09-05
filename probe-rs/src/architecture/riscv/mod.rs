@@ -569,13 +569,19 @@ impl<X: XlenMode> CoreInterface for RiscvCore<'_, X> {
     }
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
+        // `dcsr.cause` keeps the reason of the last entry into debug mode, and `status` clears
+        // this flag. Read it first to tell a fresh halt on a breakpoint from a dpc that a
+        // previous step already advanced past that breakpoint.
+        let stepped_over_breakpoint = self.state.pc_written;
         let halt_reason = self.status()?;
-        if matches!(
-            halt_reason,
-            CoreStatus::Halted(HaltReason::Breakpoint(
-                BreakpointCause::Software | BreakpointCause::Semihosting(_)
-            ))
-        ) {
+        if !stepped_over_breakpoint
+            && matches!(
+                halt_reason,
+                CoreStatus::Halted(HaltReason::Breakpoint(
+                    BreakpointCause::Software | BreakpointCause::Semihosting(_)
+                ))
+            )
+        {
             // If we are halted on a software breakpoint, we can skip the
             // single step and manually advance the dpc.
             let mut debug_pc = self.read_core_reg(RegisterId(0x7b1))?;
@@ -594,6 +600,7 @@ impl<X: XlenMode> CoreInterface for RiscvCore<'_, X> {
                 debug_pc.increment_address(4)?;
             }
             self.write_core_reg(RegisterId(0x7b1), debug_pc)?;
+            self.state.semihosting_command = None;
             return Ok(CoreInformation {
                 pc: debug_pc.try_into()?,
             });

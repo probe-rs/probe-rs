@@ -1,0 +1,1 @@
+A second step after a RISC-V core halted on a software breakpoint or a semihosting call no longer skips an instruction. The first step moves the program counter past the `ebreak`, but `dcsr.cause` still reported the breakpoint, so the next step moved the program counter again instead of executing the instruction.
