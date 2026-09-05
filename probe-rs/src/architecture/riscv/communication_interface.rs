@@ -2968,7 +2968,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         if readback.hartreset() {
             tracing::debug!("Clearing hartreset bit");
             // Reset is performed by setting the bit high, and then low again
-            let mut dmcontrol = readback;
+            dmcontrol = readback;
             dmcontrol.set_dmactive(true);
             dmcontrol.set_haltreq(true);
             dmcontrol.set_hartreset(false);
@@ -3015,6 +3015,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
             if start.elapsed() > timeout {
                 return Err(RiscvError::RequestNotAcknowledged);
             }
+
+            // Request the halt again. `dmcontrol` must no longer assert a reset here, or the
+            // hart returns to reset on every iteration and never reports itself as halted.
             self.write_dm_register(dmcontrol)?;
         }
 
