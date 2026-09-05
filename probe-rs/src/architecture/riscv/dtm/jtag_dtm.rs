@@ -297,9 +297,6 @@ impl DtmAccess for JtagDtm<'_> {
                 previous_queue_len = cmds.len();
             }
 
-            // Observed with a HiFive Rev B Board: 1.4 sec to execute commands when a reset is involved.
-            const JTAG_COMMAND_TIMEOUT: Duration = Duration::from_secs(2);
-
             let elapsed_time = started.elapsed();
 
             if elapsed_time > JTAG_COMMAND_TIMEOUT {
@@ -613,7 +610,12 @@ impl DtmAccess for TunneledJtagDtm<'_> {
                 previous_queue_len = cmds.len();
             }
 
-            if started.elapsed() > Duration::from_millis(500) {
+            let elapsed_time = started.elapsed();
+
+            if elapsed_time > JTAG_COMMAND_TIMEOUT {
+                tracing::error!(
+                    "Timeout ({JTAG_COMMAND_TIMEOUT:?}) exceeded executing RISCV commands (elapsed: {elapsed_time:?})"
+                );
                 return Err(RiscvError::Timeout);
             }
         }
@@ -791,6 +793,11 @@ impl DmiOperationStatus {
         Some(status)
     }
 }
+
+/// Timeout for the execution of a batch of scheduled `dmi` accesses.
+///
+/// Observed with a HiFive Rev B Board: 1.4 sec to execute commands when a reset is involved.
+const JTAG_COMMAND_TIMEOUT: Duration = Duration::from_secs(2);
 
 /// Address of the `dtmcs` JTAG register.
 const DTMCS_ADDRESS: u32 = 0x10;
