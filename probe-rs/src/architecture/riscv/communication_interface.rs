@@ -11,7 +11,7 @@ use crate::{
     Error as ProbeRsError, architecture::riscv::*, config::Target, memory_mapped_bitfield_register,
 };
 use std::any::Any;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ops::Range;
 
 /// Some error occurred when working with the RISC-V core.
@@ -387,8 +387,8 @@ pub struct RiscvCommunicationInterfaceState {
     /// Second scratch register's state
     s1: ScratchState,
 
-    /// Bitfield of enabled harts
-    enabled_harts: u32,
+    /// The harts that are enabled
+    enabled_harts: HashSet<u32>,
 
     /// When 1, `allunavail` / `anyunavail` stay set until `ackunavail` is written.
     sticky_unavail: bool,
@@ -410,8 +410,8 @@ pub struct RiscvCommunicationInterfaceState {
 
     memory_access_config: MemoryAccessConfig,
 
-    /// Bitfield of harts that have `dcsr.ebreak*` set to enter debug mode.
-    sw_breakpoint_debug_enabled: u32,
+    /// The harts that have `dcsr.ebreak*` set to enter debug mode.
+    sw_breakpoint_debug_enabled: HashSet<u32>,
 
     /// Whether the connected core is 64-bit (RV64). When true, memory access
     /// methods will accept 64-bit addresses and CSR access uses 64-bit data registers.
@@ -466,7 +466,7 @@ impl RiscvCommunicationInterfaceState {
 
             s0: ScratchState::default(),
             s1: ScratchState::default(),
-            enabled_harts: 0,
+            enabled_harts: HashSet::new(),
             sticky_unavail: false,
             last_selected_hart: 0,
             hasresethaltreq: None,
@@ -477,7 +477,7 @@ impl RiscvCommunicationInterfaceState {
 
             memory_access_config: MemoryAccessConfig::default(),
 
-            sw_breakpoint_debug_enabled: 0,
+            sw_breakpoint_debug_enabled: HashSet::new(),
 
             xlen_64: false,
             force_machine_mode_progbuf: false,
@@ -622,11 +622,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         let status: Dmstatus = self.read_dm_register()?;
         if status.anynonexistent() || status.allunavail() {
-            self.state.enabled_harts &= !(1 << hart);
+            self.state.enabled_harts.remove(&hart);
             return Err(RiscvError::HartUnavailable);
         }
 
-        self.state.enabled_harts |= 1 << hart;
+        self.state.enabled_harts.insert(hart);
 
         if status.anyhavereset() {
             self.acknowledge_reset(hart)?;
@@ -643,7 +643,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// firmware exception handler instead of entering debug mode.
     fn acknowledge_reset(&mut self, hart: u32) -> Result<(), RiscvError> {
         tracing::debug!("Hart {hart} was reset, re-applying the debug configuration");
-        self.state.sw_breakpoint_debug_enabled &= !(1 << hart);
+        self.state.sw_breakpoint_debug_enabled.remove(&hart);
 
         let mut control = self.read_dm_register::<Dmcontrol>()?;
         control.set_dmactive(true);
@@ -655,7 +655,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
     /// Check if the given hart is enabled
     pub fn hart_enabled(&self, hart: u32) -> bool {
-        self.state.enabled_harts & (1 << hart) != 0
+        self.state.enabled_harts.contains(&hart)
     }
 
     /// Assert the target reset
@@ -776,7 +776,8 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         // Hart 0 exists on every chip
         let mut num_harts = 1;
-        self.state.enabled_harts = 1;
+        self.state.enabled_harts.clear();
+        self.state.enabled_harts.insert(0);
 
         // Check if anynonexistent is available.
         // Some chips that have only one hart do not implement anynonexistent and allnonexistent.
@@ -814,7 +815,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 }
 
                 if !status.allunavail() {
-                    self.state.enabled_harts |= 1 << num_harts;
+                    self.state.enabled_harts.insert(num_harts);
                 }
 
                 num_harts += 1;
@@ -999,7 +1000,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
         // Both paths above guarantee the core is halted here.
         self.state.is_halted = true;
 
-        if self.state.sw_breakpoint_debug_enabled & (1 << self.state.last_selected_hart) == 0 {
+        if !self
+            .state
+            .sw_breakpoint_debug_enabled
+            .contains(&self.state.last_selected_hart)
+        {
             self.debug_on_sw_breakpoint(true)?;
         }
 
@@ -3083,11 +3088,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
         );
 
         self.write_csr(0x7b0, u64::from(dcsr.0))?;
-        let hart_bit = 1 << self.state.last_selected_hart;
+        let hart = self.state.last_selected_hart;
         if enabled {
-            self.state.sw_breakpoint_debug_enabled |= hart_bit;
+            self.state.sw_breakpoint_debug_enabled.insert(hart);
         } else {
-            self.state.sw_breakpoint_debug_enabled &= !hart_bit;
+            self.state.sw_breakpoint_debug_enabled.remove(&hart);
         }
         Ok(())
     }
@@ -3098,7 +3103,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// the first hart was configured. A running hart is halted, configured, and
     /// resumed. A hart that is already halted is left halted.
     pub(crate) fn ensure_debug_on_sw_breakpoint(&mut self) -> Result<(), RiscvError> {
-        if self.state.sw_breakpoint_debug_enabled & (1 << self.state.last_selected_hart) != 0 {
+        if self
+            .state
+            .sw_breakpoint_debug_enabled
+            .contains(&self.state.last_selected_hart)
+        {
             return Ok(());
         }
 
