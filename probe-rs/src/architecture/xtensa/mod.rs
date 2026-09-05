@@ -6,6 +6,7 @@ use probe_rs_target::{Architecture, CoreType, InstructionSet};
 
 use crate::{
     CoreInformation, CoreInterface, CoreRegister, CoreStatus, Error, HaltReason, MemoryInterface,
+    RegisterRole,
     architecture::xtensa::{
         arch::{
             CpuRegister, Register, SpecialRegister,
@@ -15,7 +16,7 @@ use crate::{
             DebugCause, IBreakEn, ProgramStatus, WindowProperties, XtensaCommunicationInterface,
             XtensaError,
         },
-        registers::{FP, PC, RA, SP, XTENSA_CORE_REGISTERS},
+        registers::{FP, PC, RA, SP, XTENSA_CORE_REGISTERS, XTENSA_WITH_FP_CORE_REGISTERS},
         sequences::XtensaDebugSequence,
         xdm::PowerStatus,
     },
@@ -529,7 +530,11 @@ impl CoreInterface for Xtensa<'_> {
     }
 
     fn registers(&self) -> &'static CoreRegisters {
-        &XTENSA_CORE_REGISTERS
+        if self.interface.has_fpu() {
+            &XTENSA_WITH_FP_CORE_REGISTERS
+        } else {
+            &XTENSA_CORE_REGISTERS
+        }
     }
 
     fn program_counter(&self) -> &'static CoreRegister {
@@ -566,13 +571,15 @@ impl CoreInterface for Xtensa<'_> {
     }
 
     fn fpu_support(&mut self) -> Result<bool, Error> {
-        // TODO: ESP32 and ESP32-S3 have FPU
-        Ok(false)
+        Ok(self.interface.has_fpu())
     }
 
     fn floating_point_register_count(&mut self) -> Result<usize, Error> {
-        // TODO: ESP32 and ESP32-S3 have FPU
-        Ok(0)
+        Ok(self
+            .registers()
+            .all_registers()
+            .filter(|r| r.register_has_role(RegisterRole::FloatingPoint))
+            .count())
     }
 
     fn reset_catch_set(&mut self) -> Result<(), Error> {

@@ -4,7 +4,7 @@ use std::sync::LazyLock;
 
 use crate::{
     CoreRegister, CoreRegisters, RegisterRole,
-    architecture::xtensa::arch::SpecialRegister,
+    architecture::xtensa::arch::{SpecialRegister, UserRegister},
     core::{RegisterDataType, UnwindRule},
 };
 
@@ -64,6 +64,16 @@ pub static XTENSA_CORE_REGISTERS: LazyLock<CoreRegisters> = LazyLock::new(|| {
             // Occasionally very useful to observe, but way too much to always include:
             //.chain(XTENSA_EXCEPTION_OPTION_REGISTERS.iter())
             //.chain(XTENSA_HP_INTERRUPT_OPTION_REGISTERS.iter())
+            .collect(),
+    )
+});
+
+/// Xtensa core registers, for cores with the Floating-Point Coprocessor Option
+pub static XTENSA_WITH_FP_CORE_REGISTERS: LazyLock<CoreRegisters> = LazyLock::new(|| {
+    CoreRegisters::new(
+        XTENSA_REGISTERS_SET
+            .iter()
+            .chain(XTENSA_FP_OPTION_REGISTERS.iter())
             .collect(),
     )
 });
@@ -168,6 +178,117 @@ static XTENSA_REGISTERS_SET: &[CoreRegister] = &[
     },
     PC,
     PS,
+];
+
+static XTENSA_FP_OPTION_REGISTERS: &[CoreRegister] = &[
+    CoreRegister {
+        roles: &[RegisterRole::Core("f0"), RegisterRole::FloatingPoint],
+        id: crate::RegisterId(0x0200),
+        data_type: RegisterDataType::FloatingPoint(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Core("f1"), RegisterRole::FloatingPoint],
+        id: crate::RegisterId(0x0201),
+        data_type: RegisterDataType::FloatingPoint(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Core("f2"), RegisterRole::FloatingPoint],
+        id: crate::RegisterId(0x0202),
+        data_type: RegisterDataType::FloatingPoint(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Core("f3"), RegisterRole::FloatingPoint],
+        id: crate::RegisterId(0x0203),
+        data_type: RegisterDataType::FloatingPoint(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Core("f4"), RegisterRole::FloatingPoint],
+        id: crate::RegisterId(0x0204),
+        data_type: RegisterDataType::FloatingPoint(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Core("f5"), RegisterRole::FloatingPoint],
+        id: crate::RegisterId(0x0205),
+        data_type: RegisterDataType::FloatingPoint(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Core("f6"), RegisterRole::FloatingPoint],
+        id: crate::RegisterId(0x0206),
+        data_type: RegisterDataType::FloatingPoint(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Core("f7"), RegisterRole::FloatingPoint],
+        id: crate::RegisterId(0x0207),
+        data_type: RegisterDataType::FloatingPoint(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Core("f8"), RegisterRole::FloatingPoint],
+        id: crate::RegisterId(0x0208),
+        data_type: RegisterDataType::FloatingPoint(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Core("f9"), RegisterRole::FloatingPoint],
+        id: crate::RegisterId(0x0209),
+        data_type: RegisterDataType::FloatingPoint(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Core("f10"), RegisterRole::FloatingPoint],
+        id: crate::RegisterId(0x020A),
+        data_type: RegisterDataType::FloatingPoint(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Core("f11"), RegisterRole::FloatingPoint],
+        id: crate::RegisterId(0x020B),
+        data_type: RegisterDataType::FloatingPoint(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Core("f12"), RegisterRole::FloatingPoint],
+        id: crate::RegisterId(0x020C),
+        data_type: RegisterDataType::FloatingPoint(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Core("f13"), RegisterRole::FloatingPoint],
+        id: crate::RegisterId(0x020D),
+        data_type: RegisterDataType::FloatingPoint(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Core("f14"), RegisterRole::FloatingPoint],
+        id: crate::RegisterId(0x020E),
+        data_type: RegisterDataType::FloatingPoint(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Core("f15"), RegisterRole::FloatingPoint],
+        id: crate::RegisterId(0x020F),
+        data_type: RegisterDataType::FloatingPoint(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Core("fcr"), RegisterRole::FloatingPointStatus],
+        id: crate::RegisterId(0x0300 | UserRegister::Fcr as u16),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Core("fsr"), RegisterRole::FloatingPointStatus],
+        id: crate::RegisterId(0x0300 | UserRegister::Fsr as u16),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Clear,
+    },
 ];
 
 #[allow(unused)]
