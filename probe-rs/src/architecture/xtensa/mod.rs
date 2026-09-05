@@ -207,8 +207,7 @@ impl<'probe> Xtensa<'probe> {
                     // Disable the breakpoint
                     self.clear_hw_breakpoint(bp_unit)?;
                     // Single step
-                    let ps = self.current_ps()?;
-                    self.interface.step(1, ps.intlevel())?;
+                    self.step_instruction()?;
                     // Re-enable the breakpoint
                     self.set_hw_breakpoint(bp_unit, pc_value as u64)?;
                 }
@@ -216,6 +215,38 @@ impl<'probe> Xtensa<'probe> {
         }
 
         Ok(())
+    }
+
+    /// Steps the core by one instruction, emulating instructions that the core can not step.
+    ///
+    /// Returns whether the core has run. An emulated instruction does not run the core, so the
+    /// debug status still describes the previous halt.
+    fn step_instruction(&mut self) -> Result<bool, Error> {
+        if let CurrentInstruction::Waiti(level) = self.current_instruction()? {
+            // `waiti` completes when an interrupt arrives, which can not happen while we hold
+            // the core halted. Take its effect instead of running it.
+            let mut ps = self.current_ps()?;
+            ps.set_intlevel(level);
+            self.interface
+                .write_register_untyped(Register::CurrentPs, ps.0)?;
+
+            let pc = self.interface.read_register_untyped(Register::CurrentPc)?;
+            self.interface
+                .write_register_untyped(Register::CurrentPc, pc + 3)?;
+
+            // The debug cause still describes the previous halt. Keep `skip_breakpoint` from
+            // acting on it a second time.
+            self.state.pc_written = true;
+            self.state.current_instruction = CurrentInstruction::Undecoded;
+
+            return Ok(false);
+        }
+
+        // Only count instructions in the current context.
+        let ps = self.current_ps()?;
+        self.interface.step(1, ps.intlevel())?;
+
+        Ok(true)
     }
 
     /// Reads the instruction word at the program counter.
@@ -469,11 +500,9 @@ impl CoreInterface for Xtensa<'_> {
     fn step(&mut self) -> Result<CoreInformation, Error> {
         self.skip_breakpoint()?;
 
-        // Only count instructions in the current context.
-        let ps = self.current_ps()?;
-        self.interface.step(1, ps.intlevel())?;
-
-        self.on_halted()?;
+        if self.step_instruction()? {
+            self.on_halted()?;
+        }
 
         self.core_info()
     }
