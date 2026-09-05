@@ -332,6 +332,13 @@ impl<'state, X: XlenMode> RiscvCore<'state, X> {
             let isa_extensions = (misa_val & 0x3ff_ffff) as u32;
             let fp_mask = (1 << 3) | (1 << 5) | (1 << 16);
             state.fp_present = isa_extensions & fp_mask != 0;
+            // Some debug modules cannot access floating-point registers through
+            // Access Register even when the hart implements an FPU. Do not expose
+            // those registers to debugger clients: a failed abstract access would
+            // otherwise fall through to the CSR program-buffer path, where FPR
+            // register numbers (0x1020..0x103f) are not valid CSR addresses.
+            state.fp_registers_accessible =
+                state.fp_present && interface.read_csr(registers::FT0.id.0).is_ok();
             state.misa_read = true;
         }
 
@@ -844,7 +851,7 @@ impl<X: XlenMode> CoreInterface for RiscvCore<'_, X> {
     }
 
     fn registers(&self) -> &'static CoreRegisters {
-        X::registers(self.state.fp_present)
+        X::registers(self.state.fp_present && self.state.fp_registers_accessible)
     }
 
     fn program_counter(&self) -> &'static CoreRegister {
@@ -947,6 +954,9 @@ pub struct RiscvCoreState {
     /// Whether the core has FPU support (F, D, or Q extensions present)
     fp_present: bool,
 
+    /// Whether the debug module can access floating-point data registers.
+    fp_registers_accessible: bool,
+
     /// Whether the MISA CSR has been read.
     misa_read: bool,
 }
@@ -959,6 +969,7 @@ impl RiscvCoreState {
             pc_written: false,
             semihosting_command: None,
             fp_present: false,
+            fp_registers_accessible: false,
             misa_read: false,
         }
     }
