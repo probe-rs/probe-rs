@@ -402,6 +402,9 @@ pub struct RiscvCommunicationInterfaceState {
     /// Whether the core is currently halted.
     is_halted: bool,
 
+    /// Whether an abstract command is retried after halting the core.
+    retrying_abstract_command: bool,
+
     /// The current value of the `dmcontrol` register.
     current_dmcontrol: Dmcontrol,
 
@@ -468,6 +471,7 @@ impl RiscvCommunicationInterfaceState {
             last_selected_hart: 0,
             hasresethaltreq: None,
             is_halted: false,
+            retrying_abstract_command: false,
 
             current_dmcontrol: Dmcontrol(0),
 
@@ -2533,10 +2537,18 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 // Re-query the hardware; cached `is_halted` may be stale after
                 // a self-reboot (e.g. watchdog reset).
                 self.state.is_halted = false;
-                if !self.core_halted()? {
+                // A debug module that reports the hart as running while it rejects the
+                // command would recurse through `halted_access` without an end, so retry
+                // only once.
+                if !self.state.retrying_abstract_command && !self.core_halted()? {
                     // This command requires the core to be halted.
                     // We can do that, so let's try again.
-                    self.halted_access(|core| do_execute_abstract_command(core, Command(command)))
+                    self.state.retrying_abstract_command = true;
+                    let result = self
+                        .halted_access(|core| do_execute_abstract_command(core, Command(command)));
+                    self.state.retrying_abstract_command = false;
+
+                    result
                 } else {
                     // This command requires the core to be resumed. This is a bit more drastic than
                     // what we want to do here, so we bubble up the error.
