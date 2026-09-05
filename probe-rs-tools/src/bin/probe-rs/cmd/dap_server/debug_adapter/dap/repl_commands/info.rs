@@ -14,7 +14,7 @@ use crate::cmd::dap_server::{
             EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand, async_fn, need_subcommand,
         },
         repl_commands_helpers::{
-            format_repl_variables, get_local_variable, scope_variables, select_frame,
+            PrintTree, format_repl_variables, get_local_variable, scope_variables, select_frame,
             stack_frame_id,
         },
         repl_types::{GdbFormat, GdbNuf, ReplCommandArgs},
@@ -279,6 +279,7 @@ async fn info_locals<'a>(
         core_data,
         variable_name,
         gdb_nuf,
+        PrintTree { depth: 0, width: 0 },
         adapter.supports_ansi_styling,
     )
     .await

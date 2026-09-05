@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use probe_rs_debug::{ObjectRef, StackFrame, VariableName};
 
 use crate::cmd::dap_server::{
@@ -80,6 +82,13 @@ pub(crate) fn select_frame(
     }
 }
 
+/// Limits for the native `p` tree: `depth` is child levels, `width` is children per node.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct PrintTree {
+    pub depth: usize,
+    pub width: usize,
+}
+
 /// Fetch and format local variables from the server-owned variable cache.
 pub(crate) async fn get_local_variable(
     backend: &mut RpcBackend,
@@ -87,6 +96,7 @@ pub(crate) async fn get_local_variable(
     core_data: &crate::cmd::dap_server::server::core_data::CoreData,
     variable_name: VariableName,
     gdb_nuf: GdbNuf,
+    print_tree: PrintTree,
     colorize: bool,
 ) -> EvalResult {
     let frame_ref = evaluate_arguments.frame_id.map(ObjectRef::from);
@@ -108,28 +118,160 @@ pub(crate) async fn get_local_variable(
     };
 
     let frame_id = stack_frame_id(stack_frame)?;
+    let expand_tree = gdb_nuf.format_specifier != GdbFormat::DapReference && print_tree.depth > 0;
+    let core_index = core_data.core_index;
 
     if let VariableName::Named(name) = variable_name {
         let response = backend
-            .evaluate_repl_variable(core_data.core_index, frame_id, name.clone())
+            .evaluate_repl_variable(core_index, frame_id, name.clone())
             .await?;
-        return Ok(EvalResponse::Body(format_repl_variable(
-            &name, response, gdb_nuf, colorize,
-        )));
+        let mut response = format_repl_variable(&name, response, gdb_nuf, colorize);
+        if expand_tree {
+            let variables_reference = response.variables_reference;
+            let mut ancestors = HashSet::new();
+            let mut expansion = TreeExpansion {
+                backend,
+                core_index,
+                output: &mut response.result,
+                width: print_tree.width,
+                colorize,
+                ancestors: &mut ancestors,
+            };
+            append_variable_children(&mut expansion, variables_reference, 1, print_tree.depth)
+                .await?;
+        }
+        return Ok(EvalResponse::Body(response));
     }
 
-    let Some(variables) =
-        scope_variables(backend, core_data.core_index, frame_id, "locals").await?
-    else {
+    let Some(variables) = scope_variables(backend, core_index, frame_id, "locals").await? else {
         return Err(DebuggerError::UserMessage(format!(
             "No variables available for frame: {:?}.",
             stack_frame.function_name
         )));
     };
 
-    Ok(EvalResponse::Body(format_repl_variables(
-        &variables, &gdb_nuf, colorize,
-    )))
+    if !expand_tree {
+        return Ok(EvalResponse::Body(format_repl_variables(
+            &variables, &gdb_nuf, colorize,
+        )));
+    }
+
+    let mut response = empty_evaluate_response();
+    for variable in &variables {
+        append_repl_variable(&mut response, variable, &gdb_nuf, colorize);
+        let mut ancestors = HashSet::new();
+        let mut expansion = TreeExpansion {
+            backend,
+            core_index,
+            output: &mut response.result,
+            width: print_tree.width,
+            colorize,
+            ancestors: &mut ancestors,
+        };
+        append_variable_children(
+            &mut expansion,
+            variable.variables_reference,
+            1,
+            print_tree.depth,
+        )
+        .await?;
+    }
+    Ok(EvalResponse::Body(response))
+}
+
+struct TreeExpansion<'a> {
+    backend: &'a mut RpcBackend,
+    core_index: usize,
+    output: &'a mut String,
+    width: usize,
+    colorize: bool,
+    ancestors: &'a mut HashSet<i64>,
+}
+
+async fn append_variable_children(
+    expansion: &mut TreeExpansion<'_>,
+    variables_reference: i64,
+    indent: usize,
+    remaining_depth: usize,
+) -> Result<(), DebuggerError> {
+    if remaining_depth == 0 || variables_reference <= 0 {
+        return Ok(());
+    }
+    let Ok(reference) = u32::try_from(variables_reference) else {
+        return Ok(());
+    };
+    if !expansion.ancestors.insert(variables_reference) {
+        write_repl_ellipsis(expansion.output, indent, None, expansion.colorize);
+        return Ok(());
+    }
+
+    let children = expansion
+        .backend
+        .variables(expansion.core_index, reference, None)
+        .await?;
+    let shown = children.len().min(expansion.width);
+    for child in &children[..shown] {
+        write_repl_variable_line(
+            expansion.output,
+            indent,
+            &child.name,
+            child.type_.as_deref(),
+            child.memory_reference.as_deref(),
+            &child.value,
+            expansion.colorize,
+        );
+        Box::pin(append_variable_children(
+            expansion,
+            child.variables_reference,
+            indent + 1,
+            remaining_depth - 1,
+        ))
+        .await?;
+    }
+    if children.len() > expansion.width {
+        write_repl_ellipsis(
+            expansion.output,
+            indent,
+            Some(children.len() - expansion.width),
+            expansion.colorize,
+        );
+    }
+    expansion.ancestors.remove(&variables_reference);
+    Ok(())
+}
+
+fn write_repl_variable_line(
+    output: &mut String,
+    indent: usize,
+    name: &str,
+    type_: Option<&str>,
+    memory_reference: Option<&str>,
+    value: &str,
+    colorize: bool,
+) {
+    if !output.is_empty() {
+        output.push('\n');
+    }
+    output.push_str(&"    ".repeat(indent));
+    output.push_str(&format!(
+        "{} [{} @ {}]: {} ",
+        ReplSymbol::new(name).colorize(colorize),
+        ReplDim::new(type_.unwrap_or("<unknown>")).colorize(colorize),
+        ReplAddress::new(memory_reference.unwrap_or("<unknown>")).colorize(colorize),
+        value
+    ));
+}
+
+fn write_repl_ellipsis(output: &mut String, indent: usize, more: Option<usize>, colorize: bool) {
+    if !output.is_empty() {
+        output.push('\n');
+    }
+    output.push_str(&"    ".repeat(indent));
+    let text = match more {
+        Some(count) => format!("... ({count} more)"),
+        None => "...".to_string(),
+    };
+    output.push_str(&ReplDim::new(text).colorize(colorize).to_string());
 }
 
 fn empty_evaluate_response() -> EvaluateResponseBody {
@@ -175,8 +317,11 @@ fn append_repl_variable(
         response.named_variables = variable.named_variables;
         response.indexed_variables = variable.indexed_variables;
     } else {
+        if !response.result.is_empty() {
+            response.result.push('\n');
+        }
         response.result.push_str(&format!(
-            "\n{} [{} @ {}]: {} ",
+            "{} [{} @ {}]: {} ",
             ReplSymbol::new(&variable.name).colorize(colorize),
             ReplDim::new(variable.type_.as_deref().unwrap_or("<unknown>")).colorize(colorize),
             ReplAddress::new(variable.memory_reference.as_deref().unwrap_or("<unknown>"))
@@ -193,15 +338,17 @@ fn format_repl_variable(
     colorize: bool,
 ) -> EvaluateResponseBody {
     let value = std::mem::take(&mut response.result);
-    let name = ReplSymbol::new(name).colorize(colorize);
     if gdb_nuf.format_specifier == GdbFormat::DapReference {
-        response.result = format!("{name} : {value} ");
+        response.result = format!("{} : {value} ", ReplSymbol::new(name).colorize(colorize));
     } else {
-        response.result = format!(
-            "\n{name} [{} @ {}]: {value} ",
-            ReplDim::new(response.type_.as_deref().unwrap_or("<unknown>")).colorize(colorize),
-            ReplAddress::new(response.memory_reference.as_deref().unwrap_or("<unknown>"))
-                .colorize(colorize)
+        write_repl_variable_line(
+            &mut response.result,
+            0,
+            name,
+            response.type_.as_deref(),
+            response.memory_reference.as_deref(),
+            &value,
+            colorize,
         );
     }
     response
@@ -561,5 +708,31 @@ mod test {
         );
         assert_completion_result("bt garbo", &[]);
         assert_completion_result("foo", &[]);
+    }
+
+    #[test]
+    fn indents_native_variable_lines() {
+        let mut output = String::new();
+        super::write_repl_variable_line(
+            &mut output,
+            1,
+            "field",
+            Some("i32"),
+            Some("0x20000004"),
+            "7",
+            false,
+        );
+        assert_eq!(output, "\n  field [i32 @ 0x20000004]: 7 ");
+    }
+
+    #[test]
+    fn formats_truncated_child_counts() {
+        let mut output = String::new();
+        super::write_repl_ellipsis(&mut output, 2, Some(5), false);
+        assert_eq!(output, "\n    ... (5 more)");
+
+        output.clear();
+        super::write_repl_ellipsis(&mut output, 1, None, false);
+        assert_eq!(output, "\n  ...");
     }
 }

@@ -10,21 +10,26 @@ use crate::cmd::dap_server::{
         adapter::DebugAdapter,
         dap_types::{EvaluateArguments, MemoryAddress},
         repl_commands::{EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand, async_fn},
-        repl_commands_helpers::{get_local_variable, memory_read_async},
+        repl_commands_helpers::{PrintTree, get_local_variable, memory_read_async},
         repl_types::{GdbFormat, GdbNuf, ReplCommandArgs},
     },
     server::core_data::CoreData,
 };
 
+const DEFAULT_TREE_DEPTH: usize = 3;
+const DEFAULT_TREE_WIDTH: usize = 32;
+
 #[distributed_slice(REPL_COMMANDS)]
 static PRINT: ReplCommand = ReplCommand {
     command: "p",
     // Strictly speaking, gdb refers to this as an expression, but we only support variables.
-    help_text: "Print known information about variable.",
+    help_text: "Print a local variable. Use /d and /w to expand children as a tree.",
     requires_target_halted: true,
     sub_commands: &[],
     args: &[
         ReplCommandArgs::Optional("/f (f=format[n|v])"),
+        ReplCommandArgs::Optional("/d<depth>"),
+        ReplCommandArgs::Optional("/w<width>"),
         ReplCommandArgs::Required("<local variable name>"),
     ],
     handler: async_fn!(print_variables),
@@ -57,6 +62,68 @@ static DUMP: ReplCommand = ReplCommand {
     handler: async_fn!(dump_core),
 };
 
+struct PrintCommandArgs {
+    gdb_nuf: GdbNuf,
+    print_tree: PrintTree,
+    variable_name: VariableName,
+}
+
+fn parse_print_args(command_arguments: &str) -> Result<PrintCommandArgs, DebuggerError> {
+    let mut gdb_nuf = GdbNuf {
+        format_specifier: GdbFormat::Native,
+        ..Default::default()
+    };
+    let mut depth = None;
+    let mut width = None;
+    // If no variable name is provided, use the root of the local scope, and print all it's children.
+    let mut variable_name = VariableName::LocalScopeRoot;
+
+    for input_argument in command_arguments.split_whitespace() {
+        let Some(spec) = input_argument.strip_prefix('/') else {
+            variable_name = VariableName::Named(input_argument.to_string());
+            continue;
+        };
+
+        if let Some(depth_spec) = spec.strip_prefix('d') {
+            depth = Some(parse_tree_limit(depth_spec, 'd')?);
+            continue;
+        }
+        if let Some(width_spec) = spec.strip_prefix('w') {
+            width = Some(parse_tree_limit(width_spec, 'w')?);
+            continue;
+        }
+
+        gdb_nuf = GdbNuf::from_str(spec)?;
+        gdb_nuf
+            .check_supported_formats(&[GdbFormat::Native, GdbFormat::DapReference])
+            .map_err(|error| DebuggerError::UserMessage(format!(
+                "Format specifier : {}, is not valid here.\nPlease select one of the supported formats:\n{error}", gdb_nuf.format_specifier,
+            )))?;
+    }
+
+    let print_tree = match (depth, width) {
+        (None, None) => PrintTree { depth: 0, width: 0 },
+        (depth, width) => PrintTree {
+            depth: depth.unwrap_or(DEFAULT_TREE_DEPTH),
+            width: width.unwrap_or(DEFAULT_TREE_WIDTH),
+        },
+    };
+
+    Ok(PrintCommandArgs {
+        gdb_nuf,
+        print_tree,
+        variable_name,
+    })
+}
+
+fn parse_tree_limit(value: &str, flag: char) -> Result<usize, DebuggerError> {
+    value.parse::<usize>().map_err(|_| {
+        DebuggerError::UserMessage(format!(
+            "The /{flag} specifier must be a number, for example /{flag}3."
+        ))
+    })
+}
+
 async fn print_variables<'a>(
     backend: &'a mut RpcBackend,
     core_data: &'a mut CoreData,
@@ -64,39 +131,14 @@ async fn print_variables<'a>(
     evaluate_arguments: &'a EvaluateArguments,
     adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
-    let input_arguments = command_arguments.split_whitespace();
-    let mut gdb_nuf = GdbNuf {
-        format_specifier: GdbFormat::Native,
-        ..Default::default()
-    };
-    // If no variable name is provided, use the root of the local scope, and print all it's children.
-    let mut variable_name = VariableName::LocalScopeRoot;
-
-    for input_argument in input_arguments {
-        if input_argument.starts_with('/') {
-            let Some(gdb_nuf_string) = input_argument.strip_prefix('/') else {
-                return Err(DebuggerError::UserMessage(
-                    "The '/' specifier must be followed by a valid gdb 'f' format specifier."
-                        .to_string(),
-                ));
-            };
-            gdb_nuf = GdbNuf::from_str(gdb_nuf_string)?;
-            gdb_nuf
-                .check_supported_formats(&[GdbFormat::Native, GdbFormat::DapReference])
-                .map_err(|error| DebuggerError::UserMessage(format!(
-                    "Format specifier : {}, is not valid here.\nPlease select one of the supported formats:\n{error}", gdb_nuf.format_specifier,
-                )))?;
-        } else {
-            variable_name = VariableName::Named(input_argument.to_string());
-        }
-    }
-
+    let args = parse_print_args(command_arguments)?;
     get_local_variable(
         backend,
         evaluate_arguments,
         core_data,
-        variable_name,
-        gdb_nuf,
+        args.variable_name,
+        args.gdb_nuf,
+        args.print_tree,
         adapter.supports_ansi_styling,
     )
     .await
@@ -272,4 +314,52 @@ async fn dump_core<'a>(
     Ok(EvalResponse::Message(format!(
         "Core dump {range_string} successfully stored at {location:?}.",
     )))
+}
+
+#[cfg(test)]
+mod test {
+    use super::{DEFAULT_TREE_DEPTH, DEFAULT_TREE_WIDTH, parse_print_args};
+    use crate::cmd::dap_server::DebuggerError;
+    use crate::cmd::dap_server::debug_adapter::dap::repl_types::GdbFormat;
+    use probe_rs_debug::VariableName;
+
+    #[test]
+    fn parse_print_args_defaults_do_not_expand() {
+        let args = parse_print_args("foo").unwrap();
+        assert_eq!(args.print_tree.depth, 0);
+        assert_eq!(args.print_tree.width, 0);
+        assert_eq!(args.variable_name, VariableName::Named("foo".into()));
+        assert!(matches!(args.gdb_nuf.format_specifier, GdbFormat::Native));
+    }
+
+    #[test]
+    fn parse_print_args_fills_omitted_tree_limit() {
+        let by_depth = parse_print_args("/d2 foo").unwrap();
+        assert_eq!(by_depth.print_tree.depth, 2);
+        assert_eq!(by_depth.print_tree.width, DEFAULT_TREE_WIDTH);
+
+        let by_width = parse_print_args("/w4 foo").unwrap();
+        assert_eq!(by_width.print_tree.depth, DEFAULT_TREE_DEPTH);
+        assert_eq!(by_width.print_tree.width, 4);
+    }
+
+    #[test]
+    fn parse_print_args_tree_limits_and_dap_format() {
+        let args = parse_print_args("/v /d1 /w4 bar").unwrap();
+        assert_eq!(args.print_tree.depth, 1);
+        assert_eq!(args.print_tree.width, 4);
+        assert_eq!(args.variable_name, VariableName::Named("bar".into()));
+        assert!(matches!(
+            args.gdb_nuf.format_specifier,
+            GdbFormat::DapReference
+        ));
+    }
+
+    #[test]
+    fn parse_print_args_rejects_non_numeric_depth() {
+        let Err(error) = parse_print_args("/d foo") else {
+            panic!("expected an error");
+        };
+        assert!(matches!(error, DebuggerError::UserMessage(message) if message.contains("/d")));
+    }
 }
