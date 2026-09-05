@@ -1,0 +1,1 @@
+On 64-bit RISC-V targets, memory access through the program buffer saved and restored the scratch registers `s0` and `s1` with 32-bit abstract commands. This destroyed the upper 32 bits of both registers, which broke stack unwinding and corrupted the program after the core resumed. probe-rs now saves and restores these registers at the width of the target.

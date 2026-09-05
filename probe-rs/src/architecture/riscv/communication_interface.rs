@@ -222,15 +222,15 @@ impl MemoryAbstractCmdSupport {
 // TODO: we probably only need an Option, we don't seem to use scratch registers in nested situations.
 #[derive(Debug, Default)]
 struct ScratchState {
-    stack: Vec<u32>,
+    stack: Vec<u64>,
 }
 
 impl ScratchState {
-    fn push(&mut self, value: u32) {
+    fn push(&mut self, value: u64) {
         self.stack.push(value);
     }
 
-    fn pop(&mut self) -> Option<u32> {
+    fn pop(&mut self) -> Option<u64> {
         self.stack.pop()
     }
 }
@@ -661,7 +661,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
     }
 
     fn save_s0(&mut self) -> Result<bool, RiscvError> {
-        let s0 = self.abstract_cmd_register_read(registers::S0)?;
+        let s0 = self.read_register_xlen(registers::S0)?;
 
         self.state.s0.push(s0);
 
@@ -672,14 +672,14 @@ impl<'state> RiscvCommunicationInterface<'state> {
         if saved {
             let s0 = self.state.s0.pop().unwrap();
 
-            self.abstract_cmd_register_write(registers::S0, s0)?;
+            self.write_register_xlen(registers::S0, s0)?;
         }
 
         Ok(())
     }
 
     fn save_s1(&mut self) -> Result<bool, RiscvError> {
-        let s1 = self.abstract_cmd_register_read(registers::S1)?;
+        let s1 = self.read_register_xlen(registers::S1)?;
 
         self.state.s1.push(s1);
 
@@ -690,7 +690,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         if saved {
             let s1 = self.state.s1.pop().unwrap();
 
-            self.abstract_cmd_register_write(registers::S1, s1)?;
+            self.write_register_xlen(registers::S1, s1)?;
         }
 
         Ok(())
@@ -1165,7 +1165,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         self.run_with_s0_saved(|core| {
             core.execute_abstract_command(postexec_cmd.0)?;
-            core.save_s0_xlen().map(|v| v as u32)
+            core.read_register_xlen(registers::S0).map(|v| v as u32)
         })
     }
 
@@ -1186,7 +1186,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         let postexec_cmd = self.postexec_command();
 
         self.run_with_s0_saved(|core| {
-            core.restore_s0_xlen(value as u64)?;
+            core.write_register_xlen(registers::S0, value as u64)?;
             core.execute_abstract_command(postexec_cmd.0)
         })
     }
@@ -1351,68 +1351,44 @@ impl<'state> RiscvCommunicationInterface<'state> {
         }
     }
 
-    fn save_s0_xlen(&mut self) -> Result<u64, RiscvError> {
+    /// Read a register with an abstract command of the target's XLEN width.
+    fn read_register_xlen(&mut self, regno: impl Into<RegisterId>) -> Result<u64, RiscvError> {
+        let regno = regno.into();
+
         if self.state.xlen_64 {
-            self.abstract_cmd_register_read_64(registers::S0)
+            self.abstract_cmd_register_read_64(regno)
         } else {
-            self.abstract_cmd_register_read(registers::S0)
-                .map(|v| v as u64)
+            self.abstract_cmd_register_read(regno).map(u64::from)
         }
     }
 
-    fn restore_s0_xlen(&mut self, value: u64) -> Result<(), RiscvError> {
+    /// Write a register with an abstract command of the target's XLEN width.
+    ///
+    /// On RV64 a narrow (A32) abstract write sign-extends the value, turning an address
+    /// with bit 31 set (e.g. 0x8000_0000) into a large negative 64-bit value.
+    fn write_register_xlen(
+        &mut self,
+        regno: impl Into<RegisterId>,
+        value: u64,
+    ) -> Result<(), RiscvError> {
+        let regno = regno.into();
+
         if self.state.xlen_64 {
-            self.abstract_cmd_register_write_64(registers::S0, value)
+            self.abstract_cmd_register_write_64(regno, value)
         } else {
-            self.abstract_cmd_register_write(registers::S0, value as u32)
+            self.abstract_cmd_register_write(regno, value as u32)
         }
-    }
-
-    /// Read S0 using the correct XLEN width.
-    ///
-    /// Semantic alias for [`Self::save_s0_xlen`] — use this when reading S0 to
-    /// retrieve a result (e.g. after a `csrr` executed in the program buffer)
-    /// rather than to snapshot it for later restoration.
-    fn read_s0_xlen(&mut self) -> Result<u64, RiscvError> {
-        self.save_s0_xlen()
-    }
-
-    /// Write an arbitrary value into S0 using the correct XLEN width.
-    ///
-    /// Semantic alias for [`Self::restore_s0_xlen`] — use this when staging a
-    /// value into S0 (e.g. before a `csrw` in the program buffer) rather than
-    /// restoring a previously saved snapshot.
-    fn write_s0_xlen(&mut self, value: u64) -> Result<(), RiscvError> {
-        self.restore_s0_xlen(value)
     }
 
     /// Save S0, run `op`, restore S0 unconditionally, then return the result.
-    ///
-    /// Mirrors [`Self::halted_access`] but scoped to S0 save/restore rather
-    /// than halt/resume.  Using a named helper avoids immediately-invoked
-    /// closure expressions (`(|| { ... })()`).
     fn run_with_s0_saved<R>(
         &mut self,
         op: impl FnOnce(&mut Self) -> Result<R, RiscvError>,
     ) -> Result<R, RiscvError> {
-        let saved = self.save_s0_xlen()?;
+        let saved = self.read_register_xlen(registers::S0)?;
         let result = op(self);
-        let _ = self.restore_s0_xlen(saved);
+        let _ = self.write_register_xlen(registers::S0, saved);
         result
-    }
-
-    /// Write an address into S0 with XLEN-correct width.
-    ///
-    /// On RV64 a narrow (A32) abstract write sign-extends the value, turning
-    /// addresses with bit 31 set (e.g. 0x8000_0000) into large negative
-    /// 64-bit values.  This helper always uses A64 on RV64 so that S0 holds
-    /// the correctly zero-extended address.
-    fn write_address_to_s0(&mut self, address: u64) -> Result<(), RiscvError> {
-        if self.state.xlen_64 {
-            self.abstract_cmd_register_write_64(registers::S0, address)
-        } else {
-            self.abstract_cmd_register_write(registers::S0, address as u32)
-        }
     }
 
     /// Write an address into S0 and schedule a progbuf execution.
@@ -1768,7 +1744,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// Follows OpenOCD's `read_memory_progbuf_inner_startup` pattern.
     fn autoexec_prime_pipeline(&mut self, address: u64) -> Result<(), RiscvError> {
         // Step 1: Write starting address into S0.
-        self.write_address_to_s0(address)?;
+        self.write_register_xlen(registers::S0, address)?;
 
         // Step 2: "Read S1 + postexec" — the command autoexec will repeat.
         // Transfers S1 -> DATA0 (garbage, old value) then executes progbuf:
@@ -1852,11 +1828,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
                     self.write_dm_register(cs)?;
                     self.write_dm_register(Abstractauto(0))?;
 
-                    let current_addr = if self.state.xlen_64 {
-                        self.abstract_cmd_register_read_64(registers::S0)?
-                    } else {
-                        self.abstract_cmd_register_read(registers::S0)? as u64
-                    };
+                    let current_addr = self.read_register_xlen(registers::S0)?;
                     let width = V::WIDTH.byte_width() as u64;
                     let progress = ((current_addr - address) / width) as usize;
                     let reliable = progress.saturating_sub(2);
@@ -1889,11 +1861,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         let penult: Data0 = self.read_dm_register()?;
         data[data_len - 2] = V::from_register_value(penult.0);
 
-        let last_val = if self.state.xlen_64 {
-            self.abstract_cmd_register_read_64(registers::S1)? as u32
-        } else {
-            self.abstract_cmd_register_read(registers::S1)?
-        };
+        let last_val = self.read_register_xlen(registers::S1)? as u32;
         data[data_len - 1] = V::from_register_value(last_val);
 
         Ok(())
@@ -1937,11 +1905,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             }
         }
 
-        let last_value = if self.state.xlen_64 {
-            self.abstract_cmd_register_read_64(registers::S1)? as u32
-        } else {
-            self.abstract_cmd_register_read(registers::S1)?
-        };
+        let last_value = self.read_register_xlen(registers::S1)? as u32;
         data[data.len() - 1] = V::from_register_value(last_value);
 
         for (out_idx, value_idx) in result_idxs {
@@ -2206,7 +2170,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             core.schedule_setup_program_buffer(&[sw_command])?;
 
             // Write the target address into S0 with XLEN-correct width.
-            core.write_address_to_s0(address)?;
+            core.write_register_xlen(registers::S0, address)?;
 
             // write data into data 0
             core.schedule_write_dm_register(Data0(data.into()))?;
@@ -2326,7 +2290,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         address: u64,
         first: u32,
     ) -> Result<(), RiscvError> {
-        self.write_address_to_s0(address)?;
+        self.write_register_xlen(registers::S0, address)?;
 
         // Store the first word with an explicit command. `abstractauto` repeats this command.
         // `execute_abstract_command` waits for the command and it tests the result.
@@ -2372,11 +2336,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
                     self.write_dm_register(Abstractauto(0))?;
 
                     // S0 shows the number of words that the target stored.
-                    let current_addr = if self.state.xlen_64 {
-                        self.abstract_cmd_register_read_64(registers::S0)?
-                    } else {
-                        self.abstract_cmd_register_read(registers::S0)? as u64
-                    };
+                    let current_addr = self.read_register_xlen(registers::S0)?;
                     let written = ((current_addr - address) / width) as usize;
 
                     tracing::warn!(
@@ -2466,7 +2426,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             let write_result = if use_autoexec {
                 core.write_multiple_autoexec(address, data)
             } else {
-                core.write_address_to_s0(address)
+                core.write_register_xlen(registers::S0, address)
                     .and_then(|()| core.write_multiple_no_autoexec(data, wait_for_idle))
             };
 
@@ -2713,7 +2673,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             let postexec_cmd = core.postexec_command();
             core.run_with_s0_saved(|c| {
                 c.execute_abstract_command(postexec_cmd.0)?;
-                c.read_s0_xlen()
+                c.read_register_xlen(registers::S0)
             })
         })
     }
@@ -2750,7 +2710,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             core.schedule_setup_program_buffer(&[csrw_cmd])?;
             let postexec_cmd = core.postexec_command();
             core.run_with_s0_saved(|c| {
-                c.write_s0_xlen(value)?;
+                c.write_register_xlen(registers::S0, value)?;
                 c.execute_abstract_command(postexec_cmd.0)
             })
         })
