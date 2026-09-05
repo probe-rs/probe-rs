@@ -374,8 +374,9 @@ pub struct RiscvCommunicationInterfaceState {
     num_harts: u32,
 
     /// describes, if the given register can be read / written with an
-    /// abstract command
-    abstract_cmd_register_info: HashMap<RegisterId, CoreRegisterAbstractCmdSupport>,
+    /// abstract command at the given access width
+    abstract_cmd_register_info:
+        HashMap<(RegisterId, RiscvBusAccess), CoreRegisterAbstractCmdSupport>,
 
     /// First scratch register's state
     s0: ScratchState,
@@ -1251,7 +1252,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
     ) -> Result<u64, RiscvError> {
         let regno = regno.into();
 
-        if !self.check_abstract_cmd_register_support(regno, CoreRegisterAbstractCmdSupport::READ) {
+        if !self.check_abstract_cmd_register_support(
+            regno,
+            RiscvBusAccess::A64,
+            CoreRegisterAbstractCmdSupport::READ,
+        ) {
             return Err(RiscvError::AbstractCommand(
                 AbstractCommandErrorKind::NotSupported,
             ));
@@ -1268,6 +1273,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             err @ Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
                 self.set_abstract_cmd_register_unsupported(
                     regno,
+                    RiscvBusAccess::A64,
                     CoreRegisterAbstractCmdSupport::READ,
                 );
                 err?;
@@ -1291,7 +1297,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
     ) -> Result<(), RiscvError> {
         let regno = regno.into();
 
-        if !self.check_abstract_cmd_register_support(regno, CoreRegisterAbstractCmdSupport::WRITE) {
+        if !self.check_abstract_cmd_register_support(
+            regno,
+            RiscvBusAccess::A64,
+            CoreRegisterAbstractCmdSupport::WRITE,
+        ) {
             return Err(RiscvError::AbstractCommand(
                 AbstractCommandErrorKind::NotSupported,
             ));
@@ -1316,6 +1326,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             err @ Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
                 self.set_abstract_cmd_register_unsupported(
                     regno,
+                    RiscvBusAccess::A64,
                     CoreRegisterAbstractCmdSupport::WRITE,
                 );
                 err
@@ -2562,13 +2573,14 @@ impl<'state> RiscvCommunicationInterface<'state> {
         }
     }
 
-    /// Check if a register can be accessed via abstract commands
+    /// Check if a register can be accessed via abstract commands at the given access width
     fn check_abstract_cmd_register_support(
         &self,
         regno: RegisterId,
+        width: RiscvBusAccess,
         rw: CoreRegisterAbstractCmdSupport,
     ) -> bool {
-        if let Some(status) = self.state.abstract_cmd_register_info.get(&regno) {
+        if let Some(status) = self.state.abstract_cmd_register_info.get(&(regno, width)) {
             status.supports(rw)
         } else {
             // If not cached yet, assume the register is accessible
@@ -2577,15 +2589,20 @@ impl<'state> RiscvCommunicationInterface<'state> {
     }
 
     /// Remember, that the given register can not be accessed via abstract commands
+    /// at the given access width.
+    ///
+    /// A debug module may implement one `aarsize` but not another for the same register,
+    /// so a rejected access must not disable the widths that were not tried.
     fn set_abstract_cmd_register_unsupported(
         &mut self,
         regno: RegisterId,
+        width: RiscvBusAccess,
         rw: CoreRegisterAbstractCmdSupport,
     ) {
         let entry = self
             .state
             .abstract_cmd_register_info
-            .entry(regno)
+            .entry((regno, width))
             .or_insert(CoreRegisterAbstractCmdSupport::BOTH);
 
         entry.unset(rw);
@@ -2599,7 +2616,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
         let regno = regno.into();
 
         // Check if the register was already tried via abstract cmd
-        if !self.check_abstract_cmd_register_support(regno, CoreRegisterAbstractCmdSupport::READ) {
+        if !self.check_abstract_cmd_register_support(
+            regno,
+            RiscvBusAccess::A32,
+            CoreRegisterAbstractCmdSupport::READ,
+        ) {
             return Err(RiscvError::AbstractCommand(
                 AbstractCommandErrorKind::NotSupported,
             ));
@@ -2619,6 +2640,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 // Remember, that this register is unsupported
                 self.set_abstract_cmd_register_unsupported(
                     regno,
+                    RiscvBusAccess::A32,
                     CoreRegisterAbstractCmdSupport::READ,
                 );
                 err?;
@@ -2639,7 +2661,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
         let regno = regno.into();
 
         // Check if the register was already tried via abstract cmd
-        if !self.check_abstract_cmd_register_support(regno, CoreRegisterAbstractCmdSupport::WRITE) {
+        if !self.check_abstract_cmd_register_support(
+            regno,
+            V::WIDTH,
+            CoreRegisterAbstractCmdSupport::WRITE,
+        ) {
             return Err(RiscvError::AbstractCommand(
                 AbstractCommandErrorKind::NotSupported,
             ));
@@ -2662,6 +2688,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 // Remember, that this register is unsupported
                 self.set_abstract_cmd_register_unsupported(
                     regno,
+                    V::WIDTH,
                     CoreRegisterAbstractCmdSupport::WRITE,
                 );
                 err
