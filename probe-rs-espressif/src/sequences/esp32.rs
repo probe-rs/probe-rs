@@ -198,10 +198,6 @@ impl ESP32 {
     ) -> Result<(), ResetFailure> {
         {
             let _span = tracing::debug_span!("Resetting core").entered();
-            // The previous attempt may have left the debug module reset, in which case it only
-            // answers again after the JTAG link is set up from scratch.
-            core.enter_debug_mode()
-                .map_err(|error| ResetFailure::GiveUp(error.into()))?;
             core.reset_and_halt(timeout)
                 .map_err(|error| ResetFailure::GiveUp(error.into()))?;
             self.disable_wdts(core).map_err(ResetFailure::Retry)?;
