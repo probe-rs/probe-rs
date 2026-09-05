@@ -88,6 +88,10 @@ impl<ADI: ArmDebugInterface> ArmMemoryInterface for RootMemoryInterface<'_, ADI>
     }
 
     fn base_address(&mut self) -> Result<u64, ArmError> {
+        let fqa = self.fully_qualified_address();
+        if let Some(base) = self.iface.cached_base_address(&fqa) {
+            return Ok(base);
+        }
         let base_ptr0: BASEPTR0 = self.iface.read_dp_register(self.dp)?;
         let base_ptr1: BASEPTR1 = self.iface.read_dp_register(self.dp)?;
         let base = base_ptr0
@@ -95,6 +99,7 @@ impl<ADI: ArmDebugInterface> ArmMemoryInterface for RootMemoryInterface<'_, ADI>
             .then(|| u64::from(base_ptr1.ptr()) | u64::from(base_ptr0.ptr() << 12))
             .ok_or_else(|| ArmError::Other("DP has no valid base address defined.".into()))?;
 
+        self.iface.cache_base_address(fqa, base);
         Ok(base)
     }
 

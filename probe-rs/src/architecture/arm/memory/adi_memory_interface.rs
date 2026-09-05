@@ -486,7 +486,13 @@ where
     APA: ApAccess + ArmDebugInterface,
 {
     fn base_address(&mut self) -> Result<u64, ArmError> {
-        self.memory_ap.base_address(self.interface)
+        let ap = self.memory_ap.ap_address().clone();
+        if let Some(base_address) = self.interface.cached_base_address(&ap) {
+            return Ok(base_address);
+        }
+        let base_address = self.memory_ap.base_address(self.interface)?;
+        self.interface.cache_base_address(ap, base_address);
+        Ok(base_address)
     }
 
     fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
