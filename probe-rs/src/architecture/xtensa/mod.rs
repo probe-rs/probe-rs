@@ -13,6 +13,7 @@ use crate::{
         },
         communication_interface::{
             DebugCause, IBreakEn, ProgramStatus, WindowProperties, XtensaCommunicationInterface,
+            XtensaError,
         },
         registers::{FP, PC, RA, SP, XTENSA_CORE_REGISTERS},
         sequences::XtensaDebugSequence,
@@ -326,6 +327,13 @@ impl<'probe> Xtensa<'probe> {
         }
         Ok(register_file)
     }
+
+    fn ensure_breakpoint(&self, unit_index: usize) -> Result<(), Error> {
+        if unit_index as u32 >= self.interface.available_breakpoint_units() {
+            return Err(XtensaError::BreakpointOutOfBounds(unit_index).into());
+        }
+        Ok(())
+    }
 }
 
 impl CoreMemoryInterface for Xtensa<'_> {
@@ -491,6 +499,7 @@ impl CoreInterface for Xtensa<'_> {
     }
 
     fn set_hw_breakpoint(&mut self, unit_index: usize, addr: u64) -> Result<(), Error> {
+        self.ensure_breakpoint(unit_index)?;
         self.halted_access(|this| {
             this.state.breakpoint_set[unit_index] = true;
             this.interface
@@ -506,6 +515,7 @@ impl CoreInterface for Xtensa<'_> {
     }
 
     fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), Error> {
+        self.ensure_breakpoint(unit_index)?;
         self.halted_access(|this| {
             this.state.breakpoint_set[unit_index] = false;
 

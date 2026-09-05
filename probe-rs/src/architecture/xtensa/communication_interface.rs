@@ -45,6 +45,9 @@ pub enum XtensaError {
 
     /// The result index of a batched command is not available.
     BatchedResultNotAvailable,
+
+    /// Breakpoint unit {0} does not exist.
+    BreakpointOutOfBounds(usize),
 }
 
 impl From<XtensaError> for ProbeRsError {
