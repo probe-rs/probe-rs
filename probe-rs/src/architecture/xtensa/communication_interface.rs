@@ -434,7 +434,9 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     /// Steps the core by one instruction.
     pub fn step(&mut self, by: u32, intlevel: u32) -> Result<(), XtensaError> {
         // Instructions executed below icountlevel increment the ICOUNT register.
-        self.schedule_write_register(ICountLevel(intlevel + 1))?;
+        self.schedule_write_register(ICountLevel(
+            (intlevel + 1).min(self.core_properties.debug_level as u32),
+        ))?;
 
         // An exception is generated at the beginning of an instruction that would overflow ICOUNT.
         self.schedule_write_register(ICount(-((1 + by) as i32) as u32))?;
