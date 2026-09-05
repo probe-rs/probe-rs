@@ -560,7 +560,7 @@ mod test {
             false,
         );
 
-        assert_eq!(formatted.result, "\nanswer [i32 @ 0x20000000]: 42 ");
+        assert_eq!(formatted.result, "answer [i32 @ 0x20000000]: 42 ");
         assert_eq!(formatted.variables_reference, 7);
     }
 
@@ -589,7 +589,7 @@ mod test {
 
         assert_eq!(
             formatted.result,
-            "\n\u{1b}[36manswer\u{1b}[0m [\u{1b}[2mi32\u{1b}[0m @ \u{1b}[33m0x20000000\u{1b}[0m]: 42 "
+            "\u{1b}[36manswer\u{1b}[0m [\u{1b}[2mi32\u{1b}[0m @ \u{1b}[33m0x20000000\u{1b}[0m]: 42 "
         );
     }
 
@@ -618,7 +618,7 @@ mod test {
             false,
         );
 
-        assert_eq!(formatted.result, "\nSTATIC_COUNT [u32 @ 0x20000010]: 3 ");
+        assert_eq!(formatted.result, "STATIC_COUNT [u32 @ 0x20000010]: 3 ");
     }
 
     #[test]
@@ -722,17 +722,17 @@ mod test {
             "7",
             false,
         );
-        assert_eq!(output, "\n  field [i32 @ 0x20000004]: 7 ");
+        assert_eq!(output, "    field [i32 @ 0x20000004]: 7 ");
     }
 
     #[test]
     fn formats_truncated_child_counts() {
         let mut output = String::new();
         super::write_repl_ellipsis(&mut output, 2, Some(5), false);
-        assert_eq!(output, "\n    ... (5 more)");
+        assert_eq!(output, "        ... (5 more)");
 
         output.clear();
         super::write_repl_ellipsis(&mut output, 1, None, false);
-        assert_eq!(output, "\n  ...");
+        assert_eq!(output, "    ...");
     }
 }
