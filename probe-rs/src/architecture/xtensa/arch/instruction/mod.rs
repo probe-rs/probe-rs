@@ -52,6 +52,9 @@ pub enum Instruction {
 
     /// Execution synchronize
     Esync,
+
+    /// Raises `PS.INTLEVEL` to the given level, then waits for an interrupt
+    Waiti(u8),
 }
 
 /// The architecture supports multi-word instructions. This enum represents the different encodings
@@ -87,6 +90,10 @@ impl Instruction {
                 format::rrr(0x400000, 8, 0, count)
             }
             Instruction::Esync => 0x002020,
+            Instruction::Waiti(level) => {
+                // 0000 0000 0111 level 0000 0000
+                format::rrr(0x000000, 7, level, 0)
+            }
         };
 
         (3, word)
@@ -105,6 +112,13 @@ mod tests {
     #[track_caller]
     fn assert_encodes_to(instruction: Instruction, expected: u32) {
         assert_eq!(instruction.encode(), InstructionEncoding::Narrow(expected));
+    }
+
+    #[test]
+    fn encode_waiti() {
+        assert_encodes_to(Instruction::Waiti(0), 0x007000);
+        assert_encodes_to(Instruction::Waiti(5), 0x007500);
+        assert_encodes_to(Instruction::Waiti(15), 0x007F00);
     }
 
     #[test]

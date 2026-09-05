@@ -36,6 +36,26 @@ pub(crate) mod register_cache;
 pub mod registers;
 pub mod sequences;
 
+/// The instruction at the current program counter, as far as the debugger needs to know.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CurrentInstruction {
+    /// The instruction has not been read yet.
+    Undecoded,
+
+    /// The instruction needs no special handling.
+    Other,
+
+    /// A semihosting `break`, whose command has not been decoded yet.
+    SemihostingBreak,
+
+    /// A semihosting call.
+    Semihosting(SemihostingCommand),
+
+    /// `waiti`, which raises `PS.INTLEVEL` to the given level, then waits for an interrupt.
+    /// The core does not single-step it.
+    Waiti(u32),
+}
+
 /// Xtensa core state.
 #[derive(Debug)]
 pub struct XtensaCoreState {
@@ -54,8 +74,8 @@ pub struct XtensaCoreState {
     /// resume.
     pc_written: bool,
 
-    /// The semihosting command that was decoded at the current program counter
-    semihosting_command: Option<SemihostingCommand>,
+    /// The instruction at the current program counter.
+    current_instruction: CurrentInstruction,
 }
 
 impl XtensaCoreState {
@@ -66,7 +86,7 @@ impl XtensaCoreState {
             breakpoints_enabled: false,
             breakpoint_set: [false; 2],
             pc_written: false,
-            semihosting_command: None,
+            current_instruction: CurrentInstruction::Undecoded,
         }
     }
 
@@ -162,7 +182,7 @@ impl<'probe> Xtensa<'probe> {
     }
 
     fn skip_breakpoint(&mut self) -> Result<(), Error> {
-        self.state.semihosting_command = None;
+        self.state.current_instruction = CurrentInstruction::Undecoded;
         if !self.state.pc_written {
             let debug_cause = self.debug_cause()?;
 
@@ -198,47 +218,74 @@ impl<'probe> Xtensa<'probe> {
         Ok(())
     }
 
-    /// Check if the current breakpoint is a semihosting call
-    // OpenOCD implementation: https://github.com/espressif/openocd-esp32/blob/93dd01511fd13d4a9fb322cd9b600c337becef9e/src/target/espressif/esp_xtensa_semihosting.c#L42-L103
-    fn check_for_semihosting(&mut self) -> Result<Option<SemihostingCommand>, Error> {
+    /// Reads the instruction word at the program counter.
+    fn instruction_at_pc(&mut self) -> Result<u32, Error> {
+        let pc: u64 = self.read_core_reg(self.program_counter().id)?.try_into()?;
+
+        let mut instruction = [0u8; 4];
+        self.read_8(pc, &mut instruction[..3])?;
+        let instruction = u32::from_le_bytes(instruction);
+
+        tracing::debug!("Instruction at pc={pc:#x}: {instruction:#010x}");
+
+        Ok(instruction)
+    }
+
+    /// Returns the instruction at the program counter, reading it if necessary.
+    fn current_instruction(&mut self) -> Result<CurrentInstruction, Error> {
         const SEMI_BREAK: u32 = const {
             let InstructionEncoding::Narrow(bytes) = Instruction::Break(1, 14).encode();
             bytes
         };
+        const WAITI: u32 = const {
+            let InstructionEncoding::Narrow(bytes) = Instruction::Waiti(0).encode();
+            bytes
+        };
+        /// Masks out the `s` field, which holds the level of a `waiti`.
+        const WAITI_MASK: u32 = 0xFFF0FF;
 
-        // We only want to decode the semihosting command once, since answering it might change some of the registers
-        if let Some(command) = self.state.semihosting_command {
-            return Ok(Some(command));
+        if self.state.current_instruction == CurrentInstruction::Undecoded {
+            let instruction = self.instruction_at_pc()?;
+
+            self.state.current_instruction = if instruction == SEMI_BREAK {
+                CurrentInstruction::SemihostingBreak
+            } else if instruction & WAITI_MASK == WAITI {
+                CurrentInstruction::Waiti((instruction >> 8) & 0x0F)
+            } else {
+                CurrentInstruction::Other
+            };
         }
 
-        let pc: u64 = self.read_core_reg(self.program_counter().id)?.try_into()?;
+        Ok(self.state.current_instruction)
+    }
 
-        let mut actual_instruction = [0u8; 3];
-        self.read_8(pc, &mut actual_instruction)?;
-        let actual_instruction = u32::from_le_bytes([
-            actual_instruction[0],
-            actual_instruction[1],
-            actual_instruction[2],
-            0,
-        ]);
+    /// Check if the current breakpoint is a semihosting call
+    // OpenOCD implementation: https://github.com/espressif/openocd-esp32/blob/93dd01511fd13d4a9fb322cd9b600c337becef9e/src/target/espressif/esp_xtensa_semihosting.c#L42-L103
+    fn check_for_semihosting(&mut self) -> Result<Option<SemihostingCommand>, Error> {
+        match self.current_instruction()? {
+            // We only want to decode the semihosting command once, since answering it might
+            // change some of the registers.
+            CurrentInstruction::Semihosting(command) => Ok(Some(command)),
 
-        tracing::debug!("Semihosting check pc={pc:#x} instruction={actual_instruction:#010x}");
+            CurrentInstruction::SemihostingBreak => {
+                let syscall = decode_semihosting_syscall(self)?;
+                let command = if let SemihostingCommand::Unknown(details) = syscall {
+                    self.sequence
+                        .clone()
+                        .on_unknown_semihosting_command(self, details)?
+                } else {
+                    Some(syscall)
+                };
 
-        let command = if actual_instruction == SEMI_BREAK {
-            let syscall = decode_semihosting_syscall(self)?;
-            if let SemihostingCommand::Unknown(details) = syscall {
-                self.sequence
-                    .clone()
-                    .on_unknown_semihosting_command(self, details)?
-            } else {
-                Some(syscall)
+                if let Some(command) = command {
+                    self.state.current_instruction = CurrentInstruction::Semihosting(command);
+                }
+
+                Ok(command)
             }
-        } else {
-            None
-        };
-        self.state.semihosting_command = command;
 
-        Ok(command)
+            _ => Ok(None),
+        }
     }
 
     fn on_halted(&mut self) -> Result<(), Error> {
@@ -407,7 +454,7 @@ impl CoreInterface for Xtensa<'_> {
     }
 
     fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
-        self.state.semihosting_command = None;
+        self.state.current_instruction = CurrentInstruction::Undecoded;
         self.sequence
             .reset_system_and_halt(&mut self.interface, timeout)?;
 
