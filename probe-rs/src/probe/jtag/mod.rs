@@ -21,9 +21,11 @@
 //! batch.enter(TapState::RunTestIdle);
 //! batch.clock(8);
 //! ```
+use bitvec::vec::BitVec;
+
 use super::{
     Batch, BatchExecutionError, BitSequence, CommandResult, DebugProbe, DebugProbeError, Handle,
-    Results,
+    RawJtagIo, Results,
 };
 
 /// A stable TAP state that a caller may target.
@@ -218,6 +220,208 @@ pub trait JtagProbe: DebugProbe {
         Ok(())
     }
 }
+
+/// Bit-banging JTAG interface for probe drivers.
+///
+/// Three differences from [`RawJtagIo`]:
+///
+/// - [`BitbangJtag::shift`] does not track the TAP state. The lowering tracks it.
+/// - [`BitbangJtag::flush`] is new. A driver that buffers bits sends them at a
+///   flush. The lowering calls flush before it reads with [`BitbangJtag::captured`].
+///   Today [`RawJtagIo::read_captured_bits`] does both jobs.
+/// - This trait has no `reset_jtag_state_machine`. [`JtagOp::EnterState`] with
+///   [`TapState::TestLogicReset`] replaces it.
+pub trait BitbangJtag: DebugProbe {
+    /// Shift one bit through the TAP.
+    fn shift(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError>;
+
+    /// Send buffered bits to the probe hardware.
+    fn flush(&mut self) -> Result<(), DebugProbeError>;
+
+    /// Return captured TDO bits and clear the capture buffer.
+    fn captured(&mut self) -> Result<BitVec, DebugProbeError>;
+
+    /// Shift bits through the TAP.
+    fn shift_all(
+        &mut self,
+        tms: impl IntoIterator<Item = bool>,
+        tdi: impl IntoIterator<Item = bool>,
+        cap: impl IntoIterator<Item = bool>,
+    ) -> Result<(), DebugProbeError> {
+        for ((tms, tdi), cap) in tms.into_iter().zip(tdi).zip(cap) {
+            self.shift(tms, tdi, cap)?;
+        }
+
+        Ok(())
+    }
+}
+
+fn exchange_leaves_shift(current: TapState, next: Option<&JtagOp>) -> bool {
+    match next {
+        Some(JtagOp::EnterState(target)) => {
+            let path = current.path_to(*target);
+            !path.is_empty() && path[0]
+        }
+        _ => false,
+    }
+}
+
+fn enter_tdi(target: TapState) -> bool {
+    target == TapState::TestLogicReset
+}
+
+fn captured_bits_to_bytes(bits: impl IntoIterator<Item = bool>) -> Vec<u8> {
+    let mut bytes = Vec::new();
+    let mut byte = 0u8;
+    let mut bit_in_byte = 0usize;
+    for bit in bits {
+        if bit {
+            byte |= 1 << bit_in_byte;
+        }
+        bit_in_byte += 1;
+        if bit_in_byte == 8 {
+            bytes.push(byte);
+            byte = 0;
+            bit_in_byte = 0;
+        }
+    }
+    if bit_in_byte != 0 {
+        bytes.push(byte);
+    }
+    bytes
+}
+
+/// Lower a batch to bit-banging, starting from `start`.
+pub(crate) fn run_bitbang_batch<P: BitbangJtag>(
+    probe: &mut P,
+    start: TapState,
+    batch: &JtagBatch,
+) -> Result<Results, BatchExecutionError<DebugProbeError>> {
+    let ops: Vec<_> = batch.iter().collect();
+    let mut state = start;
+    let mut results = Results::new();
+    let mut skip_enter_path_bits = 0usize;
+
+    for (index, (id, op)) in ops.iter().enumerate() {
+        match op {
+            JtagOp::EnterState(target) => {
+                let target = *target;
+                let path = &state.path_to(target)[skip_enter_path_bits..];
+                skip_enter_path_bits = 0;
+                let tdi = enter_tdi(target);
+                for &tms in path {
+                    if let Err(error) = probe.shift(tms, tdi, false) {
+                        return Err(BatchExecutionError::new_from_debug_probe(error, results));
+                    }
+                }
+                state = target;
+            }
+            JtagOp::Exchange { data, capture } => {
+                if state != TapState::ShiftIr && state != TapState::ShiftDr {
+                    return Err(BatchExecutionError::new_from_debug_probe(
+                        DebugProbeError::Other(format!(
+                            "Exchange in state {state:?}, but ShiftIr or ShiftDr is required"
+                        )),
+                        results,
+                    ));
+                }
+                let merge_exit = exchange_leaves_shift(state, ops.get(index + 1).map(|(_, op)| op));
+                let do_capture = *capture && id.should_capture();
+                let bit_count = data.len();
+                for bit_index in 0..bit_count {
+                    let is_last = bit_index + 1 == bit_count;
+                    let tms = if merge_exit && is_last {
+                        // The last exchange bit and the first exit bit are one clock on the wire.
+                        skip_enter_path_bits = 1;
+                        true
+                    } else {
+                        false
+                    };
+                    let tdi = data[bit_index];
+                    if let Err(error) = probe.shift(tms, tdi, do_capture) {
+                        return Err(BatchExecutionError::new_from_debug_probe(error, results));
+                    }
+                }
+            }
+            JtagOp::ClockTck { count } => {
+                for _ in 0..*count {
+                    if let Err(error) = probe.shift(false, false, false) {
+                        return Err(BatchExecutionError::new_from_debug_probe(error, results));
+                    }
+                }
+            }
+        }
+    }
+
+    if let Err(error) = probe.flush() {
+        return Err(BatchExecutionError::new_from_debug_probe(error, results));
+    }
+    let captured = match probe.captured() {
+        Ok(bits) => bits,
+        Err(error) => return Err(BatchExecutionError::new_from_debug_probe(error, results)),
+    };
+
+    let mut capture_offset = 0usize;
+    for (id, op) in ops {
+        let JtagOp::Exchange {
+            data,
+            capture: true,
+        } = op
+        else {
+            continue;
+        };
+        if id.should_capture() {
+            let len = data.len();
+            let Some(bits) = captured.get(capture_offset..capture_offset + len) else {
+                return Err(BatchExecutionError::new_from_debug_probe(
+                    DebugProbeError::Other(format!(
+                        "The probe captured {} bits, but the batch needs {}",
+                        captured.len(),
+                        capture_offset + len
+                    )),
+                    results,
+                ));
+            };
+            capture_offset += len;
+            results.push(
+                id,
+                CommandResult::VecU8(captured_bits_to_bytes(bits.iter().map(|b| *b))),
+            );
+        }
+    }
+
+    Ok(results)
+}
+
+impl<P: BitbangJtag> JtagProbe for P {
+    fn run_batch(
+        &mut self,
+        batch: &JtagBatch,
+    ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
+        run_bitbang_batch(self, TapState::TestLogicReset, batch)
+    }
+}
+
+/// Temporary bridge from [`RawJtagIo`] to [`BitbangJtag`].
+///
+/// This bridge goes away when every driver implements [`BitbangJtag`] directly.
+#[doc(hidden)]
+impl<P: RawJtagIo> BitbangJtag for P {
+    fn shift(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError> {
+        self.shift_bit(tms, tdi, capture)
+    }
+
+    fn flush(&mut self) -> Result<(), DebugProbeError> {
+        Ok(())
+    }
+
+    fn captured(&mut self) -> Result<BitVec, DebugProbeError> {
+        self.read_captured_bits()
+    }
+}
+
+#[cfg(test)]
+mod golden;
 
 #[cfg(test)]
 mod tests {
