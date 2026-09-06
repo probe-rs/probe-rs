@@ -37,12 +37,14 @@ pub struct BatchExecutionError<E = Box<dyn std::error::Error + Send + Sync>> {
 }
 
 impl<E> BatchExecutionError<E> {
-    pub(crate) fn new_from_debug_probe(error: DebugProbeError, results: Results) -> Self {
+    /// Report a probe error that failed the operation after the captured results.
+    pub fn new_from_debug_probe(error: DebugProbeError, results: Results) -> Self {
         let fault_operation = results.len();
         Self::new_from_debug_probe_at(error, results, fault_operation)
     }
 
-    pub(crate) fn new_from_debug_probe_at(
+    /// Report a probe error that failed the operation at the given index of the batch.
+    pub fn new_from_debug_probe_at(
         error: DebugProbeError,
         results: Results,
         fault_operation: usize,

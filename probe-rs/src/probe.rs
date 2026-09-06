@@ -20,11 +20,12 @@ pub mod swd;
 pub mod wlink;
 pub mod xvc;
 
+use crate::CoreStatus;
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
 use crate::architecture::arm::{ArmDebugInterface, ArmError};
 use crate::architecture::arm::{
     RegisterAddress, SwoAccess,
-    communication_interface::{DapProbe, dap_debug_port_wire},
+    communication_interface::{ArmCommunicationInterface, DapProbe, dap_debug_port_wire},
 };
 use crate::architecture::riscv::communication_interface::{RiscvError, RiscvInterfaceBuilder};
 use crate::architecture::xtensa::communication_interface::{
@@ -591,11 +592,20 @@ impl Probe {
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Self, ArmError)> {
         if !self.attached {
-            Err((self, DebugProbeError::NotAttached.into()))
-        } else {
-            self.inner
-                .try_get_arm_debug_interface(sequence)
-                .map_err(|(probe, err)| (Probe::from_attached_probe(probe), err))
+            return Err((self, DebugProbeError::NotAttached.into()));
+        }
+
+        match self.inner.try_get_arm_debug_interface(sequence.clone()) {
+            Ok(interface) => Ok(interface),
+            Err((probe, err)) => match probe.try_as_swd_probe() {
+                Ok(swd_probe) => {
+                    let settings = swd_probe.swd_settings();
+                    Ok(ArmCommunicationInterface::create_swd(
+                        swd_probe, settings, sequence, false,
+                    ))
+                }
+                Err(probe) => Err((Probe::from_attached_probe(probe), err)),
+            },
         }
     }
 
@@ -829,6 +839,16 @@ pub trait DebugProbe: Any + Send + fmt::Debug {
 
     /// Boxes itself.
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
+
+    /// Inform the probe of the [`CoreStatus`] of the chip attached to the probe.
+    fn core_status_notification(&mut self, _state: CoreStatus) -> Result<(), DebugProbeError> {
+        Ok(())
+    }
+
+    /// Convert this probe into a layer-0 SWD probe, if it implements [`SwdProbe`].
+    fn try_as_swd_probe(self: Box<Self>) -> Result<Box<dyn SwdProbe>, Box<dyn DebugProbe>> {
+        Err(self.into_probe())
+    }
 
     /// Try creating a DAP interface for the given probe.
     ///

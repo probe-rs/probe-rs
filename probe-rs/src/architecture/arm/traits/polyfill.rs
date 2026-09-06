@@ -986,10 +986,6 @@ impl<Probe: DebugProbe + RawSwdIo + JtagChainAccess + 'static> RawDapAccess for 
         }
         send_sequence(self, protocol, &io_sequence)
     }
-
-    fn core_status_notification(&mut self, _: crate::CoreStatus) -> Result<(), DebugProbeError> {
-        Ok(())
-    }
 }
 
 fn send_sequence<P: RawSwdIo + JtagChainAccess>(

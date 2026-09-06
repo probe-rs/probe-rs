@@ -778,8 +778,13 @@ impl ArmCommunicationInterface {
 
     /// Inform the probe of the [`CoreStatus`] of the chip attached to the probe.
     pub fn core_status_notification(&mut self, state: CoreStatus) {
-        if let Some(ArmProbe::Dap(probe)) = self.probe.as_mut() {
-            probe.as_mut().core_status_notification(state).ok();
+        if let Some(probe) = self.probe.as_mut() {
+            let debug_probe: &mut dyn DebugProbe = match probe {
+                ArmProbe::Dap(probe) => probe.as_mut(),
+                ArmProbe::Swd(probe, _) => probe.as_mut(),
+                ArmProbe::Jtag(probe) => probe.as_mut(),
+            };
+            debug_probe.core_status_notification(state).ok();
         }
     }
 

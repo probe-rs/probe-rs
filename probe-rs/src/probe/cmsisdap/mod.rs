@@ -1082,17 +1082,17 @@ impl DebugProbe for CmsisDap {
     fn has_xtensa_interface(&self) -> bool {
         true
     }
-}
 
-// TODO: we will want to replace the default implementation with one that can use vendor extensions.
-
-impl RawDapAccess for CmsisDap {
     fn core_status_notification(&mut self, status: CoreStatus) -> Result<(), DebugProbeError> {
         let running = status.is_running();
         commands::send_command(&mut self.device, &HostStatusRequest::running(running))?;
         Ok(())
     }
+}
 
+// TODO: we will want to replace the default implementation with one that can use vendor extensions.
+
+impl RawDapAccess for CmsisDap {
     /// Reads the DAP register on the specified port and address.
     fn raw_read_register(&mut self, address: RegisterAddress) -> Result<u32, ArmError> {
         let res = self.batch_add(BatchCommand::Read(address))?;

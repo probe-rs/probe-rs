@@ -266,6 +266,11 @@ pub trait SwdProbe: DebugProbe {
     fn handles_wait(&self) -> bool {
         false
     }
+
+    /// Returns the SWD wire-protocol timing settings used by this probe.
+    fn swd_settings(&self) -> SwdSettings {
+        SwdSettings::default()
+    }
 }
 
 /// Bit-banging SWD interface for probe drivers.
