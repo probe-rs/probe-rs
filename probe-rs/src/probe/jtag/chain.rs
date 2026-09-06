@@ -1,10 +1,17 @@
 //! Scan chain state and TAP batch composition.
 
+use std::fmt;
+
 use probe_rs_target::ScanChainElement;
 
 use super::{JtagBatch, JtagChainAccess, TapState};
-use crate::probe::common::{common_sequence, extract_idcodes, extract_ir_lengths};
-use crate::probe::{BatchError, BitSequence, DebugProbeError, Handle, Results};
+use crate::probe::common::{
+    bit_sequence_to_bitvec, common_sequence, extract_idcodes, extract_ir_lengths,
+};
+use crate::probe::queue::{BatchExecutionError, ErasedBatch};
+use crate::probe::{
+    BatchError, BitSequence, CommandResult, DebugProbeError, Handle, JtagCommand, Results,
+};
 
 fn take_sequence(
     results: &mut Results,
@@ -70,6 +77,12 @@ impl ChainParams {
 /// Scan chain driver built on [`JtagChainAccess`].
 pub struct JtagChain<'p> {
     probe: &'p mut dyn JtagChainAccess,
+}
+
+impl fmt::Debug for JtagChain<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("JtagChain").finish_non_exhaustive()
+    }
 }
 
 impl<'p> JtagChain<'p> {
@@ -265,6 +278,113 @@ impl<'p> JtagChain<'p> {
                 BatchError::Probe(error) => error,
                 BatchError::Specific(error) => DebugProbeError::Other(error.to_string()),
             })
+    }
+
+    /// Assert target reset through the underlying probe.
+    pub fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+        self.probe.target_reset_assert()
+    }
+
+    /// Deassert target reset through the underlying probe.
+    pub fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+        self.probe.target_reset_deassert()
+    }
+
+    /// Execute a batch of register write and DR shift commands.
+    pub fn run_command_batch(
+        &mut self,
+        writes: &ErasedBatch<JtagCommand>,
+    ) -> Result<Results, BatchExecutionError> {
+        let max_ir = self.probe.chain_state_ref().chain_params.max_ir_address();
+        let ir_len = self.probe.chain_state_ref().chain_params.irlen;
+
+        let mut batch = JtagBatch::new();
+        let mut capture_handles = Vec::new();
+
+        for (idx, command) in writes.iter() {
+            match command {
+                JtagCommand::WriteRegister(write) => {
+                    if write.inner.address > max_ir {
+                        return Err(BatchExecutionError::new_from_debug_probe(
+                            DebugProbeError::Other(format!(
+                                "Invalid instruction register access: {}",
+                                write.inner.address
+                            )),
+                            Results::new(),
+                        ));
+                    }
+
+                    let ir = BitSequence::from_bytes(&write.inner.address.to_le_bytes(), ir_len);
+                    self.shift_ir(&mut batch, &ir);
+                    let handle = self.exchange_dr(&mut batch, &write.inner.data);
+                    self.run_test_idle(&mut batch, write.inner.idle_cycles);
+                    if idx.should_capture() {
+                        capture_handles.push(handle);
+                    }
+                }
+                JtagCommand::ShiftDr(write) => {
+                    let handle = self.exchange_dr(&mut batch, &write.inner.data);
+                    self.run_test_idle(&mut batch, write.inner.idle_cycles);
+                    if idx.should_capture() {
+                        capture_handles.push(handle);
+                    }
+                }
+            }
+        }
+
+        let mut run_results = match self.run(batch) {
+            Ok(results) => results,
+            Err(error) => {
+                return Err(BatchExecutionError::new_from_debug_probe(
+                    error,
+                    Results::new(),
+                ));
+            }
+        };
+
+        tracing::debug!("Got responses! Processing...");
+        let mut responses = Results::with_capacity(writes.len());
+        let mut capture_handles = capture_handles.into_iter();
+
+        for (idx, command) in writes.iter() {
+            if idx.should_capture() {
+                let Some(handle) = capture_handles.next() else {
+                    return Err(BatchExecutionError::new_from_debug_probe(
+                        DebugProbeError::Other("missing batch capture handle".into()),
+                        responses,
+                    ));
+                };
+
+                let response = match run_results.take(handle) {
+                    Ok(response) => response,
+                    Err(_) => {
+                        return Err(BatchExecutionError::new_from_debug_probe(
+                            DebugProbeError::Other("missing batch capture result".into()),
+                            responses,
+                        ));
+                    }
+                };
+                let response = bit_sequence_to_bitvec(&response);
+
+                let result = match command {
+                    JtagCommand::WriteRegister(cmd) => {
+                        (cmd.transform)(&cmd.inner, response.as_bitslice())
+                    }
+                    JtagCommand::ShiftDr(cmd) => {
+                        (cmd.transform)(&cmd.inner, response.as_bitslice())
+                    }
+                };
+
+                match result {
+                    Ok(response) => responses.push(idx, response),
+                    Err(e) => return Err(BatchExecutionError::new_specific(e, responses)),
+                }
+            } else {
+                responses.push(idx, CommandResult::None);
+            }
+        }
+
+        Ok(responses)
     }
 }
 

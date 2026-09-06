@@ -599,8 +599,7 @@ impl DapTransfer {
         JtagWriteCommand {
             data: JtagWriteData {
                 address,
-                data: payload.to_le_bytes().to_vec(),
-                len: JTAG_DR_BIT_LENGTH,
+                data: BitSequence::from_bytes(&payload.to_le_bytes(), JTAG_DR_BIT_LENGTH as usize),
                 idle_cycles: self.idle_cycles_after.min(255) as u32,
             },
             transform: |data, response| {

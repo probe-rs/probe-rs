@@ -6,6 +6,7 @@
 use bitfield::bitfield;
 use bitvec::field::BitField;
 use bitvec::slice::BitSlice;
+use bitvec::store::BitStore;
 use std::time::{Duration, Instant};
 
 use crate::architecture::riscv::communication_interface::{
@@ -13,9 +14,11 @@ use crate::architecture::riscv::communication_interface::{
 };
 use crate::architecture::riscv::dtm::DtmAccess;
 use crate::probe::DebugProbeError;
+use crate::probe::jtag::chain::JtagChain;
 use crate::probe::queue::{BatchError, Handle, JtagQueue, Results};
 use crate::probe::{
-    CommandResult, JtagAccess, JtagWriteCommand, JtagWriteData, ShiftDrCommand, ShiftDrData,
+    BitSequence, CommandResult, JtagBatch, JtagWriteCommand, JtagWriteData, ShiftDrCommand,
+    ShiftDrData,
 };
 
 #[derive(Debug, Default)]
@@ -32,12 +35,16 @@ struct DtmState {
 
 /// Object that can be used to build a RISC-V DTM interface
 /// from a JTAG transport.
-pub struct JtagDtmBuilder<'f>(&'f mut dyn JtagAccess);
+pub struct JtagDtmBuilder<'f> {
+    chain: JtagChain<'f>,
+}
 
 impl<'f> JtagDtmBuilder<'f> {
     /// Create a new DTM Builder via a JTAG transport.
-    pub fn new(probe: &'f mut dyn JtagAccess) -> Self {
-        Self(probe)
+    pub fn new(probe: &'f mut dyn crate::probe::JtagChainAccess) -> Self {
+        Self {
+            chain: JtagChain::new(probe),
+        }
     }
 }
 
@@ -56,7 +63,7 @@ impl<'probe> RiscvInterfaceBuilder<'probe> for JtagDtmBuilder<'probe> {
         let dtm_state = state.dtm_state.downcast_mut::<DtmState>().unwrap();
 
         Ok(RiscvCommunicationInterface::new(
-            Box::new(JtagDtm::new(self.0, dtm_state)),
+            Box::new(JtagDtm::new(self.chain, dtm_state)),
             &mut state.interface_state,
         ))
     }
@@ -74,7 +81,7 @@ impl<'probe> RiscvInterfaceBuilder<'probe> for JtagDtmBuilder<'probe> {
 
         Ok(RiscvCommunicationInterface::new(
             Box::new(TunneledJtagDtm::new(
-                self.0,
+                self.chain,
                 tunnel_ir_id,
                 tunnel_ir_width,
                 dtm_state,
@@ -88,16 +95,48 @@ impl<'probe> RiscvInterfaceBuilder<'probe> for JtagDtmBuilder<'probe> {
 /// which is used to communicate with the RISC-V debug module.
 #[derive(Debug)]
 pub struct JtagDtm<'probe> {
-    probe: &'probe mut dyn JtagAccess,
+    probe: JtagChain<'probe>,
     state: &'probe mut DtmState,
 }
 
 impl<'probe> JtagDtm<'probe> {
-    fn new(probe: &'probe mut dyn JtagAccess, state: &'probe mut DtmState) -> Self {
+    fn new(probe: JtagChain<'probe>, state: &'probe mut DtmState) -> Self {
         Self { probe, state }
     }
 
-    fn transform_dmi_result(response_bits: &BitSlice) -> Result<u32, DmiOperationError> {
+    fn tap_reset(&mut self) -> Result<(), DebugProbeError> {
+        let mut batch = JtagBatch::new();
+        self.probe.tap_reset(&mut batch);
+        self.probe.run(batch).map(|_| ())
+    }
+
+    fn exchange_register(
+        &mut self,
+        address: u32,
+        dr: BitSequence,
+        idle_cycles: u32,
+    ) -> Result<BitSequence, DebugProbeError> {
+        if address > self.probe.params().max_ir_address() {
+            return Err(DebugProbeError::Other(format!(
+                "Invalid instruction register access: {address}"
+            )));
+        }
+
+        let ir_len = self.probe.params().irlen;
+        let mut batch = JtagBatch::new();
+        let ir = BitSequence::from_bytes(&address.to_le_bytes(), ir_len);
+        self.probe.shift_ir(&mut batch, &ir);
+        let handle = self.probe.exchange_dr(&mut batch, &dr);
+        self.probe.run_test_idle(&mut batch, idle_cycles);
+        let mut results = self.probe.run(batch)?;
+        results
+            .take(handle)
+            .map_err(|_| DebugProbeError::Other("missing JTAG capture result".into()))
+    }
+
+    fn transform_dmi_result<T: BitStore>(
+        response_bits: &BitSlice<T>,
+    ) -> Result<u32, DmiOperationError> {
         let response_value = response_bits.load_le::<u128>();
 
         // Verify that the transfer was ok
@@ -126,9 +165,12 @@ impl<'probe> JtagDtm<'probe> {
 
         let bit_size = self.state.abits + DMI_ADDRESS_BIT_OFFSET;
 
-        self.probe
-            .write_register(DMI_ADDRESS, &bytes, bit_size, self.state.idle_cycles as u32)
-            .map(|bits| Self::transform_dmi_result(&bits))
+        let response = self.exchange_register(
+            DMI_ADDRESS,
+            BitSequence::from_bytes(&bytes, bit_size as usize),
+            self.state.idle_cycles as u32,
+        )?;
+        Ok(Self::transform_dmi_result(response.as_bits()))
     }
 
     fn schedule_dmi_register_access(
@@ -142,8 +184,7 @@ impl<'probe> JtagDtm<'probe> {
         Ok(self.state.queued_commands.schedule(JtagWriteCommand {
             data: JtagWriteData {
                 address: DMI_ADDRESS,
-                data: bytes.to_vec(),
-                len: bit_size,
+                data: BitSequence::from_bytes(&bytes, bit_size as usize),
                 idle_cycles: self.state.idle_cycles as u32,
             },
             transform: |_, result| Self::transform_dmi_result(result).map(CommandResult::U32),
@@ -184,10 +225,14 @@ impl<'probe> JtagDtm<'probe> {
 
 impl DtmAccess for JtagDtm<'_> {
     fn init(&mut self) -> Result<(), RiscvError> {
-        self.probe.tap_reset()?;
-        let dtmcs_raw = self.probe.read_register(DTMCS_ADDRESS, DTMCS_WIDTH, 0)?;
+        self.tap_reset()?;
+        let dtmcs_raw = self.exchange_register(
+            DTMCS_ADDRESS,
+            BitSequence::repeat(false, DTMCS_WIDTH as usize),
+            0,
+        )?;
 
-        let raw_dtmcs = dtmcs_raw.load_le::<u32>();
+        let raw_dtmcs = dtmcs_raw.as_bits().load_le::<u32>();
 
         if raw_dtmcs == 0 {
             return Err(RiscvError::NoRiscvTarget);
@@ -230,10 +275,9 @@ impl DtmAccess for JtagDtm<'_> {
 
         let bytes = reg_value.to_le_bytes();
 
-        self.probe.write_register(
+        self.exchange_register(
             DTMCS_ADDRESS,
-            &bytes,
-            DTMCS_WIDTH,
+            BitSequence::from_bytes(&bytes, DTMCS_WIDTH as usize),
             self.state.idle_cycles as u32,
         )?;
 
@@ -263,7 +307,7 @@ impl DtmAccess for JtagDtm<'_> {
         let mut started = Instant::now();
         let mut previous_queue_len = cmds.len();
         while !cmds.is_empty() {
-            match cmds.execute(|queue| self.probe.write_register_batch(queue)) {
+            match cmds.execute(|queue| self.probe.run_command_batch(queue)) {
                 Ok(r) => {
                     self.state.jtag_results.merge_from(r);
                     return Ok(());
@@ -356,10 +400,10 @@ impl DtmAccess for JtagDtm<'_> {
         // from `probe-rs info`), because the TAP state may be indeterminate after attach.
         // After reset, the IDCODE instruction is automatically loaded into IR, and we then
         // explicitly load it again via read_register(0x1, …) to be consistent with all paths.
-        self.probe.tap_reset()?;
-        let value = self.probe.read_register(0x1, 32, 0)?;
+        self.tap_reset()?;
+        let value = self.exchange_register(0x1, BitSequence::repeat(false, 32), 0)?;
 
-        Ok(Some(value.load_le::<u32>()))
+        Ok(Some(value.as_bits().load_le::<u32>()))
     }
 }
 
@@ -376,7 +420,7 @@ impl DtmAccess for JtagDtm<'_> {
 /// 4. Set tunnel to idle: 3 zero bits
 #[derive(Debug)]
 pub struct TunneledJtagDtm<'probe> {
-    probe: &'probe mut dyn JtagAccess,
+    probe: JtagChain<'probe>,
     state: &'probe mut DtmState,
     select_dtmcs: JtagWriteData,
     select_dmi: JtagWriteData,
@@ -384,7 +428,7 @@ pub struct TunneledJtagDtm<'probe> {
 
 impl<'probe> TunneledJtagDtm<'probe> {
     fn new(
-        probe: &'probe mut dyn JtagAccess,
+        probe: JtagChain<'probe>,
         tunnel_ir_id: u32,
         tunnel_ir_width: u32,
         state: &'probe mut DtmState,
@@ -397,18 +441,65 @@ impl<'probe> TunneledJtagDtm<'probe> {
         }
     }
 
+    fn tap_reset(&mut self) -> Result<(), DebugProbeError> {
+        let mut batch = JtagBatch::new();
+        self.probe.tap_reset(&mut batch);
+        self.probe.run(batch).map(|_| ())
+    }
+
+    fn exchange_register(
+        &mut self,
+        write: &JtagWriteData,
+        idle_cycles: u32,
+    ) -> Result<BitSequence, DebugProbeError> {
+        self.exchange_register_at(write.address, write.data.clone(), idle_cycles)
+    }
+
+    fn exchange_register_at(
+        &mut self,
+        address: u32,
+        dr: BitSequence,
+        idle_cycles: u32,
+    ) -> Result<BitSequence, DebugProbeError> {
+        if address > self.probe.params().max_ir_address() {
+            return Err(DebugProbeError::Other(format!(
+                "Invalid instruction register access: {address}"
+            )));
+        }
+
+        let ir_len = self.probe.params().irlen;
+        let mut batch = JtagBatch::new();
+        let ir = BitSequence::from_bytes(&address.to_le_bytes(), ir_len);
+        self.probe.shift_ir(&mut batch, &ir);
+        let handle = self.probe.exchange_dr(&mut batch, &dr);
+        self.probe.run_test_idle(&mut batch, idle_cycles);
+        let mut results = self.probe.run(batch)?;
+        results
+            .take(handle)
+            .map_err(|_| DebugProbeError::Other("missing JTAG capture result".into()))
+    }
+
+    fn exchange_dr(
+        &mut self,
+        dr: BitSequence,
+        idle_cycles: u32,
+    ) -> Result<BitSequence, DebugProbeError> {
+        let mut batch = JtagBatch::new();
+        let handle = self.probe.exchange_dr(&mut batch, &dr);
+        self.probe.run_test_idle(&mut batch, idle_cycles);
+        let mut results = self.probe.run(batch)?;
+        results
+            .take(handle)
+            .map_err(|_| DebugProbeError::Other("missing JTAG capture result".into()))
+    }
+
     fn write_dtmcs(&mut self, data: u32) -> Result<u32, RiscvError> {
-        self.probe.write_register(
-            self.select_dtmcs.address,
-            &self.select_dtmcs.data,
-            self.select_dtmcs.len,
-            self.state.idle_cycles as u32,
-        )?;
+        let select = self.select_dtmcs.clone();
+        self.exchange_register(&select, self.state.idle_cycles as u32)?;
         let cmd = tunnel_dtmcs_data(data);
         let result = self
-            .probe
-            .write_dr(&cmd.data, cmd.len, self.state.idle_cycles as u32)
-            .map(|r| tunnel_dtmcs_transform(&cmd, &r))?;
+            .exchange_dr(cmd.data.clone(), self.state.idle_cycles as u32)
+            .map(|r| tunnel_dtmcs_transform(&cmd, r.as_bits()))?;
 
         match result {
             Ok(CommandResult::U32(d)) => Ok(d),
@@ -420,7 +511,7 @@ impl<'probe> TunneledJtagDtm<'probe> {
         }
     }
 
-    fn transform_tunneled_dr_result(response_bits: &BitSlice) -> &BitSlice {
+    fn transform_tunneled_dr_result<T: BitStore>(response_bits: &BitSlice<T>) -> &BitSlice<T> {
         &response_bits[4..]
     }
 
@@ -428,19 +519,16 @@ impl<'probe> TunneledJtagDtm<'probe> {
         &mut self,
         op: DmiOperation,
     ) -> Result<Result<u32, DmiOperationError>, DebugProbeError> {
-        self.probe.write_register(
-            self.select_dmi.address,
-            &self.select_dmi.data,
-            self.select_dmi.len,
-            self.state.idle_cycles as u32,
-        )?;
+        let select = self.select_dmi.clone();
+        self.exchange_register(&select, self.state.idle_cycles as u32)?;
 
         let dmi_bits = self.state.abits + DMI_ADDRESS_BIT_OFFSET;
         let (bit_size, bytes) = op.to_tunneled_byte_batch(dmi_bits);
-        let result = self
-            .probe
-            .write_dr(&bytes, bit_size, self.state.idle_cycles as u32)?;
-        let tunneled_result = Self::transform_tunneled_dr_result(&result);
+        let result = self.exchange_dr(
+            BitSequence::from_bytes(&bytes, bit_size as usize),
+            self.state.idle_cycles as u32,
+        )?;
+        let tunneled_result = Self::transform_tunneled_dr_result(result.as_bits());
         Ok(JtagDtm::transform_dmi_result(tunneled_result))
     }
 
@@ -467,8 +555,7 @@ impl<'probe> TunneledJtagDtm<'probe> {
 
         Ok(self.state.queued_commands.schedule(ShiftDrCommand {
             inner: ShiftDrData {
-                data: bytes.to_vec(),
-                len: bit_size,
+                data: BitSequence::from_bytes(&bytes, bit_size as usize),
                 idle_cycles: self.state.idle_cycles as u32,
             },
             transform: |_, raw_result| {
@@ -512,7 +599,7 @@ impl<'probe> TunneledJtagDtm<'probe> {
 
 impl DtmAccess for TunneledJtagDtm<'_> {
     fn init(&mut self) -> Result<(), RiscvError> {
-        self.probe.tap_reset()?;
+        self.tap_reset()?;
         let raw_dtmcs = self.write_dtmcs(0)?;
 
         if raw_dtmcs == 0 {
@@ -582,7 +669,7 @@ impl DtmAccess for TunneledJtagDtm<'_> {
         let mut started = Instant::now();
         let mut previous_queue_len = cmds.len();
         while !cmds.is_empty() {
-            match cmds.execute(|queue| self.probe.write_register_batch(queue)) {
+            match cmds.execute(|queue| self.probe.run_command_batch(queue)) {
                 Ok(r) => {
                     self.state.jtag_results.merge_from(r);
                     return Ok(());
@@ -673,9 +760,9 @@ impl DtmAccess for TunneledJtagDtm<'_> {
         // Reset the JTAG state machine to Test-Logic-Reset before reading the IDCODE.
         // This is required when read_idcode() is called without a prior dtm.init() (e.g.
         // from `probe-rs info`), because the TAP state may be indeterminate after attach.
-        self.probe.tap_reset()?;
-        let value = self.probe.read_register(0x1, 32, 0)?;
-        Ok(Some(value.load_le::<u32>()))
+        self.tap_reset()?;
+        let value = self.exchange_register_at(0x1, BitSequence::repeat(false, 32), 0)?;
+        Ok(Some(value.as_bits().load_le::<u32>()))
     }
 }
 
@@ -684,8 +771,7 @@ fn tunnel_select_data(tunnel_ir_id: u32, tunnel_ir_width: u32, address: u32) -> 
     let tunneled_ir_len = 1 + 7 + tunnel_ir_width + 3;
     JtagWriteData {
         address: tunnel_ir_id,
-        data: tunneled_ir.to_le_bytes().into(),
-        len: tunneled_ir_len,
+        data: BitSequence::from_bytes(&tunneled_ir.to_le_bytes(), tunneled_ir_len as usize),
         idle_cycles: 0,
     }
 }
@@ -696,15 +782,14 @@ fn tunnel_dtmcs_data(data: u32) -> ShiftDrData {
     let tunneled_dr: u128 =
         (1 << msb_offset) | ((DTMCS_WIDTH as u128) << width_offset) | ((data as u128) << 3);
     ShiftDrData {
-        data: tunneled_dr.to_le_bytes().into(),
-        len: (msb_offset as u32) + 1,
+        data: BitSequence::from_bytes(&tunneled_dr.to_le_bytes(), (msb_offset as u32 + 1) as usize),
         idle_cycles: 0,
     }
 }
 
-fn tunnel_dtmcs_transform(
+fn tunnel_dtmcs_transform<T: BitStore>(
     _data: &ShiftDrData,
-    result: &BitSlice,
+    result: &BitSlice<T>,
 ) -> Result<CommandResult, DmiOperationError> {
     let response = result[4..36].load_le::<u32>();
     Ok(CommandResult::U32(response))
@@ -888,4 +973,22 @@ bitfield! {
     /// 15: Version not described in any available version
     /// of this spec.
     pub version, _: 3,0;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tunneled_dmi_batch_bit_width() {
+        let dmi_bits = 7 + DMI_ADDRESS_BIT_OFFSET;
+        let op = DmiOperation::Write {
+            address: 0x100,
+            value: 0x42,
+        };
+        let (bit_size, _) = op.to_tunneled_byte_batch(dmi_bits);
+        let width_offset = 1 + dmi_bits + 3;
+        let msb_offset = 7 + width_offset;
+        assert_eq!(bit_size, msb_offset + 1);
+    }
 }
