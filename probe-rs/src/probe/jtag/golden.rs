@@ -269,7 +269,7 @@ fn triples_to_strings(triples: &[(bool, bool, bool)]) -> (String, String, String
     (tms, tdi, cap)
 }
 
-fn assert_triples_eq(actual: &[(bool, bool, bool)], tms: &str, tdi: &str, cap: &str) {
+pub(crate) fn assert_triples_eq(actual: &[(bool, bool, bool)], tms: &str, tdi: &str, cap: &str) {
     let (at, ad, ac) = triples_to_strings(actual);
     assert_eq!(at, tms, "TMS mismatch");
     assert_eq!(ad, tdi, "TDI mismatch");
@@ -279,14 +279,14 @@ fn assert_triples_eq(actual: &[(bool, bool, bool)], tms: &str, tdi: &str, cap: &
 const IR_VALUE: u8 = 0b10110;
 const IR_LEN: usize = 5;
 
-fn one_tap_params() -> ChainParams {
+pub(crate) fn one_tap_params() -> ChainParams {
     ChainParams {
         irlen: IR_LEN,
         ..ChainParams::default()
     }
 }
 
-fn three_tap_params() -> ChainParams {
+pub(crate) fn three_tap_params() -> ChainParams {
     ChainParams {
         index: 1,
         irpre: 4,
@@ -297,7 +297,7 @@ fn three_tap_params() -> ChainParams {
     }
 }
 
-fn build_ir_exchange(params: ChainParams, value: u8, len: usize) -> BitSequence {
+pub(crate) fn build_ir_exchange(params: ChainParams, value: u8, len: usize) -> BitSequence {
     let mut data = BitSequence::new();
     for _ in 0..params.irpre {
         data.push(true);
@@ -311,7 +311,7 @@ fn build_ir_exchange(params: ChainParams, value: u8, len: usize) -> BitSequence 
     data
 }
 
-fn build_dr_exchange(params: ChainParams, bytes: &[u8], len: usize) -> BitSequence {
+pub(crate) fn build_dr_exchange(params: ChainParams, bytes: &[u8], len: usize) -> BitSequence {
     let mut data = BitSequence::new();
     for _ in 0..params.drpre {
         data.push(false);
@@ -373,7 +373,7 @@ fn record_reset() -> Vec<(bool, bool, bool)> {
     recorder.take_triples()
 }
 
-fn lowering_move_to(from: TapState, to: TapState) -> Vec<(bool, bool, bool)> {
+pub(crate) fn lowering_move_to(from: TapState, to: TapState) -> Vec<(bool, bool, bool)> {
     let mut recorder = GoldenRecorder::new();
     let mut batch = JtagBatch::new();
     batch.enter(to);
@@ -381,7 +381,7 @@ fn lowering_move_to(from: TapState, to: TapState) -> Vec<(bool, bool, bool)> {
     recorder.take_triples()
 }
 
-fn lowering_shift_ir(params: ChainParams) -> Vec<(bool, bool, bool)> {
+pub(crate) fn lowering_shift_ir(params: ChainParams) -> Vec<(bool, bool, bool)> {
     let mut recorder = GoldenRecorder::new();
     let mut batch = JtagBatch::new();
     batch.enter(TapState::ShiftIr);
@@ -391,7 +391,11 @@ fn lowering_shift_ir(params: ChainParams) -> Vec<(bool, bool, bool)> {
     recorder.take_triples()
 }
 
-fn lowering_shift_dr(params: ChainParams, bytes: &[u8], len: usize) -> Vec<(bool, bool, bool)> {
+pub(crate) fn lowering_shift_dr(
+    params: ChainParams,
+    bytes: &[u8],
+    len: usize,
+) -> Vec<(bool, bool, bool)> {
     let mut recorder = GoldenRecorder::new();
     let mut batch = JtagBatch::new();
     batch.enter(TapState::ShiftDr);
@@ -401,7 +405,7 @@ fn lowering_shift_dr(params: ChainParams, bytes: &[u8], len: usize) -> Vec<(bool
     recorder.take_triples()
 }
 
-fn lowering_register_write(
+pub(crate) fn lowering_register_write(
     params: ChainParams,
     bytes: &[u8],
     len: usize,

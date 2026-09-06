@@ -286,7 +286,10 @@ mod tests {
     use std::fmt;
 
     use super::*;
-    use crate::probe::{BatchExecutionError, CommandResult, DebugProbe, JtagOp, WireProtocol};
+    use crate::probe::{
+        BatchExecutionError, CommandResult, DebugProbe, JtagOp, JtagSequence, WireProtocol,
+    };
+    use bitvec::vec::BitVec;
 
     struct BatchRecorder {
         exchanges: Vec<BitSequence>,
@@ -380,6 +383,13 @@ mod tests {
                 }
             }
             Ok(results)
+        }
+
+        fn shift_raw_sequence(
+            &mut self,
+            _sequence: JtagSequence,
+        ) -> Result<BitVec, DebugProbeError> {
+            Ok(BitVec::new())
         }
     }
 

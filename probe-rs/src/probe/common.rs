@@ -5,8 +5,8 @@ use bitvec::prelude::*;
 use probe_rs_target::ScanChainElement;
 
 use crate::probe::{
-    AutoImplementJtagAccess, BitSequence, CommandResult, DebugProbeError, JtagAccess, JtagBatch,
-    JtagCommand, JtagProbe, JtagSequence,
+    BitSequence, CommandResult, DebugProbeError, JtagAccess, JtagBatch, JtagCommand, JtagProbe,
+    JtagSequence, JtagStateAccess,
     jtag::chain::JtagChain,
     queue::{BatchExecutionError, ErasedBatch, Results},
 };
@@ -418,7 +418,7 @@ impl JtagState {
 
 fn with_jtag_chain<P, R>(probe: &mut P, f: impl FnOnce(&mut JtagChain<'_>) -> R) -> R
 where
-    P: AutoImplementJtagAccess + JtagProbe,
+    P: JtagProbe + JtagStateAccess,
 {
     let scan_chain = std::mem::take(&mut probe.state_mut().scan_chain);
     let expected = probe.state_mut().expected_scan_chain.take();
@@ -446,14 +446,9 @@ fn bit_sequence_to_bitvec(sequence: &BitSequence) -> BitVec {
     bits
 }
 
-impl<Probe: AutoImplementJtagAccess + JtagProbe> JtagAccess for Probe {
+impl<Probe: JtagProbe + JtagStateAccess> JtagAccess for Probe {
     fn shift_raw_sequence(&mut self, sequence: JtagSequence) -> Result<BitVec, DebugProbeError> {
-        self.shift_bits(
-            std::iter::repeat(sequence.tms),
-            sequence.data,
-            std::iter::repeat(sequence.tdo_capture),
-        )?;
-        self.read_captured_bits()
+        JtagProbe::shift_raw_sequence(self, sequence)
     }
 
     fn set_expected_scan_chain(
