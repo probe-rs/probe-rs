@@ -1,0 +1,1 @@
+Semihosting file access: opening a file with mode `r+` no longer empties it, modes `a` and `a+` now append instead of overwriting the file from the start, and mode `a+` no longer fails to open the file.

@@ -193,11 +193,15 @@ impl SemihostingFileManager {
                 .write(false)
                 .truncate(false)
                 .create(false),
-            "r+" | "r+b" => options.read(true).write(true).truncate(true).create(false),
+            "r+" | "r+b" => options.read(true).write(true).truncate(false).create(false),
             "w" | "wb" => options.read(false).write(true).truncate(true).create(true),
             "w+" | "w+b" => options.read(true).write(true).truncate(true).create(true),
-            "a" | "ab" => options.read(false).write(true).truncate(false).create(true),
-            "a+" | "a+b" => options.read(true).write(false).truncate(false).create(true),
+            "a" | "ab" => options
+                .read(false)
+                .append(true)
+                .truncate(false)
+                .create(true),
+            "a+" | "a+b" => options.read(true).append(true).truncate(false).create(true),
             mode => {
                 tracing::error!(
                     "Target wanted to open file {path} with invalid mode {mode}. Continuing..."
@@ -448,5 +452,91 @@ impl FileHandleLog {
             handle = self.handle,
             variant = self.variant,
         );
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::path::PathBuf;
+
+    const CONTENTS: &[u8] = b"0123456789";
+    const APPENDED: &[u8] = b"0123456789ab";
+
+    struct TestFile {
+        _dir: tempfile::TempDir,
+        path: PathBuf,
+    }
+
+    impl TestFile {
+        fn new() -> Self {
+            let dir = tempfile::TempDir::new().unwrap();
+            let path = dir.path().join("semihosting.txt");
+            std::fs::write(&path, CONTENTS).unwrap();
+
+            TestFile { _dir: dir, path }
+        }
+
+        fn open(&self, mode: &str) -> Option<File> {
+            let manager = SemihostingFileManager::new(SemihostingOptions::new());
+            match manager.open_file(self.path.to_str().unwrap(), mode)? {
+                FileHandle::File(file) => Some(file),
+                _ => panic!("open_file did not return a file"),
+            }
+        }
+
+        fn contents(&self) -> Vec<u8> {
+            std::fs::read(&self.path).unwrap()
+        }
+    }
+
+    #[test]
+    fn read_does_not_truncate() {
+        let file = TestFile::new();
+        let handle = file.open("r").expect("mode r failed to open the file");
+        drop(handle);
+
+        assert_eq!(file.contents(), CONTENTS);
+    }
+
+    #[test]
+    fn read_update_does_not_truncate() {
+        let file = TestFile::new();
+        let mut handle = file.open("r+").expect("mode r+ failed to open the file");
+
+        let mut read_back = Vec::new();
+        handle.read_to_end(&mut read_back).unwrap();
+
+        assert_eq!(read_back, CONTENTS);
+        assert_eq!(file.contents(), CONTENTS);
+    }
+
+    #[test]
+    fn write_truncates() {
+        let file = TestFile::new();
+        let handle = file.open("w").expect("mode w failed to open the file");
+        drop(handle);
+
+        assert_eq!(file.contents(), b"".as_slice());
+    }
+
+    #[test]
+    fn append_writes_to_the_end() {
+        let file = TestFile::new();
+        let mut handle = file.open("a").expect("mode a failed to open the file");
+        handle.write_all(b"ab").unwrap();
+        drop(handle);
+
+        assert_eq!(file.contents(), APPENDED);
+    }
+
+    #[test]
+    fn append_update_writes_to_the_end() {
+        let file = TestFile::new();
+        let mut handle = file.open("a+").expect("mode a+ failed to open the file");
+        handle.write_all(b"ab").unwrap();
+        drop(handle);
+
+        assert_eq!(file.contents(), APPENDED);
     }
 }
