@@ -4,7 +4,7 @@ pub mod jtag_dtm;
 pub(crate) mod mem_ap_dtm;
 
 use crate::architecture::riscv::communication_interface::RiscvError;
-use crate::probe::queue::DeferredResultIndex;
+use crate::probe::queue::Handle;
 use crate::probe::{CommandResult, DebugProbeError};
 use std::fmt;
 use std::time::Duration;
@@ -28,7 +28,7 @@ pub trait DtmAccess: fmt::Debug {
     /// Read previously scheduled `dmi` register accesses
     fn read_deferred_result(
         &mut self,
-        index: DeferredResultIndex,
+        index: Handle<CommandResult>,
     ) -> Result<CommandResult, RiscvError>;
 
     /// Execute scheduled dmi accesses
@@ -42,10 +42,10 @@ pub trait DtmAccess: fmt::Debug {
         &mut self,
         address: u64,
         value: u32,
-    ) -> Result<Option<DeferredResultIndex>, RiscvError>;
+    ) -> Result<Option<Handle<CommandResult>>, RiscvError>;
 
     /// Schedule a read from an address on the `dmi` bus.
-    fn schedule_read(&mut self, address: u64) -> Result<DeferredResultIndex, RiscvError>;
+    fn schedule_read(&mut self, address: u64) -> Result<Handle<CommandResult>, RiscvError>;
 
     /// Read an address on the `dmi` bus. If a busy value is returned, the access is
     /// retried until the transfer either succeeds, or the timeout expires.

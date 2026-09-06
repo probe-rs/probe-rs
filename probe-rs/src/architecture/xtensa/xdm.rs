@@ -10,7 +10,7 @@ use crate::{
     architecture::xtensa::arch::instruction::{Instruction, InstructionEncoding},
     probe::{
         CommandResult, JtagAccess, JtagWriteCommand, JtagWriteData, ShiftDrCommand, ShiftDrData,
-        queue::{BatchError, DeferredResultIndex, DeferredResultSet, Queue},
+        queue::{BatchError, Handle, JtagQueue, Results},
     },
 };
 
@@ -148,10 +148,10 @@ pub(crate) struct XdmState {
 
     /// The command queue for the current batch. JTAG accesses are batched to reduce the number of
     /// IO operations.
-    queue: Queue<Error>,
+    queue: JtagQueue<Error>,
 
     /// The results of the reads in the already executed batched JTAG commands.
-    jtag_results: DeferredResultSet<CommandResult>,
+    jtag_results: Results,
 
     /// Read handles for accesses that need to force capturing their bits.
     ///
@@ -159,7 +159,7 @@ pub(crate) struct XdmState {
     /// the number of JTAG operations. However, some accesses need to capture their bits to
     /// complete correctly, or to - ironically - increase performance. We store their otherwise
     /// ignored handles in this vector and drop them when we're done with the batch.
-    status_idxs: Vec<DeferredResultIndex>,
+    status_idxs: Vec<Handle<CommandResult>>,
 }
 
 /// The lower level functions of the Xtensa Debug Module.
@@ -183,8 +183,8 @@ impl<'probe> Xdm<'probe> {
 
     #[tracing::instrument(skip(self))]
     pub(crate) fn enter_debug_mode(&mut self) -> Result<(), XtensaError> {
-        self.state.queue = Queue::new();
-        self.state.jtag_results = DeferredResultSet::new();
+        self.state.queue = JtagQueue::new();
+        self.state.jtag_results = Results::new();
 
         self.probe.tap_reset()?;
 
@@ -398,22 +398,21 @@ impl<'probe> Xdm<'probe> {
 
     pub(crate) fn read_deferred_result(
         &mut self,
-        index: DeferredResultIndex,
+        index: Handle<CommandResult>,
     ) -> Result<CommandResult, XtensaError> {
         match self.state.jtag_results.take(index) {
             Ok(result) => Ok(result),
-            Err(index) => {
+            Err(handle) => {
                 self.execute()?;
-                // We can lose data if `execute` fails.
                 self.state
                     .jtag_results
-                    .take(index)
+                    .take(handle)
                     .map_err(|_| XtensaError::BatchedResultNotAvailable)
             }
         }
     }
 
-    fn do_nexus_op(&mut self, nar: u8, ndr: u32, transform: TransformFn) -> DeferredResultIndex {
+    fn do_nexus_op(&mut self, nar: u8, ndr: u32, transform: TransformFn) -> Handle<CommandResult> {
         let nar_idx = self.state.queue.schedule(JtagWriteCommand {
             data: JtagWriteData {
                 address: TapInstruction::Nar.code(),
@@ -455,19 +454,19 @@ impl<'probe> Xdm<'probe> {
         &mut self,
         address: u8,
         transform: TransformFn,
-    ) -> DeferredResultIndex {
+    ) -> Handle<CommandResult> {
         let regdata = address << 1;
 
         self.do_nexus_op(regdata, 0, transform)
     }
 
     /// Perform an access to a register
-    fn schedule_dbg_read(&mut self, address: u8) -> DeferredResultIndex {
+    fn schedule_dbg_read(&mut self, address: u8) -> Handle<CommandResult> {
         self.schedule_dbg_read_and_transform(address, transform_u32)
     }
 
     /// Perform an access to a register
-    fn schedule_dbg_write(&mut self, address: u8, value: u32) -> DeferredResultIndex {
+    fn schedule_dbg_write(&mut self, address: u8, value: u32) -> Handle<CommandResult> {
         let regdata = (address << 1) | 1;
 
         self.do_nexus_op(regdata, value, transform_noop)
@@ -501,7 +500,9 @@ impl<'probe> Xdm<'probe> {
         Ok(res)
     }
 
-    pub(super) fn schedule_read_nexus_register<R: NexusRegister>(&mut self) -> DeferredResultIndex {
+    pub(super) fn schedule_read_nexus_register<R: NexusRegister>(
+        &mut self,
+    ) -> Handle<CommandResult> {
         tracing::debug!("Reading from {}", R::NAME);
         self.schedule_dbg_read(R::ADDRESS)
     }
@@ -648,11 +649,11 @@ impl<'probe> Xdm<'probe> {
         self.schedule_wait_for_last_instruction();
     }
 
-    pub(super) fn schedule_read_ddr(&mut self) -> DeferredResultIndex {
+    pub(super) fn schedule_read_ddr(&mut self) -> Handle<CommandResult> {
         self.schedule_read_nexus_register::<DebugDataRegister>()
     }
 
-    pub(super) fn schedule_read_ddr_and_execute(&mut self) -> DeferredResultIndex {
+    pub(super) fn schedule_read_ddr_and_execute(&mut self) -> Handle<CommandResult> {
         let reader = self.schedule_read_nexus_register::<DebugDataAndExecRegister>();
         self.schedule_wait_for_last_instruction();
 

@@ -15,7 +15,7 @@ use crate::{
         BitSequence, CommandResult, DebugProbe, DebugProbeError, IoSequenceItem, JtagAccess,
         JtagSequence, JtagWriteCommand, JtagWriteData, RawSwdIo, WireProtocol,
         common::bits_to_byte,
-        queue::{BatchError, Queue},
+        queue::{BatchError, JtagQueue},
     },
 };
 
@@ -119,7 +119,7 @@ fn perform_jtag_transfers<P: JtagAccess + RawSwdIo>(
     probe: &mut P,
     transfers: &mut [DapTransfer],
 ) -> Result<(), DebugProbeError> {
-    let mut queue: Queue<DapError> = Queue::new();
+    let mut queue: JtagQueue<DapError> = JtagQueue::new();
 
     let mut results: Vec<_> = transfers
         .iter()
@@ -167,7 +167,7 @@ fn perform_jtag_transfers<P: JtagAccess + RawSwdIo>(
             match e.error {
                 BatchError::Specific(failure) => {
                     status_responses[current_idx..].fill(TransferStatus::Failed(failure));
-                    jtag_results.push(&results[current_idx], CommandResult::None);
+                    jtag_results.push(results[current_idx].id(), CommandResult::None);
                 }
                 BatchError::Probe(err) => {
                     return Err(err);
