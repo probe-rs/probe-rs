@@ -35,8 +35,8 @@ use crate::{
     },
     probe::{
         BitbangJtag, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-        IoSequenceItem, JtagAccess, JtagChainState, JtagStateAccess, ProbeFactory, RawSwdIo,
-        SwdSettings, TapState, WireProtocol, list::ProbeListItem,
+        IoSequenceItem, JtagAccess, JtagChain, JtagChainAccess, JtagChainState, ProbeFactory,
+        RawSwdIo, SwdSettings, TapState, WireProtocol, list::ProbeListItem,
     },
 };
 
@@ -164,7 +164,11 @@ impl DebugProbe for XvcProbe {
         self
     }
 
-    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JtagAccess> {
+    fn try_as_jtag_chain(&mut self) -> Option<JtagChain<'_>> {
+        Some(JtagChain::new(self))
+    }
+
+    fn try_as_jtag_access(&mut self) -> Option<&mut dyn JtagAccess> {
         Some(self)
     }
 
@@ -222,12 +226,12 @@ impl BitbangJtag for XvcProbe {
     }
 }
 
-impl JtagStateAccess for XvcProbe {
-    fn state_mut(&mut self) -> &mut JtagChainState {
+impl JtagChainAccess for XvcProbe {
+    fn chain_state(&mut self) -> &mut JtagChainState {
         &mut self.jtag_state
     }
 
-    fn state(&self) -> &JtagChainState {
+    fn chain_state_ref(&self) -> &JtagChainState {
         &self.jtag_state
     }
 }

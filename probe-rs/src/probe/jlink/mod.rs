@@ -34,7 +34,7 @@ use crate::probe::jlink::bits::IteratorExt;
 use crate::probe::jlink::config::JlinkConfig;
 use crate::probe::jlink::connection::JlinkConnection;
 use crate::probe::usb_util::InterfaceExt;
-use crate::probe::{BitbangJtag, JtagAccess, JtagChainState, JtagStateAccess, TapState};
+use crate::probe::{BitbangJtag, JtagAccess, JtagChain, JtagChainAccess, JtagChainState, TapState};
 use crate::{
     architecture::{
         arm::{
@@ -1116,7 +1116,11 @@ impl DebugProbe for JLink {
         Ok(())
     }
 
-    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JtagAccess> {
+    fn try_as_jtag_chain(&mut self) -> Option<JtagChain<'_>> {
+        Some(JtagChain::new(self))
+    }
+
+    fn try_as_jtag_access(&mut self) -> Option<&mut dyn JtagAccess> {
         Some(self)
     }
 
@@ -1289,12 +1293,12 @@ impl BitbangJtag for JLink {
     }
 }
 
-impl JtagStateAccess for JLink {
-    fn state_mut(&mut self) -> &mut crate::probe::JtagChainState {
+impl JtagChainAccess for JLink {
+    fn chain_state(&mut self) -> &mut crate::probe::JtagChainState {
         &mut self.jtag_state
     }
 
-    fn state(&self) -> &crate::probe::JtagChainState {
+    fn chain_state_ref(&self) -> &crate::probe::JtagChainState {
         &self.jtag_state
     }
 }

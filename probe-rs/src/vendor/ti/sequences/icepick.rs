@@ -74,7 +74,7 @@ impl<'a> Icepick<'a> {
         interface: &'a mut dyn DapProbe,
         protocol: DefaultProtocol,
     ) -> Result<Self, ArmError> {
-        let probe = interface.try_as_jtag_probe().ok_or_else(|| {
+        let probe = interface.try_as_jtag_access().ok_or_else(|| {
             tracing::error!("Couldn't get probe as JtagAccess");
             ArmError::Dap(DapError::Protocol(WireProtocol::Jtag))
         })?;

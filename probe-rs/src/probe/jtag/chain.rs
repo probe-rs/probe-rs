@@ -2,7 +2,7 @@
 
 use probe_rs_target::ScanChainElement;
 
-use super::{JtagBatch, JtagProbe, TapState};
+use super::{JtagBatch, JtagChainAccess, TapState};
 use crate::probe::common::{common_sequence, extract_idcodes, extract_ir_lengths};
 use crate::probe::{BatchError, BitSequence, DebugProbeError, Handle, Results};
 
@@ -67,85 +67,66 @@ impl ChainParams {
     }
 }
 
-/// Scan chain driver built on [`JtagProbe`].
+/// Scan chain driver built on [`JtagChainAccess`].
 pub struct JtagChain<'p> {
-    probe: &'p mut dyn JtagProbe,
-    chain: Vec<ScanChainElement>,
-    expected: Option<Vec<ScanChainElement>>,
-    params: ChainParams,
+    probe: &'p mut dyn JtagChainAccess,
 }
 
 impl<'p> JtagChain<'p> {
-    /// Create a chain driver over `probe` with the given state.
-    pub fn new(
-        probe: &'p mut dyn JtagProbe,
-        chain: Vec<ScanChainElement>,
-        expected: Option<Vec<ScanChainElement>>,
-        params: ChainParams,
-    ) -> Self {
-        Self {
-            probe,
-            chain,
-            expected,
-            params,
-        }
+    /// Create a chain driver over `probe`.
+    pub fn new(probe: &'p mut dyn JtagChainAccess) -> Self {
+        Self { probe }
     }
 
     /// Configure padding for the TAP at `tap`.
     pub fn select(&mut self, tap: usize) -> Result<(), DebugProbeError> {
-        let Some(params) = ChainParams::from_jtag_chain(&self.chain, tap) else {
+        let chain = &(*self.probe).chain_state_ref().scan_chain;
+        let Some(params) = ChainParams::from_jtag_chain(chain, tap) else {
             return Err(DebugProbeError::TargetNotFound);
         };
 
         tracing::debug!("Selecting JTAG TAP: {tap}");
         tracing::debug!("Setting chain params: {params:?}");
 
-        self.params = params;
+        self.probe.chain_state().chain_params = params;
         Ok(())
     }
 
     /// Set the expected scan chain used to validate IR lengths.
     pub fn set_expected(&mut self, chain: &[ScanChainElement]) {
-        self.expected = Some(chain.to_vec());
+        self.probe
+            .chain_state()
+            .expected_scan_chain
+            .replace(chain.to_vec());
     }
 
     /// Set the scan chain without measuring it.
     pub fn set_chain(&mut self, chain: &[ScanChainElement]) {
-        self.chain = chain.to_vec();
+        self.probe.chain_state().scan_chain = chain.to_vec();
     }
 
     /// Return the current scan chain.
-    pub fn chain(&self) -> &[ScanChainElement] {
-        &self.chain
+    pub fn chain(&mut self) -> &[ScanChainElement] {
+        &(*self.probe).chain_state_ref().scan_chain
     }
 
     /// Return the current chain padding parameters.
-    pub fn params(&self) -> ChainParams {
-        self.params
-    }
-
-    /// Take owned chain state back from the driver.
-    pub fn into_parts(
-        self,
-    ) -> (
-        Vec<ScanChainElement>,
-        Option<Vec<ScanChainElement>>,
-        ChainParams,
-    ) {
-        (self.chain, self.expected, self.params)
+    pub fn params(&mut self) -> ChainParams {
+        self.probe.chain_state().chain_params
     }
 
     /// Measure the scan chain when it is not already set.
     pub fn scan_chain(&mut self) -> Result<&[ScanChainElement], DebugProbeError> {
-        if !self.chain.is_empty() {
-            return Ok(self.chain.as_slice());
+        if !(*self.probe).chain_state_ref().scan_chain.is_empty() {
+            let state = (*self.probe).chain_state_ref();
+            return Ok(&state.scan_chain);
         }
 
         const MAX_CHAIN: usize = 8;
 
         self.tap_reset_run()?;
 
-        self.params = ChainParams::default();
+        self.probe.chain_state().chain_params = ChainParams::default();
 
         let input = [0xFF; 4 * MAX_CHAIN];
         let mut batch = JtagBatch::new();
@@ -198,25 +179,23 @@ impl<'p> JtagChain<'p> {
 
         tracing::debug!("IR scan: {}", response);
 
-        let ir_lens = extract_ir_lengths(
-            response,
-            idcodes.len(),
-            self.expected
-                .as_ref()
-                .map(|chain| {
-                    chain
-                        .iter()
-                        .filter_map(|s| s.ir_len)
-                        .map(|s| s as usize)
-                        .collect::<Vec<usize>>()
-                })
-                .as_deref(),
-        )?;
+        let expected = (*self.probe)
+            .chain_state_ref()
+            .expected_scan_chain
+            .as_ref()
+            .map(|chain| {
+                chain
+                    .iter()
+                    .filter_map(|s| s.ir_len)
+                    .map(|s| s as usize)
+                    .collect::<Vec<usize>>()
+            });
+        let ir_lens = extract_ir_lengths(response, idcodes.len(), expected.as_deref())?;
 
         tracing::info!("Found {} TAPs on reset scan", idcodes.len());
         tracing::debug!("Detected IR lens: {:?}", ir_lens);
 
-        self.chain = idcodes
+        self.probe.chain_state().scan_chain = idcodes
             .into_iter()
             .zip(ir_lens)
             .map(|(idcode, irlen)| ScanChainElement {
@@ -225,7 +204,8 @@ impl<'p> JtagChain<'p> {
             })
             .collect();
 
-        Ok(self.chain.as_slice())
+        let state = (*self.probe).chain_state_ref();
+        Ok(&state.scan_chain)
     }
 
     fn tap_reset_run(&mut self) -> Result<(), DebugProbeError> {
@@ -237,20 +217,22 @@ impl<'p> JtagChain<'p> {
 
     /// Schedule an IR write with chain padding.
     pub fn shift_ir(&mut self, batch: &mut JtagBatch, ir: &BitSequence) {
-        let mut data = BitSequence::repeat(true, self.params.irpre);
+        let params = self.probe.chain_state().chain_params;
+        let mut data = BitSequence::repeat(true, params.irpre);
         data.extend(ir);
-        data.extend(&BitSequence::repeat(true, self.params.irpost));
+        data.extend(&BitSequence::repeat(true, params.irpost));
         batch.enter(TapState::ShiftIr);
         batch.exchange_no_capture(data);
     }
 
     /// Schedule a DR exchange with chain padding.
     pub fn exchange_dr(&mut self, batch: &mut JtagBatch, dr: &BitSequence) -> Handle<BitSequence> {
-        let drpre = self.params.drpre;
+        let params = self.probe.chain_state().chain_params;
+        let drpre = params.drpre;
         let dr_len = dr.len();
         let mut data = BitSequence::repeat(false, drpre);
         data.extend(dr);
-        data.extend(&BitSequence::repeat(false, self.params.drpost));
+        data.extend(&BitSequence::repeat(false, params.drpost));
         batch.enter(TapState::ShiftDr);
         batch
             .exchange(data)
@@ -292,18 +274,21 @@ mod tests {
 
     use super::*;
     use crate::probe::{
-        BatchExecutionError, CommandResult, DebugProbe, JtagOp, JtagSequence, WireProtocol,
+        BatchExecutionError, CommandResult, DebugProbe, JtagChainAccess, JtagChainState, JtagOp,
+        JtagProbe, JtagSequence, WireProtocol,
     };
     use bitvec::vec::BitVec;
 
     struct BatchRecorder {
         exchanges: Vec<BitSequence>,
+        jtag_state: JtagChainState,
     }
 
     impl BatchRecorder {
         fn new() -> Self {
             Self {
                 exchanges: Vec::new(),
+                jtag_state: JtagChainState::default(),
             }
         }
     }
@@ -366,6 +351,16 @@ mod tests {
         }
     }
 
+    impl JtagChainAccess for BatchRecorder {
+        fn chain_state(&mut self) -> &mut JtagChainState {
+            &mut self.jtag_state
+        }
+
+        fn chain_state_ref(&self) -> &JtagChainState {
+            &self.jtag_state
+        }
+    }
+
     impl JtagProbe for BatchRecorder {
         fn run_batch(
             &mut self,
@@ -417,14 +412,15 @@ mod tests {
 
     fn params_for_tap(chain: &[ScanChainElement], tap: usize) -> ChainParams {
         let mut probe = BatchRecorder::new();
-        let mut jtag_chain =
-            JtagChain::new(&mut probe, chain.to_vec(), None, ChainParams::default());
+        probe.jtag_state.scan_chain = chain.to_vec();
+        let mut jtag_chain = JtagChain::new(&mut probe);
         jtag_chain.select(tap).unwrap();
         jtag_chain.params()
     }
 
     fn run_shift_ir(probe: &mut BatchRecorder, params: ChainParams) -> BitSequence {
-        let mut chain = JtagChain::new(probe, Vec::new(), None, params);
+        probe.jtag_state.chain_params = params;
+        let mut chain = JtagChain::new(probe);
         let mut batch = JtagBatch::new();
         chain.shift_ir(&mut batch, &BitSequence::from_u64(4, 0b1010));
         chain.run(batch).unwrap();
@@ -432,7 +428,8 @@ mod tests {
     }
 
     fn run_exchange_dr(probe: &mut BatchRecorder, params: ChainParams) -> BitSequence {
-        let mut chain = JtagChain::new(probe, Vec::new(), None, params);
+        probe.jtag_state.chain_params = params;
+        let mut chain = JtagChain::new(probe);
         let mut batch = JtagBatch::new();
         let handle = chain.exchange_dr(&mut batch, &BitSequence::from_u64(8, 0b1100_0011));
         let mut results = chain.run(batch).unwrap();
@@ -518,7 +515,8 @@ mod tests {
     #[test]
     fn select_outside_chain_errors() {
         let mut probe = BatchRecorder::new();
-        let mut chain = JtagChain::new(&mut probe, three_tap_chain(), None, ChainParams::default());
+        probe.jtag_state.scan_chain = three_tap_chain();
+        let mut chain = JtagChain::new(&mut probe);
         assert!(matches!(
             chain.select(3),
             Err(DebugProbeError::TargetNotFound)
@@ -528,7 +526,7 @@ mod tests {
     #[test]
     fn run_test_idle_zero_schedules_enter_run_test_idle_only() {
         let mut probe = BatchRecorder::new();
-        let mut chain = JtagChain::new(&mut probe, Vec::new(), None, ChainParams::default());
+        let mut chain = JtagChain::new(&mut probe);
         let mut batch = JtagBatch::new();
         chain.run_test_idle(&mut batch, 0);
         let ops: Vec<_> = batch.iter().map(|(_, op)| op.clone()).collect();
@@ -539,7 +537,7 @@ mod tests {
     #[test]
     fn run_test_idle_nonzero_schedules_enter_and_clock() {
         let mut probe = BatchRecorder::new();
-        let mut chain = JtagChain::new(&mut probe, Vec::new(), None, ChainParams::default());
+        let mut chain = JtagChain::new(&mut probe);
         let mut batch = JtagBatch::new();
         chain.run_test_idle(&mut batch, 8);
         let ops: Vec<_> = batch.iter().map(|(_, op)| op.clone()).collect();

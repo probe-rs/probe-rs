@@ -152,7 +152,7 @@ impl ArchitectureInterface {
             }
             ArchitectureInterface::Jtag(probe, ifaces) => {
                 let idx = combined_state.jtag_tap_index();
-                if let Some(probe) = probe.try_as_jtag_probe() {
+                if let Some(probe) = probe.try_as_jtag_access() {
                     probe.select_target(idx)?;
                 }
                 match &mut ifaces[idx] {
@@ -256,14 +256,14 @@ impl Session {
 
         if let Some(jtag) = target.jtag.as_ref()
             && let Some(scan_chain) = jtag.scan_chain.clone()
-            && let Some(probe) = probe.try_as_jtag_probe()
+            && let Some(probe) = probe.try_as_jtag_access()
         {
             probe.set_expected_scan_chain(&scan_chain)?;
         }
 
         probe.attach_to_unspecified()?;
         if probe.protocol() == Some(WireProtocol::Jtag)
-            && let Some(probe) = probe.try_as_jtag_probe()
+            && let Some(probe) = probe.try_as_jtag_access()
             && let Ok(chain) = probe.scan_chain()
             && !chain.is_empty()
         {
@@ -432,7 +432,7 @@ impl Session {
         // handle most of the setup in the same way.
         if let Some(jtag) = target.jtag.as_ref()
             && let Some(scan_chain) = jtag.scan_chain.clone()
-            && let Some(probe) = probe.try_as_jtag_probe()
+            && let Some(probe) = probe.try_as_jtag_access()
         {
             if jtag.force_scan_chain {
                 // Bypass JTAG auto-detection entirely; use the scan chain from the target YAML.
@@ -445,7 +445,7 @@ impl Session {
         }
 
         probe.attach_to_unspecified()?;
-        if let Some(probe) = probe.try_as_jtag_probe()
+        if let Some(probe) = probe.try_as_jtag_access()
             && let Ok(chain) = probe.scan_chain()
             && !chain.is_empty()
         {
@@ -461,7 +461,7 @@ impl Session {
         // FIXME: This is terribly JTAG-specific. Since we don't really support anything else yet,
         // it should be fine for now.
         let highest_idx = cores.iter().map(|c| c.jtag_tap_index()).max().unwrap_or(0);
-        let tap_count = if let Some(probe) = probe.try_as_jtag_probe() {
+        let tap_count = if let Some(probe) = probe.try_as_jtag_access() {
             match probe.scan_chain() {
                 Ok(scan_chain) => scan_chain.len().max(highest_idx + 1),
                 Err(_) => highest_idx + 1,
@@ -750,7 +750,7 @@ impl Session {
                 }
             }
             ArchitectureInterface::Jtag(probe, ifaces) => {
-                if let Some(probe) = probe.try_as_jtag_probe() {
+                if let Some(probe) = probe.try_as_jtag_access() {
                     probe.select_target(tap_idx)?;
                 }
                 if let JtagInterface::Riscv(state) = &mut ifaces[tap_idx] {
@@ -771,7 +771,7 @@ impl Session {
     ) -> Result<XtensaCommunicationInterface<'_>, Error> {
         let tap_idx = self.interface_idx(core_id)?;
         if let ArchitectureInterface::Jtag(probe, ifaces) = &mut self.interfaces {
-            if let Some(probe) = probe.try_as_jtag_probe() {
+            if let Some(probe) = probe.try_as_jtag_access() {
                 probe.select_target(tap_idx)?;
             }
             if let JtagInterface::Xtensa(state) = &mut ifaces[tap_idx] {

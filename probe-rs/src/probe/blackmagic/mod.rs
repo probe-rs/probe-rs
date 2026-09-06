@@ -23,7 +23,7 @@ use crate::{
     },
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
-        JtagAccess, JtagChainState, JtagOp, JtagProbe, JtagSequence, JtagStateAccess,
+        JtagAccess, JtagChain, JtagChainAccess, JtagChainState, JtagOp, JtagProbe, JtagSequence,
         ProbeCreationError, ProbeError, ProbeFactory, RawSwdIo, SwdSettings, WireProtocol,
         blackmagic::arm::BlackMagicProbeArmDebug,
         jtag::{TapState, distribute_captures, exchange_leaves_shift},
@@ -1321,7 +1321,11 @@ impl DebugProbe for BlackMagicProbe {
         self.protocol
     }
 
-    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JtagAccess> {
+    fn try_as_jtag_chain(&mut self) -> Option<JtagChain<'_>> {
+        Some(JtagChain::new(self))
+    }
+
+    fn try_as_jtag_access(&mut self) -> Option<&mut dyn JtagAccess> {
         Some(self)
     }
 
@@ -1413,12 +1417,12 @@ impl DebugProbe for BlackMagicProbe {
     }
 }
 
-impl JtagStateAccess for BlackMagicProbe {
-    fn state_mut(&mut self) -> &mut JtagChainState {
+impl JtagChainAccess for BlackMagicProbe {
+    fn chain_state(&mut self) -> &mut JtagChainState {
         &mut self.jtag_state
     }
 
-    fn state(&self) -> &JtagChainState {
+    fn chain_state_ref(&self) -> &JtagChainState {
         &self.jtag_state
     }
 }

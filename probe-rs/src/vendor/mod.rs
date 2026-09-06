@@ -217,7 +217,7 @@ fn try_detect_riscv_chip(registry: &Registry, probe: &mut Probe) -> Result<Optio
         return Ok(None);
     }
 
-    if let Some(probe) = probe.try_as_jtag_probe() {
+    if let Some(probe) = probe.try_as_jtag_access() {
         _ = probe.select_target(0);
     }
 
@@ -268,7 +268,7 @@ fn try_detect_xtensa_chip(registry: &Registry, probe: &mut Probe) -> Result<Opti
         return Ok(None);
     }
 
-    if let Some(probe) = probe.try_as_jtag_probe() {
+    if let Some(probe) = probe.try_as_jtag_access() {
         _ = probe.select_target(0);
     }
 
