@@ -35,8 +35,8 @@ use crate::{
     },
     probe::{
         BitbangJtag, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-        IoSequenceItem, JtagAccess, JtagChain, JtagChainAccess, JtagChainState, ProbeFactory,
-        RawSwdIo, SwdSettings, TapState, WireProtocol, list::ProbeListItem,
+        IoSequenceItem, JtagChain, JtagChainAccess, JtagChainState, ProbeFactory, RawSwdIo,
+        SwdSettings, TapState, WireProtocol, list::ProbeListItem,
     },
 };
 
@@ -121,8 +121,9 @@ impl DebugProbe for XvcProbe {
     }
 
     fn attach(&mut self) -> Result<(), DebugProbeError> {
-        // Performs initial scan_chain, and sets non zero IR length.
-        self.select_target(0)
+        let mut chain = JtagChain::new(self);
+        chain.scan_chain()?;
+        Ok(())
     }
 
     fn detach(&mut self) -> Result<(), crate::Error> {
@@ -166,10 +167,6 @@ impl DebugProbe for XvcProbe {
 
     fn try_as_jtag_chain(&mut self) -> Option<JtagChain<'_>> {
         Some(JtagChain::new(self))
-    }
-
-    fn try_as_jtag_access(&mut self) -> Option<&mut dyn JtagAccess> {
-        Some(self)
     }
 
     fn has_arm_interface(&self) -> bool {

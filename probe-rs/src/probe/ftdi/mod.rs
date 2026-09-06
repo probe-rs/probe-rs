@@ -14,9 +14,9 @@ use crate::{
         },
     },
     probe::{
-        BitSequence, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-        IoSequenceItem, JtagAccess, JtagChain, JtagChainAccess, JtagChainState, JtagOp, JtagProbe,
-        JtagSequence, ProbeCreationError, ProbeFactory, RawSwdIo, SwdSettings, WireProtocol,
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem, JtagChain,
+        JtagChainAccess, JtagChainState, JtagOp, JtagProbe, ProbeCreationError, ProbeFactory,
+        RawSwdIo, SwdSettings, WireProtocol,
         jtag::{TapState, distribute_captures, enter_tdi, exchange_leaves_shift},
         list::{ProbeListItem, usb_probe_accessibility},
         queue::{BatchExecutionError, Results},
@@ -277,16 +277,6 @@ impl JtagAdapter {
         Ok(std::mem::take(&mut self.in_bits))
     }
 
-    fn shift_raw_sequence(&mut self, sequence: JtagSequence) -> Result<BitVec, DebugProbeError> {
-        let mut data = BitSequence::new();
-        for bit in sequence.data.iter() {
-            data.push(*bit);
-        }
-        let commands = Command::encode_raw_sequence(sequence.tms, &data, sequence.tdo_capture);
-        self.append_commands(&commands)?;
-        self.read_captured_bits()
-    }
-
     fn run_jtag_batch(
         &mut self,
         start: TapState,
@@ -473,7 +463,7 @@ impl DebugProbe for FtdiProbe {
         tracing::debug!("Attaching...");
 
         self.adapter.attach()?;
-        self.select_target(0)
+        Ok(())
     }
 
     fn detach(&mut self) -> Result<(), crate::Error> {
@@ -515,10 +505,6 @@ impl DebugProbe for FtdiProbe {
 
     fn try_as_jtag_chain(&mut self) -> Option<JtagChain<'_>> {
         Some(JtagChain::new(self))
-    }
-
-    fn try_as_jtag_access(&mut self) -> Option<&mut dyn JtagAccess> {
-        Some(self)
     }
 
     fn try_get_riscv_interface_builder<'probe>(
@@ -577,10 +563,6 @@ impl JtagProbe for FtdiProbe {
         let (state, results) = self.adapter.run_jtag_batch(start, batch)?;
         self.jtag_state.tap_state = state;
         Ok(results)
-    }
-
-    fn shift_raw_sequence(&mut self, sequence: JtagSequence) -> Result<BitVec, DebugProbeError> {
-        self.adapter.shift_raw_sequence(sequence)
     }
 }
 

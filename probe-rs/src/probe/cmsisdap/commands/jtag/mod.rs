@@ -2,7 +2,7 @@ use bitvec::{bitvec, slice::BitSlice, vec::BitVec};
 
 use crate::probe::{
     Batch, BatchExecutionError, DebugProbeError, JtagChainAccess, JtagChainState, JtagOp,
-    JtagProbe, JtagSequence, Results,
+    JtagProbe, Results,
     cmsisdap::{
         CmsisDap,
         commands::jtag::sequence::{Sequence, SequenceRequest},
@@ -35,22 +35,6 @@ impl JtagProbe for CmsisDap {
         let (state, results) = self.run_jtag_batch(start, batch)?;
         self.jtag_state.tap_state = state;
         Ok(results)
-    }
-
-    fn shift_raw_sequence(&mut self, sequence: JtagSequence) -> Result<BitVec, DebugProbeError> {
-        self.jtag_buffer.complete_sequences.clear();
-        self.jtag_buffer.current_sequence = None;
-        self.jtag_buffer.response.clear();
-
-        self.jtag_buffer
-            .push_sequence(sequence.tms, &sequence.data, sequence.tdo_capture)?;
-        self.flush_jtag()?;
-        if sequence.tdo_capture {
-            Ok(std::mem::take(&mut self.jtag_buffer.response))
-        } else {
-            self.jtag_buffer.response.clear();
-            Ok(BitVec::new())
-        }
     }
 }
 
@@ -197,7 +181,13 @@ impl CmsisDap {
     }
 }
 
-impl JtagSequence {
+pub(crate) struct BufferedJtagSequence {
+    tdo_capture: bool,
+    tms: bool,
+    data: BitVec,
+}
+
+impl BufferedJtagSequence {
     /// Returns the size of the sequence in bytes.
     fn size(&self) -> usize {
         1 + self.data.len().div_ceil(8)
@@ -210,8 +200,8 @@ impl JtagSequence {
 
 pub(crate) struct JtagBuffer {
     packet_size: usize,
-    pub(crate) current_sequence: Option<JtagSequence>,
-    pub(crate) complete_sequences: Vec<JtagSequence>,
+    pub(crate) current_sequence: Option<BufferedJtagSequence>,
+    pub(crate) complete_sequences: Vec<BufferedJtagSequence>,
     response: BitVec,
 }
 
@@ -257,7 +247,7 @@ impl JtagBuffer {
             self.complete_sequences.push(complete);
         }
 
-        self.current_sequence = Some(JtagSequence {
+        self.current_sequence = Some(BufferedJtagSequence {
             tdo_capture,
             tms,
             data: data.to_bitvec(),

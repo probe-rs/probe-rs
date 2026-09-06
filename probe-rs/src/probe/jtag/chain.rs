@@ -92,7 +92,13 @@ impl<'p> JtagChain<'p> {
     }
 
     /// Configure padding for the TAP at `tap`.
+    ///
+    /// Measures the scan chain when it is not known yet.
     pub fn select(&mut self, tap: usize) -> Result<(), DebugProbeError> {
+        if (*self.probe).chain_state_ref().scan_chain.is_empty() {
+            self.scan_chain()?;
+        }
+
         let chain = &(*self.probe).chain_state_ref().scan_chain;
         let Some(params) = ChainParams::from_jtag_chain(chain, tap) else {
             return Err(DebugProbeError::TargetNotFound);
@@ -395,9 +401,8 @@ mod tests {
     use super::*;
     use crate::probe::{
         BatchExecutionError, CommandResult, DebugProbe, JtagChainAccess, JtagChainState, JtagOp,
-        JtagProbe, JtagSequence, WireProtocol,
+        JtagProbe, WireProtocol,
     };
-    use bitvec::vec::BitVec;
 
     struct BatchRecorder {
         exchanges: Vec<BitSequence>,
@@ -503,13 +508,6 @@ mod tests {
                 }
             }
             Ok(results)
-        }
-
-        fn shift_raw_sequence(
-            &mut self,
-            _sequence: JtagSequence,
-        ) -> Result<BitVec, DebugProbeError> {
-            Ok(BitVec::new())
         }
     }
 
@@ -630,6 +628,14 @@ mod tests {
             let captured = run_exchange_dr(&mut probe, params);
             assert_eq!(captured, expected);
         }
+    }
+
+    #[test]
+    fn select_measures_unknown_chain() {
+        let mut probe = BatchRecorder::new();
+        let mut chain = JtagChain::new(&mut probe);
+        _ = chain.select(0);
+        assert!(!probe.exchanges.is_empty());
     }
 
     #[test]

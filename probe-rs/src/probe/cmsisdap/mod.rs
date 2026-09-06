@@ -22,8 +22,8 @@ use crate::{
         },
     },
     probe::{
-        BatchCommand, BitSequence, DebugProbe, DebugProbeError, DebugProbeSelector, JtagAccess,
-        JtagChain, JtagChainState, ProbeFactory, WireProtocol,
+        BatchCommand, BitSequence, DebugProbe, DebugProbeError, DebugProbeSelector, JtagChain,
+        JtagChainState, ProbeFactory, WireProtocol,
         cmsisdap::commands::{
             CmsisDapError, RequestError,
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
@@ -1055,10 +1055,6 @@ impl DebugProbe for CmsisDap {
 
     fn try_as_jtag_chain(&mut self) -> Option<JtagChain<'_>> {
         Some(JtagChain::new(self))
-    }
-
-    fn try_as_jtag_access(&mut self) -> Option<&mut dyn JtagAccess> {
-        Some(self)
     }
 
     fn try_as_dap_probe(&mut self) -> Option<&mut dyn DapProbe> {

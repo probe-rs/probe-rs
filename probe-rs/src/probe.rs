@@ -30,17 +30,14 @@ use crate::config::TargetSelector;
 use crate::config::registry::Registry;
 use crate::{Error, Permissions, Session};
 use bitvec::slice::BitSlice;
-use bitvec::vec::BitVec;
 use common::ScanChainError;
 use parking_lot::RwLock;
-use probe_rs_target::ScanChainElement;
 use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::fmt;
 use std::sync::{Arc, LazyLock};
 
 pub use bits::BitSequence;
-use jtag::captured_bits_to_bytes;
 pub use jtag::chain::ChainParams;
 pub use jtag::{
     BitbangJtag, JtagBatch, JtagChain, JtagChainAccess, JtagChainState, JtagOp, JtagProbe, TapState,
@@ -394,6 +391,17 @@ impl Probe {
     pub fn attach_to_unspecified(&mut self) -> Result<(), Error> {
         self.inner.attach()?;
         self.attached = true;
+
+        // A JTAG consumer needs the padding parameters of a TAP. Select the first one, so that a
+        // caller that does not know the chain can access the target. A chain that is not visible
+        // yet is not an error here: a debug sequence may route the TAP later.
+        if self.protocol() == Some(WireProtocol::Jtag)
+            && let Some(mut chain) = self.try_as_jtag_chain()
+            && let Err(error) = chain.select(0)
+        {
+            tracing::debug!("Unable to select JTAG TAP 0: {error}");
+        }
+
         Ok(())
     }
 
@@ -604,11 +612,6 @@ impl Probe {
         self.inner.try_as_jtag_chain()
     }
 
-    /// Returns a [`JtagAccess`] from the debug probe, if implemented.
-    pub fn try_as_jtag_access(&mut self) -> Option<&mut dyn JtagAccess> {
-        self.inner.try_as_jtag_access()
-    }
-
     /// Gets a SWO interface from the debug probe.
     ///
     /// This does not work on all probes.
@@ -742,11 +745,6 @@ pub trait DebugProbe: Any + Send + fmt::Debug {
 
     /// Returns a [`JtagChain`] from the debug probe, if implemented.
     fn try_as_jtag_chain(&mut self) -> Option<JtagChain<'_>> {
-        None
-    }
-
-    /// Returns a [`JtagAccess`] from the debug probe, if implemented.
-    fn try_as_jtag_access(&mut self) -> Option<&mut dyn JtagAccess> {
         None
     }
 
@@ -1017,180 +1015,6 @@ impl Default for SwdSettings {
             idle_cycles_after_transfer: 8,
         }
     }
-}
-
-/// Low-Level access to the JTAG protocol
-///
-/// This trait should be implemented by all probes which offer low-level access to
-/// the JTAG protocol, i.e. direct control over the bytes sent and received.
-pub trait JtagAccess: DebugProbe {
-    /// Set the JTAG scan chain information for the target under debug.
-    ///
-    /// This allows the probe to know which TAPs are in the scan chain and their
-    /// position and IR lengths.
-    ///
-    /// If the scan chain is provided, and the selected protocol is JTAG, the
-    /// probe will use this information to validate that the scan chain is
-    /// what is expected.
-    ///
-    /// This is called by the `Session` when attaching to a target.
-    /// So this does not need to be called manually, unless you want to
-    /// modify the scan chain. You must be attached to a target to set the
-    /// scan_chain since the scan chain only applies to the attached target.
-    fn set_expected_scan_chain(
-        &mut self,
-        scan_chain: &[ScanChainElement],
-    ) -> Result<(), DebugProbeError>;
-
-    /// Set the JTAG scan chain information for the target under debug.
-    ///
-    /// If the scan chain is provided, and the selected protocol is JTAG, the
-    /// probe will automatically configure the JTAG interface to match the
-    /// scan chain configuration without trying to determine the chain at
-    /// runtime.
-    fn set_scan_chain(&mut self, scan_chain: &[ScanChainElement]) -> Result<(), DebugProbeError>;
-
-    /// Scans `IDCODE` and `IR` length information about the devices on the JTAG chain.
-    ///
-    /// If configured, this will use the data from [`Self::set_scan_chain`]. Otherwise, it
-    /// will try to measure and extract `IR` lengths by driving the JTAG interface.
-    ///
-    /// The measured scan chain will be stored in the probe's internal state.
-    fn scan_chain(&mut self) -> Result<&[ScanChainElement], DebugProbeError>;
-
-    /// Shifts a number of bits through the TAP.
-    fn shift_raw_sequence(&mut self, sequence: JtagSequence) -> Result<BitVec, DebugProbeError>;
-
-    /// Move the TAP to a stable state.
-    fn enter_tap_state(&mut self, state: TapState) -> Result<(), DebugProbeError> {
-        let _ = state;
-        Err(DebugProbeError::NotImplemented {
-            function_name: "enter_tap_state",
-        })
-    }
-
-    /// Executes a TAP reset.
-    fn tap_reset(&mut self) -> Result<(), DebugProbeError>;
-
-    /// Selects the JTAG TAP to be used for communication.
-    ///
-    /// The index is the position of the TAP in the scan chain, which can
-    /// be configured using [`set_scan_chain()`](JtagAccess::set_scan_chain()).
-    fn select_target(&mut self, index: usize) -> Result<(), DebugProbeError> {
-        if index != 0 {
-            return Err(DebugProbeError::NotImplemented {
-                function_name: "select_jtag_tap",
-            });
-        }
-
-        Ok(())
-    }
-
-    /// Read a JTAG register.
-    ///
-    /// This function emulates a read by performing a write with all zeros to the DR.
-    fn read_register(
-        &mut self,
-        address: u32,
-        len: u32,
-        idle_cycles: u32,
-    ) -> Result<BitVec, DebugProbeError> {
-        let data = vec![0u8; len.div_ceil(8) as usize];
-
-        self.write_register(address, &data, len, idle_cycles)
-    }
-
-    /// Write to a JTAG register
-    ///
-    /// This function will perform a write to the IR register, if necessary,
-    /// to select the correct register, and then to the DR register, to transmit the
-    /// data. The data shifted out of the DR register will be returned.
-    fn write_register(
-        &mut self,
-        address: u32,
-        data: &[u8],
-        len: u32,
-        idle_cycles: u32,
-    ) -> Result<BitVec, DebugProbeError>;
-
-    /// Shift a value into the DR JTAG register
-    ///
-    /// The data shifted out of the DR register will be returned.
-    fn write_dr(
-        &mut self,
-        data: &[u8],
-        len: u32,
-        idle_cycles: u32,
-    ) -> Result<BitVec, DebugProbeError>;
-
-    /// Executes a sequence of JTAG commands.
-    fn write_register_batch(
-        &mut self,
-        writes: &ErasedBatch<JtagCommand>,
-    ) -> Result<Results, BatchExecutionError> {
-        tracing::debug!(
-            "Using default `JtagAccess::write_register_batch` hurts performance. Please implement proper batching for this probe."
-        );
-        let mut results = Results::new();
-
-        for (idx, write) in writes.iter() {
-            match write {
-                JtagCommand::WriteRegister(write) => {
-                    let data = captured_bits_to_bytes(write.inner.data.iter());
-                    let response = match self.write_register(
-                        write.inner.address,
-                        &data,
-                        write.inner.data.len() as u32,
-                        write.inner.idle_cycles,
-                    ) {
-                        Ok(response) => response,
-                        Err(e) => {
-                            return Err(BatchExecutionError::new_from_debug_probe(e, results));
-                        }
-                    };
-
-                    match (write.transform)(&write.inner, &response) {
-                        Ok(res) => results.push(idx, res),
-                        Err(e) => {
-                            return Err(BatchExecutionError::new_specific(e, results));
-                        }
-                    }
-                }
-
-                JtagCommand::ShiftDr(write) => {
-                    let data = captured_bits_to_bytes(write.inner.data.iter());
-                    let response = match self.write_dr(
-                        &data,
-                        write.inner.data.len() as u32,
-                        write.inner.idle_cycles,
-                    ) {
-                        Ok(response) => response,
-                        Err(e) => {
-                            return Err(BatchExecutionError::new_from_debug_probe(e, results));
-                        }
-                    };
-                    match (write.transform)(&write.inner, &response) {
-                        Ok(res) => results.push(idx, res),
-                        Err(e) => return Err(BatchExecutionError::new_specific(e, results)),
-                    }
-                }
-            }
-        }
-
-        Ok(results)
-    }
-}
-
-/// A raw JTAG bit sequence.
-pub struct JtagSequence {
-    /// TDO capture
-    pub tdo_capture: bool,
-
-    /// TMS value
-    pub tms: bool,
-
-    /// Data to generate on TDI
-    pub data: BitVec,
 }
 
 /// Data for a JTAG register write

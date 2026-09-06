@@ -151,7 +151,10 @@ impl<Op, E: std::error::Error + Send + Sync + 'static> Batch<Op, E> {
         self.batch.schedule(cmd)
     }
 
-    pub(crate) fn iter(&self) -> impl Iterator<Item = &(HandleId, Op)> {
+    /// Iterate over the operations in the batch, in the order of the schedule.
+    ///
+    /// A probe driver walks the batch with this method.
+    pub fn iter(&self) -> impl Iterator<Item = &(HandleId, Op)> {
         self.batch.iter()
     }
 
@@ -190,7 +193,10 @@ impl Results {
         Self(HashMap::with_capacity(capacity))
     }
 
-    pub(crate) fn push(&mut self, id: &HandleId, result: CommandResult) {
+    /// Record the result of one operation.
+    ///
+    /// A probe driver reports the answer of an operation with this method.
+    pub fn push(&mut self, id: &HandleId, result: CommandResult) {
         self.0.insert(id.clone(), result);
     }
 
@@ -244,7 +250,11 @@ impl HandleId {
         Self(Arc::new(()))
     }
 
-    pub(crate) fn should_capture(&self) -> bool {
+    /// Report whether the caller still holds the handle of this operation.
+    ///
+    /// A probe driver skips the capture of an operation whose handle is gone,
+    /// because nobody can read the answer.
+    pub fn should_capture(&self) -> bool {
         // Both the batch and the user code may hold on to at most one of the references. The batch
         // execution will be able to detect if the user dropped their read reference, meaning
         // the read data would be inaccessible.
