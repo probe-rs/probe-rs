@@ -1,6 +1,10 @@
+use std::time::Duration;
+
 use crate::{
     CoreStatus,
-    probe::{BitSequence, DebugProbe, DebugProbeError},
+    probe::{
+        BitSequence, DebugProbe, DebugProbeError, WireProtocol, jtag::chain::JtagChain, swd::Port,
+    },
 };
 
 use super::{
@@ -412,4 +416,56 @@ pub trait DapAccess {
 
     /// Gain mutable access to the Probe that implements this trait
     fn try_dap_probe_mut(&mut self) -> Option<&mut dyn DapProbe>;
+
+    /// Run a debug port connect through the probe wire.
+    fn debug_port_reconnect_with(
+        &mut self,
+        connect: &mut dyn FnMut(&mut dyn DebugPortWire) -> Result<(), ArmError>,
+    ) -> Result<(), ArmError> {
+        let Some(probe) = self.try_dap_probe_mut() else {
+            return Err(ArmError::NotImplemented("debug_port_reconnect"));
+        };
+        crate::architecture::arm::communication_interface::dap_debug_port_wire(probe, |wire| {
+            connect(wire)
+        })
+    }
+}
+
+/// Layer-agnostic debug port wiring used by attach sequences.
+pub trait DebugPortWire {
+    /// Get the transport protocol currently in active use by the debug probe.
+    fn active_protocol(&self) -> Option<WireProtocol>;
+
+    /// Send an output-only SWJ bit sequence.
+    fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), ArmError>;
+
+    /// Send an output-only JTAG bit sequence.
+    fn jtag_sequence(&mut self, tms: bool, tdi: &BitSequence) -> Result<(), ArmError>;
+
+    /// Configure the probe for JTAG use.
+    fn configure_jtag(&mut self, skip_scan: bool) -> Result<(), ArmError>;
+
+    /// Drive SWJ pins and return the pin input state when supported.
+    fn swj_pins(&mut self, out: Pins, select: Pins, wait: Duration) -> Result<Pins, ArmError>;
+
+    /// Pulse the target reset line.
+    fn target_reset(&mut self) -> Result<(), ArmError>;
+
+    /// Assert the target reset line.
+    fn target_reset_assert(&mut self) -> Result<(), ArmError>;
+
+    /// Deassert the target reset line.
+    fn target_reset_deassert(&mut self) -> Result<(), ArmError>;
+
+    /// Flush any outstanding operations.
+    fn raw_flush(&mut self) -> Result<(), ArmError>;
+
+    /// Read one ADIv5 register on the wire.
+    fn raw_read_register(&mut self, port: Port, addr: u8) -> Result<u32, ArmError>;
+
+    /// Write one ADIv5 register on the wire.
+    fn raw_write_register(&mut self, port: Port, addr: u8, value: u32) -> Result<(), ArmError>;
+
+    /// Returns a [`JtagChain`] when the probe supports JTAG batching.
+    fn try_jtag_chain(&mut self) -> Option<JtagChain<'_>>;
 }

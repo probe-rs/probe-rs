@@ -7,7 +7,7 @@ use crate::architecture::arm::{
         memory_ap::{MemoryAp, MemoryApType},
         v1::valid_access_ports,
     },
-    communication_interface::{DapProbe, DpState, SelectCache, SwdSequence},
+    communication_interface::{DapProbe, DpState, SelectCache, SwdSequence, dap_debug_port_wire},
     dp::{
         Ctrl, DPIDR, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, DpAddress,
         DpRegisterAddress, Select1, SelectV3,
@@ -96,14 +96,18 @@ impl BlackMagicProbeArmDebug {
             // We are not currently connected to any DP,
             // so we need to run the debug_port_setup sequence.
             if self.current_dp.is_none() {
-                sequence.debug_port_setup(&mut *self.probe, dp)?;
+                dap_debug_port_wire(&mut *self.probe, |wire| sequence.debug_port_setup(wire, dp))?;
             } else {
                 // Try to switch to the new DP.
-                if let Err(e) = sequence.debug_port_connect(&mut *self.probe, dp) {
+                if let Err(e) = dap_debug_port_wire(&mut *self.probe, |wire| {
+                    sequence.debug_port_connect(wire, dp)
+                }) {
                     tracing::warn!("Failed to switch to DP {:x?}: {}", dp, e);
 
                     // Try the more involved debug_port_setup sequence, which also handles dormant mode.
-                    sequence.debug_port_setup(&mut *self.probe, dp)?;
+                    dap_debug_port_wire(&mut *self.probe, |wire| {
+                        sequence.debug_port_setup(wire, dp)
+                    })?;
                 }
             }
 
@@ -360,13 +364,15 @@ impl ArmDebugInterface for BlackMagicProbeArmDebug {
         };
 
         // Switch to the correct mode
-        sequence.debug_port_setup(&mut *self.probe, dp)?;
+        dap_debug_port_wire(&mut *self.probe, |wire| sequence.debug_port_setup(wire, dp))?;
 
-        if let Err(e) = sequence.debug_port_connect(&mut *self.probe, dp) {
+        if let Err(e) = dap_debug_port_wire(&mut *self.probe, |wire| {
+            sequence.debug_port_connect(wire, dp)
+        }) {
             tracing::warn!("failed to switch to DP {:x?}: {}", dp, e);
 
             // Try the more involved debug_port_setup sequence, which also handles dormant mode.
-            sequence.debug_port_setup(&mut *self.probe, dp)?;
+            dap_debug_port_wire(&mut *self.probe, |wire| sequence.debug_port_setup(wire, dp))?;
         }
 
         self.debug_port_start(dp)?;
@@ -389,9 +395,13 @@ impl ArmDebugInterface for BlackMagicProbeArmDebug {
             self.current_dp = Some(dp);
 
             // Switch to the correct mode
-            self.sequence.debug_port_setup(self.probe.as_mut(), dp)?;
+            dap_debug_port_wire(self.probe.as_mut(), |wire| {
+                self.sequence.debug_port_setup(wire, dp)
+            })?;
 
-            self.sequence.debug_port_connect(self.probe.as_mut(), dp)?;
+            dap_debug_port_wire(self.probe.as_mut(), |wire| {
+                self.sequence.debug_port_connect(wire, dp)
+            })?;
 
             self.debug_port_start(dp)?;
 

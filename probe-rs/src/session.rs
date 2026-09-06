@@ -3,7 +3,7 @@ use crate::{
     architecture::{
         arm::{
             ArmError, FullyQualifiedApAddress, SwoReader,
-            communication_interface::ArmDebugInterface,
+            communication_interface::{ArmDebugInterface, dap_debug_port_wire},
             component::{TraceSink, get_arm_components},
             dp::DpAddress,
             memory::CoresightComponent,
@@ -243,7 +243,9 @@ impl Session {
             let _span = tracing::debug_span!("Asserting hardware reset").entered();
 
             if let Some(dap_probe) = probe.try_as_dap_probe() {
-                sequence_handle.reset_hardware_assert(dap_probe)?;
+                dap_debug_port_wire(dap_probe, |wire| {
+                    sequence_handle.reset_hardware_assert(wire)
+                })?;
             } else {
                 tracing::info!(
                     "Custom reset sequences are not supported on {}.",

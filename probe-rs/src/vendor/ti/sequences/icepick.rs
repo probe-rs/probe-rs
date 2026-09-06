@@ -1,6 +1,6 @@
 //! Controls for the ICEPICK JTAG mux used on some TI parts
 
-use crate::architecture::arm::{ArmError, DapError, DapProbe};
+use crate::architecture::arm::{ArmError, DapError, traits::DebugPortWire};
 use crate::probe::jtag::chain::JtagChain;
 use crate::probe::{BitSequence, DebugProbeError, JtagBatch, TapState, WireProtocol};
 use bitvec::field::BitField;
@@ -65,10 +65,10 @@ impl<'a> Icepick<'a> {
     /// and must be asked to enable various parts on the bus in order to allow us to
     /// talk to them. By default, the ICEPick will disable all secondary TAPs.
     pub fn new(
-        interface: &'a mut dyn DapProbe,
+        interface: &'a mut dyn DebugPortWire,
         protocol: DefaultProtocol,
     ) -> Result<Self, ArmError> {
-        let chain = interface.try_as_jtag_chain().ok_or_else(|| {
+        let chain = interface.try_jtag_chain().ok_or_else(|| {
             tracing::error!("Couldn't get probe as JtagChain");
             ArmError::Dap(DapError::Protocol(WireProtocol::Jtag))
         })?;

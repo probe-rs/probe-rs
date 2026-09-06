@@ -974,23 +974,7 @@ impl<Probe: DebugProbe + RawSwdIo + JtagChainAccess + 'static> RawDapAccess for 
     }
 
     fn jtag_sequence(&mut self, tms: bool, tdi: &BitSequence) -> Result<(), DebugProbeError> {
-        if tms {
-            shift_tms_bits(self, true, tdi.len())?;
-            return Ok(());
-        }
-
-        if tdi.len() == 1 {
-            shift_tms_bits(self, false, 1)?;
-            return Ok(());
-        }
-
-        let mut chain = JtagChain::new(self);
-        let mut batch = JtagBatch::new();
-        batch.enter(TapState::ShiftDr);
-        batch.exchange_no_capture(tdi.clone());
-        batch.enter(TapState::RunTestIdle);
-        chain.run(batch)?;
-        Ok(())
+        jtag_output_sequence(self, tms, tdi)
     }
 
     fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError> {
@@ -1037,8 +1021,32 @@ fn send_sequence<P: RawSwdIo + JtagChainAccess>(
     Ok(())
 }
 
-fn shift_tms_bits<P: JtagChainAccess>(
-    probe: &mut P,
+pub(crate) fn jtag_output_sequence(
+    probe: &mut dyn JtagChainAccess,
+    tms: bool,
+    tdi: &BitSequence,
+) -> Result<(), DebugProbeError> {
+    if tms {
+        shift_tms_bits(probe, true, tdi.len())?;
+        return Ok(());
+    }
+
+    if tdi.len() == 1 {
+        shift_tms_bits(probe, false, 1)?;
+        return Ok(());
+    }
+
+    let mut chain = JtagChain::new(probe);
+    let mut batch = JtagBatch::new();
+    batch.enter(TapState::ShiftDr);
+    batch.exchange_no_capture(tdi.clone());
+    batch.enter(TapState::RunTestIdle);
+    chain.run(batch)?;
+    Ok(())
+}
+
+fn shift_tms_bits(
+    probe: &mut dyn JtagChainAccess,
     tms: bool,
     bit_count: usize,
 ) -> Result<(), DebugProbeError> {
@@ -1144,6 +1152,86 @@ impl FullTapState {
             )),
         }
     }
+}
+
+pub(crate) fn jtag_read_register(
+    chain: &mut JtagChain<'_>,
+    address: RegisterAddress,
+) -> Result<u32, ArmError> {
+    let mut transfer = DapTransfer::read(address);
+    perform_jtag_transfers(chain, std::slice::from_mut(&mut transfer))?;
+
+    match transfer.status {
+        TransferStatus::Ok => Ok(transfer.value),
+        TransferStatus::Failed(DapError::FaultResponse) => Err(DapError::FaultResponse.into()),
+        TransferStatus::Failed(error) => Err(error.into()),
+        other => {
+            panic!("Unexpected transfer state after reading register: {other:?}. This is a bug!")
+        }
+    }
+}
+
+pub(crate) fn jtag_write_register(
+    chain: &mut JtagChain<'_>,
+    address: RegisterAddress,
+    value: u32,
+) -> Result<(), ArmError> {
+    let mut transfer = DapTransfer::write(address, value);
+    perform_jtag_transfers(chain, std::slice::from_mut(&mut transfer))?;
+
+    match transfer.status {
+        TransferStatus::Ok => Ok(()),
+        TransferStatus::Failed(DapError::FaultResponse) => Err(DapError::FaultResponse.into()),
+        TransferStatus::Failed(error) => Err(error.into()),
+        other => {
+            panic!("Unexpected transfer state after writing register: {other:?}. This is a bug!")
+        }
+    }
+}
+
+pub(crate) fn jtag_read_block(
+    chain: &mut JtagChain<'_>,
+    address: RegisterAddress,
+    values: &mut [u32],
+) -> Result<(), ArmError> {
+    let mut transfers = vec![DapTransfer::read(address); values.len()];
+    perform_jtag_transfers(chain, &mut transfers)?;
+
+    for (index, transfer) in transfers.iter().enumerate() {
+        match transfer.status {
+            TransferStatus::Ok => values[index] = transfer.value,
+            TransferStatus::Failed(error) => return Err(error.into()),
+            other => panic!(
+                "Unexpected transfer state after reading registers: {other:?}. This is a bug!"
+            ),
+        }
+    }
+
+    Ok(())
+}
+
+pub(crate) fn jtag_write_block(
+    chain: &mut JtagChain<'_>,
+    address: RegisterAddress,
+    values: &[u32],
+) -> Result<(), ArmError> {
+    let mut transfers = values
+        .iter()
+        .map(|value| DapTransfer::write(address, *value))
+        .collect::<Vec<_>>();
+    perform_jtag_transfers(chain, &mut transfers)?;
+
+    for transfer in &transfers {
+        match transfer.status {
+            TransferStatus::Ok => {}
+            TransferStatus::Failed(error) => return Err(error.into()),
+            other => panic!(
+                "Unexpected transfer state after writing registers: {other:?}. This is a bug!"
+            ),
+        }
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]

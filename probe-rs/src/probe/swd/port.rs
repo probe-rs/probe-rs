@@ -593,31 +593,7 @@ impl SwdPort<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::probe::{BatchExecutionError, DebugProbe, WireProtocol};
-
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    enum ScriptedResponse {
-        Ok(u32),
-        Wait,
-        Fault,
-    }
-
-    #[derive(Debug, Clone)]
-    struct RecordedOp {
-        port: Port,
-        addr: u8,
-        direction: Direction,
-        data: u32,
-    }
-
-    #[derive(Debug)]
-    struct MockSwdProbe {
-        operations: Vec<RecordedOp>,
-        responses: Vec<ScriptedResponse>,
-        response_index: usize,
-        handles_wait: bool,
-        capture_flags: Vec<bool>,
-    }
+    use crate::probe::swd::mock::{MockSwdProbe, RecordedOp, ScriptedResponse};
 
     fn duplicate_settings(settings: &SwdSettings) -> SwdSettings {
         SwdSettings {
@@ -626,154 +602,6 @@ mod tests {
             max_retry_idle_cycles_after_wait: settings.max_retry_idle_cycles_after_wait,
             idle_cycles_before_write_verify: settings.idle_cycles_before_write_verify,
             idle_cycles_after_transfer: settings.idle_cycles_after_transfer,
-        }
-    }
-
-    impl MockSwdProbe {
-        fn new() -> Self {
-            Self {
-                operations: Vec::new(),
-                responses: Vec::new(),
-                response_index: 0,
-                handles_wait: false,
-                capture_flags: Vec::new(),
-            }
-        }
-
-        fn with_settings(_settings: SwdSettings) -> Self {
-            Self::new()
-        }
-
-        fn handles_wait(mut self) -> Self {
-            self.handles_wait = true;
-            self
-        }
-
-        fn push_response(&mut self, response: ScriptedResponse) {
-            self.responses.push(response);
-        }
-
-        fn transfer_ops(&self) -> Vec<RecordedOp> {
-            self.operations.clone()
-        }
-    }
-
-    impl DebugProbe for MockSwdProbe {
-        fn get_name(&self) -> &str {
-            "mock swd"
-        }
-
-        fn speed_khz(&self) -> u32 {
-            0
-        }
-
-        fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
-            Ok(speed_khz)
-        }
-
-        fn attach(&mut self) -> Result<(), DebugProbeError> {
-            Ok(())
-        }
-
-        fn detach(&mut self) -> Result<(), crate::Error> {
-            Ok(())
-        }
-
-        fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-            Err(DebugProbeError::CommandNotSupportedByProbe {
-                command_name: "target_reset",
-            })
-        }
-
-        fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
-            Err(DebugProbeError::CommandNotSupportedByProbe {
-                command_name: "target_reset_assert",
-            })
-        }
-
-        fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
-            Ok(())
-        }
-
-        fn select_protocol(&mut self, _protocol: WireProtocol) -> Result<(), DebugProbeError> {
-            Ok(())
-        }
-
-        fn active_protocol(&self) -> Option<WireProtocol> {
-            Some(WireProtocol::Swd)
-        }
-
-        fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
-            self
-        }
-    }
-
-    impl SwdProbe for MockSwdProbe {
-        fn run_batch(
-            &mut self,
-            batch: &SwdBatch,
-        ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
-            let mut results = Results::new();
-
-            for (fault_operation, (id, op)) in batch.iter().enumerate() {
-                match op {
-                    SwdOp::Transfer {
-                        port,
-                        addr,
-                        direction,
-                        data,
-                    } => {
-                        let should_capture = id.should_capture();
-                        self.operations.push(RecordedOp {
-                            port: *port,
-                            addr: *addr,
-                            direction: *direction,
-                            data: *data,
-                        });
-                        self.capture_flags.push(should_capture);
-
-                        let response = self
-                            .responses
-                            .get(self.response_index)
-                            .copied()
-                            .unwrap_or(ScriptedResponse::Ok(0));
-                        self.response_index += 1;
-
-                        match response {
-                            ScriptedResponse::Ok(value) => {
-                                if *direction == Direction::Read && should_capture {
-                                    results.push(id, CommandResult::U32(value));
-                                }
-                            }
-                            ScriptedResponse::Wait => {
-                                return Err(BatchExecutionError {
-                                    error: BatchError::Specific(DebugProbeError::SwdTransfer(
-                                        SwdTransferError::WaitResponse,
-                                    )),
-                                    results,
-                                    fault_operation,
-                                });
-                            }
-                            ScriptedResponse::Fault => {
-                                return Err(BatchExecutionError {
-                                    error: BatchError::Specific(DebugProbeError::SwdTransfer(
-                                        SwdTransferError::FaultResponse,
-                                    )),
-                                    results,
-                                    fault_operation,
-                                });
-                            }
-                        }
-                    }
-                    SwdOp::Idle { .. } | SwdOp::Sequence(_) | SwdOp::Pins { .. } => {}
-                }
-            }
-
-            Ok(results)
-        }
-
-        fn handles_wait(&self) -> bool {
-            self.handles_wait
         }
     }
 
@@ -1052,8 +880,8 @@ mod tests {
 
         let reads = read_ops(&probe.transfer_ops());
         assert_eq!(reads, vec![(Port::Ap, 0b1000), (Port::Dp, DP_RDBUFF_ADDR)]);
-        assert!(!probe.capture_flags[0]);
-        assert!(probe.capture_flags[1]);
+        assert!(!probe.capture_flags()[0]);
+        assert!(probe.capture_flags()[1]);
     }
 
     #[test]
@@ -1079,7 +907,7 @@ mod tests {
                 (Port::Dp, DP_RDBUFF_ADDR),
             ]
         );
-        assert!(!probe.capture_flags[0]);
+        assert!(!probe.capture_flags()[0]);
     }
 
     #[test]
@@ -1153,8 +981,8 @@ mod tests {
         let mut results = port.run(batch).expect("run should succeed");
         assert_eq!(results.take(kept).unwrap(), 2);
 
-        assert!(!probe.capture_flags[0]);
-        assert!(probe.capture_flags[1]);
+        assert!(!probe.capture_flags()[0]);
+        assert!(probe.capture_flags()[1]);
     }
 
     fn expect_err<T, E: std::fmt::Debug>(result: Result<T, E>, message: &str) -> E {

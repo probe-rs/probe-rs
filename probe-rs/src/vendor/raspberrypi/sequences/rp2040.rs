@@ -7,6 +7,7 @@ use crate::{
     architecture::arm::{
         ArmError,
         armv6m::{Aircr, Demcr},
+        communication_interface::dap_debug_port_wire,
         dp::{Ctrl, DpAddress, DpRegister},
         memory::ArmMemoryInterface,
         sequences::{ArmDebugSequence, cortex_m_wait_for_reset},
@@ -81,7 +82,7 @@ impl ArmDebugSequence for Rp2040 {
         let dap_probe = arm_interface.try_dap_probe_mut().unwrap();
 
         // Run the setup sequence again, which will reacquire the multidrop target.
-        self.debug_port_setup(dap_probe, ap.dp())?;
+        dap_debug_port_wire(dap_probe, |wire| self.debug_port_setup(wire, ap.dp()))?;
 
         // Start the debug core back up which brings it out of Rescue Mode
         self.debug_core_start(arm_interface, &ap, core_type, debug_base, None)?;

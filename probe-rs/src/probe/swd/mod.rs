@@ -16,6 +16,9 @@
 
 mod port;
 
+#[cfg(test)]
+pub(crate) mod mock;
+
 use std::time::Duration;
 
 use crate::probe::{
@@ -23,7 +26,7 @@ use crate::probe::{
     DebugProbeError, Handle, IoSequenceItem, Results, SwdSettings,
 };
 
-pub use port::SwdPort;
+pub use port::{SwdPort, SwdPortError};
 
 bitfield::bitfield! {
     /// A struct to describe the default CMSIS-DAP pins that one can toggle from the host.
@@ -59,7 +62,7 @@ fn a3(addr: u8) -> bool {
 }
 
 /// The debug port that a transfer targets.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Port {
     /// The debug port.
     Dp,

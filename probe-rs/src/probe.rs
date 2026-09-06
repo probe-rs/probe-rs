@@ -22,7 +22,10 @@ pub mod xvc;
 
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
 use crate::architecture::arm::{ArmDebugInterface, ArmError};
-use crate::architecture::arm::{RegisterAddress, SwoAccess, communication_interface::DapProbe};
+use crate::architecture::arm::{
+    RegisterAddress, SwoAccess,
+    communication_interface::{DapProbe, dap_debug_port_wire},
+};
 use crate::architecture::riscv::communication_interface::{RiscvError, RiscvInterfaceBuilder};
 use crate::architecture::xtensa::communication_interface::{
     XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
@@ -417,7 +420,9 @@ impl Probe {
     /// A combination of [`Probe::attach_to_unspecified`] and [`Probe::attach_under_reset`].
     pub fn attach_to_unspecified_under_reset(&mut self) -> Result<(), Error> {
         if let Some(dap_probe) = self.try_as_dap_probe() {
-            DefaultArmSequence(()).reset_hardware_assert(dap_probe)?;
+            dap_debug_port_wire(dap_probe, |wire| {
+                DefaultArmSequence(()).reset_hardware_assert(wire)
+            })?;
         } else {
             tracing::info!(
                 "Custom reset sequences are not supported on {}.",

@@ -19,14 +19,13 @@ use crate::{
         core::registers::cortex_m::{PC, SP},
         dp::{Ctrl, DLPIDR, DebugPortError, DpRegister, TARGETID},
     },
-    probe::{BitSequence, WireProtocol},
+    probe::{BitSequence, WireProtocol, swd::Port},
 };
 
 use super::{
     ArmError, DapAccess, FullyQualifiedApAddress, Pins,
     ap::AccessPortError,
     armv6m::Demcr,
-    communication_interface::DapProbe,
     component::{TraceFunnel, TraceSink},
     core::cortex_m::{Dhcsr, Vtor},
     dp::{Abort, DPIDR, DpAccess, DpAddress, SelectV1},
@@ -34,6 +33,7 @@ use super::{
         ArmMemoryInterface,
         romtable::{CoresightComponent, PeripheralType},
     },
+    traits::DebugPortWire,
 };
 
 /// An error occurred when executing an ARM debug sequence
@@ -449,11 +449,11 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     ///
     /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#resetHardwareAssert
     #[doc(alias = "ResetHardwareAssert")]
-    fn reset_hardware_assert(&self, interface: &mut dyn DapProbe) -> Result<(), ArmError> {
+    fn reset_hardware_assert(&self, interface: &mut dyn DebugPortWire) -> Result<(), ArmError> {
         let mut n_reset = Pins(0);
         n_reset.set_nreset(true);
 
-        let _ = interface.swj_pins(0, n_reset.0 as u32, 0)?;
+        let _ = interface.swj_pins(Pins(0), n_reset, Duration::ZERO)?;
 
         Ok(())
     }
@@ -513,7 +513,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     #[doc(alias = "DebugPortSetup")]
     fn debug_port_setup(
         &self,
-        interface: &mut dyn DapProbe,
+        interface: &mut dyn DebugPortWire,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
         // TODO: Handle this differently for ST-Link?
@@ -525,7 +525,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         // the SWD version 2 sequence.
         let mut has_dormant = matches!(dp, DpAddress::Multidrop(_));
 
-        fn alert_sequence(interface: &mut dyn DapProbe) -> Result<(), ArmError> {
+        fn alert_sequence(interface: &mut dyn DebugPortWire) -> Result<(), ArmError> {
             tracing::trace!("Sending Selection Alert sequence");
 
             // Ensure target is not in the middle of detecting a selection alert
@@ -705,14 +705,19 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                         // line reset. (On PSOC 6, the debug sometimes gives spurious NACKs while
                         // the device is powering up. If something really went wrong, we'll hit
                         // another error or timeout.)
-                        let Some(probe) = interface.try_dap_probe_mut() else {
-                            tracing::warn!(
-                                "Power-up request returned NACK, but we don't have a DapProbe, so we can't reconnect"
-                            );
-                            return Err(e);
-                        };
                         tracing::info!("Power-up request returned NACK, reconnecting");
-                        self.debug_port_connect(probe, dp)?;
+                        interface
+                            .debug_port_reconnect_with(&mut |wire| self.debug_port_connect(wire, dp))
+                            .map_err(|reconnect_err| {
+                                if matches!(reconnect_err, ArmError::NotImplemented(_)) {
+                                    tracing::warn!(
+                                        "Power-up request returned NACK, but reconnect is unavailable"
+                                    );
+                                    e
+                                } else {
+                                    reconnect_err
+                                }
+                            })?;
                     }
                     Err(e) => return Err(e),
                 }
@@ -944,18 +949,31 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     ///
     /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#debugPortStop
     #[doc(alias = "DebugPortStop")]
-    fn debug_port_stop(&self, interface: &mut dyn DapProbe, dp: DpAddress) -> Result<(), ArmError> {
+    fn debug_port_stop(
+        &self,
+        interface: &mut dyn DebugPortWire,
+        dp: DpAddress,
+    ) -> Result<(), ArmError> {
         tracing::info!("Powering down debug port {dp:x?}");
         // Select Bank 0
-        interface.raw_write_register(SelectV1::ADDRESS.into(), 0)?;
+        interface.raw_write_register(
+            Port::Dp,
+            RegisterAddress::from(SelectV1::ADDRESS).a2_and_3(),
+            0,
+        )?;
 
         // De-assert debug power request
-        interface.raw_write_register(Ctrl::ADDRESS.into(), 0)?;
+        interface.raw_write_register(
+            Port::Dp,
+            RegisterAddress::from(Ctrl::ADDRESS).a2_and_3(),
+            0,
+        )?;
 
         // Wait for the power domains to go away
         let start = Instant::now();
         loop {
-            let ctrl = interface.raw_read_register(Ctrl::ADDRESS.into())?;
+            let ctrl = interface
+                .raw_read_register(Port::Dp, RegisterAddress::from(Ctrl::ADDRESS).a2_and_3())?;
             let ctrl = Ctrl(ctrl);
             if !(ctrl.csyspwrupack() || ctrl.cdbgpwrupack()) {
                 return Ok(());
@@ -982,7 +1000,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     #[tracing::instrument(level = "debug", skip_all)]
     fn debug_port_connect(
         &self,
-        interface: &mut dyn DapProbe,
+        interface: &mut dyn DebugPortWire,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
         match interface.active_protocol() {
@@ -1030,7 +1048,10 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             tracing::debug!("Reading DPIDR to enable SWD interface");
 
             // Read DPIDR to enable SWD interface.
-            match interface.raw_read_register(RegisterAddress::DpRegister(DPIDR::ADDRESS)) {
+            match interface.raw_read_register(
+                Port::Dp,
+                RegisterAddress::DpRegister(DPIDR::ADDRESS).a2_and_3(),
+            ) {
                 Ok(x) => break x,
                 Err(z) => {
                     if guard.elapsed() > RESET_RECOVERY_TIMEOUT {
@@ -1061,7 +1082,11 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         abort.set_stkcmpclr(true);
 
         // DPBANKSEL does not matter for ABORT
-        interface.raw_write_register(Abort::ADDRESS.into(), abort.0)?;
+        interface.raw_write_register(
+            Port::Dp,
+            RegisterAddress::from(Abort::ADDRESS).a2_and_3(),
+            abort.0,
+        )?;
         interface.raw_flush()?;
 
         // Check that we are connected to the right DP
@@ -1069,13 +1094,25 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         if let DpAddress::Multidrop(targetsel) = dp {
             tracing::debug!("Checking TARGETID and DLPIDR match");
             // Select DP Bank 2
-            interface.raw_write_register(SelectV1::ADDRESS.into(), 2)?;
+            interface.raw_write_register(
+                Port::Dp,
+                RegisterAddress::from(SelectV1::ADDRESS).a2_and_3(),
+                2,
+            )?;
 
-            let target_id = interface.raw_read_register(TARGETID::ADDRESS.into())?;
+            let target_id = interface.raw_read_register(
+                Port::Dp,
+                RegisterAddress::from(TARGETID::ADDRESS).a2_and_3(),
+            )?;
 
             // Select DP Bank 3
-            interface.raw_write_register(SelectV1::ADDRESS.into(), 3)?;
-            let dlpidr = interface.raw_read_register(DLPIDR::ADDRESS.into())?;
+            interface.raw_write_register(
+                Port::Dp,
+                RegisterAddress::from(SelectV1::ADDRESS).a2_and_3(),
+                3,
+            )?;
+            let dlpidr = interface
+                .raw_read_register(Port::Dp, RegisterAddress::from(DLPIDR::ADDRESS).a2_and_3())?;
 
             const TARGETID_MASK: u32 = 0x0FFF_FFFF;
             const DLPIDR_MASK: u32 = 0xF000_0000;
@@ -1095,8 +1132,14 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             }
         }
 
-        interface.raw_write_register(SelectV1::ADDRESS.into(), 0)?;
-        let ctrl_stat = interface.raw_read_register(Ctrl::ADDRESS.into()).map(Ctrl);
+        interface.raw_write_register(
+            Port::Dp,
+            RegisterAddress::from(SelectV1::ADDRESS).a2_and_3(),
+            0,
+        )?;
+        let ctrl_stat = interface
+            .raw_read_register(Port::Dp, RegisterAddress::from(Ctrl::ADDRESS).a2_and_3())
+            .map(Ctrl);
 
         match ctrl_stat {
             Ok(ctrl_stat) => {
@@ -1205,7 +1248,7 @@ pub trait DebugEraseSequence: Send + Sync {
 /// Perform a SWD line reset (SWDIO high for 50 clock cycles)
 ///
 /// After the line reset, SWDIO will be kept low for `swdio_low_cycles` cycles.
-fn swd_line_reset(interface: &mut dyn DapProbe, swdio_low_cycles: u8) -> Result<(), ArmError> {
+fn swd_line_reset(interface: &mut dyn DebugPortWire, swdio_low_cycles: u8) -> Result<(), ArmError> {
     tracing::debug!("Performing SWD line reset");
     let mut sequence = BitSequence::repeat(true, 51);
     sequence.extend(&BitSequence::repeat(false, swdio_low_cycles as usize));
