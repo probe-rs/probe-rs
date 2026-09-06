@@ -1,2 +1,2 @@
-The public `RawDapAccess` and `DapProbe` traits were removed, so callers use layer-0 `SwdProbe`, `BitbangSwd`, and `JtagChain` instead of a combined raw DAP path.
-`ArmCommunicationInterface::create` was removed, so new code must use `create_swd` or `create_jtag`.
+An SWD probe now implements `SwdProbe` or `BitbangSwd` in place of `RawDapAccess`, `RawSwdIo`, and `DapProbe`, so a probe driver no longer handles ARM debug concerns.
+SWD transfers now run as one batch, so an SWD target needs fewer round trips to read memory.
