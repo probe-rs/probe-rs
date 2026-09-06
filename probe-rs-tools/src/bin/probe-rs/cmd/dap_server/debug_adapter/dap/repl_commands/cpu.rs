@@ -35,9 +35,34 @@ static RESET: ReplCommand = ReplCommand {
 #[distributed_slice(REPL_COMMANDS)]
 static STEP: ReplCommand = ReplCommand {
     command: "step",
-    help_text: "Step one instruction",
+    help_text: "Step one instruction.",
     requires_target_halted: true,
-    sub_commands: &[],
+    sub_commands: &[
+        ReplCommand {
+            command: "over",
+            help_text: "Step over the current statement.",
+            requires_target_halted: true,
+            sub_commands: &[],
+            args: &[],
+            handler: async_fn!(step_over_repl),
+        },
+        ReplCommand {
+            command: "into",
+            help_text: "Step into the current statement.",
+            requires_target_halted: true,
+            sub_commands: &[],
+            args: &[],
+            handler: async_fn!(step_into_repl),
+        },
+        ReplCommand {
+            command: "out",
+            help_text: "Step out of the current function.",
+            requires_target_halted: true,
+            sub_commands: &[],
+            args: &[],
+            handler: async_fn!(step_out_repl),
+        },
+    ],
     args: &[],
     handler: async_fn!(step_repl),
 };
@@ -73,9 +98,46 @@ async fn step_repl<'a>(
     _evaluate_arguments: &'a EvaluateArguments,
     adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
-    let pc = adapter
-        .step_impl_async(SteppingMode::StepInstruction, backend, core_data)
-        .await?;
+    step_with_mode(backend, core_data, adapter, SteppingMode::StepInstruction).await
+}
+
+async fn step_over_repl<'a>(
+    backend: &'a mut RpcBackend,
+    core_data: &'a mut CoreData,
+    _command_arguments: &'a str,
+    _evaluate_arguments: &'a EvaluateArguments,
+    adapter: &'a mut DebugAdapter,
+) -> EvalResult {
+    step_with_mode(backend, core_data, adapter, SteppingMode::OverStatement).await
+}
+
+async fn step_into_repl<'a>(
+    backend: &'a mut RpcBackend,
+    core_data: &'a mut CoreData,
+    _command_arguments: &'a str,
+    _evaluate_arguments: &'a EvaluateArguments,
+    adapter: &'a mut DebugAdapter,
+) -> EvalResult {
+    step_with_mode(backend, core_data, adapter, SteppingMode::IntoStatement).await
+}
+
+async fn step_out_repl<'a>(
+    backend: &'a mut RpcBackend,
+    core_data: &'a mut CoreData,
+    _command_arguments: &'a str,
+    _evaluate_arguments: &'a EvaluateArguments,
+    adapter: &'a mut DebugAdapter,
+) -> EvalResult {
+    step_with_mode(backend, core_data, adapter, SteppingMode::OutOfStatement).await
+}
+
+async fn step_with_mode(
+    backend: &mut RpcBackend,
+    core_data: &mut CoreData,
+    adapter: &mut DebugAdapter,
+    mode: SteppingMode,
+) -> EvalResult {
+    let pc = adapter.step_impl_async(mode, backend, core_data).await?;
     Ok(EvalResponse::Message(
         CoreStatus::Halted(HaltReason::Step)
             .short_long_status(backend, Some(pc), adapter.supports_ansi_styling)
