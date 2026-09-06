@@ -4,7 +4,7 @@ use std::iter;
 
 use super::{CommandId, Request, SendError};
 use crate::architecture::arm::RegisterAddress;
-use scroll::{LE, Pread};
+use scroll::{LE, Pread, Pwrite};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum RW {
@@ -262,4 +262,163 @@ pub struct TransferResponse {
     /// Responses to each requested transfer in `TransferRequest`. May be shorter than
     /// `TransferRequest::transfers` in case of communication failure.
     pub transfers: Vec<InnerTransferResponse>,
+}
+
+/// Repeats one access, so that one packet carries more words than
+/// [`TransferRequest`] can.
+#[derive(Debug)]
+pub struct TransferBlockRequest {
+    /// Zero-based device index of the selected JTAG device. For SWD mode the
+    /// value is ignored.
+    pub dap_index: u8,
+
+    /// Number of transfers
+    pub transfer_count: u16,
+
+    /// Information about requested access
+    pub transfer_request: InnerTransferBlockRequest,
+
+    /// Register values to write for writes
+    pub transfer_data: Vec<u32>,
+}
+
+impl Request for TransferBlockRequest {
+    const COMMAND_ID: CommandId = CommandId::TransferBlock;
+
+    type Response = TransferBlockResponse;
+
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        let mut size = 0;
+        buffer[0] = self.dap_index;
+        size += 1;
+
+        buffer
+            .pwrite_with(self.transfer_count, 1, LE)
+            .expect("Buffer for CMSIS-DAP command is too small. This is a bug, please report it.");
+        size += 2;
+
+        size += self.transfer_request.as_bytes(buffer, 3)?;
+
+        let mut data_offset = 4;
+
+        for word in &self.transfer_data {
+            buffer.pwrite_with(word, data_offset, LE).expect(
+                "Buffer for CMSIS-DAP command is too small. This is a bug, please report it.",
+            );
+            data_offset += 4;
+            size += 4;
+        }
+
+        Ok(size)
+    }
+
+    fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        let transfer_count = buffer
+            .pread_with(0, LE)
+            .map_err(|_| SendError::NotEnoughData)?;
+        let raw_transfer_response: u8 = buffer
+            .pread_with(2, LE)
+            .map_err(|_| SendError::NotEnoughData)?;
+
+        let mut data = Vec::with_capacity(transfer_count as usize);
+
+        // A read holds one word for every transfer that ran. A write holds no
+        // data.
+        if self.transfer_request.r_n_w == RW::R {
+            for data_offset in 0..transfer_count as usize {
+                data.push(
+                    buffer
+                        .pread_with(3 + data_offset * 4, LE)
+                        .map_err(|_| SendError::NotEnoughData)?,
+                );
+            }
+        }
+
+        let ack = match raw_transfer_response & 0b111 {
+            1 => Ack::Ok,
+            2 => Ack::Wait,
+            4 => Ack::Fault,
+            7 => Ack::NoAck,
+            ack => {
+                tracing::warn!("Unexpected response to SWD/JTAG transfer: {ack:x}");
+                Ack::NoAck
+            }
+        };
+
+        let protocol_error = (raw_transfer_response & (1 << 3)) != 0;
+
+        let transfer_response = LastTransferResponse {
+            ack,
+            protocol_error,
+            // Not applicable for block transfer
+            _value_mismatch: false,
+        };
+
+        Ok(TransferBlockResponse {
+            transfer_count,
+            transfer_response,
+            transfer_data: data,
+        })
+    }
+}
+
+impl TransferBlockRequest {
+    pub fn write_request(address: RegisterAddress, data: Vec<u32>) -> Self {
+        let inner = InnerTransferBlockRequest {
+            ap_n_dp: address.is_ap(),
+            r_n_w: RW::W,
+            a2: address.a2(),
+            a3: address.a3(),
+        };
+
+        TransferBlockRequest {
+            dap_index: 0,
+            transfer_count: data.len() as u16,
+            transfer_request: inner,
+            transfer_data: data,
+        }
+    }
+
+    pub fn read_request(address: RegisterAddress, read_count: u16) -> Self {
+        let inner = InnerTransferBlockRequest {
+            ap_n_dp: address.is_ap(),
+            r_n_w: RW::R,
+            a2: address.a2(),
+            a3: address.a3(),
+        };
+
+        TransferBlockRequest {
+            dap_index: 0,
+            transfer_count: read_count,
+            transfer_request: inner,
+            transfer_data: Vec::new(),
+        }
+    }
+}
+
+/// The access that a [`TransferBlockRequest`] repeats.
+#[derive(Debug, Copy, Clone)]
+pub struct InnerTransferBlockRequest {
+    ap_n_dp: bool,
+    r_n_w: RW,
+    a2: bool,
+    a3: bool,
+}
+
+impl InnerTransferBlockRequest {
+    fn as_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
+        buffer[offset] = (self.ap_n_dp as u8)
+            | ((self.r_n_w as u8) << 1)
+            | (u8::from(self.a2) << 2)
+            | (u8::from(self.a3) << 3);
+        Ok(1)
+    }
+}
+
+/// The response to a [`TransferBlockRequest`].
+#[derive(Debug)]
+pub struct TransferBlockResponse {
+    pub transfer_count: u16,
+    pub transfer_response: LastTransferResponse,
+    pub transfer_data: Vec<u32>,
 }
