@@ -4,7 +4,7 @@
 //!
 //! See <https://developer.arm.com/documentation/ihi0031/f/?lang=en> for the ADIv5 specification.
 
-use bitvec::{bitvec, field::BitField, slice::BitSlice};
+use bitvec::{field::BitField, slice::BitSlice};
 
 use crate::{
     architecture::arm::{
@@ -12,8 +12,9 @@ use crate::{
         dp::{Abort, Ctrl, DPIDR, DpRegister, RdBuff},
     },
     probe::{
-        BitSequence, CommandResult, DebugProbe, DebugProbeError, IoSequenceItem, JtagAccess,
-        JtagSequence, JtagWriteCommand, JtagWriteData, RawSwdIo, WireProtocol,
+        BitSequence, CommandResult, DebugProbe, DebugProbeError, IoSequenceItem, JtagBatch,
+        JtagChain, JtagChainAccess, JtagWriteCommand, JtagWriteData, RawSwdIo, TapState,
+        WireProtocol,
         common::bits_to_byte,
         queue::{BatchError, JtagQueue},
     },
@@ -68,24 +69,23 @@ fn parse_jtag_response(data: &BitSlice) -> u64 {
 /// Perform a single JTAG transfer and parse the results
 ///
 /// Return is (value, status)
-fn perform_jtag_transfer<P: JtagAccess + RawSwdIo>(
-    probe: &mut P,
+fn perform_jtag_transfer(
+    chain: &mut JtagChain<'_>,
     transfer: &DapTransfer,
 ) -> Result<(u32, TransferStatus), DebugProbeError> {
-    // Determine what JTAG IR address and value to send
     let (payload, address) = build_jtag_payload_and_address(transfer);
-    let data = payload.to_le_bytes();
-
-    let result = probe.write_register(
-        address,
-        &data[..],
-        JTAG_DR_BIT_LENGTH,
-        transfer.idle_cycles_after.min(255) as u32,
-    );
-
-    let result = result?;
-
-    let received = parse_jtag_response(&result);
+    let ir_len = chain.params().irlen;
+    let mut batch = JtagBatch::new();
+    let ir = BitSequence::from_bytes(&address.to_le_bytes(), ir_len);
+    chain.shift_ir(&mut batch, &ir);
+    let dr = BitSequence::from_bytes(&payload.to_le_bytes(), JTAG_DR_BIT_LENGTH as usize);
+    let handle = chain.exchange_dr(&mut batch, &dr);
+    chain.run_test_idle(&mut batch, transfer.idle_cycles_after.min(255) as u32);
+    let mut results = chain.run(batch)?;
+    let response = results
+        .take(handle)
+        .map_err(|_| DebugProbeError::Other("missing JTAG capture result".into()))?;
+    let received = response.as_bits().load_le::<u64>();
 
     if transfer.is_abort() {
         // No responses returned from this
@@ -110,11 +110,9 @@ fn perform_jtag_transfer<P: JtagAccess + RawSwdIo>(
     Ok((received_value, transfer_status))
 }
 
-/// Perform a batch of JTAG transfers.
-///
-/// Each transfer is sent one at a time using the JtagAccess trait
-fn perform_jtag_transfers<P: JtagAccess + RawSwdIo>(
-    probe: &mut P,
+/// Perform a batch of JTAG transfers in one wire batch.
+fn perform_jtag_transfers(
+    chain: &mut JtagChain<'_>,
     transfers: &mut [DapTransfer],
 ) -> Result<(), DebugProbeError> {
     let mut queue: JtagQueue<DapError> = JtagQueue::new();
@@ -142,7 +140,7 @@ fn perform_jtag_transfers<P: JtagAccess + RawSwdIo>(
     // Execute as much of the batch as we can. We'll handle the rest in a following iteration
     // if we can.
     let mut jtag_results;
-    match queue.execute(|queue| probe.write_register_batch(queue)) {
+    match queue.execute(|queue| chain.run_command_batch(queue)) {
         Ok(r) => {
             status_responses.fill(TransferStatus::Ok);
             jtag_results = r;
@@ -207,7 +205,7 @@ fn perform_jtag_transfers<P: JtagAccess + RawSwdIo>(
 
             // Clear the sticky bit so future transactions succeed
             let (_, _) =
-                perform_jtag_transfer(probe, &DapTransfer::write(Ctrl::ADDRESS, received_value))?;
+                perform_jtag_transfer(chain, &DapTransfer::write(Ctrl::ADDRESS, received_value))?;
 
             // Mark OK/FAULT transactions as failed. Since the error is sticky, we can assume that
             // if we received a WAIT, the previous transactions were successful.
@@ -279,7 +277,7 @@ fn perform_swd_transfers<P: RawSwdIo>(
 ///
 /// Other errors are not handled, so the debug interface might be in an error state
 /// after this function returns.
-fn perform_transfers<P: DebugProbe + RawSwdIo + JtagAccess>(
+fn perform_transfers<P: DebugProbe + RawSwdIo + JtagChainAccess>(
     probe: &mut P,
     transfers: &mut [DapTransfer],
 ) -> Result<(), ArmError> {
@@ -408,7 +406,7 @@ fn perform_transfers<P: DebugProbe + RawSwdIo + JtagAccess>(
 ///
 /// Other than that, the transfers are sent as-is. You might want to use `perform_transfers` instead, which
 /// does correction for delayed FAULT responses and other helpful stuff.
-fn perform_raw_transfers_retry<P: DebugProbe + RawSwdIo + JtagAccess>(
+fn perform_raw_transfers_retry<P: DebugProbe + RawSwdIo + JtagChainAccess>(
     probe: &mut P,
     transfers: &mut [DapTransfer],
 ) -> Result<(), ArmError> {
@@ -479,7 +477,7 @@ fn perform_raw_transfers_retry<P: DebugProbe + RawSwdIo + JtagAccess>(
     Ok(())
 }
 
-fn clear_overrun_and_sticky_err<P: DebugProbe + RawSwdIo + JtagAccess>(
+fn clear_overrun_and_sticky_err<P: DebugProbe + RawSwdIo + JtagChainAccess>(
     probe: &mut P,
 ) -> Result<(), ArmError> {
     tracing::debug!("Clearing overrun and sticky error");
@@ -492,7 +490,7 @@ fn clear_overrun_and_sticky_err<P: DebugProbe + RawSwdIo + JtagAccess>(
     })
 }
 
-fn write_dp_register<P: DebugProbe + RawSwdIo + JtagAccess, R: DpRegister>(
+fn write_dp_register<P: DebugProbe + RawSwdIo + JtagChainAccess, R: DpRegister>(
     probe: &mut P,
     register: R,
 ) -> Result<(), ArmError> {
@@ -515,13 +513,16 @@ fn write_dp_register<P: DebugProbe + RawSwdIo + JtagAccess, R: DpRegister>(
 ///
 /// This function will just send the transfers as-is, without handling WAIT or FAULT response.
 /// See [`perform_raw_transfers_retry`] for a version that handles WAIT responses
-fn perform_raw_transfers<P: DebugProbe + RawSwdIo + JtagAccess>(
+fn perform_raw_transfers<P: DebugProbe + RawSwdIo + JtagChainAccess>(
     probe: &mut P,
     transfers: &mut [DapTransfer],
 ) -> Result<(), DebugProbeError> {
     match probe.active_protocol().unwrap() {
         WireProtocol::Swd => perform_swd_transfers(probe, transfers),
-        WireProtocol::Jtag => perform_jtag_transfers(probe, transfers),
+        WireProtocol::Jtag => {
+            let mut chain = JtagChain::new(probe);
+            perform_jtag_transfers(&mut chain, transfers)
+        }
     }
 }
 
@@ -908,7 +909,7 @@ fn parse_swd_response(resp: &[bool], direction: TransferDirection) -> Result<u32
 
 /// RawDapAccess implementation for probes that implement RawProtocolIo.
 // TODO: JTAG shouldn't be required, but an option - maybe via trait downcasting?
-impl<Probe: DebugProbe + RawSwdIo + JtagAccess + 'static> RawDapAccess for Probe {
+impl<Probe: DebugProbe + RawSwdIo + JtagChainAccess + 'static> RawDapAccess for Probe {
     fn raw_read_register(&mut self, address: RegisterAddress) -> Result<u32, ArmError> {
         let mut transfer = DapTransfer::read(address);
         perform_transfers(self, std::slice::from_mut(&mut transfer))?;
@@ -1104,12 +1105,22 @@ impl<Probe: DebugProbe + RawSwdIo + JtagAccess + 'static> RawDapAccess for Probe
     }
 
     fn jtag_sequence(&mut self, tms: bool, tdi: &BitSequence) -> Result<(), DebugProbeError> {
-        self.shift_raw_sequence(JtagSequence {
-            tms,
-            data: tdi.iter().collect(),
-            tdo_capture: false,
-        })?;
+        if tms {
+            shift_tms_bits(self, true, tdi.len())?;
+            return Ok(());
+        }
 
+        if tdi.len() == 1 {
+            shift_tms_bits(self, false, 1)?;
+            return Ok(());
+        }
+
+        let mut chain = JtagChain::new(self);
+        let mut batch = JtagBatch::new();
+        batch.enter(TapState::ShiftDr);
+        batch.exchange_no_capture(tdi.clone());
+        batch.enter(TapState::RunTestIdle);
+        chain.run(batch)?;
         Ok(())
     }
 
@@ -1128,15 +1139,13 @@ impl<Probe: DebugProbe + RawSwdIo + JtagAccess + 'static> RawDapAccess for Probe
     }
 }
 
-fn send_sequence<P: RawSwdIo + JtagAccess>(
+fn send_sequence<P: RawSwdIo + JtagChainAccess>(
     probe: &mut P,
     protocol: WireProtocol,
     sequence: &OutSequence,
 ) -> Result<(), DebugProbeError> {
     match protocol {
         WireProtocol::Jtag => {
-            // Swj sequences should be shifted out to tms, since that is the pin
-            // shared between swd and jtag modes.
             let mut bits = sequence.bits().iter().peekable();
             while let Some(first) = bits.next() {
                 let mut count = 1;
@@ -1148,11 +1157,7 @@ fn send_sequence<P: RawSwdIo + JtagAccess>(
                     bits.next();
                 }
 
-                probe.shift_raw_sequence(JtagSequence {
-                    tms: *first,
-                    data: bitvec![0; count],
-                    tdo_capture: false,
-                })?;
+                shift_tms_bits(probe, *first, count)?;
             }
         }
         WireProtocol::Swd => {
@@ -1163,8 +1168,121 @@ fn send_sequence<P: RawSwdIo + JtagAccess>(
     Ok(())
 }
 
+fn shift_tms_bits<P: JtagChainAccess>(
+    probe: &mut P,
+    tms: bool,
+    bit_count: usize,
+) -> Result<(), DebugProbeError> {
+    let start = probe.chain_state_ref().tap_state;
+    let end = stable_state_after_tms(start, tms, bit_count)?;
+    let mut chain = JtagChain::new(probe);
+    let mut batch = JtagBatch::new();
+    batch.enter(end);
+    chain.run(batch)?;
+    Ok(())
+}
+
+fn stable_state_after_tms(
+    start: TapState,
+    tms: bool,
+    bit_count: usize,
+) -> Result<TapState, DebugProbeError> {
+    let mut state = FullTapState::from_stable(start);
+    for _ in 0..bit_count {
+        state = state.step(tms);
+    }
+    state.to_stable()
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum FullTapState {
+    TestLogicReset,
+    RunTestIdle,
+    SelectDr,
+    CaptureDr,
+    ShiftDr,
+    Exit1Dr,
+    PauseDr,
+    Exit2Dr,
+    UpdateDr,
+    SelectIr,
+    CaptureIr,
+    ShiftIr,
+    Exit1Ir,
+    PauseIr,
+    Exit2Ir,
+    UpdateIr,
+}
+
+impl FullTapState {
+    fn from_stable(state: TapState) -> Self {
+        match state {
+            TapState::TestLogicReset => Self::TestLogicReset,
+            TapState::RunTestIdle => Self::RunTestIdle,
+            TapState::ShiftIr => Self::ShiftIr,
+            TapState::ShiftDr => Self::ShiftDr,
+            TapState::PauseIr => Self::PauseIr,
+            TapState::PauseDr => Self::PauseDr,
+        }
+    }
+
+    fn step(self, tms: bool) -> Self {
+        if tms {
+            match self {
+                Self::TestLogicReset => Self::TestLogicReset,
+                Self::RunTestIdle => Self::SelectDr,
+                Self::SelectDr => Self::SelectIr,
+                Self::CaptureDr | Self::ShiftDr => Self::Exit1Dr,
+                Self::Exit1Dr | Self::Exit2Dr => Self::UpdateDr,
+                Self::UpdateDr => Self::SelectDr,
+                Self::SelectIr => Self::CaptureIr,
+                Self::CaptureIr | Self::ShiftIr => Self::Exit1Ir,
+                Self::Exit1Ir | Self::Exit2Ir => Self::UpdateIr,
+                Self::UpdateIr => Self::SelectDr,
+                Self::PauseDr => Self::Exit2Dr,
+                Self::PauseIr => Self::Exit2Ir,
+            }
+        } else {
+            match self {
+                Self::TestLogicReset => Self::RunTestIdle,
+                Self::RunTestIdle => Self::RunTestIdle,
+                Self::SelectDr => Self::CaptureDr,
+                Self::CaptureDr | Self::ShiftDr => Self::ShiftDr,
+                Self::Exit1Dr => Self::PauseDr,
+                Self::PauseDr => Self::PauseDr,
+                Self::Exit2Dr => Self::ShiftDr,
+                Self::UpdateDr => Self::RunTestIdle,
+                Self::SelectIr => Self::CaptureIr,
+                Self::CaptureIr | Self::ShiftIr => Self::ShiftIr,
+                Self::Exit1Ir => Self::PauseIr,
+                Self::PauseIr => Self::PauseIr,
+                Self::Exit2Ir => Self::ShiftIr,
+                Self::UpdateIr => Self::RunTestIdle,
+            }
+        }
+    }
+
+    fn to_stable(self) -> Result<TapState, DebugProbeError> {
+        match self {
+            Self::TestLogicReset => Ok(TapState::TestLogicReset),
+            Self::RunTestIdle => Ok(TapState::RunTestIdle),
+            Self::ShiftIr => Ok(TapState::ShiftIr),
+            Self::ShiftDr => Ok(TapState::ShiftDr),
+            Self::PauseIr => Ok(TapState::PauseIr),
+            Self::PauseDr => Ok(TapState::PauseDr),
+            _ => Err(DebugProbeError::Other(
+                "SWJ sequence did not end in a stable TAP state".into(),
+            )),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
+    use super::{
+        JTAG_ABORT_IR_VALUE, JTAG_ACCESS_PORT_IR_VALUE, JTAG_DEBUG_PORT_IR_VALUE, JTAG_STATUS_OK,
+        JTAG_STATUS_WAIT,
+    };
     use crate::{
         architecture::arm::{
             ApAddress, RawDapAccess, RegisterAddress,
@@ -1172,15 +1290,10 @@ mod test {
         },
         error::Error,
         probe::{
-            DebugProbe, DebugProbeError, IoSequenceItem, JtagAccess, JtagSequence, RawSwdIo,
-            SwdSettings, WireProtocol,
+            BatchExecutionError, CommandResult, DebugProbe, DebugProbeError, IoSequenceItem,
+            JtagBatch, JtagChainAccess, JtagChainState, JtagOp, JtagProbe, RawSwdIo, Results,
+            SwdSettings, WireProtocol, jtag::chain::ChainParams,
         },
-    };
-    use probe_rs_target::ScanChainElement;
-
-    use super::{
-        JTAG_ABORT_IR_VALUE, JTAG_ACCESS_PORT_IR_VALUE, JTAG_DEBUG_PORT_IR_VALUE,
-        JTAG_DR_BIT_LENGTH, JTAG_STATUS_OK, JTAG_STATUS_WAIT,
     };
 
     use bitvec::prelude::*;
@@ -1214,6 +1327,8 @@ mod test {
         swd_settings: SwdSettings,
 
         protocol: WireProtocol,
+
+        jtag_state: JtagChainState,
     }
 
     impl MockJaylink {
@@ -1229,6 +1344,14 @@ mod test {
                 swd_settings: SwdSettings::default(),
 
                 protocol: WireProtocol::Swd,
+
+                jtag_state: JtagChainState {
+                    chain_params: ChainParams {
+                        irlen: 4,
+                        ..ChainParams::default()
+                    },
+                    ..JtagChainState::default()
+                },
             }
         }
 
@@ -1372,87 +1495,63 @@ mod test {
         }
     }
 
-    impl JtagAccess for MockJaylink {
-        fn shift_raw_sequence(&mut self, _: JtagSequence) -> Result<BitVec, DebugProbeError> {
-            todo!()
+    impl JtagChainAccess for MockJaylink {
+        fn chain_state(&mut self) -> &mut JtagChainState {
+            &mut self.jtag_state
         }
 
-        fn set_expected_scan_chain(
+        fn chain_state_ref(&self) -> &JtagChainState {
+            &self.jtag_state
+        }
+    }
+
+    impl JtagProbe for MockJaylink {
+        fn run_batch(
             &mut self,
-            _: &[ScanChainElement],
-        ) -> Result<(), DebugProbeError> {
-            todo!()
-        }
+            batch: &JtagBatch,
+        ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
+            let mut results = Results::new();
+            let mut pending_ir: Option<u32> = None;
 
-        fn set_scan_chain(&mut self, _: &[ScanChainElement]) -> Result<(), DebugProbeError> {
-            todo!()
-        }
+            for (id, op) in batch.iter() {
+                if let JtagOp::Exchange { data, capture } = op {
+                    if data.len() <= 8 {
+                        pending_ir = Some(data.as_bits().load_le::<u32>());
+                        continue;
+                    }
 
-        fn scan_chain(&mut self) -> Result<&[ScanChainElement], DebugProbeError> {
-            todo!()
-        }
+                    let jtag_transaction = self.jtag_transactions.remove(0);
+                    assert_eq!(
+                        jtag_transaction.ir_address,
+                        pending_ir.unwrap_or(jtag_transaction.ir_address),
+                        "Address mismatch with {} remaining transactions",
+                        self.jtag_transactions.len()
+                    );
 
-        fn tap_reset(&mut self) -> Result<(), DebugProbeError> {
-            todo!()
-        }
+                    if jtag_transaction.ir_address != JTAG_ABORT_IR_VALUE {
+                        let jtag_value = data.as_bits().load_le::<u64>();
+                        let value = (jtag_value >> 3) as u32;
+                        let rnw = jtag_value & 1 == 1;
+                        let dap_address = ((jtag_value & 0x6) << 1) as u32;
 
-        fn read_register(
-            &mut self,
-            _address: u32,
-            _len: u32,
-            _idle_cycles: u32,
-        ) -> Result<BitVec, DebugProbeError> {
-            todo!()
-        }
+                        assert_eq!(dap_address, jtag_transaction.address);
+                        assert_eq!(rnw, jtag_transaction.read);
+                        assert_eq!(value, jtag_transaction.value);
+                    }
 
-        fn write_register(
-            &mut self,
-            address: u32,
-            data: &[u8],
-            len: u32,
-            _idle_cycles: u32,
-        ) -> Result<BitVec, DebugProbeError> {
-            let jtag_value = data[..5].view_bits::<Lsb0>().load_le::<u64>();
+                    self.performed_transfer_count += 1;
+                    pending_ir = None;
 
-            // Always 35 bit transfers
-            assert_eq!(len, JTAG_DR_BIT_LENGTH);
-
-            let jtag_transaction = self.jtag_transactions.remove(0);
-
-            assert_eq!(
-                jtag_transaction.ir_address,
-                address,
-                "Address mismatch with {} remaining transactions",
-                self.jtag_transactions.len()
-            );
-
-            if jtag_transaction.ir_address != JTAG_ABORT_IR_VALUE {
-                let value = (jtag_value >> 3) as u32;
-                let rnw = jtag_value & 1 == 1;
-                let dap_address = ((jtag_value & 0x6) << 1) as u32;
-
-                assert_eq!(dap_address, jtag_transaction.address);
-                assert_eq!(rnw, jtag_transaction.read);
-                assert_eq!(value, jtag_transaction.value);
+                    if *capture && id.should_capture() {
+                        let ret = jtag_transaction.result;
+                        let mut bytes = vec![0u8; 5];
+                        bytes[..5].view_bits_mut::<Lsb0>().store_le(ret);
+                        results.push(id, CommandResult::VecU8(bytes));
+                    }
+                }
             }
 
-            self.performed_transfer_count += 1;
-
-            let ret = jtag_transaction.result;
-
-            let mut ret_vec = BitVec::new();
-            ret_vec.extend_from_bitslice(ret.to_le_bytes()[..5].view_bits::<Lsb0>());
-
-            Ok(ret_vec)
-        }
-
-        fn write_dr(
-            &mut self,
-            _data: &[u8],
-            _len: u32,
-            _idle_cycles: u32,
-        ) -> Result<BitVec, DebugProbeError> {
-            unimplemented!()
+            Ok(results)
         }
     }
 
@@ -1622,6 +1721,9 @@ mod test {
         // Read
         mock.add_jtag_response(ApAddress::V1(4), true, DapAcknowledge::Ok, 0, 0);
         mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Wait, 0, 0);
+        // CTRL/RDBUFF still run on the wire before the batch fails.
+        mock.add_jtag_response(Ctrl::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
 
         //  When a wait response is received, the sticky overrun bit has to be cleared
         mock.add_jtag_abort();
@@ -1705,6 +1807,9 @@ mod test {
 
         mock.add_jtag_response(ApAddress::V1(4), false, DapAcknowledge::Ok, 0x0, 0x123);
         mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Wait, 0x0, 0x0);
+        // CTRL/RDBUFF still run on the wire before the batch fails.
+        mock.add_jtag_response(Ctrl::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
 
         // Expect a Write to the ABORT register.
         mock.add_jtag_abort();

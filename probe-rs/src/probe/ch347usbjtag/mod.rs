@@ -180,10 +180,6 @@ impl DebugProbe for Ch347UsbJtag {
         Some(JtagChain::new(self))
     }
 
-    fn try_as_jtag_access(&mut self) -> Option<&mut dyn super::JtagAccess> {
-        Some(self)
-    }
-
     fn has_arm_interface(&self) -> bool {
         true
     }

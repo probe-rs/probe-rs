@@ -15,7 +15,7 @@ use probe_rs::architecture::arm::{
 };
 use probe_rs::probe::{
     BitbangJtag, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
-    JtagChainState, JtagStateAccess, ProbeCreationError, ProbeFactory, RawSwdIo, SwdSettings,
+    JtagChainAccess, JtagChainState, ProbeCreationError, ProbeFactory, RawSwdIo, SwdSettings,
     TapState, WireProtocol, list::ProbeListItem,
 };
 
@@ -184,12 +184,12 @@ impl RawSwdIo for LinuxGpiod {
 
 // SWD-only: stub the JTAG traits to satisfy the polyfill's bound. Never called
 // in practice because active_protocol() always returns SWD.
-impl JtagStateAccess for LinuxGpiod {
-    fn state_mut(&mut self) -> &mut JtagChainState {
+impl JtagChainAccess for LinuxGpiod {
+    fn chain_state(&mut self) -> &mut JtagChainState {
         &mut self.jtag_state
     }
 
-    fn state(&self) -> &JtagChainState {
+    fn chain_state_ref(&self) -> &JtagChainState {
         &self.jtag_state
     }
 }

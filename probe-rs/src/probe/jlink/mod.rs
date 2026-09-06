@@ -34,7 +34,7 @@ use crate::probe::jlink::bits::IteratorExt;
 use crate::probe::jlink::config::JlinkConfig;
 use crate::probe::jlink::connection::JlinkConnection;
 use crate::probe::usb_util::InterfaceExt;
-use crate::probe::{BitbangJtag, JtagAccess, JtagChain, JtagChainAccess, JtagChainState, TapState};
+use crate::probe::{BitbangJtag, JtagChain, JtagChainAccess, JtagChainState, TapState};
 use crate::{
     architecture::{
         arm::{
@@ -1074,8 +1074,6 @@ impl DebugProbe for JLink {
 
                 tracing::debug!("Resetting JTAG chain using trst");
                 self.reset_trst()?;
-
-                self.select_target(0)?;
             }
             WireProtocol::Swd => {
                 // Attaching is handled in sequence
@@ -1118,10 +1116,6 @@ impl DebugProbe for JLink {
 
     fn try_as_jtag_chain(&mut self) -> Option<JtagChain<'_>> {
         Some(JtagChain::new(self))
-    }
-
-    fn try_as_jtag_access(&mut self) -> Option<&mut dyn JtagAccess> {
-        Some(self)
     }
 
     fn try_get_riscv_interface_builder<'probe>(

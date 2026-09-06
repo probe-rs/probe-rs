@@ -28,7 +28,7 @@ use bitvec::{slice::BitSlice, vec::BitVec};
 
 use super::{
     Batch, BatchExecutionError, BitSequence, CommandResult, DebugProbe, DebugProbeError, Handle,
-    JtagSequence, Results, queue::HandleId,
+    Results, queue::HandleId,
 };
 use probe_rs_target::ScanChainElement;
 
@@ -244,14 +244,6 @@ pub trait JtagProbe: DebugProbe {
         &mut self,
         batch: &JtagBatch,
     ) -> Result<Results, BatchExecutionError<DebugProbeError>>;
-
-    /// Clock a run of bits with one TMS value.
-    ///
-    /// The TAP may leave a stable state, so the caller owns the state while
-    /// this runs. The ICEPICK sequence is the one caller.
-    ///
-    /// This method does not read or write the tracked [`TapState`].
-    fn shift_raw_sequence(&mut self, sequence: JtagSequence) -> Result<BitVec, DebugProbeError>;
 
     /// Program IR lengths into the probe firmware, if it stores them.
     ///
@@ -500,14 +492,6 @@ impl<P: BitbangJtag> JtagProbe for P {
     ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
         let start = *self.tap_state();
         run_bitbang_batch(self, start, batch)
-    }
-
-    fn shift_raw_sequence(&mut self, sequence: JtagSequence) -> Result<BitVec, DebugProbeError> {
-        for bit in sequence.data.iter() {
-            self.shift(sequence.tms, *bit, sequence.tdo_capture)?;
-        }
-        self.flush()?;
-        self.captured()
     }
 }
 
@@ -832,12 +816,17 @@ mod tests {
             }
         }
 
-        use crate::probe::JtagAccess;
+        use super::chain::JtagChain;
 
         let mut probe = ShiftRecorder::new();
         probe.jtag_state.tap_state = TapState::RunTestIdle;
-        JtagAccess::enter_tap_state(&mut probe, TapState::PauseDr).unwrap();
-        JtagAccess::enter_tap_state(&mut probe, TapState::RunTestIdle).unwrap();
+        let mut chain = JtagChain::new(&mut probe);
+        let mut batch = JtagBatch::new();
+        batch.enter(TapState::PauseDr);
+        chain.run(batch).unwrap();
+        let mut batch = JtagBatch::new();
+        batch.enter(TapState::RunTestIdle);
+        chain.run(batch).unwrap();
 
         let tms = probe
             .triples

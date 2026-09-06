@@ -22,9 +22,9 @@ use crate::{
         },
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
-        JtagAccess, JtagChain, JtagChainAccess, JtagChainState, JtagOp, JtagProbe, JtagSequence,
-        ProbeCreationError, ProbeError, ProbeFactory, RawSwdIo, SwdSettings, WireProtocol,
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem, JtagChain,
+        JtagChainAccess, JtagChainState, JtagOp, JtagProbe, ProbeCreationError, ProbeError,
+        ProbeFactory, RawSwdIo, SwdSettings, WireProtocol,
         blackmagic::arm::BlackMagicProbeArmDebug,
         jtag::{TapState, distribute_captures, exchange_leaves_shift},
         list::ProbeListItem,
@@ -1119,39 +1119,6 @@ impl BlackMagicProbe {
         Ok(())
     }
 
-    fn shift_raw_sequence(&mut self, sequence: JtagSequence) -> Result<BitVec, DebugProbeError> {
-        if sequence.tms {
-            for bit in sequence.data.iter() {
-                self.command(RemoteCommand::JtagNext {
-                    tms: true,
-                    tdi: *bit,
-                })?;
-            }
-        } else {
-            let mut data = BitSequence::new();
-            for bit in sequence.data.iter() {
-                data.push(*bit);
-            }
-            let bit_count = data.len();
-            if bit_count == 0 {
-                return Ok(BitVec::new());
-            }
-            let mut offset = 0;
-            while offset < bit_count {
-                let chunk = (bit_count - offset).min(32);
-                let is_last = offset + chunk == bit_count;
-                self.send_jtag_tdi(&data, offset, chunk, false, sequence.tdo_capture && is_last)?;
-                offset += chunk;
-            }
-        }
-
-        if sequence.tdo_capture {
-            Ok(std::mem::take(&mut self.in_bits))
-        } else {
-            Ok(BitVec::new())
-        }
-    }
-
     fn run_jtag_batch(
         &mut self,
         start: TapState,
@@ -1252,8 +1219,6 @@ impl DebugProbe for BlackMagicProbe {
 
         match self.protocol {
             Some(WireProtocol::Jtag) => {
-                self.select_target(0)?;
-
                 if let ProtocolVersion::V1
                 | ProtocolVersion::V2
                 | ProtocolVersion::V3
@@ -1323,10 +1288,6 @@ impl DebugProbe for BlackMagicProbe {
 
     fn try_as_jtag_chain(&mut self) -> Option<JtagChain<'_>> {
         Some(JtagChain::new(self))
-    }
-
-    fn try_as_jtag_access(&mut self) -> Option<&mut dyn JtagAccess> {
-        Some(self)
     }
 
     fn try_get_riscv_interface_builder<'probe>(
@@ -1436,10 +1397,6 @@ impl JtagProbe for BlackMagicProbe {
         let (state, results) = self.run_jtag_batch(start, batch)?;
         self.jtag_state.tap_state = state;
         Ok(results)
-    }
-
-    fn shift_raw_sequence(&mut self, sequence: JtagSequence) -> Result<BitVec, DebugProbeError> {
-        BlackMagicProbe::shift_raw_sequence(self, sequence)
     }
 }
 
