@@ -110,12 +110,7 @@ fn test_stepping(_definition: &DutDefinition, core: &mut Core) -> TestResult {
 
     println!("Core halted at {pc:#08x}, now trying to run...");
 
-    // Increase PC by 2 to skip breakpoint.
-    core.write_core_reg(core.program_counter(), pc + 2)?;
-
-    println!("Run core again, with pc = {:#010x}", pc + 2);
-
-    // Run to the finish
+    // `run()` skips the SW BKPT via `cortex_m::skip_breakpoint()`.
     core.run()?;
 
     // Final breakpoint is at offset 0x10
