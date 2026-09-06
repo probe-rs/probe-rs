@@ -10,6 +10,7 @@ pub mod fake_probe;
 pub mod ftdi;
 pub mod glasgow;
 pub mod jlink;
+pub mod jtag;
 pub mod list;
 pub(crate) mod queue;
 mod selector;
@@ -40,6 +41,7 @@ use std::fmt;
 use std::sync::{Arc, LazyLock};
 
 pub use bits::BitSequence;
+pub use jtag::{JtagBatch, JtagOp, JtagProbe, TapState};
 pub use queue::{Batch, BatchError, BatchExecutionError, ErasedBatch, Handle, JtagQueue, Results};
 #[allow(deprecated)]
 pub use queue::{DeferredResultIndex, DeferredResultSet, ErasedQueue, Queue};
