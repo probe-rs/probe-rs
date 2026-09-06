@@ -70,24 +70,7 @@ impl From<ApAddress> for RegisterAddress {
     }
 }
 
-bitfield::bitfield! {
-    /// A struct to describe the default CMSIS-DAP pins that one can toggle from the host.
-    #[derive(Copy, Clone)]
-    pub struct Pins(u8);
-    impl Debug;
-    /// The active low reset of the debug probe.
-    pub nreset, set_nreset: 7;
-    /// The negative target reset pin of JTAG.
-    pub ntrst, set_ntrst: 5;
-    /// The TDO or SWO pin.
-    pub tdo, set_tdo: 3;
-    /// The TDI pin.
-    pub tdi, set_tdi: 2;
-    /// The SWDIO or TMS pin.
-    pub swdio_tms, set_swdio_tms: 1;
-    /// The clock pin.
-    pub swclk_tck, set_swclk_tck: 0;
-}
+pub use crate::probe::swd::Pins;
 
 /// Access port v2 address, the base of the AP within the root memory space.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]

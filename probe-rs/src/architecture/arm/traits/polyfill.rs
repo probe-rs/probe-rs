@@ -15,8 +15,8 @@ use crate::{
         BitSequence, CommandResult, DebugProbe, DebugProbeError, IoSequenceItem, JtagBatch,
         JtagChain, JtagChainAccess, JtagWriteCommand, JtagWriteData, RawSwdIo, TapState,
         WireProtocol,
-        common::bits_to_byte,
         queue::{BatchError, JtagQueue},
+        swd::{Direction, Port, parse_transfer_response, transfer_io_sequence},
     },
 };
 
@@ -556,15 +556,22 @@ impl DapTransfer {
         }
     }
 
-    fn transfer_type(&self) -> TransferType {
-        match self.direction {
-            TransferDirection::Read => TransferType::Read,
-            TransferDirection::Write => TransferType::Write(self.value),
-        }
-    }
-
     fn io_sequence(&self) -> IoSequence {
-        let mut seq = build_swd_transfer(&self.address, self.transfer_type());
+        let port = if self.address.is_ap() {
+            Port::Ap
+        } else {
+            Port::Dp
+        };
+        let direction = match self.direction {
+            TransferDirection::Read => Direction::Read,
+            TransferDirection::Write => Direction::Write,
+        };
+        let mut seq = IoSequence::from(transfer_io_sequence(
+            port,
+            self.address.a2_and_3(),
+            direction,
+            self.value,
+        ));
 
         seq.reserve(self.idle_cycles_after);
         for _ in 0..self.idle_cycles_after {
@@ -712,10 +719,6 @@ impl OutSequence {
         self.bits.push(bit);
     }
 
-    fn len(&self) -> usize {
-        self.bits.len()
-    }
-
     fn bits(&self) -> &[bool] {
         &self.bits
     }
@@ -734,28 +737,12 @@ impl IoSequence {
         IoSequence { io: vec![] }
     }
 
-    fn with_capacity(capacity: usize) -> Self {
-        IoSequence {
-            io: Vec::with_capacity(capacity),
-        }
-    }
-
     fn reserve(&mut self, idle_cycles_after: usize) {
         self.io.reserve(idle_cycles_after);
     }
 
     fn add_output(&mut self, bit: bool) {
         self.io.push(IoSequenceItem::Output(bit));
-    }
-
-    fn add_input(&mut self) {
-        self.io.push(IoSequenceItem::Input);
-    }
-
-    fn add_input_sequence(&mut self, length: usize) {
-        for _ in 0..length {
-            self.add_input();
-        }
     }
 
     fn io_items(&self) -> impl Iterator<Item = IoSequenceItem> + '_ {
@@ -767,144 +754,26 @@ impl IoSequence {
     }
 }
 
-impl From<OutSequence> for IoSequence {
-    fn from(out_sequence: OutSequence) -> Self {
-        let mut io_sequence = IoSequence::with_capacity(out_sequence.len());
-
-        for bi in out_sequence.bits {
-            io_sequence.add_output(bi);
-        }
-
-        io_sequence
+impl From<Vec<IoSequenceItem>> for IoSequence {
+    fn from(items: Vec<IoSequenceItem>) -> Self {
+        IoSequence { io: items }
     }
-}
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-enum TransferType {
-    Read,
-    Write(u32),
-}
-
-fn build_swd_transfer(address: &RegisterAddress, direction: TransferType) -> IoSequence {
-    // JLink operates on raw SWD bit sequences.
-    // So we need to manually assemble the read and write bitsequences.
-    // The following code with the comments hopefully explains well enough how it works.
-    // `true` means `1` and `false` means `0` for the SWDIO sequence.
-    // `true` means `drive line` and `false` means `open drain` for the direction sequence.
-
-    // First we determine the APnDP bit.
-    let ap_n_dp = address.is_ap();
-
-    // Set direction bit to 1 for reads.
-    let direction_bit = direction == TransferType::Read;
-
-    // Then we determine the address bits.
-    // Only bits 2 and 3 are relevant as we use byte addressing but can only read 32bits
-    // which means we can skip bits 0 and 1. The ADI specification is defined like this.
-    let a2 = address.a2();
-    let a3 = address.a3();
-
-    let mut sequence = IoSequence::with_capacity(46);
-
-    // Then we assemble the actual request.
-
-    // Start bit (always 1).
-    sequence.add_output(true);
-
-    // APnDP (0 for DP, 1 for AP).
-    sequence.add_output(ap_n_dp);
-
-    // RnW (0 for Write, 1 for Read).
-    sequence.add_output(direction_bit);
-
-    // Address bits
-    sequence.add_output(a2);
-    sequence.add_output(a3);
-
-    // Odd parity bit over APnDP, RnW a2 and a3
-    sequence.add_output(ap_n_dp ^ direction_bit ^ a2 ^ a3);
-
-    // Stop bit (always 0).
-    sequence.add_output(false);
-
-    // Park bit (always 1).
-    sequence.add_output(true);
-
-    // Turnaround bit.
-    sequence.add_input();
-
-    // ACK bits.
-    sequence.add_input_sequence(3);
-
-    if let TransferType::Write(value) = direction {
-        // For writes, we need to a turnaround bit.
-        sequence.add_input();
-
-        // Now we add all the data bits to the sequence.
-        for i in 0..32 {
-            sequence.add_output(value & (1 << i) != 0);
-        }
-
-        // Add the parity of the data bits.
-        sequence.add_output(value.count_ones() % 2 == 1);
-    } else {
-        // Handle Read
-        // Add the data bits to the SWDIO sequence.
-        sequence.add_input_sequence(32);
-
-        // Add the parity bit to the sequence.
-        sequence.add_input();
-
-        // Finally add the turnaround bit to the sequence.
-        sequence.add_input();
-    }
-
-    sequence
 }
 
 /// Parses acknowledgement and extracts the data from the response if the transfer is a Read.
 fn parse_swd_response(resp: &[bool], direction: TransferDirection) -> Result<u32, DapError> {
-    // We need to discard the output bits that correspond to the part of the request
-    // in which the probe is driving SWDIO. Additionally, there is a phase shift that
-    // happens when ownership of the SWDIO line is transferred to the device.
-    // The device changes the value of SWDIO with the rising edge of the clock.
-    //
-    // It appears that the JLink probe samples this line with the falling edge of
-    // the clock. Therefore, the whole sequence seems to be leading by one bit,
-    // which is why we don't discard the turnaround bit. It actually contains the
-    // first ack bit.
+    let dir = match direction {
+        TransferDirection::Read => Direction::Read,
+        TransferDirection::Write => Direction::Write,
+    };
 
-    let (ack, response) = resp.split_at(3);
-
-    // When all bits are high, this means we didn't get any response from the
-    // target, which indicates a protocol error.
-    match (ack[0], ack[1], ack[2]) {
-        (true, true, true) => Err(DapError::NoAcknowledge),
-        (false, true, false) => Err(DapError::WaitResponse),
-        (false, false, true) => Err(DapError::FaultResponse),
-        // Successful transfer
-        (true, false, false) if direction == TransferDirection::Read => {
-            // Take the data bits and convert them into a 32bit int.
-            let value = bits_to_byte(response.iter().copied());
-
-            // Make sure the parity is correct.
-            if value.count_ones() % 2 == response[32] as u32 {
-                tracing::trace!("DAP read {}.", value);
-                Ok(value)
-            } else {
-                Err(DapError::IncorrectParity)
-            }
-        }
-        (true, false, false) => Ok(0), // Write; there are no data bits in the mandatory data phase.
-        _ => {
-            // Invalid response
-            tracing::debug!(
-                "Unexpected response from target, does not conform to SWD specification (ack={:?})",
-                resp
-            );
-            Err(DapError::Protocol(WireProtocol::Swd))
-        }
-    }
+    parse_transfer_response(resp, dir).map_err(|error| match error {
+        crate::probe::swd::SwdTransferError::NoAcknowledge => DapError::NoAcknowledge,
+        crate::probe::swd::SwdTransferError::WaitResponse => DapError::WaitResponse,
+        crate::probe::swd::SwdTransferError::FaultResponse => DapError::FaultResponse,
+        crate::probe::swd::SwdTransferError::IncorrectParity => DapError::IncorrectParity,
+        crate::probe::swd::SwdTransferError::Protocol => DapError::Protocol(WireProtocol::Swd),
+    })
 }
 
 /// RawDapAccess implementation for probes that implement RawProtocolIo.

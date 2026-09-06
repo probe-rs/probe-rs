@@ -16,6 +16,7 @@ pub(crate) mod queue;
 mod selector;
 pub mod sifliuart;
 pub mod stlink;
+pub mod swd;
 pub mod wlink;
 pub mod xvc;
 
@@ -46,6 +47,7 @@ pub use queue::{Batch, BatchError, BatchExecutionError, ErasedBatch, Handle, Jta
 #[allow(deprecated)]
 pub use queue::{DeferredResultIndex, DeferredResultSet, ErasedQueue, Queue};
 pub use selector::DebugProbeSelector;
+pub use swd::{BitbangSwd, Direction, Pins, Port, SwdBatch, SwdOp, SwdProbe, SwdTransferError};
 
 /// Used to log warnings when the measured target voltage is
 /// lower than 1.4V, if at all measurable.
@@ -248,6 +250,9 @@ pub enum DebugProbeError {
 
     /// An error occurred handling the JTAG scan chain.
     JtagScanChain(#[from] ScanChainError),
+
+    /// An SWD transfer received an error response from the target.
+    SwdTransfer(#[from] swd::SwdTransferError),
 
     /// Some other error occurred
     #[display("{0}")]
