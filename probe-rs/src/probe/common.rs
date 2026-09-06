@@ -491,19 +491,15 @@ impl<Probe: AutoImplementJtagAccess + JtagProbe> JtagAccess for Probe {
         })
     }
 
-    fn set_idle_cycles(&mut self, idle_cycles: u8) -> Result<(), DebugProbeError> {
-        self.state_mut().jtag_idle_cycles = idle_cycles as usize;
-        Ok(())
-    }
-
-    fn idle_cycles(&self) -> u8 {
-        self.state().jtag_idle_cycles as u8
-    }
-
-    fn read_register(&mut self, address: u32, len: u32) -> Result<BitVec, DebugProbeError> {
+    fn read_register(
+        &mut self,
+        address: u32,
+        len: u32,
+        idle_cycles: u32,
+    ) -> Result<BitVec, DebugProbeError> {
         let data = vec![0u8; len.div_ceil(8) as usize];
 
-        self.write_register(address, &data, len)
+        self.write_register(address, &data, len, idle_cycles)
     }
 
     fn write_register(
@@ -511,6 +507,7 @@ impl<Probe: AutoImplementJtagAccess + JtagProbe> JtagAccess for Probe {
         address: u32,
         data: &[u8],
         len: u32,
+        idle_cycles: u32,
     ) -> Result<BitVec, DebugProbeError> {
         if address > self.state().max_ir_address() {
             return Err(DebugProbeError::Other(format!(
@@ -519,7 +516,6 @@ impl<Probe: AutoImplementJtagAccess + JtagProbe> JtagAccess for Probe {
         }
 
         let ir_len = self.state().chain_params.irlen;
-        let idle_cycles = self.state().jtag_idle_cycles as u32;
 
         let response = with_jtag_chain(self, |chain| {
             let mut batch = JtagBatch::new();
@@ -538,9 +534,12 @@ impl<Probe: AutoImplementJtagAccess + JtagProbe> JtagAccess for Probe {
         Ok(bit_sequence_to_bitvec(&response))
     }
 
-    fn write_dr(&mut self, data: &[u8], len: u32) -> Result<BitVec, DebugProbeError> {
-        let idle_cycles = self.state().jtag_idle_cycles as u32;
-
+    fn write_dr(
+        &mut self,
+        data: &[u8],
+        len: u32,
+        idle_cycles: u32,
+    ) -> Result<BitVec, DebugProbeError> {
         let response = with_jtag_chain(self, |chain| {
             let mut batch = JtagBatch::new();
             let handle =
@@ -562,7 +561,6 @@ impl<Probe: AutoImplementJtagAccess + JtagProbe> JtagAccess for Probe {
         writes: &ErasedBatch<JtagCommand>,
     ) -> Result<Results, BatchExecutionError> {
         let max_ir = self.state().max_ir_address();
-        let idle_cycles = self.state().jtag_idle_cycles as u32;
 
         let (mut run_results, capture_handles) = match with_jtag_chain(self, |chain| {
             let ir_len = chain.params().irlen;
@@ -586,7 +584,7 @@ impl<Probe: AutoImplementJtagAccess + JtagProbe> JtagAccess for Probe {
                             &mut batch,
                             &BitSequence::from_bytes(&write.inner.data, write.inner.len as usize),
                         );
-                        chain.run_test_idle(&mut batch, idle_cycles);
+                        chain.run_test_idle(&mut batch, write.inner.idle_cycles);
                         if idx.should_capture() {
                             capture_handles.push(handle);
                         }
@@ -596,7 +594,7 @@ impl<Probe: AutoImplementJtagAccess + JtagProbe> JtagAccess for Probe {
                             &mut batch,
                             &BitSequence::from_bytes(&write.inner.data, write.inner.len as usize),
                         );
-                        chain.run_test_idle(&mut batch, idle_cycles);
+                        chain.run_test_idle(&mut batch, write.inner.idle_cycles);
                         if idx.should_capture() {
                             capture_handles.push(handle);
                         }

@@ -418,6 +418,7 @@ impl<'probe> Xdm<'probe> {
                 address: TapInstruction::Nar.code(),
                 data: nar.to_le_bytes().to_vec(),
                 len: TapInstruction::Nar.bits(),
+                idle_cycles: 0,
             },
             transform: |write, capture| {
                 let capture = capture.load_le::<u8>();
@@ -444,6 +445,7 @@ impl<'probe> Xdm<'probe> {
             inner: ShiftDrData {
                 data: ndr.to_le_bytes().to_vec(),
                 len: TapInstruction::Ndr.bits(),
+                idle_cycles: 0,
             },
             transform,
         })
@@ -477,7 +479,7 @@ impl<'probe> Xdm<'probe> {
 
         let capture = self
             .probe
-            .write_register(instr.code(), &[value], instr.bits())?;
+            .write_register(instr.code(), &[value], instr.bits(), 0)?;
 
         let res = capture.load_le::<u8>();
         tracing::trace!("pwr_write response: {:?}", res);
@@ -491,7 +493,7 @@ impl<'probe> Xdm<'probe> {
 
         let capture = self
             .probe
-            .write_register(instr.code(), &[0, 0, 0, 0], instr.bits())?;
+            .write_register(instr.code(), &[0, 0, 0, 0], instr.bits(), 0)?;
 
         let res = capture.load_le::<u32>();
 

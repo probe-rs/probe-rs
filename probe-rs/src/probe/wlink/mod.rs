@@ -193,7 +193,6 @@ impl ProbeFactory for WchLinkFactory {
             chip_family: RiscvChip::CH32V103,
             last_dmi_read: None,
             speed: Speed::default(),
-            idle_cycles: 0,
         };
 
         wlink.init()?;
@@ -220,7 +219,6 @@ pub struct WchLink {
     // Hack to support NOP after READ
     last_dmi_read: Option<(u8, u32, u8)>,
     speed: commands::Speed,
-    idle_cycles: u8,
 }
 
 impl fmt::Debug for WchLink {
@@ -234,7 +232,6 @@ impl fmt::Debug for WchLink {
             .field("chip_id", &self.chip_id)
             .field("last_dmi_read", &self.last_dmi_read)
             .field("speed", &self.speed)
-            .field("idle_cycles", &self.idle_cycles)
             .finish()
     }
 }
@@ -430,7 +427,12 @@ impl JtagAccess for WchLink {
         Ok(())
     }
 
-    fn read_register(&mut self, address: u32, len: u32) -> Result<BitVec, DebugProbeError> {
+    fn read_register(
+        &mut self,
+        address: u32,
+        len: u32,
+        _idle_cycles: u32,
+    ) -> Result<BitVec, DebugProbeError> {
         tracing::debug!("read register 0x{:08x}", address);
         assert_eq!(len, 32);
 
@@ -453,20 +455,12 @@ impl JtagAccess for WchLink {
         }
     }
 
-    fn set_idle_cycles(&mut self, idle_cycles: u8) -> Result<(), DebugProbeError> {
-        self.idle_cycles = idle_cycles;
-        Ok(())
-    }
-
-    fn idle_cycles(&self) -> u8 {
-        self.idle_cycles
-    }
-
     fn write_register(
         &mut self,
         address: u32,
         data: &[u8],
         len: u32,
+        _idle_cycles: u32,
     ) -> Result<BitVec, DebugProbeError> {
         match address as u8 {
             REG_DTMCS_ADDRESS => {
@@ -548,7 +542,12 @@ impl JtagAccess for WchLink {
         }
     }
 
-    fn write_dr(&mut self, _data: &[u8], _len: u32) -> Result<BitVec, DebugProbeError> {
+    fn write_dr(
+        &mut self,
+        _data: &[u8],
+        _len: u32,
+        _idle_cycles: u32,
+    ) -> Result<BitVec, DebugProbeError> {
         Err(DebugProbeError::NotImplemented {
             function_name: "write_dr",
         })

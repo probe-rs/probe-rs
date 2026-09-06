@@ -1081,9 +1081,6 @@ pub struct JtagDriverState {
 
     /// The parameters of the scan chain.
     pub chain_params: ChainParams,
-
-    /// Idle cycles necessary between consecutive accesses to the DMI register.
-    pub jtag_idle_cycles: usize,
 }
 impl JtagDriverState {
     fn max_ir_address(&self) -> u32 {
@@ -1099,7 +1096,6 @@ impl Default for JtagDriverState {
             expected_scan_chain: None,
             scan_chain: Vec::new(),
             chain_params: ChainParams::default(),
-            jtag_idle_cycles: 0,
         }
     }
 }
@@ -1155,15 +1151,6 @@ pub trait JtagAccess: DebugProbe {
     /// Executes a TAP reset.
     fn tap_reset(&mut self) -> Result<(), DebugProbeError>;
 
-    /// For RISC-V, and possibly other interfaces, the JTAG interface has to remain in
-    /// the idle state for several cycles between consecutive accesses to the DR register.
-    ///
-    /// This function configures the number of idle cycles which are inserted after each access.
-    fn set_idle_cycles(&mut self, idle_cycles: u8) -> Result<(), DebugProbeError>;
-
-    /// Return the currently configured idle cycles.
-    fn idle_cycles(&self) -> u8;
-
     /// Selects the JTAG TAP to be used for communication.
     ///
     /// The index is the position of the TAP in the scan chain, which can
@@ -1181,10 +1168,15 @@ pub trait JtagAccess: DebugProbe {
     /// Read a JTAG register.
     ///
     /// This function emulates a read by performing a write with all zeros to the DR.
-    fn read_register(&mut self, address: u32, len: u32) -> Result<BitVec, DebugProbeError> {
+    fn read_register(
+        &mut self,
+        address: u32,
+        len: u32,
+        idle_cycles: u32,
+    ) -> Result<BitVec, DebugProbeError> {
         let data = vec![0u8; len.div_ceil(8) as usize];
 
-        self.write_register(address, &data, len)
+        self.write_register(address, &data, len, idle_cycles)
     }
 
     /// Write to a JTAG register
@@ -1197,12 +1189,18 @@ pub trait JtagAccess: DebugProbe {
         address: u32,
         data: &[u8],
         len: u32,
+        idle_cycles: u32,
     ) -> Result<BitVec, DebugProbeError>;
 
     /// Shift a value into the DR JTAG register
     ///
     /// The data shifted out of the DR register will be returned.
-    fn write_dr(&mut self, data: &[u8], len: u32) -> Result<BitVec, DebugProbeError>;
+    fn write_dr(
+        &mut self,
+        data: &[u8],
+        len: u32,
+        idle_cycles: u32,
+    ) -> Result<BitVec, DebugProbeError>;
 
     /// Executes a sequence of JTAG commands.
     fn write_register_batch(
@@ -1221,6 +1219,7 @@ pub trait JtagAccess: DebugProbe {
                         write.inner.address,
                         &write.inner.data,
                         write.inner.len,
+                        write.inner.idle_cycles,
                     ) {
                         Ok(response) => response,
                         Err(e) => {
@@ -1237,7 +1236,11 @@ pub trait JtagAccess: DebugProbe {
                 }
 
                 JtagCommand::ShiftDr(write) => {
-                    let response = match self.write_dr(&write.inner.data, write.inner.len) {
+                    let response = match self.write_dr(
+                        &write.inner.data,
+                        write.inner.len,
+                        write.inner.idle_cycles,
+                    ) {
                         Ok(response) => response,
                         Err(e) => {
                             return Err(BatchExecutionError::new_from_debug_probe(e, results));
@@ -1278,6 +1281,9 @@ pub struct JtagWriteData {
 
     /// The number of bits in `data`
     pub len: u32,
+
+    /// TCK cycles in Run-Test/Idle after the DR exchange.
+    pub idle_cycles: u32,
 }
 
 /// Data for a DR shift - no transform, just the payload.
@@ -1288,6 +1294,9 @@ pub struct ShiftDrData {
 
     /// The number of bits in `data`
     pub len: u32,
+
+    /// TCK cycles in Run-Test/Idle after the DR exchange.
+    pub idle_cycles: u32,
 }
 
 /// A typed JTAG register write command with compile-time error type.

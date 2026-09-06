@@ -190,7 +190,7 @@ fn identify_by_idcode(
     for tap in 0..jtag.scan_chain()?.len() {
         jtag.select_target(tap)?;
 
-        let Ok(idcode) = jtag.read_register(1, 32) else {
+        let Ok(idcode) = jtag.read_register(1, 32, 0) else {
             return Ok(None);
         };
 
@@ -320,11 +320,12 @@ mod tests {
             unreachable!()
         }
 
-        fn set_idle_cycles(&mut self, _idle_cycles: u8) -> Result<(), DebugProbeError> {
-            unreachable!()
-        }
-
-        fn idle_cycles(&self) -> u8 {
+        fn read_register(
+            &mut self,
+            _address: u32,
+            _len: u32,
+            _idle_cycles: u32,
+        ) -> Result<BitVec, DebugProbeError> {
             unreachable!()
         }
 
@@ -333,11 +334,17 @@ mod tests {
             _address: u32,
             _data: &[u8],
             _len: u32,
+            _idle_cycles: u32,
         ) -> Result<BitVec, DebugProbeError> {
             unreachable!()
         }
 
-        fn write_dr(&mut self, _data: &[u8], _len: u32) -> Result<BitVec, DebugProbeError> {
+        fn write_dr(
+            &mut self,
+            _data: &[u8],
+            _len: u32,
+            _idle_cycles: u32,
+        ) -> Result<BitVec, DebugProbeError> {
             unreachable!()
         }
     }
