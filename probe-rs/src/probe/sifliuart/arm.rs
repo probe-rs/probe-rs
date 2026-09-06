@@ -11,7 +11,7 @@ use crate::architecture::arm::{
     ArmDebugInterface, ArmError, DapAccess, FullyQualifiedApAddress, SwoAccess, SwoConfig,
 };
 use crate::probe::sifliuart::{SifliUart, SifliUartCommand, SifliUartResponse};
-use crate::probe::{DebugProbeError, Probe};
+use crate::probe::{BitSequence, DebugProbeError, Probe};
 use std::cmp::{max, min};
 use std::collections::BTreeSet;
 use std::sync::Arc;
@@ -99,7 +99,7 @@ impl DapAccess for SifliUartArmDebug {
 }
 
 impl SwdSequence for SifliUartArmDebug {
-    fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
+    fn swj_sequence(&mut self, _bits: &BitSequence) -> Result<(), DebugProbeError> {
         Err(DebugProbeError::NotImplemented {
             function_name: "swj_sequence",
         })

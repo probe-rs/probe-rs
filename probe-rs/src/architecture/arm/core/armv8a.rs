@@ -1703,7 +1703,7 @@ mod test {
             FullyQualifiedApAddress, communication_interface::SwdSequence,
             sequences::DefaultArmSequence,
         },
-        probe::DebugProbeError,
+        probe::{BitSequence, DebugProbeError},
     };
 
     use super::*;
@@ -1874,7 +1874,7 @@ mod test {
     }
 
     impl SwdSequence for MockProbe {
-        fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
+        fn swj_sequence(&mut self, _bits: &BitSequence) -> Result<(), DebugProbeError> {
             todo!()
         }
 

@@ -1,6 +1,6 @@
 use crate::{
     CoreStatus,
-    probe::{DebugProbe, DebugProbeError},
+    probe::{BitSequence, DebugProbe, DebugProbeError},
 };
 
 use super::{
@@ -276,13 +276,13 @@ pub trait RawDapAccess {
     ///
     /// This can only be used for output, and should be used to generate
     /// the initial reset sequence, for example.
-    fn jtag_sequence(&mut self, cycles: u8, tms: bool, tdi: u64) -> Result<(), DebugProbeError>;
+    fn jtag_sequence(&mut self, tms: bool, tdi: &BitSequence) -> Result<(), DebugProbeError>;
 
     /// Send a specific output sequence over JTAG or SWD.
     ///
     /// This can only be used for output, and should be used to generate
     /// the initial reset sequence, for example.
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError>;
+    fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError>;
 
     /// Set the state of debugger output pins directly.
     ///

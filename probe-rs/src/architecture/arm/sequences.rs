@@ -19,7 +19,7 @@ use crate::{
         core::registers::cortex_m::{PC, SP},
         dp::{Ctrl, DLPIDR, DebugPortError, DpRegister, TARGETID},
     },
-    probe::WireProtocol,
+    probe::{BitSequence, WireProtocol},
 };
 
 use super::{
@@ -529,13 +529,11 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             tracing::trace!("Sending Selection Alert sequence");
 
             // Ensure target is not in the middle of detecting a selection alert
-            interface.swj_sequence(8, 0xFF)?;
+            interface.swj_sequence(&BitSequence::from_u64(8, 0xFF))?;
 
-            // Alert Sequence Bits  0.. 63
-            interface.swj_sequence(64, 0x86852D956209F392)?;
-
-            // Alert Sequence Bits 64..127
-            interface.swj_sequence(64, 0x19BC0EA2E3DDAFE9)?;
+            let mut alert = BitSequence::from_u64(64, 0x86852D956209F392);
+            alert.extend(&BitSequence::from_u64(64, 0x19BC0EA2E3DDAFE9));
+            interface.swj_sequence(&alert)?;
 
             Ok(())
         }
@@ -554,23 +552,23 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                 Some(WireProtocol::Jtag) => {
                     if has_dormant {
                         tracing::debug!("Select Dormant State (from SWD)");
-                        interface.swj_sequence(16, 0xE3BC)?;
+                        interface.swj_sequence(&BitSequence::from_u64(16, 0xE3BC))?;
 
                         // Send alert sequence
                         alert_sequence(interface)?;
 
                         // 4 cycles SWDIO/TMS LOW + 8-Bit JTAG Activation Code (0x0A)
-                        interface.swj_sequence(12, 0x0A0)?;
+                        interface.swj_sequence(&BitSequence::from_u64(12, 0x0A0))?;
                     } else {
                         // Execute SWJ-DP Switch Sequence SWD to JTAG (0xE73C).
-                        interface.swj_sequence(16, 0xE73C)?;
+                        interface.swj_sequence(&BitSequence::from_u64(16, 0xE73C))?;
                     }
 
                     // Execute at least >5 TCK cycles with TMS high to enter the Test-Logic-Reset state
-                    interface.swj_sequence(6, 0x3F)?;
+                    interface.swj_sequence(&BitSequence::from_u64(6, 0x3F))?;
 
                     // Enter Run-Test-Idle state, as required by the DAP_Transfer command when using JTAG
-                    interface.jtag_sequence(1, false, 0x01)?;
+                    interface.jtag_sequence(false, &BitSequence::from_u64(1, 0x01))?;
 
                     // Configure JTAG IR lengths in probe
                     interface.configure_jtag(false)?;
@@ -579,17 +577,17 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                     if has_dormant {
                         // Select Dormant State (from JTAG)
                         tracing::debug!("SelectV1 Dormant State (from JTAG)");
-                        interface.swj_sequence(31, 0x33BBBBBA)?;
+                        interface.swj_sequence(&BitSequence::from_u64(31, 0x33BBBBBA))?;
 
                         // Leave dormant state
                         alert_sequence(interface)?;
 
                         // 4 cycles SWDIO/TMS LOW + 8-Bit SWD Activation Code (0x1A)
-                        interface.swj_sequence(12, 0x1A0)?;
+                        interface.swj_sequence(&BitSequence::from_u64(12, 0x1A0))?;
                     } else {
                         // Execute SWJ-DP Switch Sequence JTAG to SWD (0xE79E).
                         // Change if SWJ-DP uses deprecated switch code (0xEDB6).
-                        interface.swj_sequence(16, 0xE79E)?;
+                        interface.swj_sequence(&BitSequence::from_u64(16, 0xE79E))?;
 
                         // > 50 cycles SWDIO/TMS High, at least 2 idle cycles (SWDIO/TMS Low).
                         // -> done in debug_port_connect
@@ -1026,7 +1024,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
 
                 // Should this be a swd_sequence?
                 // Technically we shouldn't drive SWDIO all the time when sending a request.
-                interface.swj_sequence(6 * 8, data)?;
+                interface.swj_sequence(&BitSequence::from_bytes(&data.to_le_bytes(), 6 * 8))?;
             }
 
             tracing::debug!("Reading DPIDR to enable SWD interface");
@@ -1208,10 +1206,10 @@ pub trait DebugEraseSequence: Send + Sync {
 ///
 /// After the line reset, SWDIO will be kept low for `swdio_low_cycles` cycles.
 fn swd_line_reset(interface: &mut dyn DapProbe, swdio_low_cycles: u8) -> Result<(), ArmError> {
-    assert!(swdio_low_cycles + 51 <= 64);
-
     tracing::debug!("Performing SWD line reset");
-    interface.swj_sequence(51 + swdio_low_cycles, 0x0007_FFFF_FFFF_FFFF)?;
+    let mut sequence = BitSequence::repeat(true, 51);
+    sequence.extend(&BitSequence::repeat(false, swdio_low_cycles as usize));
+    interface.swj_sequence(&sequence)?;
 
     Ok(())
 }

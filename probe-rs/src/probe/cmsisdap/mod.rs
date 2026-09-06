@@ -22,8 +22,8 @@ use crate::{
         },
     },
     probe::{
-        AutoImplementJtagAccess, BatchCommand, DebugProbe, DebugProbeError, DebugProbeSelector,
-        JtagAccess, JtagDriverState, ProbeFactory, WireProtocol,
+        AutoImplementJtagAccess, BatchCommand, BitSequence, DebugProbe, DebugProbeError,
+        DebugProbeSelector, JtagAccess, JtagDriverState, ProbeFactory, WireProtocol,
         cmsisdap::commands::{
             CmsisDapError, RequestError,
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
@@ -1232,11 +1232,11 @@ impl RawDapAccess for CmsisDap {
         Ok(())
     }
 
-    fn jtag_sequence(&mut self, cycles: u8, tms: bool, tdi: u64) -> Result<(), DebugProbeError> {
+    fn jtag_sequence(&mut self, tms: bool, tdi: &BitSequence) -> Result<(), DebugProbeError> {
         self.connect_if_needed()?;
 
-        let tdi_bytes = tdi.to_le_bytes();
-        let sequence = JtagSequence::new(cycles, false, tms, tdi_bytes)?;
+        let tdi_bits = tdi.iter().collect::<bitvec::vec::BitVec>();
+        let sequence = JtagSequence::no_capture(tms, tdi_bits.as_bitslice())?;
         let sequences = vec![sequence];
 
         self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?;
@@ -1244,20 +1244,16 @@ impl RawDapAccess for CmsisDap {
         Ok(())
     }
 
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
+    fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError> {
         self.connect_if_needed()?;
-
-        let data = bits.to_le_bytes();
 
         if tracing::enabled!(tracing::Level::TRACE) {
             let mut seq = String::new();
 
             let _ = write!(&mut seq, "swj sequence:");
 
-            for i in 0..bit_len {
-                let bit = (bits >> i) & 1;
-
-                if bit == 1 {
+            for bit in bits.iter() {
+                if bit {
                     let _ = write!(&mut seq, "1");
                 } else {
                     let _ = write!(&mut seq, "0");
@@ -1266,7 +1262,25 @@ impl RawDapAccess for CmsisDap {
             tracing::trace!("{}", seq);
         }
 
-        self.send_swj_sequences(SequenceRequest::new(&data, bit_len)?)?;
+        // CMSIS-DAP caps one SWJ_SEQUENCE command at 256 bits.
+        const MAX_BITS: usize = 256;
+        let mut offset = 0;
+        while offset < bits.len() {
+            let chunk_len = (bits.len() - offset).min(MAX_BITS);
+            let mut data = vec![0u8; chunk_len.div_ceil(8)];
+            for i in 0..chunk_len {
+                if bits[offset + i] {
+                    data[i / 8] |= 1 << (i % 8);
+                }
+            }
+            let bit_count = if chunk_len == MAX_BITS {
+                0
+            } else {
+                chunk_len as u8
+            };
+            self.send_swj_sequences(SequenceRequest::new(&data, bit_count)?)?;
+            offset += chunk_len;
+        }
 
         Ok(())
     }

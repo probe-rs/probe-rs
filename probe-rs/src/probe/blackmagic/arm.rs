@@ -18,7 +18,7 @@ use crate::architecture::arm::{
 use crate::probe::blackmagic::{
     Accelerators, Align, BlackMagicProbe, ProtocolVersion, RemoteCommand,
 };
-use crate::probe::{ArmError, DebugProbeError, Probe};
+use crate::probe::{ArmError, BitSequence, DebugProbeError, Probe};
 use std::collections::BTreeSet;
 use std::collections::hash_map;
 use std::{collections::HashMap, sync::Arc};
@@ -424,8 +424,8 @@ impl SwoAccess for BlackMagicProbeArmDebug {
 }
 
 impl SwdSequence for BlackMagicProbeArmDebug {
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
-        self.probe.swj_sequence(bit_len, bits)
+    fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError> {
+        self.probe.swj_sequence(bits)
     }
 
     fn swj_pins(
@@ -679,8 +679,8 @@ impl ArmMemoryInterface for BlackMagicProbeMemoryInterface<'_> {
 }
 
 impl SwdSequence for BlackMagicProbeMemoryInterface<'_> {
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
-        self.probe.swj_sequence(bit_len, bits)
+    fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError> {
+        self.probe.swj_sequence(bits)
     }
 
     fn swj_pins(

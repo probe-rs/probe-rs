@@ -20,8 +20,8 @@ use crate::{
         valid_32bit_arm_address,
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeSelector, Probe, ProbeError, ProbeFactory,
-        WireProtocol,
+        BitSequence, DebugProbe, DebugProbeError, DebugProbeSelector, Probe, ProbeError,
+        ProbeFactory, WireProtocol,
     },
 };
 
@@ -1456,7 +1456,7 @@ impl ArmDebugInterface for StlinkArmDebug {
 }
 
 impl SwdSequence for StlinkArmDebug {
-    fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
+    fn swj_sequence(&mut self, _bits: &BitSequence) -> Result<(), DebugProbeError> {
         // This is not supported for ST-Links, unfortunately.
         Err(DebugProbeError::CommandNotSupportedByProbe {
             command_name: "swj_sequence",
@@ -1494,8 +1494,8 @@ struct StLinkMemoryInterface<'probe> {
 }
 
 impl SwdSequence for StLinkMemoryInterface<'_> {
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
-        self.probe.swj_sequence(bit_len, bits)
+    fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError> {
+        self.probe.swj_sequence(bits)
     }
 
     fn swj_pins(

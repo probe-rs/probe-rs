@@ -14,8 +14,8 @@ use crate::architecture::arm::{
 };
 
 use super::{
-    DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory, WireProtocol,
-    list::ProbeListItem,
+    BitSequence, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory,
+    WireProtocol, list::ProbeListItem,
 };
 
 mod mux;
@@ -345,20 +345,26 @@ impl RawDapAccess for Glasgow {
         Ok(())
     }
 
-    fn jtag_sequence(&mut self, cycles: u8, tms: bool, tdi: u64) -> Result<(), DebugProbeError> {
-        tracing::debug!("jtag_sequence({cycles}, {tms}, {tdi})");
+    fn jtag_sequence(&mut self, tms: bool, tdi: &BitSequence) -> Result<(), DebugProbeError> {
+        tracing::debug!("jtag_sequence({tms}, {tdi:?})");
         Err(DebugProbeError::CommandNotSupportedByProbe {
             command_name: "jtag_sequence",
         })
     }
 
-    fn swj_sequence(&mut self, len: u8, bits: u64) -> Result<(), DebugProbeError> {
-        tracing::debug!("swj_sequence({len}, {bits:#x})");
-        if len > 0 {
-            self.device.swd_sequence(len.min(32), bits as u32)?;
-        }
-        if len > 32 {
-            self.device.swd_sequence(len - 32, (bits >> 32) as u32)?;
+    fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError> {
+        tracing::debug!("swj_sequence({bits:?})");
+        let mut offset = 0;
+        while offset < bits.len() {
+            let chunk_len = (bits.len() - offset).min(32);
+            let mut value = 0u32;
+            for i in 0..chunk_len {
+                if bits[offset + i] {
+                    value |= 1 << i;
+                }
+            }
+            self.device.swd_sequence(chunk_len as u8, value)?;
+            offset += chunk_len;
         }
         Ok(())
     }
