@@ -9,7 +9,7 @@ use crate::{
     },
     probe::{
         BitSequence, CommandResult, DebugProbeError, JtagBatch, JtagChain, JtagChainAccess,
-        JtagWriteCommand, JtagWriteData, TapState,
+        JtagWriteCommand, JtagWriteData, SwdSettings, TapState,
         queue::{BatchError, JtagQueue},
     },
 };
@@ -325,6 +325,74 @@ enum TransferStatus {
     Failed(DapError),
 }
 
+fn clear_overrun_and_sticky_err(chain: &mut JtagChain<'_>) -> Result<(), DebugProbeError> {
+    tracing::debug!("Clearing overrun and sticky error");
+    let mut abort = Abort(0);
+    abort.set_orunerrclr(true);
+    abort.set_stkerrclr(true);
+    let transfer = DapTransfer::write(Abort::ADDRESS, abort.into());
+    perform_jtag_transfer(chain, &transfer)?;
+    Ok(())
+}
+
+fn perform_jtag_transfers_with_retry(
+    chain: &mut JtagChain<'_>,
+    transfers: &mut [DapTransfer],
+    settings: &SwdSettings,
+) -> Result<(), DebugProbeError> {
+    let mut successful_transfers = 0;
+    let mut idle_cycles = settings.num_idle_cycles_between_writes.max(1);
+    let num_retries = settings.num_retries_after_wait;
+
+    'transfer: for _ in 0..num_retries {
+        let chunk = &mut transfers[successful_transfers..];
+        if chunk.is_empty() {
+            return Ok(());
+        }
+
+        perform_jtag_transfers(chain, chunk)?;
+
+        for transfer in chunk.iter() {
+            match transfer.status {
+                TransferStatus::Ok => successful_transfers += 1,
+                TransferStatus::Failed(DapError::WaitResponse) => {
+                    tracing::debug!("got WAIT on transfer {}, retrying...", successful_transfers);
+
+                    clear_overrun_and_sticky_err(chain).inspect_err(|e| {
+                        tracing::error!("error clearing sticky overrun/error bits: {e}");
+                    })?;
+
+                    for transfer in chunk.iter_mut() {
+                        if transfer.direction == TransferDirection::Write {
+                            transfer.idle_cycles_after += idle_cycles;
+                        }
+                    }
+                    idle_cycles = idle_cycles
+                        .saturating_mul(2)
+                        .min(settings.max_retry_idle_cycles_after_wait);
+
+                    continue 'transfer;
+                }
+                _ => return Ok(()),
+            }
+        }
+
+        if successful_transfers == transfers.len() {
+            return Ok(());
+        }
+    }
+
+    tracing::debug!(
+        "Timeout in JTAG transaction, aborting AP transactions after {num_retries} retries."
+    );
+    let mut abort = Abort(0);
+    abort.set_dapabort(true);
+    let transfer = DapTransfer::write(Abort::ADDRESS, abort.into());
+    perform_jtag_transfer(chain, &transfer)?;
+
+    Ok(())
+}
+
 pub(crate) fn jtag_output_sequence(
     probe: &mut dyn JtagChainAccess,
     tms: bool,
@@ -461,9 +529,10 @@ impl FullTapState {
 pub(crate) fn jtag_read_register(
     chain: &mut JtagChain<'_>,
     address: RegisterAddress,
+    settings: &SwdSettings,
 ) -> Result<u32, ArmError> {
     let mut transfer = DapTransfer::read(address);
-    perform_jtag_transfers(chain, std::slice::from_mut(&mut transfer))?;
+    perform_jtag_transfers_with_retry(chain, std::slice::from_mut(&mut transfer), settings)?;
 
     match transfer.status {
         TransferStatus::Ok => Ok(transfer.value),
@@ -479,9 +548,10 @@ pub(crate) fn jtag_write_register(
     chain: &mut JtagChain<'_>,
     address: RegisterAddress,
     value: u32,
+    settings: &SwdSettings,
 ) -> Result<(), ArmError> {
     let mut transfer = DapTransfer::write(address, value);
-    perform_jtag_transfers(chain, std::slice::from_mut(&mut transfer))?;
+    perform_jtag_transfers_with_retry(chain, std::slice::from_mut(&mut transfer), settings)?;
 
     match transfer.status {
         TransferStatus::Ok => Ok(()),
@@ -497,9 +567,10 @@ pub(crate) fn jtag_read_block(
     chain: &mut JtagChain<'_>,
     address: RegisterAddress,
     values: &mut [u32],
+    settings: &SwdSettings,
 ) -> Result<(), ArmError> {
     let mut transfers = vec![DapTransfer::read(address); values.len()];
-    perform_jtag_transfers(chain, &mut transfers)?;
+    perform_jtag_transfers_with_retry(chain, &mut transfers, settings)?;
 
     for (index, transfer) in transfers.iter().enumerate() {
         match transfer.status {
@@ -518,12 +589,13 @@ pub(crate) fn jtag_write_block(
     chain: &mut JtagChain<'_>,
     address: RegisterAddress,
     values: &[u32],
+    settings: &SwdSettings,
 ) -> Result<(), ArmError> {
     let mut transfers = values
         .iter()
         .map(|value| DapTransfer::write(address, *value))
         .collect::<Vec<_>>();
-    perform_jtag_transfers(chain, &mut transfers)?;
+    perform_jtag_transfers_with_retry(chain, &mut transfers, settings)?;
 
     for transfer in &transfers {
         match transfer.status {
@@ -536,4 +608,323 @@ pub(crate) fn jtag_write_block(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        JTAG_ABORT_IR_VALUE, JTAG_ACCESS_PORT_IR_VALUE, JTAG_DEBUG_PORT_IR_VALUE, JTAG_STATUS_OK,
+        JTAG_STATUS_WAIT, SwdSettings, jtag_read_register, jtag_write_register,
+    };
+    use crate::{
+        architecture::arm::{
+            ApAddress, RegisterAddress,
+            dp::{Ctrl, DpRegister, RdBuff},
+        },
+        error::Error,
+        probe::{
+            BatchExecutionError, CommandResult, DebugProbe, DebugProbeError, JtagBatch, JtagChain,
+            JtagChainAccess, JtagChainState, JtagOp, JtagProbe, Results, WireProtocol,
+            jtag::chain::ChainParams,
+        },
+    };
+    use bitvec::prelude::*;
+
+    #[expect(dead_code)]
+    enum DapAcknowledge {
+        Ok,
+        Wait,
+        Fault,
+        NoAck,
+    }
+
+    #[derive(Debug)]
+    struct ExpectedJtagTransaction {
+        ir_address: u32,
+        address: u32,
+        value: u32,
+        read: bool,
+        result: u64,
+    }
+
+    #[derive(Debug)]
+    struct MockJaylink {
+        jtag_transactions: Vec<ExpectedJtagTransaction>,
+        expected_transfer_count: usize,
+        performed_transfer_count: usize,
+        protocol: WireProtocol,
+        jtag_state: JtagChainState,
+    }
+
+    impl MockJaylink {
+        fn new() -> Self {
+            Self {
+                jtag_transactions: vec![],
+                expected_transfer_count: 0,
+                performed_transfer_count: 0,
+                protocol: WireProtocol::Swd,
+                jtag_state: JtagChainState {
+                    chain_params: ChainParams {
+                        irlen: 4,
+                        ..ChainParams::default()
+                    },
+                    ..JtagChainState::default()
+                },
+            }
+        }
+
+        fn add_jtag_abort(&mut self) {
+            self.jtag_transactions.push(ExpectedJtagTransaction {
+                ir_address: JTAG_ABORT_IR_VALUE,
+                address: 0,
+                value: 0,
+                read: false,
+                result: 0,
+            });
+            self.expected_transfer_count += 1;
+        }
+
+        fn add_jtag_response<P: Into<RegisterAddress>>(
+            &mut self,
+            address: P,
+            read: bool,
+            acknowledge: DapAcknowledge,
+            output_value: u32,
+            input_value: u32,
+        ) {
+            let port = address.into();
+            let address = port.lsb().into();
+            let mut response = (output_value as u64) << 3;
+
+            let status = match acknowledge {
+                DapAcknowledge::Ok => JTAG_STATUS_OK,
+                DapAcknowledge::Wait => JTAG_STATUS_WAIT,
+                _ => 0b111,
+            };
+
+            response |= status as u64;
+
+            self.jtag_transactions.push(ExpectedJtagTransaction {
+                ir_address: if matches!(port, RegisterAddress::DpRegister(_)) {
+                    JTAG_DEBUG_PORT_IR_VALUE
+                } else {
+                    JTAG_ACCESS_PORT_IR_VALUE
+                },
+                address,
+                value: input_value,
+                read,
+                result: response,
+            });
+            self.expected_transfer_count += 1;
+        }
+    }
+
+    impl JtagChainAccess for MockJaylink {
+        fn chain_state(&mut self) -> &mut JtagChainState {
+            &mut self.jtag_state
+        }
+
+        fn chain_state_ref(&self) -> &JtagChainState {
+            &self.jtag_state
+        }
+    }
+
+    impl JtagProbe for MockJaylink {
+        fn run_batch(
+            &mut self,
+            batch: &JtagBatch,
+        ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
+            let mut results = Results::new();
+            let mut pending_ir: Option<u32> = None;
+
+            for (id, op) in batch.iter() {
+                if let JtagOp::Exchange { data, capture } = op {
+                    if data.len() <= 8 {
+                        pending_ir = Some(data.as_bits().load_le::<u32>());
+                        continue;
+                    }
+
+                    let jtag_transaction = self.jtag_transactions.remove(0);
+                    assert_eq!(
+                        jtag_transaction.ir_address,
+                        pending_ir.unwrap_or(jtag_transaction.ir_address),
+                        "Address mismatch with {} remaining transactions",
+                        self.jtag_transactions.len()
+                    );
+
+                    if jtag_transaction.ir_address != JTAG_ABORT_IR_VALUE {
+                        let jtag_value = data.as_bits().load_le::<u64>();
+                        let value = (jtag_value >> 3) as u32;
+                        let rnw = jtag_value & 1 == 1;
+                        let dap_address = ((jtag_value & 0x6) << 1) as u32;
+
+                        assert_eq!(dap_address, jtag_transaction.address);
+                        assert_eq!(rnw, jtag_transaction.read);
+                        assert_eq!(value, jtag_transaction.value);
+                    }
+
+                    self.performed_transfer_count += 1;
+                    pending_ir = None;
+
+                    if *capture && id.should_capture() {
+                        let ret = jtag_transaction.result;
+                        let mut bytes = vec![0u8; 5];
+                        bytes[..5].view_bits_mut::<Lsb0>().store_le(ret);
+                        results.push(id, CommandResult::VecU8(bytes));
+                    }
+                }
+            }
+
+            Ok(results)
+        }
+    }
+
+    impl DebugProbe for MockJaylink {
+        fn get_name(&self) -> &str {
+            "mock jtag"
+        }
+
+        fn speed_khz(&self) -> u32 {
+            0
+        }
+
+        fn set_speed(&mut self, _speed_khz: u32) -> Result<u32, DebugProbeError> {
+            Ok(0)
+        }
+
+        fn attach(&mut self) -> Result<(), DebugProbeError> {
+            Ok(())
+        }
+
+        fn detach(&mut self) -> Result<(), Error> {
+            Ok(())
+        }
+
+        fn target_reset(&mut self) -> Result<(), DebugProbeError> {
+            Err(DebugProbeError::CommandNotSupportedByProbe {
+                command_name: "target_reset",
+            })
+        }
+
+        fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+            Err(DebugProbeError::CommandNotSupportedByProbe {
+                command_name: "target_reset_assert",
+            })
+        }
+
+        fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+            Ok(())
+        }
+
+        fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
+            self.protocol = protocol;
+            Ok(())
+        }
+
+        fn active_protocol(&self) -> Option<WireProtocol> {
+            Some(self.protocol)
+        }
+
+        fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+            self
+        }
+    }
+
+    #[test]
+    fn read_register_jtag() {
+        let read_value = 12;
+        let mut mock = MockJaylink::new();
+        mock.select_protocol(WireProtocol::Jtag).unwrap();
+
+        mock.add_jtag_response(ApAddress::V1(4), true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, read_value, 0);
+        mock.add_jtag_response(Ctrl::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
+
+        let mut chain = JtagChain::new(&mut mock);
+        let result =
+            jtag_read_register(&mut chain, ApAddress::V1(4).into(), &SwdSettings::default())
+                .expect("read should succeed");
+
+        assert_eq!(result, read_value);
+        assert_eq!(mock.performed_transfer_count, mock.expected_transfer_count);
+    }
+
+    #[test]
+    fn read_register_with_wait_response_jtag() {
+        let read_value = 47;
+        let mut mock = MockJaylink::new();
+        mock.select_protocol(WireProtocol::Jtag).unwrap();
+
+        mock.add_jtag_response(ApAddress::V1(4), true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Wait, 0, 0);
+        mock.add_jtag_response(Ctrl::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
+
+        mock.add_jtag_abort();
+
+        mock.add_jtag_response(ApAddress::V1(4), true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, read_value, 0);
+        mock.add_jtag_response(Ctrl::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
+
+        let mut chain = JtagChain::new(&mut mock);
+        let result =
+            jtag_read_register(&mut chain, ApAddress::V1(4).into(), &SwdSettings::default())
+                .expect("read should succeed");
+
+        assert_eq!(result, read_value);
+        assert_eq!(mock.performed_transfer_count, mock.expected_transfer_count);
+    }
+
+    #[test]
+    fn write_register_jtag() {
+        let mut mock = MockJaylink::new();
+        mock.select_protocol(WireProtocol::Jtag).unwrap();
+
+        mock.add_jtag_response(ApAddress::V1(4), false, DapAcknowledge::Ok, 0x0, 0x123);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, 0x123, 0x0);
+        mock.add_jtag_response(Ctrl::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
+
+        let mut chain = JtagChain::new(&mut mock);
+        jtag_write_register(
+            &mut chain,
+            ApAddress::V1(4).into(),
+            0x123,
+            &SwdSettings::default(),
+        )
+        .expect("write should succeed");
+
+        assert_eq!(mock.performed_transfer_count, mock.expected_transfer_count);
+    }
+
+    #[test]
+    fn write_register_with_wait_response_jtag() {
+        let mut mock = MockJaylink::new();
+        mock.select_protocol(WireProtocol::Jtag).unwrap();
+
+        mock.add_jtag_response(ApAddress::V1(4), false, DapAcknowledge::Ok, 0x0, 0x123);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Wait, 0x0, 0x0);
+        mock.add_jtag_response(Ctrl::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
+
+        mock.add_jtag_abort();
+
+        mock.add_jtag_response(ApAddress::V1(4), false, DapAcknowledge::Ok, 0x0, 0x123);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, 0x123, 0x0);
+        mock.add_jtag_response(Ctrl::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
+
+        let mut chain = JtagChain::new(&mut mock);
+        jtag_write_register(
+            &mut chain,
+            ApAddress::V1(4).into(),
+            0x123,
+            &SwdSettings::default(),
+        )
+        .expect("write should succeed");
+
+        assert_eq!(mock.performed_transfer_count, mock.expected_transfer_count);
+    }
 }

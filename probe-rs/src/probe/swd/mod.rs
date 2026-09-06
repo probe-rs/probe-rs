@@ -24,7 +24,7 @@ pub enum IoSequenceItem {
 }
 
 /// SWD wire-protocol timing settings used by [`BitbangSwd`] probes.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SwdSettings {
     /// Initial number of idle cycles between consecutive writes.
     ///

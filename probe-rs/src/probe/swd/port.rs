@@ -985,6 +985,259 @@ mod tests {
         assert!(probe.capture_flags()[1]);
     }
 
+    fn run_read(probe: &mut MockSwdProbe, port: Port, addr: u8) -> (u32, Vec<RecordedOp>) {
+        let mut batch = SwdBatch::new();
+        let handle = batch.read(port, addr);
+        let mut swd_port = SwdPort::new(probe, SwdSettings::default());
+        let mut results = swd_port.run(batch).expect("run should succeed");
+        (results.take(handle).unwrap(), probe.transfer_ops())
+    }
+
+    fn run_writes(probe: &mut MockSwdProbe, batch: SwdBatch) -> Vec<RecordedOp> {
+        let mut swd_port = SwdPort::new(probe, SwdSettings::default());
+        swd_port.run(batch).expect("run should succeed");
+        probe.transfer_ops()
+    }
+
+    #[test]
+    fn read_register() {
+        let read_value = 12;
+        let mut probe = MockSwdProbe::new();
+        probe.push_response(ScriptedResponse::Ok(0));
+        probe.push_response(ScriptedResponse::Ok(read_value));
+        push_ok(&mut probe, 1);
+
+        let (value, reads) = run_read(&mut probe, Port::Ap, 0b0100);
+        assert_eq!(value, read_value);
+        assert_eq!(
+            read_ops(&reads),
+            vec![(Port::Ap, 0b0100), (Port::Dp, DP_RDBUFF_ADDR)]
+        );
+    }
+
+    #[test]
+    fn read_register_with_wait_response() {
+        let read_value = 47;
+        let mut probe = MockSwdProbe::new();
+        probe.push_response(ScriptedResponse::Ok(0));
+        probe.push_response(ScriptedResponse::Wait);
+        push_clear_overrun_ok(&mut probe);
+        probe.push_response(ScriptedResponse::Ok(read_value));
+        push_ok(&mut probe, 1);
+
+        let (value, _) = run_read(&mut probe, Port::Ap, 0b0100);
+        assert_eq!(value, read_value);
+    }
+
+    #[test]
+    fn write_register() {
+        let mut probe = MockSwdProbe::new();
+        push_ok(&mut probe, 2);
+
+        let mut batch = SwdBatch::new();
+        batch.write(Port::Ap, 0b0100, 0x123);
+        let ops = run_writes(&mut probe, batch);
+
+        assert_eq!(ap_write_count(&ops), 1);
+        assert_eq!(read_ops(&ops), vec![(Port::Dp, DP_RDBUFF_ADDR)]);
+    }
+
+    #[test]
+    fn write_register_with_wait_response() {
+        let mut probe = MockSwdProbe::new();
+        probe.push_response(ScriptedResponse::Ok(0));
+        probe.push_response(ScriptedResponse::Wait);
+        push_clear_overrun_ok(&mut probe);
+        push_ok(&mut probe, 2);
+
+        let mut batch = SwdBatch::new();
+        batch.write(Port::Ap, 0b0100, 0x123);
+        run_writes(&mut probe, batch);
+    }
+
+    mod transfer_handling {
+        use super::*;
+
+        #[test]
+        fn single_dp_register_read() {
+            let register_value = 32354;
+            let mut probe = MockSwdProbe::new();
+            probe.push_response(ScriptedResponse::Ok(register_value));
+            push_ok(&mut probe, 1);
+
+            let (value, reads) = run_read(&mut probe, Port::Dp, 0);
+            assert_eq!(value, register_value);
+            assert_eq!(read_ops(&reads), vec![(Port::Dp, 0)]);
+        }
+
+        #[test]
+        fn single_ap_register_read() {
+            let register_value = 0x11_22_33_44u32;
+            let mut probe = MockSwdProbe::new();
+            probe.push_response(ScriptedResponse::Ok(0));
+            probe.push_response(ScriptedResponse::Ok(register_value));
+            push_ok(&mut probe, 1);
+
+            let (value, reads) = run_read(&mut probe, Port::Ap, 0);
+            assert_eq!(value, register_value);
+            assert_eq!(
+                read_ops(&reads),
+                vec![(Port::Ap, 0), (Port::Dp, DP_RDBUFF_ADDR)]
+            );
+        }
+
+        #[test]
+        fn ap_then_dp_register_read() {
+            let ap_read_value = 0x123223;
+            let dp_read_value = 0xFFAABB;
+            let mut probe = MockSwdProbe::new();
+            probe.push_response(ScriptedResponse::Ok(0));
+            probe.push_response(ScriptedResponse::Ok(ap_read_value));
+            probe.push_response(ScriptedResponse::Ok(dp_read_value));
+            push_ok(&mut probe, 1);
+
+            let mut batch = SwdBatch::new();
+            let ap = batch.read(Port::Ap, 0b0100);
+            let dp = batch.read(Port::Dp, 0);
+            let mut port = SwdPort::new(&mut probe, SwdSettings::default());
+            let mut results = port.run(batch).expect("run should succeed");
+            assert_eq!(results.take(ap).unwrap(), ap_read_value);
+            assert_eq!(results.take(dp).unwrap(), dp_read_value);
+
+            assert_eq!(
+                read_ops(&probe.transfer_ops()),
+                vec![
+                    (Port::Ap, 0b0100),
+                    (Port::Dp, DP_RDBUFF_ADDR),
+                    (Port::Dp, 0),
+                ]
+            );
+        }
+
+        #[test]
+        fn dp_then_ap_register_read() {
+            let ap_read_value = 0x123223;
+            let dp_read_value = 0xFFAABB;
+            let mut probe = MockSwdProbe::new();
+            probe.push_response(ScriptedResponse::Ok(dp_read_value));
+            probe.push_response(ScriptedResponse::Ok(0));
+            probe.push_response(ScriptedResponse::Ok(ap_read_value));
+            push_ok(&mut probe, 1);
+
+            let mut batch = SwdBatch::new();
+            let dp = batch.read(Port::Dp, 0);
+            let ap = batch.read(Port::Ap, 0b0100);
+            let mut port = SwdPort::new(&mut probe, SwdSettings::default());
+            let mut results = port.run(batch).expect("run should succeed");
+            assert_eq!(results.take(dp).unwrap(), dp_read_value);
+            assert_eq!(results.take(ap).unwrap(), ap_read_value);
+
+            assert_eq!(
+                read_ops(&probe.transfer_ops()),
+                vec![
+                    (Port::Dp, 0),
+                    (Port::Ap, 0b0100),
+                    (Port::Dp, DP_RDBUFF_ADDR),
+                ]
+            );
+        }
+
+        #[test]
+        fn multiple_ap_read() {
+            let ap_read_values = [1, 2];
+            let mut probe = MockSwdProbe::new();
+            probe.push_response(ScriptedResponse::Ok(0));
+            probe.push_response(ScriptedResponse::Ok(ap_read_values[0]));
+            probe.push_response(ScriptedResponse::Ok(ap_read_values[1]));
+            push_ok(&mut probe, 1);
+
+            let mut batch = SwdBatch::new();
+            let first = batch.read(Port::Ap, 0b0100);
+            let second = batch.read(Port::Ap, 0b0100);
+            let mut port = SwdPort::new(&mut probe, SwdSettings::default());
+            let mut results = port.run(batch).expect("run should succeed");
+            assert_eq!(results.take(first).unwrap(), ap_read_values[0]);
+            assert_eq!(results.take(second).unwrap(), ap_read_values[1]);
+
+            assert_eq!(
+                read_ops(&probe.transfer_ops()),
+                vec![
+                    (Port::Ap, 0b0100),
+                    (Port::Ap, 0b0100),
+                    (Port::Dp, DP_RDBUFF_ADDR),
+                ]
+            );
+        }
+
+        #[test]
+        fn multiple_dp_read() {
+            let dp_read_values = [1, 2];
+            let mut probe = MockSwdProbe::new();
+            probe.push_response(ScriptedResponse::Ok(dp_read_values[0]));
+            probe.push_response(ScriptedResponse::Ok(dp_read_values[1]));
+            push_ok(&mut probe, 1);
+
+            let mut batch = SwdBatch::new();
+            let first = batch.read(Port::Dp, DP_CTRL_ADDR);
+            let second = batch.read(Port::Dp, DP_CTRL_ADDR);
+            let mut port = SwdPort::new(&mut probe, SwdSettings::default());
+            let mut results = port.run(batch).expect("run should succeed");
+            assert_eq!(results.take(first).unwrap(), dp_read_values[0]);
+            assert_eq!(results.take(second).unwrap(), dp_read_values[1]);
+
+            assert_eq!(
+                read_ops(&probe.transfer_ops()),
+                vec![(Port::Dp, DP_CTRL_ADDR), (Port::Dp, DP_CTRL_ADDR)]
+            );
+        }
+
+        #[test]
+        fn single_dp_register_write() {
+            let mut probe = MockSwdProbe::new();
+            push_ok(&mut probe, 1);
+
+            let mut batch = SwdBatch::new();
+            batch.write(Port::Dp, DP_ABORT_ADDR, 0x1234_5678);
+            run_writes(&mut probe, batch);
+
+            assert_eq!(write_count(&probe.transfer_ops()), 1);
+            assert!(read_ops(&probe.transfer_ops()).is_empty());
+        }
+
+        #[test]
+        fn single_ap_register_write() {
+            let mut probe = MockSwdProbe::new();
+            push_ok(&mut probe, 2);
+
+            let mut batch = SwdBatch::new();
+            batch.write(Port::Ap, 0, 0x1234_5678);
+            run_writes(&mut probe, batch);
+
+            assert_eq!(ap_write_count(&probe.transfer_ops()), 1);
+            assert_eq!(
+                read_ops(&probe.transfer_ops()),
+                vec![(Port::Dp, DP_RDBUFF_ADDR)]
+            );
+        }
+
+        #[test]
+        fn multiple_ap_register_write() {
+            let mut probe = MockSwdProbe::new();
+            push_ok(&mut probe, 3);
+
+            let mut batch = SwdBatch::new();
+            batch.write(Port::Ap, 0, 0x1234_5678);
+            batch.write(Port::Ap, 0, 0xABABABAB);
+            run_writes(&mut probe, batch);
+
+            assert_eq!(ap_write_count(&probe.transfer_ops()), 2);
+            assert_eq!(
+                read_ops(&probe.transfer_ops()),
+                vec![(Port::Dp, DP_RDBUFF_ADDR)]
+            );
+        }
+    }
+
     fn expect_err<T, E: std::fmt::Debug>(result: Result<T, E>, message: &str) -> E {
         match result {
             Ok(_) => panic!("{message}: got Ok"),

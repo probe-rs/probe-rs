@@ -185,7 +185,10 @@ impl DebugProbe for Ch347UsbJtag {
         Box<dyn crate::architecture::arm::ArmDebugInterface + 'probe>,
         (Box<dyn DebugProbe>, crate::architecture::arm::ArmError),
     > {
-        Ok(ArmCommunicationInterface::create_jtag(self, sequence, true))
+        let settings = SwdProbe::swd_settings(self.as_ref());
+        Ok(ArmCommunicationInterface::create_jtag(
+            self, settings, sequence, true,
+        ))
     }
 
     fn has_riscv_interface(&self) -> bool {

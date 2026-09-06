@@ -196,15 +196,15 @@ impl DpState {
 enum ArmProbe {
     /// An SWD probe with its transaction settings.
     Swd(Box<dyn SwdProbe>, SwdSettings),
-    /// A JTAG probe with scan chain state.
-    Jtag(Box<dyn JtagChainAccess>),
+    /// A JTAG probe with scan chain state and its transaction settings.
+    Jtag(Box<dyn JtagChainAccess>, SwdSettings),
 }
 
 impl std::fmt::Debug for ArmProbe {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Swd(_, _) => f.write_str("Swd(..)"),
-            Self::Jtag(_) => f.write_str("Jtag(..)"),
+            Self::Jtag(_, _) => f.write_str("Jtag(..)"),
         }
     }
 }
@@ -219,10 +219,7 @@ impl SwdDebugPortWire<'_> {
         &mut self,
         f: impl FnOnce(&mut SwdPort<'_>) -> Result<R, SwdPortError>,
     ) -> Result<R, ArmError> {
-        let mut port = SwdPort::new(
-            self.probe,
-            ArmCommunicationInterface::copy_swd_settings(&self.settings),
-        );
+        let mut port = SwdPort::new(self.probe, self.settings.clone());
         f(&mut port).map_err(ArmCommunicationInterface::swd_port_error)
     }
 
@@ -307,7 +304,10 @@ impl DebugPortWire for SwdDebugPortWire<'_> {
     }
 }
 
-struct JtagDebugPortWire<'a>(&'a mut dyn JtagChainAccess);
+struct JtagDebugPortWire<'a> {
+    probe: &'a mut dyn JtagChainAccess,
+    settings: SwdSettings,
+}
 
 impl DebugPortWire for JtagDebugPortWire<'_> {
     fn active_protocol(&self) -> Option<WireProtocol> {
@@ -323,11 +323,13 @@ impl DebugPortWire for JtagDebugPortWire<'_> {
     }
 
     fn jtag_sequence(&mut self, tms: bool, tdi: &BitSequence) -> Result<(), ArmError> {
-        jtag_output_sequence(self.0, tms, tdi).map_err(ArmError::Probe)
+        jtag_output_sequence(self.probe, tms, tdi).map_err(ArmError::Probe)
     }
 
     fn configure_jtag(&mut self, skip_scan: bool) -> Result<(), ArmError> {
-        self.0.configure_jtag(skip_scan).map_err(ArmError::Probe)
+        self.probe
+            .configure_jtag(skip_scan)
+            .map_err(ArmError::Probe)
     }
 
     fn swj_pins(&mut self, _out: Pins, _select: Pins, _wait: Duration) -> Result<Pins, ArmError> {
@@ -339,15 +341,15 @@ impl DebugPortWire for JtagDebugPortWire<'_> {
     }
 
     fn target_reset(&mut self) -> Result<(), ArmError> {
-        self.0.target_reset().map_err(ArmError::Probe)
+        self.probe.target_reset().map_err(ArmError::Probe)
     }
 
     fn target_reset_assert(&mut self) -> Result<(), ArmError> {
-        self.0.target_reset_assert().map_err(ArmError::Probe)
+        self.probe.target_reset_assert().map_err(ArmError::Probe)
     }
 
     fn target_reset_deassert(&mut self) -> Result<(), ArmError> {
-        self.0.target_reset_deassert().map_err(ArmError::Probe)
+        self.probe.target_reset_deassert().map_err(ArmError::Probe)
     }
 
     fn raw_flush(&mut self) -> Result<(), ArmError> {
@@ -356,18 +358,20 @@ impl DebugPortWire for JtagDebugPortWire<'_> {
 
     fn raw_read_register(&mut self, port: Port, addr: u8) -> Result<u32, ArmError> {
         let register = dp_wire_register(port, addr);
-        let mut chain = JtagChain::new(self.0);
-        jtag_read_register(&mut chain, register)
+        let settings = self.settings.clone();
+        let mut chain = JtagChain::new(self.probe);
+        jtag_read_register(&mut chain, register, &settings)
     }
 
     fn raw_write_register(&mut self, port: Port, addr: u8, value: u32) -> Result<(), ArmError> {
         let register = dp_wire_register(port, addr);
-        let mut chain = JtagChain::new(self.0);
-        jtag_write_register(&mut chain, register, value)
+        let settings = self.settings.clone();
+        let mut chain = JtagChain::new(self.probe);
+        jtag_write_register(&mut chain, register, value, &settings)
     }
 
     fn try_jtag_chain(&mut self) -> Option<JtagChain<'_>> {
-        Some(JtagChain::new(self.0))
+        Some(JtagChain::new(self.probe))
     }
 }
 
@@ -385,15 +389,21 @@ pub(crate) fn probe_debug_port_wire<R>(
     probe: &mut dyn DebugProbe,
     f: impl FnOnce(&mut dyn DebugPortWire) -> Result<R, ArmError>,
 ) -> Result<R, ArmError> {
+    let settings = probe
+        .try_as_swd_probe_mut()
+        .map(|swd| swd.swd_settings())
+        .unwrap_or_default();
+
     if probe.active_protocol() == Some(WireProtocol::Jtag)
         && let Some(jtag) = probe.try_as_jtag_chain_access_mut()
     {
-        let mut wire = JtagDebugPortWire(jtag);
+        let mut wire = JtagDebugPortWire {
+            probe: jtag,
+            settings,
+        };
         return f(&mut wire);
     }
     if let Some(swd) = probe.try_as_swd_probe_mut() {
-        let settings = swd.swd_settings();
-        let settings = ArmCommunicationInterface::copy_swd_settings(&settings);
         let mut wire = SwdDebugPortWire {
             probe: swd,
             settings,
@@ -401,7 +411,10 @@ pub(crate) fn probe_debug_port_wire<R>(
         return f(&mut wire);
     }
     if let Some(jtag) = probe.try_as_jtag_chain_access_mut() {
-        let mut wire = JtagDebugPortWire(jtag);
+        let mut wire = JtagDebugPortWire {
+            probe: jtag,
+            settings,
+        };
         return f(&mut wire);
     }
     Err(ArmError::NotImplemented("debug_port_wire"))
@@ -442,7 +455,7 @@ impl ArmCommunicationInterface {
         let probe = self.probe.take().unwrap();
         match probe {
             ArmProbe::Swd(probe, _) => Probe::from_attached_probe(probe.into_probe()),
-            ArmProbe::Jtag(probe) => Probe::from_attached_probe(probe.into_probe()),
+            ArmProbe::Jtag(probe, _) => Probe::from_attached_probe(probe.into_probe()),
         }
     }
 
@@ -517,24 +530,14 @@ impl ArmCommunicationInterface {
         }
     }
 
-    fn copy_swd_settings(settings: &SwdSettings) -> SwdSettings {
-        SwdSettings {
-            num_idle_cycles_between_writes: settings.num_idle_cycles_between_writes,
-            num_retries_after_wait: settings.num_retries_after_wait,
-            max_retry_idle_cycles_after_wait: settings.max_retry_idle_cycles_after_wait,
-            idle_cycles_before_write_verify: settings.idle_cycles_before_write_verify,
-            idle_cycles_after_transfer: settings.idle_cycles_after_transfer,
-        }
-    }
-
     fn with_swd_port<R>(
         &mut self,
         f: impl FnOnce(&mut SwdPort<'_>) -> Result<R, SwdPortError>,
     ) -> Result<R, ArmError> {
         match self.probe.as_mut().unwrap() {
             ArmProbe::Swd(probe, settings) => {
-                let copied = Self::copy_swd_settings(settings);
-                let mut port = SwdPort::new(probe.as_mut(), copied);
+                let settings = settings.clone();
+                let mut port = SwdPort::new(probe.as_mut(), settings);
                 f(&mut port).map_err(Self::swd_port_error)
             }
             _ => panic!("ArmCommunicationInterface does not hold an SwdProbe"),
@@ -543,12 +546,13 @@ impl ArmCommunicationInterface {
 
     fn with_jtag_chain<R>(
         &mut self,
-        f: impl FnOnce(&mut JtagChain<'_>) -> Result<R, ArmError>,
+        f: impl FnOnce(&mut JtagChain<'_>, &SwdSettings) -> Result<R, ArmError>,
     ) -> Result<R, ArmError> {
         match self.probe.as_mut().unwrap() {
-            ArmProbe::Jtag(probe) => {
+            ArmProbe::Jtag(probe, settings) => {
+                let settings = settings.clone();
                 let mut chain = JtagChain::new(probe.as_mut());
-                f(&mut chain)
+                f(&mut chain, &settings)
             }
             _ => panic!("ArmCommunicationInterface does not hold a JtagChainAccess"),
         }
@@ -564,12 +568,15 @@ impl ArmCommunicationInterface {
             ArmProbe::Swd(probe, settings) => {
                 let mut wire = SwdDebugPortWire {
                     probe: probe.as_mut(),
-                    settings: Self::copy_swd_settings(settings),
+                    settings: settings.clone(),
                 };
                 f(&mut wire)
             }
-            ArmProbe::Jtag(probe) => {
-                let mut wire = JtagDebugPortWire(probe.as_mut());
+            ArmProbe::Jtag(probe, settings) => {
+                let mut wire = JtagDebugPortWire {
+                    probe: probe.as_mut(),
+                    settings: settings.clone(),
+                };
                 f(&mut wire)
             }
         }
@@ -636,7 +643,7 @@ impl ArmDebugInterface for ArmCommunicationInterface {
         if let Some(probe) = self.probe.as_mut() {
             let debug_probe: &mut dyn DebugProbe = match probe {
                 ArmProbe::Swd(probe, _) => probe.as_mut(),
-                ArmProbe::Jtag(probe) => probe.as_mut(),
+                ArmProbe::Jtag(probe, _) => probe.as_mut(),
             };
             debug_probe.core_status_notification(state).ok();
         }
@@ -645,14 +652,14 @@ impl ArmDebugInterface for ArmCommunicationInterface {
     fn active_wire_protocol(&self) -> Option<WireProtocol> {
         match self.probe.as_ref()? {
             ArmProbe::Swd(_, _) => Some(WireProtocol::Swd),
-            ArmProbe::Jtag(_) => Some(WireProtocol::Jtag),
+            ArmProbe::Jtag(_, _) => Some(WireProtocol::Jtag),
         }
     }
 
     fn wire_speed_khz(&self) -> Option<u32> {
         match self.probe.as_ref()? {
             ArmProbe::Swd(probe, _) => Some(probe.speed_khz()),
-            ArmProbe::Jtag(probe) => Some(probe.speed_khz()),
+            ArmProbe::Jtag(probe, _) => Some(probe.speed_khz()),
         }
     }
 
@@ -663,7 +670,7 @@ impl ArmDebugInterface for ArmCommunicationInterface {
             .ok_or(ArmError::NotImplemented("set_wire_speed"))?;
         match probe {
             ArmProbe::Swd(probe, _) => probe.set_speed(speed_khz).map_err(ArmError::Probe),
-            ArmProbe::Jtag(probe) => probe.set_speed(speed_khz).map_err(ArmError::Probe),
+            ArmProbe::Jtag(probe, _) => probe.set_speed(speed_khz).map_err(ArmError::Probe),
         }
     }
 }
@@ -677,7 +684,7 @@ impl SwdSequence for ArmCommunicationInterface {
                 probe.run_batch(&batch).map_err(batch_probe_error)?;
                 Ok(())
             }
-            ArmProbe::Jtag(_) => Err(DebugProbeError::CommandNotSupportedByProbe {
+            ArmProbe::Jtag(_, _) => Err(DebugProbeError::CommandNotSupportedByProbe {
                 command_name: "swj_sequence",
             }),
         }
@@ -690,7 +697,7 @@ impl SwdSequence for ArmCommunicationInterface {
         _pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
         match self.probe.as_mut().unwrap() {
-            ArmProbe::Swd(_, _) | ArmProbe::Jtag(_) => {
+            ArmProbe::Swd(_, _) | ArmProbe::Jtag(_, _) => {
                 Err(DebugProbeError::CommandNotSupportedByProbe {
                     command_name: "swj_pins",
                 })
@@ -728,11 +735,12 @@ impl ArmCommunicationInterface {
     /// Create a new JTAG interface over a layer-0 probe.
     pub fn create_jtag(
         probe: Box<dyn JtagChainAccess>,
+        settings: SwdSettings,
         sequence: Arc<dyn ArmDebugSequence>,
         use_overrun_detect: bool,
     ) -> Box<dyn ArmDebugInterface> {
         let interface = ArmCommunicationInterface {
-            probe: Some(ArmProbe::Jtag(probe)),
+            probe: Some(ArmProbe::Jtag(probe, settings)),
             current_dp: None,
             dps: Default::default(),
             use_overrun_detect,
@@ -922,7 +930,7 @@ impl SwoAccess for ArmCommunicationInterface {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ArmError> {
         let probe: &mut dyn DebugProbe = match self.probe.as_mut().unwrap() {
             ArmProbe::Swd(probe, _) => probe.as_mut(),
-            ArmProbe::Jtag(probe) => probe.as_mut(),
+            ArmProbe::Jtag(probe, _) => probe.as_mut(),
         };
         match probe.get_swo_interface_mut() {
             Some(interface) => interface.enable_swo(config),
@@ -933,7 +941,7 @@ impl SwoAccess for ArmCommunicationInterface {
     fn disable_swo(&mut self) -> Result<(), ArmError> {
         let probe: &mut dyn DebugProbe = match self.probe.as_mut().unwrap() {
             ArmProbe::Swd(probe, _) => probe.as_mut(),
-            ArmProbe::Jtag(probe) => probe.as_mut(),
+            ArmProbe::Jtag(probe, _) => probe.as_mut(),
         };
         match probe.get_swo_interface_mut() {
             Some(interface) => interface.disable_swo(),
@@ -944,7 +952,7 @@ impl SwoAccess for ArmCommunicationInterface {
     fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ArmError> {
         let probe: &mut dyn DebugProbe = match self.probe.as_mut().unwrap() {
             ArmProbe::Swd(probe, _) => probe.as_mut(),
-            ArmProbe::Jtag(probe) => probe.as_mut(),
+            ArmProbe::Jtag(probe, _) => probe.as_mut(),
         };
         match probe.get_swo_interface_mut() {
             Some(interface) => interface.read_swo_timeout(timeout),
@@ -970,7 +978,7 @@ impl DapAccess for ArmCommunicationInterface {
                 Ok(results.take(handle).unwrap())
             });
         }
-        self.with_jtag_chain(|chain| jtag_read_register(chain, register))
+        self.with_jtag_chain(|chain, settings| jtag_read_register(chain, register, settings))
     }
 
     fn write_raw_dp_register(
@@ -990,7 +998,9 @@ impl DapAccess for ArmCommunicationInterface {
                 Ok(())
             });
         }
-        self.with_jtag_chain(|chain| jtag_write_register(chain, register, value))
+        self.with_jtag_chain(|chain, settings| {
+            jtag_write_register(chain, register, value, settings)
+        })
     }
 
     fn read_raw_ap_register(
@@ -1010,7 +1020,7 @@ impl DapAccess for ArmCommunicationInterface {
                 Ok(results.take(handle).unwrap()[0])
             });
         }
-        self.with_jtag_chain(|chain| jtag_read_register(chain, register))
+        self.with_jtag_chain(|chain, settings| jtag_read_register(chain, register, settings))
     }
 
     fn read_raw_ap_register_repeated(
@@ -1034,7 +1044,7 @@ impl DapAccess for ArmCommunicationInterface {
                 Ok(())
             });
         }
-        self.with_jtag_chain(|chain| jtag_read_block(chain, register, values))
+        self.with_jtag_chain(|chain, settings| jtag_read_block(chain, register, values, settings))
     }
 
     fn write_raw_ap_register(
@@ -1055,7 +1065,9 @@ impl DapAccess for ArmCommunicationInterface {
                 Ok(())
             });
         }
-        self.with_jtag_chain(|chain| jtag_write_register(chain, register, value))
+        self.with_jtag_chain(|chain, settings| {
+            jtag_write_register(chain, register, value, settings)
+        })
     }
 
     fn write_raw_ap_register_repeated(
@@ -1076,7 +1088,7 @@ impl DapAccess for ArmCommunicationInterface {
                 Ok(())
             });
         }
-        self.with_jtag_chain(|chain| jtag_write_block(chain, register, values))
+        self.with_jtag_chain(|chain, settings| jtag_write_block(chain, register, values, settings))
     }
 
     fn flush(&mut self) -> Result<(), ArmError> {
@@ -1086,7 +1098,7 @@ impl DapAccess for ArmCommunicationInterface {
     fn active_wire_protocol(&self) -> Option<WireProtocol> {
         match self.probe.as_ref()? {
             ArmProbe::Swd(_, _) => Some(WireProtocol::Swd),
-            ArmProbe::Jtag(_) => Some(WireProtocol::Jtag),
+            ArmProbe::Jtag(_, _) => Some(WireProtocol::Jtag),
         }
     }
 

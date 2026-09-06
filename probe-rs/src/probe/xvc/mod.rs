@@ -184,7 +184,10 @@ impl DebugProbe for XvcProbe {
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
-        Ok(ArmCommunicationInterface::create_jtag(self, sequence, true))
+        let settings = SwdProbe::swd_settings(self.as_ref());
+        Ok(ArmCommunicationInterface::create_jtag(
+            self, settings, sequence, true,
+        ))
     }
 
     fn has_riscv_interface(&self) -> bool {

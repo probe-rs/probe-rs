@@ -854,9 +854,12 @@ impl DebugProbe for CmsisDap {
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         match self.protocol {
-            Some(WireProtocol::Jtag) => Ok(ArmCommunicationInterface::create_jtag(
-                self, sequence, false,
-            )),
+            Some(WireProtocol::Jtag) => {
+                let settings = SwdProbe::swd_settings(self.as_ref());
+                Ok(ArmCommunicationInterface::create_jtag(
+                    self, settings, sequence, false,
+                ))
+            }
             _ => {
                 let settings = SwdProbe::swd_settings(self.as_ref());
                 Ok(ArmCommunicationInterface::create_swd(
