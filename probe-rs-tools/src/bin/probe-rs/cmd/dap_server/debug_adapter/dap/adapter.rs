@@ -734,7 +734,8 @@ impl DebugAdapter {
                 )
             {
                 let program_counter = session_data.backend.program_counter(core_index).await;
-                let (reason, description) = current_core_status.short_long_status(program_counter);
+                let (reason, description) =
+                    current_core_status.short_long_status(program_counter, false);
                 let event_body = Some(StoppedEventBody {
                     reason: reason.to_owned(),
                     description: Some(description),
@@ -1470,7 +1471,7 @@ impl DebugAdapter {
                     reason: "restart".to_owned(),
                     description: Some(
                         CoreStatus::Halted(HaltReason::External)
-                            .short_long_status(None)
+                            .short_long_status(None, false)
                             .1,
                     ),
                     thread_id: Some(core_index as i64),
@@ -1486,7 +1487,7 @@ impl DebugAdapter {
                 reason: "restart".to_owned(),
                 description: Some(
                     CoreStatus::Halted(HaltReason::External)
-                        .short_long_status(Some(core_info.pc))
+                        .short_long_status(Some(core_info.pc), false)
                         .1,
                 ),
                 thread_id: Some(core_index as i64),
@@ -1723,7 +1724,7 @@ impl DebugAdapter {
         let new_status = CoreStatus::Halted(HaltReason::Request);
         let event_body = Some(StoppedEventBody {
             reason: "pause".to_owned(),
-            description: Some(new_status.short_long_status(Some(cpu_info.pc)).1),
+            description: Some(new_status.short_long_status(Some(cpu_info.pc), false).1),
             thread_id: Some(core_index as i64),
             preserve_focus_hint: Some(false),
             text: None,
@@ -1823,12 +1824,12 @@ impl DebugAdapter {
             let event_body = StoppedEventBody {
                 reason: core_data
                     .last_known_status
-                    .short_long_status(None)
+                    .short_long_status(None, false)
                     .0
                     .to_string(),
                 description: Some(
                     CoreStatus::Halted(HaltReason::Step)
-                        .short_long_status(Some(program_counter))
+                        .short_long_status(Some(program_counter), false)
                         .1,
                 ),
                 thread_id: Some(core_index as i64),

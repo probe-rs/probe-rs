@@ -508,7 +508,7 @@ impl SessionData {
     ) -> Result<(), DebuggerError> {
         let core_index = self.core_data[cd_idx].core_index;
         let program_counter = self.backend.program_counter(core_index).await;
-        let (reason, description) = status.short_long_status(program_counter);
+        let (reason, description) = status.short_long_status(program_counter, false);
         let event_body = Some(StoppedEventBody {
             reason: reason.to_string(),
             description: Some(description),
@@ -864,7 +864,11 @@ impl SessionData {
                 } else {
                     None
                 };
-                debug_adapter.log_to_console(current_core_status.short_long_status(pc).1);
+                debug_adapter.log_to_console(
+                    current_core_status
+                        .short_long_status(pc, debug_adapter.supports_ansi_styling)
+                        .1,
+                );
             }
 
             // If the core is running, we set the flag to indicate that at least one core is not halted.

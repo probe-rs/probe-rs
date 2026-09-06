@@ -140,7 +140,7 @@ async fn create_breakpoint<'a>(
         let core_info = adapter.pause_impl_async(backend, core_data).await?;
         return Ok(EvalResponse::Message(
             CoreStatus::Halted(HaltReason::Request)
-                .short_long_status(Some(core_info.pc))
+                .short_long_status(Some(core_info.pc), adapter.supports_ansi_styling)
                 .1,
         ));
     }

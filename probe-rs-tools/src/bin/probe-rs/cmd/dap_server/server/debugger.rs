@@ -1713,7 +1713,7 @@ mod test {
         protocol_adapter.expect_event(
             "output",
             Some(OutputEventBody {
-                output: String::from("Core is running\n"),
+                output: String::from("The core is running.\n"),
                 category: Some("console".to_owned()),
                 variables_reference: None,
                 source: None,
@@ -1757,7 +1757,7 @@ mod test {
                 thread_id: 0,
             }),
         );
-        protocol_adapter.expect_output_event("Core is running\n");
+        protocol_adapter.expect_output_event("The core is running.\n");
 
         let unknown_variables_reference = 0xDEAD_BEEF_i64;
         let expected_error =
@@ -1874,7 +1874,7 @@ mod test {
         protocol_adapter.expect_event(
             "output",
             Some(OutputEventBody {
-                output: String::from("Core is running\n"),
+                output: String::from("The core is running.\n"),
                 category: Some("console".to_owned()),
                 variables_reference: None,
                 source: None,
