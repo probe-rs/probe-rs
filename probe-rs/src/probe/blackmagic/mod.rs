@@ -10,8 +10,7 @@ use std::{
 use crate::{
     architecture::{
         arm::{
-            ArmCommunicationInterface, ArmDebugInterface, ArmError,
-            communication_interface::DapProbe, sequences::ArmDebugSequence,
+            ArmCommunicationInterface, ArmDebugInterface, ArmError, sequences::ArmDebugSequence,
         },
         riscv::{
             communication_interface::{RiscvError, RiscvInterfaceBuilder},
@@ -22,13 +21,14 @@ use crate::{
         },
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem, JtagChain,
-        JtagChainAccess, JtagChainState, JtagOp, JtagProbe, ProbeCreationError, ProbeError,
-        ProbeFactory, RawSwdIo, SwdSettings, WireProtocol,
+        BitbangSwd, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+        IoSequenceItem, JtagChain, JtagChainAccess, JtagChainState, JtagOp, JtagProbe,
+        ProbeCreationError, ProbeError, ProbeFactory, SwdProbe, SwdSettings, WireProtocol,
         blackmagic::arm::BlackMagicProbeArmDebug,
         jtag::{TapState, distribute_captures, exchange_leaves_shift},
         list::ProbeListItem,
         queue::{BatchExecutionError, Results},
+        swd::Pins,
     },
 };
 use bitfield::bitfield;
@@ -1290,6 +1290,14 @@ impl DebugProbe for BlackMagicProbe {
         Some(JtagChain::new(self))
     }
 
+    fn try_as_swd_probe_mut(&mut self) -> Option<&mut dyn SwdProbe> {
+        Some(self)
+    }
+
+    fn try_as_jtag_chain_access_mut(&mut self) -> Option<&mut dyn JtagChainAccess> {
+        Some(self)
+    }
+
     fn try_get_riscv_interface_builder<'probe>(
         &'probe mut self,
     ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, RiscvError> {
@@ -1334,7 +1342,10 @@ impl DebugProbe for BlackMagicProbe {
                 Err((probe, err)) => Err((probe.into_probe(), err)),
             }
         } else {
-            Ok(ArmCommunicationInterface::create(self, sequence, true)) // TODO: Fixup the error type here
+            let settings = SwdProbe::swd_settings(self.as_ref());
+            Ok(ArmCommunicationInterface::create_swd(
+                self, settings, sequence, true,
+            ))
         }
     }
 
@@ -1400,9 +1411,7 @@ impl JtagProbe for BlackMagicProbe {
     }
 }
 
-impl DapProbe for BlackMagicProbe {}
-
-impl RawSwdIo for BlackMagicProbe {
+impl BitbangSwd for BlackMagicProbe {
     fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
         S: IntoIterator<Item = IoSequenceItem>,
@@ -1410,24 +1419,24 @@ impl RawSwdIo for BlackMagicProbe {
         self.perform_swdio_transfer(swdio)
     }
 
-    fn swj_pins(
+    fn swj_pins_op(
         &mut self,
-        pin_out: u32,
-        pin_select: u32,
-        _pin_wait: u32,
-    ) -> Result<u32, DebugProbeError> {
-        // The Black Magic Probe doesn't support setting TCK/TMS/TDI/TDO directly,
-        // and has no separate nTRST.
+        out: Pins,
+        select: Pins,
+        _wait: Duration,
+    ) -> Result<(), DebugProbeError> {
+        let pin_out = out.0 as u32;
+        let pin_select = select.0 as u32;
+
         if pin_select & 0x2f != 0 {
             return Err(DebugProbeError::CommandNotSupportedByProbe {
                 command_name: "swj_pins",
             });
         }
-        // Set the nRST pin according to the specified value
         if pin_select & 0x80 != 0 {
             self.command(RemoteCommand::TargetReset(pin_out & 0x80 == 0))?;
         }
-        Ok(pin_out)
+        Ok(())
     }
 
     fn swd_settings(&self) -> &SwdSettings {

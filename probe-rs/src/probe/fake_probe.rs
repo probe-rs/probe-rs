@@ -6,7 +6,7 @@ use crate::{
         SwoAccess,
         ap::memory_ap::mock::MockMemoryAp,
         armv8m::Dhcsr,
-        communication_interface::{DapProbe, SwdSequence},
+        communication_interface::SwdSequence,
         dp::{DpAddress, DpRegisterAddress},
         memory::{ADIMemoryInterface, ArmMemoryInterface},
         sequences::ArmDebugSequence,
@@ -646,6 +646,10 @@ impl DebugProbe for FakeProbe {
     fn has_arm_interface(&self) -> bool {
         true
     }
+
+    fn try_as_swd_probe_mut(&mut self) -> Option<&mut dyn SwdProbe> {
+        Some(self)
+    }
 }
 
 impl SwdProbe for FakeProbe {
@@ -851,14 +855,6 @@ impl DapAccess for FakeArmInterface {
         _values: &[u32],
     ) -> Result<(), ArmError> {
         todo!()
-    }
-
-    fn try_dap_probe(&self) -> Option<&dyn DapProbe> {
-        None
-    }
-
-    fn try_dap_probe_mut(&mut self) -> Option<&mut dyn DapProbe> {
-        None
     }
 }
 

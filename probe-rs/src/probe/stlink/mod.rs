@@ -13,7 +13,7 @@ use crate::{
             memory_ap::{MemoryAp, MemoryApType},
             v1::valid_access_ports,
         },
-        communication_interface::{ArmDebugInterface, DapProbe, SwdSequence},
+        communication_interface::{ArmDebugInterface, SwdSequence},
         dp::{DpAddress, DpRegisterAddress},
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
@@ -1399,14 +1399,6 @@ impl DapAccess for StlinkArmDebug {
             .write_register(ap.ap_v1()? as u16, (address & 0xFF) as u8, value)?;
 
         Ok(())
-    }
-
-    fn try_dap_probe(&self) -> Option<&dyn DapProbe> {
-        None
-    }
-
-    fn try_dap_probe_mut(&mut self) -> Option<&mut dyn DapProbe> {
-        None
     }
 }
 

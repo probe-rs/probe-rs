@@ -8,7 +8,7 @@ use crate::{
         },
         memory::ArmMemoryInterface,
     },
-    probe::{DebugProbe, DebugProbeError},
+    probe::DebugProbeError,
 };
 
 /// Calculate the maximum number of bytes we can write starting at address
@@ -502,10 +502,7 @@ where
     }
 
     fn update_core_status(&mut self, state: CoreStatus) {
-        if let Some(probe) = self.interface.try_dap_probe_mut() {
-            // Ignore errors setting the core status
-            let _ = DebugProbe::core_status_notification(probe, state);
-        }
+        self.interface.core_status_notification(state);
     }
 }
 

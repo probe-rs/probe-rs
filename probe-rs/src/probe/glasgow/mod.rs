@@ -293,6 +293,10 @@ impl DebugProbe for Glasgow {
     fn try_as_swd_probe(self: Box<Self>) -> Result<Box<dyn SwdProbe>, Box<dyn DebugProbe>> {
         Ok(self)
     }
+
+    fn try_as_swd_probe_mut(&mut self) -> Option<&mut dyn SwdProbe> {
+        Some(self)
+    }
 }
 
 fn map_batch_error(

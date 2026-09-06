@@ -22,10 +22,10 @@ pub mod xvc;
 
 use crate::CoreStatus;
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
-use crate::architecture::arm::{ArmDebugInterface, ArmError};
 use crate::architecture::arm::{
-    RegisterAddress, SwoAccess,
-    communication_interface::{ArmCommunicationInterface, DapProbe, dap_debug_port_wire},
+    ArmDebugInterface, ArmError, SwoAccess,
+    communication_interface::{ArmCommunicationInterface, probe_debug_port_wire},
+    traits::DebugPortWire,
 };
 use crate::architecture::riscv::communication_interface::{RiscvError, RiscvInterfaceBuilder};
 use crate::architecture::xtensa::communication_interface::{
@@ -54,7 +54,8 @@ pub use queue::{
 pub use queue::{DeferredResultIndex, DeferredResultSet, ErasedQueue, Queue};
 pub use selector::DebugProbeSelector;
 pub use swd::{
-    BitbangSwd, Direction, Pins, Port, SwdBatch, SwdOp, SwdPort, SwdProbe, SwdTransferError,
+    BitbangSwd, Direction, IoSequenceItem, Pins, Port, SwdBatch, SwdOp, SwdPort, SwdProbe,
+    SwdSettings, SwdTransferError,
 };
 
 /// Used to log warnings when the measured target voltage is
@@ -114,32 +115,6 @@ impl std::str::FromStr for WireProtocol {
             _ => Err(format!(
                 "'{s}' is not a valid protocol. Choose either 'swd' or 'jtag'."
             )),
-        }
-    }
-}
-
-/// A command queued in a batch for later execution
-///
-/// Mostly used internally but returned in DebugProbeError to indicate
-/// which batched command actually encountered the error.
-#[derive(Clone, Debug)]
-pub enum BatchCommand {
-    /// Read from a port
-    Read(RegisterAddress),
-
-    /// Write to a port
-    Write(RegisterAddress, u32),
-}
-
-impl fmt::Display for BatchCommand {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            BatchCommand::Read(port) => {
-                write!(f, "Read(port={port:?})")
-            }
-            BatchCommand::Write(port, data) => {
-                write!(f, "Write(port={port:?}, data={data:#010x})")
-            }
         }
     }
 }
@@ -235,9 +210,6 @@ pub enum DebugProbeError {
 
     /// Failed to find or attach to the target. Please check the wiring before retrying.
     TargetNotFound,
-
-    /// Error in previous batched command.
-    BatchError(BatchCommand),
 
     /// The '{function_name}' functionality is not implemented yet.
     ///
@@ -418,12 +390,20 @@ impl Probe {
         Ok(())
     }
 
+    /// Run a debug-port wire operation before the ARM interface is created.
+    pub fn with_debug_port_wire<R>(
+        &mut self,
+        f: impl FnOnce(&mut dyn DebugPortWire) -> Result<R, ArmError>,
+    ) -> Result<R, ArmError> {
+        probe_debug_port_wire(self.inner.as_mut(), f)
+    }
+
     /// A combination of [`Probe::attach_to_unspecified`] and [`Probe::attach_under_reset`].
     pub fn attach_to_unspecified_under_reset(&mut self) -> Result<(), Error> {
-        if let Some(dap_probe) = self.try_as_dap_probe() {
-            dap_debug_port_wire(dap_probe, |wire| {
-                DefaultArmSequence(()).reset_hardware_assert(wire)
-            })?;
+        if self.inner.try_as_swd_probe_mut().is_some()
+            || self.inner.try_as_jtag_chain_access_mut().is_some()
+        {
+            self.with_debug_port_wire(|wire| DefaultArmSequence(()).reset_hardware_assert(wire))?;
         } else {
             tracing::info!(
                 "Custom reset sequences are not supported on {}.",
@@ -636,6 +616,14 @@ impl Probe {
         self.inner.try_as_jtag_chain()
     }
 
+    pub(crate) fn try_as_swd_probe_mut(&mut self) -> Option<&mut dyn SwdProbe> {
+        self.inner.try_as_swd_probe_mut()
+    }
+
+    pub(crate) fn try_as_jtag_chain_access_mut(&mut self) -> Option<&mut dyn JtagChainAccess> {
+        self.inner.try_as_jtag_chain_access_mut()
+    }
+
     /// Gets a SWO interface from the debug probe.
     ///
     /// This does not work on all probes.
@@ -648,13 +636,6 @@ impl Probe {
     /// This does not work on all probes.
     pub fn get_swo_interface_mut(&mut self) -> Option<&mut dyn SwoAccess> {
         self.inner.get_swo_interface_mut()
-    }
-
-    /// Gets a DAP interface from the debug probe.
-    ///
-    /// This does not work on all probes.
-    pub fn try_as_dap_probe(&mut self) -> Option<&mut dyn DapProbe> {
-        self.inner.try_as_dap_probe()
     }
 
     /// Try reading the target voltage of via the connected voltage pin.
@@ -850,10 +831,13 @@ pub trait DebugProbe: Any + Send + fmt::Debug {
         Err(self.into_probe())
     }
 
-    /// Try creating a DAP interface for the given probe.
-    ///
-    /// This is not available on all probes.
-    fn try_as_dap_probe(&mut self) -> Option<&mut dyn DapProbe> {
+    /// Borrow this probe as a layer-0 SWD probe, if it implements [`SwdProbe`].
+    fn try_as_swd_probe_mut(&mut self) -> Option<&mut dyn SwdProbe> {
+        None
+    }
+
+    /// Borrow this probe as a layer-0 JTAG chain driver, if it implements [`JtagChainAccess`].
+    fn try_as_jtag_chain_access_mut(&mut self) -> Option<&mut dyn JtagChainAccess> {
         None
     }
 
@@ -959,95 +943,6 @@ impl DebugProbeInfo {
     /// The exact contents of the string are unstable, this is intended for human consumption only.
     pub fn probe_type(&self) -> String {
         self.probe_factory.to_string()
-    }
-}
-
-/// Bit-banging interface for SWD.
-///
-/// Architecture code should not use this trait directly. A probe will implement
-/// `BitbangSwd` or `SwdProbe`, and `SwdPort` will own the ADIv5 rules.
-/// [`RawSwdIo`] remains as a fallback for probes that have not moved yet.
-///
-/// [`CmsisDap`] should prefer a direct architecture protocol when it can.
-///
-/// [`CmsisDap`]: crate::probe::cmsisdap::CmsisDap
-pub trait RawSwdIo: DebugProbe {
-    /// Drive a sequence of SWD I/O items and return the sampled bits.
-    fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
-    where
-        S: IntoIterator<Item = IoSequenceItem>;
-
-    /// Drive the CMSIS-DAP SWJ pins.
-    fn swj_pins(
-        &mut self,
-        pin_out: u32,
-        pin_select: u32,
-        pin_wait: u32,
-    ) -> Result<u32, DebugProbeError>;
-
-    /// Returns the SWD wire-protocol timing settings used by this probe.
-    fn swd_settings(&self) -> &SwdSettings;
-}
-
-/// One step of a [`RawSwdIo::swd_io`] sequence.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum IoSequenceItem {
-    /// Drive SWDIO to the given level for one clock.
-    Output(bool),
-    /// Sample SWDIO for one clock.
-    Input,
-}
-
-/// SWD wire-protocol timing settings used by [`RawSwdIo`] probes.
-#[derive(Debug)]
-pub struct SwdSettings {
-    /// Initial number of idle cycles between consecutive writes.
-    ///
-    /// When a WAIT response is received, the number of idle cycles
-    /// will be increased automatically, so this number can be quite
-    /// low.
-    pub num_idle_cycles_between_writes: usize,
-
-    /// How often a SWD transfer is retried when a WAIT response
-    /// is received.
-    pub num_retries_after_wait: usize,
-
-    /// When a SWD transfer is retried due to a WAIT response, the idle
-    /// cycle amount is doubled every time as a backoff. This sets a maximum
-    /// cap to the cycle amount.
-    pub max_retry_idle_cycles_after_wait: usize,
-
-    /// Number of idle cycles inserted before the result
-    /// of a write is checked.
-    ///
-    /// When performing a write operation, the write can
-    /// be buffered, meaning that completing the transfer
-    /// does not mean that the write was performed successfully.
-    ///
-    /// To check that all writes have been executed, the
-    /// `RDBUFF` register can be read from the DP.
-    ///
-    /// If any writes are still pending, this read will result in a WAIT response.
-    /// By adding idle cycles before performing this read, the chance of a
-    /// WAIT response is smaller.
-    pub idle_cycles_before_write_verify: usize,
-
-    /// Number of idle cycles to insert after a transfer
-    ///
-    /// It is recommended that at least 8 idle cycles are
-    /// inserted.
-    pub idle_cycles_after_transfer: usize,
-}
-
-impl Default for SwdSettings {
-    fn default() -> Self {
-        Self {
-            num_idle_cycles_between_writes: 2,
-            num_retries_after_wait: 1000,
-            max_retry_idle_cycles_after_wait: 128,
-            idle_cycles_before_write_verify: 8,
-            idle_cycles_after_transfer: 8,
-        }
     }
 }
 

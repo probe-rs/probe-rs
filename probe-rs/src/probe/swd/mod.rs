@@ -14,6 +14,54 @@
 //! batch.idle(8);
 //! ```
 
+/// One step of a [`BitbangSwd::swd_io`] sequence.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum IoSequenceItem {
+    /// Drive SWDIO to the given level for one clock.
+    Output(bool),
+    /// Sample SWDIO for one clock.
+    Input,
+}
+
+/// SWD wire-protocol timing settings used by [`BitbangSwd`] probes.
+#[derive(Debug)]
+pub struct SwdSettings {
+    /// Initial number of idle cycles between consecutive writes.
+    ///
+    /// When a WAIT response is received, the number of idle cycles
+    /// will be increased automatically, so this number can be quite
+    /// low.
+    pub num_idle_cycles_between_writes: usize,
+
+    /// How often a SWD transfer is retried when a WAIT response
+    /// is received.
+    pub num_retries_after_wait: usize,
+
+    /// When a SWD transfer is retried due to a WAIT response, the idle
+    /// cycle amount is doubled every time as a backoff. This sets a maximum
+    /// cap to the cycle amount.
+    pub max_retry_idle_cycles_after_wait: usize,
+
+    /// Number of idle cycles inserted before the result
+    /// of a write is checked.
+    pub idle_cycles_before_write_verify: usize,
+
+    /// Number of idle cycles to insert after a transfer.
+    pub idle_cycles_after_transfer: usize,
+}
+
+impl Default for SwdSettings {
+    fn default() -> Self {
+        Self {
+            num_idle_cycles_between_writes: 2,
+            num_retries_after_wait: 1000,
+            max_retry_idle_cycles_after_wait: 128,
+            idle_cycles_before_write_verify: 8,
+            idle_cycles_after_transfer: 8,
+        }
+    }
+}
+
 mod port;
 
 #[cfg(test)]
@@ -23,7 +71,7 @@ use std::time::Duration;
 
 use crate::probe::{
     Batch, BatchError, BatchExecutionError, BitSequence, CommandResult, DebugProbe,
-    DebugProbeError, Handle, IoSequenceItem, Results, SwdSettings,
+    DebugProbeError, Handle, Results,
 };
 
 pub use port::{SwdPort, SwdPortError};
@@ -282,6 +330,18 @@ pub trait BitbangSwd: DebugProbe {
 
     /// Returns the SWD wire-protocol timing settings used by this probe.
     fn swd_settings(&self) -> &SwdSettings;
+
+    /// Drive CMSIS-DAP SWJ pins.
+    fn swj_pins_op(
+        &mut self,
+        _out: Pins,
+        _select: Pins,
+        _wait: Duration,
+    ) -> Result<(), DebugProbeError> {
+        Err(DebugProbeError::CommandNotSupportedByProbe {
+            command_name: "swj_pins",
+        })
+    }
 }
 
 fn run_bitbang_batch<P: BitbangSwd>(
@@ -357,14 +417,14 @@ fn run_bitbang_batch<P: BitbangSwd>(
                     ));
                 }
             }
-            SwdOp::Pins { .. } => {
-                return Err(BatchExecutionError::new_from_debug_probe_at(
-                    DebugProbeError::CommandNotSupportedByProbe {
-                        command_name: "swj_pins",
-                    },
-                    results,
-                    fault_operation,
-                ));
+            SwdOp::Pins { out, select, wait } => {
+                if let Err(error) = probe.swj_pins_op(*out, *select, *wait) {
+                    return Err(BatchExecutionError::new_from_debug_probe_at(
+                        error,
+                        results,
+                        fault_operation,
+                    ));
+                }
             }
         }
     }
@@ -519,7 +579,7 @@ mod tests {
     }
 
     #[test]
-    fn lowering_request_bits_match_polyfill() {
+    fn lowering_request_bits_match_legacy_encoding() {
         let mut probe = RecordingBitbangSwd::new();
 
         assert_eq!(

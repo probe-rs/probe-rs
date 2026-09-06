@@ -110,7 +110,7 @@ impl SwdBus {
     }
 
     fn read_bit(&self) -> Result<bool, LinuxGpiodError> {
-        // Sample AFTER the rising edge — the polyfill assumes the
+        // Sample AFTER the rising edge — the bit-bang path assumes the
         // "turnaround" input slot already contains the first ACK bit.
         self.request
             .set_value(self.swclk, Value::Inactive)

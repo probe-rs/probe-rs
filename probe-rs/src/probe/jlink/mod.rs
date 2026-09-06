@@ -25,7 +25,7 @@ use self::interface::{Interface, Interfaces};
 use self::speed::SpeedConfig;
 use self::swo::SwoMode;
 use crate::architecture::arm::sequences::ArmDebugSequence;
-use crate::architecture::arm::{ArmDebugInterface, ArmError, Pins};
+use crate::architecture::arm::{ArmDebugInterface, ArmError};
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::xtensa::communication_interface::{
     XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
@@ -37,15 +37,14 @@ use crate::probe::usb_util::InterfaceExt;
 use crate::probe::{BitbangJtag, JtagChain, JtagChainAccess, JtagChainState, TapState};
 use crate::{
     architecture::{
-        arm::{
-            ArmCommunicationInterface, SwoAccess, communication_interface::DapProbe, swo::SwoConfig,
-        },
+        arm::{ArmCommunicationInterface, SwoAccess, swo::SwoConfig},
         riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder},
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
-        ProbeFactory, RawSwdIo, SwdSettings, WireProtocol,
+        BitbangSwd, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+        IoSequenceItem, ProbeFactory, SwdProbe, SwdSettings, WireProtocol,
         list::{ProbeListItem, usb_probe_accessibility},
+        swd::Pins,
     },
 };
 
@@ -1118,6 +1117,14 @@ impl DebugProbe for JLink {
         Some(JtagChain::new(self))
     }
 
+    fn try_as_swd_probe_mut(&mut self) -> Option<&mut dyn SwdProbe> {
+        Some(self)
+    }
+
+    fn try_as_jtag_chain_access_mut(&mut self) -> Option<&mut dyn JtagChainAccess> {
+        Some(self)
+    }
+
     fn try_get_riscv_interface_builder<'probe>(
         &'probe mut self,
     ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, RiscvError> {
@@ -1152,15 +1159,26 @@ impl DebugProbe for JLink {
         self
     }
 
-    fn try_as_dap_probe(&mut self) -> Option<&mut dyn DapProbe> {
-        Some(self)
-    }
-
     fn try_get_arm_debug_interface<'probe>(
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
-        Ok(ArmCommunicationInterface::create(self, sequence, true))
+        match self.protocol {
+            WireProtocol::Jtag => Ok(ArmCommunicationInterface::create_jtag(self, sequence, true)),
+            _ => {
+                let settings = SwdProbe::swd_settings(self.as_ref());
+                Ok(ArmCommunicationInterface::create_swd(
+                    self, settings, sequence, true,
+                ))
+            }
+        }
+    }
+
+    fn try_as_swd_probe(self: Box<Self>) -> Result<Box<dyn SwdProbe>, Box<dyn DebugProbe>> {
+        match self.protocol {
+            WireProtocol::Jtag => Err(self.into_probe()),
+            _ => Ok(self),
+        }
     }
 
     fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
@@ -1188,7 +1206,7 @@ impl DebugProbe for JLink {
     }
 }
 
-impl RawSwdIo for JLink {
+impl BitbangSwd for JLink {
     fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
         S: IntoIterator<Item = IoSequenceItem>,
@@ -1196,19 +1214,22 @@ impl RawSwdIo for JLink {
         self.perform_swdio_transfer(swdio)
     }
 
-    fn swj_pins(
+    fn swj_pins_op(
         &mut self,
-        pin_out: u32,
-        pin_select: u32,
-        pin_wait: u32,
-    ) -> Result<u32, DebugProbeError> {
+        pin_out: Pins,
+        pin_select: Pins,
+        wait: Duration,
+    ) -> Result<(), DebugProbeError> {
+        let pin_out = pin_out.0 as u32;
+        let pin_select = pin_select.0 as u32;
+        let pin_wait = wait.as_micros() as u32;
+
         let mut unsupported_pins = Pins(0);
         unsupported_pins.set_ntrst(true);
         unsupported_pins.set_tdi(true);
         unsupported_pins.set_tdo(true);
         let unsupported_pins_mask = unsupported_pins.0 as u32;
 
-        // Only RESET, TCK and TMS are supported at the moment
         if pin_select & unsupported_pins_mask == 0 {
             let pin_select = Pins(pin_select as u8);
             let pin_out = Pins(pin_out as u8);
@@ -1221,7 +1242,6 @@ impl RawSwdIo for JLink {
                 self.set_tms(pin_out.swdio_tms())?;
             }
 
-            // Set reset as last of the pins as some chips might sample tms and tck on release of reset
             if pin_select.nreset() {
                 if pin_out.nreset() {
                     self.target_reset_deassert()?;
@@ -1230,15 +1250,9 @@ impl RawSwdIo for JLink {
                 }
             }
 
-            // Normally this would be the timeout we pass to the probe to settle the pins.
-            // The J-Link is not capable of this, so we just wait for this time on the host
-            // and assume it has settled until then.
             std::thread::sleep(Duration::from_micros(pin_wait as u64));
-
-            // We signal that we cannot read the pin state.
-            Ok(0xFFFF_FFFF)
+            Ok(())
         } else {
-            // This is not supported for J-Links, unfortunately.
             Err(DebugProbeError::CommandNotSupportedByProbe {
                 command_name: "swj_pins",
             })
@@ -1296,8 +1310,6 @@ impl JtagChainAccess for JLink {
         &self.jtag_state
     }
 }
-
-impl DapProbe for JLink {}
 
 impl SwoAccess for JLink {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ArmError> {

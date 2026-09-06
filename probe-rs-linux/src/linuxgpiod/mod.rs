@@ -5,18 +5,12 @@ mod pins;
 mod swd;
 
 use std::fmt;
-use std::sync::Arc;
 
-use bitvec::vec::BitVec;
 use probe_rs::Error;
-use probe_rs::architecture::arm::sequences::ArmDebugSequence;
-use probe_rs::architecture::arm::{
-    ArmCommunicationInterface, ArmDebugInterface, ArmError, DapProbe,
-};
 use probe_rs::probe::{
-    BitbangJtag, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
-    JtagChainAccess, JtagChainState, ProbeCreationError, ProbeFactory, RawSwdIo, SwdSettings,
-    TapState, WireProtocol, list::ProbeListItem,
+    BitbangSwd, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
+    ProbeCreationError, ProbeFactory, SwdProbe, SwdSettings, WireProtocol, list::ProbeListItem,
+    swd::Pins,
 };
 
 use self::error::LinuxGpiodError;
@@ -32,8 +26,6 @@ pub struct LinuxGpiod {
     bus: SwdBus,
     speed_khz: u32,
     swd_settings: SwdSettings,
-    jtag_state: JtagChainState,
-    tap_state: TapState,
 }
 
 impl fmt::Debug for LinuxGpiod {
@@ -51,8 +43,6 @@ impl LinuxGpiod {
             bus: SwdBus::new(request, pins.swclk, pins.swdio, pins.srst),
             speed_khz: 0,
             swd_settings: SwdSettings::default(),
-            jtag_state: JtagChainState::default(),
-            tap_state: TapState::TestLogicReset,
         })
     }
 }
@@ -127,11 +117,8 @@ impl DebugProbe for LinuxGpiod {
         true
     }
 
-    fn try_get_arm_debug_interface<'probe>(
-        self: Box<Self>,
-        sequence: Arc<dyn ArmDebugSequence>,
-    ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
-        Ok(ArmCommunicationInterface::create(self, sequence, true))
+    fn try_as_swd_probe(self: Box<Self>) -> Result<Box<dyn SwdProbe>, Box<dyn DebugProbe>> {
+        Ok(self)
     }
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
@@ -139,7 +126,7 @@ impl DebugProbe for LinuxGpiod {
     }
 }
 
-impl RawSwdIo for LinuxGpiod {
+impl BitbangSwd for LinuxGpiod {
     fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
         S: IntoIterator<Item = IoSequenceItem>,
@@ -149,21 +136,20 @@ impl RawSwdIo for LinuxGpiod {
             .map_err(|e| DebugProbeError::ProbeSpecific(e.into()))
     }
 
-    fn swj_pins(
+    fn swj_pins_op(
         &mut self,
-        pin_out: u32,
-        pin_select: u32,
-        _pin_wait: u32,
-    ) -> Result<u32, DebugProbeError> {
-        // Only nRESET (CMSIS-DAP bit 7) is controllable.
-        const N_RESET: u32 = 1 << 7;
-        if pin_select & !N_RESET != 0 {
+        out: Pins,
+        select: Pins,
+        _wait: std::time::Duration,
+    ) -> Result<(), DebugProbeError> {
+        const N_RESET: u8 = 1 << 7;
+        if select.0 & !N_RESET != 0 {
             return Err(DebugProbeError::CommandNotSupportedByProbe {
                 command_name: "swj_pins (only nRESET is controllable)",
             });
         }
-        if pin_select & N_RESET != 0 {
-            let high = pin_out & N_RESET != 0;
+        if select.nreset() {
+            let high = out.nreset();
             if !self
                 .bus
                 .drive_srst(high)
@@ -174,49 +160,13 @@ impl RawSwdIo for LinuxGpiod {
                 });
             }
         }
-        Ok(pin_out)
+        Ok(())
     }
 
     fn swd_settings(&self) -> &SwdSettings {
         &self.swd_settings
     }
 }
-
-// SWD-only: stub the JTAG traits to satisfy the polyfill's bound. Never called
-// in practice because active_protocol() always returns SWD.
-impl JtagChainAccess for LinuxGpiod {
-    fn chain_state(&mut self) -> &mut JtagChainState {
-        &mut self.jtag_state
-    }
-
-    fn chain_state_ref(&self) -> &JtagChainState {
-        &self.jtag_state
-    }
-}
-
-impl BitbangJtag for LinuxGpiod {
-    fn tap_state(&mut self) -> &mut TapState {
-        &mut self.tap_state
-    }
-
-    fn shift(&mut self, _tms: bool, _tdi: bool, _capture: bool) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::NotImplemented {
-            function_name: "JTAG shift (linuxgpiod is SWD-only)",
-        })
-    }
-
-    fn flush(&mut self) -> Result<(), DebugProbeError> {
-        Ok(())
-    }
-
-    fn captured(&mut self) -> Result<BitVec, DebugProbeError> {
-        Err(DebugProbeError::NotImplemented {
-            function_name: "JTAG captured (linuxgpiod is SWD-only)",
-        })
-    }
-}
-
-impl DapProbe for LinuxGpiod {}
 
 /// Factory for [`LinuxGpiod`] probes.
 #[derive(Debug)]

@@ -36,6 +36,10 @@ impl JtagProbe for CmsisDap {
         self.jtag_state.tap_state = state;
         Ok(results)
     }
+
+    fn configure_jtag(&mut self, skip_scan: bool) -> Result<(), DebugProbeError> {
+        CmsisDap::configure_jtag(self, skip_scan)
+    }
 }
 
 impl CmsisDap {

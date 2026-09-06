@@ -5,16 +5,15 @@ use protocol::Ch347UsbJtagDevice;
 
 use crate::{
     architecture::{
-        arm::{ArmCommunicationInterface, communication_interface::DapProbe},
-        riscv::dtm::jtag_dtm::JtagDtmBuilder,
+        arm::ArmCommunicationInterface, riscv::dtm::jtag_dtm::JtagDtmBuilder,
         xtensa::communication_interface::XtensaCommunicationInterface,
     },
-    probe::{DebugProbe, ProbeFactory},
+    probe::{BitbangSwd, DebugProbe, ProbeFactory},
 };
 
 use super::{
     BitbangJtag, DebugProbeError, IoSequenceItem, JtagChain, JtagChainAccess, JtagChainState,
-    RawSwdIo, SwdSettings, TapState,
+    SwdProbe, SwdSettings, TapState,
 };
 
 /// A factory for creating [`Ch347UsbJtag`] instances.
@@ -85,7 +84,7 @@ impl JtagChainAccess for Ch347UsbJtag {
     }
 }
 
-impl RawSwdIo for Ch347UsbJtag {
+impl BitbangSwd for Ch347UsbJtag {
     fn swd_io<S>(&mut self, _swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
         S: IntoIterator<Item = IoSequenceItem>,
@@ -95,23 +94,10 @@ impl RawSwdIo for Ch347UsbJtag {
         })
     }
 
-    fn swj_pins(
-        &mut self,
-        _pin_out: u32,
-        _pin_select: u32,
-        _pin_wait: u32,
-    ) -> Result<u32, DebugProbeError> {
-        Err(DebugProbeError::CommandNotSupportedByProbe {
-            command_name: "swj_pins",
-        })
-    }
-
     fn swd_settings(&self) -> &SwdSettings {
         &self.swd_settings
     }
 }
-
-impl DapProbe for Ch347UsbJtag {}
 
 impl DebugProbe for Ch347UsbJtag {
     fn get_name(&self) -> &str {
@@ -180,6 +166,14 @@ impl DebugProbe for Ch347UsbJtag {
         Some(JtagChain::new(self))
     }
 
+    fn try_as_swd_probe_mut(&mut self) -> Option<&mut dyn SwdProbe> {
+        Some(self)
+    }
+
+    fn try_as_jtag_chain_access_mut(&mut self) -> Option<&mut dyn JtagChainAccess> {
+        Some(self)
+    }
+
     fn has_arm_interface(&self) -> bool {
         true
     }
@@ -191,7 +185,7 @@ impl DebugProbe for Ch347UsbJtag {
         Box<dyn crate::architecture::arm::ArmDebugInterface + 'probe>,
         (Box<dyn DebugProbe>, crate::architecture::arm::ArmError),
     > {
-        Ok(ArmCommunicationInterface::create(self, sequence, true))
+        Ok(ArmCommunicationInterface::create_jtag(self, sequence, true))
     }
 
     fn has_riscv_interface(&self) -> bool {

@@ -1,19 +1,19 @@
 use crate::MemoryInterface;
 use crate::architecture::arm::{
-    ApAddress, ApV2Address, ArmDebugInterface, DapAccess, FullyQualifiedApAddress, RawDapAccess,
-    SwoAccess,
+    ApAddress, ApV2Address, ArmDebugInterface, DapAccess, FullyQualifiedApAddress, SwoAccess,
     ap::{
         self, AccessPortType, AddressIncrement, CSW, DataSize,
         memory_ap::{MemoryAp, MemoryApType},
         v1::valid_access_ports,
     },
-    communication_interface::{DapProbe, DpState, SelectCache, SwdSequence, dap_debug_port_wire},
+    communication_interface::{DpState, SelectCache, SwdSequence, probe_debug_port_wire},
     dp::{
         Ctrl, DPIDR, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, DpAddress,
         DpRegisterAddress, Select1, SelectV3,
     },
     memory::ArmMemoryInterface,
     sequences::ArmDebugSequence,
+    traits::Pins,
 };
 use crate::probe::blackmagic::{
     Accelerators, Align, BlackMagicProbe, ProtocolVersion, RemoteCommand,
@@ -21,7 +21,7 @@ use crate::probe::blackmagic::{
 use crate::probe::{ArmError, BitSequence, DebugProbeError, Probe};
 use std::collections::BTreeSet;
 use std::collections::hash_map;
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 use zerocopy::IntoBytes;
 
 #[derive(Debug)]
@@ -91,21 +91,21 @@ impl BlackMagicProbeArmDebug {
 
             switched_dp = true;
 
-            self.probe.raw_flush()?;
-
             // We are not currently connected to any DP,
             // so we need to run the debug_port_setup sequence.
             if self.current_dp.is_none() {
-                dap_debug_port_wire(&mut *self.probe, |wire| sequence.debug_port_setup(wire, dp))?;
+                probe_debug_port_wire(&mut *self.probe, |wire| {
+                    sequence.debug_port_setup(wire, dp)
+                })?;
             } else {
                 // Try to switch to the new DP.
-                if let Err(e) = dap_debug_port_wire(&mut *self.probe, |wire| {
+                if let Err(e) = probe_debug_port_wire(&mut *self.probe, |wire| {
                     sequence.debug_port_connect(wire, dp)
                 }) {
                     tracing::warn!("Failed to switch to DP {:x?}: {}", dp, e);
 
                     // Try the more involved debug_port_setup sequence, which also handles dormant mode.
-                    dap_debug_port_wire(&mut *self.probe, |wire| {
+                    probe_debug_port_wire(&mut *self.probe, |wire| {
                         sequence.debug_port_setup(wire, dp)
                     })?;
                 }
@@ -364,15 +364,15 @@ impl ArmDebugInterface for BlackMagicProbeArmDebug {
         };
 
         // Switch to the correct mode
-        dap_debug_port_wire(&mut *self.probe, |wire| sequence.debug_port_setup(wire, dp))?;
+        probe_debug_port_wire(&mut *self.probe, |wire| sequence.debug_port_setup(wire, dp))?;
 
-        if let Err(e) = dap_debug_port_wire(&mut *self.probe, |wire| {
+        if let Err(e) = probe_debug_port_wire(&mut *self.probe, |wire| {
             sequence.debug_port_connect(wire, dp)
         }) {
             tracing::warn!("failed to switch to DP {:x?}: {}", dp, e);
 
             // Try the more involved debug_port_setup sequence, which also handles dormant mode.
-            dap_debug_port_wire(&mut *self.probe, |wire| sequence.debug_port_setup(wire, dp))?;
+            probe_debug_port_wire(&mut *self.probe, |wire| sequence.debug_port_setup(wire, dp))?;
         }
 
         self.debug_port_start(dp)?;
@@ -395,11 +395,11 @@ impl ArmDebugInterface for BlackMagicProbeArmDebug {
             self.current_dp = Some(dp);
 
             // Switch to the correct mode
-            dap_debug_port_wire(self.probe.as_mut(), |wire| {
+            probe_debug_port_wire(self.probe.as_mut(), |wire| {
                 self.sequence.debug_port_setup(wire, dp)
             })?;
 
-            dap_debug_port_wire(self.probe.as_mut(), |wire| {
+            probe_debug_port_wire(self.probe.as_mut(), |wire| {
                 self.sequence.debug_port_connect(wire, dp)
             })?;
 
@@ -435,7 +435,12 @@ impl SwoAccess for BlackMagicProbeArmDebug {
 
 impl SwdSequence for BlackMagicProbeArmDebug {
     fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError> {
-        self.probe.swj_sequence(bits)
+        probe_debug_port_wire(self.probe.as_mut(), |wire| wire.swj_sequence(bits)).map_err(
+            |error| match error {
+                ArmError::Probe(error) => error,
+                error => DebugProbeError::Other(error.to_string()),
+            },
+        )
     }
 
     fn swj_pins(
@@ -444,7 +449,23 @@ impl SwdSequence for BlackMagicProbeArmDebug {
         pin_select: u32,
         pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
-        self.probe.swj_pins(pin_out, pin_select, pin_wait)
+        probe_debug_port_wire(self.probe.as_mut(), |wire| {
+            let pins = wire
+                .swj_pins(
+                    Pins(pin_out as u8),
+                    Pins(pin_select as u8),
+                    Duration::from_micros(pin_wait as u64),
+                )
+                .map_err(|error| match error {
+                    ArmError::Probe(error) => error,
+                    error => DebugProbeError::Other(error.to_string()),
+                })?;
+            Ok(pins.0 as u32)
+        })
+        .map_err(|error| match error {
+            ArmError::Probe(error) => error,
+            error => DebugProbeError::Other(error.to_string()),
+        })
     }
 }
 
@@ -656,14 +677,6 @@ impl DapAccess for BlackMagicProbeArmDebug {
                 "probe returned unexpected result: {result}"
             ))))
         }
-    }
-
-    fn try_dap_probe(&self) -> Option<&dyn DapProbe> {
-        Some(&*self.probe)
-    }
-
-    fn try_dap_probe_mut(&mut self) -> Option<&mut dyn DapProbe> {
-        Some(&mut *self.probe)
     }
 }
 

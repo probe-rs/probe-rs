@@ -22,6 +22,7 @@
 //! batch.clock(8);
 //! ```
 pub mod chain;
+pub mod dap;
 pub use chain::JtagChain;
 
 use bitvec::{slice::BitSlice, vec::BitVec};

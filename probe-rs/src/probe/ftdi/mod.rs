@@ -2,8 +2,7 @@
 use crate::{
     architecture::{
         arm::{
-            ArmCommunicationInterface, ArmDebugInterface, ArmError,
-            communication_interface::DapProbe, sequences::ArmDebugSequence,
+            ArmCommunicationInterface, ArmDebugInterface, ArmError, sequences::ArmDebugSequence,
         },
         riscv::{
             communication_interface::{RiscvError, RiscvInterfaceBuilder},
@@ -14,9 +13,9 @@ use crate::{
         },
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem, JtagChain,
-        JtagChainAccess, JtagChainState, JtagOp, JtagProbe, ProbeCreationError, ProbeFactory,
-        RawSwdIo, SwdSettings, WireProtocol,
+        BitbangSwd, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+        IoSequenceItem, JtagChain, JtagChainAccess, JtagChainState, JtagOp, JtagProbe,
+        ProbeCreationError, ProbeFactory, SwdProbe, SwdSettings, WireProtocol,
         jtag::{TapState, distribute_captures, enter_tdi, exchange_leaves_shift},
         list::{ProbeListItem, usb_probe_accessibility},
         queue::{BatchExecutionError, Results},
@@ -507,6 +506,14 @@ impl DebugProbe for FtdiProbe {
         Some(JtagChain::new(self))
     }
 
+    fn try_as_swd_probe_mut(&mut self) -> Option<&mut dyn SwdProbe> {
+        Some(self)
+    }
+
+    fn try_as_jtag_chain_access_mut(&mut self) -> Option<&mut dyn JtagChainAccess> {
+        Some(self)
+    }
+
     fn try_get_riscv_interface_builder<'probe>(
         &'probe mut self,
     ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, RiscvError> {
@@ -525,7 +532,7 @@ impl DebugProbe for FtdiProbe {
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
-        Ok(ArmCommunicationInterface::create(self, sequence, true))
+        Ok(ArmCommunicationInterface::create_jtag(self, sequence, true))
     }
 
     fn has_arm_interface(&self) -> bool {
@@ -566,26 +573,13 @@ impl JtagProbe for FtdiProbe {
     }
 }
 
-impl DapProbe for FtdiProbe {}
-
-impl RawSwdIo for FtdiProbe {
+impl BitbangSwd for FtdiProbe {
     fn swd_io<S>(&mut self, _swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
         S: IntoIterator<Item = IoSequenceItem>,
     {
         Err(DebugProbeError::NotImplemented {
             function_name: "swd_io",
-        })
-    }
-
-    fn swj_pins(
-        &mut self,
-        _pin_out: u32,
-        _pin_select: u32,
-        _pin_wait: u32,
-    ) -> Result<u32, DebugProbeError> {
-        Err(DebugProbeError::CommandNotSupportedByProbe {
-            command_name: "swj_pins",
         })
     }
 
