@@ -1,13 +1,145 @@
 use std::fmt;
+use std::iter;
 
 use bitvec::prelude::*;
 
-use crate::probe::common::{JtagState, RegisterState, jtag_move_to_state, shift_dr, shift_ir};
+use crate::probe::common::{JtagState, RegisterState};
 use crate::probe::{
     ChainParams, DebugProbe, DebugProbeError, JtagDriverState, RawJtagIo, WireProtocol,
 };
 
 use super::{BitSequence, JtagBatch, TapState, run_bitbang_batch};
+
+fn jtag_move_to_state(
+    protocol: &mut impl RawJtagIo,
+    target: JtagState,
+) -> Result<(), DebugProbeError> {
+    tracing::trace!(
+        "Changing state: {:?} -> {:?}",
+        protocol.state_mut().state,
+        target
+    );
+
+    while let Some(tms) = protocol.state().state.step_toward(target) {
+        protocol.shift_bit(tms, false, false)?;
+    }
+
+    tracing::trace!("In state: {:?}", protocol.state_mut().state);
+    Ok(())
+}
+
+fn shift_ir(
+    protocol: &mut impl RawJtagIo,
+    data: &[u8],
+    len: usize,
+    capture_data: bool,
+) -> Result<(), DebugProbeError> {
+    tracing::debug!("Write IR: {:?}, len={}", data, len);
+
+    // Check the bit length, enough data has to be available
+    if data.len() * 8 < len || len == 0 {
+        return Err(DebugProbeError::Other(format!(
+            "Invalid data length. IR bits: {}, expected: {}",
+            data.len(),
+            len
+        )));
+    }
+
+    // BYPASS commands before and after shifting out data where required
+    let pre_bits = protocol.state().chain_params.irpre;
+    let post_bits = protocol.state().chain_params.irpost;
+
+    // The last bit will be transmitted when exiting the shift state,
+    // so we need to stay in the shift state for one period less than
+    // we have bits to transmit.
+    let tms_data = std::iter::repeat_n(false, len - 1);
+
+    // Enter IR shift
+    jtag_move_to_state(protocol, JtagState::Ir(RegisterState::Shift))?;
+
+    let tms = std::iter::repeat_n(false, pre_bits)
+        .chain(tms_data)
+        .chain(std::iter::repeat_n(false, post_bits))
+        .chain(iter::once(true));
+
+    let tdi = std::iter::repeat_n(true, pre_bits)
+        .chain(data.as_bits::<Lsb0>()[..len].iter().map(|b| *b))
+        .chain(std::iter::repeat_n(true, post_bits));
+
+    let capture = std::iter::repeat_n(false, pre_bits)
+        .chain(std::iter::repeat_n(capture_data, len))
+        .chain(iter::repeat(false));
+
+    tracing::trace!("tms: {:?}", tms.clone());
+    tracing::trace!("tdi: {:?}", tdi.clone());
+
+    protocol.shift_bits(tms, tdi, capture)?;
+    jtag_move_to_state(protocol, JtagState::Ir(RegisterState::Update))?;
+
+    Ok(())
+}
+
+fn shift_dr(
+    protocol: &mut impl RawJtagIo,
+    data: &[u8],
+    register_bits: usize,
+    capture_data: bool,
+) -> Result<usize, DebugProbeError> {
+    tracing::debug!("Write DR: {:?}, len={}", data, register_bits);
+
+    // Check the bit length, enough data has to be available
+    if data.len() * 8 < register_bits || register_bits == 0 {
+        return Err(DebugProbeError::Other(format!(
+            "Invalid data length. DR bits: {}, expected: {}",
+            data.len(),
+            register_bits
+        )));
+    }
+
+    // Last bit of data is shifted out when we exit the SHIFT-DR State
+    let tms_shift_out_value = std::iter::repeat_n(false, register_bits - 1);
+
+    // Enter DR shift
+    jtag_move_to_state(protocol, JtagState::Dr(RegisterState::Shift))?;
+
+    // dummy bits to account for bypasses
+    let pre_bits = protocol.state().chain_params.drpre;
+    let post_bits = protocol.state().chain_params.drpost;
+
+    let tms = std::iter::repeat_n(false, pre_bits)
+        .chain(tms_shift_out_value)
+        .chain(std::iter::repeat_n(false, post_bits))
+        .chain(iter::once(true));
+
+    let tdi = std::iter::repeat_n(false, pre_bits)
+        .chain(data.as_bits::<Lsb0>()[..register_bits].iter().map(|b| *b))
+        .chain(std::iter::repeat_n(false, post_bits));
+
+    let capture = std::iter::repeat_n(false, pre_bits)
+        .chain(std::iter::repeat_n(capture_data, register_bits))
+        .chain(iter::repeat(false));
+
+    protocol.shift_bits(tms, tdi, capture)?;
+
+    jtag_move_to_state(protocol, JtagState::Dr(RegisterState::Update))?;
+
+    let idle_cycles = protocol.state().jtag_idle_cycles;
+    if idle_cycles > 0 {
+        jtag_move_to_state(protocol, JtagState::Idle)?;
+
+        // We need to stay in the idle cycle a bit
+        let tms = std::iter::repeat_n(false, idle_cycles);
+        let tdi = std::iter::repeat_n(false, idle_cycles);
+
+        protocol.shift_bits(tms, tdi, iter::repeat(false))?;
+    }
+
+    if capture_data {
+        Ok(register_bits)
+    } else {
+        Ok(0)
+    }
+}
 
 struct GoldenRecorder {
     jtag_state: JtagDriverState,

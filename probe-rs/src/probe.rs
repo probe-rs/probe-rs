@@ -41,7 +41,8 @@ use std::fmt;
 use std::sync::{Arc, LazyLock};
 
 pub use bits::BitSequence;
-pub use jtag::{JtagBatch, JtagOp, JtagProbe, TapState};
+pub use jtag::chain::ChainParams;
+pub use jtag::{JtagBatch, JtagChain, JtagOp, JtagProbe, TapState};
 pub use queue::{Batch, BatchError, BatchExecutionError, ErasedBatch, Handle, JtagQueue, Results};
 #[allow(deprecated)]
 pub use queue::{DeferredResultIndex, DeferredResultSet, ErasedQueue, Queue};
@@ -1069,6 +1070,9 @@ pub struct JtagDriverState {
     /// The state of the JTAG state machine.
     pub state: JtagState,
 
+    /// The stable state that the TAP rests in between two batches.
+    pub tap_state: TapState,
+
     /// The expected scan chain.
     pub expected_scan_chain: Option<Vec<ScanChainElement>>,
 
@@ -1091,6 +1095,7 @@ impl Default for JtagDriverState {
     fn default() -> Self {
         Self {
             state: JtagState::Reset,
+            tap_state: TapState::TestLogicReset,
             expected_scan_chain: None,
             scan_chain: Vec::new(),
             chain_params: ChainParams::default(),
@@ -1380,53 +1385,6 @@ impl From<ErasedCommand<JtagWriteData>> for JtagCommand {
 impl From<ErasedCommand<ShiftDrData>> for JtagCommand {
     fn from(cmd: ErasedCommand<ShiftDrData>) -> Self {
         JtagCommand::ShiftDr(cmd)
-    }
-}
-
-/// Chain parameters to select a target tap within the chain.
-#[derive(Clone, Copy, Debug, Default)]
-pub struct ChainParams {
-    /// The TAP's position in the chain.
-    pub index: usize,
-
-    /// IR bits to shift before the TAP.
-    pub irpre: usize,
-
-    /// IR bits to shift after the TAP.
-    pub irpost: usize,
-
-    /// DR bits to shift before the TAP.
-    pub drpre: usize,
-
-    /// DR bits to shift after the TAP.
-    pub drpost: usize,
-
-    /// Length of the instruction register.
-    pub irlen: usize,
-}
-
-impl ChainParams {
-    fn from_jtag_chain(chain: &[ScanChainElement], selected: usize) -> Option<Self> {
-        let mut params = Self {
-            index: selected,
-            ..Default::default()
-        };
-        let mut found = false;
-        for (index, tap) in chain.iter().enumerate() {
-            let ir_len = tap.ir_len() as usize;
-            if index == selected {
-                params.irlen = ir_len;
-                found = true;
-            } else if found {
-                params.irpost += ir_len;
-                params.drpost += 1;
-            } else {
-                params.irpre += ir_len;
-                params.drpre += 1;
-            }
-        }
-
-        found.then_some(params)
     }
 }
 

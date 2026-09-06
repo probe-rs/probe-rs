@@ -21,6 +21,9 @@
 //! batch.enter(TapState::RunTestIdle);
 //! batch.clock(8);
 //! ```
+pub mod chain;
+pub use chain::JtagChain;
+
 use bitvec::vec::BitVec;
 
 use super::{
@@ -164,12 +167,13 @@ impl JtagBatch {
 
     /// Schedule an exchange and return a handle for the captured TDO bits.
     pub fn exchange(&mut self, data: BitSequence) -> Handle<BitSequence> {
+        let bit_len = data.len();
         self.schedule(JtagOp::Exchange {
             data,
             capture: true,
         })
-        .map(|result| match result {
-            CommandResult::VecU8(bytes) => BitSequence::from_bytes(&bytes, bytes.len() * 8),
+        .map(move |result| match result {
+            CommandResult::VecU8(bytes) => BitSequence::from_bytes(&bytes, bit_len),
             _ => panic!("unexpected CommandResult variant for a JTAG exchange"),
         })
     }
@@ -232,6 +236,12 @@ pub trait JtagProbe: DebugProbe {
 /// - This trait has no `reset_jtag_state_machine`. [`JtagOp::EnterState`] with
 ///   [`TapState::TestLogicReset`] replaces it.
 pub trait BitbangJtag: DebugProbe {
+    /// Return the state that the TAP rests in between two batches.
+    ///
+    /// The lowering reads this state at the start of a batch, and it writes
+    /// the new state at the end. A driver only stores the value.
+    fn tap_state(&mut self) -> &mut TapState;
+
     /// Shift one bit through the TAP.
     fn shift(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError>;
 
@@ -292,13 +302,26 @@ fn captured_bits_to_bytes(bits: impl IntoIterator<Item = bool>) -> Vec<u8> {
 }
 
 /// Lower a batch to bit-banging, starting from `start`.
+///
+/// The TAP rests where the batch leaves it. The caller writes that state back,
+/// so the next batch starts from it.
 pub(crate) fn run_bitbang_batch<P: BitbangJtag>(
     probe: &mut P,
     start: TapState,
     batch: &JtagBatch,
 ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
-    let ops: Vec<_> = batch.iter().collect();
     let mut state = start;
+    let result = lower_batch(probe, &mut state, batch);
+    *probe.tap_state() = state;
+    result
+}
+
+fn lower_batch<P: BitbangJtag>(
+    probe: &mut P,
+    state: &mut TapState,
+    batch: &JtagBatch,
+) -> Result<Results, BatchExecutionError<DebugProbeError>> {
+    let ops: Vec<_> = batch.iter().collect();
     let mut results = Results::new();
     let mut skip_enter_path_bits = 0usize;
 
@@ -314,10 +337,10 @@ pub(crate) fn run_bitbang_batch<P: BitbangJtag>(
                         return Err(BatchExecutionError::new_from_debug_probe(error, results));
                     }
                 }
-                state = target;
+                *state = target;
             }
             JtagOp::Exchange { data, capture } => {
-                if state != TapState::ShiftIr && state != TapState::ShiftDr {
+                if *state != TapState::ShiftIr && *state != TapState::ShiftDr {
                     return Err(BatchExecutionError::new_from_debug_probe(
                         DebugProbeError::Other(format!(
                             "Exchange in state {state:?}, but ShiftIr or ShiftDr is required"
@@ -325,7 +348,8 @@ pub(crate) fn run_bitbang_batch<P: BitbangJtag>(
                         results,
                     ));
                 }
-                let merge_exit = exchange_leaves_shift(state, ops.get(index + 1).map(|(_, op)| op));
+                let merge_exit =
+                    exchange_leaves_shift(*state, ops.get(index + 1).map(|(_, op)| op));
                 let do_capture = *capture && id.should_capture();
                 let bit_count = data.len();
                 for bit_index in 0..bit_count {
@@ -398,7 +422,8 @@ impl<P: BitbangJtag> JtagProbe for P {
         &mut self,
         batch: &JtagBatch,
     ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
-        run_bitbang_batch(self, TapState::TestLogicReset, batch)
+        let start = *self.tap_state();
+        run_bitbang_batch(self, start, batch)
     }
 }
 
@@ -407,6 +432,10 @@ impl<P: BitbangJtag> JtagProbe for P {
 /// This bridge goes away when every driver implements [`BitbangJtag`] directly.
 #[doc(hidden)]
 impl<P: RawJtagIo> BitbangJtag for P {
+    fn tap_state(&mut self) -> &mut TapState {
+        &mut self.state_mut().tap_state
+    }
+
     fn shift(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError> {
         self.shift_bit(tms, tdi, capture)
     }
