@@ -43,11 +43,15 @@ pub use jtag::chain::ChainParams;
 pub use jtag::{
     BitbangJtag, JtagBatch, JtagChain, JtagChainAccess, JtagChainState, JtagOp, JtagProbe, TapState,
 };
-pub use queue::{Batch, BatchError, BatchExecutionError, ErasedBatch, Handle, JtagQueue, Results};
+pub use queue::{
+    Batch, BatchError, BatchExecutionError, ErasedBatch, Handle, HandleId, JtagQueue, Results,
+};
 #[allow(deprecated)]
 pub use queue::{DeferredResultIndex, DeferredResultSet, ErasedQueue, Queue};
 pub use selector::DebugProbeSelector;
-pub use swd::{BitbangSwd, Direction, Pins, Port, SwdBatch, SwdOp, SwdProbe, SwdTransferError};
+pub use swd::{
+    BitbangSwd, Direction, Pins, Port, SwdBatch, SwdOp, SwdPort, SwdProbe, SwdTransferError,
+};
 
 /// Used to log warnings when the measured target voltage is
 /// lower than 1.4V, if at all measurable.

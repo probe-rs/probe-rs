@@ -14,12 +14,16 @@
 //! batch.idle(8);
 //! ```
 
+mod port;
+
 use std::time::Duration;
 
 use crate::probe::{
     Batch, BatchError, BatchExecutionError, BitSequence, CommandResult, DebugProbe,
     DebugProbeError, Handle, IoSequenceItem, Results, SwdSettings,
 };
+
+pub use port::SwdPort;
 
 bitfield::bitfield! {
     /// A struct to describe the default CMSIS-DAP pins that one can toggle from the host.
@@ -208,7 +212,7 @@ pub(crate) fn transfer_io_sequence(
     sequence
 }
 
-/// Parse the sampled bits of one SWD transfer.
+/// Parse the sampled bits of an SWD transfer.
 pub(crate) fn parse_transfer_response(
     resp: &[bool],
     direction: Direction,
@@ -278,7 +282,7 @@ fn run_bitbang_batch<P: BitbangSwd>(
 ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
     let mut results = Results::new();
 
-    for (id, op) in batch.iter() {
+    for (fault_operation, (id, op)) in batch.iter().enumerate() {
         match op {
             SwdOp::Transfer {
                 port,
@@ -290,18 +294,23 @@ fn run_bitbang_batch<P: BitbangSwd>(
                 let response = match probe.swd_io(io.iter().copied()) {
                     Ok(response) => response,
                     Err(error) => {
-                        return Err(BatchExecutionError::new_from_debug_probe(error, results));
+                        return Err(BatchExecutionError::new_from_debug_probe_at(
+                            error,
+                            results,
+                            fault_operation,
+                        ));
                     }
                 };
 
                 if response.len() < TRANSFER_RESPONSE_BITS {
-                    return Err(BatchExecutionError::new_from_debug_probe(
+                    return Err(BatchExecutionError::new_from_debug_probe_at(
                         DebugProbeError::Other(format!(
                             "The probe captured {} bits, but the transfer needs {}",
                             response.len(),
                             TRANSFER_RESPONSE_BITS
                         )),
                         results,
+                        fault_operation,
                     ));
                 }
 
@@ -315,6 +324,7 @@ fn run_bitbang_batch<P: BitbangSwd>(
                         return Err(BatchExecutionError {
                             error: BatchError::Specific(DebugProbeError::SwdTransfer(error)),
                             results,
+                            fault_operation,
                         });
                     }
                 }
@@ -322,21 +332,30 @@ fn run_bitbang_batch<P: BitbangSwd>(
             SwdOp::Sequence(bits) => {
                 let io = bits.iter().map(IoSequenceItem::Output).collect::<Vec<_>>();
                 if let Err(error) = probe.swd_io(io) {
-                    return Err(BatchExecutionError::new_from_debug_probe(error, results));
+                    return Err(BatchExecutionError::new_from_debug_probe_at(
+                        error,
+                        results,
+                        fault_operation,
+                    ));
                 }
             }
             SwdOp::Idle { cycles } => {
                 let io = std::iter::repeat_n(IoSequenceItem::Output(false), *cycles as usize);
                 if let Err(error) = probe.swd_io(io) {
-                    return Err(BatchExecutionError::new_from_debug_probe(error, results));
+                    return Err(BatchExecutionError::new_from_debug_probe_at(
+                        error,
+                        results,
+                        fault_operation,
+                    ));
                 }
             }
             SwdOp::Pins { .. } => {
-                return Err(BatchExecutionError::new_from_debug_probe(
+                return Err(BatchExecutionError::new_from_debug_probe_at(
                     DebugProbeError::CommandNotSupportedByProbe {
                         command_name: "swj_pins",
                     },
                     results,
+                    fault_operation,
                 ));
             }
         }
