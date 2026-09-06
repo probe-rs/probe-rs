@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use probe_rs_debug::{ObjectRef, StackFrame, VariableName};
+use probe_rs_debug::{ColumnType, ObjectRef, SourceLocation, StackFrame, VariableName};
 
 use crate::cmd::dap_server::{
     DebuggerError,
@@ -42,6 +42,18 @@ pub(crate) async fn scope_variables(
             .variables(core_index, variables_reference, None)
             .await?,
     ))
+}
+
+/// Format a source location as `path[:line[:column]]`.
+pub(crate) fn format_source_location(location: &SourceLocation) -> String {
+    let mut source = format!("{}", location.path.to_path().display());
+    if let Some(line) = location.line {
+        source.push_str(&format!(":{line}"));
+        if let Some(ColumnType::Column(column)) = location.column {
+            source.push_str(&format!(":{column}"));
+        }
+    }
+    source
 }
 
 pub(crate) fn stack_frame_id(stack_frame: &StackFrame) -> Result<u32, DebuggerError> {
@@ -675,7 +687,7 @@ mod test {
             &[
                 (
                     "break ",
-                    "break [*address | file:line[:column]]: Set a breakpoint at a location, or halt the target if unspecified.",
+                    "break [address | file:line[:column]]: Set a breakpoint at a location, or halt the target if unspecified.",
                 ),
                 (
                     "bt ",
@@ -689,14 +701,14 @@ mod test {
             "br",
             &[(
                 "break ",
-                "break [*address | file:line[:column]]: Set a breakpoint at a location, or halt the target if unspecified.",
+                "break [address | file:line[:column]]: Set a breakpoint at a location, or halt the target if unspecified.",
             )],
         );
         assert_completion_result(
             "break",
             &[(
                 "break ",
-                "break [*address | file:line[:column]]: Set a breakpoint at a location, or halt the target if unspecified.",
+                "break [address | file:line[:column]]: Set a breakpoint at a location, or halt the target if unspecified.",
             )],
         );
         assert_completion_result(

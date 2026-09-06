@@ -2,7 +2,7 @@ use std::fmt::Write;
 
 use linkme::distributed_slice;
 use probe_rs::{CoreRegister, RegisterId};
-use probe_rs_debug::{ColumnType, StackFrame, VariableName};
+use probe_rs_debug::{StackFrame, VariableName};
 
 use crate::cmd::dap_server::{
     DebuggerError,
@@ -14,8 +14,8 @@ use crate::cmd::dap_server::{
             EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand, async_fn, need_subcommand,
         },
         repl_commands_helpers::{
-            PrintTree, format_repl_variables, get_local_variable, scope_variables, select_frame,
-            stack_frame_id,
+            PrintTree, format_repl_variables, format_source_location, get_local_variable,
+            scope_variables, select_frame, stack_frame_id,
         },
         repl_types::{GdbFormat, GdbNuf, ReplCommandArgs},
     },
@@ -140,20 +140,11 @@ fn format_frame(index: usize, frame: &StackFrame, colorize: bool) -> String {
         .unwrap();
     }
     if let Some(location) = &frame.source_location {
-        let mut source = format!("{}", location.path.to_path().display());
-        if let Some(line) = location.line {
-            #[expect(clippy::unwrap_used, reason = "Writing to a string is infallible")]
-            write!(&mut source, ":{line}").unwrap();
-            if let Some(ColumnType::Column(column)) = location.column {
-                #[expect(clippy::unwrap_used, reason = "Writing to a string is infallible")]
-                write!(&mut source, ":{column}").unwrap();
-            }
-        }
         #[expect(clippy::unwrap_used, reason = "Writing to a string is infallible")]
         write!(
             &mut response,
             "\nSource: {}",
-            ReplDim::new(source).colorize(colorize)
+            ReplDim::new(format_source_location(location)).colorize(colorize)
         )
         .unwrap();
     }

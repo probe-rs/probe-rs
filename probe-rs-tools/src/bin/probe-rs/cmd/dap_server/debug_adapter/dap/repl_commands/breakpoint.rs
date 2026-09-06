@@ -1,6 +1,8 @@
+use std::fmt::Write;
+
 use linkme::distributed_slice;
 use probe_rs::{CoreStatus, HaltReason};
-use probe_rs_debug::{ColumnType, VerifiedBreakpoint};
+use probe_rs_debug::{ColumnType, SourceLocation, VerifiedBreakpoint};
 use typed_path::TypedPath;
 
 use crate::cmd::dap_server::{
@@ -11,13 +13,14 @@ use crate::cmd::dap_server::{
         core_status::DapStatus,
         dap_types::{Breakpoint, BreakpointEventBody, EvaluateArguments, MemoryAddress, Source},
         repl_commands::{EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand, async_fn},
+        repl_commands_helpers::format_source_location,
         repl_types::ReplCommandArgs,
-        request_helpers::instruction_breakpoint_response,
+        request_helpers::get_dap_source,
     },
     server::core_data::CoreData,
     server::session_data::{ActiveBreakpoint, BreakpointType, SourceLocationScope},
 };
-use crate::util::style::ReplAddress;
+use crate::util::style::{ReplAddress, ReplDim};
 use probe_rs_rpc::breakpoints::SourceBreakpointLocation;
 
 #[distributed_slice(REPL_COMMANDS)]
@@ -26,7 +29,7 @@ static BREAK: ReplCommand = ReplCommand {
     help_text: "Set a breakpoint at a location, or halt the target if unspecified.",
     requires_target_halted: false,
     sub_commands: &[],
-    args: &[ReplCommandArgs::Optional("*address | file:line[:column]")],
+    args: &[ReplCommandArgs::Optional("address | file:line[:column]")],
     handler: async_fn!(create_breakpoint),
 };
 
@@ -36,7 +39,7 @@ static CLEAR: ReplCommand = ReplCommand {
     help_text: "Clear a breakpoint.",
     requires_target_halted: false,
     sub_commands: &[],
-    args: &[ReplCommandArgs::Required("*address | file:line[:column]")],
+    args: &[ReplCommandArgs::Required("address | file:line[:column]")],
     handler: async_fn!(clear_breakpoint),
 };
 
@@ -49,7 +52,7 @@ enum BreakpointLocation<'a> {
     },
 }
 
-/// Parse `*<address>`, `<file>:<line>`, or `<file>:<line>:<column>` from a single REPL token.
+/// Parse `[*]<address>`, `<file>:<line>`, or `<file>:<line>:<column>` from a single REPL token.
 ///
 /// Splitting is done from the right so that Windows drive letters
 /// (e.g. `C:\foo.rs:42` or `C:\foo.rs:42:5`) are handled correctly.
@@ -79,8 +82,12 @@ fn parse_breakpoint_location(input: &str) -> Result<BreakpointLocation<'_>, Debu
         });
     }
 
+    if let Ok(MemoryAddress(address)) = input.try_into() {
+        return Ok(BreakpointLocation::Address(address));
+    }
+
     Err(DebuggerError::UserMessage(format!(
-        "Invalid argument {input:?}. Expected `*<address>` or `<file>:<line>[:<column>]`. See `help`."
+        "Invalid argument {input:?}. Expected `[*]<address>` or `<file>:<line>[:<column>]`. See `help`."
     )))
 }
 
@@ -144,39 +151,19 @@ async fn create_breakpoint<'a>(
         ));
     };
 
-    match parse_breakpoint_location(token)? {
+    let (address, source_location, breakpoint_type) = match parse_breakpoint_location(token)? {
         BreakpointLocation::Address(address) => {
-            let set_result = backend.set_hw_breakpoint(core_index, address).await;
-            let source_location = if set_result.is_ok() {
-                backend
-                    .resolve_source_locations(vec![address])
-                    .await
-                    .ok()
-                    .and_then(|mut locations| locations.pop().flatten())
-            } else {
-                None
-            };
-            let breakpoint_response = instruction_breakpoint_response(
-                address,
-                set_result.is_ok(),
-                set_result.as_ref().err().map(|e| e.to_string()).as_deref(),
-                source_location.as_ref(),
-            );
-            let body = if breakpoint_response.verified {
-                serde_json::to_value(BreakpointEventBody {
-                    breakpoint: breakpoint_response.clone(),
-                    reason: "new".to_string(),
-                })
+            let source_location = backend
+                .resolve_source_locations(vec![address])
+                .await
                 .ok()
-            } else {
-                None
-            };
-            adapter.dyn_send_event("breakpoint", body)?;
-            Ok(EvalResponse::Message(
-                breakpoint_response.message.unwrap_or_else(|| {
-                    format!("Unexpected error creating breakpoint at {address:#x}.")
-                }),
-            ))
+                .and_then(|mut locations| locations.pop().flatten());
+
+            (
+                address,
+                source_location,
+                BreakpointType::InstructionBreakpoint,
+            )
         }
 
         BreakpointLocation::FileLine { path, line, column } => {
@@ -184,43 +171,79 @@ async fn create_breakpoint<'a>(
                 address,
                 source_location,
             } = resolve_one_source_breakpoint(backend, path, line, column).await?;
-            backend.set_hw_breakpoint(core_index, address).await?;
-            let source = source_from_path(path);
-            core_data.breakpoints.push(ActiveBreakpoint {
-                breakpoint_type: BreakpointType::SourceBreakpoint {
-                    source: Box::new(source.clone()),
-                    location: SourceLocationScope::Specific(source_location.clone()),
-                },
-                address,
-            });
-            let body = serde_json::to_value(BreakpointEventBody {
-                breakpoint: Breakpoint {
-                    id: Some(address as i64),
-                    verified: true,
-                    line: source_location.line.map(|l| l as i64),
-                    source: Some(source),
-                    message: Some(format!("Source breakpoint at {:#010X}", address)),
-                    column: source_location.column.map(|col| match col {
-                        ColumnType::LeftEdge => 0_i64,
-                        ColumnType::Column(c) => c as i64,
-                    }),
-                    end_column: None,
-                    end_line: None,
-                    instruction_reference: None,
-                    offset: None,
-                    reason: None,
-                },
-                reason: "new".to_string(),
-            })
-            .ok();
-            adapter.dyn_send_event("breakpoint", body)?;
-            Ok(EvalResponse::Message(format!(
-                "Breakpoint set at {}",
-                ReplAddress::new(format!("{address:#010X}"))
-                    .colorize(adapter.supports_ansi_styling)
-            )))
+            let breakpoint_type = BreakpointType::SourceBreakpoint {
+                source: Box::new(source_from_path(path)),
+                location: SourceLocationScope::Specific(source_location.clone()),
+            };
+
+            (address, Some(source_location), breakpoint_type)
         }
+    };
+
+    backend.set_hw_breakpoint(core_index, address).await?;
+    core_data.breakpoints.push(ActiveBreakpoint {
+        breakpoint_type,
+        address,
+    });
+
+    let body = serde_json::to_value(BreakpointEventBody {
+        breakpoint: Breakpoint {
+            id: Some(address as i64),
+            verified: true,
+            line: source_location
+                .as_ref()
+                .and_then(|loc| loc.line)
+                .map(|l| l as i64),
+            column: source_location
+                .as_ref()
+                .and_then(|loc| loc.column)
+                .map(|col| match col {
+                    ColumnType::LeftEdge => 0_i64,
+                    ColumnType::Column(c) => c as i64,
+                }),
+            source: source_location.as_ref().and_then(get_dap_source),
+            message: Some(breakpoint_set_message(
+                address,
+                source_location.as_ref(),
+                false,
+            )),
+            instruction_reference: Some(format!("{address:#010x}")),
+            end_column: None,
+            end_line: None,
+            offset: None,
+            reason: None,
+        },
+        reason: "new".to_string(),
+    })
+    .ok();
+    adapter.dyn_send_event("breakpoint", body)?;
+
+    Ok(EvalResponse::Message(breakpoint_set_message(
+        address,
+        source_location.as_ref(),
+        adapter.supports_ansi_styling,
+    )))
+}
+
+fn breakpoint_set_message(
+    address: u64,
+    source_location: Option<&SourceLocation>,
+    colorize: bool,
+) -> String {
+    let mut message = format!(
+        "Breakpoint set at {}",
+        ReplAddress::new(format!("{address:#010x}")).colorize(colorize)
+    );
+    if let Some(location) = source_location {
+        #[expect(clippy::unwrap_used, reason = "Writing to a string is infallible")]
+        write!(
+            &mut message,
+            " {}",
+            ReplDim::new(format!("({})", format_source_location(location))).colorize(colorize)
+        )
+        .unwrap();
     }
+    message
 }
 
 async fn clear_breakpoint<'a>(
@@ -323,5 +346,36 @@ mod tests {
         assert_eq!(path, "/src/main.rs");
         assert_eq!(line, 42);
         assert_eq!(column, None);
+    }
+
+    #[test]
+    fn reports_the_source_location_of_a_breakpoint() {
+        let location = SourceLocation {
+            path: TypedPath::derive("/src/main.rs").to_path_buf(),
+            line: Some(42),
+            column: Some(ColumnType::Column(7)),
+            address: Some(0x2000),
+        };
+
+        pretty_assertions::assert_eq!(
+            breakpoint_set_message(0x2000, Some(&location), false),
+            "Breakpoint set at 0x00002000 (/src/main.rs:42:7)"
+        );
+        pretty_assertions::assert_eq!(
+            breakpoint_set_message(0x2000, None, true),
+            "Breakpoint set at \u{1b}[33m0x00002000\u{1b}[0m"
+        );
+    }
+
+    #[test]
+    fn parses_addresses_with_and_without_the_star_prefix() {
+        for input in ["*0x2000", "0x2000", "8192"] {
+            let BreakpointLocation::Address(address) = parse_breakpoint_location(input).unwrap()
+            else {
+                panic!("expected address breakpoint for {input:?}");
+            };
+
+            assert_eq!(address, 0x2000);
+        }
     }
 }
