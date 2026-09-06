@@ -287,7 +287,7 @@ where
     f(&mut chain)
 }
 
-fn bit_sequence_to_bitvec(sequence: &BitSequence) -> BitVec {
+pub(crate) fn bit_sequence_to_bitvec(sequence: &BitSequence) -> BitVec {
     let mut bits = BitVec::new();
     bits.extend_from_bitslice(sequence.as_bits());
     bits
@@ -430,20 +430,14 @@ impl<Probe: JtagChainAccess> JtagAccess for Probe {
                         let ir =
                             BitSequence::from_bytes(&write.inner.address.to_le_bytes(), ir_len);
                         chain.shift_ir(&mut batch, &ir);
-                        let handle = chain.exchange_dr(
-                            &mut batch,
-                            &BitSequence::from_bytes(&write.inner.data, write.inner.len as usize),
-                        );
+                        let handle = chain.exchange_dr(&mut batch, &write.inner.data);
                         chain.run_test_idle(&mut batch, write.inner.idle_cycles);
                         if idx.should_capture() {
                             capture_handles.push(handle);
                         }
                     }
                     JtagCommand::ShiftDr(write) => {
-                        let handle = chain.exchange_dr(
-                            &mut batch,
-                            &BitSequence::from_bytes(&write.inner.data, write.inner.len as usize),
-                        );
+                        let handle = chain.exchange_dr(&mut batch, &write.inner.data);
                         chain.run_test_idle(&mut batch, write.inner.idle_cycles);
                         if idx.should_capture() {
                             capture_handles.push(handle);

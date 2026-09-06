@@ -9,10 +9,13 @@ use bitvec::{field::BitField, slice::BitSlice};
 use crate::{
     architecture::xtensa::arch::instruction::{Instruction, InstructionEncoding},
     probe::{
-        CommandResult, JtagAccess, JtagWriteCommand, JtagWriteData, ShiftDrCommand, ShiftDrData,
+        BitSequence, CommandResult, JtagBatch, JtagChain, JtagWriteCommand, JtagWriteData,
+        ShiftDrCommand, ShiftDrData,
         queue::{BatchError, Handle, JtagQueue, Results},
     },
 };
+
+use crate::probe::DebugProbeError;
 
 use super::communication_interface::XtensaError;
 
@@ -167,18 +170,47 @@ pub(crate) struct XdmState {
 // move the instruction execution into the current communication_interface module.
 #[derive(Debug)]
 pub struct Xdm<'probe> {
-    /// The JTAG interface.
-    pub probe: &'probe mut dyn JtagAccess,
+    probe: JtagChain<'probe>,
 
-    /// Debug module state.
     state: &'probe mut XdmState,
 }
 
 impl<'probe> Xdm<'probe> {
-    pub(crate) fn new(probe: &'probe mut dyn JtagAccess, state: &'probe mut XdmState) -> Self {
+    pub(crate) fn new(probe: JtagChain<'probe>, state: &'probe mut XdmState) -> Self {
         // TODO implement openocd's esp32_queue_tdi_idle() to prevent potentially damaging flash ICs
 
         Self { probe, state }
+    }
+
+    fn tap_reset(&mut self) -> Result<(), XtensaError> {
+        let mut batch = JtagBatch::new();
+        self.probe.tap_reset(&mut batch);
+        self.probe.run(batch).map(|_| ()).map_err(XtensaError::from)
+    }
+
+    fn exchange_register(
+        &mut self,
+        address: u32,
+        dr: BitSequence,
+        idle_cycles: u32,
+    ) -> Result<BitSequence, XtensaError> {
+        if address > self.probe.params().max_ir_address() {
+            return Err(DebugProbeError::Other(format!(
+                "Invalid instruction register access: {address}"
+            ))
+            .into());
+        }
+
+        let ir_len = self.probe.params().irlen;
+        let mut batch = JtagBatch::new();
+        let ir = BitSequence::from_bytes(&address.to_le_bytes(), ir_len);
+        self.probe.shift_ir(&mut batch, &ir);
+        let handle = self.probe.exchange_dr(&mut batch, &dr);
+        self.probe.run_test_idle(&mut batch, idle_cycles);
+        let mut results = self.probe.run(batch)?;
+        results
+            .take(handle)
+            .map_err(|_| XtensaError::BatchedResultNotAvailable)
     }
 
     #[tracing::instrument(skip(self))]
@@ -186,7 +218,7 @@ impl<'probe> Xdm<'probe> {
         self.state.queue = JtagQueue::new();
         self.state.jtag_results = Results::new();
 
-        self.probe.tap_reset()?;
+        self.tap_reset()?;
 
         // Reset PCM
         let mut pwr_control = PowerControl(0);
@@ -324,7 +356,7 @@ impl<'probe> Xdm<'probe> {
         let mut started = Instant::now();
         let mut previous_queue_len = queue.len();
         while !queue.is_empty() {
-            match queue.execute(|queue| self.probe.write_register_batch(queue)) {
+            match queue.execute(|queue| self.probe.run_command_batch(queue)) {
                 Ok(result) => {
                     self.state.jtag_results.merge_from(result);
                     return Ok(());
@@ -416,14 +448,17 @@ impl<'probe> Xdm<'probe> {
         let nar_idx = self.state.queue.schedule(JtagWriteCommand {
             data: JtagWriteData {
                 address: TapInstruction::Nar.code(),
-                data: nar.to_le_bytes().to_vec(),
-                len: TapInstruction::Nar.bits(),
+                data: BitSequence::from_bytes(
+                    &nar.to_le_bytes(),
+                    TapInstruction::Nar.bits() as usize,
+                ),
                 idle_cycles: 0,
             },
             transform: |write, capture| {
                 let capture = capture.load_le::<u8>();
-                let nar = write.data[0] >> 1;
-                let is_write = write.data[0] & 1 == 1;
+                let nar_byte = write.data.as_bits().load_le::<u8>();
+                let nar = nar_byte >> 1;
+                let is_write = nar_byte & 1 == 1;
 
                 Err(Error::Xdm {
                     narsel: nar,
@@ -443,8 +478,10 @@ impl<'probe> Xdm<'probe> {
 
         self.state.queue.schedule(ShiftDrCommand {
             inner: ShiftDrData {
-                data: ndr.to_le_bytes().to_vec(),
-                len: TapInstruction::Ndr.bits(),
+                data: BitSequence::from_bytes(
+                    &ndr.to_le_bytes(),
+                    TapInstruction::Ndr.bits() as usize,
+                ),
                 idle_cycles: 0,
             },
             transform,
@@ -477,25 +514,29 @@ impl<'probe> Xdm<'probe> {
     fn pwr_write(&mut self, dev: PowerDevice, value: u8) -> Result<u8, XtensaError> {
         let instr = TapInstruction::from(dev);
 
-        let capture = self
-            .probe
-            .write_register(instr.code(), &[value], instr.bits(), 0)?;
+        let capture = self.exchange_register(
+            instr.code(),
+            BitSequence::from_bytes(&[value], instr.bits() as usize),
+            0,
+        )?;
 
-        let res = capture.load_le::<u8>();
+        let res = capture.as_bits().load_le::<u8>();
         tracing::trace!("pwr_write response: {:?}", res);
 
         Ok(res)
     }
 
     pub(super) fn read_idcode(&mut self) -> Result<u32, XtensaError> {
-        self.probe.tap_reset()?;
+        self.tap_reset()?;
         let instr = TapInstruction::Idcode;
 
-        let capture = self
-            .probe
-            .write_register(instr.code(), &[0, 0, 0, 0], instr.bits(), 0)?;
+        let capture = self.exchange_register(
+            instr.code(),
+            BitSequence::repeat(false, instr.bits() as usize),
+            0,
+        )?;
 
-        let res = capture.load_le::<u32>();
+        let res = capture.as_bits().load_le::<u32>();
 
         tracing::debug!("idcode response: {:x?}", res);
 

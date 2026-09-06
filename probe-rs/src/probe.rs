@@ -40,6 +40,7 @@ use std::fmt;
 use std::sync::{Arc, LazyLock};
 
 pub use bits::BitSequence;
+use jtag::captured_bits_to_bytes;
 pub use jtag::chain::ChainParams;
 pub use jtag::{
     BitbangJtag, JtagBatch, JtagChain, JtagChainAccess, JtagChainState, JtagOp, JtagProbe, TapState,
@@ -1135,10 +1136,11 @@ pub trait JtagAccess: DebugProbe {
         for (idx, write) in writes.iter() {
             match write {
                 JtagCommand::WriteRegister(write) => {
+                    let data = captured_bits_to_bytes(write.inner.data.iter());
                     let response = match self.write_register(
                         write.inner.address,
-                        &write.inner.data,
-                        write.inner.len,
+                        &data,
+                        write.inner.data.len() as u32,
                         write.inner.idle_cycles,
                     ) {
                         Ok(response) => response,
@@ -1156,9 +1158,10 @@ pub trait JtagAccess: DebugProbe {
                 }
 
                 JtagCommand::ShiftDr(write) => {
+                    let data = captured_bits_to_bytes(write.inner.data.iter());
                     let response = match self.write_dr(
-                        &write.inner.data,
-                        write.inner.len,
+                        &data,
+                        write.inner.data.len() as u32,
                         write.inner.idle_cycles,
                     ) {
                         Ok(response) => response,
@@ -1197,10 +1200,7 @@ pub struct JtagWriteData {
     pub address: u32,
 
     /// The data to be written to DR.
-    pub data: Vec<u8>,
-
-    /// The number of bits in `data`
-    pub len: u32,
+    pub data: BitSequence,
 
     /// TCK cycles in Run-Test/Idle after the DR exchange.
     pub idle_cycles: u32,
@@ -1210,10 +1210,7 @@ pub struct JtagWriteData {
 #[derive(Debug, Clone)]
 pub struct ShiftDrData {
     /// The data to be written to DR.
-    pub data: Vec<u8>,
-
-    /// The number of bits in `data`
-    pub len: u32,
+    pub data: BitSequence,
 
     /// TCK cycles in Run-Test/Idle after the DR exchange.
     pub idle_cycles: u32,
