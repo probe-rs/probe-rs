@@ -1163,20 +1163,16 @@ impl DebugProbe for JLink {
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
-        match self.protocol {
+        let settings = SwdProbe::swd_settings(self.as_ref());
+        let iface = match self.protocol {
             WireProtocol::Jtag => {
-                let settings = SwdProbe::swd_settings(self.as_ref());
-                Ok(ArmCommunicationInterface::create_jtag(
-                    self, settings, sequence, true,
-                ))
+                ArmCommunicationInterface::create_jtag(self, settings, sequence, true)
             }
-            _ => {
-                let settings = SwdProbe::swd_settings(self.as_ref());
-                Ok(ArmCommunicationInterface::create_swd(
-                    self, settings, sequence, true,
-                ))
+            WireProtocol::Swd => {
+                ArmCommunicationInterface::create_swd(self, settings, sequence, true)
             }
-        }
+        };
+        Ok(iface)
     }
 
     fn try_as_swd_probe(self: Box<Self>) -> Result<Box<dyn SwdProbe>, Box<dyn DebugProbe>> {
@@ -1221,46 +1217,33 @@ impl BitbangSwd for JLink {
 
     fn swj_pins_op(
         &mut self,
-        pin_out: Pins,
-        pin_select: Pins,
+        out: Pins,
+        select: Pins,
         wait: Duration,
     ) -> Result<(), DebugProbeError> {
-        let pin_out = pin_out.0 as u32;
-        let pin_select = pin_select.0 as u32;
-        let pin_wait = wait.as_micros() as u32;
-
-        let mut unsupported_pins = Pins(0);
-        unsupported_pins.set_ntrst(true);
-        unsupported_pins.set_tdi(true);
-        unsupported_pins.set_tdo(true);
-        let unsupported_pins_mask = unsupported_pins.0 as u32;
-
-        if pin_select & unsupported_pins_mask == 0 {
-            let pin_select = Pins(pin_select as u8);
-            let pin_out = Pins(pin_out as u8);
-
-            if pin_select.swclk_tck() {
-                self.set_tck(pin_out.swclk_tck())?;
+        if select.ntrst() || select.tdi() || select.tdo() {
+            Err(DebugProbeError::CommandNotSupportedByProbe {
+                command_name: "swj_pins",
+            })
+        } else {
+            if select.swclk_tck() {
+                self.set_tck(out.swclk_tck())?;
             }
 
-            if pin_select.swdio_tms() {
-                self.set_tms(pin_out.swdio_tms())?;
+            if select.swdio_tms() {
+                self.set_tms(out.swdio_tms())?;
             }
 
-            if pin_select.nreset() {
-                if pin_out.nreset() {
+            if select.nreset() {
+                if out.nreset() {
                     self.target_reset_deassert()?;
                 } else {
                     self.target_reset_assert()?;
                 }
             }
 
-            std::thread::sleep(Duration::from_micros(pin_wait as u64));
+            std::thread::sleep(wait);
             Ok(())
-        } else {
-            Err(DebugProbeError::CommandNotSupportedByProbe {
-                command_name: "swj_pins",
-            })
         }
     }
 

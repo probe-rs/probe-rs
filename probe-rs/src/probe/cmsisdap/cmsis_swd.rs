@@ -116,22 +116,27 @@ impl CmsisDap {
         match response.last_transfer_response.ack {
             Ack::Ok => {
                 for (transfer, response_transfer) in pending.iter().zip(response.transfers.iter()) {
-                    if transfer.direction == Direction::Read && transfer.id.should_capture() {
-                        results.push(
-                            &transfer.id,
-                            CommandResult::U32(
-                                response_transfer.data.expect(
-                                    "CMSIS-DAP probe should always return data for a read.",
-                                ),
-                            ),
-                        );
+                    if transfer.direction != Direction::Read || !transfer.id.should_capture() {
+                        continue;
                     }
+                    let Some(data) = response_transfer.data else {
+                        return Err(BatchExecutionError::new_from_debug_probe_at(
+                            DebugProbeError::Other(
+                                "CMSIS-DAP read did not return any data".to_string(),
+                            ),
+                            results,
+                            transfer.batch_index,
+                        ));
+                    };
+                    results.push(&transfer.id, CommandResult::U32(data));
                 }
                 Ok(results)
             }
             Ack::Fault => {
                 let fault_operation = pending[count.saturating_sub(1)].batch_index;
-                let _ = self.handle_sticky_err();
+                if let Err(error) = self.handle_sticky_err() {
+                    tracing::warn!("Failed to clear the sticky error: {error}");
+                }
                 Err(BatchExecutionError {
                     error: BatchError::Specific(DebugProbeError::SwdTransfer(
                         SwdTransferError::FaultResponse,
@@ -142,11 +147,14 @@ impl CmsisDap {
             }
             Ack::Wait => {
                 let fault_operation = pending[count.saturating_sub(1)].batch_index;
-                let _ = self.write_abort({
+                let abort = {
                     let mut abort = Abort(0);
                     abort.set_dapabort(true);
                     abort
-                });
+                };
+                if let Err(error) = self.write_abort(abort) {
+                    tracing::warn!("Failed to abort the transfer: {error}");
+                }
                 Err(BatchExecutionError {
                     error: BatchError::Specific(DebugProbeError::SwdTransfer(
                         SwdTransferError::WaitResponse,
@@ -297,6 +305,10 @@ impl SwdProbe for CmsisDap {
 
     fn handles_wait(&self) -> bool {
         cmsis_handles_wait(self.transfer_wait_retry)
+    }
+
+    fn handles_ap_pipeline(&self) -> bool {
+        true
     }
 }
 

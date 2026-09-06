@@ -449,6 +449,10 @@ impl Drop for ArmCommunicationInterface {
 }
 
 impl ArmCommunicationInterface {
+    fn is_swd(&self) -> bool {
+        matches!(self.probe.as_ref(), Some(ArmProbe::Swd(_, _)))
+    }
+
     fn close(mut self) -> Probe {
         self.disconnect();
 
@@ -969,16 +973,17 @@ impl DapAccess for ArmCommunicationInterface {
     ) -> Result<u32, ArmError> {
         self.select_dp_and_dp_bank(dp, &address)?;
         let register = RegisterAddress::DpRegister(address);
-        if matches!(self.probe.as_ref(), Some(ArmProbe::Swd(_, _))) {
+        if self.is_swd() {
             let addr = Self::swd_addr(register);
-            return self.with_swd_port(|port| {
+            self.with_swd_port(|port| {
                 let mut batch = SwdBatch::new();
                 let handle = batch.read(Port::Dp, addr);
                 let mut results = port.run(batch)?;
                 Ok(results.take(handle).unwrap())
-            });
+            })
+        } else {
+            self.with_jtag_chain(|chain, settings| jtag_read_register(chain, register, settings))
         }
-        self.with_jtag_chain(|chain, settings| jtag_read_register(chain, register, settings))
     }
 
     fn write_raw_dp_register(
@@ -989,18 +994,19 @@ impl DapAccess for ArmCommunicationInterface {
     ) -> Result<(), ArmError> {
         self.select_dp_and_dp_bank(dp, &address)?;
         let register = RegisterAddress::DpRegister(address);
-        if matches!(self.probe.as_ref(), Some(ArmProbe::Swd(_, _))) {
+        if self.is_swd() {
             let addr = Self::swd_addr(register);
-            return self.with_swd_port(|port| {
+            self.with_swd_port(|port| {
                 let mut batch = SwdBatch::new();
                 batch.write(Port::Dp, addr, value);
                 port.run(batch)?;
                 Ok(())
-            });
+            })
+        } else {
+            self.with_jtag_chain(|chain, settings| {
+                jtag_write_register(chain, register, value, settings)
+            })
         }
-        self.with_jtag_chain(|chain, settings| {
-            jtag_write_register(chain, register, value, settings)
-        })
     }
 
     fn read_raw_ap_register(
@@ -1011,16 +1017,17 @@ impl DapAccess for ArmCommunicationInterface {
         self.select_ap_and_ap_bank(ap, address)?;
         let register = RegisterAddress::ApRegister((address & 0xFF) as u8);
 
-        if matches!(self.probe.as_ref(), Some(ArmProbe::Swd(_, _))) {
+        if self.is_swd() {
             let addr = Self::ap_swd_addr(address);
-            return self.with_swd_port(|port| {
+            self.with_swd_port(|port| {
                 let mut batch = SwdBatch::new();
                 let handle = port.read_ap_block(&mut batch, addr, 1);
                 let mut results = port.run(batch)?;
                 Ok(results.take(handle).unwrap()[0])
-            });
+            })
+        } else {
+            self.with_jtag_chain(|chain, settings| jtag_read_register(chain, register, settings))
         }
-        self.with_jtag_chain(|chain, settings| jtag_read_register(chain, register, settings))
     }
 
     fn read_raw_ap_register_repeated(
@@ -1032,19 +1039,22 @@ impl DapAccess for ArmCommunicationInterface {
         self.select_ap_and_ap_bank(ap, address)?;
         let register = RegisterAddress::ApRegister((address & 0xFF) as u8);
 
-        if matches!(self.probe.as_ref(), Some(ArmProbe::Swd(_, _))) {
+        if self.is_swd() {
             let addr = Self::ap_swd_addr(address);
             let count = values.len();
-            return self.with_swd_port(|port| {
+            self.with_swd_port(|port| {
                 let mut batch = SwdBatch::new();
                 let handle = port.read_ap_block(&mut batch, addr, count);
                 let mut results = port.run(batch)?;
                 let read_values = results.take(handle).unwrap();
                 values.copy_from_slice(&read_values);
                 Ok(())
-            });
+            })
+        } else {
+            self.with_jtag_chain(|chain, settings| {
+                jtag_read_block(chain, register, values, settings)
+            })
         }
-        self.with_jtag_chain(|chain, settings| jtag_read_block(chain, register, values, settings))
     }
 
     fn write_raw_ap_register(
@@ -1056,18 +1066,19 @@ impl DapAccess for ArmCommunicationInterface {
         self.select_ap_and_ap_bank(ap, address)?;
         let register = RegisterAddress::ApRegister((address & 0xFF) as u8);
 
-        if matches!(self.probe.as_ref(), Some(ArmProbe::Swd(_, _))) {
+        if self.is_swd() {
             let addr = Self::ap_swd_addr(address);
-            return self.with_swd_port(|port| {
+            self.with_swd_port(|port| {
                 let mut batch = SwdBatch::new();
                 batch.write(Port::Ap, addr, value);
                 port.run(batch)?;
                 Ok(())
-            });
+            })
+        } else {
+            self.with_jtag_chain(|chain, settings| {
+                jtag_write_register(chain, register, value, settings)
+            })
         }
-        self.with_jtag_chain(|chain, settings| {
-            jtag_write_register(chain, register, value, settings)
-        })
     }
 
     fn write_raw_ap_register_repeated(
@@ -1079,16 +1090,19 @@ impl DapAccess for ArmCommunicationInterface {
         self.select_ap_and_ap_bank(ap, address)?;
         let register = RegisterAddress::ApRegister((address & 0xFF) as u8);
 
-        if matches!(self.probe.as_ref(), Some(ArmProbe::Swd(_, _))) {
+        if self.is_swd() {
             let addr = Self::ap_swd_addr(address);
-            return self.with_swd_port(|port| {
+            self.with_swd_port(|port| {
                 let mut batch = SwdBatch::new();
                 port.write_ap_block(&mut batch, addr, values);
                 port.run(batch)?;
                 Ok(())
-            });
+            })
+        } else {
+            self.with_jtag_chain(|chain, settings| {
+                jtag_write_block(chain, register, values, settings)
+            })
         }
-        self.with_jtag_chain(|chain, settings| jtag_write_block(chain, register, values, settings))
     }
 
     fn flush(&mut self) -> Result<(), ArmError> {

@@ -315,6 +315,17 @@ pub trait SwdProbe: DebugProbe {
         false
     }
 
+    /// Report whether the probe posts AP reads itself.
+    ///
+    /// An AP read returns the value of the previous AP read on the wire. The
+    /// host collects the last value with a read of RDBUFF. When this returns
+    /// true, the probe does so, and it returns one value for every read
+    /// operation. `SwdPort` then adds no read of RDBUFF, and it inserts no
+    /// idle cycles, because such a probe times the transfers itself.
+    fn handles_ap_pipeline(&self) -> bool {
+        false
+    }
+
     /// Returns the SWD wire-protocol timing settings used by this probe.
     fn swd_settings(&self) -> SwdSettings {
         SwdSettings::default()

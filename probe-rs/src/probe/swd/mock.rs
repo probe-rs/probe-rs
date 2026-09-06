@@ -52,7 +52,9 @@ pub(crate) struct MockSwdProbe {
     read_values: HashMap<(Port, u8), u32>,
     read_sequences: HashMap<(Port, u8), Vec<u32>>,
     handles_wait: bool,
+    handles_ap_pipeline: bool,
     capture_flags: Arc<Mutex<Vec<bool>>>,
+    idles: Arc<Mutex<Vec<u32>>>,
 }
 
 impl MockSwdProbe {
@@ -66,7 +68,9 @@ impl MockSwdProbe {
             read_values: HashMap::new(),
             read_sequences: HashMap::new(),
             handles_wait: false,
+            handles_ap_pipeline: false,
             capture_flags: Arc::new(Mutex::new(Vec::new())),
+            idles: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
@@ -83,6 +87,12 @@ impl MockSwdProbe {
     /// Return true when the mock should not retry WAIT.
     pub(crate) fn handles_wait(mut self) -> Self {
         self.handles_wait = true;
+        self
+    }
+
+    /// Return one value for every read, as a probe that posts AP reads does.
+    pub(crate) fn handles_ap_pipeline(mut self) -> Self {
+        self.handles_ap_pipeline = true;
         self
     }
 
@@ -148,6 +158,11 @@ impl MockSwdProbe {
     /// Return whether each transfer had capture enabled.
     pub(crate) fn capture_flags(&self) -> Vec<bool> {
         self.capture_flags.lock().unwrap().clone()
+    }
+
+    /// Return the idle cycle counts of the executed batches.
+    pub(crate) fn idles(&self) -> Vec<u32> {
+        self.idles.lock().unwrap().clone()
     }
 }
 
@@ -253,7 +268,7 @@ impl SwdProbe for MockSwdProbe {
                         }
                     }
                 }
-                SwdOp::Idle { .. } => {}
+                SwdOp::Idle { cycles } => self.idles.lock().unwrap().push(*cycles),
                 SwdOp::Sequence(bits) => {
                     self.sequences
                         .lock()
@@ -269,5 +284,9 @@ impl SwdProbe for MockSwdProbe {
 
     fn handles_wait(&self) -> bool {
         self.handles_wait
+    }
+
+    fn handles_ap_pipeline(&self) -> bool {
+        self.handles_ap_pipeline
     }
 }

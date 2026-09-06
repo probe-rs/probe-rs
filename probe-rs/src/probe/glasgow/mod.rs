@@ -3,6 +3,8 @@
 //! This implementation is compatible with the `probe-rs` applet. The Glasgow toolkit must first
 //! be used to build the bitstream and configure the device; probe-rs cannot do that itself.
 
+use crate::probe::Pins;
+
 use super::{
     BatchError, BatchExecutionError, BitSequence, CommandResult, DebugProbe, DebugProbeError,
     DebugProbeInfo, DebugProbeSelector, ProbeFactory, Results, WireProtocol,
@@ -360,7 +362,12 @@ impl SwdProbe for Glasgow {
                 SwdOp::Sequence(bits) => run_swd_sequence(&mut self.device, bits),
                 SwdOp::Idle { cycles } => run_swd_idle(&mut self.device, *cycles),
                 SwdOp::Pins { out, select, wait } => {
-                    if select.0 != 1 << 7 || !wait.is_zero() {
+                    let nrst_only = {
+                        let mut pins = Pins(0);
+                        pins.set_nreset(true);
+                        pins
+                    };
+                    if select.0 != nrst_only.0 || !wait.is_zero() {
                         Err(DebugProbeError::CommandNotSupportedByProbe {
                             command_name: "swj_pins",
                         })

@@ -65,6 +65,19 @@ impl<'p> SwdPort<'p> {
         addr: u8,
         count: usize,
     ) -> Handle<Vec<u32>> {
+        if self.probe.handles_ap_pipeline() {
+            let mut held = Vec::new();
+            for _ in 1..count {
+                held.push(batch.read(Port::Ap, addr));
+            }
+            let last = batch.read(Port::Ap, addr);
+
+            self.block_read_counts.push(count);
+            self.block_read_handles.push(held);
+
+            return Handle::from_parts(last.id().clone(), Box::new(decode_block_read));
+        }
+
         let _ = batch.read(Port::Ap, addr);
 
         if count <= 1 {
@@ -92,7 +105,9 @@ impl<'p> SwdPort<'p> {
         for &value in values {
             batch.write(Port::Ap, addr, value);
         }
-        let _ = batch.read(Port::Dp, DP_RDBUFF_ADDR);
+        if !self.probe.handles_ap_pipeline() {
+            let _ = batch.read(Port::Dp, DP_RDBUFF_ADDR);
+        }
     }
 
     /// Expand the logical batch, execute it with WAIT retry, and return results.
@@ -105,7 +120,7 @@ impl<'p> SwdPort<'p> {
             read_handles,
             logical,
             pipeline_handles,
-        } = expand_batch(&batch, &self.settings);
+        } = expand_batch(&batch, &self.settings, self.probe.handles_ap_pipeline());
         drop(batch);
         let mut expanded = expanded;
         let mut collected = Results::new();
@@ -219,7 +234,11 @@ enum LogicalMapping {
     },
 }
 
-fn expand_batch(batch: &SwdBatch, settings: &SwdSettings) -> ExpansionPlan {
+fn expand_batch(
+    batch: &SwdBatch,
+    settings: &SwdSettings,
+    probe_handles_pipeline: bool,
+) -> ExpansionPlan {
     let transfers: Vec<SwdOp> = batch
         .iter()
         .filter_map(|(_, op)| match op {
@@ -250,7 +269,7 @@ fn expand_batch(batch: &SwdBatch, settings: &SwdSettings) -> ExpansionPlan {
 
                 let expanded_read = read_handles.len();
                 schedule_transfer(&mut expanded, handle_id, port, addr, direction, data);
-                if direction == Direction::Write {
+                if direction == Direction::Write && !probe_handles_pipeline {
                     expanded.idle(settings.num_idle_cycles_between_writes as u32);
                 }
                 if direction == Direction::Read {
@@ -262,12 +281,13 @@ fn expand_batch(batch: &SwdBatch, settings: &SwdSettings) -> ExpansionPlan {
                 }
 
                 let next_transfer = transfers.get(transfer_index + 1);
-                let need_extra = extra_rdbuff_needed(
-                    need_ap_read,
-                    buffered_write,
-                    write_response_pending,
-                    next_transfer,
-                );
+                let need_extra = !probe_handles_pipeline
+                    && extra_rdbuff_needed(
+                        need_ap_read,
+                        buffered_write,
+                        write_response_pending,
+                        next_transfer,
+                    );
 
                 if need_extra {
                     if write_response_pending {
@@ -286,7 +306,7 @@ fn expand_batch(batch: &SwdBatch, settings: &SwdSettings) -> ExpansionPlan {
                 }
 
                 if direction == Direction::Read && handle_id.should_capture() {
-                    if response_in_next {
+                    if response_in_next && !probe_handles_pipeline {
                         logical_mappings.push(LogicalMapping::FromNext {
                             handle_id: handle_id.clone(),
                             expanded_read,
@@ -309,7 +329,7 @@ fn expand_batch(batch: &SwdBatch, settings: &SwdSettings) -> ExpansionPlan {
         }
     }
 
-    if !expanded.is_empty() {
+    if !expanded.is_empty() && !probe_handles_pipeline {
         expanded.idle(settings.idle_cycles_after_transfer as u32);
     }
 
@@ -567,11 +587,13 @@ impl SwdPort<'_> {
         let mut batch = SwdBatch::new();
         let _ = batch.read(Port::Dp, DP_CTRL_ADDR);
         batch.write(Port::Dp, DP_ABORT_ADDR, ABORT_CLEAR_STICKY);
-        batch.idle(
-            (self.settings.idle_cycles_before_write_verify
-                + self.settings.num_idle_cycles_between_writes) as u32,
-        );
-        batch.idle(self.settings.idle_cycles_after_transfer as u32);
+        if !self.probe.handles_ap_pipeline() {
+            batch.idle(
+                (self.settings.idle_cycles_before_write_verify
+                    + self.settings.num_idle_cycles_between_writes) as u32,
+            );
+            batch.idle(self.settings.idle_cycles_after_transfer as u32);
+        }
         self.probe
             .run_batch(&batch)
             .map_err(|error| SwdPortError::Probe(probe_error(&error.error)))?;
@@ -863,6 +885,51 @@ mod tests {
 
         let reads = read_ops(&probe.transfer_ops());
         assert_eq!(reads.len(), 17);
+    }
+
+    #[test]
+    fn posting_probe_reads_ap_register_without_rdbuff() {
+        let mut probe = MockSwdProbe::new().handles_ap_pipeline();
+        probe.set_read_value(Port::Ap, 0b0100, 42);
+
+        let mut batch = SwdBatch::new();
+        let handle = batch.read(Port::Ap, 0b0100);
+
+        let mut port = SwdPort::new(&mut probe, SwdSettings::default());
+        let mut results = port.run(batch).expect("run should succeed");
+        assert_eq!(results.take(handle).unwrap(), 42);
+
+        assert_eq!(read_ops(&probe.transfer_ops()), vec![(Port::Ap, 0b0100)]);
+        assert!(probe.idles().is_empty());
+    }
+
+    #[test]
+    fn posting_probe_block_read_keeps_every_result() {
+        let mut probe = MockSwdProbe::new().handles_ap_pipeline();
+        probe.set_read_sequence(Port::Ap, 0b1000, vec![11, 22, 33]);
+
+        let mut batch = SwdBatch::new();
+        let mut port = SwdPort::new(&mut probe, SwdSettings::default());
+        let handle = port.read_ap_block(&mut batch, 0b1000, 3);
+        let mut results = port.run(batch).expect("run should succeed");
+        assert_eq!(results.take(handle).unwrap(), vec![11, 22, 33]);
+
+        assert_eq!(read_ops(&probe.transfer_ops()).len(), 3);
+    }
+
+    #[test]
+    fn posting_probe_block_write_adds_no_verify_read() {
+        let mut probe = MockSwdProbe::new().handles_ap_pipeline();
+
+        let mut batch = SwdBatch::new();
+        let mut port = SwdPort::new(&mut probe, SwdSettings::default());
+        port.write_ap_block(&mut batch, 0b1000, &[1, 2, 3]);
+        port.run(batch).expect("run should succeed");
+
+        let ops = probe.transfer_ops();
+        assert_eq!(ap_write_count(&ops), 3);
+        assert!(read_ops(&ops).is_empty());
+        assert!(probe.idles().is_empty());
     }
 
     #[test]
