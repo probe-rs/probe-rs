@@ -228,10 +228,19 @@ impl JtagAdapter {
         Ok(())
     }
 
+    /// Whether appending `additional_len` more bytes would overflow the
+    /// probe's own command buffer (1 byte reserved for the trailing Send
+    /// Immediate command).
+    fn needs_flush(&self, additional_len: usize) -> bool {
+        self.commands.len() + additional_len + 1 >= self.ftdi.buffer_size
+    }
+
     fn append_command(&mut self, command: Command) -> Result<(), DebugProbeError> {
         tracing::trace!("Appending {:?}", command);
-        // 1 byte is reserved for the send immediate command
-        if self.commands.len() + command.len() + 1 >= self.ftdi.buffer_size {
+        // Flushes the backlog already queued, not `command` itself: a
+        // `command` that is already too large on its own still gets
+        // appended whole.
+        if self.needs_flush(command.len()) {
             self.send_buffer()?;
             self.read_response()?;
         }
@@ -253,8 +262,14 @@ impl JtagAdapter {
     fn shift_bit(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError> {
         if let Some(command) = self.command.append_jtag_bit(tms, tdi, capture) {
             self.append_command(command)?;
+            return Ok(());
         }
-
+        // append_jtag_bit only finishes a command when TMS or capture
+        // changes. We always need to check whether the current command is already too long
+        // and flushing is required.
+        if self.needs_flush(self.command.len()) {
+            self.flush()?;
+        }
         Ok(())
     }
 
