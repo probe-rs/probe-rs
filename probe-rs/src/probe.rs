@@ -1181,6 +1181,10 @@ pub trait JtagAccess: DebugProbe {
     /// This function will perform a write to the IR register, if necessary,
     /// to select the correct register, and then to the DR register, to transmit the
     /// data. The data shifted out of the DR register will be returned.
+    ///
+    /// `len == 0` selects the instruction without touching DR at all,
+    /// rather than being an error. `data` is ignored in that case,
+    /// and the returned `BitVec` is empty.
     fn write_register(
         &mut self,
         address: u32,
@@ -1190,8 +1194,42 @@ pub trait JtagAccess: DebugProbe {
 
     /// Shift a value into the DR JTAG register
     ///
+    /// This function also goes into Shift-DR and leaves the FSM in the Update-DR state.
     /// The data shifted out of the DR register will be returned.
     fn write_dr(&mut self, data: &[u8], len: u32) -> Result<BitVec, DebugProbeError>;
+
+    /// Shift a value into the DR register, optionally without walking into
+    /// the Shift-DR state first and/or without exiting it to Update-DR
+    /// afterward.
+    ///
+    /// A call with `enter: true, exit: true` behaves exactly like
+    /// [`write_dr`](JtagAccess::write_dr). Passing `exit: false` leaves
+    /// execution in the Shift-DR state so a following call (with
+    /// `enter: false`) can continue the same logical shift, e.g. to stay
+    /// within a probe's internal command buffer size while still
+    /// performing one continuous shift overall. Some targets require this:
+    /// exiting to Update-DR between chunks of what should be one shift can
+    /// cause the shifted-in data to not take effect, even though each
+    /// individual chunk transfers without error.
+    ///
+    /// Returns [`DebugProbeError::NotImplemented`] unless the probe
+    /// supports it, except for `enter: true, exit: true`, which falls back
+    /// to [`write_dr`](JtagAccess::write_dr).
+    fn write_dr_partial(
+        &mut self,
+        data: &[u8],
+        len: u32,
+        enter: bool,
+        exit: bool,
+    ) -> Result<BitVec, DebugProbeError> {
+        if enter && exit {
+            return self.write_dr(data, len);
+        }
+
+        Err(DebugProbeError::NotImplemented {
+            function_name: "write_dr_partial",
+        })
+    }
 
     /// Executes a sequence of JTAG commands.
     fn write_register_batch(

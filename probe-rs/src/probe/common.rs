@@ -490,8 +490,14 @@ fn shift_dr(
     data: &[u8],
     register_bits: usize,
     capture_data: bool,
+    enter: bool,
+    exit: bool,
 ) -> Result<usize, DebugProbeError> {
-    tracing::debug!("Write DR: {:?}, len={}", data, register_bits);
+    tracing::debug!(
+        "Write DR: {:?}, len={}, enter={enter}, exit={exit}",
+        data,
+        register_bits
+    );
 
     // Check the bit length, enough data has to be available
     if data.len() * 8 < register_bits || register_bits == 0 {
@@ -502,20 +508,31 @@ fn shift_dr(
         )));
     }
 
-    // Last bit of data is shifted out when we exit the SHIFT-DR State
-    let tms_shift_out_value = std::iter::repeat_n(false, register_bits - 1);
+    // Enter DR shift, unless continuing a shift already in progress from a
+    // previous call (see JtagAccess::write_dr_partial).
+    if enter {
+        jtag_move_to_state(protocol, JtagState::Dr(RegisterState::Shift))?;
+    }
 
-    // Enter DR shift
-    jtag_move_to_state(protocol, JtagState::Dr(RegisterState::Shift))?;
+    // Dummy bits to account for bypasses. Only relevant on the calls that
+    // actually walk into or out of Shift-DR: a call in the middle of a
+    // shift split across multiple calls doesn't re-enter or exit, so there
+    // is nothing to pad around.
+    let pre_bits = if enter {
+        protocol.state().chain_params.drpre
+    } else {
+        0
+    };
+    let post_bits = if exit {
+        protocol.state().chain_params.drpost
+    } else {
+        0
+    };
 
-    // dummy bits to account for bypasses
-    let pre_bits = protocol.state().chain_params.drpre;
-    let post_bits = protocol.state().chain_params.drpost;
-
-    let tms = std::iter::repeat_n(false, pre_bits)
-        .chain(tms_shift_out_value)
-        .chain(std::iter::repeat_n(false, post_bits))
-        .chain(iter::once(true));
+    // The very last bit shifted in this call exits Shift-DR when `exit` is
+    // set; every other bit keeps TMS low to stay in Shift-DR.
+    let total_bits = pre_bits + register_bits + post_bits;
+    let tms = (0..total_bits).map(|i| exit && i + 1 == total_bits);
 
     let tdi = std::iter::repeat_n(false, pre_bits)
         .chain(data.as_bits::<Lsb0>()[..register_bits].iter().map(|b| *b))
@@ -527,17 +544,19 @@ fn shift_dr(
 
     protocol.shift_bits(tms, tdi, capture)?;
 
-    jtag_move_to_state(protocol, JtagState::Dr(RegisterState::Update))?;
+    if exit {
+        jtag_move_to_state(protocol, JtagState::Dr(RegisterState::Update))?;
 
-    let idle_cycles = protocol.state().jtag_idle_cycles;
-    if idle_cycles > 0 {
-        jtag_move_to_state(protocol, JtagState::Idle)?;
+        let idle_cycles = protocol.state().jtag_idle_cycles;
+        if idle_cycles > 0 {
+            jtag_move_to_state(protocol, JtagState::Idle)?;
 
-        // We need to stay in the idle cycle a bit
-        let tms = std::iter::repeat_n(false, idle_cycles);
-        let tdi = std::iter::repeat_n(false, idle_cycles);
+            // We need to stay in the idle cycle a bit
+            let tms = std::iter::repeat_n(false, idle_cycles);
+            let tdi = std::iter::repeat_n(false, idle_cycles);
 
-        protocol.shift_bits(tms, tdi, iter::repeat(false))?;
+            protocol.shift_bits(tms, tdi, iter::repeat(false))?;
+        }
     }
 
     if capture_data {
@@ -563,8 +582,16 @@ fn prepare_write_register(
     let ir_len = protocol.state().chain_params.irlen;
     shift_ir(protocol, &address.to_le_bytes(), ir_len, false)?;
 
+    // len == 0 selects the instruction without touching DR at all: every
+    // TCK edge unconditionally clocks whatever DR is currently active, so
+    // even entering and immediately exiting Shift-DR would shift at least
+    // one bit through it.
+    if len == 0 {
+        return Ok(0);
+    }
+
     // read DR register by transferring len bits to the chain
-    shift_dr(protocol, data, len as usize, capture)
+    shift_dr(protocol, data, len as usize, capture, true, true)
 }
 
 impl<Probe: AutoImplementJtagAccess> JtagAccess for Probe {
@@ -623,7 +650,7 @@ impl<Probe: AutoImplementJtagAccess> JtagAccess for Probe {
 
         let input = [0xFF; 4 * MAX_CHAIN];
 
-        shift_dr(self, &input, input.len() * 8, true)?;
+        shift_dr(self, &input, input.len() * 8, true, true, true)?;
         let response = self.read_captured_bits()?;
 
         tracing::debug!("DR: {:?}", response);
@@ -728,11 +755,21 @@ impl<Probe: AutoImplementJtagAccess> JtagAccess for Probe {
     }
 
     fn write_dr(&mut self, data: &[u8], len: u32) -> Result<BitVec, DebugProbeError> {
-        shift_dr(self, data, len as usize, true)?;
+        self.write_dr_partial(data, len, true, true)
+    }
+
+    fn write_dr_partial(
+        &mut self,
+        data: &[u8],
+        len: u32,
+        enter: bool,
+        exit: bool,
+    ) -> Result<BitVec, DebugProbeError> {
+        shift_dr(self, data, len as usize, true, enter, exit)?;
 
         let response = self.read_captured_bits()?;
 
-        tracing::trace!("write_dr result: {:?}", response);
+        tracing::trace!("write_dr_partial result: {:?}", response);
         Ok(response)
     }
 
@@ -759,6 +796,8 @@ impl<Probe: AutoImplementJtagAccess> JtagAccess for Probe {
                     &write.inner.data,
                     write.inner.len as usize,
                     idx.should_capture(),
+                    true,
+                    true,
                 ),
             };
 

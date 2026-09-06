@@ -1,0 +1,1 @@
+Added `JtagAccess::write_dr_partial`, which splits one logical DR shift across multiple calls without leaving Shift-DR in between. `write_register` and `read_register` now also treat `len == 0` as selecting the instruction without touching DR at all.
