@@ -702,6 +702,16 @@ impl RpcBackend {
         }
     }
 
+    /// The source location of a single address. `None` when the address has no
+    /// debug information, or when the server cannot be reached.
+    pub(crate) async fn source_location(&self, address: u64) -> Option<DebugSourceLocation> {
+        self.resolve_source_locations(vec![address])
+            .await
+            .ok()?
+            .pop()
+            .flatten()
+    }
+
     pub(crate) async fn scopes(
         &mut self,
         core_index: usize,

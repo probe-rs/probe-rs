@@ -78,7 +78,8 @@ async fn step_repl<'a>(
         .await?;
     Ok(EvalResponse::Message(
         CoreStatus::Halted(HaltReason::Step)
-            .short_long_status(Some(pc), adapter.supports_ansi_styling)
+            .short_long_status(backend, Some(pc), adapter.supports_ansi_styling)
+            .await
             .1,
     ))
 }

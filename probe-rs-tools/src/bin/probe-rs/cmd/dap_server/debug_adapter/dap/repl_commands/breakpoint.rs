@@ -1,5 +1,3 @@
-use std::fmt::Write;
-
 use linkme::distributed_slice;
 use probe_rs::{CoreStatus, HaltReason};
 use probe_rs_debug::{ColumnType, SourceLocation, VerifiedBreakpoint};
@@ -13,14 +11,13 @@ use crate::cmd::dap_server::{
         core_status::DapStatus,
         dap_types::{Breakpoint, BreakpointEventBody, EvaluateArguments, MemoryAddress, Source},
         repl_commands::{EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand, async_fn},
-        repl_commands_helpers::format_source_location,
         repl_types::ReplCommandArgs,
         request_helpers::get_dap_source,
     },
     server::core_data::CoreData,
     server::session_data::{ActiveBreakpoint, BreakpointType, SourceLocationScope},
 };
-use crate::util::style::{ReplAddress, ReplDim};
+use crate::util::style::format_location;
 use probe_rs_rpc::breakpoints::SourceBreakpointLocation;
 
 #[distributed_slice(REPL_COMMANDS)]
@@ -140,7 +137,8 @@ async fn create_breakpoint<'a>(
         let core_info = adapter.pause_impl_async(backend, core_data).await?;
         return Ok(EvalResponse::Message(
             CoreStatus::Halted(HaltReason::Request)
-                .short_long_status(Some(core_info.pc), adapter.supports_ansi_styling)
+                .short_long_status(backend, Some(core_info.pc), adapter.supports_ansi_styling)
+                .await
                 .1,
         ));
     }
@@ -153,11 +151,7 @@ async fn create_breakpoint<'a>(
 
     let (address, source_location, breakpoint_type) = match parse_breakpoint_location(token)? {
         BreakpointLocation::Address(address) => {
-            let source_location = backend
-                .resolve_source_locations(vec![address])
-                .await
-                .ok()
-                .and_then(|mut locations| locations.pop().flatten());
+            let source_location = backend.source_location(address).await;
 
             (
                 address,
@@ -230,20 +224,10 @@ fn breakpoint_set_message(
     source_location: Option<&SourceLocation>,
     colorize: bool,
 ) -> String {
-    let mut message = format!(
+    format!(
         "Breakpoint set at {}",
-        ReplAddress::new(format!("{address:#010x}")).colorize(colorize)
-    );
-    if let Some(location) = source_location {
-        #[expect(clippy::unwrap_used, reason = "Writing to a string is infallible")]
-        write!(
-            &mut message,
-            " {}",
-            ReplDim::new(format!("({})", format_source_location(location))).colorize(colorize)
-        )
-        .unwrap();
-    }
-    message
+        format_location(address, source_location, colorize)
+    )
 }
 
 async fn clear_breakpoint<'a>(

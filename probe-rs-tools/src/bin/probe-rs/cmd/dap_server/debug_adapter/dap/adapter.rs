@@ -734,8 +734,9 @@ impl DebugAdapter {
                 )
             {
                 let program_counter = session_data.backend.program_counter(core_index).await;
-                let (reason, description) =
-                    current_core_status.short_long_status(program_counter, false);
+                let (reason, description) = current_core_status
+                    .short_long_status(&session_data.backend, program_counter, false)
+                    .await;
                 let event_body = Some(StoppedEventBody {
                     reason: reason.to_owned(),
                     description: Some(description),
@@ -1467,13 +1468,13 @@ impl DebugAdapter {
                 self.send_event("continued", event_body)?;
             } else {
                 self.send_response::<()>(request, Ok(None))?;
+                let description = CoreStatus::Halted(HaltReason::External)
+                    .short_long_status(&session_data.backend, None, false)
+                    .await
+                    .1;
                 let event_body = Some(StoppedEventBody {
                     reason: "restart".to_owned(),
-                    description: Some(
-                        CoreStatus::Halted(HaltReason::External)
-                            .short_long_status(None, false)
-                            .1,
-                    ),
+                    description: Some(description),
                     thread_id: Some(core_index as i64),
                     preserve_focus_hint: None,
                     text: None,
@@ -1483,13 +1484,13 @@ impl DebugAdapter {
                 self.send_event("stopped", event_body)?;
             }
         } else if self.configuration_is_done() {
+            let description = CoreStatus::Halted(HaltReason::External)
+                .short_long_status(&session_data.backend, Some(core_info.pc), false)
+                .await
+                .1;
             let event_body = Some(StoppedEventBody {
                 reason: "restart".to_owned(),
-                description: Some(
-                    CoreStatus::Halted(HaltReason::External)
-                        .short_long_status(Some(core_info.pc), false)
-                        .1,
-                ),
+                description: Some(description),
                 thread_id: Some(core_index as i64),
                 preserve_focus_hint: None,
                 text: None,
@@ -1722,9 +1723,13 @@ impl DebugAdapter {
         core_data.invalidate_stack_frame_cache();
         let cpu_info = backend.halt(core_index, Duration::from_millis(500)).await?;
         let new_status = CoreStatus::Halted(HaltReason::Request);
+        let description = new_status
+            .short_long_status(backend, Some(cpu_info.pc), false)
+            .await
+            .1;
         let event_body = Some(StoppedEventBody {
             reason: "pause".to_owned(),
-            description: Some(new_status.short_long_status(Some(cpu_info.pc), false).1),
+            description: Some(description),
             thread_id: Some(core_index as i64),
             preserve_focus_hint: Some(false),
             text: None,
@@ -1821,17 +1826,19 @@ impl DebugAdapter {
         // otherwise surface as a "BreakPoint" halt reason.
         core_data.last_known_status = CoreStatus::Halted(HaltReason::Step);
         if matches!(new_status, CoreStatus::Halted(_)) {
+            let reason = core_data
+                .last_known_status
+                .short_long_status(backend, None, false)
+                .await
+                .0
+                .to_string();
+            let description = CoreStatus::Halted(HaltReason::Step)
+                .short_long_status(backend, Some(program_counter), false)
+                .await
+                .1;
             let event_body = StoppedEventBody {
-                reason: core_data
-                    .last_known_status
-                    .short_long_status(None, false)
-                    .0
-                    .to_string(),
-                description: Some(
-                    CoreStatus::Halted(HaltReason::Step)
-                        .short_long_status(Some(program_counter), false)
-                        .1,
-                ),
+                reason,
+                description: Some(description),
                 thread_id: Some(core_index as i64),
                 preserve_focus_hint: None,
                 text: None,

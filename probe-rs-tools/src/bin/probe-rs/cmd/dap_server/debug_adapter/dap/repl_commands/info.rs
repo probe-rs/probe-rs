@@ -14,14 +14,14 @@ use crate::cmd::dap_server::{
             EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand, async_fn, need_subcommand,
         },
         repl_commands_helpers::{
-            PrintTree, format_repl_variables, format_source_location, get_local_variable,
-            scope_variables, select_frame, stack_frame_id,
+            PrintTree, format_repl_variables, get_local_variable, scope_variables, select_frame,
+            stack_frame_id,
         },
         repl_types::{GdbFormat, GdbNuf, ReplCommandArgs},
     },
     server::core_data::CoreData,
 };
-use crate::util::style::{ReplAddress, ReplDim, ReplSymbol};
+use crate::util::style::{ReplAddress, ReplDim, ReplSymbol, format_source_location};
 
 #[distributed_slice(REPL_COMMANDS)]
 static INFO: ReplCommand = ReplCommand {
