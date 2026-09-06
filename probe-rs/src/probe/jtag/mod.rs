@@ -263,13 +263,13 @@ pub trait JtagProbe: DebugProbe {
     }
 }
 
-/// Access to the scan-chain state held by a JTAG probe driver.
-pub trait JtagStateAccess {
+/// A probe that runs JTAG batches and holds the state of its scan chain.
+pub trait JtagChainAccess: JtagProbe {
     /// Returns a mutable reference to the driver state.
-    fn state_mut(&mut self) -> &mut JtagChainState;
+    fn chain_state(&mut self) -> &mut JtagChainState;
 
     /// Returns the driver state.
-    fn state(&self) -> &JtagChainState;
+    fn chain_state_ref(&self) -> &JtagChainState;
 }
 
 /// Bit-banging JTAG interface for probe drivers.
@@ -822,12 +822,12 @@ mod tests {
             }
         }
 
-        impl JtagStateAccess for ShiftRecorder {
-            fn state_mut(&mut self) -> &mut JtagChainState {
+        impl JtagChainAccess for ShiftRecorder {
+            fn chain_state(&mut self) -> &mut JtagChainState {
                 &mut self.jtag_state
             }
 
-            fn state(&self) -> &JtagChainState {
+            fn chain_state_ref(&self) -> &JtagChainState {
                 &self.jtag_state
             }
         }

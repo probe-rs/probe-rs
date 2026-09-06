@@ -5,8 +5,8 @@ use bitvec::prelude::*;
 use probe_rs_target::ScanChainElement;
 
 use crate::probe::{
-    BitSequence, CommandResult, DebugProbeError, JtagAccess, JtagBatch, JtagCommand, JtagProbe,
-    JtagSequence, JtagStateAccess, TapState,
+    BitSequence, CommandResult, DebugProbeError, JtagAccess, JtagBatch, JtagChainAccess,
+    JtagCommand, JtagProbe, JtagSequence, TapState,
     jtag::chain::JtagChain,
     queue::{BatchExecutionError, ErasedBatch, Results},
 };
@@ -281,26 +281,10 @@ pub(crate) fn extract_ir_lengths<T: BitStore>(
 
 fn with_jtag_chain<P, R>(probe: &mut P, f: impl FnOnce(&mut JtagChain<'_>) -> R) -> R
 where
-    P: JtagProbe + JtagStateAccess,
+    P: JtagChainAccess,
 {
-    let scan_chain = std::mem::take(&mut probe.state_mut().scan_chain);
-    let expected = probe.state_mut().expected_scan_chain.take();
-    let params = probe.state_mut().chain_params;
-
-    let (result, scan_chain, expected, params) = {
-        let jtag_probe: &mut dyn JtagProbe = probe;
-        let mut chain = JtagChain::new(jtag_probe, scan_chain, expected, params);
-        let result = f(&mut chain);
-        let (scan_chain, expected, params) = chain.into_parts();
-        (result, scan_chain, expected, params)
-    };
-
-    let state = probe.state_mut();
-    state.scan_chain = scan_chain;
-    state.expected_scan_chain = expected;
-    state.chain_params = params;
-
-    result
+    let mut chain = JtagChain::new(probe);
+    f(&mut chain)
 }
 
 fn bit_sequence_to_bitvec(sequence: &BitSequence) -> BitVec {
@@ -309,7 +293,7 @@ fn bit_sequence_to_bitvec(sequence: &BitSequence) -> BitVec {
     bits
 }
 
-impl<Probe: JtagProbe + JtagStateAccess> JtagAccess for Probe {
+impl<Probe: JtagChainAccess> JtagAccess for Probe {
     fn shift_raw_sequence(&mut self, sequence: JtagSequence) -> Result<BitVec, DebugProbeError> {
         JtagProbe::shift_raw_sequence(self, sequence)
     }
@@ -337,7 +321,7 @@ impl<Probe: JtagProbe + JtagStateAccess> JtagAccess for Probe {
 
     /// Configures the probe to address the given target.
     fn select_target(&mut self, target: usize) -> Result<(), DebugProbeError> {
-        if self.state().scan_chain.is_empty() {
+        if self.chain_state_ref().scan_chain.is_empty() {
             self.scan_chain()?;
         }
 
@@ -346,7 +330,7 @@ impl<Probe: JtagProbe + JtagStateAccess> JtagAccess for Probe {
 
     fn scan_chain(&mut self) -> Result<&[ScanChainElement], DebugProbeError> {
         with_jtag_chain(self, |chain| chain.scan_chain().map(|_| ()))?;
-        Ok(self.state().scan_chain.as_slice())
+        Ok(self.chain_state_ref().scan_chain.as_slice())
     }
 
     fn tap_reset(&mut self) -> Result<(), DebugProbeError> {
@@ -375,13 +359,13 @@ impl<Probe: JtagProbe + JtagStateAccess> JtagAccess for Probe {
         len: u32,
         idle_cycles: u32,
     ) -> Result<BitVec, DebugProbeError> {
-        if address > self.state().chain_params.max_ir_address() {
+        if address > self.chain_state_ref().chain_params.max_ir_address() {
             return Err(DebugProbeError::Other(format!(
                 "Invalid instruction register access: {address}"
             )));
         }
 
-        let ir_len = self.state().chain_params.irlen;
+        let ir_len = self.chain_state_ref().chain_params.irlen;
 
         let response = with_jtag_chain(self, |chain| {
             let mut batch = JtagBatch::new();
@@ -426,7 +410,7 @@ impl<Probe: JtagProbe + JtagStateAccess> JtagAccess for Probe {
         &mut self,
         writes: &ErasedBatch<JtagCommand>,
     ) -> Result<Results, BatchExecutionError> {
-        let max_ir = self.state().chain_params.max_ir_address();
+        let max_ir = self.chain_state_ref().chain_params.max_ir_address();
 
         let (mut run_results, capture_handles) = match with_jtag_chain(self, |chain| {
             let ir_len = chain.params().irlen;

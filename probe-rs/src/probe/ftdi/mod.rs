@@ -15,8 +15,8 @@ use crate::{
     },
     probe::{
         BitSequence, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-        IoSequenceItem, JtagAccess, JtagChainState, JtagOp, JtagProbe, JtagSequence,
-        JtagStateAccess, ProbeCreationError, ProbeFactory, RawSwdIo, SwdSettings, WireProtocol,
+        IoSequenceItem, JtagAccess, JtagChain, JtagChainAccess, JtagChainState, JtagOp, JtagProbe,
+        JtagSequence, ProbeCreationError, ProbeFactory, RawSwdIo, SwdSettings, WireProtocol,
         jtag::{TapState, distribute_captures, enter_tdi, exchange_leaves_shift},
         list::{ProbeListItem, usb_probe_accessibility},
         queue::{BatchExecutionError, Results},
@@ -513,7 +513,11 @@ impl DebugProbe for FtdiProbe {
         Some(WireProtocol::Jtag)
     }
 
-    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JtagAccess> {
+    fn try_as_jtag_chain(&mut self) -> Option<JtagChain<'_>> {
+        Some(JtagChain::new(self))
+    }
+
+    fn try_as_jtag_access(&mut self) -> Option<&mut dyn JtagAccess> {
         Some(self)
     }
 
@@ -554,12 +558,12 @@ impl DebugProbe for FtdiProbe {
     }
 }
 
-impl JtagStateAccess for FtdiProbe {
-    fn state_mut(&mut self) -> &mut JtagChainState {
+impl JtagChainAccess for FtdiProbe {
+    fn chain_state(&mut self) -> &mut JtagChainState {
         &mut self.jtag_state
     }
 
-    fn state(&self) -> &JtagChainState {
+    fn chain_state_ref(&self) -> &JtagChainState {
         &self.jtag_state
     }
 }

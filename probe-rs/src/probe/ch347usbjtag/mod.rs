@@ -13,8 +13,8 @@ use crate::{
 };
 
 use super::{
-    BitbangJtag, DebugProbeError, IoSequenceItem, JtagChainState, JtagStateAccess, RawSwdIo,
-    SwdSettings, TapState,
+    BitbangJtag, DebugProbeError, IoSequenceItem, JtagChain, JtagChainAccess, JtagChainState,
+    RawSwdIo, SwdSettings, TapState,
 };
 
 /// A factory for creating [`Ch347UsbJtag`] instances.
@@ -75,12 +75,12 @@ impl BitbangJtag for Ch347UsbJtag {
     }
 }
 
-impl JtagStateAccess for Ch347UsbJtag {
-    fn state_mut(&mut self) -> &mut JtagChainState {
+impl JtagChainAccess for Ch347UsbJtag {
+    fn chain_state(&mut self) -> &mut JtagChainState {
         &mut self.jtag_state
     }
 
-    fn state(&self) -> &JtagChainState {
+    fn chain_state_ref(&self) -> &JtagChainState {
         &self.jtag_state
     }
 }
@@ -176,7 +176,11 @@ impl DebugProbe for Ch347UsbJtag {
         self
     }
 
-    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn super::JtagAccess> {
+    fn try_as_jtag_chain(&mut self) -> Option<JtagChain<'_>> {
+        Some(JtagChain::new(self))
+    }
+
+    fn try_as_jtag_access(&mut self) -> Option<&mut dyn super::JtagAccess> {
         Some(self)
     }
 

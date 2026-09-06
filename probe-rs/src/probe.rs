@@ -42,7 +42,7 @@ use std::sync::{Arc, LazyLock};
 pub use bits::BitSequence;
 pub use jtag::chain::ChainParams;
 pub use jtag::{
-    BitbangJtag, JtagBatch, JtagChain, JtagChainState, JtagOp, JtagProbe, JtagStateAccess, TapState,
+    BitbangJtag, JtagBatch, JtagChain, JtagChainAccess, JtagChainState, JtagOp, JtagProbe, TapState,
 };
 pub use queue::{Batch, BatchError, BatchExecutionError, ErasedBatch, Handle, JtagQueue, Results};
 #[allow(deprecated)]
@@ -598,9 +598,14 @@ impl Probe {
         }
     }
 
+    /// Returns a [`JtagChain`] from the debug probe, if implemented.
+    pub fn try_as_jtag_chain(&mut self) -> Option<JtagChain<'_>> {
+        self.inner.try_as_jtag_chain()
+    }
+
     /// Returns a [`JtagAccess`] from the debug probe, if implemented.
-    pub fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JtagAccess> {
-        self.inner.try_as_jtag_probe()
+    pub fn try_as_jtag_access(&mut self) -> Option<&mut dyn JtagAccess> {
+        self.inner.try_as_jtag_access()
     }
 
     /// Gets a SWO interface from the debug probe.
@@ -734,8 +739,13 @@ pub trait DebugProbe: Any + Send + fmt::Debug {
         false
     }
 
+    /// Returns a [`JtagChain`] from the debug probe, if implemented.
+    fn try_as_jtag_chain(&mut self) -> Option<JtagChain<'_>> {
+        None
+    }
+
     /// Returns a [`JtagAccess`] from the debug probe, if implemented.
-    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JtagAccess> {
+    fn try_as_jtag_access(&mut self) -> Option<&mut dyn JtagAccess> {
         None
     }
 

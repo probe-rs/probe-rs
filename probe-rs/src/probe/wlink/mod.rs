@@ -395,10 +395,6 @@ impl DebugProbe for WchLink {
         true
     }
 
-    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn crate::probe::JtagAccess> {
-        None
-    }
-
     fn try_get_riscv_interface_builder<'probe>(
         &'probe mut self,
     ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, RiscvError> {

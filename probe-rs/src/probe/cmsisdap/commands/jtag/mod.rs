@@ -1,8 +1,8 @@
 use bitvec::{bitvec, slice::BitSlice, vec::BitVec};
 
 use crate::probe::{
-    Batch, BatchExecutionError, DebugProbeError, JtagChainState, JtagOp, JtagProbe, JtagSequence,
-    JtagStateAccess, Results,
+    Batch, BatchExecutionError, DebugProbeError, JtagChainAccess, JtagChainState, JtagOp,
+    JtagProbe, JtagSequence, Results,
     cmsisdap::{
         CmsisDap,
         commands::jtag::sequence::{Sequence, SequenceRequest},
@@ -16,12 +16,12 @@ pub mod sequence;
 
 const MAX_SEQUENCE_BITS: usize = 64;
 
-impl JtagStateAccess for CmsisDap {
-    fn state_mut(&mut self) -> &mut JtagChainState {
+impl JtagChainAccess for CmsisDap {
+    fn chain_state(&mut self) -> &mut JtagChainState {
         &mut self.jtag_state
     }
 
-    fn state(&self) -> &JtagChainState {
+    fn chain_state_ref(&self) -> &JtagChainState {
         &self.jtag_state
     }
 }

@@ -138,7 +138,7 @@ impl Vendor for Espressif {
 
         // Identify from JTAG IDCODE only. This works for RISC-V chips,
         // where we set a magic value of 0.
-        if let Some(jtag) = probe.try_as_jtag_probe() {
+        if let Some(jtag) = probe.try_as_jtag_access() {
             let r = identify_by_idcode(registry, jtag);
 
             // Ensure TAP 0 is selected before returning.
@@ -280,7 +280,7 @@ mod tests {
             Some(self.protocol)
         }
 
-        fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JtagAccess> {
+        fn try_as_jtag_access(&mut self) -> Option<&mut dyn JtagAccess> {
             Some(self)
         }
 

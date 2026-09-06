@@ -157,7 +157,7 @@ async fn try_show_info(
     probe.select_protocol(from_wire_protocol(protocol))?;
 
     if !scan_chain.is_empty()
-        && let Some(jtag) = probe.try_as_jtag_probe()
+        && let Some(jtag) = probe.try_as_jtag_access()
     {
         let chain = scan_chain
             .iter()
