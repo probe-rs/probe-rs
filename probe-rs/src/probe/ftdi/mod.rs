@@ -15,7 +15,7 @@ use crate::{
     },
     probe::{
         BitSequence, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-        IoSequenceItem, JtagAccess, JtagDriverState, JtagOp, JtagProbe, JtagSequence,
+        IoSequenceItem, JtagAccess, JtagChainState, JtagOp, JtagProbe, JtagSequence,
         JtagStateAccess, ProbeCreationError, ProbeFactory, RawSwdIo, SwdSettings, WireProtocol,
         jtag::{TapState, distribute_captures, enter_tdi, exchange_leaves_shift},
         list::{ProbeListItem, usb_probe_accessibility},
@@ -409,7 +409,7 @@ impl ProbeFactory for FtdiProbeFactory {
 
         let probe = FtdiProbe {
             adapter: JtagAdapter::open(ftdi, probes.pop().unwrap(), selector.interface)?,
-            jtag_state: JtagDriverState::default(),
+            jtag_state: JtagChainState::default(),
             swd_settings: SwdSettings::default(),
         };
         tracing::debug!("opened probe: {:?}", probe);
@@ -452,7 +452,7 @@ impl ProbeFactory for FtdiProbeFactory {
 #[derive(Debug)]
 pub struct FtdiProbe {
     adapter: JtagAdapter,
-    jtag_state: JtagDriverState,
+    jtag_state: JtagChainState,
     swd_settings: SwdSettings,
 }
 
@@ -555,11 +555,11 @@ impl DebugProbe for FtdiProbe {
 }
 
 impl JtagStateAccess for FtdiProbe {
-    fn state_mut(&mut self) -> &mut JtagDriverState {
+    fn state_mut(&mut self) -> &mut JtagChainState {
         &mut self.jtag_state
     }
 
-    fn state(&self) -> &JtagDriverState {
+    fn state(&self) -> &JtagChainState {
         &self.jtag_state
     }
 }

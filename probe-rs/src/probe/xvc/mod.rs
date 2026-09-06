@@ -34,9 +34,9 @@ use crate::{
         },
     },
     probe::{
-        AutoImplementJtagAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-        IoSequenceItem, JtagAccess, JtagDriverState, ProbeFactory, RawJtagIo, RawSwdIo,
-        SwdSettings, WireProtocol, list::ProbeListItem,
+        BitbangJtag, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+        IoSequenceItem, JtagAccess, JtagChainState, JtagStateAccess, ProbeFactory, RawSwdIo,
+        SwdSettings, TapState, WireProtocol, list::ProbeListItem,
     },
 };
 
@@ -65,7 +65,7 @@ impl ProbeFactory for XvcFactory {
 
         Ok(Box::new(XvcProbe {
             device,
-            jtag_state: JtagDriverState::default(),
+            jtag_state: JtagChainState::default(),
             swd_settings: SwdSettings::default(),
         }))
     }
@@ -103,7 +103,7 @@ impl ProbeFactory for XvcFactory {
 #[derive(Debug)]
 pub struct XvcProbe {
     device: XvcDevice,
-    jtag_state: JtagDriverState,
+    jtag_state: JtagChainState,
     swd_settings: SwdSettings,
 }
 
@@ -201,25 +201,33 @@ impl DebugProbe for XvcProbe {
     }
 }
 
-impl AutoImplementJtagAccess for XvcProbe {}
 impl DapProbe for XvcProbe {}
 
-impl RawJtagIo for XvcProbe {
-    fn shift_bit(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError> {
-        self.jtag_state.state.update(tms);
+impl BitbangJtag for XvcProbe {
+    fn tap_state(&mut self) -> &mut TapState {
+        &mut self.jtag_state.tap_state
+    }
+
+    fn shift(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError> {
         self.device.shift_bit(tms, tdi, capture)?;
         Ok(())
     }
 
-    fn read_captured_bits(&mut self) -> Result<bitvec::prelude::BitVec, DebugProbeError> {
-        self.device.read_captured_bits()
+    fn flush(&mut self) -> Result<(), DebugProbeError> {
+        Ok(())
     }
 
-    fn state_mut(&mut self) -> &mut JtagDriverState {
+    fn captured(&mut self) -> Result<bitvec::prelude::BitVec, DebugProbeError> {
+        self.device.read_captured_bits()
+    }
+}
+
+impl JtagStateAccess for XvcProbe {
+    fn state_mut(&mut self) -> &mut JtagChainState {
         &mut self.jtag_state
     }
 
-    fn state(&self) -> &JtagDriverState {
+    fn state(&self) -> &JtagChainState {
         &self.jtag_state
     }
 }

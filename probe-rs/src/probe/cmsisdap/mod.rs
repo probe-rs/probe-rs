@@ -23,7 +23,7 @@ use crate::{
     },
     probe::{
         BatchCommand, BitSequence, DebugProbe, DebugProbeError, DebugProbeSelector, JtagAccess,
-        JtagDriverState, ProbeFactory, WireProtocol,
+        JtagChainState, ProbeFactory, WireProtocol,
         cmsisdap::commands::{
             CmsisDapError, RequestError,
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
@@ -110,7 +110,7 @@ pub struct CmsisDap {
 
     batch: Vec<BatchCommand>,
 
-    jtag_state: JtagDriverState,
+    jtag_state: JtagChainState,
     jtag_buffer: JtagBuffer,
 }
 
@@ -164,7 +164,7 @@ impl CmsisDap {
             connected: false,
             speed_khz: 1_000,
             batch: Vec::new(),
-            jtag_state: JtagDriverState::default(),
+            jtag_state: JtagChainState::default(),
             jtag_buffer: JtagBuffer::new(packet_size - 1),
         })
     }

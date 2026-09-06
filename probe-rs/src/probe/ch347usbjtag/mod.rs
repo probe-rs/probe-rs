@@ -13,8 +13,8 @@ use crate::{
 };
 
 use super::{
-    AutoImplementJtagAccess, DebugProbeError, IoSequenceItem, JtagDriverState, RawJtagIo, RawSwdIo,
-    SwdSettings,
+    BitbangJtag, DebugProbeError, IoSequenceItem, JtagChainState, JtagStateAccess, RawSwdIo,
+    SwdSettings, TapState,
 };
 
 /// A factory for creating [`Ch347UsbJtag`] instances.
@@ -31,7 +31,7 @@ impl std::fmt::Display for Ch347UsbJtagFactory {
 #[derive(Debug)]
 pub struct Ch347UsbJtag {
     device: Ch347UsbJtagDevice,
-    jtag_state: JtagDriverState,
+    jtag_state: JtagChainState,
     swd_settings: SwdSettings,
 }
 
@@ -45,7 +45,7 @@ impl ProbeFactory for Ch347UsbJtagFactory {
         tracing::info!("Found ch347 device");
         Ok(Box::new(Ch347UsbJtag {
             device: ch347,
-            jtag_state: JtagDriverState::default(),
+            jtag_state: JtagChainState::default(),
             swd_settings: SwdSettings::default(),
         }))
     }
@@ -55,28 +55,32 @@ impl ProbeFactory for Ch347UsbJtagFactory {
     }
 }
 
-impl RawJtagIo for Ch347UsbJtag {
-    fn shift_bit(
-        &mut self,
-        tms: bool,
-        tdi: bool,
-        capture: bool,
-    ) -> Result<(), super::DebugProbeError> {
-        self.jtag_state.state.update(tms);
+impl BitbangJtag for Ch347UsbJtag {
+    fn tap_state(&mut self) -> &mut TapState {
+        &mut self.jtag_state.tap_state
+    }
+
+    fn shift(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), super::DebugProbeError> {
         self.device.shift_bit(tms, tdi, capture)?;
 
         Ok(())
     }
 
-    fn read_captured_bits(&mut self) -> Result<bitvec::prelude::BitVec, super::DebugProbeError> {
-        self.device.read_captured_bits()
+    fn flush(&mut self) -> Result<(), super::DebugProbeError> {
+        Ok(())
     }
 
-    fn state_mut(&mut self) -> &mut JtagDriverState {
+    fn captured(&mut self) -> Result<bitvec::prelude::BitVec, super::DebugProbeError> {
+        self.device.read_captured_bits()
+    }
+}
+
+impl JtagStateAccess for Ch347UsbJtag {
+    fn state_mut(&mut self) -> &mut JtagChainState {
         &mut self.jtag_state
     }
 
-    fn state(&self) -> &JtagDriverState {
+    fn state(&self) -> &JtagChainState {
         &self.jtag_state
     }
 }
@@ -107,7 +111,6 @@ impl RawSwdIo for Ch347UsbJtag {
     }
 }
 
-impl AutoImplementJtagAccess for Ch347UsbJtag {}
 impl DapProbe for Ch347UsbJtag {}
 
 impl DebugProbe for Ch347UsbJtag {

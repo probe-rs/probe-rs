@@ -38,6 +38,11 @@ pub struct ChainParams {
 }
 
 impl ChainParams {
+    /// Returns the largest IR address for this chain configuration.
+    pub fn max_ir_address(&self) -> u32 {
+        (1 << self.irlen) - 1
+    }
+
     fn from_jtag_chain(chain: &[ScanChainElement], selected: usize) -> Option<Self> {
         let mut params = Self {
             index: selected,

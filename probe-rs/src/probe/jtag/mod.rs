@@ -28,8 +28,38 @@ use bitvec::{slice::BitSlice, vec::BitVec};
 
 use super::{
     Batch, BatchExecutionError, BitSequence, CommandResult, DebugProbe, DebugProbeError, Handle,
-    JtagDriverState, JtagSequence, RawJtagIo, Results, queue::HandleId,
+    JtagSequence, Results, queue::HandleId,
 };
+use probe_rs_target::ScanChainElement;
+
+use self::chain::ChainParams;
+
+/// Scan chain state held by a JTAG probe between batch runs.
+#[derive(Debug)]
+pub struct JtagChainState {
+    /// The stable state that the TAP rests in between two batches.
+    pub tap_state: TapState,
+
+    /// The expected scan chain.
+    pub expected_scan_chain: Option<Vec<ScanChainElement>>,
+
+    /// The actual scan chain.
+    pub scan_chain: Vec<ScanChainElement>,
+
+    /// The parameters of the scan chain.
+    pub chain_params: ChainParams,
+}
+
+impl Default for JtagChainState {
+    fn default() -> Self {
+        Self {
+            tap_state: TapState::TestLogicReset,
+            expected_scan_chain: None,
+            scan_chain: Vec::new(),
+            chain_params: ChainParams::default(),
+        }
+    }
+}
 
 /// A stable TAP state that a caller may target.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -236,30 +266,19 @@ pub trait JtagProbe: DebugProbe {
 /// Access to the scan-chain state held by a JTAG probe driver.
 pub trait JtagStateAccess {
     /// Returns a mutable reference to the driver state.
-    fn state_mut(&mut self) -> &mut JtagDriverState;
+    fn state_mut(&mut self) -> &mut JtagChainState;
 
     /// Returns the driver state.
-    fn state(&self) -> &JtagDriverState;
-}
-
-impl<P: RawJtagIo> JtagStateAccess for P {
-    fn state_mut(&mut self) -> &mut JtagDriverState {
-        RawJtagIo::state_mut(self)
-    }
-
-    fn state(&self) -> &JtagDriverState {
-        RawJtagIo::state(self)
-    }
+    fn state(&self) -> &JtagChainState;
 }
 
 /// Bit-banging JTAG interface for probe drivers.
 ///
-/// Three differences from [`RawJtagIo`]:
+/// Three differences from a raw bit-bang driver:
 ///
 /// - [`BitbangJtag::shift`] does not track the TAP state. The lowering tracks it.
 /// - [`BitbangJtag::flush`] is new. A driver that buffers bits sends them at a
 ///   flush. The lowering calls flush before it reads with [`BitbangJtag::captured`].
-///   Today [`RawJtagIo::read_captured_bits`] does both jobs.
 /// - This trait has no `reset_jtag_state_machine`. [`JtagOp::EnterState`] with
 ///   [`TapState::TestLogicReset`] replaces it.
 pub trait BitbangJtag: DebugProbe {
@@ -492,37 +511,13 @@ impl<P: BitbangJtag> JtagProbe for P {
     }
 }
 
-/// Temporary bridge from [`RawJtagIo`] to [`BitbangJtag`].
-///
-/// This bridge goes away when every driver implements [`BitbangJtag`] directly.
-#[doc(hidden)]
-impl<P: RawJtagIo> BitbangJtag for P {
-    fn tap_state(&mut self) -> &mut TapState {
-        &mut self.state_mut().tap_state
-    }
-
-    fn shift(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError> {
-        self.shift_bit(tms, tdi, capture)
-    }
-
-    fn flush(&mut self) -> Result<(), DebugProbeError> {
-        Ok(())
-    }
-
-    fn captured(&mut self) -> Result<BitVec, DebugProbeError> {
-        self.read_captured_bits()
-    }
-}
-
 #[cfg(test)]
 pub(crate) mod golden;
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::probe::{
-        BatchExecutionError, DebugProbe, DebugProbeError, JtagDriverState, Results, WireProtocol,
-    };
+    use crate::probe::{DebugProbe, DebugProbeError, JtagChainState, WireProtocol};
 
     const STABLE_STATES: [TapState; 6] = [
         TapState::TestLogicReset,
@@ -737,25 +732,25 @@ mod tests {
     }
 
     #[test]
-    fn icepick_zero_bit_scan_reaches_probe_as_single_bit_sequences() {
+    fn icepick_zero_bit_scan_uses_enter_state() {
         #[derive(Debug)]
-        struct RawSequenceRecorder {
-            sequences: Vec<(bool, bool)>,
-            jtag_state: JtagDriverState,
+        struct ShiftRecorder {
+            triples: Vec<(bool, bool)>,
+            jtag_state: JtagChainState,
         }
 
-        impl RawSequenceRecorder {
+        impl ShiftRecorder {
             fn new() -> Self {
                 Self {
-                    sequences: Vec::new(),
-                    jtag_state: JtagDriverState::default(),
+                    triples: Vec::new(),
+                    jtag_state: JtagChainState::default(),
                 }
             }
         }
 
-        impl DebugProbe for RawSequenceRecorder {
+        impl DebugProbe for ShiftRecorder {
             fn get_name(&self) -> &str {
-                "raw sequence recorder"
+                "shift recorder"
             }
 
             fn speed_khz(&self) -> u32 {
@@ -803,61 +798,60 @@ mod tests {
             }
         }
 
-        impl JtagStateAccess for RawSequenceRecorder {
-            fn state_mut(&mut self) -> &mut JtagDriverState {
-                &mut self.jtag_state
+        impl BitbangJtag for ShiftRecorder {
+            fn tap_state(&mut self) -> &mut TapState {
+                &mut self.jtag_state.tap_state
             }
 
-            fn state(&self) -> &JtagDriverState {
-                &self.jtag_state
+            fn shift(
+                &mut self,
+                tms: bool,
+                tdi: bool,
+                _capture: bool,
+            ) -> Result<(), DebugProbeError> {
+                self.triples.push((tms, tdi));
+                Ok(())
+            }
+
+            fn flush(&mut self) -> Result<(), DebugProbeError> {
+                Ok(())
+            }
+
+            fn captured(&mut self) -> Result<BitVec, DebugProbeError> {
+                Ok(BitVec::new())
             }
         }
 
-        impl JtagProbe for RawSequenceRecorder {
-            fn run_batch(
-                &mut self,
-                _batch: &JtagBatch,
-            ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
-                Ok(Results::new())
+        impl JtagStateAccess for ShiftRecorder {
+            fn state_mut(&mut self) -> &mut JtagChainState {
+                &mut self.jtag_state
             }
 
-            fn shift_raw_sequence(
-                &mut self,
-                sequence: JtagSequence,
-            ) -> Result<BitVec, DebugProbeError> {
-                assert_eq!(sequence.data.len(), 1);
-                self.sequences.push((sequence.tms, sequence.data[0]));
-                Ok(BitVec::new())
+            fn state(&self) -> &JtagChainState {
+                &self.jtag_state
             }
         }
 
         use crate::probe::JtagAccess;
 
-        let mut probe = RawSequenceRecorder::new();
-        for tms in [true, false, true, false, true, true, false] {
-            JtagAccess::shift_raw_sequence(
-                &mut probe,
-                JtagSequence {
-                    tdo_capture: false,
-                    tms,
-                    data: bitvec::bitvec![1; 1],
-                },
-            )
-            .unwrap();
-        }
+        let mut probe = ShiftRecorder::new();
+        probe.jtag_state.tap_state = TapState::RunTestIdle;
+        JtagAccess::enter_tap_state(&mut probe, TapState::PauseDr).unwrap();
+        JtagAccess::enter_tap_state(&mut probe, TapState::RunTestIdle).unwrap();
 
-        assert_eq!(
-            probe.sequences,
-            [
-                (true, true),
-                (false, true),
-                (true, true),
-                (false, true),
-                (true, true),
-                (true, true),
-                (false, true),
-            ]
-        );
+        let tms = probe
+            .triples
+            .iter()
+            .map(|(t, _)| if *t { '1' } else { '0' })
+            .collect::<String>();
+        let tdi = probe
+            .triples
+            .iter()
+            .map(|(_, d)| if *d { '1' } else { '0' })
+            .collect::<String>();
+
+        assert_eq!(tms, "1010110");
+        assert_eq!(tdi, "0000000");
     }
 
     #[test]

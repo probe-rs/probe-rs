@@ -34,7 +34,7 @@ use crate::probe::jlink::bits::IteratorExt;
 use crate::probe::jlink::config::JlinkConfig;
 use crate::probe::jlink::connection::JlinkConnection;
 use crate::probe::usb_util::InterfaceExt;
-use crate::probe::{BitbangJtag, JtagAccess, JtagStateAccess, TapState};
+use crate::probe::{BitbangJtag, JtagAccess, JtagChainState, JtagStateAccess, TapState};
 use crate::{
     architecture::{
         arm::{
@@ -44,7 +44,7 @@ use crate::{
     },
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
-        JtagDriverState, ProbeFactory, RawSwdIo, SwdSettings, WireProtocol,
+        ProbeFactory, RawSwdIo, SwdSettings, WireProtocol,
         list::{ProbeListItem, usb_probe_accessibility},
     },
 };
@@ -192,7 +192,7 @@ impl ProbeFactory for JLinkFactory {
             swo_config: None,
             speed_khz: 0, // default is unknown
             swd_settings: SwdSettings::default(),
-            jtag_state: JtagDriverState::default(),
+            jtag_state: JtagChainState::default(),
             force_legacy_jtag_command: selector.product_id == 0x0101,
 
             jtag_tms_bits: vec![],
@@ -389,7 +389,7 @@ pub struct JLink {
     jtag_tdi_bits: Vec<bool>,
     jtag_capture_tdo: Vec<bool>,
     jtag_response: BitVec,
-    jtag_state: JtagDriverState,
+    jtag_state: JtagChainState,
     force_legacy_jtag_command: bool,
 
     /// max number of bits in a transfer chunk, when using JTAG
@@ -1290,11 +1290,11 @@ impl BitbangJtag for JLink {
 }
 
 impl JtagStateAccess for JLink {
-    fn state_mut(&mut self) -> &mut crate::probe::JtagDriverState {
+    fn state_mut(&mut self) -> &mut crate::probe::JtagChainState {
         &mut self.jtag_state
     }
 
-    fn state(&self) -> &crate::probe::JtagDriverState {
+    fn state(&self) -> &crate::probe::JtagChainState {
         &self.jtag_state
     }
 }

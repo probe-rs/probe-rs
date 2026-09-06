@@ -3,59 +3,177 @@ use std::iter;
 
 use bitvec::prelude::*;
 
-use crate::probe::common::{JtagState, RegisterState};
-use crate::probe::{
-    ChainParams, DebugProbe, DebugProbeError, JtagDriverState, RawJtagIo, WireProtocol,
-};
+use crate::probe::{ChainParams, DebugProbe, DebugProbeError, JtagChainState, WireProtocol};
 
-use super::{BitSequence, JtagBatch, TapState, run_bitbang_batch};
+use super::{BitSequence, BitbangJtag, JtagBatch, TapState, run_bitbang_batch};
 
-fn jtag_move_to_state(
-    protocol: &mut impl RawJtagIo,
-    target: JtagState,
-) -> Result<(), DebugProbeError> {
-    tracing::trace!(
-        "Changing state: {:?} -> {:?}",
-        protocol.state_mut().state,
-        target
-    );
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum RegisterState {
+    Select,
+    Capture,
+    Shift,
+    Exit1,
+    Pause,
+    Exit2,
+    Update,
+}
 
-    while let Some(tms) = protocol.state().state.step_toward(target) {
-        protocol.shift_bit(tms, false, false)?;
+impl RegisterState {
+    fn step_toward(self, target: Self) -> bool {
+        match self {
+            Self::Select => false,
+            Self::Capture if matches!(target, Self::Shift) => false,
+            Self::Exit1 if matches!(target, Self::Pause | Self::Exit2) => false,
+            Self::Exit2 if matches!(target, Self::Shift | Self::Exit1 | Self::Pause) => false,
+            Self::Update => unreachable!(),
+            _ => true,
+        }
     }
 
-    tracing::trace!("In state: {:?}", protocol.state_mut().state);
+    fn update(self, tms: bool) -> Self {
+        if tms {
+            match self {
+                Self::Capture | Self::Shift => Self::Exit1,
+                Self::Exit1 | Self::Exit2 => Self::Update,
+                Self::Pause => Self::Exit2,
+                Self::Select | Self::Update => unreachable!(),
+            }
+        } else {
+            match self {
+                Self::Select => Self::Capture,
+                Self::Capture | Self::Shift => Self::Shift,
+                Self::Exit1 | Self::Pause => Self::Pause,
+                Self::Exit2 => Self::Shift,
+                Self::Update => unreachable!(),
+            }
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum OldJtagState {
+    Reset,
+    Idle,
+    Dr(RegisterState),
+    Ir(RegisterState),
+}
+
+impl OldJtagState {
+    fn step_toward(self, target: Self) -> Option<bool> {
+        let tms = match self {
+            state if target == state => return None,
+            Self::Reset => false,
+            Self::Idle => true,
+            Self::Dr(RegisterState::Select) => !matches!(target, Self::Dr(_)),
+            Self::Ir(RegisterState::Select) => !matches!(target, Self::Ir(_)),
+            Self::Dr(RegisterState::Update) | Self::Ir(RegisterState::Update) => {
+                matches!(target, Self::Ir(_) | Self::Dr(_))
+            }
+            Self::Dr(state) => {
+                let next = if let Self::Dr(target) = target {
+                    target
+                } else {
+                    RegisterState::Update
+                };
+                state.step_toward(next)
+            }
+            Self::Ir(state) => {
+                let next = if let Self::Ir(target) = target {
+                    target
+                } else {
+                    RegisterState::Update
+                };
+                state.step_toward(next)
+            }
+        };
+        Some(tms)
+    }
+
+    fn update(&mut self, tms: bool) {
+        *self = match *self {
+            Self::Reset if tms => Self::Reset,
+            Self::Reset => Self::Idle,
+            Self::Idle if tms => Self::Dr(RegisterState::Select),
+            Self::Idle => Self::Idle,
+            Self::Dr(RegisterState::Select) if tms => Self::Ir(RegisterState::Select),
+            Self::Ir(RegisterState::Select) if tms => Self::Reset,
+            Self::Dr(RegisterState::Update) | Self::Ir(RegisterState::Update) => {
+                if tms {
+                    Self::Dr(RegisterState::Select)
+                } else {
+                    Self::Idle
+                }
+            }
+            Self::Dr(state) => Self::Dr(state.update(tms)),
+            Self::Ir(state) => Self::Ir(state.update(tms)),
+        };
+    }
+}
+
+struct OldPathRecorder {
+    state: OldJtagState,
+    chain_params: ChainParams,
+    triples: Vec<(bool, bool, bool)>,
+    captured: BitVec,
+}
+
+impl OldPathRecorder {
+    fn new() -> Self {
+        Self {
+            state: OldJtagState::Reset,
+            chain_params: ChainParams::default(),
+            triples: Vec::new(),
+            captured: BitVec::new(),
+        }
+    }
+
+    fn shift_bit(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError> {
+        self.triples.push((tms, tdi, capture));
+        if capture {
+            self.captured.push(false);
+        }
+        self.state.update(tms);
+        Ok(())
+    }
+
+    fn shift_bits(
+        &mut self,
+        tms: impl IntoIterator<Item = bool>,
+        tdi: impl IntoIterator<Item = bool>,
+        cap: impl IntoIterator<Item = bool>,
+    ) -> Result<(), DebugProbeError> {
+        for ((tms, tdi), cap) in tms.into_iter().zip(tdi).zip(cap) {
+            self.shift_bit(tms, tdi, cap)?;
+        }
+        Ok(())
+    }
+
+    fn take_triples(&mut self) -> Vec<(bool, bool, bool)> {
+        std::mem::take(&mut self.triples)
+    }
+}
+
+fn jtag_move_to_state(
+    protocol: &mut OldPathRecorder,
+    target: OldJtagState,
+) -> Result<(), DebugProbeError> {
+    while let Some(tms) = protocol.state.step_toward(target) {
+        protocol.shift_bit(tms, false, false)?;
+    }
     Ok(())
 }
 
 fn shift_ir(
-    protocol: &mut impl RawJtagIo,
+    protocol: &mut OldPathRecorder,
     data: &[u8],
     len: usize,
     capture_data: bool,
 ) -> Result<(), DebugProbeError> {
-    tracing::debug!("Write IR: {:?}, len={}", data, len);
-
-    // Check the bit length, enough data has to be available
-    if data.len() * 8 < len || len == 0 {
-        return Err(DebugProbeError::Other(format!(
-            "Invalid data length. IR bits: {}, expected: {}",
-            data.len(),
-            len
-        )));
-    }
-
-    // BYPASS commands before and after shifting out data where required
-    let pre_bits = protocol.state().chain_params.irpre;
-    let post_bits = protocol.state().chain_params.irpost;
-
-    // The last bit will be transmitted when exiting the shift state,
-    // so we need to stay in the shift state for one period less than
-    // we have bits to transmit.
+    let pre_bits = protocol.chain_params.irpre;
+    let post_bits = protocol.chain_params.irpost;
     let tms_data = std::iter::repeat_n(false, len - 1);
 
-    // Enter IR shift
-    jtag_move_to_state(protocol, JtagState::Ir(RegisterState::Shift))?;
+    jtag_move_to_state(protocol, OldJtagState::Ir(RegisterState::Shift))?;
 
     let tms = std::iter::repeat_n(false, pre_bits)
         .chain(tms_data)
@@ -70,42 +188,25 @@ fn shift_ir(
         .chain(std::iter::repeat_n(capture_data, len))
         .chain(iter::repeat(false));
 
-    tracing::trace!("tms: {:?}", tms.clone());
-    tracing::trace!("tdi: {:?}", tdi.clone());
-
     protocol.shift_bits(tms, tdi, capture)?;
-    jtag_move_to_state(protocol, JtagState::Ir(RegisterState::Update))?;
+    jtag_move_to_state(protocol, OldJtagState::Ir(RegisterState::Update))?;
 
     Ok(())
 }
 
 fn shift_dr(
-    protocol: &mut impl RawJtagIo,
+    protocol: &mut OldPathRecorder,
     data: &[u8],
     register_bits: usize,
     capture_data: bool,
     idle_cycles: usize,
 ) -> Result<usize, DebugProbeError> {
-    tracing::debug!("Write DR: {:?}, len={}", data, register_bits);
-
-    // Check the bit length, enough data has to be available
-    if data.len() * 8 < register_bits || register_bits == 0 {
-        return Err(DebugProbeError::Other(format!(
-            "Invalid data length. DR bits: {}, expected: {}",
-            data.len(),
-            register_bits
-        )));
-    }
-
-    // Last bit of data is shifted out when we exit the SHIFT-DR State
     let tms_shift_out_value = std::iter::repeat_n(false, register_bits - 1);
 
-    // Enter DR shift
-    jtag_move_to_state(protocol, JtagState::Dr(RegisterState::Shift))?;
+    jtag_move_to_state(protocol, OldJtagState::Dr(RegisterState::Shift))?;
 
-    // dummy bits to account for bypasses
-    let pre_bits = protocol.state().chain_params.drpre;
-    let post_bits = protocol.state().chain_params.drpost;
+    let pre_bits = protocol.chain_params.drpre;
+    let post_bits = protocol.chain_params.drpost;
 
     let tms = std::iter::repeat_n(false, pre_bits)
         .chain(tms_shift_out_value)
@@ -122,15 +223,12 @@ fn shift_dr(
 
     protocol.shift_bits(tms, tdi, capture)?;
 
-    jtag_move_to_state(protocol, JtagState::Dr(RegisterState::Update))?;
+    jtag_move_to_state(protocol, OldJtagState::Dr(RegisterState::Update))?;
 
     if idle_cycles > 0 {
-        jtag_move_to_state(protocol, JtagState::Idle)?;
-
-        // We need to stay in the idle cycle a bit
+        jtag_move_to_state(protocol, OldJtagState::Idle)?;
         let tms = std::iter::repeat_n(false, idle_cycles);
         let tdi = std::iter::repeat_n(false, idle_cycles);
-
         protocol.shift_bits(tms, tdi, iter::repeat(false))?;
     }
 
@@ -142,7 +240,7 @@ fn shift_dr(
 }
 
 struct GoldenRecorder {
-    jtag_state: JtagDriverState,
+    jtag_state: JtagChainState,
     triples: Vec<(bool, bool, bool)>,
     captured: BitVec,
 }
@@ -150,18 +248,10 @@ struct GoldenRecorder {
 impl GoldenRecorder {
     fn new() -> Self {
         Self {
-            jtag_state: JtagDriverState::default(),
+            jtag_state: JtagChainState::default(),
             triples: Vec::new(),
             captured: BitVec::new(),
         }
-    }
-
-    fn record(&mut self, tms: bool, tdi: bool, capture: bool) {
-        self.triples.push((tms, tdi, capture));
-        if capture {
-            self.captured.push(false);
-        }
-        self.jtag_state.state.update(tms);
     }
 
     fn take_triples(&mut self) -> Vec<(bool, bool, bool)> {
@@ -227,33 +317,36 @@ impl DebugProbe for GoldenRecorder {
     }
 }
 
-impl RawJtagIo for GoldenRecorder {
-    fn state_mut(&mut self) -> &mut JtagDriverState {
-        &mut self.jtag_state
+impl BitbangJtag for GoldenRecorder {
+    fn tap_state(&mut self) -> &mut TapState {
+        &mut self.jtag_state.tap_state
     }
 
-    fn state(&self) -> &JtagDriverState {
-        &self.jtag_state
-    }
-
-    fn shift_bit(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError> {
-        self.record(tms, tdi, capture);
+    fn shift(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError> {
+        self.triples.push((tms, tdi, capture));
+        if capture {
+            self.captured.push(false);
+        }
         Ok(())
     }
 
-    fn read_captured_bits(&mut self) -> Result<BitVec, DebugProbeError> {
+    fn flush(&mut self) -> Result<(), DebugProbeError> {
+        Ok(())
+    }
+
+    fn captured(&mut self) -> Result<BitVec, DebugProbeError> {
         Ok(std::mem::take(&mut self.captured))
     }
 }
 
-fn tap_to_jtag(tap: TapState) -> JtagState {
+fn tap_to_jtag(tap: TapState) -> OldJtagState {
     match tap {
-        TapState::TestLogicReset => JtagState::Reset,
-        TapState::RunTestIdle => JtagState::Idle,
-        TapState::ShiftIr => JtagState::Ir(RegisterState::Shift),
-        TapState::ShiftDr => JtagState::Dr(RegisterState::Shift),
-        TapState::PauseIr => JtagState::Ir(RegisterState::Pause),
-        TapState::PauseDr => JtagState::Dr(RegisterState::Pause),
+        TapState::TestLogicReset => OldJtagState::Reset,
+        TapState::RunTestIdle => OldJtagState::Idle,
+        TapState::ShiftIr => OldJtagState::Ir(RegisterState::Shift),
+        TapState::ShiftDr => OldJtagState::Dr(RegisterState::Shift),
+        TapState::PauseIr => OldJtagState::Ir(RegisterState::Pause),
+        TapState::PauseDr => OldJtagState::Dr(RegisterState::Pause),
     }
 }
 
@@ -326,25 +419,25 @@ pub(crate) fn build_dr_exchange(params: ChainParams, bytes: &[u8], len: usize) -
 }
 
 fn record_move_to_state(from: TapState, to: TapState) -> Vec<(bool, bool, bool)> {
-    let mut recorder = GoldenRecorder::new();
-    recorder.jtag_state.state = tap_to_jtag(from);
+    let mut recorder = OldPathRecorder::new();
+    recorder.state = tap_to_jtag(from);
     jtag_move_to_state(&mut recorder, tap_to_jtag(to)).unwrap();
     recorder.take_triples()
 }
 
 fn record_shift_ir(params: ChainParams) -> Vec<(bool, bool, bool)> {
-    let mut recorder = GoldenRecorder::new();
-    recorder.jtag_state.chain_params = params;
+    let mut recorder = OldPathRecorder::new();
+    recorder.chain_params = params;
     shift_ir(&mut recorder, &[IR_VALUE], IR_LEN, false).unwrap();
-    jtag_move_to_state(&mut recorder, JtagState::Idle).unwrap();
+    jtag_move_to_state(&mut recorder, OldJtagState::Idle).unwrap();
     recorder.take_triples()
 }
 
 fn record_shift_dr(params: ChainParams, bytes: &[u8], len: usize) -> Vec<(bool, bool, bool)> {
-    let mut recorder = GoldenRecorder::new();
-    recorder.jtag_state.chain_params = params;
+    let mut recorder = OldPathRecorder::new();
+    recorder.chain_params = params;
     shift_dr(&mut recorder, bytes, len, false, 0).unwrap();
-    jtag_move_to_state(&mut recorder, JtagState::Idle).unwrap();
+    jtag_move_to_state(&mut recorder, OldJtagState::Idle).unwrap();
     recorder.take_triples()
 }
 
@@ -354,11 +447,11 @@ fn record_register_write(
     len: usize,
     idle_cycles: u32,
 ) -> Vec<(bool, bool, bool)> {
-    let mut recorder = GoldenRecorder::new();
-    recorder.jtag_state.chain_params = params;
+    let mut recorder = OldPathRecorder::new();
+    recorder.chain_params = params;
     shift_ir(&mut recorder, &[IR_VALUE], IR_LEN, false).unwrap();
     shift_dr(&mut recorder, bytes, len, false, 0).unwrap();
-    jtag_move_to_state(&mut recorder, JtagState::Idle).unwrap();
+    jtag_move_to_state(&mut recorder, OldJtagState::Idle).unwrap();
     if idle_cycles > 0 {
         let tms = std::iter::repeat_n(false, idle_cycles as usize);
         let tdi = std::iter::repeat_n(false, idle_cycles as usize);
@@ -368,8 +461,12 @@ fn record_register_write(
 }
 
 fn record_reset() -> Vec<(bool, bool, bool)> {
-    let mut recorder = GoldenRecorder::new();
-    recorder.reset_jtag_state_machine().unwrap();
+    let mut recorder = OldPathRecorder::new();
+    let tms = [true, true, true, true, true, false];
+    let tdi = std::iter::repeat(true);
+    recorder
+        .shift_bits(tms, tdi, std::iter::repeat(false))
+        .unwrap();
     recorder.take_triples()
 }
 
