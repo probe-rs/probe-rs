@@ -2,6 +2,7 @@
 
 use crate::{
     CoreInterface, Error, MemoryMappedRegister,
+    architecture::arm::memory::Access32,
     architecture::arm::{ArmError, memory::ArmMemoryInterface},
     core::RegisterId,
     memory_mapped_bitfield_register,
@@ -134,18 +135,34 @@ pub(crate) fn read_core_reg(
     memory: &mut dyn ArmMemoryInterface,
     addr: RegisterId,
 ) -> Result<u32, ArmError> {
-    // Write the DCRSR value to select the register we want to read.
     let mut dcrsr_val = Dcrsr(0);
     dcrsr_val.set_regwnr(false); // Perform a read.
     dcrsr_val.set_regsel(addr.into()); // The address of the register to read.
 
-    memory.write_word_32(Dcrsr::get_mmio_address(), dcrsr_val.into())?;
+    // Select the register, then ask for the ready flag and the value in one request. The core
+    // completes the transfer in a couple of its own clocks and the accesses reach the wire tens of
+    // microseconds apart, so the value is already there by the time it is asked for.
+    //
+    // The flag is read before the value, so a flag that comes back set means the value behind it
+    // had already settled. Reading them the other way round would not say that.
+    let mut answers = [0u32; 2];
+    memory.access_words_32(
+        &[
+            Access32::Write(Dcrsr::get_mmio_address(), dcrsr_val.into()),
+            Access32::Read(Dhcsr::get_mmio_address()),
+            Access32::Read(Dcrdr::get_mmio_address()),
+        ],
+        &mut answers,
+    )?;
 
+    if Dhcsr(answers[0]).s_regrdy() {
+        return Ok(answers[1]);
+    }
+
+    // Asked too early, which the flag is there to catch. Wait for it and read the value again.
     wait_for_core_register_transfer(memory, Duration::from_millis(100))?;
 
-    let value = memory.read_word_32(Dcrdr::get_mmio_address())?;
-
-    Ok(value)
+    memory.read_word_32(Dcrdr::get_mmio_address())
 }
 
 pub(crate) fn write_core_reg(
