@@ -69,6 +69,11 @@ impl BitSequence {
         self.0.extend_from_bitslice(other.as_bits());
     }
 
+    /// Return a subsequence of `len` bits starting at `start`.
+    pub fn slice(&self, start: usize, len: usize) -> Self {
+        Self(self.0[start..start + len].to_bitvec())
+    }
+
     /// Iterate over the bits in send order.
     pub fn iter(&self) -> impl Iterator<Item = bool> + '_ {
         self.0.iter().map(|bit| *bit)
