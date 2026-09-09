@@ -13,15 +13,15 @@ use crate::architecture::riscv::communication_interface::{
 };
 use crate::architecture::riscv::dtm::DtmAccess;
 use crate::probe::DebugProbeError;
-use crate::probe::queue::{BatchError, DeferredResultIndex, DeferredResultSet, Queue};
+use crate::probe::queue::{BatchError, Handle, JtagQueue, Results};
 use crate::probe::{
     CommandResult, JtagAccess, JtagWriteCommand, JtagWriteData, ShiftDrCommand, ShiftDrData,
 };
 
 #[derive(Debug, Default)]
 struct DtmState {
-    queued_commands: Queue<DmiOperationError>,
-    jtag_results: DeferredResultSet<CommandResult>,
+    queued_commands: JtagQueue<DmiOperationError>,
+    jtag_results: Results,
 
     /// Number of address bits in the DMI register
     abits: u32,
@@ -131,7 +131,7 @@ impl<'probe> JtagDtm<'probe> {
     fn schedule_dmi_register_access(
         &mut self,
         op: DmiOperation,
-    ) -> Result<DeferredResultIndex, RiscvError> {
+    ) -> Result<Handle<CommandResult>, RiscvError> {
         let bytes = op.to_byte_batch();
 
         let bit_size = self.state.abits + DMI_ADDRESS_BIT_OFFSET;
@@ -235,16 +235,16 @@ impl DtmAccess for JtagDtm<'_> {
 
     fn read_deferred_result(
         &mut self,
-        index: DeferredResultIndex,
+        index: Handle<CommandResult>,
     ) -> Result<CommandResult, RiscvError> {
         match self.state.jtag_results.take(index) {
             Ok(result) => Ok(result),
-            Err(index) => {
+            Err(handle) => {
                 self.execute()?;
                 // We can lose data if `execute` fails.
                 self.state
                     .jtag_results
-                    .take(index)
+                    .take(handle)
                     .map_err(|_| RiscvError::BatchedResultNotAvailable)
             }
         }
@@ -314,12 +314,12 @@ impl DtmAccess for JtagDtm<'_> {
         &mut self,
         address: u64,
         value: u32,
-    ) -> Result<Option<DeferredResultIndex>, RiscvError> {
+    ) -> Result<Option<Handle<CommandResult>>, RiscvError> {
         self.schedule_dmi_register_access(DmiOperation::Write { address, value })
             .map(Some)
     }
 
-    fn schedule_read(&mut self, address: u64) -> Result<DeferredResultIndex, RiscvError> {
+    fn schedule_read(&mut self, address: u64) -> Result<Handle<CommandResult>, RiscvError> {
         // Prepare the read by sending a read request with the register address
         self.schedule_dmi_register_access(DmiOperation::Read { address })?;
 
@@ -444,7 +444,7 @@ impl<'probe> TunneledJtagDtm<'probe> {
     fn schedule_dmi_register_access(
         &mut self,
         op: DmiOperation,
-    ) -> Result<DeferredResultIndex, RiscvError> {
+    ) -> Result<Handle<CommandResult>, RiscvError> {
         self.state
             .queued_commands
             .schedule(self.make_select_command());
@@ -548,16 +548,16 @@ impl DtmAccess for TunneledJtagDtm<'_> {
 
     fn read_deferred_result(
         &mut self,
-        index: DeferredResultIndex,
+        index: Handle<CommandResult>,
     ) -> Result<CommandResult, RiscvError> {
         match self.state.jtag_results.take(index) {
             Ok(result) => Ok(result),
-            Err(index) => {
+            Err(handle) => {
                 self.execute()?;
                 // We can lose data if `execute` fails.
                 self.state
                     .jtag_results
-                    .take(index)
+                    .take(handle)
                     .map_err(|_| RiscvError::BatchedResultNotAvailable)
             }
         }
@@ -627,12 +627,12 @@ impl DtmAccess for TunneledJtagDtm<'_> {
         &mut self,
         address: u64,
         value: u32,
-    ) -> Result<Option<DeferredResultIndex>, RiscvError> {
+    ) -> Result<Option<Handle<CommandResult>>, RiscvError> {
         self.schedule_dmi_register_access(DmiOperation::Write { address, value })
             .map(Some)
     }
 
-    fn schedule_read(&mut self, address: u64) -> Result<DeferredResultIndex, RiscvError> {
+    fn schedule_read(&mut self, address: u64) -> Result<Handle<CommandResult>, RiscvError> {
         // Prepare the read by sending a read request with the register address
         self.schedule_dmi_register_access(DmiOperation::Read { address })?;
 

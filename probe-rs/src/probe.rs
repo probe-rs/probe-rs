@@ -28,7 +28,6 @@ use crate::architecture::xtensa::communication_interface::{
 use crate::config::TargetSelector;
 use crate::config::registry::Registry;
 use crate::probe::common::JtagState;
-use crate::probe::queue::{BatchExecutionError, DeferredResultSet, ErasedQueue};
 use crate::{Error, Permissions, Session};
 use bitvec::slice::BitSlice;
 use bitvec::vec::BitVec;
@@ -41,6 +40,9 @@ use std::fmt;
 use std::sync::{Arc, LazyLock};
 
 pub use bits::BitSequence;
+pub use queue::{Batch, BatchError, BatchExecutionError, ErasedBatch, Handle, JtagQueue, Results};
+#[allow(deprecated)]
+pub use queue::{DeferredResultIndex, DeferredResultSet, ErasedQueue, Queue};
 pub use selector::DebugProbeSelector;
 
 /// Used to log warnings when the measured target voltage is
@@ -1198,12 +1200,12 @@ pub trait JtagAccess: DebugProbe {
     /// Executes a sequence of JTAG commands.
     fn write_register_batch(
         &mut self,
-        writes: &ErasedQueue,
-    ) -> Result<DeferredResultSet<CommandResult>, BatchExecutionError> {
+        writes: &ErasedBatch<JtagCommand>,
+    ) -> Result<Results, BatchExecutionError> {
         tracing::debug!(
             "Using default `JtagAccess::write_register_batch` hurts performance. Please implement proper batching for this probe."
         );
-        let mut results = DeferredResultSet::new();
+        let mut results = Results::new();
 
         for (idx, write) in writes.iter() {
             match write {
@@ -1334,14 +1336,14 @@ impl<E: std::error::Error + Send + Sync + 'static> From<ShiftDrCommand<E>> for J
 }
 
 /// Type alias for the erased transform function used in batched JTAG commands.
-pub(crate) type ErasedTransformFn<T> = Box<
+pub type ErasedTransformFn<T> = Box<
     dyn Fn(&T, &BitSlice) -> Result<CommandResult, Box<dyn std::error::Error + Send + Sync>>
         + Send
         + Sync,
 >;
 
-/// An erased JTAG register write command (internal use).
-pub(crate) struct ErasedCommand<T> {
+/// An erased JTAG register write command.
+pub struct ErasedCommand<T> {
     /// The inner data for the write command.
     pub inner: T,
 
@@ -1360,7 +1362,7 @@ impl<T: std::fmt::Debug> std::fmt::Debug for ErasedCommand<T> {
 
 /// A low-level JTAG command (uses type-erased commands internally).
 #[derive(Debug)]
-pub(crate) enum JtagCommand {
+pub enum JtagCommand {
     /// Write a register.
     WriteRegister(ErasedCommand<JtagWriteData>),
     /// Shift a value into the DR register.

@@ -9,7 +9,7 @@ use crate::architecture::arm::ArmError;
 use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::riscv::dtm::DtmAccess;
-use crate::probe::queue::{DeferredResultIndex, DeferredResultSet};
+use crate::probe::queue::{Handle, HandleId, Results};
 use crate::probe::{CommandResult, DebugProbeError};
 use std::fmt;
 use std::time::Duration;
@@ -24,8 +24,8 @@ enum DmiOp {
 /// DTM that performs DMI accesses via a CoreSight memory access port.
 pub struct MemApDtm<'state> {
     memory: Box<dyn ArmMemoryInterface + 'state>,
-    pending: Vec<(DeferredResultIndex, DmiOp)>,
-    results: DeferredResultSet<CommandResult>,
+    pending: Vec<(HandleId, DmiOp)>,
+    results: Results,
 }
 
 impl fmt::Debug for MemApDtm<'_> {
@@ -49,7 +49,7 @@ impl<'state> MemApDtm<'state> {
         Self {
             memory,
             pending: Vec::new(),
-            results: DeferredResultSet::new(),
+            results: Results::new(),
         }
     }
 
@@ -80,15 +80,14 @@ impl DtmAccess for MemApDtm<'_> {
 
     fn read_deferred_result(
         &mut self,
-        index: DeferredResultIndex,
+        index: Handle<CommandResult>,
     ) -> Result<CommandResult, RiscvError> {
-        // If the result is not ready yet, run pending DMI ops then take it.
-        match self.results.take(index.clone()) {
+        match self.results.take(index) {
             Ok(result) => Ok(result),
-            Err(_) => {
+            Err(handle) => {
                 self.execute()?;
                 self.results
-                    .take(index)
+                    .take(handle)
                     .map_err(|_| RiscvError::BatchedResultNotAvailable)
             }
         }
@@ -123,16 +122,16 @@ impl DtmAccess for MemApDtm<'_> {
         &mut self,
         address: u64,
         value: u32,
-    ) -> Result<Option<DeferredResultIndex>, RiscvError> {
-        let index = DeferredResultIndex::new();
-        self.pending.push((index, DmiOp::Write(address, value)));
+    ) -> Result<Option<Handle<CommandResult>>, RiscvError> {
+        let id = HandleId::new();
+        self.pending.push((id, DmiOp::Write(address, value)));
         Ok(None)
     }
 
-    fn schedule_read(&mut self, address: u64) -> Result<DeferredResultIndex, RiscvError> {
-        let index = DeferredResultIndex::new();
-        self.pending.push((index.clone(), DmiOp::Read(address)));
-        Ok(index)
+    fn schedule_read(&mut self, address: u64) -> Result<Handle<CommandResult>, RiscvError> {
+        let id = HandleId::new();
+        self.pending.push((id.clone(), DmiOp::Read(address)));
+        Ok(Handle::from_id(id))
     }
 
     fn read_with_timeout(&mut self, address: u64, _timeout: Duration) -> Result<u32, RiscvError> {

@@ -9,7 +9,7 @@ use probe_rs_target::ScanChainElement;
 use crate::probe::{
     AutoImplementJtagAccess, ChainParams, CommandResult, DebugProbeError, JtagAccess, JtagCommand,
     JtagSequence, RawJtagIo,
-    queue::{BatchExecutionError, DeferredResultSet, ErasedQueue},
+    queue::{BatchExecutionError, ErasedBatch, Results},
 };
 
 pub(crate) fn bits_to_byte(bits: impl IntoIterator<Item = bool>) -> u32 {
@@ -739,8 +739,8 @@ impl<Probe: AutoImplementJtagAccess> JtagAccess for Probe {
     #[tracing::instrument(skip(self, writes))]
     fn write_register_batch(
         &mut self,
-        writes: &ErasedQueue,
-    ) -> Result<DeferredResultSet<CommandResult>, BatchExecutionError> {
+        writes: &ErasedBatch<JtagCommand>,
+    ) -> Result<Results, BatchExecutionError> {
         let mut bits = Vec::with_capacity(writes.len());
         let t1 = std::time::Instant::now();
         tracing::debug!("Preparing {} writes...", writes.len());
@@ -763,9 +763,8 @@ impl<Probe: AutoImplementJtagAccess> JtagAccess for Probe {
             };
 
             // If an error happens during prep, return no results as chip will be in an inconsistent state
-            let op = result.map_err(|e| {
-                BatchExecutionError::new_from_debug_probe(e, DeferredResultSet::new())
-            })?;
+            let op =
+                result.map_err(|e| BatchExecutionError::new_from_debug_probe(e, Results::new()))?;
 
             bits.push((idx, command, op));
         }
@@ -774,10 +773,10 @@ impl<Probe: AutoImplementJtagAccess> JtagAccess for Probe {
         // If an error happens during the final flush, also retry whole operation
         let bitstream = self
             .read_captured_bits()
-            .map_err(|e| BatchExecutionError::new_from_debug_probe(e, DeferredResultSet::new()))?;
+            .map_err(|e| BatchExecutionError::new_from_debug_probe(e, Results::new()))?;
 
         tracing::debug!("Got responses! Took {:?}! Processing...", t1.elapsed());
-        let mut responses = DeferredResultSet::with_capacity(bits.len());
+        let mut responses = Results::with_capacity(bits.len());
 
         let mut bitstream = bitstream.as_bitslice();
         for (idx, command, bits) in bits.into_iter() {

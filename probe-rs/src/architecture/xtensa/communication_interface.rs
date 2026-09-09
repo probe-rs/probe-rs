@@ -19,7 +19,7 @@ use crate::{
         xdm::{DebugStatus, XdmState},
     },
     memory::{Operation, OperationKind},
-    probe::{DebugProbeError, JtagAccess, queue::DeferredResultIndex},
+    probe::{CommandResult, DebugProbeError, Handle, JtagAccess},
 };
 
 use super::xdm::{Error as XdmError, Xdm};
@@ -633,7 +633,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     pub(crate) fn schedule_read_register_uncached(
         &mut self,
         register: impl Into<Register>,
-    ) -> Result<DeferredResultIndex, XtensaError> {
+    ) -> Result<Handle<CommandResult>, XtensaError> {
         let register = register.into();
 
         const SCRATCH_REGISTER: CpuRegister = CpuRegister::A3;
@@ -1393,12 +1393,12 @@ trait MemoryAccess {
     fn read_one(
         &mut self,
         interface: &mut XtensaCommunicationInterface,
-    ) -> Result<DeferredResultIndex, XtensaError>;
+    ) -> Result<Handle<CommandResult>, XtensaError>;
 
     fn read_one_and_continue(
         &mut self,
         interface: &mut XtensaCommunicationInterface,
-    ) -> Result<DeferredResultIndex, XtensaError>;
+    ) -> Result<Handle<CommandResult>, XtensaError>;
 
     fn write_one(
         &mut self,
@@ -1477,14 +1477,14 @@ impl MemoryAccess for FastMemoryAccess {
     fn read_one(
         &mut self,
         interface: &mut XtensaCommunicationInterface,
-    ) -> Result<DeferredResultIndex, XtensaError> {
+    ) -> Result<Handle<CommandResult>, XtensaError> {
         Ok(interface.xdm.schedule_read_ddr())
     }
 
     fn read_one_and_continue(
         &mut self,
         interface: &mut XtensaCommunicationInterface,
-    ) -> Result<DeferredResultIndex, XtensaError> {
+    ) -> Result<Handle<CommandResult>, XtensaError> {
         Ok(interface.xdm.schedule_read_ddr_and_execute())
     }
 }
@@ -1549,7 +1549,7 @@ impl MemoryAccess for SlowMemoryAccess {
     fn read_one(
         &mut self,
         interface: &mut XtensaCommunicationInterface,
-    ) -> Result<DeferredResultIndex, XtensaError> {
+    ) -> Result<Handle<CommandResult>, XtensaError> {
         if !self.address_written {
             interface.schedule_write_cpu_register(CpuRegister::A3, self.current_address)?;
             interface.state.register_cache.mark_dirty(CpuRegister::A3);
@@ -1582,7 +1582,7 @@ impl MemoryAccess for SlowMemoryAccess {
     fn read_one_and_continue(
         &mut self,
         interface: &mut XtensaCommunicationInterface,
-    ) -> Result<DeferredResultIndex, XtensaError> {
+    ) -> Result<Handle<CommandResult>, XtensaError> {
         self.read_one(interface)
     }
 
