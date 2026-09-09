@@ -2,6 +2,7 @@
 
 pub mod jtag_dtm;
 pub(crate) mod mem_ap_dtm;
+pub(crate) mod wlink_dtm;
 
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::probe::queue::Handle;
