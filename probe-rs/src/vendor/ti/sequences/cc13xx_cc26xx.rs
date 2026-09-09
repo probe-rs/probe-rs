@@ -8,7 +8,7 @@ use crate::architecture::arm::communication_interface::DapProbe;
 use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::sequences::{ArmDebugSequence, ArmDebugSequenceError};
 use crate::architecture::arm::{ArmError, dp::DpAddress};
-use crate::probe::WireProtocol;
+use crate::probe::{BitSequence, WireProtocol};
 
 use super::icepick::{DefaultProtocol, Icepick};
 
@@ -104,7 +104,7 @@ impl ArmDebugSequence for CC13xxCC26xx {
         _dp: DpAddress,
     ) -> Result<(), ArmError> {
         // Ensure current debug interface is in reset state.
-        interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?;
+        interface.swj_sequence(&BitSequence::from_u64(51, 0x0007_FFFF_FFFF_FFFF))?;
 
         match interface.active_protocol() {
             Some(WireProtocol::Jtag) => {

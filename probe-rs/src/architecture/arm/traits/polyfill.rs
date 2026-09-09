@@ -4,7 +4,7 @@
 //!
 //! See <https://developer.arm.com/documentation/ihi0031/f/?lang=en> for the ADIv5 specification.
 
-use bitvec::{bitvec, field::BitField, slice::BitSlice, vec::BitVec};
+use bitvec::{bitvec, field::BitField, slice::BitSlice};
 
 use crate::{
     architecture::arm::{
@@ -12,8 +12,8 @@ use crate::{
         dp::{Abort, Ctrl, DPIDR, DpRegister, RdBuff},
     },
     probe::{
-        CommandResult, DebugProbe, DebugProbeError, IoSequenceItem, JtagAccess, JtagSequence,
-        JtagWriteCommand, JtagWriteData, RawSwdIo, WireProtocol,
+        BitSequence, CommandResult, DebugProbe, DebugProbeError, IoSequenceItem, JtagAccess,
+        JtagSequence, JtagWriteCommand, JtagWriteData, RawSwdIo, WireProtocol,
         common::bits_to_byte,
         queue::{BatchError, Queue},
     },
@@ -721,22 +721,6 @@ impl OutSequence {
         OutSequence { bits: vec![] }
     }
 
-    fn from_bytes(data: &[u8], mut bits: usize) -> Self {
-        let mut this = Self::new();
-
-        'outer: for byte in data {
-            for i in 0..8 {
-                this.add_output(byte & (1 << i) != 0);
-                bits -= 1;
-                if bits == 0 {
-                    break 'outer;
-                }
-            }
-        }
-
-        this
-    }
-
     fn add_output(&mut self, bit: bool) {
         self.bits.push(bit);
     }
@@ -1133,26 +1117,23 @@ impl<Probe: DebugProbe + RawSwdIo + JtagAccess + 'static> RawDapAccess for Probe
         self
     }
 
-    fn jtag_sequence(&mut self, bit_len: u8, tms: bool, bits: u64) -> Result<(), DebugProbeError> {
-        let mut data = BitVec::with_capacity(bit_len as usize);
-
-        for i in 0..bit_len {
-            data.push((bits >> i) & 1 == 1);
-        }
-
+    fn jtag_sequence(&mut self, tms: bool, tdi: &BitSequence) -> Result<(), DebugProbeError> {
         self.shift_raw_sequence(JtagSequence {
             tms,
-            data,
+            data: tdi.iter().collect(),
             tdo_capture: false,
         })?;
 
         Ok(())
     }
 
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
+    fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError> {
         let protocol = self.active_protocol().unwrap();
 
-        let io_sequence = OutSequence::from_bytes(&bits.to_le_bytes(), bit_len as usize);
+        let mut io_sequence = OutSequence::new();
+        for bit in bits.iter() {
+            io_sequence.add_output(bit);
+        }
         send_sequence(self, protocol, &io_sequence)
     }
 

@@ -11,7 +11,7 @@ use crate::{
         memory::{ADIMemoryInterface, ArmMemoryInterface},
         sequences::ArmDebugSequence,
     },
-    probe::{DebugProbe, DebugProbeError, Probe, WireProtocol},
+    probe::{BitSequence, DebugProbe, DebugProbeError, Probe, WireProtocol},
 };
 
 #[cfg(any(test, feature = "test"))]
@@ -110,7 +110,7 @@ impl MockCore {
 }
 
 impl SwdSequence for &mut MockCore {
-    fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
+    fn swj_sequence(&mut self, _bits: &BitSequence) -> Result<(), DebugProbeError> {
         todo!()
     }
 
@@ -574,11 +574,11 @@ impl RawDapAccess for FakeProbe {
         handler(address, value)
     }
 
-    fn jtag_sequence(&mut self, _cycles: u8, _tms: bool, _tdi: u64) -> Result<(), DebugProbeError> {
+    fn jtag_sequence(&mut self, _tms: bool, _tdi: &BitSequence) -> Result<(), DebugProbeError> {
         todo!()
     }
 
-    fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
+    fn swj_sequence(&mut self, _bits: &BitSequence) -> Result<(), DebugProbeError> {
         todo!()
     }
 
@@ -616,8 +616,8 @@ impl FakeArmInterface {
 }
 
 impl SwdSequence for FakeArmInterface {
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
-        self.probe.swj_sequence(bit_len, bits)?;
+    fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError> {
+        self.probe.swj_sequence(bits)?;
 
         Ok(())
     }

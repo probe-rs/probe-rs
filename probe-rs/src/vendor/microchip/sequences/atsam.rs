@@ -9,7 +9,7 @@ use crate::{
         memory::ArmMemoryInterface,
         sequences::{ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence},
     },
-    probe::DebugProbeError,
+    probe::{BitSequence, DebugProbeError},
     session::MissingPermissions,
 };
 use bitfield::bitfield;
@@ -242,8 +242,8 @@ impl<'a> From<&'a mut dyn DapProbe> for SwdSequenceShim<'a> {
 }
 
 impl SwdSequence for SwdSequenceShim<'_> {
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
-        self.0.swj_sequence(bit_len, bits)
+    fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError> {
+        self.0.swj_sequence(bits)
     }
 
     fn swj_pins(

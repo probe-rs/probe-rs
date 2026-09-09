@@ -44,8 +44,9 @@ use probe_rs::{
         sequences::ArmDebugSequence,
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
-        ProbeError, ProbeFactory, SwdSettings, WireProtocol, list::ProbeListItem,
+        BitSequence, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+        ProbeCreationError, ProbeError, ProbeFactory, SwdSettings, WireProtocol,
+        list::ProbeListItem,
     },
 };
 use spidev::{SpiModeFlags, SpidevOptions, SpidevTransfer};
@@ -61,8 +62,7 @@ const WRITE_PACKET_SIZE: usize = 8; // 7 byte writes work, but only for slower s
 const READ_PACKET_SIZE: usize = 7;
 /// Maximum number of bytes allowed in a single SPI transaction.
 const MAX_QUEUE_BYTES: usize = 4096;
-const SWD_LINE_RESET_BITS: u8 = 51;
-const SWD_LINE_RESET_ONES: u64 = 0x0007_FFFF_FFFF_FFFF;
+const SWD_LINE_RESET_BITS: usize = 51;
 
 /// A factory for creating [`LinuxSpidevSwdProbe`] instances.
 #[derive(Debug)]
@@ -491,14 +491,14 @@ impl RawDapAccess for LinuxSpidevSwdProbe {
         self.flush_writes()
     }
 
-    fn jtag_sequence(&mut self, _cycles: u8, _tms: bool, _tdi: u64) -> Result<(), DebugProbeError> {
+    fn jtag_sequence(&mut self, _tms: bool, _tdi: &BitSequence) -> Result<(), DebugProbeError> {
         Err(DebugProbeError::NotImplemented {
             function_name: "jtag_sequence",
         })
     }
 
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
-        let tx = encode_swj_sequence(bit_len, bits);
+    fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError> {
+        let tx = encode_swj_sequence(bits);
         self.transfer_raw_bytes(&tx)
     }
 
@@ -622,43 +622,58 @@ impl core::fmt::Display for LinuxSpidevSwdError {
 
 impl ProbeError for LinuxSpidevSwdError {}
 
-fn encode_swj_sequence(bit_len: u8, bits: u64) -> Vec<u8> {
-    assert!(bit_len <= 64);
-
+fn encode_swj_sequence(bits: &BitSequence) -> Vec<u8> {
+    let bit_len = bits.len();
     if bit_len == 0 {
         return Vec::new();
     }
 
-    if is_line_reset_pattern(bit_len, bits) {
+    if is_line_reset_pattern(bits) {
+        // The high phase extends to the byte boundary. Only the requested idle cycles
+        // stay low.
         let send_bits = bit_len.div_ceil(8) * 8;
-        let remaining_low_cycles = bit_len.saturating_sub(SWD_LINE_RESET_BITS);
-        let reset_sequence = 0xFFFF_FFFF_FFFF_FFFF_u64 >> (64 - send_bits + remaining_low_cycles);
+        let high_bits = send_bits - (bit_len - SWD_LINE_RESET_BITS);
 
-        let mut tx: Vec<u8> =
-            reset_sequence.to_le_bytes()[0..bit_len.div_ceil(8) as usize].to_vec();
-        tx = tx.into_iter().map(|b: u8| b.reverse_bits()).collect();
-        return tx;
+        let mut tx = vec![0u8; send_bits / 8];
+        for i in 0..high_bits {
+            tx[i / 8] |= 1 << (i % 8);
+        }
+        return tx.into_iter().map(|byte| byte.reverse_bits()).collect();
     }
 
-    let mut tx: Vec<u8> = bits.to_le_bytes()[0..bit_len.div_ceil(8) as usize].to_vec();
-    tx = tx.into_iter().map(|b: u8| b.reverse_bits()).collect();
-    tx
+    let mut tx = vec![0u8; bit_len.div_ceil(8)];
+    for i in 0..bit_len {
+        if bits[i] {
+            tx[i / 8] |= 1 << (i % 8);
+        }
+    }
+    tx.into_iter().map(|byte| byte.reverse_bits()).collect()
 }
 
-fn is_line_reset_pattern(bit_len: u8, bits: u64) -> bool {
+fn is_line_reset_pattern(bits: &BitSequence) -> bool {
+    let bit_len = bits.len();
     if bit_len < SWD_LINE_RESET_BITS {
         return false;
     }
 
-    let lower_bits_are_ones = (bits & SWD_LINE_RESET_ONES) == SWD_LINE_RESET_ONES;
-    let upper_bits_are_zero = (bits >> SWD_LINE_RESET_BITS) == 0;
-
-    lower_bits_are_ones && upper_bits_are_zero
+    for i in 0..SWD_LINE_RESET_BITS {
+        if !bits[i] {
+            return false;
+        }
+    }
+    for i in SWD_LINE_RESET_BITS..bit_len {
+        if bits[i] {
+            return false;
+        }
+    }
+    true
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const SWD_LINE_RESET_ONES: u64 = 0x0007_FFFF_FFFF_FFFF;
 
     #[test]
     fn probe_info_uses_spidev_path_as_serial() {
@@ -707,18 +722,24 @@ mod tests {
 
     #[test]
     fn encode_swj_sequence_matches_switch_bytes() {
-        assert_eq!(encode_swj_sequence(16, 0xE79E), vec![0x79, 0xE7]);
+        assert_eq!(
+            encode_swj_sequence(&BitSequence::from_u64(16, 0xE79E)),
+            vec![0x79, 0xE7]
+        );
     }
 
     #[test]
     fn encode_swj_sequence_rounds_line_reset_up_with_high_padding() {
-        assert_eq!(encode_swj_sequence(51, SWD_LINE_RESET_ONES), vec![0xFF; 7]);
+        assert_eq!(
+            encode_swj_sequence(&BitSequence::from_u64(51, SWD_LINE_RESET_ONES)),
+            vec![0xFF; 7]
+        );
     }
 
     #[test]
     fn encode_swj_sequence_rounds_line_reset_low_suffix_to_zero_bytes() {
         assert_eq!(
-            encode_swj_sequence(53, SWD_LINE_RESET_ONES),
+            encode_swj_sequence(&BitSequence::from_u64(53, SWD_LINE_RESET_ONES)),
             vec![0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFC]
         );
     }

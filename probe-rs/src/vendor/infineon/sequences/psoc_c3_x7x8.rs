@@ -45,6 +45,7 @@ use crate::{
         sequences::{ArmDebugSequence, DefaultArmSequence, cortex_m_wait_for_reset},
     },
     config::CoreExt,
+    probe::BitSequence,
 };
 
 /// RAM address where the debug certificate is loaded (mandatory for x7/x8 series).
@@ -324,14 +325,30 @@ impl PsocC3X7X8 {
             // DORMANT-to-SWD sequence (ARM ADI §B4.3.4):
             // line reset → JTAG-to-Dormant → 8-cycle preamble → 128-bit alert → SWD activation →
             // line reset → idle
-            let ok = interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF).is_ok()
-                && interface.swj_sequence(31, 0x33BB_BBBA).is_ok()
-                && interface.swj_sequence(8, 0xFF).is_ok()
-                && interface.swj_sequence(64, 0x8685_2D95_6209_F392).is_ok()
-                && interface.swj_sequence(64, 0x19BC_0EA2_E3DD_AFE9).is_ok()
-                && interface.swj_sequence(12, 0x1A0).is_ok()
-                && interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF).is_ok()
-                && interface.swj_sequence(3, 0x00).is_ok();
+            let ok = interface
+                .swj_sequence(&BitSequence::from_u64(51, 0x0007_FFFF_FFFF_FFFF))
+                .is_ok()
+                && interface
+                    .swj_sequence(&BitSequence::from_u64(31, 0x33BB_BBBA))
+                    .is_ok()
+                && interface
+                    .swj_sequence(&BitSequence::from_u64(8, 0xFF))
+                    .is_ok()
+                && interface
+                    .swj_sequence(&BitSequence::from_u64(64, 0x8685_2D95_6209_F392))
+                    .is_ok()
+                && interface
+                    .swj_sequence(&BitSequence::from_u64(64, 0x19BC_0EA2_E3DD_AFE9))
+                    .is_ok()
+                && interface
+                    .swj_sequence(&BitSequence::from_u64(12, 0x1A0))
+                    .is_ok()
+                && interface
+                    .swj_sequence(&BitSequence::from_u64(51, 0x0007_FFFF_FFFF_FFFF))
+                    .is_ok()
+                && interface
+                    .swj_sequence(&BitSequence::from_u64(3, 0x00))
+                    .is_ok();
             if ok {
                 match interface.raw_read_register(RegisterAddress::DpRegister(DPIDR::ADDRESS)) {
                     Ok(v) => {

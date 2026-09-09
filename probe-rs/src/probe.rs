@@ -1,4 +1,5 @@
 //! Probe drivers
+mod bits;
 pub(crate) mod common;
 pub mod usb_util;
 
@@ -39,6 +40,7 @@ use std::any::Any;
 use std::fmt;
 use std::sync::{Arc, LazyLock};
 
+pub use bits::BitSequence;
 pub use selector::DebugProbeSelector;
 
 /// Used to log warnings when the measured target voltage is

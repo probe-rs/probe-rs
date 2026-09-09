@@ -10,7 +10,7 @@ use crate::{
         memory::{ADIMemoryInterface, ArmMemoryInterface, Component},
         sequences::ArmDebugSequence,
     },
-    probe::{DebugProbe, DebugProbeError, Probe, WireProtocol},
+    probe::{BitSequence, DebugProbe, DebugProbeError, Probe, WireProtocol},
 };
 use jep106::JEP106Code;
 
@@ -116,7 +116,7 @@ pub fn read_chip_info_from_rom_table(
 /// Support for sending raw sequences via the probe.
 pub trait SwdSequence {
     /// Corresponds to the DAP_SWJ_Sequence function from the ARM Debug sequences
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError>;
+    fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError>;
 
     /// Corresponds to the DAP_SWJ_Pins function from the ARM Debug sequences
     fn swj_pins(
@@ -297,8 +297,8 @@ impl ArmDebugInterface for ArmCommunicationInterface {
 }
 
 impl SwdSequence for ArmCommunicationInterface {
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
-        self.probe_mut().swj_sequence(bit_len, bits)?;
+    fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError> {
+        self.probe_mut().swj_sequence(bits)?;
 
         Ok(())
     }
