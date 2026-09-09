@@ -33,6 +33,15 @@ pub struct BatchExecutionError<E = Box<dyn std::error::Error + Send + Sync>> {
     pub results: Results,
 }
 
+impl<E> BatchExecutionError<E> {
+    pub(crate) fn new_from_debug_probe(error: DebugProbeError, results: Results) -> Self {
+        BatchExecutionError {
+            error: BatchError::Probe(error),
+            results,
+        }
+    }
+}
+
 impl BatchExecutionError {
     pub(crate) fn new_specific(
         error: Box<dyn std::error::Error + Send + Sync>,
@@ -44,13 +53,6 @@ impl BatchExecutionError {
                 Ok(error) => BatchError::Probe(*error),
                 Err(error) => BatchError::Specific(error),
             },
-            results,
-        }
-    }
-
-    pub(crate) fn new_from_debug_probe(error: DebugProbeError, results: Results) -> Self {
-        BatchExecutionError {
-            error: BatchError::Probe(error),
             results,
         }
     }
@@ -147,6 +149,10 @@ impl<Op, E: std::error::Error + Send + Sync + 'static> Batch<Op, E> {
     /// `execute()` returns an error.
     pub fn schedule(&mut self, cmd: impl Into<Op>) -> Handle<CommandResult> {
         self.batch.schedule(cmd)
+    }
+
+    pub(crate) fn iter(&self) -> impl Iterator<Item = &(HandleId, Op)> {
+        self.batch.iter()
     }
 
     /// Execute the batch and return results with typed errors.

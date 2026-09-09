@@ -416,7 +416,7 @@ impl JtagState {
     }
 }
 
-fn jtag_move_to_state(
+pub(crate) fn jtag_move_to_state(
     protocol: &mut impl RawJtagIo,
     target: JtagState,
 ) -> Result<(), DebugProbeError> {
@@ -434,7 +434,7 @@ fn jtag_move_to_state(
     Ok(())
 }
 
-fn shift_ir(
+pub(crate) fn shift_ir(
     protocol: &mut impl RawJtagIo,
     data: &[u8],
     len: usize,
@@ -485,7 +485,7 @@ fn shift_ir(
     Ok(())
 }
 
-fn shift_dr(
+pub(crate) fn shift_dr(
     protocol: &mut impl RawJtagIo,
     data: &[u8],
     register_bits: usize,
