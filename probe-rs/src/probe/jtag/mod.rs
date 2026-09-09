@@ -24,11 +24,11 @@
 pub mod chain;
 pub use chain::JtagChain;
 
-use bitvec::vec::BitVec;
+use bitvec::{slice::BitSlice, vec::BitVec};
 
 use super::{
     Batch, BatchExecutionError, BitSequence, CommandResult, DebugProbe, DebugProbeError, Handle,
-    RawJtagIo, Results,
+    JtagDriverState, JtagSequence, RawJtagIo, Results, queue::HandleId,
 };
 
 /// A stable TAP state that a caller may target.
@@ -215,6 +215,14 @@ pub trait JtagProbe: DebugProbe {
         batch: &JtagBatch,
     ) -> Result<Results, BatchExecutionError<DebugProbeError>>;
 
+    /// Clock a run of bits with one TMS value.
+    ///
+    /// The TAP may leave a stable state, so the caller owns the state while
+    /// this runs. The ICEPICK sequence is the one caller.
+    ///
+    /// This method does not read or write the tracked [`TapState`].
+    fn shift_raw_sequence(&mut self, sequence: JtagSequence) -> Result<BitVec, DebugProbeError>;
+
     /// Program IR lengths into the probe firmware, if it stores them.
     ///
     /// CMSIS-DAP `DAP_JTAG_Configure` is the one caller. The default body
@@ -222,6 +230,25 @@ pub trait JtagProbe: DebugProbe {
     /// for it.
     fn configure_jtag(&mut self, _skip_scan: bool) -> Result<(), DebugProbeError> {
         Ok(())
+    }
+}
+
+/// Access to the scan-chain state held by a JTAG probe driver.
+pub trait JtagStateAccess {
+    /// Returns a mutable reference to the driver state.
+    fn state_mut(&mut self) -> &mut JtagDriverState;
+
+    /// Returns the driver state.
+    fn state(&self) -> &JtagDriverState;
+}
+
+impl<P: RawJtagIo> JtagStateAccess for P {
+    fn state_mut(&mut self) -> &mut JtagDriverState {
+        RawJtagIo::state_mut(self)
+    }
+
+    fn state(&self) -> &JtagDriverState {
+        RawJtagIo::state(self)
     }
 }
 
@@ -266,7 +293,7 @@ pub trait BitbangJtag: DebugProbe {
     }
 }
 
-fn exchange_leaves_shift(current: TapState, next: Option<&JtagOp>) -> bool {
+pub(crate) fn exchange_leaves_shift(current: TapState, next: Option<&JtagOp>) -> bool {
     match next {
         Some(JtagOp::EnterState(target)) => {
             let path = current.path_to(*target);
@@ -276,11 +303,11 @@ fn exchange_leaves_shift(current: TapState, next: Option<&JtagOp>) -> bool {
     }
 }
 
-fn enter_tdi(target: TapState) -> bool {
+pub(crate) fn enter_tdi(target: TapState) -> bool {
     target == TapState::TestLogicReset
 }
 
-fn captured_bits_to_bytes(bits: impl IntoIterator<Item = bool>) -> Vec<u8> {
+pub(crate) fn captured_bits_to_bytes(bits: impl IntoIterator<Item = bool>) -> Vec<u8> {
     let mut bytes = Vec::new();
     let mut byte = 0u8;
     let mut bit_in_byte = 0usize;
@@ -299,6 +326,65 @@ fn captured_bits_to_bytes(bits: impl IntoIterator<Item = bool>) -> Vec<u8> {
         bytes.push(byte);
     }
     bytes
+}
+
+/// Group consecutive TMS bits that share the same value.
+pub(crate) fn tms_runs(path: &[bool]) -> Vec<(bool, usize)> {
+    let mut runs = Vec::new();
+    let mut index = 0;
+    while index < path.len() {
+        let value = path[index];
+        let mut length = 1;
+        while index + length < path.len() && path[index + length] == value {
+            length += 1;
+        }
+        runs.push((value, length));
+        index += length;
+    }
+    runs
+}
+
+/// Split the bits that a batch captured over the handles that asked for them.
+///
+/// The probe returns one run of bits for the whole batch, in the order of the
+/// operations.
+pub(crate) fn distribute_captures<'a>(
+    ops: impl IntoIterator<Item = &'a (HandleId, JtagOp)>,
+    captured: &BitSlice,
+    mut results: Results,
+) -> Result<Results, BatchExecutionError<DebugProbeError>> {
+    let mut offset = 0usize;
+    for (id, op) in ops {
+        let JtagOp::Exchange {
+            data,
+            capture: true,
+        } = op
+        else {
+            continue;
+        };
+        if !id.should_capture() {
+            continue;
+        }
+
+        let len = data.len();
+        let Some(bits) = captured.get(offset..offset + len) else {
+            return Err(BatchExecutionError::new_from_debug_probe(
+                DebugProbeError::Other(format!(
+                    "The probe captured {} bits, but the batch needs {}",
+                    captured.len(),
+                    offset + len
+                )),
+                results,
+            ));
+        };
+        offset += len;
+        results.push(
+            id,
+            CommandResult::VecU8(captured_bits_to_bytes(bits.iter().map(|b| *b))),
+        );
+    }
+
+    Ok(results)
 }
 
 /// Lower a batch to bit-banging, starting from `start`.
@@ -322,7 +408,7 @@ fn lower_batch<P: BitbangJtag>(
     batch: &JtagBatch,
 ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
     let ops: Vec<_> = batch.iter().collect();
-    let mut results = Results::new();
+    let results = Results::new();
     let mut skip_enter_path_bits = 0usize;
 
     for (index, (id, op)) in ops.iter().enumerate() {
@@ -385,36 +471,7 @@ fn lower_batch<P: BitbangJtag>(
         Err(error) => return Err(BatchExecutionError::new_from_debug_probe(error, results)),
     };
 
-    let mut capture_offset = 0usize;
-    for (id, op) in ops {
-        let JtagOp::Exchange {
-            data,
-            capture: true,
-        } = op
-        else {
-            continue;
-        };
-        if id.should_capture() {
-            let len = data.len();
-            let Some(bits) = captured.get(capture_offset..capture_offset + len) else {
-                return Err(BatchExecutionError::new_from_debug_probe(
-                    DebugProbeError::Other(format!(
-                        "The probe captured {} bits, but the batch needs {}",
-                        captured.len(),
-                        capture_offset + len
-                    )),
-                    results,
-                ));
-            };
-            capture_offset += len;
-            results.push(
-                id,
-                CommandResult::VecU8(captured_bits_to_bytes(bits.iter().map(|b| *b))),
-            );
-        }
-    }
-
-    Ok(results)
+    distribute_captures(ops, &captured, results)
 }
 
 impl<P: BitbangJtag> JtagProbe for P {
@@ -424,6 +481,14 @@ impl<P: BitbangJtag> JtagProbe for P {
     ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
         let start = *self.tap_state();
         run_bitbang_batch(self, start, batch)
+    }
+
+    fn shift_raw_sequence(&mut self, sequence: JtagSequence) -> Result<BitVec, DebugProbeError> {
+        for bit in sequence.data.iter() {
+            self.shift(sequence.tms, *bit, sequence.tdo_capture)?;
+        }
+        self.flush()?;
+        self.captured()
     }
 }
 
@@ -450,11 +515,14 @@ impl<P: RawJtagIo> BitbangJtag for P {
 }
 
 #[cfg(test)]
-mod golden;
+pub(crate) mod golden;
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::probe::{
+        BatchExecutionError, DebugProbe, DebugProbeError, JtagDriverState, Results, WireProtocol,
+    };
 
     const STABLE_STATES: [TapState; 6] = [
         TapState::TestLogicReset,
@@ -669,17 +737,126 @@ mod tests {
     }
 
     #[test]
-    fn icepick_zero_bit_scan_tms_sequence() {
-        let path = TapState::RunTestIdle
-            .path_to(TapState::PauseDr)
-            .iter()
-            .chain(TapState::PauseDr.path_to(TapState::RunTestIdle))
-            .copied()
-            .collect::<Vec<_>>();
+    fn icepick_zero_bit_scan_reaches_probe_as_single_bit_sequences() {
+        #[derive(Debug)]
+        struct RawSequenceRecorder {
+            sequences: Vec<(bool, bool)>,
+            jtag_state: JtagDriverState,
+        }
+
+        impl RawSequenceRecorder {
+            fn new() -> Self {
+                Self {
+                    sequences: Vec::new(),
+                    jtag_state: JtagDriverState::default(),
+                }
+            }
+        }
+
+        impl DebugProbe for RawSequenceRecorder {
+            fn get_name(&self) -> &str {
+                "raw sequence recorder"
+            }
+
+            fn speed_khz(&self) -> u32 {
+                0
+            }
+
+            fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
+                Ok(speed_khz)
+            }
+
+            fn attach(&mut self) -> Result<(), DebugProbeError> {
+                Ok(())
+            }
+
+            fn detach(&mut self) -> Result<(), crate::Error> {
+                Ok(())
+            }
+
+            fn target_reset(&mut self) -> Result<(), DebugProbeError> {
+                Err(DebugProbeError::CommandNotSupportedByProbe {
+                    command_name: "target_reset",
+                })
+            }
+
+            fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+                Err(DebugProbeError::CommandNotSupportedByProbe {
+                    command_name: "target_reset_assert",
+                })
+            }
+
+            fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+                Ok(())
+            }
+
+            fn select_protocol(&mut self, _protocol: WireProtocol) -> Result<(), DebugProbeError> {
+                Ok(())
+            }
+
+            fn active_protocol(&self) -> Option<WireProtocol> {
+                None
+            }
+
+            fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+                self
+            }
+        }
+
+        impl JtagStateAccess for RawSequenceRecorder {
+            fn state_mut(&mut self) -> &mut JtagDriverState {
+                &mut self.jtag_state
+            }
+
+            fn state(&self) -> &JtagDriverState {
+                &self.jtag_state
+            }
+        }
+
+        impl JtagProbe for RawSequenceRecorder {
+            fn run_batch(
+                &mut self,
+                _batch: &JtagBatch,
+            ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
+                Ok(Results::new())
+            }
+
+            fn shift_raw_sequence(
+                &mut self,
+                sequence: JtagSequence,
+            ) -> Result<BitVec, DebugProbeError> {
+                assert_eq!(sequence.data.len(), 1);
+                self.sequences.push((sequence.tms, sequence.data[0]));
+                Ok(BitVec::new())
+            }
+        }
+
+        use crate::probe::JtagAccess;
+
+        let mut probe = RawSequenceRecorder::new();
+        for tms in [true, false, true, false, true, true, false] {
+            JtagAccess::shift_raw_sequence(
+                &mut probe,
+                JtagSequence {
+                    tdo_capture: false,
+                    tms,
+                    data: bitvec::bitvec![1; 1],
+                },
+            )
+            .unwrap();
+        }
+
         assert_eq!(
-            path,
-            [true, false, true, false, true, true, false],
-            "ICEPICK ZBS TMS sequence"
+            probe.sequences,
+            [
+                (true, true),
+                (false, true),
+                (true, true),
+                (false, true),
+                (true, true),
+                (true, true),
+                (false, true),
+            ]
         );
     }
 

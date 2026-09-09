@@ -42,7 +42,7 @@ use std::sync::{Arc, LazyLock};
 
 pub use bits::BitSequence;
 pub use jtag::chain::ChainParams;
-pub use jtag::{JtagBatch, JtagChain, JtagOp, JtagProbe, TapState};
+pub use jtag::{BitbangJtag, JtagBatch, JtagChain, JtagOp, JtagProbe, JtagStateAccess, TapState};
 pub use queue::{Batch, BatchError, BatchExecutionError, ErasedBatch, Handle, JtagQueue, Results};
 #[allow(deprecated)]
 pub use queue::{DeferredResultIndex, DeferredResultSet, ErasedQueue, Queue};
