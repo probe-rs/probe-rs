@@ -42,27 +42,25 @@ use crate::{
         core::armv7m::Dhcsr,
         dp::{Ctrl, DPIDR, DpAccess, DpAddress, DpRegister},
         memory::ArmMemoryInterface,
-        sequences::{ArmDebugSequence, DefaultArmSequence, cortex_m_wait_for_reset},
+        sequences::{
+            ArmDebugSequence, DebugEraseSequence, DefaultArmSequence, cortex_m_wait_for_reset,
+        },
     },
     config::CoreExt,
+};
+
+use super::{
+    psoc_c3_common::{self, AP_CSW, Cm33ApCsw, SysApCsw},
+    psoc_c3_erase::DualBankErase,
 };
 
 /// RAM address where the debug certificate is loaded (mandatory for x7/x8 series).
 const DEBUG_CERTIFICATE: u32 = 0x3400_4000;
 
-/// SYS AP base address (`__apid=0`).
-const SYS_AP_BASE: u64 = 0xF000_0000;
-/// CM33 AP base address (`__apid=1`).
-const CM33_AP_BASE: u64 = 0xF000_2000;
 /// PPCA Core0 AP base address.
 const PPCA0_AP_BASE: u64 = 0xF000_6000;
 /// PPCA Core1 AP base address (x8 only).
 const PPCA1_AP_BASE: u64 = 0xF000_8000;
-
-// ADIv6 AP register offsets (same layout for all APv2 APs).
-const AP_CSW: u64 = 0xD00;
-const AP_TAR: u64 = 0xD04;
-const AP_DRW: u64 = 0xD0C;
 
 // ---------------------------------------------------------------------------
 // PPCA hardware register addresses (CM33 secure address map, `0x5xxx_xxxx`).
@@ -106,92 +104,6 @@ const STUB_RESET_HANDLER: u32 = 0x0000_0009;
 const PPCA_AP_CTL_ENABLE: u32 = 0x337;
 /// Value written to `CPUSS_AP_CTL` to expose the PPCA AP to the main CPUSS.
 const CPUSS_AP_CTL_ENABLE: u32 = 0x0000_53F7;
-
-bitfield! {
-    /// SYS AP CSW register — Infineon proprietary bus-access AP.
-    ///
-    /// Bit layout matches the standard AMBA AHB-AP CSW layout (ADI spec C2.2).
-    #[derive(Clone, Copy)]
-    struct SysApCsw(u32);
-    impl Debug;
-
-    /// DbgSwEnable — must be 1 to enable DAP software access.
-    pub dbg_sw_enable, set_dbg_sw_enable: 31;
-    /// HNONSEC — 0 = secure transaction, 1 = non-secure.
-    pub hnonsec, set_hnonsec: 30;
-    /// MasterType — selects debug master ID on HMASTER signals.
-    pub master_type, set_master_type: 29;
-    /// HPROT[3] Cacheable.
-    pub cacheable, set_cacheable: 27;
-    /// HPROT[1] Privileged.
-    pub privileged, set_privileged: 25;
-    /// HPROT[0] Data.
-    pub data, set_data: 24;
-    /// Size[2:0] — access width: 0=byte, 1=halfword, 2=word.
-    u8, size, set_size: 2, 0;
-}
-
-impl SysApCsw {
-    /// Standard value for SRSS writes:
-    /// DbgSwEnable=1, HNONSEC=0, MasterType=1, Cacheable=1, Privileged=1, Data=1, Size=Word.
-    fn secure_word() -> Self {
-        let mut v = Self(0);
-        v.set_dbg_sw_enable(true);
-        v.set_hnonsec(false); // secure
-        v.set_master_type(true);
-        v.set_cacheable(true);
-        v.set_privileged(true);
-        v.set_data(true);
-        v.set_size(2); // Word
-        v
-    }
-}
-
-bitfield! {
-    /// CM33 AP CSW register.
-    #[derive(Clone, Copy)]
-    struct Cm33ApCsw(u32);
-    impl Debug;
-
-    /// CSW.Size\[2:0\] — access size: 0=byte, 1=halfword, 2=word.
-    u8, size, set_size: 2, 0;
-    /// CSW.AddrInc\[5:4\] — address increment: 0=off, 1=single, 2=packed.
-    u8, addr_inc, set_addr_inc: 5, 4;
-    /// CSW.DeviceEn bit — AP is open when set.
-    pub device_en, _: 6;
-    /// CSW.SDeviceEn/SPIDEN — secure debug enabled when set.
-    pub s_device_en, _: 23;
-    /// CSW.Data (HPROT\[0\]) — data access.
-    pub data, set_data: 24;
-    /// CSW.Privileged (HPROT\[1\]) — privileged access.
-    pub privileged, set_privileged: 25;
-    /// CSW.Cacheable (HPROT\[3\]) — cacheable access.
-    pub cacheable, set_cacheable: 27;
-    /// CSW.HNONSEC bit — non-secure transaction when set.
-    pub hnonsec, set_hnonsec: 30;
-}
-
-impl Cm33ApCsw {
-    /// Bits preserved from the original CSW (implementation-defined/reserved).
-    /// Clears Size[2:0], AddrInc[5:4], and HPROT[0,1,3] for explicit reconfiguration.
-    const PRESERVE_MASK: u32 = 0xB0FF_FFC0;
-
-    /// Build the standard CSW for word-width privileged debug access.
-    ///
-    /// Preserves implementation-defined bits, then explicitly sets Size=Word,
-    /// AddrInc=Single, HPROT\[0,1,3\], and HNONSEC from SDeviceEn.
-    fn with_standard_access(csw: u32) -> Self {
-        let mut out = Self(csw & Self::PRESERVE_MASK);
-        out.set_size(2); // Word (32-bit)
-        out.set_addr_inc(1); // Single increment
-        out.set_data(true); // HPROT[0]: data access
-        out.set_privileged(true); // HPROT[1]: privileged
-        out.set_cacheable(true); // HPROT[3]: cacheable
-        // HNONSEC=0 when SDeviceEn=1 (secure debug active), =1 otherwise.
-        out.set_hnonsec((csw >> 23) & 1 == 0);
-        out
-    }
-}
 
 bitfield! {
     /// SRSS soft reset control register payload.
@@ -241,6 +153,8 @@ pub struct PsocC3X7X8 {
     cm33_ap: FullyQualifiedApAddress,
     /// PPCA access ports, in core-index order: index 0 = PPCA Core0, index 1 = PPCA Core1.
     ppca_aps: Vec<FullyQualifiedApAddress>,
+    /// How this part has to be erased, decided once the device reports its bank layout.
+    erase: DualBankErase,
 }
 
 impl PsocC3X7X8 {
@@ -249,7 +163,7 @@ impl PsocC3X7X8 {
         let dp = DpAddress::Default;
 
         // The CM33 AP is always at base 0xF000_2000.
-        let cm33_ap = FullyQualifiedApAddress::v2_with_dp(dp, ApV2Address::new(CM33_AP_BASE));
+        let cm33_ap = Self::cm33_ap(dp);
 
         // Collect PPCA APs in deterministic order: Core0 (0xF0006000), Core1 (0xF0008000).
         let mut ppca_aps = Vec::new();
@@ -275,32 +189,15 @@ impl PsocC3X7X8 {
             ));
         }
 
-        Arc::new(PsocC3X7X8 { cm33_ap, ppca_aps })
-    }
-
-    fn sys_ap(dp: DpAddress) -> FullyQualifiedApAddress {
-        FullyQualifiedApAddress::v2_with_dp(dp, ApV2Address(Some(SYS_AP_BASE)))
+        Arc::new(PsocC3X7X8 {
+            cm33_ap,
+            ppca_aps,
+            erase: DualBankErase::new(chip),
+        })
     }
 
     fn cm33_ap(dp: DpAddress) -> FullyQualifiedApAddress {
-        FullyQualifiedApAddress::v2_with_dp(dp, ApV2Address(Some(CM33_AP_BASE)))
-    }
-
-    /// Write one 32-bit word to `addr` through the given AP using raw TAR/DRW register writes.
-    ///
-    /// `memory_interface()` cannot be used for the SYS AP: that function initialises a
-    /// standard AMBA memory-AP adapter and resets CSW to a generic default, which clears
-    /// the SYS AP's `DbgSwEnable` bit and makes subsequent transfers fail.  The SYS AP is
-    /// Infineon's proprietary bus-access portal, not a standard AHB/AXI AP.
-    fn write_mem32(
-        iface: &mut dyn ArmDebugInterface,
-        ap: &FullyQualifiedApAddress,
-        addr: u32,
-        val: u32,
-    ) -> Result<(), ArmError> {
-        iface.write_raw_ap_register(ap, AP_TAR, addr)?;
-        iface.write_raw_ap_register(ap, AP_DRW, val)?;
-        Ok(())
+        psoc_c3_common::cm33_ap(dp)
     }
 
     /// Re-send the DORMANT-to-SWD sequence and try to read DPIDR.
@@ -558,6 +455,11 @@ impl ArmDebugSequence for PsocC3X7X8 {
         }
     }
 
+    /// Erase flash through the SROM API, but only on a dual-bank device.
+    fn debug_erase_sequence(&self) -> Option<Arc<dyn DebugEraseSequence>> {
+        self.erase.sequence(self.cm33_ap.clone())
+    }
+
     /// `--connect-under-reset` is not supported on PSoC C3 x7/x8 devices.
     ///
     /// The debug port starts in dormant state and requires the chip to be powered
@@ -659,7 +561,7 @@ impl ArmDebugSequence for PsocC3X7X8 {
                 "PSoC C3 x7/x8: DeviceEn=0 (AP closed) — sending WFA request and resetting"
             );
 
-            let sys_ap = Self::sys_ap(dp);
+            let sys_ap = psoc_c3_common::sys_ap(dp);
             interface.write_raw_ap_register(&sys_ap, AP_CSW, SysApCsw::secure_word().0)?;
 
             // CTRL/STAT.READOK=1 means the previous AP read was in the secure domain.
@@ -672,7 +574,7 @@ impl ArmDebugSequence for PsocC3X7X8 {
             tracing::debug!("PSoC C3 x7/x8: domain_secure={}", ctrl_stat.read_ok());
 
             // Write cert address first — mandatory for x7/x8 series.
-            Self::write_mem32(
+            psoc_c3_common::write_mem32(
                 interface,
                 &sys_ap,
                 SrssBootDlmCtl2::ADDRESS | sec_off,
@@ -680,7 +582,7 @@ impl ArmDebugSequence for PsocC3X7X8 {
             )?;
 
             // Set WFA request; boot ROM reads it after soft reset.
-            Self::write_mem32(
+            psoc_c3_common::write_mem32(
                 interface,
                 &sys_ap,
                 SrssBootDlmCtl::ADDRESS | sec_off,
@@ -688,7 +590,7 @@ impl ArmDebugSequence for PsocC3X7X8 {
             )?;
 
             // Trigger soft reset via SYS AP — SWD will drop, error is expected.
-            let _ = Self::write_mem32(
+            let _ = psoc_c3_common::write_mem32(
                 interface,
                 &sys_ap,
                 SrssResSoftCtl::ADDRESS | sec_off,
@@ -721,6 +623,12 @@ impl ArmDebugSequence for PsocC3X7X8 {
             new_csw.hnonsec(),
         );
         interface.write_raw_ap_register(&cm33_ap, AP_CSW, new_csw.0)?;
+
+        // Detect and log the flash bank mode (single vs dual). Best-effort - a read
+        // failure here must not abort attach, so the error is intentionally ignored.
+        if let Ok(mode) = psoc_c3_common::detect_flash_bank_mode(interface, &cm33_ap) {
+            self.erase.set_mode(mode);
+        }
 
         Ok(())
     }
@@ -759,12 +667,12 @@ impl ArmDebugSequence for PsocC3X7X8 {
         tracing::debug!("PSoC C3 x7/x8: reset_system — SRSS soft reset via SYS AP");
 
         let dp = interface.fully_qualified_address().dp();
-        let sys_ap = Self::sys_ap(dp);
+        let sys_ap = psoc_c3_common::sys_ap(dp);
         {
             let arm = interface.get_arm_debug_interface()?;
             arm.write_raw_ap_register(&sys_ap, AP_CSW, SysApCsw::secure_word().0)?;
             // Write triggers an immediate soft reset; transaction error is expected.
-            let _ = Self::write_mem32(
+            let _ = psoc_c3_common::write_mem32(
                 arm,
                 &sys_ap,
                 SrssResSoftCtl::ADDRESS | SECURE_ALIAS_OFFSET,
