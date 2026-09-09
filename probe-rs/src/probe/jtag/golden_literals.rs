@@ -79,6 +79,11 @@ const SHIFT_DR_THREE_TAP_SIXTY_FOUR: (&str, &str, &str) = (
 
 const RESET: (&str, &str, &str) = ("111110", "111111", "000000");
 const RESET_TLR_BITS: (&str, &str, &str) = ("11111", "11111", "00000");
+const REGISTER_WRITE_EIGHT_IDLE: (&str, &str, &str) = (
+    "01100000011100000000000000000000000000000000000000000011000000000",
+    "00000011010000100000000100000011000000001000001010000000000000000",
+    "00000000000000000000000000000000000000000000000000000000000000000",
+);
 
 fn move_literal(from: TapState, to: TapState) -> (&'static str, &'static str, &'static str) {
     match (from, to) {

@@ -76,14 +76,12 @@ fn perform_jtag_transfer<P: JtagAccess + RawSwdIo>(
     let (payload, address) = build_jtag_payload_and_address(transfer);
     let data = payload.to_le_bytes();
 
-    let idle_cycles = probe.idle_cycles();
-    probe.set_idle_cycles(transfer.idle_cycles_after.min(255) as u8)?;
-
-    // This is a bit confusing, but a read from any port is still
-    // a JTAG write as we have to transmit the address
-    let result = probe.write_register(address, &data[..], JTAG_DR_BIT_LENGTH);
-
-    probe.set_idle_cycles(idle_cycles)?;
+    let result = probe.write_register(
+        address,
+        &data[..],
+        JTAG_DR_BIT_LENGTH,
+        transfer.idle_cycles_after.min(255) as u32,
+    );
 
     let result = result?;
 
@@ -141,16 +139,6 @@ fn perform_jtag_transfers<P: JtagAccess + RawSwdIo>(
 
     let mut status_responses = vec![TransferStatus::Pending; results.len()];
 
-    // Simplification: use the maximum idle cycles of all transfers, because the batched API
-    // doesn't allow for individual values.
-    let max_idle_cycles = transfers
-        .iter()
-        .map(|t| t.idle_cycles_after)
-        .max()
-        .unwrap_or(0);
-    let idle_cycles = probe.idle_cycles();
-    probe.set_idle_cycles(max_idle_cycles.min(255) as u8)?;
-
     // Execute as much of the batch as we can. We'll handle the rest in a following iteration
     // if we can.
     let mut jtag_results;
@@ -175,8 +163,6 @@ fn perform_jtag_transfers<P: JtagAccess + RawSwdIo>(
             }
         }
     }
-
-    probe.set_idle_cycles(idle_cycles)?;
 
     // Process the results. At this point we should only have OK/FAULT responses.
     for (i, transfer) in transfers.iter_mut().enumerate() {
@@ -615,6 +601,7 @@ impl DapTransfer {
                 address,
                 data: payload.to_le_bytes().to_vec(),
                 len: JTAG_DR_BIT_LENGTH,
+                idle_cycles: self.idle_cycles_after.min(255) as u32,
             },
             transform: |data, response| {
                 // No responses returned for aborts.
@@ -1228,8 +1215,6 @@ mod test {
         swd_settings: SwdSettings,
 
         protocol: WireProtocol,
-
-        idle_cycles: u8,
     }
 
     impl MockJaylink {
@@ -1245,8 +1230,6 @@ mod test {
                 swd_settings: SwdSettings::default(),
 
                 protocol: WireProtocol::Swd,
-
-                idle_cycles: 0,
             }
         }
 
@@ -1414,17 +1397,13 @@ mod test {
             todo!()
         }
 
-        fn read_register(&mut self, _address: u32, _len: u32) -> Result<BitVec, DebugProbeError> {
+        fn read_register(
+            &mut self,
+            _address: u32,
+            _len: u32,
+            _idle_cycles: u32,
+        ) -> Result<BitVec, DebugProbeError> {
             todo!()
-        }
-
-        fn set_idle_cycles(&mut self, idle_cycles: u8) -> Result<(), DebugProbeError> {
-            self.idle_cycles = idle_cycles;
-            Ok(())
-        }
-
-        fn idle_cycles(&self) -> u8 {
-            self.idle_cycles
         }
 
         fn write_register(
@@ -1432,6 +1411,7 @@ mod test {
             address: u32,
             data: &[u8],
             len: u32,
+            _idle_cycles: u32,
         ) -> Result<BitVec, DebugProbeError> {
             let jtag_value = data[..5].view_bits::<Lsb0>().load_le::<u64>();
 
@@ -1467,7 +1447,12 @@ mod test {
             Ok(ret_vec)
         }
 
-        fn write_dr(&mut self, _data: &[u8], _len: u32) -> Result<BitVec, DebugProbeError> {
+        fn write_dr(
+            &mut self,
+            _data: &[u8],
+            _len: u32,
+            _idle_cycles: u32,
+        ) -> Result<BitVec, DebugProbeError> {
             unimplemented!()
         }
     }

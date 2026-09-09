@@ -509,4 +509,27 @@ mod tests {
             Err(DebugProbeError::TargetNotFound)
         ));
     }
+
+    #[test]
+    fn run_test_idle_zero_schedules_enter_run_test_idle_only() {
+        let mut probe = BatchRecorder::new();
+        let mut chain = JtagChain::new(&mut probe, Vec::new(), None, ChainParams::default());
+        let mut batch = JtagBatch::new();
+        chain.run_test_idle(&mut batch, 0);
+        let ops: Vec<_> = batch.iter().map(|(_, op)| op.clone()).collect();
+        assert_eq!(ops.len(), 1);
+        assert!(matches!(ops[0], JtagOp::EnterState(TapState::RunTestIdle)));
+    }
+
+    #[test]
+    fn run_test_idle_nonzero_schedules_enter_and_clock() {
+        let mut probe = BatchRecorder::new();
+        let mut chain = JtagChain::new(&mut probe, Vec::new(), None, ChainParams::default());
+        let mut batch = JtagBatch::new();
+        chain.run_test_idle(&mut batch, 8);
+        let ops: Vec<_> = batch.iter().map(|(_, op)| op.clone()).collect();
+        assert_eq!(ops.len(), 2);
+        assert!(matches!(ops[0], JtagOp::EnterState(TapState::RunTestIdle)));
+        assert!(matches!(ops[1], JtagOp::ClockTck { count: 8 }));
+    }
 }

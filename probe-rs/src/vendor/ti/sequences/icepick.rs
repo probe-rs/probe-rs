@@ -112,7 +112,7 @@ impl<'a> Icepick<'a> {
 
         // Enable write by setting the `ConnectKey` to 0b1001 (0x9) as per TRM section 6.3.3
         this.probe
-            .write_register(IR_CONNECT, &[0x89], 8)
+            .write_register(IR_CONNECT, &[0x89], 8, 0)
             .inspect_err(|e| tracing::error!("Couldn't write IR_CONNECT: {e}"))?;
 
         // Write to register 1 in the ICEPICK control block - keep JTAG powered in test logic reset
@@ -189,11 +189,11 @@ impl<'a> Icepick<'a> {
         let dr = (rw << 31) | (u32::from(register) << 24) | (payload & 0xFFFFFF);
 
         self.probe
-            .write_register(IR_ROUTER, &dr.to_le_bytes(), 32)?;
+            .write_register(IR_ROUTER, &dr.to_le_bytes(), 32, 0)?;
 
         let result = self
             .probe
-            .write_register(IR_ROUTER, &0u32.to_le_bytes(), 32)?;
+            .write_register(IR_ROUTER, &0u32.to_le_bytes(), 32, 0)?;
         tracing::trace!(
             "Value of {register:02x?}: 0x{:08x}",
             result.load_le::<u32>()
@@ -216,13 +216,10 @@ impl<'a> Icepick<'a> {
         self.icepick_router(IcepickRoutingRegister::SdTap(secondary_tap), SD_TAP_DEFAULT)?;
 
         // Stay in Run/Test Idle for at least three cycles to activate the TAP
-        self.probe.set_idle_cycles(3)?;
-
         // Enter the bypass state to remove the ICEPick from the scan chain.
         // This will insert three cycles after the configuration in order to make
         // the target TAP appear.
-        self.probe.read_register(IR_BYPASS, 1)?;
-        self.probe.set_idle_cycles(0)?;
+        self.probe.read_register(IR_BYPASS, 1, 3)?;
 
         self.probe
             .set_expected_scan_chain(&[

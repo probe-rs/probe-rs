@@ -84,6 +84,7 @@ fn shift_dr(
     data: &[u8],
     register_bits: usize,
     capture_data: bool,
+    idle_cycles: usize,
 ) -> Result<usize, DebugProbeError> {
     tracing::debug!("Write DR: {:?}, len={}", data, register_bits);
 
@@ -123,7 +124,6 @@ fn shift_dr(
 
     jtag_move_to_state(protocol, JtagState::Dr(RegisterState::Update))?;
 
-    let idle_cycles = protocol.state().jtag_idle_cycles;
     if idle_cycles > 0 {
         jtag_move_to_state(protocol, JtagState::Idle)?;
 
@@ -343,8 +343,27 @@ fn record_shift_ir(params: ChainParams) -> Vec<(bool, bool, bool)> {
 fn record_shift_dr(params: ChainParams, bytes: &[u8], len: usize) -> Vec<(bool, bool, bool)> {
     let mut recorder = GoldenRecorder::new();
     recorder.jtag_state.chain_params = params;
-    shift_dr(&mut recorder, bytes, len, false).unwrap();
+    shift_dr(&mut recorder, bytes, len, false, 0).unwrap();
     jtag_move_to_state(&mut recorder, JtagState::Idle).unwrap();
+    recorder.take_triples()
+}
+
+fn record_register_write(
+    params: ChainParams,
+    bytes: &[u8],
+    len: usize,
+    idle_cycles: u32,
+) -> Vec<(bool, bool, bool)> {
+    let mut recorder = GoldenRecorder::new();
+    recorder.jtag_state.chain_params = params;
+    shift_ir(&mut recorder, &[IR_VALUE], IR_LEN, false).unwrap();
+    shift_dr(&mut recorder, bytes, len, false, 0).unwrap();
+    jtag_move_to_state(&mut recorder, JtagState::Idle).unwrap();
+    if idle_cycles > 0 {
+        let tms = std::iter::repeat_n(false, idle_cycles as usize);
+        let tdi = std::iter::repeat_n(false, idle_cycles as usize);
+        recorder.shift_bits(tms, tdi, iter::repeat(false)).unwrap();
+    }
     recorder.take_triples()
 }
 
@@ -378,6 +397,27 @@ fn lowering_shift_dr(params: ChainParams, bytes: &[u8], len: usize) -> Vec<(bool
     batch.enter(TapState::ShiftDr);
     batch.exchange_no_capture(build_dr_exchange(params, bytes, len));
     batch.enter(TapState::RunTestIdle);
+    run_bitbang_batch(&mut recorder, TapState::TestLogicReset, &batch).unwrap();
+    recorder.take_triples()
+}
+
+fn lowering_register_write(
+    params: ChainParams,
+    bytes: &[u8],
+    len: usize,
+    idle_cycles: u32,
+) -> Vec<(bool, bool, bool)> {
+    let mut recorder = GoldenRecorder::new();
+    recorder.jtag_state.chain_params = params;
+    let mut batch = JtagBatch::new();
+    batch.enter(TapState::ShiftIr);
+    batch.exchange_no_capture(build_ir_exchange(params, IR_VALUE, IR_LEN));
+    batch.enter(TapState::ShiftDr);
+    batch.exchange_no_capture(build_dr_exchange(params, bytes, len));
+    batch.enter(TapState::RunTestIdle);
+    if idle_cycles > 0 {
+        batch.clock(idle_cycles);
+    }
     run_bitbang_batch(&mut recorder, TapState::TestLogicReset, &batch).unwrap();
     recorder.take_triples()
 }
@@ -585,6 +625,32 @@ mod tests {
             RESET_TLR_BITS.0,
             RESET_TLR_BITS.1,
             RESET_TLR_BITS.2,
+        );
+    }
+
+    #[test]
+    fn lowering_register_write_with_eight_idle_cycles_matches_golden() {
+        let bytes = [0x01u8, 0x02, 0x03, 0x04, 0x05, 0x06];
+        let params = one_tap_params();
+        let triples = lowering_register_write(params, &bytes, 41, 8);
+        assert_triples_eq(
+            &triples,
+            REGISTER_WRITE_EIGHT_IDLE.0,
+            REGISTER_WRITE_EIGHT_IDLE.1,
+            REGISTER_WRITE_EIGHT_IDLE.2,
+        );
+    }
+
+    #[test]
+    fn recorder_register_write_with_eight_idle_cycles_matches_golden() {
+        let bytes = [0x01u8, 0x02, 0x03, 0x04, 0x05, 0x06];
+        let params = one_tap_params();
+        let triples = record_register_write(params, &bytes, 41, 8);
+        assert_triples_eq(
+            &triples,
+            REGISTER_WRITE_EIGHT_IDLE.0,
+            REGISTER_WRITE_EIGHT_IDLE.1,
+            REGISTER_WRITE_EIGHT_IDLE.2,
         );
     }
 }

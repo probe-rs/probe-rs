@@ -25,6 +25,9 @@ struct DtmState {
 
     /// Number of address bits in the DMI register
     abits: u32,
+
+    /// TCK cycles in Run-Test/Idle after each DMI access.
+    idle_cycles: u8,
 }
 
 /// Object that can be used to build a RISC-V DTM interface
@@ -124,7 +127,7 @@ impl<'probe> JtagDtm<'probe> {
         let bit_size = self.state.abits + DMI_ADDRESS_BIT_OFFSET;
 
         self.probe
-            .write_register(DMI_ADDRESS, &bytes, bit_size)
+            .write_register(DMI_ADDRESS, &bytes, bit_size, self.state.idle_cycles as u32)
             .map(|bits| Self::transform_dmi_result(&bits))
     }
 
@@ -141,6 +144,7 @@ impl<'probe> JtagDtm<'probe> {
                 address: DMI_ADDRESS,
                 data: bytes.to_vec(),
                 len: bit_size,
+                idle_cycles: self.state.idle_cycles as u32,
             },
             transform: |_, result| Self::transform_dmi_result(result).map(CommandResult::U32),
         }))
@@ -161,8 +165,7 @@ impl<'probe> JtagDtm<'probe> {
                 Err(DmiOperationError::RequestInProgress) => {
                     // Operation still in progress, reset dmi status and try again.
                     self.clear_error_state()?;
-                    self.probe
-                        .set_idle_cycles(self.probe.idle_cycles().saturating_add(1))?;
+                    self.state.idle_cycles = self.state.idle_cycles.saturating_add(1);
                 }
                 // A reserved status is defined to be interpreted like a failure.
                 Err(DmiOperationError::Reserved | DmiOperationError::OperationFailed) => {
@@ -182,7 +185,7 @@ impl<'probe> JtagDtm<'probe> {
 impl DtmAccess for JtagDtm<'_> {
     fn init(&mut self) -> Result<(), RiscvError> {
         self.probe.tap_reset()?;
-        let dtmcs_raw = self.probe.read_register(DTMCS_ADDRESS, DTMCS_WIDTH)?;
+        let dtmcs_raw = self.probe.read_register(DTMCS_ADDRESS, DTMCS_WIDTH, 0)?;
 
         let raw_dtmcs = dtmcs_raw.load_le::<u32>();
 
@@ -204,7 +207,7 @@ impl DtmAccess for JtagDtm<'_> {
         }
 
         // Setup the number of idle cycles between JTAG accesses
-        self.probe.set_idle_cycles(idle_cycles as u8)?;
+        self.state.idle_cycles = idle_cycles as u8;
         self.state.abits = abits;
 
         Ok(())
@@ -227,8 +230,12 @@ impl DtmAccess for JtagDtm<'_> {
 
         let bytes = reg_value.to_le_bytes();
 
-        self.probe
-            .write_register(DTMCS_ADDRESS, &bytes, DTMCS_WIDTH)?;
+        self.probe.write_register(
+            DTMCS_ADDRESS,
+            &bytes,
+            DTMCS_WIDTH,
+            self.state.idle_cycles as u32,
+        )?;
 
         Ok(())
     }
@@ -273,9 +280,8 @@ impl DtmAccess for JtagDtm<'_> {
                                     cmds.consume(e.results.len());
                                     self.state.jtag_results.merge_from(e.results);
 
-                                    self.probe.set_idle_cycles(
-                                        self.probe.idle_cycles().saturating_add(1),
-                                    )?;
+                                    self.state.idle_cycles =
+                                        self.state.idle_cycles.saturating_add(1);
                                 }
                                 DmiOperationError::Reserved
                                 | DmiOperationError::OperationFailed => {
@@ -351,7 +357,7 @@ impl DtmAccess for JtagDtm<'_> {
         // After reset, the IDCODE instruction is automatically loaded into IR, and we then
         // explicitly load it again via read_register(0x1, …) to be consistent with all paths.
         self.probe.tap_reset()?;
-        let value = self.probe.read_register(0x1, 32)?;
+        let value = self.probe.read_register(0x1, 32, 0)?;
 
         Ok(Some(value.load_le::<u32>()))
     }
@@ -396,11 +402,12 @@ impl<'probe> TunneledJtagDtm<'probe> {
             self.select_dtmcs.address,
             &self.select_dtmcs.data,
             self.select_dtmcs.len,
+            self.state.idle_cycles as u32,
         )?;
         let cmd = tunnel_dtmcs_data(data);
         let result = self
             .probe
-            .write_dr(&cmd.data, cmd.len)
+            .write_dr(&cmd.data, cmd.len, self.state.idle_cycles as u32)
             .map(|r| tunnel_dtmcs_transform(&cmd, &r))?;
 
         match result {
@@ -425,18 +432,24 @@ impl<'probe> TunneledJtagDtm<'probe> {
             self.select_dmi.address,
             &self.select_dmi.data,
             self.select_dmi.len,
+            self.state.idle_cycles as u32,
         )?;
 
         let dmi_bits = self.state.abits + DMI_ADDRESS_BIT_OFFSET;
         let (bit_size, bytes) = op.to_tunneled_byte_batch(dmi_bits);
-        let result = self.probe.write_dr(&bytes, bit_size)?;
+        let result = self
+            .probe
+            .write_dr(&bytes, bit_size, self.state.idle_cycles as u32)?;
         let tunneled_result = Self::transform_tunneled_dr_result(&result);
         Ok(JtagDtm::transform_dmi_result(tunneled_result))
     }
 
     fn make_select_command(&self) -> JtagWriteCommand<DmiOperationError> {
         JtagWriteCommand {
-            data: self.select_dmi.clone(),
+            data: JtagWriteData {
+                idle_cycles: self.state.idle_cycles as u32,
+                ..self.select_dmi.clone()
+            },
             transform: |_, _| Ok(CommandResult::None),
         }
     }
@@ -456,6 +469,7 @@ impl<'probe> TunneledJtagDtm<'probe> {
             inner: ShiftDrData {
                 data: bytes.to_vec(),
                 len: bit_size,
+                idle_cycles: self.state.idle_cycles as u32,
             },
             transform: |_, raw_result| {
                 let result = TunneledJtagDtm::transform_tunneled_dr_result(raw_result);
@@ -479,8 +493,7 @@ impl<'probe> TunneledJtagDtm<'probe> {
                 Err(DmiOperationError::RequestInProgress) => {
                     // Operation still in progress, reset dmi status and try again.
                     self.clear_error_state()?;
-                    self.probe
-                        .set_idle_cycles(self.probe.idle_cycles().saturating_add(1))?;
+                    self.state.idle_cycles = self.state.idle_cycles.saturating_add(1);
                 }
                 // A reserved status is defined to be interpreted like a failure.
                 Err(DmiOperationError::Reserved | DmiOperationError::OperationFailed) => {
@@ -520,7 +533,7 @@ impl DtmAccess for TunneledJtagDtm<'_> {
         }
 
         // Setup the number of idle cycles between JTAG accesses
-        self.probe.set_idle_cycles(idle_cycles as u8)?;
+        self.state.idle_cycles = idle_cycles as u8;
         self.state.abits = abits;
 
         Ok(())
@@ -586,9 +599,8 @@ impl DtmAccess for TunneledJtagDtm<'_> {
                                     cmds.consume(e.results.len());
                                     self.state.jtag_results.merge_from(e.results);
 
-                                    self.probe.set_idle_cycles(
-                                        self.probe.idle_cycles().saturating_add(1),
-                                    )?;
+                                    self.state.idle_cycles =
+                                        self.state.idle_cycles.saturating_add(1);
                                 }
                                 DmiOperationError::Reserved
                                 | DmiOperationError::OperationFailed => {
@@ -662,7 +674,7 @@ impl DtmAccess for TunneledJtagDtm<'_> {
         // This is required when read_idcode() is called without a prior dtm.init() (e.g.
         // from `probe-rs info`), because the TAP state may be indeterminate after attach.
         self.probe.tap_reset()?;
-        let value = self.probe.read_register(0x1, 32)?;
+        let value = self.probe.read_register(0x1, 32, 0)?;
         Ok(Some(value.load_le::<u32>()))
     }
 }
@@ -674,6 +686,7 @@ fn tunnel_select_data(tunnel_ir_id: u32, tunnel_ir_width: u32, address: u32) -> 
         address: tunnel_ir_id,
         data: tunneled_ir.to_le_bytes().into(),
         len: tunneled_ir_len,
+        idle_cycles: 0,
     }
 }
 
@@ -685,6 +698,7 @@ fn tunnel_dtmcs_data(data: u32) -> ShiftDrData {
     ShiftDrData {
         data: tunneled_dr.to_le_bytes().into(),
         len: (msb_offset as u32) + 1,
+        idle_cycles: 0,
     }
 }
 
