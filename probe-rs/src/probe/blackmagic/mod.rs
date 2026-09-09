@@ -23,7 +23,7 @@ use crate::{
     },
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
-        JtagAccess, JtagDriverState, JtagOp, JtagProbe, JtagSequence, JtagStateAccess,
+        JtagAccess, JtagChainState, JtagOp, JtagProbe, JtagSequence, JtagStateAccess,
         ProbeCreationError, ProbeError, ProbeFactory, RawSwdIo, SwdSettings, WireProtocol,
         blackmagic::arm::BlackMagicProbeArmDebug,
         jtag::{TapState, distribute_captures, exchange_leaves_shift},
@@ -716,7 +716,7 @@ pub struct BlackMagicProbe {
     version: String,
     remote_protocol: ProtocolVersion,
     speed_khz: u32,
-    jtag_state: JtagDriverState,
+    jtag_state: JtagChainState,
     swd_settings: SwdSettings,
     in_bits: BitVec,
     swd_direction: SwdDirection,
@@ -790,7 +790,7 @@ impl BlackMagicProbe {
             version,
             speed_khz: 0,
             remote_protocol,
-            jtag_state: JtagDriverState::default(),
+            jtag_state: JtagChainState::default(),
             swd_settings: SwdSettings::default(),
             in_bits: BitVec::new(),
             swd_direction: SwdDirection::Output,
@@ -1414,11 +1414,11 @@ impl DebugProbe for BlackMagicProbe {
 }
 
 impl JtagStateAccess for BlackMagicProbe {
-    fn state_mut(&mut self) -> &mut JtagDriverState {
+    fn state_mut(&mut self) -> &mut JtagChainState {
         &mut self.jtag_state
     }
 
-    fn state(&self) -> &JtagDriverState {
+    fn state(&self) -> &JtagChainState {
         &self.jtag_state
     }
 }

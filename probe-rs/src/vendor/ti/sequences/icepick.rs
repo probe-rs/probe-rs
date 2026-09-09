@@ -1,7 +1,7 @@
 //! Controls for the ICEPICK JTAG mux used on some TI parts
 
 use crate::architecture::arm::{ArmError, DapError, DapProbe};
-use crate::probe::{DebugProbeError, JtagAccess, JtagSequence, WireProtocol};
+use crate::probe::{DebugProbeError, JtagAccess, JtagSequence, TapState, WireProtocol};
 use bitvec::field::BitField;
 use bitvec::vec::BitVec;
 use probe_rs_target::ScanChainElement;
@@ -125,14 +125,9 @@ impl<'a> Icepick<'a> {
     fn scan_jtag(&mut self) -> Result<u8, ArmError> {
         let mut tap_count = 0;
         tracing::trace!("Scan of JTAG bus:");
-        // Enter DRSHIFT state.
-        for tms in [
-            true,  // DRSELECT
-            false, // DRCAPTURE
-            false, // DRSHIFT
-        ] {
-            self.raw_jtag_cycle(tms, false)?;
-        }
+        self.probe
+            .enter_tap_state(TapState::ShiftDr)
+            .map_err(ArmError::Probe)?;
 
         // Keep reading IDCODEs out until we get zeroes back.
         for index in 0..255 {
@@ -154,14 +149,9 @@ impl<'a> Icepick<'a> {
             tap_count += 1;
         }
 
-        // Go back to IDLE state
-        for tms in [
-            true,  // DRSHIFT
-            true,  // DREXIT1
-            false, // Run/Idle
-        ] {
-            self.raw_jtag_cycle(tms, false)?;
-        }
+        self.probe
+            .enter_tap_state(TapState::RunTestIdle)
+            .map_err(ArmError::Probe)?;
 
         Ok(tap_count)
     }
@@ -259,17 +249,12 @@ impl<'a> Icepick<'a> {
     ///
     /// This function assumes that the JTAG state machine is in the Run-Test/Idle state
     fn zero_bit_scan(&mut self) -> Result<(), ArmError> {
-        for tms in [
-            true,  // DRSELECT
-            false, // DRCAPTURE
-            true,  // DREXIT1
-            false, // DRPAUSE
-            true,  // DREXIT2
-            true,  // DRUPDATE
-            false, // Run/Idle
-        ] {
-            self.raw_jtag_cycle(tms, true)?;
-        }
+        self.probe
+            .enter_tap_state(TapState::PauseDr)
+            .map_err(ArmError::Probe)?;
+        self.probe
+            .enter_tap_state(TapState::RunTestIdle)
+            .map_err(ArmError::Probe)?;
         Ok(())
     }
 
@@ -281,9 +266,9 @@ impl<'a> Icepick<'a> {
     ///
     /// * `cycles`    - Number of TCK cycles to shift in the data to either IR or DR
     /// * `reg`       - The value to shift into either IR or DR
-    /// * `action`    - Whether to load the IR or DR register, if IR is wanted then `JtagState::ShiftIR` should be passed
+    /// * `action`    - Whether to load the IR or DR register. Use `JtagOperation::ShiftIr` for IR.
     ///   otherwise the default is to load DR.
-    /// * `end_state` - The state to end in, this can either be `JtagState::RunTestIdle` or `JtagState::SelectDRScan`
+    /// * `end_state` - The state to end in.
     fn shift_reg(&mut self, cycles: u8, reg: u64, action: JtagOperation) -> Result<(), ArmError> {
         // DRSELECT
         self.raw_jtag_cycle(true, true)?;
@@ -340,7 +325,7 @@ impl<'a> Icepick<'a> {
     ///
     /// * `cycles`    - Number of TCK cycles to shift in the data to DR
     /// * `reg`       - The value to shift into either DR
-    /// * `end_state` - The state to end in, this can either be `JtagState::RunTestIdle` or `JtagState::SelectDRScan`
+    /// * `end_state` - The state to end in.
     fn shift_dr(&mut self, cycles: u8, reg: u64) -> Result<(), ArmError> {
         self.shift_reg(cycles, reg, JtagOperation::ShiftDr)?;
         Ok(())

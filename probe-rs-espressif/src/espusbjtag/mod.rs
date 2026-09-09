@@ -13,8 +13,8 @@ use probe_rs::{
         },
     },
     probe::{
-        AutoImplementJtagAccess, DebugProbe, DebugProbeError, DebugProbeSelector, JtagAccess,
-        JtagDriverState, ProbeFactory, RawJtagIo, WireProtocol, list::ProbeListItem,
+        BitbangJtag, DebugProbe, DebugProbeError, DebugProbeSelector, JtagAccess, JtagChainState,
+        JtagStateAccess, ProbeFactory, TapState, WireProtocol, list::ProbeListItem,
     },
 };
 
@@ -36,7 +36,7 @@ impl ProbeFactory for EspUsbJtagFactory {
 
         Ok(Box::new(EspUsbJtag {
             protocol,
-            jtag_state: JtagDriverState::default(),
+            jtag_state: JtagChainState::default(),
         }))
     }
 
@@ -50,35 +50,37 @@ impl ProbeFactory for EspUsbJtagFactory {
 pub struct EspUsbJtag {
     protocol: ProtocolHandler,
 
-    jtag_state: JtagDriverState,
+    jtag_state: JtagChainState,
 }
 
-impl RawJtagIo for EspUsbJtag {
-    fn shift_bit(
-        &mut self,
-        tms: bool,
-        tdi: bool,
-        capture_tdo: bool,
-    ) -> Result<(), DebugProbeError> {
-        self.jtag_state.state.update(tms);
+impl BitbangJtag for EspUsbJtag {
+    fn tap_state(&mut self) -> &mut TapState {
+        &mut self.jtag_state.tap_state
+    }
+
+    fn shift(&mut self, tms: bool, tdi: bool, capture_tdo: bool) -> Result<(), DebugProbeError> {
         self.protocol.shift_bit(tms, tdi, capture_tdo)?;
         Ok(())
     }
 
-    fn read_captured_bits(&mut self) -> Result<BitVec, DebugProbeError> {
+    fn flush(&mut self) -> Result<(), DebugProbeError> {
+        Ok(())
+    }
+
+    fn captured(&mut self) -> Result<BitVec, DebugProbeError> {
         self.protocol.read_captured_bits()
-    }
-
-    fn state_mut(&mut self) -> &mut JtagDriverState {
-        &mut self.jtag_state
-    }
-
-    fn state(&self) -> &JtagDriverState {
-        &self.jtag_state
     }
 }
 
-impl AutoImplementJtagAccess for EspUsbJtag {}
+impl JtagStateAccess for EspUsbJtag {
+    fn state_mut(&mut self) -> &mut JtagChainState {
+        &mut self.jtag_state
+    }
+
+    fn state(&self) -> &JtagChainState {
+        &self.jtag_state
+    }
+}
 
 impl DebugProbe for EspUsbJtag {
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {

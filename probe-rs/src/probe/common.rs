@@ -6,7 +6,7 @@ use probe_rs_target::ScanChainElement;
 
 use crate::probe::{
     BitSequence, CommandResult, DebugProbeError, JtagAccess, JtagBatch, JtagCommand, JtagProbe,
-    JtagSequence, JtagStateAccess,
+    JtagSequence, JtagStateAccess, TapState,
     jtag::chain::JtagChain,
     queue::{BatchExecutionError, ErasedBatch, Results},
 };
@@ -279,143 +279,6 @@ pub(crate) fn extract_ir_lengths<T: BitStore>(
     }
 }
 
-/// Inner states of the parallel arms (IR-Scan and DR-Scan) of the JTAG state machine.
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub enum RegisterState {
-    /// Select state.
-    Select,
-    /// Capture state.
-    Capture,
-    /// Shift state.
-    Shift,
-    /// Exit1 state.
-    Exit1,
-    /// Pause state.
-    Pause,
-    /// Exit2 state.
-    Exit2,
-    /// Update state.
-    Update,
-}
-
-impl RegisterState {
-    fn step_toward(self, target: Self) -> bool {
-        match self {
-            Self::Select => false,
-            Self::Capture if matches!(target, Self::Shift) => false,
-            Self::Exit1 if matches!(target, Self::Pause | Self::Exit2) => false,
-            Self::Exit2 if matches!(target, Self::Shift | Self::Exit1 | Self::Pause) => false,
-            Self::Update => {
-                unreachable!("This is a bug, this case should have been handled by JtagState.")
-            }
-            _ => true,
-        }
-    }
-
-    fn update(self, tms: bool) -> Self {
-        if tms {
-            match self {
-                Self::Capture | Self::Shift => Self::Exit1,
-                Self::Exit1 | Self::Exit2 => Self::Update,
-                Self::Pause => Self::Exit2,
-                Self::Select | Self::Update => {
-                    unreachable!("This is a bug, this case should have been handled by JtagState.")
-                }
-            }
-        } else {
-            match self {
-                Self::Select => Self::Capture,
-                Self::Capture | Self::Shift => Self::Shift,
-                Self::Exit1 | Self::Pause => Self::Pause,
-                Self::Exit2 => Self::Shift,
-                Self::Update => {
-                    unreachable!("This is a bug, this case should have been handled by JtagState.")
-                }
-            }
-        }
-    }
-}
-
-/// JTAG State Machine representation.
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub enum JtagState {
-    /// Reset state.
-    Reset,
-
-    /// Idle state.
-    Idle,
-
-    /// State along the Data Register path.
-    Dr(RegisterState),
-
-    /// State along the Instruction Register path.
-    Ir(RegisterState),
-}
-
-impl JtagState {
-    /// Returns the TMS value that takes a step from the current state toward the target state.
-    ///
-    /// Returns `None` if the state machine is already in the target state.
-    pub fn step_toward(self, target: Self) -> Option<bool> {
-        let tms = match self {
-            state if target == state => return None,
-            Self::Reset => false,
-            Self::Idle => true,
-            Self::Dr(RegisterState::Select) => !matches!(target, Self::Dr(_)),
-            Self::Ir(RegisterState::Select) => !matches!(target, Self::Ir(_)),
-            Self::Dr(RegisterState::Update) | Self::Ir(RegisterState::Update) => {
-                matches!(target, Self::Ir(_) | Self::Dr(_))
-            }
-            Self::Dr(state) => {
-                // Decide if we need to stay in the current arm or not.
-                // The inner state machine will handle the case where we need to loop back
-                // through Run-Test/Idle.
-                let next = if let Self::Dr(target) = target {
-                    target
-                } else {
-                    // Let's aim for the inner state that can exit the scan arm.
-                    RegisterState::Update
-                };
-                state.step_toward(next)
-            }
-            Self::Ir(state) => {
-                // Decide if we need to stay in the current arm or not.
-                // The inner state machine will handle the case where we need to loop back
-                // through Run-Test/Idle.
-                let next = if let Self::Ir(target) = target {
-                    target
-                } else {
-                    // Let's aim for the inner state that can exit the scan arm.
-                    RegisterState::Update
-                };
-                state.step_toward(next)
-            }
-        };
-        Some(tms)
-    }
-
-    /// Updates the state machine from the given TMS bit.
-    pub fn update(&mut self, tms: bool) {
-        *self = match *self {
-            Self::Reset if tms => Self::Reset,
-            Self::Reset => Self::Idle,
-            Self::Idle if tms => Self::Dr(RegisterState::Select),
-            Self::Idle => Self::Idle,
-            Self::Dr(RegisterState::Select) if tms => Self::Ir(RegisterState::Select),
-            Self::Ir(RegisterState::Select) if tms => Self::Reset,
-            Self::Dr(RegisterState::Update) | Self::Ir(RegisterState::Update) => {
-                if tms {
-                    Self::Dr(RegisterState::Select)
-                } else {
-                    Self::Idle
-                }
-            }
-            Self::Dr(state) => Self::Dr(state.update(tms)),
-            Self::Ir(state) => Self::Ir(state.update(tms)),
-        };
-    }
-}
-
 fn with_jtag_chain<P, R>(probe: &mut P, f: impl FnOnce(&mut JtagChain<'_>) -> R) -> R
 where
     P: JtagProbe + JtagStateAccess,
@@ -449,6 +312,14 @@ fn bit_sequence_to_bitvec(sequence: &BitSequence) -> BitVec {
 impl<Probe: JtagProbe + JtagStateAccess> JtagAccess for Probe {
     fn shift_raw_sequence(&mut self, sequence: JtagSequence) -> Result<BitVec, DebugProbeError> {
         JtagProbe::shift_raw_sequence(self, sequence)
+    }
+
+    fn enter_tap_state(&mut self, state: TapState) -> Result<(), DebugProbeError> {
+        with_jtag_chain(self, |chain| {
+            let mut batch = JtagBatch::new();
+            batch.enter(state);
+            chain.run(batch).map(|_| ())
+        })
     }
 
     fn set_expected_scan_chain(
@@ -504,7 +375,7 @@ impl<Probe: JtagProbe + JtagStateAccess> JtagAccess for Probe {
         len: u32,
         idle_cycles: u32,
     ) -> Result<BitVec, DebugProbeError> {
-        if address > self.state().max_ir_address() {
+        if address > self.state().chain_params.max_ir_address() {
             return Err(DebugProbeError::Other(format!(
                 "Invalid instruction register access: {address}"
             )));
@@ -555,7 +426,7 @@ impl<Probe: JtagProbe + JtagStateAccess> JtagAccess for Probe {
         &mut self,
         writes: &ErasedBatch<JtagCommand>,
     ) -> Result<Results, BatchExecutionError> {
-        let max_ir = self.state().max_ir_address();
+        let max_ir = self.state().chain_params.max_ir_address();
 
         let (mut run_results, capture_handles) = match with_jtag_chain(self, |chain| {
             let ir_len = chain.params().irlen;
@@ -740,38 +611,5 @@ mod tests {
         let idcodes = extract_idcodes(dr).unwrap();
 
         assert_eq!(idcodes, vec![Some(ARM_TAP), None, Some(STM_BS_TAP)]);
-    }
-
-    #[test]
-    fn reset_from_ir_shift() {
-        let mut state = JtagState::Ir(RegisterState::Shift);
-        state.update(true);
-        state.update(true);
-        state.update(true);
-        state.update(true);
-        state.update(true);
-        assert_eq!(state, JtagState::Reset);
-    }
-
-    #[test]
-    fn idle_from_reset() {
-        let mut state = JtagState::Reset;
-        state.update(false);
-        assert_eq!(state, JtagState::Idle);
-    }
-
-    #[test]
-    fn generated_bits_lead_to_correct_state() {
-        for (start, goal) in [(JtagState::Reset, JtagState::Idle)] {
-            let mut state = start;
-            let mut transitions = 0;
-            while state != goal && transitions < 10 {
-                let tms = state.step_toward(goal).unwrap();
-                state.update(tms);
-                transitions += 1;
-            }
-
-            assert!(transitions < 10);
-        }
     }
 }

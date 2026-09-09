@@ -28,7 +28,6 @@ use crate::architecture::xtensa::communication_interface::{
 };
 use crate::config::TargetSelector;
 use crate::config::registry::Registry;
-use crate::probe::common::JtagState;
 use crate::{Error, Permissions, Session};
 use bitvec::slice::BitSlice;
 use bitvec::vec::BitVec;
@@ -42,7 +41,9 @@ use std::sync::{Arc, LazyLock};
 
 pub use bits::BitSequence;
 pub use jtag::chain::ChainParams;
-pub use jtag::{BitbangJtag, JtagBatch, JtagChain, JtagOp, JtagProbe, JtagStateAccess, TapState};
+pub use jtag::{
+    BitbangJtag, JtagBatch, JtagChain, JtagChainState, JtagOp, JtagProbe, JtagStateAccess, TapState,
+};
 pub use queue::{Batch, BatchError, BatchExecutionError, ErasedBatch, Handle, JtagQueue, Results};
 #[allow(deprecated)]
 pub use queue::{DeferredResultIndex, DeferredResultSet, ErasedQueue, Queue};
@@ -918,21 +919,15 @@ impl DebugProbeInfo {
     }
 }
 
-/// Bit-banging interface, ARM edition.
+/// Bit-banging interface for SWD.
 ///
-/// This trait (and [RawJtagIo], [JtagAccess]) should not be used by architecture implementations
-/// directly. Architectures should implement their own protocol interfaces, and use the raw probe
-/// interfaces (like [RawSwdIo]) to perform the low-level operations AS A FALLBACK. Probes like
-/// [CmsisDap] should prefer directly implementing the architecture protocols, if they have the
-/// capability.
+/// Architecture code should not use this trait directly. A probe will implement
+/// `BitbangSwd` or `SwdProbe`, and `SwdPort` will own the ADIv5 rules.
+/// [`RawSwdIo`] remains as a fallback for probes that have not moved yet.
 ///
-/// Currently ARM implements this idea via [crate::architecture::arm::RawDapAccess], which
-/// is then implemented by [CmsisDap] or a fallback is provided for any probe that
-/// implements both `RawSwdIo` and [JtagAccess].
+/// [`CmsisDap`] should prefer a direct architecture protocol when it can.
 ///
-/// RISC-V is close with its [crate::architecture::riscv::dtm::DtmAccess] trait.
-///
-/// [CmsisDap]: crate::probe::cmsisdap::CmsisDap
+/// [`CmsisDap`]: crate::probe::cmsisdap::CmsisDap
 pub trait RawSwdIo: DebugProbe {
     /// Drive a sequence of SWD I/O items and return the sampled bits.
     fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
@@ -949,54 +944,6 @@ pub trait RawSwdIo: DebugProbe {
 
     /// Returns the SWD wire-protocol timing settings used by this probe.
     fn swd_settings(&self) -> &SwdSettings;
-}
-
-/// A trait for implementing low-level JTAG interface operations.
-pub trait RawJtagIo: DebugProbe {
-    /// Returns a mutable reference to the current state.
-    fn state_mut(&mut self) -> &mut JtagDriverState;
-
-    /// Returns the current state.
-    fn state(&self) -> &JtagDriverState;
-
-    /// Shifts a number of bits through the TAP.
-    fn shift_bits(
-        &mut self,
-        tms: impl IntoIterator<Item = bool>,
-        tdi: impl IntoIterator<Item = bool>,
-        cap: impl IntoIterator<Item = bool>,
-    ) -> Result<(), DebugProbeError> {
-        for ((tms, tdi), cap) in tms.into_iter().zip(tdi).zip(cap) {
-            self.shift_bit(tms, tdi, cap)?;
-        }
-
-        Ok(())
-    }
-
-    /// Shifts a single bit through the TAP.
-    ///
-    /// Drivers may choose, and are encouraged, to buffer bits and flush them
-    /// in batches for performance reasons.
-    fn shift_bit(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError>;
-
-    /// Returns the bits captured from TDO and clears the capture buffer.
-    fn read_captured_bits(&mut self) -> Result<BitVec, DebugProbeError>;
-
-    /// Resets the JTAG state machine by shifting out a number of high TMS bits.
-    fn reset_jtag_state_machine(&mut self) -> Result<(), DebugProbeError> {
-        tracing::debug!("Resetting JTAG chain by setting tms high for 5 bits");
-
-        // Reset JTAG chain (5 times TMS high), and enter idle state afterwards
-        let tms = [true, true, true, true, true, false];
-        let tdi = std::iter::repeat(true);
-
-        self.shift_bits(tms, tdi, std::iter::repeat(false))?;
-        let response = self.read_captured_bits()?;
-
-        tracing::debug!("Response to reset: {response}");
-
-        Ok(())
-    }
 }
 
 /// One step of a [`RawSwdIo::swd_io`] sequence.
@@ -1061,51 +1008,6 @@ impl Default for SwdSettings {
     }
 }
 
-/// The state of a bitbanging JTAG driver.
-///
-/// This struct tracks the state of the JTAG state machine,  which TAP is currently selected, and
-/// contains information about the system (like scan chain).
-#[derive(Debug)]
-pub struct JtagDriverState {
-    /// The state of the JTAG state machine.
-    pub state: JtagState,
-
-    /// The stable state that the TAP rests in between two batches.
-    pub tap_state: TapState,
-
-    /// The expected scan chain.
-    pub expected_scan_chain: Option<Vec<ScanChainElement>>,
-
-    /// The actual scan chain.
-    pub scan_chain: Vec<ScanChainElement>,
-
-    /// The parameters of the scan chain.
-    pub chain_params: ChainParams,
-}
-impl JtagDriverState {
-    fn max_ir_address(&self) -> u32 {
-        (1 << self.chain_params.irlen) - 1
-    }
-}
-
-impl Default for JtagDriverState {
-    fn default() -> Self {
-        Self {
-            state: JtagState::Reset,
-            tap_state: TapState::TestLogicReset,
-            expected_scan_chain: None,
-            scan_chain: Vec::new(),
-            chain_params: ChainParams::default(),
-        }
-    }
-}
-
-/// Marker trait for bitbanging JTAG probes.
-///
-/// This trait exists to control which probes implement [`JtagAccess`]. In some cases,
-/// a probe may implement [`RawJtagIo`] but does not want an auto-implemented [JtagAccess].
-pub trait AutoImplementJtagAccess: RawJtagIo + 'static {}
-
 /// Low-Level access to the JTAG protocol
 ///
 /// This trait should be implemented by all probes which offer low-level access to
@@ -1147,6 +1049,14 @@ pub trait JtagAccess: DebugProbe {
 
     /// Shifts a number of bits through the TAP.
     fn shift_raw_sequence(&mut self, sequence: JtagSequence) -> Result<BitVec, DebugProbeError>;
+
+    /// Move the TAP to a stable state.
+    fn enter_tap_state(&mut self, state: TapState) -> Result<(), DebugProbeError> {
+        let _ = state;
+        Err(DebugProbeError::NotImplemented {
+            function_name: "enter_tap_state",
+        })
+    }
 
     /// Executes a TAP reset.
     fn tap_reset(&mut self) -> Result<(), DebugProbeError>;
