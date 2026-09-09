@@ -86,6 +86,20 @@ pub trait ArmDebugInterface: DapAccess + SwdSequence + SwoAccess + Send {
         &mut self,
         access_port: &FullyQualifiedApAddress,
     ) -> Result<Box<dyn ArmMemoryInterface + '_>, ArmError>;
+
+    /// Returns the cached base address of a memory AP, if it has already been read.
+    ///
+    /// A memory AP's base address never changes, so it only needs to be read from the
+    /// target once. Implementations that persist across memory accesses can cache it;
+    /// the default implementation caches nothing.
+    fn cached_base_address(&self, _ap: &FullyQualifiedApAddress) -> Option<u64> {
+        None
+    }
+
+    /// Stores the base address of a memory AP for later reuse by [`cached_base_address`].
+    ///
+    /// [`cached_base_address`]: ArmDebugInterface::cached_base_address
+    fn cache_base_address(&mut self, _ap: FullyQualifiedApAddress, _base_address: u64) {}
 }
 
 /// Read chip information from the ROM tables
@@ -175,6 +189,8 @@ pub struct ArmCommunicationInterface {
     /// If this is None, the interface is in an uninitialized state.
     current_dp: Option<DpAddress>,
     dps: HashMap<DpAddress, DpState>,
+    /// Base addresses of memory APs, which never change and so are only read once.
+    base_addresses: HashMap<FullyQualifiedApAddress, u64>,
     use_overrun_detect: bool,
     sequence: Arc<dyn ArmDebugSequence>,
 }
@@ -273,6 +289,14 @@ impl ArmDebugInterface for ArmCommunicationInterface {
         self.current_dp
     }
 
+    fn cached_base_address(&self, ap: &FullyQualifiedApAddress) -> Option<u64> {
+        self.base_addresses.get(ap).copied()
+    }
+
+    fn cache_base_address(&mut self, ap: FullyQualifiedApAddress, base_address: u64) {
+        self.base_addresses.insert(ap, base_address);
+    }
+
     fn close(self: Box<Self>) -> Probe {
         ArmCommunicationInterface::close(*self)
     }
@@ -325,6 +349,7 @@ impl ArmCommunicationInterface {
             probe: Some(probe),
             current_dp: None,
             dps: Default::default(),
+            base_addresses: Default::default(),
             use_overrun_detect,
             sequence,
         };
