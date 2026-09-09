@@ -78,10 +78,8 @@ impl ArmDebugSequence for Rp2040 {
         let _val = arm_interface.read_raw_dp_register(RESCUE_DP, Ctrl::ADDRESS)?;
 
         // The debug port is reset as well. Set it up again by sending the attention sequence again
-        let dap_probe = arm_interface.try_dap_probe_mut().unwrap();
-
-        // Run the setup sequence again, which will reacquire the multidrop target.
-        self.debug_port_setup(dap_probe, ap.dp())?;
+        arm_interface
+            .debug_port_reconnect_with(&mut |wire| self.debug_port_setup(wire, ap.dp()))?;
 
         // Start the debug core back up which brings it out of Rescue Mode
         self.debug_core_start(arm_interface, &ap, core_type, debug_base, None)?;

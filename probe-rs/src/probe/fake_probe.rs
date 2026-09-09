@@ -2,16 +2,20 @@
 use crate::{
     MemoryInterface, MemoryMappedRegister,
     architecture::arm::{
-        ArmDebugInterface, ArmError, DapAccess, FullyQualifiedApAddress, RawDapAccess,
-        RegisterAddress, SwoAccess,
+        ArmDebugInterface, ArmError, DapAccess, FullyQualifiedApAddress, RegisterAddress,
+        SwoAccess,
         ap::memory_ap::mock::MockMemoryAp,
         armv8m::Dhcsr,
-        communication_interface::{DapProbe, SwdSequence},
+        communication_interface::SwdSequence,
         dp::{DpAddress, DpRegisterAddress},
         memory::{ADIMemoryInterface, ArmMemoryInterface},
         sequences::ArmDebugSequence,
     },
-    probe::{BitSequence, DebugProbe, DebugProbeError, Probe, WireProtocol},
+    probe::{
+        BatchError, BatchExecutionError, BitSequence, CommandResult, DebugProbe, DebugProbeError,
+        Probe, Results, WireProtocol,
+        swd::{Direction, Port, SwdBatch, SwdOp, SwdProbe},
+    },
 };
 
 #[cfg(any(test, feature = "test"))]
@@ -110,8 +114,11 @@ impl MockCore {
 }
 
 impl SwdSequence for &mut MockCore {
-    fn swj_sequence(&mut self, _bits: &BitSequence) -> Result<(), DebugProbeError> {
-        todo!()
+    fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError> {
+        let mut batch = SwdBatch::new();
+        batch.sequence(bits.clone());
+        let _ = batch;
+        Ok(())
     }
 
     fn swj_pins(
@@ -308,6 +315,12 @@ pub enum Operation {
         address: u64,
         result: u32,
     },
+    SwdTransfer {
+        port: Port,
+        addr: u8,
+        direction: Direction,
+        data: u32,
+    },
 }
 
 impl Debug for FakeProbe {
@@ -423,12 +436,88 @@ impl FakeProbe {
             None => panic!(
                 "No more operations expected, but got read_raw_ap_register ap={expected_ap:?}, address:{expected_address}"
             ),
-            //other => panic!("Unexpected operation: {:?}", other),
+            Some(Operation::SwdTransfer { .. }) => {
+                panic!("unexpected SwdTransfer operation for read_raw_ap_register")
+            }
         }
     }
 
     pub fn expect_operation(&self, operation: Operation) {
         self.operations.borrow_mut().push_back(operation);
+    }
+
+    fn register_address(port: Port, addr: u8) -> RegisterAddress {
+        match port {
+            Port::Dp => RegisterAddress::DpRegister(DpRegisterAddress {
+                address: addr,
+                bank: None,
+            }),
+            Port::Ap => RegisterAddress::ApRegister(addr),
+        }
+    }
+
+    fn run_swd_transfer(
+        &mut self,
+        port: Port,
+        addr: u8,
+        direction: Direction,
+        data: u32,
+    ) -> Result<Option<u32>, ArmError> {
+        let address = Self::register_address(port, addr);
+        match direction {
+            Direction::Read => {
+                if let Some(handler) = self.dap_register_read_handler.as_ref() {
+                    return Ok(Some(handler(address)?));
+                }
+
+                match self.next_operation() {
+                    Some(Operation::SwdTransfer {
+                        port: expected_port,
+                        addr: expected_addr,
+                        direction: expected_direction,
+                        data: result,
+                    }) => {
+                        assert_eq!(expected_port, port);
+                        assert_eq!(expected_addr, addr);
+                        assert_eq!(expected_direction, Direction::Read);
+                        Ok(Some(result))
+                    }
+                    Some(Operation::ReadRawApRegister { .. }) => {
+                        panic!("unexpected ReadRawApRegister operation for SWD transfer")
+                    }
+                    None => panic!(
+                        "No more operations expected, but got SWD read port={port:?}, addr={addr}"
+                    ),
+                }
+            }
+            Direction::Write => {
+                if let Some(handler) = self.dap_register_write_handler.as_ref() {
+                    handler(address, data)?;
+                    return Ok(None);
+                }
+
+                match self.next_operation() {
+                    Some(Operation::SwdTransfer {
+                        port: expected_port,
+                        addr: expected_addr,
+                        direction: expected_direction,
+                        data: expected_data,
+                    }) => {
+                        assert_eq!(expected_port, port);
+                        assert_eq!(expected_addr, addr);
+                        assert_eq!(expected_direction, Direction::Write);
+                        assert_eq!(expected_data, data);
+                        Ok(None)
+                    }
+                    Some(Operation::ReadRawApRegister { .. }) => {
+                        panic!("unexpected ReadRawApRegister operation for SWD transfer")
+                    }
+                    None => panic!(
+                        "No more operations expected, but got SWD write port={port:?}, addr={addr}, data={data}"
+                    ),
+                }
+            }
+        }
     }
 }
 
@@ -557,46 +646,61 @@ impl DebugProbe for FakeProbe {
     fn has_arm_interface(&self) -> bool {
         true
     }
+
+    fn try_as_swd_probe_mut(&mut self) -> Option<&mut dyn SwdProbe> {
+        Some(self)
+    }
 }
 
-impl RawDapAccess for FakeProbe {
-    /// Reads the DAP register on the specified port and address
-    fn raw_read_register(&mut self, address: RegisterAddress) -> Result<u32, ArmError> {
-        let handler = self.dap_register_read_handler.as_ref().unwrap();
-
-        handler(address)
-    }
-
-    /// Writes a value to the DAP register on the specified port and address
-    fn raw_write_register(&mut self, address: RegisterAddress, value: u32) -> Result<(), ArmError> {
-        let handler = self.dap_register_write_handler.as_ref().unwrap();
-
-        handler(address, value)
-    }
-
-    fn jtag_sequence(&mut self, _tms: bool, _tdi: &BitSequence) -> Result<(), DebugProbeError> {
-        todo!()
-    }
-
-    fn swj_sequence(&mut self, _bits: &BitSequence) -> Result<(), DebugProbeError> {
-        todo!()
-    }
-
-    fn swj_pins(
+impl SwdProbe for FakeProbe {
+    fn run_batch(
         &mut self,
-        _pin_out: u32,
-        _pin_select: u32,
-        _pin_wait: u32,
-    ) -> Result<u32, DebugProbeError> {
-        todo!()
-    }
+        batch: &SwdBatch,
+    ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
+        let mut results = Results::new();
 
-    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
-        self
-    }
+        for (fault_operation, (id, op)) in batch.iter().enumerate() {
+            let op_result: Result<(), DebugProbeError> = match op {
+                SwdOp::Transfer {
+                    port,
+                    addr,
+                    direction,
+                    data,
+                } => match self.run_swd_transfer(*port, *addr, *direction, *data) {
+                    Ok(Some(value)) => {
+                        if *direction == Direction::Read && id.should_capture() {
+                            results.push(id, CommandResult::U32(value));
+                        }
+                        Ok(())
+                    }
+                    Ok(None) => Ok(()),
+                    Err(error) => Err(match error {
+                        ArmError::Probe(error) => error,
+                        error => DebugProbeError::Other(error.to_string()),
+                    }),
+                },
+                SwdOp::Sequence(_) | SwdOp::Idle { .. } => Ok(()),
+                SwdOp::Pins { .. } => Err(DebugProbeError::NotImplemented {
+                    function_name: "swj_pins",
+                }),
+            };
 
-    fn core_status_notification(&mut self, _: crate::CoreStatus) -> Result<(), DebugProbeError> {
-        Ok(())
+            if let Err(error) = op_result {
+                return Err(BatchExecutionError::new_from_debug_probe_at(
+                    error,
+                    results,
+                    fault_operation,
+                ));
+            }
+        }
+
+        Ok(results)
+    }
+}
+
+fn batch_probe_error(error: BatchExecutionError<DebugProbeError>) -> DebugProbeError {
+    match error.error {
+        BatchError::Probe(error) | BatchError::Specific(error) => error,
     }
 }
 
@@ -617,8 +721,9 @@ impl FakeArmInterface {
 
 impl SwdSequence for FakeArmInterface {
     fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError> {
-        self.probe.swj_sequence(bits)?;
-
+        let mut batch = SwdBatch::new();
+        batch.sequence(bits.clone());
+        self.probe.run_batch(&batch).map_err(batch_probe_error)?;
         Ok(())
     }
 
@@ -628,9 +733,17 @@ impl SwdSequence for FakeArmInterface {
         pin_select: u32,
         pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
-        let value = self.probe.swj_pins(pin_out, pin_select, pin_wait)?;
+        use crate::probe::swd::Pins;
+        use std::time::Duration;
 
-        Ok(value)
+        let mut batch = SwdBatch::new();
+        let _ = batch.schedule(SwdOp::Pins {
+            out: Pins(pin_out as u8),
+            select: Pins(pin_select as u8),
+            wait: Duration::from_micros(pin_wait as u64),
+        });
+        self.probe.run_batch(&batch).map_err(batch_probe_error)?;
+        Ok(0xFFFF_FFFF)
     }
 }
 
@@ -743,20 +856,29 @@ impl DapAccess for FakeArmInterface {
     ) -> Result<(), ArmError> {
         todo!()
     }
-
-    fn try_dap_probe(&self) -> Option<&dyn DapProbe> {
-        None
-    }
-
-    fn try_dap_probe_mut(&mut self) -> Option<&mut dyn DapProbe> {
-        None
-    }
 }
 
 #[cfg(all(test, feature = "builtin-targets"))]
 mod test {
-    use super::FakeProbe;
+    use super::{Direction, FakeProbe, Operation, Port, SwdBatch, SwdProbe};
     use crate::Permissions;
+
+    #[test]
+    fn swd_transfer_runs_expected_operation() {
+        let fake_probe = FakeProbe::new();
+        fake_probe.expect_operation(Operation::SwdTransfer {
+            port: Port::Dp,
+            addr: 0b0100,
+            direction: Direction::Read,
+            data: 0xABCD_EF00,
+        });
+
+        let mut fake_probe = fake_probe;
+        let mut batch = SwdBatch::new();
+        let handle = batch.read(Port::Dp, 0b0100);
+        let mut results = fake_probe.run_batch(&batch).unwrap();
+        assert_eq!(results.take(handle).unwrap(), 0xABCD_EF00);
+    }
 
     #[test]
     fn create_session_with_fake_probe() {

@@ -1,18 +1,30 @@
 use crate::{
     CoreStatus,
     architecture::arm::{
-        ApAddress, ArmError, DapAccess, FullyQualifiedApAddress, RawDapAccess, RegisterAddress,
-        SwoAccess, SwoConfig, ap,
+        ApAddress, ArmError, DapAccess, FullyQualifiedApAddress, RegisterAddress, SwoAccess,
+        SwoConfig, ap,
         dp::{
             Ctrl, DPIDR, DebugPortId, DebugPortVersion, DpAccess, DpAddress, DpRegisterAddress,
             Select1, SelectV1, SelectV3,
         },
         memory::{ADIMemoryInterface, ArmMemoryInterface, Component},
         sequences::ArmDebugSequence,
+        traits::DebugPortWire,
     },
-    probe::{BitSequence, DebugProbe, DebugProbeError, Probe, WireProtocol},
+    probe::{
+        BitSequence, DebugProbe, DebugProbeError, JtagChainAccess, Probe, SwdProbe, SwdSettings,
+        WireProtocol,
+        jtag::dap::{
+            jtag_output_sequence, jtag_read_block, jtag_read_register, jtag_write_block,
+            jtag_write_register,
+        },
+        swd::{Port, SwdBatch, SwdOp, SwdPort, SwdPortError, SwdTransferError},
+    },
 };
 use jep106::JEP106Code;
+
+use crate::probe::jtag::chain::JtagChain;
+use crate::probe::swd::Pins;
 
 use std::{
     collections::{BTreeSet, HashMap, hash_map},
@@ -86,6 +98,24 @@ pub trait ArmDebugInterface: DapAccess + SwdSequence + SwoAccess + Send {
         &mut self,
         access_port: &FullyQualifiedApAddress,
     ) -> Result<Box<dyn ArmMemoryInterface + '_>, ArmError>;
+
+    /// Inform the probe driver of the attached core status.
+    fn core_status_notification(&mut self, _state: CoreStatus) {}
+
+    /// Returns the transport protocol in use when known.
+    fn active_wire_protocol(&self) -> Option<WireProtocol> {
+        None
+    }
+
+    /// Returns the current wire speed in kHz when supported.
+    fn wire_speed_khz(&self) -> Option<u32> {
+        None
+    }
+
+    /// Sets the wire speed in kHz when supported.
+    fn set_wire_speed(&mut self, _speed_khz: u32) -> Result<u32, ArmError> {
+        Err(ArmError::NotImplemented("set_wire_speed"))
+    }
 }
 
 /// Read chip information from the ROM tables
@@ -162,12 +192,240 @@ impl DpState {
     }
 }
 
+/// The probe driver behind an [`ArmCommunicationInterface`].
+enum ArmProbe {
+    /// An SWD probe with its transaction settings.
+    Swd(Box<dyn SwdProbe>, SwdSettings),
+    /// A JTAG probe with scan chain state and its transaction settings.
+    Jtag(Box<dyn JtagChainAccess>, SwdSettings),
+}
+
+impl std::fmt::Debug for ArmProbe {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Swd(_, _) => f.write_str("Swd(..)"),
+            Self::Jtag(_, _) => f.write_str("Jtag(..)"),
+        }
+    }
+}
+
+struct SwdDebugPortWire<'a> {
+    probe: &'a mut dyn SwdProbe,
+    settings: SwdSettings,
+}
+
+impl SwdDebugPortWire<'_> {
+    fn with_port<R>(
+        &mut self,
+        f: impl FnOnce(&mut SwdPort<'_>) -> Result<R, SwdPortError>,
+    ) -> Result<R, ArmError> {
+        let mut port = SwdPort::new(self.probe, self.settings.clone());
+        f(&mut port).map_err(ArmCommunicationInterface::swd_port_error)
+    }
+
+    fn run_probe_batch(&mut self, batch: &SwdBatch) -> Result<(), ArmError> {
+        self.probe
+            .run_batch(batch)
+            .map_err(|error| ArmError::Probe(batch_probe_error(error)))?;
+        Ok(())
+    }
+}
+
+impl DebugPortWire for SwdDebugPortWire<'_> {
+    fn active_protocol(&self) -> Option<WireProtocol> {
+        Some(WireProtocol::Swd)
+    }
+
+    fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), ArmError> {
+        let mut batch = SwdBatch::new();
+        batch.sequence(bits.clone());
+        self.run_probe_batch(&batch)
+    }
+
+    fn jtag_sequence(&mut self, _tms: bool, _tdi: &BitSequence) -> Result<(), ArmError> {
+        Err(ArmError::Probe(
+            DebugProbeError::CommandNotSupportedByProbe {
+                command_name: "jtag_sequence",
+            },
+        ))
+    }
+
+    fn configure_jtag(&mut self, _skip_scan: bool) -> Result<(), ArmError> {
+        Err(ArmError::Probe(
+            DebugProbeError::CommandNotSupportedByProbe {
+                command_name: "configure_jtag",
+            },
+        ))
+    }
+
+    fn swj_pins(&mut self, out: Pins, select: Pins, wait: Duration) -> Result<Pins, ArmError> {
+        let mut batch = SwdBatch::new();
+        let _ = batch.schedule(SwdOp::Pins { out, select, wait });
+        self.run_probe_batch(&batch)?;
+        Ok(Pins(0xFF))
+    }
+
+    fn target_reset(&mut self) -> Result<(), ArmError> {
+        self.probe.target_reset().map_err(ArmError::Probe)
+    }
+
+    fn target_reset_assert(&mut self) -> Result<(), ArmError> {
+        self.probe.target_reset_assert().map_err(ArmError::Probe)
+    }
+
+    fn target_reset_deassert(&mut self) -> Result<(), ArmError> {
+        self.probe.target_reset_deassert().map_err(ArmError::Probe)
+    }
+
+    fn raw_flush(&mut self) -> Result<(), ArmError> {
+        Ok(())
+    }
+
+    fn raw_read_register(&mut self, port: Port, addr: u8) -> Result<u32, ArmError> {
+        self.with_port(|swd_port| {
+            let mut batch = SwdBatch::new();
+            let handle = batch.read(port, addr);
+            let mut results = swd_port.run(batch)?;
+            Ok(results.take(handle).unwrap())
+        })
+    }
+
+    fn raw_write_register(&mut self, port: Port, addr: u8, value: u32) -> Result<(), ArmError> {
+        self.with_port(|swd_port| {
+            let mut batch = SwdBatch::new();
+            batch.write(port, addr, value);
+            swd_port.run(batch)?;
+            Ok(())
+        })
+    }
+
+    fn try_jtag_chain(&mut self) -> Option<JtagChain<'_>> {
+        None
+    }
+}
+
+struct JtagDebugPortWire<'a> {
+    probe: &'a mut dyn JtagChainAccess,
+    settings: SwdSettings,
+}
+
+impl DebugPortWire for JtagDebugPortWire<'_> {
+    fn active_protocol(&self) -> Option<WireProtocol> {
+        Some(WireProtocol::Jtag)
+    }
+
+    fn swj_sequence(&mut self, _bits: &BitSequence) -> Result<(), ArmError> {
+        Err(ArmError::Probe(
+            DebugProbeError::CommandNotSupportedByProbe {
+                command_name: "swj_sequence",
+            },
+        ))
+    }
+
+    fn jtag_sequence(&mut self, tms: bool, tdi: &BitSequence) -> Result<(), ArmError> {
+        jtag_output_sequence(self.probe, tms, tdi).map_err(ArmError::Probe)
+    }
+
+    fn configure_jtag(&mut self, skip_scan: bool) -> Result<(), ArmError> {
+        self.probe
+            .configure_jtag(skip_scan)
+            .map_err(ArmError::Probe)
+    }
+
+    fn swj_pins(&mut self, _out: Pins, _select: Pins, _wait: Duration) -> Result<Pins, ArmError> {
+        Err(ArmError::Probe(
+            DebugProbeError::CommandNotSupportedByProbe {
+                command_name: "swj_pins",
+            },
+        ))
+    }
+
+    fn target_reset(&mut self) -> Result<(), ArmError> {
+        self.probe.target_reset().map_err(ArmError::Probe)
+    }
+
+    fn target_reset_assert(&mut self) -> Result<(), ArmError> {
+        self.probe.target_reset_assert().map_err(ArmError::Probe)
+    }
+
+    fn target_reset_deassert(&mut self) -> Result<(), ArmError> {
+        self.probe.target_reset_deassert().map_err(ArmError::Probe)
+    }
+
+    fn raw_flush(&mut self) -> Result<(), ArmError> {
+        Ok(())
+    }
+
+    fn raw_read_register(&mut self, port: Port, addr: u8) -> Result<u32, ArmError> {
+        let register = dp_wire_register(port, addr);
+        let settings = self.settings.clone();
+        let mut chain = JtagChain::new(self.probe);
+        jtag_read_register(&mut chain, register, &settings)
+    }
+
+    fn raw_write_register(&mut self, port: Port, addr: u8, value: u32) -> Result<(), ArmError> {
+        let register = dp_wire_register(port, addr);
+        let settings = self.settings.clone();
+        let mut chain = JtagChain::new(self.probe);
+        jtag_write_register(&mut chain, register, value, &settings)
+    }
+
+    fn try_jtag_chain(&mut self) -> Option<JtagChain<'_>> {
+        Some(JtagChain::new(self.probe))
+    }
+}
+
+fn dp_wire_register(port: Port, addr: u8) -> RegisterAddress {
+    match port {
+        Port::Dp => RegisterAddress::DpRegister(DpRegisterAddress {
+            address: addr,
+            bank: None,
+        }),
+        Port::Ap => RegisterAddress::ApRegister(addr),
+    }
+}
+
+pub(crate) fn probe_debug_port_wire<R>(
+    probe: &mut dyn DebugProbe,
+    f: impl FnOnce(&mut dyn DebugPortWire) -> Result<R, ArmError>,
+) -> Result<R, ArmError> {
+    let settings = probe
+        .try_as_swd_probe_mut()
+        .map(|swd| swd.swd_settings())
+        .unwrap_or_default();
+
+    if probe.active_protocol() == Some(WireProtocol::Jtag)
+        && let Some(jtag) = probe.try_as_jtag_chain_access_mut()
+    {
+        let mut wire = JtagDebugPortWire {
+            probe: jtag,
+            settings,
+        };
+        return f(&mut wire);
+    }
+    if let Some(swd) = probe.try_as_swd_probe_mut() {
+        let mut wire = SwdDebugPortWire {
+            probe: swd,
+            settings,
+        };
+        return f(&mut wire);
+    }
+    if let Some(jtag) = probe.try_as_jtag_chain_access_mut() {
+        let mut wire = JtagDebugPortWire {
+            probe: jtag,
+            settings,
+        };
+        return f(&mut wire);
+    }
+    Err(ArmError::NotImplemented("debug_port_wire"))
+}
+
 /// An implementation of the communication protocol between probe and target.
 /// Can be used to perform all sorts of generic debug access on ARM targets with probes that support low level access.
 /// (E.g. CMSIS-DAP and J-Link support this, ST-Link does not)
 #[derive(Debug)]
 pub struct ArmCommunicationInterface {
-    probe: Option<Box<dyn DapProbe>>,
+    probe: Option<ArmProbe>,
 
     /// Currently selected debug port. For targets without multidrop,
     /// this will always be the single, default debug port in the system.
@@ -191,53 +449,143 @@ impl Drop for ArmCommunicationInterface {
 }
 
 impl ArmCommunicationInterface {
-    pub(crate) fn probe_mut(&mut self) -> &mut dyn DapProbe {
-        // Unwrap: Probe is only taken when the struct is dropped
-        self.probe.as_deref_mut().expect("ArmCommunicationInterface is in an inconsistent state. This is a bug, please report it.")
+    fn is_swd(&self) -> bool {
+        matches!(self.probe.as_ref(), Some(ArmProbe::Swd(_, _)))
     }
 
     fn close(mut self) -> Probe {
         self.disconnect();
 
         let probe = self.probe.take().unwrap();
-
-        Probe::from_attached_probe(RawDapAccess::into_probe(probe))
+        match probe {
+            ArmProbe::Swd(probe, _) => Probe::from_attached_probe(probe.into_probe()),
+            ArmProbe::Jtag(probe, _) => Probe::from_attached_probe(probe.into_probe()),
+        }
     }
 
     /// Disconnect from all debug ports, by calling `debug_port_stop` on all DPs which we
     /// are connected to.
     fn disconnect(&mut self) {
-        let probe = self.probe.as_deref_mut().unwrap();
+        if self.probe.is_none() {
+            return;
+        }
+
+        let sequence = self.sequence.clone();
 
         if let Some(current_dp) = self.current_dp.take() {
-            let _stop_span = tracing::debug_span!("debug_port_stop").entered();
+            let others: Vec<DpAddress> = self
+                .dps
+                .keys()
+                .copied()
+                .filter(|dp| *dp != current_dp)
+                .collect();
 
-            // Stop the current DP, which may not be one of the known ones (i.e. RP2040 rescue DP).
-            self.sequence.debug_port_stop(probe, current_dp).ok();
+            let _ = self.with_debug_port_wire(|wire| {
+                let _stop_span = tracing::debug_span!("debug_port_stop").entered();
 
-            drop(_stop_span);
+                // Stop the current DP, which may not be one of the known ones (i.e. RP2040 rescue DP).
+                sequence.debug_port_stop(&mut *wire, current_dp).ok();
 
-            // Stop all intentionally-connected DPs.
-            for dp in self.dps.keys().filter(|dp| **dp != current_dp) {
-                // Try to select the debug port we want to shut down.
-                if self.sequence.debug_port_connect(probe, *dp).is_ok() {
-                    self.sequence.debug_port_stop(probe, *dp).ok();
-                } else {
-                    tracing::warn!("Failed to stop DP {:x?}", dp);
+                drop(_stop_span);
+
+                // Stop all intentionally-connected DPs.
+                for dp in others {
+                    // Try to select the debug port we want to shut down.
+                    if sequence.debug_port_connect(&mut *wire, dp).is_ok() {
+                        sequence.debug_port_stop(&mut *wire, dp).ok();
+                    } else {
+                        tracing::warn!("Failed to stop DP {:x?}", dp);
+                    }
                 }
-            }
-        };
+
+                Ok(())
+            });
+        }
 
         self.dps.clear();
-        probe.raw_flush().ok();
+        let _ = self.with_debug_port_wire(|wire| {
+            wire.raw_flush().ok();
+            Ok(())
+        });
+    }
+
+    fn swd_addr(address: RegisterAddress) -> u8 {
+        address.a2_and_3()
+    }
+
+    fn ap_swd_addr(address: u64) -> u8 {
+        Self::swd_addr(RegisterAddress::ApRegister((address & 0xFF) as u8))
+    }
+
+    fn swd_port_error(error: SwdPortError) -> ArmError {
+        match error {
+            SwdPortError::Transfer(error) => ArmError::Dap(Self::swd_transfer_to_dap(error)),
+            SwdPortError::Probe(error) => ArmError::Probe(error),
+        }
+    }
+
+    fn swd_transfer_to_dap(error: SwdTransferError) -> DapError {
+        match error {
+            SwdTransferError::NoAcknowledge => DapError::NoAcknowledge,
+            SwdTransferError::WaitResponse => DapError::WaitResponse,
+            SwdTransferError::FaultResponse => DapError::FaultResponse,
+            SwdTransferError::IncorrectParity => DapError::IncorrectParity,
+            SwdTransferError::Protocol => DapError::Protocol(WireProtocol::Swd),
+        }
+    }
+
+    fn with_swd_port<R>(
+        &mut self,
+        f: impl FnOnce(&mut SwdPort<'_>) -> Result<R, SwdPortError>,
+    ) -> Result<R, ArmError> {
+        match self.probe.as_mut().unwrap() {
+            ArmProbe::Swd(probe, settings) => {
+                let settings = settings.clone();
+                let mut port = SwdPort::new(probe.as_mut(), settings);
+                f(&mut port).map_err(Self::swd_port_error)
+            }
+            _ => panic!("ArmCommunicationInterface does not hold an SwdProbe"),
+        }
+    }
+
+    fn with_jtag_chain<R>(
+        &mut self,
+        f: impl FnOnce(&mut JtagChain<'_>, &SwdSettings) -> Result<R, ArmError>,
+    ) -> Result<R, ArmError> {
+        match self.probe.as_mut().unwrap() {
+            ArmProbe::Jtag(probe, settings) => {
+                let settings = settings.clone();
+                let mut chain = JtagChain::new(probe.as_mut());
+                f(&mut chain, &settings)
+            }
+            _ => panic!("ArmCommunicationInterface does not hold a JtagChainAccess"),
+        }
+    }
+
+    fn with_debug_port_wire<R>(
+        &mut self,
+        f: impl FnOnce(&mut dyn DebugPortWire) -> Result<R, ArmError>,
+    ) -> Result<R, ArmError> {
+        match self.probe.as_mut().expect(
+            "ArmCommunicationInterface is in an inconsistent state. This is a bug, please report it.",
+        ) {
+            ArmProbe::Swd(probe, settings) => {
+                let mut wire = SwdDebugPortWire {
+                    probe: probe.as_mut(),
+                    settings: settings.clone(),
+                };
+                f(&mut wire)
+            }
+            ArmProbe::Jtag(probe, settings) => {
+                let mut wire = JtagDebugPortWire {
+                    probe: probe.as_mut(),
+                    settings: settings.clone(),
+                };
+                f(&mut wire)
+            }
+        }
     }
 }
-
-/// Helper trait for probes which offer access to ARM DAP (Debug Access Port).
-///
-/// This is used to combine the traits, because it cannot be done in the ArmCommunicationInterface
-/// struct itself.
-pub trait DapProbe: RawDapAccess + DebugProbe {}
 
 impl ArmDebugInterface for ArmCommunicationInterface {
     fn reinitialize(&mut self) -> Result<(), ArmError> {
@@ -294,35 +642,91 @@ impl ArmDebugInterface for ArmCommunicationInterface {
         let _ = self.select_dp(dp)?;
         Ok(())
     }
+
+    fn core_status_notification(&mut self, state: CoreStatus) {
+        if let Some(probe) = self.probe.as_mut() {
+            let debug_probe: &mut dyn DebugProbe = match probe {
+                ArmProbe::Swd(probe, _) => probe.as_mut(),
+                ArmProbe::Jtag(probe, _) => probe.as_mut(),
+            };
+            debug_probe.core_status_notification(state).ok();
+        }
+    }
+
+    fn active_wire_protocol(&self) -> Option<WireProtocol> {
+        match self.probe.as_ref()? {
+            ArmProbe::Swd(_, _) => Some(WireProtocol::Swd),
+            ArmProbe::Jtag(_, _) => Some(WireProtocol::Jtag),
+        }
+    }
+
+    fn wire_speed_khz(&self) -> Option<u32> {
+        match self.probe.as_ref()? {
+            ArmProbe::Swd(probe, _) => Some(probe.speed_khz()),
+            ArmProbe::Jtag(probe, _) => Some(probe.speed_khz()),
+        }
+    }
+
+    fn set_wire_speed(&mut self, speed_khz: u32) -> Result<u32, ArmError> {
+        let probe = self
+            .probe
+            .as_mut()
+            .ok_or(ArmError::NotImplemented("set_wire_speed"))?;
+        match probe {
+            ArmProbe::Swd(probe, _) => probe.set_speed(speed_khz).map_err(ArmError::Probe),
+            ArmProbe::Jtag(probe, _) => probe.set_speed(speed_khz).map_err(ArmError::Probe),
+        }
+    }
 }
 
 impl SwdSequence for ArmCommunicationInterface {
     fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError> {
-        self.probe_mut().swj_sequence(bits)?;
-
-        Ok(())
+        match self.probe.as_mut().unwrap() {
+            ArmProbe::Swd(probe, _) => {
+                let mut batch = SwdBatch::new();
+                batch.sequence(bits.clone());
+                probe.run_batch(&batch).map_err(batch_probe_error)?;
+                Ok(())
+            }
+            ArmProbe::Jtag(_, _) => Err(DebugProbeError::CommandNotSupportedByProbe {
+                command_name: "swj_sequence",
+            }),
+        }
     }
 
     fn swj_pins(
         &mut self,
-        pin_out: u32,
-        pin_select: u32,
-        pin_wait: u32,
+        _pin_out: u32,
+        _pin_select: u32,
+        _pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
-        self.probe_mut().swj_pins(pin_out, pin_select, pin_wait)
+        match self.probe.as_mut().unwrap() {
+            ArmProbe::Swd(_, _) | ArmProbe::Jtag(_, _) => {
+                Err(DebugProbeError::CommandNotSupportedByProbe {
+                    command_name: "swj_pins",
+                })
+            }
+        }
+    }
+}
+
+fn batch_probe_error(error: crate::probe::BatchExecutionError<DebugProbeError>) -> DebugProbeError {
+    match error.error {
+        crate::probe::BatchError::Probe(error) => error,
+        crate::probe::BatchError::Specific(error) => error,
     }
 }
 
 impl ArmCommunicationInterface {
-    /// Create a new instance of the communication interface,
-    /// which is not yet connected to a debug port.
-    pub fn create(
-        probe: Box<dyn DapProbe>,
+    /// Create a new SWD interface over a layer-0 probe.
+    pub fn create_swd(
+        probe: Box<dyn SwdProbe>,
+        settings: SwdSettings,
         sequence: Arc<dyn ArmDebugSequence>,
         use_overrun_detect: bool,
     ) -> Box<dyn ArmDebugInterface> {
         let interface = ArmCommunicationInterface {
-            probe: Some(probe),
+            probe: Some(ArmProbe::Swd(probe, settings)),
             current_dp: None,
             dps: Default::default(),
             use_overrun_detect,
@@ -332,9 +736,22 @@ impl ArmCommunicationInterface {
         Box::new(interface)
     }
 
-    /// Inform the probe of the [`CoreStatus`] of the chip attached to the probe.
-    pub fn core_status_notification(&mut self, state: CoreStatus) {
-        self.probe_mut().core_status_notification(state).ok();
+    /// Create a new JTAG interface over a layer-0 probe.
+    pub fn create_jtag(
+        probe: Box<dyn JtagChainAccess>,
+        settings: SwdSettings,
+        sequence: Arc<dyn ArmDebugSequence>,
+        use_overrun_detect: bool,
+    ) -> Box<dyn ArmDebugInterface> {
+        let interface = ArmCommunicationInterface {
+            probe: Some(ArmProbe::Jtag(probe, settings)),
+            current_dp: None,
+            dps: Default::default(),
+            use_overrun_detect,
+            sequence,
+        };
+
+        Box::new(interface)
     }
 
     fn select_dp(&mut self, dp: DpAddress) -> Result<&mut DpState, ArmError> {
@@ -346,28 +763,23 @@ impl ArmCommunicationInterface {
             tracing::debug!("Selecting DP {:x?}", dp);
 
             switched_dp = true;
+            let previous_dp = self.current_dp;
 
-            self.probe_mut().raw_flush()?;
+            self.with_debug_port_wire(|wire| {
+                wire.raw_flush()?;
 
-            // We are not currently connected to any DP,
-            // so we need to run the debug_port_setup sequence.
-            if self.current_dp.is_none() {
-                sequence.debug_port_setup(&mut *self.probe_mut(), dp)?;
-            } else {
-                // Try the quick switch to the new DP first. This is expected to fail for
-                // some targets (e.g. RP2040 multidrop, which needs the dormant-state
-                // transition), so only fall back to the full setup here - if that also
-                // fails, the `?` below surfaces the real error.
-                if let Err(e) = sequence.debug_port_connect(&mut *self.probe_mut(), dp) {
+                if previous_dp.is_none() {
+                    sequence.debug_port_setup(wire, dp)?;
+                } else if let Err(e) = sequence.debug_port_connect(wire, dp) {
                     tracing::debug!(
                         "Quick connect to DP {:x?} failed ({e}), running full setup",
                         dp
                     );
-
-                    // The more involved debug_port_setup sequence also handles dormant mode.
-                    sequence.debug_port_setup(&mut *self.probe_mut(), dp)?;
+                    sequence.debug_port_setup(wire, dp)?;
                 }
-            }
+
+                Ok(())
+            })?;
 
             self.current_dp = Some(dp);
         }
@@ -520,21 +932,33 @@ impl ArmCommunicationInterface {
 
 impl SwoAccess for ArmCommunicationInterface {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ArmError> {
-        match self.probe_mut().get_swo_interface_mut() {
+        let probe: &mut dyn DebugProbe = match self.probe.as_mut().unwrap() {
+            ArmProbe::Swd(probe, _) => probe.as_mut(),
+            ArmProbe::Jtag(probe, _) => probe.as_mut(),
+        };
+        match probe.get_swo_interface_mut() {
             Some(interface) => interface.enable_swo(config),
             None => Err(ArmError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         }
     }
 
     fn disable_swo(&mut self) -> Result<(), ArmError> {
-        match self.probe_mut().get_swo_interface_mut() {
+        let probe: &mut dyn DebugProbe = match self.probe.as_mut().unwrap() {
+            ArmProbe::Swd(probe, _) => probe.as_mut(),
+            ArmProbe::Jtag(probe, _) => probe.as_mut(),
+        };
+        match probe.get_swo_interface_mut() {
             Some(interface) => interface.disable_swo(),
             None => Err(ArmError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         }
     }
 
     fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ArmError> {
-        match self.probe_mut().get_swo_interface_mut() {
+        let probe: &mut dyn DebugProbe = match self.probe.as_mut().unwrap() {
+            ArmProbe::Swd(probe, _) => probe.as_mut(),
+            ArmProbe::Jtag(probe, _) => probe.as_mut(),
+        };
+        match probe.get_swo_interface_mut() {
             Some(interface) => interface.read_swo_timeout(timeout),
             None => Err(ArmError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         }
@@ -548,8 +972,18 @@ impl DapAccess for ArmCommunicationInterface {
         address: DpRegisterAddress,
     ) -> Result<u32, ArmError> {
         self.select_dp_and_dp_bank(dp, &address)?;
-        let result = self.probe_mut().raw_read_register(address.into())?;
-        Ok(result)
+        let register = RegisterAddress::DpRegister(address);
+        if self.is_swd() {
+            let addr = Self::swd_addr(register);
+            self.with_swd_port(|port| {
+                let mut batch = SwdBatch::new();
+                let handle = batch.read(Port::Dp, addr);
+                let mut results = port.run(batch)?;
+                Ok(results.take(handle).unwrap())
+            })
+        } else {
+            self.with_jtag_chain(|chain, settings| jtag_read_register(chain, register, settings))
+        }
     }
 
     fn write_raw_dp_register(
@@ -559,8 +993,20 @@ impl DapAccess for ArmCommunicationInterface {
         value: u32,
     ) -> Result<(), ArmError> {
         self.select_dp_and_dp_bank(dp, &address)?;
-        self.probe_mut().raw_write_register(address.into(), value)?;
-        Ok(())
+        let register = RegisterAddress::DpRegister(address);
+        if self.is_swd() {
+            let addr = Self::swd_addr(register);
+            self.with_swd_port(|port| {
+                let mut batch = SwdBatch::new();
+                batch.write(Port::Dp, addr, value);
+                port.run(batch)?;
+                Ok(())
+            })
+        } else {
+            self.with_jtag_chain(|chain, settings| {
+                jtag_write_register(chain, register, value, settings)
+            })
+        }
     }
 
     fn read_raw_ap_register(
@@ -569,12 +1015,19 @@ impl DapAccess for ArmCommunicationInterface {
         address: u64,
     ) -> Result<u32, ArmError> {
         self.select_ap_and_ap_bank(ap, address)?;
+        let register = RegisterAddress::ApRegister((address & 0xFF) as u8);
 
-        let result = self
-            .probe_mut()
-            .raw_read_register(RegisterAddress::ApRegister((address & 0xFF) as u8))?;
-
-        Ok(result)
+        if self.is_swd() {
+            let addr = Self::ap_swd_addr(address);
+            self.with_swd_port(|port| {
+                let mut batch = SwdBatch::new();
+                let handle = port.read_ap_block(&mut batch, addr, 1);
+                let mut results = port.run(batch)?;
+                Ok(results.take(handle).unwrap()[0])
+            })
+        } else {
+            self.with_jtag_chain(|chain, settings| jtag_read_register(chain, register, settings))
+        }
     }
 
     fn read_raw_ap_register_repeated(
@@ -584,10 +1037,24 @@ impl DapAccess for ArmCommunicationInterface {
         values: &mut [u32],
     ) -> Result<(), ArmError> {
         self.select_ap_and_ap_bank(ap, address)?;
+        let register = RegisterAddress::ApRegister((address & 0xFF) as u8);
 
-        self.probe_mut()
-            .raw_read_block(RegisterAddress::ApRegister((address & 0xFF) as u8), values)?;
-        Ok(())
+        if self.is_swd() {
+            let addr = Self::ap_swd_addr(address);
+            let count = values.len();
+            self.with_swd_port(|port| {
+                let mut batch = SwdBatch::new();
+                let handle = port.read_ap_block(&mut batch, addr, count);
+                let mut results = port.run(batch)?;
+                let read_values = results.take(handle).unwrap();
+                values.copy_from_slice(&read_values);
+                Ok(())
+            })
+        } else {
+            self.with_jtag_chain(|chain, settings| {
+                jtag_read_block(chain, register, values, settings)
+            })
+        }
     }
 
     fn write_raw_ap_register(
@@ -597,11 +1064,21 @@ impl DapAccess for ArmCommunicationInterface {
         value: u32,
     ) -> Result<(), ArmError> {
         self.select_ap_and_ap_bank(ap, address)?;
+        let register = RegisterAddress::ApRegister((address & 0xFF) as u8);
 
-        self.probe_mut()
-            .raw_write_register(RegisterAddress::ApRegister((address & 0xFF) as u8), value)?;
-
-        Ok(())
+        if self.is_swd() {
+            let addr = Self::ap_swd_addr(address);
+            self.with_swd_port(|port| {
+                let mut batch = SwdBatch::new();
+                batch.write(Port::Ap, addr, value);
+                port.run(batch)?;
+                Ok(())
+            })
+        } else {
+            self.with_jtag_chain(|chain, settings| {
+                jtag_write_register(chain, register, value, settings)
+            })
+        }
     }
 
     fn write_raw_ap_register_repeated(
@@ -611,25 +1088,39 @@ impl DapAccess for ArmCommunicationInterface {
         values: &[u32],
     ) -> Result<(), ArmError> {
         self.select_ap_and_ap_bank(ap, address)?;
+        let register = RegisterAddress::ApRegister((address & 0xFF) as u8);
 
-        self.probe_mut()
-            .raw_write_block(RegisterAddress::ApRegister((address & 0xFF) as u8), values)?;
-        Ok(())
+        if self.is_swd() {
+            let addr = Self::ap_swd_addr(address);
+            self.with_swd_port(|port| {
+                let mut batch = SwdBatch::new();
+                port.write_ap_block(&mut batch, addr, values);
+                port.run(batch)?;
+                Ok(())
+            })
+        } else {
+            self.with_jtag_chain(|chain, settings| {
+                jtag_write_block(chain, register, values, settings)
+            })
+        }
     }
 
     fn flush(&mut self) -> Result<(), ArmError> {
-        self.probe_mut().raw_flush()
+        Ok(())
     }
 
-    fn try_dap_probe(&self) -> Option<&dyn DapProbe> {
-        self.probe.as_deref()
+    fn active_wire_protocol(&self) -> Option<WireProtocol> {
+        match self.probe.as_ref()? {
+            ArmProbe::Swd(_, _) => Some(WireProtocol::Swd),
+            ArmProbe::Jtag(_, _) => Some(WireProtocol::Jtag),
+        }
     }
 
-    fn try_dap_probe_mut(&mut self) -> Option<&mut dyn DapProbe> {
-        self.probe
-            .as_deref_mut()
-            // Need to explicitly coerce lifetimes: https://github.com/rust-lang/rust/issues/108999
-            .map(|p: &mut (dyn DapProbe + 'static)| p as &mut (dyn DapProbe + '_))
+    fn debug_port_reconnect_with(
+        &mut self,
+        connect: &mut dyn FnMut(&mut dyn DebugPortWire) -> Result<(), ArmError>,
+    ) -> Result<(), ArmError> {
+        self.with_debug_port_wire(|wire| connect(wire))
     }
 }
 
@@ -657,5 +1148,298 @@ impl std::fmt::Display for ArmChipInfo {
             ),
         };
         write!(f, "{} 0x{:04x}", manu, self.part)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use super::*;
+    use crate::architecture::arm::sequences::DefaultArmSequence;
+    use crate::probe::BitSequence;
+    use crate::probe::swd::mock::{MockSwdProbe, RecordedOp, RecordedSequence};
+    use crate::probe::swd::{Direction, Port};
+
+    const DP_RDBUFF_ADDR: u8 = 0b1100;
+    const DP_SELECT_ADDR: u8 = 0b1000;
+    const DP_CTRL_ADDR: u8 = 0b0100;
+
+    fn swd_interface(
+        probe: MockSwdProbe,
+    ) -> (
+        Box<dyn ArmDebugInterface>,
+        Arc<std::sync::Mutex<Vec<RecordedOp>>>,
+    ) {
+        let operations = probe.shared_operations();
+        let interface = ArmCommunicationInterface::create_swd(
+            Box::new(probe),
+            SwdSettings::default(),
+            DefaultArmSequence::create(),
+            false,
+        );
+        (interface, operations)
+    }
+
+    fn read_ops(ops: &[RecordedOp]) -> Vec<(Port, u8)> {
+        ops.iter()
+            .filter(|op| op.direction == Direction::Read)
+            .map(|op| (op.port, op.addr))
+            .collect()
+    }
+
+    fn write_ops(ops: &[RecordedOp]) -> Vec<(Port, u8, u32)> {
+        ops.iter()
+            .filter(|op| op.direction == Direction::Write)
+            .map(|op| (op.port, op.addr, op.data))
+            .collect()
+    }
+
+    fn attach_ctrl_reads(probe: &mut MockSwdProbe, trailing: u32) {
+        probe.set_read_sequence(
+            Port::Dp,
+            DP_CTRL_ADDR,
+            std::iter::repeat_n(0xA000_0000, 3)
+                .chain(std::iter::repeat_n(trailing, 100))
+                .collect(),
+        );
+    }
+
+    fn finish_attach(
+        interface: &mut Box<dyn ArmDebugInterface>,
+        operations: &Arc<std::sync::Mutex<Vec<RecordedOp>>>,
+    ) {
+        interface
+            .select_debug_port(DpAddress::Default)
+            .expect("attach should succeed");
+        operations.lock().unwrap().clear();
+    }
+
+    fn prepare_swd_probe(probe: &mut MockSwdProbe) {
+        push_attach_responses(probe);
+        attach_ctrl_reads(probe, 0);
+    }
+
+    #[test]
+    fn swd_dp_read_writes_select_for_bank_switch() {
+        let mut probe = MockSwdProbe::new();
+        prepare_swd_probe(&mut probe);
+        let (mut interface, operations) = swd_interface(probe);
+        finish_attach(&mut interface, &operations);
+
+        let value = interface
+            .read_raw_dp_register(
+                DpAddress::Default,
+                DpRegisterAddress {
+                    address: DP_CTRL_ADDR,
+                    bank: Some(1),
+                },
+            )
+            .expect("read should succeed");
+        assert_eq!(value, 0);
+
+        let ops = operations.lock().unwrap();
+        assert_eq!(write_ops(&ops), vec![(Port::Dp, DP_SELECT_ADDR, 1)]);
+        assert_eq!(
+            read_ops(&ops),
+            vec![(Port::Dp, DP_RDBUFF_ADDR), (Port::Dp, DP_CTRL_ADDR)]
+        );
+    }
+
+    #[test]
+    fn swd_dp_write_writes_select_for_bank_switch() {
+        let mut probe = MockSwdProbe::new();
+        prepare_swd_probe(&mut probe);
+        let (mut interface, operations) = swd_interface(probe);
+        finish_attach(&mut interface, &operations);
+
+        interface
+            .write_raw_dp_register(
+                DpAddress::Default,
+                DpRegisterAddress {
+                    address: DP_CTRL_ADDR,
+                    bank: Some(1),
+                },
+                0x1234,
+            )
+            .expect("write should succeed");
+
+        let ops = operations.lock().unwrap();
+        assert_eq!(
+            write_ops(&ops),
+            vec![
+                (Port::Dp, DP_SELECT_ADDR, 1),
+                (Port::Dp, DP_CTRL_ADDR, 0x1234),
+            ]
+        );
+    }
+
+    #[test]
+    fn swd_ap_read_includes_rdbuff() {
+        let mut probe = MockSwdProbe::new();
+        prepare_swd_probe(&mut probe);
+        probe.set_read_sequence(Port::Ap, 0b1100, vec![99]);
+        probe.set_read_value(Port::Dp, DP_RDBUFF_ADDR, 42);
+        let (mut interface, operations) = swd_interface(probe);
+        finish_attach(&mut interface, &operations);
+
+        let ap = FullyQualifiedApAddress::v1_with_default_dp(0);
+        let value = interface
+            .read_raw_ap_register(&ap, 0x0C)
+            .expect("read should succeed");
+        assert_eq!(value, 42);
+
+        let ops = operations.lock().unwrap();
+        assert_eq!(
+            read_ops(&ops),
+            vec![(Port::Ap, 0b1100), (Port::Dp, DP_RDBUFF_ADDR)]
+        );
+    }
+
+    #[test]
+    fn swd_ap_read_repeated_returns_16_values() {
+        let mut probe = MockSwdProbe::new();
+        prepare_swd_probe(&mut probe);
+        probe.set_read_sequence(Port::Ap, 0b1100, std::iter::once(0).chain(1..=15).collect());
+        probe.set_read_value(Port::Dp, DP_RDBUFF_ADDR, 16);
+        let (mut interface, operations) = swd_interface(probe);
+        finish_attach(&mut interface, &operations);
+
+        let ap = FullyQualifiedApAddress::v1_with_default_dp(0);
+        let mut values = vec![0; 16];
+        interface
+            .read_raw_ap_register_repeated(&ap, 0x0C, &mut values)
+            .expect("read should succeed");
+        assert_eq!(values, (1..=16).collect::<Vec<_>>());
+
+        let ops = operations.lock().unwrap();
+        assert_eq!(read_ops(&ops).len(), 17);
+    }
+
+    #[test]
+    fn swd_ap_write_repeated_posts_16_values() {
+        let mut probe = MockSwdProbe::new();
+        prepare_swd_probe(&mut probe);
+        let (mut interface, operations) = swd_interface(probe);
+        finish_attach(&mut interface, &operations);
+
+        let ap = FullyQualifiedApAddress::v1_with_default_dp(0);
+        let values: Vec<u32> = (0..16).map(|i| 0xABCD_0000 | i as u32).collect();
+        interface
+            .write_raw_ap_register_repeated(&ap, 0x0C, &values)
+            .expect("write should succeed");
+
+        let ops = operations.lock().unwrap();
+        assert_eq!(
+            ops.iter()
+                .filter(|op| op.direction == Direction::Write && op.port == Port::Ap)
+                .count(),
+            16
+        );
+        assert_eq!(read_ops(&ops).last(), Some(&(Port::Dp, DP_RDBUFF_ADDR)));
+    }
+
+    type SwdTestInterface = (
+        Box<dyn ArmDebugInterface>,
+        Arc<std::sync::Mutex<Vec<RecordedOp>>>,
+        Arc<std::sync::Mutex<Vec<RecordedSequence>>>,
+    );
+
+    fn swd_interface_with_overrun(
+        probe: MockSwdProbe,
+        use_overrun_detect: bool,
+    ) -> SwdTestInterface {
+        let operations = probe.shared_operations();
+        let sequences = probe.shared_sequences();
+        let interface = ArmCommunicationInterface::create_swd(
+            Box::new(probe),
+            SwdSettings::default(),
+            DefaultArmSequence::create(),
+            use_overrun_detect,
+        );
+        (interface, operations, sequences)
+    }
+
+    fn sequence_contains(sequences: &[RecordedSequence], expected: BitSequence) -> bool {
+        sequences.iter().any(|recorded| recorded.bits == expected)
+    }
+
+    fn push_attach_responses(probe: &mut MockSwdProbe) {
+        const DPIDR: u32 = 0x2BA0_1477;
+
+        probe.set_read_value(Port::Dp, 0, DPIDR);
+        probe.set_read_value(Port::Dp, DP_RDBUFF_ADDR, 0);
+    }
+
+    fn push_multidrop_attach_responses(probe: &mut MockSwdProbe, targetsel: u32) {
+        push_attach_responses(probe);
+        probe.set_read_sequence(
+            Port::Dp,
+            DP_CTRL_ADDR,
+            [targetsel, targetsel, 0xA000_0000, 0xA000_0000, 0xA000_0000]
+                .into_iter()
+                .collect(),
+        );
+    }
+
+    #[test]
+    fn swd_select_dp_runs_port_setup_with_jtag_to_swd_switch() {
+        let mut probe = MockSwdProbe::new();
+        prepare_swd_probe(&mut probe);
+        let (mut interface, _, sequences) = swd_interface_with_overrun(probe, false);
+
+        interface
+            .select_debug_port(DpAddress::Default)
+            .expect("select should succeed");
+
+        let sequences = sequences.lock().unwrap();
+        assert!(sequence_contains(
+            &sequences,
+            BitSequence::from_u64(16, 0xE79E),
+        ));
+    }
+
+    #[test]
+    fn swd_multidrop_select_dp_runs_dormant_entry() {
+        let mut probe = MockSwdProbe::new();
+        push_multidrop_attach_responses(&mut probe, 0x1234_5678);
+        let (mut interface, _, sequences) = swd_interface_with_overrun(probe, false);
+
+        interface
+            .select_debug_port(DpAddress::Multidrop(0x1234_5678))
+            .expect("select should succeed");
+
+        let sequences = sequences.lock().unwrap();
+        assert!(sequence_contains(
+            &sequences,
+            BitSequence::from_u64(31, 0x33BB_BBBA),
+        ));
+    }
+
+    #[test]
+    fn swd_select_dp_reads_dpidr_and_sets_orun_detect() {
+        let mut probe = MockSwdProbe::new();
+        prepare_swd_probe(&mut probe);
+        let (mut interface, operations, _) = swd_interface_with_overrun(probe, true);
+
+        interface
+            .select_debug_port(DpAddress::Default)
+            .expect("select should succeed");
+
+        let ops = operations.lock().unwrap();
+        assert!(
+            ops.iter()
+                .any(|op| op.port == Port::Dp && op.addr == 0 && op.direction == Direction::Read),
+            "expected a DPIDR read during attach"
+        );
+        assert!(
+            ops.iter().any(|op| {
+                op.port == Port::Dp
+                    && op.addr == DP_CTRL_ADDR
+                    && op.direction == Direction::Write
+                    && (op.data & 1) == 1
+            }),
+            "expected overrun detect to be enabled in CTRL/STAT"
+        );
     }
 }

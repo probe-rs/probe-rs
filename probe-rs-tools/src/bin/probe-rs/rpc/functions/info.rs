@@ -157,16 +157,16 @@ async fn try_show_info(
     probe.select_protocol(from_wire_protocol(protocol))?;
 
     if !scan_chain.is_empty()
-        && let Some(jtag) = probe.try_as_jtag_probe()
+        && let Some(mut chain) = probe.try_as_jtag_chain()
     {
-        let chain = scan_chain
+        let chain_elements = scan_chain
             .iter()
             .map(|&ir_len| ScanChainElement {
                 name: None,
                 ir_len: Some(ir_len),
             })
             .collect::<Vec<_>>();
-        jtag.set_scan_chain(&chain)?;
+        chain.set_chain(&chain_elements);
     }
 
     if connect_under_reset {

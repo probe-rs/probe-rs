@@ -340,7 +340,7 @@ impl ArmDebugSequence for MCX {
             }
         }
 
-        if let Some(protocol) = interface.try_dap_probe().and_then(|f| f.active_protocol()) {
+        if let Some(protocol) = interface.active_wire_protocol() {
             match protocol {
                 WireProtocol::Jtag => {
                     let mut ctrl = Ctrl(0);

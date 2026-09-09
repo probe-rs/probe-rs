@@ -10,8 +10,7 @@ use std::{
 use crate::{
     architecture::{
         arm::{
-            ArmCommunicationInterface, ArmDebugInterface, ArmError,
-            communication_interface::DapProbe, sequences::ArmDebugSequence,
+            ArmCommunicationInterface, ArmDebugInterface, ArmError, sequences::ArmDebugSequence,
         },
         riscv::{
             communication_interface::{RiscvError, RiscvInterfaceBuilder},
@@ -22,13 +21,14 @@ use crate::{
         },
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
-        JtagAccess, JtagChainState, JtagOp, JtagProbe, JtagSequence, JtagStateAccess,
-        ProbeCreationError, ProbeError, ProbeFactory, RawSwdIo, SwdSettings, WireProtocol,
+        BitbangSwd, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+        IoSequenceItem, JtagChain, JtagChainAccess, JtagChainState, JtagOp, JtagProbe,
+        ProbeCreationError, ProbeError, ProbeFactory, SwdProbe, SwdSettings, WireProtocol,
         blackmagic::arm::BlackMagicProbeArmDebug,
         jtag::{TapState, distribute_captures, exchange_leaves_shift},
         list::ProbeListItem,
         queue::{BatchExecutionError, Results},
+        swd::Pins,
     },
 };
 use bitfield::bitfield;
@@ -1119,39 +1119,6 @@ impl BlackMagicProbe {
         Ok(())
     }
 
-    fn shift_raw_sequence(&mut self, sequence: JtagSequence) -> Result<BitVec, DebugProbeError> {
-        if sequence.tms {
-            for bit in sequence.data.iter() {
-                self.command(RemoteCommand::JtagNext {
-                    tms: true,
-                    tdi: *bit,
-                })?;
-            }
-        } else {
-            let mut data = BitSequence::new();
-            for bit in sequence.data.iter() {
-                data.push(*bit);
-            }
-            let bit_count = data.len();
-            if bit_count == 0 {
-                return Ok(BitVec::new());
-            }
-            let mut offset = 0;
-            while offset < bit_count {
-                let chunk = (bit_count - offset).min(32);
-                let is_last = offset + chunk == bit_count;
-                self.send_jtag_tdi(&data, offset, chunk, false, sequence.tdo_capture && is_last)?;
-                offset += chunk;
-            }
-        }
-
-        if sequence.tdo_capture {
-            Ok(std::mem::take(&mut self.in_bits))
-        } else {
-            Ok(BitVec::new())
-        }
-    }
-
     fn run_jtag_batch(
         &mut self,
         start: TapState,
@@ -1252,8 +1219,6 @@ impl DebugProbe for BlackMagicProbe {
 
         match self.protocol {
             Some(WireProtocol::Jtag) => {
-                self.select_target(0)?;
-
                 if let ProtocolVersion::V1
                 | ProtocolVersion::V2
                 | ProtocolVersion::V3
@@ -1321,7 +1286,15 @@ impl DebugProbe for BlackMagicProbe {
         self.protocol
     }
 
-    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JtagAccess> {
+    fn try_as_jtag_chain(&mut self) -> Option<JtagChain<'_>> {
+        Some(JtagChain::new(self))
+    }
+
+    fn try_as_swd_probe_mut(&mut self) -> Option<&mut dyn SwdProbe> {
+        Some(self)
+    }
+
+    fn try_as_jtag_chain_access_mut(&mut self) -> Option<&mut dyn JtagChainAccess> {
         Some(self)
     }
 
@@ -1369,7 +1342,10 @@ impl DebugProbe for BlackMagicProbe {
                 Err((probe, err)) => Err((probe.into_probe(), err)),
             }
         } else {
-            Ok(ArmCommunicationInterface::create(self, sequence, true)) // TODO: Fixup the error type here
+            let settings = SwdProbe::swd_settings(self.as_ref());
+            Ok(ArmCommunicationInterface::create_swd(
+                self, settings, sequence, true,
+            ))
         }
     }
 
@@ -1413,12 +1389,12 @@ impl DebugProbe for BlackMagicProbe {
     }
 }
 
-impl JtagStateAccess for BlackMagicProbe {
-    fn state_mut(&mut self) -> &mut JtagChainState {
+impl JtagChainAccess for BlackMagicProbe {
+    fn chain_state(&mut self) -> &mut JtagChainState {
         &mut self.jtag_state
     }
 
-    fn state(&self) -> &JtagChainState {
+    fn chain_state_ref(&self) -> &JtagChainState {
         &self.jtag_state
     }
 }
@@ -1433,15 +1409,9 @@ impl JtagProbe for BlackMagicProbe {
         self.jtag_state.tap_state = state;
         Ok(results)
     }
-
-    fn shift_raw_sequence(&mut self, sequence: JtagSequence) -> Result<BitVec, DebugProbeError> {
-        BlackMagicProbe::shift_raw_sequence(self, sequence)
-    }
 }
 
-impl DapProbe for BlackMagicProbe {}
-
-impl RawSwdIo for BlackMagicProbe {
+impl BitbangSwd for BlackMagicProbe {
     fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
         S: IntoIterator<Item = IoSequenceItem>,
@@ -1449,24 +1419,24 @@ impl RawSwdIo for BlackMagicProbe {
         self.perform_swdio_transfer(swdio)
     }
 
-    fn swj_pins(
+    fn swj_pins_op(
         &mut self,
-        pin_out: u32,
-        pin_select: u32,
-        _pin_wait: u32,
-    ) -> Result<u32, DebugProbeError> {
-        // The Black Magic Probe doesn't support setting TCK/TMS/TDI/TDO directly,
-        // and has no separate nTRST.
+        out: Pins,
+        select: Pins,
+        _wait: Duration,
+    ) -> Result<(), DebugProbeError> {
+        let pin_out = out.0 as u32;
+        let pin_select = select.0 as u32;
+
         if pin_select & 0x2f != 0 {
             return Err(DebugProbeError::CommandNotSupportedByProbe {
                 command_name: "swj_pins",
             });
         }
-        // Set the nRST pin according to the specified value
         if pin_select & 0x80 != 0 {
             self.command(RemoteCommand::TargetReset(pin_out & 0x80 == 0))?;
         }
-        Ok(pin_out)
+        Ok(())
     }
 
     fn swd_settings(&self) -> &SwdSettings {

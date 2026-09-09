@@ -13,8 +13,8 @@ use probe_rs::{
         },
     },
     probe::{
-        BitbangJtag, DebugProbe, DebugProbeError, DebugProbeSelector, JtagAccess, JtagChainState,
-        JtagStateAccess, ProbeFactory, TapState, WireProtocol, list::ProbeListItem,
+        BitbangJtag, DebugProbe, DebugProbeError, DebugProbeSelector, JtagChain, JtagChainAccess,
+        JtagChainState, ProbeFactory, TapState, WireProtocol, list::ProbeListItem,
     },
 };
 
@@ -72,12 +72,12 @@ impl BitbangJtag for EspUsbJtag {
     }
 }
 
-impl JtagStateAccess for EspUsbJtag {
-    fn state_mut(&mut self) -> &mut JtagChainState {
+impl JtagChainAccess for EspUsbJtag {
+    fn chain_state(&mut self) -> &mut JtagChainState {
         &mut self.jtag_state
     }
 
-    fn state(&self) -> &JtagChainState {
+    fn chain_state_ref(&self) -> &JtagChainState {
         &self.jtag_state
     }
 }
@@ -113,7 +113,7 @@ impl DebugProbe for EspUsbJtag {
     fn attach(&mut self) -> Result<(), DebugProbeError> {
         tracing::debug!("Attaching to ESP USB JTAG");
 
-        self.select_target(0)
+        Ok(())
     }
 
     fn detach(&mut self) -> Result<(), crate::Error> {
@@ -138,8 +138,8 @@ impl DebugProbe for EspUsbJtag {
         Ok(())
     }
 
-    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JtagAccess> {
-        Some(self)
+    fn try_as_jtag_chain(&mut self) -> Option<JtagChain<'_>> {
+        Some(JtagChain::new(self))
     }
 
     fn try_get_riscv_interface_builder<'probe>(

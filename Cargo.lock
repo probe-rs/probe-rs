@@ -3161,13 +3161,11 @@ name = "probe-rs-linux"
 version = "0.32.0"
 dependencies = [
  "bitfield",
- "bitvec",
  "docsplay",
  "gpiocdev",
  "probe-rs",
  "spidev",
  "thiserror 2.0.20",
- "tracing",
 ]
 
 [[package]]

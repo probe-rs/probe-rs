@@ -1,15 +1,11 @@
-use crate::{
-    CoreStatus,
-    probe::{BitSequence, DebugProbe, DebugProbeError},
-};
+use std::time::Duration;
+
+use crate::probe::{BitSequence, WireProtocol, jtag::chain::JtagChain, swd::Port};
 
 use super::{
     ArmError,
-    communication_interface::DapProbe,
     dp::{DpAddress, DpRegisterAddress},
 };
-
-pub(crate) mod polyfill;
 
 /// Specifies the address of register to access in a debug or access port.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -70,24 +66,7 @@ impl From<ApAddress> for RegisterAddress {
     }
 }
 
-bitfield::bitfield! {
-    /// A struct to describe the default CMSIS-DAP pins that one can toggle from the host.
-    #[derive(Copy, Clone)]
-    pub struct Pins(u8);
-    impl Debug;
-    /// The active low reset of the debug probe.
-    pub nreset, set_nreset: 7;
-    /// The negative target reset pin of JTAG.
-    pub ntrst, set_ntrst: 5;
-    /// The TDO or SWO pin.
-    pub tdo, set_tdo: 3;
-    /// The TDI pin.
-    pub tdi, set_tdi: 2;
-    /// The SWDIO or TMS pin.
-    pub swdio_tms, set_swdio_tms: 1;
-    /// The clock pin.
-    pub swclk_tck, set_swclk_tck: 0;
-}
+pub use crate::probe::swd::Pins;
 
 /// Access port v2 address, the base of the AP within the root memory space.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
@@ -203,109 +182,6 @@ impl FullyQualifiedApAddress {
     pub fn deconstruct(self) -> (DpAddress, ApAddress) {
         (self.dp, self.ap)
     }
-}
-
-/// Low-level DAP register access.
-///
-/// Operations on this trait closely match the transactions on the wire. Implementors
-/// only do basic error handling, such as retrying WAIT errors.
-///
-/// Almost everything is the responsibility of the caller. For example, the caller must
-/// handle bank switching and AP selection.
-pub trait RawDapAccess {
-    /// Read a DAP register.
-    ///
-    /// Only the lowest 4 bits of the address are used. Bank switching is the caller's responsibility.
-    fn raw_read_register(&mut self, address: RegisterAddress) -> Result<u32, ArmError>;
-
-    /// Read multiple values from the same DAP register.
-    ///
-    /// If possible, this uses optimized read functions, otherwise it
-    /// falls back to the `read_register` function.
-    ///
-    /// Only the lowest 4 bits of the address are used. Bank switching is the caller's responsibility.
-    fn raw_read_block(
-        &mut self,
-        address: RegisterAddress,
-        values: &mut [u32],
-    ) -> Result<(), ArmError> {
-        for val in values {
-            *val = self.raw_read_register(address)?;
-        }
-
-        Ok(())
-    }
-
-    /// Write a value to a DAP register.
-    ///
-    /// Only the lowest 4 bits of the address are used. Bank switching is the caller's responsibility.
-    fn raw_write_register(&mut self, address: RegisterAddress, value: u32) -> Result<(), ArmError>;
-
-    /// Write multiple values to the same DAP register.
-    ///
-    /// If possible, this uses optimized write functions, otherwise it
-    /// falls back to the `write_register` function.
-    ///
-    /// Only bits 2 and 3 of the address are used. Bank switching is the caller's responsibility.
-    fn raw_write_block(
-        &mut self,
-        address: RegisterAddress,
-        values: &[u32],
-    ) -> Result<(), ArmError> {
-        for val in values {
-            self.raw_write_register(address, *val)?;
-        }
-
-        Ok(())
-    }
-
-    /// Flush any outstanding writes.
-    ///
-    /// By default, this does nothing -- but in probes that implement write
-    /// batching, this needs to flush any pending writes.
-    fn raw_flush(&mut self) -> Result<(), ArmError> {
-        Ok(())
-    }
-
-    /// Configures the probe for JTAG use (specifying IR lengths of each DAP).
-    fn configure_jtag(&mut self, _skip_scan: bool) -> Result<(), DebugProbeError> {
-        Ok(())
-    }
-
-    /// Send a specific output sequence over JTAG.
-    ///
-    /// This can only be used for output, and should be used to generate
-    /// the initial reset sequence, for example.
-    fn jtag_sequence(&mut self, tms: bool, tdi: &BitSequence) -> Result<(), DebugProbeError>;
-
-    /// Send a specific output sequence over JTAG or SWD.
-    ///
-    /// This can only be used for output, and should be used to generate
-    /// the initial reset sequence, for example.
-    fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError>;
-
-    /// Set the state of debugger output pins directly.
-    ///
-    /// The bits have the following meaning:
-    ///
-    /// Bit 0: SWCLK/TCK
-    /// Bit 1: SWDIO/TMS
-    /// Bit 2: TDI
-    /// Bit 3: TDO
-    /// Bit 5: nTRST
-    /// Bit 7: nRESET
-    fn swj_pins(
-        &mut self,
-        pin_out: u32,
-        pin_select: u32,
-        pin_wait: u32,
-    ) -> Result<u32, DebugProbeError>;
-
-    /// Cast this interface into a generic [`DebugProbe`].
-    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
-
-    /// Inform the probe of the [`CoreStatus`] of the chip attached to the probe.
-    fn core_status_notification(&mut self, state: CoreStatus) -> Result<(), DebugProbeError>;
 }
 
 /// High-level DAP register access.
@@ -424,9 +300,55 @@ pub trait DapAccess {
         Ok(())
     }
 
-    /// Gain access to the Probe that implements this trait
-    fn try_dap_probe(&self) -> Option<&dyn DapProbe>;
+    /// Returns the transport protocol in use when known.
+    fn active_wire_protocol(&self) -> Option<WireProtocol> {
+        None
+    }
 
-    /// Gain mutable access to the Probe that implements this trait
-    fn try_dap_probe_mut(&mut self) -> Option<&mut dyn DapProbe>;
+    /// Run a debug port connect through the probe wire.
+    fn debug_port_reconnect_with(
+        &mut self,
+        _connect: &mut dyn FnMut(&mut dyn DebugPortWire) -> Result<(), ArmError>,
+    ) -> Result<(), ArmError> {
+        Err(ArmError::NotImplemented("debug_port_reconnect"))
+    }
+}
+
+/// Layer-agnostic debug port wiring used by attach sequences.
+pub trait DebugPortWire {
+    /// Get the transport protocol currently in active use by the debug probe.
+    fn active_protocol(&self) -> Option<WireProtocol>;
+
+    /// Send an output-only SWJ bit sequence.
+    fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), ArmError>;
+
+    /// Send an output-only JTAG bit sequence.
+    fn jtag_sequence(&mut self, tms: bool, tdi: &BitSequence) -> Result<(), ArmError>;
+
+    /// Configure the probe for JTAG use.
+    fn configure_jtag(&mut self, skip_scan: bool) -> Result<(), ArmError>;
+
+    /// Drive SWJ pins and return the pin input state when supported.
+    fn swj_pins(&mut self, out: Pins, select: Pins, wait: Duration) -> Result<Pins, ArmError>;
+
+    /// Pulse the target reset line.
+    fn target_reset(&mut self) -> Result<(), ArmError>;
+
+    /// Assert the target reset line.
+    fn target_reset_assert(&mut self) -> Result<(), ArmError>;
+
+    /// Deassert the target reset line.
+    fn target_reset_deassert(&mut self) -> Result<(), ArmError>;
+
+    /// Flush any outstanding operations.
+    fn raw_flush(&mut self) -> Result<(), ArmError>;
+
+    /// Read one ADIv5 register on the wire.
+    fn raw_read_register(&mut self, port: Port, addr: u8) -> Result<u32, ArmError>;
+
+    /// Write one ADIv5 register on the wire.
+    fn raw_write_register(&mut self, port: Port, addr: u8, value: u32) -> Result<(), ArmError>;
+
+    /// Returns a [`JtagChain`] when the probe supports JTAG batching.
+    fn try_jtag_chain(&mut self) -> Option<JtagChain<'_>>;
 }

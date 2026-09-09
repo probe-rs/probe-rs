@@ -35,19 +35,12 @@
 //! EOF
 //! ```
 
-use probe_rs::{
-    CoreStatus,
-    architecture::arm::{
-        ArmCommunicationInterface, ArmDebugInterface, ArmError, DapError, DapProbe, RawDapAccess,
-        RegisterAddress,
-        dp::{DpRegister, RdBuff},
-        sequences::ArmDebugSequence,
-    },
-    probe::{
-        BitSequence, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-        ProbeCreationError, ProbeError, ProbeFactory, SwdSettings, WireProtocol,
-        list::ProbeListItem,
-    },
+use probe_rs::probe::{
+    BatchError, BatchExecutionError, BitSequence, CommandResult, DebugProbe, DebugProbeError,
+    DebugProbeInfo, DebugProbeSelector, ProbeCreationError, ProbeError, ProbeFactory, Results,
+    SwdSettings, WireProtocol,
+    list::ProbeListItem,
+    swd::{Direction, Port, SwdBatch, SwdOp, SwdProbe, SwdTransferError},
 };
 use spidev::{SpiModeFlags, SpidevOptions, SpidevTransfer};
 use std::fmt::Debug;
@@ -160,7 +153,10 @@ impl LinuxSpidevSwdProbe {
     }
 
     /// Transfer the TX buffer, packetize, and fix bit order.
-    fn transfer(&mut self, packet_size: usize) -> Result<impl Iterator<Item = u64>, ArmError> {
+    fn transfer(
+        &mut self,
+        packet_size: usize,
+    ) -> Result<impl Iterator<Item = u64>, DebugProbeError> {
         // Add idle cycles after the transfer as required by SwdSettings.
         let idle_bytes = self.swd_settings.idle_cycles_after_transfer.div_ceil(8);
         self.tx_buffer.extend(std::iter::repeat_n(0u8, idle_bytes));
@@ -182,7 +178,7 @@ impl LinuxSpidevSwdProbe {
     }
 
     /// Flush pending writes in the TX buffer.
-    fn flush_writes(&mut self) -> Result<(), ArmError> {
+    fn flush_writes(&mut self) -> Result<(), DebugProbeError> {
         if self.tx_buffer.is_empty() {
             return Ok(());
         }
@@ -205,80 +201,50 @@ impl LinuxSpidevSwdProbe {
         Ok(())
     }
 
-    fn raw_read_block_internal(
-        &mut self,
-        address: RegisterAddress,
-        values: &mut [u32],
-    ) -> Result<(), ArmError> {
-        // Flush any queued writes.
-        self.flush_writes()?;
-
+    fn queue_write(&mut self, is_ap: bool, addr: u8, data: u32) -> Result<(), DebugProbeError> {
+        self.tx_buffer.reserve(WRITE_PACKET_SIZE);
+        let packet = SwdWritePacket::new(is_ap, addr, data);
+        let packet = packet.0.reverse_bits().to_be_bytes();
         self.tx_buffer
-            .reserve((values.len() + 1) * READ_PACKET_SIZE);
-        let packet = SwdReadPacket::new(address);
-        for _ in 0..values.len() {
-            let packet = packet.0.reverse_bits().to_be_bytes();
-            self.tx_buffer
-                .extend_from_slice(&packet[0..READ_PACKET_SIZE]);
-        }
+            .extend_from_slice(&packet[0..WRITE_PACKET_SIZE]);
 
-        if address.is_ap() {
-            // AP reads are pipelined. We need to insert a read to Dap:RDBUFF to get
-            // the actual return value for the final read.
-            let packet = SwdReadPacket::new(RegisterAddress::DpRegister(RdBuff::ADDRESS));
-            let packet = packet.0.reverse_bits().to_be_bytes();
-            self.tx_buffer
-                .extend_from_slice(&packet[0..READ_PACKET_SIZE]);
-        }
-
-        // Do the transfer and read results.
-        let mut i = 0;
-        let mut skip_packet = address.is_ap();
-        for packet in self.transfer(READ_PACKET_SIZE)? {
-            let response = SwdReadPacket(packet);
-            parse_swd_ack(response.ack())?;
-
-            // Check RDATA parity bit.
-            let parity = (response.data().count_ones() & 1) == 1;
-            if parity != response.parity2() {
-                return Err(ArmError::Dap(DapError::IncorrectParity));
-            }
-
-            // Possibly skip the first packet.
-            if skip_packet {
-                skip_packet = false;
-                continue;
-            }
-
-            values[i] = response.data();
-            i += 1;
+        let available = MAX_QUEUE_BYTES - self.tx_buffer.len() - 1;
+        if available < WRITE_PACKET_SIZE {
+            self.flush_writes()?;
         }
 
         Ok(())
     }
 
-    fn raw_write_block_internal(
-        &mut self,
-        address: RegisterAddress,
-        values: &[u32],
-    ) -> Result<(), ArmError> {
-        self.tx_buffer.reserve(values.len() * WRITE_PACKET_SIZE);
-        let mut packet = SwdWritePacket::new(address, 0);
-        for &value in values {
-            SwdWritePacket::update_data(&mut packet, value);
+    fn queue_idle(&mut self, cycles: u32) -> Result<(), DebugProbeError> {
+        let bytes = cycles.div_ceil(8) as usize;
+        self.tx_buffer.extend(std::iter::repeat_n(0u8, bytes));
+        Ok(())
+    }
 
-            let packet = packet.0.reverse_bits().to_be_bytes();
-            self.tx_buffer
-                .extend_from_slice(&packet[0..WRITE_PACKET_SIZE]);
+    fn transfer_read(&mut self, is_ap: bool, addr: u8) -> Result<u32, DebugProbeError> {
+        self.flush_writes()?;
 
-            // If there isn't space for another write packet plus idle cycles, flush the queue.
-            let available = MAX_QUEUE_BYTES - self.tx_buffer.len() - 1;
-            if available < WRITE_PACKET_SIZE {
-                self.flush_writes()?;
-            }
+        let packet = SwdReadPacket::new(is_ap, addr);
+        let packet = packet.0.reverse_bits().to_be_bytes();
+        self.tx_buffer
+            .extend_from_slice(&packet[0..READ_PACKET_SIZE]);
+
+        let response = self
+            .transfer(READ_PACKET_SIZE)?
+            .next()
+            .ok_or_else(|| DebugProbeError::Other("missing SWD read response".into()))?;
+        let response = SwdReadPacket(response);
+        parse_swd_ack(response.ack())?;
+
+        let parity = (response.data().count_ones() & 1) == 1;
+        if parity != response.parity2() {
+            return Err(DebugProbeError::SwdTransfer(
+                SwdTransferError::IncorrectParity,
+            ));
         }
 
-        Ok(())
+        Ok(response.data())
     }
 }
 
@@ -347,17 +313,74 @@ impl DebugProbe for LinuxSpidevSwdProbe {
         true
     }
 
-    fn try_get_arm_debug_interface<'probe>(
-        self: Box<Self>,
-        sequence: std::sync::Arc<dyn ArmDebugSequence>,
-    ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
-        Ok(ArmCommunicationInterface::create(
-            self, sequence, /* use_overrun_detect*/ false,
-        ))
+    fn try_as_swd_probe(self: Box<Self>) -> Result<Box<dyn SwdProbe>, Box<dyn DebugProbe>> {
+        Ok(self)
     }
 }
 
-impl DapProbe for LinuxSpidevSwdProbe {}
+impl SwdProbe for LinuxSpidevSwdProbe {
+    fn run_batch(
+        &mut self,
+        batch: &SwdBatch,
+    ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
+        let mut results = Results::new();
+
+        for (fault_operation, (id, op)) in batch.iter().enumerate() {
+            let op_result: Result<(), DebugProbeError> = match op {
+                SwdOp::Transfer {
+                    port,
+                    addr,
+                    direction,
+                    data,
+                } => match direction {
+                    Direction::Write => self.queue_write(*port == Port::Ap, *addr, *data),
+                    Direction::Read => self.transfer_read(*port == Port::Ap, *addr).map(|value| {
+                        if id.should_capture() {
+                            results.push(id, CommandResult::U32(value));
+                        }
+                    }),
+                },
+                SwdOp::Sequence(bits) => {
+                    let tx = encode_swj_sequence(bits);
+                    self.transfer_raw_bytes(&tx)
+                }
+                SwdOp::Idle { cycles } => self.queue_idle(*cycles),
+                SwdOp::Pins { .. } => Err(DebugProbeError::NotImplemented {
+                    function_name: "swj_pins",
+                }),
+            };
+
+            if let Err(error) = op_result {
+                return match error {
+                    DebugProbeError::SwdTransfer(transfer_error) => Err(BatchExecutionError {
+                        error: BatchError::Specific(DebugProbeError::SwdTransfer(transfer_error)),
+                        results,
+                        fault_operation,
+                    }),
+                    error => Err(BatchExecutionError::new_from_debug_probe_at(
+                        error,
+                        results,
+                        fault_operation,
+                    )),
+                };
+            }
+        }
+
+        if let Err(error) = self.flush_writes() {
+            return Err(BatchExecutionError::new_from_debug_probe_at(
+                error,
+                results,
+                batch.len().saturating_sub(1),
+            ));
+        }
+
+        Ok(results)
+    }
+
+    fn swd_settings(&self) -> SwdSettings {
+        self.swd_settings.clone()
+    }
+}
 
 fn find_matching_device(selector: &DebugProbeSelector) -> Result<PathBuf, DebugProbeError> {
     let Some(serial_number) = selector.serial_number.as_deref() else {
@@ -418,107 +441,19 @@ fn probe_info_for_path(path: &Path) -> DebugProbeInfo {
     )
 }
 
-fn parse_swd_ack(ack: u64) -> Result<(), DapError> {
+fn parse_swd_ack(ack: u64) -> Result<(), DebugProbeError> {
     // These are the little-endian interpretations of bits,
     // so appear backwards relative to the wire order.
     match ack {
         0b001 => Ok(()),
-        0b010 => Err(DapError::WaitResponse),
-        0b100 => Err(DapError::FaultResponse),
-        0b111 => Err(DapError::NoAcknowledge),
-        _ => Err(DapError::Protocol(WireProtocol::Swd)),
-    }
-}
-
-impl RawDapAccess for LinuxSpidevSwdProbe {
-    fn raw_read_register(&mut self, address: RegisterAddress) -> Result<u32, ArmError> {
-        let mut data = 0;
-        match self.raw_read_block_internal(address, std::slice::from_mut(&mut data)) {
-            Ok(()) => Ok(data),
-            Err(ArmError::Dap(DapError::WaitResponse)) => {
-                tracing::debug!("Read from {address:?} got WAIT response, retrying once");
-                self.raw_read_block_internal(address, std::slice::from_mut(&mut data))?;
-                Ok(data)
-            }
-            Err(e) => Err(e),
-        }
-    }
-
-    fn raw_write_register(&mut self, address: RegisterAddress, value: u32) -> Result<(), ArmError> {
-        match self.raw_write_block(address, &[value]) {
-            Ok(()) => Ok(()),
-            Err(ArmError::Dap(DapError::WaitResponse)) => {
-                tracing::debug!("Write to {address:?} got WAIT response, retrying once");
-                self.raw_write_block_internal(address, &[value])?;
-                Ok(())
-            }
-            Err(e) => Err(e),
-        }
-    }
-
-    fn raw_read_block(
-        &mut self,
-        address: RegisterAddress,
-        values: &mut [u32],
-    ) -> Result<(), ArmError> {
-        // Flush any queued writes.
-        match self.raw_read_block_internal(address, values) {
-            Ok(()) => Ok(()),
-            Err(ArmError::Dap(DapError::WaitResponse)) => {
-                tracing::debug!("Read from {address:?} got WAIT response, retrying once");
-                self.raw_read_block_internal(address, values)
-            }
-            Err(e) => Err(e),
-        }
-    }
-
-    fn raw_write_block(
-        &mut self,
-        address: RegisterAddress,
-        values: &[u32],
-    ) -> Result<(), ArmError> {
-        match self.raw_write_block_internal(address, values) {
-            Ok(()) => Ok(()),
-            Err(ArmError::Dap(DapError::WaitResponse)) => {
-                tracing::debug!("Write to {address:?} got WAIT response, retrying once");
-                self.raw_write_block_internal(address, values)
-            }
-            Err(e) => Err(e),
-        }
-    }
-
-    fn raw_flush(&mut self) -> Result<(), ArmError> {
-        self.flush_writes()
-    }
-
-    fn jtag_sequence(&mut self, _tms: bool, _tdi: &BitSequence) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::NotImplemented {
-            function_name: "jtag_sequence",
-        })
-    }
-
-    fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError> {
-        let tx = encode_swj_sequence(bits);
-        self.transfer_raw_bytes(&tx)
-    }
-
-    fn swj_pins(
-        &mut self,
-        _pin_out: u32,
-        _pin_select: u32,
-        _pin_wait: u32,
-    ) -> Result<u32, DebugProbeError> {
-        Err(DebugProbeError::NotImplemented {
-            function_name: "swj_pins",
-        })
-    }
-
-    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
-        self
-    }
-
-    fn core_status_notification(&mut self, _state: CoreStatus) -> Result<(), DebugProbeError> {
-        Ok(())
+        0b010 => Err(DebugProbeError::SwdTransfer(SwdTransferError::WaitResponse)),
+        0b100 => Err(DebugProbeError::SwdTransfer(
+            SwdTransferError::FaultResponse,
+        )),
+        0b111 => Err(DebugProbeError::SwdTransfer(
+            SwdTransferError::NoAcknowledge,
+        )),
+        _ => Err(DebugProbeError::SwdTransfer(SwdTransferError::Protocol)),
     }
 }
 
@@ -571,36 +506,31 @@ bitfield::bitfield! {
 }
 
 impl SwdWritePacket {
-    fn new(address: RegisterAddress, data: u32) -> Self {
+    fn new(is_ap: bool, addr: u8, data: u32) -> Self {
         let mut packet = SwdWritePacket(0);
         packet.set_start(true);
-        packet.set_ap_n_dp(address.is_ap());
+        packet.set_ap_n_dp(is_ap);
         packet.set_r_n_w(false);
-        packet.set_a2(address.a2());
-        packet.set_a3(address.a3());
-        packet.set_parity1(address.is_ap() ^ false ^ address.a2() ^ address.a3());
+        packet.set_a2((addr & 0b0100) != 0);
+        packet.set_a3((addr & 0b1000) != 0);
+        packet.set_parity1(is_ap ^ false ^ packet.a2() ^ packet.a3());
         packet.set_stop(false);
         packet.set_park(true);
         packet.set_data(data);
         packet.set_parity2((data.count_ones() & 1) == 1);
         packet
     }
-
-    fn update_data(this: &mut Self, data: u32) {
-        this.set_data(data);
-        this.set_parity2((data.count_ones() & 1) == 1);
-    }
 }
 
 impl SwdReadPacket {
-    fn new(address: RegisterAddress) -> Self {
+    fn new(is_ap: bool, addr: u8) -> Self {
         let mut packet = SwdReadPacket(0);
         packet.set_start(true);
-        packet.set_ap_n_dp(address.is_ap());
+        packet.set_ap_n_dp(is_ap);
         packet.set_r_n_w(true);
-        packet.set_a2(address.a2());
-        packet.set_a3(address.a3());
-        packet.set_parity1(address.is_ap() ^ true ^ address.a2() ^ address.a3());
+        packet.set_a2((addr & 0b0100) != 0);
+        packet.set_a3((addr & 0b1000) != 0);
+        packet.set_parity1(is_ap ^ true ^ packet.a2() ^ packet.a3());
         packet.set_stop(false);
         packet.set_park(true);
         packet

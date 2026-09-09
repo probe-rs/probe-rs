@@ -22,8 +22,7 @@ use protocol::XvcDevice;
 use crate::{
     architecture::{
         arm::{
-            ArmCommunicationInterface, ArmDebugInterface, ArmError,
-            communication_interface::DapProbe, sequences::ArmDebugSequence,
+            ArmCommunicationInterface, ArmDebugInterface, ArmError, sequences::ArmDebugSequence,
         },
         riscv::{
             communication_interface::{RiscvError, RiscvInterfaceBuilder},
@@ -34,8 +33,8 @@ use crate::{
         },
     },
     probe::{
-        BitbangJtag, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-        IoSequenceItem, JtagAccess, JtagChainState, JtagStateAccess, ProbeFactory, RawSwdIo,
+        BitbangJtag, BitbangSwd, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+        IoSequenceItem, JtagChain, JtagChainAccess, JtagChainState, ProbeFactory, SwdProbe,
         SwdSettings, TapState, WireProtocol, list::ProbeListItem,
     },
 };
@@ -121,8 +120,9 @@ impl DebugProbe for XvcProbe {
     }
 
     fn attach(&mut self) -> Result<(), DebugProbeError> {
-        // Performs initial scan_chain, and sets non zero IR length.
-        self.select_target(0)
+        let mut chain = JtagChain::new(self);
+        chain.scan_chain()?;
+        Ok(())
     }
 
     fn detach(&mut self) -> Result<(), crate::Error> {
@@ -164,7 +164,15 @@ impl DebugProbe for XvcProbe {
         self
     }
 
-    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JtagAccess> {
+    fn try_as_jtag_chain(&mut self) -> Option<JtagChain<'_>> {
+        Some(JtagChain::new(self))
+    }
+
+    fn try_as_swd_probe_mut(&mut self) -> Option<&mut dyn SwdProbe> {
+        Some(self)
+    }
+
+    fn try_as_jtag_chain_access_mut(&mut self) -> Option<&mut dyn JtagChainAccess> {
         Some(self)
     }
 
@@ -176,7 +184,10 @@ impl DebugProbe for XvcProbe {
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
-        Ok(ArmCommunicationInterface::create(self, sequence, true))
+        let settings = SwdProbe::swd_settings(self.as_ref());
+        Ok(ArmCommunicationInterface::create_jtag(
+            self, settings, sequence, true,
+        ))
     }
 
     fn has_riscv_interface(&self) -> bool {
@@ -201,7 +212,20 @@ impl DebugProbe for XvcProbe {
     }
 }
 
-impl DapProbe for XvcProbe {}
+impl BitbangSwd for XvcProbe {
+    fn swd_io<S>(&mut self, _swdio: S) -> Result<Vec<bool>, DebugProbeError>
+    where
+        S: IntoIterator<Item = IoSequenceItem>,
+    {
+        Err(DebugProbeError::NotImplemented {
+            function_name: "swd_io",
+        })
+    }
+
+    fn swd_settings(&self) -> &SwdSettings {
+        &self.swd_settings
+    }
+}
 
 impl BitbangJtag for XvcProbe {
     fn tap_state(&mut self) -> &mut TapState {
@@ -222,39 +246,12 @@ impl BitbangJtag for XvcProbe {
     }
 }
 
-impl JtagStateAccess for XvcProbe {
-    fn state_mut(&mut self) -> &mut JtagChainState {
+impl JtagChainAccess for XvcProbe {
+    fn chain_state(&mut self) -> &mut JtagChainState {
         &mut self.jtag_state
     }
 
-    fn state(&self) -> &JtagChainState {
+    fn chain_state_ref(&self) -> &JtagChainState {
         &self.jtag_state
-    }
-}
-
-impl RawSwdIo for XvcProbe {
-    fn swd_io<S>(&mut self, _swdio: S) -> Result<Vec<bool>, DebugProbeError>
-    where
-        S: IntoIterator<Item = IoSequenceItem>,
-    {
-        // XVC is a JTAG-only transport.
-        Err(DebugProbeError::NotImplemented {
-            function_name: "swd_io",
-        })
-    }
-
-    fn swj_pins(
-        &mut self,
-        _pin_out: u32,
-        _pin_select: u32,
-        _pin_wait: u32,
-    ) -> Result<u32, DebugProbeError> {
-        Err(DebugProbeError::CommandNotSupportedByProbe {
-            command_name: "swj_pins",
-        })
-    }
-
-    fn swd_settings(&self) -> &SwdSettings {
-        &self.swd_settings
     }
 }

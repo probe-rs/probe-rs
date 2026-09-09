@@ -83,19 +83,6 @@ impl Command {
         commands
     }
 
-    /// Encode a raw sequence with one TMS value for every bit.
-    pub(crate) fn encode_raw_sequence(tms: bool, data: &BitSequence, capture: bool) -> Vec<Self> {
-        if data.is_empty() {
-            return Vec::new();
-        }
-
-        if tms {
-            encode_tms_high_sequence(data, capture)
-        } else {
-            Command::encode_tdi_exchange(data, false, capture)
-        }
-    }
-
     /// Encode idle TCK clocks with TMS and TDI low.
     pub(crate) fn encode_clock_tck(count: u32) -> Vec<Self> {
         let mut commands = Vec::new();
@@ -110,43 +97,6 @@ impl Command {
             remaining -= chunk;
         }
         commands
-    }
-
-    fn with_capture(self, capture: bool) -> Self {
-        match self {
-            Self::TmsBits {
-                bit_count,
-                tms_bits,
-                tdi,
-                ..
-            } => Self::TmsBits {
-                bit_count,
-                tms_bits,
-                tdi,
-                capture,
-            },
-            Self::TdiBits {
-                bit_count,
-                tdi_bits,
-                ..
-            } => Self::TdiBits {
-                bit_count,
-                tdi_bits,
-                capture,
-            },
-            Self::TdiSequence {
-                tdi_bytes,
-                bit_count,
-                tdi_bits,
-                ..
-            } => Self::TdiSequence {
-                tdi_bytes,
-                bit_count,
-                tdi_bits,
-                capture,
-            },
-            other => other,
-        }
     }
 
     /// Returns the number of bytes that will be output by this command.
@@ -287,30 +237,6 @@ impl Command {
             bits.push(8);
         }
     }
-}
-
-fn encode_tms_high_sequence(data: &BitSequence, capture: bool) -> Vec<Command> {
-    let mut commands = Vec::new();
-    let mut index = 0;
-    while index < data.len() {
-        let tdi = data[index];
-        let mut run = 1usize;
-        while index + run < data.len() && data[index + run] == tdi {
-            run += 1;
-        }
-        let path: Vec<bool> = vec![true; run];
-        let is_last_run = index + run == data.len();
-        let mut run_commands = Command::encode_tms_path(&path, tdi);
-        if capture
-            && is_last_run
-            && let Some(last) = run_commands.pop()
-        {
-            run_commands.push(last.with_capture(true));
-        }
-        commands.extend(run_commands);
-        index += run;
-    }
-    commands
 }
 
 fn encode_tdi_bits(

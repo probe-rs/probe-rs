@@ -502,10 +502,7 @@ where
     }
 
     fn update_core_status(&mut self, state: CoreStatus) {
-        if let Some(probe) = self.interface.try_dap_probe_mut() {
-            // Ignore errors setting the core status
-            let _ = probe.core_status_notification(state);
-        }
+        self.interface.core_status_notification(state);
     }
 }
 

@@ -14,12 +14,12 @@ use crate::MemoryMappedRegister;
 use crate::Session;
 use crate::architecture::arm::ArmDebugInterface;
 use crate::architecture::arm::DapAccess;
-use crate::architecture::arm::DapProbe;
 use crate::architecture::arm::armv6m::{Aircr, BpCtrl, Demcr, Dhcsr};
 use crate::architecture::arm::core::cortex_m;
 use crate::architecture::arm::dp::DpAddress;
 use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::sequences::{ArmDebugSequence, cortex_m_core_start};
+use crate::architecture::arm::traits::DebugPortWire;
 use crate::architecture::arm::{ArmError, FullyQualifiedApAddress};
 use crate::flashing::DebugFlashSequence;
 use probe_rs_target::CoreType;
@@ -208,7 +208,7 @@ impl ArmDebugSequence for CC23xxCC27xx {
     /// debug_port_start then exits SACI (or stays in it during flash mode).
     fn debug_port_connect(
         &self,
-        interface: &mut dyn DapProbe,
+        interface: &mut dyn DebugPortWire,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
         tracing::info!("CC23xx/CC27xx: Asserting nRESET before SWD connect (OpenOCD-compatible)");
@@ -221,7 +221,7 @@ impl ArmDebugSequence for CC23xxCC27xx {
         // probe drives nRESET high.
         let mut n_reset = crate::architecture::arm::traits::Pins(0);
         n_reset.set_nreset(true);
-        let _ = interface.swj_pins(n_reset.0 as u32, n_reset.0 as u32, 0)?;
+        let _ = interface.swj_pins(n_reset, n_reset, Duration::ZERO)?;
 
         // Give the ROM time to reach the SACI handler before the SWD connect
         // sequence reads DPIDR (60 ms matches OpenOCD's timing).

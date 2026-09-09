@@ -4,7 +4,6 @@ use crate::architecture::arm::{
         AddressIncrement, ApClass, ApRegister, ApType, CFG, DRW, DataSize, IDR, TAR,
         memory_ap::amba_ahb3::CSW,
     },
-    communication_interface::DapProbe,
     dp::{DpAddress, DpRegisterAddress},
 };
 use std::collections::HashMap;
@@ -204,13 +203,5 @@ impl DapAccess for MockMemoryAp {
             }
             _ => panic!("MockMemoryAp: unknown register"),
         }
-    }
-
-    fn try_dap_probe(&self) -> Option<&dyn DapProbe> {
-        None
-    }
-
-    fn try_dap_probe_mut(&mut self) -> Option<&mut dyn DapProbe> {
-        None
     }
 }

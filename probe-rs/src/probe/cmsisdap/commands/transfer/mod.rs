@@ -264,20 +264,22 @@ pub struct TransferResponse {
     pub transfers: Vec<InnerTransferResponse>,
 }
 
+/// Repeats one access, so that one packet carries more words than
+/// [`TransferRequest`] can.
 #[derive(Debug)]
-pub(crate) struct TransferBlockRequest {
+pub struct TransferBlockRequest {
     /// Zero-based device index of the selected JTAG device. For SWD mode the
     /// value is ignored.
-    pub(crate) dap_index: u8,
+    pub dap_index: u8,
 
     /// Number of transfers
-    pub(crate) transfer_count: u16,
+    pub transfer_count: u16,
 
     /// Information about requested access
-    pub(crate) transfer_request: InnerTransferBlockRequest,
+    pub transfer_request: InnerTransferBlockRequest,
 
     /// Register values to write for writes
-    pub(crate) transfer_data: Vec<u32>,
+    pub transfer_data: Vec<u32>,
 }
 
 impl Request for TransferBlockRequest {
@@ -320,16 +322,8 @@ impl Request for TransferBlockRequest {
 
         let mut data = Vec::with_capacity(transfer_count as usize);
 
-        let num_transfers = (buffer.len() - 3) / 4;
-
-        tracing::debug!(
-            "Expected {} responses, got {} responses with data..",
-            transfer_count,
-            num_transfers
-        );
-
-        // if it's a read, process the read data.
-        // If it's a write, there's no interesting data in the response.
+        // A read holds one word for every transfer that ran. A write holds no
+        // data.
         if self.transfer_request.r_n_w == RW::R {
             for data_offset in 0..transfer_count as usize {
                 data.push(
@@ -369,7 +363,7 @@ impl Request for TransferBlockRequest {
 }
 
 impl TransferBlockRequest {
-    pub(crate) fn write_request(address: RegisterAddress, data: Vec<u32>) -> Self {
+    pub fn write_request(address: RegisterAddress, data: Vec<u32>) -> Self {
         let inner = InnerTransferBlockRequest {
             ap_n_dp: address.is_ap(),
             r_n_w: RW::W,
@@ -385,7 +379,7 @@ impl TransferBlockRequest {
         }
     }
 
-    pub(crate) fn read_request(address: RegisterAddress, read_count: u16) -> Self {
+    pub fn read_request(address: RegisterAddress, read_count: u16) -> Self {
         let inner = InnerTransferBlockRequest {
             ap_n_dp: address.is_ap(),
             r_n_w: RW::R,
@@ -402,8 +396,9 @@ impl TransferBlockRequest {
     }
 }
 
+/// The access that a [`TransferBlockRequest`] repeats.
 #[derive(Debug, Copy, Clone)]
-pub(crate) struct InnerTransferBlockRequest {
+pub struct InnerTransferBlockRequest {
     ap_n_dp: bool,
     r_n_w: RW,
     a2: bool,
@@ -420,8 +415,9 @@ impl InnerTransferBlockRequest {
     }
 }
 
+/// The response to a [`TransferBlockRequest`].
 #[derive(Debug)]
-pub(crate) struct TransferBlockResponse {
+pub struct TransferBlockResponse {
     pub transfer_count: u16,
     pub transfer_response: LastTransferResponse,
     pub transfer_data: Vec<u32>,

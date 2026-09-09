@@ -2,8 +2,7 @@
 use crate::{
     architecture::{
         arm::{
-            ArmCommunicationInterface, ArmDebugInterface, ArmError,
-            communication_interface::DapProbe, sequences::ArmDebugSequence,
+            ArmCommunicationInterface, ArmDebugInterface, ArmError, sequences::ArmDebugSequence,
         },
         riscv::{
             communication_interface::{RiscvError, RiscvInterfaceBuilder},
@@ -14,9 +13,9 @@ use crate::{
         },
     },
     probe::{
-        BitSequence, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-        IoSequenceItem, JtagAccess, JtagChainState, JtagOp, JtagProbe, JtagSequence,
-        JtagStateAccess, ProbeCreationError, ProbeFactory, RawSwdIo, SwdSettings, WireProtocol,
+        BitbangSwd, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+        IoSequenceItem, JtagChain, JtagChainAccess, JtagChainState, JtagOp, JtagProbe,
+        ProbeCreationError, ProbeFactory, SwdProbe, SwdSettings, WireProtocol,
         jtag::{TapState, distribute_captures, enter_tdi, exchange_leaves_shift},
         list::{ProbeListItem, usb_probe_accessibility},
         queue::{BatchExecutionError, Results},
@@ -277,16 +276,6 @@ impl JtagAdapter {
         Ok(std::mem::take(&mut self.in_bits))
     }
 
-    fn shift_raw_sequence(&mut self, sequence: JtagSequence) -> Result<BitVec, DebugProbeError> {
-        let mut data = BitSequence::new();
-        for bit in sequence.data.iter() {
-            data.push(*bit);
-        }
-        let commands = Command::encode_raw_sequence(sequence.tms, &data, sequence.tdo_capture);
-        self.append_commands(&commands)?;
-        self.read_captured_bits()
-    }
-
     fn run_jtag_batch(
         &mut self,
         start: TapState,
@@ -473,7 +462,7 @@ impl DebugProbe for FtdiProbe {
         tracing::debug!("Attaching...");
 
         self.adapter.attach()?;
-        self.select_target(0)
+        Ok(())
     }
 
     fn detach(&mut self) -> Result<(), crate::Error> {
@@ -513,7 +502,15 @@ impl DebugProbe for FtdiProbe {
         Some(WireProtocol::Jtag)
     }
 
-    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JtagAccess> {
+    fn try_as_jtag_chain(&mut self) -> Option<JtagChain<'_>> {
+        Some(JtagChain::new(self))
+    }
+
+    fn try_as_swd_probe_mut(&mut self) -> Option<&mut dyn SwdProbe> {
+        Some(self)
+    }
+
+    fn try_as_jtag_chain_access_mut(&mut self) -> Option<&mut dyn JtagChainAccess> {
         Some(self)
     }
 
@@ -535,7 +532,10 @@ impl DebugProbe for FtdiProbe {
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
-        Ok(ArmCommunicationInterface::create(self, sequence, true))
+        let settings = SwdProbe::swd_settings(self.as_ref());
+        Ok(ArmCommunicationInterface::create_jtag(
+            self, settings, sequence, true,
+        ))
     }
 
     fn has_arm_interface(&self) -> bool {
@@ -554,12 +554,12 @@ impl DebugProbe for FtdiProbe {
     }
 }
 
-impl JtagStateAccess for FtdiProbe {
-    fn state_mut(&mut self) -> &mut JtagChainState {
+impl JtagChainAccess for FtdiProbe {
+    fn chain_state(&mut self) -> &mut JtagChainState {
         &mut self.jtag_state
     }
 
-    fn state(&self) -> &JtagChainState {
+    fn chain_state_ref(&self) -> &JtagChainState {
         &self.jtag_state
     }
 }
@@ -574,32 +574,15 @@ impl JtagProbe for FtdiProbe {
         self.jtag_state.tap_state = state;
         Ok(results)
     }
-
-    fn shift_raw_sequence(&mut self, sequence: JtagSequence) -> Result<BitVec, DebugProbeError> {
-        self.adapter.shift_raw_sequence(sequence)
-    }
 }
 
-impl DapProbe for FtdiProbe {}
-
-impl RawSwdIo for FtdiProbe {
+impl BitbangSwd for FtdiProbe {
     fn swd_io<S>(&mut self, _swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
         S: IntoIterator<Item = IoSequenceItem>,
     {
         Err(DebugProbeError::NotImplemented {
             function_name: "swd_io",
-        })
-    }
-
-    fn swj_pins(
-        &mut self,
-        _pin_out: u32,
-        _pin_select: u32,
-        _pin_wait: u32,
-    ) -> Result<u32, DebugProbeError> {
-        Err(DebugProbeError::CommandNotSupportedByProbe {
-            command_name: "swj_pins",
         })
     }
 

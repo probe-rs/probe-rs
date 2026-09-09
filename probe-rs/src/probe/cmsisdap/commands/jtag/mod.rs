@@ -1,8 +1,8 @@
 use bitvec::{bitvec, slice::BitSlice, vec::BitVec};
 
 use crate::probe::{
-    Batch, BatchExecutionError, DebugProbeError, JtagChainState, JtagOp, JtagProbe, JtagSequence,
-    JtagStateAccess, Results,
+    Batch, BatchExecutionError, DebugProbeError, JtagChainAccess, JtagChainState, JtagOp,
+    JtagProbe, Results,
     cmsisdap::{
         CmsisDap,
         commands::jtag::sequence::{Sequence, SequenceRequest},
@@ -16,12 +16,12 @@ pub mod sequence;
 
 const MAX_SEQUENCE_BITS: usize = 64;
 
-impl JtagStateAccess for CmsisDap {
-    fn state_mut(&mut self) -> &mut JtagChainState {
+impl JtagChainAccess for CmsisDap {
+    fn chain_state(&mut self) -> &mut JtagChainState {
         &mut self.jtag_state
     }
 
-    fn state(&self) -> &JtagChainState {
+    fn chain_state_ref(&self) -> &JtagChainState {
         &self.jtag_state
     }
 }
@@ -37,20 +37,8 @@ impl JtagProbe for CmsisDap {
         Ok(results)
     }
 
-    fn shift_raw_sequence(&mut self, sequence: JtagSequence) -> Result<BitVec, DebugProbeError> {
-        self.jtag_buffer.complete_sequences.clear();
-        self.jtag_buffer.current_sequence = None;
-        self.jtag_buffer.response.clear();
-
-        self.jtag_buffer
-            .push_sequence(sequence.tms, &sequence.data, sequence.tdo_capture)?;
-        self.flush_jtag()?;
-        if sequence.tdo_capture {
-            Ok(std::mem::take(&mut self.jtag_buffer.response))
-        } else {
-            self.jtag_buffer.response.clear();
-            Ok(BitVec::new())
-        }
+    fn configure_jtag(&mut self, skip_scan: bool) -> Result<(), DebugProbeError> {
+        CmsisDap::configure_jtag(self, skip_scan)
     }
 }
 
@@ -197,7 +185,13 @@ impl CmsisDap {
     }
 }
 
-impl JtagSequence {
+pub(crate) struct BufferedJtagSequence {
+    tdo_capture: bool,
+    tms: bool,
+    data: BitVec,
+}
+
+impl BufferedJtagSequence {
     /// Returns the size of the sequence in bytes.
     fn size(&self) -> usize {
         1 + self.data.len().div_ceil(8)
@@ -210,8 +204,8 @@ impl JtagSequence {
 
 pub(crate) struct JtagBuffer {
     packet_size: usize,
-    pub(crate) current_sequence: Option<JtagSequence>,
-    pub(crate) complete_sequences: Vec<JtagSequence>,
+    pub(crate) current_sequence: Option<BufferedJtagSequence>,
+    pub(crate) complete_sequences: Vec<BufferedJtagSequence>,
     response: BitVec,
 }
 
@@ -257,7 +251,7 @@ impl JtagBuffer {
             self.complete_sequences.push(complete);
         }
 
-        self.current_sequence = Some(JtagSequence {
+        self.current_sequence = Some(BufferedJtagSequence {
             tdo_capture,
             tms,
             data: data.to_bitvec(),

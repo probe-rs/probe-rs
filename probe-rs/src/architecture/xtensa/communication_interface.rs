@@ -19,7 +19,7 @@ use crate::{
         xdm::{DebugStatus, XdmState},
     },
     memory::{Operation, OperationKind},
-    probe::{CommandResult, DebugProbeError, Handle, JtagAccess},
+    probe::{CommandResult, DebugProbeError, Handle},
 };
 
 use super::xdm::{Error as XdmError, Xdm};
@@ -264,7 +264,7 @@ pub struct XtensaCommunicationInterface<'probe> {
 impl<'probe> XtensaCommunicationInterface<'probe> {
     /// Create the Xtensa communication interface using the underlying probe driver
     pub fn new(
-        probe: &'probe mut dyn JtagAccess,
+        probe: &'probe mut dyn crate::probe::JtagChainAccess,
         state: &'probe mut XtensaDebugInterfaceState,
     ) -> Self {
         let XtensaDebugInterfaceState {
@@ -272,7 +272,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             core_properties,
             xdm_state,
         } = state;
-        let xdm = Xdm::new(probe, xdm_state);
+        let xdm = Xdm::new(crate::probe::JtagChain::new(probe), xdm_state);
 
         Self {
             xdm,

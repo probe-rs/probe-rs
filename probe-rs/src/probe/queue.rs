@@ -31,13 +31,28 @@ pub struct BatchExecutionError<E = Box<dyn std::error::Error + Send + Sync>> {
 
     /// The results of the commands that were executed before the error occurred.
     pub results: Results,
+
+    /// Index of the operation that failed in the batch slice that was executed.
+    pub fault_operation: usize,
 }
 
 impl<E> BatchExecutionError<E> {
-    pub(crate) fn new_from_debug_probe(error: DebugProbeError, results: Results) -> Self {
+    /// Report a probe error that failed the operation after the captured results.
+    pub fn new_from_debug_probe(error: DebugProbeError, results: Results) -> Self {
+        let fault_operation = results.len();
+        Self::new_from_debug_probe_at(error, results, fault_operation)
+    }
+
+    /// Report a probe error that failed the operation at the given index of the batch.
+    pub fn new_from_debug_probe_at(
+        error: DebugProbeError,
+        results: Results,
+        fault_operation: usize,
+    ) -> Self {
         BatchExecutionError {
             error: BatchError::Probe(error),
             results,
+            fault_operation,
         }
     }
 }
@@ -47,6 +62,7 @@ impl BatchExecutionError {
         error: Box<dyn std::error::Error + Send + Sync>,
         results: Results,
     ) -> Self {
+        let fault_operation = results.len();
         BatchExecutionError {
             // Just in case the caller passed a boxed DebugProbeError, which they weren't supposed to, convert it back.
             error: match error.downcast::<DebugProbeError>() {
@@ -54,6 +70,7 @@ impl BatchExecutionError {
                 Err(error) => BatchError::Specific(error),
             },
             results,
+            fault_operation,
         }
     }
 
@@ -77,6 +94,7 @@ impl BatchExecutionError {
                 BatchError::Probe(e) => BatchError::Probe(e),
             },
             results: self.results,
+            fault_operation: self.fault_operation,
         }
     }
 }
@@ -132,6 +150,25 @@ impl<Op, E: std::error::Error + Send + Sync + 'static> Batch<Op, E> {
     pub fn rewind(&mut self, by: usize) -> bool {
         self.batch.rewind(by)
     }
+
+    pub(crate) fn schedule_preserved(
+        &mut self,
+        id: HandleId,
+        cmd: impl Into<Op>,
+    ) -> Handle<CommandResult> {
+        self.batch.schedule_preserved(id, cmd)
+    }
+
+    pub(crate) fn replace_remaining(&mut self, ops: Vec<(HandleId, Op)>) {
+        self.batch.replace_remaining(ops);
+    }
+
+    pub(crate) fn remaining_with_ids(&self) -> Vec<(HandleId, Op)>
+    where
+        Op: Clone,
+    {
+        self.batch.remaining_with_ids()
+    }
 }
 
 impl<Op, E: std::error::Error + Send + Sync + 'static> Batch<Op, E> {
@@ -151,7 +188,10 @@ impl<Op, E: std::error::Error + Send + Sync + 'static> Batch<Op, E> {
         self.batch.schedule(cmd)
     }
 
-    pub(crate) fn iter(&self) -> impl Iterator<Item = &(HandleId, Op)> {
+    /// Iterate over the operations in the batch, in the order of the schedule.
+    ///
+    /// A probe driver walks the batch with this method.
+    pub fn iter(&self) -> impl Iterator<Item = &(HandleId, Op)> {
         self.batch.iter()
     }
 
@@ -190,7 +230,10 @@ impl Results {
         Self(HashMap::with_capacity(capacity))
     }
 
-    pub(crate) fn push(&mut self, id: &HandleId, result: CommandResult) {
+    /// Record the result of one operation.
+    ///
+    /// A probe driver reports the answer of an operation with this method.
+    pub fn push(&mut self, id: &HandleId, result: CommandResult) {
         self.0.insert(id.clone(), result);
     }
 
@@ -244,7 +287,11 @@ impl HandleId {
         Self(Arc::new(()))
     }
 
-    pub(crate) fn should_capture(&self) -> bool {
+    /// Report whether the caller still holds the handle of this operation.
+    ///
+    /// A probe driver skips the capture of an operation whose handle is gone,
+    /// because nobody can read the answer.
+    pub fn should_capture(&self) -> bool {
         // Both the batch and the user code may hold on to at most one of the references. The batch
         // execution will be able to detect if the user dropped their read reference, meaning
         // the read data would be inaccessible.
@@ -288,16 +335,18 @@ impl<T> fmt::Debug for Handle<T> {
     }
 }
 
+impl<T> Handle<T> {
+    pub(crate) fn id(&self) -> &HandleId {
+        &self.id
+    }
+}
+
 impl Handle<CommandResult> {
     pub(crate) fn from_id(id: HandleId) -> Self {
         Self {
             id,
             convert: Box::new(|result| result),
         }
-    }
-
-    pub(crate) fn id(&self) -> &HandleId {
-        &self.id
     }
 }
 
@@ -313,6 +362,13 @@ impl<T: 'static> Handle<T> {
             convert: Box::new(move |result| f(convert(result))),
         }
     }
+
+    pub(crate) fn from_parts(
+        id: HandleId,
+        convert: Box<dyn FnOnce(CommandResult) -> T + Send>,
+    ) -> Self {
+        Self { id, convert }
+    }
 }
 
 /// A set of batched commands that will be processed in a batch by the probe.
@@ -325,6 +381,19 @@ impl<T: 'static> Handle<T> {
 pub struct ErasedBatch<Op> {
     commands: Vec<(HandleId, Op)>,
     cursor: usize,
+}
+
+impl<Op: Clone> ErasedBatch<Op> {
+    fn remaining_with_ids(&self) -> Vec<(HandleId, Op)> {
+        self.commands[self.cursor..].to_vec()
+    }
+}
+
+impl<Op> ErasedBatch<Op> {
+    fn replace_remaining(&mut self, ops: Vec<(HandleId, Op)>) {
+        self.commands.truncate(self.cursor);
+        self.commands.extend(ops);
+    }
 }
 
 impl<Op> ErasedBatch<Op> {
@@ -341,6 +410,15 @@ impl<Op> ErasedBatch<Op> {
     /// Returns a token value that can be used to retrieve the result of the command.
     fn schedule(&mut self, command: impl Into<Op>) -> Handle<CommandResult> {
         let id = HandleId::new();
+        self.commands.push((id.clone(), command.into()));
+        Handle::from_id(id)
+    }
+
+    fn schedule_preserved(
+        &mut self,
+        id: HandleId,
+        command: impl Into<Op>,
+    ) -> Handle<CommandResult> {
         self.commands.push((id.clone(), command.into()));
         Handle::from_id(id)
     }

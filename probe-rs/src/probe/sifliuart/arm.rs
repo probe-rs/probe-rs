@@ -3,7 +3,7 @@ use crate::MemoryInterface;
 use crate::architecture::arm::ap::{
     AccessPortType, ApRegister, CFG, CSW, IDR, MemoryAp, MemoryApType,
 };
-use crate::architecture::arm::communication_interface::{DapProbe, SwdSequence};
+use crate::architecture::arm::communication_interface::SwdSequence;
 use crate::architecture::arm::dp::{DpAddress, DpRegisterAddress};
 use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::sequences::ArmDebugSequence;
@@ -87,14 +87,6 @@ impl DapAccess for SifliUartArmDebug {
         _value: u32,
     ) -> Result<(), ArmError> {
         Ok(())
-    }
-
-    fn try_dap_probe(&self) -> Option<&dyn DapProbe> {
-        None
-    }
-
-    fn try_dap_probe_mut(&mut self) -> Option<&mut dyn DapProbe> {
-        None
     }
 }
 
