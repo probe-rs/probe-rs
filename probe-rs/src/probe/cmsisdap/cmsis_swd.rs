@@ -44,6 +44,17 @@ pub(crate) fn block_words_per_packet(packet_size: u16) -> usize {
     ((packet_size as usize - 6) / 4).max(1)
 }
 
+/// Return how many transfers one `DAP_Transfer` packet holds.
+///
+/// Bounded by the packet size, and then by the count field. That count travels in a single byte
+/// and is written with a cast rather than a check, so asking for more does not fail: the probe
+/// runs `count % 256` of them and reports having done so.
+pub(crate) fn transfers_per_packet(packet_size: u16) -> usize {
+    // A packet holds a one byte HID report id, the command id, and the transfer count, before the
+    // request byte and data word of each transfer.
+    ((packet_size as usize - 3) / (1 + 4)).min(u8::MAX as usize)
+}
+
 fn transfer_data(op: &SwdOp) -> u32 {
     match op {
         SwdOp::Transfer { data, .. } => *data,
@@ -90,7 +101,7 @@ struct PendingTransfer {
 
 impl CmsisDap {
     pub(crate) fn max_transfers_per_packet(&self) -> usize {
-        (self.packet_size as usize - 3) / (1 + 4)
+        transfers_per_packet(self.packet_size)
     }
 
     fn swd_register(port: Port, addr: u8) -> RegisterAddress {
@@ -662,7 +673,7 @@ mod tests {
     }
 
     fn split_transfer_ops(ops: &[SwdOp], packet_size: u16) -> Vec<Vec<RecordedTransfer>> {
-        let max_per_packet = (packet_size as usize - 3) / 5;
+        let max_per_packet = transfers_per_packet(packet_size);
         let transfers = encode_transfer_ops(ops);
         let mut chunks = Vec::new();
         let mut offset = 0;
@@ -672,6 +683,19 @@ mod tests {
             offset = end;
         }
         chunks
+    }
+
+    #[test]
+    fn transfers_per_packet_stops_at_the_count_field() {
+        // Ordinary packet sizes are bounded by the packet, and are unchanged.
+        assert_eq!(transfers_per_packet(64), 12);
+        assert_eq!(transfers_per_packet(1024), 204);
+
+        // 1278 bytes is the largest packet the count field can describe in full. Past it the
+        // packet has room the byte cannot express.
+        assert_eq!(transfers_per_packet(1278), 255);
+        assert_eq!(transfers_per_packet(1283), 255);
+        assert_eq!(transfers_per_packet(u16::MAX), 255);
     }
 
     #[test]
@@ -701,7 +725,7 @@ mod tests {
     #[test]
     fn batch_splits_at_packet_limit_without_read_flush() {
         let packet_size = 64u16;
-        let max_per_packet = (packet_size as usize - 3) / 5;
+        let max_per_packet = transfers_per_packet(packet_size);
         let mut ops = Vec::new();
         for index in 0..(max_per_packet + 2) {
             // Alternating addresses keep the run below MIN_BLOCK_TRANSFERS, so
