@@ -55,7 +55,24 @@ pub fn erase_all(
 
         let target = session.target();
         let core = target.core_index_by_name(core_name).unwrap();
-        let algo = FlashLoader::get_flash_algorithm_for_region(&region, target, core_name, &[])?;
+        let algo = match FlashLoader::get_flash_algorithm_for_region(
+            &region,
+            target,
+            core_name,
+            &[],
+        ) {
+            Ok(algo) => algo,
+            Err(FlashError::NoFlashLoaderAlgorithmAttached { .. }) => {
+                // Regions without a linked algorithm (e.g. OTP) cannot be
+                // erased by the flash loader, so leave them alone.
+                tracing::warn!(
+                    "Skipping flash region {:#010x?}: no flash loader algorithm is linked to it.",
+                    region.range
+                );
+                continue;
+            }
+            Err(error) => return Err(error),
+        };
 
         tracing::debug!("     -- using algorithm: {}", algo.name);
         if let Some(entry) = algos.iter_mut().find(|entry| {
