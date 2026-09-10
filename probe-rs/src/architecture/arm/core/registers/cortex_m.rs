@@ -169,8 +169,9 @@ pub(crate) static CORTEX_M_COMMON_REGS_SET: &[CoreRegister] = &[
         unwind_rule: UnwindRule::Preserve,
     },
     XPSR,
-    // CONTROL bits [31:24], FAULTMASK bits [23:16],
-    // BASEPRI bits [15:8], and PRIMASK bits [7:0]
+    // CONTROL in bits [31:24] and PRIMASK in bits [7:0] on every Cortex-M.
+    // Bits [23:16] are FAULTMASK and [15:8] are BASEPRI on ARMv7-M and above.
+    // Bits[23:8] are Reserved on ARMv6-M.
     CoreRegister {
         roles: &[RegisterRole::Core("EXTRA"), RegisterRole::Other("EXTRA")],
         id: RegisterId(0b10100),
