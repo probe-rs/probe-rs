@@ -81,7 +81,7 @@ impl ProbeFactory for XvcFactory {
             && selector.vendor_id == XVC_VID
             && selector.product_id == XVC_PID
             && let Some(address) = selector.serial_number.clone()
-            && !address.is_empty()
+            && is_xvc_address(&address)
         {
             return vec![ProbeListItem::accessible(DebugProbeInfo {
                 identifier: "XVC".to_string(),
@@ -96,6 +96,24 @@ impl ProbeFactory for XvcFactory {
 
         Vec::new()
     }
+}
+
+fn is_xvc_address(serial: &str) -> bool {
+    // Drop a trailing numeric port, except for bracketed IPv6 literals.
+    let host = if serial.contains('[') {
+        serial
+    } else if let Some((host, port)) = serial.rsplit_once(':') {
+        if !port.bytes().all(|b| b.is_ascii_digit()) {
+            return false;
+        }
+        host
+    } else {
+        serial
+    };
+    !host.is_empty()
+        && host.bytes().all(|b| {
+            b.is_ascii_alphanumeric() || matches!(b, b'.' | b'-' | b'_' | b'[' | b']' | b':')
+        })
 }
 
 /// An XVC (Xilinx Virtual Cable) debug probe.

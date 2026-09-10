@@ -98,6 +98,10 @@ impl XvcDevice {
             return Err(ProbeCreationError::NotFound);
         };
 
+        if !super::is_xvc_address(serial) {
+            return Err(ProbeCreationError::NotFound);
+        }
+
         let address = normalize_address(serial)?;
 
         let mut stream = TcpStream::connect(&address).map_err(XvcError::from)?;
