@@ -7,13 +7,9 @@ use std::{
 use probe_rs_target::CoreType;
 
 use crate::{
-    Error,
     architecture::arm::{
-        ArmDebugInterface, ArmError, FullyQualifiedApAddress,
-        armv8m::Aircr,
-        core::armv8m::Dhcsr,
-        memory::ArmMemoryInterface,
-        sequences::{ArmDebugSequence, cortex_m_core_start},
+        ArmDebugInterface, ArmError, FullyQualifiedApAddress, armv8m::Aircr, core::armv8m::Dhcsr,
+        memory::ArmMemoryInterface, sequences::ArmDebugSequence,
     },
     core::MemoryMappedRegister,
 };
@@ -39,19 +35,19 @@ impl ArmDebugSequence for OL23D0 {
         _cti_base: Option<u64>,
     ) -> Result<(), ArmError> {
         let mut memory = interface.memory_interface(core_ap)?;
-
-        cortex_m_core_start(&mut *memory)?;
-
         let memory = memory.as_mut();
         let mut core = OL23D0Core { memory };
 
-        if core.halt(Duration::from_millis(100)).is_err() {
-            // Only do this if lockup.
-            core.set_breakpoints()?;
-
-            core.reset(Duration::from_millis(100))?;
+        let dhcsr = core.dhcsr()?;
+        if dhcsr.s_halt() {
+            // Already halted by an earlier session.
+        } else if !dhcsr.s_lockup() && core.halt(Duration::from_millis(200)).is_ok() {
+            // A running application halts at once, so attaching does not reset it.
         } else {
-            core.run()?;
+            // Locked up (as with no valid application), or stuck in the secure bootloader,
+            // which sleeps and does not take a halt. Reset and catch it at an application entry.
+            core.set_breakpoints()?;
+            core.reset(Duration::from_millis(100))?;
         }
 
         Ok(())
@@ -161,25 +157,31 @@ impl OL23D0Core<'_> {
         // Wait until halted state is active again.
         let start = Instant::now();
 
-        while !self.core_halted()? {
+        loop {
+            match self.core_halted() {
+                Ok(true) => return Ok(()),
+                Ok(false) => {}
+                // The reset drops the SW-DP until the secure bootloader re-enables debug.
+                // Re-establish it and try again.
+                Err(_) => self.memory.get_arm_debug_interface()?.reinitialize()?,
+            }
             if start.elapsed() >= timeout {
                 return Err(ArmError::Timeout);
             }
             // Wait a bit before polling again.
-            std::thread::sleep(Duration::from_millis(1));
+            thread::sleep(Duration::from_millis(1));
         }
+    }
 
-        Ok(())
+    fn dhcsr(&mut self) -> Result<Dhcsr, ArmError> {
+        Ok(Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?))
     }
 
     fn core_halted(&mut self) -> Result<bool, ArmError> {
-        let dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
-
-        // Wait until halted state is active again.
-        Ok(dhcsr.s_halt())
+        Ok(self.dhcsr()?.s_halt())
     }
 
-    fn halt(&mut self, timeout: Duration) -> Result<(), Error> {
+    fn halt(&mut self, timeout: Duration) -> Result<(), ArmError> {
         let mut value = Dhcsr(0);
         value.set_c_halt(true);
         value.set_c_debugen(true);
@@ -189,19 +191,6 @@ impl OL23D0Core<'_> {
             .write_word_32(Dhcsr::get_mmio_address(), value.into())?;
 
         self.wait_for_core_halted(timeout)?;
-
-        Ok(())
-    }
-
-    fn run(&mut self) -> Result<(), ArmError> {
-        let mut value = Dhcsr(0);
-        value.set_c_halt(false);
-        value.set_c_debugen(true);
-        value.enable_write();
-
-        self.memory
-            .write_word_32(Dhcsr::get_mmio_address(), value.into())?;
-        self.memory.flush()?;
 
         Ok(())
     }
