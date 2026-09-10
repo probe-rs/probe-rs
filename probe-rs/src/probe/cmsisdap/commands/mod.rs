@@ -458,23 +458,52 @@ pub(crate) fn send_command<Req: Request>(
     })
 }
 
-fn send_command_inner<Req: Request>(
+/// Send a request without waiting for its reply.
+///
+/// The probe owes a reply for every request it accepts, and they come back in order. A caller
+/// that sends more than one before reading must take the same number of replies, in the same
+/// order, or the next command reads someone else's answer.
+pub(crate) fn send_request<Req: Request>(
     device: &mut CmsisDapDevice,
     request: &Req,
-) -> Result<Req::Response, SendError> {
-    // Size the buffer for the maximum packet size.
-    // On v1, we always send this full-sized report, while
-    // on v2 we can truncate to just the required data.
-    // Add one byte for HID report ID.
-    let buffer_len: usize = match device {
+) -> Result<(), CmsisDapError> {
+    let mut buffer = vec![0; packet_buffer_len(device)];
+    send_request_inner(device, request, &mut buffer).map_err(|e| CmsisDapError::Send {
+        command_id: Req::COMMAND_ID,
+        source: e,
+    })
+}
+
+/// Take the reply to a request already sent by [`send_request`].
+pub(crate) fn receive_response<Req: Request>(
+    device: &mut CmsisDapDevice,
+    request: &Req,
+) -> Result<Req::Response, CmsisDapError> {
+    let mut buffer = vec![0; packet_buffer_len(device)];
+    receive_response_inner(device, request, &mut buffer).map_err(|e| CmsisDapError::Send {
+        command_id: Req::COMMAND_ID,
+        source: e,
+    })
+}
+
+/// Size a buffer for the largest packet the device can carry, plus the HID report id.
+fn packet_buffer_len(device: &CmsisDapDevice) -> usize {
+    match device {
         #[cfg(feature = "cmsisdap_v1")]
         CmsisDapDevice::V1 { report_size, .. } => *report_size + 1,
         CmsisDapDevice::V2 {
             max_packet_size, ..
         } => *max_packet_size + 1,
-    };
-    let mut buffer = vec![0; buffer_len];
+    }
+}
 
+/// `buffer` must be zeroed past the request. A v1 device is sent a whole report, so whatever is
+/// left in the tail goes on the wire.
+fn send_request_inner<Req: Request>(
+    device: &mut CmsisDapDevice,
+    request: &Req,
+    buffer: &mut [u8],
+) -> Result<(), SendError> {
     // Leave byte 0 as the HID report, and write the command and request to the buffer.
     buffer[1] = Req::COMMAND_ID as u8;
     #[cfg_attr(not(feature = "cmsisdap_v1"), allow(unused_mut))]
@@ -489,12 +518,18 @@ fn send_command_inner<Req: Request>(
         size = *report_size + 1;
     }
 
-    // Send buffer to the device.
     let _ = device.write(&buffer[..size])?;
     trace_buffer("Transmit buffer", &buffer[..size]);
 
-    // Read back response.
-    let bytes_read = device.read(&mut buffer)?;
+    Ok(())
+}
+
+fn receive_response_inner<Req: Request>(
+    device: &mut CmsisDapDevice,
+    request: &Req,
+    buffer: &mut [u8],
+) -> Result<Req::Response, SendError> {
+    let bytes_read = device.read(buffer)?;
     let response_data = &buffer[..bytes_read];
     trace_buffer("Receive buffer", response_data);
 
@@ -510,6 +545,16 @@ fn send_command_inner<Req: Request>(
             Req::COMMAND_ID,
         ))
     }
+}
+
+fn send_command_inner<Req: Request>(
+    device: &mut CmsisDapDevice,
+    request: &Req,
+) -> Result<Req::Response, SendError> {
+    let mut buffer = vec![0; packet_buffer_len(device)];
+
+    send_request_inner(device, request, &mut buffer)?;
+    receive_response_inner(device, request, &mut buffer)
 }
 
 /// Trace log a buffer, including only the first trailing zero.

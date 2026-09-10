@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::time::Duration;
 
 use crate::{
@@ -29,6 +30,12 @@ pub(crate) fn cmsis_handles_wait(wait_retry: u16) -> bool {
 /// `DAP_TransferBlock` sends the access once for every repeat, so it needs
 /// fewer packets than `DAP_Transfer`.
 const MIN_BLOCK_TRANSFERS: usize = 2;
+
+/// How many `DAP_TransferBlock` requests may be outstanding at once.
+///
+/// Overlapping a request with the previous reply hides one round trip each time. Past a handful
+/// the wait is already covered and a deeper queue only holds more requests in memory.
+const MAX_PIPELINED_BLOCKS: usize = 8;
 
 /// Return how many words one `DAP_TransferBlock` packet holds.
 pub(crate) fn block_words_per_packet(packet_size: u16) -> usize {
@@ -228,7 +235,85 @@ impl CmsisDap {
         block_words_per_packet(self.packet_size)
     }
 
-    /// Send a repeated access as `DAP_TransferBlock` packets.
+    /// Classify one `DAP_TransferBlock` reply.
+    ///
+    /// Takes no `self`, so it cannot issue a command. Whatever the reply says, recovery has to
+    /// wait until every outstanding reply has been taken.
+    fn classify_block_response(
+        response: &TransferBlockResponse,
+        chunk_len: usize,
+        chunk_start: usize,
+    ) -> Result<(), (BatchError<DebugProbeError>, usize)> {
+        let count = usize::from(response.transfer_count);
+        let fault_operation = chunk_start + count.min(chunk_len).saturating_sub(1);
+
+        if response.transfer_response.protocol_error {
+            return Err((
+                BatchError::Specific(DebugProbeError::SwdTransfer(SwdTransferError::Protocol)),
+                fault_operation,
+            ));
+        }
+
+        match response.transfer_response.ack {
+            Ack::Ok => {}
+            ack => {
+                return Err((
+                    BatchError::Specific(DebugProbeError::SwdTransfer(
+                        Self::ack_to_transfer_error(ack),
+                    )),
+                    fault_operation,
+                ));
+            }
+        }
+
+        if count < chunk_len {
+            return Err((
+                BatchError::Probe(DebugProbeError::Other(format!(
+                    "Possible error in CMSIS-DAP probe: Only {}/{} transfers were executed, but no error was reported.",
+                    count, chunk_len
+                ))),
+                fault_operation,
+            ));
+        }
+
+        Ok(())
+    }
+
+    /// Put the port back in order after a block transfer failed.
+    ///
+    /// Each arm is a command in its own right, which is why this is separate from classifying the
+    /// reply: issuing one while the probe still owes replies leaves the two out of step.
+    fn recover_from_block_error(&mut self, error: &BatchError<DebugProbeError>) {
+        match error {
+            BatchError::Specific(DebugProbeError::SwdTransfer(SwdTransferError::FaultResponse)) => {
+                if let Err(error) = self.handle_sticky_err() {
+                    tracing::warn!("Failed to clear the sticky error: {error}");
+                }
+            }
+            BatchError::Specific(DebugProbeError::SwdTransfer(SwdTransferError::WaitResponse)) => {
+                let abort = {
+                    let mut abort = Abort(0);
+                    abort.set_dapabort(true);
+                    abort
+                };
+                if let Err(error) = self.write_abort(abort) {
+                    tracing::warn!("Failed to abort the transfer: {error}");
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// Send a repeated access as `DAP_TransferBlock` packets, several at a time.
+    ///
+    /// Sending the next request before reading the previous reply hides one round trip per
+    /// overlap. ADIv5 §B4.2.4 describes this as the intended use: "A debugger might stream a block
+    /// of data and then check the CTRL/STAT register at the end of the block."
+    ///
+    /// A request already on the wire when an earlier one faults cannot reach the target. Once a
+    /// sticky flag is set the DP answers FAULT to every access except reads of DPIDR and
+    /// CTRL/STAT and writes to ABORT, so the tail is refused rather than performed, and the first
+    /// failure in batch order is the one reported.
     fn run_transfer_block(
         &mut self,
         run: &[(HandleId, SwdOp)],
@@ -246,107 +331,87 @@ impl CmsisDap {
         };
         let address = Self::swd_register(port, addr);
         let words_per_packet = self.max_words_per_block_packet();
+        let depth = (self.packet_count as usize).clamp(1, MAX_PIPELINED_BLOCKS);
 
-        for (chunk_index, chunk) in run.chunks(words_per_packet).enumerate() {
-            let chunk_start = run_start + chunk_index * words_per_packet;
-            let mut request = match direction {
-                Direction::Read => TransferBlockRequest::read_request(address, chunk.len() as u16),
-                Direction::Write => TransferBlockRequest::write_request(
-                    address,
-                    chunk.iter().map(|(_, op)| transfer_data(op)).collect(),
-                ),
-            };
-            request.dap_index = self.jtag_state.chain_params.index as u8;
+        let mut chunks = run.chunks(words_per_packet).enumerate();
+        let mut in_flight = VecDeque::with_capacity(depth);
+        let mut failure: Option<(BatchError<DebugProbeError>, usize)> = None;
+        // A chunk that failed ends the run, so nothing after it is the caller's to see. A chunk
+        // that was never sent does not: whatever is already in flight ran before the failure and
+        // would have run without the pipeline too.
+        let mut capture = true;
 
-            let response: TransferBlockResponse =
-                match commands::send_command(&mut self.device, &request) {
-                    Ok(response) => response,
-                    Err(error) => {
-                        return Err(BatchExecutionError::new_from_debug_probe_at(
-                            DebugProbeError::from(error),
-                            results,
-                            chunk_start,
-                        ));
-                    }
+        loop {
+            while failure.is_none() && in_flight.len() < depth {
+                let Some((chunk_index, chunk)) = chunks.next() else {
+                    break;
                 };
+                let chunk_start = run_start + chunk_index * words_per_packet;
 
-            let count = usize::from(response.transfer_count);
-            let fault_operation = chunk_start + count.saturating_sub(1).min(chunk.len() - 1);
-
-            if response.transfer_response.protocol_error {
-                return Err(BatchExecutionError {
-                    error: BatchError::Specific(DebugProbeError::SwdTransfer(
-                        SwdTransferError::Protocol,
-                    )),
-                    results,
-                    fault_operation,
-                });
-            }
-
-            match response.transfer_response.ack {
-                Ack::Ok => {}
-                Ack::Fault => {
-                    if let Err(error) = self.handle_sticky_err() {
-                        tracing::warn!("Failed to clear the sticky error: {error}");
+                let mut request = match direction {
+                    Direction::Read => {
+                        TransferBlockRequest::read_request(address, chunk.len() as u16)
                     }
-                    return Err(BatchExecutionError {
-                        error: BatchError::Specific(DebugProbeError::SwdTransfer(
-                            SwdTransferError::FaultResponse,
-                        )),
-                        results,
-                        fault_operation,
-                    });
+                    Direction::Write => TransferBlockRequest::write_request(
+                        address,
+                        chunk.iter().map(|(_, op)| transfer_data(op)).collect(),
+                    ),
+                };
+                request.dap_index = self.jtag_state.chain_params.index as u8;
+
+                if let Err(error) = commands::send_request(&mut self.device, &request) {
+                    failure = Some((BatchError::Probe(DebugProbeError::from(error)), chunk_start));
+                    break;
                 }
-                Ack::Wait => {
-                    let abort = {
-                        let mut abort = Abort(0);
-                        abort.set_dapabort(true);
-                        abort
-                    };
-                    if let Err(error) = self.write_abort(abort) {
-                        tracing::warn!("Failed to abort the transfer: {error}");
-                    }
-                    return Err(BatchExecutionError {
-                        error: BatchError::Specific(DebugProbeError::SwdTransfer(
-                            SwdTransferError::WaitResponse,
-                        )),
-                        results,
-                        fault_operation,
-                    });
-                }
-                ack => {
-                    return Err(BatchExecutionError {
-                        error: BatchError::Specific(DebugProbeError::SwdTransfer(
-                            Self::ack_to_transfer_error(ack),
-                        )),
-                        results,
-                        fault_operation,
-                    });
-                }
+
+                in_flight.push_back((chunk_start, chunk, request));
             }
 
-            if count < chunk.len() {
-                return Err(BatchExecutionError::new_from_debug_probe_at(
-                    DebugProbeError::Other(format!(
-                        "Possible error in CMSIS-DAP probe: Only {}/{} transfers were executed, but no error was reported.",
-                        count,
-                        chunk.len()
-                    )),
-                    results,
-                    fault_operation,
-                ));
-            }
+            let Some((chunk_start, chunk, request)) = in_flight.pop_front() else {
+                break;
+            };
 
-            if direction == Direction::Read {
-                for ((id, _), value) in chunk.iter().zip(response.transfer_data.iter()) {
-                    if id.should_capture() {
-                        results.push(id, CommandResult::U32(*value));
+            let response = match commands::receive_response(&mut self.device, &request) {
+                Ok(response) => response,
+                Err(error) => {
+                    failure.get_or_insert((
+                        BatchError::Probe(DebugProbeError::from(error)),
+                        chunk_start,
+                    ));
+                    capture = false;
+                    continue;
+                }
+            };
+
+            match Self::classify_block_response(&response, chunk.len(), chunk_start) {
+                Err(problem) => {
+                    failure.get_or_insert(problem);
+                    capture = false;
+                }
+                Ok(()) if !capture => {}
+                Ok(()) => {
+                    if direction == Direction::Read {
+                        for ((id, _), value) in chunk.iter().zip(response.transfer_data.iter()) {
+                            if id.should_capture() {
+                                results.push(id, CommandResult::U32(*value));
+                            }
+                        }
                     }
                 }
             }
         }
 
-        Ok(results)
+        match failure {
+            Some((error, fault_operation)) => {
+                self.recover_from_block_error(&error);
+                Err(BatchExecutionError {
+                    error,
+                    results,
+                    fault_operation,
+                })
+            }
+            None => Ok(results),
+        }
     }
 
     fn run_swj_sequence_op(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError> {
@@ -510,9 +575,66 @@ impl SwdProbe for CmsisDap {
 mod tests {
     use super::*;
     use crate::probe::{
-        cmsisdap::commands::Request,
+        cmsisdap::commands::{Request, transfer::LastTransferResponse},
         swd::{Direction, Port, SwdOp},
     };
+
+    fn block_response(count: u16, ack: Ack) -> TransferBlockResponse {
+        TransferBlockResponse {
+            transfer_count: count,
+            transfer_response: LastTransferResponse {
+                ack,
+                protocol_error: false,
+                _value_mismatch: false,
+            },
+            transfer_data: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn a_complete_block_reply_is_a_success() {
+        let response = block_response(4, Ack::Ok);
+        assert!(CmsisDap::classify_block_response(&response, 4, 100).is_ok());
+    }
+
+    #[test]
+    fn a_fault_names_the_transfer_that_failed() {
+        // Two of the four ran, so the second is the one that faulted.
+        let response = block_response(2, Ack::Fault);
+        let (error, fault_operation) =
+            CmsisDap::classify_block_response(&response, 4, 100).unwrap_err();
+
+        assert!(matches!(
+            error,
+            BatchError::Specific(DebugProbeError::SwdTransfer(
+                SwdTransferError::FaultResponse
+            ))
+        ));
+        assert_eq!(fault_operation, 101);
+    }
+
+    #[test]
+    fn a_short_count_with_no_error_is_reported_against_the_probe() {
+        let response = block_response(3, Ack::Ok);
+        let (error, fault_operation) =
+            CmsisDap::classify_block_response(&response, 4, 100).unwrap_err();
+
+        assert!(matches!(
+            error,
+            BatchError::Probe(DebugProbeError::Other(_))
+        ));
+        assert_eq!(fault_operation, 102);
+    }
+
+    #[test]
+    fn a_count_past_the_chunk_stays_inside_it() {
+        // A probe claiming more transfers than it was given must not point outside the chunk.
+        let response = block_response(9, Ack::Fault);
+        let (_, fault_operation) =
+            CmsisDap::classify_block_response(&response, 4, 100).unwrap_err();
+
+        assert_eq!(fault_operation, 103);
+    }
 
     #[derive(Clone)]
     struct RecordedTransfer {
