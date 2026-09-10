@@ -696,16 +696,25 @@ impl SwdSequence for ArmCommunicationInterface {
 
     fn swj_pins(
         &mut self,
-        _pin_out: u32,
-        _pin_select: u32,
-        _pin_wait: u32,
+        pin_out: u32,
+        pin_select: u32,
+        pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
         match self.probe.as_mut().unwrap() {
-            ArmProbe::Swd(_, _) | ArmProbe::Jtag(_, _) => {
-                Err(DebugProbeError::CommandNotSupportedByProbe {
-                    command_name: "swj_pins",
-                })
+            ArmProbe::Swd(probe, _) => {
+                let mut batch = SwdBatch::new();
+                let _ = batch.schedule(SwdOp::Pins {
+                    out: Pins(pin_out as u8),
+                    select: Pins(pin_select as u8),
+                    wait: Duration::from_micros(pin_wait.into()),
+                });
+                probe.run_batch(&batch).map_err(batch_probe_error)?;
+                // The batch reports no levels; every pin high is what a released line reads.
+                Ok(0xFF)
             }
+            ArmProbe::Jtag(_, _) => Err(DebugProbeError::CommandNotSupportedByProbe {
+                command_name: "swj_pins",
+            }),
         }
     }
 }
@@ -1158,7 +1167,7 @@ mod tests {
     use super::*;
     use crate::architecture::arm::sequences::DefaultArmSequence;
     use crate::probe::BitSequence;
-    use crate::probe::swd::mock::{MockSwdProbe, RecordedOp, RecordedSequence};
+    use crate::probe::swd::mock::{MockSwdProbe, RecordedOp, RecordedPins, RecordedSequence};
     use crate::probe::swd::{Direction, Port};
 
     const DP_RDBUFF_ADDR: u8 = 0b1100;
@@ -1218,6 +1227,24 @@ mod tests {
     fn prepare_swd_probe(probe: &mut MockSwdProbe) {
         push_attach_responses(probe);
         attach_ctrl_reads(probe, 0);
+    }
+
+    #[test]
+    fn swj_pins_is_passed_to_the_swd_probe() {
+        // The reset release of connect-under-reset drives nRESET through swj_pins.
+        let probe = MockSwdProbe::new();
+        let pins = probe.shared_pins();
+        let (mut interface, _) = swd_interface(probe);
+        let nreset = 1 << 7;
+        assert_eq!(interface.swj_pins(nreset, nreset, 10).unwrap(), 0xFF);
+        assert_eq!(
+            *pins.lock().unwrap(),
+            [RecordedPins {
+                out: nreset as u8,
+                select: nreset as u8,
+                wait: Duration::from_micros(10),
+            }]
+        );
     }
 
     #[test]
