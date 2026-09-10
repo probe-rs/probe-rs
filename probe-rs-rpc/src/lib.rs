@@ -16,6 +16,7 @@ use postcard_schema::{
 };
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug)]
 pub struct Session;
 pub struct FlashLoader;
 pub struct RttClient;

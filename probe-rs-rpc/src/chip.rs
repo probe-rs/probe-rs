@@ -15,7 +15,7 @@ pub struct JEP106Code {
     pub cc: u8,
 }
 
-#[derive(Serialize, Deserialize, Clone, Schema)]
+#[derive(Debug, Serialize, Deserialize, Clone, Schema)]
 pub struct ChipFamily {
     /// This is the name of the chip family in base form.
     /// E.g. `nRF52832`.
@@ -46,7 +46,7 @@ pub struct ChipInfoRequest {
     pub name: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Schema)]
+#[derive(Debug, Serialize, Deserialize, Clone, Schema)]
 pub struct ChipData {
     pub cores: Vec<Core>,
     pub memory_map: Vec<MemoryRegion>,

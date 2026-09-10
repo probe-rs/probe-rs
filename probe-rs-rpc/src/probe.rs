@@ -59,12 +59,12 @@ impl DebugProbeEntry {
 
 pub type ListProbesResponse = RpcResult<Vec<DebugProbeEntry>>;
 
-#[derive(Serialize, Deserialize, Schema)]
+#[derive(Debug, Serialize, Deserialize, Schema)]
 pub struct SelectProbeRequest {
     pub probe: Option<DebugProbeSelector>,
 }
 
-#[derive(Serialize, Deserialize, Schema)]
+#[derive(Debug, Serialize, Deserialize, Schema)]
 pub enum SelectProbeResult {
     Success(DebugProbeEntry),
     MultipleProbes(Vec<DebugProbeEntry>),
@@ -93,7 +93,7 @@ pub enum WireProtocol {
     Swd,
 }
 
-#[derive(Clone, Serialize, Deserialize, Schema)]
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct DebugProbeSelector {
     /// The the USB vendor id of the debug probe to be used.
     pub vendor_id: u16,
@@ -105,7 +105,7 @@ pub struct DebugProbeSelector {
     pub serial_number: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Schema)]
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct AttachRequest {
     pub chip: Option<String>,
     pub protocol: Option<WireProtocol>,
