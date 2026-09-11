@@ -361,7 +361,9 @@ async fn try_read_arm7tdmi_info(
     probe: &mut Probe,
     protocol: WireProtocol,
 ) -> Result<(), anyhow::Error> {
-    if protocol == WireProtocol::Jtag && let Some(chain) = probe.try_as_jtag_chain() {
+    if protocol == WireProtocol::Jtag
+        && let Some(chain) = probe.try_as_jtag_chain()
+    {
         tracing::debug!("Trying to show ARM7TDMI chip information");
 
         let mut state = Arm7tdmiDebugInterfaceState::default();
