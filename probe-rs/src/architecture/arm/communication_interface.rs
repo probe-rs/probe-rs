@@ -1066,6 +1066,60 @@ impl DapAccess for ArmCommunicationInterface {
         }
     }
 
+    fn access_raw_ap_registers(
+        &mut self,
+        ap: &FullyQualifiedApAddress,
+        accesses: &[(u64, Option<u32>)],
+        values: &mut [u32],
+    ) -> Result<(), ArmError> {
+        let Some(&(first, _)) = accesses.first() else {
+            return Ok(());
+        };
+
+        // The bank is selected once, from the first address, so a list that spans two of them would
+        // read the wrong registers without failing.
+        debug_assert!(
+            accesses
+                .iter()
+                .all(|&(address, _)| address >> 4 == first >> 4),
+            "every access has to be in the same AP register bank"
+        );
+
+        if !self.is_swd() {
+            let mut read = 0;
+            for &(address, value) in accesses {
+                match value {
+                    Some(value) => self.write_raw_ap_register(ap, address, value)?,
+                    None => {
+                        values[read] = self.read_raw_ap_register(ap, address)?;
+                        read += 1;
+                    }
+                }
+            }
+            return Ok(());
+        }
+
+        self.select_ap_and_ap_bank(ap, first)?;
+
+        self.with_swd_port(|port| {
+            let mut batch = SwdBatch::new();
+            let mut handles = Vec::new();
+            for &(address, value) in accesses {
+                let addr = Self::ap_swd_addr(address);
+                match value {
+                    Some(value) => batch.write(Port::Ap, addr, value),
+                    None => handles.push(batch.read(Port::Ap, addr)),
+                }
+            }
+
+            let mut results = port.run(batch)?;
+            for (read, handle) in handles.into_iter().enumerate() {
+                values[read] = results.take(handle).unwrap();
+            }
+            Ok(())
+        })
+    }
+
     fn write_raw_ap_register(
         &mut self,
         ap: &FullyQualifiedApAddress,

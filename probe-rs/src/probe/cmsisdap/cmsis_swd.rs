@@ -14,7 +14,7 @@ use crate::{
             commands::{
                 self,
                 swj::sequence::SequenceRequest,
-                transfer::{Ack, TransferBlockRequest, TransferBlockResponse, TransferRequest},
+                transfer::{Ack, RW, TransferBlockRequest, TransferBlockResponse, TransferRequest},
             },
         },
         swd::{Direction, Pins as SwdPins, Port, SwdBatch, SwdOp, SwdProbe, SwdTransferError},
@@ -42,17 +42,6 @@ pub(crate) fn block_words_per_packet(packet_size: u16) -> usize {
     // A packet holds a one byte HID report id, the command id, the DAP index,
     // two length bytes, and the request byte, before the data.
     ((packet_size as usize - 6) / 4).max(1)
-}
-
-/// Return how many transfers one `DAP_Transfer` packet holds.
-///
-/// Bounded by the packet size, and then by the count field. That count travels in a single byte
-/// and is written with a cast rather than a check, so asking for more does not fail: the probe
-/// runs `count % 256` of them and reports having done so.
-pub(crate) fn transfers_per_packet(packet_size: u16) -> usize {
-    // A packet holds a one byte HID report id, the command id, and the transfer count, before the
-    // request byte and data word of each transfer.
-    ((packet_size as usize - 3) / (1 + 4)).min(u8::MAX as usize)
 }
 
 fn transfer_data(op: &SwdOp) -> u32 {
@@ -90,20 +79,123 @@ pub(crate) fn run_length(ops: &[(HandleId, SwdOp)], start: usize) -> usize {
         .count()
 }
 
+/// How far a run of transfers that `DAP_Transfer` carries extends from `start`.
+///
+/// It ends at anything that is not a transfer, and at a repeat long enough for
+/// `DAP_TransferBlock`.
+fn transfer_run_end(ops: &[(HandleId, SwdOp)], start: usize) -> usize {
+    let mut end = start;
+    while end < ops.len()
+        && matches!(ops[end].1, SwdOp::Transfer { .. })
+        && run_length(ops, end) < MIN_BLOCK_TRANSFERS
+    {
+        end += 1;
+    }
+    end
+}
+
+/// Split a run of transfers into the packets that carry them.
+///
+/// Each packet arrives with its request built and its transfers carrying the batch index a fault
+/// is reported against. `run_start` is where the run sits in the batch.
+fn split_into_packets(
+    ops: &[(HandleId, SwdOp)],
+    run_start: usize,
+    dap_index: u8,
+    packet_size: u16,
+) -> impl Iterator<Item = PendingBatch> {
+    let mut offset = 0;
+
+    std::iter::from_fn(move || {
+        // One request per packet, so there is no carried state to reset between them.
+        let mut packet = PendingBatch::new(dap_index);
+
+        while let Some((id, op)) = ops.get(offset) {
+            let SwdOp::Transfer {
+                port,
+                addr,
+                direction,
+                data,
+            } = op
+            else {
+                break;
+            };
+
+            // An empty command always takes one more transfer, so this terminates however small
+            // the packet is.
+            if !packet.is_empty() && !packet.has_room_for(*direction, packet_size) {
+                break;
+            }
+
+            let address = CmsisDap::swd_register(*port, *addr);
+            packet.push(id.clone(), address, *direction, *data, run_start + offset);
+            offset += 1;
+        }
+
+        (!packet.is_empty()).then_some(packet)
+    })
+}
+
 struct PendingTransfer {
     id: HandleId,
-    port: Port,
-    addr: u8,
     direction: Direction,
-    data: u32,
     batch_index: usize,
 }
 
-impl CmsisDap {
-    pub(crate) fn max_transfers_per_packet(&self) -> usize {
-        transfers_per_packet(self.packet_size)
+/// Transfers queued for one `DAP_Transfer`, and what its reply maps back to.
+///
+/// The two halves stay in step: entry `n` of `transfers` describes transfer `n` of `request`, which
+/// is what lets a reply be matched to the batch operation that asked for it. Only [`Self::push`]
+/// adds to either.
+struct PendingBatch {
+    request: TransferRequest,
+    transfers: Vec<PendingTransfer>,
+}
+
+impl PendingBatch {
+    fn new(dap_index: u8) -> Self {
+        let mut request = TransferRequest::empty();
+        request.dap_index = dap_index;
+        Self {
+            request,
+            transfers: Vec::new(),
+        }
     }
 
+    fn is_empty(&self) -> bool {
+        self.transfers.is_empty()
+    }
+
+    /// True when a `packet_size` packet still has room for one more transfer in `direction`.
+    fn has_room_for(&self, direction: Direction, packet_size: u16) -> bool {
+        let rw = match direction {
+            Direction::Read => RW::R,
+            Direction::Write => RW::W,
+        };
+        self.request.has_room_for(rw, packet_size)
+    }
+
+    fn push(
+        &mut self,
+        id: HandleId,
+        address: RegisterAddress,
+        direction: Direction,
+        data: u32,
+        batch_index: usize,
+    ) {
+        match direction {
+            Direction::Read => self.request.add_read(address),
+            Direction::Write => self.request.add_write(address, data),
+        }
+        self.transfers.push(PendingTransfer {
+            id,
+            direction,
+            batch_index,
+        });
+    }
+}
+
+impl CmsisDap {
     fn swd_register(port: Port, addr: u8) -> RegisterAddress {
         match port {
             Port::Dp => RegisterAddress::DpRegister(DpRegisterAddress {
@@ -125,27 +217,18 @@ impl CmsisDap {
 
     fn flush_pending_transfers(
         &mut self,
-        pending: &[PendingTransfer],
+        pending: &PendingBatch,
         mut results: Results,
     ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
         if pending.is_empty() {
             return Ok(results);
         }
 
-        let mut request = TransferRequest::empty();
-        request.dap_index = self.jtag_state.chain_params.index as u8;
-        for transfer in pending {
-            let address = Self::swd_register(transfer.port, transfer.addr);
-            match transfer.direction {
-                Direction::Read => request.add_read(address),
-                Direction::Write => request.add_write(address, transfer.data),
-            }
-        }
-
-        let response = match commands::send_command(&mut self.device, &request) {
+        let transfers = &pending.transfers;
+        let response = match commands::send_command(&mut self.device, &pending.request) {
             Ok(response) => response,
             Err(error) => {
-                let fault_operation = pending[0].batch_index;
+                let fault_operation = transfers[0].batch_index;
                 return Err(BatchExecutionError::new_from_debug_probe_at(
                     DebugProbeError::from(error),
                     results,
@@ -156,7 +239,7 @@ impl CmsisDap {
 
         let count = response.transfers.len();
         if response.last_transfer_response.protocol_error {
-            let fault_operation = pending[count.saturating_sub(1)].batch_index;
+            let fault_operation = transfers[count.saturating_sub(1)].batch_index;
             return Err(BatchExecutionError {
                 error: BatchError::Specific(DebugProbeError::SwdTransfer(
                     SwdTransferError::Protocol,
@@ -166,13 +249,13 @@ impl CmsisDap {
             });
         }
 
-        if count < pending.len() {
-            let fault_operation = pending[count.saturating_sub(1)].batch_index;
+        if count < transfers.len() {
+            let fault_operation = transfers[count.saturating_sub(1)].batch_index;
             return Err(BatchExecutionError::new_from_debug_probe_at(
                 DebugProbeError::Other(format!(
                     "Possible error in CMSIS-DAP probe: Only {}/{} transfers were executed, but no error was reported.",
                     count,
-                    pending.len()
+                    transfers.len()
                 )),
                 results,
                 fault_operation,
@@ -181,7 +264,8 @@ impl CmsisDap {
 
         match response.last_transfer_response.ack {
             Ack::Ok => {
-                for (transfer, response_transfer) in pending.iter().zip(response.transfers.iter()) {
+                for (transfer, response_transfer) in transfers.iter().zip(response.transfers.iter())
+                {
                     if transfer.direction != Direction::Read || !transfer.id.should_capture() {
                         continue;
                     }
@@ -199,7 +283,7 @@ impl CmsisDap {
                 Ok(results)
             }
             Ack::Fault => {
-                let fault_operation = pending[count.saturating_sub(1)].batch_index;
+                let fault_operation = transfers[count.saturating_sub(1)].batch_index;
                 if let Err(error) = self.handle_sticky_err() {
                     tracing::warn!("Failed to clear the sticky error: {error}");
                 }
@@ -212,7 +296,7 @@ impl CmsisDap {
                 })
             }
             Ack::Wait => {
-                let fault_operation = pending[count.saturating_sub(1)].batch_index;
+                let fault_operation = transfers[count.saturating_sub(1)].batch_index;
                 let abort = {
                     let mut abort = Abort(0);
                     abort.set_dapabort(true);
@@ -230,7 +314,7 @@ impl CmsisDap {
                 })
             }
             ack => {
-                let fault_operation = pending[count.saturating_sub(1)].batch_index;
+                let fault_operation = transfers[count.saturating_sub(1)].batch_index;
                 Err(BatchExecutionError {
                     error: BatchError::Specific(DebugProbeError::SwdTransfer(
                         Self::ack_to_transfer_error(ack),
@@ -488,53 +572,43 @@ impl SwdProbe for CmsisDap {
         batch: &SwdBatch,
     ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
         let mut results = Results::new();
-        let mut pending = Vec::new();
-        let max_per_packet = self.max_transfers_per_packet();
         let ops: Vec<(HandleId, SwdOp)> = batch
             .iter()
             .map(|(id, op)| (id.clone(), op.clone()))
             .collect();
+        let dap_index = self.jtag_state.chain_params.index as u8;
 
         let mut batch_index = 0;
         while batch_index < ops.len() {
-            let (id, op) = &ops[batch_index];
+            let run_end = transfer_run_end(&ops, batch_index);
+            let packets = split_into_packets(
+                &ops[batch_index..run_end],
+                batch_index,
+                dap_index,
+                self.packet_size,
+            );
+            for packet in packets {
+                results = self.flush_pending_transfers(&packet, results)?;
+            }
+            batch_index = run_end;
+
+            // Whatever ended the run is handled on its own, and cannot share a packet.
+            let Some((_, op)) = ops.get(batch_index) else {
+                break;
+            };
+
             match op {
-                SwdOp::Transfer {
-                    port,
-                    addr,
-                    direction,
-                    data,
-                } => {
+                SwdOp::Transfer { .. } => {
                     let run = run_length(&ops, batch_index);
-                    if run >= MIN_BLOCK_TRANSFERS {
-                        results = self.flush_pending_transfers(&pending, results)?;
-                        pending.clear();
-                        results = self.run_transfer_block(
-                            &ops[batch_index..batch_index + run],
-                            batch_index,
-                            results,
-                        )?;
-                        batch_index += run;
-                        continue;
-                    }
-
-                    pending.push(PendingTransfer {
-                        id: id.clone(),
-                        port: *port,
-                        addr: *addr,
-                        direction: *direction,
-                        data: *data,
+                    results = self.run_transfer_block(
+                        &ops[batch_index..batch_index + run],
                         batch_index,
-                    });
-
-                    if pending.len() >= max_per_packet {
-                        results = self.flush_pending_transfers(&pending, results)?;
-                        pending.clear();
-                    }
+                        results,
+                    )?;
+                    batch_index += run;
+                    continue;
                 }
                 SwdOp::Sequence(bits) => {
-                    results = self.flush_pending_transfers(&pending, results)?;
-                    pending.clear();
                     if let Err(error) = self.run_swj_sequence_op(bits) {
                         return Err(BatchExecutionError::new_from_debug_probe_at(
                             error,
@@ -544,8 +618,6 @@ impl SwdProbe for CmsisDap {
                     }
                 }
                 SwdOp::Idle { cycles } => {
-                    results = self.flush_pending_transfers(&pending, results)?;
-                    pending.clear();
                     if let Err(error) = self.run_swj_idle(*cycles) {
                         return Err(BatchExecutionError::new_from_debug_probe_at(
                             error,
@@ -555,8 +627,6 @@ impl SwdProbe for CmsisDap {
                     }
                 }
                 SwdOp::Pins { out, select, wait } => {
-                    results = self.flush_pending_transfers(&pending, results)?;
-                    pending.clear();
                     if let Err(error) = self.run_swj_pins_op(*out, *select, *wait) {
                         return Err(BatchExecutionError::new_from_debug_probe_at(
                             error,
@@ -570,7 +640,7 @@ impl SwdProbe for CmsisDap {
             batch_index += 1;
         }
 
-        self.flush_pending_transfers(&pending, results)
+        Ok(results)
     }
 
     fn handles_wait(&self) -> bool {
@@ -647,101 +717,70 @@ mod tests {
         assert_eq!(fault_operation, 103);
     }
 
-    #[derive(Clone)]
-    struct RecordedTransfer {
-        port: Port,
-        direction: Direction,
-        data: Option<u32>,
-    }
-
-    fn encode_transfer_ops(ops: &[SwdOp]) -> Vec<RecordedTransfer> {
-        ops.iter()
-            .filter_map(|op| match op {
-                SwdOp::Transfer {
-                    port,
-                    direction,
-                    data,
-                    ..
-                } => Some(RecordedTransfer {
-                    port: *port,
-                    direction: *direction,
-                    data: (*direction == Direction::Write).then_some(*data),
-                }),
-                _ => None,
-            })
-            .collect()
-    }
-
-    fn split_transfer_ops(ops: &[SwdOp], packet_size: u16) -> Vec<Vec<RecordedTransfer>> {
-        let max_per_packet = transfers_per_packet(packet_size);
-        let transfers = encode_transfer_ops(ops);
-        let mut chunks = Vec::new();
-        let mut offset = 0;
-        while offset < transfers.len() {
-            let end = (offset + max_per_packet).min(transfers.len());
-            chunks.push(transfers[offset..end].to_vec());
-            offset = end;
+    /// How many `rw` transfers one packet holds.
+    fn transfers_that_fit(rw: RW, packet_size: u16) -> usize {
+        let mut request = TransferRequest::empty();
+        while request.has_room_for(rw, packet_size) {
+            match rw {
+                RW::R => request.add_read(RegisterAddress::ApRegister(0)),
+                RW::W => request.add_write(RegisterAddress::ApRegister(0), 0),
+            }
         }
-        chunks
+        request.len()
     }
 
     #[test]
-    fn transfers_per_packet_stops_at_the_count_field() {
-        // Ordinary packet sizes are bounded by the packet, and are unchanged.
-        assert_eq!(transfers_per_packet(64), 12);
-        assert_eq!(transfers_per_packet(1024), 204);
-
-        // 1278 bytes is the largest packet the count field can describe in full. Past it the
-        // packet has room the byte cannot express.
-        assert_eq!(transfers_per_packet(1278), 255);
-        assert_eq!(transfers_per_packet(1283), 255);
-        assert_eq!(transfers_per_packet(u16::MAX), 255);
+    fn a_packet_holds_more_reads_than_writes() {
+        // A write spends five bytes of the command; a read spends one there and four in the reply.
+        assert_eq!(transfers_that_fit(RW::W, 64), 12);
+        assert_eq!(transfers_that_fit(RW::R, 64), 15);
+        assert_eq!(transfers_that_fit(RW::W, 1024), 204);
+        assert_eq!(transfers_that_fit(RW::R, 1024), 255);
     }
 
     #[test]
-    fn transfer_encoder_matches_swd_ops() {
-        let ops = [
-            SwdOp::Transfer {
-                port: Port::Dp,
-                addr: 0b0100,
-                direction: Direction::Read,
-                data: 0,
-            },
-            SwdOp::Transfer {
-                port: Port::Ap,
-                addr: 0b1000,
-                direction: Direction::Write,
-                data: 0x1234_5678,
-            },
-        ];
+    fn a_packet_stops_at_the_transfer_count_field() {
+        // The largest packets the count field can describe in full: 1282 bytes of writes, 1026 of
+        // reads. Past those the packet has room the byte cannot express.
+        assert_eq!(transfers_that_fit(RW::W, 1282), 255);
+        assert_eq!(transfers_that_fit(RW::W, 1283), 255);
+        assert_eq!(transfers_that_fit(RW::R, 1026), 255);
+        assert_eq!(transfers_that_fit(RW::R, 1027), 255);
+        assert_eq!(transfers_that_fit(RW::R, u16::MAX), 255);
+    }
 
-        let encoded = encode_transfer_ops(&ops);
-        assert_eq!(encoded.len(), 2);
-        assert_eq!(encoded[0].port, Port::Dp);
-        assert_eq!(encoded[0].direction, Direction::Read);
-        assert_eq!(encoded[1].data, Some(0x1234_5678));
+    #[test]
+    fn a_scattered_run_fills_a_packet_up_to_the_count_field() {
+        // An address write then a data read, per address. Charged the write price throughout, a
+        // 1024-byte packet took 204 transfers, 102 addresses. Priced per direction the count field
+        // binds first: 255 transfers, 127 addresses read in full and one whose data read falls
+        // into the next packet.
+        let mut ops = Vec::new();
+        for _ in 0..200 {
+            ops.push(transfer(Port::Ap, 0b0100, Direction::Write, 0x2000_0000));
+            ops.push(transfer(Port::Ap, 0b1100, Direction::Read, 0));
+        }
+
+        let packets: Vec<_> = split_into_packets(&ops, 0, 0, 1024).collect();
+        assert_eq!(packets[0].transfers.len(), 255);
     }
 
     #[test]
     fn batch_splits_at_packet_limit_without_read_flush() {
         let packet_size = 64u16;
-        let max_per_packet = transfers_per_packet(packet_size);
+        let max_per_packet = transfers_that_fit(RW::R, packet_size);
         let mut ops = Vec::new();
         for index in 0..(max_per_packet + 2) {
             // Alternating addresses keep the run below MIN_BLOCK_TRANSFERS, so
             // every transfer stays in DAP_Transfer.
-            ops.push(SwdOp::Transfer {
-                port: Port::Dp,
-                addr: if index % 2 == 0 { 0b0100 } else { 0b1000 },
-                direction: Direction::Read,
-                data: 0,
-            });
+            let addr = if index % 2 == 0 { 0b0100 } else { 0b1000 };
+            ops.push(transfer(Port::Dp, addr, Direction::Read, 0));
         }
 
-        let chunks = split_transfer_ops(&ops, packet_size);
-        assert_eq!(chunks.len(), 2);
-        assert_eq!(chunks[0].len(), max_per_packet);
-        assert_eq!(chunks[1].len(), 2);
+        let packets: Vec<_> = split_into_packets(&ops, 0, 0, packet_size).collect();
+        assert_eq!(packets.len(), 2);
+        assert_eq!(packets[0].transfers.len(), max_per_packet);
+        assert_eq!(packets[1].transfers.len(), 2);
     }
 
     #[test]
@@ -793,10 +832,11 @@ mod tests {
     }
 
     #[test]
-    fn a_block_packet_holds_more_words_than_a_transfer_packet() {
+    fn a_block_packet_holds_more_written_words_than_a_transfer_packet() {
+        // A block sends the access once for the whole run, so its command has the room the
+        // per-transfer path spends on a request byte per word.
         for packet_size in [64u16, 512, 1024] {
-            let per_transfer_packet = (packet_size as usize - 3) / 5;
-            assert!(block_words_per_packet(packet_size) > per_transfer_packet);
+            assert!(block_words_per_packet(packet_size) > transfers_that_fit(RW::W, packet_size));
         }
     }
 

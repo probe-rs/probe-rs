@@ -254,6 +254,37 @@ pub trait DapAccess {
         Ok(())
     }
 
+    /// Read and write Access Port registers in order, in as few probe transactions as possible.
+    ///
+    /// An entry carrying a value is written; an entry without one is read, and each read writes one
+    /// word to `values` in the order the reads appear. Every address has to be in the same register
+    /// bank, because the bank is selected once for the whole sequence.
+    ///
+    /// This is for callers holding a list of addresses whose accesses depend on each other, where
+    /// the alternative is one probe round trip per address. The default performs them one at a
+    /// time.
+    ///
+    /// # Note
+    /// The address format is the one [`DapAccess::read_raw_ap_register`] takes.
+    fn access_raw_ap_registers(
+        &mut self,
+        ap: &FullyQualifiedApAddress,
+        accesses: &[(u64, Option<u32>)],
+        values: &mut [u32],
+    ) -> Result<(), ArmError> {
+        let mut read = 0;
+        for &(addr, value) in accesses {
+            match value {
+                Some(value) => self.write_raw_ap_register(ap, addr, value)?,
+                None => {
+                    values[read] = self.read_raw_ap_register(ap, addr)?;
+                    read += 1;
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Write an AP register.
     ///
     /// # Note

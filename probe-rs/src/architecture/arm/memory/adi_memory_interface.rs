@@ -3,10 +3,10 @@ use crate::{
     architecture::arm::{
         ArmDebugInterface, ArmError, DapAccess, FullyQualifiedApAddress,
         ap::{
-            AccessPortType, ApAccess, CSW, DataSize,
+            AccessPortType, ApAccess, ApRegister, CSW, DRW, DataSize, TAR,
             memory_ap::{MemoryAp, MemoryApType},
         },
-        memory::ArmMemoryInterface,
+        memory::{Access32, ArmMemoryInterface},
     },
     probe::DebugProbeError,
 };
@@ -17,6 +17,26 @@ fn autoincr_max_bytes(address: u64) -> usize {
     const AUTOINCR_LIMIT: usize = 0x400;
 
     ((address + 1).next_multiple_of(AUTOINCR_LIMIT as _) - address) as usize
+}
+
+/// Turn scattered word accesses into the raw AP register accesses that perform them.
+///
+/// Address then value, per access. TAR and DRW share a register bank, which is what lets the whole
+/// run reach the probe as one list.
+fn tar_drw_pairs(accesses: &[Access32]) -> Vec<(u64, Option<u32>)> {
+    accesses
+        .iter()
+        .flat_map(|access| {
+            let value = match *access {
+                Access32::Read(_) => None,
+                Access32::Write(_, value) => Some(value),
+            };
+            [
+                (TAR::ADDRESS, Some(access.address() as u32)),
+                (DRW::ADDRESS, value),
+            ]
+        })
+        .collect()
 }
 
 /// A struct to give access to a targets memory using a certain DAP.
@@ -485,6 +505,51 @@ impl<APA> ArmMemoryInterface for ADIMemoryInterface<'_, APA>
 where
     APA: ApAccess + ArmDebugInterface,
 {
+    fn access_words_32(
+        &mut self,
+        accesses: &[Access32],
+        values: &mut [u32],
+    ) -> Result<(), ArmError> {
+        if let Some(address) = accesses
+            .iter()
+            .map(Access32::address)
+            .find(|address| !address.is_multiple_of(4))
+        {
+            return Err(ArmError::alignment_error(address, 4));
+        }
+
+        // A 64-bit address needs TAR2 written as well, which would put a second write between an
+        // address and its access. Nothing needs that yet, so leave those to the one-at-a-time path.
+        if accesses.iter().map(Access32::address).any(|a| a >> 32 != 0) {
+            let mut read = 0;
+            for access in accesses {
+                match *access {
+                    Access32::Read(address) => {
+                        values[read] = self.read_word_32(address)?;
+                        read += 1;
+                    }
+                    Access32::Write(address, value) => self.write_word_32(address, value)?,
+                }
+            }
+            return Ok(());
+        }
+
+        self.memory_ap
+            .try_set_datasize(self.interface, DataSize::U32)?;
+
+        let reads = accesses
+            .iter()
+            .filter(|access| matches!(access, Access32::Read(_)))
+            .count();
+
+        let raw = tar_drw_pairs(accesses);
+        self.interface.access_raw_ap_registers(
+            self.memory_ap.ap_address(),
+            &raw,
+            &mut values[..reads],
+        )
+    }
+
     fn base_address(&mut self) -> Result<u64, ArmError> {
         self.memory_ap.base_address(self.interface)
     }
@@ -543,6 +608,29 @@ mod tests {
 
     // DATA8 interpreted as little endian 32-bit words
     const DATA32: &[u32] = &[0x83828180, 0x87868584, 0x8b8a8988, 0x8f8e8d8c];
+
+    #[test]
+    fn scattered_access_writes_the_address_then_touches_the_data_register() {
+        use crate::architecture::arm::{
+            ap::{ApRegister, DRW, TAR},
+            memory::Access32,
+        };
+
+        let pairs = super::tar_drw_pairs(&[
+            Access32::Read(0x2000_0000),
+            Access32::Write(0x2000_0040, 0xABCD),
+        ]);
+
+        assert_eq!(
+            pairs,
+            vec![
+                (TAR::ADDRESS, Some(0x2000_0000)),
+                (DRW::ADDRESS, None),
+                (TAR::ADDRESS, Some(0x2000_0040)),
+                (DRW::ADDRESS, Some(0xABCD)),
+            ]
+        );
+    }
 
     #[test]
     fn read_word_32() {
