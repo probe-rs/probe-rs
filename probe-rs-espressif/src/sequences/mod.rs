@@ -10,6 +10,7 @@ pub mod esp32c5;
 pub mod esp32c6;
 pub mod esp32c61;
 pub mod esp32h2;
+pub mod esp32h4;
 pub mod esp32p4;
 pub mod esp32s31;
 
