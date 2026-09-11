@@ -220,7 +220,7 @@ pub enum TargetSelector {
     /// targets.
     Unspecified(String),
     /// Directly specify a target.
-    Specified(Target),
+    Specified(Box<Target>),
     /// Try to automatically identify the target,
     /// by reading identifying information from
     /// the probe and / or target.
@@ -262,7 +262,7 @@ impl From<()> for TargetSelector {
 
 impl From<Target> for TargetSelector {
     fn from(target: Target) -> Self {
-        TargetSelector::Specified(target)
+        TargetSelector::Specified(Box::new(target))
     }
 }
 
