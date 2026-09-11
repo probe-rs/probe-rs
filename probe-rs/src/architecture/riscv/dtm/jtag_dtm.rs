@@ -21,6 +21,17 @@ use crate::probe::{
     ShiftDrData,
 };
 
+/// Interpret a raw 32-bit JTAG IDCODE-instruction capture, returning `None` if it isn't actually a
+/// valid IDCODE.
+///
+/// Per IEEE 1149.1, a TAP's IDCODE register always has bit 0 hardwired to 1, distinguishing a real
+/// capture from the 1-bit BYPASS register (always 0) or a floating/no-response bus. Without this
+/// check, probing a JTAG target with no RISC-V TAP at all reads back all-zero bits, which would be
+/// reported as a bogus "IDCODE 0000000000, Unknown Manufacturer" instead of "no RISC-V DTM found".
+fn valid_idcode(value: u32) -> Option<u32> {
+    if value & 1 == 1 { Some(value) } else { None }
+}
+
 #[derive(Debug, Default)]
 struct DtmState {
     queued_commands: JtagQueue<DmiOperationError>,
@@ -403,7 +414,7 @@ impl DtmAccess for JtagDtm<'_> {
         self.tap_reset()?;
         let value = self.exchange_register(0x1, BitSequence::repeat(false, 32), 0)?;
 
-        Ok(Some(value.as_bits().load_le::<u32>()))
+        Ok(valid_idcode(value.as_bits().load_le::<u32>()))
     }
 }
 
@@ -762,7 +773,7 @@ impl DtmAccess for TunneledJtagDtm<'_> {
         // from `probe-rs info`), because the TAP state may be indeterminate after attach.
         self.tap_reset()?;
         let value = self.exchange_register_at(0x1, BitSequence::repeat(false, 32), 0)?;
-        Ok(Some(value.as_bits().load_le::<u32>()))
+        Ok(valid_idcode(value.as_bits().load_le::<u32>()))
     }
 }
 
@@ -990,5 +1001,27 @@ mod tests {
         let width_offset = 1 + dmi_bits + 3;
         let msb_offset = 7 + width_offset;
         assert_eq!(bit_size, msb_offset + 1);
+    }
+
+    #[test]
+    fn all_zero_capture_is_not_a_valid_idcode() {
+        // The all-zero pattern this fix was found from: an unrelated/unrecognized JTAG target
+        // (no RISC-V DTM at all) capturing a floating or BYPASS-register bit as the "IDCODE".
+        assert_eq!(valid_idcode(0), None);
+    }
+
+    #[test]
+    fn lsb_clear_is_never_a_valid_idcode() {
+        // Per IEEE 1149.1, a real IDCODE register's bit 0 is always hardwired to 1 - any other
+        // even-valued capture (not just all-zero) is equally not a real IDCODE.
+        assert_eq!(valid_idcode(0xffff_fffe), None);
+        assert_eq!(valid_idcode(0x1234_5678), None);
+    }
+
+    #[test]
+    fn lsb_set_is_accepted_as_a_valid_idcode() {
+        // A real-looking IDCODE (bit 0 set) is returned unchanged.
+        assert_eq!(valid_idcode(0x1234_5679), Some(0x1234_5679));
+        assert_eq!(valid_idcode(1), Some(1));
     }
 }

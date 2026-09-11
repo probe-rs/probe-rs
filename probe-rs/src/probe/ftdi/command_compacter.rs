@@ -76,7 +76,7 @@ impl Command {
                 bit_count: 1,
                 tms_bits: 1,
                 tdi: last_tdi,
-                capture: false,
+                capture,
             });
         }
 

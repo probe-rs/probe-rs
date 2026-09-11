@@ -292,7 +292,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     }
 
     /// Read the targets IDCODE.
-    pub fn read_idcode(&mut self) -> Result<u32, XtensaError> {
+    pub fn read_idcode(&mut self) -> Result<Option<u32>, XtensaError> {
         self.xdm.read_idcode()
     }
 

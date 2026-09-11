@@ -226,7 +226,7 @@ fn format_info_event(event: &InfoEvent) -> String {
             architecture,
             idcode: None,
         } => {
-            writeln!(output, "No IDCODE info for this {architecture} chip.").unwrap();
+            writeln!(output, "The chip is presumably not {architecture}.").unwrap();
         }
         InfoEvent::ArmDp(dp_info) => {
             writeln!(output, "{}", format_debug_port_info(dp_info)).unwrap();
