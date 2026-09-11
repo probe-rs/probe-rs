@@ -26,14 +26,17 @@ use crate::{
         JtagChainState, ProbeFactory, WireProtocol,
         cmsisdap::commands::{
             CmsisDapError, RequestError,
-            general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
+            general::info::{
+                CapabilitiesCommand, PacketCountCommand, PacketSizeCommand,
+                SWOTraceBufferSizeCommand,
+            },
         },
         swd::SwdProbe,
     },
 };
 
 use commands::{
-    CmsisDapDevice, Status,
+    CmsisDapDevice, SendError, Status,
     general::{
         connect::{ConnectRequest, ConnectResponse},
         disconnect::{DisconnectRequest, DisconnectResponse},
@@ -56,7 +59,7 @@ use commands::{
         sequence::{SequenceRequest, SequenceResponse},
     },
     swo,
-    transfer::{Ack, TransferRequest, configure::ConfigureRequest},
+    transfer::{Ack, TransferAbortRequest, TransferRequest, configure::ConfigureRequest},
 };
 use probe_rs_target::ScanChainElement;
 
@@ -127,26 +130,112 @@ impl std::fmt::Debug for CmsisDap {
     }
 }
 
+/// Times the opening sequence is restarted while the probe is still answering with replies it owes
+/// from an earlier session.
+const MAX_OPEN_ATTEMPTS: usize = 8;
+
+/// How long the probe has to stay silent before its backlog counts as drained, once one has been
+/// seen. Only paid on the recovery path.
+const BACKLOG_IDLE: Duration = Duration::from_millis(100);
+
+/// Rounds spent bringing replies back into step before giving up on the probe.
+const MAX_RESYNC_ROUNDS: usize = 32;
+
+/// How long to wait for a reply the probe was prompted to give up.
+const RESYNC_IDLE: Duration = Duration::from_millis(5);
+
+/// Bring requests and replies back into step.
+///
+/// A probe interrupted mid-transfer answers the next command with the previous one's reply, and
+/// goes on doing so across a close and reopen. Draining does not clear it: nothing is waiting on
+/// the endpoint, so a drain reads nothing and the next command is answered late all the same.
+/// Ordinary commands do not clear it either, however many are sent.
+///
+/// What does clear it, measured a reply at a time, is `DAP_TransferAbort`, which the probe answers
+/// with nothing at all.
+///
+/// Whether the stream is level has to be asked with two different commands. A repeated one cannot
+/// tell its own reply from the previous copy's, which is the same blindness that hides a slipped
+/// `DAP_Info`: all its sub-commands share one command ID. So level means a `DAP_HostStatus` sent
+/// after a `DAP_Info` comes back under its own ID.
+fn resynchronise(device: &mut CmsisDapDevice) {
+    for round in 0..MAX_RESYNC_ROUNDS {
+        // Unconditionally, and before asking anything: a probe that owes a reply does not give it
+        // up for a command that queues another one behind it, so the question cannot be asked
+        // until this has been done at least once.
+        let _ = commands::send_request(device, &TransferAbortRequest);
+        device.drain_idle_for(RESYNC_IDLE);
+
+        let _ = commands::send_command(device, &PacketSizeCommand {});
+        if commands::send_command(device, &HostStatusRequest::connected(false)).is_ok() {
+            if round > 0 {
+                tracing::debug!("Probe back in step after {round} rounds");
+            }
+            return;
+        }
+    }
+
+    tracing::warn!(
+        "Probe is still answering with replies to an earlier session's commands after \
+         {MAX_RESYNC_ROUNDS} attempts to bring it back into step."
+    );
+}
+
+/// Whether an error says the probe answered with something that was not a reply to what was asked.
+///
+/// A timeout or a USB failure says the probe is gone or silent, which asking again does not fix.
+/// These say a reply arrived and made no sense as an answer to the question, which is what a
+/// backlog from an earlier session looks like.
+fn reply_is_not_ours(error: &CmsisDapError) -> bool {
+    matches!(
+        error,
+        CmsisDapError::Send {
+            source: SendError::CommandIdMismatch(..)
+                | SendError::UnexpectedAnswer
+                | SendError::NotEnoughData,
+            ..
+        }
+    )
+}
+
+/// What `new_from_device` asks the probe about itself.
+struct ProbeInfo {
+    packet_count: u8,
+    capabilities: Capabilities,
+    swo_buffer_size: Option<usize>,
+}
+
 impl CmsisDap {
     fn new_from_device(mut device: CmsisDapDevice) -> Result<Self, DebugProbeError> {
         // Discard anything left in buffer, as otherwise
         // we'll get out of sync between requests and responses.
         device.drain();
 
-        // Determine and set the packet size. We do this as soon as possible after
-        // opening the probe to ensure all future communication uses the correct size.
+        // Before anything else is asked of the probe. Until this returns, the size a report has to
+        // be to reach the device is a guess -- and some answer nothing at all until they receive a
+        // full one, which is what the retrying inside here is for. Anything sent before it can go
+        // unanswered on those probes for reasons that have nothing to do with the probe's state.
         let packet_size = device.find_packet_size()? as u16;
 
-        // Read remaining probe information.
-        let packet_count = commands::send_command(&mut device, &PacketCountCommand {})?;
-        let caps: Capabilities = commands::send_command(&mut device, &CapabilitiesCommand {})?;
-        tracing::debug!("Detected probe capabilities: {:?}", caps);
-        let mut swo_buffer_size = None;
-        if caps.swo_uart_implemented || caps.swo_manchester_implemented {
-            let swo_size = commands::send_command(&mut device, &SWOTraceBufferSizeCommand {})?;
-            swo_buffer_size = Some(swo_size as usize);
-            tracing::debug!("Probe SWO buffer size: {}", swo_size);
+        // A probe that still owes replies from an earlier session answers the start of this one
+        // with the previous one's data. Drain properly, prompt out what it is holding, and ask
+        // again for as long as the answers look like they belong to someone else.
+        let mut info = Self::read_probe_info(&mut device);
+        for _ in 1..MAX_OPEN_ATTEMPTS {
+            if !matches!(&info, Err(e) if reply_is_not_ours(e)) {
+                break;
+            }
+
+            device.drain_idle_for(BACKLOG_IDLE);
+            resynchronise(&mut device);
+            info = Self::read_probe_info(&mut device);
         }
+
+        let ProbeInfo {
+            packet_count,
+            capabilities: caps,
+            swo_buffer_size,
+        } = info?;
 
         Ok(Self {
             device,
@@ -164,6 +253,35 @@ impl CmsisDap {
             transfer_wait_retry: 0,
             jtag_state: JtagChainState::default(),
             jtag_buffer: JtagBuffer::new(packet_size - 1),
+        })
+    }
+
+    fn read_probe_info(device: &mut CmsisDapDevice) -> Result<ProbeInfo, CmsisDapError> {
+        // Read remaining probe information.
+        let packet_count = commands::send_command(device, &PacketCountCommand {})?;
+        tracing::debug!("Probe buffers {} packets", packet_count);
+
+        let capabilities: Capabilities = commands::send_command(device, &CapabilitiesCommand {})?;
+        tracing::debug!("Detected probe capabilities: {:?}", capabilities);
+
+        let mut swo_buffer_size = None;
+        if capabilities.swo_uart_implemented || capabilities.swo_manchester_implemented {
+            let swo_size = commands::send_command(device, &SWOTraceBufferSizeCommand {})?;
+            swo_buffer_size = Some(swo_size as usize);
+            tracing::debug!("Probe SWO buffer size: {}", swo_size);
+        }
+
+        // Nothing above can tell its own answer from one the probe still owed. Every `DAP_Info`
+        // sub-command shares command ID 0x00 and the reply does not say which one it answers, so
+        // a stale packet count reads as a capability mask and the probe comes out not supporting
+        // SWD. A command with a different ID does say: if anything was queued ahead of it, its
+        // reply arrives under the wrong ID, and everything read above came from the backlog.
+        commands::send_command(device, &HostStatusRequest::connected(false))?;
+
+        Ok(ProbeInfo {
+            packet_count,
+            capabilities,
+            swo_buffer_size,
         })
     }
 

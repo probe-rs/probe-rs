@@ -422,3 +422,24 @@ pub struct TransferBlockResponse {
     pub transfer_response: LastTransferResponse,
     pub transfer_data: Vec<u32>,
 }
+
+/// `DAP_TransferAbort`, which ends a transfer the probe is still working through.
+///
+/// The probe sends no reply to this, so it is the one command that can be issued while the device
+/// still owes a response to something else.
+#[derive(Clone, Copy, Debug)]
+pub struct TransferAbortRequest;
+
+impl Request for TransferAbortRequest {
+    const COMMAND_ID: CommandId = CommandId::TransferAbort;
+
+    type Response = ();
+
+    fn to_bytes(&self, _buffer: &mut [u8]) -> Result<usize, SendError> {
+        Ok(0)
+    }
+
+    fn parse_response(&self, _buffer: &[u8]) -> Result<Self::Response, SendError> {
+        Ok(())
+    }
+}
