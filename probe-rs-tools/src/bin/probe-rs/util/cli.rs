@@ -599,6 +599,48 @@ pub async fn flash(
     Ok(loader.boot_info)
 }
 
+/// Re-flash `path`'s content, without any of `flash()`'s progress-bar/preverify/upload-cache
+/// machinery - for silently reflashing before every `embedded-test` case (see `create_trial`'s
+/// doc comment for why some targets need a real reflash, not just a PC redirect, between test
+/// cases). Also sidesteps a real rustc HRTB limitation ("implementation of Send is not general
+/// enough") that `flash()`'s own progress-callback closure hits when called this deep inside a
+/// `tokio::spawn`'d future - this simpler, closure-free version doesn't capture anything
+/// lifetime-dependent and doesn't trigger it.
+async fn reflash_silent(
+    session: &SessionInterface,
+    path: &Path,
+    format: FormatOptions,
+    download_options: BinaryDownloadOptions,
+    rtt_client: Option<Key<RttClient>>,
+) -> anyhow::Result<()> {
+    let mut options = DownloadOptions {
+        keep_unwritten_bytes: download_options.restore_unwritten,
+        do_chip_erase: download_options.chip_erase,
+        skip_erase: false,
+        verify: download_options.verify,
+        disable_double_buffering: download_options.disable_double_buffering,
+        preferred_algos: download_options.prefer_flash_algorithm,
+        ram_chunk_size: download_options.ram_chunk_size,
+    };
+    options.sanitize();
+
+    let loader = session
+        .build_flash_loader(
+            path.to_path_buf(),
+            format,
+            None,
+            download_options.read_flasher_rtt,
+            rtt_client,
+        )
+        .await?;
+
+    session
+        .flash(options, loader.loader, async |_event| {})
+        .await?;
+
+    Ok(())
+}
+
 // Monitor starts in read-only mode: it outputs logs, but has no prompt to type into.
 // When channels are discovered, it can either stay in read-only mode, or switch to interactive mode if down channels are available.
 // Interactive mode allows the user to type into the prompt, and send data to the target.
@@ -993,9 +1035,12 @@ fn describe_halt_reason(reason: WireHaltReason) -> &'static str {
     }
 }
 
+#[expect(clippy::too_many_arguments)]
 pub async fn test(
     session: &SessionInterface,
     boot_info: BootInfo,
+    format_options: FormatOptions,
+    download_options: BinaryDownloadOptions,
     elf_info: EmbeddedTestElfInfo,
     libtest_args: libtest_mimic::Arguments,
     monitor_options: &MonitoringOptions,
@@ -1018,7 +1063,7 @@ pub async fn test(
             // In embedded test < 0.7, we have to query the tests from the target via semihosting
             session
                 .list_tests(
-                    boot_info,
+                    boot_info.clone(),
                     rtt_handle,
                     semihosting_options.clone(),
                     async |msg| sender.send(msg).unwrap(),
@@ -1040,6 +1085,9 @@ pub async fn test(
                 create_trial(
                     session,
                     path,
+                    boot_info.clone(),
+                    format_options.clone(),
+                    download_options.clone(),
                     rtt_handle,
                     semihosting_options.clone(),
                     sender.clone(),
@@ -1098,6 +1146,9 @@ pub async fn test(
 fn create_trial(
     session: &SessionInterface,
     path: &Path,
+    boot_info: BootInfo,
+    format_options: FormatOptions,
+    download_options: BinaryDownloadOptions,
     rtt_client: Option<Key<RttClient>>,
     semihosting_options: SemihostingOptions,
     sender: UnboundedSender<MonitorEvent>,
@@ -1120,10 +1171,40 @@ fn create_trial(
             }
 
             let handle = tokio::spawn(async move {
+                // Re-flash before every test, not just once at the start: some targets (e.g.
+                // this project's ARM7TDMI/ARMv4T RAM-boot chip) can only reach a genuinely
+                // clean, correctly-initialized state via a real hardware reset - and on such a
+                // target, `run_test_impl`'s own `prepare_boot_info` call is a bare PC redirect
+                // with no reset at all (a real reset would wipe the RAM-resident test binary,
+                // per the bug this whole mechanism was added to fix - see `arm7_pending_resume_pc_lost_across_core_calls`/`embedded_test_harness`
+                // memory in the `mc1322x-rs` project). Re-flashing here supplies the missing
+                // reset (this crate's own flash sequence always resets before writing) *and*
+                // restores the RAM content the reset would otherwise wipe, before that bare PC
+                // redirect runs. A no-op key/data recheck for flash-resident targets (already
+                // correctly reset per-test via `reset_and_halt` inside `prepare_boot_info`), at
+                // the cost of a real, if modest (RAM-write, not a slow persistent-flash cycle),
+                // per-test flash-time overhead for every target.
+                if let Err(err) = reflash_silent(
+                    &session,
+                    &path,
+                    format_options,
+                    download_options,
+                    rtt_client,
+                )
+                .await
+                {
+                    eprintln!("Error: {err:?}");
+                    std::process::exit(1);
+                }
+
                 match session
-                    .run_test(test, rtt_client, semihosting_options, async move |msg| {
-                        sender.send(msg).unwrap()
-                    })
+                    .run_test(
+                        boot_info,
+                        test,
+                        rtt_client,
+                        semihosting_options,
+                        async move |msg| sender.send(msg).unwrap(),
+                    )
                     .await
                 {
                     Ok(TestResult::Success) => Ok(()),

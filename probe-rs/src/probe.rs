@@ -514,6 +514,15 @@ impl Probe {
         self.inner.target_reset_deassert()
     }
 
+    /// Configure GPIO-driven nTRST/nSRST lines from the target's
+    /// [`probe_rs_target::JtagGpioReset`]. See [`DebugProbe::configure_gpio_reset`].
+    pub fn configure_gpio_reset(
+        &mut self,
+        config: &probe_rs_target::JtagGpioReset,
+    ) -> Result<(), DebugProbeError> {
+        self.inner.configure_gpio_reset(config)
+    }
+
     /// Configure protocol speed to use in kHz
     pub fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
         if !self.attached {
@@ -736,6 +745,22 @@ pub trait DebugProbe: Any + Send + fmt::Debug {
 
     /// This should deassert the reset pin of the target via debug probe.
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError>;
+
+    /// Configure GPIO-driven nTRST/nSRST lines from the target's
+    /// [`probe_rs_target::JtagGpioReset`], for probes where these are plain bit-banged GPIO
+    /// outputs rather than pins handled by the probe's own reset-line firmware.
+    ///
+    /// Called by [`crate::Session`] while attaching, before [`DebugProbe::attach`], so
+    /// implementations should only record the configuration and apply it once the
+    /// underlying adapter is actually opened (mirroring how [`JtagAccess::set_scan_chain`]
+    /// is used). The default implementation does nothing; only probes that support
+    /// GPIO-driven reset lines (currently: FTDI-based JTAG adapters) need to override this.
+    fn configure_gpio_reset(
+        &mut self,
+        _config: &probe_rs_target::JtagGpioReset,
+    ) -> Result<(), DebugProbeError> {
+        Ok(())
+    }
 
     /// Selects the transport protocol to be used by the debug probe.
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError>;

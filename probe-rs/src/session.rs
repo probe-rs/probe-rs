@@ -9,6 +9,9 @@ use crate::{
             memory::CoresightComponent,
             sequences::{ArmDebugSequence, DefaultArmSequence},
         },
+        arm7::communication_interface::{
+            Arm7tdmiCommunicationInterface, Arm7tdmiDebugInterfaceState,
+        },
         riscv::{
             communication_interface::{
                 RiscvCommunicationInterface, RiscvDebugInterfaceState, RiscvError,
@@ -20,6 +23,7 @@ use crate::{
         },
     },
     config::{CoreExt, DebugSequence, RegistryError, Target, TargetSelector, registry::Registry},
+    core::CoreInterface,
     core::{Architecture, CombinedCoreState},
     probe::{
         AttachMethod, DebugProbeError, Probe, ProbeCreationError, WireProtocol,
@@ -74,6 +78,7 @@ pub struct SessionConfig {
 
 enum JtagInterface {
     // The states are boxed, because they are much larger than the `Unknown` variant.
+    Arm7tdmi(Box<Arm7tdmiDebugInterfaceState>),
     Riscv(Box<RiscvDebugInterfaceState>),
     Xtensa(Box<XtensaDebugInterfaceState>),
     Unknown,
@@ -83,6 +88,7 @@ impl JtagInterface {
     /// Returns the debug module's intended architecture.
     fn architecture(&self) -> Option<Architecture> {
         match self {
+            JtagInterface::Arm7tdmi(_) => Some(Architecture::Arm),
             JtagInterface::Riscv(_) => Some(Architecture::Riscv),
             JtagInterface::Xtensa(_) => Some(Architecture::Xtensa),
             JtagInterface::Unknown => None,
@@ -93,6 +99,7 @@ impl JtagInterface {
 impl fmt::Debug for JtagInterface {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            JtagInterface::Arm7tdmi(_) => f.write_str("Arm7tdmi(..)"),
             JtagInterface::Riscv(_) => f.write_str("Riscv(..)"),
             JtagInterface::Xtensa(_) => f.write_str("Xtensa(..)"),
             JtagInterface::Unknown => f.write_str("Unknown"),
@@ -156,6 +163,17 @@ impl ArchitectureInterface {
                     chain.select(idx)?;
                 }
                 match &mut ifaces[idx] {
+                    JtagInterface::Arm7tdmi(state) => {
+                        let iface = Arm7tdmiCommunicationInterface::new(
+                            probe.try_as_jtag_chain().ok_or(Error::Probe(
+                                DebugProbeError::InterfaceNotAvailable {
+                                    interface_name: "JTAG",
+                                },
+                            ))?,
+                            state,
+                        );
+                        combined_state.attach_armv4t(target, iface)
+                    }
                     JtagInterface::Riscv(state) => {
                         let factory = probe.try_get_riscv_interface_builder()?;
                         let iface = factory.attach_auto(target, state)?;
@@ -446,6 +464,14 @@ impl Session {
             }
         }
 
+        if let Some(jtag) = target.jtag.as_ref()
+            && let Some(gpio_reset) = jtag.gpio_reset.as_ref()
+        {
+            // Recorded now, applied once the probe is actually opened below (see
+            // `DebugProbe::configure_gpio_reset`).
+            probe.configure_gpio_reset(gpio_reset)?;
+        }
+
         probe.attach_to_unspecified()?;
         if let Some(mut chain) = probe.try_as_jtag_chain()
             && let Ok(_) = chain.scan_chain()
@@ -492,23 +518,28 @@ impl Session {
                 ))));
             }
 
-            interfaces[iface_idx] = match core_arch {
-                Architecture::Riscv => {
-                    let factory = probe.try_get_riscv_interface_builder()?;
-                    let mut state = factory.create_state();
-                    {
-                        let mut interface = factory.attach_auto(&target, &mut state)?;
-                        interface.enter_debug_mode()?;
-                    }
+            interfaces[iface_idx] = match core.core_type() {
+                CoreType::Armv4t => {
+                    JtagInterface::Arm7tdmi(Box::new(Arm7tdmiDebugInterfaceState::default()))
+                }
+                _ => match core_arch {
+                    Architecture::Riscv => {
+                        let factory = probe.try_get_riscv_interface_builder()?;
+                        let mut state = factory.create_state();
+                        {
+                            let mut interface = factory.attach_auto(&target, &mut state)?;
+                            interface.enter_debug_mode()?;
+                        }
 
-                    JtagInterface::Riscv(Box::new(state))
-                }
-                Architecture::Xtensa => JtagInterface::Xtensa(Box::default()),
-                _ => {
-                    return Err(Error::Probe(DebugProbeError::Other(format!(
-                        "Unsupported core architecture {core_arch:?}",
-                    ))));
-                }
+                        JtagInterface::Riscv(Box::new(state))
+                    }
+                    Architecture::Xtensa => JtagInterface::Xtensa(Box::default()),
+                    _ => {
+                        return Err(Error::Probe(DebugProbeError::Other(format!(
+                            "Unsupported core architecture {core_arch:?}",
+                        ))));
+                    }
+                },
             };
         }
 
@@ -522,16 +553,11 @@ impl Session {
         };
 
         // Connect to the cores
-        match session.target.debug_sequence.clone() {
-            DebugSequence::Xtensa(_) => {}
-
-            DebugSequence::Riscv(sequence) => {
-                for core_id in 0..session.cores.len() {
-                    sequence.on_connect(&mut session.get_riscv_interface(core_id)?)?;
-                }
+        if let DebugSequence::Riscv(sequence) = session.target.debug_sequence.clone() {
+            for core_id in 0..session.cores.len() {
+                sequence.on_connect(&mut session.get_riscv_interface(core_id)?)?;
             }
-            _ => unreachable!("Other architectures should have already been handled"),
-        };
+        }
 
         Ok(session)
     }
@@ -831,6 +857,9 @@ impl Session {
             DebugSequence::Arm(arm_debug_sequence) => {
                 arm_debug_sequence.prepare_running_on_ram(self, vector_table_addr, core_id)
             }
+            DebugSequence::Armv4t(arm7tdmi_debug_sequence) => {
+                arm7tdmi_debug_sequence.prepare_running_on_ram(self, vector_table_addr, core_id)
+            }
             DebugSequence::Riscv(riscv_debug_sequence) => {
                 riscv_debug_sequence.prepare_running_on_ram(self, vector_table_addr, core_id)
             }
@@ -1007,6 +1036,32 @@ impl Session {
 
     /// Clears all hardware breakpoints on all cores
     pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), Error> {
+        // Skip the halt-then-clear dance entirely when there's nothing to clear - this runs on
+        // every session teardown (see `Drop for Session`), and `hw_breakpoints()` is a cheap,
+        // purely local/cached read (no hardware access) on every backend, so checking it first
+        // is free. This matters in practice: halting a target that wasn't already halted is a
+        // real, sometimes-flaky hardware operation on some backends (e.g. ARM7TDMI, where a
+        // fresh DBGRQ-based halt occasionally doesn't durably stick on the very first attempt -
+        // see `architecture::arm7`'s docs) - the overwhelmingly common case (a session that never
+        // set a breakpoint at all) has no reason to ever risk that operation just to discover
+        // there was nothing to do.
+        let mut any_breakpoints = false;
+        for (core, _) in self.list_cores() {
+            match self.core(core) {
+                Ok(mut c) => {
+                    if c.hw_breakpoints()?.into_iter().flatten().next().is_some() {
+                        any_breakpoints = true;
+                        break;
+                    }
+                }
+                Err(Error::CoreDisabled(_)) => continue,
+                Err(err) => return Err(err),
+            }
+        }
+        if !any_breakpoints {
+            return Ok(());
+        }
+
         self.halted_access(|session| {
             { 0..session.cores.len() }.try_for_each(|core| {
                 tracing::info!("Clearing breakpoints for core {core}");

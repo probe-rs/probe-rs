@@ -119,6 +119,12 @@ impl FlashAlgorithm {
     const ARM_ASSEMBLY_BKPT_A32: u32 = 0xE1200070;
     /// ARM hlt instruction, Thumb2 (x2)
     const ARM_ASSEMBLY_HLT: u32 = 0xBA80_BA80;
+    /// `B .` (branch to self, i.e. an infinite loop). `BKPT` does not exist on ARMv4T (it was
+    /// introduced in ARMv5T), so unlike the other ARM header variants this does not
+    /// self-trap into debug state; completion is instead detected via a real hardware
+    /// breakpoint set at this address by the flasher (see `Flasher::load`), and this
+    /// instruction only serves as a safe fallback in case that breakpoint doesn't fire.
+    const ARM_ASSEMBLY_INFINITE_LOOP_A32: u32 = 0xEAFF_FFFE;
 
     // On ARMv8-A and -R, `BKPT` does not enter debug state, but the debug exception,
     // so use `HLT`.
@@ -129,6 +135,9 @@ impl FlashAlgorithm {
     const ARM_FLASH_BLOB_HEADER_BKPT_A32_BE: [u32; 1] = [Self::ARM_ASSEMBLY_BKPT_A32.swap_bytes()];
     const ARM_FLASH_BLOB_HEADER_HLT_LE: [u32; 1] = [Self::ARM_ASSEMBLY_HLT];
     const ARM_FLASH_BLOB_HEADER_HLT_BE: [u32; 1] = [Self::ARM_ASSEMBLY_HLT.swap_bytes()];
+    const ARM_FLASH_BLOB_HEADER_LOOP_A32_LE: [u32; 1] = [Self::ARM_ASSEMBLY_INFINITE_LOOP_A32];
+    const ARM_FLASH_BLOB_HEADER_LOOP_A32_BE: [u32; 1] =
+        [Self::ARM_ASSEMBLY_INFINITE_LOOP_A32.swap_bytes()];
 
     const XTENSA_FLASH_BLOB_HEADER: [u32; 0] = [];
 
@@ -136,6 +145,8 @@ impl FlashAlgorithm {
     /// this function returns the maximum size of the header of supported architectures.
     pub fn get_max_algorithm_header_size() -> u64 {
         let algos = [
+            Self::algorithm_header(CoreType::Armv4t, Endian::Big),
+            Self::algorithm_header(CoreType::Armv4t, Endian::Little),
             Self::algorithm_header(CoreType::Armv6m, Endian::Big),
             Self::algorithm_header(CoreType::Armv6m, Endian::Little),
             Self::algorithm_header(CoreType::Armv7a, Endian::Big),
@@ -161,6 +172,10 @@ impl FlashAlgorithm {
 
     fn algorithm_header(core_type: CoreType, endian: Endian) -> &'static [u32] {
         match core_type {
+            CoreType::Armv4t => match endian {
+                Endian::Little => &Self::ARM_FLASH_BLOB_HEADER_LOOP_A32_LE,
+                Endian::Big => &Self::ARM_FLASH_BLOB_HEADER_LOOP_A32_BE,
+            },
             CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
                 match endian {
                     Endian::Little => &Self::ARM_FLASH_BLOB_HEADER_BKPT_T32_LE,
