@@ -519,9 +519,7 @@ impl Session {
             }
 
             interfaces[iface_idx] = match core.core_type() {
-                CoreType::Armv4t => {
-                    JtagInterface::Arm7tdmi(Box::default())
-                }
+                CoreType::Armv4t => JtagInterface::Arm7tdmi(Box::default()),
                 _ => match core_arch {
                     Architecture::Riscv => {
                         let factory = probe.try_get_riscv_interface_builder()?;
