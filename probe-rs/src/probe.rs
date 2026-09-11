@@ -752,9 +752,9 @@ pub trait DebugProbe: Any + Send + fmt::Debug {
     ///
     /// Called by [`crate::Session`] while attaching, before [`DebugProbe::attach`], so
     /// implementations should only record the configuration and apply it once the
-    /// underlying adapter is actually opened (mirroring how [`JtagAccess::set_scan_chain`]
-    /// is used). The default implementation does nothing; only probes that support
-    /// GPIO-driven reset lines (currently: FTDI-based JTAG adapters) need to override this.
+    /// underlying adapter is actually opened. The default implementation does nothing; only
+    /// probes that support GPIO-driven reset lines (currently: FTDI-based JTAG adapters) need
+    /// to override this.
     fn configure_gpio_reset(
         &mut self,
         _config: &probe_rs_target::JtagGpioReset,

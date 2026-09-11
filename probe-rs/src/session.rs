@@ -520,7 +520,7 @@ impl Session {
 
             interfaces[iface_idx] = match core.core_type() {
                 CoreType::Armv4t => {
-                    JtagInterface::Arm7tdmi(Box::new(Arm7tdmiDebugInterfaceState::default()))
+                    JtagInterface::Arm7tdmi(Box::default())
                 }
                 _ => match core_arch {
                     Architecture::Riscv => {
@@ -1143,7 +1143,7 @@ fn get_target_from_selector(
 ) -> Result<(Probe, Target), Error> {
     let target = match target {
         TargetSelector::Unspecified(name) => registry.get_target_by_name(name)?,
-        TargetSelector::Specified(target) => target,
+        TargetSelector::Specified(target) => *target,
         TargetSelector::Auto => {
             // At this point we do not know what the target is, so we cannot use the chip specific reset sequence.
             // Thus, we try just using a normal reset for target detection if we want to do so under reset.

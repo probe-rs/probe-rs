@@ -404,6 +404,24 @@ fn decode_hi_register_pc_target(
     Ok(Some(result & !1))
 }
 
+/// Calculates the address of the next instruction that will genuinely execute, by decoding and
+/// simulating the *current* one - see the module doc comment for why this replaces a wildcard
+/// watchpoint for single-stepping on this core.
+pub(super) fn calculate_next_pc(
+    interface: &mut Arm7tdmiCommunicationInterface,
+) -> Result<(u32, u32), Arm7tdmiError> {
+    let pc = interface.read_core_register(15)?;
+    let cpsr = interface.read_core_register(16)?;
+    let thumb = (cpsr >> 5) & 1 != 0;
+
+    let next_pc = if thumb {
+        simulate_thumb(interface, pc, cpsr)?
+    } else {
+        simulate_arm(interface, pc, cpsr)?
+    };
+    Ok((pc, next_pc))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -467,22 +485,4 @@ mod tests {
         .unwrap();
         assert_eq!(target, Some(0x400000 + 4));
     }
-}
-
-/// Calculates the address of the next instruction that will genuinely execute, by decoding and
-/// simulating the *current* one - see the module doc comment for why this replaces a wildcard
-/// watchpoint for single-stepping on this core.
-pub(super) fn calculate_next_pc(
-    interface: &mut Arm7tdmiCommunicationInterface,
-) -> Result<(u32, u32), Arm7tdmiError> {
-    let pc = interface.read_core_register(15)?;
-    let cpsr = interface.read_core_register(16)?;
-    let thumb = (cpsr >> 5) & 1 != 0;
-
-    let next_pc = if thumb {
-        simulate_thumb(interface, pc, cpsr)?
-    } else {
-        simulate_arm(interface, pc, cpsr)?
-    };
-    Ok((pc, next_pc))
 }

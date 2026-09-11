@@ -442,7 +442,7 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     /// EmbeddedICE register writes), and this constructor runs on *every* [`crate::Session::core`]
     /// call, not just the first one per session (this type is deliberately cheap/stateless to
     /// construct - the real, one-time session state lives in [`crate::architecture::arm7::Arm7tdmiState`],
-    /// a level up). Call [`Self::init`] explicitly, gated on that persisted "already initialized"
+    /// a level up). Call `Self::init` explicitly, gated on that persisted "already initialized"
     /// flag, instead of unconditionally here - see [`crate::architecture::arm7::Arm7tdmi::new`].
     pub fn new(probe: JtagChain<'probe>, state: &'probe mut Arm7tdmiDebugInterfaceState) -> Self {
         Self {
@@ -455,7 +455,7 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
 
     /// Reset the JTAG TAP and read back its IDCODE.
     ///
-    /// A plain, non-destructive probe of the TAP - unlike [`Self::init`], this does not select
+    /// A plain, non-destructive probe of the TAP - unlike `Self::init`, this does not select
     /// the EmbeddedICE scan chain or touch the hardware breakpoint/watchpoint units, so it's
     /// safe to call just to identify what's on the other end of the JTAG chain (see the
     /// `probe-rs info` command).
@@ -1132,7 +1132,7 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     /// separate [`Self::read_core_register`]`(16, ..)` call.
     ///
     /// A single `STMIA`-based capture sequence only reliably captures the first
-    /// [`Self::MAX_REGISTERS_PER_TRANSFER`] registers - confirmed on real hardware, precisely
+    /// `Self::MAX_REGISTERS_PER_TRANSFER` registers - confirmed on real hardware, precisely
     /// bisected: requesting 4 registers in one transfer reads back 4 genuinely distinct values,
     /// but requesting 5 makes the 4th and 5th data-transfer clocks return the *same* (stale)
     /// value instead of two real ones, and every clock past the 4th continues repeating it. This
@@ -1144,7 +1144,7 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     /// was checked and ruled out - this probe's 4096-byte command buffer is far larger than
     /// needed - so this is presumably a genuine ARM7TDMI/EmbeddedICE silicon limit on sustained
     /// `STMIA` data-transfer cycles at debug speed). Worked around here by chunking any request
-    /// into groups of at most [`Self::MAX_REGISTERS_PER_TRANSFER`] registers, each getting its
+    /// into groups of at most `Self::MAX_REGISTERS_PER_TRANSFER` registers, each getting its
     /// own fresh fetch/decode/execute/capture sequence, rather than one unbounded transfer -
     /// preserves the single-transfer fast path for anything at or under the limit (e.g. the
     /// already-validated 4-register case) while fixing larger requests.
@@ -1276,9 +1276,9 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
 
     /// Write a core register (R0-R15, or 16 for CPSR).
     ///
-    /// R0-R14 are written by injecting `value` via [`Self::load_immediate`]. R15 (PC) instead
-    /// goes through [`Self::write_pc`] (a longer, PC-specific clock sequence) and is cached in
-    /// [`Arm7tdmiDebugInterfaceState::pending_resume_pc`] for `resume()` to redo, immediately
+    /// R0-R14 are written by injecting `value` via `Self::load_immediate`. R15 (PC) instead
+    /// goes through `Self::write_pc` (a longer, PC-specific clock sequence) and is cached in
+    /// `Arm7tdmiDebugInterfaceState::pending_resume_pc` for `resume()` to redo, immediately
     /// followed by a real branch instruction, right before the core is actually let run - see
     /// the note on `resume()` for why a plain debug-speed PC write isn't enough on its own.
     ///
@@ -1347,7 +1347,7 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     /// Read memory at the given address (must be word-aligned).
     ///
     /// Unlike register access, this must reach the real target bus (flash/RAM may have wait
-    /// states), so the actual `LDR` runs via [`Self::system_speed_access`] rather than the
+    /// states), so the actual `LDR` runs via `Self::system_speed_access` rather than the
     /// debug-speed pipeline clocking used for register transfers.
     pub fn read_memory_32(&mut self, address: u32) -> Result<u32, Arm7tdmiError> {
         self.ensure_halted()?;
@@ -1430,9 +1430,9 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     /// Unlike calling [`Self::write_memory_32`] once per word, this clears `STICKY_HALT` only
     /// once for the whole burst (not once per word) and reloads R0 with the next address only
     /// once at the start, relying on the `STMIA R0!, {R1}` write-back to advance it - exactly
-    /// matching OpenOCD's `arm7_9_write_memory` (which explicitly clears `EICE_DBG_CONTROL_DBGACK`
-    /// - the same physical bit this interface calls `STICKY_HALT` - once before its whole write
-    /// loop and only re-sets it once after, with the comment "Clear DBGACK, to make sure memory
+    /// matching OpenOCD's `arm7_9_write_memory` (which explicitly clears `EICE_DBG_CONTROL_DBGACK`,
+    /// the same physical bit this interface calls `STICKY_HALT`, once before its whole write loop
+    /// and only re-sets it once after, with the comment "Clear DBGACK, to make sure memory
     /// fetches work as expected"; it also batches up to 14 registers per system-speed access,
     /// which this does not replicate, but the single-register-per-access form still avoids the
     /// bug below).
@@ -1492,7 +1492,7 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     /// and fixed for writes (see [`Self::write_memory_32_bulk`]'s doc comment) - just never
     /// applied to reads. Fixed the same way, reusing an already-proven building block: queues a
     /// multi-register `LDMIA R0!, {R1..R(chunk)}` (chunk size bounded by
-    /// [`Self::MAX_REGISTERS_PER_TRANSFER`] = 4 - the same hard per-STMIA/LDMIA-capture register
+    /// `Self::MAX_REGISTERS_PER_TRANSFER` = 4 - the same hard per-STMIA/LDMIA-capture register
     /// limit already found and worked around in [`Self::read_core_registers`]) as ONE
     /// system-speed access per up-to-4 words (one `STICKY_HALT` toggle per chunk, not per word),
     /// then pulls the captured registers back out via [`Self::read_core_registers`]'s own
@@ -1756,7 +1756,7 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     /// Resume the core by clearing DBGRQ.
     ///
     /// Before doing that, redirects the fetch/decode pipeline to the intended PC via a real
-    /// branch instruction ([`Self::write_pc`] immediately followed by [`Self::branch_resume`],
+    /// branch instruction (`Self::write_pc` immediately followed by `Self::branch_resume`,
     /// with nothing else in between so the branch's calibrated offset still lands correctly).
     /// Confirmed necessary on real hardware - without it, `RESTART` let the core run for only
     /// a handful of instructions (whatever was left over in the pipeline from the debug-speed

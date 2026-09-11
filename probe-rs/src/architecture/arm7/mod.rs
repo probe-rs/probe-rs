@@ -515,7 +515,7 @@ impl<'probe> CoreInterface for Arm7tdmi<'probe> {
         self.sequence.debug_core_stop(&mut self.interface)
     }
 
-    /// Only [`VectorCatchCondition::Svc`] is supported, via [`SVC_VECTOR_UNIT`] (see its docs).
+    /// Only [`VectorCatchCondition::Svc`] is supported, via `SVC_VECTOR_UNIT` (see its docs).
     ///
     /// `HardFault`/`SecureFault` are Cortex-M-only concepts, and `CoreReset`/`Hlt` would need
     /// their own vector-catch register - EmbeddedICE has none (no DEMCR/DBGVCR equivalent), and
@@ -762,7 +762,9 @@ impl<'probe> MemoryInterface for Arm7tdmi<'probe> {
         let paired = data.len() / 2;
         if paired > 0 {
             let words: Vec<u32> = data[..paired * 2]
-                .chunks_exact(2)
+                .as_chunks::<2>()
+                .0
+                .iter()
                 .map(|pair| (pair[0] as u32) | ((pair[1] as u32) << 16))
                 .collect();
             self.interface.write_memory_32_bulk(address, &words)?;
@@ -804,7 +806,9 @@ impl<'probe> MemoryInterface for Arm7tdmi<'probe> {
         let full_words = data.len() / 4;
         if full_words > 0 {
             let words: Vec<u32> = data[..full_words * 4]
-                .chunks_exact(4)
+                .as_chunks::<4>()
+                .0
+                .iter()
                 .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
                 .collect();
             self.interface.write_memory_32_bulk(address, &words)?;
