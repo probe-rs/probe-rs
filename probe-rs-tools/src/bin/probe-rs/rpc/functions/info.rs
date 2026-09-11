@@ -759,7 +759,7 @@ async fn show_xtensa_info(
         VarSeq::Seq2(0),
         &InfoEvent::Idcode {
             architecture: "Xtensa".to_string(),
-            idcode: Some(idcode),
+            idcode,
         },
     )
     .await
