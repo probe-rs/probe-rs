@@ -962,7 +962,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8d162beedaa69905488a8da94f5ac3edb4dd4788b732fadb7bd120b2625c1976"
 dependencies = [
  "data-encoding",
- "syn 1.0.109",
+ "syn 2.0.119",
 ]
 
 [[package]]
@@ -1281,13 +1281,15 @@ dependencies = [
 
 [[package]]
 name = "esp-metadata-generated"
-version = "0.4.0"
-source = "git+https://github.com/esp-rs/esp-hal?rev=d91ecc5#d91ecc513f4e7915ce239f05f24d561a81fa2f46"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "44d5a63d730b8c56e6b32773e35fcc4988d7d2e5c64d521652317d3ebddf2b52"
 
 [[package]]
 name = "espflash"
-version = "4.5.0"
-source = "git+https://github.com/esp-rs/espflash?rev=feb3cc7#feb3cc7698b3ab7eb27d492b52888805bce1d53b"
+version = "4.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae544a0a61e80cb513ba2a2543f841a06c4bd5fb090a2f05302d5b821bf68668"
 dependencies = [
  "base64 0.22.1",
  "bitflags 2.13.0",
