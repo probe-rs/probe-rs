@@ -166,14 +166,25 @@ impl RuntimeTarget {
 
         let mut wait_time = Duration::ZERO;
 
-        self.gdb = match gdb {
-            GdbStubStateMachine::Idle(state) => self.handle_idle(state, &mut wait_time)?,
-            GdbStubStateMachine::Running(state) => self.handle_running(state, &mut wait_time)?,
-            GdbStubStateMachine::CtrlCInterrupt(state) => self.handle_ctrl_c(state)?,
+        let result = match gdb {
+            GdbStubStateMachine::Idle(state) => self.handle_idle(state, &mut wait_time),
+            GdbStubStateMachine::Running(state) => self.handle_running(state, &mut wait_time),
+            GdbStubStateMachine::CtrlCInterrupt(state) => self.handle_ctrl_c(state),
             GdbStubStateMachine::Disconnected(state) => {
                 tracing::info!("GDB client disconnected: {:?}", state.get_reason());
+                Ok(None)
+            }
+        };
+
+        self.gdb = match result {
+            Ok(next) => next,
+            // gdbstub's `peek` on a `TcpStream` reports EOF as an available byte, so a client
+            // that disconnects mid-packet gives an I/O error, not `Disconnected`.
+            Err(e) if is_disconnect_error(&e) => {
+                tracing::info!("GDB client connection lost: {e:#}");
                 None
             }
+            Err(e) => return Err(e),
         };
 
         Ok(wait_time)
@@ -301,6 +312,19 @@ impl Target for RuntimeTarget {
     fn guard_rail_implicit_sw_breakpoints(&self) -> bool {
         true
     }
+}
+
+/// Returns whether `err` is caused by a lost or closed client connection.
+fn is_disconnect_error(err: &anyhow::Error) -> bool {
+    err.downcast_ref::<std::io::Error>().is_some_and(|e| {
+        matches!(
+            e.kind(),
+            std::io::ErrorKind::UnexpectedEof
+                | std::io::ErrorKind::ConnectionReset
+                | std::io::ErrorKind::ConnectionAborted
+                | std::io::ErrorKind::BrokenPipe
+        )
+    })
 }
 
 fn read_if_available(conn: &mut TcpStream) -> Result<Option<u8>, anyhow::Error> {
