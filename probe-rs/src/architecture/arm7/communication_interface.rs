@@ -453,12 +453,13 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
         }
     }
 
-    /// Initialize the ARM7TDMI debug interface: reset the JTAG TAP, verify communication via
-    /// IDCODE, select the EmbeddedICE scan chain, and defensively clear both hardware
-    /// breakpoint/watchpoint units. Real, physical, disruptive work - call this once per
-    /// session, not on every interface construction (see [`Self::new`]'s doc comment).
-    pub(crate) fn init(&mut self) -> Result<(), Arm7tdmiError> {
-        // Reset JTAG TAP
+    /// Reset the JTAG TAP and read back its IDCODE.
+    ///
+    /// A plain, non-destructive probe of the TAP - unlike [`Self::init`], this does not select
+    /// the EmbeddedICE scan chain or touch the hardware breakpoint/watchpoint units, so it's
+    /// safe to call just to identify what's on the other end of the JTAG chain (see the
+    /// `probe-rs info` command).
+    pub fn read_idcode(&mut self) -> Result<u32, Arm7tdmiError> {
         let mut batch = JtagBatch::new();
         self.probe.tap_reset(&mut batch);
         self.probe.run(batch)?;
@@ -467,9 +468,18 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
         self.current_instruction = None;
         self.current_scan_chain = None;
 
-        // Read IDCODE to verify communication. IR and DR are selected/shifted together: see
-        // `scan_dr` below for why this can't be split into a separate "select IR" step.
+        // IR and DR are selected/shifted together: see `scan_dr` below for why this can't be
+        // split into a separate "select IR" step.
         let idcode = self.scan_dr(JtagInstruction::Idcode, 0, 32)?;
+        Ok(idcode as u32)
+    }
+
+    /// Initialize the ARM7TDMI debug interface: reset the JTAG TAP, verify communication via
+    /// IDCODE, select the EmbeddedICE scan chain, and defensively clear both hardware
+    /// breakpoint/watchpoint units. Real, physical, disruptive work - call this once per
+    /// session, not on every interface construction (see [`Self::new`]'s doc comment).
+    pub(crate) fn init(&mut self) -> Result<(), Arm7tdmiError> {
+        let idcode = self.read_idcode()?;
         tracing::debug!("ARM7TDMI IDCODE: 0x{:08X}", idcode);
 
         // Select scan chain 2 (EmbeddedICE)
