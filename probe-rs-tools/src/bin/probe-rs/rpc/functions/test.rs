@@ -12,6 +12,7 @@ use crate::rpc::{
     functions::{
         RpcContext, RpcSpawnContext, WireTxImpl,
         convert::lift,
+        flash::prepare_boot_info,
         monitor::{MonitorSender, RttPoller},
     },
     utils::{
@@ -141,8 +142,13 @@ fn run_test_impl(
 
     {
         let mut session = shared_session.session_blocking();
-        let mut core = session.core(core_id)?;
-        core.reset_and_halt(Duration::from_millis(500))?;
+        // Use the same boot mechanism `list_tests_impl` already uses, instead of an
+        // unconditional real hardware reset: for a RAM-resident target (`BootInfo::FromRam`),
+        // `prepare_boot_info` only redirects PC (`Session::prepare_running_on_ram`) rather than
+        // resetting the chip - necessary because a real reset can wipe the RAM image the test
+        // binary lives in. Flash-resident targets (`BootInfo::Other`) still get a real
+        // `reset_and_halt` via the same function, so this is not a behavior change for them.
+        prepare_boot_info(&request.boot_info, &mut session, core_id)?;
     }
 
     let expected_outcome = request.test.expected_outcome;

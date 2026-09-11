@@ -717,6 +717,140 @@ pub fn decode_semihosting_syscall(
     })
 }
 
+/// Check if the current vector catch halt is a semihosting call.
+///
+/// Supports two semihosting mechanisms on cores whose SVC/HLT exceptions vector through a
+/// classic ARM-style exception table (currently ARMv7-A/R and ARM7TDMI - Cortex-M's `BKPT`-based
+/// semihosting halts directly into debug state instead, and is detected differently):
+/// - SVC-based: `SVC #0x123456` (ARM) or `SVC #0xAB` (Thumb) - vectors to 0x08
+/// - HLT-based: `HLT #0xF000` (ARM) or `HLT #0x3C` (Thumb) - undefined on ARMv7 (and on
+///   ARM7TDMI, which has no `HLT` instruction at all), vectors to 0x04
+///
+/// HLT-based semihosting is preferred where available, as it doesn't interfere with
+/// baremetal/OS/RTOS SVC usage.
+/// Spec: <https://github.com/ARM-software/abi-aa/blob/2025Q1/semihosting/semihosting.rst#the-semihosting-interface>
+pub(crate) fn check_for_semihosting(
+    cached_command: Option<SemihostingCommand>,
+    core: &mut dyn CoreInterface,
+    pc: u32,
+    lr: u32,
+) -> Result<Option<SemihostingCommand>, Error> {
+    // Return cached command if already decoded (avoid re-decoding on repeated status() calls)
+    if let Some(command) = cached_command {
+        return Ok(Some(command));
+    }
+
+    // `pc` is taken as a parameter rather than read here, because on at least one backend
+    // (ARM7TDMI - see `crate::architecture::arm7`'s own doc/`cached_halt_pc`) a plain register
+    // read has a real, physical side effect that advances the value away from the true halt-time
+    // PC - callers there must pass in a PC they already captured once, right at halt entry.
+    //
+    // Vector table layout (32-byte aligned):
+    //   0x00=Reset, 0x04=Undef, 0x08=SVC, ...
+    //
+    // We check for semihosting on:
+    // - SVC vector (0x08): Traditional semihosting via SVC instruction
+    // - UNDEF vector (0x04): HLT-based semihosting (HLT is undefined on ARMv7)
+    const UNDEF_VECTOR_OFFSET: u32 = 0x04;
+    const SVC_VECTOR_OFFSET: u32 = 0x08;
+    const VECTOR_TABLE_MASK: u32 = 32 - 1;
+
+    let vector_offset = pc & VECTOR_TABLE_MASK;
+
+    // Early return if we're not at a semihosting vector, to not reading potentially invalid memory
+    // at LR-4
+    if vector_offset != UNDEF_VECTOR_OFFSET && vector_offset != SVC_VECTOR_OFFSET {
+        tracing::debug!(
+            "Vector catch at PC={:#x} (offset {:#x}), not SVC/UNDEF vector, not semihosting",
+            pc,
+            vector_offset
+        );
+        return Ok(None);
+    }
+
+    // Semihosting instruction encodings:
+    // SVC-based:
+    // - ARM state:   `SVC #0x123456` encoded as 0xEF123456
+    // - Thumb state: `SVC #0xAB`     encoded as 0xDFAB
+    // HLT-based:
+    // - ARM state:   `HLT #0xF000`   encoded as 0xE10F0070
+    // - Thumb state: `HLT #64`       encoded as 0xBABC
+    const ARM_SEMIHOSTING_SVC: [u8; 4] = 0xEF123456_u32.to_le_bytes();
+    const THUMB_SEMIHOSTING_SVC: [u8; 2] = 0xDFAB_u16.to_le_bytes();
+    const ARM_SEMIHOSTING_HLT: [u8; 4] = 0xE10F0070_u32.to_le_bytes();
+    const THUMB_SEMIHOSTING_HLT: [u8; 2] = 0xBABC_u16.to_le_bytes();
+
+    // Save the real argument registers (r0/r1 on Arm) *before* the instruction-byte read below:
+    // on at least the arm7/armv7ar backends, a memory read's own implementation reuses the
+    // architectural argument registers as scratch space to perform the transfer (confirmed here
+    // for arm7 - `read_memory_32`'s `LDMIA R0!, {R1}` technique leaves R0/R1 holding the
+    // just-read address/data, not their real pre-halt content; `armv7ar::read_word_32`'s own doc
+    // comment already flags the same thing for R0: "Note that this clobbers $r0") - a real
+    // register clobber, not a JTAG timing artifact, and it collides directly with the ARM
+    // semihosting ABI, which also puts the operation number/parameter in r0/r1. Restored below,
+    // right before `decode_semihosting_syscall` (which does its own, now-correct, fresh read),
+    // only once semihosting is actually confirmed - cheap and harmless for backends unaffected by
+    // this (an extra read, and a matching restore-write of the unchanged value).
+    let saved_r0: u32 = core
+        .read_core_reg(core.registers().get_argument_register(0).unwrap().id())?
+        .try_into()?;
+    let saved_r1: u32 = core
+        .read_core_reg(core.registers().get_argument_register(1).unwrap().id())?
+        .try_into()?;
+
+    // Read word at LR-4 to check instructions
+    let instruction_address = lr.wrapping_sub(4);
+    let mut instruction = [0u8; 4];
+    core.read_8(instruction_address as u64, &mut instruction)?;
+
+    let (is_semihosting, mechanism) = match vector_offset {
+        SVC_VECTOR_OFFSET => {
+            let is_arm = instruction == ARM_SEMIHOSTING_SVC;
+            let is_thumb = instruction[2..] == THUMB_SEMIHOSTING_SVC;
+            (is_arm || is_thumb, "SVC")
+        }
+        UNDEF_VECTOR_OFFSET => {
+            let is_arm = instruction == ARM_SEMIHOSTING_HLT;
+            let is_thumb = instruction[2..] == THUMB_SEMIHOSTING_HLT;
+            (is_arm || is_thumb, "HLT")
+        }
+        _ => unreachable!(), // Already handled above in early return
+    };
+
+    if !is_semihosting {
+        return Ok(None);
+    }
+
+    tracing::debug!(
+        "{} instruction check: LR={:#x}, bytes at {:#x} = {:#010x}, match={}",
+        mechanism,
+        lr,
+        instruction_address,
+        u32::from_le_bytes(instruction),
+        is_semihosting
+    );
+
+    // Restore r0/r1 - clobbered above by the instruction-byte read on some backends (see the
+    // comment by `saved_r0`/`saved_r1`) - before decoding, so it sees the real ABI values.
+    core.write_core_reg(
+        core.registers().get_argument_register(0).unwrap().id(),
+        RegisterValue::U32(saved_r0),
+    )?;
+    core.write_core_reg(
+        core.registers().get_argument_register(1).unwrap().id(),
+        RegisterValue::U32(saved_r1),
+    )?;
+
+    let command = decode_semihosting_syscall(core)?;
+    tracing::debug!(
+        "Semihosting {} detected at PC={:#x}: {:?}",
+        mechanism,
+        pc,
+        command
+    );
+    Ok(Some(command))
+}
+
 fn param<const N: usize>(
     core: &mut dyn CoreInterface,
     pointer: u32,

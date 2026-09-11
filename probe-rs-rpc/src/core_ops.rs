@@ -221,6 +221,7 @@ pub struct WireCoreDump {
 
 #[derive(Debug, Serialize, Deserialize, Schema, Clone, Copy, PartialEq, Eq)]
 pub enum WireCoreType {
+    Armv4t,
     Armv6m,
     Armv7a,
     Armv7r,
