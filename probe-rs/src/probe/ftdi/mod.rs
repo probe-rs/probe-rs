@@ -48,6 +48,21 @@ struct JtagAdapter {
     in_bit_counts: Vec<usize>,
     in_bits: BitVec,
     ftdi: FtdiProperties,
+
+    /// GPIO-driven nTRST/nSRST configuration, if the target requested one (see
+    /// [`probe_rs_target::JtagGpioReset`]). Recorded by `configure_gpio_reset` (which may be
+    /// called before [`JtagAdapter::attach`]) and applied once `attach` actually opens the
+    /// adapter.
+    gpio_reset: Option<probe_rs_target::JtagGpioReset>,
+
+    /// The last (output, direction) pin state actually written via
+    /// [`ftdaye::Device::set_pins`], so that toggling a single GPIO reset line doesn't
+    /// disturb the JTAG signal pins (TCK/TDI/TDO/TMS) or any other configured GPIO pin.
+    current_pins: (u16, u16),
+
+    /// Whether [`Self::attach`] has run yet (and therefore whether `current_pins` reflects
+    /// real hardware state that `configure_gpio_reset` can safely merge into).
+    attached: bool,
 }
 
 impl JtagAdapter {
@@ -93,6 +108,9 @@ impl JtagAdapter {
             in_bit_counts: vec![],
             in_bits: BitVec::new(),
             ftdi,
+            gpio_reset: None,
+            current_pins: (0, 0),
+            attached: false,
         })
     }
 
@@ -106,14 +124,83 @@ impl JtagAdapter {
         let mut junk = vec![];
         let _ = self.device.read_to_end(&mut junk);
 
-        let (output, direction) = self.pin_layout();
+        let (mut output, mut direction) = self.pin_layout();
+        if let Some(gpio_reset) = self.gpio_reset.clone() {
+            for pin in gpio_reset
+                .ntrst
+                .iter()
+                .chain(gpio_reset.nsrst.iter())
+                .chain(gpio_reset.extra_outputs.iter())
+            {
+                set_gpio_bit(&mut direction, pin.bit, true);
+                set_gpio_bit(&mut output, pin.bit, pin.idle_high);
+            }
+        }
         self.device.set_pins(output, direction)?;
+        self.current_pins = (output, direction);
+        self.attached = true;
 
         self.apply_clock_speed(self.speed_khz)?;
 
         self.device.disable_loopback()?;
 
         Ok(())
+    }
+
+    /// Record a GPIO-driven nTRST/nSRST configuration. May be called before [`Self::attach`]
+    /// (in which case it's only applied once `attach` runs) or after (in which case the idle
+    /// state is driven immediately).
+    pub fn configure_gpio_reset(
+        &mut self,
+        config: probe_rs_target::JtagGpioReset,
+    ) -> Result<(), FtdiError> {
+        self.gpio_reset = Some(config.clone());
+
+        if !self.attached {
+            // Not attached yet; `attach` will apply this once it runs.
+            return Ok(());
+        }
+
+        let (mut output, mut direction) = self.current_pins;
+        for pin in config
+            .ntrst
+            .iter()
+            .chain(config.nsrst.iter())
+            .chain(config.extra_outputs.iter())
+        {
+            set_gpio_bit(&mut direction, pin.bit, true);
+            set_gpio_bit(&mut output, pin.bit, pin.idle_high);
+        }
+        self.device.set_pins(output, direction)?;
+        self.current_pins = (output, direction);
+        Ok(())
+    }
+
+    /// Drive the configured nTRST/nSRST GPIO pins to their asserted or deasserted level.
+    /// Does nothing if no [`probe_rs_target::JtagGpioReset`] was configured.
+    fn set_reset_pins(&mut self, asserted: bool) -> Result<(), FtdiError> {
+        let Some(config) = self.gpio_reset.clone() else {
+            return Ok(());
+        };
+
+        let (mut output, direction) = self.current_pins;
+        for pin in config.ntrst.iter().chain(config.nsrst.iter()) {
+            let level_high = if asserted {
+                !pin.idle_high
+            } else {
+                pin.idle_high
+            };
+            set_gpio_bit(&mut output, pin.bit, level_high);
+        }
+        self.device.set_pins(output, direction)?;
+        self.current_pins = (output, direction);
+        Ok(())
+    }
+
+    /// Whether a GPIO-driven reset configuration is available (i.e. `target_reset*` is
+    /// actually supported on this adapter).
+    fn has_gpio_reset(&self) -> bool {
+        self.gpio_reset.is_some()
     }
 
     fn pin_layout(&self) -> (u16, u16) {
@@ -211,6 +298,16 @@ impl JtagAdapter {
                 return Err(DebugProbeError::Timeout);
             }
         }
+
+        // Raw MPSSE response bytes, for low-level JTAG protocol debugging (e.g. with
+        // `jtag_decode.py` at the probe-rs repo root) - deliberately kept at `trace` level
+        // rather than removed, since it was essential to finding a real ARM7TDMI chain-1
+        // clocking bug on real hardware and will likely be needed again for similar work.
+        tracing::trace!(
+            "read_response raw_bytes={:02X?} counts={:?}",
+            reply,
+            expected_bits
+        );
 
         for (byte, count) in reply.into_iter().zip(expected_bits) {
             let bits = byte >> (8 - count);
@@ -470,23 +567,48 @@ impl DebugProbe for FtdiProbe {
     }
 
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        // TODO we could add this by using a GPIO. However, different probes may connect
-        // different pins (if any) to the reset line, so we would need to make this configurable.
-        Err(DebugProbeError::NotImplemented {
-            function_name: "target_reset",
-        })
+        if !self.adapter.has_gpio_reset() {
+            return Err(DebugProbeError::NotImplemented {
+                function_name: "target_reset",
+            });
+        }
+        self.adapter.set_reset_pins(true)?;
+        std::thread::sleep(Duration::from_millis(10));
+        self.adapter.set_reset_pins(false)?;
+        // Give the target time to actually come out of reset (re-run its boot ROM, etc.)
+        // before any further JTAG activity is attempted. OpenOCD's known-good config for
+        // this exact adapter/board combination (the `axm0432_jtag` FTDI layout) uses a
+        // 200 ms `jtag_ntrst_delay` for the same purpose.
+        std::thread::sleep(Duration::from_millis(200));
+        Ok(())
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::NotImplemented {
-            function_name: "target_reset_assert",
-        })
+        if !self.adapter.has_gpio_reset() {
+            return Err(DebugProbeError::NotImplemented {
+                function_name: "target_reset_assert",
+            });
+        }
+        self.adapter.set_reset_pins(true)?;
+        Ok(())
     }
 
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::NotImplemented {
-            function_name: "target_reset_deassert",
-        })
+        if !self.adapter.has_gpio_reset() {
+            return Err(DebugProbeError::NotImplemented {
+                function_name: "target_reset_deassert",
+            });
+        }
+        self.adapter.set_reset_pins(false)?;
+        Ok(())
+    }
+
+    fn configure_gpio_reset(
+        &mut self,
+        config: &probe_rs_target::JtagGpioReset,
+    ) -> Result<(), DebugProbeError> {
+        self.adapter.configure_gpio_reset(config.clone())?;
+        Ok(())
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
@@ -711,6 +833,15 @@ static FTDI_COMPAT_DEVICES: &[FtdiDevice] = &[
         fallback_chip_type: ChipType::FT2232H,
     },
 ];
+
+/// Set or clear `bit` in a 16-bit FTDI GPIO pin word (as used by [`ftdaye::Device::set_pins`]).
+fn set_gpio_bit(word: &mut u16, bit: u8, high: bool) {
+    if high {
+        *word |= 1 << bit;
+    } else {
+        *word &= !(1 << bit);
+    }
+}
 
 fn get_device_info(device: &DeviceInfo) -> Option<ProbeListItem> {
     FTDI_COMPAT_DEVICES.iter().find_map(|ftdi| {

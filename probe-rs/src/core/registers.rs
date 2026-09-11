@@ -500,6 +500,7 @@ impl CoreRegisters {
         use crate::architecture::arm::core::registers::cortex_m::{
             CORTEX_M_CORE_REGISTERS, CORTEX_M_WITH_FP_CORE_REGISTERS,
         };
+        use crate::architecture::arm7::registers::ARM7TDMI_CORE_REGISTERS;
         use crate::architecture::riscv::registers::{
             RISCV_CORE_REGISTERS, RISCV_WITH_FP_CORE_REGISTERS,
         };
@@ -511,6 +512,7 @@ impl CoreRegisters {
         };
 
         match core_type {
+            CoreType::Armv4t => &ARM7TDMI_CORE_REGISTERS,
             CoreType::Armv6m => &CORTEX_M_CORE_REGISTERS,
             CoreType::Armv7a | CoreType::Armv7r => match floating_point_register_count {
                 Some(16) => &AARCH32_WITH_FP_16_CORE_REGISTERS,

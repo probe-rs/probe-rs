@@ -47,7 +47,7 @@ pub fn probe_may_become_available(error: &OperationError) -> bool {
 }
 
 /// Common options when flashing a target device.
-#[derive(Debug, clap::Parser)]
+#[derive(Debug, Clone, clap::Parser)]
 pub struct BinaryDownloadOptions {
     #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub disable_progressbars: bool,
