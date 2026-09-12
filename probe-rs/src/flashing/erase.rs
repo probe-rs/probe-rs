@@ -136,13 +136,25 @@ pub fn erase_all(
     }
     progress.initialized(phases);
 
+    // A debug sequence erases the whole chip in one go, unlike a flash algorithm's `erase_all`
+    // which only covers the memory that algorithm serves. Running it once per algorithm would
+    // erase the chip repeatedly, so it is only run for the first one.
+    let sequence_erases_whole_chip = session.has_sequence_erase_all();
+    let mut chip_erased = false;
+
     for el in algos {
         let mut flasher = el.flasher;
         tracing::debug!("Erasing with algorithm: {}", flasher.flash_algorithm.name);
 
         if flasher.is_chip_erase_supported(session) {
+            if sequence_erases_whole_chip && chip_erased {
+                tracing::debug!("     -- chip already erased by the debug sequence.");
+                continue;
+            }
+
             tracing::debug!("     -- chip erase supported, doing it.");
             flasher.run_erase_all(session, progress)?;
+            chip_erased = true;
         } else {
             tracing::debug!("     -- chip erase not supported, erasing by sector.");
 
