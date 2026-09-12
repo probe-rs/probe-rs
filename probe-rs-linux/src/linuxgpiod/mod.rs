@@ -121,6 +121,10 @@ impl DebugProbe for LinuxGpiod {
         Ok(self)
     }
 
+    fn try_as_swd_probe_mut(&mut self) -> Option<&mut dyn SwdProbe> {
+        Some(self)
+    }
+
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
         self
     }

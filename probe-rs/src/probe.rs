@@ -580,8 +580,14 @@ impl Probe {
             Err((probe, err)) => match probe.try_as_swd_probe() {
                 Ok(swd_probe) => {
                     let settings = swd_probe.swd_settings();
+                    // A probe that answers WAIT itself paces the transfers, the
+                    // others need overrun detection for stable communication.
+                    let use_overrun_detect = !swd_probe.handles_wait();
                     Ok(ArmCommunicationInterface::create_swd(
-                        swd_probe, settings, sequence, false,
+                        swd_probe,
+                        settings,
+                        sequence,
+                        use_overrun_detect,
                     ))
                 }
                 Err(probe) => Err((Probe::from_attached_probe(probe), err)),
