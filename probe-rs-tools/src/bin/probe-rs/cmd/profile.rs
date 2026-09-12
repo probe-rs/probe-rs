@@ -1,19 +1,22 @@
+use std::path::PathBuf;
+
 mod callstack;
 mod flat;
 
 use probe_rs::config::Registry;
 use probe_rs::probe::list::Lister;
 
-use crate::util::flash::{build_loader, run_flash_download};
+use crate::util::common_options::ProbeOptions;
+
 use tracing::info;
 
 #[derive(clap::Parser)]
 pub(crate) struct ProfileCmd {
     #[clap(flatten)]
-    run: super::run::Cmd,
-    /// Flash the ELF before profiling
-    #[clap(long)]
-    flash: bool,
+    probe_options: ProbeOptions,
+    /// The path to the flashed ELF file to profile.
+    #[clap(index = 1)]
+    path: PathBuf,
     /// Reset before profiling
     #[clap(long)]
     reset: bool,
@@ -38,22 +41,9 @@ enum ProfileType {
 
 impl ProfileCmd {
     pub fn run(self, registry: &mut Registry, lister: &Lister) -> anyhow::Result<()> {
-        let (mut session, probe_options) =
-            self.run.probe_options.simple_attach(registry, lister)?;
+        let (mut session, _) = self.probe_options.simple_attach(registry, lister)?;
 
-        let loader = build_loader(&mut session, &self.run.path, self.run.format_options, None)?;
-
-        let file_location = self.run.path.as_path();
-
-        if self.flash {
-            run_flash_download(
-                &mut session,
-                file_location,
-                &self.run.download_options,
-                &probe_options,
-                loader,
-            )?;
-        }
+        let file_location = self.path.as_path();
 
         if self.reset {
             for (core_idx, _) in session.list_cores() {
