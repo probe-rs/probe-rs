@@ -67,6 +67,7 @@ pub(crate) struct MockSwdProbe {
     capture_flags: Arc<Mutex<Vec<bool>>>,
     idles: Arc<Mutex<Vec<u32>>>,
     pins: Arc<Mutex<Vec<RecordedPins>>>,
+    swd_settings: SwdSettings,
 }
 
 impl MockSwdProbe {
@@ -84,6 +85,7 @@ impl MockSwdProbe {
             capture_flags: Arc::new(Mutex::new(Vec::new())),
             idles: Arc::new(Mutex::new(Vec::new())),
             pins: Arc::new(Mutex::new(Vec::new())),
+            swd_settings: SwdSettings::default(),
         }
     }
 
@@ -114,9 +116,12 @@ impl MockSwdProbe {
         self
     }
 
-    /// Create a mock probe. `settings` is unused.
-    pub(crate) fn with_settings(_settings: SwdSettings) -> Self {
-        Self::new()
+    /// Create a mock probe that reports `settings`.
+    pub(crate) fn with_settings(settings: SwdSettings) -> Self {
+        Self {
+            swd_settings: settings,
+            ..Self::new()
+        }
     }
 
     /// Queue the next transfer response.
@@ -312,5 +317,9 @@ impl SwdProbe for MockSwdProbe {
 
     fn handles_ap_pipeline(&self) -> bool {
         self.handles_ap_pipeline
+    }
+
+    fn swd_settings(&self) -> SwdSettings {
+        self.swd_settings.clone()
     }
 }

@@ -71,7 +71,7 @@ use std::time::Duration;
 
 use crate::probe::{
     Batch, BatchError, BatchExecutionError, BitSequence, CommandResult, DebugProbe,
-    DebugProbeError, Handle, Results,
+    DebugProbeError, Handle, HandleId, Results,
 };
 
 pub use port::{SwdPort, SwdPortError};
@@ -225,7 +225,7 @@ pub(crate) fn transfer_io_sequence(
     let a2_bit = a2(addr);
     let a3_bit = a3(addr);
 
-    let mut sequence = Vec::with_capacity(46);
+    let mut sequence = Vec::with_capacity(TRANSFER_RESPONSE_BITS);
 
     sequence.push(IoSequenceItem::Output(true));
     sequence.push(IoSequenceItem::Output(ap_n_dp));
@@ -355,13 +355,101 @@ pub trait BitbangSwd: DebugProbe {
     }
 }
 
+/// A transfer whose response the next [`BitbangSwd::swd_io`] call returns.
+struct PendingTransfer {
+    id: HandleId,
+    direction: Direction,
+    /// Offset of the request in the pending I/O sequence.
+    offset: usize,
+    /// Index of the operation in the batch.
+    operation: usize,
+}
+
+/// One run of consecutive wire operations, sent as a single `swd_io` call.
+///
+/// A probe driver may hold turnaround state between the items of one call, so
+/// a transfer and the idle cycles that follow it must stay in the same call.
+#[derive(Default)]
+struct BitbangRun {
+    items: Vec<IoSequenceItem>,
+    transfers: Vec<PendingTransfer>,
+    first_operation: usize,
+}
+
+impl BitbangRun {
+    fn flush<P: BitbangSwd>(
+        &mut self,
+        probe: &mut P,
+        results: &mut Results,
+    ) -> Result<(), BatchExecutionError<DebugProbeError>> {
+        if self.items.is_empty() {
+            self.transfers.clear();
+            return Ok(());
+        }
+
+        let expected = self.items.len();
+        let transfers = std::mem::take(&mut self.transfers);
+        let first_operation = self.first_operation;
+
+        let response = match probe.swd_io(self.items.drain(..)) {
+            Ok(response) => response,
+            Err(error) => {
+                return Err(BatchExecutionError::new_from_debug_probe_at(
+                    error,
+                    std::mem::take(results),
+                    first_operation,
+                ));
+            }
+        };
+
+        if response.len() < expected {
+            return Err(BatchExecutionError::new_from_debug_probe_at(
+                DebugProbeError::Other(format!(
+                    "The probe captured {} bits, but the sequence needs {expected}",
+                    response.len(),
+                )),
+                std::mem::take(results),
+                first_operation,
+            ));
+        }
+
+        for transfer in transfers {
+            let sampled = &response[transfer.offset + REQUEST_BITS..];
+            match parse_transfer_response(sampled, transfer.direction) {
+                Ok(value) => {
+                    if transfer.direction == Direction::Read && transfer.id.should_capture() {
+                        results.push(&transfer.id, CommandResult::U32(value));
+                    }
+                }
+                Err(error) => {
+                    return Err(BatchExecutionError {
+                        error: BatchError::Specific(DebugProbeError::SwdTransfer(error)),
+                        results: std::mem::take(results),
+                        fault_operation: transfer.operation,
+                    });
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn extend(&mut self, operation: usize, items: impl IntoIterator<Item = IoSequenceItem>) {
+        if self.items.is_empty() {
+            self.first_operation = operation;
+        }
+        self.items.extend(items);
+    }
+}
+
 fn run_bitbang_batch<P: BitbangSwd>(
     probe: &mut P,
     batch: &SwdBatch,
 ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
     let mut results = Results::new();
+    let mut run = BitbangRun::default();
 
-    for (fault_operation, (id, op)) in batch.iter().enumerate() {
+    for (operation, (id, op)) in batch.iter().enumerate() {
         match op {
             SwdOp::Transfer {
                 port,
@@ -369,76 +457,39 @@ fn run_bitbang_batch<P: BitbangSwd>(
                 direction,
                 data,
             } => {
-                let io = transfer_io_sequence(*port, *addr, *direction, *data);
-                let response = match probe.swd_io(io.iter().copied()) {
-                    Ok(response) => response,
-                    Err(error) => {
-                        return Err(BatchExecutionError::new_from_debug_probe_at(
-                            error,
-                            results,
-                            fault_operation,
-                        ));
-                    }
-                };
-
-                if response.len() < TRANSFER_RESPONSE_BITS {
-                    return Err(BatchExecutionError::new_from_debug_probe_at(
-                        DebugProbeError::Other(format!(
-                            "The probe captured {} bits, but the transfer needs {}",
-                            response.len(),
-                            TRANSFER_RESPONSE_BITS
-                        )),
-                        results,
-                        fault_operation,
-                    ));
-                }
-
-                match parse_transfer_response(&response[REQUEST_BITS..], *direction) {
-                    Ok(value) => {
-                        if *direction == Direction::Read && id.should_capture() {
-                            results.push(id, CommandResult::U32(value));
-                        }
-                    }
-                    Err(error) => {
-                        return Err(BatchExecutionError {
-                            error: BatchError::Specific(DebugProbeError::SwdTransfer(error)),
-                            results,
-                            fault_operation,
-                        });
-                    }
-                }
+                let offset = run.items.len();
+                run.extend(
+                    operation,
+                    transfer_io_sequence(*port, *addr, *direction, *data),
+                );
+                run.transfers.push(PendingTransfer {
+                    id: id.clone(),
+                    direction: *direction,
+                    offset,
+                    operation,
+                });
             }
             SwdOp::Sequence(bits) => {
-                let io = bits.iter().map(IoSequenceItem::Output).collect::<Vec<_>>();
-                if let Err(error) = probe.swd_io(io) {
-                    return Err(BatchExecutionError::new_from_debug_probe_at(
-                        error,
-                        results,
-                        fault_operation,
-                    ));
-                }
+                run.extend(operation, bits.iter().map(IoSequenceItem::Output));
             }
             SwdOp::Idle { cycles } => {
-                let io = std::iter::repeat_n(IoSequenceItem::Output(false), *cycles as usize);
-                if let Err(error) = probe.swd_io(io) {
-                    return Err(BatchExecutionError::new_from_debug_probe_at(
-                        error,
-                        results,
-                        fault_operation,
-                    ));
-                }
+                run.extend(
+                    operation,
+                    std::iter::repeat_n(IoSequenceItem::Output(false), *cycles as usize),
+                );
             }
             SwdOp::Pins { out, select, wait } => {
+                run.flush(probe, &mut results)?;
                 if let Err(error) = probe.swj_pins_op(*out, *select, *wait) {
                     return Err(BatchExecutionError::new_from_debug_probe_at(
-                        error,
-                        results,
-                        fault_operation,
+                        error, results, operation,
                     ));
                 }
             }
         }
     }
+
+    run.flush(probe, &mut results)?;
 
     Ok(results)
 }
@@ -449,6 +500,10 @@ impl<P: BitbangSwd> SwdProbe for P {
         batch: &SwdBatch,
     ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
         run_bitbang_batch(self, batch)
+    }
+
+    fn swd_settings(&self) -> SwdSettings {
+        BitbangSwd::swd_settings(self).clone()
     }
 }
 
@@ -483,25 +538,59 @@ mod tests {
     #[derive(Debug)]
     struct RecordingBitbangSwd {
         requests: Vec<Vec<bool>>,
+        calls: Vec<Vec<IoSequenceItem>>,
         swd_settings: SwdSettings,
+        /// Answer this transfer of a call with FAULT.
+        fault_transfer: Option<usize>,
     }
 
     impl RecordingBitbangSwd {
         fn new() -> Self {
+            Self::with_settings(SwdSettings::default())
+        }
+
+        fn with_settings(swd_settings: SwdSettings) -> Self {
             Self {
                 requests: Vec::new(),
-                swd_settings: SwdSettings::default(),
+                calls: Vec::new(),
+                swd_settings,
+                fault_transfer: None,
             }
         }
 
-        fn ok_response(direction: Direction, value: u32) -> Vec<bool> {
-            let mut response = vec![false; TRANSFER_RESPONSE_BITS];
-            response[REQUEST_BITS] = true;
-            if direction == Direction::Read {
-                for i in 0..32 {
-                    response[REQUEST_BITS + 3 + i] = value & (1 << i) != 0;
+        /// Offsets of the transfer requests in a coalesced I/O sequence.
+        ///
+        /// A transfer is the only source of an `Input` item, and its request is
+        /// eight `Output` items long.
+        fn transfer_offsets(items: &[IoSequenceItem]) -> Vec<usize> {
+            let mut offsets = Vec::new();
+            let mut index = 0;
+            while index + TRANSFER_RESPONSE_BITS <= items.len() {
+                if items[index + REQUEST_BITS] == IoSequenceItem::Input {
+                    offsets.push(index);
+                    index += TRANSFER_RESPONSE_BITS;
+                } else {
+                    index += 1;
                 }
-                response[REQUEST_BITS + 3 + 32] = value.count_ones() % 2 == 1;
+            }
+            offsets
+        }
+
+        fn respond(&self, items: &[IoSequenceItem]) -> Vec<bool> {
+            let mut response = vec![false; items.len()];
+            for (index, offset) in Self::transfer_offsets(items).into_iter().enumerate() {
+                if self.fault_transfer == Some(index) {
+                    response[offset + REQUEST_BITS + 2] = true;
+                    continue;
+                }
+                // The direction bit of the request selects read or write.
+                let read = items[offset + 2] == IoSequenceItem::Output(true);
+                // ACK OK.
+                response[offset + REQUEST_BITS] = true;
+                if read {
+                    // Value zero, so only the parity bit needs a value.
+                    response[offset + REQUEST_BITS + 3 + 32] = false;
+                }
             }
             response
         }
@@ -564,17 +653,10 @@ mod tests {
         {
             let items = swdio.into_iter().collect::<Vec<_>>();
             self.requests.push(request_bits(&items));
+            let response = self.respond(&items);
+            self.calls.push(items);
 
-            if items.len() == TRANSFER_RESPONSE_BITS {
-                let direction = match items[2] {
-                    IoSequenceItem::Output(true) => Direction::Read,
-                    IoSequenceItem::Output(false) => Direction::Write,
-                    IoSequenceItem::Input => Direction::Read,
-                };
-                return Ok(Self::ok_response(direction, 0));
-            }
-
-            Ok(vec![false; items.len()])
+            Ok(response)
         }
 
         fn swd_settings(&self) -> &SwdSettings {
@@ -644,5 +726,104 @@ mod tests {
             ),
             vec![true, true, false, true, true, true, false, true]
         );
+    }
+
+    #[test]
+    fn a_transfer_and_its_idle_cycles_share_one_swd_io_call() {
+        let mut probe = RecordingBitbangSwd::new();
+
+        let mut batch = SwdBatch::new();
+        let _ = batch.read(Port::Dp, 0b0100);
+        batch.idle(8);
+        SwdProbe::run_batch(&mut probe, &batch).unwrap();
+
+        assert_eq!(probe.calls.len(), 1);
+        assert_eq!(probe.calls[0].len(), TRANSFER_RESPONSE_BITS + 8);
+        assert_eq!(
+            probe.calls[0].last(),
+            Some(&IoSequenceItem::Output(false)),
+            "the call must end with the idle cycles, so the line stays driven"
+        );
+    }
+
+    #[test]
+    fn a_whole_port_transaction_is_one_swd_io_call() {
+        let mut probe = RecordingBitbangSwd::new();
+
+        {
+            let mut port = SwdPort::new(&mut probe, SwdSettings::default());
+            let mut batch = SwdBatch::new();
+            batch.write(Port::Ap, 0b1000, 0x1234_5678);
+            port.run(batch).unwrap();
+        }
+
+        // AP write, num_idle_cycles_between_writes, idle_cycles_before_write_verify,
+        // RDBUFF read, idle_cycles_after_transfer.
+        assert_eq!(probe.calls.len(), 1);
+        assert_eq!(probe.calls[0].len(), 2 * TRANSFER_RESPONSE_BITS + 2 + 8 + 8);
+    }
+
+    #[test]
+    fn a_pins_operation_splits_the_swd_io_calls() {
+        let mut probe = RecordingBitbangSwd::new();
+
+        let mut batch = SwdBatch::new();
+        let _ = batch.read(Port::Dp, 0b0100);
+        batch.idle(8);
+        let _ = batch.schedule(SwdOp::Pins {
+            out: Pins(0),
+            select: Pins(0),
+            wait: Duration::ZERO,
+        });
+        let _ = batch.read(Port::Dp, 0b0100);
+        batch.idle(8);
+        let error = SwdProbe::run_batch(&mut probe, &batch).unwrap_err();
+
+        // The recording probe does not support pins, so the batch stops there.
+        assert_eq!(error.fault_operation, 2);
+        assert_eq!(probe.calls.len(), 1);
+    }
+
+    #[test]
+    fn a_faulting_transfer_reports_its_batch_index() {
+        let mut probe = RecordingBitbangSwd::new();
+        probe.fault_transfer = Some(1);
+
+        let mut batch = SwdBatch::new();
+        let _ = batch.read(Port::Dp, 0b0100);
+        batch.idle(4);
+        let first = batch.read(Port::Dp, 0b0100);
+        let _ = batch.read(Port::Dp, 0b0100);
+        let error = SwdProbe::run_batch(&mut probe, &batch).unwrap_err();
+
+        assert_eq!(error.fault_operation, 2);
+        assert!(matches!(
+            error.error,
+            BatchError::Specific(DebugProbeError::SwdTransfer(
+                SwdTransferError::FaultResponse
+            ))
+        ));
+        // The transfers before the fault keep their results.
+        assert_eq!(error.results.len(), 1);
+        drop(first);
+    }
+
+    #[test]
+    fn bitbang_settings_reach_the_swd_probe_layer() {
+        let probe = RecordingBitbangSwd::with_settings(SwdSettings {
+            num_idle_cycles_between_writes: 3,
+            num_retries_after_wait: 7,
+            max_retry_idle_cycles_after_wait: 11,
+            idle_cycles_before_write_verify: 13,
+            idle_cycles_after_transfer: 17,
+        });
+
+        let settings = SwdProbe::swd_settings(&probe);
+
+        assert_eq!(settings.num_idle_cycles_between_writes, 3);
+        assert_eq!(settings.num_retries_after_wait, 7);
+        assert_eq!(settings.max_retry_idle_cycles_after_wait, 11);
+        assert_eq!(settings.idle_cycles_before_write_verify, 13);
+        assert_eq!(settings.idle_cycles_after_transfer, 17);
     }
 }
