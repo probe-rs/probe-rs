@@ -79,6 +79,34 @@ fn breakpoint_location_inexact() {
 }
 
 #[test]
+fn breakpoint_location_next_available_line() {
+    // Lines 239 and 255 have no halt location of their own, so a breakpoint on them should
+    // move forward to the next line that does (240 and 256 respectively) instead of being
+    // rejected as unverified. Regression test for #2180.
+    let test_data = [(239, 240, 0x80006EA), (255, 256, 0x8000958)];
+
+    let di = DebugInfo::from_file("tests/probe-rs-debugger-test").unwrap();
+    let path = UnixPathBuf::from("/Users/jacknoppe/dev/probe-rs-debugger-test/src/main.rs")
+        .to_typed_path_buf();
+
+    for (requested_line, resolved_line, addr) in test_data.iter() {
+        let bp = di
+            .get_breakpoint_location(path.to_path(), *requested_line, None)
+            .expect("Failed to find a next-available breakpoint location.");
+
+        assert_eq!(
+            *addr, bp.address,
+            "Address mismatch for line {requested_line}"
+        );
+        assert_eq!(
+            Some(*resolved_line),
+            bp.source_location.line,
+            "Breakpoint on line {requested_line} should resolve to line {resolved_line}"
+        );
+    }
+}
+
+#[test]
 fn source_location() {
     let di = DebugInfo::from_file("tests/probe-rs-debugger-test").unwrap();
 
