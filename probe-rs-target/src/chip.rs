@@ -37,6 +37,37 @@ pub struct RiscvJtagTunnel {
     pub ir_width: u32,
 }
 
+/// A GPIO pin used to drive a target reset line for JTAG adapters where nTRST/nSRST are
+/// plain bit-banged GPIO outputs rather than pins handled by the probe's own reset-line
+/// firmware (e.g. many FTDI-based JTAG adapters, following the same model as OpenOCD's
+/// `ftdi layout_init`/`layout_signal`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct GpioResetPin {
+    /// Bit position of this pin in the adapter's combined 16-bit GPIO space. For FTDI
+    /// adapters: 0-7 is the "low byte" (ADBUS0-7), 8-15 is the "high byte" (ACBUS/GPIOH0-7).
+    pub bit: u8,
+    /// The level that leaves this line deasserted/inactive. Driven as soon as the probe
+    /// attaches, and restored after every assert pulse.
+    pub idle_high: bool,
+}
+
+/// GPIO-driven reset line configuration for JTAG adapters that need specific GPIO pins
+/// actively driven to control nTRST/nSRST (see [`GpioResetPin`]).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct JtagGpioReset {
+    /// The GPIO pin driving nTRST, if any.
+    #[serde(default)]
+    pub ntrst: Option<GpioResetPin>,
+    /// The GPIO pin driving nSRST, if any.
+    #[serde(default)]
+    pub nsrst: Option<GpioResetPin>,
+    /// Additional pins that must be actively driven as outputs, at a fixed level, for the
+    /// adapter to work at all (e.g. an output buffer/level-shifter enable line). Applied at
+    /// the same time as `ntrst`/`nsrst`, and never toggled afterwards.
+    #[serde(default)]
+    pub extra_outputs: Vec<GpioResetPin>,
+}
+
 /// Configuration for JTAG probes.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Jtag {
@@ -58,6 +89,12 @@ pub struct Jtag {
     /// Describes JTAG tunnel for Risc-V
     #[serde(default)]
     pub riscv_tunnel: Option<RiscvJtagTunnel>,
+
+    /// GPIO-driven nTRST/nSRST configuration, for adapters where these are plain GPIO
+    /// outputs rather than pins handled by the probe's own reset-line firmware. See
+    /// [`JtagGpioReset`].
+    #[serde(default)]
+    pub gpio_reset: Option<JtagGpioReset>,
 }
 
 /// A single chip variant.
@@ -183,6 +220,8 @@ pub struct Core {
 pub enum CoreAccessOptions {
     /// ARM specific options
     Arm(ArmCoreAccessOptions),
+    /// ARMv4T (ARM7TDMI) specific options
+    Armv4t(Armv4tCoreAccessOptions),
     /// RISC-V specific options
     Riscv(RiscvCoreAccessOptions),
     /// Xtensa specific options
@@ -228,6 +267,14 @@ pub struct ArmCoreAccessOptions {
     #[serde(serialize_with = "hex_option")]
     pub cti_base: Option<u64>,
 
+    /// The JTAG TAP index of the core's debug module
+    pub jtag_tap: Option<usize>,
+}
+
+/// The data required to access an ARMv4T (ARM7TDMI) core via EmbeddedICE-over-JTAG
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+pub struct Armv4tCoreAccessOptions {
     /// The JTAG TAP index of the core's debug module
     pub jtag_tap: Option<usize>,
 }

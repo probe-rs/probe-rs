@@ -19,6 +19,7 @@ use probe_rs::{
             },
             sequences::DefaultArmSequence,
         },
+        arm7::{Arm7tdmiCommunicationInterface, Arm7tdmiDebugInterfaceState},
         xtensa::communication_interface::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState,
         },
@@ -251,6 +252,17 @@ async fn try_show_info(
         .await?;
     }
 
+    if let Err(error) = try_read_arm7tdmi_info(ctx, &mut probe, protocol).await {
+        ctx.publish::<TargetInfoDataTopic>(
+            VarSeq::Seq2(0),
+            &InfoEvent::Error {
+                architecture: "ARM7TDMI".to_string(),
+                error: format!("{error:?}"),
+            },
+        )
+        .await?;
+    }
+
     Ok(())
 }
 
@@ -342,6 +354,55 @@ async fn try_read_xtensa_info(
     }
 
     Ok(())
+}
+
+async fn try_read_arm7tdmi_info(
+    ctx: &mut RpcContext,
+    probe: &mut Probe,
+    protocol: WireProtocol,
+) -> Result<(), anyhow::Error> {
+    if protocol == WireProtocol::Jtag
+        && let Some(chain) = probe.try_as_jtag_chain()
+    {
+        tracing::debug!("Trying to show ARM7TDMI chip information");
+
+        let mut state = Arm7tdmiDebugInterfaceState::default();
+        let mut interface = Arm7tdmiCommunicationInterface::new(chain, &mut state);
+        let idcode = interface.read_idcode()?;
+
+        show_arm7tdmi_info(ctx, idcode).await?;
+    } else if protocol == WireProtocol::Swd {
+        ctx.publish::<TargetInfoDataTopic>(
+            VarSeq::Seq2(0),
+            &InfoEvent::ProtocolNotSupportedByArch {
+                architecture: "ARM7TDMI".to_string(),
+                protocol,
+            },
+        )
+        .await?;
+    } else {
+        ctx.publish::<TargetInfoDataTopic>(
+            VarSeq::Seq2(0),
+            &InfoEvent::ProbeInterfaceMissing {
+                interface: "JTAG".to_string(),
+                architecture: "ARM7TDMI".to_string(),
+            },
+        )
+        .await?;
+    }
+
+    Ok(())
+}
+
+async fn show_arm7tdmi_info(ctx: &mut RpcContext, idcode: u32) -> anyhow::Result<()> {
+    ctx.publish::<TargetInfoDataTopic>(
+        VarSeq::Seq2(0),
+        &InfoEvent::Idcode {
+            architecture: "ARM7TDMI".to_string(),
+            idcode: Some(idcode),
+        },
+    )
+    .await
 }
 
 async fn try_show_arm_dp_info(

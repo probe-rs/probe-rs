@@ -82,6 +82,22 @@ impl Cmd {
             }
         }
 
+        // BUG FOUND (2026-09-10): unlike `read.rs` (its `run()` explicitly calls this before
+        // returning), this command had no explicit resume at all - it relied entirely on
+        // `Session::drop`'s own implicit "resume if halted" teardown. Root-caused on the ARM7TDMI
+        // backend via a trace-level comparison: a plain `write` and a plain `read` produce a
+        // byte-for-byte identical `resume()` sequence up through the final EmbeddedICE
+        // `DebugControl` write and "Core resumed" - `read`'s trace then shows two more
+        // `DebugStatus` polls (from this call's own `core_halted()` pre-check, plus
+        // `Session::drop`'s own subsequent check) that `write`'s trace never has, since nothing
+        // called `resume_all_cores` for it at all. Without this call, a plain `write` reliably
+        // left the core in a state where it could never again durably re-enter debug state on the
+        // very next attach (`Error: Core is not halted`, needing `probe-rs reset` to recover) -
+        // reproduced with the pre-existing, completely unmodified `write_memory_32` path, so this
+        // was never an ARM7-specific bug, just this command never resuming the core the same way
+        // every other memory-access command does.
+        session.resume_all_cores().await?;
+
         Ok(())
     }
 }

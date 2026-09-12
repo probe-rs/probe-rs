@@ -166,14 +166,32 @@ impl RuntimeTarget {
 
         let mut wait_time = Duration::ZERO;
 
-        self.gdb = match gdb {
-            GdbStubStateMachine::Idle(state) => self.handle_idle(state, &mut wait_time)?,
-            GdbStubStateMachine::Running(state) => self.handle_running(state, &mut wait_time)?,
-            GdbStubStateMachine::CtrlCInterrupt(state) => self.handle_ctrl_c(state)?,
+        let result = match gdb {
+            GdbStubStateMachine::Idle(state) => self.handle_idle(state, &mut wait_time),
+            GdbStubStateMachine::Running(state) => self.handle_running(state, &mut wait_time),
+            GdbStubStateMachine::CtrlCInterrupt(state) => self.handle_ctrl_c(state),
             GdbStubStateMachine::Disconnected(state) => {
                 tracing::info!("GDB client disconnected: {:?}", state.get_reason());
+                Ok(None)
+            }
+        };
+
+        self.gdb = match result {
+            Ok(next) => next,
+            // A client that disconnects mid-packet (e.g. a GDB batch script exiting right
+            // after `continue`) surfaces here as a raw I/O error, not a clean transition to
+            // `GdbStubStateMachine::Disconnected` - `TcpStream`'s `ConnectionExt::peek` (see
+            // `gdbstub`'s own `conn/impls/tcpstream.rs`) doesn't check the byte count `peek`
+            // returns, so a true EOF is misreported as "a byte is available", and the
+            // following `read()` then fails with `UnexpectedEof` ("failed to fill whole
+            // buffer"). Without this, that one bad read used to kill this whole GDB server
+            // process (propagated via `?` all the way out of `stub::run`) instead of just
+            // ending this one client's session.
+            Err(e) if is_disconnect_error(&e) => {
+                tracing::info!("GDB client connection lost: {e:#}");
                 None
             }
+            Err(e) => return Err(e),
         };
 
         Ok(wait_time)
@@ -301,6 +319,20 @@ impl Target for RuntimeTarget {
     fn guard_rail_implicit_sw_breakpoints(&self) -> bool {
         true
     }
+}
+
+/// True if `err` looks like the target of a lost/closed client connection rather than a real,
+/// unexpected failure - see the call site in [`RuntimeTarget::process`] for why this matters.
+fn is_disconnect_error(err: &anyhow::Error) -> bool {
+    err.downcast_ref::<std::io::Error>().is_some_and(|e| {
+        matches!(
+            e.kind(),
+            std::io::ErrorKind::UnexpectedEof
+                | std::io::ErrorKind::ConnectionReset
+                | std::io::ErrorKind::ConnectionAborted
+                | std::io::ErrorKind::BrokenPipe
+        )
+    })
 }
 
 fn read_if_available(conn: &mut TcpStream) -> Result<Option<u8>, anyhow::Error> {

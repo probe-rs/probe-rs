@@ -187,6 +187,11 @@ pub fn erase_all(
                 Ok(())
             })?;
         }
+
+        // See `flasher::reset_after_flash_operation`'s doc comment for why this is needed on
+        // this architecture (ARM7TDMI/MC1322x) and why it must be once per whole erase, here,
+        // not once per phase.
+        super::flasher::reset_after_flash_operation(session, flasher.core_index)?;
     }
 
     Ok(())
@@ -322,6 +327,11 @@ pub fn erase(
                     ..Default::default()
                 },
             )?;
+        } else {
+            // See `flasher::reset_after_flash_operation`'s doc comment. Skipped when `commit`
+            // just ran above (restore data path): `commit` already issues this same reset at the
+            // end of its own `algos` loop.
+            super::flasher::reset_after_flash_operation(session, core_index)?;
         }
     }
 
@@ -477,6 +487,9 @@ pub fn run_blank_check(
             }
             Ok(())
         })?;
+
+        // See `flasher::reset_after_flash_operation`'s doc comment.
+        super::flasher::reset_after_flash_operation(session, core_index)?;
     }
 
     Ok(())

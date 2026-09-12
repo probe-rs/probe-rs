@@ -2,6 +2,7 @@ use crate::{
     CoreType, Endian, InstructionSet, MemoryInterface, Target,
     architecture::{
         arm::sequences::{ArmDebugSequence, DefaultArmSequence},
+        arm7::sequences::{Arm7tdmiDebugSequence, DefaultArm7tdmiSequence},
         riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
         xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
     },
@@ -11,7 +12,8 @@ use crate::{
 };
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
 use probe_rs_target::{
-    ArmCoreAccessOptions, MemoryRegion, RiscvCoreAccessOptions, XtensaCoreAccessOptions,
+    ArmCoreAccessOptions, Armv4tCoreAccessOptions, MemoryRegion, RiscvCoreAccessOptions,
+    XtensaCoreAccessOptions,
 };
 use std::{sync::Arc, time::Duration};
 
@@ -72,6 +74,27 @@ pub trait CoreInterface: MemoryInterface {
     /// Read the value of a core register.
     fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, Error>;
 
+    /// Read the values of several core registers in one batch.
+    ///
+    /// The default implementation just calls [`Self::read_core_reg`] once per address, which is
+    /// correct (if not necessarily optimal) for every architecture. Architectures where a single
+    /// register read has a real cost beyond "one register's worth of work" - e.g. ARM7TDMI,
+    /// where every debug-speed register capture genuinely advances the core's real pipeline by a
+    /// few instructions (see [`crate::architecture::arm7`]'s docs) - can override this to fold
+    /// several registers into one lower-level operation instead of paying that cost per
+    /// register. A caller reading many registers at once (e.g. an "info reg"/register-view
+    /// refresh) should prefer this over a manual loop of [`Self::read_core_reg`] calls for
+    /// exactly that reason.
+    fn read_core_regs_batch(
+        &mut self,
+        addresses: &[RegisterId],
+    ) -> Vec<Result<RegisterValue, Error>> {
+        addresses
+            .iter()
+            .map(|&address| self.read_core_reg(address))
+            .collect()
+    }
+
     /// Write the value of a core register.
     fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error>;
 
@@ -91,6 +114,14 @@ pub trait CoreInterface: MemoryInterface {
 
     /// Clears the breakpoint configured in unit `unit_index`.
     fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), Error>;
+
+    /// Genuinely, durably latch a halt just observed via a watchpoint match (as opposed to a
+    /// halt this core itself requested via [`CoreInterface::halt`]). A no-op on architectures
+    /// where a watchpoint match is already a durable halt on its own; see the ARM7TDMI
+    /// implementation for why this exists there.
+    fn latch_watchpoint_halt(&mut self) -> Result<(), Error> {
+        Ok(())
+    }
 
     /// Returns a list of all the registers of this core.
     fn registers(&self) -> &'static CoreRegisters;
@@ -340,6 +371,16 @@ impl<'probe> Core<'probe> {
         value.try_into().into_crate_error()
     }
 
+    /// Read the values of several core registers in one batch - see
+    /// [`CoreInterface::read_core_regs_batch`] for why this can be meaningfully cheaper than a
+    /// loop of [`Self::read_core_reg`] calls on some architectures.
+    pub fn read_core_regs_batch(
+        &mut self,
+        addresses: &[RegisterId],
+    ) -> Vec<Result<RegisterValue, Error>> {
+        self.inner.read_core_regs_batch(addresses)
+    }
+
     /// Write the value of a core register.
     ///
     /// # Errors
@@ -475,6 +516,12 @@ impl<'probe> Core<'probe> {
                 address,
             ))),
         }
+    }
+
+    /// Genuinely, durably latch a halt just observed via a watchpoint match. See
+    /// [`CoreInterface::latch_watchpoint_halt`].
+    pub(crate) fn latch_watchpoint_halt(&mut self) -> Result<(), Error> {
+        self.inner.latch_watchpoint_halt()
     }
 
     /// Clear all hardware breakpoints
@@ -691,6 +738,10 @@ pub enum ResolvedCoreOptions {
         sequence: Arc<dyn ArmDebugSequence>,
         options: ArmCoreAccessOptions,
     },
+    Armv4t {
+        sequence: Arc<dyn Arm7tdmiDebugSequence>,
+        options: Armv4tCoreAccessOptions,
+    },
     Riscv {
         sequence: Arc<dyn RiscvDebugSequence>,
         options: RiscvCoreAccessOptions,
@@ -714,6 +765,13 @@ impl ResolvedCoreOptions {
                 };
                 Self::Arm { sequence, options }
             }
+            CoreAccessOptions::Armv4t(options) => {
+                let sequence = match &target.debug_sequence {
+                    DebugSequence::Armv4t(s) => s.clone(),
+                    _ => DefaultArm7tdmiSequence::create(),
+                };
+                Self::Armv4t { sequence, options }
+            }
             CoreAccessOptions::Riscv(options) => {
                 let sequence = match &target.debug_sequence {
                     DebugSequence::Riscv(s) => s.clone(),
@@ -734,6 +792,7 @@ impl ResolvedCoreOptions {
     fn jtag_tap_index(&self) -> usize {
         match self {
             Self::Arm { options, .. } => options.jtag_tap.unwrap_or(0),
+            Self::Armv4t { options, .. } => options.jtag_tap.unwrap_or(0),
             Self::Riscv { options, .. } => options.jtag_tap.unwrap_or(0),
             Self::Xtensa { options, .. } => options.jtag_tap.unwrap_or(0),
         }
@@ -746,6 +805,11 @@ impl std::fmt::Debug for ResolvedCoreOptions {
             Self::Arm { options, .. } => f
                 .debug_struct("Arm")
                 .field("sequence", &"<ArmDebugSequence>")
+                .field("options", options)
+                .finish(),
+            Self::Armv4t { options, .. } => f
+                .debug_struct("Armv4t")
+                .field("sequence", &"<Arm7tdmiDebugSequence>")
                 .field("options", options)
                 .finish(),
             Self::Riscv { options, .. } => f
