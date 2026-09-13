@@ -215,28 +215,51 @@ where
 /// - `socket://`, followed by a path: a unix socket. Unix only.
 #[cfg(feature = "remote")]
 pub async fn connect(
-    host: &str,
+    connection_string: &str,
     token: Option<&str>,
     user_agent: &str,
 ) -> Result<RpcClient, ClientError> {
-    use http::Uri;
+    use http::{Uri, uri::PathAndQuery};
     use rustls::ClientConfig;
     use std::str::FromStr;
     use tokio_tungstenite::{connect_async_tls_with_config, tungstenite::ClientRequestBuilder};
 
-    #[cfg(unix)]
-    if let Some(path) = host.strip_prefix("socket://") {
-        tracing::debug!("Socket path detected, will connect via Unix socket.");
+    let mut parts = Uri::from_str(connection_string)
+        .map_err(|_| ClientError::InvalidRemoteHost)?
+        .into_parts();
 
-        return connect_unix(path).await;
+    let authority = parts
+        .authority
+        .clone()
+        .ok_or(ClientError::InvalidRemoteHost)?;
+    let scheme = parts
+        .scheme
+        .as_ref()
+        .ok_or(ClientError::InvalidRemoteHost)?;
+    let path_and_query = parts.path_and_query.ok_or(ClientError::InvalidRemoteHost)?;
+
+    match scheme.as_str() {
+        #[cfg(unix)]
+        "socket" => {
+            tracing::debug!("Socket path detected, will connect via Unix socket.");
+
+            return connect_unix(path_and_query.path()).await;
+        }
+        "ssh" => {
+            return ssh::connect(authority.host(), token, user_agent).await;
+        }
+        "ws" | "wss" => {
+            if path_and_query != PathAndQuery::from_static("/") {
+                Err(ClientError::InvalidRemoteHost)?
+            }
+        }
+        _ => Err(ClientError::InvalidRemoteHost)?,
     }
 
-    if let Some(ssh_host) = host.strip_prefix("ssh://") {
-        return ssh::connect(ssh_host, token, user_agent).await;
-    }
-
-    let uri =
-        Uri::from_str(&format!("{host}/worker")).map_err(|_| ClientError::InvalidRemoteHost)?;
+    let uri = {
+        parts.path_and_query = Some(PathAndQuery::from_static("/worker"));
+        Uri::from_parts(parts).map_err(|_| ClientError::InvalidRemoteHost)?
+    };
 
     // We could check the host address for localhost and then set the `is_localhost` option, but
     // there are setups where the user uses port forwarding and the file actually needs to be
@@ -261,7 +284,7 @@ pub async fn connect(
         ))),
     )
     .await
-    .map_err(|_| TransportError::Message(format!("Failed to connect to {host}")))?;
+    .map_err(|_| TransportError::Message(format!("Failed to connect to {}", authority.host())))?;
 
     // Respond to the challenge
     let challenge = resp
