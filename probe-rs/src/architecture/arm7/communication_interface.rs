@@ -1352,6 +1352,21 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     pub fn read_memory_32(&mut self, address: u32) -> Result<u32, Arm7tdmiError> {
         self.ensure_halted()?;
 
+        // BUG FOUND (2026-09-14): the `LDMIA R0!, {R1}` below genuinely, permanently overwrites
+        // the target's real R0/R1 via real instruction execution - the same class of side effect
+        // `return_from_exception`'s own `read_spsr()` comment already documents for `MRS R0,
+        // SPSR` ("a real instruction execution, not a side-effect-free debug read"), just never
+        // applied here. A plain read halting a genuinely *running* target (e.g. `probe-rs read`
+        // against a `probe-rs run`'d target) can catch it mid-routine with live values in R0/R1
+        // not yet spilled to the stack; resuming without restoring them corrupts the target's own
+        // execution for real, not just this call's reported value. Confirmed on real hardware:
+        // periodic `probe-rs read` polling of an otherwise-correct, freely-running target
+        // reliably corrupted it into a wild-jump/exception-storm state within seconds, while an
+        // identical target left completely untouched by any read ran correctly for 5+ minutes.
+        // Save/restore R0/R1 around the access, same as `return_from_exception` already does.
+        let saved_r0 = self.read_core_register(0)?;
+        let saved_r1 = self.read_core_register(1)?;
+
         // Clear `STICKY_HALT` for the duration of the system-speed access below (see the note
         // on `system_speed_access`), before starting the chain-1 clock sequence it completes.
         self.write_debug_control(debug_control::INTDIS)?;
@@ -1394,12 +1409,24 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
         self.write_debug_control(debug_control::STICKY_HALT | debug_control::INTDIS)?;
         access?;
 
-        self.read_core_register(1)
+        let result = self.read_core_register(1)?;
+
+        // Restore R0/R1 to what the target's own program actually had there - see the doc
+        // comment above.
+        self.write_core_register_unchecked(0, saved_r0)?;
+        self.write_core_register_unchecked(1, saved_r1)?;
+
+        Ok(result)
     }
 
     /// Write memory at the given address (must be word-aligned).
     pub fn write_memory_32(&mut self, address: u32, value: u32) -> Result<(), Arm7tdmiError> {
         self.ensure_halted()?;
+
+        // Save/restore R0/R1 around the clobbering `STMIA` below - see `read_memory_32`'s doc
+        // comment for why (identical mechanism, identical real-hardware-confirmed corruption).
+        let saved_r0 = self.read_core_register(0)?;
+        let saved_r1 = self.read_core_register(1)?;
 
         // Clear `STICKY_HALT` for the duration of the system-speed access below (see the note
         // on `system_speed_access`), before starting the chain-1 clock sequence it completes.
@@ -1422,6 +1449,9 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
         let access = self.system_speed_access();
         self.write_debug_control(debug_control::STICKY_HALT | debug_control::INTDIS)?;
         access?;
+
+        self.write_core_register_unchecked(0, saved_r0)?;
+        self.write_core_register_unchecked(1, saved_r1)?;
         Ok(())
     }
 
@@ -1458,6 +1488,13 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
 
         self.ensure_halted()?;
 
+        // Save/restore R0/R1 around the clobbering `STMIA` burst below - see `read_memory_32`'s
+        // doc comment for why (identical mechanism, identical real-hardware-confirmed
+        // corruption). Every iteration reuses this same pair, so saving/restoring once around
+        // the whole burst is enough.
+        let saved_r0 = self.read_core_register(0)?;
+        let saved_r1 = self.read_core_register(1)?;
+
         self.write_debug_control(debug_control::INTDIS)?;
 
         self.load_immediate(0, address)?;
@@ -1481,6 +1518,9 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
 
         self.write_debug_control(debug_control::STICKY_HALT | debug_control::INTDIS)?;
         access?;
+
+        self.write_core_register_unchecked(0, saved_r0)?;
+        self.write_core_register_unchecked(1, saved_r1)?;
         Ok(())
     }
 
@@ -1507,6 +1547,20 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
         }
 
         self.ensure_halted()?;
+
+        // Save R0-R4 before clobbering them via real `LDMIA` execution below - see
+        // `read_memory_32`'s doc comment for why this matters (a plain read halting a *running*
+        // target and not restoring these corrupts its resumed execution for real). Every chunk
+        // below reuses this same register set (R0 as the LDMIA base, R1..R(chunk<=4) captured),
+        // so saving/restoring once around the whole burst is enough.
+        const SAVE_MASK: u16 = 0b11111; // R0..R4
+        let saved: [u32; 5] = {
+            let mut saved = [0u32; 5];
+            for (reg, value) in self.read_core_registers(SAVE_MASK)? {
+                saved[reg as usize] = value;
+            }
+            saved
+        };
 
         let mut results = Vec::with_capacity(count);
         let mut remaining = count;
@@ -1545,6 +1599,12 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
             if remaining == 0 {
                 break;
             }
+        }
+
+        // Restore R0-R4 to what the target's own program actually had there - see the doc
+        // comment above and `read_memory_32`'s.
+        for (reg, &value) in saved.iter().enumerate() {
+            self.write_core_register_unchecked(reg as u8, value)?;
         }
 
         Ok(results)
