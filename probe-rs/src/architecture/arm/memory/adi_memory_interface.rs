@@ -3,7 +3,7 @@ use crate::{
     architecture::arm::{
         ArmDebugInterface, ArmError, DapAccess, FullyQualifiedApAddress,
         ap::{
-            AccessPortType, ApAccess, CSW, DataSize,
+            AccessPortType, ApAccess, ApRegister, CSW, DRW, DataSize, TAR, TAR2,
             memory_ap::{MemoryAp, MemoryApType},
         },
         memory::ArmMemoryInterface,
@@ -14,10 +14,11 @@ use crate::{
 /// Calculate the maximum number of bytes we can write starting at address
 /// before we run into the 10-bit TAR autoincrement limit.
 fn autoincr_max_bytes(address: u64) -> usize {
-    const AUTOINCR_LIMIT: usize = 0x400;
-
-    ((address + 1).next_multiple_of(AUTOINCR_LIMIT as _) - address) as usize
+    ((address + 1).next_multiple_of(AUTOINCR_LIMIT) - address) as usize
 }
+
+/// How far TAR auto-increments before it has to be written again.
+const AUTOINCR_LIMIT: u64 = 0x400;
 
 /// A struct to give access to a targets memory using a certain DAP.
 pub(crate) struct ADIMemoryInterface<'interface, APA> {
@@ -42,6 +43,196 @@ where
     }
 }
 
+/// The element width of a memory access.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Width {
+    U8,
+    U16,
+    U32,
+    U64,
+}
+
+impl Width {
+    fn bytes(self) -> u64 {
+        match self {
+            Width::U8 => 1,
+            Width::U16 => 2,
+            Width::U32 => 4,
+            Width::U64 => 8,
+        }
+    }
+
+    /// A 64-bit element is always two words, least significant first, whether or not the AP can
+    /// transfer 64 bits at a time.
+    fn drw_words(self) -> usize {
+        match self {
+            Width::U64 => 2,
+            _ => 1,
+        }
+    }
+
+    /// The transfer size the AP has to be in to carry this width.
+    fn data_size(self, large_data_extension: bool) -> DataSize {
+        match self {
+            Width::U8 => DataSize::U8,
+            Width::U16 => DataSize::U16,
+            Width::U32 => DataSize::U32,
+            Width::U64 if large_data_extension => DataSize::U64,
+            // Each of the two words is transferred at 32 bits.
+            Width::U64 => DataSize::U32,
+        }
+    }
+
+    /// How far an element at `address` sits from bit zero of its DRW word.
+    ///
+    /// ADIv5.2 C2.2.6: a sub-word access travels in its byte lane, so a value whose address is not
+    /// a multiple of four is not at the bottom of the word.
+    fn lane_shift(self, address: u64) -> u32 {
+        match self {
+            Width::U8 | Width::U16 => ((address % 4) * 8) as u32,
+            Width::U32 | Width::U64 => 0,
+        }
+    }
+
+    fn mask(self) -> u32 {
+        match self {
+            Width::U8 => 0xFF,
+            Width::U16 => 0xFFFF,
+            Width::U32 | Width::U64 => u32::MAX,
+        }
+    }
+}
+
+/// A memory access as the lowering sees it: where it starts, how wide its elements are, and how
+/// many there are.
+struct Shape {
+    address: u64,
+    width: Width,
+    elements: usize,
+}
+
+impl Shape {
+    fn new(address: u64, width: Width, elements: usize) -> Self {
+        Self {
+            address,
+            width,
+            elements,
+        }
+    }
+
+    fn element_address(&self, index: usize) -> u64 {
+        self.address + index as u64 * self.width.bytes()
+    }
+
+    /// How many DRW words the whole access moves.
+    fn words(&self) -> usize {
+        self.elements * self.width.drw_words()
+    }
+
+    /// Pull element `index` out of the DRW word that carried it.
+    fn take_lane(&self, word: u32, index: usize) -> u32 {
+        (word >> self.width.lane_shift(self.element_address(index))) & self.width.mask()
+    }
+
+    /// Put element `index` into the byte lane its address selects.
+    fn put_lane(&self, value: u32, index: usize) -> u32 {
+        value << self.width.lane_shift(self.element_address(index))
+    }
+}
+
+impl<AP> ADIMemoryInterface<'_, AP>
+where
+    AP: DapAccess,
+{
+    /// Append the accesses that point the AP at `address`, to prefix the transfers they set up.
+    ///
+    /// TAR, TAR2 and DRW share a register bank, so one list carries all three.
+    fn push_target_address(
+        &self,
+        accesses: &mut Vec<(u64, Option<u32>)>,
+        address: u64,
+    ) -> Result<(), ArmError> {
+        if self.memory_ap.has_large_address_extension() {
+            accesses.push((TAR2::ADDRESS, Some((address >> 32) as u32)));
+        } else if address > u32::MAX as u64 {
+            return Err(ArmError::OutOfBounds);
+        }
+        accesses.push((TAR::ADDRESS, Some(address as u32)));
+        Ok(())
+    }
+
+    /// Put the AP in the transfer size `shape` needs.
+    fn set_data_size(&mut self, shape: &Shape) -> Result<(), ArmError> {
+        let size = shape
+            .width
+            .data_size(self.memory_ap.has_large_data_extension());
+        self.memory_ap.try_set_datasize(self.interface, size)
+    }
+
+    /// The AP register accesses that perform `shape`.
+    ///
+    /// `word` supplies each written DRW word by element and word index, and returns `None`
+    /// throughout for a read. The whole access, auto-increment windows included, comes back as one
+    /// list, so the address writes and the transfers they set up reach the probe together.
+    fn lower(
+        &self,
+        shape: &Shape,
+        mut word: impl FnMut(usize, usize) -> Option<u32>,
+    ) -> Result<Vec<(u64, Option<u32>)>, ArmError> {
+        let span = shape.elements as u64 * shape.width.bytes();
+
+        // Every address below is derived from `shape`, so checking the whole span here covers
+        // each one the walk produces.
+        shape
+            .address
+            .checked_add(span)
+            .ok_or(ArmError::OutOfBounds)?;
+
+        let windows = span.div_ceil(AUTOINCR_LIMIT) as usize;
+        let mut accesses = Vec::with_capacity(shape.words() + 2 * windows.max(1));
+        let mut done = 0;
+
+        while done < shape.elements {
+            // TAR only auto-increments in its low ten bits, so every window needs its own address.
+            let address = shape.element_address(done);
+            let per_window = autoincr_max_bytes(address) / shape.width.bytes() as usize;
+            debug_assert!(per_window > 0, "an aligned element fits its window");
+            let chunk = (shape.elements - done).min(per_window);
+
+            self.push_target_address(&mut accesses, address)?;
+            for element in done..done + chunk {
+                for index in 0..shape.width.drw_words() {
+                    accesses.push((DRW::ADDRESS, word(element, index)));
+                }
+            }
+
+            done += chunk;
+        }
+
+        Ok(accesses)
+    }
+
+    /// Read `shape` into the DRW words it produces.
+    fn run_read(&mut self, shape: &Shape, words: &mut [u32]) -> Result<(), ArmError> {
+        self.set_data_size(shape)?;
+        let accesses = self.lower(shape, |_, _| None)?;
+        self.interface
+            .access_raw_ap_registers(self.memory_ap.ap_address(), &accesses, words)
+    }
+
+    /// Write `shape`, taking each DRW word from `word`.
+    fn run_write(
+        &mut self,
+        shape: &Shape,
+        word: impl FnMut(usize, usize) -> Option<u32>,
+    ) -> Result<(), ArmError> {
+        self.set_data_size(shape)?;
+        let accesses = self.lower(shape, word)?;
+        self.interface
+            .access_raw_ap_registers(self.memory_ap.ap_address(), &accesses, &mut [])
+    }
+}
+
 impl<AP> MemoryInterface<ArmError> for ADIMemoryInterface<'_, AP>
 where
     AP: DapAccess,
@@ -51,50 +242,21 @@ where
     /// The number of words read is `data.len()`.
     /// The address where the read should be performed at has to be a multiple of 8.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
-    fn read_64(&mut self, mut address: u64, mut data: &mut [u64]) -> Result<(), ArmError> {
+    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ArmError> {
         if data.is_empty() {
             return Ok(());
         }
-
         if !address.is_multiple_of(8) {
             return Err(ArmError::alignment_error(address, 8));
         }
 
-        // Fall back to 32-bit accesses if 64-bit accesses are not supported.
-        // In both cases the sequence of words we have to read from DRW is the same:
-        // first the least significant word, then the most significant word.
-        let size = match self.memory_ap.has_large_data_extension() {
-            true => DataSize::U64,
-            false => DataSize::U32,
-        };
-        self.memory_ap.try_set_datasize(self.interface, size)?;
+        let shape = Shape::new(address, Width::U64, data.len());
+        let mut words = vec![0; shape.words()];
+        self.run_read(&shape, &mut words)?;
 
-        while !data.is_empty() {
-            let chunk_size = data.len().min(autoincr_max_bytes(address) / 8);
-
-            tracing::debug!(
-                "Reading chunk with len {} at address {:#08x}",
-                chunk_size,
-                address
-            );
-
-            // autoincrement is limited to the 10 lowest bits, so write TAR every time.
-            self.memory_ap.set_target_address(self.interface, address)?;
-
-            let mut buf = vec![0; chunk_size * 2];
-            self.memory_ap.read_data(self.interface, &mut buf)?;
-
-            for i in 0..chunk_size {
-                data[i] = buf[i * 2] as u64 | ((buf[i * 2 + 1] as u64) << 32);
-            }
-
-            address = address
-                .checked_add(chunk_size as u64 * 8)
-                .ok_or(ArmError::OutOfBounds)?;
-            data = &mut data[chunk_size..];
+        for (index, value) in data.iter_mut().enumerate() {
+            *value = words[index * 2] as u64 | ((words[index * 2 + 1] as u64) << 32);
         }
-
-        tracing::debug!("Finished reading block");
 
         Ok(())
     }
@@ -104,41 +266,17 @@ where
     /// The number of words read is `data.len()`.
     /// The address where the read should be performed at has to be a multiple of 4.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
-    fn read_32(&mut self, mut address: u64, mut data: &mut [u32]) -> Result<(), ArmError> {
+    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
         if data.is_empty() {
             return Ok(());
         }
-
         if !address.is_multiple_of(4) {
             return Err(ArmError::alignment_error(address, 4));
         }
 
-        self.memory_ap
-            .try_set_datasize(self.interface, DataSize::U32)?;
-
-        while !data.is_empty() {
-            let chunk_size = data.len().min(autoincr_max_bytes(address) / 4);
-
-            tracing::debug!(
-                "Reading chunk with len {} at address {:#08x}",
-                chunk_size,
-                address
-            );
-
-            // autoincrement is limited to the 10 lowest bits, so write TAR every time.
-            self.memory_ap.set_target_address(self.interface, address)?;
-            self.memory_ap
-                .read_data(self.interface, &mut data[..chunk_size])?;
-
-            address = address
-                .checked_add(chunk_size as u64 * 4)
-                .ok_or(ArmError::OutOfBounds)?;
-            data = &mut data[chunk_size..];
-        }
-
-        tracing::debug!("Finished reading block");
-
-        Ok(())
+        // A 32-bit element is one DRW word, so the reply is already what the caller asked for.
+        let shape = Shape::new(address, Width::U32, data.len());
+        self.run_read(&shape, data)
     }
 
     /// Read a block of 16 bit words at `address`.
@@ -146,53 +284,24 @@ where
     /// The number of words read is `data.len()`.
     /// The address where the read should be performed at has to be a multiple of 2.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
-    fn read_16(&mut self, mut address: u64, mut data: &mut [u16]) -> Result<(), ArmError> {
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), ArmError> {
         if self.memory_ap.supports_only_32bit_data_size() {
             return Err(ArmError::UnsupportedTransferWidth(16));
         }
-
         if !address.is_multiple_of(2) {
             return Err(ArmError::alignment_error(address, 2));
         }
-
         if data.is_empty() {
             return Ok(());
         }
 
-        self.memory_ap
-            .try_set_datasize(self.interface, DataSize::U16)?;
+        let shape = Shape::new(address, Width::U16, data.len());
+        let mut words = vec![0; shape.words()];
+        self.run_read(&shape, &mut words)?;
 
-        while !data.is_empty() {
-            let chunk_size = data.len().min(autoincr_max_bytes(address) / 2);
-
-            tracing::debug!(
-                "Reading chunk with len {} at address {:#08x}",
-                chunk_size,
-                address
-            );
-
-            let mut values = vec![0; chunk_size];
-
-            // autoincrement is limited to the 10 lowest bits, so write TAR every time.
-            self.memory_ap.set_target_address(self.interface, address)?;
-            self.memory_ap.read_data(self.interface, &mut values)?;
-
-            // The required shifting logic here is described in C2.2.6 Byte lanes of the ADI v5.2 specification.
-            // All bytes are transferred in their lane, so when we do an access at an address that is not divisible by 4,
-            // we have to shift the word (one or two bytes) to it's correct position.
-            for (target, (i, source)) in
-                data[..chunk_size].iter_mut().zip(values.iter().enumerate())
-            {
-                *target = ((*source >> (((address + i as u64 * 2) % 4) * 8)) & 0xFFFF) as u16;
-            }
-
-            address = address
-                .checked_add(chunk_size as u64 * 2)
-                .ok_or(ArmError::OutOfBounds)?;
-            data = &mut data[chunk_size..];
+        for (index, value) in data.iter_mut().enumerate() {
+            *value = shape.take_lane(words[index], index) as u16;
         }
-
-        tracing::debug!("Finished reading block");
 
         Ok(())
     }
@@ -200,49 +309,21 @@ where
     /// Read a block of 8 bit words at `address`.
     ///
     /// The number of words read is `data.len()`.
-    fn read_8(&mut self, mut address: u64, mut data: &mut [u8]) -> Result<(), ArmError> {
+    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
         if self.memory_ap.supports_only_32bit_data_size() {
             return Err(ArmError::UnsupportedTransferWidth(8));
         }
-
         if data.is_empty() {
             return Ok(());
         }
 
-        self.memory_ap
-            .try_set_datasize(self.interface, DataSize::U8)?;
+        let shape = Shape::new(address, Width::U8, data.len());
+        let mut words = vec![0; shape.words()];
+        self.run_read(&shape, &mut words)?;
 
-        while !data.is_empty() {
-            let chunk_size = data.len().min(autoincr_max_bytes(address));
-
-            tracing::debug!(
-                "Reading chunk with len {} at address {:#08x}",
-                chunk_size,
-                address
-            );
-
-            let mut values = vec![0; chunk_size];
-
-            // autoincrement is limited to the 10 lowest bits, so write TAR every time.
-            self.memory_ap.set_target_address(self.interface, address)?;
-            self.memory_ap.read_data(self.interface, &mut values)?;
-
-            // The required shifting logic here is described in C2.2.6 Byte lanes of the ADI v5.2 specification.
-            // All bytes are transferred in their lane, so when we do an access at an address that is not divisible by 4,
-            // we have to shift the word (one or two bytes) to it's correct position.
-            for (target, (i, source)) in
-                data[..chunk_size].iter_mut().zip(values.iter().enumerate())
-            {
-                *target = ((*source >> (((address + i as u64) % 4) * 8)) & 0xFF) as u8;
-            }
-
-            address = address
-                .checked_add(chunk_size as u64)
-                .ok_or(ArmError::OutOfBounds)?;
-            data = &mut data[chunk_size..];
+        for (index, value) in data.iter_mut().enumerate() {
+            *value = shape.take_lane(words[index], index) as u8;
         }
-
-        tracing::debug!("Finished reading block");
 
         Ok(())
     }
@@ -252,57 +333,23 @@ where
     /// The number of words written is `data.len()`.
     /// The address where the write should be performed at has to be a multiple of 8.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
-    fn write_64(&mut self, mut address: u64, mut data: &[u64]) -> Result<(), ArmError> {
+    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ArmError> {
         if !address.is_multiple_of(8) {
             return Err(ArmError::alignment_error(address, 8));
         }
-
         if data.is_empty() {
             return Ok(());
         }
 
-        tracing::debug!(
-            "Write block with total size {} bytes to address {:#08x}",
-            data.len() * 8,
-            address
-        );
-
-        // Fall back to 32-bit accesses if 64-bit accesses are not supported.
-        // In both cases the sequence of words we have to write to DRW is the same:
-        // first the least significant word, then the most significant word.
-        let size = match self.memory_ap.has_large_data_extension() {
-            true => DataSize::U64,
-            false => DataSize::U32,
-        };
-        self.memory_ap.try_set_datasize(self.interface, size)?;
-
-        while !data.is_empty() {
-            let chunk_size = data.len().min(autoincr_max_bytes(address) / 8);
-
-            tracing::debug!(
-                "Writing chunk with len {} at address {:#08x}",
-                chunk_size,
-                address
-            );
-
-            let values: Vec<u32> = data[..chunk_size]
-                .iter()
-                .flat_map(|&w| [w as u32, (w >> 32) as u32])
-                .collect();
-
-            // autoincrement is limited to the 10 lowest bits, so write TAR every time.
-            self.memory_ap.set_target_address(self.interface, address)?;
-            self.memory_ap.write_data(self.interface, &values)?;
-
-            address = address
-                .checked_add(chunk_size as u64 * 8)
-                .ok_or(ArmError::OutOfBounds)?;
-            data = &data[chunk_size..];
-        }
-
-        tracing::debug!("Finished writing block");
-
-        Ok(())
+        let shape = Shape::new(address, Width::U64, data.len());
+        self.run_write(&shape, |element, index| {
+            let value = data[element];
+            Some(if index == 0 {
+                value as u32
+            } else {
+                (value >> 32) as u32
+            })
+        })
     }
 
     /// Write a block of 32 bit words at `address`.
@@ -310,47 +357,16 @@ where
     /// The number of words written is `data.len()`.
     /// The address where the write should be performed at has to be a multiple of 4.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
-    fn write_32(&mut self, mut address: u64, mut data: &[u32]) -> Result<(), ArmError> {
+    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
         if !address.is_multiple_of(4) {
             return Err(ArmError::alignment_error(address, 4));
         }
-
         if data.is_empty() {
             return Ok(());
         }
 
-        tracing::debug!(
-            "Write block with total size {} bytes to address {:#08x}",
-            data.len() * 4,
-            address
-        );
-
-        self.memory_ap
-            .try_set_datasize(self.interface, DataSize::U32)?;
-
-        while !data.is_empty() {
-            let chunk_size = data.len().min(autoincr_max_bytes(address) / 4);
-
-            tracing::debug!(
-                "Writing chunk with len {} at address {:#08x}",
-                chunk_size,
-                address
-            );
-
-            // autoincrement is limited to the 10 lowest bits, so write TAR every time.
-            self.memory_ap.set_target_address(self.interface, address)?;
-            self.memory_ap
-                .write_data(self.interface, &data[..chunk_size])?;
-
-            address = address
-                .checked_add(chunk_size as u64 * 4)
-                .ok_or(ArmError::OutOfBounds)?;
-            data = &data[chunk_size..];
-        }
-
-        tracing::debug!("Finished writing block");
-
-        Ok(())
+        let shape = Shape::new(address, Width::U32, data.len());
+        self.run_write(&shape, |element, _| Some(data[element]))
     }
 
     /// Write a block of 16 bit words at `address`.
@@ -358,7 +374,7 @@ where
     /// The number of words written is `data.len()`.
     /// The address where the write should be performed at has to be a multiple of 2.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
-    fn write_16(&mut self, mut address: u64, mut data: &[u16]) -> Result<(), ArmError> {
+    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), ArmError> {
         if self.memory_ap.supports_only_32bit_data_size() {
             return Err(ArmError::UnsupportedTransferWidth(16));
         }
@@ -369,100 +385,27 @@ where
             return Ok(());
         }
 
-        tracing::debug!(
-            "Write block with total size {} bytes to address {:#08x}",
-            data.len() * 2,
-            address
-        );
-
-        self.memory_ap
-            .try_set_datasize(self.interface, DataSize::U16)?;
-
-        while !data.is_empty() {
-            let chunk_size = data.len().min(autoincr_max_bytes(address) / 2);
-
-            tracing::debug!(
-                "Writing chunk with len {} at address {:#08x}",
-                chunk_size,
-                address
-            );
-
-            // The required shifting logic here is described in C2.2.6 Byte lanes of the ADI v5.2 specification.
-            // All bytes are transferred in their lane, so when we do an access at an address that is not divisible by 4,
-            // we have to shift the word (one or two bytes) to it's correct position.
-            let values = data[..chunk_size]
-                .iter()
-                .enumerate()
-                .map(|(i, v)| (*v as u32) << (((address as usize + i * 2) % 4) * 8))
-                .collect::<Vec<_>>();
-
-            // autoincrement is limited to the 10 lowest bits, so write TAR every time.
-            self.memory_ap.set_target_address(self.interface, address)?;
-            self.memory_ap.write_data(self.interface, &values)?;
-
-            address = address
-                .checked_add(chunk_size as u64 * 2)
-                .ok_or(ArmError::OutOfBounds)?;
-            data = &data[chunk_size..];
-        }
-
-        tracing::debug!("Finished writing block");
-
-        Ok(())
+        let shape = Shape::new(address, Width::U16, data.len());
+        self.run_write(&shape, |element, _| {
+            Some(shape.put_lane(data[element] as u32, element))
+        })
     }
 
     /// Write a block of 8 bit words at `address`.
     ///
     /// The number of words written is `data.len()`.
-    fn write_8(&mut self, mut address: u64, mut data: &[u8]) -> Result<(), ArmError> {
+    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError> {
         if self.memory_ap.supports_only_32bit_data_size() {
             return Err(ArmError::UnsupportedTransferWidth(8));
         }
-
         if data.is_empty() {
             return Ok(());
         }
 
-        tracing::debug!(
-            "Write block with total size {} bytes to address {:#08x}",
-            data.len(),
-            address
-        );
-
-        self.memory_ap
-            .try_set_datasize(self.interface, DataSize::U8)?;
-
-        while !data.is_empty() {
-            let chunk_size = data.len().min(autoincr_max_bytes(address));
-
-            tracing::debug!(
-                "Writing chunk with len {} at address {:#08x}",
-                chunk_size,
-                address
-            );
-
-            // The required shifting logic here is described in C2.2.6 Byte lanes of the ADI v5.2 specification.
-            // All bytes are transferred in their lane, so when we do an access at an address that is not divisible by 4,
-            // we have to shift the word (one or two bytes) to it's correct position.
-            let values = data[..chunk_size]
-                .iter()
-                .enumerate()
-                .map(|(i, v)| (*v as u32) << (((address as usize + i) % 4) * 8))
-                .collect::<Vec<_>>();
-
-            // autoincrement is limited to the 10 lowest bits, so write TAR every time.
-            self.memory_ap.set_target_address(self.interface, address)?;
-            self.memory_ap.write_data(self.interface, &values)?;
-
-            address = address
-                .checked_add(chunk_size as u64)
-                .ok_or(ArmError::OutOfBounds)?;
-            data = &data[chunk_size..];
-        }
-
-        tracing::debug!("Finished writing block");
-
-        Ok(())
+        let shape = Shape::new(address, Width::U8, data.len());
+        self.run_write(&shape, |element, _| {
+            Some(shape.put_lane(data[element] as u32, element))
+        })
     }
 
     /// Flushes any pending commands when the underlying probe interface implements command queuing.
@@ -511,6 +454,7 @@ mod tests {
     use scroll::Pread;
     use test_log::test;
 
+    use super::{Shape, Width};
     use crate::{
         MemoryInterface,
         architecture::arm::{
@@ -543,6 +487,65 @@ mod tests {
 
     // DATA8 interpreted as little endian 32-bit words
     const DATA32: &[u32] = &[0x83828180, 0x87868584, 0x8b8a8988, 0x8f8e8d8c];
+
+    #[test]
+    fn a_block_access_writes_the_address_once() {
+        use crate::architecture::arm::ap::{ApRegister, DRW, TAR};
+
+        let mut mock = MockMemoryAp::with_pattern_and_size(256);
+        let mi = ADIMemoryInterface::new_mock(&mut mock);
+
+        let accesses = mi
+            .lower(&Shape::new(0x2000_0000, Width::U32, 3), |_, _| None)
+            .unwrap();
+
+        assert_eq!(
+            accesses,
+            vec![
+                (TAR::ADDRESS, Some(0x2000_0000)),
+                (DRW::ADDRESS, None),
+                (DRW::ADDRESS, None),
+                (DRW::ADDRESS, None),
+            ]
+        );
+    }
+
+    #[test]
+    fn an_access_writes_the_address_again_at_every_auto_increment_window() {
+        use crate::architecture::arm::ap::{ApRegister, DRW, TAR};
+
+        // TAR only auto-increments in its low ten bits, so a run that crosses a 1 KiB boundary has
+        // to say where it is again.
+        let mut mock = MockMemoryAp::with_pattern_and_size(256);
+        let mi = ADIMemoryInterface::new_mock(&mut mock);
+
+        let accesses = mi
+            .lower(&Shape::new(0x2000_03F8, Width::U32, 3), |_, _| None)
+            .unwrap();
+
+        assert_eq!(
+            accesses,
+            vec![
+                (TAR::ADDRESS, Some(0x2000_03F8)),
+                (DRW::ADDRESS, None),
+                (DRW::ADDRESS, None),
+                (TAR::ADDRESS, Some(0x2000_0400)),
+                (DRW::ADDRESS, None),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_sub_word_value_travels_in_its_byte_lane() {
+        // ADIv5.2 C2.2.6: a byte whose address is not a multiple of four is not at bit zero of the
+        // word that carries it.
+        let shape = Shape::new(0x2000_0001, Width::U8, 2);
+
+        assert_eq!(shape.put_lane(0xAB, 0), 0x0000_AB00);
+        assert_eq!(shape.put_lane(0xCD, 1), 0x00CD_0000);
+        assert_eq!(shape.take_lane(0x0000_AB00, 0), 0xAB);
+        assert_eq!(shape.take_lane(0x00CD_0000, 1), 0xCD);
+    }
 
     #[test]
     fn read_word_32() {
