@@ -166,8 +166,6 @@ impl<AP> ADIMemoryInterface<'_, AP>
 where
     AP: DapAccess,
 {
-    /// The accesses that point the AP at `address`, to prefix the transfers they set up.
-    ///
     /// Append the accesses that point the AP at `address`, to prefix the transfers they set up.
     ///
     /// TAR, TAR2 and DRW share a register bank, so one list carries all three.
@@ -383,6 +381,84 @@ where
         }
     }
 
+    /// Add the CSW write for a size the AP can be told rather than asked about.
+    ///
+    /// No AP has to read a byte or word size back, so this succeeds for the sizes it is called
+    /// with. One that did would need a transaction a half-built batch cannot give it.
+    fn push_fixed_datasize(
+        &mut self,
+        accesses: &mut Vec<(u64, Option<u32>)>,
+        size: DataSize,
+    ) -> Result<(), ArmError> {
+        if !self.push_datasize(accesses, size)? {
+            return Err(ArmError::UnsupportedTransferWidth(size.to_byte_count() * 8));
+        }
+        Ok(())
+    }
+
+    /// Append a byte-granular write as an unaligned head, a run of words, and an unaligned tail.
+    ///
+    /// All three pieces go into one batch, changes of transfer size included.
+    fn push_byte_write(
+        &mut self,
+        accesses: &mut Vec<(u64, Option<u32>)>,
+        address: u64,
+        data: &[u8],
+    ) -> Result<(), ArmError> {
+        // Up to the next word boundary, then whole words, then whatever is left over. Either
+        // unaligned end is empty when the address or the length is already aligned.
+        let boundary = (address.next_multiple_of(4) - address) as usize;
+        let (head, rest) = data.split_at(boundary.min(data.len()));
+        let (words, tail) = rest.as_chunks::<4>();
+
+        if !(head.is_empty() && tail.is_empty()) && self.memory_ap.supports_only_32bit_data_size() {
+            return Err(ArmError::alignment_error(address, 4));
+        }
+
+        let last = address
+            .checked_add(data.len() as u64)
+            .ok_or(ArmError::OutOfBounds)?;
+        if last > u32::MAX as u64 && !self.memory_ap.has_large_address_extension() {
+            return Err(ArmError::OutOfBounds);
+        }
+
+        // Built to the side and handed over whole. A failure part way through would otherwise
+        // leave a piece of the write in a batch the caller then sends.
+        let mut pieces = Vec::new();
+
+        if !head.is_empty() {
+            self.push_fixed_datasize(&mut pieces, DataSize::U8)?;
+            let shape = Shape::new(address, Width::U8, head.len());
+            let more = self.lower(&shape, |element, _| {
+                Some(shape.put_lane(head[element] as u32, element))
+            })?;
+            pieces.extend(more);
+        }
+
+        if !words.is_empty() {
+            self.push_fixed_datasize(&mut pieces, DataSize::U32)?;
+            let shape = Shape::new(address + head.len() as u64, Width::U32, words.len());
+            let more = self.lower(&shape, |element, _| {
+                Some(u32::from_le_bytes(words[element]))
+            })?;
+            pieces.extend(more);
+        }
+
+        if !tail.is_empty() {
+            self.push_fixed_datasize(&mut pieces, DataSize::U8)?;
+            let tail_address = address + (head.len() + words.len() * 4) as u64;
+            let shape = Shape::new(tail_address, Width::U8, tail.len());
+            let more = self.lower(&shape, |element, _| {
+                Some(shape.put_lane(tail[element] as u32, element))
+            })?;
+            pieces.extend(more);
+        }
+
+        accesses.append(&mut pieces);
+
+        Ok(())
+    }
+
     /// Whether `operation` hands words back.
     fn is_read(operation: &Operation<'_>) -> bool {
         matches!(
@@ -403,14 +479,25 @@ where
         let mut lowered = Lowered::default();
 
         for operation in operations {
+            // A byte-granular write picks its own widths, and all of them travel in this batch.
+            if let OperationKind::Write(data) = &operation.operation {
+                if let Err(error) =
+                    self.push_byte_write(&mut lowered.accesses, operation.address, data)
+                {
+                    return stop(lowered, error);
+                }
+                lowered.spans.push((lowered.words, 0));
+                continue;
+            }
+
             let shape = match self.shape_of(operation) {
                 Ok(Some(shape)) => shape,
-                // A byte-granular access runs on its own.
+                // A byte-granular read runs on its own.
                 Ok(None) => break,
                 Err(error) => return stop(lowered, error),
             };
 
-            // Lowered before the size is settled: settling it records a CSW write as sent, so
+            // Lowered before the size is settled: `push_datasize` records a CSW write as sent, so
             // nothing may be recorded for an operation that then turns out not to lower.
             let more = match self.lower_operation(operation, &shape) {
                 Ok(more) => more,
@@ -452,18 +539,14 @@ where
         let mut start = 0;
 
         while start < operations.len() {
-            // A byte-granular access picks its own widths, so it has no shape and runs alone.
-            if matches!(
-                operations[start].operation,
-                OperationKind::Read(_) | OperationKind::Write(_)
-            ) {
+            // A byte-granular read would have to fetch a wider aligned range than the caller asked
+            // for, and reading memory nobody asked to read can have side effects. It runs alone.
+            if matches!(operations[start].operation, OperationKind::Read(_)) {
                 let address = operations[start].address;
-                let outcome = match &mut operations[start].operation {
-                    OperationKind::Read(data) => self.read(address, data),
-                    OperationKind::Write(data) => self.write(address, data),
-                    _ => unreachable!("just matched"),
+                let OperationKind::Read(data) = &mut operations[start].operation else {
+                    unreachable!("just matched")
                 };
-                outcome.map_err(|error| (start, error))?;
+                self.read(address, data).map_err(|error| (start, error))?;
                 operations[start].result = Some(Ok(()));
                 start += 1;
                 continue;
@@ -481,7 +564,7 @@ where
             let end = start + lowered.spans.len();
             debug_assert!(
                 end > start,
-                "the first operation always joins its own lowered"
+                "the first operation always joins its own batch"
             );
 
             let mut values = vec![0; lowered.words];
@@ -695,6 +778,15 @@ where
         })
     }
 
+    /// Write bytes at `address`.
+    ///
+    /// A byte head, a run of words and a byte tail, lowered into one batch.
+    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError> {
+        let mut operations = [Operation::new(address, OperationKind::Write(data))];
+        self.run_operations(&mut operations)
+            .map_err(|(_, error)| error)
+    }
+
     fn execute_memory_operations(&mut self, operations: &mut [Operation<'_>]) {
         if let Err((index, error)) = self.run_operations(operations) {
             operations[index].result = Some(Err(Error::from(error)));
@@ -843,6 +935,47 @@ mod tests {
         assert_eq!(shape.put_lane(0xCD, 1), 0x00CD_0000);
         assert_eq!(shape.take_lane(0x0000_AB00, 0), 0xAB);
         assert_eq!(shape.take_lane(0x00CD_0000, 1), 0xCD);
+    }
+
+    #[test]
+    fn an_unaligned_byte_write_lands_where_it_was_asked_to() {
+        let mut mock = MockMemoryAp::with_pattern_and_size(256);
+        let mut mi = ADIMemoryInterface::new_mock(&mut mock);
+
+        // Starts one byte into a word and ends part way through another, so it breaks into a byte
+        // head, a run of words and a byte tail. All three share one batch.
+        let data: Vec<u8> = (0..10).map(|index| 0xA0 + index).collect();
+        let mut operations = [Operation::new(0x11, OperationKind::Write(&data))];
+        mi.execute_memory_operations(&mut operations);
+        assert!(operations[0].result.as_ref().expect("ran").is_ok());
+
+        let mut read = vec![0; data.len()];
+        mi.read_8(0x11, &mut read).expect("read_8 failed");
+        assert_eq!(read, data);
+    }
+
+    #[test]
+    fn a_list_that_changes_width_reads_back_what_it_wrote() {
+        let mut mock = MockMemoryAp::with_pattern_and_size(256);
+        let mut mi = ADIMemoryInterface::new_mock(&mut mock);
+
+        let mut word = 0u32;
+        let mut half = 0u16;
+        let mut operations = [
+            Operation::new(0x20, OperationKind::WriteWord8(0xAB)),
+            Operation::new(0x24, OperationKind::WriteWord32(0xDEAD_BEEF)),
+            Operation::new(0x28, OperationKind::WriteWord16(0x1234)),
+            Operation::new(0x24, OperationKind::Read32(std::slice::from_mut(&mut word))),
+            Operation::new(0x28, OperationKind::Read16(std::slice::from_mut(&mut half))),
+        ];
+        mi.execute_memory_operations(&mut operations);
+
+        for operation in &operations {
+            assert!(operation.result.as_ref().expect("ran").is_ok());
+        }
+        assert_eq!(word, 0xDEAD_BEEF);
+        assert_eq!(half, 0x1234);
+        assert_eq!(mi.read_word_8(0x20).expect("read_word_8 failed"), 0xAB);
     }
 
     #[test]
