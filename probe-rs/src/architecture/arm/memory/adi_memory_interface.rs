@@ -4,7 +4,7 @@ use crate::{
         ArmDebugInterface, ArmError, DapAccess, FullyQualifiedApAddress,
         ap::{
             AccessPortType, ApAccess, ApRegister, CSW, DRW, DataSize, TAR, TAR2,
-            memory_ap::{MemoryAp, MemoryApType},
+            memory_ap::{DataSizeSetup, MemoryAp, MemoryApType},
         },
         memory::ArmMemoryInterface,
     },
@@ -166,6 +166,8 @@ impl<AP> ADIMemoryInterface<'_, AP>
 where
     AP: DapAccess,
 {
+    /// The accesses that point the AP at `address`, to prefix the transfers they set up.
+    ///
     /// Append the accesses that point the AP at `address`, to prefix the transfers they set up.
     ///
     /// TAR, TAR2 and DRW share a register bank, so one list carries all three.
@@ -359,6 +361,28 @@ where
         }
     }
 
+    /// Add the CSW write a batch needs to carry `size`, if it needs one.
+    ///
+    /// `false` says the AP has to be set up outside the batch.
+    fn push_datasize(
+        &mut self,
+        accesses: &mut Vec<(u64, Option<u32>)>,
+        size: DataSize,
+    ) -> Result<bool, ArmError> {
+        match self.memory_ap.datasize_setup(size)? {
+            DataSizeSetup::Ready => Ok(true),
+            DataSizeSetup::Write(value) => {
+                accesses.push((CSW::ADDRESS, Some(value)));
+                // Recorded before the batch goes out, so a later width in the same batch is
+                // compared against what this batch will have left behind. Every caller therefore
+                // owes the batch a send, or a resync of what was recorded.
+                self.memory_ap.note_datasize(size);
+                Ok(true)
+            }
+            DataSizeSetup::Separately => Ok(false),
+        }
+    }
+
     /// Whether `operation` hands words back.
     fn is_read(operation: &Operation<'_>) -> bool {
         matches!(
@@ -372,12 +396,11 @@ where
 
     /// The operations from the front of `operations` that can share one batch.
     ///
-    /// Gathering stops at an operation the lowering does not describe, at a change of transfer
-    /// size, and at anything that fails once the batch already holds something.
+    /// Gathering stops at an operation the lowering does not describe, at a transfer size the AP
+    /// has to be asked about rather than told, and at anything that fails once the batch already
+    /// holds something.
     fn gather(&mut self, operations: &[Operation<'_>]) -> Result<Lowered, ArmError> {
-        let large = self.memory_ap.has_large_data_extension();
         let mut lowered = Lowered::default();
-        let mut batch_size = None;
 
         for operation in operations {
             let shape = match self.shape_of(operation) {
@@ -394,18 +417,14 @@ where
                 Err(error) => return stop(lowered, error),
             };
 
-            let size = shape.width.data_size(large);
-            match batch_size {
-                // The AP is put in the size before any of the batch goes out, so a change of width
-                // has to wait for the next one.
-                None => {
-                    if let Err(error) = self.memory_ap.try_set_datasize(self.interface, size) {
-                        return stop(lowered, error);
-                    }
-                    batch_size = Some(size);
-                }
-                Some(carried) if carried != size => break,
-                Some(_) => {}
+            let size = shape
+                .width
+                .data_size(self.memory_ap.has_large_data_extension());
+            match self.push_datasize(&mut lowered.accesses, size) {
+                Ok(true) => {}
+                Ok(false) if !lowered.spans.is_empty() => break,
+                Ok(false) => self.memory_ap.try_set_datasize(self.interface, size)?,
+                Err(error) => return stop(lowered, error),
             }
 
             let reads = if Self::is_read(operation) {
@@ -450,9 +469,15 @@ where
                 continue;
             }
 
-            let lowered = self
-                .gather(&operations[start..])
-                .map_err(|error| (start, error))?;
+            let lowered = match self.gather(&operations[start..]) {
+                Ok(lowered) => lowered,
+                Err(error) => {
+                    // `try_set_datasize` on the way here writes CSW and notes the size as two
+                    // steps, and may have failed between them. Re-read rather than trust the note.
+                    let _ = self.memory_ap.status(self.interface);
+                    return Err((start, error));
+                }
+            };
             let end = start + lowered.spans.len();
             debug_assert!(
                 end > start,
@@ -727,6 +752,7 @@ mod tests {
     use test_log::test;
 
     use super::{Shape, Width};
+    use crate::memory::{Operation, OperationKind};
     use crate::{
         MemoryInterface,
         architecture::arm::{
@@ -817,6 +843,32 @@ mod tests {
         assert_eq!(shape.put_lane(0xCD, 1), 0x00CD_0000);
         assert_eq!(shape.take_lane(0x0000_AB00, 0), 0xAB);
         assert_eq!(shape.take_lane(0x00CD_0000, 1), 0xCD);
+    }
+
+    #[test]
+    fn a_batch_that_never_ran_leaves_the_transfer_size_alone() {
+        // A batch records its CSW write as sent while it is being built. One that is thrown away
+        // before it reaches the probe must not leave the AP's cached size claiming a width the AP
+        // was never put in, or the next access at that width skips its own CSW write.
+        let mut mock = MockMemoryAp::with_pattern_and_size(256);
+        let mut mi = ADIMemoryInterface::new_mock(&mut mock);
+
+        mi.write_word_8(0x40, 0xAA).expect("byte write");
+
+        let mut ops = [Operation::new(
+            0x1_0000_0000,
+            OperationKind::Write32(&[0xDEAD_BEEF]),
+        )];
+        mi.execute_memory_operations(&mut ops);
+        assert!(ops[0].result.as_ref().expect("ran").is_err());
+
+        mi.write_32(0x10, &[0x1122_3344]).expect("word write");
+
+        assert_eq!(
+            &mi.mock_memory()[0x10..0x14],
+            &0x1122_3344u32.to_le_bytes(),
+            "the word write landed at the wrong width"
+        );
     }
 
     #[test]
