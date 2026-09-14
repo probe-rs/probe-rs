@@ -1,5 +1,5 @@
 use crate::{
-    CoreStatus, MemoryInterface,
+    CoreStatus, Error, MemoryInterface,
     architecture::arm::{
         ArmDebugInterface, ArmError, DapAccess, FullyQualifiedApAddress,
         ap::{
@@ -8,6 +8,7 @@ use crate::{
         },
         memory::ArmMemoryInterface,
     },
+    memory::{Operation, OperationKind},
     probe::DebugProbeError,
 };
 
@@ -140,6 +141,27 @@ impl Shape {
     }
 }
 
+/// What one probe batch carries: the operations from the front of a list that can share it.
+#[derive(Default)]
+struct Lowered {
+    accesses: Vec<(u64, Option<u32>)>,
+    /// Where each operation's reads land in the reply: the first word, and how many.
+    spans: Vec<(usize, usize)>,
+    /// How many words the reply holds.
+    words: usize,
+}
+
+/// Stop gathering, keeping what has been lowered so far.
+///
+/// The first operation of a batch has nothing to fall back to, so its failure is the caller's. A
+/// later one only ends the batch early, and starts the next one.
+fn stop(lowered: Lowered, error: ArmError) -> Result<Lowered, ArmError> {
+    if lowered.spans.is_empty() {
+        return Err(error);
+    }
+    Ok(lowered)
+}
+
 impl<AP> ADIMemoryInterface<'_, AP>
 where
     AP: DapAccess,
@@ -218,6 +240,246 @@ where
         let accesses = self.lower(shape, |_, _| None)?;
         self.interface
             .access_raw_ap_registers(self.memory_ap.ap_address(), &accesses, words)
+    }
+
+    /// The shape of a memory operation, or `None` for one the lowering does not describe.
+    ///
+    /// `Read` and `Write` are byte-granular and choose their own widths of their own accord, so
+    /// neither has one shape.
+    fn shape_of(&self, operation: &Operation<'_>) -> Result<Option<Shape>, ArmError> {
+        let (width, elements) = match &operation.operation {
+            OperationKind::Read8(data) => (Width::U8, data.len()),
+            OperationKind::Read16(data) => (Width::U16, data.len()),
+            OperationKind::Read32(data) => (Width::U32, data.len()),
+            OperationKind::Read64(data) => (Width::U64, data.len()),
+            OperationKind::Write8(data) => (Width::U8, data.len()),
+            OperationKind::Write16(data) => (Width::U16, data.len()),
+            OperationKind::Write32(data) => (Width::U32, data.len()),
+            OperationKind::Write64(data) => (Width::U64, data.len()),
+            OperationKind::WriteWord8(_) => (Width::U8, 1),
+            OperationKind::WriteWord16(_) => (Width::U16, 1),
+            OperationKind::WriteWord32(_) => (Width::U32, 1),
+            OperationKind::WriteWord64(_) => (Width::U64, 1),
+            OperationKind::Read(_) | OperationKind::Write(_) => return Ok(None),
+        };
+
+        let bits = width.bytes() as usize * 8;
+        if matches!(width, Width::U8 | Width::U16) && self.memory_ap.supports_only_32bit_data_size()
+        {
+            return Err(ArmError::UnsupportedTransferWidth(bits));
+        }
+        if !operation.address.is_multiple_of(width.bytes()) {
+            return Err(ArmError::alignment_error(
+                operation.address,
+                width.bytes() as usize,
+            ));
+        }
+
+        Ok(Some(Shape::new(operation.address, width, elements)))
+    }
+
+    /// The accesses that perform `operation`, whose shape the caller has already worked out.
+    fn lower_operation(
+        &self,
+        operation: &Operation<'_>,
+        shape: &Shape,
+    ) -> Result<Vec<(u64, Option<u32>)>, ArmError> {
+        match &operation.operation {
+            OperationKind::Read8(_)
+            | OperationKind::Read16(_)
+            | OperationKind::Read32(_)
+            | OperationKind::Read64(_) => self.lower(shape, |_, _| None),
+            OperationKind::Write8(data) => self.lower(shape, |element, _| {
+                Some(shape.put_lane(data[element] as u32, element))
+            }),
+            OperationKind::Write16(data) => self.lower(shape, |element, _| {
+                Some(shape.put_lane(data[element] as u32, element))
+            }),
+            OperationKind::Write32(data) => self.lower(shape, |element, _| Some(data[element])),
+            OperationKind::Write64(data) => self.lower(shape, |element, index| {
+                let value = data[element];
+                Some(if index == 0 {
+                    value as u32
+                } else {
+                    (value >> 32) as u32
+                })
+            }),
+            OperationKind::WriteWord8(value) => {
+                let value = *value as u32;
+                self.lower(shape, |element, _| Some(shape.put_lane(value, element)))
+            }
+            OperationKind::WriteWord16(value) => {
+                let value = *value as u32;
+                self.lower(shape, |element, _| Some(shape.put_lane(value, element)))
+            }
+            OperationKind::WriteWord32(value) => {
+                let value = *value;
+                self.lower(shape, |_, _| Some(value))
+            }
+            OperationKind::WriteWord64(value) => {
+                let value = *value;
+                self.lower(shape, |_, index| {
+                    Some(if index == 0 {
+                        value as u32
+                    } else {
+                        (value >> 32) as u32
+                    })
+                })
+            }
+            OperationKind::Read(_) | OperationKind::Write(_) => {
+                unreachable!("an unshaped operation is never grouped")
+            }
+        }
+    }
+
+    /// Put the words a batch read back into the operation that asked for them.
+    fn scatter(operation: &mut Operation<'_>, words: &[u32]) {
+        let address = operation.address;
+
+        match &mut operation.operation {
+            OperationKind::Read8(data) => {
+                let shape = Shape::new(address, Width::U8, data.len());
+                for (index, value) in data.iter_mut().enumerate() {
+                    *value = shape.take_lane(words[index], index) as u8;
+                }
+            }
+            OperationKind::Read16(data) => {
+                let shape = Shape::new(address, Width::U16, data.len());
+                for (index, value) in data.iter_mut().enumerate() {
+                    *value = shape.take_lane(words[index], index) as u16;
+                }
+            }
+            OperationKind::Read32(data) => data.copy_from_slice(words),
+            OperationKind::Read64(data) => {
+                for (index, value) in data.iter_mut().enumerate() {
+                    *value = words[index * 2] as u64 | ((words[index * 2 + 1] as u64) << 32);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// Whether `operation` hands words back.
+    fn is_read(operation: &Operation<'_>) -> bool {
+        matches!(
+            operation.operation,
+            OperationKind::Read8(_)
+                | OperationKind::Read16(_)
+                | OperationKind::Read32(_)
+                | OperationKind::Read64(_)
+        )
+    }
+
+    /// The operations from the front of `operations` that can share one batch.
+    ///
+    /// Gathering stops at an operation the lowering does not describe, at a change of transfer
+    /// size, and at anything that fails once the batch already holds something.
+    fn gather(&mut self, operations: &[Operation<'_>]) -> Result<Lowered, ArmError> {
+        let large = self.memory_ap.has_large_data_extension();
+        let mut lowered = Lowered::default();
+        let mut batch_size = None;
+
+        for operation in operations {
+            let shape = match self.shape_of(operation) {
+                Ok(Some(shape)) => shape,
+                // A byte-granular access runs on its own.
+                Ok(None) => break,
+                Err(error) => return stop(lowered, error),
+            };
+
+            // Lowered before the size is settled: settling it records a CSW write as sent, so
+            // nothing may be recorded for an operation that then turns out not to lower.
+            let more = match self.lower_operation(operation, &shape) {
+                Ok(more) => more,
+                Err(error) => return stop(lowered, error),
+            };
+
+            let size = shape.width.data_size(large);
+            match batch_size {
+                // The AP is put in the size before any of the batch goes out, so a change of width
+                // has to wait for the next one.
+                None => {
+                    if let Err(error) = self.memory_ap.try_set_datasize(self.interface, size) {
+                        return stop(lowered, error);
+                    }
+                    batch_size = Some(size);
+                }
+                Some(carried) if carried != size => break,
+                Some(_) => {}
+            }
+
+            let reads = if Self::is_read(operation) {
+                shape.words()
+            } else {
+                0
+            };
+            lowered.accesses.extend(more);
+            lowered.spans.push((lowered.words, reads));
+            lowered.words += reads;
+        }
+
+        Ok(lowered)
+    }
+
+    /// Run a list of memory operations in as few probe transactions as possible.
+    ///
+    /// Every operation that completes records `Ok`; the list stops at the first failure, whose
+    /// index comes back with the error. A batch faults as a whole, so a failure inside one names
+    /// the first operation of that batch rather than the one the target refused.
+    fn run_operations(
+        &mut self,
+        operations: &mut [Operation<'_>],
+    ) -> Result<(), (usize, ArmError)> {
+        let mut start = 0;
+
+        while start < operations.len() {
+            // A byte-granular access picks its own widths, so it has no shape and runs alone.
+            if matches!(
+                operations[start].operation,
+                OperationKind::Read(_) | OperationKind::Write(_)
+            ) {
+                let address = operations[start].address;
+                let outcome = match &mut operations[start].operation {
+                    OperationKind::Read(data) => self.read(address, data),
+                    OperationKind::Write(data) => self.write(address, data),
+                    _ => unreachable!("just matched"),
+                };
+                outcome.map_err(|error| (start, error))?;
+                operations[start].result = Some(Ok(()));
+                start += 1;
+                continue;
+            }
+
+            let lowered = self
+                .gather(&operations[start..])
+                .map_err(|error| (start, error))?;
+            let end = start + lowered.spans.len();
+            debug_assert!(
+                end > start,
+                "the first operation always joins its own lowered"
+            );
+
+            let mut values = vec![0; lowered.words];
+            if let Err(error) = self.interface.access_raw_ap_registers(
+                self.memory_ap.ap_address(),
+                &lowered.accesses,
+                &mut values,
+            ) {
+                // The batch may have carried a CSW write that never reached the target.
+                // Re-read rather than trust the note.
+                let _ = self.memory_ap.status(self.interface);
+                return Err((start, error));
+            }
+
+            for (operation, (first, reads)) in operations[start..end].iter_mut().zip(lowered.spans)
+            {
+                Self::scatter(operation, &values[first..first + reads]);
+                operation.result = Some(Ok(()));
+            }
+            start = end;
+        }
+
+        Ok(())
     }
 
     /// Write `shape`, taking each DRW word from `word`.
@@ -408,6 +670,12 @@ where
         })
     }
 
+    fn execute_memory_operations(&mut self, operations: &mut [Operation<'_>]) {
+        if let Err((index, error)) = self.run_operations(operations) {
+            operations[index].result = Some(Err(Error::from(error)));
+        }
+    }
+
     /// Flushes any pending commands when the underlying probe interface implements command queuing.
     fn flush(&mut self) -> Result<(), ArmError> {
         self.interface.flush()
@@ -428,6 +696,10 @@ impl<APA> ArmMemoryInterface for ADIMemoryInterface<'_, APA>
 where
     APA: ApAccess + ArmDebugInterface,
 {
+    fn execute_operations(&mut self, operations: &mut [Operation<'_>]) -> Result<(), ArmError> {
+        self.run_operations(operations).map_err(|(_, error)| error)
+    }
+
     fn base_address(&mut self) -> Result<u64, ArmError> {
         self.memory_ap.base_address(self.interface)
     }
