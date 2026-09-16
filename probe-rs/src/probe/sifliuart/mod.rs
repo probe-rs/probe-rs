@@ -407,6 +407,7 @@ impl SifliUartFactory {
             probe_factory: &SifliUartFactory,
             interface,
             is_hid_interface: false,
+            usb_location: None,
         })
     }
 

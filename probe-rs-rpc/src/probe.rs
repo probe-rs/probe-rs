@@ -26,6 +26,12 @@ pub struct DebugProbeEntry {
     /// The probe was found but the current user cannot access its device
     /// (e.g. a missing udev rule on Linux).
     pub inaccessible: bool,
+
+    /// USB (bus number, device address) of the underlying device, when known.
+    ///
+    /// Disambiguates probes that otherwise look identical (same VID/PID, no
+    /// serial number). See `probe_rs::probe::DebugProbeInfo::usb_location`.
+    pub usb_location: Option<(u8, u8)>,
 }
 
 impl Display for DebugProbeEntry {
@@ -53,6 +59,7 @@ impl DebugProbeEntry {
             product_id: self.product_id,
             serial_number: Some(self.serial_number.clone()),
             interface: self.interface,
+            usb_location: self.usb_location,
         }
     }
 }
@@ -103,6 +110,9 @@ pub struct DebugProbeSelector {
     pub interface: Option<u8>,
     /// The the serial number of the debug probe to be used.
     pub serial_number: Option<String>,
+    /// USB (bus number, device address) of the underlying device, when known.
+    /// See `probe_rs::probe::DebugProbeInfo::usb_location`.
+    pub usb_location: Option<(u8, u8)>,
 }
 
 #[derive(Serialize, Deserialize, Schema)]

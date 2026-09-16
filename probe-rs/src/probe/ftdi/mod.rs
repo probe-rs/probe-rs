@@ -514,7 +514,8 @@ impl ProbeFactory for FtdiProbeFactory {
         // to select Channel B on an FT2232H, because interface is always None in the
         // listed entries.
         //
-        // Match only on VID, PID, and (optionally) serial number, ignoring interface.
+        // Match only on VID, PID, (optionally) serial number, and (optionally) USB
+        // location, ignoring interface.
         self.list_probes()
             .into_iter()
             .filter(|probe| {
@@ -528,6 +529,8 @@ impl ProbeFactory for FtdiProbeFactory {
                                 sn.is_empty()
                             }
                         })
+                        && s.usb_location
+                            .is_none_or(|loc| probe.info.usb_location == Some(loc))
                 })
             })
             .collect()
@@ -854,6 +857,10 @@ fn get_device_info(device: &DeviceInfo) -> Option<ProbeListItem> {
                 probe_factory: &FtdiProbeFactory,
                 is_hid_interface: false,
                 interface: None,
+                // FTDI probes carry no serial number to disambiguate two of the same
+                // adapter (see `DebugProbeInfo::usb_location`'s doc comment); bus number
+                // + device address stands in for one as long as both stay plugged in.
+                usb_location: Some((device.busnum(), device.device_address())),
             },
             accessibility: usb_probe_accessibility(device),
         })
