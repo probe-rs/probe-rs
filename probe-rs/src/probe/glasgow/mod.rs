@@ -53,6 +53,7 @@ impl ProbeFactory for GlasgowFactory {
             product_id,
             serial_number: serial_number @ Some(_),
             interface,
+            usb_location: _,
         }) = selector
             && *vendor_id == usb::VID_QIHW
             && *product_id == usb::PID_GLASGOW
@@ -67,6 +68,7 @@ impl ProbeFactory for GlasgowFactory {
                 is_hid_interface: false,
                 probe_factory: &Self,
                 interface: *interface,
+                usb_location: None,
             })];
         }
 
