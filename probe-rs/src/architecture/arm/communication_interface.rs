@@ -309,17 +309,31 @@ struct JtagDebugPortWire<'a> {
     settings: SwdSettings,
 }
 
+impl JtagDebugPortWire<'_> {
+    /// Try to run a batch of SWJ operations through SWD.
+    fn run_swj_batch(&mut self, batch: &SwdBatch) -> Result<(), ArmError> {
+        let Some(swd) = self.probe.try_as_swd_probe_mut() else {
+            return Err(ArmError::Probe(
+                DebugProbeError::CommandNotSupportedByProbe {
+                    command_name: "swj",
+                },
+            ));
+        };
+        swd.run_batch(batch)
+            .map_err(|error| ArmError::Probe(batch_probe_error(error)))?;
+        Ok(())
+    }
+}
+
 impl DebugPortWire for JtagDebugPortWire<'_> {
     fn active_protocol(&self) -> Option<WireProtocol> {
         Some(WireProtocol::Jtag)
     }
 
-    fn swj_sequence(&mut self, _bits: &BitSequence) -> Result<(), ArmError> {
-        Err(ArmError::Probe(
-            DebugProbeError::CommandNotSupportedByProbe {
-                command_name: "swj_sequence",
-            },
-        ))
+    fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), ArmError> {
+        let mut batch = SwdBatch::new();
+        batch.sequence(bits.clone());
+        self.run_swj_batch(&batch)
     }
 
     fn jtag_sequence(&mut self, tms: bool, tdi: &BitSequence) -> Result<(), ArmError> {
@@ -332,12 +346,11 @@ impl DebugPortWire for JtagDebugPortWire<'_> {
             .map_err(ArmError::Probe)
     }
 
-    fn swj_pins(&mut self, _out: Pins, _select: Pins, _wait: Duration) -> Result<Pins, ArmError> {
-        Err(ArmError::Probe(
-            DebugProbeError::CommandNotSupportedByProbe {
-                command_name: "swj_pins",
-            },
-        ))
+    fn swj_pins(&mut self, out: Pins, select: Pins, wait: Duration) -> Result<Pins, ArmError> {
+        let mut batch = SwdBatch::new();
+        let _ = batch.schedule(SwdOp::Pins { out, select, wait });
+        self.run_swj_batch(&batch)?;
+        Ok(Pins(0xFF))
     }
 
     fn target_reset(&mut self) -> Result<(), ArmError> {
