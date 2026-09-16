@@ -50,7 +50,7 @@ impl ChainParams {
         (1 << self.irlen) - 1
     }
 
-    fn from_jtag_chain(chain: &[ScanChainElement], selected: usize) -> Option<Self> {
+    pub(crate) fn from_jtag_chain(chain: &[ScanChainElement], selected: usize) -> Option<Self> {
         let mut params = Self {
             index: selected,
             ..Default::default()
