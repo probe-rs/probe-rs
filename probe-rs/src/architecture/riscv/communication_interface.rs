@@ -652,9 +652,25 @@ impl<'state> RiscvCommunicationInterface<'state> {
         if self.state.sticky_unavail {
             control.set_ackunavail(true);
         }
-        self.schedule_write_dm_register(control)?;
+        self.write_dm_register(control)?;
         self.state.last_selected_hart = hart;
         self.state.is_halted = false;
+
+        // The currently-selected hart is reflected in `dmstatus`. We selected a new hart above,
+        // but if the hart isn't active then the value won't actually change. Read the value
+        // back to make sure the hart is active.
+        let selected: Dmcontrol = self.read_dm_register()?;
+        if selected.hartsello() != control.hartsello()
+            || selected.hartselhi() != control.hartselhi()
+        {
+            tracing::debug!(
+                "hartsel did not take: asked for hart {hart}, DM reports {}:{}",
+                selected.hartsello(),
+                selected.hartselhi()
+            );
+            self.state.enabled_harts.remove(&hart);
+            return Err(RiscvError::HartUnavailable);
+        }
 
         let status: Dmstatus = self.read_dm_register()?;
         if status.anynonexistent() || status.allunavail() {
