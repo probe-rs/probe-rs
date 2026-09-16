@@ -137,12 +137,8 @@ impl EmbeddedIceRegister {
 
 /// Debug Status Register bits.
 ///
-/// Confirmed against OpenOCD's actual `embeddedice.h` (`EICE_DBG_STATUS_*`): `SYSCOMP` and
-/// `IFEN` were swapped here (bit 2 is `IFEN`, bit 3 is `SYSCOMP`, not the other way around) -
-/// every status value observed all session (e.g. `0x1019`, `0x9`) has bit 3 set, meaning
-/// system-speed access was completing successfully the whole time; `system_speed_access` was
-/// just polling the wrong bit (its mislabeled `SYSCOMP` at bit 2, which is really `IFEN` and was
-/// never set) and spinning for the full timeout regardless.
+/// Bit assignments match OpenOCD's `embeddedice.h` (`EICE_DBG_STATUS_*`): bit 2 is `IFEN`, bit 3
+/// is `SYSCOMP` - `system_speed_access` polls `SYSCOMP` at bit 3 to detect completion.
 #[allow(dead_code)]
 mod debug_status {
     /// Core is in debug state
@@ -335,18 +331,16 @@ pub struct Arm7tdmiDebugInterfaceState {
     /// perform Thumb interworking and would leave the core in ARM state trying to decode real
     /// Thumb-encoded target code as ARM opcodes - an Undefined Instruction almost immediately)
     /// is not enough; see `resume()`/`branch_resume_thumb_aware`, which uses a real `BX`
-    /// instead (ported from OpenOCD's `arm7tdmi_branch_resume_thumb`, the actual, hardware-
-    /// verified reference mechanism - an earlier attempt at synthesizing the T bit via a
-    /// temporary SVC-mode SPSR write + `MOVS PC, LR` was **not** how any known-working
-    /// implementation does this, and reliably corrupted execution on real hardware; OpenOCD
-    /// itself explicitly never writes T via CPSR/SPSR MSR at all, always masking it out).
+    /// instead (ported from OpenOCD's `arm7tdmi_branch_resume_thumb`, the reference mechanism -
+    /// notably not a temporary SVC-mode SPSR write + `MOVS PC, LR` to synthesize the T bit,
+    /// since OpenOCD itself never writes T via CPSR/SPSR MSR at all, always masking it out).
     ///
-    /// No CPSR/flags/mode/I-F capture is needed here at all, unlike that abandoned approach:
-    /// nothing between the original halt and the eventual `BX` in `branch_resume_thumb_aware`
-    /// ever touches CPSR (`change_to_arm`'s own `BX pc` only ever changes T, same as any `BX`),
-    /// so mode/flags/I/F are naturally still exactly what they were at the real original halt -
-    /// only T itself needs restoring, which `BX`'s own architectural effect (T taken from the
-    /// branch target register's bit 0) does atomically as part of redirecting execution.
+    /// No CPSR/flags/mode/I-F capture is needed here at all: nothing between the original halt
+    /// and the eventual `BX` in `branch_resume_thumb_aware` ever touches CPSR (`change_to_arm`'s
+    /// own `BX pc` only ever changes T, same as any `BX`), so mode/flags/I/F are naturally still
+    /// exactly what they were at the real original halt - only T itself needs restoring, which
+    /// `BX`'s own architectural effect (T taken from the branch target register's bit 0) does
+    /// atomically as part of redirecting execution.
     pending_resume_thumb: bool,
 }
 
@@ -410,23 +404,18 @@ pub struct Arm7tdmiCommunicationInterface<'probe> {
     /// and `pending_resume_pc` in particular is written by one call (e.g. a plain
     /// `write_core_reg(pc, ..)`, as `Session::prepare_running_on_ram` does) and consumed by a
     /// *later*, separate call's `resume()`/`run()` (e.g. `Session::resume_all_cores`, called
-    /// independently afterward). Confirmed as a real, previously-unnoticed bug on real hardware:
-    /// with an owned clone here (the original implementation), that later call's fresh interface
-    /// instance always saw `pending_resume_pc: None` again - silently discarding the PC redirect
-    /// and falling back to `resume()`'s "just continue from wherever it's halted" path instead,
-    /// so a RAM-target `probe-rs run`/`download --start` on this architecture never actually
-    /// jumped to the intended entry point at all. A hardware breakpoint armed at the entry point
-    /// before resuming, in this exact two-call shape, never fired (confirmed: not even a single
-    /// hit over a 5s window on a `clbss_l`-style loop body that would be executed hundreds of
-    /// times if genuinely reached) - conclusive, not just theoretical.
+    /// independently afterward). An owned clone here would mean that later call's fresh interface
+    /// instance always sees `pending_resume_pc: None`, silently discarding the PC redirect and
+    /// falling back to `resume()`'s "just continue from wherever it's halted" path instead, so a
+    /// RAM-target `probe-rs run`/`download --start` on this architecture would never actually
+    /// jump to the intended entry point.
     state: &'probe mut Arm7tdmiDebugInterfaceState,
     /// The JTAG instruction (IR) the probe's TAP currently holds, if known - `None` forces the
     /// next `scan_dr` to (re)select it. Mirrors OpenOCD's `arm_jtag_set_instr`, which checks
-    /// `tap->cur_instr` and skips the IR-scan entirely when it already matches: unlike this
-    /// crate's previous behaviour of reselecting IR before every single chain-1 clock (see
-    /// `clock1`), real ARM7TDMI/EmbeddedICE hardware needs consecutive same-instruction scans
-    /// to be plain DR shifts with IR held stationary, not a fresh IR-select each time - the
-    /// per-clock IR churn was found to be why chain-1 always read back zero on real hardware.
+    /// `tap->cur_instr` and skips the IR-scan entirely when it already matches: real
+    /// ARM7TDMI/EmbeddedICE hardware needs consecutive same-instruction scans to be plain DR
+    /// shifts with IR held stationary, not a fresh IR-select each time (see `clock1`) - per-clock
+    /// IR churn makes chain-1 read back zero on real hardware.
     current_instruction: Option<JtagInstruction>,
     /// The scan chain most recently selected via SCAN_N, if known - see `current_instruction`;
     /// `select_scan_chain` skips reselecting when this already matches, matching OpenOCD's
@@ -652,7 +641,7 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
 
         let address = register as u64;
         // R/W = 0 (bit 37) selects a read; bits [36:32] are the register address, bits
-        // [31:0] are the data field (don't care for a read). Confirmed against OpenOCD's
+        // [31:0] are the data field (don't care for a read). Matches OpenOCD's
         // `embeddedice_read_reg_w_check`, which documents bit 37 as "0/read".
         let access = address << 32;
 
@@ -678,8 +667,7 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
 
         self.scan_dr(JtagInstruction::Intest, access, 38)?;
         // A write needs this follow-up scan (same access value) to actually commit, mirroring
-        // the read path's "one behind" capture semantics - confirmed load-bearing on real
-        // hardware, not just a defensive precaution.
+        // the read path's "one behind" capture semantics.
         self.scan_dr(JtagInstruction::Intest, access, 38)?;
 
         tracing::trace!("Wrote EmbeddedICE register {:?}: 0x{:08X}", register, value);
@@ -703,28 +691,16 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     /// chain, the order from serial data in to serial data out, is: 1. Data bus bits 0 to 31.
     /// 2. The BREAKPT bit, the first to be shifted out." This describes the register's
     /// physical layout (TDI end holds data bit 0, TDO end holds BREAKPT) - the chronological
-    /// shift order is the *reverse* of that (confirmed against scan chain 2's analogous "R/W,
-    /// address bits 4 to 0, then data value bits 31 to 0" layout, empirically validated on
-    /// real hardware): BREAKPT first, then the 32 data bits MSB-first (bit 31 down to bit 0).
+    /// shift order is the *reverse* of that (matching scan chain 2's analogous "R/W, address
+    /// bits 4 to 0, then data value bits 31 to 0" layout): BREAKPT first, then the 32 data bits
+    /// MSB-first (bit 31 down to bit 0).
     ///
-    /// RESOLVED: this scan chain used to always capture the same frozen value on real
-    /// hardware, regardless of what was actually clocked out (confirmed via a byte-level MPSSE
-    /// trace decode - see `jtag_decode.py` at the repo root, written for this investigation -
-    /// that the *sent* bytes genuinely differed as expected; only the capture was stuck).
-    /// Several real bugs were found and fixed along the way (IR/scan-chain reselection on
-    /// every clock; capturing every clock instead of only the one whose result is used, see
-    /// [`Self::clock1_no_capture`]; wrong instruction encodings - all worth keeping regardless,
-    /// all independently confirmed correct against OpenOCD's source), but none of them alone
-    /// explained the frozen capture. The actual final cause: this function's underlying DR
-    /// shift went straight from Exit1-DR to Update-DR and directly into the next Select-DR-Scan
-    /// (no Run-Test/Idle in between), while OpenOCD's ARM7TDMI chain-1 clocking rests in
-    /// Run-Test/Idle between every consecutive clock - confirmed with a full op-by-op and then
-    /// per-TCK-pulse state-path diff (via `jtag_decode.py`) between a probe-rs session and a
-    /// real OpenOCD session on the same board. Fixed via [`Self::scan_dr_pause_idle`] (ends
-    /// each shift in Pause-DR, then explicitly walks to Idle before the next one - see
-    /// [`JtagAccess::move_to_idle`]). Confirmed fixed on real hardware: reads now exactly match
-    /// an independent OpenOCD readback (including boot ROM content at `0x0`), and a RAM
-    /// write+readback round-trips correctly, independently confirmed via OpenOCD's own `mdw`.
+    /// Each shift here ends in Pause-DR and is then explicitly walked to Run-Test/Idle before
+    /// the next one starts (via [`Self::scan_dr_pause_idle`] and [`JtagAccess::move_to_idle`]),
+    /// rather than going straight from Exit1-DR/Update-DR into the next Select-DR-Scan - matching
+    /// OpenOCD's ARM7TDMI chain-1 clocking, which rests in Run-Test/Idle between every
+    /// consecutive clock. Without that idle rest, this scan chain reads back the same frozen
+    /// value on real hardware regardless of what is actually clocked out.
     fn clock1(&mut self, breakpt: bool, data: u32) -> Result<u32, Arm7tdmiError> {
         self.select_scan_chain(ScanChain::Chain1)?;
 
@@ -764,7 +740,7 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
         // Save r0 before clobbering it: fetch STR r0,[r0]; decode; execute(1); then a
         // capture-only clock reads back the value from execute(2) (see the module doc comment
         // on `arm7_instructions` for why capture lags one clock behind the shift that exposes
-        // it - confirmed against OpenOCD's arm7tdmi_read_core_regs using the identical 4-clock
+        // it - matching OpenOCD's `arm7tdmi_read_core_regs`'s identical 4-clock
         // fetch+decode+execute+capture structure).
         self.clock1_no_capture(false, STR_R0_R0)?;
         self.clock1_no_capture(false, NOP)?;
@@ -774,9 +750,9 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
         // r0 = pc (MOV r0, r15), then save it the same way. Unlike the r0 save above, this
         // needs one extra clock first to fetch MOV itself (STR is the very first instruction
         // in the r0 save above, whereas here MOV must be fetched before STR's own identical
-        // fetch+decode+execute+capture 4-clock sequence can start) - confirmed by recounting
-        // OpenOCD's arm7tdmi_change_to_arm literally: `clock_out(MOV); clock_out(STR);
-        // clock_out(NOP); clock_out(NOP); clock_data_in(pc)` is 5 total operations, not 4.
+        // fetch+decode+execute+capture 4-clock sequence can start) - matching OpenOCD's
+        // `arm7tdmi_change_to_arm`: `clock_out(MOV); clock_out(STR); clock_out(NOP);
+        // clock_out(NOP); clock_data_in(pc)` is 5 total operations, not 4.
         self.clock1_no_capture(false, MOV_R0_R15)?;
         self.clock1_no_capture(false, STR_R0_R0)?;
         self.clock1_no_capture(false, NOP)?;
@@ -802,6 +778,33 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
         Ok((r0, pc))
     }
 
+    /// Physically convert the core to ARM state after a halt that's known, by construction, to
+    /// have happened in Thumb state - for a caller that already knows the exact, reliable halt
+    /// PC (`known_good_pc`) and doesn't need [`Self::change_to_arm`]'s own, less-precise
+    /// chain-1-captured one.
+    ///
+    /// [`crate::architecture::arm7::Arm7tdmi::step`]'s completion path latches the halt
+    /// ([`Self::latch_current_halt`]) and then calls this explicitly when the halt genuinely
+    /// happened in Thumb (the common case) - every chain-1 sequence in this file assumes ARM
+    /// state, matching this file's "always convert to ARM after a possibly-Thumb halt" invariant
+    /// that every other halt path ([`Self::enter_debug_state`]) also upholds. Without it, the
+    /// pipeline is still genuinely decoding Thumb the next time a chain-1 sequence runs -
+    /// `branch_resume_thumb_aware`'s leading `read_core_register(0)` (an ARM-encoded injection)
+    /// would hit that mismatched state on the very next resume.
+    ///
+    /// Uses `known_good_pc` instead of `change_to_arm`'s own captured-and-corrected PC:
+    /// `step()` already knows exactly where the core is (`next_pc`, the same value the step
+    /// watchpoint was armed on) far more reliably than a fresh chain-1 capture would report.
+    pub(crate) fn convert_to_arm_after_thumb_step(
+        &mut self,
+        known_good_pc: u32,
+    ) -> Result<(), Arm7tdmiError> {
+        let (r0, _uncorrected_pc) = self.change_to_arm()?;
+        self.write_core_register_unchecked(0, r0)?;
+        self.write_core_register_unchecked(15, known_good_pc)?;
+        Ok(())
+    }
+
     /// Run a register-only (non memory-accessing) instruction to completion: fetch, decode,
     /// execute. Safe to use at debug (TCK) speed since no external bus transaction occurs.
     fn execute_simple(&mut self, instruction: u32) -> Result<(), Arm7tdmiError> {
@@ -821,7 +824,7 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     /// accesses that must actually reach target memory (flash/RAM content), see
     /// [`Self::system_speed_access`] instead.
     fn execute_data_transfer(&mut self, instruction: u32) -> Result<u32, Arm7tdmiError> {
-        // Confirmed against OpenOCD's arm7tdmi_read_core_regs: register values are read via
+        // Matches OpenOCD's arm7tdmi_read_core_regs: register values are read via
         // exactly fetch + 2 NOPs + one capture-only clock_data_in, i.e. 4 total 33-bit scans,
         // taking the 4th's capture as the answer. (Injecting an arbitrary literal into a
         // register is a *different* operation with different timing - see `load_immediate`,
@@ -838,15 +841,11 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     /// address calculation the instruction would otherwise have used.
     ///
     /// Uses the LDM/STM multiple-register-transfer instruction, not a single-word `LDR`
-    /// (`execute_data_transfer`'s capture path uses that, for reads) - confirmed against
-    /// OpenOCD's `arm7tdmi_write_core_regs`, called with a single-bit mask by every real
-    /// register-write path in OpenOCD (e.g. `arm7_9_write_memory`'s `reg[0] = address;
-    /// write_core_regs(target, 0x1, reg)` to set up the address register): OpenOCD has no
-    /// single-`LDR`-with-injected-data technique to load an arbitrary register at all. This is
-    /// a real, independently-confirmed-correct fix (matches OpenOCD exactly), but on its own
-    /// it did *not* resolve the frozen-capture symptom described on [`Self::clock1`] - that
-    /// took a separate fix (only capturing on the clock whose result is used). Kept regardless,
-    /// since it's still the right mechanism.
+    /// (`execute_data_transfer`'s capture path uses that, for reads) - matching OpenOCD's
+    /// `arm7tdmi_write_core_regs`, called with a single-bit mask by every real register-write
+    /// path in OpenOCD (e.g. `arm7_9_write_memory`'s `reg[0] = address; write_core_regs(target,
+    /// 0x1, reg)` to set up the address register): OpenOCD has no single-`LDR`-with-injected-data
+    /// technique to load an arbitrary register at all.
     fn load_immediate(&mut self, register: u8, value: u32) -> Result<(), Arm7tdmiError> {
         let instr = arm7_instructions::LOAD_MULTIPLE_R0 | (1u32 << register);
         self.clock1_no_capture(false, instr)?; // fetch LDMIA R0, {register}
@@ -888,11 +887,9 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     /// calling this, rather than relying on an earlier, possibly-not-immediately-preceding
     /// `write_core_register(15, ..)` call.
     ///
-    /// Confirmed necessary on real hardware: without this, `RESTART` only ran the core for a
-    /// handful of instructions before it re-entered debug state, with PC nowhere near either
-    /// the entry point or the intended completion breakpoint - a debug-speed `LDMIA`-injected
-    /// PC value alone does not reliably redirect the fetch/decode pipeline on real ARM7TDMI
-    /// silicon; only a genuine, pipeline-flushing branch instruction does.
+    /// Required because a debug-speed `LDMIA`-injected PC value alone does not reliably redirect
+    /// the fetch/decode pipeline on real ARM7TDMI silicon; only a genuine, pipeline-flushing
+    /// branch instruction does.
     fn branch_resume(&mut self) -> Result<(), Arm7tdmiError> {
         self.clock1_no_capture(true, arm7_instructions::NOP)?;
         self.clock1_no_capture(false, arm7_instructions::BRANCH_BACK_TO_PC)?;
@@ -905,19 +902,17 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     /// all) is not sufficient here.
     ///
     /// Ported clock-for-clock from OpenOCD's `arm7tdmi_branch_resume_thumb` (`arm7tdmi.c`) - the
-    /// actual, hardware-proven reference mechanism for this exact problem on this exact debug
-    /// architecture. An earlier attempt at this (synthesizing the T bit via a temporary SVC-mode
-    /// SPSR write followed by `MOVS PC, LR`, an "exception return" idiom) is **not** how OpenOCD
-    /// does it, and reliably corrupted execution on real hardware; OpenOCD's own `arm7_9_restore_context`
-    /// explicitly masks the T bit *out* (`& ~0x20`) every time it writes CPSR, never using CPSR/
-    /// SPSR MSR tricks to change it at all. The real, only-working mechanism is a genuine `BX`
-    /// interworking branch: load the target `pc` with bit 0 forced set (the standard
-    /// interworking-address convention - `BX` takes T from the target register's bit 0) into a
-    /// scratch register, then execute `BX` on it - PC and CPSR.T update atomically as `BX`'s own
-    /// documented architectural side effect. No CPSR/mode/flags/I-F capture or restore is needed
-    /// at all: nothing in this whole sequence (or `change_to_arm`'s own earlier `BX pc`) ever
-    /// touches anything but PC and T, so mode/flags/I/F are simply never disturbed from the real
-    /// original halt's values.
+    /// reference mechanism for this exact problem on this exact debug architecture. The
+    /// mechanism is a genuine `BX` interworking branch: load the target `pc` with bit 0 forced
+    /// set (the standard interworking-address convention - `BX` takes T from the target
+    /// register's bit 0) into a scratch register, then execute `BX` on it - PC and CPSR.T update
+    /// atomically as `BX`'s own documented architectural side effect. No CPSR/mode/flags/I-F
+    /// capture or restore is needed at all: nothing in this whole sequence (or `change_to_arm`'s
+    /// own earlier `BX pc`) ever touches anything but PC and T, so mode/flags/I/F are simply
+    /// never disturbed from the real original halt's values. Notably, this does *not* go through
+    /// a temporary SVC-mode SPSR write plus `MOVS PC, LR` ("exception return") to synthesize the
+    /// T bit - OpenOCD's own `arm7_9_restore_context` explicitly masks the T bit *out* (`&
+    /// ~0x20`) every time it writes CPSR, never using CPSR/SPSR MSR tricks to change it at all.
     ///
     /// Uses R0 as the scratch/`BX` target register (clobbering it, like OpenOCD's own version -
     /// R0 is already known-clobbered-and-restorable at this point in `halt()`'s own Thumb
@@ -943,6 +938,12 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
         // single-NOP-clock pattern exactly (its own comments mark the core as "now in Thumb
         // state" after this) - a chain-2 read doesn't care about ARM/Thumb decode state, so
         // these are safe regardless of exactly when T actually flips within this window.
+        //
+        // Precondition this function depends on but doesn't itself enforce: the core must
+        // already be in ARM state on entry (so the leading `read_core_register(0)` above and
+        // `load_immediate`'s ARM-encoded injection land correctly) - see
+        // `convert_to_arm_after_thumb_step`'s doc comment for a real case where this was
+        // silently violated and this `BX`'s T-bit transition failed as a result.
         self.read_debug_status()?;
         self.clock1_no_capture(false, arm7_instructions::NOP)?;
         self.read_debug_status()?;
@@ -1080,17 +1081,22 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
                 // the capture instruction executes - using it as its own store's memory base
                 // looked like a plausible reason OpenOCD avoids it here).
                 //
-                // RESOLVED (2026-09-08): the garbage/stale-R0 readings previously described here
-                // were never caused by this capture sequence at all - see `enter_debug_state`'s
-                // doc comment for the actual root cause (a Thumb-halted core never being
-                // converted to ARM state before this file's ARM-encoded chain-1 injections, for
-                // any halt reached via a hardware breakpoint/watchpoint). With that fixed, this
-                // sequence now reads back correctly.
+                // This sequence loads the *real* CPSR value into R0 (`MRS R0, CPSR`) to capture
+                // it via `STR R0, [R15]`, which clobbers the core's real, architectural R0
+                // register - not just a debug-side snapshot - so R0 must be saved before and
+                // restored after, or the core resumes with R0 holding CPSR's value instead of
+                // its own, the same pattern already used elsewhere in this file for other
+                // R0-clobbering sequences (e.g. `change_to_arm`, and the read/write bulk
+                // system-speed-access fix). Also requires the core to already be in ARM state
+                // (see `enter_debug_state`'s doc comment) - this file's ARM-encoded chain-1
+                // injections assume it.
+                let saved_r0 = self.read_core_register_unchecked(0)?;
                 self.clock1_no_capture(false, arm7_instructions::MRS_R0_CPSR)?; // fetch MRS
                 self.clock1_no_capture(false, arm7_instructions::STR_R0_R15)?; // fetch STR (MRS decode)
                 self.clock1_no_capture(false, arm7_instructions::NOP)?; // MRS execute, STR decode
                 self.clock1_no_capture(false, arm7_instructions::NOP)?; // STR execute (1st cycle)
                 let cpsr = self.clock1(false, arm7_instructions::NOP)?; // STR execute (2nd cycle) / capture
+                self.write_core_register_unchecked(0, saved_r0)?;
 
                 // This capture reflects the core's *real, current* CPSR - which genuinely has
                 // T=0 (ARM) right now if `enter_debug_state` converted it from an originally
@@ -1098,9 +1104,7 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
                 // change, not a debug-side pretense). A caller wants the CPSR the target will
                 // actually resume with, though, which had T=1 - restore it from
                 // `pending_resume_thumb`, the same flag `enter_debug_state`/`resume()` already
-                // use to remember this exact fact. Confirmed against real OpenOCD ground truth at
-                // an identical Thumb-mode halt point: this file's read of `0x6000001f` plus this
-                // restore now matches OpenOCD's own `0x6000003f` exactly (bit 5 is CPSR's T bit).
+                // use to remember this exact fact (bit 5 is CPSR's T bit).
                 if self.state.pending_resume_thumb {
                     Ok(cpsr | (1 << 5))
                 } else {
@@ -1121,10 +1125,9 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     /// version this generalizes and its own doc comment for why a register read has a *real*,
     /// physical side effect on this silicon (each one genuinely advances the core's pipeline by
     /// a few instructions). Reading N registers this way pays that fetch/decode/execute overhead
-    /// once, not N times - see [`crate::architecture::arm7`]'s module doc and the
-    /// `step_wreg_pc_anomaly_explained` memory entry for why that matters in practice (repeated
-    /// single-register reads during interactive stepping/inspection can walk a short routine
-    /// clean off its own end).
+    /// once, not N times - see [`crate::architecture::arm7`]'s module doc for why that matters in
+    /// practice (repeated single-register reads during interactive stepping/inspection can walk
+    /// a short routine clean off its own end).
     ///
     /// `mask`'s bit 15 (R15/PC) gets the same `- 12` adjustment as
     /// [`Self::read_core_register`]'s register-15 case. CPSR (register 16) is not part of this
@@ -1132,22 +1135,14 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     /// separate [`Self::read_core_register`]`(16, ..)` call.
     ///
     /// A single `STMIA`-based capture sequence only reliably captures the first
-    /// `Self::MAX_REGISTERS_PER_TRANSFER` registers - confirmed on real hardware, precisely
-    /// bisected: requesting 4 registers in one transfer reads back 4 genuinely distinct values,
-    /// but requesting 5 makes the 4th and 5th data-transfer clocks return the *same* (stale)
-    /// value instead of two real ones, and every clock past the 4th continues repeating it. This
-    /// held regardless of which specific registers were requested (shifting the whole request by
-    /// one register number shifted where the stale run started by the same amount), ruling out
-    /// any specific register (e.g. R0, also `STMIA`'s own base register) as the cause - it's
-    /// purely about how many data-transfer clocks are chained back-to-back in one sequence, not
-    /// which registers. Root cause not identified further (a JTAG-adapter-side buffering limit
-    /// was checked and ruled out - this probe's 4096-byte command buffer is far larger than
-    /// needed - so this is presumably a genuine ARM7TDMI/EmbeddedICE silicon limit on sustained
-    /// `STMIA` data-transfer cycles at debug speed). Worked around here by chunking any request
-    /// into groups of at most `Self::MAX_REGISTERS_PER_TRANSFER` registers, each getting its
-    /// own fresh fetch/decode/execute/capture sequence, rather than one unbounded transfer -
-    /// preserves the single-transfer fast path for anything at or under the limit (e.g. the
-    /// already-validated 4-register case) while fixing larger requests.
+    /// `Self::MAX_REGISTERS_PER_TRANSFER` registers: past that count, the data-transfer clocks
+    /// start returning the same stale value instead of the real per-register content, regardless
+    /// of which specific registers are requested - a genuine ARM7TDMI/EmbeddedICE silicon limit
+    /// on sustained `STMIA` data-transfer cycles at debug speed, not a JTAG-adapter buffering
+    /// limit (this probe's 4096-byte command buffer is far larger than needed). Any request is
+    /// therefore chunked into groups of at most `Self::MAX_REGISTERS_PER_TRANSFER` registers,
+    /// each getting its own fresh fetch/decode/execute/capture sequence, rather than one
+    /// unbounded transfer.
     pub fn read_core_registers(&mut self, mask: u16) -> Result<Vec<(u8, u32)>, Arm7tdmiError> {
         self.ensure_halted()?;
 
@@ -1217,29 +1212,20 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     /// Used to resume from a semihosting call intercepted via SVC vector catch (see
     /// [`crate::architecture::arm7::Arm7tdmi::run`]).
     ///
-    /// BUG FOUND (2026-09-08) and fixed: this used to do this via a single, real `MOVS PC, LR`
-    /// instruction (`arm7_instructions::MOVS_PC_LR`) injected and executed on the target -
-    /// exactly the "exception return" idiom
-    /// [`Self::branch_resume_thumb_aware`]'s own doc comment already documents as *not* how
-    /// OpenOCD does a Thumb-state resume and as reliably corrupting execution on this real
-    /// hardware (an MSR/CPSR-restore-driven T-bit change is architecturally unpredictable -
-    /// only `BX` reliably changes it). That lesson had been applied everywhere else in this
-    /// file's resume machinery except here. Compounding this, the real `MOVS PC, LR` also
-    /// silently left [`Arm7tdmiDebugInterfaceState::pending_resume_pc`]/`pending_resume_thumb`
-    /// exactly as they were *before* the call (both bookkeeping fields specific to *this*
-    /// file's own explicit-PC-write tracking, which a raw injected instruction execution never
-    /// touches) - so the very next `resume()` call in `run()` would redirect PC right back to
-    /// the *stale*, pre-exception-return cached value (the SVC vector's own address) instead of
-    /// wherever `MOVS PC, LR` had just, correctly, really branched to - undoing the return
-    /// entirely and re-entering the SVC vector in a tight, silent, JTAG-invisible loop (matching
-    /// the observed symptom exactly: `embedded-test` hanging indefinitely, with no further
-    /// tracing at all, right after the first successful semihosting dispatch).
+    /// Deliberately does *not* execute a real exception-return instruction (a single, real
+    /// `MOVS PC, LR`) on the target: this is the same "exception return" idiom
+    /// [`Self::branch_resume_thumb_aware`]'s own doc comment documents as not how OpenOCD does a
+    /// Thumb-state resume, since an MSR/CPSR-restore-driven T-bit change is architecturally
+    /// unpredictable - only `BX` reliably changes it. It would also leave
+    /// [`Arm7tdmiDebugInterfaceState::pending_resume_pc`]/`pending_resume_thumb` (bookkeeping
+    /// fields specific to this file's own explicit-PC-write tracking) untouched, so the next
+    /// `resume()` call in `run()` would redirect PC back to their stale, pre-exception-return
+    /// cached value instead of wherever the exception actually returns to.
     ///
-    /// Fixed by not executing a real exception-return instruction at all: read SPSR (the exact
-    /// CPSR the interrupted code had - real, hardware-captured data, safe to read while still
-    /// genuinely in ARM state) and LR (the resume address) first, then let the already-proven,
-    /// `BX`-based [`Self::resume`]/[`Self::branch_resume_thumb_aware`] machinery perform the
-    /// actual T-bit/PC transition - by caching them into the exact same
+    /// Instead, read SPSR (the exact CPSR the interrupted code had - real, hardware-captured
+    /// data, safe to read while still genuinely in ARM state) and LR (the resume address) first,
+    /// then let the `BX`-based [`Self::resume`]/[`Self::branch_resume_thumb_aware`] machinery
+    /// perform the actual T-bit/PC transition - by caching them into the exact same
     /// `pending_resume_pc`/`pending_resume_thumb` fields `resume()` already knows how to consume
     /// correctly. Mode/interrupt-mask/flag bits (everything in SPSR except T) are restored via
     /// the existing MSR-based register-16 write, with T forced to the real current value (0 -
@@ -1256,11 +1242,9 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
         // resumes - if `read_spsr` clobbers it first, the target sees SPSR's raw bit pattern as
         // its syscall's "return value" instead of the real one, almost always a nonzero value on
         // this specific SVC-vector-catch path (SPSR here is the *caller's* CPSR, essentially
-        // never zero) that the target's semihosting client library reads as a hard failure -
-        // confirmed hardware root cause of a genuine, reproducible panic in `embedded-test`'s own
-        // `args()` call chain, previously misattributed to a target-side "corrupted stack word"/
-        // "spurious IRQ" bug in a much longer prior investigation. Save/restore R0 around the
-        // clobbering read so any value a caller already placed there survives this call.
+        // never zero) that the target's semihosting client library reads as a hard failure.
+        // Save/restore R0 around the clobbering read so any value a caller already placed there
+        // survives this call.
         let saved_r0 = self.read_core_register(0)?;
         let spsr = self.read_spsr()?;
         let lr = self.read_core_register(14)?;
@@ -1297,8 +1281,7 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     /// for callers (currently only [`Self::enter_debug_state`]) that just confirmed DBGACK
     /// themselves, moments earlier in the same call chain, and want to avoid adding more chain-2
     /// `DebugStatus` round-trips to an already-dense burst of them right after a fresh halt - a
-    /// window this whole backend has repeatedly found less reliable than isolated, well-spaced
-    /// reads (see `probe_rs_arm7_chain1_bug` memory).
+    /// window this silicon is less reliable in than isolated, well-spaced reads.
     fn write_core_register_unchecked(
         &mut self,
         register: u8,
@@ -1352,17 +1335,13 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     pub fn read_memory_32(&mut self, address: u32) -> Result<u32, Arm7tdmiError> {
         self.ensure_halted()?;
 
-        // BUG FOUND (2026-09-14): the `LDMIA R0!, {R1}` below genuinely, permanently overwrites
-        // the target's real R0/R1 via real instruction execution - the same class of side effect
-        // `return_from_exception`'s own `read_spsr()` comment already documents for `MRS R0,
-        // SPSR` ("a real instruction execution, not a side-effect-free debug read"), just never
-        // applied here. A plain read halting a genuinely *running* target (e.g. `probe-rs read`
-        // against a `probe-rs run`'d target) can catch it mid-routine with live values in R0/R1
-        // not yet spilled to the stack; resuming without restoring them corrupts the target's own
-        // execution for real, not just this call's reported value. Confirmed on real hardware:
-        // periodic `probe-rs read` polling of an otherwise-correct, freely-running target
-        // reliably corrupted it into a wild-jump/exception-storm state within seconds, while an
-        // identical target left completely untouched by any read ran correctly for 5+ minutes.
+        // The `LDMIA R0!, {R1}` below genuinely, permanently overwrites the target's real R0/R1
+        // via real instruction execution - the same class of side effect `return_from_exception`'s
+        // own `read_spsr()` comment documents for `MRS R0, SPSR` ("a real instruction execution,
+        // not a side-effect-free debug read"). A plain read halting a genuinely *running* target
+        // (e.g. `probe-rs read` against a `probe-rs run`'d target) can catch it mid-routine with
+        // live values in R0/R1 not yet spilled to the stack; resuming without restoring them
+        // would corrupt the target's own execution for real, not just this call's reported value.
         // Save/restore R0/R1 around the access, same as `return_from_exception` already does.
         let saved_r0 = self.read_core_register(0)?;
         let saved_r1 = self.read_core_register(1)?;
@@ -1373,22 +1352,14 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
 
         // R0 = address
         self.load_immediate(0, address)?;
-        // (Removed: a diagnostic `read_core_register(0/1/2)` probe used to sit here, each call
-        // round-tripping through scan chain 2 via its own `is_halted()`. Tested and ruled out
-        // as the cause of the "every capture reads back the same frozen value" symptom - real
-        // reads at different addresses still return identically 0xE59FF860 without it - but
-        // it's dead diagnostic weight either way, so left removed.)
 
         // Queue `LDMIA R0!, {R1}` for system-speed execution, matching OpenOCD's
-        // `arm7tdmi_load_word_regs` (`ARMV4_5_LDMIA(0, mask, 0, 1)`) exactly - this previously
-        // queued a single-word `LDR R1, [R0]` instead, despite this comment already (correctly)
-        // describing it as "load-multiple": OpenOCD never uses a single-word LDR/STR for a
-        // system-speed access, only the write-back LDM/STM form. This was a real bug - the
-        // single-word LDR queued here never actually landed the requested address's content.
-        // BREAKPT goes on a NOP clocked *before* the target instruction's own fetch - not
-        // during the target instruction's own execute/address-calc stage, as this used to do.
-        // The instruction is then only *fetched* (bp=false) at debug speed; RESTART lets the
-        // core run its decode/execute/data-transfer stages automatically at system speed.
+        // `arm7tdmi_load_word_regs` (`ARMV4_5_LDMIA(0, mask, 0, 1)`) exactly - OpenOCD never
+        // uses a single-word LDR/STR for a system-speed access, only the write-back LDM/STM
+        // form. BREAKPT goes on a NOP clocked *before* the target instruction's own fetch, not
+        // during the target instruction's own execute/address-calc stage. The instruction is
+        // then only *fetched* (bp=false) at debug speed; RESTART lets the core run its
+        // decode/execute/data-transfer stages automatically at system speed.
         self.clock1_no_capture(false, arm7_instructions::NOP)?;
         self.clock1_no_capture(true, arm7_instructions::NOP)?;
         let instr = arm7_instructions::LOAD_MULTIPLE_R0_WRITEBACK | (1 << 1);
@@ -1397,15 +1368,10 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
         // The re-latch below must happen even when the access *fails*. `system_speed_access`
         // issues RESTART before it starts polling, so by the time it can time out the core has
         // already been released; returning early via `?` with STICKY_HALT still clear would
-        // leave the debug logic half-configured for whatever runs next. Latent-invariant fix
-        // only: this was investigated as a candidate cause of the "Core is not halted on every
-        // subsequent attach" wedge seen after `erase`/`debug --launch` and hardware-tested to
-        // NOT be it (the wedge still reproduces with this in place) - that turned out to be the
-        // core being resumed into post-flash-algorithm garbage at teardown, recoverable with a
-        // target reset. Kept because restoring the latch on the error path is correct either way.
+        // leave the debug logic half-configured for whatever runs next.
         let access = self.system_speed_access();
-        // Confirmed against a real OpenOCD trace on this exact board (`embeddedice_write_reg():
-        // 0: 0x00000005`): STICKY_HALT|INTDIS, not DBGRQ|INTDIS.
+        // Matches OpenOCD's own trace on this exact board (`embeddedice_write_reg(): 0:
+        // 0x00000005`): STICKY_HALT|INTDIS, not DBGRQ|INTDIS.
         self.write_debug_control(debug_control::STICKY_HALT | debug_control::INTDIS)?;
         access?;
 
@@ -1424,7 +1390,7 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
         self.ensure_halted()?;
 
         // Save/restore R0/R1 around the clobbering `STMIA` below - see `read_memory_32`'s doc
-        // comment for why (identical mechanism, identical real-hardware-confirmed corruption).
+        // comment for why (identical mechanism).
         let saved_r0 = self.read_core_register(0)?;
         let saved_r1 = self.read_core_register(1)?;
 
@@ -1437,9 +1403,7 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
         self.load_immediate(1, value)?;
 
         // Queue `STMIA R0!, {R1}` for system-speed execution - see the note in `read_memory_32`
-        // (matches OpenOCD's `arm7tdmi_store_word_regs`, the write-back STM form; this
-        // previously queued a single-word `STR R1, [R0]`, which never actually landed the
-        // write).
+        // (matches OpenOCD's `arm7tdmi_store_word_regs`, the write-back STM form).
         self.clock1_no_capture(false, arm7_instructions::NOP)?;
         self.clock1_no_capture(true, arm7_instructions::NOP)?;
         let instr = arm7_instructions::STORE_MULTIPLE_R0_WRITEBACK | (1 << 1);
@@ -1467,16 +1431,12 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     /// which this does not replicate, but the single-register-per-access form still avoids the
     /// bug below).
     ///
-    /// Confirmed on real hardware to fix a real bug: calling `write_memory_32` in a plain loop -
-    /// which toggles `STICKY_HALT` off then back on for *every single word* - reliably,
-    /// deterministically drifts the core's real, architectural PC by tens of KB over a 64-word
-    /// (256-byte) burst, with the core ending up executing unrelated code for real, even though
-    /// each individual `write_memory_32` call's own `is_halted()` polling reports success
-    /// throughout. Verified via an independent OpenOCD session performing the identical 64-word
-    /// burst against the same board: PC and CPSR read back bit-for-bit identical before and
-    /// after (no drift at all). This function's burst form (clear once, write N words, set once)
-    /// was verified the same way and showed no drift either - narrowing the bug specifically to
-    /// the per-word `STICKY_HALT` clear/set cycle, not anything else about system-speed access.
+    /// Calling `write_memory_32` in a plain loop toggles `STICKY_HALT` off then back on for
+    /// *every single word*, which drifts the core's real, architectural PC by tens of KB over a
+    /// 64-word (256-byte) burst, with the core ending up executing unrelated code for real, even
+    /// though each individual `write_memory_32` call's own `is_halted()` polling reports success
+    /// throughout. This function's burst form (clear once, write N words, set once) avoids that
+    /// drift entirely, since `STICKY_HALT` is only toggled once for the whole burst.
     pub fn write_memory_32_bulk(
         &mut self,
         address: u32,
@@ -1489,9 +1449,8 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
         self.ensure_halted()?;
 
         // Save/restore R0/R1 around the clobbering `STMIA` burst below - see `read_memory_32`'s
-        // doc comment for why (identical mechanism, identical real-hardware-confirmed
-        // corruption). Every iteration reuses this same pair, so saving/restoring once around
-        // the whole burst is enough.
+        // doc comment for why (identical mechanism). Every iteration reuses this same pair, so
+        // saving/restoring once around the whole burst is enough.
         let saved_r0 = self.read_core_register(0)?;
         let saved_r1 = self.read_core_register(1)?;
 
@@ -1526,17 +1485,13 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
 
     /// Read consecutive words starting at `address`, as a burst.
     ///
-    /// BUG FOUND (2026-09-10): there was no bulk memory-read primitive on this backend at all -
-    /// even the generic `read_32` (`mod.rs`) looped calling the single-word [`Self::read_memory_32`]
-    /// once per word, the exact same per-word `STICKY_HALT` clear/set drift class already found
-    /// and fixed for writes (see [`Self::write_memory_32_bulk`]'s doc comment) - just never
-    /// applied to reads. Fixed the same way, reusing an already-proven building block: queues a
-    /// multi-register `LDMIA R0!, {R1..R(chunk)}` (chunk size bounded by
-    /// `Self::MAX_REGISTERS_PER_TRANSFER` = 4 - the same hard per-STMIA/LDMIA-capture register
-    /// limit already found and worked around in [`Self::read_core_registers`]) as ONE
+    /// Avoids the same per-word `STICKY_HALT` clear/set drift class documented on
+    /// [`Self::write_memory_32_bulk`] by queuing a multi-register `LDMIA R0!, {R1..R(chunk)}`
+    /// (chunk size bounded by `Self::MAX_REGISTERS_PER_TRANSFER` = 4 - the same hard
+    /// per-STMIA/LDMIA-capture register limit [`Self::read_core_registers`] works around) as ONE
     /// system-speed access per up-to-4 words (one `STICKY_HALT` toggle per chunk, not per word),
     /// then pulls the captured registers back out via [`Self::read_core_registers`]'s own
-    /// already-hardware-verified batched chain-1 capture - not a new, unverified mechanism.
+    /// batched chain-1 capture.
     pub fn read_memory_32_bulk(
         &mut self,
         address: u32,
@@ -1614,19 +1569,31 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     pub fn halt(&mut self) -> Result<(), Arm7tdmiError> {
         tracing::info!("Halting ARM7TDMI core");
 
+        // EmbeddedICE's Debug Status Register can't distinguish *why* the core is halted (see
+        // `status()`'s own doc comment in `mod.rs`), so if the core is already halted - for a
+        // completely different reason, e.g. a breakpoint/watchpoint the caller left armed,
+        // autonomously re-triggering with no probe-rs call involved - unconditionally asserting
+        // DBGRQ and applying the DBGRQ-specific PC correction would apply the wrong correction
+        // (`-4` for Thumb instead of the watchpoint one, `-6` - see `enter_debug_state`).
+        // `status()` already handles this correctly (calls `latch_watchpoint_halt` on an
+        // already-halted core) - do the same here: check first, and defer to the watchpoint-halt
+        // path instead of asserting DBGRQ over it.
+        if self.is_halted()? {
+            tracing::debug!(
+                "halt(): core was already halted before DBGRQ was asserted - treating as a \
+                 watchpoint-style halt instead"
+            );
+            return self.latch_watchpoint_halt();
+        }
+
         // Set DBGRQ bit in Debug Control Register
         self.write_debug_control(debug_control::DBGRQ)?;
 
         // Wait for core to enter debug state (DBGACK)
         let start = std::time::Instant::now();
-        // A direct trace analysis (RUST_LOG=probe_rs::probe::ftdi=trace, jtag_decode.py ground
-        // truth) of a real, reproducible failure on this backend showed this poll loop running
-        // continuously for the *entire* previous 1s budget (~318 back-to-back JTAG round trips,
-        // ~3.1ms each after removing the old 10ms inter-poll sleep) without DBGACK ever being
-        // observed set, versus ~172 iterations before a typical success - i.e. DBGRQ sometimes
-        // genuinely needs more than 1s of continuous polling to take effect on this silicon, not
-        // that the protocol itself is wrong. Extending the budget is a safe, backward-compatible
-        // change (a successful halt still returns as soon as DBGACK is seen, same as before).
+        // DBGRQ can genuinely need several seconds of continuous polling to take effect on this
+        // silicon - a 3s budget covers that. A successful halt still returns as soon as DBGACK
+        // is seen.
         let timeout = std::time::Duration::from_secs(3);
 
         while start.elapsed() < timeout {
@@ -1634,9 +1601,8 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
             if status & debug_status::DBGACK != 0 {
                 self.state.in_debug_state = true;
                 // "Debug entry": latch the halt via `STICKY_HALT` and release DBGRQ, so the
-                // core stays halted without DBGRQ needing to remain asserted. Confirmed against
-                // a real OpenOCD trace on this exact board (`embeddedice_write_reg(): 0:
-                // 0x00000005`).
+                // core stays halted without DBGRQ needing to remain asserted. Matches OpenOCD's
+                // own trace on this exact board (`embeddedice_write_reg(): 0: 0x00000005`).
                 self.write_debug_control(debug_control::STICKY_HALT | debug_control::INTDIS)?;
                 // OpenOCD's `arm7_9_debug_entry` always follows this same write with a call to
                 // `arm7_9_clear_halt`, which - specifically for a plain DBGRQ-triggered halt (as
@@ -1646,12 +1612,7 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
                 // software no-op: `arm7_9_clear_halt`'s first branch
                 // (`!debug_entry_from_reset && use_dbgrq`) unconditionally re-writes the debug
                 // control register even though the cached value hasn't changed since the write
-                // just above. This is the one concrete, structural difference found between
-                // OpenOCD's (reliable, 15/15 verified on this exact board - see
-                // `probe_rs_arm7_chain1_bug` memory) plain-DBGRQ halt sequence and this
-                // function's own, which every one of this session's lockups traced back to
-                // (attach-while-running, i.e. exactly this path - `reset_and_halt`, used by every
-                // proven-reliable flashing operation, never goes through this and is untouched).
+                // just above.
                 self.write_debug_control(debug_control::STICKY_HALT | debug_control::INTDIS)?;
                 tracing::debug!("Core halted successfully");
                 self.enter_debug_state(status, true)?;
@@ -1659,10 +1620,7 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
             }
             // OpenOCD's own DBGACK poll loop (`target_wait_state`, calling `target_poll` ->
             // `arm7_9_poll`) has no sleep at all between JTAG reads - it polls back-to-back as
-            // fast as the JTAG transfer itself takes. This 10ms fixed sleep has no equivalent
-            // there; removing it to match, as part of narrowing the remaining, still-
-            // intermittent lockup this session's `arm7_9_clear_halt` fix didn't fully close (see
-            // `probe_rs_arm7_chain1_bug` memory).
+            // fast as the JTAG transfer itself takes, so this loop does the same.
         }
 
         Err(Arm7tdmiError::Timeout)
@@ -1678,18 +1636,12 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     /// value observed at the moment the halt was confirmed (`DBGACK` just became set), so its
     /// `TBIT` reflects the real halt-time core state.
     ///
-    /// BUG FOUND (2026-09-08): this conversion previously only ran from inside [`Self::halt`]'s
-    /// own DBGACK poll loop - [`Self::latch_watchpoint_halt`] (the *only* path a hardware
-    /// breakpoint/watchpoint-triggered halt goes through, via `Arm7tdmi::status()` in `mod.rs`)
-    /// never called it at all. Since essentially every register-read investigation in this
-    /// project's history (see `arm7_pending_resume_pc_lost_across_core_calls` memory) halted via
-    /// a breakpoint at real, Thumb-mode application code (`arm_main`, `main`, ...) rather than
-    /// `Core::halt()` on an already-running target, every single subsequent chain-1 register/
-    /// memory access after such a halt was silently feeding 32-bit ARM-encoded instructions to a
-    /// core still decoding 16-bit Thumb - explaining the long-unexplained "SP/CPSR garbage,
-    /// looks like code-address-shaped values" symptom (the misdecoded ARM words drive real,
-    /// Thumb-decoded side effects instead of the intended MRS/STMIA capture sequence). Fixed by
-    /// extracting this method and calling it from both halt paths.
+    /// Called from both halt paths - [`Self::halt`]'s own DBGACK poll loop and
+    /// [`Self::latch_watchpoint_halt`] (the path a hardware breakpoint/watchpoint-triggered halt
+    /// goes through, via `Arm7tdmi::status()` in `mod.rs`) - so that every subsequent chain-1
+    /// register/memory access after *either* kind of halt is guaranteed to be feeding
+    /// 32-bit ARM-encoded instructions to a core that is actually decoding ARM, not still
+    /// decoding 16-bit Thumb from wherever it was halted.
     ///
     /// `dbgrq` distinguishes *why* the core is halted - `true` from [`Self::halt`] (a DBGRQ-
     /// initiated halt, which can interrupt the pipeline at any point, not synchronized to an
@@ -1700,19 +1652,22 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
         if status & debug_status::TBIT != 0 {
             tracing::debug!("Halted in Thumb state, converting to ARM");
             let (r0, pc) = self.change_to_arm()?;
-            // BUG FOUND (2026-09-08): a second real root cause of the long-standing
-            // "download --start's teardown-halt lands near an interworking bx, corrupting the
-            // resume" bug (see arm7_pending_resume_pc_lost_across_core_calls memory) - a DBGRQ
-            // halt needs an *additional* PC correction beyond change_to_arm's own `-0xa`,
-            // confirmed against OpenOCD's `arm7_9_debug_entry`: `context[15] -=
+            // A DBGRQ halt needs an *additional* PC correction beyond change_to_arm's own
+            // `-0xa`, matching OpenOCD's `arm7_9_debug_entry`: `context[15] -=
             // arm7_9->dbgreq_adjust_pc * 2` for a Thumb-state DBGRQ halt specifically (not for a
             // breakpoint/watchpoint one), where ARM7TDMI's own `dbgreq_adjust_pc = 2` (see
-            // `arm7tdmi.c`) - i.e. `-4` for Thumb state, applied only when `dbgrq` is true. Not
-            // yet independently hardware-verified for the Thumb case the way the ARM case below
-            // was (this file's own DBGRQ-halt bug reproduction happened to land in ARM state) -
-            // kept for consistency with OpenOCD's reference and the same underlying mechanism,
-            // flagged for future verification.
-            let pc = if dbgrq { pc.wrapping_sub(4) } else { pc };
+            // `arm7tdmi.c`) - i.e. `-4` for Thumb state, applied only when `dbgrq` is true.
+            //
+            // The watchpoint/breakpoint (non-dbgrq) case needs its own, larger correction: a
+            // breakpoint at a real Thumb function's entry reports a PC `6` bytes (3 Thumb
+            // instructions) past the true address, not an exact fetch-boundary value - mirroring
+            // the ARM branch's own asymmetry (watchpoint needs *more* correction than DBGRQ, not
+            // less).
+            let pc = if dbgrq {
+                pc.wrapping_sub(4)
+            } else {
+                pc.wrapping_sub(6)
+            };
             // `BX R0` (with R0=0, per `change_to_arm`'s implementation) leaves the
             // CPU's PC at address 0 (low ROM) - restore the ORIGINAL r0/pc, exactly as
             // OpenOCD's `arm7_9_debug_entry` does via its register cache, before any
@@ -1740,57 +1695,33 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
             // real code. See `Arm7tdmiDebugInterfaceState::pending_resume_pc`'s doc
             // comment.
             //
-            // BUG FOUND (2026-09-08), root-caused precisely: `read_core_register(15)`'s own
-            // `-12` correction (matching OpenOCD's generic `context[15] -= 3 * 4` STM-capture-lag
-            // fix) is not the whole story for a DBGRQ-initiated halt specifically. OpenOCD's
-            // `arm7_9_debug_entry` applies a *second*, DBGRQ-only correction on top:
-            // `context[15] -= arm7_9->dbgreq_adjust_pc * 4` for ARM state, with ARM7TDMI's own
-            // `dbgreq_adjust_pc = 2` (`arm7tdmi.c`) - i.e. an extra `-8`. Confirmed via a real,
-            // reproducible hardware failure: `download --start`'s teardown (`Session::drop` ->
-            // `halted_access` -> this exact DBGRQ `halt()` path) repeatedly cached
-            // `pending_resume_pc = 0x40086c` when the core was actually halted mid-fetch of
-            // `bx ip` at `0x400864` (`_begin`'s ARM->Thumb interworking jump into `main`) -
-            // `0x40086c` is exactly `0x400864 + 8`, and is itself the literal-pool data word at
-            // the `_undefined_instruction` label (not real code), so resuming there executed
-            // garbage. `0x40086c - 8 = 0x400864` matches the real instruction address exactly.
+            // `read_core_register(15)`'s own `-12` correction (matching OpenOCD's generic
+            // `context[15] -= 3 * 4` STM-capture-lag fix) is not the whole story for a
+            // DBGRQ-initiated halt specifically. OpenOCD's `arm7_9_debug_entry` applies a
+            // *second*, DBGRQ-only correction on top: `context[15] -=
+            // arm7_9->dbgreq_adjust_pc * 4` for ARM state, with ARM7TDMI's own
+            // `dbgreq_adjust_pc = 2` (`arm7tdmi.c`) - i.e. an extra `-8`, applied below.
             //
-            // BUG FOUND (2026-09-08), root-caused precisely, watchpoint side: a watchpoint
-            // (non-DBGRQ) ARM-state halt needs its own extra, *different* correction, confirmed
-            // via a direct wire-trace/ground-truth comparison against OpenOCD (see
-            // `cached_halt_pc`'s doc comment): a fetch watchpoint armed on the SVC vector
-            // (`0x00000008`) and genuinely, cleanly hit (DebugStatus showed DBGACK+SYSCOMP in
-            // both tools) had this file's `read_core_register(15)?` - already carrying its own
-            // generic `-12` STM-capture-lag correction - report `0x00000014`, a further, fixed
-            // `+12` past the real match address, not the `+8` a live/DBGRQ "architectural PC"
-            // read would suggest. Reproducible and deterministic (not the continuously-drifting
-            // artifact a *second* read on top of this one would show - see `cached_halt_pc`),
-            // so this is a real, fixed pipeline-depth difference for how EmbeddedICE reports PC
-            // specifically coming out of a watchpoint match, not noise.
+            // The watchpoint (non-DBGRQ) ARM-state case needs its own extra, *different*
+            // correction: a fetch watchpoint match reports PC a further, fixed `+12` past the
+            // real match address (not the `+8` the DBGRQ case above uses) - a fixed
+            // pipeline-depth difference in how EmbeddedICE reports PC coming out of a watchpoint
+            // match specifically, applied as `-12` below.
             //
-            // BUG FOUND (2026-09-10): this must be the *unchecked* read, exactly as
-            // `read_core_register_unchecked`'s own doc comment already documents for this call
-            // site - going through the checked `read_core_register` recurses back into
+            // This read must be the *unchecked* form, exactly as
+            // `read_core_register_unchecked`'s own doc comment documents for this call site:
+            // going through the checked `read_core_register` would recurse back into
             // `ensure_halted` -> (if DBGACK reads flaky/cleared) `halt` -> this same
-            // `enter_debug_state` branch -> checked `read_core_register` again. Confirmed on real
-            // hardware: a `read` hit exactly this cycle (`ensure_halted`/`halt`/`read_core_register`
-            // alternating 3423 times in the captured stack) and blew the stack instead of
-            // returning `CoreNotHalted` once `ensure_halted`'s own one-retry budget was exhausted.
+            // `enter_debug_state` branch -> checked `read_core_register` again, an unbounded
+            // recursion.
             //
-            // BUG FOUND (2026-09-10), same day follow-up: going strictly unchecked here also
-            // silently dropped a real, load-bearing side effect the old checked path had via
-            // `ensure_halted`'s one-time retry - resilience against DBGACK intermittently
-            // reading back cleared for a brief window right after a halt has just been
-            // confirmed, before settling durably (the same signature already documented on
-            // `ensure_halted` itself, and reproduced independently today via `erase`/
-            // `debug --launch`). Confirmed as a real regression via a plain `download`: this
-            // exact site captured a garbage PC (`0xf0e897ec` - not a plausible address on this
-            // chip at all) during the flash algorithm's own load-time attach halt, which was
-            // then used as the teardown resume target and caused the whole flash operation to
-            // fail with a spurious Init() timeout. Restore the resilience without reintroducing
-            // the unbounded-recursion hazard above: re-latch and retry the capture itself
-            // (bounded, and never calling back into `halt()`/`ensure_halted`) if `is_halted()` -
-            // a leaf status read with no capture side effects of its own - shows DBGACK has
-            // already dropped by the time the capture is attempted.
+            // Going strictly unchecked here still needs one piece of resilience the checked path
+            // would otherwise have provided via `ensure_halted`'s retry: DBGACK can intermittently
+            // read back cleared for a brief window right after a halt has just been confirmed,
+            // before settling durably. Re-latch and retry the capture itself (bounded, and never
+            // calling back into `halt()`/`ensure_halted`) if `is_halted()` - a leaf status read
+            // with no capture side effects of its own - shows DBGACK has already dropped by the
+            // time the capture is attempted.
             let mut pc = self.read_core_register_unchecked(15)?;
             for attempt in 0..3 {
                 if self.is_halted()? {
@@ -1818,12 +1749,11 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     /// Before doing that, redirects the fetch/decode pipeline to the intended PC via a real
     /// branch instruction (`Self::write_pc` immediately followed by `Self::branch_resume`,
     /// with nothing else in between so the branch's calibrated offset still lands correctly).
-    /// Confirmed necessary on real hardware - without it, `RESTART` let the core run for only
-    /// a handful of instructions (whatever was left over in the pipeline from the debug-speed
-    /// register-write sequence) before it re-entered debug state on its own, nowhere near
-    /// either the call's entry point or its intended completion breakpoint; the result
-    /// register then read back as whatever value had been written into it as an argument,
-    /// unmodified - not the routine's real return value. Matches OpenOCD's `arm7_9_resume`,
+    /// Required because a debug-speed register-write sequence alone leaves the pipeline holding
+    /// stale content: without a real branch to redirect it, `RESTART` would let the core run for
+    /// only a handful of leftover pipeline instructions before it re-enters debug state on its
+    /// own, nowhere near either the call's entry point or its intended completion breakpoint.
+    /// Matches OpenOCD's `arm7_9_resume`,
     /// which always ends `restore_context` by re-writing PC (`dirty` or not) and immediately
     /// calls `branch_resume`, before ever touching the debug control register or issuing
     /// `RESTART`.
@@ -1876,12 +1806,10 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     ///
     /// Used by [`crate::architecture::arm7::Arm7tdmi::halt`]/`reset_and_halt`, which both read
     /// PC right after halting purely to build their own `CoreInformation` return value - a read
-    /// whose result many callers (e.g. `Session::halted_access`) never use. Per this file's own
-    /// established finding that an extra register read can itself nudge the pipeline forward on
-    /// this silicon (see `probe_rs_arm7_chain1_bug` memory, "core.step() genuinely works"
-    /// section), letting `resume()` perform a *second*, independent PC read afterward compounds
-    /// that same effect for no reason, when the value it would read is already known from the
-    /// halt that just happened.
+    /// whose result many callers (e.g. `Session::halted_access`) never use. An extra register
+    /// read itself nudges the pipeline forward on this silicon, so letting `resume()` perform a
+    /// *second*, independent PC read afterward would compound that effect for no reason, when
+    /// the value it would read is already known from the halt that just happened.
     pub(crate) fn cache_resume_pc(&mut self, pc: u32) {
         self.state.pending_resume_pc = Some(pc);
     }
@@ -1889,24 +1817,29 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     /// Peek at the cached halt-time PC (see [`Self::cache_resume_pc`]) without consuming it and
     /// without issuing a fresh chain-1 read.
     ///
-    /// ROOT CAUSE (2026-09-08) of the SVC-vector-catch mechanism's failure to recognise a
-    /// watchpoint hit deep in ROM: `status()`'s own `pc == SVC_VECTOR_ADDRESS` check used to do
-    /// its own independent `read_core_reg(PC.id)` call - a *second* chain-1 register read after
-    /// the one `enter_debug_state` already performs (via `read_core_register(15)` +
-    /// `cache_resume_pc`) while latching the halt. Per this file's own established finding that
-    /// every chain-1 register read genuinely, physically advances this silicon's pipeline by a
-    /// few instructions (see the `read_core_registers`/`step` doc comments and the
-    /// `probe_rs_arm7_chain1_bug`/`step_wreg_pc_anomaly_explained` memory entries), that second
-    /// read never saw the true halt-time PC at all - it saw whatever the *first* read had already
-    /// nudged it to, plus its own further nudge. Confirmed via a direct wire-trace diff against a
-    /// from-scratch OpenOCD ground-truth test that halts cleanly and reports `pc: 0x00000008`
-    /// exactly: DebugStatus showed a clean DBGACK+SYSCOMP halt in both cases, but probe-rs's own
-    /// *second* PC read reported `0x20` - not a real position, just this read's own contribution
-    /// on top of whatever the first read left behind. Consumers that need "where did the core
-    /// just halt" should use this cached value (set once, by the same single read that already
-    /// has to happen to prime a bare `resume()`) instead of reading PC again.
+    /// Every chain-1 register read genuinely, physically advances this silicon's pipeline by a
+    /// few instructions (see the `read_core_registers`/`step` doc comments), so a *second*,
+    /// independent PC read after the one `enter_debug_state` already performs (via
+    /// `read_core_register(15)` + `cache_resume_pc`) while latching the halt would never see the
+    /// true halt-time PC - only whatever the first read had already nudged it to, plus its own
+    /// further nudge. Consumers that need "where did the core just halt" should use this cached
+    /// value (set once, by the same single read that already has to happen to prime a bare
+    /// `resume()`) instead of reading PC again.
     pub(crate) fn cached_halt_pc(&self) -> Option<u32> {
         self.state.pending_resume_pc
+    }
+
+    /// Peek at [`Arm7tdmiDebugInterfaceState::pending_resume_thumb`] without consuming it - see
+    /// [`crate::architecture::arm7::Arm7tdmi::step`]'s own use of this (saving it across its
+    /// internal `resume()` call, which otherwise consumes/resets it).
+    pub(crate) fn pending_resume_thumb(&self) -> bool {
+        self.state.pending_resume_thumb
+    }
+
+    /// Set [`Arm7tdmiDebugInterfaceState::pending_resume_thumb`] directly - see
+    /// [`Self::pending_resume_thumb`]'s doc comment for why a caller needs this.
+    pub(crate) fn set_pending_resume_thumb(&mut self, thumb: bool) {
+        self.state.pending_resume_thumb = thumb;
     }
 
     /// Check if core is halted by reading Debug Status Register.
@@ -1916,18 +1849,15 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     /// unconditionally, on every debug entry regardless of what caused it (watchpoint match,
     /// DBGRQ, vector catch), is exactly this write, before anything else is done.
     ///
-    /// Confirmed on real hardware to matter, not just be redundant bookkeeping: without it, a
-    /// watchpoint-induced halt (e.g. the flash algorithm's completion breakpoint catching a
-    /// real `BX LR` return) can report `DBGACK` set here - genuinely, if briefly - while the
-    /// core is not durably captured for chain-1 (debug-speed) operations, and resumes running
-    /// for real shortly after on its own. A caller that trusts this function's `true` result and
-    /// proceeds straight to chain-1 reads/writes (as `wait_for_completion`'s poll loop, and
-    /// `call_function`'s own register setup, both do) can end up injecting into a pipeline the
-    /// core silently isn't actually listening to - explaining a class of previously-unexplained
-    /// "successful" completions where the read-back register state didn't correspond to
-    /// anything the routine plausibly left behind (see `probe_rs_arm7_chain1_bug` memory,
-    /// "narrows the remaining probe-rs mystery" era, and the `program_page` false-completion
-    /// investigation before this fix).
+    /// This latching matters, not just redundant bookkeeping: without it, a watchpoint-induced
+    /// halt (e.g. the flash algorithm's completion breakpoint catching a real `BX LR` return) can
+    /// report `DBGACK` set here - genuinely, if briefly - while the core is not durably captured
+    /// for chain-1 (debug-speed) operations, and resumes running for real shortly after on its
+    /// own. A caller that trusts this function's `true` result and proceeds straight to chain-1
+    /// reads/writes (as `wait_for_completion`'s poll loop, and `call_function`'s own register
+    /// setup, both do) would end up injecting into a pipeline the core silently isn't actually
+    /// listening to, with the read-back register state failing to correspond to anything the
+    /// routine actually left behind.
     pub fn is_halted(&mut self) -> Result<bool, Arm7tdmiError> {
         let status = self.read_debug_status()?;
         let halted = status & debug_status::DBGACK != 0;
@@ -1940,16 +1870,15 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     /// if it genuinely isn't, after trying to recover once.
     ///
     /// A halt reported successful by [`Self::halt`] (including right after attach, see
-    /// [`super::Arm7tdmi::new`]) has been observed, on real hardware, to sometimes not durably
-    /// stick for more than a short window - specifically following this project's flash
-    /// algorithm having just run (e.g. a plain `read`/`write` immediately after `erase`/
-    /// `download`): DBGACK can read cleared again a short time later with no explanation other
-    /// than genuine hardware/timing flakiness in this exact scenario, causing whatever the very
-    /// next real operation happens to be to fail this precondition, even though the core was
-    /// durably confirmed halted just moments before. Re-halting once before giving up recovers
-    /// this specific case in practice; a caller that hits this after a *bare* attach with no
-    /// halt at all yet either way ends up with the correct, honest `CoreNotHalted` error once
-    /// this retry is also exhausted.
+    /// [`super::Arm7tdmi::new`]) can sometimes not durably stick for more than a short window on
+    /// real hardware - specifically following this project's flash algorithm having just run
+    /// (e.g. a plain `read`/`write` immediately after `erase`/`download`): DBGACK can read
+    /// cleared again a short time later due to genuine hardware/timing flakiness in this exact
+    /// scenario, causing whatever the very next real operation happens to be to fail this
+    /// precondition, even though the core was durably confirmed halted just moments before.
+    /// Re-halting once before giving up recovers this specific case in practice; a caller that
+    /// hits this after a *bare* attach with no halt at all yet either way ends up with the
+    /// correct, honest `CoreNotHalted` error once this retry is also exhausted.
     fn ensure_halted(&mut self) -> Result<(), Arm7tdmiError> {
         if self.is_halted()? {
             return Ok(());
@@ -1967,15 +1896,13 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     /// switching to `STICKY_HALT` - mirroring [`Self::halt`]'s own proven-reliable sequence
     /// exactly, just entered from a different starting condition.
     ///
-    /// Confirmed on real hardware to matter: after a watchpoint match, `is_halted()` reporting
-    /// `DBGACK` set does not, on its own, durably stop the core on this silicon - it can keep
-    /// running for real afterward (confirmed by re-reading PC after a plain, JTAG-idle sleep
-    /// with no further access at all, and seeing it advance). Just writing
-    /// `STICKY_HALT | INTDIS` directly, without ever having asserted `DBGRQ` first, does not fix
-    /// this - only going through the same DBGRQ-then-STICKY_HALT transition `halt()` itself uses
-    /// does. Call this once, right when a poll loop first observes the halt it was waiting for -
-    /// not from inside [`Self::is_halted`] itself, which is also used as a precondition check
-    /// throughout chain-1 operations where momentarily asserting DBGRQ has been confirmed to
+    /// After a watchpoint match, `is_halted()` reporting `DBGACK` set does not, on its own,
+    /// durably stop the core on this silicon - it can keep running for real afterward. Just
+    /// writing `STICKY_HALT | INTDIS` directly, without ever having asserted `DBGRQ` first, does
+    /// not fix this - only going through the same DBGRQ-then-STICKY_HALT transition `halt()`
+    /// itself uses does. Call this once, right when a poll loop first observes the halt it was
+    /// waiting for - not from inside [`Self::is_halted`] itself, which is also used as a
+    /// precondition check throughout chain-1 operations, where momentarily asserting DBGRQ would
     /// cause real regressions (e.g. bulk memory writes silently not landing).
     pub(crate) fn latch_watchpoint_halt(&mut self) -> Result<(), Arm7tdmiError> {
         // Read status *before* asserting DBGRQ/STICKY_HALT below: TBIT reflects the real
@@ -1983,16 +1910,35 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
         // function's own writes don't change it, but reading it fresh here (rather than reusing
         // a possibly-stale caller-side value) keeps this self-contained and correct regardless
         // of caller. See `enter_debug_state`'s doc comment for why this call is required here at
-        // all - this was the actual root cause of the long-unresolved SP/CPSR bug.
+        // all.
         let status = self.read_debug_status()?;
+        self.latch_current_halt()?;
+        // `dbgrq: false` - the momentary DBGRQ assertion inside `latch_current_halt` is only
+        // this function's own *latching* mechanism for a halt the watchpoint match already
+        // caused; the core's real PC was already frozen by that match, at a well-defined fetch
+        // boundary, before this function ever ran - matching OpenOCD's own `debug_reason`-based
+        // (not DBGRQ-bit-based) distinction. See `enter_debug_state`'s doc comment.
+        self.enter_debug_state(status, false)?;
+        Ok(())
+    }
+
+    /// Just the "durably latch whatever halt condition is currently true" DBGRQ-then-
+    /// STICKY_HALT write pair, without [`Self::latch_watchpoint_halt`]'s additional
+    /// `enter_debug_state` call (which also does a real chain-1 PC (re-)capture and Thumb/ARM
+    /// conversion - unwanted for a caller, like [`crate::architecture::arm7::Arm7tdmi::step`],
+    /// that already knows exactly where the core is and doesn't want a second, redundant
+    /// capture).
+    ///
+    /// Per `latch_watchpoint_halt`'s own doc comment above: after a watchpoint match,
+    /// `is_halted()` reporting `DBGACK` set does not, on its own, durably stop the core on this
+    /// silicon - it can keep running for real afterward. [`Self::is_halted_with_syscomp`] is a
+    /// stronger check than plain `is_halted` but suffers the exact same non-durability, so
+    /// `step()` calls this right after its `is_halted_with_syscomp` wait loop confirms the match
+    /// and before anything else, closing that gap the same way `latch_watchpoint_halt` already
+    /// does for a plain breakpoint hit.
+    pub(crate) fn latch_current_halt(&mut self) -> Result<(), Arm7tdmiError> {
         self.write_debug_control(debug_control::DBGRQ)?;
         self.write_debug_control(debug_control::STICKY_HALT | debug_control::INTDIS)?;
-        // `dbgrq: false` - the momentary DBGRQ assertion just above is only this function's own
-        // *latching* mechanism for a halt the watchpoint match already caused; the core's real
-        // PC was already frozen by that match, at a well-defined fetch boundary, before this
-        // function ever ran - matching OpenOCD's own `debug_reason`-based (not
-        // DBGRQ-bit-based) distinction. See `enter_debug_state`'s doc comment.
-        self.enter_debug_state(status, false)?;
         Ok(())
     }
 
@@ -2041,21 +1987,16 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     /// only the `nOPC` (opcode fetch) bit is compared so it triggers on instruction fetch rather
     /// than data access.
     ///
-    /// The address mask is `1` (bit 0 don't-care), not an exact match (`0`) - confirmed via a
-    /// real OpenOCD wire-trace ground truth (`jtag_decode.py`) that this is exactly what OpenOCD
-    /// writes here (`arm7_9_set_breakpoint`), and load-bearing, not just defensive tolerance for
-    /// a misaligned caller-supplied address: this crate's own long-standing "hardware breakpoints
-    /// can't reliably catch instructions in a short window immediately after an ARM-to-Thumb
-    /// interworking `bx`" limitation (see `arm7_pending_resume_pc_lost_across_core_calls` memory,
-    /// in the `mc1322x-rs` project) turned out to be exactly this - `set_hw_breakpoint` with an
-    /// exact-match mask never catches a real, even-aligned Thumb target address reached via an
-    /// interworking transition, while OpenOCD's identical target/address, differing only in this
-    /// one register value, reliably does. A mask of `1` is always safe regardless of instruction
-    /// set: a real ARM fetch address is always a multiple of 4 (bit 0 hardwired to 0) and a real
-    /// Thumb one a multiple of 2 (also bit 0 = 0), so this never causes two *distinct* real
-    /// instructions to alias onto the same match - it only widens the comparator's tolerance for
-    /// whatever bit-0 value the bus genuinely presents during the fetch this crate is trying to
-    /// catch.
+    /// The address mask is `1` (bit 0 don't-care), not an exact match (`0`) - matching OpenOCD's
+    /// `arm7_9_set_breakpoint`. This is load-bearing, not just defensive tolerance for a
+    /// misaligned caller-supplied address: an exact-match mask fails to catch a real,
+    /// even-aligned Thumb target address reached via an ARM-to-Thumb interworking `bx`
+    /// transition, in the short window immediately after the transition. A mask of `1` is always
+    /// safe regardless of instruction set: a real ARM fetch address is always a multiple of 4
+    /// (bit 0 hardwired to 0) and a real Thumb one a multiple of 2 (also bit 0 = 0), so this
+    /// never causes two *distinct* real instructions to alias onto the same match - it only
+    /// widens the comparator's tolerance for whatever bit-0 value the bus genuinely presents
+    /// during the fetch this crate is trying to catch.
     pub fn set_hw_breakpoint(&mut self, index: usize, address: u32) -> Result<(), Arm7tdmiError> {
         self.configure_fetch_watchpoint(index, address, 1)?;
         tracing::debug!(
@@ -2097,20 +2038,49 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
         Ok(())
     }
 
+    /// Configure hardware unit `index` to halt the core on a genuine *data access* (a real read
+    /// or write, from a `LDR`/`STR`/`LDM`/`STM`-family instruction actually executing) to
+    /// `address` - as opposed to [`Self::set_hw_breakpoint`]'s instruction-fetch trigger.
+    ///
+    /// Matches [`Self::configure_fetch_watchpoint`]'s exact-match mechanism, just with `N_OPC`'s
+    /// required value inverted (per its own doc comment: active low, `0` = opcode fetch, `1` =
+    /// data access) and left as the *only* compared bit (like the fetch case, `N_RW` - read vs.
+    /// write - is masked out/don't-care, so this matches either).
+    pub fn set_hw_data_watchpoint(
+        &mut self,
+        index: usize,
+        address: u32,
+    ) -> Result<(), Arm7tdmiError> {
+        let Some((addr_value, addr_mask, data_mask, control_value)) =
+            EmbeddedIceRegister::watchpoint_unit(index)
+        else {
+            return Err(Arm7tdmiError::InvalidBreakpointUnit(index));
+        };
+        let control_mask = EmbeddedIceRegister::control_mask_register(index).unwrap();
+
+        self.write_ice_register(addr_value, address)?;
+        self.write_ice_register(addr_mask, 0)?;
+        self.write_ice_register(data_mask, 0xFFFF_FFFF)?;
+        self.write_ice_register(
+            control_value,
+            watchpoint_control::ENABLE | watchpoint_control::N_OPC,
+        )?;
+        self.write_ice_register(control_mask, !watchpoint_control::N_OPC & 0xFF)?;
+        tracing::debug!("Set ARM7TDMI data watchpoint #{index} at address {address:#010x}");
+        Ok(())
+    }
+
     /// Configures both hardware watchpoint units together as a "range-chained" single-step
     /// trigger, matching OpenOCD's `arm7_9_enable_eice_step` exactly.
     ///
     /// A lone watchpoint (wildcard *or* exact-match) armed only one instruction ahead of where
     /// `resume()` is about to redirect execution does not reliably fire on real ARM7TDMI
-    /// silicon - confirmed directly: `step()` previously used a wildcard match on a single
-    /// unit, and was observed advancing PC by a large, constant, multi-instruction amount per
-    /// call instead of stopping after exactly one instruction (see `step_sim`'s module doc and
-    /// `probe_rs_arm7_chain1_bug` memory) - the watchpoint comparator apparently needs the core
-    /// to have genuinely resumed (past the RESTART/pipeline-flush transient) before it can
-    /// validly evaluate a match, which a target only one instruction away races.
+    /// silicon: the watchpoint comparator needs the core to have genuinely resumed (past the
+    /// RESTART/pipeline-flush transient) before it can validly evaluate a match, which a target
+    /// only one instruction away races.
     ///
-    /// The fix (from ARM DDI 0029G's watchpoint chaining feature, used by every working ARM7/9
-    /// JTAG debugger for exactly this purpose): comparator 1 (`Watchpoint1`) is set to an
+    /// The mechanism (from ARM DDI 0029G's watchpoint chaining feature, used by every working
+    /// ARM7/9 JTAG debugger for exactly this purpose): comparator 1 (`Watchpoint1`) is set to an
     /// *exact* match on the *current* PC (not `next_pc`) - its own `ENABLE` bit is left clear,
     /// so it never directly triggers a halt, but its "range" output is still computed and feeds
     /// comparator 0's "rangein" (via comparator 0's `control_mask` excluding the `RANGE` bit,
