@@ -1551,6 +1551,7 @@ fn black_magic_debug_port_info(
         probe_factory: &BlackMagicProbeFactory,
         interface,
         is_hid_interface: false,
+        usb_location: None,
     })
 }
 
@@ -1711,6 +1712,7 @@ impl ProbeFactory for BlackMagicProbeFactory {
             probe_factory: &BlackMagicProbeFactory,
             interface: None,
             is_hid_interface: false,
+            usb_location: None,
         })]
     }
 }

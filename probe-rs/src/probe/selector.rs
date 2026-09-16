@@ -46,6 +46,10 @@ pub struct DebugProbeSelector {
     pub interface: Option<u8>,
     /// The serial number of the debug probe to be used.
     pub serial_number: Option<String>,
+    /// USB bus ID and device address, if known. Parsing a string never sets it.
+    ///
+    /// See [`DebugProbeInfo::usb_location`](crate::probe::DebugProbeInfo::usb_location).
+    pub usb_location: Option<(String, u8)>,
 }
 
 impl DebugProbeSelector {
@@ -64,6 +68,12 @@ impl DebugProbeSelector {
             )
         }
 
+        if let Some((bus_id, device_address)) = &self.usb_location
+            && (bus_id.as_str(), *device_address) != (info.bus_id(), info.device_address())
+        {
+            return false;
+        }
+
         if self.interface.is_some() {
             info.interfaces()
                 .any(|iface| matches_with_interface(self, info, Some(iface.interface_number())))
@@ -74,6 +84,10 @@ impl DebugProbeSelector {
 
     /// Check if the given probe info matches this selector.
     pub fn matches_probe(&self, info: &DebugProbeInfo) -> bool {
+        if self.usb_location.is_some() && info.usb_location != self.usb_location {
+            return false;
+        }
+
         self.match_probe_selector(
             info.vendor_id,
             info.product_id,
@@ -147,6 +161,7 @@ impl std::str::FromStr for DebugProbeSelector {
             product_id: u16::from_str_radix(product_id, 16)?,
             serial_number,
             interface,
+            usb_location: None,
         })
     }
 }
@@ -158,6 +173,7 @@ impl From<DebugProbeInfo> for DebugProbeSelector {
             product_id: selector.product_id,
             serial_number: selector.serial_number,
             interface: selector.interface,
+            usb_location: selector.usb_location,
         }
     }
 }
@@ -169,6 +185,7 @@ impl From<&DebugProbeInfo> for DebugProbeSelector {
             product_id: selector.product_id,
             serial_number: selector.serial_number.clone(),
             interface: selector.interface,
+            usb_location: selector.usb_location.clone(),
         }
     }
 }

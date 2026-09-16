@@ -192,6 +192,7 @@ mod tests {
             product_id: 0x5678,
             serial_number: Some(serial.to_owned()),
             interface: None,
+            usb_location: None,
         }
     }
 
