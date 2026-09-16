@@ -180,22 +180,6 @@ impl CortexMState {
         self.pending_step = false;
     }
 
-    pub(crate) fn note_pc_written(&mut self) {
-        self.pc_written = true;
-    }
-
-    pub(crate) fn clear_pc_written(&mut self) {
-        self.pc_written = false;
-    }
-
-    /// Whether the step in `run()` can be skipped, clearing the flag either way.
-    ///
-    /// That step guards against a breakpoint on the address the core halted on. An address the
-    /// host has just written is not that one.
-    pub(crate) fn take_pc_written(&mut self) -> bool {
-        std::mem::take(&mut self.pc_written)
-    }
-
     /// Apply step context to a halt reason read from DFSR.
     pub(crate) fn resolve_halt_reason(&mut self, reason: HaltReason) -> HaltReason {
         if !self.pending_step {
