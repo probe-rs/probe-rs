@@ -33,7 +33,7 @@ use super::{
 };
 use probe_rs_target::ScanChainElement;
 
-use self::chain::ChainParams;
+pub(crate) use self::chain::ChainParams;
 
 /// Scan chain state held by a JTAG probe between batch runs.
 #[derive(Debug)]

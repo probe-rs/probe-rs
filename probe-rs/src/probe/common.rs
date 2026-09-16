@@ -183,7 +183,7 @@ pub(crate) fn extract_ir_lengths<T: BitStore>(
     tracing::trace!("Possible IR start positions: {starts:?}");
 
     if n_taps == 0 {
-        tracing::error!("Cannot scan IR without at least one TAP");
+        tracing::debug!("Cannot scan IR without at least one TAP");
         Err(ScanChainError::InvalidIR)
     } else if n_taps > starts.len() {
         // We must have at least as many `10` patterns as TAPs.

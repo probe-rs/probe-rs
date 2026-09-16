@@ -798,11 +798,26 @@ impl CmsisDap {
 
     pub(crate) fn configure_jtag(&mut self, skip_scan: bool) -> Result<(), DebugProbeError> {
         let ir_lengths = if skip_scan {
-            self.jtag_state
+            let expected = self
+                .jtag_state
                 .expected_scan_chain
-                .as_ref()
-                .map(|chain| chain.iter().filter_map(|s| s.ir_len).collect::<Vec<u8>>())
-                .unwrap_or_default()
+                .clone()
+                .unwrap_or_default();
+
+            self.jtag_state.scan_chain = expected.clone();
+            let selected = self.jtag_state.chain_params.index;
+            if let Some(params) = crate::probe::jtag::ChainParams::from_jtag_chain(
+                &self.jtag_state.scan_chain,
+                selected,
+            ) {
+                tracing::debug!("Re-measured chain params after reconfigure: {params:?}");
+                self.jtag_state.chain_params = params;
+            }
+
+            expected
+                .iter()
+                .filter_map(|s| s.ir_len)
+                .collect::<Vec<u8>>()
         } else {
             let chain = self.jtag_scan(
                 self.jtag_state
