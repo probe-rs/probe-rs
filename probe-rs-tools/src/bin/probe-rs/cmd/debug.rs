@@ -35,8 +35,9 @@ use crate::util::common_options::BinaryDownloadOptions;
 use crate::util::rtt::RttConfig;
 use crate::util::style::{Prompt, probe_rs_color_enabled};
 use crate::{CoreOptions, util::common_options::ProbeOptions};
+use probe_rs_rpc::flash::BootInfo;
 use probe_rs_rpc::format::FormatOptions;
-use probe_rs_rpc_client::RpcClient;
+use probe_rs_rpc_client::{RpcClient, SessionInterface};
 
 use super::dap_server::debug_adapter::dap::dap_types::Request;
 use super::dap_server::debug_adapter::dap::dap_types::Response;
@@ -208,12 +209,29 @@ pub struct Cmd {
 
 impl Cmd {
     pub async fn run(self, client: RpcClient, utc_offset: UtcOffset) -> anyhow::Result<()> {
+        // For `--launch` with a RAM-only target (`BootInfo::FromRam`, e.g. this project's
+        // chip), the core needs an explicit post-flash PC redirect
+        // (`Session::prepare_running_on_ram`, via `prepare_boot`/`prepare_boot_info`) or it
+        // never runs the freshly-written image at all - on a fresh attach it just sits in
+        // the boot ROM's own idle loop. Neither flashing path (`cli::flash` here, nor the
+        // DAP server's own `flash_binary_resolved` when `flashing_enabled: true`) ever calls
+        // this. Worse, `handle_launch_attach` (`debugger.rs`) unconditionally calls
+        // `restart_async` - a real reset+halt with no boot-info awareness - right after
+        // flashing for *every* launch, so redirecting the PC before the "launch" DAP request
+        // is sent (as an earlier version of this fix did) gets silently undone by that reset.
+        // The redirect has to happen *after* the whole launch/configurationDone handshake
+        // completes - i.e. after the `while !debug_client.is_initialized` loop below, once
+        // `handle_launch_attach`'s reset and `configuration_done`'s own halt/resume decision
+        // have both already run - so keep a clone of the session (the DAP server takes the
+        // original as `preattached_session`) and the `BootInfo` from flashing, and apply the
+        // redirect there instead of here.
+        let mut pending_boot: Option<(SessionInterface, BootInfo)> = None;
         let preattached_session = if self.launch {
             if let Some(path) = &self.binary {
                 let (_file_meta, elf_meta) = parse_metadata(path).await?;
                 let session =
                     cli::attach_probe(&client, self.common.clone(), elf_meta, false).await?;
-                cli::flash(
+                let boot_info = cli::flash(
                     &session,
                     path,
                     FormatOptions::default(),
@@ -222,12 +240,29 @@ impl Cmd {
                     None,
                 )
                 .await?;
+                pending_boot = Some((session.clone(), boot_info));
                 Some(session)
             } else {
                 None
             }
         } else {
-            None
+            // A plain attach (no `--launch`) still needs to resolve which physical probe
+            // to use when more than one is connected. Unlike here, the later "attach" DAP
+            // request always builds its `ProbeOptions` with `non_interactive: true`
+            // (`SessionConfig::probe_options`, by design - a real DAP client such as an
+            // IDE has no terminal to prompt on), so ambiguity there is an unconditional
+            // hard error with no chance to pick interactively. Resolve it here instead,
+            // the same way the launch path above already does, and hand the DAP session
+            // the already-open connection (`SessionData::new_rpc_backed` reuses a
+            // `preattached_session` for both launch and attach) instead of letting it
+            // attach again itself. `resume_target: true` because a plain attach targets
+            // a session that is expected to already be running and must not disturb it.
+            let elf_meta = if let Some(path) = &self.binary {
+                parse_metadata(path).await?.1
+            } else {
+                Default::default()
+            };
+            Some(cli::attach_probe(&client, self.common.clone(), elf_meta, true).await?)
         };
 
         let (req_sender, req_receiver) = mpsc::channel(100);
@@ -388,6 +423,17 @@ impl Cmd {
                     break;
                 }
             }
+        }
+
+        // Now that the launch/configurationDone handshake has fully run server-side
+        // (including `handle_launch_attach`'s unconditional post-flash reset), redo the
+        // RAM-target PC redirect - see the long comment above `pending_boot`'s declaration.
+        // `prepare_boot` (not `boot`) leaves the core halted, matching `configurationDone`'s
+        // own `halt_after_reset` semantics rather than always running it loose immediately.
+        if let Some((session, boot_info)) = pending_boot
+            && server_result.is_none()
+        {
+            session.prepare_boot(boot_info, self.shared.core).await?;
         }
 
         // Execute the commands given with `-c` in order, then drop into the interactive
