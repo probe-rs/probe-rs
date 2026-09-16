@@ -144,7 +144,8 @@ impl CmsisDap {
                         let last_tdi = data[bit_count - 1];
                         let sequence_data = bitvec![last_tdi as usize; 1];
                         if let Err(error) =
-                            self.jtag_buffer.push_sequence(true, &sequence_data, false)
+                            self.jtag_buffer
+                                .push_sequence(true, &sequence_data, do_capture)
                         {
                             return Err(BatchExecutionError::new_from_debug_probe(error, results));
                         }
