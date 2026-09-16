@@ -136,6 +136,14 @@ impl InnerTransferResponse {
 /// command id, the transfer count and the last transfer's acknowledgement.
 const HEADER_LEN: usize = 3;
 
+/// A point in a [`TransferRequest`] to come back to.
+#[derive(Debug, Clone, Copy)]
+pub struct TransferMark {
+    transfers: usize,
+    request_len: usize,
+    response_len: usize,
+}
+
 /// Read/write single and multiple registers.
 ///
 /// The DAP_Transfer Command reads or writes data to CoreSight registers.
@@ -166,6 +174,26 @@ impl TransferRequest {
             request_len: HEADER_LEN,
             response_len: HEADER_LEN,
         }
+    }
+
+    /// How much of a request has been built, so that it can be put back.
+    pub fn mark(&self) -> TransferMark {
+        TransferMark {
+            transfers: self.transfers.len(),
+            request_len: self.request_len,
+            response_len: self.response_len,
+        }
+    }
+
+    /// Drop everything added since `mark`.
+    pub fn rewind(&mut self, mark: TransferMark) {
+        debug_assert!(
+            mark.transfers <= self.transfers.len(),
+            "a mark from another request"
+        );
+        self.transfers.truncate(mark.transfers);
+        self.request_len = mark.request_len;
+        self.response_len = mark.response_len;
     }
 
     /// Bytes this command and its reply occupy in a packet.

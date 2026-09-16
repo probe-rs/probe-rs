@@ -79,21 +79,6 @@ pub(crate) fn run_length(ops: &[(HandleId, SwdOp)], start: usize) -> usize {
         .count()
 }
 
-/// How far a run of transfers that `DAP_Transfer` carries extends from `start`.
-///
-/// It ends at anything that is not a transfer, and at a repeat long enough for
-/// `DAP_TransferBlock`.
-fn transfer_run_end(ops: &[(HandleId, SwdOp)], start: usize) -> usize {
-    let mut end = start;
-    while end < ops.len()
-        && matches!(ops[end].1, SwdOp::Transfer { .. })
-        && run_length(ops, end) < MIN_BLOCK_TRANSFERS
-    {
-        end += 1;
-    }
-    end
-}
-
 /// Split a run of transfers into the packets that carry them.
 ///
 /// Each packet arrives with its request built and its transfers carrying the batch index a fault
@@ -109,29 +94,37 @@ fn split_into_packets(
     std::iter::from_fn(move || {
         let mut packet = PendingBatch::new(dap_index);
 
-        while let Some((id, op)) = ops.get(offset) {
-            let SwdOp::Transfer {
-                port,
-                addr,
-                direction,
-                data,
-            } = op
-            else {
+        while let Some((_, op)) = ops.get(offset) {
+            let SwdOp::Transfer { direction, .. } = op else {
                 break;
             };
 
-            let address = CmsisDap::swd_register(*port, *addr);
-            if !packet.push(
-                *direction,
-                packet_size,
-                id.clone(),
-                address,
-                *data,
-                run_start + offset,
-            ) {
+            // A repeat of one access can go as a block transfer, which is pipelined and, for a
+            // write, denser -- but only if it gets a packet to itself. Ask for the whole run: if
+            // it fits here, whatever follows can still share the packet; if it does not, the
+            // block command takes it.
+            let run = run_length(ops, offset);
+            let wanted = if run >= MIN_BLOCK_TRANSFERS { run } else { 1 };
+
+            let run_items =
+                ops[offset..offset + wanted]
+                    .iter()
+                    .enumerate()
+                    .map(|(index, (id, op))| {
+                        let SwdOp::Transfer {
+                            port, addr, data, ..
+                        } = op
+                        else {
+                            unreachable!("a run holds only transfers")
+                        };
+                        let address = CmsisDap::swd_register(*port, *addr);
+                        (id.clone(), address, *data, run_start + offset + index)
+                    });
+
+            if !packet.push_all(*direction, packet_size, run_items) {
                 break;
             }
-            offset += 1;
+            offset += wanted;
         }
 
         (!packet.is_empty()).then_some(packet)
@@ -147,8 +140,8 @@ struct PendingTransfer {
 /// Transfers queued for one `DAP_Transfer`, and what its reply maps back to.
 ///
 /// The two halves stay in step: entry `n` of `transfers` describes transfer `n` of `request`, which
-/// is what lets a reply be matched to the batch operation that asked for it. Only [`Self::push`]
-/// adds to either.
+/// is what lets a reply be matched to the batch operation that asked for it. Only
+/// [`Self::push_all`] adds to either.
 struct PendingBatch {
     request: TransferRequest,
     transfers: Vec<PendingTransfer>,
@@ -168,32 +161,39 @@ impl PendingBatch {
         self.transfers.is_empty()
     }
 
-    /// Add one transfer, or answer that a `packet_size` packet has no room for it.
+    /// Push every transfer `items` yields, or none of them when the packet runs out of room.
+    ///
+    /// Returns whether they all fit. The whole run is rewound on the first one that does not, so a
+    /// run either travels in this packet or waits for the next one intact.
     ///
     /// An empty packet always takes one transfer however small the packet is, or splitting a batch
     /// would never make progress.
-    fn push(
+    fn push_all(
         &mut self,
         direction: Direction,
         packet_size: u16,
-        id: HandleId,
-        address: RegisterAddress,
-        data: u32,
-        batch_index: usize,
+        items: impl IntoIterator<Item = (HandleId, RegisterAddress, u32, usize)>,
     ) -> bool {
-        if !self.request.has_room_for(Self::rw(direction), packet_size) && !self.is_empty() {
-            return false;
-        }
+        let mark = self.request.mark();
+        let transfers = self.transfers.len();
 
-        match direction {
-            Direction::Read => self.request.add_read(address),
-            Direction::Write => self.request.add_write(address, data),
+        for (id, address, data, batch_index) in items {
+            if !self.request.has_room_for(Self::rw(direction), packet_size) && !self.is_empty() {
+                self.request.rewind(mark);
+                self.transfers.truncate(transfers);
+                return false;
+            }
+
+            match direction {
+                Direction::Read => self.request.add_read(address),
+                Direction::Write => self.request.add_write(address, data),
+            }
+            self.transfers.push(PendingTransfer {
+                id,
+                direction,
+                batch_index,
+            });
         }
-        self.transfers.push(PendingTransfer {
-            id,
-            direction,
-            batch_index,
-        });
         true
     }
 
@@ -590,17 +590,17 @@ impl SwdProbe for CmsisDap {
 
         let mut batch_index = 0;
         while batch_index < ops.len() {
-            let run_end = transfer_run_end(&ops, batch_index);
             let packets = split_into_packets(
-                &ops[batch_index..run_end],
+                &ops[batch_index..],
                 batch_index,
                 dap_index,
                 self.packet_size,
             );
             for packet in packets {
+                let packed = packet.transfers.len();
                 results = self.flush_pending_transfers(&packet, results)?;
+                batch_index += packed;
             }
-            batch_index = run_end;
 
             // Whatever ended the run is handled on its own, and cannot share a packet.
             let Some((_, op)) = ops.get(batch_index) else {
@@ -812,6 +812,21 @@ mod tests {
         )
     }
 
+    /// One item for [`PendingBatch::push_all`].
+    fn item(
+        id: &HandleId,
+        addr: u8,
+        data: u32,
+        batch_index: usize,
+    ) -> (HandleId, RegisterAddress, u32, usize) {
+        (
+            id.clone(),
+            RegisterAddress::ApRegister(addr),
+            data,
+            batch_index,
+        )
+    }
+
     #[test]
     fn an_empty_packet_takes_one_transfer_however_small() {
         let mut packet = PendingBatch::new(0);
@@ -819,31 +834,64 @@ mod tests {
 
         // An empty packet takes its first transfer whatever it costs, or splitting a batch would
         // not make progress.
-        assert!(packet.push(
-            Direction::Write,
-            8,
-            id.clone(),
-            RegisterAddress::ApRegister(0b0100),
-            0x2000_0000,
-            0,
-        ));
+        assert!(packet.push_all(Direction::Write, 8, [item(&id, 0b0100, 0x2000_0000, 0)]));
 
-        assert!(!packet.push(
-            Direction::Write,
-            8,
-            id.clone(),
-            RegisterAddress::ApRegister(0b0100),
-            0,
-            1,
-        ));
-        assert!(packet.push(
-            Direction::Read,
-            64,
-            id.clone(),
-            RegisterAddress::ApRegister(0b1100),
-            0,
-            2,
-        ));
+        assert!(!packet.push_all(Direction::Write, 8, [item(&id, 0b0100, 0, 1)]));
+        assert!(packet.push_all(Direction::Read, 64, [item(&id, 0b1100, 0, 2)]));
+    }
+
+    /// An address write followed by `reads` data reads, the shape of a block read.
+    fn address_then_reads(reads: usize) -> Vec<(HandleId, SwdOp)> {
+        let mut ops = vec![transfer(Port::Ap, 0b0100, Direction::Write, 0x2000_0000)];
+        ops.extend((0..reads).map(|_| transfer(Port::Ap, 0b1100, Direction::Read, 0)));
+        ops
+    }
+
+    #[test]
+    fn a_repeat_that_fits_travels_with_the_address_that_set_it_up() {
+        let packets: Vec<_> = split_into_packets(&address_then_reads(2), 0, 0, 64).collect();
+
+        assert_eq!(packets.len(), 1);
+        assert_eq!(packets[0].transfers.len(), 3);
+    }
+
+    #[test]
+    fn a_repeat_rides_along_until_the_reply_is_full() {
+        // Three header bytes and four per read leave room for fifteen in a 64-byte reply, and the
+        // address write costs the reply nothing.
+        let fits: Vec<_> = split_into_packets(&address_then_reads(15), 0, 0, 64).collect();
+        assert_eq!(fits.len(), 1);
+        assert_eq!(fits[0].transfers.len(), 16);
+
+        let one_more: Vec<_> = split_into_packets(&address_then_reads(16), 0, 0, 64).collect();
+        assert_eq!(one_more.len(), 1);
+        assert_eq!(one_more[0].transfers.len(), 1);
+    }
+
+    #[test]
+    fn a_repeat_too_long_for_the_packet_is_left_to_the_block_command() {
+        let packets: Vec<_> = split_into_packets(&address_then_reads(40), 0, 0, 64).collect();
+
+        // Only the address write is packed. `run_batch` sends the reads as `DAP_TransferBlock`,
+        // which is pipelined.
+        assert_eq!(packets.len(), 1);
+        assert_eq!(packets[0].transfers.len(), 1);
+    }
+
+    #[test]
+    fn a_run_that_does_not_fit_leaves_the_packet_as_it_was() {
+        let mut packet = PendingBatch::new(0);
+        let (id, _) = transfer(Port::Ap, 0b0100, Direction::Write, 0);
+
+        assert!(packet.push_all(Direction::Write, 64, [item(&id, 0b0100, 0x2000_0000, 0)]));
+        let (request, response) = packet.request.packet_lengths();
+
+        // Long enough to run out of room part way, which is what the rewind is for.
+        let run = (0..40).map(|i| item(&id, 0b1100, 0, i + 1));
+        assert!(!packet.push_all(Direction::Read, 64, run));
+
+        assert_eq!(packet.transfers.len(), 1);
+        assert_eq!(packet.request.packet_lengths(), (request, response));
     }
 
     #[test]
