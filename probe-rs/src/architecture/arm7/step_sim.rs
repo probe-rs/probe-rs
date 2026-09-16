@@ -354,19 +354,13 @@ fn simulate_thumb(
 /// the decode logic itself pure and directly unit-testable with a literal value, no hardware
 /// needed (see this module's `tests` below).
 ///
-/// BUG FOUND (2026-09-10), via `cargo clippy`'s `bad_bit_mask` deny-lint: the previous form of
-/// this check (`(opcode & 0xFC00) == 0x4400 || (opcode & 0xFC00) == 0x4600`) could never take its
-/// second branch at all - `0xFC00` doesn't cover bit 9, the low bit of the Op field, so a masked
-/// opcode can never equal `0x4600` (which has that bit set) - clippy correctly flagged this arm
-/// as dead code. Worse than just dead code: because the *first* branch's mask also doesn't cover
-/// the Op field, it silently matched ADD, CMP, *and* MOV alike (any Op value), and the resulting
-/// `is_add` flag then re-evaluated that same always-true condition - so every format-5
-/// instruction with Rd/H1 == PC that reached here (an actual `MOV PC, Rm` return idiom included,
-/// e.g. `MOV PC, LR`) was computed as if it were `ADD Rd(=PC), Rm` (`pc+4+rm_val`), not the real
-/// `MOV` (`rm_val` alone) - a wrong predicted next-PC for a genuinely common ARM idiom. `CMP`
-/// reaching here (Rd is really an "Rn" compare operand and never redirects control flow, as this
-/// whole module's own doc comment already specifies) was wrongly treated as a branch too. Fixed
-/// by extracting Op explicitly and only taking the two operations that can write PC.
+/// The 2-bit Op field (bits[9:8]) must be extracted and checked explicitly, not folded into a
+/// wider bitmask comparison: `0xFC00` doesn't cover bit 9 (the low bit of Op), so a mask-only
+/// check would silently match ADD, CMP, and MOV alike regardless of which one is actually
+/// encoded. Only ADD and MOV can write PC and redirect control flow - `MOV PC, Rm` (a common
+/// return idiom, e.g. `MOV PC, LR`) yields `rm_val` directly, while `ADD Rd(=PC), Rm` yields
+/// `pc+4+rm_val`; these must not be conflated. CMP's "Rd" field is really an "Rn" compare
+/// operand and never writes PC, so it's excluded before ever reaching the ADD/MOV split.
 fn decode_hi_register_pc_target(
     opcode: u16,
     pc: u32,
@@ -410,7 +404,18 @@ fn decode_hi_register_pc_target(
 pub(super) fn calculate_next_pc(
     interface: &mut Arm7tdmiCommunicationInterface,
 ) -> Result<(u32, u32), Arm7tdmiError> {
-    let pc = interface.read_core_register(15)?;
+    // Prefer the PC `enter_debug_state` already captured and corrected while latching the
+    // current halt, over a second, independent chain-1 read here - see `cached_halt_pc`'s doc
+    // comment for why a second read never sees the true halt-time value (each chain-1 register
+    // read genuinely, physically advances this silicon's pipeline by a few real instructions,
+    // so decoding from a freshly-read PC would simulate the wrong instruction). Falls back to a
+    // fresh read only if nothing is cached (e.g. `step()` called with no preceding halt
+    // captured this way, which real call sites don't do, but a library caller conceivably
+    // could).
+    let pc = match interface.cached_halt_pc() {
+        Some(pc) => pc,
+        None => interface.read_core_register(15)?,
+    };
     let cpsr = interface.read_core_register(16)?;
     let thumb = (cpsr >> 5) & 1 != 0;
 
