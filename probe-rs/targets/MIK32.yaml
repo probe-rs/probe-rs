@@ -1,0 +1,67 @@
+name: MIK32 Amur
+
+variants:
+- name: MIK32V2
+
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      jtag_tap: 0
+
+  memory_map:
+  - !Nvm
+    name: EEPROM
+    range:
+      start: 0x01000000
+      end: 0x01002000
+    cores:
+    - main
+    access:
+      boot: true
+
+  - !Ram
+    name: RAM
+    range:
+      start: 0x02000000
+      end: 0x02004000
+    cores:
+    - main
+
+  flash_algorithms:
+  - mik32-eeprom
+
+  jtag:
+    force_scan_chain: true
+    scan_chain:
+    - name: cpu
+      ir_len: 5
+    - name: sys
+      ir_len: 4
+
+flash_algorithms:
+- name: mik32-eeprom
+  description: MIK32 Amur EEPROM
+  default: true
+  instructions: NwUAAgNFJSMxwUERBsYixCbCN0UAAoMlxf+T5SUAIy61/hMEAPiTBPADEwQECCKFlwAAAOeAYBkTVXQA42eV/gFFskAiRJJEQQGCgAVFgoC3BQACA8YlIx3OqoUBRbdGAAIDp8b/NwYA/y6WE2dHAJNX1gAjrub+ke+T9fUHmelBEQbGMoWXAAAA54AAFAFFskBBAYKABUWCgLcGAAIDxSYjt0UAAhnFA6XF/xNlBQEjrqX+BUV9FhFHI4mmImN95gIDpsX/wWYTZhYAI67F/rcFBwAThhYgI6zFQBMGAB6ThgagI67VQLcGAAIjoMVCI4mmIgFFgoCXAAAA54DgELcGAAIDxyYjUcOqhjdFAAIDJ8X/E2eHAJPXhgEjLuX+tc8TBwAIAUVjm+UGtwUA/66W+XWThfUH9Y214TcIBwCTBQAIIyS4QCMi2ECTBQYIg0Y2AANHJgCDRxYAA0UGAOIGQgeiB12N2Y5VjREGIyCoQOMftvyTBVAIIyS4QIMlyECFiZHFDwAAAdW/BUWCgDcFAAEDIAUAAyBFAAFFgoC3BQACA8UlIwnNAUU3RgACgybG/5PmBgEjLtb+I4kFIoKABUWCgLcFBwATBgAII6TFQCOipUATBQACfRUjoAVAbf0TBTAII6SlQAOlxUAFiQHFDwAAAdW/NwUAAQMgBQADIEUAgoBBEQbGIsQACAAAAAAAAA==
+  load_address: 0x2000020
+  pc_init: 0x9a
+  pc_uninit: 0x1a0
+  pc_program_page: 0x100
+  pc_erase_sector: 0x50
+  pc_erase_all: 0x0
+  data_section_offset: 0x214
+  flash_properties:
+    address_range:
+      start: 0x1000000
+      end: 0x1002000
+    page_size: 0x80
+    erased_byte_value: 0x0
+    program_page_timeout: 1000
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x80
+      address: 0x0
+  cores:
+  - main
