@@ -123,6 +123,14 @@ pub trait CoreInterface: MemoryInterface {
         Ok(())
     }
 
+    /// Configure hardware unit `unit_index` as a *data-access* watchpoint at `addr` (halts on a
+    /// real read or write to that address, as opposed to [`CoreInterface::set_hw_breakpoint`]'s
+    /// instruction-fetch trigger) - not supported on every architecture backend.
+    fn set_hw_data_watchpoint(&mut self, unit_index: usize, addr: u64) -> Result<(), Error> {
+        let _ = (unit_index, addr);
+        Err(Error::NotImplemented("data watchpoint"))
+    }
+
     /// Returns a list of all the registers of this core.
     fn registers(&self) -> &'static CoreRegisters;
 
@@ -490,6 +498,19 @@ impl<'probe> Core<'probe> {
         self.inner.set_hw_breakpoint(unit_index, addr)
     }
 
+    /// Configure hardware unit `unit_index` as a data-access watchpoint at `addr` - halts on a
+    /// genuine read or write to that address by the core itself, rather than
+    /// [`Core::set_hw_breakpoint_unit`]'s instruction-fetch trigger. Not supported by every
+    /// architecture backend (returns [`Error::NotImplemented`] where it isn't).
+    #[tracing::instrument(skip(self))]
+    pub fn set_hw_data_watchpoint_unit(
+        &mut self,
+        unit_index: usize,
+        addr: u64,
+    ) -> Result<(), Error> {
+        self.inner.set_hw_data_watchpoint(unit_index, addr)
+    }
+
     /// Set a hardware breakpoint
     ///
     /// This function will try to clear a hardware breakpoint at `address` if there exists a breakpoint at that address.
@@ -516,6 +537,15 @@ impl<'probe> Core<'probe> {
                 address,
             ))),
         }
+    }
+
+    /// Clear whatever is configured on hardware unit `unit_index`, by unit index rather than by
+    /// address - the counterpart to [`Core::set_hw_breakpoint_unit`]/
+    /// [`Core::set_hw_data_watchpoint_unit`], needed for a data watchpoint (which isn't recorded
+    /// in the address-indexed `hw_breakpoints()` list [`Core::clear_hw_breakpoint`] searches).
+    #[tracing::instrument(skip(self))]
+    pub fn clear_hw_breakpoint_unit(&mut self, unit_index: usize) -> Result<(), Error> {
+        self.inner.clear_hw_breakpoint(unit_index)
     }
 
     /// Genuinely, durably latch a halt just observed via a watchpoint match. See
