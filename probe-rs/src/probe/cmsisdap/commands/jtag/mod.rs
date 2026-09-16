@@ -114,10 +114,11 @@ impl CmsisDap {
                             results,
                         ));
                     }
-                    let merge_exit =
-                        exchange_leaves_shift(state, ops.get(index + 1).map(|(_, op)| op));
                     let do_capture = *capture && id.should_capture();
                     let bit_count = data.len();
+                    // Avoid panicking if there is no data.
+                    let merge_exit = bit_count > 0
+                        && exchange_leaves_shift(state, ops.get(index + 1).map(|(_, op)| op));
                     let data_bits = if merge_exit { bit_count - 1 } else { bit_count };
                     let mut offset = 0;
                     while offset < data_bits {
