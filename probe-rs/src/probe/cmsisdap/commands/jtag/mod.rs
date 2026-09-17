@@ -262,7 +262,8 @@ impl JtagBuffer {
     }
 
     pub(crate) fn should_flush(&self) -> bool {
-        self.total_buffer_bytes() >= self.packet_size - 1
+        // Checked after each push, so leave room for one more full sequence.
+        self.total_buffer_bytes() + MAX_SEQUENCE_BITS.div_ceil(8) > self.packet_size
     }
 }
 
@@ -297,6 +298,66 @@ pub(crate) mod decoder {
             triples.extend(decode_request(request));
         }
         triples
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{JtagBuffer, MAX_SEQUENCE_BITS};
+    use crate::probe::cmsisdap::commands::Request;
+    use crate::probe::cmsisdap::commands::jtag::sequence::{Sequence, SequenceRequest};
+    use bitvec::vec::BitVec;
+
+    /// Serializes the buffer into the `packet_size` bytes `flush_jtag` has
+    /// available and returns the number of bytes written.
+    fn flush(buffer: &mut JtagBuffer, packet_size: usize) -> usize {
+        if let Some(seq) = buffer.current_sequence.take() {
+            buffer.complete_sequences.push(seq);
+        }
+        let sequences = buffer
+            .complete_sequences
+            .drain(..)
+            .map(|s| {
+                if s.tdo_capture {
+                    Sequence::capture(s.tms, &s.data)
+                } else {
+                    Sequence::no_capture(s.tms, &s.data)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        let request = SequenceRequest::new(sequences).unwrap();
+        request.to_bytes(&mut vec![0u8; packet_size]).unwrap()
+    }
+
+    /// `should_flush` is checked after each push, so it must trigger while one
+    /// more full sequence still fits. Mixed widths matter: uniform widths pass
+    /// at some packet sizes by luck.
+    #[test]
+    fn flushed_buffer_fits_packet() {
+        for packet_size in [64u16, 128, 256, 512, 1024] {
+            for widths in [
+                [MAX_SEQUENCE_BITS, MAX_SEQUENCE_BITS],
+                [1, 1],
+                [1, MAX_SEQUENCE_BITS],
+                [32, MAX_SEQUENCE_BITS],
+            ] {
+                let mut buffer = JtagBuffer::new(packet_size);
+                for i in 0..400 {
+                    // Alternating TMS keeps each push a separate sequence.
+                    let tms = i % 2 == 0;
+                    let data = BitVec::repeat(tms, widths[i % 2]);
+                    buffer.push_sequence(tms, &data, false).unwrap();
+                    if buffer.should_flush() {
+                        let written = flush(&mut buffer, packet_size as usize);
+                        assert!(
+                            written <= packet_size as usize,
+                            "{packet_size}-byte packet, widths {widths:?}: wrote {written}"
+                        );
+                    }
+                }
+            }
+        }
     }
 }
 
