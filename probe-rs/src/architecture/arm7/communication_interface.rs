@@ -2042,7 +2042,7 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     /// or write, from a `LDR`/`STR`/`LDM`/`STM`-family instruction actually executing) to
     /// `address` - as opposed to [`Self::set_hw_breakpoint`]'s instruction-fetch trigger.
     ///
-    /// Matches [`Self::configure_fetch_watchpoint`]'s exact-match mechanism, just with `N_OPC`'s
+    /// Matches `configure_fetch_watchpoint`'s exact-match mechanism, just with `N_OPC`'s
     /// required value inverted (per its own doc comment: active low, `0` = opcode fetch, `1` =
     /// data access) and left as the *only* compared bit (like the fetch case, `N_RW` - read vs.
     /// write - is masked out/don't-care, so this matches either).
