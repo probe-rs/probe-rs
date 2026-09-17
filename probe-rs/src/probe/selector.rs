@@ -46,11 +46,11 @@ pub struct DebugProbeSelector {
     pub interface: Option<u8>,
     /// The serial number of the debug probe to be used.
     pub serial_number: Option<String>,
-    /// USB (bus number, device address) of the underlying device, when known.
+    /// USB (bus id, device address) of the underlying device, when known.
     ///
     /// See [`DebugProbeInfo::usb_location`](crate::probe::DebugProbeInfo::usb_location)
     /// for why this exists; never set from a parsed `"VID:PID:SERIAL"` string.
-    pub usb_location: Option<(u8, u8)>,
+    pub usb_location: Option<(String, u8)>,
 }
 
 impl DebugProbeSelector {
@@ -69,8 +69,8 @@ impl DebugProbeSelector {
             )
         }
 
-        if let Some(usb_location) = self.usb_location
-            && usb_location != (info.busnum(), info.device_address())
+        if let Some((bus_id, device_address)) = &self.usb_location
+            && (bus_id.as_str(), *device_address) != (info.bus_id(), info.device_address())
         {
             return false;
         }
@@ -85,9 +85,7 @@ impl DebugProbeSelector {
 
     /// Check if the given probe info matches this selector.
     pub fn matches_probe(&self, info: &DebugProbeInfo) -> bool {
-        if let Some(usb_location) = self.usb_location
-            && info.usb_location != Some(usb_location)
-        {
+        if self.usb_location.is_some() && info.usb_location != self.usb_location {
             return false;
         }
 
@@ -188,7 +186,7 @@ impl From<&DebugProbeInfo> for DebugProbeSelector {
             product_id: selector.product_id,
             serial_number: selector.serial_number.clone(),
             interface: selector.interface,
-            usb_location: selector.usb_location,
+            usb_location: selector.usb_location.clone(),
         }
     }
 }
