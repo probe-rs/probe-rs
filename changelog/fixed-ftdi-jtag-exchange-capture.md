@@ -1,0 +1,1 @@
+Fixed the FTDI JTAG driver dropping the last bit of a captured exchange whenever it was merged into the following TMS state transition, undercounting every capturing DR/IR shift that ends in a state change.

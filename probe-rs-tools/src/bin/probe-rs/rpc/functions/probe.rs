@@ -503,6 +503,7 @@ pub(crate) mod convert {
             product_id: probe.product_id,
             serial_number: probe.serial_number.unwrap_or_default(),
             interface: probe.interface,
+            usb_location: probe.usb_location,
         }
     }
 
@@ -528,6 +529,7 @@ pub(crate) mod convert {
             product_id: selector.product_id,
             serial_number: selector.serial_number,
             interface: selector.interface,
+            usb_location: selector.usb_location,
         }
     }
 
@@ -539,6 +541,7 @@ pub(crate) mod convert {
             product_id: selector.product_id,
             serial_number: selector.serial_number,
             interface: selector.interface,
+            usb_location: selector.usb_location,
         }
     }
 

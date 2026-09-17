@@ -65,6 +65,8 @@ pub struct Core {
 /// Type of a supported core.
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Serialize, Deserialize, Schema)]
 pub enum CoreType {
+    /// ARMv4T: ARM7TDMI(-S), ARM720T
+    Armv4t,
     /// ARMv6-M: Cortex M0, M0+, M1
     Armv6m,
     /// ARMv7-A: Cortex A7, A9, A15

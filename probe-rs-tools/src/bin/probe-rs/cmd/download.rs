@@ -44,6 +44,15 @@ impl Cmd {
 
         if self.start {
             session.boot(boot_info, 0).await?;
+        } else {
+            // Without `--start`, nothing redirects the core to a meaningful address after
+            // flashing: the flash algorithm's own teardown leaves the core halted at its own
+            // load address (where its completion breakpoint sits), and the generic,
+            // command-agnostic session-detach logic then unconditionally *resumes* it from
+            // there - there is no real code left to run at that address once flashing is done.
+            // An explicit reset leaves the target in a clean, known state instead of running
+            // whatever garbage happens to occupy the flash algorithm's stale RAM image.
+            session.core(0).reset().await?;
         }
 
         Ok(())

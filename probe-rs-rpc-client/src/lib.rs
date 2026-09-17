@@ -1058,6 +1058,7 @@ impl SessionInterface {
 
     pub async fn run_test(
         &self,
+        boot_info: BootInfo,
         test: Test,
         rtt_client: Option<Key<RttClient>>,
         semihosting_options: SemihostingOptions,
@@ -1068,6 +1069,7 @@ impl SessionInterface {
                 &RunTestRequest {
                     sessid: self.sessid,
                     test,
+                    boot_info,
                     rtt_client,
                     semihosting_options,
                 },

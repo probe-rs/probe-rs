@@ -6,6 +6,7 @@ use crate::{
             core::{CortexARState, CortexMState},
             dp::DpAddress,
         },
+        arm7::{Arm7tdmiState, communication_interface::Arm7tdmiCommunicationInterface},
         riscv::{Riscv64, RiscvCoreState, communication_interface::RiscvCommunicationInterface},
         xtensa::{XtensaCoreState, communication_interface::XtensaCommunicationInterface},
     },
@@ -244,6 +245,37 @@ impl CombinedCoreState {
         ))
     }
 
+    pub(crate) fn attach_armv4t<'probe>(
+        &'probe mut self,
+        target: &'probe Target,
+        interface: Arm7tdmiCommunicationInterface<'probe>,
+    ) -> Result<Core<'probe>, Error> {
+        let name = &target.cores[self.id].name;
+
+        let ResolvedCoreOptions::Armv4t { sequence, .. } = &self.core_state.core_access_options
+        else {
+            unreachable!(
+                "The stored core state is not compatible with the ARMv4T architecture. \
+                This should never happen. Please file a bug if it does."
+            );
+        };
+        let debug_sequence = sequence.clone();
+
+        let SpecificCoreState::Armv4t(s) = &mut self.specific_state else {
+            unreachable!(
+                "The stored core state is not compatible with the ARMv4T architecture. \
+                This should never happen. Please file a bug if it does."
+            );
+        };
+
+        Ok(Core::new(
+            self.id,
+            name,
+            target,
+            crate::architecture::arm7::Arm7tdmi::new(interface, s, debug_sequence)?,
+        ))
+    }
+
     /// Get the memory AP for this core.
     ///
     /// ## Panic
@@ -270,7 +302,10 @@ impl CoreState {
     }
 
     pub(crate) fn is_arm(&self) -> bool {
-        matches!(&self.core_access_options, ResolvedCoreOptions::Arm { .. })
+        matches!(
+            &self.core_access_options,
+            ResolvedCoreOptions::Arm { .. } | ResolvedCoreOptions::Armv4t { .. }
+        )
     }
 
     pub(crate) fn memory_ap(&self) -> FullyQualifiedApAddress {
@@ -297,6 +332,8 @@ impl CoreState {
 /// The architecture specific core state.
 #[derive(Debug)]
 pub enum SpecificCoreState {
+    /// The state of an ARMv4T (ARM7TDMI) core.
+    Armv4t(Arm7tdmiState),
     /// The state of an ARMv6-M core.
     Armv6m(CortexMState),
     /// The state of an ARMv7-A core.
@@ -322,6 +359,7 @@ pub enum SpecificCoreState {
 impl SpecificCoreState {
     pub(crate) fn from_core_type(typ: CoreType) -> Self {
         match typ {
+            CoreType::Armv4t => SpecificCoreState::Armv4t(Arm7tdmiState::new()),
             CoreType::Armv6m => SpecificCoreState::Armv6m(CortexMState::new()),
             CoreType::Armv7a => SpecificCoreState::Armv7a(CortexARState::new()),
             CoreType::Armv7r => SpecificCoreState::Armv7r(CortexARState::new()),
@@ -337,6 +375,7 @@ impl SpecificCoreState {
 
     pub(crate) fn core_type(&self) -> CoreType {
         match self {
+            SpecificCoreState::Armv4t(_) => CoreType::Armv4t,
             SpecificCoreState::Armv6m(_) => CoreType::Armv6m,
             SpecificCoreState::Armv7a(_) => CoreType::Armv7a,
             SpecificCoreState::Armv7r(_) => CoreType::Armv7r,

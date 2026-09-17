@@ -261,8 +261,8 @@ impl Cmd {
         let boot_info = cli::flash(
             &session,
             &self.path,
-            self.format_options,
-            self.download_options,
+            self.format_options.clone(),
+            self.download_options.clone(),
             Some(rtt_client.handle()),
             None,
         )
@@ -273,6 +273,8 @@ impl Cmd {
             cli::test(
                 &session,
                 boot_info,
+                self.format_options,
+                self.download_options,
                 elf_info,
                 Arguments {
                     test_threads: Some(1), // Avoid parallel execution
