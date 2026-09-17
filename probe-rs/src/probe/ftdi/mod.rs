@@ -530,7 +530,8 @@ impl ProbeFactory for FtdiProbeFactory {
                             }
                         })
                         && s.usb_location
-                            .is_none_or(|loc| probe.info.usb_location == Some(loc))
+                            .as_ref()
+                            .is_none_or(|loc| probe.info.usb_location.as_ref() == Some(loc))
                 })
             })
             .collect()
@@ -858,9 +859,9 @@ fn get_device_info(device: &DeviceInfo) -> Option<ProbeListItem> {
                 is_hid_interface: false,
                 interface: None,
                 // FTDI probes carry no serial number to disambiguate two of the same
-                // adapter (see `DebugProbeInfo::usb_location`'s doc comment); bus number
+                // adapter (see `DebugProbeInfo::usb_location`'s doc comment); bus id
                 // + device address stands in for one as long as both stay plugged in.
-                usb_location: Some((device.busnum(), device.device_address())),
+                usb_location: Some((device.bus_id().to_string(), device.device_address())),
             },
             accessibility: usb_probe_accessibility(device),
         })
