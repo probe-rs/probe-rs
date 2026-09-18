@@ -186,18 +186,22 @@ impl FlasherOps for HostSideFlasher {
             verify,
         )
     }
-    fn compute_init_sizes(&mut self, _keep_unwritten_bytes: bool) -> (FlashLayout, u64, u64, u64) {
-        // Host-side always sends raw pages — no fill operations, no encoding.
+    fn compute_init_sizes(&mut self, keep_unwritten_bytes: bool) -> (FlashLayout, u64, u64, u64) {
+        // Host-side always sends raw pages and reads fill regions directly when requested.
         let mut phase_layout = FlashLayout::default();
+        let mut fill_size = 0;
         let mut erase_size = 0;
         let mut program_size = 0;
         for region in &self.regions {
             let layout = region.flash_layout();
             phase_layout.merge_from(layout.clone());
+            if keep_unwritten_bytes {
+                fill_size += layout.fills().iter().map(|fill| fill.size()).sum::<u64>();
+            }
             erase_size += layout.sectors().iter().map(|s| s.size()).sum::<u64>();
             program_size += layout.pages().iter().map(|p| p.size() as u64).sum::<u64>();
         }
-        (phase_layout, 0, erase_size, program_size)
+        (phase_layout, fill_size, erase_size, program_size)
     }
     fn compute_verify_size(&mut self) -> u64 {
         self.regions
