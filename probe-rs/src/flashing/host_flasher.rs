@@ -12,6 +12,7 @@ use super::builder::FlashBuilder;
 use super::{FlashError, FlashLayout, FlashProgress};
 use crate::flashing::flasher::FlashData;
 use crate::flashing::host_sequence::DebugFlashSequence;
+use crate::memory::MemoryInterface;
 use crate::session::Session;
 
 /// Build a region-specific `FlashProperties` from an algorithm's full properties.
@@ -166,9 +167,9 @@ impl HostSideFlasher {
     }
 
     fn run_with_flash<R>(
-        &self,
+        &mut self,
         session: &mut Session,
-        f: impl FnOnce(&Self, &mut Session) -> Result<R, FlashError>,
+        f: impl FnOnce(&mut Self, &mut Session) -> Result<R, FlashError>,
     ) -> Result<R, FlashError> {
         // Allow the sequence to perform any required setup (e.g. enter a special
         // programming mode or release the probe for an external toolbox).
@@ -187,12 +188,58 @@ impl HostSideFlasher {
         result
     }
 
+    /// Read back bytes that will be erased but are not part of the input data.
+    fn fill_unwritten(
+        &mut self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+    ) -> Result<(), FlashError> {
+        progress.started_filling();
+
+        let result = (|| {
+            let mut core = session.core(self.core_index).map_err(FlashError::Core)?;
+
+            for region in &mut self.regions {
+                let fills: Vec<_> = region
+                    .flash_layout()
+                    .fills()
+                    .iter()
+                    .map(|fill| (fill.address(), fill.size(), fill.page_index()))
+                    .collect();
+
+                for (address, size, page_index) in fills {
+                    let start = Instant::now();
+                    let layout = region.data.layout_mut();
+                    let page = &mut layout.pages[page_index];
+                    let page_offset = (address - page.address()) as usize;
+                    let page_slice = &mut page.data_mut()[page_offset..][..size as usize];
+
+                    core.read(address, page_slice).map_err(FlashError::Core)?;
+                    progress.page_filled(size, start.elapsed());
+                }
+            }
+
+            Ok(())
+        })();
+
+        match result {
+            Ok(()) => {
+                progress.finished_filling();
+                Ok(())
+            }
+            Err(error) => {
+                progress.failed_filling();
+                Err(error)
+            }
+        }
+    }
+
     /// Program flash via the debug flash sequence.
     pub(super) fn program(
         &mut self,
         session: &mut Session,
         progress: &mut FlashProgress<'_>,
-        _restore_unwritten_bytes: bool,
+        restore_unwritten_bytes: bool,
         _enable_double_buffering: bool,
         skip_erasing: bool,
         verify: bool,
@@ -200,6 +247,10 @@ impl HostSideFlasher {
         tracing::debug!("Host-side: Starting program procedure");
 
         self.run_with_flash(session, |this, session| {
+            if restore_unwritten_bytes {
+                this.fill_unwritten(session, progress)?;
+            }
+
             // If sector erase is not supported, fall back to chip erase once before programming.
             if !skip_erasing && !this.flash_sequence.supports_sector_erase() {
                 tracing::info!("Host-side: Device does not support sector erase, using chip erase");
@@ -298,7 +349,7 @@ impl HostSideFlasher {
     ///
     /// Returns `true` if all pages verify successfully, `false` otherwise.
     pub(super) fn verify(
-        &self,
+        &mut self,
         session: &mut Session,
         _progress: &mut FlashProgress<'_>,
         _ignore_filled: bool,
