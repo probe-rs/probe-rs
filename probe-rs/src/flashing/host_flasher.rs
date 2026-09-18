@@ -38,7 +38,7 @@ fn region_flash_props(
 
     FlashProperties {
         address_range: region_range.clone(),
-        page_size: sector.size as u32,
+        page_size: algo_props.page_size,
         erased_byte_value: algo_props.erased_byte_value,
         program_page_timeout: algo_props.program_page_timeout,
         erase_sector_timeout: algo_props.erase_sector_timeout,
@@ -336,5 +336,31 @@ impl HostSideFlasher {
         }
 
         Ok(true)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn region_flash_props_preserves_program_page_size() {
+        let properties = FlashProperties {
+            address_range: 0x0800_0000..0x0810_0000,
+            page_size: 32,
+            erased_byte_value: 0xff,
+            program_page_timeout: 100,
+            erase_sector_timeout: 30_000,
+            sectors: vec![SectorDescription {
+                size: 0x1000,
+                address: 0,
+            }],
+        };
+
+        let scoped = region_flash_props(&properties, &(0x0800_1000..0x0800_3000));
+
+        assert_eq!(scoped.page_size, 32);
+        assert_eq!(scoped.sectors[0].size, 0x1000);
+        assert_eq!(scoped.sectors[0].address, 0);
     }
 }
