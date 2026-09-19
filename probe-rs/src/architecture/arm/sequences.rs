@@ -1209,6 +1209,20 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         Ok(())
     }
 
+    /// Hook called after the ARM debug interface and all cores have been enabled.
+    ///
+    /// This runs before the session exposes its target and memory interfaces, so a
+    /// vendor sequence can read device configuration and adjust the session-local
+    /// target description. The default implementation leaves the target unchanged.
+    fn on_connect(
+        &self,
+        _interface: &mut dyn ArmDebugInterface,
+        _default_ap: &FullyQualifiedApAddress,
+        _target: &mut crate::Target,
+    ) -> Result<(), ArmError> {
+        Ok(())
+    }
+
     /// Return the Debug Erase Sequence implementation if it exists
     fn debug_erase_sequence(&self) -> Option<Arc<dyn DebugEraseSequence>> {
         None

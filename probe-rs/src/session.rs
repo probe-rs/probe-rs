@@ -216,18 +216,21 @@ impl Session {
 
     fn attach_arm_debug_interface(
         mut probe: Probe,
-        target: Target,
+        mut target: Target,
         attach_method: AttachMethod,
         permissions: Permissions,
         cores: Vec<CombinedCoreState>,
     ) -> Result<Self, Error> {
         let default_core = target.default_core();
 
-        let default_memory_ap = default_core.memory_ap().ok_or_else(|| {
-            Error::Other(format!(
-                "Unable to connect to core {default_core:?}, no memory AP configured"
-            ))
-        })?;
+        let default_memory_ap = default_core
+            .memory_ap()
+            .ok_or_else(|| {
+                Error::Other(format!(
+                    "Unable to connect to core {default_core:?}, no memory AP configured"
+                ))
+            })?
+            .clone();
 
         let default_dp = default_memory_ap.dp();
 
@@ -330,6 +333,8 @@ impl Session {
                 }
             }
 
+            sequence_handle.on_connect(&mut *interface, &default_memory_ap, &mut target)?;
+
             let interfaces = Self::build_arm_interfaces(&target, interface)?;
             let mut session = Session {
                 target,
@@ -371,6 +376,8 @@ impl Session {
                     core.enable_arm_debug(&mut *interface)?;
                 }
             }
+
+            sequence_handle.on_connect(&mut *interface, &default_memory_ap, &mut target)?;
 
             let interfaces = Self::build_arm_interfaces(&target, interface)?;
             Ok(Session {
