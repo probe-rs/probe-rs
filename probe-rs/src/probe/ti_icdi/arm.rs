@@ -3,9 +3,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use crate::MemoryInterface;
-use crate::architecture::arm::ap::{
-    AccessPortType, ApRegister, BASE, CFG, CSW, IDR, MemoryAp, MemoryApType,
-};
+use crate::architecture::arm::ap::{AccessPortType, ApRegister, CFG, CSW, IDR, MemoryAp};
 use crate::architecture::arm::communication_interface::SwdSequence;
 use crate::architecture::arm::dp::{DpAddress, DpRegisterAddress};
 use crate::architecture::arm::memory::ArmMemoryInterface;
@@ -23,8 +21,12 @@ use zerocopy::IntoBytes;
 const FAKE_IDR: u32 = 0x24770031;
 const FAKE_CSW: u32 = 0x23000052;
 const FAKE_CFG: u32 = 0x00000000;
-/// ROM table base used by the original ICDI driver (Cortex-M4).
-const FAKE_BASE: u32 = 0xE00FF001;
+
+/// Cortex-M CPUID register.
+const CPUID: u64 = 0xE000_ED00;
+/// Peripheral Bus ROM table used by Cortex-M3 and later M-class cores.
+const CORTEX_M_ROM_TABLE: u64 = 0xE00F_F000;
+const ARM_IMPLEMENTER: u32 = 0x41;
 
 /// ARM debug interface for [`IcdiProbe`].
 ///
@@ -34,6 +36,7 @@ const FAKE_BASE: u32 = 0xE00FF001;
 pub(crate) struct IcdiArmDebug {
     probe: Box<IcdiProbe>,
     is_connected_to_dp: bool,
+    rom_table_base: Option<u64>,
     _sequence: Arc<dyn ArmDebugSequence>,
 }
 
@@ -42,8 +45,24 @@ impl IcdiArmDebug {
         Self {
             probe,
             is_connected_to_dp: false,
+            rom_table_base: None,
             _sequence: sequence,
         }
+    }
+}
+
+/// Map a CPUID value to the architectural PPB ROM table for cores that have one.
+fn rom_table_from_cpuid(cpuid: u32) -> Option<u64> {
+    let implementer = (cpuid >> 24) & 0xFF;
+    let partno = (cpuid >> 4) & 0xFFF;
+    if implementer != ARM_IMPLEMENTER {
+        return None;
+    }
+
+    match partno {
+        // Cortex-M3, M4, M7, M33, M35P, M55, M85, M52
+        0xC23 | 0xC24 | 0xC27 | 0xD21 | 0xD31 | 0xD22 | 0xD23 | 0xD24 => Some(CORTEX_M_ROM_TABLE),
+        _ => None,
     }
 }
 
@@ -76,8 +95,6 @@ impl DapAccess for IcdiArmDebug {
             Ok(FAKE_CSW)
         } else if addr == CFG::ADDRESS {
             Ok(FAKE_CFG)
-        } else if addr == BASE::ADDRESS {
-            Ok(FAKE_BASE)
         } else {
             Err(ArmError::NotImplemented("ap register read not implemented"))
         }
@@ -215,7 +232,20 @@ impl ArmMemoryInterface for IcdiMemoryInterface<'_> {
     }
 
     fn base_address(&mut self) -> Result<u64, ArmError> {
-        self.current_ap.base_address(self.probe)
+        if let Some(base) = self.probe.rom_table_base {
+            return Ok(base);
+        }
+
+        let mut cpuid = [0u32; 1];
+        self.read_32(CPUID, &mut cpuid)?;
+        let Some(base) = rom_table_from_cpuid(cpuid[0]) else {
+            return Err(ArmError::Other(format!(
+                "unsupported CPUID {:#010x} for CoreSight ROM table discovery",
+                cpuid[0]
+            )));
+        };
+        self.probe.rom_table_base = Some(base);
+        Ok(base)
     }
 
     fn get_arm_debug_interface(&mut self) -> Result<&mut dyn ArmDebugInterface, DebugProbeError> {
