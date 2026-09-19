@@ -1,5 +1,6 @@
 //! Common functions and data types for Cortex-M core variants
 
+use crate::memory::{Operation, OperationKind};
 use crate::{
     CoreInterface, Error, MemoryMappedRegister,
     architecture::arm::{ArmError, memory::ArmMemoryInterface},
@@ -134,18 +135,37 @@ pub(crate) fn read_core_reg(
     memory: &mut dyn ArmMemoryInterface,
     addr: RegisterId,
 ) -> Result<u32, ArmError> {
-    // Write the DCRSR value to select the register we want to read.
     let mut dcrsr_val = Dcrsr(0);
     dcrsr_val.set_regwnr(false); // Perform a read.
     dcrsr_val.set_regsel(addr.into()); // The address of the register to read.
 
-    memory.write_word_32(Dcrsr::get_mmio_address(), dcrsr_val.into())?;
+    // Select the register, then read the ready flag and the value. The flag is read first, so a
+    // flag that comes back set means the value behind it had already settled.
+    let mut ready = 0u32;
+    let mut value = 0u32;
+    memory.execute_operations(&mut [
+        Operation::new(
+            Dcrsr::get_mmio_address(),
+            OperationKind::WriteWord32(dcrsr_val.into()),
+        ),
+        Operation::new(
+            Dhcsr::get_mmio_address(),
+            OperationKind::Read32(std::slice::from_mut(&mut ready)),
+        ),
+        Operation::new(
+            Dcrdr::get_mmio_address(),
+            OperationKind::Read32(std::slice::from_mut(&mut value)),
+        ),
+    ])?;
 
+    if Dhcsr(ready).s_regrdy() {
+        return Ok(value);
+    }
+
+    // Asked too early, which the flag is there to catch. Wait for it and read the value again.
     wait_for_core_register_transfer(memory, Duration::from_millis(100))?;
 
-    let value = memory.read_word_32(Dcrdr::get_mmio_address())?;
-
-    Ok(value)
+    memory.read_word_32(Dcrdr::get_mmio_address())
 }
 
 pub(crate) fn write_core_reg(

@@ -7,6 +7,7 @@ pub mod v1;
 pub mod v2;
 
 pub use generic_ap::GenericAp;
+pub use memory_ap::DataSizeSetup;
 pub use memory_ap::MemoryAp;
 pub use memory_ap::MemoryApType;
 pub(crate) use registers::define_ap_register;

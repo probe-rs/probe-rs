@@ -1,4 +1,5 @@
 #![allow(non_snake_case)]
+use super::DataSizeSetup;
 
 use crate::architecture::arm::{
     ArmError, DapAccess, FullyQualifiedApAddress,
@@ -47,6 +48,17 @@ impl super::MemoryApType for AmbaApb4Apb5 {
         self.csw = probe.read_ap_register(self)?;
         Ok(self.csw)
     }
+
+    fn datasize_setup(&self, data_size: DataSize) -> Result<DataSizeSetup, ArmError> {
+        match data_size {
+            DataSize::U32 => Ok(DataSizeSetup::Ready),
+            _ => Err(ArmError::UnsupportedTransferWidth(
+                data_size.to_byte_count() * 8,
+            )),
+        }
+    }
+
+    fn note_datasize(&mut self, _data_size: DataSize) {}
 
     fn try_set_datasize<P: ApAccess + ?Sized>(
         &mut self,

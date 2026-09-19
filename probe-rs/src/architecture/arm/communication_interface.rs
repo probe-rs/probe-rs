@@ -987,6 +987,14 @@ impl SwoAccess for ArmCommunicationInterface {
     }
 }
 
+/// Whether two accesses belong to the same run: one register, in one direction.
+///
+/// A transport with no batch replays runs with its repeated-access commands -- its block
+/// transfers -- so a run must not span a change of register or of direction.
+fn same_run(a: &(u64, Option<u32>), b: &(u64, Option<u32>)) -> bool {
+    a.0 == b.0 && a.1.is_some() == b.1.is_some()
+}
+
 impl DapAccess for ArmCommunicationInterface {
     fn read_raw_dp_register(
         &mut self,
@@ -1077,6 +1085,82 @@ impl DapAccess for ArmCommunicationInterface {
                 jtag_read_block(chain, register, values, settings)
             })
         }
+    }
+
+    fn access_raw_ap_registers(
+        &mut self,
+        ap: &FullyQualifiedApAddress,
+        accesses: &[(u64, Option<u32>)],
+        values: &mut [u32],
+    ) -> Result<(), ArmError> {
+        let Some(&(first, _)) = accesses.first() else {
+            return Ok(());
+        };
+
+        // The bank is selected once, from the first address, so an access from another bank would
+        // reach a different register and report success. Checked in release builds too.
+        assert!(
+            accesses
+                .iter()
+                .all(|&(address, _)| address >> 4 == first >> 4),
+            "every access has to be in the same AP register bank"
+        );
+        debug_assert!(
+            values.len() >= accesses.iter().filter(|(_, value)| value.is_none()).count(),
+            "every read needs a word to land in"
+        );
+
+        if !self.is_swd() {
+            // JTAG has no batch to pack, so the list is replayed. A repeat of one register is
+            // still a block transfer here, and one access at a time would undo it.
+            let mut read = 0;
+            for run in accesses.chunk_by(same_run) {
+                match run {
+                    [(address, Some(value))] => self.write_raw_ap_register(ap, *address, *value)?,
+                    [(address, Some(_)), ..] => {
+                        let data: Vec<u32> = run
+                            .iter()
+                            .map(|(_, value)| value.expect("a run of writes holds only writes"))
+                            .collect();
+                        self.write_raw_ap_register_repeated(ap, *address, &data)?;
+                    }
+                    [(address, None)] => {
+                        values[read] = self.read_raw_ap_register(ap, *address)?;
+                        read += 1;
+                    }
+                    [(address, None), ..] => {
+                        self.read_raw_ap_register_repeated(
+                            ap,
+                            *address,
+                            &mut values[read..read + run.len()],
+                        )?;
+                        read += run.len();
+                    }
+                    [] => unreachable!("a run holds at least one access"),
+                }
+            }
+            return Ok(());
+        }
+
+        self.select_ap_and_ap_bank(ap, first)?;
+
+        self.with_swd_port(|port| {
+            let mut batch = SwdBatch::new();
+            let mut handles = Vec::new();
+            for &(address, value) in accesses {
+                let addr = Self::ap_swd_addr(address);
+                match value {
+                    Some(value) => batch.write(Port::Ap, addr, value),
+                    None => handles.push(batch.read(Port::Ap, addr)),
+                }
+            }
+
+            let mut results = port.run(batch)?;
+            for (read, handle) in handles.into_iter().enumerate() {
+                values[read] = results.take(handle).unwrap();
+            }
+            Ok(())
+        })
     }
 
     fn write_raw_ap_register(
@@ -1312,6 +1396,45 @@ mod tests {
                 (Port::Dp, DP_CTRL_ADDR, 0x1234),
             ]
         );
+    }
+
+    #[test]
+    fn an_access_list_groups_into_runs_of_one_register() {
+        // The shape a block read reaches the probe as: the address, then the data register again
+        // and again. A transport without a batch has to see that repeat to keep using its block
+        // command.
+        let accesses = [
+            (0xD04, Some(0x2000_0000)),
+            (0xD0C, None),
+            (0xD0C, None),
+            (0xD0C, None),
+            (0xD04, Some(0x2000_1000)),
+            (0xD0C, Some(1)),
+            (0xD0C, Some(2)),
+        ];
+
+        let runs: Vec<usize> = accesses.chunk_by(same_run).map(<[_]>::len).collect();
+        assert_eq!(runs, vec![1, 3, 1, 2]);
+    }
+
+    #[test]
+    fn a_run_ends_where_the_direction_turns_around() {
+        // A read and a write of one register are different commands, so they are different runs.
+        let accesses = [
+            (0xD0C, None),
+            (0xD0C, None),
+            (0xD0C, Some(7)),
+            (0xD0C, None),
+        ];
+
+        let runs: Vec<usize> = accesses.chunk_by(same_run).map(<[_]>::len).collect();
+        assert_eq!(runs, vec![2, 1, 1]);
+    }
+
+    #[test]
+    fn an_empty_access_list_has_no_runs() {
+        let empty: [(u64, Option<u32>); 0] = [];
+        assert_eq!(empty.chunk_by(same_run).count(), 0);
     }
 
     #[test]

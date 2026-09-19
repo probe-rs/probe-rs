@@ -4,7 +4,7 @@ use crate::architecture::arm::{
     ap::{AccessPortType, ApAccess, ApRegAccess, ApRegister, CFG, define_ap_register},
 };
 
-use super::{AddressIncrement, DataSize};
+use super::{AddressIncrement, DataSize, DataSizeSetup};
 
 /// Memory AP
 ///
@@ -48,6 +48,28 @@ impl super::MemoryApType for AmbaAhb3 {
         const { assert!(crate::architecture::arm::ap::CSW::ADDRESS == CSW::ADDRESS) };
         self.csw = probe.read_ap_register(self)?;
         Ok(self.csw)
+    }
+
+    fn datasize_setup(&self, data_size: DataSize) -> Result<DataSizeSetup, ArmError> {
+        match data_size {
+            DataSize::U8 | DataSize::U16 | DataSize::U32 => {
+                if data_size == self.csw.Size() {
+                    return Ok(DataSizeSetup::Ready);
+                }
+                let mut csw = self.csw;
+                csw.set_Size(data_size);
+                Ok(DataSizeSetup::Write(csw.into()))
+            }
+            DataSize::U64 | DataSize::U128 | DataSize::U256 => Err(
+                ArmError::UnsupportedTransferWidth(data_size.to_byte_count() * 8),
+            ),
+            // `try_set_datasize` has always let an unrecognised size through untouched.
+            DataSize::Unknown(_) => Ok(DataSizeSetup::Ready),
+        }
+    }
+
+    fn note_datasize(&mut self, data_size: DataSize) {
+        self.csw.set_Size(data_size);
     }
 
     fn try_set_datasize<P: ApAccess + ?Sized>(
