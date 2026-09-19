@@ -302,3 +302,18 @@ impl MemoryInterface<ArmError> for IcdiMemoryInterface<'_> {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cortex_m4_cpuid_maps_to_ppb_rom_table() {
+        assert_eq!(rom_table_from_cpuid(0x410F_C241), Some(CORTEX_M_ROM_TABLE));
+    }
+
+    #[test]
+    fn cortex_m3_cpuid_maps_to_ppb_rom_table() {
+        assert_eq!(rom_table_from_cpuid(0x410F_C230), Some(CORTEX_M_ROM_TABLE));
+    }
+}
