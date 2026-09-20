@@ -14,6 +14,7 @@ use gimli::{
 use object::read::{Object, ObjectSection};
 use probe_rs::{
     CoreRegister, Endian, Error, InstructionSet, MemoryInterface, RegisterRole, RegisterValue,
+    architecture::riscv::registers::DWARF_CSR_BASE,
 };
 use std::{
     borrow,
@@ -672,7 +673,7 @@ impl DebugInfo {
 
             // Determining the frame base may need the CFA (Canonical Frame Address) to be calculated first.
             let (cfa, cfa_unsupported) = match unwind_info.as_ref() {
-                Ok(unwind_info) => match determine_cfa(&unwind_registers, unwind_info) {
+                Ok((unwind_info, _)) => match determine_cfa(&unwind_registers, unwind_info) {
                     Ok(DwarfUnwind::Value(cfa)) => (cfa, false),
                     Ok(DwarfUnwind::UnsupportedCfi) => (None, true),
                     Err(_) => (None, false),
@@ -735,9 +736,9 @@ impl DebugInfo {
             // PART 2-a: get the `gimli::FrameDescriptorEntry` for the program counter
             // and then the unwind info associated with this row.
             let unwind_info = match unwind_info {
-                Ok(unwind_info) if !cfa_unsupported => {
+                Ok((unwind_info, cie_return_address)) if !cfa_unsupported => {
                     tracing::trace!("UNWIND: Found unwind info for address {frame_pc:#010x}");
-                    Some(unwind_info)
+                    Some((unwind_info, cie_return_address))
                 }
                 Ok(_) => None,
                 Err(err) => {
@@ -748,7 +749,7 @@ impl DebugInfo {
                 }
             };
 
-            let Some(unwind_info) = unwind_info else {
+            let Some((unwind_info, cie_return_address)) = unwind_info else {
                 match self.unwind_frame_without_debuginfo(
                     exception_handler,
                     &mut unwind_registers,
@@ -887,10 +888,8 @@ impl DebugInfo {
                 };
             }
 
-            let unwound_return_address = unwind_registers
-                .get_register_by_role(&RegisterRole::ReturnAddress)
-                .ok()
-                .and_then(|reg| reg.value);
+            let (unwound_return_address, from_csr) =
+                caller_return_address(&unwind_registers, unwind_info, cie_return_address);
 
             let program_counter = unwind_registers.get_program_counter_mut().unwrap();
 
@@ -908,7 +907,12 @@ impl DebugInfo {
             // NOTE: PC = Value of the unwound LR, i.e. the first instruction after the one that called this function.
             // If both the LR and PC registers have undefined rules, this will prevent the unwind from continuing.
             program_counter.value = unwound_return_address.and_then(|return_address| {
-                unwind_program_counter_register(return_address, current_pc, instruction_set)
+                unwind_program_counter_register(
+                    return_address,
+                    current_pc,
+                    instruction_set,
+                    from_csr,
+                )
             });
 
             if callee_frame_registers == unwind_registers {
@@ -1245,7 +1249,13 @@ pub fn get_unwind_info<'a>(
     unwind_context: &'a mut UnwindContext<GimliReaderOffset>,
     frame_section: &DebugFrame<DwarfReader>,
     frame_program_counter: u64,
-) -> Result<&'a gimli::UnwindTableRow<GimliReaderOffset>, DebugError> {
+) -> Result<
+    (
+        &'a gimli::UnwindTableRow<GimliReaderOffset>,
+        gimli::Register,
+    ),
+    DebugError,
+> {
     let transform_error = |error| {
         DebugError::Other(format!(
             "UNWIND: Error reading FrameDescriptorEntry at PC={frame_program_counter:x} : {error}"
@@ -1262,14 +1272,18 @@ pub fn get_unwind_info<'a>(
         )
         .map_err(transform_error)?;
 
-    frame_descriptor_entry
+    let return_address_register = frame_descriptor_entry.cie().return_address_register();
+
+    let unwind_info = frame_descriptor_entry
         .unwind_info_for_address(
             frame_section,
             &unwind_bases,
             unwind_context,
             frame_program_counter,
         )
-        .map_err(transform_error)
+        .map_err(transform_error)?;
+
+    Ok((unwind_info, return_address_register))
 }
 
 /// Determines the CFA (canonical frame address) for the current [`gimli::UnwindTableRow`], using the current register values.
@@ -1353,7 +1367,7 @@ pub fn unwind_pc_without_debuginfo(
         // NOTE: PC = Value of the unwound LR, i.e. the first instruction after the one that called this function.
         // If both the LR and PC registers have undefined rules, this will prevent the unwind from continuing.
         calling_pc.value = unwound_return_address.and_then(|return_address| {
-            unwind_program_counter_register(return_address, current_pc, instruction_set)
+            unwind_program_counter_register(return_address, current_pc, instruction_set, false)
         })
     }
 
@@ -1527,11 +1541,40 @@ fn unwind_register_using_rule(
     Ok(DwarfUnwind::Value(new_value))
 }
 
+fn is_csr_dwarf_column(dwarf_id: u16) -> bool {
+    dwarf_id >= DWARF_CSR_BASE
+}
+
+fn caller_return_address(
+    unwind_registers: &DebugRegisters,
+    unwind_info: &gimli::UnwindTableRow<GimliReaderOffset>,
+    cie_return_address: gimli::Register,
+) -> (Option<RegisterValue>, bool) {
+    let ra = unwind_registers.get_return_address();
+
+    // Xtensa CIEs name DWARF column 1 as the return address, but that column is SP in
+    // probe-rs. Honour a non-RA CIE column only when it is a CSR (`.cfi_return_column 0x1341`).
+    if is_csr_dwarf_column(cie_return_address.0)
+        && let Some(reg) = unwind_registers.get_register_by_dwarf_id(cie_return_address.0)
+    {
+        return (reg.value, true);
+    }
+
+    let from_csr = ra.is_some_and(|ra| {
+        matches!(
+            dwarf_register_rule(ra, unwind_info),
+            RegisterRule::Register(source) if is_csr_dwarf_column(source.0)
+        )
+    });
+    (ra.and_then(|reg| reg.value), from_csr)
+}
+
 /// Helper function to determine the program counter value for the previous frame.
 pub fn unwind_program_counter_register(
     return_address: RegisterValue,
     current_pc: u64,
     instruction_set: Option<InstructionSet>,
+    from_csr: bool,
 ) -> Option<RegisterValue> {
     if return_address.is_max_value() || return_address.is_zero() {
         tracing::debug!(
@@ -1541,6 +1584,14 @@ pub fn unwind_program_counter_register(
     }
 
     const DEFAULT_REGISTER_RULE_STR: &str = "PC=(unwound LR) (dwarf Undefined)";
+
+    // A CSR-sourced return address (for example `mepc`) already points at the interrupted instruction.
+    if from_csr {
+        tracing::trace!(
+            "UNWIND - PC: Caller: {return_address}\tCallee: {current_pc:#010x}\tRule: PC=(unwound CSR)"
+        );
+        return Some(return_address);
+    }
 
     let (caller_pc, rule_str) = match return_address {
         RegisterValue::U32(return_address) => {
@@ -1645,7 +1696,7 @@ mod test {
 
     use gimli::RegisterRule;
     use probe_rs::{
-        CoreDump, MemoryInterface, RegisterRole, RegisterValue,
+        CoreDump, InstructionSet, MemoryInterface, RegisterRole, RegisterValue,
         architecture::{
             arm::core::registers::cortex_m::{self, CORTEX_M_CORE_REGISTERS},
             riscv::registers::RISCV_CORE_REGISTERS,
@@ -1655,7 +1706,10 @@ mod test {
     use std::path::{Path, PathBuf};
     use test_case::test_case;
 
-    use super::{DwarfUnwind, TypedPath, path_matches, unwind_register_using_rule};
+    use super::{
+        DwarfUnwind, TypedPath, path_matches, unwind_program_counter_register,
+        unwind_register_using_rule,
+    };
 
     /// Get the full path to a file in the `tests` directory.
     fn get_path_for_test_files(relative_file: &str) -> PathBuf {
@@ -2568,6 +2622,20 @@ mod test {
         .unwrap();
 
         assert_eq!(value, DwarfUnwind::Value(expected_value));
+    }
+
+    #[test]
+    fn unwind_pc_from_csr_skips_call_adjustment() {
+        let mepc = RegisterValue::U32(0x8000_1234);
+
+        assert_eq!(
+            unwind_program_counter_register(mepc, 0x8000_2000, Some(InstructionSet::RV32), true),
+            Some(mepc)
+        );
+        assert_eq!(
+            unwind_program_counter_register(mepc, 0x8000_2000, Some(InstructionSet::RV32), false),
+            Some(RegisterValue::U32(0x8000_1230))
+        );
     }
 
     #[test]
