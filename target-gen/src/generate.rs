@@ -8,7 +8,8 @@ use probe_rs::flashing::FlashAlgorithm;
 use probe_rs_target::{
     Architecture, ArmCoreAccessOptions, Chip, ChipFamily, Core as ProbeCore, CoreAccessOptions,
     CoreType, GenericRegion, MemoryAccess, MemoryRegion, NvmRegion, RamRegion, RawFlashAlgorithm,
-    RiscvCoreAccessOptions, TargetDescriptionSource, XtensaCoreAccessOptions,
+    RiscvCoreAccessOptions, TargetDescriptionSource, XtensaCoreAccessOptions, XtensaCoreProperties,
+    XtensaWindowProperties,
 };
 use std::collections::HashMap;
 use std::io::BufReader;
@@ -219,9 +220,15 @@ fn create_core(processor: &Processor) -> Result<ProbeCore> {
                 jtag_tap: None,
                 mem_ap: None,
             }),
-            Architecture::Xtensa => {
-                CoreAccessOptions::Xtensa(XtensaCoreAccessOptions { jtag_tap: None })
-            }
+            Architecture::Xtensa => CoreAccessOptions::Xtensa(XtensaCoreAccessOptions {
+                jtag_tap: None,
+                core_properties: XtensaCoreProperties {
+                    debug_level: 6,
+                    hw_breakpoint_num: 2,
+                    fpu: None,
+                    window_properties: Some(XtensaWindowProperties { num_aregs: 64 }),
+                },
+            }),
         },
     })
 }

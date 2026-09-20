@@ -51,6 +51,9 @@ pub enum XtensaError {
 
     /// Breakpoint unit {0} does not exist.
     BreakpointOutOfBounds(usize),
+
+    /// The target description specifies an unsupported debug level: {0}.
+    UnsupportedDebugLevel(u8),
 }
 
 impl From<XtensaError> for ProbeRsError {
@@ -77,6 +80,22 @@ pub enum DebugLevel {
     L6 = 6,
     /// The CPU was configured to take Debug interrupts at level 7.
     L7 = 7,
+}
+
+impl TryFrom<u8> for DebugLevel {
+    type Error = XtensaError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            2 => Ok(DebugLevel::L2),
+            3 => Ok(DebugLevel::L3),
+            4 => Ok(DebugLevel::L4),
+            5 => Ok(DebugLevel::L5),
+            6 => Ok(DebugLevel::L6),
+            7 => Ok(DebugLevel::L7),
+            other => Err(XtensaError::UnsupportedDebugLevel(other)),
+        }
+    }
 }
 
 impl DebugLevel {
@@ -132,6 +151,13 @@ pub struct MemoryRegionProperties {
     pub fast_memory_access: bool,
 }
 
+/// Properties of the Floating-Point Coprocessor Option.
+#[derive(Clone, Copy, Debug)]
+pub struct FpuProperties {
+    /// Whether the FPU supports double-precision operations.
+    pub double_precision: bool,
+}
+
 /// Properties of an Xtensa CPU core.
 pub struct XtensaCoreProperties {
     /// The number of hardware breakpoints the target supports. CPU-specific configuration value.
@@ -146,8 +172,8 @@ pub struct XtensaCoreProperties {
     /// Configurable options in the Windowed Register Option
     pub window_option_properties: WindowProperties,
 
-    /// Whether the CPU implements the Floating-Point Coprocessor Option.
-    pub has_fpu: bool,
+    /// Floating-point coprocessor properties, if the CPU implements the option.
+    pub fpu: Option<FpuProperties>,
 }
 
 impl Default for XtensaCoreProperties {
@@ -156,9 +182,40 @@ impl Default for XtensaCoreProperties {
             hw_breakpoint_num: 2,
             debug_level: DebugLevel::L6,
             memory_ranges: HashMap::new(),
-            window_option_properties: WindowProperties::lx(64),
-            has_fpu: false,
+            window_option_properties: WindowProperties {
+                has_windowed_registers: false,
+                num_aregs: 0,
+                window_regs: 0,
+                rotw_rotates: 0,
+            },
+            fpu: None,
         }
+    }
+}
+
+impl TryFrom<&probe_rs_target::XtensaCoreProperties> for XtensaCoreProperties {
+    type Error = XtensaError;
+
+    fn try_from(properties: &probe_rs_target::XtensaCoreProperties) -> Result<Self, Self::Error> {
+        let defaults = Self::default();
+
+        Ok(Self {
+            hw_breakpoint_num: properties.hw_breakpoint_num,
+            debug_level: DebugLevel::try_from(properties.debug_level)?,
+            fpu: properties.fpu.as_ref().map(|fpu| FpuProperties {
+                double_precision: fpu.double_precision,
+            }),
+            window_option_properties: match properties.window_properties.as_ref() {
+                Some(window) => WindowProperties {
+                    has_windowed_registers: true,
+                    num_aregs: window.num_aregs,
+                    window_regs: 16,
+                    rotw_rotates: 4,
+                },
+                None => defaults.window_option_properties,
+            },
+            memory_ranges: defaults.memory_ranges,
+        })
     }
 }
 
@@ -227,16 +284,6 @@ pub struct WindowProperties {
 }
 
 impl WindowProperties {
-    /// Create a new WindowProperties instance with the given number of AR registers.
-    pub fn lx(num_aregs: u8) -> Self {
-        Self {
-            has_windowed_registers: true,
-            num_aregs,
-            window_regs: 16,
-            rotw_rotates: 4,
-        }
-    }
-
     /// Returns the number of different valid WindowBase values.
     pub fn windowbase_size(&self) -> u8 {
         self.num_aregs / self.rotw_rotates
@@ -249,6 +296,16 @@ pub struct XtensaDebugInterfaceState {
     interface_state: XtensaInterfaceState,
     core_properties: XtensaCoreProperties,
     xdm_state: XdmState,
+}
+
+impl XtensaDebugInterfaceState {
+    /// Creates the state of a core with the given properties.
+    pub fn new(core_properties: XtensaCoreProperties) -> Self {
+        Self {
+            core_properties,
+            ..Default::default()
+        }
+    }
 }
 
 /// The higher level of the XDM functionality.
@@ -288,7 +345,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
 
     /// Returns whether the CPU implements the Floating-Point Coprocessor Option.
     pub fn has_fpu(&self) -> bool {
-        self.core_properties.has_fpu
+        self.core_properties.fpu.is_some()
     }
 
     /// Read the targets IDCODE.
@@ -554,7 +611,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     ///
     /// The original value is written back by [`Self::restore_registers`].
     fn enable_coprocessors(&mut self) -> Result<(), XtensaError> {
-        if !self.core_properties.has_fpu {
+        if !self.has_fpu() {
             return Err(XtensaError::RegisterNotAvailable);
         }
         if self.state.coprocessors_enabled {

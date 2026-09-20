@@ -135,8 +135,6 @@ impl ESP32 {
 
 impl XtensaDebugSequence for ESP32 {
     fn on_connect(&self, interface: &mut XtensaCommunicationInterface) -> Result<(), Error> {
-        interface.core_properties().has_fpu = true;
-
         self.configure_memory_access(interface)?;
         self.disable_wdts(interface)?;
 
