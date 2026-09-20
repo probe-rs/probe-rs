@@ -319,12 +319,15 @@ pub(crate) const T6: CoreRegister = CoreRegister {
 /// The DWARF register number of a CSR is this base plus the CSR address.
 pub const DWARF_CSR_BASE: u16 = 4096;
 
+// A CSR is a single physical register. Walking up the stack does not change its value, so the
+// caller frame sees what the callee saw. Clearing it would lose the trap PC before the frame
+// whose CFI refers to it is reached.
 pub(crate) const MEPC: CoreRegister = CoreRegister {
     roles: &[RegisterRole::Core("mepc")],
     id: RegisterId(0x341),
     dwarf_id: Some(DWARF_CSR_BASE + 0x341),
     data_type: RegisterDataType::UnsignedInteger(32),
-    unwind_rule: UnwindRule::Clear,
+    unwind_rule: UnwindRule::Preserve,
 };
 
 pub(crate) const MCAUSE: CoreRegister = CoreRegister {
@@ -332,7 +335,7 @@ pub(crate) const MCAUSE: CoreRegister = CoreRegister {
     id: RegisterId(0x342),
     dwarf_id: Some(DWARF_CSR_BASE + 0x342),
     data_type: RegisterDataType::UnsignedInteger(32),
-    unwind_rule: UnwindRule::Clear,
+    unwind_rule: UnwindRule::Preserve,
 };
 
 pub(crate) const MSTATUS: CoreRegister = CoreRegister {
@@ -340,7 +343,7 @@ pub(crate) const MSTATUS: CoreRegister = CoreRegister {
     id: RegisterId(0x300),
     dwarf_id: Some(DWARF_CSR_BASE + 0x300),
     data_type: RegisterDataType::UnsignedInteger(32),
-    unwind_rule: UnwindRule::Clear,
+    unwind_rule: UnwindRule::Preserve,
 };
 
 pub(crate) const SEPC: CoreRegister = CoreRegister {
@@ -348,7 +351,7 @@ pub(crate) const SEPC: CoreRegister = CoreRegister {
     id: RegisterId(0x141),
     dwarf_id: Some(DWARF_CSR_BASE + 0x141),
     data_type: RegisterDataType::UnsignedInteger(32),
-    unwind_rule: UnwindRule::Clear,
+    unwind_rule: UnwindRule::Preserve,
 };
 
 // ── Floating-point CSRs (32-bit in both RV32 and RV64) ───────────────────────
