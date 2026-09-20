@@ -85,7 +85,7 @@ pub enum VectorCatchCondition {
     SecureFault,
     /// We encountered any exception.
     All,
-    /// SVC exception (ARMv7-A/R).
+    /// SVC exception (ARMv7-A/R, ARM7TDMI).
     Svc,
     /// UNDEF exception triggered by HLT instruction (ARMv7-A/R).
     Hlt,

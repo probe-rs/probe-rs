@@ -10,7 +10,7 @@ use crate::flashing::{FlashLayout, FlashSector};
 use crate::memory::MemoryInterface;
 use crate::rtt::{Rtt, ScanRegion};
 use crate::{Core, InstructionSet, RegisterValue, core::CoreRegisters, session::Session};
-use crate::{CoreStatus, Target};
+use crate::{CoreStatus, CoreType, Target};
 use std::borrow::Cow;
 use std::marker::PhantomData;
 use std::{
@@ -171,6 +171,43 @@ pub struct Flasher {
 /// The byte used to fill the stack when checking for stack overflows.
 const STACK_FILL_BYTE: u8 = 0x56;
 
+/// ARM7TDMI/MC1322x-specific: reset the target once a flash algorithm's work on `core_index` is
+/// entirely done for the current operation (a whole `erase`/`download`/`verify`/blank-check
+/// invocation - NOT a single init/uninit phase within one), rather than leaving the core halted
+/// at the algorithm's completion breakpoint (`load_address`) for `Session::drop`'s later, blind
+/// `debug_core_stop` to resume from.
+///
+/// Root-caused on real hardware (2026-09-10): that later resume has no way to know PC is sitting
+/// at the flash algorithm's own entry stub rather than real application code, and
+/// `call_function`'s normal calling convention (fresh SP/static-base/interrupt policy) is never
+/// re-applied by a plain resume. Re-entering the algorithm's `Init()`-adjacent code this way -
+/// which `flash_algorithm_init_crash_fixed` documents as deliberately masking IRQ/FIQ for its
+/// own duration - with stale registers and no valid arguments reliably leaves the core unable to
+/// ever durably re-enter debug state again (confirmed via an EmbeddedICE trace: DebugStatus
+/// reads IFEN=0, and DBGACK only asserts for as long as DBGRQ is held, dropping the instant it's
+/// released - not a hardware/JTAG lockup, and not something a physical power-cycle is actually
+/// needed for; a plain `probe-rs reset` reliably recovers it). Resetting immediately instead
+/// avoids the bad resume ever happening: a target reset always leaves the core running from its
+/// real boot vector, so `debug_core_stop`'s own `is_halted()` check sees a running core and
+/// skips the resume entirely.
+///
+/// Callers must call this once per whole operation, not once per internal phase: a first attempt
+/// called it from inside [`ActiveFlasher::uninit`] (which runs once per phase - a
+/// `download --verify` chains erase -> program -> verify, i.e. 3 separate init/uninit cycles in
+/// one session) and confirmed on real hardware that this itself caused a *new* regression - the
+/// next phase's own `Init()` call, racing against this reset immediately followed by
+/// `Flasher::load`'s own `reset_and_halt`, reliably timed out instead of completing normally.
+pub(super) fn reset_after_flash_operation(
+    session: &mut Session,
+    core_index: usize,
+) -> Result<(), FlashError> {
+    let mut core = session.core(core_index).map_err(FlashError::Core)?;
+    if core.core_type() == CoreType::Armv4t {
+        core.reset().map_err(FlashError::Core)?;
+    }
+    Ok(())
+}
+
 impl Flasher {
     /// Creates a new Flasher object.
     pub fn new(
@@ -206,8 +243,31 @@ impl Flasher {
         &self.flash_algorithm
     }
 
-    pub(super) fn double_buffering_supported(&self) -> bool {
-        self.flash_algorithm.page_buffers.len() > 1
+    pub(super) fn double_buffering_supported(
+        &self,
+        session: &mut Session,
+    ) -> Result<bool, FlashError> {
+        // ARMv4T (this crate's own custom debug backend, not a vendor CoreSight
+        // implementation) has no MEM-AP-equivalent background memory access: every memory
+        // read/write requires the core to be genuinely halted first (see `is_halted`'s
+        // precondition checks throughout `communication_interface.rs`). Double buffering's
+        // whole point is to load the *next* page into RAM while the target is still actively
+        // running the *previous* page's real write - which on this architecture is simply not
+        // possible: `load_page_buffer`'s memory write fails outright with `CoreNotHalted` while
+        // that write is still genuinely in progress. Confirmed on real hardware, and
+        // independently via a ground-truth OpenOCD JTAG trace driving the identical
+        // Init/EraseSector/UnInit/Init/load-buffer/ProgramPage sequence directly (bypassing
+        // probe-rs entirely) - same failure, confirming this is a genuine architectural
+        // limitation, not a probe-rs bug.
+        let core_type = session
+            .core(self.core_index)
+            .map_err(FlashError::Core)?
+            .core_type();
+        if core_type == CoreType::Armv4t {
+            return Ok(false);
+        }
+
+        Ok(self.flash_algorithm.page_buffers.len() > 1)
     }
 
     fn load(&mut self, session: &mut Session) -> Result<(), FlashError> {
@@ -276,6 +336,17 @@ impl Flasher {
         }
 
         tracing::debug!("RAM contents match flashing algo blob.");
+
+        if core.core_type() == CoreType::Armv4t {
+            // ARMv4T (ARM7TDMI) has no `BKPT` instruction to self-trap into debug state, so
+            // completion of a flash routine call can't be detected the way it is for other
+            // Arm cores (see `FlashAlgorithm::algorithm_header`). Instead, set a real hardware
+            // breakpoint at the routine's return address (the header, which `call_function`
+            // sets the link register to); `wait_for_completion` polling `core.status()` will
+            // then see the core halt once it reaches it.
+            core.set_hw_breakpoint(algo.load_address)
+                .map_err(FlashError::Core)?;
+        }
 
         Ok(())
     }
@@ -684,7 +755,8 @@ impl Flasher {
         enable_double_buffering: bool,
     ) -> Result<(), FlashError> {
         progress.started_programming();
-        let program_result = if self.double_buffering_supported() && enable_double_buffering {
+        let program_result = if self.double_buffering_supported(session)? && enable_double_buffering
+        {
             self.program_double_buffer(session, progress)
         } else {
             self.program_simple(session, progress)
@@ -753,15 +825,24 @@ impl Flasher {
                 let mut current_buf = 0;
                 let mut t = Instant::now();
                 let mut last_page_address = 0;
+                let mut write_in_progress = false;
                 for page in flash_encoder.pages() {
                     // At the start of each loop cycle load the next page buffer into RAM.
                     let buffer_address = active.load_page_buffer(page.data(), current_buf)?;
 
-                    // Then wait for the active RAM -> Flash copy process to finish.
-                    // Also check if it finished properly. If it didn't, return an error.
-                    active.wait_for_write_end(last_page_address)?;
+                    // Then wait for the active RAM -> Flash copy process to finish (unless this
+                    // is the first page: there is no previous write to wait for yet, and on
+                    // targets without a true side-channel debug bus (ARM7TDMI/EmbeddedICE),
+                    // `wait_for_write_end` reads the result out of a general-purpose register
+                    // that `load_page_buffer`'s own memory-write access just used as a scratch
+                    // register - calling it here would read that stale scratch value back as a
+                    // bogus "error code" rather than skip a check that has nothing to check yet.
+                    if write_in_progress {
+                        active.wait_for_write_end(last_page_address)?;
+                    }
 
                     last_page_address = page.address();
+                    write_in_progress = true;
                     active
                         .progress
                         .page_programmed(page.size() as u64, t.elapsed());
@@ -980,6 +1061,20 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
         let algo = &self.flash_algorithm;
         let regs: &'static CoreRegisters = self.core.registers();
 
+        // On top of the usual "only Init() sets these up" CMSIS convention, always re-write
+        // R9/SP on ARMv4T regardless of `init`: `load_page_buffer`'s bulk memory write (many
+        // repeated system-speed `write_memory_32` calls in a row, one per word) has been
+        // confirmed on real hardware to leave the core's real PC drifted tens of KB away from
+        // where it was actually halted (see the completion-breakpoint-clear fix in
+        // `wait_for_completion`) - i.e. the core genuinely executes real, unintended code for a
+        // while as a side effect of loading the next page buffer. Whatever that unintended
+        // execution does to R9 (static base) or SP (stack pointer) before the *next*
+        // `call_function` (e.g. `ProgramPage`, which runs with `init=false` and so would
+        // otherwise never have these re-established) is anyone's guess, and this crate has no
+        // way to verify they survived intact - so just unconditionally reset them to the known-
+        // good values every time on this architecture, at the cost of a harmless redundant write
+        // on calls where nothing actually got clobbered.
+        let always_reset_env = init || self.core.core_type() == CoreType::Armv4t;
         let registers = [
             (self.core.program_counter(), Some(registers.pc)),
             (regs.argument_register(0), registers.r0),
@@ -988,11 +1083,19 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
             (regs.argument_register(3), registers.r3),
             (
                 regs.core_register(9),
-                if init { Some(algo.static_base) } else { None },
+                if always_reset_env {
+                    Some(algo.static_base)
+                } else {
+                    None
+                },
             ),
             (
                 self.core.stack_pointer(),
-                if init { Some(algo.stack_top) } else { None },
+                if always_reset_env {
+                    Some(algo.stack_top)
+                } else {
+                    None
+                },
             ),
             (
                 self.core.return_address(),
@@ -1036,6 +1139,22 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
             }
         }
 
+        // Re-arm the ARMv4T completion breakpoint (see `load()`) immediately before every
+        // resume, not just once when the algorithm is first loaded. Found on real hardware: a completion
+        // breakpoint armed once, long before `Init()` runs (and, on this target, before its
+        // mode-stack-setup preamble switches through every ARM7TDMI privileged mode and back),
+        // does not reliably stay armed - re-writing the same address to the same unit right
+        // before `run()` made it work where the original, one-time setup did not, on real
+        // hardware, repeatedly. Cheap and harmless for cores where this isn't needed (a no-op
+        // rewrite of the same value), and this crate has no other hardware breakpoint feature
+        // that a mid-flight rewrite could disturb (ARMv4T doesn't have vector-catch/etc breakpoints
+        // for other purposes yet).
+        if self.core.core_type() == CoreType::Armv4t {
+            self.core
+                .set_hw_breakpoint(self.flash_algorithm.load_address)
+                .map_err(FlashError::Core)?;
+        }
+
         // Resume target operation.
         self.core.run().map_err(FlashError::Run)?;
 
@@ -1060,6 +1179,7 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
     #[tracing::instrument(skip(self))]
     pub(super) fn wait_for_completion(&mut self, timeout: Duration) -> Result<u32, FlashError> {
         tracing::debug!("Waiting for routine call completion.");
+
         let regs = self.core.registers();
 
         // Wait until halted state is active again.
@@ -1075,6 +1195,12 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
                 .map_err(FlashError::UnableToReadCoreStatus)?
             {
                 CoreStatus::Halted(_) => {
+                    // A watchpoint match reporting DBGACK is not, by itself, a durable halt on
+                    // this architecture - see `latch_watchpoint_halt`'s doc comment. Must happen
+                    // before any further chain-1 access (register reads below included).
+                    self.core
+                        .latch_watchpoint_halt()
+                        .map_err(FlashError::Core)?;
                     // Once the core is halted we know for sure all RTT data is written
                     // so we can read all of it.
                     self.read_rtt()?;
@@ -1100,8 +1226,17 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
             }
         }
 
-        self.check_for_stack_overflow()?;
-
+        // Read the result register *before* checking for a stack overflow, not after: on
+        // targets without a true side-channel debug bus (e.g. ARM7TDMI/EmbeddedICE, which has
+        // no MEM-AP equivalent - every register/memory access is done by injecting and
+        // executing real instructions on the target CPU itself, through the same general-
+        // purpose registers the flash algorithm uses), `check_for_stack_overflow`'s own memory
+        // read is not a passive, side-effect-free observation - it genuinely executes on the
+        // core and, on this architecture, clobbers the very general-purpose register (the
+        // scratch/base register used for its address calculation) the result is about to be
+        // read from. Confirmed on real hardware: with the stack-overflow check running first,
+        // the "result" read back was actually the stack-overflow check's own scratch address,
+        // not the flash algorithm's real return value.
         let result_reg: RegisterValue =
             self.core
                 .read_core_reg(regs.result_register(0))
@@ -1111,6 +1246,9 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
                         source: Box::new(error),
                     })
                 })?;
+
+        self.check_for_stack_overflow()?;
+
         let r: u32 = match result_reg {
             RegisterValue::U32(v) => v,
             RegisterValue::U64(v) => v as u32,
@@ -1119,6 +1257,22 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
 
         tracing::debug!("Routine returned {:x}.", r);
 
+        // Deliberately NOT clearing the ARMv4T completion breakpoint here (an earlier version
+        // of this fix did, right after a successful `wait_for_completion`, on the theory that
+        // leaving it armed during `load_page_buffer`'s bulk write risked a spurious match mid-
+        // write - since disproven and fixed at the actual source, see
+        // `write_memory_32_bulk`). Reverted: confirmed on real hardware that clearing it here
+        // reopens the exact hole `call_function`'s "re-arm before every resume" fix (see there)
+        // was written to close - a `wait_for_completion` success can itself be a spurious/
+        // premature watchpoint match (the routine hasn't actually returned yet, still deep in
+        // its own body), and if the breakpoint is cleared right after that false completion,
+        // there is nothing left armed to catch the routine's *real*, later return - so it keeps
+        // running in the background while the next `call_function` redirects PC out from under
+        // it, and whatever's next only "completes" once that background execution eventually,
+        // coincidentally reaches `load_address` for real. Leaving the breakpoint continuously
+        // armed (only ever re-armed to the same address, never cleared, until `call_function`'s
+        // own re-arm naturally overwrites it for the next call) is what makes a later, genuine
+        // return still catchable even after an earlier false one.
         Ok(r)
     }
 

@@ -243,14 +243,10 @@ pub async fn core_read_registers(
         .map(convert::from_wire_register_id)
         .collect();
     let values = with_core!(ctx, request.sessid, request.core, |core| {
-        let mut out: Vec<Result<RegisterValue, RpcError>> = Vec::with_capacity(ids.len());
-        for id in &ids {
-            out.push(
-                core.read_core_reg::<RegisterValue>(*id)
-                    .map_err(crate::rpc::functions::convert::rpc_error_probe_rs),
-            );
-        }
-        out
+        core.read_core_regs_batch(&ids)
+            .into_iter()
+            .map(|result| result.map_err(crate::rpc::functions::convert::rpc_error_probe_rs))
+            .collect::<Vec<Result<RegisterValue, RpcError>>>()
     });
 
     Ok(request
@@ -689,6 +685,7 @@ pub(crate) mod convert {
 
     pub(crate) fn to_wire_core_type(value: probe_rs::CoreType) -> WireCoreType {
         match value {
+            probe_rs::CoreType::Armv4t => WireCoreType::Armv4t,
             probe_rs::CoreType::Armv6m => WireCoreType::Armv6m,
             probe_rs::CoreType::Armv7a => WireCoreType::Armv7a,
             probe_rs::CoreType::Armv7r => WireCoreType::Armv7r,
@@ -704,6 +701,7 @@ pub(crate) mod convert {
 
     pub(crate) fn from_wire_core_type(value: WireCoreType) -> probe_rs::CoreType {
         match value {
+            WireCoreType::Armv4t => probe_rs::CoreType::Armv4t,
             WireCoreType::Armv6m => probe_rs::CoreType::Armv6m,
             WireCoreType::Armv7a => probe_rs::CoreType::Armv7a,
             WireCoreType::Armv7r => probe_rs::CoreType::Armv7r,

@@ -91,6 +91,7 @@ impl ProbeFactory for XvcFactory {
                 probe_factory: &Self,
                 is_hid_interface: false,
                 interface: None,
+                usb_location: None,
             })];
         }
 

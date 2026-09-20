@@ -99,6 +99,12 @@ pub type ListTestsResponse = RpcResult<Tests>;
 pub struct RunTestRequest {
     pub sessid: Key<Session>,
     pub test: Test,
+    /// How to get the core running before this test - for a RAM-resident target
+    /// (`BootInfo::FromRam`), this must be a plain PC redirect (`prepare_boot_info`), not a real
+    /// hardware reset, since a reset can wipe the RAM image the test binary lives in and leaves
+    /// the core waiting on the target's own boot ROM instead of ever reaching it. See
+    /// `run_test_impl`'s doc comment.
+    pub boot_info: BootInfo,
     /// RTT client if used.
     pub rtt_client: Option<Key<RttClient>>,
     pub semihosting_options: SemihostingOptions,

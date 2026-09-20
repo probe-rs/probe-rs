@@ -1,0 +1,178 @@
+name: MC1322x Series
+manufacturer:
+  id: 0x0E  # Freescale (Motorola). Note: 0x15 (same bank) is NXP (Philips)'s own separate
+            # JEP106 code - do not conflate the two even though NXP later acquired Freescale.
+  cc: 0x0
+generated_from_pack: false
+variants:
+# The MC1322x family has exactly two members (per NXP's MC13224V/MC13226V product pages):
+# MC13224V and MC13226V. They differ only in ROM contents ("all other device hardware,
+# performance, and specifications being identical" per NXP) - flash/RAM size and layout below
+# apply to both.
+#
+# IMPORTANT: on this chip, address 0x0 is always the internal boot ROM (containing Freescale's
+# boot code and the NVM/flash driver functions), never the flash itself - confirmed against the
+# MC1322x Reference Manual (Table 4-1 "Top Level Memory Map") and libmc1322x. The 128 KB flash
+# is a serial NVM with NO CPU memory-mapped address of its own; it is only reachable through the
+# on-chip ROM driver's nvm_read/nvm_write/nvm_erase functions (fixed ROM entry points, e.g.
+# nvm_write at 0x00006ec5 per libmc1322x's lib/nvm.c). On reset, the boot ROM itself copies the
+# flash image wholesale into RAM at 0x00400000 and jumps there - user code always runs from RAM,
+# never executes-in-place from flash.
+#
+# The `FLASH` region's 0x0-0x20000 range below is therefore a *logical* NVM offset space (as
+# understood by the ROM driver and this flash algorithm), not a real, directly-readable CPU
+# address range. A raw memory read at these addresses would actually read boot ROM content,
+# not flash - so this flash algorithm defines a `pc_verify` entry point (calling the ROM's
+# nvm_verify function) rather than relying on probe-rs's default "verify by reading back
+# flash contents" behaviour, which would be meaningless on this chip.
+- name: MC13224V
+  cores:
+  - name: main
+    type: armv4t
+    core_access_options: !Armv4t
+      jtag_tap: 0
+  jtag:
+    force_scan_chain: true
+    scan_chain:
+    - name: main
+      ir_len: 4
+    # This chip's ARM7TDMI EmbeddedICE debug logic is held in reset (and only the passive,
+    # default post-TAP-reset IDCODE capture works) unless nTRST/nSRST are actively driven.
+    # On boards using an FTDI-based JTAG adapter wired like the Axiom AXM-0432 (which the
+    # Redbee Econotag's JTAG header follows), these are plain GPIO outputs on the FTDI
+    # chip's ACBUS/GPIOH pins - see OpenOCD's `interface/ftdi/axm0432.cfg` layout, which
+    # this mirrors (`layout_init 0x0c08 0x0c2b`, i.e. nTRST/nSRST both idle-high, plus
+    # ADBUS5 held low as an extra output of unconfirmed purpose - possibly a level-shifter/
+    # buffer enable line - kept here defensively since it's unverified whether it's load-
+    # bearing).
+    gpio_reset:
+      ntrst:
+        bit: 11 # ACBUS3 / GPIOH3
+        idle_high: true
+      nsrst:
+        bit: 10 # ACBUS2 / GPIOH2
+        idle_high: true
+      extra_outputs:
+      - bit: 5 # ADBUS5 / GPIOL1
+        idle_high: false
+  memory_map:
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x00000000
+      end: 0x00020000  # 128 KB
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: RAM
+    range:
+      start: 0x00400000
+      end: 0x00418000  # 96 KB, confirmed against libmc1322x's mc1322x.lds and the MC1322x RM
+    cores:
+    - main
+  flash_algorithms:
+  - mc1322x-flash-algorithm
+
+- name: MC13226V
+  cores:
+  - name: main
+    type: armv4t
+    core_access_options: !Armv4t
+      jtag_tap: 0
+  jtag:
+    force_scan_chain: true
+    scan_chain:
+    - name: main
+      ir_len: 4
+    # See the identical block on MC13224V above for why this is needed.
+    gpio_reset:
+      ntrst:
+        bit: 11 # ACBUS3 / GPIOH3
+        idle_high: true
+      nsrst:
+        bit: 10 # ACBUS2 / GPIOH2
+        idle_high: true
+      extra_outputs:
+      - bit: 5 # ADBUS5 / GPIOL1
+        idle_high: false
+  memory_map:
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x00000000
+      end: 0x00020000  # 128 KB
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: RAM
+    range:
+      start: 0x00400000
+      end: 0x00418000  # 96 KB, confirmed against libmc1322x's mc1322x.lds and the MC1322x RM
+    cores:
+    - main
+  flash_algorithms:
+  - mc1322x-flash-algorithm
+
+flash_algorithms:
+- name: mc1322x-flash-algorithm
+  description: MC1322x Flash Algorithm using ROM routines
+  default: true
+  # Sector size (0x1000) is confirmed: libmc1322x's lib/include/nvm.h documents "32 sectors of
+  # 4096 bytes each" (32 * 4096 = 128 KB, matching the flash size above).
+  #
+  # page_size (0x100) and the pc_init/pc_uninit/pc_program_page/pc_erase_sector/pc_erase_all/
+  # pc_verify/data_section_offset entry points below are still NOT independently verified:
+  # libmc1322x calls the ROM's flash driver directly from RAM-resident application code at
+  # fixed ROM addresses (not through a small JTAG-loaded stub with these offsets), and NXP's
+  # Software Driver Reference Manual (which would document the official ROM API in the detail
+  # needed to confirm this) was not accessible. Verify against real hardware before relying on
+  # this in production.
+  #
+  # Regenerated 2026-09-01 via `target-gen elf` from a fresh `mc1322x-flash-algorithm` release
+  # build - the previously checked-in `instructions`/`pc_*`/`data_section_offset` values here
+  # were stale (from an early, much smaller version of `main.rs`, before it grew the CRM
+  # voltage-regulator bring-up and full ROM-call error handling): the old `pc_init: 0xdc` did
+  # not match the current build's real `Init` symbol at all (`0x4008dc`), so every JTAG flash
+  # attempt against this stale algorithm was calling into the wrong code entirely - see
+  # [[probe_rs_arm7_chain1_bug]] for how this was found.
+  instructions: /v//6v3//+r8///q+///6vr//+r5///q+P//6nBHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwRwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcEcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHBHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAJ/lABDQ5QEAoOMBAFHjHv8vEQBILekNsKDhOACf5QUwoONuPIPjAiHg4wAQkOUAAKDjD+Cg4RP/L+EAEKDhAwCg4wcKgOMAAFHjAQCgAQBIvege/y/hxAxAAMAMQAAAEKDhaACf5QAg0OUBAKDjAQBS4x7/LxGhCLDhBACgEwcKgBMe/y8RAEgt6Q2woOEhBqDhARCg4xEgoOE0AJ/lBTCg4248g+MAEJDlAACg4w/goOET/y/hABCg4QUAoOMHCoDjAABR4wEAoAEASL3oHv8v4cQMQADADEAAcEwt6RCwjeII0E3ihGGf5QEAoOMAAMblAQBC4gQAUONbAAAqjQ6g4wBAD+HAUITjBfAh4R9QxOPAUIXjEVCF4wXwIeHA0p/lH1DE48BQheMSUIXjBfAh4bDSn+UfUMTjwFCF4xNQheMF8CHhoNKf5R9QxOPAUIXjG1CF4wXwIeGQ0p/lH1DE48BQheMXUIXjBfAh4YDSn+XAQITjBPAh4QEIgOMP4KDhEP8v4egAn+UYEKDjGBAA5cEfoOMDG4HjMBCA5WofoOMWGoHjARBR4gAgkOX8//8a/h+g4wMbgeMwEIDlABCQ5QIHEeP8//8KABCQ5QEHEeP8//8KuSCg4wQQjeIAAKDjGyuC4wQAjeUP4KDhEv8v4QAAUOMFAAAKAUCg4wdKhOMEAKDhENBL4nBMvege/y/hBFCd5QQAVeMFAKDhAADgIwEAcOMDAAAKAABQ4wMAABoCQKDj8P//6ghAoOPu///qhRCg4wAAoOMHGoHjAECg4w/goOER/y/hGACf5QBQgOUBAKDjAADG5eT//+phAADrxAxAABgwAIDADEAAEEwt6QiwjeII0E3iAOCg4XwAn+UAMNDlAQCg4wEAU+MYAAAaAABR4xUAAAquCLDhBgCg4wcKgOMSAAAaDjCB4AIIU+MPAACKSACf5cVAoOMAEI3lbkyE4w4woOEAwJDlAACg4wwQoOEP4KDhFP8v4QAAUOMCAAAKBwCg4wcKgOMAAADqAACg4wjQS+IQTL3oHv8v4cQMQADADEAAAEgt6Q2woOEYEJ/lAQCg4wAg0eUBAFLjAACgAwAAwQUASL3oHv8v4cQMQABwTC3pELCN4gjQTeIAQKDhgACf5QFQoOMAANDlAQBQ4xgAABoAAFLjFQAACgAAUeMRAAAKpAiw4Q8AABoEUIHgAghV4wwAAIpMAJ/lhWCg4wAQjeVvbIbjADCQ5QAAoOMDEKDhBDCg4Q/goOEW/y/hAABQ4wRQoBECAADqBFCg4QAAAOoEUIHgBQCg4RDQS+JwTL3oHv8v4cQMQADADEAAADFAAAAyQAAAM0AAADRAAAA1QAAASC3pDbCg4fAA8Of+3v/nAAAAAAA=
+  pc_init: 0x8dc
+  pc_uninit: 0xb1c
+  pc_program_page: 0xa80
+  pc_erase_sector: 0x860
+  pc_erase_all: 0x800
+  pc_verify: 0xb48
+  data_section_offset: 0x400c10
+  # Explicit, not derived from code size: probe-rs's generic `code_end`/data-placement logic
+  # (assemble_from_raw) only accounts for the `instructions`/PrgCode section's own length, not
+  # this algorithm's separate DeviceData (0x400c10-0x400cc0, unused at runtime - CMSIS-Pack
+  # metadata read by the host, not by the target code) or PrgData (0x400cc0-0x400cc5: the
+  # algorithm's own `_ALGO_INSTANCE`/`_IS_INIT` statics, genuinely read/written at runtime).
+  # Without this override, probe-rs places the double-buffered page-write buffers right at
+  # `code_end` (0x400c20) - which overlaps both of those, so loading a page of flash data to
+  # program silently overwrites `_IS_INIT`/`_ALGO_INSTANCE` with (partly) whatever bytes happen
+  # to be at that offset in the page, corrupting ProgramPage's own view of its state right
+  # before it runs. Confirmed via ground-truth OpenOCD JTAG trace comparison: the same failure
+  # (ProgramPage's `_IS_INIT` check failing) reproduces identically outside of probe-rs, driving
+  # the same load/write/call sequence directly. 0x400cc8 is 0x400cc5 (PrgData's real end)
+  # rounded up to 8-byte stack alignment.
+  data_load_address: 0x400cc8
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x20000
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+  cores:
+  - main
