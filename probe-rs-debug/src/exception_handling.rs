@@ -57,6 +57,20 @@ pub struct ExceptionInfo {
     pub handler_frame: StackFrame,
 }
 
+/// How the unwinder finds the return address that gives the program counter of the calling frame.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReturnAddressRecovery {
+    /// The call frame information restores it, as [DWARF](https://dwarfstd.org) 6.4.4 describes.
+    /// An `Undefined` rule then means the frame has no caller.
+    UnwindInfo,
+    /// The return address register of the called frame already holds it.
+    ///
+    /// Xtensa keeps the return address of a frame in its own `a0`, so a compiler emits no rule to
+    /// restore what it never saved. The register window unwind recovers the `a0` of the calling
+    /// frame instead, which is the return address of that frame, one step too far.
+    CalledFrameRegister,
+}
+
 /// A generic interface to identify and decode exceptions during unwind processing.
 pub trait ExceptionInterface {
     /// Using the `stackframe_registers` for a "called frame",
@@ -105,13 +119,9 @@ pub trait ExceptionInterface {
         Err(DebugError::NotImplemented("exception description"))
     }
 
-    /// Whether an undefined DWARF rule for the return address means the frame has no caller.
-    ///
-    /// True for architectures that recover the return address from the call frame information.
-    /// False for Xtensa, whose windowed ABI keeps the return address in the register file, so a
-    /// compiler emits no rule to recover what it never saved.
-    fn undefined_return_address_ends_unwind(&self) -> bool {
-        true
+    /// How to find the return address that gives the program counter of the calling frame.
+    fn return_address_recovery(&self) -> ReturnAddressRecovery {
+        ReturnAddressRecovery::UnwindInfo
     }
 
     /// Unwind the stack without debug info.

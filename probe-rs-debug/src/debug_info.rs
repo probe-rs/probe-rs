@@ -1,6 +1,6 @@
 use super::{
     DebugError, DebugRegisters, StackFrame, VariableCache,
-    exception_handling::ExceptionInterface,
+    exception_handling::{ExceptionInterface, ReturnAddressRecovery},
     function_die::{Die, FunctionDie},
     get_object_reference,
     unit_info::UnitInfo,
@@ -601,14 +601,10 @@ impl DebugInfo {
     ///   Note: [DWARF](https://dwarfstd.org) 6.4.4 - CIE defines the return register address
     ///   used in the `gimli::RegisterRule` tables for unwind operations.
     /// - The return address has an `Undefined` `gimli::RegisterRule`, which means the frame has no
-    ///   caller. Two cases are exempt, because there the absent rule does not describe the bottom
-    ///   of the stack:
-    ///   - The innermost frame. A leaf function keeps its return address live in the register, so
-    ///     no rule is emitted to recover a value that was never saved.
-    ///   - Architectures where the ABI holds the return address outside the call frame
-    ///     information, reported by
-    ///     [`ExceptionInterface::undefined_return_address_ends_unwind`]. Xtensa keeps it in the
-    ///     register window.
+    ///   caller. The innermost frame is exempt, because a leaf function keeps its return address
+    ///   live in the register, so no rule is emitted to recover a value that was never saved.
+    ///   This applies only where [`ExceptionInterface::return_address_recovery`] reports
+    ///   [`ReturnAddressRecovery::UnwindInfo`].
     /// - Similarly, certain error conditions encountered in `StackFrameIterator` will also break out of the unwind loop.
     ///
     /// Note: In addition to populating the `StackFrame`s, this function will also
@@ -908,16 +904,18 @@ impl DebugInfo {
                 };
             }
 
-            let (unwound_return_address, return_address_source) =
-                caller_return_address(&unwind_registers, unwind_info, cie_return_address);
+            let (unwound_return_address, return_address_source) = caller_return_address(
+                &callee_frame_registers,
+                &unwind_registers,
+                unwind_info,
+                cie_return_address,
+                exception_handler.return_address_recovery(),
+            );
 
             // DWARF 6.4.4: no rule for the return address means the frame has no caller. The
             // innermost frame is exempt, because a leaf function keeps its return address live in
             // the register and compilers emit no rule to recover what was never saved.
-            if return_address_source == ReturnAddressSource::Undefined
-                && unwound_frames > 0
-                && exception_handler.undefined_return_address_ends_unwind()
-            {
+            if return_address_source == ReturnAddressSource::Undefined && unwound_frames > 0 {
                 tracing::debug!(
                     "UNWIND: Stopped unwinding at {frame_pc:#010x}, which has no rule for its return address."
                 );
@@ -1589,10 +1587,21 @@ enum ReturnAddressSource {
 }
 
 fn caller_return_address(
+    callee_frame_registers: &DebugRegisters,
     unwind_registers: &DebugRegisters,
     unwind_info: &gimli::UnwindTableRow<GimliReaderOffset>,
     cie_return_address: gimli::Register,
+    recovery: ReturnAddressRecovery,
 ) -> (Option<RegisterValue>, ReturnAddressSource) {
+    if recovery == ReturnAddressRecovery::CalledFrameRegister {
+        // `unwind_registers` already holds the return address of the calling frame, which belongs
+        // to the frame above the one whose program counter is wanted here.
+        let ra = callee_frame_registers
+            .get_return_address()
+            .and_then(|ra| ra.value);
+        return (ra, ReturnAddressSource::Register);
+    }
+
     let ra = unwind_registers.get_return_address();
 
     // Xtensa CIEs name DWARF column 1 as the return address, but that column is SP in
