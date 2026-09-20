@@ -2,6 +2,7 @@
 
 use std::future::pending;
 use std::io::{IsTerminal, Write};
+use std::sync::Arc;
 use std::time::Duration;
 use std::{future::Future, ops::DerefMut, path::Path, time::Instant};
 
@@ -52,6 +53,7 @@ use probe_rs_rpc::stack_trace::StackTrace;
 use probe_rs_rpc::stack_trace::StackTraceFrame;
 use probe_rs_rpc::test::{Test, TestResult};
 use probe_rs_rpc_client::{MonitorEvent, RpcClient, SessionInterface};
+use probe_rs_zephyr::log::{Database as ZephyrLogDatabase, Decoder as ZephyrLogDecoder};
 
 type TargetOutputFiles = std::collections::HashMap<ChannelIdentifier, tokio::fs::File>;
 
@@ -423,6 +425,7 @@ pub(crate) fn parse_semihosting_options(arg: &[String]) -> anyhow::Result<Semiho
 #[derive(Default)]
 pub struct FileMetadata {
     pub defmt_data: Option<DefmtState>,
+    pub zephyr_log_dictionary: Option<Arc<ZephyrLogDatabase>>,
     pub scan_regions: Option<ScanRegion>,
 }
 
@@ -452,9 +455,18 @@ pub async fn parse_metadata(path: &Path) -> anyhow::Result<(FileMetadata, Option
         None
     };
 
+    let zephyr_log_dictionary = match ZephyrLogDatabase::from_elf(&elf) {
+        Ok(db) => db.map(Arc::new),
+        Err(error) => {
+            tracing::warn!("Failed to load the embedded Zephyr log dictionary: {error:#}");
+            None
+        }
+    };
+
     Ok((
         FileMetadata {
             defmt_data,
+            zephyr_log_dictionary,
             scan_regions,
         },
         elf_meta,
@@ -470,6 +482,19 @@ pub async fn rtt_client(
     let scan_regions = match &meta.scan_regions {
         Some(scan_regions) => scan_regions.clone(),
         None => monitor_options.scan_region.clone(),
+    };
+
+    let zephyr_log_dictionary = match &monitor_options.zephyr_log_dictionary {
+        Some(path) => {
+            let data = tokio::fs::read(path).await.with_context(|| {
+                format!(
+                    "Failed to read Zephyr log dictionary from {}",
+                    path.display()
+                )
+            })?;
+            Some(Arc::new(ZephyrLogDatabase::from_bytes(&data)?))
+        }
+        None => meta.zephyr_log_dictionary.clone(),
     };
 
     // We don't really know what to configure here, so we set a default configuration if we can, but that's it.
@@ -492,6 +517,7 @@ pub async fn rtt_client(
         show_location: !monitor_options.no_location,
         channel_processors: vec![],
         defmt_data: meta.defmt_data.clone(),
+        zephyr_log_dictionary,
         log_format: monitor_options.log_format.clone(),
     })
 }
@@ -1251,6 +1277,7 @@ pub struct CliRttClient {
     show_location: bool,
     timestamp_offset: Option<UtcOffset>,
     defmt_data: Option<DefmtState>,
+    zephyr_log_dictionary: Option<Arc<ZephyrLogDatabase>>,
 }
 
 impl CliRttClient {
@@ -1264,9 +1291,23 @@ impl CliRttClient {
             return;
         }
 
+        // Zephyr outputs dictionary-based logs on a single channel, which the database records.
+        let zephyr_dict_channel = self
+            .zephyr_log_dictionary
+            .as_ref()
+            .map(|db| db.rtt_channel().unwrap_or(0) as usize);
+
         // Apply our heuristics based on channel names.
-        for channel in up_channels.iter() {
-            let decoder = if channel.name == "defmt" {
+        for (number, channel) in up_channels.iter().enumerate() {
+            let decoder = if let Some(db) = self
+                .zephyr_log_dictionary
+                .as_ref()
+                .filter(|_| zephyr_dict_channel == Some(number))
+            {
+                RttDecoder::ZephyrDict {
+                    processor: ZephyrLogDecoder::new(db.clone()),
+                }
+            } else if channel.name == "defmt" {
                 if let Some(defmt_data) = self.defmt_data.clone() {
                     RttDecoder::Defmt {
                         processor: DefmtProcessor::new(
