@@ -671,11 +671,14 @@ impl DebugInfo {
             let unwind_info = get_unwind_info(&mut unwind_context, &self.frame_section, frame_pc);
 
             // Determining the frame base may need the CFA (Canonical Frame Address) to be calculated first.
-            let cfa = unwind_info
-                .as_ref()
-                .ok()
-                .and_then(|unwind_info| determine_cfa(&unwind_registers, unwind_info).ok())
-                .flatten();
+            let (cfa, cfa_unsupported) = match unwind_info.as_ref() {
+                Ok(unwind_info) => match determine_cfa(&unwind_registers, unwind_info) {
+                    Ok(DwarfUnwind::Value(cfa)) => (cfa, false),
+                    Ok(DwarfUnwind::UnsupportedCfi) => (None, true),
+                    Err(_) => (None, false),
+                },
+                Err(_) => (None, false),
+            };
 
             // PART 1-a: Prepare the `StackFrame`s that holds the current frame information.
             let cached_stack_frames =
@@ -732,74 +735,56 @@ impl DebugInfo {
             // PART 2-a: get the `gimli::FrameDescriptorEntry` for the program counter
             // and then the unwind info associated with this row.
             let unwind_info = match unwind_info {
-                Ok(unwind_info) => {
+                Ok(unwind_info) if !cfa_unsupported => {
                     tracing::trace!("UNWIND: Found unwind info for address {frame_pc:#010x}");
-                    unwind_info
+                    Some(unwind_info)
                 }
+                Ok(_) => None,
                 Err(err) => {
                     tracing::trace!(
                         "UNWIND: Unable to find unwind info for address {frame_pc:#010x}: {err}"
                     );
-                    if let ControlFlow::Break(error) = exception_handler.unwind_without_debuginfo(
-                        &mut unwind_registers,
-                        frame_pc,
-                        &stack_frames,
-                        instruction_set,
-                        memory,
-                    ) {
-                        if let Some(error) = error {
-                            // This is not fatal, but we cannot continue unwinding beyond the current frame.
-                            tracing::error!("{:?}", &error);
-                            if let Some(first_frame) = stack_frames.first_mut() {
-                                first_frame.function_name =
-                                    format!("{} : ERROR : {error}", first_frame.function_name);
-                            };
-                        }
-                        break 'unwind;
-                    }
+                    None
+                }
+            };
 
-                    // Check for exception frames, same as PART 3 below.
-                    // This is needed because the exception check in PART 3 only
-                    // runs after DWARF unwinding, but we may have no DWARF info
-                    // for the current frame (e.g., outlined functions in release builds).
-                    if unwind_registers
-                        .get_return_address()
-                        .is_some_and(|ra| ra.value.is_some())
-                    {
-                        match exception_handler.exception_details(memory, &unwind_registers, self) {
-                            Ok(Some(exception_info)) => {
-                                tracing::trace!(
-                                    "UNWIND: Stack unwind reached an exception handler {} (no debug info path)",
-                                    exception_info.description
-                                );
-                                unwind_registers = exception_info.handler_frame.registers.clone();
-                                stack_frames.push(exception_info.handler_frame);
-                                continue 'unwind;
-                            }
-                            Ok(None) => {}
-                            Err(e) => {
-                                tracing::warn!(
-                                    "UNWIND: Error checking exception context (no debug info path): {e:?}"
-                                );
-                            }
+            let Some(unwind_info) = unwind_info else {
+                match self.unwind_frame_without_debuginfo(
+                    exception_handler,
+                    &mut unwind_registers,
+                    frame_pc,
+                    &mut stack_frames,
+                    instruction_set,
+                    memory,
+                ) {
+                    ControlFlow::Break(()) => break 'unwind,
+                    ControlFlow::Continue(()) => {
+                        if callee_frame_registers == unwind_registers {
+                            tracing::debug!("No change, preventing infinite loop");
+                            break;
                         }
+                        continue 'unwind;
                     }
-
-                    if callee_frame_registers == unwind_registers {
-                        tracing::debug!("No change, preventing infinite loop");
-                        break;
-                    }
-                    continue 'unwind;
                 }
             };
 
             // PART 2-b: Unwind registers for the "previous/calling" frame.
+            let mut dwarf_cfi_fallback = false;
             for debug_register in unwind_registers.0.iter_mut() {
-                // The program counter is handled later
+                // The program counter is handled later.
                 if debug_register
                     .core_register
                     .register_has_role(RegisterRole::ProgramCounter)
                 {
+                    let register_rule = dwarf_register_rule(debug_register, unwind_info);
+                    if cfi_register_rule_unsupported(&register_rule) {
+                        tracing::warn!(
+                            "UNWIND: Unsupported CFI register rule {register_rule:?} for register {}",
+                            debug_register.core_register
+                        );
+                        dwarf_cfi_fallback = true;
+                        break;
+                    }
                     continue;
                 }
 
@@ -819,10 +804,38 @@ impl DebugInfo {
                         };
                         break 'unwind;
                     }
-                    Ok(val) => {
+                    Ok(DwarfUnwind::Value(val)) => {
                         debug_register.value = val;
                     }
+                    Ok(DwarfUnwind::UnsupportedCfi) => {
+                        dwarf_cfi_fallback = true;
+                        break;
+                    }
                 };
+            }
+
+            if dwarf_cfi_fallback {
+                tracing::warn!(
+                    "UNWIND: Falling back to unwinding without debug info at {frame_pc:#010x}"
+                );
+                unwind_registers.clone_from(&callee_frame_registers);
+                match self.unwind_frame_without_debuginfo(
+                    exception_handler,
+                    &mut unwind_registers,
+                    frame_pc,
+                    &mut stack_frames,
+                    instruction_set,
+                    memory,
+                ) {
+                    ControlFlow::Break(()) => break 'unwind,
+                    ControlFlow::Continue(()) => {
+                        if callee_frame_registers == unwind_registers {
+                            tracing::debug!("No change, preventing infinite loop");
+                            break;
+                        }
+                        continue 'unwind;
+                    }
+                }
             }
 
             // PART 3: Check if we entered the current frame from an exception handler.
@@ -1137,6 +1150,96 @@ pub(crate) fn path_matches(full_path: TypedPath, partial_path: TypedPath) -> boo
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum DwarfUnwind<T> {
+    Value(T),
+    UnsupportedCfi,
+}
+
+fn is_frame_walk_register(register: &CoreRegister) -> bool {
+    register.register_has_role(RegisterRole::ProgramCounter)
+        || register.register_has_role(RegisterRole::StackPointer)
+        || register.register_has_role(RegisterRole::ReturnAddress)
+}
+
+/// Must list the same rules that [`unwind_register_using_rule`] implements.
+fn cfi_register_rule_unsupported<T: gimli::ReaderOffset>(rule: &RegisterRule<T>) -> bool {
+    !matches!(
+        rule,
+        RegisterRule::Undefined
+            | RegisterRule::SameValue
+            | RegisterRule::Offset(_)
+            | RegisterRule::ValOffset(_)
+            | RegisterRule::Register(_)
+            | RegisterRule::Constant(_)
+    )
+}
+
+fn dwarf_register_rule(
+    debug_register: &super::DebugRegister,
+    unwind_info: &gimli::UnwindTableRow<GimliReaderOffset>,
+) -> RegisterRule<GimliReaderOffset> {
+    debug_register
+        .dwarf_id
+        .and_then(|register_position| unwind_info.register(gimli::Register(register_position)))
+        .unwrap_or(RegisterRule::Undefined)
+}
+
+impl DebugInfo {
+    fn unwind_frame_without_debuginfo(
+        &self,
+        exception_handler: &dyn ExceptionInterface,
+        unwind_registers: &mut DebugRegisters,
+        frame_pc: u64,
+        stack_frames: &mut Vec<StackFrame>,
+        instruction_set: Option<InstructionSet>,
+        memory: &mut dyn MemoryInterface,
+    ) -> ControlFlow<()> {
+        if let ControlFlow::Break(error) = exception_handler.unwind_without_debuginfo(
+            unwind_registers,
+            frame_pc,
+            stack_frames,
+            instruction_set,
+            memory,
+        ) {
+            if let Some(error) = error {
+                // This is not fatal, but we cannot continue unwinding beyond the current frame.
+                tracing::error!("{:?}", &error);
+                if let Some(first_frame) = stack_frames.first_mut() {
+                    first_frame.function_name =
+                        format!("{} : ERROR : {error}", first_frame.function_name);
+                };
+            }
+            return ControlFlow::Break(());
+        }
+
+        if unwind_registers
+            .get_return_address()
+            .is_some_and(|ra| ra.value.is_some())
+        {
+            match exception_handler.exception_details(memory, unwind_registers, self) {
+                Ok(Some(exception_info)) => {
+                    tracing::trace!(
+                        "UNWIND: Stack unwind reached an exception handler {} (no debug info path)",
+                        exception_info.description
+                    );
+                    *unwind_registers = exception_info.handler_frame.registers.clone();
+                    stack_frames.push(exception_info.handler_frame);
+                    return ControlFlow::Continue(());
+                }
+                Ok(None) => {}
+                Err(e) => {
+                    tracing::warn!(
+                        "UNWIND: Error checking exception context (no debug info path): {e:?}"
+                    );
+                }
+            }
+        }
+
+        ControlFlow::Continue(())
+    }
+}
+
 /// Get a handle to the [`gimli::UnwindTableRow`] for this call frame, so that we can reference it to unwind register values.
 pub fn get_unwind_info<'a>(
     unwind_context: &'a mut UnwindContext<GimliReaderOffset>,
@@ -1170,12 +1273,13 @@ pub fn get_unwind_info<'a>(
 }
 
 /// Determines the CFA (canonical frame address) for the current [`gimli::UnwindTableRow`], using the current register values.
-pub fn determine_cfa<R: gimli::ReaderOffset>(
+fn determine_cfa<R: gimli::ReaderOffset>(
     unwind_registers: &DebugRegisters,
     unwind_info: &UnwindTableRow<R>,
-) -> Result<Option<u64>, Error> {
+) -> Result<DwarfUnwind<Option<u64>>, Error> {
     let gimli::CfaRule::RegisterAndOffset { register, offset } = unwind_info.cfa() else {
-        unimplemented!()
+        tracing::warn!("UNWIND: Unsupported CFI CFA rule {:?}", unwind_info.cfa());
+        return Ok(DwarfUnwind::UnsupportedCfi);
     };
 
     let reg_val = unwind_registers
@@ -1215,7 +1319,7 @@ pub fn determine_cfa<R: gimli::ReaderOffset>(
         }
     };
 
-    Ok(cfa)
+    Ok(DwarfUnwind::Value(cfa))
 }
 
 /// Unwind the program counter for the caller frame, using the LR value from the callee frame.
@@ -1257,7 +1361,7 @@ pub fn unwind_pc_without_debuginfo(
 }
 
 /// A per_register unwind, applying register rules and updating the [`crate::DebugRegister`] value as appropriate, before returning control to the calling function.
-pub fn unwind_register(
+fn unwind_register(
     debug_register: &super::DebugRegister,
     // The callee_frame_registers are used to lookup values and never updated.
     callee_frame_registers: &DebugRegisters,
@@ -1265,19 +1369,13 @@ pub fn unwind_register(
     unwind_cfa: Option<u64>,
     memory: &mut dyn MemoryInterface,
     exception_handler: &dyn ExceptionInterface,
-) -> Result<Option<RegisterValue>, Error> {
-    // If we do not have unwind info, or there is no register rule, then use UnwindRule::Undefined.
-    let register_rule = debug_register
-        .dwarf_id
-        .and_then(|register_position| unwind_info.register(gimli::Register(register_position)))
-        .unwrap_or(RegisterRule::Undefined);
-
+) -> Result<DwarfUnwind<Option<RegisterValue>>, Error> {
     unwind_register_using_rule(
         debug_register.core_register,
         callee_frame_registers,
         unwind_cfa,
         memory,
-        register_rule,
+        dwarf_register_rule(debug_register, unwind_info),
         exception_handler,
     )
 }
@@ -1289,7 +1387,7 @@ fn unwind_register_using_rule(
     memory: &mut dyn MemoryInterface,
     register_rule: gimli::RegisterRule<usize>,
     exception_handler: &dyn ExceptionInterface,
-) -> Result<Option<RegisterValue>, Error> {
+) -> Result<DwarfUnwind<Option<RegisterValue>>, Error> {
     use gimli::read::RegisterRule;
 
     let mut register_rule_string = format!("{register_rule:?}");
@@ -1365,8 +1463,55 @@ fn unwind_register_using_rule(
                 }
             }
         }
-        // TODO: Implement the remainder of these `RegisterRule`s
-        _ => unimplemented!(),
+
+        RegisterRule::Register(source) => callee_frame_registers
+            .get_register_by_dwarf_id(source.0)
+            .and_then(|reg| reg.value),
+
+        RegisterRule::ValOffset(address_offset) => {
+            let Some(unwind_cfa) = unwind_cfa else {
+                return Err(Error::Other(
+                    "UNWIND: Tried to unwind `RegisterRule` at CFA = None.".to_string(),
+                ));
+            };
+            let address_size = callee_frame_registers.get_address_size_bytes();
+            let value = add_to_address(unwind_cfa, address_offset, address_size);
+
+            register_rule_string = format!("CFA {register_rule:?}");
+
+            match address_size {
+                4 => Some(RegisterValue::U32(value as u32)),
+                8 => Some(RegisterValue::U64(value)),
+                _ => {
+                    return Err(Error::Other(format!(
+                        "UNWIND: Address size {address_size} not supported."
+                    )));
+                }
+            }
+        }
+
+        RegisterRule::Constant(value) => {
+            let address_size = callee_frame_registers.get_address_size_bytes();
+            match address_size {
+                4 => Some(RegisterValue::U32(value as u32)),
+                8 => Some(RegisterValue::U64(value)),
+                _ => {
+                    return Err(Error::Other(format!(
+                        "UNWIND: Address size {address_size} not supported."
+                    )));
+                }
+            }
+        }
+
+        other => {
+            tracing::warn!(
+                "UNWIND: Unsupported CFI register rule {other:?} for register {debug_register}"
+            );
+            if is_frame_walk_register(debug_register) {
+                return Ok(DwarfUnwind::UnsupportedCfi);
+            }
+            None
+        }
     };
 
     tracing::trace!(
@@ -1379,7 +1524,7 @@ fn unwind_register_using_rule(
             .unwrap_or_default(),
         register_rule_string,
     );
-    Ok(new_value)
+    Ok(DwarfUnwind::Value(new_value))
 }
 
 /// Helper function to determine the program counter value for the previous frame.
@@ -1493,21 +1638,24 @@ mod test {
         DebugInfo, DebugRegister, DebugRegisters, ObjectRef, VariableCache,
         exception_handling::{
             armv6m::ArmV6MExceptionHandler, armv7m::ArmV7MExceptionHandler,
-            exception_handler_for_core,
+            exception_handler_for_core, riscv::RiscvExceptionHandler,
         },
         stack_frame::{StackFrameInfo, TestFormatter},
     };
 
     use gimli::RegisterRule;
     use probe_rs::{
-        CoreDump, MemoryInterface, RegisterValue,
-        architecture::arm::core::registers::cortex_m::{self, CORTEX_M_CORE_REGISTERS},
+        CoreDump, MemoryInterface, RegisterRole, RegisterValue,
+        architecture::{
+            arm::core::registers::cortex_m::{self, CORTEX_M_CORE_REGISTERS},
+            riscv::registers::RISCV_CORE_REGISTERS,
+        },
         test::MockMemory,
     };
     use std::path::{Path, PathBuf};
     use test_case::test_case;
 
-    use super::{TypedPath, path_matches, unwind_register_using_rule};
+    use super::{DwarfUnwind, TypedPath, path_matches, unwind_register_using_rule};
 
     /// Get the full path to a file in the `tests` directory.
     fn get_path_for_test_files(relative_file: &str) -> PathBuf {
@@ -2292,7 +2440,7 @@ mod test {
         )
         .unwrap();
 
-        assert_eq!(value, expected_value);
+        assert_eq!(value, DwarfUnwind::Value(expected_value));
     }
 
     #[test]
@@ -2333,7 +2481,7 @@ mod test {
         )
         .unwrap();
 
-        assert_eq!(value, expected_register_value);
+        assert_eq!(value, DwarfUnwind::Value(expected_register_value));
     }
 
     #[test]
@@ -2370,7 +2518,87 @@ mod test {
         // no rule for it the caller's value is the callee value (0x100) carried
         // forward, NOT the canonical frame address. Overwriting it with the CFA
         // would corrupt the frame pointer when unwinding handlers that don't save R7.
-        assert_eq!(value, Some(RegisterValue::U32(0x100)));
+        assert_eq!(value, DwarfUnwind::Value(Some(RegisterValue::U32(0x100))));
+    }
+
+    #[test]
+    fn unwind_register_from_mepc() {
+        let mepc = RISCV_CORE_REGISTERS
+            .core_registers()
+            .find(|register| register.dwarf_id() == Some(4929))
+            .unwrap();
+        let ra = RISCV_CORE_REGISTERS
+            .core_registers()
+            .find(|register| register.register_has_role(RegisterRole::ReturnAddress))
+            .unwrap();
+        let pc = RISCV_CORE_REGISTERS
+            .core_registers()
+            .find(|register| register.register_has_role(RegisterRole::ProgramCounter))
+            .unwrap();
+
+        let expected_value = Some(RegisterValue::U32(0x8000_1234));
+
+        let mut callee_frame_registers = DebugRegisters::default();
+        callee_frame_registers.0.push(DebugRegister {
+            core_register: mepc,
+            dwarf_id: mepc.dwarf_id(),
+            value: expected_value,
+        });
+        callee_frame_registers.0.push(DebugRegister {
+            core_register: ra,
+            dwarf_id: ra.dwarf_id(),
+            value: Some(RegisterValue::U32(0x0)),
+        });
+        callee_frame_registers.0.push(DebugRegister {
+            core_register: pc,
+            dwarf_id: pc.dwarf_id(),
+            value: Some(RegisterValue::U32(0x0)),
+        });
+
+        let mut memory = MockMemory::new();
+
+        let value = unwind_register_using_rule(
+            ra,
+            &callee_frame_registers,
+            None,
+            &mut memory,
+            RegisterRule::Register(gimli::Register(4929)),
+            &RiscvExceptionHandler,
+        )
+        .unwrap();
+
+        assert_eq!(value, DwarfUnwind::Value(expected_value));
+    }
+
+    #[test]
+    fn unwind_constant() {
+        let debug_register = CORTEX_M_CORE_REGISTERS.core_registers().next().unwrap();
+
+        let mut callee_frame_registers = DebugRegisters::default();
+        callee_frame_registers.0.push(DebugRegister {
+            core_register: debug_register,
+            dwarf_id: Some(0),
+            value: None,
+        });
+        callee_frame_registers.0.push(DebugRegister {
+            core_register: &cortex_m::PC,
+            dwarf_id: Some(15),
+            value: Some(RegisterValue::U32(0x0)),
+        });
+
+        let mut memory = MockMemory::new();
+
+        let value = unwind_register_using_rule(
+            debug_register,
+            &callee_frame_registers,
+            None,
+            &mut memory,
+            RegisterRule::Constant(0xcafe),
+            &ArmV7MExceptionHandler,
+        )
+        .unwrap();
+
+        assert_eq!(value, DwarfUnwind::Value(Some(RegisterValue::U32(0xcafe))));
     }
 
     #[test_case("/home/user/src/main.rs", true; "identical absolute path")]
