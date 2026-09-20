@@ -393,24 +393,23 @@ impl DebugInfo {
         Ok(())
     }
 
+    /// The name of the symbol that covers `address`, if a symbol table is available.
+    pub(crate) fn find_symbol(&self, address: u64) -> Option<String> {
+        // `Loader` is not `Sync`; serialize lookups against the shared cache.
+        let addr2line = self.addr2line.as_ref()?.lock().ok()?;
+        addr2line.find_symbol(address).map(str::to_string)
+    }
+
     /// Best-effort way to look up a function name without debuginfo.
     fn get_stackframe_from_symbols(
         &self,
         address: u64,
         unwind_registers: &DebugRegisters,
     ) -> Result<Vec<StackFrame>, DebugError> {
-        let Some(ref addr2line) = self.addr2line else {
-            return Ok(vec![]);
-        };
-        // `Loader` is not `Sync`; serialize lookups against the shared cache.
-        let Ok(addr2line) = addr2line.lock() else {
-            return Ok(vec![]);
-        };
-        let Some(fn_name) = addr2line.find_symbol(address) else {
+        let Some(mut fn_name) = self.find_symbol(address) else {
             return Ok(vec![]);
         };
 
-        let mut fn_name = fn_name.to_string();
         for lang in [
             gimli::DW_LANG_Rust,
             gimli::DW_LANG_C_plus_plus,
@@ -1199,24 +1198,8 @@ impl DebugInfo {
         instruction_set: Option<InstructionSet>,
         memory: &mut dyn MemoryInterface,
     ) -> ControlFlow<()> {
-        if let ControlFlow::Break(error) = exception_handler.unwind_without_debuginfo(
-            unwind_registers,
-            frame_pc,
-            stack_frames,
-            instruction_set,
-            memory,
-        ) {
-            if let Some(error) = error {
-                // This is not fatal, but we cannot continue unwinding beyond the current frame.
-                tracing::error!("{:?}", &error);
-                if let Some(first_frame) = stack_frames.first_mut() {
-                    first_frame.function_name =
-                        format!("{} : ERROR : {error}", first_frame.function_name);
-                };
-            }
-            return ControlFlow::Break(());
-        }
-
+        // Check for an exception before the heuristic unwind, which would otherwise overwrite the
+        // registers that identify the exception with a guess.
         if unwind_registers
             .get_return_address()
             .is_some_and(|ra| ra.value.is_some())
@@ -1238,6 +1221,24 @@ impl DebugInfo {
                     );
                 }
             }
+        }
+
+        if let ControlFlow::Break(error) = exception_handler.unwind_without_debuginfo(
+            unwind_registers,
+            frame_pc,
+            stack_frames,
+            instruction_set,
+            memory,
+        ) {
+            if let Some(error) = error {
+                // This is not fatal, but we cannot continue unwinding beyond the current frame.
+                tracing::error!("{:?}", &error);
+                if let Some(first_frame) = stack_frames.first_mut() {
+                    first_frame.function_name =
+                        format!("{} : ERROR : {error}", first_frame.function_name);
+                };
+            }
+            return ControlFlow::Break(());
         }
 
         ControlFlow::Continue(())
