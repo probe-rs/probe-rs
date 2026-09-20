@@ -600,13 +600,15 @@ impl DebugInfo {
     ///   or the `gimli::RegisterRule` result is a value of 0x0.
     ///   Note: [DWARF](https://dwarfstd.org) 6.4.4 - CIE defines the return register address
     ///   used in the `gimli::RegisterRule` tables for unwind operations.
-    ///   Theoretically, if we encounter a function that has `Undefined` `gimli::RegisterRule` for
-    ///   the return register address, it means we have reached the bottom of the stack
-    ///   OR the function is a 'no return' type of function.
-    ///   I have found actual examples (e.g. local functions) where we get `Undefined` for register
-    ///   rule when we cannot apply this logic.
-    ///   Example 1: local functions in main.rs will have LR rule as `Undefined`.
-    ///   Example 2: main()-> ! that is called from a trampoline will have a valid LR rule.
+    /// - The return address has an `Undefined` `gimli::RegisterRule`, which means the frame has no
+    ///   caller. Two cases are exempt, because there the absent rule does not describe the bottom
+    ///   of the stack:
+    ///   - The innermost frame. A leaf function keeps its return address live in the register, so
+    ///     no rule is emitted to recover a value that was never saved.
+    ///   - Architectures where the ABI holds the return address outside the call frame
+    ///     information, reported by
+    ///     [`ExceptionInterface::undefined_return_address_ends_unwind`]. Xtensa keeps it in the
+    ///     register window.
     /// - Similarly, certain error conditions encountered in `StackFrameIterator` will also break out of the unwind loop.
     ///
     /// Note: In addition to populating the `StackFrame`s, this function will also
@@ -644,6 +646,7 @@ impl DebugInfo {
 
         let mut unwind_registers = initial_registers;
         let mut visited_frames = HashSet::new();
+        let mut unwound_frames = 0usize;
 
         // Unwind [StackFrame]'s for as long as we can unwind a valid PC value.
         'unwind: while let Some(frame_pc_register_value) =
@@ -905,8 +908,22 @@ impl DebugInfo {
                 };
             }
 
-            let (unwound_return_address, from_csr) =
+            let (unwound_return_address, return_address_source) =
                 caller_return_address(&unwind_registers, unwind_info, cie_return_address);
+
+            // DWARF 6.4.4: no rule for the return address means the frame has no caller. The
+            // innermost frame is exempt, because a leaf function keeps its return address live in
+            // the register and compilers emit no rule to recover what was never saved.
+            if return_address_source == ReturnAddressSource::Undefined
+                && unwound_frames > 0
+                && exception_handler.undefined_return_address_ends_unwind()
+            {
+                tracing::debug!(
+                    "UNWIND: Stopped unwinding at {frame_pc:#010x}, which has no rule for its return address."
+                );
+                break 'unwind;
+            }
+            unwound_frames += 1;
 
             let program_counter = unwind_registers.get_program_counter_mut().unwrap();
 
@@ -928,7 +945,7 @@ impl DebugInfo {
                     return_address,
                     current_pc,
                     instruction_set,
-                    from_csr,
+                    return_address_source == ReturnAddressSource::Csr,
                 )
             });
         }
@@ -1559,11 +1576,23 @@ fn is_csr_dwarf_column(dwarf_id: u16) -> bool {
     dwarf_id >= DWARF_CSR_BASE
 }
 
+/// Where the return address of the calling frame came from.
+#[derive(Debug, PartialEq, Eq)]
+enum ReturnAddressSource {
+    /// A CSR, either named by the CIE's return column or by a `Register` rule on the return
+    /// address. Such a value already points at the interrupted instruction.
+    Csr,
+    /// The return address register, with a DWARF rule to recover it.
+    Register,
+    /// DWARF has no rule for the return address.
+    Undefined,
+}
+
 fn caller_return_address(
     unwind_registers: &DebugRegisters,
     unwind_info: &gimli::UnwindTableRow<GimliReaderOffset>,
     cie_return_address: gimli::Register,
-) -> (Option<RegisterValue>, bool) {
+) -> (Option<RegisterValue>, ReturnAddressSource) {
     let ra = unwind_registers.get_return_address();
 
     // Xtensa CIEs name DWARF column 1 as the return address, but that column is SP in
@@ -1571,16 +1600,17 @@ fn caller_return_address(
     if is_csr_dwarf_column(cie_return_address.0)
         && let Some(reg) = unwind_registers.get_register_by_dwarf_id(cie_return_address.0)
     {
-        return (reg.value, true);
+        return (reg.value, ReturnAddressSource::Csr);
     }
 
-    let from_csr = ra.is_some_and(|ra| {
-        matches!(
-            dwarf_register_rule(ra, unwind_info),
-            RegisterRule::Register(source) if is_csr_dwarf_column(source.0)
-        )
-    });
-    (ra.and_then(|reg| reg.value), from_csr)
+    let source = match ra.map(|ra| dwarf_register_rule(ra, unwind_info)) {
+        Some(RegisterRule::Register(source)) if is_csr_dwarf_column(source.0) => {
+            ReturnAddressSource::Csr
+        }
+        Some(RegisterRule::Undefined) | None => ReturnAddressSource::Undefined,
+        Some(_) => ReturnAddressSource::Register,
+    };
+    (ra.and_then(|reg| reg.value), source)
 }
 
 /// Helper function to determine the program counter value for the previous frame.

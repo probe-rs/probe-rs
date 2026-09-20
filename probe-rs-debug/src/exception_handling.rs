@@ -105,6 +105,15 @@ pub trait ExceptionInterface {
         Err(DebugError::NotImplemented("exception description"))
     }
 
+    /// Whether an undefined DWARF rule for the return address means the frame has no caller.
+    ///
+    /// True for architectures that recover the return address from the call frame information.
+    /// False for Xtensa, whose windowed ABI keeps the return address in the register file, so a
+    /// compiler emits no rule to recover what it never saved.
+    fn undefined_return_address_ends_unwind(&self) -> bool {
+        true
+    }
+
     /// Unwind the stack without debug info.
     ///
     /// This method can be implemented to provide a stack trace using frame pointers, for example.

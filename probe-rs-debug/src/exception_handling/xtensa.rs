@@ -157,6 +157,12 @@ impl XtensaExceptionHandler {
 }
 
 impl ExceptionInterface for XtensaExceptionHandler {
+    fn undefined_return_address_ends_unwind(&self) -> bool {
+        // The windowed ABI holds the return address in a0, which
+        // [`Self::unwind_undefined_register`] recovers from the register window.
+        false
+    }
+
     fn unwind_without_debuginfo(
         &self,
         unwind_registers: &mut DebugRegisters,
