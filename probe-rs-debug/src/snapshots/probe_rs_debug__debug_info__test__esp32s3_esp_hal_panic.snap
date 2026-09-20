@@ -175,7 +175,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 1107310682
     - core_register:
@@ -185,7 +185,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value: ~
   pc:
     U32: 1107310682
@@ -637,7 +637,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 1107310574
     - core_register:
@@ -647,7 +647,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value: ~
   pc:
     U32: 1107310574
@@ -1149,7 +1149,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 1107310611
     - core_register:
@@ -1159,7 +1159,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value: ~
   pc:
     U32: 1107310611
@@ -1598,7 +1598,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 1107327898
     - core_register:
@@ -1608,7 +1608,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value: ~
   pc:
     U32: 1107327898
@@ -2210,7 +2210,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 1107301821
     - core_register:
@@ -2220,7 +2220,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value: ~
   pc:
     U32: 1107301821
@@ -2416,7 +2416,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 1107301788
     - core_register:
@@ -2426,7 +2426,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value: ~
   pc:
     U32: 1107301788
@@ -2622,7 +2622,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 1107301788
     - core_register:
@@ -2632,7 +2632,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value: ~
   pc:
     U32: 1107301788
@@ -2828,7 +2828,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 1107301788
     - core_register:
@@ -2838,7 +2838,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value: ~
   pc:
     U32: 1107301788
@@ -3034,7 +3034,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 1107301788
     - core_register:
@@ -3044,7 +3044,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value: ~
   pc:
     U32: 1107301788
@@ -3240,7 +3240,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 1107301788
     - core_register:
@@ -3250,7 +3250,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value: ~
   pc:
     U32: 1107301788
@@ -3446,7 +3446,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 1107300807
     - core_register:
@@ -3456,7 +3456,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value: ~
   pc:
     U32: 1107300807
@@ -4409,7 +4409,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 1107300807
     - core_register:
@@ -4419,7 +4419,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value: ~
   pc:
     U32: 1107300547
@@ -5893,7 +5893,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 1107323454
     - core_register:
@@ -5903,7 +5903,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value: ~
   pc:
     U32: 1107323454
@@ -7191,7 +7191,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 1107323454
     - core_register:
@@ -7201,7 +7201,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value: ~
   pc:
     U32: 1107323449
@@ -8060,7 +8060,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 1107323454
     - core_register:
@@ -8070,7 +8070,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value: ~
   pc:
     U32: 1107323384
@@ -8347,7 +8347,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 1107323454
     - core_register:
@@ -8357,7 +8357,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value: ~
   pc:
     U32: 1107323384
@@ -8645,7 +8645,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 1107300249
     - core_register:
@@ -8655,7 +8655,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value: ~
   pc:
     U32: 1107300249
@@ -8991,7 +8991,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 1107301855
     - core_register:
@@ -9001,7 +9001,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value: ~
   pc:
     U32: 1107301855
@@ -9431,7 +9431,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 1107301855
     - core_register:
@@ -9441,7 +9441,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value: ~
   pc:
     U32: 1107301845
@@ -9626,7 +9626,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 1107322891
     - core_register:
@@ -9636,7 +9636,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value: ~
   pc:
     U32: 1107322891
@@ -9821,7 +9821,7 @@ expression: stack_frames
           - ProgramCounter
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 1077381094
     - core_register:
@@ -9831,7 +9831,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value: ~
   pc:
     U32: 1077381094
