@@ -161,8 +161,17 @@ impl CoreDump {
 
         let mut registers = HashMap::new();
         for register in core.registers().all_registers() {
-            let value = core.read_core_reg(register.id())?;
-            registers.insert(register.id(), value);
+            match core.read_core_reg(register.id()) {
+                Ok(value) => {
+                    registers.insert(register.id(), value);
+                }
+                Err(error) => {
+                    tracing::debug!(
+                        "Skipping unreadable register {} in coredump: {error}",
+                        register.name()
+                    );
+                }
+            }
         }
 
         let mut data = Vec::new();

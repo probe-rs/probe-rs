@@ -37,9 +37,14 @@ fn test_register_write(_definition: &DutDefinition, core: &mut Core) -> TestResu
     let mut test_value = 1;
 
     for register in register.core_registers() {
-        // Skip register x0 on RISC-V chips, it's hardwired to zero.
-        if core.architecture() == Architecture::Riscv && register.name() == "x0" {
-            continue;
+        if core.architecture() == Architecture::Riscv {
+            match register.name() {
+                // Hardwired to zero.
+                "x0" => continue,
+                // Writing a trap CSR changes how the core resumes.
+                "mepc" | "mcause" | "mstatus" | "sepc" => continue,
+                _ => (),
+            }
         }
 
         if core.architecture() == Architecture::Arm {

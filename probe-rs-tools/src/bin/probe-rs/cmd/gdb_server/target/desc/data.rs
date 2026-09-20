@@ -267,9 +267,15 @@ pub fn build_target_description(
 }
 
 fn build_riscv_registers(desc: &mut TargetDescription, regs: &CoreRegisters) {
+    let is_csr = |r: &&CoreRegister| {
+        r.dwarf_id()
+            .is_some_and(|id| id >= architecture::riscv::registers::DWARF_CSR_BASE)
+    };
+
     // Create the main register group
     desc.add_gdb_feature("org.gnu.gdb.riscv.cpu");
-    desc.add_registers(regs.core_registers());
+    // GDB numbers x0-x31, pc and the FPU by their position in these features.
+    desc.add_registers(regs.core_registers().filter(|r| !is_csr(r)));
     desc.add_register(&architecture::riscv::PC);
 
     if regs.fpu_registers().is_some() {
@@ -277,6 +283,9 @@ fn build_riscv_registers(desc: &mut TargetDescription, regs: &CoreRegisters) {
         desc.add_registers(regs.fpu_registers().unwrap());
         desc.add_registers(regs.fpu_status_registers().unwrap());
     }
+
+    desc.add_gdb_feature("org.gnu.gdb.riscv.csr");
+    desc.add_registers(regs.core_registers().filter(is_csr));
 
     desc.update_register_type("pc", "code_ptr");
 }
