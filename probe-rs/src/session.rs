@@ -503,7 +503,9 @@ impl Session {
 
                     JtagInterface::Riscv(Box::new(state))
                 }
-                Architecture::Xtensa => JtagInterface::Xtensa(Box::default()),
+                Architecture::Xtensa => {
+                    JtagInterface::Xtensa(Box::new(core.xtensa_interface_state()?))
+                }
                 _ => {
                     return Err(Error::Probe(DebugProbeError::Other(format!(
                         "Unsupported core architecture {core_arch:?}",

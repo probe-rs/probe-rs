@@ -348,6 +348,14 @@ impl ChipFamily {
                             core.core_type, core.name
                         ));
                     }
+                    CoreAccessOptions::Xtensa(options) => {
+                        if !(2..=7).contains(&options.core_properties.debug_level) {
+                            return Err(format!(
+                                "Core {} has invalid debug_level {}, expected 2..=7",
+                                core.name, options.core_properties.debug_level
+                            ));
+                        }
+                    }
                     CoreAccessOptions::Arm(options) => {
                         if matches!(
                             core.core_type,
