@@ -19,6 +19,7 @@ use probe_rs::{
 use std::{
     borrow,
     cmp::Ordering,
+    collections::HashSet,
     num::NonZeroU64,
     ops::ControlFlow,
     path::Path,
@@ -642,6 +643,7 @@ impl DebugInfo {
         let mut unwind_context = Box::new(gimli::UnwindContext::new());
 
         let mut unwind_registers = initial_registers;
+        let mut visited_frames = HashSet::new();
 
         // Unwind [StackFrame]'s for as long as we can unwind a valid PC value.
         'unwind: while let Some(frame_pc_register_value) =
@@ -657,10 +659,26 @@ impl DebugInfo {
                 tracing::warn!("Stopped unwinding the stack after {max_stack_frame_count} frames");
                 break;
             }
-            let frame_pc = frame_pc_register_value.try_into().map_err(|error| {
+            let frame_pc: u64 = frame_pc_register_value.try_into().map_err(|error| {
                 let message = format!("Cannot convert register value for program counter to a 64-bit integer value: {error:?}");
                 Error::Register(message)
             })?;
+
+            // A valid unwind never returns to a frame it has already walked. A repeat means the
+            // unwind information, or a heuristic that stood in for it, produced a return address
+            // that leads back into the stack, and following it would not terminate. The stack
+            // pointer is part of the identity because a recursive call legitimately revisits a PC.
+            let frame_sp = unwind_registers
+                .get_stack_pointer()
+                .and_then(|sp| sp.value)
+                .and_then(|sp| TryInto::<u64>::try_into(sp).ok());
+            if !visited_frames.insert((frame_pc, frame_sp)) {
+                tracing::warn!(
+                    "UNWIND: Stopped unwinding at {frame_pc:#010x}, which was already unwound. \
+                     The unwind information of this frame is inconsistent."
+                );
+                break;
+            }
 
             // PART 1: Construct the `StackFrame`s for the current program counter.
             //
@@ -913,11 +931,6 @@ impl DebugInfo {
                     from_csr,
                 )
             });
-
-            if callee_frame_registers == unwind_registers {
-                tracing::debug!("No change, preventing infinite loop");
-                break;
-            }
         }
 
         Ok(stack_frames)
