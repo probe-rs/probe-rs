@@ -170,7 +170,7 @@ expression: stack_frames
           - MainStackPointer
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 537657312
     - core_register:
@@ -180,7 +180,7 @@ expression: stack_frames
           - ProcessStackPointer
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value:
         U32: 536872912
     - core_register:
@@ -190,7 +190,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 18
+      dwarf_id: ~
       value:
         U32: 1761607691
     - core_register:
@@ -200,7 +200,7 @@ expression: stack_frames
           - Other: EXTRA
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 19
+      dwarf_id: ~
       value:
         U32: 0
   pc:
@@ -382,7 +382,7 @@ expression: stack_frames
           - MainStackPointer
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 537657312
     - core_register:
@@ -392,7 +392,7 @@ expression: stack_frames
           - ProcessStackPointer
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value:
         U32: 536872912
     - core_register:
@@ -402,7 +402,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 18
+      dwarf_id: ~
       value:
         U32: 1761607691
     - core_register:
@@ -412,7 +412,7 @@ expression: stack_frames
           - Other: EXTRA
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 19
+      dwarf_id: ~
       value:
         U32: 0
   pc:
@@ -589,7 +589,7 @@ expression: stack_frames
           - MainStackPointer
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 537657312
     - core_register:
@@ -599,7 +599,7 @@ expression: stack_frames
           - ProcessStackPointer
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value:
         U32: 536872912
     - core_register:
@@ -609,7 +609,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 18
+      dwarf_id: ~
       value:
         U32: 1761607691
     - core_register:
@@ -619,7 +619,7 @@ expression: stack_frames
           - Other: EXTRA
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 19
+      dwarf_id: ~
       value: ~
   pc:
     U32: 134219970
@@ -795,7 +795,7 @@ expression: stack_frames
           - MainStackPointer
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 537657312
     - core_register:
@@ -805,7 +805,7 @@ expression: stack_frames
           - ProcessStackPointer
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value:
         U32: 536872912
     - core_register:
@@ -815,7 +815,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 18
+      dwarf_id: ~
       value:
         U32: 1761607691
     - core_register:
@@ -825,7 +825,7 @@ expression: stack_frames
           - Other: EXTRA
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 19
+      dwarf_id: ~
       value: ~
   pc:
     U32: 134219968
@@ -1001,7 +1001,7 @@ expression: stack_frames
           - MainStackPointer
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 537657312
     - core_register:
@@ -1011,7 +1011,7 @@ expression: stack_frames
           - ProcessStackPointer
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value:
         U32: 536872912
     - core_register:
@@ -1021,7 +1021,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 18
+      dwarf_id: ~
       value:
         U32: 1761607691
     - core_register:
@@ -1031,7 +1031,7 @@ expression: stack_frames
           - Other: EXTRA
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 19
+      dwarf_id: ~
       value: ~
   pc:
     U32: 134219870
@@ -1207,7 +1207,7 @@ expression: stack_frames
           - MainStackPointer
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 537657312
     - core_register:
@@ -1217,7 +1217,7 @@ expression: stack_frames
           - ProcessStackPointer
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value:
         U32: 536872912
     - core_register:
@@ -1227,7 +1227,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 18
+      dwarf_id: ~
       value:
         U32: 1761607691
     - core_register:
@@ -1237,7 +1237,7 @@ expression: stack_frames
           - Other: EXTRA
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 19
+      dwarf_id: ~
       value: ~
   pc:
     U32: 134219868
@@ -1412,7 +1412,7 @@ expression: stack_frames
           - MainStackPointer
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 537657312
     - core_register:
@@ -1422,7 +1422,7 @@ expression: stack_frames
           - ProcessStackPointer
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value:
         U32: 536872912
     - core_register:
@@ -1432,7 +1432,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 18
+      dwarf_id: ~
       value:
         U32: 1761607680
     - core_register:
@@ -1442,7 +1442,7 @@ expression: stack_frames
           - Other: EXTRA
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 19
+      dwarf_id: ~
       value: ~
   pc:
     U32: 134219956
@@ -1618,7 +1618,7 @@ expression: stack_frames
           - MainStackPointer
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 537657312
     - core_register:
@@ -1628,7 +1628,7 @@ expression: stack_frames
           - ProcessStackPointer
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value:
         U32: 536872912
     - core_register:
@@ -1638,7 +1638,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 18
+      dwarf_id: ~
       value:
         U32: 1761607680
     - core_register:
@@ -1648,7 +1648,7 @@ expression: stack_frames
           - Other: EXTRA
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 19
+      dwarf_id: ~
       value: ~
   pc:
     U32: 134219956
@@ -1838,7 +1838,7 @@ expression: stack_frames
           - MainStackPointer
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 537657312
     - core_register:
@@ -1848,7 +1848,7 @@ expression: stack_frames
           - ProcessStackPointer
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value:
         U32: 536872912
     - core_register:
@@ -1858,7 +1858,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 18
+      dwarf_id: ~
       value:
         U32: 1761607680
     - core_register:
@@ -1868,7 +1868,7 @@ expression: stack_frames
           - Other: EXTRA
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 19
+      dwarf_id: ~
       value: ~
   pc:
     U32: 134219950
@@ -2044,7 +2044,7 @@ expression: stack_frames
           - MainStackPointer
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 537657312
     - core_register:
@@ -2054,7 +2054,7 @@ expression: stack_frames
           - ProcessStackPointer
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value:
         U32: 536872912
     - core_register:
@@ -2064,7 +2064,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 18
+      dwarf_id: ~
       value:
         U32: 1761607680
     - core_register:
@@ -2074,7 +2074,7 @@ expression: stack_frames
           - Other: EXTRA
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 19
+      dwarf_id: ~
       value: ~
   pc:
     U32: 134219932
@@ -2250,7 +2250,7 @@ expression: stack_frames
           - MainStackPointer
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 537657312
     - core_register:
@@ -2260,7 +2260,7 @@ expression: stack_frames
           - ProcessStackPointer
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value:
         U32: 536872912
     - core_register:
@@ -2270,7 +2270,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 18
+      dwarf_id: ~
       value:
         U32: 1761607680
     - core_register:
@@ -2280,7 +2280,7 @@ expression: stack_frames
           - Other: EXTRA
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 19
+      dwarf_id: ~
       value: ~
   pc:
     U32: 134219910
@@ -2456,7 +2456,7 @@ expression: stack_frames
           - MainStackPointer
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 537657312
     - core_register:
@@ -2466,7 +2466,7 @@ expression: stack_frames
           - ProcessStackPointer
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value:
         U32: 536872912
     - core_register:
@@ -2476,7 +2476,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 18
+      dwarf_id: ~
       value:
         U32: 1761607680
     - core_register:
@@ -2486,7 +2486,7 @@ expression: stack_frames
           - Other: EXTRA
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 19
+      dwarf_id: ~
       value: ~
   pc:
     U32: 134219924
@@ -2657,7 +2657,7 @@ expression: stack_frames
           - MainStackPointer
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 16
+      dwarf_id: ~
       value:
         U32: 537657312
     - core_register:
@@ -2667,7 +2667,7 @@ expression: stack_frames
           - ProcessStackPointer
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 17
+      dwarf_id: ~
       value:
         U32: 536872912
     - core_register:
@@ -2677,7 +2677,7 @@ expression: stack_frames
           - ProcessorStatus
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 18
+      dwarf_id: ~
       value:
         U32: 1761607680
     - core_register:
@@ -2687,7 +2687,7 @@ expression: stack_frames
           - Other: EXTRA
         data_type:
           UnsignedInteger: 32
-      dwarf_id: 19
+      dwarf_id: ~
       value: ~
   pc:
     U32: 134219834
