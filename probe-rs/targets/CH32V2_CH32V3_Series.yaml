@@ -239,6 +239,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V203C8T6
   cores:
   - name: main
@@ -302,6 +303,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V203C8U6
   cores:
   - name: main
@@ -365,6 +367,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V203F6P6
   cores:
   - name: main
@@ -428,6 +431,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V203F8P6
   cores:
   - name: main
@@ -491,6 +495,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V203F8U6
   cores:
   - name: main
@@ -554,6 +559,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V203G6U6
   cores:
   - name: main
@@ -617,6 +623,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V203G8R6
   cores:
   - name: main
@@ -680,6 +687,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V203K6T6
   cores:
   - name: main
@@ -743,6 +751,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V203K8T6
   cores:
   - name: main
@@ -806,6 +815,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V203RBT6
   cores:
   - name: main
@@ -869,6 +879,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V203RBT6_c144_r48
   cores:
   - name: main
@@ -932,6 +943,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V203RBT6_c160_r32
   cores:
   - name: main
@@ -995,6 +1007,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V208CBU6
   cores:
   - name: main
@@ -1058,6 +1071,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V208CBU6_c144_r48
   cores:
   - name: main
@@ -1121,6 +1135,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V208CBU6_c160_r32
   cores:
   - name: main
@@ -1184,6 +1199,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V208GBU6
   cores:
   - name: main
@@ -1247,6 +1263,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V208GBU6_c144_r48
   cores:
   - name: main
@@ -1310,6 +1327,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V208GBU6_c160_r32
   cores:
   - name: main
@@ -1373,6 +1391,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V208RBT6
   cores:
   - name: main
@@ -1436,6 +1455,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V208RBT6_c144_r48
   cores:
   - name: main
@@ -1499,6 +1519,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V208RBT6_c160_r32
   cores:
   - name: main
@@ -1562,6 +1583,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V208WBU6
   cores:
   - name: main
@@ -1625,6 +1647,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V208WBU6_c144_r48
   cores:
   - name: main
@@ -1688,6 +1711,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V208WBU6_c160_r32
   cores:
   - name: main
@@ -1751,6 +1775,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V303CBT6
   cores:
   - name: main
@@ -1814,6 +1839,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V303RBT6
   cores:
   - name: main
@@ -1877,6 +1903,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V303RCT6_c192_r128
   cores:
   - name: main
@@ -1940,6 +1967,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V303RCT6_c224_r96
   cores:
   - name: main
@@ -2003,6 +2031,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V303RCT6
   cores:
   - name: main
@@ -2066,6 +2095,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V303RCT6_c128_r192
   cores:
   - name: main
@@ -2129,6 +2159,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V303RCT6_c288_r32
   cores:
   - name: main
@@ -2192,6 +2223,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V303VCT6_c192_r128
   cores:
   - name: main
@@ -2255,6 +2287,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V303VCT6_c224_r96
   cores:
   - name: main
@@ -2318,6 +2351,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V303VCT6
   cores:
   - name: main
@@ -2381,6 +2415,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V303VCT6_c128_r192
   cores:
   - name: main
@@ -2444,6 +2479,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V303VCT6_c288_r32
   cores:
   - name: main
@@ -2507,6 +2543,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V305FBP6
   cores:
   - name: main
@@ -2570,6 +2607,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V305GBU6
   cores:
   - name: main
@@ -2633,6 +2671,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V305RBT6
   cores:
   - name: main
@@ -2696,6 +2735,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V307RCT6_c192_r128
   cores:
   - name: main
@@ -2759,6 +2799,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V307RCT6_c224_r96
   cores:
   - name: main
@@ -2822,6 +2863,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V307RCT6
   cores:
   - name: main
@@ -2885,6 +2927,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V307RCT6_c128_r192
   cores:
   - name: main
@@ -2948,6 +2991,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V307RCT6_c288_r32
   cores:
   - name: main
@@ -3011,6 +3055,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V307VCT6_c192_r128
   cores:
   - name: main
@@ -3074,6 +3119,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V307VCT6_c224_r96
   cores:
   - name: main
@@ -3137,6 +3183,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V307VCT6
   cores:
   - name: main
@@ -3200,6 +3247,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V307VCT6_c128_r192
   cores:
   - name: main
@@ -3263,6 +3311,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V307VCT6_c288_r32
   cores:
   - name: main
@@ -3326,6 +3375,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V307WCU6_c192_r128
   cores:
   - name: main
@@ -3389,6 +3439,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V307WCU6_c224_r96
   cores:
   - name: main
@@ -3452,6 +3503,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V307WCU6
   cores:
   - name: main
@@ -3515,6 +3567,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V307WCU6_c128_r192
   cores:
   - name: main
@@ -3578,6 +3631,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V307WCU6_c288_r32
   cores:
   - name: main
@@ -3641,6 +3695,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v3-usr-native
 - name: CH32V317VCT6_c192_r128
   cores:
   - name: main
@@ -3704,6 +3759,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v317-usr-native
 - name: CH32V317VCT6_c224_r96
   cores:
   - name: main
@@ -3767,6 +3823,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v317-usr-native
 - name: CH32V317VCT6
   cores:
   - name: main
@@ -3830,6 +3887,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v317-usr-native
 - name: CH32V317VCT6_c128_r192
   cores:
   - name: main
@@ -3893,6 +3951,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v317-usr-native
 - name: CH32V317VCT6_c288_r32
   cores:
   - name: main
@@ -3956,6 +4015,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v317-usr-native
 - name: CH32V317WCU6_c192_r128
   cores:
   - name: main
@@ -4019,6 +4079,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v317-usr-native
 - name: CH32V317WCU6_c224_r96
   cores:
   - name: main
@@ -4082,6 +4143,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v317-usr-native
 - name: CH32V317WCU6
   cores:
   - name: main
@@ -4145,6 +4207,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v317-usr-native
 - name: CH32V317WCU6_c128_r192
   cores:
   - name: main
@@ -4208,6 +4271,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v317-usr-native
 - name: CH32V317WCU6_c288_r32
   cores:
   - name: main
@@ -4271,6 +4335,7 @@ variants:
   - ch32-v3-usr-legacy
   - ch32-v3-sys
   - ch32-v3-opt
+  - ch32-v317-usr-native
 flash_algorithms:
 - name: ch32-v3-opt
   description: ch32-v3-opt
@@ -4352,6 +4417,42 @@ flash_algorithms:
     address_range:
       start: 0x0
       end: 0x78000
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x100
+      address: 0x0
+- name: ch32-v3-usr-native
+  description: "WCH-Link native fastprogram loader for CH32V20x/CH32V30x. NOT a CMSIS flash algorithm: its address range is intentionally empty so it is never selected for target-side flashing; the WCH-Link native flashing path looks it up by name and streams its `instructions` blob to the probe. the `pc_*` fields only exist so generic algorithm validation passes; they are never used (the blob is position-independent, the probe firmware chooses where it runs)."
+  default: false
+  instructions: ARECzpN3FQCZz7cGZ0W3JwJAk4Y2EjeX783UwxMHt5rYw9TT2NOTdyUAlce3JwJAmEutZjc4AEATZ0cAmMuYS5OGpqoTZwcEmMvYRwWLYeuYS22bmMuTd0UAqcuTB/YPoYMuxi1ogXY+yrcIAgC3JwJANzMAQBMIqKr9FphLM2cXAZjLMkfYy5hLE2cHBJjL2EcFi0HrmEt1j5jLMkcTBwcQOsZSR30XOspp+5N3hQDVy5MH9g8uxqGDPso3JwJAHEvBZkFo1Y8cy7cWACC3JwJAkwgABDcDIACYSzNnBwGYy9hHBYt1/zJHOshGzGJHDe+YSzNnZwCYy9hHBYt1/9hHQYs5w9hHwXb9FhNnBwHYx5hLIUV1j5jLBWECkCMg2AAltyMgAwGlt0JHE45GAJRCFMNCRxEHOshiR30XOszYRwmLdf/yhl23MkcTBwcQOsZSR30XOspJ85hLwXb9FnWPmMtBiRnhAUVFvy7GDQYCygmCMsy3FwAgmEMThkcA0keyRooHtpecQ2MY9wLSRzJHige6l5hD8ke6lz7O0keFBz7K0kZiR7KH4+jm/LcnACCYS/JH4wn3+kFFub8=
+  pc_program_page: 0x0
+  pc_erase_sector: 0x0
+  data_section_offset: 0x0
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x0
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x100
+      address: 0x0
+- name: ch32-v317-usr-native
+  description: "WCH-Link native fastprogram loader for CH32V317. NOT a CMSIS flash algorithm: its address range is intentionally empty so it is never selected for target-side flashing; the WCH-Link native flashing path looks it up by name and streams its `instructions` blob to the probe. the `pc_*` fields only exist so generic algorithm validation passes; they are never used (the blob is position-independent, the probe firmware chooses where it runs)."
+  default: false
+  instructions: ARECzpN3FQCZz7cGZ0W3JwJAk4Y2EjeX783UwxMHt5rYw9TT2NOTdyUAlce3JwJAmEutZjc4AEATZ0cAmMuYS5OGpqoTZwcEmMvYRwWLaeeYS22bmMuTd0UAsceFZ/0Xspexgy7GrWY+yrc4AEC3JwJAk4amqgVomEsTZycAmMsyR9jLmEsTZwcEmMvYRwWLWeeYS3WbmMsyR0KXOsZSR30XOspx+5N3hQDVy5MH9g8uxqGDPso3JwJAHEvBZkFo1Y8cy7cWACC3JwJAkwgABDcDIACYSzNnBwGYy9hHBYt1/zJHOshGzGJHDe+YSzNnZwCYy9hHBYt1/9hHQYs5w9hHwXb9FhNnBwHYx5hLIUV1j5jLBWECkCMg2AA9tyOg2ACtt0JHE45GAJRCFMNCRxEHOshiR30XOszYRwmLdf/yhl23MkcTBwcQOsZSR30XOspJ85hLwXb9FnWPmMtBiRnhAUVFvy7GDQYCygmCMsy3FwAgmEMThkcA0keyRooHtpecQ2MY9wLSRzJHige6l5hD8ke6lz7O0keFBz7K0kZiR7KH4+jm/LcnACCYS/JH4wn3+kFFub8=
+  pc_program_page: 0x0
+  pc_erase_sector: 0x0
+  data_section_offset: 0x0
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x0
     page_size: 0x100
     erased_byte_value: 0xff
     program_page_timeout: 1000

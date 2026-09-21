@@ -86,6 +86,7 @@ variants:
   - ch32-h4-usr-legacy
   - ch32-h4-sys
   - ch32-h4-opt
+  - ch32-h4-usr-native
 - name: CH32H416RDU6
   cores:
   - name: main
@@ -163,6 +164,7 @@ variants:
   - ch32-h4-usr-legacy
   - ch32-h4-sys
   - ch32-h4-opt
+  - ch32-h4-usr-native
 - name: CH32H417MEU6
   cores:
   - name: main
@@ -240,6 +242,7 @@ variants:
   - ch32-h4-usr-legacy
   - ch32-h4-sys
   - ch32-h4-opt
+  - ch32-h4-usr-native
 - name: CH32H417QEU6
   cores:
   - name: main
@@ -317,6 +320,7 @@ variants:
   - ch32-h4-usr-legacy
   - ch32-h4-sys
   - ch32-h4-opt
+  - ch32-h4-usr-native
 - name: CH32H417WEU6
   cores:
   - name: main
@@ -394,6 +398,7 @@ variants:
   - ch32-h4-usr-legacy
   - ch32-h4-sys
   - ch32-h4-opt
+  - ch32-h4-usr-native
 flash_algorithms:
 - name: ch32-h4-opt
   description: ch32-h4-opt
@@ -481,4 +486,22 @@ flash_algorithms:
     erase_sector_timeout: 2000
     sectors:
     - size: 0x2000
+      address: 0x0
+- name: ch32-h4-usr-native
+  description: "WCH-Link native fastprogram loader for CH32H41x. NOT a CMSIS flash algorithm: its address range is intentionally empty so it is never selected for target-side flashing; the WCH-Link native flashing path looks it up by name and streams its `instructions` blob to the probe. the `pc_*` fields only exist so generic algorithm validation passes; they are never used (the blob is position-independent, the probe firmware chooses where it runs)."
+  default: false
+  instructions: ARECzpN3FQCZz7cGZ0W3JwJAk4Y2EjeX783UwxMHt5rYw9TT2NOTdyUAweOTd0UA7eeTd4UAY40HHJMH9g8uxqGDPso3JwJAHEvBZkFo1Y8cy7cWECC3JwJAkwgABDcDIACYSzNnBwGYy9hHBYt1/zJHOshGzGJHYx4HFJhLM2dnAJjL2EcFi3X/2EdBi2MDBxbYR8F2/RYTZwcB2MeYSyFFdY+YywVhApCFaK1mNwj8/wLKOUO3JwJAE44IgLcOBAA3PwBAk4amqn0YUkfjb+P02FeTHzcAUkdj2g8CcpdCBzrGmEszZ9cBmMsyR9jLmEsTZwcEmMvYRwWLAe+YSzN3BwGYy1JHBQc6ysG3Rpc+B8G/IyDfAMW3tycCQNxXE5c3AGNfBwSTlzUB48MH8IVn/Reyl7GDLsatZj7KtzgAQLcnAkCThqaqBWiYSxNnJwCYyzJH2MuYSxNnBwSYy9hHBYsB75hLdZuYyzJHQpc6xlJHfRc6ynH7Zb0joNgAxbeFZ/0Xspexgy7GrWY+yrc4AEC3JwJAk4amqgVomEsTZycAmMsyR9jLmEsTZwcEmMvYRwWLAe+YS3WbmMsyR0KXOsZSR30XOspx+521I6DYAMW3QkcTjkYAlEIUw0JHEQc6yGJHfRc6zNhHCYt1//KGUbUyRxMHBxA6xlJHfRc6yuMQB+aYS8F2/RZ1j5jLQYkZ4QFFQb0uxg0GAsoJgjLMtxcQIJhDE4ZHANJHskaKB7aXnENjGPcC0kcyR4oHupeYQ/JHupc+ztJHhQc+ytJGYkeyh+Po5vy3JxAgmEvyR+MJ9/pBRT29
+  pc_program_page: 0x0
+  pc_erase_sector: 0x0
+  data_section_offset: 0x0
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x0
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x100
       address: 0x0
