@@ -30,10 +30,6 @@ mod upload_cache;
 use upload_cache::UploadCache;
 pub use upload_cache::{ContentHash, ResolvedUpload};
 
-use probe_rs_rpc::breakpoints::{
-    BreakpointResolution, ResolveSourceBreakpointsRequest, ResolveSourceLocationsRequest,
-    SourceBreakpointLocation, WireSourceLocation,
-};
 use probe_rs_rpc::chip::{ChipData, ChipFamily, ChipInfoRequest, LoadChipFamilyRequest};
 use probe_rs_rpc::core_ops::{
     CoreAccessRequest, CoreBreakpointsRequest, CoreDumpRequest, CoreHaltRequest,
@@ -100,6 +96,14 @@ use probe_rs_rpc::{
     TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint, TargetMetadataEndpoint,
     TempFileDataEndpoint, TestKickoffEndpoint, TokioSpawner, VariablesEndpoint, VerifyEndpoint,
     WriteMemory8Endpoint, WriteMemory16Endpoint, WriteMemory32Endpoint, WriteMemory64Endpoint,
+};
+use probe_rs_rpc::{
+    DetachEndpoint,
+    breakpoints::{
+        BreakpointResolution, ResolveSourceBreakpointsRequest, ResolveSourceLocationsRequest,
+        SourceBreakpointLocation, WireSourceLocation,
+    },
+    probe::DetachRequest,
 };
 use probe_rs_rpc::{FlashLoader, Key, RttClient, Session};
 
@@ -687,6 +691,10 @@ impl RpcClient {
 
     pub async fn attach_probe(&self, request: AttachRequest) -> Result<AttachResult, ClientError> {
         self.send_resp::<AttachEndpoint, _>(&request).await
+    }
+
+    pub async fn detach_probe(&self, request: DetachRequest) -> Result<(), ClientError> {
+        self.send_resp::<DetachEndpoint, _>(&request).await
     }
 
     pub async fn list_probes(&self) -> Result<Vec<DebugProbeEntry>, ClientError> {
