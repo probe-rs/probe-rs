@@ -1479,7 +1479,12 @@ impl FlashLoader {
             tracing::warn!("Memory map of flash loader does not match memory map of target!");
         }
 
-        let flash_sequence = match session.target().debug_sequence.debug_flash_sequence() {
+        let flash_sequence = match session
+            .target()
+            .debug_sequence
+            .clone()
+            .debug_flash_sequence(session)
+        {
             Some(sequence)
                 if sequence
                     .flashes_download(session, self, chip_erase)
@@ -1547,7 +1552,9 @@ impl FlashLoader {
             {
                 entry.add_region(region, &self.builder, restore_unwritten_bytes)?;
             } else {
-                let mut flasher: Box<dyn FlasherOps> = if let Some(flash_sequence) = &flash_sequence
+                let mut flasher: Box<dyn FlasherOps> = if let Some(flash_sequence) = flash_sequence
+                    .as_ref()
+                    .filter(|sequence| sequence.supports_region(&region))
                 {
                     Box::new(HostSideFlasher::new(
                         Arc::clone(flash_sequence),

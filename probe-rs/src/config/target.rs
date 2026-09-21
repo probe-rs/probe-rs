@@ -308,11 +308,14 @@ impl DebugSequence {
     ///
     /// This delegates to the architecture-specific sequence method, providing a
     /// single architecture-agnostic entry point for the flash loader.
-    pub fn debug_flash_sequence(&self) -> Option<Arc<dyn DebugFlashSequence>> {
+    pub fn debug_flash_sequence(
+        &self,
+        session: &mut crate::Session,
+    ) -> Option<Arc<dyn DebugFlashSequence>> {
         match self {
-            DebugSequence::Arm(seq) => seq.debug_flash_sequence(),
-            DebugSequence::Riscv(seq) => seq.debug_flash_sequence(),
-            DebugSequence::Xtensa(seq) => seq.debug_flash_sequence(),
+            DebugSequence::Arm(seq) => seq.debug_flash_sequence(session),
+            DebugSequence::Riscv(seq) => seq.debug_flash_sequence(session),
+            DebugSequence::Xtensa(seq) => seq.debug_flash_sequence(session),
         }
     }
 
