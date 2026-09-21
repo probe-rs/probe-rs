@@ -3008,7 +3008,6 @@ flash_algorithms:
   pc_erase_all: 0x11d9
   pc_verify: 0x11b3
   data_section_offset: 0x1370
-  rtt_poll_interval: 0
   flash_properties:
     address_range:
       start: 0x8000000
@@ -3032,7 +3031,6 @@ flash_algorithms:
   pc_erase_all: 0x11d9
   pc_verify: 0x11b3
   data_section_offset: 0x1370
-  rtt_poll_interval: 0
   flash_properties:
     address_range:
       start: 0x8000000
@@ -3056,7 +3054,6 @@ flash_algorithms:
   pc_erase_all: 0x11d9
   pc_verify: 0x11b3
   data_section_offset: 0x1370
-  rtt_poll_interval: 0
   flash_properties:
     address_range:
       start: 0x8000000
