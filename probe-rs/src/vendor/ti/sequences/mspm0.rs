@@ -1,5 +1,8 @@
 //! Sequences for TI MSPM0 devices.
 //!
+//! Documentation of the debug subsystem is available in "Hardware Programming and Debugger Guide for
+//! MSPM0" (<https://www.ti.com/lit/an/slaaeo5/slaaeo5.pdf>)
+//!
 //! The MSPM0's AHB-AP lives in power domain PD1. Entering DEEPSLEEP (STOP or STANDBY) disables
 //! PD1, which makes the AHB-AP undiscoverable and drops the debug session. This is not limited to
 //! applications that sleep deliberately: a blank device parks itself in STANDBY0 after roughly ten
@@ -18,7 +21,7 @@ use std::sync::Arc;
 
 use crate::architecture::arm::dp::DpAddress;
 use crate::architecture::arm::memory::ArmMemoryInterface;
-use crate::architecture::arm::sequences::ArmDebugSequence;
+use crate::architecture::arm::sequences::{ArmDebugSequence, cortex_m_wait_for_reset};
 use crate::architecture::arm::{ArmError, DapAccess, FullyQualifiedApAddress};
 use probe_rs_target::CoreType;
 
@@ -184,6 +187,34 @@ impl ArmDebugSequence for MSPM0 {
         )?;
 
         Ok(())
+    }
+
+    fn reset_system(
+        &self,
+        interface: &mut dyn ArmMemoryInterface,
+        _core_type: CoreType,
+        _debug_base: Option<u64>,
+    ) -> Result<(), ArmError> {
+        // SLAAE05 generally suggests one of two methods to perform a SYSRST:
+        // 1. Write SYSCTL.RESETLEVEL and SYSCTL.RESETCMD.
+        // 2. Write to SPREC.RST_CTL.
+        //
+        // We do not do the first option because it will fault when trying to write to SYSCTL
+        // and it makes the reset cause a "Software-triggered SYSRST".
+        //
+        // The second option always works and has a reset cause of "Debug-triggered SYSRST"
+        let dap_interface = interface
+            .get_arm_debug_interface()
+            .expect("MSPM0 is always ARM");
+
+        // Do not write to DPREC0.RST_CTL because ResetCatchSet will set the catch address.
+
+        // Write SPREC.SYS_RST to do a SYSRST.
+        self.write_sprec(dap_interface, SPREC_SYS_RST)?;
+
+        // SYSRST resets both the peripherals and CPU.
+        // Need to wait for the CPU to reset.
+        cortex_m_wait_for_reset(interface)
     }
 }
 
