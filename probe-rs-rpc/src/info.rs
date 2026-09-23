@@ -52,7 +52,7 @@ pub struct TargetInfoRequest {
     pub scan_chain: Vec<u8>,
 }
 
-#[derive(Clone, Serialize, Deserialize, Schema)]
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub enum InfoEvent {
     Message(String),
     ProtocolNotSupportedByArch {
