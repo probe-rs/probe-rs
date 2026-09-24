@@ -13,6 +13,8 @@ use std::{
 
 use probe_rs_rpc::rtt_config::DataFormat;
 
+use probe_rs_zephyr::log::Decoder as ZephyrLogDecoder;
+
 pub enum RttDecoder {
     String {
         /// UTC offset used for creating timestamps, if enabled.
@@ -27,6 +29,10 @@ pub enum RttDecoder {
     Defmt {
         processor: DefmtProcessor,
     },
+    /// Zephyr dictionary-based logging.
+    ZephyrDict {
+        processor: ZephyrLogDecoder,
+    },
 }
 
 impl From<&RttDecoder> for DataFormat {
@@ -35,6 +41,8 @@ impl From<&RttDecoder> for DataFormat {
             RttDecoder::String { .. } => DataFormat::String,
             RttDecoder::BinaryLE => DataFormat::BinaryLE,
             RttDecoder::Defmt { .. } => DataFormat::Defmt,
+            // The decoded output is text.
+            RttDecoder::ZephyrDict { .. } => DataFormat::String,
         }
     }
 }
@@ -54,6 +62,7 @@ impl fmt::Debug for RttDecoder {
                 .finish(),
             RttDecoder::BinaryLE => f.debug_struct("BinaryLE").finish(),
             RttDecoder::Defmt { .. } => f.debug_struct("Defmt").finish_non_exhaustive(),
+            RttDecoder::ZephyrDict { .. } => f.debug_struct("ZephyrDict").finish_non_exhaustive(),
         }
     }
 }
@@ -90,6 +99,9 @@ impl RttDecoder {
                 let string = processor.process(buffer)?;
 
                 ProcessedRttData::String(string)
+            }
+            RttDecoder::ZephyrDict { processor } => {
+                ProcessedRttData::String(processor.process(buffer))
             }
         };
 

@@ -1,0 +1,18 @@
+*** Booting Zephyr OS build v4.4.0-16108-gd684e3a12739 ***
+Hello World! mps2
+[         0] <err> hello_world: error string
+[         0] <dbg> hello_world: main: debug string
+[         0] <inf> hello_world: info string
+[         0] <dbg> hello_world: main: int8_t 1, uint8_t 2
+[         0] <dbg> hello_world: main: int16_t 16, uint16_t 17
+[         0] <dbg> hello_world: main: int32_t 32, uint32_t 33
+[         0] <dbg> hello_world: main: int64_t 64, uint64_t 65
+[         0] <dbg> hello_world: main: char !
+[         0] <dbg> hello_world: main: s str static str c str
+[         0] <dbg> hello_world: main: d str dynamic str
+[         0] <dbg> hello_world: main: mixed str dynamic str --- dynamic str --- another dynamic str --- another dynamic str
+[         0] <dbg> hello_world: main: mixed c/s ! static str dynamic str static str !
+[         0] <dbg> hello_world: main: pointer 0x44da
+[         0] <dbg> hello_world: main: For HeXdUmP!
+                                48 45 58 44 55 4d 50 21  20 48 45 58 44 55 4d 50 |HEXDUMP!  HEXDUMP
+                                40 20 48 45 58 44 55 4d  50 23                   |@ HEXDUM P#
