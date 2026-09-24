@@ -1,0 +1,1 @@
+The ADIv5 memory interface runs a list of memory operations in as few probe transactions as possible, through `execute_memory_operations` or the `ArmError`-typed `ArmMemoryInterface::execute_operations`.

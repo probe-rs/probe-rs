@@ -52,6 +52,19 @@ macro_rules! attached_regs_to_mem_ap {
 // Re-export the macro so that it can be used in this crate.
 pub(crate) use attached_regs_to_mem_ap;
 
+/// What it takes to put a memory AP into a transfer size.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DataSizeSetup {
+    /// The AP is already in it.
+    Ready,
+    /// Write this word to CSW. It may travel in the same batch as the transfers it sets up, since
+    /// CSW shares a register bank with TAR and DRW.
+    Write(u32),
+    /// The AP needs a write and a read back before any transfer relies on the size, so the setup
+    /// cannot share a batch with them.
+    Separately,
+}
+
 /// Common trait for all memory access ports.
 pub trait MemoryApType:
     ApRegAccess<BASE> + ApRegAccess<BASE2> + ApRegAccess<TAR> + ApRegAccess<TAR2> + ApRegAccess<DRW>
@@ -71,6 +84,19 @@ pub trait MemoryApType:
 
     /// Returns whether the Memory AP only supports 32 bit data size.
     fn supports_only_32bit_data_size(&self) -> bool;
+
+    /// What it takes to put this AP into `data_size`.
+    ///
+    /// Returning the write rather than performing it lets it join the batch that carries the
+    /// transfers, which is a packet those transfers would otherwise wait for.
+    fn datasize_setup(&self, data_size: DataSize) -> Result<DataSizeSetup, ArmError>;
+
+    /// Record that the write [`Self::datasize_setup`] asked for reached the target.
+    ///
+    /// The AP caches CSW, so a write sent in a batch has to be reported back. A batch that failed
+    /// must not report one: read the register with [`Self::status`] instead, since whether the
+    /// write landed is not known.
+    fn note_datasize(&mut self, data_size: DataSize);
 
     /// Attempts to set the requested data size.
     ///
@@ -271,6 +297,14 @@ impl MemoryApType for MemoryAp {
 
     fn supports_only_32bit_data_size(&self) -> bool {
         mem_ap_forward!(self, supports_only_32bit_data_size())
+    }
+
+    fn datasize_setup(&self, data_size: DataSize) -> Result<DataSizeSetup, ArmError> {
+        mem_ap_forward!(self, datasize_setup(data_size))
+    }
+
+    fn note_datasize(&mut self, data_size: DataSize) {
+        mem_ap_forward!(self, note_datasize(data_size))
     }
 
     fn try_set_datasize<I: ApAccess>(

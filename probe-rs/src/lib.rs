@@ -100,7 +100,7 @@ pub use crate::core::{
     RegisterRole, RegisterValue, SpecificCoreState, VectorCatchCondition,
 };
 pub use crate::error::{BreakpointError, Error};
-pub use crate::memory::MemoryInterface;
+pub use crate::memory::{MemoryInterface, Operation, OperationKind};
 pub use crate::session::{Permissions, Session, SessionConfig};
 
 #[doc = include_str!("../../README.md")]
