@@ -1,6 +1,9 @@
 //! Espressif device support for probe-rs
 
-use probe_rs::{plugin, probe::JtagAccess};
+use probe_rs::{
+    plugin,
+    probe::{BitSequence, JtagChain},
+};
 
 use probe_rs_target::{
     Chip, ChipFamily,
@@ -19,8 +22,8 @@ use probe_rs::{
 };
 use sequences::{
     esp32::ESP32, esp32c2::ESP32C2, esp32c3::ESP32C3, esp32c5::ESP32C5, esp32c6::ESP32C6,
-    esp32c61::ESP32C61, esp32h2::ESP32H2, esp32p4::ESP32P4, esp32s2::ESP32S2, esp32s3::ESP32S3,
-    esp32s31::ESP32S31,
+    esp32c61::ESP32C61, esp32h2::ESP32H2, esp32h4::ESP32H4, esp32p4::ESP32P4, esp32s2::ESP32S2,
+    esp32s3::ESP32S3, esp32s31::ESP32S31,
 };
 
 use crate::{espusbjtag::EspUsbJtagFactory, image_format::IdfLoaderFactory};
@@ -113,6 +116,8 @@ impl Vendor for Espressif {
             DebugSequence::Riscv(ESP32C6::create())
         } else if chip.name.eq_ignore_ascii_case("esp32h2") {
             DebugSequence::Riscv(ESP32H2::create())
+        } else if chip.name.eq_ignore_ascii_case("esp32h4") {
+            DebugSequence::Riscv(ESP32H4::create())
         } else if chip.name.eq_ignore_ascii_case("esp32p4") {
             DebugSequence::Riscv(ESP32P4::create())
         } else if chip.name.eq_ignore_ascii_case("esp32s31") {
@@ -138,11 +143,10 @@ impl Vendor for Espressif {
 
         // Identify from JTAG IDCODE only. This works for RISC-V chips,
         // where we set a magic value of 0.
-        if let Some(jtag) = probe.try_as_jtag_probe() {
-            let r = identify_by_idcode(registry, jtag);
+        if let Some(mut chain) = probe.try_as_jtag_chain() {
+            let r = identify_by_idcode(registry, &mut chain);
 
-            // Ensure TAP 0 is selected before returning.
-            jtag.select_target(0)?;
+            chain.select(0)?;
 
             r
         } else {
@@ -183,18 +187,26 @@ impl Vendor for Espressif {
 
 fn identify_by_idcode(
     registry: &Registry,
-    jtag: &mut dyn JtagAccess,
+    chain: &mut JtagChain<'_>,
 ) -> Result<Option<String>, Error> {
     tracing::debug!("Identifying chip via JTAG IDCODE");
     use bitvec::field::BitField;
-    for tap in 0..jtag.scan_chain()?.len() {
-        jtag.select_target(tap)?;
+    let tap_count = chain.scan_chain()?.len();
+    for tap in 0..tap_count {
+        chain.select(tap)?;
 
-        let Ok(idcode) = jtag.read_register(1, 32) else {
-            return Ok(None);
-        };
-
-        let idcode = idcode.load_le::<u32>();
+        let mut batch = probe_rs::probe::JtagBatch::new();
+        let ir = BitSequence::from_bytes(&1u32.to_le_bytes(), chain.params().irlen);
+        chain.shift_ir(&mut batch, &ir);
+        let handle = chain.exchange_dr(&mut batch, &BitSequence::repeat(false, 32));
+        chain.run_test_idle(&mut batch, 0);
+        let mut results = chain.run(batch)?;
+        let idcode_bits = results.take(handle).map_err(|_| {
+            Error::Probe(probe_rs::probe::DebugProbeError::Other(
+                "missing IDCODE".into(),
+            ))
+        })?;
+        let idcode = idcode_bits.as_bits().load_le::<u32>();
         tracing::debug!("JTAG IDCODE: 0x{:08x}", idcode);
 
         for family in registry.families() {
@@ -221,12 +233,15 @@ mod tests {
         atomic::{AtomicUsize, Ordering},
     };
 
-    use bitvec::vec::BitVec;
     use probe_rs::{
         Error,
         config::{Registry, RegistryError},
         flashing::FlashAlgorithm,
-        probe::{DebugProbe, DebugProbeError, JtagAccess, JtagSequence, Probe, WireProtocol},
+        probe::{
+            BatchExecutionError, CommandResult, DebugProbe, DebugProbeError, JtagBatch,
+            JtagChainAccess, JtagChainState, JtagOp, JtagProbe, Probe, Results, WireProtocol,
+            jtag::chain::ChainParams,
+        },
     };
     use probe_rs_target::ScanChainElement;
 
@@ -236,6 +251,7 @@ mod tests {
     struct ProtocolProbe {
         protocol: WireProtocol,
         scans: Arc<AtomicUsize>,
+        jtag_state: JtagChainState,
     }
 
     impl DebugProbe for ProtocolProbe {
@@ -280,8 +296,8 @@ mod tests {
             Some(self.protocol)
         }
 
-        fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JtagAccess> {
-            Some(self)
+        fn try_as_jtag_chain(&mut self) -> Option<probe_rs::probe::JtagChain<'_>> {
+            Some(probe_rs::probe::JtagChain::new(self))
         }
 
         fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
@@ -289,56 +305,35 @@ mod tests {
         }
     }
 
-    impl JtagAccess for ProtocolProbe {
-        fn set_expected_scan_chain(
-            &mut self,
-            _scan_chain: &[ScanChainElement],
-        ) -> Result<(), DebugProbeError> {
-            unreachable!()
+    impl JtagChainAccess for ProtocolProbe {
+        fn chain_state(&mut self) -> &mut JtagChainState {
+            &mut self.jtag_state
         }
 
-        fn set_scan_chain(
-            &mut self,
-            _scan_chain: &[ScanChainElement],
-        ) -> Result<(), DebugProbeError> {
-            unreachable!()
+        fn chain_state_ref(&self) -> &JtagChainState {
+            &self.jtag_state
         }
+    }
 
-        fn scan_chain(&mut self) -> Result<&[ScanChainElement], DebugProbeError> {
+    impl JtagProbe for ProtocolProbe {
+        fn run_batch(
+            &mut self,
+            batch: &JtagBatch,
+        ) -> Result<probe_rs::probe::Results, BatchExecutionError<DebugProbeError>> {
             self.scans.fetch_add(1, Ordering::Relaxed);
-            Ok(&[])
-        }
 
-        fn shift_raw_sequence(
-            &mut self,
-            _sequence: JtagSequence,
-        ) -> Result<BitVec, DebugProbeError> {
-            unreachable!()
-        }
-
-        fn tap_reset(&mut self) -> Result<(), DebugProbeError> {
-            unreachable!()
-        }
-
-        fn set_idle_cycles(&mut self, _idle_cycles: u8) -> Result<(), DebugProbeError> {
-            unreachable!()
-        }
-
-        fn idle_cycles(&self) -> u8 {
-            unreachable!()
-        }
-
-        fn write_register(
-            &mut self,
-            _address: u32,
-            _data: &[u8],
-            _len: u32,
-        ) -> Result<BitVec, DebugProbeError> {
-            unreachable!()
-        }
-
-        fn write_dr(&mut self, _data: &[u8], _len: u32) -> Result<BitVec, DebugProbeError> {
-            unreachable!()
+            let mut results = Results::new();
+            for (id, op) in batch.iter() {
+                if let JtagOp::Exchange {
+                    data,
+                    capture: true,
+                } = op
+                    && id.should_capture()
+                {
+                    results.push(id, CommandResult::VecU8(vec![0; data.len().div_ceil(8)]));
+                }
+            }
+            Ok(results)
         }
     }
 
@@ -351,6 +346,17 @@ mod tests {
             let mut probe = Probe::new(ProtocolProbe {
                 protocol,
                 scans: scans.clone(),
+                jtag_state: JtagChainState {
+                    scan_chain: vec![ScanChainElement {
+                        name: None,
+                        ir_len: Some(4),
+                    }],
+                    chain_params: ChainParams {
+                        irlen: 4,
+                        ..ChainParams::default()
+                    },
+                    ..JtagChainState::default()
+                },
             });
 
             let detected = Espressif

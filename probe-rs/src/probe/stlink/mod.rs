@@ -13,15 +13,15 @@ use crate::{
             memory_ap::{MemoryAp, MemoryApType},
             v1::valid_access_ports,
         },
-        communication_interface::{ArmDebugInterface, DapProbe, SwdSequence},
+        communication_interface::{ArmDebugInterface, SwdSequence},
         dp::{DpAddress, DpRegisterAddress},
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
         valid_32bit_arm_address,
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeSelector, Probe, ProbeError, ProbeFactory,
-        WireProtocol,
+        BitSequence, DebugProbe, DebugProbeError, DebugProbeSelector, Probe, ProbeError,
+        ProbeFactory, WireProtocol,
     },
 };
 
@@ -1400,14 +1400,6 @@ impl DapAccess for StlinkArmDebug {
 
         Ok(())
     }
-
-    fn try_dap_probe(&self) -> Option<&dyn DapProbe> {
-        None
-    }
-
-    fn try_dap_probe_mut(&mut self) -> Option<&mut dyn DapProbe> {
-        None
-    }
 }
 
 impl ArmDebugInterface for StlinkArmDebug {
@@ -1456,7 +1448,7 @@ impl ArmDebugInterface for StlinkArmDebug {
 }
 
 impl SwdSequence for StlinkArmDebug {
-    fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
+    fn swj_sequence(&mut self, _bits: &BitSequence) -> Result<(), DebugProbeError> {
         // This is not supported for ST-Links, unfortunately.
         Err(DebugProbeError::CommandNotSupportedByProbe {
             command_name: "swj_sequence",
@@ -1494,8 +1486,8 @@ struct StLinkMemoryInterface<'probe> {
 }
 
 impl SwdSequence for StLinkMemoryInterface<'_> {
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
-        self.probe.swj_sequence(bit_len, bits)
+    fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError> {
+        self.probe.swj_sequence(bits)
     }
 
     fn swj_pins(

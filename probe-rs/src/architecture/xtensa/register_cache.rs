@@ -6,7 +6,7 @@ use crate::{
         communication_interface::{MaybeDeferredResultIndex, XtensaError},
         xdm::Xdm,
     },
-    probe::queue::DeferredResultIndex,
+    probe::{CommandResult, queue::Handle},
 };
 
 #[derive(Default)]
@@ -34,7 +34,7 @@ impl RegisterCache {
     }
 
     /// Stores a register value in the cache.
-    pub fn store_deferred(&mut self, id: Register, deferred: DeferredResultIndex) {
+    pub fn store_deferred(&mut self, id: Register, deferred: Handle<CommandResult>) {
         self.entries.insert(
             id,
             CacheEntry {
@@ -120,7 +120,7 @@ pub(crate) enum CachedValue {
     Value(u32),
 
     /// The result is deferred.
-    Deferred(DeferredResultIndex),
+    Deferred(Handle<CommandResult>),
 }
 
 #[derive(PartialEq, Eq)]

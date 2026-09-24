@@ -19,7 +19,7 @@ use crate::{
         xdm::{DebugStatus, XdmState},
     },
     memory::{Operation, OperationKind},
-    probe::{DebugProbeError, JtagAccess, queue::DeferredResultIndex},
+    probe::{CommandResult, DebugProbeError, Handle},
 };
 
 use super::xdm::{Error as XdmError, Xdm};
@@ -51,6 +51,9 @@ pub enum XtensaError {
 
     /// Breakpoint unit {0} does not exist.
     BreakpointOutOfBounds(usize),
+
+    /// The target description specifies an unsupported debug level: {0}.
+    UnsupportedDebugLevel(u8),
 }
 
 impl From<XtensaError> for ProbeRsError {
@@ -77,6 +80,22 @@ pub enum DebugLevel {
     L6 = 6,
     /// The CPU was configured to take Debug interrupts at level 7.
     L7 = 7,
+}
+
+impl TryFrom<u8> for DebugLevel {
+    type Error = XtensaError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            2 => Ok(DebugLevel::L2),
+            3 => Ok(DebugLevel::L3),
+            4 => Ok(DebugLevel::L4),
+            5 => Ok(DebugLevel::L5),
+            6 => Ok(DebugLevel::L6),
+            7 => Ok(DebugLevel::L7),
+            other => Err(XtensaError::UnsupportedDebugLevel(other)),
+        }
+    }
 }
 
 impl DebugLevel {
@@ -132,6 +151,13 @@ pub struct MemoryRegionProperties {
     pub fast_memory_access: bool,
 }
 
+/// Properties of the Floating-Point Coprocessor Option.
+#[derive(Clone, Copy, Debug)]
+pub struct FpuProperties {
+    /// Whether the FPU supports double-precision operations.
+    pub double_precision: bool,
+}
+
 /// Properties of an Xtensa CPU core.
 pub struct XtensaCoreProperties {
     /// The number of hardware breakpoints the target supports. CPU-specific configuration value.
@@ -146,8 +172,8 @@ pub struct XtensaCoreProperties {
     /// Configurable options in the Windowed Register Option
     pub window_option_properties: WindowProperties,
 
-    /// Whether the CPU implements the Floating-Point Coprocessor Option.
-    pub has_fpu: bool,
+    /// Floating-point coprocessor properties, if the CPU implements the option.
+    pub fpu: Option<FpuProperties>,
 }
 
 impl Default for XtensaCoreProperties {
@@ -156,9 +182,40 @@ impl Default for XtensaCoreProperties {
             hw_breakpoint_num: 2,
             debug_level: DebugLevel::L6,
             memory_ranges: HashMap::new(),
-            window_option_properties: WindowProperties::lx(64),
-            has_fpu: false,
+            window_option_properties: WindowProperties {
+                has_windowed_registers: false,
+                num_aregs: 0,
+                window_regs: 0,
+                rotw_rotates: 0,
+            },
+            fpu: None,
         }
+    }
+}
+
+impl TryFrom<&probe_rs_target::XtensaCoreProperties> for XtensaCoreProperties {
+    type Error = XtensaError;
+
+    fn try_from(properties: &probe_rs_target::XtensaCoreProperties) -> Result<Self, Self::Error> {
+        let defaults = Self::default();
+
+        Ok(Self {
+            hw_breakpoint_num: properties.hw_breakpoint_num,
+            debug_level: DebugLevel::try_from(properties.debug_level)?,
+            fpu: properties.fpu.as_ref().map(|fpu| FpuProperties {
+                double_precision: fpu.double_precision,
+            }),
+            window_option_properties: match properties.window_properties.as_ref() {
+                Some(window) => WindowProperties {
+                    has_windowed_registers: true,
+                    num_aregs: window.num_aregs,
+                    window_regs: 16,
+                    rotw_rotates: 4,
+                },
+                None => defaults.window_option_properties,
+            },
+            memory_ranges: defaults.memory_ranges,
+        })
     }
 }
 
@@ -227,16 +284,6 @@ pub struct WindowProperties {
 }
 
 impl WindowProperties {
-    /// Create a new WindowProperties instance with the given number of AR registers.
-    pub fn lx(num_aregs: u8) -> Self {
-        Self {
-            has_windowed_registers: true,
-            num_aregs,
-            window_regs: 16,
-            rotw_rotates: 4,
-        }
-    }
-
     /// Returns the number of different valid WindowBase values.
     pub fn windowbase_size(&self) -> u8 {
         self.num_aregs / self.rotw_rotates
@@ -249,6 +296,16 @@ pub struct XtensaDebugInterfaceState {
     interface_state: XtensaInterfaceState,
     core_properties: XtensaCoreProperties,
     xdm_state: XdmState,
+}
+
+impl XtensaDebugInterfaceState {
+    /// Creates the state of a core with the given properties.
+    pub fn new(core_properties: XtensaCoreProperties) -> Self {
+        Self {
+            core_properties,
+            ..Default::default()
+        }
+    }
 }
 
 /// The higher level of the XDM functionality.
@@ -264,7 +321,7 @@ pub struct XtensaCommunicationInterface<'probe> {
 impl<'probe> XtensaCommunicationInterface<'probe> {
     /// Create the Xtensa communication interface using the underlying probe driver
     pub fn new(
-        probe: &'probe mut dyn JtagAccess,
+        probe: &'probe mut dyn crate::probe::JtagChainAccess,
         state: &'probe mut XtensaDebugInterfaceState,
     ) -> Self {
         let XtensaDebugInterfaceState {
@@ -272,7 +329,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             core_properties,
             xdm_state,
         } = state;
-        let xdm = Xdm::new(probe, xdm_state);
+        let xdm = Xdm::new(crate::probe::JtagChain::new(probe), xdm_state);
 
         Self {
             xdm,
@@ -288,11 +345,11 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
 
     /// Returns whether the CPU implements the Floating-Point Coprocessor Option.
     pub fn has_fpu(&self) -> bool {
-        self.core_properties.has_fpu
+        self.core_properties.fpu.is_some()
     }
 
     /// Read the targets IDCODE.
-    pub fn read_idcode(&mut self) -> Result<u32, XtensaError> {
+    pub fn read_idcode(&mut self) -> Result<Option<u32>, XtensaError> {
         self.xdm.read_idcode()
     }
 
@@ -554,7 +611,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     ///
     /// The original value is written back by [`Self::restore_registers`].
     fn enable_coprocessors(&mut self) -> Result<(), XtensaError> {
-        if !self.core_properties.has_fpu {
+        if !self.has_fpu() {
             return Err(XtensaError::RegisterNotAvailable);
         }
         if self.state.coprocessors_enabled {
@@ -633,7 +690,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     pub(crate) fn schedule_read_register_uncached(
         &mut self,
         register: impl Into<Register>,
-    ) -> Result<DeferredResultIndex, XtensaError> {
+    ) -> Result<Handle<CommandResult>, XtensaError> {
         let register = register.into();
 
         const SCRATCH_REGISTER: CpuRegister = CpuRegister::A3;
@@ -1393,12 +1450,12 @@ trait MemoryAccess {
     fn read_one(
         &mut self,
         interface: &mut XtensaCommunicationInterface,
-    ) -> Result<DeferredResultIndex, XtensaError>;
+    ) -> Result<Handle<CommandResult>, XtensaError>;
 
     fn read_one_and_continue(
         &mut self,
         interface: &mut XtensaCommunicationInterface,
-    ) -> Result<DeferredResultIndex, XtensaError>;
+    ) -> Result<Handle<CommandResult>, XtensaError>;
 
     fn write_one(
         &mut self,
@@ -1477,14 +1534,14 @@ impl MemoryAccess for FastMemoryAccess {
     fn read_one(
         &mut self,
         interface: &mut XtensaCommunicationInterface,
-    ) -> Result<DeferredResultIndex, XtensaError> {
+    ) -> Result<Handle<CommandResult>, XtensaError> {
         Ok(interface.xdm.schedule_read_ddr())
     }
 
     fn read_one_and_continue(
         &mut self,
         interface: &mut XtensaCommunicationInterface,
-    ) -> Result<DeferredResultIndex, XtensaError> {
+    ) -> Result<Handle<CommandResult>, XtensaError> {
         Ok(interface.xdm.schedule_read_ddr_and_execute())
     }
 }
@@ -1549,7 +1606,7 @@ impl MemoryAccess for SlowMemoryAccess {
     fn read_one(
         &mut self,
         interface: &mut XtensaCommunicationInterface,
-    ) -> Result<DeferredResultIndex, XtensaError> {
+    ) -> Result<Handle<CommandResult>, XtensaError> {
         if !self.address_written {
             interface.schedule_write_cpu_register(CpuRegister::A3, self.current_address)?;
             interface.state.register_cache.mark_dirty(CpuRegister::A3);
@@ -1582,7 +1639,7 @@ impl MemoryAccess for SlowMemoryAccess {
     fn read_one_and_continue(
         &mut self,
         interface: &mut XtensaCommunicationInterface,
-    ) -> Result<DeferredResultIndex, XtensaError> {
+    ) -> Result<Handle<CommandResult>, XtensaError> {
         self.read_one(interface)
     }
 

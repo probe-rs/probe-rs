@@ -1,0 +1,1 @@
+Stack unwinding takes the program counter of a calling Xtensa frame from the return address register of the called frame, so a backtrace no longer drops frames or repeats the frame below an exception handler.

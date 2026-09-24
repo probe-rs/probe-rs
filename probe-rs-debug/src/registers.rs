@@ -115,18 +115,13 @@ impl DebugRegisters {
         mut reg_value: impl FnMut(&RegisterId) -> Option<RegisterValue>,
     ) -> Self {
         let mut debug_registers = Vec::<DebugRegister>::new();
-        for (dwarf_id, core_register) in regs.core_registers().enumerate() {
+        for core_register in regs.core_registers() {
             // Check to ensure the register type is compatible with u64.
             if matches!(core_register.data_type(), RegisterDataType::UnsignedInteger(size_in_bits) if size_in_bits <= 64)
             {
                 debug_registers.push(DebugRegister {
                     core_register,
-                    // The DWARF register ID is only valid for the first 32 registers.
-                    dwarf_id: if dwarf_id < 32 {
-                        Some(dwarf_id as u16)
-                    } else {
-                        None
-                    },
+                    dwarf_id: core_register.dwarf_id(),
                     value: reg_value(&core_register.id()),
                 });
             } else {

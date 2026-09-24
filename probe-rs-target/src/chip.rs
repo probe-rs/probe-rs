@@ -248,7 +248,41 @@ pub struct RiscvCoreAccessOptions {
 
 /// The data required to access an Xtensa core
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct XtensaCoreAccessOptions {
     /// The JTAG TAP index of the core's debug module
     pub jtag_tap: Option<usize>,
+
+    /// CPU properties for this core
+    pub core_properties: XtensaCoreProperties,
+}
+
+/// Xtensa CPU properties from a target description
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct XtensaCoreProperties {
+    /// Interrupt level at which debug exceptions are generated
+    pub debug_level: u8,
+    /// Number of hardware breakpoints
+    pub hw_breakpoint_num: u32,
+    /// Floating-point coprocessor properties, if implemented
+    pub fpu: Option<XtensaFpuProperties>,
+    /// Windowed register option properties
+    pub window_properties: Option<XtensaWindowProperties>,
+}
+
+/// Floating-point coprocessor properties from a target description
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct XtensaFpuProperties {
+    /// Whether the FPU supports double-precision operations
+    pub double_precision: bool,
+}
+
+/// Windowed register option properties from a target description
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct XtensaWindowProperties {
+    /// The total number of AR registers in the register file
+    pub num_aregs: u8,
 }

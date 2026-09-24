@@ -249,6 +249,10 @@ impl<'a> Parser<'a> {
             if !self.eat("::") {
                 break;
             }
+            // A turbofish ends the path: `foo::<T>` has the arguments of `foo`.
+            if self.peek() == Some('<') {
+                break;
+            }
         }
         if segments.is_empty() {
             return None;
@@ -524,7 +528,7 @@ fn compact_generic_arg(arg: &GenericArg) -> String {
 
 fn compact_method_path(name: &str) -> String {
     let name = compact_generics(name);
-    let segments = split_path_segments(&name);
+    let segments = merge_turbofish(split_path_segments(&name));
     if segments.is_empty() {
         return name;
     }
@@ -533,6 +537,18 @@ fn compact_method_path(name: &str) -> String {
         .rposition(|segment| segment.contains('<'))
         .unwrap_or_else(|| segments.len().saturating_sub(2));
     segments[start..].join("::")
+}
+
+/// Join a turbofish to the segment it belongs to: `foo::<T>` is one segment.
+fn merge_turbofish(segments: Vec<&str>) -> Vec<String> {
+    let mut merged: Vec<String> = Vec::with_capacity(segments.len());
+    for segment in segments {
+        match merged.last_mut() {
+            Some(last) if segment.starts_with('<') => last.push_str(segment),
+            _ => merged.push(segment.to_string()),
+        }
+    }
+    merged
 }
 
 fn split_path_segments(s: &str) -> Vec<&str> {
@@ -1062,6 +1078,19 @@ mod tests {
         let ty = parse_variable_type("&mut core::task::wake::Context").unwrap();
         assert_eq!(compact(&ty), "&mut Context");
         assert_eq!(qualified(&ty), "&mut core::task::wake::Context");
+    }
+
+    #[test]
+    fn a_turbofish_stays_with_the_function_it_belongs_to() {
+        assert_eq!(
+            compact_debug_name("esp_hal::interrupt::vectored::handle_interrupts::<1>"),
+            "handle_interrupts<1>"
+        );
+        assert_eq!(
+            compact_debug_name("esp_hal::interrupt::vectored::handle_interrupts::<1>::{closure#0}"),
+            "handle_interrupts<1>::{closure#0}"
+        );
+        assert_eq!(associated_method_label("core::mem::swap::<u32>"), None);
     }
 
     #[test]

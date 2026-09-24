@@ -1,0 +1,1 @@
+CMSIS-DAP: `DAP_Transfer` batches are no longer sized past what the one-byte transfer count can describe. A probe reporting a packet of 1283 bytes or more ran `count % 256` transfers and was then blamed for the short count.

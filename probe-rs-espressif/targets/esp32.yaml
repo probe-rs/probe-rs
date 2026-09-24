@@ -15,10 +15,24 @@ variants:
     type: xtensa
     core_access_options: !Xtensa
       jtag_tap: 0
+      core_properties:
+        debug_level: 6
+        hw_breakpoint_num: 2
+        window_properties:
+          num_aregs: 64
+        fpu:
+          double_precision: false
   - name: app
     type: xtensa
     core_access_options: !Xtensa
       jtag_tap: 1
+      core_properties:
+        debug_level: 6
+        hw_breakpoint_num: 2
+        window_properties:
+          num_aregs: 64
+        fpu:
+          double_precision: false
   memory_map:
   - !Nvm
     range:

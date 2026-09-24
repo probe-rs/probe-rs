@@ -12,10 +12,11 @@ use probe_rs_target::CoreType;
 
 use crate::{
     architecture::arm::{
-        ArmError, DapProbe, Pins,
+        ArmError, Pins,
         core::armv7m::{Dhcsr, FpCtrl, FpRev1CompX, FpRev2CompX},
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
+        traits::DebugPortWire,
     },
     core::MemoryMappedRegister,
 };
@@ -92,14 +93,13 @@ impl ArmDebugSequence for Max32 {
 
     /// Pulse nSRST (assert then release) so the DP is alive when the
     /// subsequent attach tries to connect.  Needed for `--connect-under-reset`.
-    fn reset_hardware_assert(&self, interface: &mut dyn DapProbe) -> Result<(), ArmError> {
+    fn reset_hardware_assert(&self, interface: &mut dyn DebugPortWire) -> Result<(), ArmError> {
         let mut n_reset = Pins(0);
         n_reset.set_nreset(true);
-        let mask = n_reset.0 as u32;
 
-        interface.swj_pins(0, mask, 0)?;
+        interface.swj_pins(Pins(0), n_reset, Duration::ZERO)?;
         thread::sleep(Duration::from_millis(20));
-        interface.swj_pins(mask, mask, 0)?;
+        interface.swj_pins(n_reset, n_reset, Duration::ZERO)?;
         thread::sleep(Duration::from_millis(10));
         Ok(())
     }

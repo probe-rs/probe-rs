@@ -23,9 +23,9 @@ use std::time::Duration;
 
 use crate::architecture::arm::{
     ArmError, Pins,
-    communication_interface::DapProbe,
     dp::DpAddress,
     sequences::{ArmDebugSequence, DefaultArmSequence},
+    traits::DebugPortWire,
 };
 
 /// Debug sequence for Infineon MOTIX™ TLE98xx / TLE99xx MCUs.
@@ -48,38 +48,35 @@ impl InfineonTle {
     /// We do that with the nRESET line (wired to the device reset pin on the
     /// debug connector) while keeping TMS and SWDCLK high across the reset and
     /// the subsequent BootROM execution.
-    fn enter_debug_mode(&self, interface: &mut dyn DapProbe) -> Result<(), ArmError> {
+    fn enter_debug_mode(&self, interface: &mut dyn DebugPortWire) -> Result<(), ArmError> {
         // The pins we drive: nRESET, TMS (SWDIO) and SWDCLK.
         let mut select = Pins(0);
         select.set_nreset(true);
         select.set_swdio_tms(true);
         select.set_swclk_tck(true);
-        let select = select.0 as u32;
 
         // TMS and SWDCLK high, nRESET asserted (driven low).
         let mut reset_asserted = Pins(0);
         reset_asserted.set_swdio_tms(true);
         reset_asserted.set_swclk_tck(true);
-        let reset_asserted = reset_asserted.0 as u32;
 
         // TMS and SWDCLK high, nRESET released (driven high).
         let mut reset_released = Pins(0);
         reset_released.set_swdio_tms(true);
         reset_released.set_swclk_tck(true);
         reset_released.set_nreset(true);
-        let reset_released = reset_released.0 as u32;
 
         tracing::debug!("Infineon TLE: resetting with TMS/SWDCLK high to enter debug mode");
 
         // Assert nRESET while holding TMS and SWDCLK high.
-        let _ = interface.swj_pins(reset_asserted, select, 0)?;
+        let _ = interface.swj_pins(reset_asserted, select, Duration::ZERO)?;
         thread::sleep(Duration::from_millis(10));
 
         // Release nRESET while keeping TMS and SWDCLK high, so that the BootROM
         // samples them high after the reset and starts up in debug mode instead
         // of user mode. The hold time has to cover oscillator settling and
         // BootROM execution; a few milliseconds is ample.
-        let _ = interface.swj_pins(reset_released, select, 0)?;
+        let _ = interface.swj_pins(reset_released, select, Duration::ZERO)?;
         thread::sleep(Duration::from_millis(10));
 
         Ok(())
@@ -89,7 +86,7 @@ impl InfineonTle {
 impl ArmDebugSequence for InfineonTle {
     fn debug_port_setup(
         &self,
-        interface: &mut dyn DapProbe,
+        interface: &mut dyn DebugPortWire,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
         // Make the BootROM bring the device up in debug mode before attempting
@@ -100,7 +97,7 @@ impl ArmDebugSequence for InfineonTle {
         DefaultArmSequence(()).debug_port_setup(interface, dp)
     }
 
-    fn reset_hardware_assert(&self, interface: &mut dyn DapProbe) -> Result<(), ArmError> {
+    fn reset_hardware_assert(&self, interface: &mut dyn DebugPortWire) -> Result<(), ArmError> {
         // A device reset has to keep TMS and SWDCLK high so that the BootROM
         // re-enters (preserves) debug mode after the reset, per the "Device
         // reset during debug mode" procedure in the user manuals.
@@ -114,7 +111,7 @@ impl ArmDebugSequence for InfineonTle {
         output.set_swdio_tms(true);
         output.set_swclk_tck(true);
 
-        let _ = interface.swj_pins(output.0 as u32, select.0 as u32, 0)?;
+        let _ = interface.swj_pins(output, select, Duration::ZERO)?;
 
         Ok(())
     }

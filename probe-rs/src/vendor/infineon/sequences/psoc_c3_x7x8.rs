@@ -38,15 +38,17 @@ use crate::{
     MemoryMappedRegister, Permissions,
     architecture::arm::{
         ApV2Address, ArmDebugInterface, ArmError, FullyQualifiedApAddress, RegisterAddress,
-        communication_interface::DapProbe,
         core::armv7m::Dhcsr,
         dp::{Ctrl, DPIDR, DpAccess, DpAddress, DpRegister},
         memory::ArmMemoryInterface,
         sequences::{
             ArmDebugSequence, DebugEraseSequence, DefaultArmSequence, cortex_m_wait_for_reset,
         },
+        traits::DebugPortWire,
     },
     config::CoreExt,
+    probe::BitSequence,
+    probe::swd::Port,
 };
 
 use super::{
@@ -211,7 +213,7 @@ impl PsocC3X7X8 {
     /// Returns `Ok(true)` on success, `Ok(false)` on timeout.
     fn try_dormant_connect(
         &self,
-        interface: &mut dyn DapProbe,
+        interface: &mut dyn DebugPortWire,
         timeout: Duration,
     ) -> Result<bool, ArmError> {
         let deadline = Instant::now() + timeout;
@@ -221,16 +223,35 @@ impl PsocC3X7X8 {
             // DORMANT-to-SWD sequence (ARM ADI §B4.3.4):
             // line reset → JTAG-to-Dormant → 8-cycle preamble → 128-bit alert → SWD activation →
             // line reset → idle
-            let ok = interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF).is_ok()
-                && interface.swj_sequence(31, 0x33BB_BBBA).is_ok()
-                && interface.swj_sequence(8, 0xFF).is_ok()
-                && interface.swj_sequence(64, 0x8685_2D95_6209_F392).is_ok()
-                && interface.swj_sequence(64, 0x19BC_0EA2_E3DD_AFE9).is_ok()
-                && interface.swj_sequence(12, 0x1A0).is_ok()
-                && interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF).is_ok()
-                && interface.swj_sequence(3, 0x00).is_ok();
+            let ok = interface
+                .swj_sequence(&BitSequence::from_u64(51, 0x0007_FFFF_FFFF_FFFF))
+                .is_ok()
+                && interface
+                    .swj_sequence(&BitSequence::from_u64(31, 0x33BB_BBBA))
+                    .is_ok()
+                && interface
+                    .swj_sequence(&BitSequence::from_u64(8, 0xFF))
+                    .is_ok()
+                && interface
+                    .swj_sequence(&BitSequence::from_u64(64, 0x8685_2D95_6209_F392))
+                    .is_ok()
+                && interface
+                    .swj_sequence(&BitSequence::from_u64(64, 0x19BC_0EA2_E3DD_AFE9))
+                    .is_ok()
+                && interface
+                    .swj_sequence(&BitSequence::from_u64(12, 0x1A0))
+                    .is_ok()
+                && interface
+                    .swj_sequence(&BitSequence::from_u64(51, 0x0007_FFFF_FFFF_FFFF))
+                    .is_ok()
+                && interface
+                    .swj_sequence(&BitSequence::from_u64(3, 0x00))
+                    .is_ok();
             if ok {
-                match interface.raw_read_register(RegisterAddress::DpRegister(DPIDR::ADDRESS)) {
+                match interface.raw_read_register(
+                    Port::Dp,
+                    RegisterAddress::DpRegister(DPIDR::ADDRESS).a2_and_3(),
+                ) {
                     Ok(v) => {
                         tracing::debug!(
                             "PSoC C3 x7/x8: attempt {attempt}: DPIDR=0x{v:08X} — connected"
@@ -466,7 +487,7 @@ impl ArmDebugSequence for PsocC3X7X8 {
     /// and running before the DORMANT-to-SWD alert sequence can be sent.  Asserting
     /// nRESET before connecting would prevent `debug_port_setup` from waking the DP,
     /// so this override makes `--connect-under-reset` a no-op and emits a warning.
-    fn reset_hardware_assert(&self, _interface: &mut dyn DapProbe) -> Result<(), ArmError> {
+    fn reset_hardware_assert(&self, _interface: &mut dyn DebugPortWire) -> Result<(), ArmError> {
         tracing::warn!(
             "PSoC C3 x7/x8: `--connect-under-reset` is not supported — \
              the debug port requires the chip to be running before the \
@@ -504,7 +525,7 @@ impl ArmDebugSequence for PsocC3X7X8 {
 
     fn debug_port_setup(
         &self,
-        interface: &mut dyn DapProbe,
+        interface: &mut dyn DebugPortWire,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
         // Phase 1: try to connect without resetting (400 ms = `__Reset_Finish_Delay`).

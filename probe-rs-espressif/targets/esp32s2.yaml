@@ -14,6 +14,11 @@ variants:
   - name: main
     type: xtensa
     core_access_options: !Xtensa
+      core_properties:
+        debug_level: 6
+        hw_breakpoint_num: 2
+        window_properties:
+          num_aregs: 64
   memory_map:
   - !Nvm
     range:

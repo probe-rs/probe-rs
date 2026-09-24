@@ -1,7 +1,7 @@
 //! CLI-specific building blocks.
 
 use std::future::pending;
-use std::io::Write;
+use std::io::{IsTerminal, Write};
 use std::time::Duration;
 use std::{future::Future, ops::DerefMut, path::Path, time::Instant};
 
@@ -734,6 +734,10 @@ pub async fn monitor(
         pending().await
     };
 
+    fn prompt_possible() -> bool {
+        std::io::stdin().is_terminal() && std::io::stdout().is_terminal()
+    }
+
     // Gets activated when the RTT client discovers down channels.
     // Displays a prompt and waits for user input.
     async fn cli_with_prompt(session: &SessionInterface, context: &MonitorUiContext) {
@@ -826,7 +830,7 @@ pub async fn monitor(
                     DisplayMode::Exited
                 } else if monitor_options.list_rtt {
                     DisplayMode::ListChannelsAndQuit
-                } else if locked.down_channels.is_empty() {
+                } else if locked.down_channels.is_empty() || !prompt_possible() {
                     DisplayMode::OutputOnly
                 } else {
                     DisplayMode::CliWithPrompt

@@ -217,8 +217,8 @@ fn try_detect_riscv_chip(registry: &Registry, probe: &mut Probe) -> Result<Optio
         return Ok(None);
     }
 
-    if let Some(probe) = probe.try_as_jtag_probe() {
-        _ = probe.select_target(0);
+    if let Some(mut chain) = probe.try_as_jtag_chain() {
+        _ = chain.select(0);
     }
 
     match probe.try_get_riscv_interface_builder() {
@@ -268,8 +268,8 @@ fn try_detect_xtensa_chip(registry: &Registry, probe: &mut Probe) -> Result<Opti
         return Ok(None);
     }
 
-    if let Some(probe) = probe.try_as_jtag_probe() {
-        _ = probe.select_target(0);
+    if let Some(mut chain) = probe.try_as_jtag_chain() {
+        _ = chain.select(0);
     }
 
     let mut state = XtensaDebugInterfaceState::default();
@@ -281,7 +281,7 @@ fn try_detect_xtensa_chip(registry: &Registry, probe: &mut Probe) -> Result<Opti
             }
 
             match interface.read_idcode() {
-                Ok(idcode) => {
+                Ok(Some(idcode)) => {
                     tracing::debug!("ID code read over JTAG: {idcode:#x}");
                     let vendors = vendors();
                     for vendor in vendors.iter() {
@@ -294,6 +294,7 @@ fn try_detect_xtensa_chip(registry: &Registry, probe: &mut Probe) -> Result<Opti
                         }
                     }
                 }
+                Ok(_) => tracing::debug!("No Xtensa ID code returned."),
                 Err(error) => tracing::debug!("Error during Xtensa chip detection: {error}"),
             }
 

@@ -101,12 +101,11 @@ impl ArmDebugSequence for Rp235x {
         // debug subsystem has reinitialized, causing FAULT on DRW. Running at
         // a low speed naturally spaces transactions far enough apart that the
         // chip always has time to recover.
-        let probe_speed = arm_interface.try_dap_probe_mut().map(|probe| {
-            let speed = probe.speed_khz();
+        let probe_speed = arm_interface.wire_speed_khz();
+        if probe_speed.is_some() {
             tracing::debug!("Lowering SWD speed to {RESET_SPEED_KHZ} kHz for reset sequence");
-            let _ = probe.set_speed(RESET_SPEED_KHZ);
-            speed
-        });
+            let _ = arm_interface.set_wire_speed(RESET_SPEED_KHZ);
+        }
 
         // Put the SoC in rescue reset as the datasheet.
         //
@@ -168,9 +167,9 @@ impl ArmDebugSequence for Rp235x {
 
         // Restore speed before handing back to core-level operations.
         let arm_interface = core.get_arm_debug_interface()?;
-        if let (Some(probe), Some(speed)) = (arm_interface.try_dap_probe_mut(), probe_speed) {
+        if let Some(speed) = probe_speed {
             tracing::debug!("Restoring SWD speed to {speed} kHz");
-            let _ = probe.set_speed(speed);
+            let _ = arm_interface.set_wire_speed(speed);
         }
 
         // As a final check, make sure we can read from RAM.

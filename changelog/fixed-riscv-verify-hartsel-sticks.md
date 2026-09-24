@@ -1,0 +1,1 @@
+The hartsel bit can sometimes fail to stick when a hart is still in reset, so read the value back to confirm the correct hart is selected.

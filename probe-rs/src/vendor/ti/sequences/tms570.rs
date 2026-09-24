@@ -14,7 +14,7 @@ use crate::architecture::arm::core::armv7ar_debug_regs::Dbgdscr;
 use crate::architecture::arm::dp::{DebugPortError, DpAddress};
 use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::sequences::{ArmDebugSequence, ArmDebugSequenceError};
-use crate::architecture::arm::{ArmError, DapProbe, Pins};
+use crate::architecture::arm::{ArmError, Pins, traits::DebugPortWire};
 use crate::probe::WireProtocol;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
@@ -158,7 +158,7 @@ impl TMS570 {
     }
 }
 
-fn ensure_ntrst(interface: &mut dyn DapProbe, nrst: bool) -> Result<(), ArmError> {
+fn ensure_ntrst(interface: &mut dyn DebugPortWire, nrst: bool) -> Result<(), ArmError> {
     let mut pin_mask = Pins(0);
     pin_mask.set_ntrst(true);
     pin_mask.set_nreset(nrst);
@@ -167,7 +167,7 @@ fn ensure_ntrst(interface: &mut dyn DapProbe, nrst: bool) -> Result<(), ArmError
     pin_value.set_ntrst(true);
     pin_value.set_nreset(true);
 
-    let _ = interface.swj_pins(pin_value.0.into(), pin_mask.0.into(), 0)?;
+    let _ = interface.swj_pins(pin_value, pin_mask, Duration::ZERO)?;
     Ok(())
 }
 
@@ -197,7 +197,7 @@ fn clear_ecc_memory(core: &mut TemporaryCore) -> Result<(), ArmError> {
 }
 
 impl ArmDebugSequence for TMS570 {
-    fn reset_hardware_assert(&self, interface: &mut dyn DapProbe) -> Result<(), ArmError> {
+    fn reset_hardware_assert(&self, interface: &mut dyn DebugPortWire) -> Result<(), ArmError> {
         // Only toggle nRST. This is because the ICEPICK is completely nonresponsive
         // under nRST. It does, however, reset the system. Note that this will not
         // succeed, but the next time `probe-rs` is run the target will have been
@@ -299,7 +299,7 @@ impl ArmDebugSequence for TMS570 {
 
     fn debug_port_setup(
         &self,
-        interface: &mut dyn DapProbe,
+        interface: &mut dyn DebugPortWire,
         _dp: DpAddress,
     ) -> Result<(), ArmError> {
         ensure_ntrst(interface, true)?;

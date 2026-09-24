@@ -9,7 +9,7 @@ readme = "README.md"
 license = "MIT OR Apache-2.0"
 
 # If this is increased, also update the checked minimum Rust version in the justfile
-rust-version = "1.89"
+rust-version = "1.95"
 
 
 [workspace]
