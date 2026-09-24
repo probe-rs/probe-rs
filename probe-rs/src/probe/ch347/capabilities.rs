@@ -26,6 +26,20 @@ impl Capabilities {
             Variant::Ch347T => self.firmware >= 0x544,
         }
     }
+
+    /// Whether the JTAG engine shifts whole bytes. CH347T firmware before 2.41 has bit ops
+    /// only.
+    pub fn bytewise_jtag(&self) -> bool {
+        match self.variant {
+            Variant::Ch347F => true,
+            Variant::Ch347T => self.firmware >= 0x241,
+        }
+    }
+
+    /// CH347T firmware 2.41 clocks JTAG unevenly and may not work with a slower target.
+    pub fn odd_jtag_clock(&self) -> bool {
+        self.variant == Variant::Ch347T && self.firmware == 0x241
+    }
 }
 
 /// How much one JTAG round may carry, which also selects the clock table.

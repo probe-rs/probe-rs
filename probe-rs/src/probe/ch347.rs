@@ -8,7 +8,6 @@ mod transport;
 
 use std::sync::Arc;
 
-use bitvec::vec::BitVec;
 use device::Ch347Device;
 
 use crate::{
@@ -25,9 +24,9 @@ use crate::{
         },
     },
     probe::{
-        BatchExecutionError, BitbangJtag, DebugProbe, DebugProbeError, DebugProbeSelector,
-        JtagChain, JtagChainAccess, JtagChainState, ProbeFactory, Results, SwdBatch, SwdProbe,
-        TapState, WireProtocol, list::ProbeListItem,
+        BatchExecutionError, DebugProbe, DebugProbeError, DebugProbeSelector, JtagBatch, JtagChain,
+        JtagChainAccess, JtagChainState, JtagProbe, ProbeFactory, Results, SwdBatch, SwdProbe,
+        WireProtocol, list::ProbeListItem,
     },
 };
 
@@ -43,9 +42,9 @@ impl std::fmt::Display for Ch347Factory {
 
 /// A CH347-based debug probe.
 ///
-/// JTAG is bit-banged; SWD runs on the chip's transaction engine. Target reset needs a
-/// board whose GPIO wiring the driver knows, recognised by its USB identity; on a generic
-/// CH347 no GPIO is ever written.
+/// JTAG runs on the chip's byte shifts and bit ops, SWD on its transaction engine. Target
+/// reset needs a board whose GPIO wiring the driver knows, recognised by its USB identity. On
+/// a generic CH347 no GPIO is ever written.
 #[derive(Debug)]
 pub struct Ch347 {
     device: Ch347Device,
@@ -80,21 +79,13 @@ impl Ch347 {
     }
 }
 
-impl BitbangJtag for Ch347 {
-    fn tap_state(&mut self) -> &mut TapState {
-        &mut self.jtag_state.tap_state
-    }
-
-    fn shift(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError> {
-        self.device.shift_bit(tms, tdi, capture)
-    }
-
-    fn flush(&mut self) -> Result<(), DebugProbeError> {
-        self.device.flush_jtag()
-    }
-
-    fn captured(&mut self) -> Result<BitVec, DebugProbeError> {
-        self.device.read_captured_bits()
+impl JtagProbe for Ch347 {
+    fn run_batch(
+        &mut self,
+        batch: &JtagBatch,
+    ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
+        self.device
+            .run_jtag_batch(&mut self.jtag_state.tap_state, batch)
     }
 }
 
@@ -146,7 +137,6 @@ impl DebugProbe for Ch347 {
     }
 
     fn detach(&mut self) -> Result<(), crate::Error> {
-        self.device.detach()?;
         Ok(self.device.set_led(false)?)
     }
 
