@@ -150,6 +150,13 @@ pub struct CortexMState {
     /// `pending_step` tracks whether we're waiting for a step so that `CoreInterface::status()`
     /// can return `HaltReason::Step` instead of `HaltReason::Request` if a step was pending.
     pending_step: bool,
+
+    /// Set when the host writes the program counter, cleared when the core leaves that address:
+    /// a resume, a step, or a reset.
+    ///
+    /// `run()` reads it to decide whether it still has to step over a breakpoint on the address
+    /// the core halted on.
+    pc_written: bool,
 }
 
 impl CortexMState {
@@ -161,6 +168,7 @@ impl CortexMState {
             fp_present: false,
             semihosting_command: None,
             pending_step: false,
+            pc_written: false,
         }
     }
 

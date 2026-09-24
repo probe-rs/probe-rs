@@ -456,6 +456,9 @@ impl<'probe> Armv6m<'probe> {
     }
 
     fn set_core_status(&mut self, new_status: CoreStatus) {
+        if new_status == CoreStatus::Running {
+            self.state.pc_written = false;
+        }
         super::update_core_status(&mut self.memory, &mut self.state.current_state, new_status);
     }
 
@@ -600,8 +603,9 @@ impl CoreInterface for Armv6m<'_> {
     }
 
     fn run(&mut self) -> Result<(), Error> {
-        // Before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction.
-        self.step()?;
+        if !self.state.pc_written {
+            self.step()?;
+        }
         self.state.clear_pending_step();
 
         let mut value = Dhcsr(0);
@@ -621,6 +625,7 @@ impl CoreInterface for Armv6m<'_> {
     fn reset(&mut self) -> Result<(), Error> {
         self.state.semihosting_command = None;
         self.state.clear_pending_step();
+        self.state.pc_written = false;
 
         self.sequence
             .reset_system(&mut *self.memory, crate::CoreType::Armv6m, None)?;
@@ -633,6 +638,7 @@ impl CoreInterface for Armv6m<'_> {
     fn reset_and_halt(&mut self, _timeout: Duration) -> Result<CoreInformation, Error> {
         self.reset_catch_set()?;
         self.state.clear_pending_step();
+        self.state.pc_written = false;
 
         self.sequence
             .reset_system(&mut *self.memory, crate::CoreType::Armv6m, None)?;
@@ -738,6 +744,7 @@ impl CoreInterface for Armv6m<'_> {
         }
 
         self.state.semihosting_command = None;
+        self.state.pc_written = false;
 
         Ok(CoreInformation {
             pc: pc_after_step.try_into()?,
@@ -756,6 +763,9 @@ impl CoreInterface for Armv6m<'_> {
     fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error> {
         if self.state.current_state.is_halted() {
             super::cortex_m::write_core_reg(&mut *self.memory, address, value.try_into()?)?;
+            if address == self.program_counter().id {
+                self.state.pc_written = true;
+            }
             Ok(())
         } else {
             Err(Error::Arm(ArmError::CoreNotHalted))
