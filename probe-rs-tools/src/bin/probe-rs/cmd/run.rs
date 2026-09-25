@@ -1,15 +1,15 @@
 use std::path::{Path, PathBuf};
 
-use crate::rpc::client::RpcClient;
-use crate::rpc::functions::monitor::MonitorMode;
-use crate::rpc::functions::rtt_client::ScanRegion;
-use crate::rpc::functions::test::{Test, TestDefinition};
 use crate::rpc::utils::run_loop::VectorCatchConfig;
+use probe_rs_rpc::monitor::MonitorMode;
+use probe_rs_rpc::rtt_client::ScanRegion;
+use probe_rs_rpc::test::{Test, TestDefinition};
+use probe_rs_rpc_client::RpcClient;
 
-use crate::FormatOptions;
 use crate::util::cli::{self, parse_metadata, rtt_client};
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
-use crate::util::rtt::ChannelMode;
+use probe_rs_rpc::format::FormatOptions;
+use probe_rs_rpc::rtt_config::ChannelMode;
 
 use anyhow::{Context, anyhow};
 use libtest_mimic::{Arguments, FormatSetting};
@@ -249,7 +249,7 @@ impl Cmd {
 
         let session = cli::attach_probe(&client, self.probe_options, elf_meta, false).await?;
 
-        let mut rtt_client = rtt_client(
+        let rtt_client = rtt_client(
             &session,
             &file_meta,
             &self.monitor_options,
@@ -263,7 +263,7 @@ impl Cmd {
             &self.path,
             self.format_options,
             self.download_options,
-            Some(&mut rtt_client),
+            Some(rtt_client.handle()),
             None,
         )
         .await?;

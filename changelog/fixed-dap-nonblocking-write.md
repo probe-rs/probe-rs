@@ -1,0 +1,1 @@
+The DAP server no longer ends the debug session when the send buffer of its TCP connection is full. It waits for the client to read, instead of a failed write that leaves the client with half a message and a session that answers nothing. A session that ends with an error now also reports the error to the log.

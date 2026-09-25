@@ -1,38 +1,21 @@
-use std::time::{Duration, Instant};
-
 use super::{ResumeAction, RuntimeTarget};
+use probe_rs_rpc::core_ops::WireSteppingMode;
 
 use gdbstub::target::ext::base::multithread::MultiThreadSingleStepOps;
 use gdbstub::target::ext::base::multithread::{MultiThreadResume, MultiThreadSingleStep};
-use probe_rs::CoreStatus;
 
-/// Max time to wait for a core to leave halt after resuming before we poll it.
-const RESUME_SETTLE_TIMEOUT: Duration = Duration::from_millis(100);
-
-impl MultiThreadResume for RuntimeTarget<'_> {
+impl MultiThreadResume for RuntimeTarget {
     fn resume(&mut self) -> Result<(), Self::Error> {
-        let mut session = self.session.lock();
-
         match self.resume_action {
             (_, ResumeAction::Resume) => {
-                for core_id in self.cores.iter() {
-                    let mut core = session.core(*core_id)?;
-                    core.run()?;
-
-                    // `run()` clears the halt bit but the core may still read halted briefly;
-                    // wait for it to resume so the poll loop doesn't misread that as a stop (#3965).
-                    let start = Instant::now();
-                    while matches!(core.status()?, CoreStatus::Halted(_)) {
-                        if start.elapsed() >= RESUME_SETTLE_TIMEOUT {
-                            break;
-                        }
-                        std::thread::sleep(Duration::from_millis(1));
-                    }
-                }
+                let cores = self.cores.iter().map(|core| core.index as u32).collect();
+                self.block_on(self.session.resume_cores(Some(cores)))?;
             }
             (core_id, ResumeAction::Step) => {
-                let mut core = session.core(core_id)?;
-                core.step()?;
+                self.block_on(
+                    self.session
+                        .debug_step(core_id as u32, WireSteppingMode::StepInstruction),
+                )?;
             }
             (_, ResumeAction::Unchanged) => {}
         }
@@ -42,7 +25,6 @@ impl MultiThreadResume for RuntimeTarget<'_> {
 
     fn clear_resume_actions(&mut self) -> Result<(), Self::Error> {
         self.resume_action = (0, ResumeAction::Resume);
-
         Ok(())
     }
 
@@ -53,7 +35,6 @@ impl MultiThreadResume for RuntimeTarget<'_> {
     ) -> Result<(), Self::Error> {
         let core_id = tid.get() - 1;
         self.resume_action = (core_id, ResumeAction::Resume);
-
         Ok(())
     }
 
@@ -62,7 +43,7 @@ impl MultiThreadResume for RuntimeTarget<'_> {
     }
 }
 
-impl MultiThreadSingleStep for RuntimeTarget<'_> {
+impl MultiThreadSingleStep for RuntimeTarget {
     fn set_resume_action_step(
         &mut self,
         tid: gdbstub::common::Tid,
@@ -70,7 +51,6 @@ impl MultiThreadSingleStep for RuntimeTarget<'_> {
     ) -> Result<(), Self::Error> {
         let core_id = tid.get() - 1;
         self.resume_action = (core_id, ResumeAction::Step);
-
         Ok(())
     }
 }

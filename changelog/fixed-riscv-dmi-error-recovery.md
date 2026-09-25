@@ -1,0 +1,1 @@
+probe-rs now clears the sticky DMI failure status of a RISC-V target, so one failed operation no longer makes every later debug module access fail. A reserved status reports an error instead of a panic.

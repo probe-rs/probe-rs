@@ -1,5 +1,5 @@
 use super::flash_properties::FlashProperties;
-use crate::serialize::{hex_map, hex_map_deserialize, hex_option, hex_u_int};
+use crate::serialize::{hex_map, hex_map_deserialize, hex_option};
 use base64::{Engine as _, engine::general_purpose as base64_engine};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
@@ -39,6 +39,7 @@ pub struct RawFlashAlgorithm {
     /// List of 32-bit words containing the code for the algo. If `load_address` is not specified, the code must be position independent (PIC).
     #[serde(deserialize_with = "deserialize")]
     #[serde(serialize_with = "serialize")]
+    #[serde(default)]
     pub instructions: Vec<u8>,
     /// Address to load algo into RAM. Optional.
     #[serde(serialize_with = "hex_option")]
@@ -53,11 +54,11 @@ pub struct RawFlashAlgorithm {
     #[serde(serialize_with = "hex_option")]
     pub pc_uninit: Option<u64>,
     /// Address of the `ProgramPage()` entry point.
-    #[serde(serialize_with = "hex_u_int")]
-    pub pc_program_page: u64,
+    #[serde(serialize_with = "hex_option")]
+    pub pc_program_page: Option<u64>,
     /// Address of the `EraseSector()` entry point.
-    #[serde(serialize_with = "hex_u_int")]
-    pub pc_erase_sector: u64,
+    #[serde(serialize_with = "hex_option")]
+    pub pc_erase_sector: Option<u64>,
     /// Address of the `EraseAll()` entry point. Optional.
     #[serde(serialize_with = "hex_option")]
     pub pc_erase_all: Option<u64>,
@@ -86,8 +87,8 @@ pub struct RawFlashAlgorithm {
     )]
     pub vendor_functions: IndexMap<String, u64>,
     /// The offset from the start of RAM to the data section.
-    #[serde(serialize_with = "hex_u_int")]
-    pub data_section_offset: u64,
+    #[serde(serialize_with = "hex_option")]
+    pub data_section_offset: Option<u64>,
     /// Location of the RTT control block in RAM.
     ///
     /// If this is set, the flash algorithm supports RTT output

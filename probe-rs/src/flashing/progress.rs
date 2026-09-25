@@ -184,6 +184,9 @@ pub enum ProgressOperation {
 
     /// Checking flash contents.
     Verify,
+
+    /// Writing data directly to RAM.
+    Ram,
 }
 
 /// Possible events during the flashing process.

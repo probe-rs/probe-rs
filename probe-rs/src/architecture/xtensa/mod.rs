@@ -6,6 +6,7 @@ use probe_rs_target::{Architecture, CoreType, InstructionSet};
 
 use crate::{
     CoreInformation, CoreInterface, CoreRegister, CoreStatus, Error, HaltReason, MemoryInterface,
+    RegisterRole,
     architecture::xtensa::{
         arch::{
             CpuRegister, Register, SpecialRegister,
@@ -13,8 +14,9 @@ use crate::{
         },
         communication_interface::{
             DebugCause, IBreakEn, ProgramStatus, WindowProperties, XtensaCommunicationInterface,
+            XtensaError,
         },
-        registers::{FP, PC, RA, SP, XTENSA_CORE_REGISTERS},
+        registers::{FP, PC, RA, SP, XTENSA_CORE_REGISTERS, XTENSA_WITH_FP_CORE_REGISTERS},
         sequences::XtensaDebugSequence,
         xdm::PowerStatus,
     },
@@ -34,6 +36,26 @@ pub(crate) mod register_cache;
 pub mod registers;
 pub mod sequences;
 
+/// The instruction at the current program counter, as far as the debugger needs to know.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CurrentInstruction {
+    /// The instruction has not been read yet.
+    Undecoded,
+
+    /// The instruction needs no special handling.
+    Other,
+
+    /// A semihosting `break`, whose command has not been decoded yet.
+    SemihostingBreak,
+
+    /// A semihosting call.
+    Semihosting(SemihostingCommand),
+
+    /// `waiti`, which raises `PS.INTLEVEL` to the given level, then waits for an interrupt.
+    /// The core does not single-step it.
+    Waiti(u32),
+}
+
 /// Xtensa core state.
 #[derive(Debug)]
 pub struct XtensaCoreState {
@@ -52,8 +74,8 @@ pub struct XtensaCoreState {
     /// resume.
     pc_written: bool,
 
-    /// The semihosting command that was decoded at the current program counter
-    semihosting_command: Option<SemihostingCommand>,
+    /// The instruction at the current program counter.
+    current_instruction: CurrentInstruction,
 }
 
 impl XtensaCoreState {
@@ -64,7 +86,7 @@ impl XtensaCoreState {
             breakpoints_enabled: false,
             breakpoint_set: [false; 2],
             pc_written: false,
-            semihosting_command: None,
+            current_instruction: CurrentInstruction::Undecoded,
         }
     }
 
@@ -160,7 +182,7 @@ impl<'probe> Xtensa<'probe> {
     }
 
     fn skip_breakpoint(&mut self) -> Result<(), Error> {
-        self.state.semihosting_command = None;
+        self.state.current_instruction = CurrentInstruction::Undecoded;
         if !self.state.pc_written {
             let debug_cause = self.debug_cause()?;
 
@@ -185,8 +207,7 @@ impl<'probe> Xtensa<'probe> {
                     // Disable the breakpoint
                     self.clear_hw_breakpoint(bp_unit)?;
                     // Single step
-                    let ps = self.current_ps()?;
-                    self.interface.step(1, ps.intlevel())?;
+                    self.step_instruction()?;
                     // Re-enable the breakpoint
                     self.set_hw_breakpoint(bp_unit, pc_value as u64)?;
                 }
@@ -196,47 +217,106 @@ impl<'probe> Xtensa<'probe> {
         Ok(())
     }
 
-    /// Check if the current breakpoint is a semihosting call
-    // OpenOCD implementation: https://github.com/espressif/openocd-esp32/blob/93dd01511fd13d4a9fb322cd9b600c337becef9e/src/target/espressif/esp_xtensa_semihosting.c#L42-L103
-    fn check_for_semihosting(&mut self) -> Result<Option<SemihostingCommand>, Error> {
+    /// Steps the core by one instruction, emulating instructions that the core can not step.
+    ///
+    /// Returns whether the core has run. An emulated instruction does not run the core, so the
+    /// debug status still describes the previous halt.
+    fn step_instruction(&mut self) -> Result<bool, Error> {
+        if let CurrentInstruction::Waiti(level) = self.current_instruction()? {
+            // `waiti` completes when an interrupt arrives, which can not happen while we hold
+            // the core halted. Take its effect instead of running it.
+            let mut ps = self.current_ps()?;
+            ps.set_intlevel(level);
+            self.interface
+                .write_register_untyped(Register::CurrentPs, ps.0)?;
+
+            let pc = self.interface.read_register_untyped(Register::CurrentPc)?;
+            self.interface
+                .write_register_untyped(Register::CurrentPc, pc + 3)?;
+
+            // The debug cause still describes the previous halt. Keep `skip_breakpoint` from
+            // acting on it a second time.
+            self.state.pc_written = true;
+            self.state.current_instruction = CurrentInstruction::Undecoded;
+
+            return Ok(false);
+        }
+
+        // Only count instructions in the current context.
+        let ps = self.current_ps()?;
+        self.interface.step(1, ps.intlevel())?;
+
+        Ok(true)
+    }
+
+    /// Reads the instruction word at the program counter.
+    fn instruction_at_pc(&mut self) -> Result<u32, Error> {
+        let pc: u64 = self.read_core_reg(self.program_counter().id)?.try_into()?;
+
+        let mut instruction = [0u8; 4];
+        self.read_8(pc, &mut instruction[..3])?;
+        let instruction = u32::from_le_bytes(instruction);
+
+        tracing::debug!("Instruction at pc={pc:#x}: {instruction:#010x}");
+
+        Ok(instruction)
+    }
+
+    /// Returns the instruction at the program counter, reading it if necessary.
+    fn current_instruction(&mut self) -> Result<CurrentInstruction, Error> {
         const SEMI_BREAK: u32 = const {
             let InstructionEncoding::Narrow(bytes) = Instruction::Break(1, 14).encode();
             bytes
         };
+        const WAITI: u32 = const {
+            let InstructionEncoding::Narrow(bytes) = Instruction::Waiti(0).encode();
+            bytes
+        };
+        /// Masks out the `s` field, which holds the level of a `waiti`.
+        const WAITI_MASK: u32 = 0xFFF0FF;
 
-        // We only want to decode the semihosting command once, since answering it might change some of the registers
-        if let Some(command) = self.state.semihosting_command {
-            return Ok(Some(command));
+        if self.state.current_instruction == CurrentInstruction::Undecoded {
+            let instruction = self.instruction_at_pc()?;
+
+            self.state.current_instruction = if instruction == SEMI_BREAK {
+                CurrentInstruction::SemihostingBreak
+            } else if instruction & WAITI_MASK == WAITI {
+                CurrentInstruction::Waiti((instruction >> 8) & 0x0F)
+            } else {
+                CurrentInstruction::Other
+            };
         }
 
-        let pc: u64 = self.read_core_reg(self.program_counter().id)?.try_into()?;
+        Ok(self.state.current_instruction)
+    }
 
-        let mut actual_instruction = [0u8; 3];
-        self.read_8(pc, &mut actual_instruction)?;
-        let actual_instruction = u32::from_le_bytes([
-            actual_instruction[0],
-            actual_instruction[1],
-            actual_instruction[2],
-            0,
-        ]);
+    /// Check if the current breakpoint is a semihosting call
+    // OpenOCD implementation: https://github.com/espressif/openocd-esp32/blob/93dd01511fd13d4a9fb322cd9b600c337becef9e/src/target/espressif/esp_xtensa_semihosting.c#L42-L103
+    fn check_for_semihosting(&mut self) -> Result<Option<SemihostingCommand>, Error> {
+        match self.current_instruction()? {
+            // We only want to decode the semihosting command once, since answering it might
+            // change some of the registers.
+            CurrentInstruction::Semihosting(command) => Ok(Some(command)),
 
-        tracing::debug!("Semihosting check pc={pc:#x} instruction={actual_instruction:#010x}");
+            CurrentInstruction::SemihostingBreak => {
+                let syscall = decode_semihosting_syscall(self)?;
+                let command = if let SemihostingCommand::Unknown(details) = syscall {
+                    self.sequence
+                        .clone()
+                        .on_unknown_semihosting_command(self, details)?
+                } else {
+                    Some(syscall)
+                };
 
-        let command = if actual_instruction == SEMI_BREAK {
-            let syscall = decode_semihosting_syscall(self)?;
-            if let SemihostingCommand::Unknown(details) = syscall {
-                self.sequence
-                    .clone()
-                    .on_unknown_semihosting_command(self, details)?
-            } else {
-                Some(syscall)
+                if let Some(command) = command {
+                    self.state.current_instruction = CurrentInstruction::Semihosting(command);
+                }
+
+                Ok(command)
             }
-        } else {
-            None
-        };
-        self.state.semihosting_command = command;
 
-        Ok(command)
+            _ => Ok(None),
+        }
     }
 
     fn on_halted(&mut self) -> Result<(), Error> {
@@ -326,6 +406,13 @@ impl<'probe> Xtensa<'probe> {
         }
         Ok(register_file)
     }
+
+    fn ensure_breakpoint(&self, unit_index: usize) -> Result<(), Error> {
+        if unit_index as u32 >= self.interface.available_breakpoint_units() {
+            return Err(XtensaError::BreakpointOutOfBounds(unit_index).into());
+        }
+        Ok(())
+    }
 }
 
 impl CoreMemoryInterface for Xtensa<'_> {
@@ -398,7 +485,7 @@ impl CoreInterface for Xtensa<'_> {
     }
 
     fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
-        self.state.semihosting_command = None;
+        self.state.current_instruction = CurrentInstruction::Undecoded;
         self.sequence
             .reset_system_and_halt(&mut self.interface, timeout)?;
 
@@ -413,11 +500,9 @@ impl CoreInterface for Xtensa<'_> {
     fn step(&mut self) -> Result<CoreInformation, Error> {
         self.skip_breakpoint()?;
 
-        // Only count instructions in the current context.
-        let ps = self.current_ps()?;
-        self.interface.step(1, ps.intlevel())?;
-
-        self.on_halted()?;
+        if self.step_instruction()? {
+            self.on_halted()?;
+        }
 
         self.core_info()
     }
@@ -491,6 +576,7 @@ impl CoreInterface for Xtensa<'_> {
     }
 
     fn set_hw_breakpoint(&mut self, unit_index: usize, addr: u64) -> Result<(), Error> {
+        self.ensure_breakpoint(unit_index)?;
         self.halted_access(|this| {
             this.state.breakpoint_set[unit_index] = true;
             this.interface
@@ -506,6 +592,7 @@ impl CoreInterface for Xtensa<'_> {
     }
 
     fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), Error> {
+        self.ensure_breakpoint(unit_index)?;
         self.halted_access(|this| {
             this.state.breakpoint_set[unit_index] = false;
 
@@ -519,7 +606,11 @@ impl CoreInterface for Xtensa<'_> {
     }
 
     fn registers(&self) -> &'static CoreRegisters {
-        &XTENSA_CORE_REGISTERS
+        if self.interface.has_fpu() {
+            &XTENSA_WITH_FP_CORE_REGISTERS
+        } else {
+            &XTENSA_CORE_REGISTERS
+        }
     }
 
     fn program_counter(&self) -> &'static CoreRegister {
@@ -556,13 +647,15 @@ impl CoreInterface for Xtensa<'_> {
     }
 
     fn fpu_support(&mut self) -> Result<bool, Error> {
-        // TODO: ESP32 and ESP32-S3 have FPU
-        Ok(false)
+        Ok(self.interface.has_fpu())
     }
 
     fn floating_point_register_count(&mut self) -> Result<usize, Error> {
-        // TODO: ESP32 and ESP32-S3 have FPU
-        Ok(0)
+        Ok(self
+            .registers()
+            .all_registers()
+            .filter(|r| r.register_has_role(RegisterRole::FloatingPoint))
+            .count())
     }
 
     fn reset_catch_set(&mut self) -> Result<(), Error> {

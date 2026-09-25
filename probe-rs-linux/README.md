@@ -78,9 +78,9 @@ every SPI device on the system.
 
 ```bash
 # pi1, pi-zero
-cross build -p probe-rs-tools --target arm-unknown-linux-gnueabihf --release --features remote
+cross build -p probe-rs-tools --target arm-unknown-linux-gnueabihf --release
 # pi3, pi4, pi5
-cross build -p probe-rs-tools --target aarch64-unknown-linux-gnu   --release --features remote
+cross build -p probe-rs-tools --target aarch64-unknown-linux-gnu   --release
 
 # copy the resulting binary to the Pi
 scp target/arm-unknown-linux-gnueabihf/release/probe-rs pi-zero-w:~/

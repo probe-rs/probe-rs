@@ -1,4 +1,4 @@
-use crate::architecture::xtensa::arch::{CpuRegister, SpecialRegister};
+use crate::architecture::xtensa::arch::{CpuRegister, FpRegister, SpecialRegister, UserRegister};
 
 pub mod format;
 
@@ -16,7 +16,7 @@ pub enum Instruction {
     /// Loads a 32-bit word from `s` to the address in `t`
     L32I(CpuRegister, CpuRegister, u8),
 
-    /// Stores a 32-bit word from `s` to the address in `t`
+    /// Stores a 32-bit word from `t` to the address in `s`
     S32I(CpuRegister, CpuRegister, u8),
 
     /// Reads `SpecialRegister` into `CpuRegister`
@@ -24,6 +24,18 @@ pub enum Instruction {
 
     /// Writes `CpuRegister` into `SpecialRegister`
     Wsr(SpecialRegister, CpuRegister),
+
+    /// Reads `UserRegister` into `CpuRegister`
+    Rur(UserRegister, CpuRegister),
+
+    /// Writes `CpuRegister` into `UserRegister`
+    Wur(UserRegister, CpuRegister),
+
+    /// Reads `FpRegister` into `CpuRegister`
+    Rfr(FpRegister, CpuRegister),
+
+    /// Writes `CpuRegister` into `FpRegister`
+    Wfr(FpRegister, CpuRegister),
 
     /// Returns the Core to the Running state
     Rfdo(u8),
@@ -40,6 +52,9 @@ pub enum Instruction {
 
     /// Execution synchronize
     Esync,
+
+    /// Raises `PS.INTLEVEL` to the given level, then waits for an interrupt
+    Waiti(u8),
 }
 
 /// The architecture supports multi-word instructions. This enum represents the different encodings
@@ -59,6 +74,11 @@ impl Instruction {
             Instruction::S32I(s, t, imm) => format::rri8(0x006002, s as u8, t as u8, imm),
             Instruction::Rsr(sr, t) => format::rsr(0x030000, sr as u8, t as u8),
             Instruction::Wsr(sr, t) => format::rsr(0x130000, sr as u8, t as u8),
+            // The user register number is encoded as 16 * s + t.
+            Instruction::Rur(ur, t) => format::rrr(0xE30000, t as u8, ur as u8 >> 4, ur as u8),
+            Instruction::Wur(ur, t) => format::rsr(0xF30000, ur as u8, t as u8),
+            Instruction::Rfr(fr, t) => format::rrr(0xFA0000, t as u8, fr as u8, 0x4),
+            Instruction::Wfr(fr, s) => format::rrr(0xFA0000, fr as u8, s as u8, 0x5),
             Instruction::Break(s, t) => {
                 // 0000 0000 0100 s t 0000
                 format::rrr(0x000000, 4, s, t)
@@ -70,6 +90,10 @@ impl Instruction {
                 format::rrr(0x400000, 8, 0, count)
             }
             Instruction::Esync => 0x002020,
+            Instruction::Waiti(level) => {
+                // 0000 0000 0111 level 0000 0000
+                format::rrr(0x000000, 7, level, 0)
+            }
         };
 
         (3, word)
@@ -78,5 +102,46 @@ impl Instruction {
     pub const fn encode(self) -> InstructionEncoding {
         let narrow = self.encode_bytes().1;
         InstructionEncoding::Narrow(narrow)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[track_caller]
+    fn assert_encodes_to(instruction: Instruction, expected: u32) {
+        assert_eq!(instruction.encode(), InstructionEncoding::Narrow(expected));
+    }
+
+    #[test]
+    fn encode_waiti() {
+        assert_encodes_to(Instruction::Waiti(0), 0x007000);
+        assert_encodes_to(Instruction::Waiti(5), 0x007500);
+        assert_encodes_to(Instruction::Waiti(15), 0x007F00);
+    }
+
+    #[test]
+    fn encode_coprocessor_register_access() {
+        assert_encodes_to(Instruction::Rfr(FpRegister::F0, CpuRegister::A3), 0xFA3040);
+        assert_encodes_to(Instruction::Wfr(FpRegister::F0, CpuRegister::A3), 0xFA0350);
+        assert_encodes_to(Instruction::Rfr(FpRegister::F9, CpuRegister::A3), 0xFA3940);
+        assert_encodes_to(Instruction::Wfr(FpRegister::F9, CpuRegister::A3), 0xFA9350);
+        assert_encodes_to(
+            Instruction::Rur(UserRegister::Fcr, CpuRegister::A3),
+            0xE33E80,
+        );
+        assert_encodes_to(
+            Instruction::Wur(UserRegister::Fcr, CpuRegister::A3),
+            0xF3E830,
+        );
+        assert_encodes_to(
+            Instruction::Rur(UserRegister::Fsr, CpuRegister::A3),
+            0xE33E90,
+        );
+        assert_encodes_to(
+            Instruction::Wur(UserRegister::Fsr, CpuRegister::A3),
+            0xF3E930,
+        );
     }
 }

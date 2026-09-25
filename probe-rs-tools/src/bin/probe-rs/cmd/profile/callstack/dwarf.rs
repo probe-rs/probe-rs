@@ -124,14 +124,9 @@ mod test {
     #[test]
     fn test_dwarf_unwind_riscv32() {
         let test_name = "esp32c6_coredump_elf";
-        // I'm not sure what causes the repeated addresses or if they are correct
-        // They are not present in gdb's backtrace
         let expect = addresses_to_callstack(&[
             0x4200124e, // rust_begin_unwind
             0x420054f2, // _ZN4core9panicking9panic_fmt17h021b089f2ed24437E
-            0x420054f2, // _ZN4core9panicking9panic_fmt17h021b089f2ed24437E
-            0x420054f2, // _ZN4core9panicking9panic_fmt17h021b089f2ed24437E
-            0x42000202, // _ZN16embassy_executor3raw20TaskStorage$LT$F$GT$4poll17hcf2d0b9f6da05190E
             0x42000202, // _ZN16embassy_executor3raw20TaskStorage$LT$F$GT$4poll17hcf2d0b9f6da05190E
             0x420052ec, // _ZN16embassy_executor3raw8Executor4poll17h95bc77c9558ed726E
             0x42000244, // _ZN15esp_hal_embassy8executor6thread8Executor3run17h70decec90d969805E

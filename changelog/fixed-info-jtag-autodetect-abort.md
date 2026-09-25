@@ -1,1 +1,0 @@
-Fixed `probe-rs info` aborting with a raw probe/transport error (e.g. `Failed to send the JTAG sequence to the probe`, or `interface Jtag must be selected for this operation`) during chip auto-detection on SWD-only boards. RISC-V/Xtensa auto-detection errors are now treated as "chip not found for this architecture" instead of aborting the whole auto-detection sequence.

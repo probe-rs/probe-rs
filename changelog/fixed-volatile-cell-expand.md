@@ -1,0 +1,1 @@
+A `vcell::VolatileCell` now shows the device register that it holds as a child. The cell offered an expansion that had nothing in it, because the value of the register moved up to the cell and left no child behind.

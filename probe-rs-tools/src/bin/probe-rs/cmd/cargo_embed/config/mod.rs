@@ -7,10 +7,8 @@ use probe_rs::probe::WireProtocol;
 use serde::{Deserialize, Serialize};
 use std::{net::SocketAddr, path::PathBuf, time::Duration};
 
-use crate::util::{
-    logging::LevelFilter,
-    rtt::{ChannelMode, DataFormat},
-};
+use crate::util::logging::LevelFilter;
+use probe_rs_rpc::rtt_config::{ChannelMode, DataFormat};
 
 use super::rttui::tab::TabConfig;
 
@@ -30,6 +28,7 @@ pub struct Config {
     pub probe: Probe,
     pub rtt: Rtt,
     pub gdb: Gdb,
+    pub remote: Remote,
 }
 
 /// The probe config struct holding all the possible probe options.
@@ -40,7 +39,10 @@ pub struct Probe {
     pub usb_pid: Option<String>,
     pub interface: Option<u8>,
     pub serial: Option<String>,
-    pub protocol: WireProtocol,
+    /// Wire protocol to talk to the target with.
+    ///
+    /// Falls back to the probe default.
+    pub protocol: Option<WireProtocol>,
     pub speed: Option<u32>,
 }
 
@@ -48,13 +50,22 @@ pub struct Probe {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Flashing {
+    /// Whether or not the target should be flashed.
     pub enabled: bool,
+    /// Whether or not bytes erased but not rewritten with data from the ELF
+    /// should be restored with their contents before erasing.
     pub restore_unwritten_bytes: bool,
+    /// The path where an SVG of the assembled flash layout should be written to.
     pub flash_layout_output_path: Option<String>,
+    /// Triggers a full chip erase instead of a page by page erase.
     pub do_chip_erase: bool,
+    /// Whether to disable double buffering.
     pub disable_double_buffering: bool,
+    /// Whether to verify flash contents before downloading.
     pub preverify: bool,
+    /// Whether to verify flash contents after downloading.
     pub verify: bool,
+    /// Whether to read RTT output from the flash loader.
     pub read_flasher_rtt: bool,
 }
 
@@ -162,6 +173,14 @@ mod duration_ms {
 pub struct Gdb {
     pub enabled: bool,
     pub gdb_connection_string: Option<String>,
+}
+
+/// Remote RPC connection options for cargo-embed.
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct Remote {
+    pub host: Option<String>,
+    pub token: Option<String>,
 }
 
 impl Configs {
@@ -282,6 +301,9 @@ impl Configs {
 
 #[cfg(test)]
 mod test {
+    use figment::providers::{Format, Toml};
+    use probe_rs::probe::WireProtocol;
+
     use super::Configs;
 
     #[test]
@@ -289,6 +311,23 @@ mod test {
         // Ensure the default config can be parsed.
         let configs = Configs::new(std::env::current_dir().unwrap());
         let _config = configs.select_defined("default").unwrap();
+    }
+    /// An explicitly configured protocol still reaches the config.
+    #[test]
+    fn explicit_protocol_is_preserved() {
+        let mut configs = Configs::new(std::env::current_dir().unwrap());
+        configs.figment = configs.figment.merge(
+            Toml::string(
+                r#"
+                [default.probe]
+                protocol = "Jtag"
+                "#,
+            )
+            .nested(),
+        );
+        let config = configs.select_defined("default").unwrap();
+
+        assert_eq!(config.probe.protocol, Some(WireProtocol::Jtag));
     }
     #[test]
     fn non_existent_profile_is_error() {

@@ -1,0 +1,1 @@
+A restart in the DAP server no longer unwinds the stack of the program that the reset discards, no longer parses the defmt data of the program binary again after each reset, and parses the SVD file only after a change of the file.

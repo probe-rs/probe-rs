@@ -3,10 +3,13 @@ mod diagnostics;
 use anyhow::Context;
 use colored::Colorize;
 use diagnostics::render_diagnostics;
+use probe_rs::config::Registry;
 use std::ffi::OsString;
-use std::{path::PathBuf, process};
+use std::{
+    path::{Path, PathBuf},
+    process,
+};
 
-use crate::rpc::client::RpcClient;
 use crate::util::cargo::build_artifact;
 use crate::util::cargo::cargo_target;
 use crate::util::common_options::{
@@ -15,6 +18,7 @@ use crate::util::common_options::{
 use crate::util::logging::{LevelFilter, setup_logging};
 use crate::util::{cli, logging};
 use crate::{Config, parse_and_resolve_cli_args, run_app};
+use probe_rs_rpc_client::RpcClient;
 
 /// Common options when flashing a target device.
 #[derive(Debug, clap::Parser)]
@@ -53,7 +57,7 @@ struct CliOptions {
     pub download_options: BinaryDownloadOptions,
 
     #[command(flatten)]
-    pub format_options: crate::FormatOptions,
+    pub format_options: probe_rs_rpc::format::FormatOptions,
 
     /// Remote host to connect to
     #[cfg(feature = "remote")]
@@ -61,7 +65,8 @@ struct CliOptions {
         long,
         global = true,
         env = "PROBE_RS_REMOTE_HOST",
-        help_heading = "REMOTE CONFIGURATION"
+        help_heading = "REMOTE CONFIGURATION",
+        long_help = crate::HOST_LONG_HELP
     )]
     host: Option<String>,
 
@@ -87,6 +92,20 @@ struct CliOptions {
     preset: Option<String>,
 }
 
+/// Creates a registry that holds the builtin targets and the targets of the
+/// chip description file, if the caller names one.
+pub fn registry_with_chip_description(chip_description: Option<&Path>) -> Registry {
+    let mut registry = Registry::from_builtin_families();
+
+    if let Some(path) = chip_description
+        && let Ok(yaml) = std::fs::read_to_string(path)
+    {
+        _ = registry.add_target_family_from_yaml(&yaml);
+    }
+
+    registry
+}
+
 pub async fn main(args: Vec<OsString>, config: Config) -> anyhow::Result<()> {
     // Parse the commandline options.
     let opt = parse_and_resolve_cli_args::<CliOptions>(args, &config)?;
@@ -103,10 +122,13 @@ pub async fn main(args: Vec<OsString>, config: Config) -> anyhow::Result<()> {
     #[cfg(not(feature = "remote"))]
     let connection_params = None;
 
+    // The server owns the target state, but it offers no chip name search, so
+    // the diagnostics keep a local copy of the same targets.
+    let registry =
+        registry_with_chip_description(opt.probe_options.chip_description_path.as_deref());
+
     let terminate = run_app(connection_params, async |mut client| {
         let main_result = main_try(&mut client, opt).await;
-
-        let r = client.registry().await;
 
         match main_result {
             Ok(()) => Ok(false),
@@ -116,7 +138,7 @@ pub async fn main(args: Vec<OsString>, config: Config) -> anyhow::Result<()> {
                 // to access stderr during shutdown.
                 //
                 // We ignore the errors, not much we can do anyway.
-                render_diagnostics(&r, e);
+                render_diagnostics(&registry, e);
 
                 Ok(true)
             }
@@ -201,4 +223,19 @@ async fn main_try(client: &mut RpcClient, opt: CliOptions) -> Result<(), Operati
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use super::CliOptions;
+
+    /// clap finds duplicate argument names only in a debug build, and only when it
+    /// builds the command. Release builds accept a duplicate and give one of the
+    /// two arguments to both fields.
+    #[test]
+    fn cli_is_valid() {
+        use clap::CommandFactory;
+
+        CliOptions::command().debug_assert();
+    }
 }

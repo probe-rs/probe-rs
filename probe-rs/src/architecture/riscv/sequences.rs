@@ -9,6 +9,8 @@ use std::fmt::Debug;
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::flashing::DebugFlashSequence;
+
 /// A interface to operate debug sequences for RISC-V targets.
 ///
 /// Should be implemented on a custom handle for chips that require special sequence code.
@@ -84,7 +86,15 @@ pub trait RiscvDebugSequence: Send + Sync + Debug {
         Ok(Some(SemihostingCommand::Unknown(details)))
     }
 
-    /// This ARM sequence is called if an image was flashed to RAM directly. It should perform the
+    /// Return the host-side flash sequence implementation, if any.
+    ///
+    /// Override this to enable host-side flashing for RISC-V targets.
+    /// The default returns `None`.
+    fn debug_flash_sequence(&self) -> Option<Arc<dyn DebugFlashSequence>> {
+        None
+    }
+
+    /// This sequence is called if an image was flashed to RAM directly. It should perform the
     /// necessary preparation to run that image on the core with the ID passed to the function.
     ///
     /// The core should already be `reset_and_halt`ed right before this call.

@@ -1,1 +1,0 @@
-Fixed bogus source locations and `<unknown function>` names in backtraces for inlined functions whose abstract origin lives in another compilation unit. The `DW_AT_specification` of such a cross-unit abstract origin was resolved against the wrong unit, landing on an unrelated DIE and producing nonsensical line/column numbers.

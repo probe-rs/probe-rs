@@ -1,0 +1,1 @@
+ASR6601 set sticky bits to keep the SWD enabled in sleep / standby

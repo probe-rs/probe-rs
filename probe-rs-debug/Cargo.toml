@@ -18,7 +18,7 @@ addr2line = "0.27"
 bitfield = "0.19.0"
 gimli = "0.34.0"
 itertools = "0.15.0"
-object = "0.39"
+object = "0.40"
 parse_int = "0.9.0"
 probe-rs = { workspace = true }
 probe-rs-target.workspace = true

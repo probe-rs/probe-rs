@@ -1,0 +1,1 @@
+Added Windows ARM64 (aarch64) to cargo-dist config so Windows ARM64 users can have native binaries for probe-rs-tools.

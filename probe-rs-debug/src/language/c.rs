@@ -93,15 +93,26 @@ impl ProgrammingLanguage for C {
             VariableType::Base(name) => match name.as_str() {
                 "_Bool" => UnsignedInt::update_value(variable, None, memory, new_value),
                 "char" => CChar::update_value(variable, memory, new_value),
-                "unsigned char" | "unsigned int" | "short unsigned int" | "long unsigned int" => {
+                "unsigned char"
+                | "unsigned int"
+                | "short unsigned int"
+                | "long unsigned int"
+                | "long long unsigned int" => {
                     UnsignedInt::update_value(variable, None, memory, new_value)
                 }
-                "signed char" | "int" | "short int" | "long int" | "signed int"
-                | "short signed int" | "long signed int" => {
+                "signed char"
+                | "int"
+                | "short int"
+                | "long int"
+                | "long long int"
+                | "signed int"
+                | "short signed int"
+                | "long signed int"
+                | "long long signed int" => {
                     SignedInt::update_value(variable, None, memory, new_value)
                 }
                 "float" => f32::update_value(variable, memory, new_value),
-                // TODO: doubles
+                "double" => f64::update_value(variable, memory, new_value),
                 other => Err(DebugError::WarnAndContinue {
                     message: format!("Updating {other} variables is not yet supported."),
                 }),
@@ -236,18 +247,7 @@ impl UnsignedInt {
         // Read the bits. The actual count is encoded in the variable type.
         let mut buff = [0u8; 16];
         let bytes = variable.byte_size.unwrap_or(1).min(16) as usize;
-        if let VariableLocation::RegisterValue(value) = variable.memory_location {
-            // The value is in a register, we just need to extract the bytes.
-            let reg_bytes = TryInto::<u128>::try_into(value)?.to_le_bytes();
-
-            buff[..bytes].copy_from_slice(&reg_bytes[..bytes]);
-        } else {
-            // We only have an address, we need to read the value from memory.
-            memory.read(
-                variable.memory_location.memory_address()?,
-                &mut buff[..bytes],
-            )?;
-        }
+        variable.memory_location.read(&mut buff[..bytes], memory)?;
 
         let value = u128::from_le_bytes(buff);
 
@@ -366,7 +366,7 @@ impl SignedInt {
 impl From<Result<UnsignedInt, DebugError>> for VariableValue {
     fn from(val: Result<UnsignedInt, DebugError>) -> Self {
         val.map_or_else(
-            |err| VariableValue::Error(format!("{err:?}")),
+            |err| VariableValue::Error(err.to_string()),
             |value| VariableValue::Valid(value.to_string()),
         )
     }
@@ -375,7 +375,7 @@ impl From<Result<UnsignedInt, DebugError>> for VariableValue {
 impl From<Result<SignedInt, DebugError>> for VariableValue {
     fn from(val: Result<SignedInt, DebugError>) -> Self {
         val.map_or_else(
-            |err| VariableValue::Error(format!("{err:?}")),
+            |err| VariableValue::Error(err.to_string()),
             |value| VariableValue::Valid(value.to_string()),
         )
     }

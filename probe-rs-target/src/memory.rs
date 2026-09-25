@@ -316,7 +316,7 @@ pub struct SectorDescription {
 }
 
 /// Holds information about a page in flash.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct PageInfo {
     /// Base address of the page in flash.
     pub base_address: u64,

@@ -8,6 +8,8 @@ pub(crate) mod debug_rtt;
 pub(crate) mod debugger;
 /// Manage the logging/tracing associated with the debugger.
 pub(crate) mod logger;
+/// Per-DAP-client RPC connection open/close for TCP multi-session mode.
+pub(crate) mod rpc_lifetime;
 /// The data structures needed to keep track of a session status in the debugger.
 pub(crate) mod session_data;
 /// This is where the primary processing for the debugger is driven from.

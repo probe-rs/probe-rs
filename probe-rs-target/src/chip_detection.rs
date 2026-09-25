@@ -136,7 +136,13 @@ pub struct EspressifDetection {
     #[serde(serialize_with = "hex_u_int")]
     pub idcode: u32,
 
+    /// Address of the magic chip value
+    #[serde(serialize_with = "hex_u_int")]
+    pub magic_address: u32,
+
     /// Magic chip value => Target name.
+    ///
+    /// Can be empty if the IDCODE is chip-unique and the family has a single variant.
     #[serde(serialize_with = "hex_keys_indexmap")]
     #[serde(deserialize_with = "maps_duplicate_key_is_error::deserialize")]
     pub variants: IndexMap<u32, String>,

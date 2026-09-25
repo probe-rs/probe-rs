@@ -6,6 +6,7 @@
 use bitfield::bitfield;
 use bitvec::field::BitField;
 use bitvec::slice::BitSlice;
+use bitvec::store::BitStore;
 use std::time::{Duration, Instant};
 
 use crate::architecture::riscv::communication_interface::{
@@ -13,28 +14,48 @@ use crate::architecture::riscv::communication_interface::{
 };
 use crate::architecture::riscv::dtm::DtmAccess;
 use crate::probe::DebugProbeError;
-use crate::probe::queue::{BatchError, DeferredResultIndex, DeferredResultSet, Queue};
+use crate::probe::jtag::chain::JtagChain;
+use crate::probe::queue::{BatchError, Handle, JtagQueue, Results};
 use crate::probe::{
-    CommandResult, JtagAccess, JtagWriteCommand, JtagWriteData, ShiftDrCommand, ShiftDrData,
+    BitSequence, CommandResult, JtagBatch, JtagWriteCommand, JtagWriteData, ShiftDrCommand,
+    ShiftDrData,
 };
+
+/// Interpret a raw 32-bit JTAG IDCODE-instruction capture, returning `None` if it isn't actually a
+/// valid IDCODE.
+///
+/// Per IEEE 1149.1, a TAP's IDCODE register always has bit 0 hardwired to 1, distinguishing a real
+/// capture from the 1-bit BYPASS register (always 0) or a floating/no-response bus. Without this
+/// check, probing a JTAG target with no RISC-V TAP at all reads back all-zero bits, which would be
+/// reported as a bogus "IDCODE 0000000000, Unknown Manufacturer" instead of "no RISC-V DTM found".
+fn valid_idcode(value: u32) -> Option<u32> {
+    if value & 1 == 1 { Some(value) } else { None }
+}
 
 #[derive(Debug, Default)]
 struct DtmState {
-    queued_commands: Queue<DmiOperationError>,
-    jtag_results: DeferredResultSet<CommandResult>,
+    queued_commands: JtagQueue<DmiOperationError>,
+    jtag_results: Results,
 
     /// Number of address bits in the DMI register
     abits: u32,
+
+    /// TCK cycles in Run-Test/Idle after each DMI access.
+    idle_cycles: u8,
 }
 
 /// Object that can be used to build a RISC-V DTM interface
 /// from a JTAG transport.
-pub struct JtagDtmBuilder<'f>(&'f mut dyn JtagAccess);
+pub struct JtagDtmBuilder<'f> {
+    chain: JtagChain<'f>,
+}
 
 impl<'f> JtagDtmBuilder<'f> {
     /// Create a new DTM Builder via a JTAG transport.
-    pub fn new(probe: &'f mut dyn JtagAccess) -> Self {
-        Self(probe)
+    pub fn new(probe: &'f mut dyn crate::probe::JtagChainAccess) -> Self {
+        Self {
+            chain: JtagChain::new(probe),
+        }
     }
 }
 
@@ -53,7 +74,7 @@ impl<'probe> RiscvInterfaceBuilder<'probe> for JtagDtmBuilder<'probe> {
         let dtm_state = state.dtm_state.downcast_mut::<DtmState>().unwrap();
 
         Ok(RiscvCommunicationInterface::new(
-            Box::new(JtagDtm::new(self.0, dtm_state)),
+            Box::new(JtagDtm::new(self.chain, dtm_state)),
             &mut state.interface_state,
         ))
     }
@@ -71,7 +92,7 @@ impl<'probe> RiscvInterfaceBuilder<'probe> for JtagDtmBuilder<'probe> {
 
         Ok(RiscvCommunicationInterface::new(
             Box::new(TunneledJtagDtm::new(
-                self.0,
+                self.chain,
                 tunnel_ir_id,
                 tunnel_ir_width,
                 dtm_state,
@@ -85,16 +106,48 @@ impl<'probe> RiscvInterfaceBuilder<'probe> for JtagDtmBuilder<'probe> {
 /// which is used to communicate with the RISC-V debug module.
 #[derive(Debug)]
 pub struct JtagDtm<'probe> {
-    probe: &'probe mut dyn JtagAccess,
+    probe: JtagChain<'probe>,
     state: &'probe mut DtmState,
 }
 
 impl<'probe> JtagDtm<'probe> {
-    fn new(probe: &'probe mut dyn JtagAccess, state: &'probe mut DtmState) -> Self {
+    fn new(probe: JtagChain<'probe>, state: &'probe mut DtmState) -> Self {
         Self { probe, state }
     }
 
-    fn transform_dmi_result(response_bits: &BitSlice) -> Result<u32, DmiOperationError> {
+    fn tap_reset(&mut self) -> Result<(), DebugProbeError> {
+        let mut batch = JtagBatch::new();
+        self.probe.tap_reset(&mut batch);
+        self.probe.run(batch).map(|_| ())
+    }
+
+    fn exchange_register(
+        &mut self,
+        address: u32,
+        dr: BitSequence,
+        idle_cycles: u32,
+    ) -> Result<BitSequence, DebugProbeError> {
+        if address > self.probe.params().max_ir_address() {
+            return Err(DebugProbeError::Other(format!(
+                "Invalid instruction register access: {address}"
+            )));
+        }
+
+        let ir_len = self.probe.params().irlen;
+        let mut batch = JtagBatch::new();
+        let ir = BitSequence::from_bytes(&address.to_le_bytes(), ir_len);
+        self.probe.shift_ir(&mut batch, &ir);
+        let handle = self.probe.exchange_dr(&mut batch, &dr);
+        self.probe.run_test_idle(&mut batch, idle_cycles);
+        let mut results = self.probe.run(batch)?;
+        results
+            .take(handle)
+            .map_err(|_| DebugProbeError::Other("missing JTAG capture result".into()))
+    }
+
+    fn transform_dmi_result<T: BitStore>(
+        response_bits: &BitSlice<T>,
+    ) -> Result<u32, DmiOperationError> {
         let response_value = response_bits.load_le::<u128>();
 
         // Verify that the transfer was ok
@@ -123,15 +176,18 @@ impl<'probe> JtagDtm<'probe> {
 
         let bit_size = self.state.abits + DMI_ADDRESS_BIT_OFFSET;
 
-        self.probe
-            .write_register(DMI_ADDRESS, &bytes, bit_size)
-            .map(|bits| Self::transform_dmi_result(&bits))
+        let response = self.exchange_register(
+            DMI_ADDRESS,
+            BitSequence::from_bytes(&bytes, bit_size as usize),
+            self.state.idle_cycles as u32,
+        )?;
+        Ok(Self::transform_dmi_result(response.as_bits()))
     }
 
     fn schedule_dmi_register_access(
         &mut self,
         op: DmiOperation,
-    ) -> Result<DeferredResultIndex, RiscvError> {
+    ) -> Result<Handle<CommandResult>, RiscvError> {
         let bytes = op.to_byte_batch();
 
         let bit_size = self.state.abits + DMI_ADDRESS_BIT_OFFSET;
@@ -139,8 +195,8 @@ impl<'probe> JtagDtm<'probe> {
         Ok(self.state.queued_commands.schedule(JtagWriteCommand {
             data: JtagWriteData {
                 address: DMI_ADDRESS,
-                data: bytes.to_vec(),
-                len: bit_size,
+                data: BitSequence::from_bytes(&bytes, bit_size as usize),
+                idle_cycles: self.state.idle_cycles as u32,
             },
             transform: |_, result| Self::transform_dmi_result(result).map(CommandResult::U32),
         }))
@@ -161,11 +217,12 @@ impl<'probe> JtagDtm<'probe> {
                 Err(DmiOperationError::RequestInProgress) => {
                     // Operation still in progress, reset dmi status and try again.
                     self.clear_error_state()?;
-                    self.probe
-                        .set_idle_cycles(self.probe.idle_cycles().saturating_add(1))?;
+                    self.state.idle_cycles = self.state.idle_cycles.saturating_add(1);
                 }
-                Err(DmiOperationError::Reserved) => panic!("Reserved"),
-                Err(DmiOperationError::OperationFailed) => {
+                // A reserved status is defined to be interpreted like a failure.
+                Err(DmiOperationError::Reserved | DmiOperationError::OperationFailed) => {
+                    // The failure is sticky. Clear it, or the DTM ignores every later access.
+                    self.clear_error_state()?;
                     return Err(RiscvError::DtmOperationFailed);
                 }
             };
@@ -179,10 +236,14 @@ impl<'probe> JtagDtm<'probe> {
 
 impl DtmAccess for JtagDtm<'_> {
     fn init(&mut self) -> Result<(), RiscvError> {
-        self.probe.tap_reset()?;
-        let dtmcs_raw = self.probe.read_register(DTMCS_ADDRESS, DTMCS_WIDTH)?;
+        self.tap_reset()?;
+        let dtmcs_raw = self.exchange_register(
+            DTMCS_ADDRESS,
+            BitSequence::repeat(false, DTMCS_WIDTH as usize),
+            0,
+        )?;
 
-        let raw_dtmcs = dtmcs_raw.load_le::<u32>();
+        let raw_dtmcs = dtmcs_raw.as_bits().load_le::<u32>();
 
         if raw_dtmcs == 0 {
             return Err(RiscvError::NoRiscvTarget);
@@ -202,7 +263,7 @@ impl DtmAccess for JtagDtm<'_> {
         }
 
         // Setup the number of idle cycles between JTAG accesses
-        self.probe.set_idle_cycles(idle_cycles as u8)?;
+        self.state.idle_cycles = idle_cycles as u8;
         self.state.abits = abits;
 
         Ok(())
@@ -225,24 +286,27 @@ impl DtmAccess for JtagDtm<'_> {
 
         let bytes = reg_value.to_le_bytes();
 
-        self.probe
-            .write_register(DTMCS_ADDRESS, &bytes, DTMCS_WIDTH)?;
+        self.exchange_register(
+            DTMCS_ADDRESS,
+            BitSequence::from_bytes(&bytes, DTMCS_WIDTH as usize),
+            self.state.idle_cycles as u32,
+        )?;
 
         Ok(())
     }
 
     fn read_deferred_result(
         &mut self,
-        index: DeferredResultIndex,
+        index: Handle<CommandResult>,
     ) -> Result<CommandResult, RiscvError> {
         match self.state.jtag_results.take(index) {
             Ok(result) => Ok(result),
-            Err(index) => {
+            Err(handle) => {
                 self.execute()?;
                 // We can lose data if `execute` fails.
                 self.state
                     .jtag_results
-                    .take(index)
+                    .take(handle)
                     .map_err(|_| RiscvError::BatchedResultNotAvailable)
             }
         }
@@ -254,7 +318,7 @@ impl DtmAccess for JtagDtm<'_> {
         let mut started = Instant::now();
         let mut previous_queue_len = cmds.len();
         while !cmds.is_empty() {
-            match cmds.execute(|queue| self.probe.write_register_batch(queue)) {
+            match cmds.execute(|queue| self.probe.run_command_batch(queue)) {
                 Ok(r) => {
                     self.state.jtag_results.merge_from(r);
                     return Ok(());
@@ -271,12 +335,12 @@ impl DtmAccess for JtagDtm<'_> {
                                     cmds.consume(e.results.len());
                                     self.state.jtag_results.merge_from(e.results);
 
-                                    self.probe.set_idle_cycles(
-                                        self.probe.idle_cycles().saturating_add(1),
-                                    )?;
+                                    self.state.idle_cycles =
+                                        self.state.idle_cycles.saturating_add(1);
                                 }
-                                DmiOperationError::Reserved => panic!("Reserved!"),
-                                DmiOperationError::OperationFailed => {
+                                DmiOperationError::Reserved
+                                | DmiOperationError::OperationFailed => {
+                                    self.clear_error_state()?;
                                     return Err(RiscvError::DtmOperationFailed);
                                 }
                             }
@@ -293,9 +357,6 @@ impl DtmAccess for JtagDtm<'_> {
                 started = Instant::now();
                 previous_queue_len = cmds.len();
             }
-
-            // Observed with a HiFive Rev B Board: 1.4 sec to execute commands when a reset is involved.
-            const JTAG_COMMAND_TIMEOUT: Duration = Duration::from_secs(2);
 
             let elapsed_time = started.elapsed();
 
@@ -314,12 +375,12 @@ impl DtmAccess for JtagDtm<'_> {
         &mut self,
         address: u64,
         value: u32,
-    ) -> Result<Option<DeferredResultIndex>, RiscvError> {
+    ) -> Result<Option<Handle<CommandResult>>, RiscvError> {
         self.schedule_dmi_register_access(DmiOperation::Write { address, value })
             .map(Some)
     }
 
-    fn schedule_read(&mut self, address: u64) -> Result<DeferredResultIndex, RiscvError> {
+    fn schedule_read(&mut self, address: u64) -> Result<Handle<CommandResult>, RiscvError> {
         // Prepare the read by sending a read request with the register address
         self.schedule_dmi_register_access(DmiOperation::Read { address })?;
 
@@ -350,10 +411,10 @@ impl DtmAccess for JtagDtm<'_> {
         // from `probe-rs info`), because the TAP state may be indeterminate after attach.
         // After reset, the IDCODE instruction is automatically loaded into IR, and we then
         // explicitly load it again via read_register(0x1, …) to be consistent with all paths.
-        self.probe.tap_reset()?;
-        let value = self.probe.read_register(0x1, 32)?;
+        self.tap_reset()?;
+        let value = self.exchange_register(0x1, BitSequence::repeat(false, 32), 0)?;
 
-        Ok(Some(value.load_le::<u32>()))
+        Ok(valid_idcode(value.as_bits().load_le::<u32>()))
     }
 }
 
@@ -370,7 +431,7 @@ impl DtmAccess for JtagDtm<'_> {
 /// 4. Set tunnel to idle: 3 zero bits
 #[derive(Debug)]
 pub struct TunneledJtagDtm<'probe> {
-    probe: &'probe mut dyn JtagAccess,
+    probe: JtagChain<'probe>,
     state: &'probe mut DtmState,
     select_dtmcs: JtagWriteData,
     select_dmi: JtagWriteData,
@@ -378,7 +439,7 @@ pub struct TunneledJtagDtm<'probe> {
 
 impl<'probe> TunneledJtagDtm<'probe> {
     fn new(
-        probe: &'probe mut dyn JtagAccess,
+        probe: JtagChain<'probe>,
         tunnel_ir_id: u32,
         tunnel_ir_width: u32,
         state: &'probe mut DtmState,
@@ -391,17 +452,65 @@ impl<'probe> TunneledJtagDtm<'probe> {
         }
     }
 
+    fn tap_reset(&mut self) -> Result<(), DebugProbeError> {
+        let mut batch = JtagBatch::new();
+        self.probe.tap_reset(&mut batch);
+        self.probe.run(batch).map(|_| ())
+    }
+
+    fn exchange_register(
+        &mut self,
+        write: &JtagWriteData,
+        idle_cycles: u32,
+    ) -> Result<BitSequence, DebugProbeError> {
+        self.exchange_register_at(write.address, write.data.clone(), idle_cycles)
+    }
+
+    fn exchange_register_at(
+        &mut self,
+        address: u32,
+        dr: BitSequence,
+        idle_cycles: u32,
+    ) -> Result<BitSequence, DebugProbeError> {
+        if address > self.probe.params().max_ir_address() {
+            return Err(DebugProbeError::Other(format!(
+                "Invalid instruction register access: {address}"
+            )));
+        }
+
+        let ir_len = self.probe.params().irlen;
+        let mut batch = JtagBatch::new();
+        let ir = BitSequence::from_bytes(&address.to_le_bytes(), ir_len);
+        self.probe.shift_ir(&mut batch, &ir);
+        let handle = self.probe.exchange_dr(&mut batch, &dr);
+        self.probe.run_test_idle(&mut batch, idle_cycles);
+        let mut results = self.probe.run(batch)?;
+        results
+            .take(handle)
+            .map_err(|_| DebugProbeError::Other("missing JTAG capture result".into()))
+    }
+
+    fn exchange_dr(
+        &mut self,
+        dr: BitSequence,
+        idle_cycles: u32,
+    ) -> Result<BitSequence, DebugProbeError> {
+        let mut batch = JtagBatch::new();
+        let handle = self.probe.exchange_dr(&mut batch, &dr);
+        self.probe.run_test_idle(&mut batch, idle_cycles);
+        let mut results = self.probe.run(batch)?;
+        results
+            .take(handle)
+            .map_err(|_| DebugProbeError::Other("missing JTAG capture result".into()))
+    }
+
     fn write_dtmcs(&mut self, data: u32) -> Result<u32, RiscvError> {
-        self.probe.write_register(
-            self.select_dtmcs.address,
-            &self.select_dtmcs.data,
-            self.select_dtmcs.len,
-        )?;
+        let select = self.select_dtmcs.clone();
+        self.exchange_register(&select, self.state.idle_cycles as u32)?;
         let cmd = tunnel_dtmcs_data(data);
         let result = self
-            .probe
-            .write_dr(&cmd.data, cmd.len)
-            .map(|r| tunnel_dtmcs_transform(&cmd, &r))?;
+            .exchange_dr(cmd.data.clone(), self.state.idle_cycles as u32)
+            .map(|r| tunnel_dtmcs_transform(&cmd, r.as_bits()))?;
 
         match result {
             Ok(CommandResult::U32(d)) => Ok(d),
@@ -413,7 +522,7 @@ impl<'probe> TunneledJtagDtm<'probe> {
         }
     }
 
-    fn transform_tunneled_dr_result(response_bits: &BitSlice) -> &BitSlice {
+    fn transform_tunneled_dr_result<T: BitStore>(response_bits: &BitSlice<T>) -> &BitSlice<T> {
         &response_bits[4..]
     }
 
@@ -421,22 +530,25 @@ impl<'probe> TunneledJtagDtm<'probe> {
         &mut self,
         op: DmiOperation,
     ) -> Result<Result<u32, DmiOperationError>, DebugProbeError> {
-        self.probe.write_register(
-            self.select_dmi.address,
-            &self.select_dmi.data,
-            self.select_dmi.len,
-        )?;
+        let select = self.select_dmi.clone();
+        self.exchange_register(&select, self.state.idle_cycles as u32)?;
 
         let dmi_bits = self.state.abits + DMI_ADDRESS_BIT_OFFSET;
         let (bit_size, bytes) = op.to_tunneled_byte_batch(dmi_bits);
-        let result = self.probe.write_dr(&bytes, bit_size)?;
-        let tunneled_result = Self::transform_tunneled_dr_result(&result);
+        let result = self.exchange_dr(
+            BitSequence::from_bytes(&bytes, bit_size as usize),
+            self.state.idle_cycles as u32,
+        )?;
+        let tunneled_result = Self::transform_tunneled_dr_result(result.as_bits());
         Ok(JtagDtm::transform_dmi_result(tunneled_result))
     }
 
     fn make_select_command(&self) -> JtagWriteCommand<DmiOperationError> {
         JtagWriteCommand {
-            data: self.select_dmi.clone(),
+            data: JtagWriteData {
+                idle_cycles: self.state.idle_cycles as u32,
+                ..self.select_dmi.clone()
+            },
             transform: |_, _| Ok(CommandResult::None),
         }
     }
@@ -444,7 +556,7 @@ impl<'probe> TunneledJtagDtm<'probe> {
     fn schedule_dmi_register_access(
         &mut self,
         op: DmiOperation,
-    ) -> Result<DeferredResultIndex, RiscvError> {
+    ) -> Result<Handle<CommandResult>, RiscvError> {
         self.state
             .queued_commands
             .schedule(self.make_select_command());
@@ -454,8 +566,8 @@ impl<'probe> TunneledJtagDtm<'probe> {
 
         Ok(self.state.queued_commands.schedule(ShiftDrCommand {
             inner: ShiftDrData {
-                data: bytes.to_vec(),
-                len: bit_size,
+                data: BitSequence::from_bytes(&bytes, bit_size as usize),
+                idle_cycles: self.state.idle_cycles as u32,
             },
             transform: |_, raw_result| {
                 let result = TunneledJtagDtm::transform_tunneled_dr_result(raw_result);
@@ -479,11 +591,12 @@ impl<'probe> TunneledJtagDtm<'probe> {
                 Err(DmiOperationError::RequestInProgress) => {
                     // Operation still in progress, reset dmi status and try again.
                     self.clear_error_state()?;
-                    self.probe
-                        .set_idle_cycles(self.probe.idle_cycles().saturating_add(1))?;
+                    self.state.idle_cycles = self.state.idle_cycles.saturating_add(1);
                 }
-                Err(DmiOperationError::Reserved) => panic!("Reserved"),
-                Err(DmiOperationError::OperationFailed) => {
+                // A reserved status is defined to be interpreted like a failure.
+                Err(DmiOperationError::Reserved | DmiOperationError::OperationFailed) => {
+                    // The failure is sticky. Clear it, or the DTM ignores every later access.
+                    self.clear_error_state()?;
                     return Err(RiscvError::DtmOperationFailed);
                 }
             };
@@ -497,7 +610,7 @@ impl<'probe> TunneledJtagDtm<'probe> {
 
 impl DtmAccess for TunneledJtagDtm<'_> {
     fn init(&mut self) -> Result<(), RiscvError> {
-        self.probe.tap_reset()?;
+        self.tap_reset()?;
         let raw_dtmcs = self.write_dtmcs(0)?;
 
         if raw_dtmcs == 0 {
@@ -518,7 +631,7 @@ impl DtmAccess for TunneledJtagDtm<'_> {
         }
 
         // Setup the number of idle cycles between JTAG accesses
-        self.probe.set_idle_cycles(idle_cycles as u8)?;
+        self.state.idle_cycles = idle_cycles as u8;
         self.state.abits = abits;
 
         Ok(())
@@ -546,16 +659,16 @@ impl DtmAccess for TunneledJtagDtm<'_> {
 
     fn read_deferred_result(
         &mut self,
-        index: DeferredResultIndex,
+        index: Handle<CommandResult>,
     ) -> Result<CommandResult, RiscvError> {
         match self.state.jtag_results.take(index) {
             Ok(result) => Ok(result),
-            Err(index) => {
+            Err(handle) => {
                 self.execute()?;
                 // We can lose data if `execute` fails.
                 self.state
                     .jtag_results
-                    .take(index)
+                    .take(handle)
                     .map_err(|_| RiscvError::BatchedResultNotAvailable)
             }
         }
@@ -567,7 +680,7 @@ impl DtmAccess for TunneledJtagDtm<'_> {
         let mut started = Instant::now();
         let mut previous_queue_len = cmds.len();
         while !cmds.is_empty() {
-            match cmds.execute(|queue| self.probe.write_register_batch(queue)) {
+            match cmds.execute(|queue| self.probe.run_command_batch(queue)) {
                 Ok(r) => {
                     self.state.jtag_results.merge_from(r);
                     return Ok(());
@@ -584,12 +697,12 @@ impl DtmAccess for TunneledJtagDtm<'_> {
                                     cmds.consume(e.results.len());
                                     self.state.jtag_results.merge_from(e.results);
 
-                                    self.probe.set_idle_cycles(
-                                        self.probe.idle_cycles().saturating_add(1),
-                                    )?;
+                                    self.state.idle_cycles =
+                                        self.state.idle_cycles.saturating_add(1);
                                 }
-                                DmiOperationError::Reserved => panic!("Reserved error"),
-                                DmiOperationError::OperationFailed => {
+                                DmiOperationError::Reserved
+                                | DmiOperationError::OperationFailed => {
+                                    self.clear_error_state()?;
                                     return Err(RiscvError::DtmOperationFailed);
                                 }
                             }
@@ -607,7 +720,12 @@ impl DtmAccess for TunneledJtagDtm<'_> {
                 previous_queue_len = cmds.len();
             }
 
-            if started.elapsed() > Duration::from_millis(500) {
+            let elapsed_time = started.elapsed();
+
+            if elapsed_time > JTAG_COMMAND_TIMEOUT {
+                tracing::error!(
+                    "Timeout ({JTAG_COMMAND_TIMEOUT:?}) exceeded executing RISCV commands (elapsed: {elapsed_time:?})"
+                );
                 return Err(RiscvError::Timeout);
             }
         }
@@ -619,12 +737,12 @@ impl DtmAccess for TunneledJtagDtm<'_> {
         &mut self,
         address: u64,
         value: u32,
-    ) -> Result<Option<DeferredResultIndex>, RiscvError> {
+    ) -> Result<Option<Handle<CommandResult>>, RiscvError> {
         self.schedule_dmi_register_access(DmiOperation::Write { address, value })
             .map(Some)
     }
 
-    fn schedule_read(&mut self, address: u64) -> Result<DeferredResultIndex, RiscvError> {
+    fn schedule_read(&mut self, address: u64) -> Result<Handle<CommandResult>, RiscvError> {
         // Prepare the read by sending a read request with the register address
         self.schedule_dmi_register_access(DmiOperation::Read { address })?;
 
@@ -653,9 +771,9 @@ impl DtmAccess for TunneledJtagDtm<'_> {
         // Reset the JTAG state machine to Test-Logic-Reset before reading the IDCODE.
         // This is required when read_idcode() is called without a prior dtm.init() (e.g.
         // from `probe-rs info`), because the TAP state may be indeterminate after attach.
-        self.probe.tap_reset()?;
-        let value = self.probe.read_register(0x1, 32)?;
-        Ok(Some(value.load_le::<u32>()))
+        self.tap_reset()?;
+        let value = self.exchange_register_at(0x1, BitSequence::repeat(false, 32), 0)?;
+        Ok(valid_idcode(value.as_bits().load_le::<u32>()))
     }
 }
 
@@ -664,8 +782,8 @@ fn tunnel_select_data(tunnel_ir_id: u32, tunnel_ir_width: u32, address: u32) -> 
     let tunneled_ir_len = 1 + 7 + tunnel_ir_width + 3;
     JtagWriteData {
         address: tunnel_ir_id,
-        data: tunneled_ir.to_le_bytes().into(),
-        len: tunneled_ir_len,
+        data: BitSequence::from_bytes(&tunneled_ir.to_le_bytes(), tunneled_ir_len as usize),
+        idle_cycles: 0,
     }
 }
 
@@ -675,14 +793,14 @@ fn tunnel_dtmcs_data(data: u32) -> ShiftDrData {
     let tunneled_dr: u128 =
         (1 << msb_offset) | ((DTMCS_WIDTH as u128) << width_offset) | ((data as u128) << 3);
     ShiftDrData {
-        data: tunneled_dr.to_le_bytes().into(),
-        len: (msb_offset as u32) + 1,
+        data: BitSequence::from_bytes(&tunneled_dr.to_le_bytes(), (msb_offset as u32 + 1) as usize),
+        idle_cycles: 0,
     }
 }
 
-fn tunnel_dtmcs_transform(
+fn tunnel_dtmcs_transform<T: BitStore>(
     _data: &ShiftDrData,
-    result: &BitSlice,
+    result: &BitSlice<T>,
 ) -> Result<CommandResult, DmiOperationError> {
     let response = result[4..36].load_le::<u32>();
     Ok(CommandResult::U32(response))
@@ -786,6 +904,11 @@ impl DmiOperationStatus {
     }
 }
 
+/// Timeout for the execution of a batch of scheduled `dmi` accesses.
+///
+/// Observed with a HiFive Rev B Board: 1.4 sec to execute commands when a reset is involved.
+const JTAG_COMMAND_TIMEOUT: Duration = Duration::from_secs(2);
+
 /// Address of the `dtmcs` JTAG register.
 const DTMCS_ADDRESS: u32 = 0x10;
 
@@ -861,4 +984,44 @@ bitfield! {
     /// 15: Version not described in any available version
     /// of this spec.
     pub version, _: 3,0;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tunneled_dmi_batch_bit_width() {
+        let dmi_bits = 7 + DMI_ADDRESS_BIT_OFFSET;
+        let op = DmiOperation::Write {
+            address: 0x100,
+            value: 0x42,
+        };
+        let (bit_size, _) = op.to_tunneled_byte_batch(dmi_bits);
+        let width_offset = 1 + dmi_bits + 3;
+        let msb_offset = 7 + width_offset;
+        assert_eq!(bit_size, msb_offset + 1);
+    }
+
+    #[test]
+    fn all_zero_capture_is_not_a_valid_idcode() {
+        // The all-zero pattern this fix was found from: an unrelated/unrecognized JTAG target
+        // (no RISC-V DTM at all) capturing a floating or BYPASS-register bit as the "IDCODE".
+        assert_eq!(valid_idcode(0), None);
+    }
+
+    #[test]
+    fn lsb_clear_is_never_a_valid_idcode() {
+        // Per IEEE 1149.1, a real IDCODE register's bit 0 is always hardwired to 1 - any other
+        // even-valued capture (not just all-zero) is equally not a real IDCODE.
+        assert_eq!(valid_idcode(0xffff_fffe), None);
+        assert_eq!(valid_idcode(0x1234_5678), None);
+    }
+
+    #[test]
+    fn lsb_set_is_accepted_as_a_valid_idcode() {
+        // A real-looking IDCODE (bit 0 set) is returned unchanged.
+        assert_eq!(valid_idcode(0x1234_5679), Some(0x1234_5679));
+        assert_eq!(valid_idcode(1), Some(1));
+    }
 }

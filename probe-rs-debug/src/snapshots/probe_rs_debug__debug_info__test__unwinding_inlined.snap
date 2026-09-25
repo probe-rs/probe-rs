@@ -3,35 +3,35 @@ source: probe-rs-debug/src/debug_info.rs
 expression: printed_backtrace
 ---
 Frame:
- function:        wait<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>
+ function:        <Timer<TIMER0, OneShot> as CountDown>::wait
  source_location:
   path: /home/dominik/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs
   line: Some(266)
   column: Some(Column(12))
  frame_base:      Some(20003ff0)
 Frame:
- function:        Timer<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>::delay
+ function:        Timer<TIMER0, OneShot>::delay
  source_location:
   path: /home/dominik/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs
   line: Some(145)
   column: Some(Column(22))
  frame_base:      Some(20003ff0)
 Frame:
- function:        delay_us<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>
+ function:        <Timer<TIMER0, OneShot> as DelayUs<u32>>::delay_us
  source_location:
   path: /home/dominik/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs
   line: Some(324)
   column: Some(Column(9))
  frame_base:      Some(20003ff0)
 Frame:
- function:        delay_ms<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>
+ function:        <Timer<TIMER0, OneShot> as DelayMs<u32>>::delay_ms
  source_location:
   path: /home/dominik/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs
   line: Some(297)
   column: Some(Column(14))
  frame_base:      Some(20003ff0)
 Frame:
- function:        delay_ms<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>
+ function:        <Timer<TIMER0, OneShot> as DelayMs<u16>>::delay_ms
  source_location:
   path: /home/dominik/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs
   line: Some(306)

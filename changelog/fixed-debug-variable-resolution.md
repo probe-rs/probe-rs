@@ -1,0 +1,1 @@
+Debug info: `usize` and `isize` now use the width from the debug info, type references that cross a compilation unit boundary resolve, names encoded in any DWARF string form are read, enum discriminants are read at their real width, and C `long long` and `double` variables can be updated. C++ compilation units now use the C implementation.

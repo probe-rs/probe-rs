@@ -1,0 +1,1 @@
+The debugger now reads the members of a struct or a union when it reads the variable, and not when you expand the variable. A walk stops at a pointer, and expands a limited number of types that have more than two members, so that a large variable does not cause a large number of target memory reads.

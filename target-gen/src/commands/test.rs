@@ -319,7 +319,7 @@ pub enum EraseType {
 pub fn run_flash_erase(session: &mut Session, erase_type: EraseType) -> Result<()> {
     let mut progress = progress_callbacks();
     if let EraseType::EraseRange(start, end) = erase_type {
-        erase(session, &mut progress, start, end, true)?;
+        erase(session, &mut progress, start, end, false, true)?;
     } else {
         erase_all(session, &mut progress, true)?;
     }

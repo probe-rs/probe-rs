@@ -1,0 +1,1 @@
+64-bit RISC-V targets now save and restore the scratch registers `s0` and `s1` at the width of the target, so memory access through the program buffer no longer destroys the upper 32 bits of these registers.

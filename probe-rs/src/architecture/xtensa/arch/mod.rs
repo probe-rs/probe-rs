@@ -6,6 +6,8 @@ pub mod instruction;
 pub enum Register {
     Cpu(CpuRegister),
     Special(SpecialRegister),
+    FloatingPoint(FpRegister),
+    User(UserRegister),
 
     /// Program counter. The physical register depends on the debug level.
     CurrentPc,
@@ -18,6 +20,12 @@ impl Register {
     pub(crate) fn is_cpu_register(self) -> bool {
         matches!(self, Register::Cpu(_))
     }
+
+    /// Whether the register belongs to a coprocessor, which must be enabled in `CPENABLE`
+    /// before the register can be accessed.
+    pub(crate) fn is_coprocessor_register(self) -> bool {
+        matches!(self, Register::FloatingPoint(_) | Register::User(_))
+    }
 }
 
 impl TryFrom<RegisterId> for Register {
@@ -27,6 +35,8 @@ impl TryFrom<RegisterId> for Register {
         match value.0.to_le_bytes() {
             [id, 0] => Ok(Self::Cpu(CpuRegister::try_from(id)?)),
             [id, 1] => Ok(Self::Special(SpecialRegister::try_from(id)?)),
+            [id, 2] => Ok(Self::FloatingPoint(FpRegister::try_from(id)?)),
+            [id, 3] => Ok(Self::User(UserRegister::try_from(id)?)),
             [0, 0xFF] => Ok(Self::CurrentPc),
             [1, 0xFF] => Ok(Self::CurrentPs),
             _ => Err(XtensaError::RegisterNotAvailable),
@@ -39,6 +49,8 @@ impl From<Register> for RegisterId {
         match register {
             Register::Cpu(reg) => reg.into(),
             Register::Special(reg) => reg.into(),
+            Register::FloatingPoint(reg) => reg.into(),
+            Register::User(reg) => reg.into(),
             Register::CurrentPc => RegisterId(u16::from_le_bytes([0, 0xFF])),
             Register::CurrentPs => RegisterId(u16::from_le_bytes([1, 0xFF])),
         }
@@ -94,6 +106,84 @@ impl TryFrom<u8> for CpuRegister {
 impl From<CpuRegister> for RegisterId {
     fn from(register: CpuRegister) -> RegisterId {
         RegisterId(u16::from_le_bytes([register as u8, 0]))
+    }
+}
+
+/// A register of the Floating-Point Coprocessor Option.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub enum FpRegister {
+    F0 = 0,
+    F1 = 1,
+    F2 = 2,
+    F3 = 3,
+    F4 = 4,
+    F5 = 5,
+    F6 = 6,
+    F7 = 7,
+    F8 = 8,
+    F9 = 9,
+    F10 = 10,
+    F11 = 11,
+    F12 = 12,
+    F13 = 13,
+    F14 = 14,
+    F15 = 15,
+}
+
+impl TryFrom<u8> for FpRegister {
+    type Error = XtensaError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Self::F0),
+            1 => Ok(Self::F1),
+            2 => Ok(Self::F2),
+            3 => Ok(Self::F3),
+            4 => Ok(Self::F4),
+            5 => Ok(Self::F5),
+            6 => Ok(Self::F6),
+            7 => Ok(Self::F7),
+            8 => Ok(Self::F8),
+            9 => Ok(Self::F9),
+            10 => Ok(Self::F10),
+            11 => Ok(Self::F11),
+            12 => Ok(Self::F12),
+            13 => Ok(Self::F13),
+            14 => Ok(Self::F14),
+            15 => Ok(Self::F15),
+            _ => Err(XtensaError::RegisterNotAvailable),
+        }
+    }
+}
+
+impl From<FpRegister> for RegisterId {
+    fn from(register: FpRegister) -> RegisterId {
+        RegisterId(u16::from_le_bytes([register as u8, 2]))
+    }
+}
+
+/// A user register, accessed with the `RUR` and `WUR` instructions.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub enum UserRegister {
+    Fcr = 232,
+    Fsr = 233,
+}
+
+impl TryFrom<u8> for UserRegister {
+    type Error = XtensaError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            v if v == Self::Fcr as u8 => Ok(Self::Fcr),
+            v if v == Self::Fsr as u8 => Ok(Self::Fsr),
+            _ => Err(XtensaError::RegisterNotAvailable),
+        }
+    }
+}
+
+impl From<UserRegister> for RegisterId {
+    fn from(register: UserRegister) -> RegisterId {
+        RegisterId(u16::from_le_bytes([register as u8, 3]))
     }
 }
 
@@ -297,5 +387,17 @@ impl From<CpuRegister> for Register {
 impl From<SpecialRegister> for Register {
     fn from(value: SpecialRegister) -> Self {
         Self::Special(value)
+    }
+}
+
+impl From<FpRegister> for Register {
+    fn from(value: FpRegister) -> Self {
+        Self::FloatingPoint(value)
+    }
+}
+
+impl From<UserRegister> for Register {
+    fn from(value: UserRegister) -> Self {
+        Self::User(value)
     }
 }

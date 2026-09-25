@@ -4,9 +4,7 @@ use std::{
     rc::Rc,
 };
 
-use probe_rs::Core;
-
-use crate::{cmd::cargo_embed::rttui::channel::ChannelData, util::rtt::client::RttClient};
+use crate::cmd::cargo_embed::rttui::channel::ChannelData;
 
 use super::channel::UpChannel;
 
@@ -30,12 +28,25 @@ pub struct TabConfig {
 
 pub struct Tab {
     up_channel: Rc<RefCell<UpChannel>>,
-    down_channel: Option<(u32, String)>,
+    down_channel: Option<DownChannel>,
     name: String,
     scroll_offset: usize,
     messages: Vec<String>,
     last_processed: usize,
     last_width: usize,
+}
+
+/// Editable input plus bytes waiting for the target to accept them.
+struct DownChannel {
+    number: u32,
+    /// Line the user is typing.
+    input: Vec<u8>,
+    /// Outbound bytes not yet accepted by the target (includes newlines).
+    pending: Vec<u8>,
+    /// True while an RPC write of the current pending prefix is in flight.
+    flush_in_flight: bool,
+    /// True after a flush left bytes in `pending` (target did not accept everything).
+    blocked: bool,
 }
 
 impl Tab {
@@ -47,7 +58,13 @@ impl Tab {
         Self {
             name: name.unwrap_or_else(|| up_channel.borrow().channel_name().to_string()),
             up_channel,
-            down_channel: down_channel.map(|down| (down, String::new())),
+            down_channel: down_channel.map(|number| DownChannel {
+                number,
+                input: Vec::new(),
+                pending: Vec::new(),
+                flush_in_flight: false,
+                blocked: false,
+            }),
             scroll_offset: 0,
             messages: Vec::new(),
             last_processed: 0,
@@ -83,30 +100,95 @@ impl Tab {
         self.set_scroll_offset(0);
     }
 
+    pub fn has_down_channel(&self) -> bool {
+        self.down_channel.is_some()
+    }
+
+    /// True when the target has not accepted all queued outbound bytes.
+    pub fn is_blocked(&self) -> bool {
+        self.down_channel.as_ref().is_some_and(|down| down.blocked)
+    }
+
+    /// True when this tab has pending bytes and is not already flushing.
+    pub fn can_start_flush(&self) -> bool {
+        self.down_channel
+            .as_ref()
+            .is_some_and(|down| !down.flush_in_flight && !down.pending.is_empty())
+    }
+
     pub fn push_input(&mut self, c: char) {
-        if let Some((_, input)) = self.down_channel.as_mut() {
-            input.push(c);
+        if let Some(down) = self.down_channel.as_mut() {
+            let mut buf = [0u8; 4];
+            down.input
+                .extend_from_slice(c.encode_utf8(&mut buf).as_bytes());
         }
     }
 
     pub fn pop_input(&mut self) {
-        if let Some((_, input)) = self.down_channel.as_mut() {
-            input.pop();
+        let Some(down) = self.down_channel.as_mut() else {
+            return;
+        };
+
+        // Remove the last UTF-8 character.
+        while let Some(byte) = down.input.pop() {
+            if byte & 0xC0 != 0x80 {
+                break;
+            }
         }
     }
 
-    pub fn input(&self) -> Option<&str> {
-        self.down_channel.as_ref().map(|(_, input)| input.as_str())
+    /// Text for the down-channel input bar: pending outbound bytes, then the
+    /// line currently being typed. Newlines in pending are shown as `↵`.
+    pub fn down_line_display(&self) -> Option<String> {
+        let down = self.down_channel.as_ref()?;
+        let mut text = String::with_capacity(down.pending.len() + down.input.len());
+        if !down.pending.is_empty() {
+            text.push_str(&String::from_utf8_lossy(&down.pending).replace('\n', "↵"));
+        }
+        text.push_str(std::str::from_utf8(&down.input).expect("down-channel input is UTF-8"));
+        Some(text)
     }
 
-    pub fn send_input(&mut self, core: &mut Core, client: &mut RttClient) -> anyhow::Result<()> {
-        if let Some((channel, input)) = self.down_channel.as_mut() {
-            input.push('\n');
-            client.write_down_channel(core, *channel, input.as_str())?;
-            input.clear();
+    /// Move the current input line into the pending outbound buffer and append a newline.
+    pub fn queue_input_line(&mut self) {
+        let Some(down) = self.down_channel.as_mut() else {
+            return;
+        };
+        if down.pending.is_empty() {
+            down.pending.extend_from_slice(&down.input);
+            down.pending.push(b'\n');
+            down.input.clear();
         }
+    }
 
-        Ok(())
+    /// Snapshot pending bytes for an RPC write. Pending is kept until the response.
+    pub fn begin_flush(&mut self) -> Option<(u32, Vec<u8>)> {
+        let down = self.down_channel.as_mut()?;
+        if down.flush_in_flight || down.pending.is_empty() {
+            return None;
+        }
+        down.flush_in_flight = true;
+        Some((down.number, down.pending.clone()))
+    }
+
+    /// Consume bytes accepted by the target from the front of `pending`.
+    pub fn finish_flush(&mut self, written: usize) {
+        let Some(down) = self.down_channel.as_mut() else {
+            return;
+        };
+        down.flush_in_flight = false;
+        let written = written.min(down.pending.len());
+        down.pending.drain(..written);
+        down.blocked = !down.pending.is_empty();
+    }
+
+    /// Keep pending unchanged after a failed write and mark the channel blocked.
+    pub fn abort_flush(&mut self) {
+        let Some(down) = self.down_channel.as_mut() else {
+            return;
+        };
+        down.flush_in_flight = false;
+        down.blocked = !down.pending.is_empty();
     }
 
     pub fn update_messages(&mut self, width: usize, height: usize) {

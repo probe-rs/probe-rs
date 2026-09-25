@@ -13,14 +13,14 @@ use crate::{
             memory_ap::{MemoryAp, MemoryApType},
             v1::valid_access_ports,
         },
-        communication_interface::{ArmDebugInterface, DapProbe, SwdSequence},
+        communication_interface::{ArmDebugInterface, SwdSequence},
         dp::{DpAddress, DpRegisterAddress},
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
         valid_32bit_arm_address,
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeError,
+        BitSequence, DebugProbe, DebugProbeError, DebugProbeSelector, Probe, ProbeError,
         ProbeFactory, WireProtocol,
     },
 };
@@ -79,7 +79,7 @@ impl ProbeFactory for StLinkFactory {
         Ok(Box::new(stlink))
     }
 
-    fn list_probes(&self) -> Vec<DebugProbeInfo> {
+    fn list_probes(&self) -> Vec<crate::probe::list::ProbeListItem> {
         tools::list_stlink_devices()
     }
 }
@@ -1400,14 +1400,6 @@ impl DapAccess for StlinkArmDebug {
 
         Ok(())
     }
-
-    fn try_dap_probe(&self) -> Option<&dyn DapProbe> {
-        None
-    }
-
-    fn try_dap_probe_mut(&mut self) -> Option<&mut dyn DapProbe> {
-        None
-    }
 }
 
 impl ArmDebugInterface for StlinkArmDebug {
@@ -1456,7 +1448,7 @@ impl ArmDebugInterface for StlinkArmDebug {
 }
 
 impl SwdSequence for StlinkArmDebug {
-    fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
+    fn swj_sequence(&mut self, _bits: &BitSequence) -> Result<(), DebugProbeError> {
         // This is not supported for ST-Links, unfortunately.
         Err(DebugProbeError::CommandNotSupportedByProbe {
             command_name: "swj_sequence",
@@ -1494,8 +1486,8 @@ struct StLinkMemoryInterface<'probe> {
 }
 
 impl SwdSequence for StLinkMemoryInterface<'_> {
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
-        self.probe.swj_sequence(bit_len, bits)
+    fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError> {
+        self.probe.swj_sequence(bits)
     }
 
     fn swj_pins(
@@ -1556,8 +1548,9 @@ impl MemoryInterface<ArmError> for StLinkMemoryInterface<'_> {
                 self.current_ap.ap_address().ap_v1()?,
             )?;
 
-            for (index, word) in buff.chunks_exact(4).enumerate() {
-                chunk[index] = u32::from_le_bytes(word.try_into().unwrap());
+            let (chunks, _rem) = buff.as_chunks::<4>();
+            for (index, word) in chunks.iter().enumerate() {
+                chunk[index] = u32::from_le_bytes(*word);
             }
         }
 
@@ -1589,8 +1582,9 @@ impl MemoryInterface<ArmError> for StLinkMemoryInterface<'_> {
                 self.current_ap.ap_address().ap_v1()?,
             )?;
 
-            for (index, word) in buff.chunks_exact(2).enumerate() {
-                chunk[index] = u16::from_le_bytes(word.try_into().unwrap());
+            let (chunks, _rem) = buff.as_chunks::<2>();
+            for (index, word) in chunks.iter().enumerate() {
+                chunk[index] = u16::from_le_bytes(*word);
             }
         }
 

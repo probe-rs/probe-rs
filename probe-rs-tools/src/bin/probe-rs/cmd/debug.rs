@@ -3,12 +3,10 @@ use std::io::Write;
 use std::path::PathBuf;
 
 use anyhow::Context;
-use probe_rs::probe::list::Lister;
 use rustyline_async::SharedWriter;
 use rustyline_async::{Readline, ReadlineEvent};
 use time::UtcOffset;
-use tokio::runtime::Runtime;
-use tokio::sync::mpsc::{self, Receiver, Sender};
+use tokio::sync::mpsc::{self, Receiver, Sender, UnboundedSender};
 
 use crate::cmd::dap_server::debug_adapter::dap::adapter::DebugAdapter;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types;
@@ -32,10 +30,13 @@ use crate::cmd::dap_server::server::configuration::CoreConfig;
 use crate::cmd::dap_server::server::configuration::FlashingConfig;
 use crate::cmd::dap_server::server::configuration::SessionConfig;
 use crate::cmd::dap_server::server::debugger::Debugger;
-use crate::rpc::client::RpcClient;
-use crate::util::cli::{Prompt, probe_rs_color_enabled};
+use crate::util::cli::{self, parse_metadata};
+use crate::util::common_options::BinaryDownloadOptions;
 use crate::util::rtt::RttConfig;
+use crate::util::style::{Prompt, probe_rs_color_enabled};
 use crate::{CoreOptions, util::common_options::ProbeOptions};
+use probe_rs_rpc::format::FormatOptions;
+use probe_rs_rpc_client::RpcClient;
 
 use super::dap_server::debug_adapter::dap::dap_types::Request;
 use super::dap_server::debug_adapter::dap::dap_types::Response;
@@ -43,7 +44,16 @@ use super::dap_server::debug_adapter::dap::dap_types::Response;
 /// A barebones adapter for the CLI "client".
 struct CliAdapter {
     req_receiver: Receiver<Request>,
-    msg_sender: Sender<(String, Option<serde_json::Value>)>,
+    // Unbounded because `ProtocolAdapter::dyn_send_event` and
+    // `send_raw_response` are synchronous and called from mixed
+    // contexts: on a `spawn_blocking` thread for local sessions and
+    // directly on a tokio worker for remote RPC sessions. A bounded
+    // channel forces us to choose between `try_send` (which panics on
+    // bursty output such as flash progress events) and `blocking_send`
+    // (which would deadlock a worker thread). The unbounded variant
+    // sidesteps both — events are small (a few hundred bytes) and
+    // naturally bounded by the session's request rate.
+    msg_sender: UnboundedSender<(String, Option<serde_json::Value>)>,
     console_log_level: ConsoleLog,
     seq: i64,
     pending: HashMap<i64, Request>,
@@ -69,26 +79,34 @@ impl ProtocolAdapter for CliAdapter {
         event_type: &str,
         event_body: Option<serde_json::Value>,
     ) -> anyhow::Result<()> {
+        tracing::debug!("Sending event: {}", event_type);
+
         self.msg_sender
-            .try_send((event_type.to_string(), event_body))
-            .unwrap();
+            .send((event_type.to_string(), event_body))
+            .map_err(|_| {
+                anyhow::anyhow!("Failed to send event '{event_type}': CLI message channel closed")
+            })?;
 
         Ok(())
     }
 
     fn send_raw_response(&mut self, response: Response) -> anyhow::Result<()> {
         self.msg_sender
-            .try_send((
+            .send((
                 "response".to_string(),
                 Some(serde_json::to_value(response)?),
             ))
-            .unwrap();
+            .map_err(|_| anyhow::anyhow!("Failed to send response: CLI message channel closed"))?;
 
         Ok(())
     }
 
     fn remove_pending_request(&mut self, request_seq: i64) -> Option<String> {
         self.pending.remove(&request_seq).map(|r| r.command)
+    }
+
+    fn has_pending_request(&self, request_seq: i64) -> bool {
+        self.pending.contains_key(&request_seq)
     }
 
     fn set_console_log_level(&mut self, log_level: ConsoleLog) {
@@ -184,20 +202,36 @@ pub struct Cmd {
     #[clap(long, help_heading = "LOG CONFIGURATION / RTT")]
     pub no_rtt: bool,
 
-    // TODO: support all options in BinaryDownloadOptions
-    /// Before flashing, read back all the flashed data to skip flashing if the device is up to date.
-    #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
-    pub preverify: bool,
-
-    /// After flashing, read back all the flashed data to verify it has been written correctly.
-    #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
-    pub verify: bool,
+    #[clap(flatten)]
+    pub download_options: BinaryDownloadOptions,
 }
 
 impl Cmd {
     pub async fn run(self, client: RpcClient, utc_offset: UtcOffset) -> anyhow::Result<()> {
-        let (req_sender, req_receiver) = mpsc::channel(10);
-        let (msg_sender, mut msg_receiver) = mpsc::channel(10);
+        let preattached_session = if self.launch {
+            if let Some(path) = &self.binary {
+                let (_file_meta, elf_meta) = parse_metadata(path).await?;
+                let session =
+                    cli::attach_probe(&client, self.common.clone(), elf_meta, false).await?;
+                cli::flash(
+                    &session,
+                    path,
+                    FormatOptions::default(),
+                    self.download_options,
+                    None,
+                    None,
+                )
+                .await?;
+                Some(session)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        let (req_sender, req_receiver) = mpsc::channel(100);
+        let (msg_sender, mut msg_receiver) = mpsc::unbounded_channel();
 
         let debug_adapter = DebugAdapter::new(CliAdapter {
             req_receiver,
@@ -267,11 +301,10 @@ impl Cmd {
                     connect_under_reset: self.common.connect_under_reset,
                     speed: self.common.speed,
                     wire_protocol: self.common.protocol,
+                    attach_timeout: self.common.attach_timeout.map(|t| t.as_secs_f64()),
                     allow_erase_all: false,
                     flashing_config: FlashingConfig {
-                        flashing_enabled: self.launch && self.binary.is_some(),
-                        verify_before_flashing: self.preverify,
-                        verify_after_flashing: self.verify,
+                        flashing_enabled: false,
                         ..FlashingConfig::default()
                     },
                     core_configs: vec![CoreConfig {
@@ -306,28 +339,53 @@ impl Cmd {
             })
             .await;
 
-        // Run the debugger in a separate thread, otherwise longer processes like flashing can block the terminal.
-        let server = tokio::task::spawn_blocking(move || {
-            Runtime::new().unwrap().block_on(async move {
-                let registry = &mut *client.registry().await;
-                let mut debugger = Debugger::new(utc_offset, None)?;
+        // Run the debugger concurrently with the CLI's read loop.
+        //
+        // The backend always runs over RPC (`RpcBackend`), even for local
+        // sessions where the [`RpcClient`] is backed by an in-process RPC
+        // server. The backend future holds `!Send` state (gimli `Rc<[u8]>`,
+        // `Box<dyn Any>` test data, ...), so we drive it inline via `select!`
+        // instead of `tokio::spawn`.
+        let server = async move {
+            let mut debugger = Debugger::new(utc_offset, None)?;
+            debugger.preattached_session = preattached_session;
+            debugger
+                .debug_session_rpc(&client, debug_adapter)
+                .await
+                .map_err(anyhow::Error::from)
+        };
+        tokio::pin!(server);
 
-                let lister = Lister::new();
-                debugger
-                    .debug_session(registry, debug_adapter, &lister)
-                    .await
-            })
-        });
-
+        // Drive the server concurrently with the pre-init message drain,
+        // then set up Readline and transition into the interactive loop.
+        // We need to poll `server` during the pre-init phase too: nothing
+        // else is driving it, and the CLI is waiting for the
+        // `configurationDone` response to arrive before showing a prompt.
+        let mut server_result: Option<anyhow::Result<()>> = None;
         while !debug_client.is_initialized && debug_client.running() {
             tokio::select! {
                 response = msg_receiver.recv() => {
-                    // Handle responses/events
                     let Some((event, body)) = response else {
-                        // recv returns `None` if the channel has been closed
                         break;
                     };
                     debug_client.process_event(&event, body)?;
+                }
+                res = &mut server => {
+                    // The debug session finished (or failed) before the
+                    // CLI reached steady state — surface the result and
+                    // stop waiting for `is_initialized`.
+                    //
+                    // Drain any already-queued messages before breaking:
+                    // in the common "launch/attach failed" path the
+                    // debug session sends an error response and then
+                    // returns `Ok(())` immediately, so without this
+                    // drain the error response would get discarded and
+                    // the CLI would look like it exited silently.
+                    server_result = Some(res);
+                    while let Ok((event, body)) = msg_receiver.try_recv() {
+                        debug_client.process_event(&event, body)?;
+                    }
+                    break;
                 }
             }
         }
@@ -365,62 +423,80 @@ impl Cmd {
         let (mut rl, writer) =
             Readline::new(Prompt::new(format!("{}> ", debug_client.current_prompt())).to_string())
                 .unwrap();
+        let _prompt_logs = crate::util::logging::install_prompt_writer(writer.clone());
         debug_client.writer = Some(writer);
 
-        let readline = async {
-            let mut result = command_result;
-            while result.is_ok() && debug_client.running() {
-                // Update prompt if needed (a message created a new one, or closed the current one)
-                if debug_client.current_prompt != current_prompt {
-                    current_prompt = debug_client.current_prompt;
-                    debug_client.update_prompt(&mut rl);
-                }
+        let readline_result = if server_result.is_some() {
+            // Server already finished; no point driving the readline loop.
+            command_result
+        } else {
+            let readline_fut = async {
+                let mut result = command_result;
+                while result.is_ok() && debug_client.running() {
+                    if debug_client.current_prompt != current_prompt {
+                        current_prompt = debug_client.current_prompt;
+                        debug_client.update_prompt(&mut rl);
+                    }
 
-                tokio::select! {
-                    response = msg_receiver.recv() => {
-                        // Handle responses/events
-                        let Some((event, body)) = response else {
-                            // recv returns `None` if the channel has been closed
-                            break;
-                        };
-                        if let Err(error) = debug_client.process_event(&event, body) {
-                            result = Err(error);
-                            break;
-                        }
-                    },
-                    read_line = rl.readline() => {
-                        match read_line {
-                            Ok(ReadlineEvent::Line(line)) => {
-                                rl.add_history_entry(line.clone());
-                                debug_client.handle_prompt(line).await;
-                            }
-                            Ok(ReadlineEvent::Eof) => {
-                                // ctrl-d cycles through prompts
-                                debug_client.current_prompt = (current_prompt + 1) % debug_client.prompts.len();
-                            },
-                            // For ctrl-c, we just quit
-                            Ok(ReadlineEvent::Interrupted) => break,
-                            Err(actual_error) => {
-                                result = Err(actual_error).context("Error handling input");
+                    tokio::select! {
+                        response = msg_receiver.recv() => {
+                            let Some((event, body)) = response else {
+                                break;
+                            };
+                            if let Err(error) = debug_client.process_event(&event, body) {
+                                result = Err(error);
                                 break;
                             }
-                        }
-                    },
-                    _ = debug_client.req_sender.closed() => break,
+                        },
+                        read_line = rl.readline() => {
+                            match read_line {
+                                Ok(ReadlineEvent::Line(line)) => {
+                                    rl.add_history_entry(line.clone());
+                                    debug_client.handle_prompt(line).await;
+                                }
+                                Ok(ReadlineEvent::Eof) => {
+                                    // ctrl-d cycles through prompts
+                                    debug_client.current_prompt = (current_prompt + 1) % debug_client.prompts.len();
+                                },
+                                Ok(ReadlineEvent::Interrupted) => break,
+                                Err(actual_error) => {
+                                    result = Err(actual_error).context("Error handling input");
+                                    break;
+                                }
+                            }
+                        },
+                        _ = debug_client.req_sender.closed() => break,
+                    }
+                }
+
+                debug_client.disconnect(true).await;
+                result
+            };
+            tokio::pin!(readline_fut);
+
+            // Whichever future resolves first decides the readline
+            // result: either the readline loop exited normally or the
+            // debug session terminated. In the latter case any trailing
+            // output has already been rendered by the readline loop via
+            // its `msg_receiver` arm, so we just record the result.
+            tokio::select! {
+                res = &mut readline_fut => res,
+                res = &mut server => {
+                    server_result = Some(res);
+                    Ok(())
                 }
             }
-
-            debug_client.disconnect(true).await;
-            result
-        };
-
-        let (readline_result, server_result) = tokio::join! {
-            readline,
-            server,
         };
 
         rl.flush()?;
-        server_result??;
+
+        // If the server is still running, wait for it to finish (the
+        // readline side has sent a `disconnect` request above).
+        if server_result.is_none() {
+            server_result = Some(server.await);
+        }
+
+        server_result.unwrap()?;
 
         readline_result
     }

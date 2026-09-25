@@ -6,7 +6,8 @@
 # Serial number
 # serial = "12345678"
 # The protocol to be used for communicating with the target.
-protocol = "Swd"
+# If unset, the probe decides.
+# protocol = "Swd"
 # The speed in kHz of the data link to the target.
 # speed = 1337
 
@@ -20,13 +21,13 @@ restore_unwritten_bytes = false
 # flash_layout_output_path = "out.svg"
 # Triggers a full chip erase instead of a page by page erase.
 do_chip_erase = false
-# Whether to disable double buffering
+# Whether to disable double buffering.
 disable_double_buffering = false
-# Whether to verify flash contents before downloading
+# Whether to verify flash contents before downloading.
 preverify = false
-# Whether to verify flash contents after downloading
+# Whether to verify flash contents after downloading.
 verify = false
-# Whether to read RTT output from the flash loader
+# Whether to read RTT output from the flash loader.
 read_flasher_rtt = false
 
 [default.reset]
@@ -105,3 +106,10 @@ tabs = [
 enabled = false
 # The connection string in host:port format where the GDB server will open a socket.
 gdb_connection_string = "127.0.0.1:1337"
+
+[default.remote]
+# Remote probe-rs serve host. When set, cargo-embed talks to that server over RPC
+# instead of opening the probe in-process.
+# host = "ws://127.0.0.1:3000"
+# Authentication token for the remote server, if required.
+# token = "secret"

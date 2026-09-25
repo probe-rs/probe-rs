@@ -17,7 +17,7 @@ jobs:
     env:
       BRANCH_NAME: create-release/${{ inputs.version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # The custom token is needed so that this workflow can trigger
           # another workflow. By default, pushing tags from inside a workflow
@@ -61,7 +61,8 @@ jobs:
 
       - name: Bump versions
         run: |
-          cargo release version ${{ inputs.version }} --exclude probe-rs-mi --execute --verbose --no-confirm --allow-branch ${BRANCH_NAME}
+          # mi and rpc follow a separate versioning scheme
+          cargo release version ${{ inputs.version }} --exclude probe-rs-mi --exclude probe-rs-rpc --exclude probe-rs-rpc-client --execute --verbose --no-confirm --allow-branch ${BRANCH_NAME}
           cargo release replace --execute --verbose --no-confirm
           cargo release hook --execute --verbose --no-confirm
           cargo release commit --execute --verbose --no-confirm --sign-commit
@@ -98,6 +99,8 @@ jobs:
           - target-gen
           - probe-rs-tools
           - probe-rs-mi
+          - probe-rs-rpc
+          - probe-rs-rpc-client
           - probe-rs-debug"
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}

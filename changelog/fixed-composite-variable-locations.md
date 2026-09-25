@@ -1,0 +1,1 @@
+The debugger now shows variables that the compiler splits over more than one place. Such a variable showed `<unsupported memory implementation>` before. The debugger assembles the value out of the pieces that the debug info describes, and it reports a variable as unavailable when the compiler optimized a part of the value away, instead of showing the missing bits as zeros.

@@ -4,13 +4,13 @@
 
 use anyhow::anyhow;
 use postcard_rpc::header::{VarHeader, VarSeq};
-use postcard_schema::{Schema, schema};
 use probe_rs::{
-    Session,
+    MemoryMappedRegister as _,
     architecture::{
         arm::{
             self, ApAddress, ApV2Address, ArmDebugInterface,
-            ap::{ApClass, ApRegister, IDR},
+            ap::{ApClass, ApRegister, ApType, IDR},
+            armv6m::Demcr,
             component::Scs,
             dp::{self, Ctrl, DLPIDR, DPIDR, DpRegister, TARGETID},
             memory::{
@@ -23,71 +23,92 @@ use probe_rs::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState,
         },
     },
-    probe::{Probe, WireProtocol as ProbeRsWireProtocol, wlink::WchLink},
+    probe::{Probe, wlink::WchLink},
 };
+use probe_rs_rpc::info::{
+    ApInfo, ComponentTreeNode, DebugPortId, DebugPortInfo, DebugPortInfoNode, DebugPortVersion,
+    DpAddress, FullyQualifiedApAddress, InfoEvent, MinDpSupport, TargetInfoRequest,
+    TargetMetadataRequest, WireFlashSector, WireSessionCore, WireSessionTargetMetadata,
+};
+use probe_rs_rpc::{NoResponse, TargetInfoDataTopic, probe::WireProtocol};
 use probe_rs_target::ScanChainElement;
-use serde::{Deserialize, Serialize};
 
+use crate::rpc::functions::chip::convert::to_wire_memory_region;
+use crate::rpc::functions::core_ops::convert::to_wire_core_type;
+use crate::rpc::functions::probe::convert::from_wire_protocol;
 use crate::{
-    rpc::{
-        Key,
-        functions::{
-            NoResponse, RpcContext, TargetInfoDataTopic, TargetNameResponse,
-            chip::JEP106Code,
-            probe::{DebugProbeEntry, WireProtocol},
-        },
-    },
+    rpc::functions::{RpcContext, convert::lift},
     util::common_options::ProbeOptions,
 };
 
-#[derive(Serialize, Deserialize, Schema)]
-pub struct TargetNameRequest {
-    pub sessid: Key<Session>,
-}
-
-pub async fn target_name(
+pub async fn target_metadata(
     ctx: &mut RpcContext,
     _hdr: VarHeader,
-    request: TargetNameRequest,
-) -> TargetNameResponse {
+    request: TargetMetadataRequest,
+) -> probe_rs_rpc::info::TargetMetadataResponse {
     let session = ctx.session(request.sessid).await;
-    Ok(session.target().name.clone())
+    let target = session.target();
+    Ok(WireSessionTargetMetadata {
+        target_name: target.name.clone(),
+        default_format: target.default_format.clone(),
+        cores: session
+            .list_cores()
+            .into_iter()
+            .map(|(index, core_type)| WireSessionCore {
+                index: index as u32,
+                core_type: to_wire_core_type(core_type),
+            })
+            .collect(),
+        memory_map: target
+            .memory_map
+            .iter()
+            .cloned()
+            .map(to_wire_memory_region)
+            .collect(),
+        flash_sectors: wire_flash_sectors(target),
+    })
 }
 
-#[derive(Serialize, Deserialize, Schema)]
-pub struct TargetInfoRequest {
-    pub probe: DebugProbeEntry,
-    pub speed: Option<u32>,
-    pub connect_under_reset: bool,
-    pub dry_run: bool,
-    pub target_sel: Option<u32>,
-    pub protocol: WireProtocol,
-    /// IR lengths for each TAP in the scan chain, in scan-chain order.
-    ///
-    /// When non-empty, the JTAG auto-detection scan is bypassed and these values are used
-    /// directly. For example, `[5]` specifies a single-TAP chain with IR length 5.
-    #[serde(default)]
-    pub scan_chain: Vec<u8>,
-}
+/// Deduplicated absolute flash sectors for GDB memory-map XML.
+fn wire_flash_sectors(target: &probe_rs::Target) -> Vec<WireFlashSector> {
+    use std::collections::BTreeMap;
+    use std::collections::btree_map::Entry;
 
-impl From<&TargetInfoRequest> for ProbeOptions {
-    fn from(request: &TargetInfoRequest) -> Self {
-        ProbeOptions {
-            chip: None,
-            chip_description_path: None,
-            protocol: match request.protocol {
-                WireProtocol::Jtag => Some(ProbeRsWireProtocol::Jtag),
-                WireProtocol::Swd => Some(ProbeRsWireProtocol::Swd),
-            },
-            non_interactive: true,
-            probe: Some(request.probe.selector().into()),
-            speed: request.speed,
-            connect_under_reset: request.connect_under_reset,
-            cycle_power: false,
-            dry_run: request.dry_run,
-            allow_erase_all: false,
+    let mut regions = BTreeMap::new();
+    for algo in target.flash_algorithms.iter() {
+        let start = algo.flash_properties.address_range.start;
+        let end = if let Some(region) =
+            target.memory_region_by_address(algo.flash_properties.address_range.start)
+        {
+            region.address_range().end
+        } else {
+            algo.flash_properties.address_range.end
+        };
+        let mut sectors = algo.flash_properties.sectors.clone();
+        sectors.sort_by_key(|s| s.address);
+        sectors.push(probe_rs::config::SectorDescription {
+            size: 0,
+            address: end - start,
+        });
+        for (current, next) in sectors.iter().zip(sectors.iter().skip(1)) {
+            let sector = WireFlashSector {
+                start: start + current.address,
+                length: next.address - current.address,
+                blocksize: current.size,
+            };
+            match regions.entry(sector.start) {
+                Entry::Vacant(e) => {
+                    e.insert(sector);
+                }
+                Entry::Occupied(mut e) => {
+                    if sector.blocksize < e.get().blocksize {
+                        e.insert(sector);
+                    }
+                }
+            }
         }
     }
+    regions.into_values().collect()
 }
 
 pub async fn target_info(
@@ -110,206 +131,19 @@ pub async fn target_info(
     )
     .await
     {
-        ctx.publish::<TargetInfoDataTopic>(
-            VarSeq::Seq2(0),
-            &InfoEvent::Message(format!(
-                "Failed to identify target using protocol {}: {e:?}",
-                request.protocol
-            )),
-        )
-        .await?;
+        lift(
+            ctx.publish::<TargetInfoDataTopic>(
+                VarSeq::Seq2(0),
+                &InfoEvent::Message(format!(
+                    "Failed to identify target using protocol {}: {e:?}",
+                    request.protocol
+                )),
+            )
+            .await,
+        )?;
     }
 
     Ok(())
-}
-
-#[derive(Clone, Serialize, Deserialize, Schema)]
-pub enum InfoEvent {
-    Message(String),
-    ProtocolNotSupportedByArch {
-        architecture: String,
-        protocol: WireProtocol,
-    },
-    ProbeInterfaceMissing {
-        interface: String,
-        architecture: String,
-    },
-    Error {
-        architecture: String,
-        error: String,
-    },
-    ArmError {
-        dp_addr: DpAddress,
-        error: String,
-    },
-    Idcode {
-        architecture: String,
-        idcode: Option<u32>,
-    },
-    ArmDp(DebugPortInfo),
-}
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Serialize, Deserialize, Schema)]
-pub enum DpAddress {
-    /// Access the single DP on the bus, assuming there is only one.
-    /// Will cause corruption if multiple are present.
-    Default,
-    /// Select a particular DP on a SWDv2 multidrop bus. The contained `u32` is
-    /// the `TARGETSEL` value to select it.
-    Multidrop(u32),
-}
-
-impl From<dp::DpAddress> for DpAddress {
-    fn from(address: dp::DpAddress) -> Self {
-        match address {
-            dp::DpAddress::Default => DpAddress::Default,
-            dp::DpAddress::Multidrop(target_sel) => DpAddress::Multidrop(target_sel),
-        }
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct DebugPortInfoNode {
-    pub dp_info: DebugPortId,
-    pub targetid: u32,
-    pub dlpidr: u32,
-}
-
-/// The ID of a debug port. Can be used to detect and select devices in a multidrop setup.
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct DebugPortId {
-    /// The revision of the debug port (implementation defined). This is what the designer of the debug port chooses.
-    pub revision: u8,
-    /// The part number of the debug port (determined by the designer).
-    pub part_no: u8,
-    /// The version of this debug port. This is what the selected spec says.
-    pub version: DebugPortVersion,
-    /// Specifies if pushed-find operations are implemented or not.
-    pub min_dp_support: MinDpSupport,
-    /// The JEP106 code of the designer of this debug port.
-    pub designer: JEP106Code,
-}
-
-impl From<&dp::DebugPortId> for DebugPortId {
-    fn from(id: &dp::DebugPortId) -> Self {
-        Self {
-            revision: id.revision,
-            part_no: id.part_no,
-            version: id.version.into(),
-            min_dp_support: match id.min_dp_support {
-                dp::MinDpSupport::NotImplemented => MinDpSupport::NotImplemented,
-                dp::MinDpSupport::Implemented => MinDpSupport::Implemented,
-            },
-            designer: id.designer.into(),
-        }
-    }
-}
-
-/// The version of the debug port.
-#[derive(Debug, PartialEq, Eq, Copy, Clone, Serialize, Deserialize, Schema)]
-pub enum DebugPortVersion {
-    /// Version 0 (not common)
-    DPv0,
-    /// Version 1 (most of the ARM cores feature this version)
-    DPv1,
-    /// Version 2 (**very** rare (only known example is the RP2040))
-    DPv2,
-    /// Version 3 (on ADIv6 devices)
-    DPv3,
-    /// Some unsupported value was encountered!
-    Unsupported(u8),
-}
-
-impl From<dp::DebugPortVersion> for DebugPortVersion {
-    fn from(version: dp::DebugPortVersion) -> Self {
-        match version {
-            dp::DebugPortVersion::DPv0 => DebugPortVersion::DPv0,
-            dp::DebugPortVersion::DPv1 => DebugPortVersion::DPv1,
-            dp::DebugPortVersion::DPv2 => DebugPortVersion::DPv2,
-            dp::DebugPortVersion::DPv3 => DebugPortVersion::DPv3,
-            dp::DebugPortVersion::Unsupported(v) => DebugPortVersion::Unsupported(v),
-        }
-    }
-}
-
-/// Specifies if pushed-find operations are implemented or not.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Schema)]
-pub enum MinDpSupport {
-    /// Pushed-find operations are **not** implemented.
-    NotImplemented,
-    /// Pushed-find operations are implemented.
-    Implemented,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct DebugPortInfo {
-    pub dp_info: DebugPortInfoNode,
-    pub aps: Vec<ApInfo>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub enum ApInfo {
-    MemoryAp {
-        ap_addr: FullyQualifiedApAddress,
-        component_tree: ComponentTreeNode,
-    },
-    ApV2Root {
-        component_tree: ComponentTreeNode,
-    },
-    Unknown {
-        ap_addr: FullyQualifiedApAddress,
-        idr: u32,
-    },
-}
-
-/// Access port address.
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Serialize, Deserialize, Schema)]
-pub struct FullyQualifiedApAddress {
-    /// The address of the debug port this access port belongs to.
-    pub dp: DpAddress,
-    /// The access port number.
-    pub ap: String,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ComponentTreeNode {
-    pub node: String,
-    pub children: Vec<ComponentTreeNode>,
-}
-
-impl postcard_schema::Schema for ComponentTreeNode {
-    const SCHEMA: &'static schema::NamedType = &schema::NamedType {
-        name: "ComponentTreeNode",
-        ty: &schema::DataModelType::Struct(&[
-            &schema::NamedValue {
-                name: "node",
-                ty: <String as ::postcard_schema::Schema>::SCHEMA,
-            },
-            &schema::NamedValue {
-                name: "children",
-                ty: <Vec<()> as ::postcard_schema::Schema>::SCHEMA,
-            },
-        ]),
-    };
-}
-
-impl From<String> for ComponentTreeNode {
-    fn from(node: String) -> Self {
-        Self::new(node)
-    }
-}
-
-impl ComponentTreeNode {
-    fn new(node: String) -> Self {
-        Self {
-            node,
-            children: vec![],
-        }
-    }
-
-    fn push(&mut self, child: impl Into<ComponentTreeNode>) {
-        self.children.push(child.into());
-    }
 }
 
 async fn try_show_info(
@@ -320,19 +154,19 @@ async fn try_show_info(
     connect_under_reset: bool,
     target_sel: Option<u32>,
 ) -> anyhow::Result<()> {
-    probe.select_protocol(ProbeRsWireProtocol::from(protocol))?;
+    probe.select_protocol(from_wire_protocol(protocol))?;
 
     if !scan_chain.is_empty()
-        && let Some(jtag) = probe.try_as_jtag_probe()
+        && let Some(mut chain) = probe.try_as_jtag_chain()
     {
-        let chain = scan_chain
+        let chain_elements = scan_chain
             .iter()
             .map(|&ir_len| ScanChainElement {
                 name: None,
                 ir_len: Some(ir_len),
             })
             .collect::<Vec<_>>();
-        jtag.set_scan_chain(&chain)?;
+        chain.set_chain(&chain_elements);
     }
 
     if connect_under_reset {
@@ -376,7 +210,7 @@ async fn try_show_info(
                     ctx.publish::<TargetInfoDataTopic>(
                         VarSeq::Seq2(0),
                         &InfoEvent::ArmError {
-                            dp_addr: address.into(),
+                            dp_addr: convert::to_wire_dp_address(address),
                             error: format!("{e:?}"),
                         },
                     )
@@ -526,7 +360,7 @@ async fn try_show_arm_dp_info(
     };
 
     if let Err(err) = interface.select_debug_port(dp_address) {
-        return (interface.close(), Err(err.into()));
+        return (interface.close(), Err(anyhow!(err)));
     }
 
     let res = show_arm_info(ctx, &mut *interface, dp_address).await;
@@ -556,13 +390,13 @@ async fn show_arm_info(
         let _ = interface.read_raw_dp_register(dp, Ctrl::ADDRESS)?;
 
         DebugPortInfoNode {
-            dp_info: DebugPortId::from(&dp_info),
+            dp_info: convert::to_wire_debug_port_id(&dp_info),
             targetid,
             dlpidr,
         }
     } else {
         DebugPortInfoNode {
-            dp_info: DebugPortId::from(&dp_info),
+            dp_info: convert::to_wire_debug_port_id(&dp_info),
             targetid: 0,
             dlpidr: 0,
         }
@@ -598,7 +432,7 @@ async fn show_arm_info(
                         };
                         ApInfo::MemoryAp {
                             ap_addr: FullyQualifiedApAddress {
-                                dp: ap_address.dp().into(),
+                                dp: convert::to_wire_dp_address(ap_address.dp()),
                                 ap: ap_address.ap().to_string(),
                             },
                             component_tree: ap_nodes,
@@ -606,7 +440,7 @@ async fn show_arm_info(
                     } else {
                         ApInfo::Unknown {
                             ap_addr: FullyQualifiedApAddress {
-                                dp: ap_address.dp().into(),
+                                dp: convert::to_wire_dp_address(ap_address.dp()),
                                 ap: ap_address.ap().to_string(),
                             },
                             idr: raw_idr,
@@ -645,6 +479,8 @@ fn handle_memory_ap(
     parent: &mut ComponentTreeNode,
 ) -> anyhow::Result<()> {
     let component = {
+        let raw_idr = interface.read_raw_ap_register(access_port, IDR::ADDRESS)?;
+        let idr: IDR = raw_idr.try_into()?;
         let mut memory = interface.memory_interface(access_port)?;
 
         // Check if the AP is accessible
@@ -654,6 +490,18 @@ fn handle_memory_ap(
                 "Memory AP is not accessible, DeviceEn bit not set".to_string(),
             );
             return Ok(());
+        }
+
+        if matches!(
+            idr.TYPE(),
+            ApType::AmbaAhb3 | ApType::AmbaAhb5 | ApType::AmbaAhb5Hprot
+        ) {
+            // Enable DWT here otherwise DWT/ITM/ETM/TPIU won't be visible in component table.
+            // DWT is part of the Cortex-M core and unlikely to show up on a non-AHB bus.
+            // Enabling `DWTENA` on e.g. an APB bus will cause the port to error out.
+            let mut demcr = Demcr(memory.read_word_32(Demcr::get_mmio_address())?);
+            demcr.set_dwtena(true);
+            memory.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
         }
 
         let base_address = memory.base_address()?;
@@ -681,22 +529,26 @@ fn coresight_component_tree(
             let root = if let Some(part) = peripheral_id.determine_part() {
                 format!("{} (ROM Table, Class 1)", part.name())
             } else {
-                match peripheral_id.designer() {
-                    Some(designer) => format!("ROM Table (Class 1), Designer: {designer}"),
-                    None => "ROM Table (Class 1)".to_string(),
-                }
+                let designer = peripheral_id.designer().unwrap_or("<unknown>");
+                format!(
+                    "ROM Table (Class 1), Designer: {}, Part: {:#06x}, Devtype: {:#04x}, Archid: {:#06x}",
+                    designer,
+                    peripheral_id.part(),
+                    peripheral_id.dev_type(),
+                    peripheral_id.arch_id(),
+                )
             };
 
             let mut tree =
                 ComponentTreeNode::new(format!("{:#06x} {}", id.component_address(), root));
             process_vendor_rom_tables(interface, id, table, access_port, &mut tree)?;
-            parent.push(tree);
 
             for entry in table.entries() {
                 let component = entry.component().clone();
 
-                coresight_component_tree(interface, component, access_port, parent)?;
+                coresight_component_tree(interface, component, access_port, &mut tree)?;
             }
+            parent.push(tree);
         }
         Component::CoresightComponent(id) => {
             let peripheral_id = id.peripheral_id();
@@ -742,27 +594,42 @@ fn coresight_component_tree(
             let peripheral_id = id.peripheral_id();
 
             let desc = if let Some(part_desc) = peripheral_id.determine_part() {
-                format!("{: <15} (Generic IP component)", part_desc.name())
+                format!(
+                    "{:#06x} {: <15} (Generic IP Component)",
+                    id.component_address(),
+                    part_desc.name()
+                )
             } else {
-                "Generic IP component".to_string()
+                "Generic IP Component".to_string()
             };
 
             let mut tree = ComponentTreeNode::new(desc);
             process_component_entry(&mut tree, interface, peripheral_id, &component, access_port)?;
+            parent.push(tree);
         }
 
         Component::CoreLinkOrPrimeCellOrSystemComponent(id) => {
-            let desc = "Core Link / Prime Cell / System component";
-            let desc = if let Some(part_desc) = id.peripheral_id().determine_part() {
-                format!("{: <15} ({})", part_desc.name(), desc)
+            let desc = "Core Link / Prime Cell / System Component";
+            let peripheral_id = id.peripheral_id();
+            let part_info = peripheral_id.determine_part();
+
+            let component_description = if let Some(part_info) = part_info {
+                format!("{: <15} ({})", part_info.name(), desc)
             } else {
-                desc.to_string()
+                format!(
+                    "{}, Part: {:#06x}, Devtype: {:#04x}, Archid: {:#06x}, Designer: {}",
+                    desc,
+                    peripheral_id.part(),
+                    peripheral_id.dev_type(),
+                    peripheral_id.arch_id(),
+                    peripheral_id.designer().unwrap_or("<unknown>"),
+                )
             };
 
             parent.push(ComponentTreeNode::new(format!(
                 "{:#06x} {}",
                 id.component_address(),
-                desc
+                component_description
             )));
         }
     };
@@ -892,8 +759,68 @@ async fn show_xtensa_info(
         VarSeq::Seq2(0),
         &InfoEvent::Idcode {
             architecture: "Xtensa".to_string(),
-            idcode: Some(idcode),
+            idcode,
         },
     )
     .await
+}
+
+pub(crate) mod convert {
+    use super::{DebugPortId, DebugPortVersion, DpAddress, MinDpSupport, TargetInfoRequest};
+    use crate::rpc::functions::chip::convert::to_wire_jep106_code;
+    use crate::rpc::functions::probe::convert::from_wire_debug_probe_selector;
+    use crate::util::common_options::ProbeOptions;
+    use probe_rs::{architecture::arm::dp, probe::WireProtocol as ProbeRsWireProtocol};
+    use probe_rs_rpc::probe::WireProtocol;
+
+    impl From<&TargetInfoRequest> for ProbeOptions {
+        fn from(request: &TargetInfoRequest) -> Self {
+            ProbeOptions {
+                chip: None,
+                chip_description_path: None,
+                protocol: match request.protocol {
+                    WireProtocol::Jtag => Some(ProbeRsWireProtocol::Jtag),
+                    WireProtocol::Swd => Some(ProbeRsWireProtocol::Swd),
+                },
+                non_interactive: true,
+                probe: Some(from_wire_debug_probe_selector(request.probe.selector())),
+                speed: request.speed,
+                connect_under_reset: request.connect_under_reset,
+                cycle_power: false,
+                dry_run: request.dry_run,
+                allow_erase_all: false,
+                attach_timeout: None,
+            }
+        }
+    }
+
+    pub(crate) fn to_wire_dp_address(address: dp::DpAddress) -> DpAddress {
+        match address {
+            dp::DpAddress::Default => DpAddress::Default,
+            dp::DpAddress::Multidrop(target_sel) => DpAddress::Multidrop(target_sel),
+        }
+    }
+
+    pub(crate) fn to_wire_debug_port_id(id: &dp::DebugPortId) -> DebugPortId {
+        DebugPortId {
+            revision: id.revision,
+            part_no: id.part_no,
+            version: to_wire_debug_port_version(id.version),
+            min_dp_support: match id.min_dp_support {
+                dp::MinDpSupport::NotImplemented => MinDpSupport::NotImplemented,
+                dp::MinDpSupport::Implemented => MinDpSupport::Implemented,
+            },
+            designer: to_wire_jep106_code(id.designer),
+        }
+    }
+
+    pub(crate) fn to_wire_debug_port_version(version: dp::DebugPortVersion) -> DebugPortVersion {
+        match version {
+            dp::DebugPortVersion::DPv0 => DebugPortVersion::DPv0,
+            dp::DebugPortVersion::DPv1 => DebugPortVersion::DPv1,
+            dp::DebugPortVersion::DPv2 => DebugPortVersion::DPv2,
+            dp::DebugPortVersion::DPv3 => DebugPortVersion::DPv3,
+            dp::DebugPortVersion::Unsupported(v) => DebugPortVersion::Unsupported(v),
+        }
+    }
 }

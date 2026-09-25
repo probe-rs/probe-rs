@@ -4,19 +4,18 @@ use linkme::distributed_slice;
 
 use crate::cmd::dap_server::{
     DebuggerError,
-    debug_adapter::{
-        dap::{
-            adapter::DebugAdapter,
-            dap_types::EvaluateArguments,
-            repl_commands::{EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand},
-            repl_types::ReplCommandArgs,
-        },
-        protocol::ProtocolAdapter,
+    backend::rpc::RpcBackend,
+    debug_adapter::dap::{
+        adapter::DebugAdapter,
+        dap_types::EvaluateArguments,
+        repl_commands::{EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand, async_fn},
+        repl_types::ReplCommandArgs,
     },
-    server::core_data::CoreHandle,
+    server::core_data::CoreData,
 };
-use crate::rpc::functions::stack_trace::StackTraceFrame;
-use crate::util::cli::format_stack_frame;
+use crate::rpc::functions::stack_trace::convert::to_wire_stack_trace_frame_ref;
+use crate::util::style::{ReplAddress, ReplDim, ReplSymbol};
+use probe_rs_rpc::stack_trace::StackTraceFrame;
 
 #[distributed_slice(REPL_COMMANDS)]
 static BACKTRACE: ReplCommand = ReplCommand {
@@ -30,32 +29,77 @@ static BACKTRACE: ReplCommand = ReplCommand {
         args: &[ReplCommandArgs::Required(
             "path (e.g. my_dir/backtrace.yaml)",
         )],
-        handler: save_backtrace_to_yaml,
+        handler: async_fn!(save_backtrace_to_yaml),
     }],
     help_text: "Print the backtrace of the current thread.",
     args: &[],
-    handler: print_backtrace,
+    handler: async_fn!(print_backtrace),
 };
 
-fn save_backtrace_to_yaml(
-    target_core: &mut CoreHandle<'_>,
-    command_arguments: &str,
-    _: &EvaluateArguments,
-    _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
+async fn print_backtrace<'a>(
+    _backend: &'a mut RpcBackend,
+    core_data: &'a mut CoreData,
+    _command_arguments: &'a str,
+    _evaluate_arguments: &'a EvaluateArguments,
+    debug_adapter: &'a mut DebugAdapter,
+) -> EvalResult {
+    let colorize = debug_adapter.supports_ansi_styling;
+
+    let mut response_message = String::new();
+    for (i, frame) in core_data.stack_frames.iter().enumerate() {
+        #[allow(clippy::unwrap_used, reason = "Writing to a string is infallible")]
+        writeln!(
+            &mut response_message,
+            "    Frame {}: {}",
+            i + 1,
+            format_frame(&to_wire_stack_trace_frame_ref(frame), colorize)
+        )
+        .unwrap();
+    }
+
+    Ok(EvalResponse::Message(response_message))
+}
+
+fn format_frame(frame: &StackTraceFrame, colorize: bool) -> String {
+    let mut frame_text = format!(
+        "{} @ {}",
+        ReplSymbol::new(frame.function_name.as_str()).colorize(colorize),
+        ReplAddress::new(format!("{:#x}", frame.program_counter)).colorize(colorize),
+    );
+    #[allow(clippy::unwrap_used, reason = "Writing to a string is infallible")]
+    if frame.is_inlined {
+        write!(
+            &mut frame_text,
+            " {}",
+            ReplDim::new("inline").colorize(colorize)
+        )
+        .unwrap();
+    }
+    #[allow(clippy::unwrap_used, reason = "Writing to a string is infallible")]
+    if let Some(location) = &frame.location {
+        write!(
+            &mut frame_text,
+            "\n        {}",
+            ReplDim::new(location.to_string()).colorize(colorize)
+        )
+        .unwrap();
+    }
+    frame_text
+}
+
+async fn save_backtrace_to_yaml<'a>(
+    _backend: &'a mut RpcBackend,
+    core_data: &'a mut CoreData,
+    command_arguments: &'a str,
+    _evaluate_arguments: &'a EvaluateArguments,
+    _debug_adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
     let mut args = command_arguments.split_whitespace();
-
     let write_to_file = args.next().map(Path::new);
 
-    // Using the `insta` crate to serialize, because they add a couple of transformations to the yaml output,
-    // presumably to make it easier to read.
-    // In our case, we want this backtrace format to be comparable to the unwind tests
-    // in `probe-rs::debug::debuginfo`.
-    // The reason for this is that these 'live' backtraces are used to create the 'master' snapshots,
-    // which is used to compare against backtraces generated from coredumps.
     use insta::_macro_support as insta_yaml;
     let yaml_data = insta_yaml::serialize_value(
-        &target_core.core_data.stack_frames,
+        &core_data.stack_frames,
         insta_yaml::SerializationFormat::Yaml,
     );
 
@@ -66,32 +110,6 @@ fn save_backtrace_to_yaml(
     } else {
         yaml_data
     };
-
-    Ok(EvalResponse::Message(response_message))
-}
-
-fn print_backtrace(
-    target_core: &mut CoreHandle<'_>,
-    _: &str,
-    _: &EvaluateArguments,
-    debug_adapter: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
-) -> EvalResult {
-    // Color gating follows the DAP-negotiated `supportsAnsiStyling` capability,
-    // NOT the server's local `PROBE_RS_COLOR` env var, so the server never
-    // overrules what the client can render.
-    let colorize = Some(debug_adapter.supports_ansi_styling);
-
-    let mut response_message = String::new();
-    for (i, frame) in target_core.core_data.stack_frames.iter().enumerate() {
-        #[allow(clippy::unwrap_used, reason = "Writing to a string is infallible")]
-        writeln!(
-            &mut response_message,
-            "    Frame {}: {}",
-            i + 1,
-            format_stack_frame(&StackTraceFrame::from(frame), colorize)
-        )
-        .unwrap();
-    }
 
     Ok(EvalResponse::Message(response_message))
 }

@@ -1,7 +1,5 @@
-use crate::{
-    rpc::{client::RpcClient, functions::flash::EraseCommand},
-    util::{cli, common_options::ProbeOptions, flash::CliProgressBars},
-};
+use crate::util::{cli, common_options::ProbeOptions, flash::CliProgressBars};
+use probe_rs_rpc_client::RpcClient;
 
 #[derive(clap::Parser)]
 pub struct Cmd {
@@ -27,15 +25,11 @@ impl Cmd {
         };
 
         session
-            .erase(
-                EraseCommand::All,
-                self.read_flasher_rtt,
-                async move |event| {
-                    if let Some(pb) = pb.as_ref() {
-                        pb.handle(event);
-                    }
-                },
-            )
+            .erase_all(self.read_flasher_rtt, async move |event| {
+                if let Some(pb) = pb.as_ref() {
+                    pb.handle(event);
+                }
+            })
             .await?;
 
         Ok(())

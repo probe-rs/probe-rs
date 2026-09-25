@@ -1470,7 +1470,8 @@ impl MemoryInterface for Armv7ar<'_> {
 
                 // We used 32-bit accesses, so swap the 32-bit values if necessary.
                 if core.endianness()? == Endian::Big {
-                    for word in data.chunks_exact_mut(4) {
+                    let (chunks, _rem) = data.as_chunks_mut::<4>();
+                    for word in chunks.iter_mut() {
                         word.reverse();
                     }
                 }
@@ -1635,30 +1636,42 @@ impl MemoryInterface for Armv7ar<'_> {
     fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
         self.halted_access(|core| {
             let len = data.len();
+            // Bytes needed to reach the next 4-byte-aligned address, and bytes left over
+            // after the aligned middle section. Each of these is at most 3.
             let start_extra_count = ((4 - (address % 4) as usize) % 4).min(len);
             let end_extra_count = (len - start_extra_count) % 4;
             assert!(start_extra_count < 4);
             assert!(end_extra_count < 4);
 
-            // Fall back to slower bytewise access if it's not aligned
-            if start_extra_count != 0 || end_extra_count != 0 {
-                for (i, byte) in data.iter().enumerate() {
-                    core.write_word_8(address + (i as u64), *byte)?;
-                }
-                return Ok(());
+            let (head, rest) = data.split_at(start_extra_count);
+            let (middle, tail) = rest.split_at(rest.len() - end_extra_count);
+
+            // Peel off the few unaligned leading bytes, if any. Each of these is a slow,
+            // individual read-modify-write, but there are at most 3 of them.
+            for (i, byte) in head.iter().enumerate() {
+                core.write_word_8(address + i as u64, *byte)?;
             }
 
-            // Make sure we don't try to do an empty but potentially unaligned write
-            // We do a 32 bit write of the remaining bytes that are 4 byte aligned.
-            let mut buffer = vec![0u32; data.len() / 4];
-            let endianness = core.endianness()?;
-            for (bytes, value) in data.chunks_exact(4).zip(buffer.iter_mut()) {
-                *value = match endianness {
-                    Endian::Little => u32::from_le_bytes(bytes.try_into().unwrap()),
-                    Endian::Big => u32::from_be_bytes(bytes.try_into().unwrap()),
-                }
+            // Write the aligned middle section in one go, so it can use the fast DCC
+            // streaming path in `write_32` regardless of how large it is.
+            if !middle.is_empty() {
+                let endianness = core.endianness()?;
+                let (chunks, _rem) = middle.as_chunks::<4>();
+                let words: Vec<u32> = chunks
+                    .iter()
+                    .map(|bytes| match endianness {
+                        Endian::Little => u32::from_le_bytes(*bytes),
+                        Endian::Big => u32::from_be_bytes(*bytes),
+                    })
+                    .collect();
+                core.write_32(address + start_extra_count as u64, &words)?;
             }
-            core.write_32(address, &buffer)?;
+
+            // Peel off the few unaligned trailing bytes, if any.
+            let tail_address = address + start_extra_count as u64 + middle.len() as u64;
+            for (i, byte) in tail.iter().enumerate() {
+                core.write_word_8(tail_address + i as u64, *byte)?;
+            }
 
             Ok(())
         })
@@ -1778,7 +1791,7 @@ mod test {
             FullyQualifiedApAddress, communication_interface::SwdSequence,
             sequences::DefaultArmSequence,
         },
-        probe::DebugProbeError,
+        probe::{BitSequence, DebugProbeError},
     };
 
     use super::*;
@@ -1960,7 +1973,7 @@ mod test {
     }
 
     impl SwdSequence for MockProbe {
-        fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
+        fn swj_sequence(&mut self, _bits: &BitSequence) -> Result<(), DebugProbeError> {
             todo!()
         }
 

@@ -24,10 +24,11 @@ use probe_rs_target::{Chip, CoreType};
 
 use crate::{
     architecture::arm::{
-        ArmDebugInterface, ArmError, DapProbe, FullyQualifiedApAddress, Pins,
+        ArmDebugInterface, ArmError, FullyQualifiedApAddress, Pins,
         core::armv7m::{Aircr, Demcr, Dhcsr, FpCtrl, FpRev1CompX, FpRev2CompX},
         memory::ArmMemoryInterface,
         sequences::{ArmDebugSequence, cortex_m_wait_for_reset},
+        traits::DebugPortWire,
     },
     core::MemoryMappedRegister,
 };
@@ -123,7 +124,7 @@ impl ArmDebugSequence for EFM32xG1 {
         core.write_word_32(Demcr::get_mmio_address(), demcr.into())
     }
 
-    fn reset_hardware_assert(&self, interface: &mut dyn DapProbe) -> Result<(), ArmError> {
+    fn reset_hardware_assert(&self, interface: &mut dyn DebugPortWire) -> Result<(), ArmError> {
         // Pulse RESETn (assert low, then release), ending with reset RELEASED.
         //
         // Two reasons this is a pulse rather than a hold:
@@ -137,11 +138,10 @@ impl ArmDebugSequence for EFM32xG1 {
         //    returning lets that handshake complete.
         let mut n_reset = Pins(0);
         n_reset.set_nreset(true);
-        let n_reset = n_reset.0 as u32;
 
-        interface.swj_pins(0, n_reset, 0)?; // assert (drive low)
+        interface.swj_pins(Pins(0), n_reset, Duration::ZERO)?; // assert (drive low)
         thread::sleep(Duration::from_millis(20));
-        interface.swj_pins(n_reset, n_reset, 0)?; // release (drive high)
+        interface.swj_pins(n_reset, n_reset, Duration::ZERO)?; // release (drive high)
         thread::sleep(Duration::from_millis(10));
         Ok(())
     }

@@ -43,6 +43,7 @@ pub enum Error {
     /// a contributor to implement functionality for all of them. This allows us to
     /// implement new functionality on selected architectures first, and then add support for
     /// the other architectures later.
+    #[ignore_extra_doc_attributes]
     NotImplemented(&'static str),
     /// Some uncategorized error occurred.
     #[display("{0}")]

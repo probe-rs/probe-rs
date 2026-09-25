@@ -40,7 +40,7 @@ fn test_stepping(_definition: &DutDefinition, core: &mut Core) -> TestResult {
 
     let code_load_address = ram_region.range.start;
 
-    core.reset_and_halt(Duration::from_millis(100))?;
+    core.reset_and_halt(Duration::from_millis(500))?;
 
     core.write_8(code_load_address, TEST_CODE)?;
 

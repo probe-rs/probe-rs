@@ -160,17 +160,18 @@ impl<'a> FunctionDie<'a> {
     }
 
     /// Returns the function name described by the die.
-    pub(crate) fn function_name(&self, debug_info: &super::DebugInfo) -> Option<String> {
-        let Some(fn_name_attr) = self.attribute(debug_info, gimli::DW_AT_name) else {
+    pub(crate) fn function_name(&self, debug_info: &'a super::DebugInfo) -> Option<String> {
+        let Some((unit_info, fn_name_attr)) =
+            self.attribute_with_unit(debug_info, gimli::DW_AT_name)
+        else {
             tracing::debug!("DW_AT_name attribute not found, unable to retrieve function name");
             return None;
         };
-        let value = fn_name_attr.value();
-        let gimli::AttributeValue::DebugStrRef(fn_name_ref) = value else {
-            tracing::debug!("Unexpected attribute value for DW_AT_name: {:?}", value);
-            return None;
-        };
-        match debug_info.dwarf.string(fn_name_ref) {
+
+        match debug_info
+            .dwarf
+            .attr_string(&unit_info.unit, fn_name_attr.value())
+        {
             Ok(fn_name_raw) => {
                 let function_name = String::from_utf8_lossy(&fn_name_raw);
 
@@ -178,7 +179,7 @@ impl<'a> FunctionDie<'a> {
                 Some(language.format_function_name(function_name.as_ref(), self, debug_info))
             }
             Err(error) => {
-                tracing::debug!("No value for DW_AT_name: {:?}: error", error);
+                tracing::debug!("No value for DW_AT_name: {:?}", error);
 
                 None
             }
@@ -224,39 +225,46 @@ impl<'a> FunctionDie<'a> {
     /// Resolve an attribute by looking through both the specification and die, or abstract specification and die, entries.
     pub(crate) fn attribute(
         &self,
-        debug_info: &super::DebugInfo,
+        debug_info: &'a super::DebugInfo,
         attribute_name: gimli::DwAt,
     ) -> Option<debug_info::GimliAttribute> {
-        let attribute = collapsed_attribute(
-            &self.function_die,
-            self.specification_die.as_ref().map(|(_, die)| die),
-            attribute_name,
-        );
+        self.attribute_with_unit(debug_info, attribute_name)
+            .map(|(_, attribute)| attribute)
+    }
 
-        if attribute.is_some() {
-            return attribute.cloned();
+    /// Same as [`Self::attribute`], but also returns the compilation unit that the attribute
+    /// belongs to. String and file indices can only be resolved against that unit.
+    pub(crate) fn attribute_with_unit(
+        &self,
+        debug_info: &'a super::DebugInfo,
+        attribute_name: gimli::DwAt,
+    ) -> Option<(&'a UnitInfo, debug_info::GimliAttribute)> {
+        if let Some((unit_info, specification_die)) = &self.specification_die
+            && let Some(attribute) = specification_die.attr(attribute_name)
+        {
+            return Some((unit_info, attribute.clone()));
+        }
+
+        if let Some(attribute) = self.function_die.attr(attribute_name) {
+            return Some((self.unit_info, attribute.clone()));
         }
 
         // For inlined function, the *abstract instance* has to be checked if we cannot find the
         // attribute on the *concrete instance*. The abstract instance my also be a reference to a specification.
-        if let Some((abstract_unit, abstract_die)) = &self.abstract_die {
-            let inlined_specification_die = debug_info.resolve_die_reference(
+        let (abstract_unit, abstract_die) = self.abstract_die.as_ref()?;
+
+        if let Some((specification_unit, specification_die)) = debug_info
+            .resolve_die_reference_with_unit_info(
                 gimli::DW_AT_specification,
                 abstract_die,
                 abstract_unit,
-            );
-            let inline_attribute = collapsed_attribute(
-                abstract_die,
-                inlined_specification_die.as_ref(),
-                attribute_name,
-            );
-
-            if inline_attribute.is_some() {
-                return inline_attribute.cloned();
-            }
+            )
+            && let Some(attribute) = specification_die.attr(attribute_name)
+        {
+            return Some((specification_unit, attribute.clone()));
         }
 
-        None
+        Some((abstract_unit, abstract_die.attr(attribute_name)?.clone()))
     }
 
     /// Try to retrieve the frame base for this function
@@ -264,12 +272,13 @@ impl<'a> FunctionDie<'a> {
         &self,
         debug_info: &super::DebugInfo,
         memory: &mut dyn MemoryInterface,
-        frame_info: StackFrameInfo,
+        frame_info: &StackFrameInfo,
     ) -> Result<Option<u64>, DebugError> {
         match self.unit_info.extract_location(
             debug_info,
             &self.function_die,
             &VariableLocation::Unknown,
+            None,
             memory,
             frame_info,
         )? {
@@ -293,16 +302,4 @@ impl<'a> FunctionDie<'a> {
         };
         unit.parent_offset(offset).map(|parent| (unit, parent))
     }
-}
-
-// Try to retrieve the attribute from the specification or the function DIE.
-fn collapsed_attribute<'a>(
-    function_die: &'a Die,
-    specification_die: Option<&'a Die>,
-    attribute_name: gimli::DwAt,
-) -> Option<&'a debug_info::GimliAttribute> {
-    specification_die
-        .as_ref()
-        .and_then(|specification_die| specification_die.attr(attribute_name))
-        .or_else(|| function_die.attr(attribute_name))
 }

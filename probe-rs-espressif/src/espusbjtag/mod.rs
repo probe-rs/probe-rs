@@ -13,8 +13,8 @@ use probe_rs::{
         },
     },
     probe::{
-        AutoImplementJtagAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-        JtagAccess, JtagDriverState, ProbeFactory, RawJtagIo, WireProtocol,
+        BitbangJtag, DebugProbe, DebugProbeError, DebugProbeSelector, JtagChain, JtagChainAccess,
+        JtagChainState, ProbeFactory, TapState, WireProtocol, list::ProbeListItem,
     },
 };
 
@@ -36,11 +36,11 @@ impl ProbeFactory for EspUsbJtagFactory {
 
         Ok(Box::new(EspUsbJtag {
             protocol,
-            jtag_state: JtagDriverState::default(),
+            jtag_state: JtagChainState::default(),
         }))
     }
 
-    fn list_probes(&self) -> Vec<DebugProbeInfo> {
+    fn list_probes(&self) -> Vec<ProbeListItem> {
         protocol::list_espjtag_devices()
     }
 }
@@ -50,35 +50,37 @@ impl ProbeFactory for EspUsbJtagFactory {
 pub struct EspUsbJtag {
     protocol: ProtocolHandler,
 
-    jtag_state: JtagDriverState,
+    jtag_state: JtagChainState,
 }
 
-impl RawJtagIo for EspUsbJtag {
-    fn shift_bit(
-        &mut self,
-        tms: bool,
-        tdi: bool,
-        capture_tdo: bool,
-    ) -> Result<(), DebugProbeError> {
-        self.jtag_state.state.update(tms);
+impl BitbangJtag for EspUsbJtag {
+    fn tap_state(&mut self) -> &mut TapState {
+        &mut self.jtag_state.tap_state
+    }
+
+    fn shift(&mut self, tms: bool, tdi: bool, capture_tdo: bool) -> Result<(), DebugProbeError> {
         self.protocol.shift_bit(tms, tdi, capture_tdo)?;
         Ok(())
     }
 
-    fn read_captured_bits(&mut self) -> Result<BitVec, DebugProbeError> {
+    fn flush(&mut self) -> Result<(), DebugProbeError> {
+        Ok(())
+    }
+
+    fn captured(&mut self) -> Result<BitVec, DebugProbeError> {
         self.protocol.read_captured_bits()
-    }
-
-    fn state_mut(&mut self) -> &mut JtagDriverState {
-        &mut self.jtag_state
-    }
-
-    fn state(&self) -> &JtagDriverState {
-        &self.jtag_state
     }
 }
 
-impl AutoImplementJtagAccess for EspUsbJtag {}
+impl JtagChainAccess for EspUsbJtag {
+    fn chain_state(&mut self) -> &mut JtagChainState {
+        &mut self.jtag_state
+    }
+
+    fn chain_state_ref(&self) -> &JtagChainState {
+        &self.jtag_state
+    }
+}
 
 impl DebugProbe for EspUsbJtag {
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
@@ -111,7 +113,7 @@ impl DebugProbe for EspUsbJtag {
     fn attach(&mut self) -> Result<(), DebugProbeError> {
         tracing::debug!("Attaching to ESP USB JTAG");
 
-        self.select_target(0)
+        Ok(())
     }
 
     fn detach(&mut self) -> Result<(), crate::Error> {
@@ -136,8 +138,8 @@ impl DebugProbe for EspUsbJtag {
         Ok(())
     }
 
-    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JtagAccess> {
-        Some(self)
+    fn try_as_jtag_chain(&mut self) -> Option<JtagChain<'_>> {
+        Some(JtagChain::new(self))
     }
 
     fn try_get_riscv_interface_builder<'probe>(

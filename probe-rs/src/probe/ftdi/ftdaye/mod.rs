@@ -5,16 +5,16 @@ use std::io::{self, Read, Write};
 use std::time::Duration;
 
 use nusb::{
-    DeviceInfo, MaybeFuture,
+    DeviceInfo, Endpoint, MaybeFuture,
     descriptors::TransferType,
-    transfer::{ControlOut, ControlType, Direction, Recipient},
+    transfer::{Bulk, ControlOut, ControlType, Direction, In, Out, Recipient},
 };
 
 use error::FtdiError;
 use tracing::{debug, trace, warn};
 
 use crate::probe::DebugProbeError;
-use crate::probe::usb_util::InterfaceExt;
+use crate::probe::usb_util::{BulkReadExt, BulkWriteExt};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ChipType {
@@ -80,6 +80,11 @@ struct FtdiContext {
     /// USB device handle
     handle: nusb::Interface,
 
+    /// The bulk endpoints. The driver claims them one time. A transfer therefore does not have the
+    /// cost to open and to close an endpoint.
+    read_endpoint: Endpoint<Bulk, In>,
+    write_endpoint: Endpoint<Bulk, Out>,
+
     /// FTDI device interface
     interface: Interface,
 
@@ -88,7 +93,6 @@ struct FtdiContext {
 
     read_queue: VecDeque<u8>,
     read_buffer: Box<[u8]>,
-    max_packet_size: usize,
 
     bitbang: Option<BitMode>,
 }
@@ -181,11 +185,9 @@ impl FtdiContext {
 
             // Read from USB
             if !data.is_empty() {
-                let read = self.handle.read_bulk(
-                    self.interface.read_ep(),
-                    &mut self.read_buffer,
-                    self.usb_read_timeout,
-                )?;
+                let read = self
+                    .read_endpoint
+                    .read_bulk(&mut self.read_buffer, self.usb_read_timeout)?;
 
                 tracing::debug!("Read {:02x?} bytes from USB", &self.read_buffer[..read]);
 
@@ -222,12 +224,11 @@ impl FtdiContext {
     }
 
     fn write_data(&mut self, data: &[u8]) -> io::Result<usize> {
-        let mut total = 0;
-        for chunk in data.chunks(self.max_packet_size) {
-            total +=
-                self.handle
-                    .write_bulk(self.interface.write_ep(), chunk, self.usb_write_timeout)?;
-        }
+        // Send all the data in one transfer. The host controller divides the transfer into packets
+        // and sends these packets one after the other.
+        let total = self
+            .write_endpoint
+            .write_bulk(data, self.usb_write_timeout)?;
 
         tracing::debug!("wrote {} bytes", total);
 
@@ -426,15 +427,23 @@ impl Device {
 
         tracing::debug!("Opened FTDI device: {:?}", chip_type);
 
+        let read_endpoint = handle
+            .endpoint::<Bulk, In>(interface.read_ep())
+            .map_err(|e| open_error(io::Error::from(e), "claiming the IN endpoint"))?;
+        let write_endpoint = handle
+            .endpoint::<Bulk, Out>(interface.write_ep())
+            .map_err(|e| open_error(io::Error::from(e), "claiming the OUT endpoint"))?;
+
         Ok(Self {
             context: FtdiContext {
                 handle,
+                read_endpoint,
+                write_endpoint,
                 interface,
                 usb_read_timeout: Duration::from_secs(5),
                 usb_write_timeout: Duration::from_secs(5),
                 read_queue: VecDeque::new(),
                 read_buffer: vec![0; max_packet_size].into_boxed_slice(),
-                max_packet_size,
                 bitbang: None,
             },
             chip_type,

@@ -1,1 +1,0 @@
-Fixed the GDB stub sometimes reporting a spurious `SIGINT` right after `continue`, halting the debugger one instruction past the breakpoint instead of running to the next one. The resume path now waits for the core to actually leave the halted state before polling for the next stop.

@@ -118,8 +118,9 @@ impl MemoryInterface for MockMemory {
 
         self.read_8(address, &mut buff)?;
 
-        for (i, chunk) in buff.chunks_exact(4).enumerate() {
-            data[i] = u32::from_le_bytes(chunk.try_into().unwrap());
+        let (chunk, _rem) = buff.as_chunks::<4>();
+        for (i, chunk) in chunk.iter().enumerate() {
+            data[i] = u32::from_le_bytes(*chunk);
         }
 
         Ok(())

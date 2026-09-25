@@ -1,26 +1,9 @@
-use std::time::Duration;
-
-use crate::rpc::{
-    Key,
-    functions::{NoResponse, RpcContext},
-};
 use postcard_rpc::header::VarHeader;
-use postcard_schema::Schema;
-use probe_rs::Session;
-use serde::{Deserialize, Serialize};
+use probe_rs_rpc::reset::{ResetCoreAndHaltRequest, ResetCoreRequest};
 
-#[derive(Serialize, Deserialize, Schema)]
-pub struct ResetCoreRequest {
-    pub sessid: Key<Session>,
-    pub core: u32,
-}
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct ResetCoreAndHaltRequest {
-    pub sessid: Key<Session>,
-    pub core: u32,
-    pub timeout: Duration,
-}
+use crate::rpc::functions::{RpcContext, convert::lift};
+use probe_rs_rpc::core_ops::WireCoreInformation;
+use probe_rs_rpc::{NoResponse, RpcResult};
 
 pub async fn reset(
     ctx: &mut RpcContext,
@@ -28,8 +11,8 @@ pub async fn reset(
     request: ResetCoreRequest,
 ) -> NoResponse {
     let mut session = ctx.session(request.sessid).await;
-    let mut core = session.core(request.core as usize)?;
-    core.reset()?;
+    let mut core = lift(session.core(request.core as usize))?;
+    lift(core.reset())?;
     Ok(())
 }
 
@@ -37,9 +20,9 @@ pub async fn reset_and_halt(
     ctx: &mut RpcContext,
     _header: VarHeader,
     request: ResetCoreAndHaltRequest,
-) -> NoResponse {
+) -> RpcResult<WireCoreInformation> {
     let mut session = ctx.session(request.sessid).await;
-    let mut core = session.core(request.core as usize)?;
-    core.reset_and_halt(request.timeout)?;
-    Ok(())
+    let mut core = lift(session.core(request.core as usize))?;
+    let info = lift(core.reset_and_halt(request.timeout))?;
+    Ok(crate::rpc::functions::core_ops::convert::to_wire_core_information(info))
 }

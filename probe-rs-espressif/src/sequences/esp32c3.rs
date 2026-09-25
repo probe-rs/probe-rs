@@ -9,10 +9,7 @@ use crate::sequences::esp::EspBreakpointHandler;
 use probe_rs::{
     Error, MemoryInterface,
     architecture::riscv::{
-        Dmcontrol, Dmstatus, Riscv32,
-        communication_interface::{
-            MemoryAccessMethod, RiscvBusAccess, RiscvCommunicationInterface,
-        },
+        Dmcontrol, Dmstatus, Riscv32, communication_interface::RiscvCommunicationInterface,
         sequences::RiscvDebugSequence,
     },
     semihosting::{SemihostingCommand, UnknownCommandDetails},
@@ -34,7 +31,8 @@ impl ESP32C3 {
         // disable super wdt
         interface.write_word_32(0x600080B0, 0x8F1D312A)?; // write protection off
         let current = interface.read_word_32(0x600080AC)?;
-        interface.write_word_32(0x600080AC, current | (1 << 31))?; // set RTC_CNTL_SWD_AUTO_FEED_EN
+        // set RTC_CNTL_SWD_DISABLE and RTC_CNTL_SWD_AUTO_FEED_EN
+        interface.write_word_32(0x600080AC, current | (1 << 30) | (1 << 31))?;
         interface.write_word_32(0x600080B0, 0x0)?; // write protection on
 
         // tg0 wdg
@@ -54,43 +52,10 @@ impl ESP32C3 {
 
         Ok(())
     }
-
-    fn configure_memory_access(
-        &self,
-        interface: &mut RiscvCommunicationInterface<'_>,
-    ) -> Result<(), Error> {
-        let memory_access_config = interface.memory_access_config();
-
-        let accesses = [
-            RiscvBusAccess::A8,
-            RiscvBusAccess::A16,
-            RiscvBusAccess::A32,
-            RiscvBusAccess::A64,
-            RiscvBusAccess::A128,
-        ];
-        for access in accesses {
-            // External data/instruction bus
-            // Loading external memory is slower than the CPU. If we can't access something via the
-            // system bus, select the waiting program buffer method.
-            memory_access_config.set_region_override(
-                access,
-                0x3C00_0000..0x3C80_0000,
-                MemoryAccessMethod::WaitingProgramBuffer,
-            );
-            memory_access_config.set_region_override(
-                access,
-                0x4200_0000..0x4280_0000,
-                MemoryAccessMethod::WaitingProgramBuffer,
-            );
-        }
-
-        Ok(())
-    }
 }
 
 impl RiscvDebugSequence for ESP32C3 {
     fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), Error> {
-        self.configure_memory_access(interface)?;
         self.disable_wdts(interface)?;
 
         Ok(())

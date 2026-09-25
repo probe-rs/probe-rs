@@ -1,0 +1,1 @@
+Stack unwinding recovers the interrupted frame of an Xtensa exception or interrupt from the context frame that the `xtensa-lx-rt` stub saves, so a backtrace through a handler names the cause and points at the interrupted instruction.

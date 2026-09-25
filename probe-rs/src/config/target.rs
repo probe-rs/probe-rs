@@ -9,6 +9,7 @@ use crate::{
         riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
         xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
     },
+    flashing::DebugFlashSequence,
     rtt::ScanRegion,
 };
 use probe_rs_target::{
@@ -44,6 +45,9 @@ pub struct Target {
     pub jtag: Option<Jtag>,
     /// The default executable format for the target.
     pub default_format: Option<String>,
+    /// Skip the reset that normally precedes RAM flashing when booting from RAM. See
+    /// [`Chip::skip_reset_on_ram_boot`](probe_rs_target::Chip::skip_reset_on_ram_boot).
+    pub skip_reset_on_ram_boot: bool,
 }
 
 impl std::fmt::Debug for Target {
@@ -138,6 +142,7 @@ impl Target {
             rtt_scan_regions,
             jtag: chip.jtag.clone(),
             default_format: chip.default_binary_format.clone(),
+            skip_reset_on_ram_boot: chip.skip_reset_on_ram_boot,
         }
     }
 
@@ -266,6 +271,20 @@ pub enum DebugSequence {
     Riscv(Arc<dyn RiscvDebugSequence>),
     /// An Xtensa debug sequence.
     Xtensa(Arc<dyn XtensaDebugSequence>),
+}
+
+impl DebugSequence {
+    /// Return the host-side flash sequence for this target, if one is registered.
+    ///
+    /// This delegates to the architecture-specific sequence method, providing a
+    /// single architecture-agnostic entry point for the flash loader.
+    pub fn debug_flash_sequence(&self) -> Option<Arc<dyn DebugFlashSequence>> {
+        match self {
+            DebugSequence::Arm(seq) => seq.debug_flash_sequence(),
+            DebugSequence::Riscv(seq) => seq.debug_flash_sequence(),
+            DebugSequence::Xtensa(seq) => seq.debug_flash_sequence(),
+        }
+    }
 }
 
 pub(crate) trait CoreExt {

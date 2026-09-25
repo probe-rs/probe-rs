@@ -36,6 +36,7 @@ impl EspBreakpointHandler {
         details: UnknownCommandDetails,
     ) -> Result<Option<SemihostingCommand>, crate::Error> {
         match details.operation {
+            // There is no 0x103, Xtensa CPUs can set a breakpoint without semihosting
             0x116 => Self::read_panic_reason(arch, details.parameter),
             _ => Ok(Some(SemihostingCommand::Unknown(details))),
         }

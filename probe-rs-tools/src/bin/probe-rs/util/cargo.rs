@@ -1,7 +1,7 @@
 use anyhow::Result;
 
 use cargo_metadata::Message;
-use probe_rs::InstructionSet;
+use serde::Deserialize;
 
 use std::process::{Command, Stdio};
 
@@ -121,28 +121,180 @@ pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<Artifact, Arti
     }
 }
 
-/// Returns the target instruction set for the given target triple, or the current cargo project.
-pub fn target_instruction_set(target: Option<&str>) -> Option<InstructionSet> {
-    cargo_target(target).and_then(|target| InstructionSet::from_target_triple(&target))
-}
-
-/// Returns the target instruction set for the given target triple, or the current cargo project.
+/// Returns the cargo target triple from CLI, env, or hierarchical Cargo config.
+///
+/// Resolution order matches Cargo for `build.target`:
+/// 1. Explicit `--target` (`target` argument)
+/// 2. `CARGO_BUILD_TARGET` environment variable
+/// 3. `build.target` in `.cargo/config{,.toml}`, walking from the current directory
+///    up to the filesystem root, then `$CARGO_HOME`
 pub fn cargo_target(target: Option<&str>) -> Option<String> {
     if let Some(target) = target {
         return Some(target.to_string());
     }
 
-    let cargo_config = cargo_config2::Config::load().ok()?;
-    cargo_config
-        .build
-        .target
-        .as_ref()
-        .and_then(|ts| Some(ts.first()?.triple().to_string()))
+    if let Ok(target) = std::env::var("CARGO_BUILD_TARGET")
+        && !target.is_empty()
+    {
+        return Some(target);
+    }
+
+    let cwd = std::env::current_dir().ok()?;
+    build_target_from_cargo_config(&cwd)
+}
+
+fn build_target_from_cargo_config(start_dir: &Path) -> Option<String> {
+    for dir in start_dir.ancestors() {
+        if let Some(target) = read_build_target_from_cargo_dir(&dir.join(".cargo")) {
+            return Some(target);
+        }
+    }
+
+    let cargo_home = std::env::var_os("CARGO_HOME")
+        .map(PathBuf::from)
+        .or_else(|| directories::UserDirs::new().map(|dirs| dirs.home_dir().join(".cargo")))?;
+
+    read_build_target_from_cargo_dir(&cargo_home)
+}
+
+/// Prefer `.cargo/config` over `.cargo/config.toml` when both exist (Cargo behavior).
+fn read_build_target_from_cargo_dir(cargo_dir: &Path) -> Option<String> {
+    for name in ["config", "config.toml"] {
+        let path = cargo_dir.join(name);
+        if path.is_file() {
+            return read_build_target(&path);
+        }
+    }
+    None
+}
+
+fn read_build_target(path: &Path) -> Option<String> {
+    let contents = std::fs::read_to_string(path).ok()?;
+    let config: CargoConfigFile = toml::from_str(&contents).ok()?;
+    match config.build?.target? {
+        BuildTarget::One(target) => Some(target),
+        BuildTarget::Many(targets) => targets.into_iter().next(),
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct CargoConfigFile {
+    build: Option<BuildTable>,
+}
+
+#[derive(Debug, Deserialize)]
+struct BuildTable {
+    target: Option<BuildTarget>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum BuildTarget {
+    One(String),
+    Many(Vec<String>),
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::fs;
+
+    #[test]
+    fn read_build_target_string() {
+        let dir = tempfile_dir("string_target");
+        write_cargo_config(
+            &dir,
+            r#"
+[build]
+target = "thumbv7m-none-eabi"
+"#,
+        );
+
+        assert_eq!(
+            build_target_from_cargo_config(&dir).as_deref(),
+            Some("thumbv7m-none-eabi")
+        );
+    }
+
+    #[test]
+    fn read_build_target_array() {
+        let dir = tempfile_dir("array_target");
+        write_cargo_config(
+            &dir,
+            r#"
+[build]
+target = ["thumbv7em-none-eabihf", "thumbv7m-none-eabi"]
+"#,
+        );
+
+        assert_eq!(
+            build_target_from_cargo_config(&dir).as_deref(),
+            Some("thumbv7em-none-eabihf")
+        );
+    }
+
+    #[test]
+    fn prefers_nearest_config() {
+        let root = tempfile_dir("nearest_root");
+        write_cargo_config(
+            &root,
+            r#"
+[build]
+target = "thumbv6m-none-eabi"
+"#,
+        );
+
+        let nested = root.join("nested");
+        fs::create_dir_all(nested.join(".cargo")).unwrap();
+        write_cargo_config(
+            &nested,
+            r#"
+[build]
+target = "thumbv7m-none-eabi"
+"#,
+        );
+
+        assert_eq!(
+            build_target_from_cargo_config(&nested).as_deref(),
+            Some("thumbv7m-none-eabi")
+        );
+    }
+
+    #[test]
+    fn prefers_config_without_toml_extension() {
+        let dir = tempfile_dir("config_pref");
+        let cargo_dir = dir.join(".cargo");
+        fs::create_dir_all(&cargo_dir).unwrap();
+        fs::write(
+            cargo_dir.join("config.toml"),
+            r#"
+[build]
+target = "from-toml"
+"#,
+        )
+        .unwrap();
+        fs::write(
+            cargo_dir.join("config"),
+            r#"
+[build]
+target = "from-config"
+"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            build_target_from_cargo_config(&dir).as_deref(),
+            Some("from-config")
+        );
+    }
+
+    #[test]
+    fn cargo_target_explicit_overrides_config() {
+        assert_eq!(
+            cargo_target(Some("thumbv7m-none-eabi")).as_deref(),
+            Some("thumbv7m-none-eabi")
+        );
+    }
 
     #[test]
     fn get_binary_artifact() {
@@ -332,6 +484,26 @@ mod test {
             build_artifact(&work_dir, &args).expect("Failed to get artifact path.");
 
         assert_eq!(binary_artifact.path(), expected_path);
+    }
+
+    fn write_cargo_config(dir: &Path, contents: &str) {
+        let cargo_dir = dir.join(".cargo");
+        fs::create_dir_all(&cargo_dir).unwrap();
+        fs::write(cargo_dir.join("config.toml"), contents).unwrap();
+    }
+
+    fn tempfile_dir(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "probe-rs-cargo-target-{}-{}-{}",
+            name,
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::create_dir_all(&dir).unwrap();
+        dir
     }
 
     /// Return the path to a test project, located in

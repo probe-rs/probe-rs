@@ -1,0 +1,1 @@
+RISC-V: a stack unwind that continues without debug info no longer repeats the frame that it comes from. It now reads the return address and the frame pointer of the frame that it unwinds, so that the calling frames have the correct frame base. Repeated frames had a wrong frame base and showed local variables from unrelated memory.

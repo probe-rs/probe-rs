@@ -2,10 +2,16 @@ use super::CmsisDapDevice;
 use crate::probe::{
     BoxedProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
     cmsisdap::{CmsisDapFactory, commands::CmsisDapError, commands::DEFAULT_USB_TIMEOUT},
+    list::{ProbeListItem, usb_probe_accessibility},
 };
 #[cfg(feature = "cmsisdap_v1")]
 use hidapi::HidApi;
-use nusb::{DeviceInfo, MaybeFuture, descriptors::TransferType, transfer::Direction};
+use nusb::{
+    DeviceInfo, MaybeFuture,
+    descriptors::TransferType,
+    transfer::{Bulk, Direction, In, Out},
+};
+use std::io;
 
 const USB_CLASS_HID: u8 = 0x03;
 const USB_CMSIS_DAP_CLASS: u8 = 0xFF;
@@ -17,13 +23,23 @@ const USB_CMSIS_DAP_SUBCLASS: u8 = 0;
 /// to permission or driver errors, so it falls back to listing only
 /// HID devices if it does not find any suitable devices.
 #[tracing::instrument(skip_all)]
-pub fn list_cmsisdap_devices() -> Vec<DebugProbeInfo> {
+pub fn list_cmsisdap_devices() -> Vec<ProbeListItem> {
     tracing::debug!("Searching for CMSIS-DAP probes using nusb");
 
     #[cfg_attr(not(feature = "cmsisdap_v1"), expect(unused_mut))]
-    let mut probes = match nusb::list_devices().wait() {
+    let mut probes: Vec<ProbeListItem> = match nusb::list_devices().wait() {
         Ok(devices) => devices
-            .flat_map(|device| get_cmsisdap_info(&device, false))
+            .flat_map(|device| {
+                // A single USB device can yield multiple entries (v1/v2 interfaces); give each
+                // entry the same accessibility for that device.
+                let accessibility = usb_probe_accessibility(&device);
+                get_cmsisdap_info(&device, false)
+                    .into_iter()
+                    .map(move |info| ProbeListItem {
+                        info,
+                        accessibility,
+                    })
+            })
             .collect(),
         Err(e) => {
             tracing::warn!("error listing devices with nusb: {e}");
@@ -42,13 +58,14 @@ pub fn list_cmsisdap_devices() -> Vec<DebugProbeInfo> {
         for device in api.device_list() {
             if let Some(info) = get_cmsisdap_hid_info(device) {
                 if !probes.iter().any(|p| {
-                    p.vendor_id == info.vendor_id
-                        && p.product_id == info.product_id
-                        && p.serial_number.as_deref().unwrap_or("")
+                    p.info.vendor_id == info.vendor_id
+                        && p.info.product_id == info.product_id
+                        && p.info.serial_number.as_deref().unwrap_or("")
                             == info.serial_number.as_deref().unwrap_or("")
                 }) {
                     tracing::trace!("Adding new HID-only probe {:?}", info);
-                    probes.push(info)
+                    // HID-only probes are not opened over usbfs, so the access check doesn't apply.
+                    probes.push(ProbeListItem::accessible(info))
                 } else {
                     tracing::trace!("Ignoring duplicate {:?}", info);
                 }
@@ -276,14 +293,19 @@ pub fn open_v2_device(
             }
 
             // Detect a third bulk EP which will be for SWO streaming
-            let mut swo_ep = None;
+            let mut swo_ep_addr = None;
 
             if eps.len() > 2
                 && eps[2].transfer_type() == TransferType::Bulk
                 && eps[2].direction() == Direction::In
             {
-                swo_ep = Some((eps[2].address(), eps[2].max_packet_size()));
+                swo_ep_addr = Some(eps[2].address());
             }
+
+            let out_ep_addr = eps[0].address();
+            let in_ep_addr = eps[1].address();
+            let max_packet_size = eps[1].max_packet_size();
+
             // Attempt to claim this interface
             match device.claim_interface(interface.interface_number()).wait() {
                 Ok(handle) => {
@@ -293,12 +315,31 @@ pub fn open_v2_device(
                         device_info.product_id(),
                         device_info.device_version(),
                     )?;
+
+                    // Claim the bulk endpoints once and keep them for the
+                    // lifetime of the device, so transfers don't pay the
+                    // per-call endpoint setup/teardown cost.
+                    let out_ep = handle
+                        .endpoint::<Bulk, Out>(out_ep_addr)
+                        .map_err(|e| ProbeCreationError::Usb(io::Error::from(e)))?;
+                    let in_ep = handle
+                        .endpoint::<Bulk, In>(in_ep_addr)
+                        .map_err(|e| ProbeCreationError::Usb(io::Error::from(e)))?;
+                    let swo_ep = match swo_ep_addr {
+                        Some(addr) => Some(
+                            handle
+                                .endpoint::<Bulk, In>(addr)
+                                .map_err(|e| ProbeCreationError::Usb(io::Error::from(e)))?,
+                        ),
+                        None => None,
+                    };
+
                     return Ok(Some(CmsisDapDevice::V2 {
                         handle,
-                        out_ep: eps[0].address(),
-                        in_ep: eps[1].address(),
+                        out_ep,
+                        in_ep,
                         swo_ep,
-                        max_packet_size: eps[1].max_packet_size(),
+                        max_packet_size,
                         usb_timeout: DEFAULT_USB_TIMEOUT,
                     }));
                 }

@@ -11,7 +11,8 @@ permissions:
   pull-requests: write
 
 env:
-  SCHEMA_PATH: probe-rs-tools/src/bin/probe-rs/cmd/dap_server/debug_adapter/dap/debugProtocol.json
+  SCHEMA_JSON: probe-rs-tools/src/bin/probe-rs/cmd/dap_server/debug_adapter/dap/debugProtocol.json
+  SCHEMA_RS: probe-rs-tools/src/bin/probe-rs/cmd/dap_server/debug_adapter/dap/debugProtocol.rs
   SCHEMA_URL: https://microsoft.github.io/debug-adapter-protocol/debugAdapterProtocol.json
   CHANGELOG_FRAGMENT: changelog/changed-dap-protocol-schema.md
 
@@ -20,12 +21,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Fetch latest schema
         id: fetch
         run: |
-          curl -fLJs -D headers.txt "$SCHEMA_URL" -o "$SCHEMA_PATH"
+          curl -fLJs -D headers.txt "$SCHEMA_URL" -o "$SCHEMA_JSON"
 
           # Extract the upstream Last-Modified header and reformat to YYYY-MM-DD.
           # Falls back to today's date if the header is missing for any reason.
@@ -39,10 +40,13 @@ jobs:
           fi
           rm headers.txt
 
+      - name: Regenerate Rust types
+        run: cargo xtask update-dap-schema
+
       - name: Check for changes
         id: diff
         run: |
-          if git diff --quiet -- "$SCHEMA_PATH"; then
+          if git diff --quiet -- "$SCHEMA_JSON" "$SCHEMA_RS"; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -64,7 +68,7 @@ jobs:
             echo "See the **Files changed** tab for the full diff."
             echo
             echo "---"
-            echo "Generated types live in \`dap_types.rs\` via the \`schemafy!\` macro."
+            echo "Rust types in \`debugProtocol.rs\` were regenerated with \`cargo xtask update-dap-schema\` (schemafy)."
             echo "If CI fails, the upstream schema introduced a breaking change that needs manual reconciliation."
           } > pr-body.md
 
@@ -73,10 +77,11 @@ jobs:
         uses: peter-evans/create-pull-request@v8
         with:
           branch: chore/update-dap-protocol
-          commit-message: "chore(dap): update debugProtocol.json"
-          title: "chore(dap): update debugProtocol.json"
+          commit-message: "chore(dap): update debugProtocol schema"
+          title: "chore(dap): update debugProtocol schema"
           body-path: pr-body.md
           delete-branch: true
           add-paths: |
-            ${{ env.SCHEMA_PATH }}
+            ${{ env.SCHEMA_JSON }}
+            ${{ env.SCHEMA_RS }}
             ${{ env.CHANGELOG_FRAGMENT }}

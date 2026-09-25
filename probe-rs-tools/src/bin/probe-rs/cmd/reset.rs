@@ -1,8 +1,8 @@
 use crate::{
     CoreOptions,
-    rpc::client::RpcClient,
     util::{cli, common_options::ProbeOptions},
 };
+use probe_rs_rpc_client::RpcClient;
 
 #[derive(clap::Parser)]
 pub struct Cmd {

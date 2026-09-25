@@ -1,0 +1,55 @@
+[package]
+name = "probe-rs-rpc-client"
+version = "0.1.0"
+description = "A client for the probe-rs RPC interface"
+edition.workspace = true
+documentation.workspace = true
+homepage.workspace = true
+repository.workspace = true
+readme = "README.md"
+license.workspace = true
+rust-version.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+[package.metadata.release]
+shared-version = false
+
+[features]
+default = []
+remote = [
+    "probe-rs-rpc/remote",
+    "dep:rustls",
+    "dep:tokio-tungstenite",
+    "dep:http",
+    "dep:futures-util",
+    "dep:tokio-util",
+    "tokio/io-util",
+    "tokio/process",
+]
+
+[dependencies]
+probe-rs-rpc = { workspace = true }
+postcard = { version = "1.0", features = ["use-std"] }
+postcard-rpc = { version = "0.12.0", features = ["use-std"] }
+postcard-schema = { version = "0.2.0", features = ["use-std", "derive"] }
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1.0", features = ["fs", "macros", "net", "sync", "time"] }
+sha2 = "0.11"
+docsplay = { workspace = true }
+thiserror = { workspace = true }
+tracing = "0.1"
+futures-util = { version = "0.3", optional = true }
+tokio-util = { version = "0.7", optional = true }
+http = { version = "1.4", optional = true }
+rustls = { version = "0.23", default-features = false, features = [
+    "std",
+    "ring",
+], optional = true }
+tokio-tungstenite = { version = "0.30", features = [
+    "rustls-tls-webpki-roots",
+], optional = true }
+
+[lints]
+workspace = true

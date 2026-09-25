@@ -1,5 +1,6 @@
 [package]
 name = "probe-rs-linux"
+description = "Linux debug probe backends built on top of the probe-rs crate"
 version.workspace = true
 edition.workspace = true
 documentation.workspace = true
@@ -13,10 +14,8 @@ rust-version.workspace = true
 probe-rs.workspace = true
 
 bitfield = "0.19"
-bitvec = "1"
 docsplay.workspace = true
 thiserror.workspace = true
-tracing = "0.1"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gpiocdev = "0.8"

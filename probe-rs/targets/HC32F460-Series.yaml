@@ -1,0 +1,476 @@
+name: HC32F460-Series
+generated_from_pack: true
+pack_file_release: 1.0.11
+variants:
+- name: HC32F460JCTA
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x3000c00
+      end: 0x3000ffc
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x1fff8000
+      end: 0x20027000
+    cores:
+    - main
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x200f0000
+      end: 0x200f1000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - hc32f460_256k
+  - hc32f460_otp
+- name: HC32F460JETA
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x3000c00
+      end: 0x3000ffc
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x1fff8000
+      end: 0x20027000
+    cores:
+    - main
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x200f0000
+      end: 0x200f1000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - hc32f460_512k
+  - hc32f460_otp
+- name: HC32F460JEUA
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x3000c00
+      end: 0x3000ffc
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x1fff8000
+      end: 0x20027000
+    cores:
+    - main
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x200f0000
+      end: 0x200f1000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - hc32f460_512k
+  - hc32f460_otp
+- name: HC32F460KCTA
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x3000c00
+      end: 0x3000ffc
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x1fff8000
+      end: 0x20027000
+    cores:
+    - main
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x200f0000
+      end: 0x200f1000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - hc32f460_256k
+  - hc32f460_otp
+- name: HC32F460KETA
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x3000c00
+      end: 0x3000ffc
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x1fff8000
+      end: 0x20027000
+    cores:
+    - main
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x200f0000
+      end: 0x200f1000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - hc32f460_512k
+  - hc32f460_otp
+- name: HC32F460KEUA
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x3000c00
+      end: 0x3000ffc
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x1fff8000
+      end: 0x20027000
+    cores:
+    - main
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x200f0000
+      end: 0x200f1000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - hc32f460_512k
+  - hc32f460_otp
+- name: HC32F460PCTB
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x3000c00
+      end: 0x3000ffc
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x1fff8000
+      end: 0x20027000
+    cores:
+    - main
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x200f0000
+      end: 0x200f1000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - hc32f460_256k
+  - hc32f460_otp
+- name: HC32F460PEHB
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x3000c00
+      end: 0x3000ffc
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x1fff8000
+      end: 0x20027000
+    cores:
+    - main
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x200f0000
+      end: 0x200f1000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - hc32f460_512k
+  - hc32f460_otp
+- name: HC32F460PETB
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x3000c00
+      end: 0x3000ffc
+    cores:
+    - main
+    access:
+      write: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x1fff8000
+      end: 0x20027000
+    cores:
+    - main
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x200f0000
+      end: 0x200f1000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - hc32f460_512k
+  - hc32f460_otp
+flash_algorithms:
+- name: hc32f460_256k
+  description: HC32F460 256KB Flash
+  default: true
+  instructions: QLpwR8C6cEdP6jAAcEcAAEryAVAKSQiACkgAeCDwBwAISSY5gfgmAAdIAGgg8PAABUkIYAEgA0kJHQhwcEcAAA5EBUAmQAVACAQBQEryAVEWShGAFkkJaiHwcAEQMRRKEWJA8gRBCWgB8AEAULERSRFKEWARSQloIfDwAUAxD0oRYAngDkkMShFgDEkJaCHw8AFQMQlKEWAAIQVKKjIRcAUhA0qC+CYQcEcAAA5EBUAAQAVAgScQEAxBBUAIBAFAgR8QEHC1A0YMRgPgFPgBWwP4AVsVHqLxAQL30XC9AAAQtQDwt/n/95P/G0gAaCDwAQBAHBhJCGAIRgBoIPBwAFAwCGAIRgBoIPSAcAD1gHAIYE/0EERB8jQgIGAB4ADwmfkNSAAdAGgA9IBwACj20ADwkPkISABoIPBwAAZJCGAIRgBoIPABAAhg//d//wDwgfkAIBC9AAAMBAFAMLUERiBN//dV/wDwdfkfSABoIPABAEAcHEkIYAhGAGgg8HAAQDAIYAhGAGgg9IBwAPWAcAhgAPBf+QC/ACAgYADwWvkB4ADwV/kQSAAdAGgA9IBwELloHgUe9NEA8Ez5CkgAaCDwcAAISQhgCEYAaCDwAQAIYADwP/n/9zn/APA7+QAgML0AAEANAwAMBAFAcLUERg1GFkYRSBJJCGASSAhgEEgMMABoIPSAcAD1gHAMSQwxCGBK8gFQDEkIgAxIAGog9OBAAPXAQAlJCGJP9CVABkkIgADwD/kAIHC9AAAjAf//AAQBQBAy//8ORAVAAEAFQC3p+EWARgxGFUZP8P8wAJA8Tz8gPEkIYADw9Pg6SAg4AGgg8AEAQBw3SQg5CGAIRgBoIPBwADAwCGAIRgBoIPSAcAD1gHAIYEZGAL8A8Nr4T/AACiXgK08oaDBgNh0tHQDw0PgB4ADwzfgnSAAfAGgA8BAAELl4Hgce9NEXuQEgvej4hSBIAB8AaADwDwAYsQDwuPgBIPPnECAbSQhgCvEBCrrrlA/W0wTwAwA4sQTwAwIpRmhG//fd/gCYAcYA8KH4EUgIOABoIPBwAA5JCDkIYAhGAGgg8AEACGAJTwHgAPCQ+AhIAB8AaAD0gHAQuXgeBx700Q+5ASDB5wDwgvgAIL3nQA0DABQEAUAQtQRGAPB4+AhIAGgg9IBwBkkIYAEgCGAAIAhgQB4DSQw5CGAA8Gj4ACAQvQwEAUAt6fBBBUYORhdGT/AACKhGACQI4ADwWPgY+AEbOF2BQgDQAuBkHLRC9NMAvygZvejwgQC/AR6g8QEA+9FwRwAAELUfSAJoH0gAaMDzgQQdSABowPMDIwy5khEI4AEsAdGSEgTgAiwB0RITAOCSEwuxDysC0QDwOvgg4APwAQAYseK5APAz+BngA/ACAAIoBNEBKhPRAPAq+BDgA/AEAAQoBNECKgrRAPAh+AfgA/AIAAgoA9EDKgHRAPAY+BC9AAAElARAgAYBQAC1B0gAaMDzAEAIuQDwFvgDSABoAPABAAi5//et/wC9gAYBQAJIA0kIYANICGBwRyMB//8IlARAEDL//xC1I0hCaJKyIkgAaMDzgUQgSABowPMDYwy5khEI4AEsAdGSEgTgAiwB0RITAOCSEwu5ASAA4AAgDysB0QEhAOAAIQhDELEA8Cf4IOAD8AEAGLHiuQDwIPgZ4APwAgACKATRASoT0QDwF/gQ4APwBAAEKATRAioK0QDwDvgH4APwCAAIKAPRAyoB0QDwBfgQvQCQBECABgFAAkgDSYhgA0iIYHBHIwH//wCQBEAQMv//AAAAAA==
+  pc_init: 0x1ed
+  pc_uninit: 0x35d
+  pc_program_page: 0x251
+  pc_erase_sector: 0x15d
+  pc_erase_all: 0xe1
+  pc_verify: 0x38d
+  data_section_offset: 0x540
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x40000
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x2000
+      address: 0x0
+- name: hc32f460_otp
+  description: HC32F460 otp Flash
+  default: true
+  instructions: QLpwR8C6cEdP6jAAcEcAAEryAVAKSQiACkgAeCDwBwAISSY5gfgmAAdIAGgg8PAABUkIYAEgA0kJHQhwcEcAAA5EBUAmQAVACAQBQEryAVEWShGAFkkJaiHwcAEQMRRKEWJA8gRBCWgB8AEAULERSRFKEWARSQloIfDwAUAxD0oRYAngDkkMShFgDEkJaCHw8AFQMQlKEWAAIQVKKjIRcAUhA0qC+CYQcEcAAA5EBUAAQAVAgScQEAxBBUAIBAFAgR8QEAAgcEcBRgAgcEcAAHC1BEYNRhZGEUgSSQhgEkgIYBBIDDAAaCD0gHAA9YBwDEkMMQhgSvIBUAxJCIAMSABqIPTgQAD1wEAJSQhiT/QlQAZJCIAA8Pf4ACBwvQAAIwH//wAEAUAQMv//DkQFQABABUAt6fBFBUYORhRG3/i4gADw4fgtSABoIPABAEAcKkkIYAhGAGgg8HAAIDAIYAhGAGgg9IBwAPWAcAhgqkYAvwDwyfgAJyrgAPDF+N/4eIAgaMr4AAAK8QQKJB0A8Lv4AeAA8Lj4GEgAHQBoAPSAcCC5qPEBALDxAAjy0bjxAA8C0QEgvejwhRBIAB0AaADwDwAYsQDwn/gBIPPnfxy365YP0dMA8Jf4CEgAaCDwcAAGSQhgCEYAaCDwAQAIYADwivgAIN7nQA0DAAwEAUAQtQRGAPCA+AhIAGgg9IBwBkkIYAEgCGAAIAhgQB4DSQw5CGAA8HD4ACAQvQwEAUAt6fBBBUYORhdGT/AACKhGACQI4ADwYPgY+AEbOF2BQgDQAuBkHLRC9NMAvygZvejwgQC/AR6g8QEA+9FwRwAAELUjSAJoI0gAaMDzgQQhSABowPMDIwy5khEI4AEsAdGSEgTgAiwB0RITAOCSEwu5ASAA4AAgDysB0QEhAOAAIQhDELEA8Dr4IOAD8AEAGLHiuQDwM/gZ4APwAgACKATRASoT0QDwKvgQ4APwBAAEKATRAioK0QDwIfgH4APwCAAIKAPRAyoB0QDwGPgQvQAABJQEQIAGAUAAtQdIAGjA8wBACLkA8Bb4A0gAaADwAQAIuf/3pf8AvYAGAUACSANJCGADSAhgcEcjAf//CJQEQBAy//8QtSNIQmiSsiJIAGjA84FEIEgAaMDzA2MMuZIRCOABLAHRkhIE4AIsAdESEwDgkhMLuQEgAOAAIA8rAdEBIQDgACEIQxCxAPAn+CDgA/ABABix4rkA8CD4GeAD8AIAAigE0QEqE9EA8Bf4EOAD8AQABCgE0QIqCtEA8A74B+AD8AgACCgD0QMqAdEA8AX4EL0AkARAgAYBQAJIA0mIYANIiGBwRyMB//8AkARAEDL//wAAAAA=
+  pc_init: 0xd1
+  pc_uninit: 0x201
+  pc_program_page: 0x135
+  pc_erase_sector: 0xc9
+  pc_erase_all: 0xc5
+  pc_verify: 0x231
+  data_section_offset: 0x3f4
+  flash_properties:
+    address_range:
+      start: 0x3000c00
+      end: 0x3000ffc
+    page_size: 0x3fc
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x3fc
+      address: 0x0
+- name: hc32f460_512k
+  description: HC32F460 512kB Flash
+  default: true
+  instructions: QLpwR8C6cEdP6jAAcEcAAEryAVAKSQiACkgAeCDwBwAISSY5gfgmAAdIAGgg8PAABUkIYAEgA0kJHQhwcEcAAA5EBUAmQAVACAQBQEryAVEWShGAFkkJaiHwcAEQMRRKEWJA8gRBCWgB8AEAULERSRFKEWARSQloIfDwAUAxD0oRYAngDkkMShFgDEkJaCHw8AFQMQlKEWAAIQVKKjIRcAUhA0qC+CYQcEcAAA5EBUAAQAVAgScQEAxBBUAIBAFAgR8QEHC1A0YMRgPgFPgBWwP4AVsVHqLxAQL30XC9AAAQtQDwr/n/95P/G0gAaCDwAQBAHBhJCGAIRgBoIPBwAFAwCGAIRgBoIPSAcAD1gHAIYE/0EERB8jQgIGAB4ADwkfkNSAAdAGgA9IBwACj20ADwiPkISABoIPBwAAZJCGAIRgBoIPABAAhg//d//wDwefkAIBC9AAAMBAFAMLUERiBN//dV/wDwbfkfSABoIPABAEAcHEkIYAhGAGgg8HAAQDAIYAhGAGgg9IBwAPWAcAhgAPBX+QC/ACAgYADwUvkB4ADwT/kQSAAdAGgA9IBwELloHgUe9NEA8ET5CkgAaCDwcAAISQhgCEYAaCDwAQAIYADwN/n/9zn/APAz+QAgML0AAEANAwAMBAFAcLUERg1GFkYRSBJJCGASSAhgEEgMMABoIPSAcAD1gHAMSQwxCGBK8gFQDEkIgAxIAGog9OBAAPXAQAlJCGJP9CVABkkIgADwB/kAIHC9AAAjAf//AAQBQBAy//8ORAVAAEAFQC3p+EWARgxGFUZP8P8wAJA4TwDw7/g4SABoIPABAEAcNUkIYAhGAGgg8HAAIDAIYAhGAGgg9IBwAPWAcAhgRkYAvwDw1/hP8AAKJOAA8NL4KE8oaDBgNh0tHQDwy/gB4ADwyPgkSAAdAGgA9IBwELl4Hgce9NEXuQEgvej4hR5IAB0AaADwDwAYsQDws/gBIPPnCvEBCrrrlA/X0wTwAwA4sQTwAwIpRmhG//fj/gCYAcYQTwHgAPCd+A9IAB0AaAD0gHAQuXgeBx700Q+5ASDT5wDwj/gISABoIPBwAAZJCGAIRgBoIPABAAhgAPCC+AAgwudADQMADAQBQBC1BEYA8Hj4CEgAaCD0gHAGSQhgASAIYAAgCGBAHgNJDDkIYADwaPgAIBC9DAQBQC3p8EEFRg5GF0ZP8AAIqEYAJAjgAPBY+Bj4ARs4XYFCANAC4GQctEL00wC/KBm96PCBAL8BHqDxAQD70XBHAAAQtR9IAmgfSABowPOBBB1IAGjA8wMjDLmSEQjgASwB0ZISBOACLAHREhMA4JITC7EPKwLRAPA6+CDgA/ABABix4rkA8DP4GeAD8AIAAigE0QEqE9EA8Cr4EOAD8AQABCgE0QIqCtEA8CH4B+AD8AgACCgD0QMqAdEA8Bj4EL0AAASUBECABgFAALUHSABowPMAQAi5APAW+ANIAGgA8AEACLn/963/AL2ABgFAAkgDSQhgA0gIYHBHIwH//wiUBEAQMv//ELUjSEJokrIiSABowPOBRCBIAGjA8wNjDLmSEQjgASwB0ZISBOACLAHREhMA4JITC7kBIADgACAPKwHRASEA4AAhCEMQsQDwJ/gg4APwAQAYseK5APAg+BngA/ACAAIoBNEBKhPRAPAX+BDgA/AEAAQoBNECKgrRAPAO+AfgA/AIAAgoA9EDKgHRAPAF+BC9AJAEQIAGAUACSANJiGADSIhgcEcjAf//AJAEQBAy//8AAAAA
+  pc_init: 0x1ed
+  pc_uninit: 0x34d
+  pc_program_page: 0x251
+  pc_erase_sector: 0x15d
+  pc_erase_all: 0xe1
+  pc_verify: 0x37d
+  data_section_offset: 0x530
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x80000
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x2000
+      address: 0x0

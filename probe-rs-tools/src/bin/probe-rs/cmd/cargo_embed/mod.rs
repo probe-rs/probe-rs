@@ -1,36 +1,38 @@
 mod config;
 mod rttui;
 
-use crate::cmd::gdb_server::GdbInstanceConfiguration;
+use crate::cmd::gdb_server::{GdbInstanceConfiguration, GdbSessionContext};
 use anyhow::{Context, Result, anyhow};
 use colored::Colorize;
-use parking_lot::FairMutex;
 use probe_rs::config::Registry;
-use probe_rs::flashing::BootInfo;
-use probe_rs::probe::list::Lister;
-use probe_rs::rtt::{ScanRegion, find_rtt_control_block_in_raw_file};
-use probe_rs::{Session, probe::DebugProbeSelector};
+use probe_rs::probe::DebugProbeSelector;
+use probe_rs::rtt::find_rtt_control_block_in_raw_file;
+use probe_rs_rpc::core_ops::WireCoreStatus;
+use probe_rs_rpc::flash::BootInfo;
+use probe_rs_rpc::format::{FormatKind, FormatOptions};
+use probe_rs_rpc::rtt_client::ScanRegion;
+use probe_rs_rpc::rtt_config::RttChannelConfig;
+use probe_rs_rpc::{Key, RttClient};
+use probe_rs_rpc_client::{RpcClient, SessionInterface};
 use std::ffi::OsString;
+use std::io::{IsTerminal, Write};
 use std::time::Instant;
-use std::{fs, thread};
+use std::{fs, panic};
 use std::{
-    io::Write,
-    panic,
     path::{Path, PathBuf},
     process,
-    sync::Arc,
     time::Duration,
 };
 use time::{OffsetDateTime, UtcOffset};
+use tokio::runtime::Handle;
 
-use crate::util::cargo::target_instruction_set;
-use crate::util::common_options::{BinaryDownloadOptions, OperationError, ProbeOptions};
-use crate::util::flash::{build_loader, run_flash_download};
+use crate::util::cargo::cargo_target;
+use crate::util::cli;
+use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
 use crate::util::logging::setup_logging;
-use crate::util::rtt::client::RttClient;
-use crate::util::rtt::{RttChannelConfig, RttConfig};
+use crate::util::rtt::RttConfig;
 use crate::util::{cargo::build_artifact, common_options::CargoOptions, logging};
-use crate::{Config, FormatKind, FormatOptions, parse_and_resolve_cli_args};
+use crate::{Config, parse_and_resolve_cli_args, run_app};
 
 #[derive(Debug, clap::Parser)]
 #[clap(
@@ -132,9 +134,12 @@ async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Res
     let work_dir = std::env::current_dir()?;
 
     // Get the config.
-    let profile_name = opt.config_profile.as_deref().unwrap_or("default");
+    let profile_name = opt
+        .config_profile
+        .clone()
+        .unwrap_or_else(|| "default".to_string());
     let mut configs = config::Configs::new(work_dir.clone());
-    if let Some(config_file) = opt.config_file {
+    if let Some(ref config_file) = opt.config_file {
         let config_file = PathBuf::from(config_file);
         if !config_file.exists() {
             // There is a subtle TOC/TOU in here, but this is not a security feature, merely a way
@@ -143,10 +148,34 @@ async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Res
         }
         configs.merge(config_file)?;
     }
-    let config = configs.select_defined(profile_name)?;
+    let embed_config = configs.select_defined(&profile_name)?;
 
-    let _log_guard = setup_logging(None, config.general.log_level);
+    let _log_guard = setup_logging(None, embed_config.general.log_level);
 
+    #[cfg(feature = "remote")]
+    let connection_params = embed_config
+        .remote
+        .host
+        .as_ref()
+        .map(|host| (host.clone(), embed_config.remote.token.clone()));
+
+    #[cfg(not(feature = "remote"))]
+    let connection_params = None;
+
+    run_app(connection_params, async move |client| {
+        run_embed(client, opt, embed_config, &profile_name, work_dir, offset).await
+    })
+    .await
+}
+
+async fn run_embed(
+    client: RpcClient,
+    opt: CliOptions,
+    config: config::Config,
+    profile_name: &str,
+    work_dir: PathBuf,
+    offset: UtcOffset,
+) -> Result<()> {
     let mut registry = Registry::from_builtin_families();
 
     // Make sure we load the config given in the cli parameters.
@@ -155,14 +184,19 @@ async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Res
         registry
             .add_target_family_from_yaml(&file)
             .with_context(|| format!("failed to load the chip description from {cdp}"))?;
+        client
+            .load_chip_family(file)
+            .await
+            .with_context(|| format!("failed to load the chip description from {cdp}"))?;
     }
+
     let image_instr_set;
     let path = if let Some(path_buf) = &opt.path {
         image_instr_set = None;
         path_buf.clone()
     } else {
         let cargo_options = opt.cargo_options.to_cargo_options();
-        image_instr_set = target_instruction_set(opt.cargo_options.target.as_deref());
+        image_instr_set = cargo_target(opt.cargo_options.target.as_deref());
 
         // Build the project, and extract the path of the built artifact.
         build_artifact(&work_dir, &cargo_options)?.path().into()
@@ -219,46 +253,32 @@ async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Res
     let probe_options = ProbeOptions {
         chip,
         chip_description_path: None,
-        protocol: Some(config.probe.protocol),
-        non_interactive: false,
+        protocol: config.probe.protocol,
+        non_interactive: !std::io::stdin().is_terminal(),
         probe: selector,
         cycle_power: false,
         speed: config.probe.speed,
         connect_under_reset: config.general.connect_under_reset,
         dry_run: false,
         allow_erase_all: config.flashing.enabled || config.gdb.enabled,
+        attach_timeout: None,
     };
 
-    let lister = Lister::new();
-    let (mut session, probe_options) = match probe_options.simple_attach(&mut registry, &lister) {
-        Ok((session, probe_options)) => (session, probe_options),
-
-        Err(OperationError::MultipleProbesFound { list }) => {
-            use std::fmt::Write;
-
-            return Err(anyhow!(
-                "The following devices were found:\n \
-                    {} \
-                        \
-                    Use '--probe VID:PID'\n \
-                                            \
+    let session = match cli::attach_probe(&client, probe_options, None, false).await {
+        Ok(session) => session,
+        Err(error) => {
+            if let Some(multi) = error.downcast_ref::<cli::MultipleProbesFound>() {
+                return Err(anyhow!(
+                    "{multi}\n\n\
                     You can also set the [default.probe] config attribute \
                     (in your Embed.toml) to select which probe to use. \
-                    For usage examples see https://github.com/probe-rs/probe-rs/blob/master/probe-rs-tools/src/bin/probe-rs/cmd/cargo_embed/config/default.toml .",
-                list.iter()
-                    .enumerate()
-                    .fold(String::new(), |mut s, (num, link)| {
-                        let _ = writeln!(s, "[{num}]: {link}");
-                        s
-                    })
-            ));
-        }
-        Err(OperationError::AttachingFailed {
-            source,
-            connect_under_reset,
-        }) => {
-            tracing::info!("The target seems to be unable to be attached to.");
-            if !connect_under_reset {
+                    For usage examples see https://github.com/probe-rs/probe-rs/blob/master/probe-rs-tools/src/bin/probe-rs/cmd/cargo_embed/config/default.toml ."
+                ));
+            }
+            if let Some(attach) = error.downcast_ref::<cli::TargetAttachFailed>()
+                && !attach.connect_under_reset
+            {
+                tracing::info!("The target seems to be unable to be attached to.");
                 tracing::info!(
                     "A hard reset during attaching might help. This will reset the entire chip."
                 );
@@ -266,13 +286,16 @@ async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Res
                     "Set `general.connect_under_reset` in your cargo-embed configuration file to enable this feature."
                 );
             }
-            return Err(source).context("failed attaching to target");
+            return Err(error).context("failed attaching to target");
         }
-        Err(e) => return Err(e.into()),
     };
 
+    let target_metadata = session.target_metadata().await?;
     let format_options = FormatOptions::default();
-    let format = format_options.binary_format.resolve(session.target());
+    let format = format_options
+        .binary_format
+        .resolve_default_format(target_metadata.default_format.as_deref());
+
     let elf = if matches!(format, FormatKind::Elf | FormatKind::Idf) {
         Some(fs::read(&path)?)
     } else {
@@ -290,88 +313,87 @@ async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Res
         ScanRegion::Ram
     };
 
-    let mut rtt_client = RttClient::new(create_rtt_config(&config).clone(), scan, session.target());
+    if config.rtt.enabled && matches!(scan, ScanRegion::Ranges(ref ranges) if ranges.is_empty()) {
+        return Err(anyhow!(
+            "RTT is enabled, but no RTT control block was found in the ELF file"
+        ));
+    }
 
-    // FIXME: we should probably figure out in a different way which core we can work with.
-    // It seems arbitrary that we reset the target using the same core we use for polling RTT.
-    let core_id = rtt_client.core_id();
+    let rtt_config = create_rtt_config(&config);
+    let rtt_client = session
+        .create_rtt_client(
+            scan,
+            rtt_config.channels.clone(),
+            rtt_config.default_config.clone(),
+        )
+        .await?;
+    let rtt_handle = rtt_client.handle;
+    let core_id = rtt_client.core_id as usize;
+    let core = session.core(core_id);
 
+    let mut boot_info = BootInfo::Other;
     if config.flashing.enabled {
         let download_options = BinaryDownloadOptions {
             disable_progressbars: opt.disable_progressbars,
             disable_double_buffering: config.flashing.disable_double_buffering,
             restore_unwritten: config.flashing.restore_unwritten_bytes,
-            flash_layout_output_path: None,
+            flash_layout_output_path: config.flashing.flash_layout_output_path.clone(),
             preverify: config.flashing.preverify,
             verify: config.flashing.verify,
             chip_erase: config.flashing.do_chip_erase,
             read_flasher_rtt: config.flashing.read_flasher_rtt,
             prefer_flash_algorithm: Vec::new(),
-            reset: false,
+            ram_chunk_size: None,
         };
-        let loader = build_loader(&mut session, &path, format_options, image_instr_set)?;
 
-        rtt_client.configure_from_loader(&loader);
-
-        let boot_info = loader.boot_info();
-
-        run_flash_download(
-            &mut session,
+        boot_info = cli::flash(
+            &session,
             &path,
-            &download_options,
-            &probe_options,
-            loader,
-        )?;
-
-        match boot_info {
-            BootInfo::FromRam {
-                vector_table_addr, ..
-            } => {
-                // core should be already reset and halt by this point.
-                session.prepare_running_on_ram(vector_table_addr, core_id)?;
-            }
-            BootInfo::Other => {
-                // reset the core to leave it in a consistent state after flashing
-                session
-                    .core(core_id)?
-                    .reset_and_halt(Duration::from_millis(100))?;
-            }
-        }
-    } else if config.reset.enabled {
-        session
-            .core(core_id)?
-            .reset_and_halt(Duration::from_millis(100))?;
+            format_options,
+            download_options,
+            Some(rtt_handle),
+            image_instr_set,
+        )
+        .await?;
     }
 
     if config.flashing.enabled || config.reset.enabled {
-        let mut core = session.core(core_id)?;
-        rtt_client.clear_control_block(&mut core)?;
+        prepare_halted_image(
+            &session,
+            &core,
+            &boot_info,
+            core_id,
+            config.flashing.enabled,
+        )
+        .await?;
+        session.clear_rtt_control_block(rtt_handle).await?;
     }
 
-    let session = Arc::new(FairMutex::new(session));
-
-    let mut gdb_thread_handle = None;
+    let mut gdb_task = None;
 
     if config.gdb.enabled {
-        let gdb_connection_string = config.gdb.gdb_connection_string.clone();
-        let session = session.clone();
+        let gdb_connection_string = config
+            .gdb
+            .gdb_connection_string
+            .clone()
+            .unwrap_or_else(|| "127.0.0.1:1337".to_string());
 
-        gdb_thread_handle = Some(thread::spawn(move || {
-            let gdb_connection_string =
-                gdb_connection_string.as_deref().unwrap_or("127.0.0.1:1337");
+        logging::println(format!(
+            "     {} listening at {}",
+            "GDB stub".green().bold(),
+            gdb_connection_string,
+        ));
 
-            logging::println(format!(
-                "     {} listening at {}",
-                "GDB stub".green().bold(),
-                gdb_connection_string,
-            ));
+        let context = GdbSessionContext::from_session(&session, &registry).await?;
+        let instances =
+            GdbInstanceConfiguration::from_context(&context, Some(gdb_connection_string));
+        let session_gdb = session.clone();
+        let handle = Handle::current();
 
-            let instances = {
-                let session = session.lock();
-                GdbInstanceConfiguration::from_session(&session, Some(gdb_connection_string))
-            };
-
-            if let Err(e) = crate::cmd::gdb_server::run(&session, instances.iter(), None) {
+        gdb_task = Some(tokio::task::spawn_blocking(move || {
+            if let Err(e) =
+                crate::cmd::gdb_server::run(session_gdb, handle, context, instances.iter(), None)
+            {
                 logging::eprintln("During the execution of GDB an error was encountered:");
                 logging::eprintln(format!("{e:?}"));
             }
@@ -379,20 +401,16 @@ async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Res
     }
 
     if config.rtt.enabled {
-        // GDB is also using the session, so we do not lock on the outside.
-        run_rttui_app(name, elf, &session, config, offset, rtt_client).await?;
+        run_rttui_app(name, elf, &session, rtt_handle, core_id, config, offset).await?;
     } else if should_resume_core(&config) {
-        // If we don't run the app, we have to resume the core somewhere else.
-        let mut session_handle = session.lock();
-        let mut core = session_handle.core(0)?;
-
-        if core.core_halted()? {
-            core.run()?;
+        let status = core.status().await?;
+        if matches!(status, WireCoreStatus::Halted(_)) {
+            core.run().await?;
         }
     }
 
-    if let Some(gdb_thread_handle) = gdb_thread_handle {
-        let _ = gdb_thread_handle.join();
+    if let Some(gdb_task) = gdb_task {
+        let _ = gdb_task.await;
     }
 
     logging::println(format!(
@@ -412,44 +430,66 @@ fn should_resume_core(config: &config::Config) -> bool {
     }
 }
 
-#[expect(
-    clippy::await_holding_lock,
-    reason = "session_handle is locked in accordance with main loop's alternating pattern"
-)]
+/// After flashing or reset, leave the core halted with the image ready to run.
+async fn prepare_halted_image(
+    session: &SessionInterface,
+    core: &probe_rs_rpc_client::CoreInterface,
+    boot_info: &BootInfo,
+    core_id: usize,
+    flashed: bool,
+) -> Result<()> {
+    if flashed {
+        match boot_info {
+            BootInfo::FromRam { .. } => {
+                session.prepare_boot(boot_info.clone(), core_id).await?;
+            }
+            BootInfo::Other => {
+                core.reset_and_halt(Duration::from_millis(500)).await?;
+            }
+        }
+    } else {
+        core.reset_and_halt(Duration::from_millis(500)).await?;
+    }
+
+    Ok(())
+}
+
 async fn run_rttui_app(
     name: &str,
     elf: Option<Vec<u8>>,
-    session: &FairMutex<Session>,
+    session: &SessionInterface,
+    rtt_handle: Key<RttClient>,
+    core_id: usize,
     config: config::Config,
     timezone_offset: UtcOffset,
-    mut client: RttClient,
 ) -> anyhow::Result<()> {
-    let core_id = client.core_id();
+    let core = session.core(core_id);
 
     if should_resume_core(&config) {
-        let mut session_handle = session.lock();
-        let mut core = session_handle.core(core_id)?;
-
-        if core.core_halted()? {
-            core.run()?;
+        let status = core.status().await?;
+        if matches!(status, WireCoreStatus::Halted(_)) {
+            core.run().await?;
         }
     }
 
     let start = Instant::now();
-    let rtt = loop {
-        let mut session_handle = session.lock();
-        let mut core = session_handle.core(core_id)?;
-
-        if let Ok(true) = client.try_attach(&mut core) {
-            break client;
-        }
-
-        if start.elapsed() > config.rtt.timeout {
-            return Err(anyhow!("Failed to attach to RTT: Timeout"));
+    let channels = loop {
+        match session.get_rtt_channels(rtt_handle).await {
+            Ok(channels) if channels.up.is_empty() && channels.down.is_empty() => {
+                if start.elapsed() > config.rtt.timeout {
+                    return Err(anyhow!("Failed to attach to RTT: Timeout"));
+                }
+            }
+            Ok(channels) => break channels,
+            Err(error) => {
+                if start.elapsed() > config.rtt.timeout {
+                    return Err(anyhow!("Failed to attach to RTT: {error}"));
+                }
+            }
         }
 
         // Throttle attaching. If the target requires stop-mode RTT, this sleep will improve the boot time.
-        std::thread::sleep(Duration::from_millis(10));
+        tokio::time::sleep(Duration::from_millis(10)).await;
     };
 
     tracing::info!("RTT initialized.");
@@ -480,31 +520,29 @@ async fn run_rttui_app(
         / 1_000_000;
 
     let logname = format!("{name}_{chip_name}_{timestamp_millis}");
-    let mut app = rttui::app::App::new(rtt, elf, config, timezone_offset, logname)?;
+    let mut app = rttui::app::App::new(
+        session.clone(),
+        rtt_handle,
+        &channels,
+        elf,
+        config,
+        timezone_offset,
+        logname,
+    )?;
     loop {
-        // This main loop alternates between giving the GUI a chance to update (`app.render()`) and
-        // accesses to the probe (`session.lock()`, `channel.borrow_mut()` in poll_rtt).
-
         app.render();
 
-        {
-            let mut session_handle = session.lock();
-            let mut core = session_handle.core(core_id)?;
-
-            if app.handle_event(&mut core) {
-                logging::println("Shutting down.");
-                break;
-            }
-
-            app.poll_rtt(&mut core).await?;
+        if app.handle_events() {
+            logging::println("Shutting down.");
+            break;
         }
+
+        app.pump_rtt_io().await?;
 
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
 
-    let mut session_handle = session.lock();
-    let mut core = session_handle.core(core_id)?;
-    app.clean_up(&mut core)?;
+    app.clean_up().await?;
 
     Ok(())
 }
@@ -556,4 +594,19 @@ fn create_rtt_config(config: &config::Config) -> RttConfig {
     }
 
     rtt_config
+}
+
+#[cfg(test)]
+mod test {
+    use super::CliOptions;
+
+    /// clap finds duplicate argument names only in a debug build, and only when it
+    /// builds the command. Release builds accept a duplicate and give one of the
+    /// two arguments to both fields.
+    #[test]
+    fn cli_is_valid() {
+        use clap::CommandFactory;
+
+        CliOptions::command().debug_assert();
+    }
 }

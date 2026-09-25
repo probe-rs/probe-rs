@@ -9,7 +9,7 @@ use std::sync::Mutex;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use crate::architecture::arm::communication_interface::DapProbe;
+use crate::architecture::arm::traits::DebugPortWire;
 use crate::{MemoryMappedRegister, probe::DebugProbeError};
 
 /// An Infineon XMC4xxx MCU.
@@ -349,7 +349,7 @@ impl ArmDebugSequence for XMC4000 {
         Ok(())
     }
 
-    fn reset_hardware_assert(&self, interface: &mut dyn DapProbe) -> Result<(), ArmError> {
+    fn reset_hardware_assert(&self, interface: &mut dyn DebugPortWire) -> Result<(), ArmError> {
         tracing::trace!("performing XMC4000 ResetHardwareAssert");
 
         use crate::architecture::arm::Pins;
@@ -369,10 +369,10 @@ impl ArmDebugSequence for XMC4000 {
         pin_output.set_swdio_tms(true);
 
         loop {
-            match interface.swj_pins(pin_output.0 as u32, pin_select.0 as u32, 0) {
-                Err(DebugProbeError::CommandNotSupportedByProbe {
+            match interface.swj_pins(pin_output, pin_select, Duration::ZERO) {
+                Err(ArmError::Probe(DebugProbeError::CommandNotSupportedByProbe {
                     command_name: "swj_pins",
-                }) if pin_select.swdio_tms() => {
+                })) if pin_select.swdio_tms() => {
                     // J-Link probes return this error when we try to set pins besides nRST
                     // Settle for resetting, but warn the user that HWCON is uncontrolled
                     tracing::debug!(
@@ -384,7 +384,7 @@ impl ArmDebugSequence for XMC4000 {
                     pin_select = Pins(0);
                     pin_select.set_nreset(true);
                 }
-                Err(other) => return Err(other.into()),
+                Err(other) => return Err(other),
                 Ok(_) => break,
             }
         }
@@ -409,7 +409,7 @@ impl ArmDebugSequence for XMC4000 {
 
         // Deassert nRST
         pin_output.set_nreset(true);
-        interface.swj_pins(pin_output.0 as u32, pin_select.0 as u32, 0)?;
+        interface.swj_pins(pin_output, pin_select, Duration::ZERO)?;
 
         // Race! :(
 

@@ -1,10 +1,13 @@
-use std::{io, mem};
+use std::{
+    io, mem,
+    sync::Arc,
+    task::{Context, Poll, Wake, Waker},
+    thread::{self, Thread},
+};
 
-use async_io::block_on;
-use futures_lite::future;
 use nusb::{
     Interface, MaybeFuture,
-    transfer::{Buffer, Bulk, Direction, In, Out},
+    transfer::{Buffer, Bulk, Completion, Direction, In, Out},
 };
 
 use crate::probe::{
@@ -109,74 +112,125 @@ impl GlasgowUsbDevice {
         })
     }
 
+    /// Perform a full-duplex bulk transfer.
+    ///
+    /// OUT and IN URBs are kept in flight concurrently, using
+    /// [`nusb::Endpoint::poll_next_complete`] and a thread-park waker.
     pub fn transfer(
         &mut self,
         output: Vec<u8>,
         mut input: impl FnMut(Vec<u8>) -> Result<bool, DebugProbeError>,
     ) -> Result<(), DebugProbeError> {
-        let out_iface = self.out_iface.clone();
-        let in_iface = self.in_iface.clone();
-        let out_ep = self.out_ep_num;
-        let in_ep = self.in_ep_num;
+        let mut out_endpoint = None;
+        let mut out_done = true;
+        let mut expected_out_len = 0;
 
-        block_on(async move {
-            let out_fut = async move {
-                if !output.is_empty() {
-                    tracing::trace!("OUT URB: {}", hexdump(&output));
-                    let out_len = output.len();
-                    let mut endpoint = out_iface
-                        .endpoint::<Bulk, Out>(out_ep)
-                        .map_err(|e| DebugProbeError::Usb(e.into()))?;
+        if !output.is_empty() {
+            tracing::trace!("OUT URB: {}", hexdump(&output));
+            expected_out_len = output.len();
+            let mut endpoint = self
+                .out_iface
+                .endpoint::<Bulk, Out>(self.out_ep_num)
+                .map_err(|e| DebugProbeError::Usb(e.into()))?;
+            endpoint.submit(Buffer::from(output));
+            out_endpoint = Some(endpoint);
+            out_done = false;
+        }
 
-                    let buffer = Buffer::from(output);
-                    endpoint.submit(buffer);
+        let mut in_endpoint = self
+            .in_iface
+            .endpoint::<Bulk, In>(self.in_ep_num)
+            .map_err(|e| DebugProbeError::Usb(e.into()))?;
 
-                    let completion = endpoint.next_complete().await;
-                    completion
-                        .status
-                        .map_err(io::Error::from)
-                        .map_err(DebugProbeError::Usb)?;
+        let mut buffer = Vec::new();
+        let mut need_more_in = !input(mem::take(&mut buffer))?;
+        let mut in_pending = false;
 
-                    if completion.actual_len != out_len {
-                        return Err(DebugProbeError::Other(format!(
-                            "expected to send {out_len} bytes, sent {}",
-                            completion.actual_len
-                        )));
-                    }
-                }
-                Ok(())
-            };
-
-            let in_fut = async move {
-                let mut endpoint = in_iface
-                    .endpoint::<Bulk, In>(in_ep)
-                    .map_err(|e| DebugProbeError::Usb(e.into()))?;
-
-                let mut buffer = Vec::new();
-                loop {
-                    if input(mem::take(&mut buffer))? {
-                        break;
-                    }
-
-                    let transfer = Buffer::new(65536);
-                    endpoint.submit(transfer);
-
-                    let completion = endpoint.next_complete().await;
-                    completion
-                        .status
-                        .map_err(io::Error::from)
-                        .map_err(DebugProbeError::Usb)?;
-
-                    let data = completion.buffer.into_vec();
-                    tracing::trace!("IN URB: {}", hexdump(&data));
-                    buffer = data;
+        block_on_poll(|cx| {
+            loop {
+                if need_more_in && !in_pending {
+                    in_endpoint.submit(Buffer::new(65536));
+                    in_pending = true;
                 }
 
-                Ok::<(), DebugProbeError>(())
-            };
+                if out_done && !need_more_in {
+                    debug_assert!(!in_pending);
+                    return Poll::Ready(Ok(()));
+                }
 
-            let (out_result, in_result) = future::zip(out_fut, in_fut).await;
-            out_result.and(in_result)
+                let mut pending = false;
+
+                if !out_done {
+                    let endpoint = out_endpoint
+                        .as_mut()
+                        .expect("OUT endpoint must exist while waiting for OUT");
+                    match endpoint.poll_next_complete(cx) {
+                        Poll::Ready(completion) => {
+                            check_completion(&completion)?;
+                            if completion.actual_len != expected_out_len {
+                                return Poll::Ready(Err(DebugProbeError::Other(format!(
+                                    "expected to send {expected_out_len} bytes, sent {}",
+                                    completion.actual_len
+                                ))));
+                            }
+                            out_done = true;
+                            continue;
+                        }
+                        Poll::Pending => pending = true,
+                    }
+                }
+
+                if in_pending {
+                    match in_endpoint.poll_next_complete(cx) {
+                        Poll::Ready(completion) => {
+                            check_completion(&completion)?;
+                            let data = completion.buffer.into_vec();
+                            tracing::trace!("IN URB: {}", hexdump(&data));
+                            buffer = data;
+                            in_pending = false;
+                            need_more_in = !input(mem::take(&mut buffer))?;
+                            continue;
+                        }
+                        Poll::Pending => pending = true,
+                    }
+                }
+
+                if pending {
+                    return Poll::Pending;
+                }
+            }
         })
+    }
+}
+
+fn check_completion(completion: &Completion) -> Result<(), DebugProbeError> {
+    completion
+        .status
+        .map_err(io::Error::from)
+        .map_err(DebugProbeError::Usb)
+}
+
+/// Drive a `Poll`-based operation to completion by parking the current thread
+/// until nusb wakes it via [`Endpoint::poll_next_complete`].
+fn block_on_poll<T>(mut poll: impl FnMut(&mut Context<'_>) -> Poll<T>) -> T {
+    let waker = Waker::from(Arc::new(ThreadWake(thread::current())));
+    let mut cx = Context::from_waker(&waker);
+    loop {
+        match poll(&mut cx) {
+            Poll::Ready(value) => return value,
+            Poll::Pending => thread::park(),
+        }
+    }
+}
+
+struct ThreadWake(Thread);
+
+impl Wake for ThreadWake {
+    fn wake(self: Arc<Self>) {
+        self.0.unpark();
+    }
+
+    fn wake_by_ref(self: &Arc<Self>) {
+        self.0.unpark();
     }
 }

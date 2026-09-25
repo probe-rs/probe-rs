@@ -1,13 +1,17 @@
 // use crate::dap_types2 as debugserver_types;
 use crate::cmd::dap_server::DebuggerError;
-use crate::util::rtt;
+use crate::util::style::{ReplAddress, ReplDim};
 use num_traits::Num;
 use parse_int::parse;
+use probe_rs_rpc::rtt_config::DataFormat;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 
-// Convert the MSDAP `debugAdaptor.json` file into Rust types.
-schemafy::schemafy!(root: debugserver_types "src/bin/probe-rs/cmd/dap_server/debug_adapter/dap/debugProtocol.json");
+// Convert the MSDAP `debugProtocol.json` file into Rust types.
+// Regenerate with `cargo xtask update-dap-schema`.
+#[path = "debugProtocol.rs"]
+mod debug_protocol;
+pub use debug_protocol::*;
 
 /// Memory addresses come in as strings, but we want to use them as u64s.
 pub struct MemoryAddress(pub u64);
@@ -25,7 +29,7 @@ impl TryFrom<&str> for MemoryAddress {
     }
 }
 
-/// Arguments for custom [`RttWindowOpened`] request, so that VSCode can confirm once a specific RTT channel's window has opened.
+/// Arguments for custom [`RttWindowOpenedArguments`] request, so that VSCode can confirm once a specific RTT channel's window has opened.
 /// `probe-rs-debugger` will delay polling RTT channels until the data window has opened. This ensure no RTT data is lost on the client.
 #[derive(Clone, PartialEq, Eq, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -40,7 +44,7 @@ pub struct RttWindowOpenedArguments {
 pub struct RttChannelEventBody {
     pub channel_number: u32,
     pub channel_name: String,
-    pub data_format: rtt::DataFormat,
+    pub data_format: DataFormat,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -113,25 +117,49 @@ impl Display for Source {
     }
 }
 
+impl DisassembledInstruction {
+    /// Formats the instruction for the REPL, with optional ANSI styling.
+    pub fn styled(&self, colorize: bool) -> StyledInstruction<'_> {
+        StyledInstruction {
+            instruction: self,
+            colorize,
+        }
+    }
+}
+
 impl Display for DisassembledInstruction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.styled(false).fmt(f)
+    }
+}
+
+/// A [`DisassembledInstruction`] rendered as a line of a disassembly listing.
+pub struct StyledInstruction<'a> {
+    instruction: &'a DisassembledInstruction,
+    colorize: bool,
+}
+
+impl Display for StyledInstruction<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let instruction = self.instruction;
+        let location = if let (Some(file), Some(line), Some(column)) = (
+            instruction.location.as_ref().map(|s| s.to_string()),
+            instruction.line,
+            instruction.column,
+        ) {
+            format!("<{file}:{line}:{column}>")
+        } else {
+            String::new()
+        };
+
         writeln!(
             f,
             "{} : [{:<12}] {:<40}  {}",
-            self.address,
-            self.instruction_bytes.as_deref().unwrap_or(""),
-            self.instruction,
-            if let (Some(file), Some(line), Some(column)) = (
-                self.location.as_ref().map(|s| s.to_string()),
-                self.line,
-                self.column
-            ) {
-                format!("<{file}:{line}:{column}>")
-            } else {
-                "".to_string()
-            },
-        )?;
-        Ok(())
+            ReplAddress::new(&instruction.address).colorize(self.colorize),
+            instruction.instruction_bytes.as_deref().unwrap_or(""),
+            instruction.instruction,
+            ReplDim::new(location).colorize(self.colorize),
+        )
     }
 }
 

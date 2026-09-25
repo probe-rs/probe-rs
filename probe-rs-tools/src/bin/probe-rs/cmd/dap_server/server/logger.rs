@@ -1,7 +1,4 @@
-use crate::cmd::dap_server::{
-    DebuggerError,
-    debug_adapter::{dap::adapter::DebugAdapter, protocol::ProtocolAdapter},
-};
+use crate::cmd::dap_server::{DebuggerError, debug_adapter::dap::adapter::DebugAdapter};
 use parking_lot::{Mutex, MutexGuard};
 use std::{
     fs::File,
@@ -102,7 +99,7 @@ impl DebugLogger {
     /// Flush the buffer to the DAP client's Debug Console
     pub(crate) fn flush_to_dap(
         &self,
-        debug_adapter: &mut DebugAdapter<impl ProtocolAdapter>,
+        debug_adapter: &mut DebugAdapter,
     ) -> Result<(), DebuggerError> {
         self.process_new_log_lines(|line| {
             debug_adapter.log_to_console(line);

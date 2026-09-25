@@ -1,0 +1,1 @@
+`probe-rs gdb` now attaches through the RPC client and runs the GDB stub in-process against that session. GDB `load` stages and commits flash through `flash/new`, `flash/load_region`, and `flash/flash`.

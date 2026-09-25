@@ -1,4 +1,5 @@
 use crate::probe::DebugProbeInfo;
+use crate::probe::list::{ProbeListItem, usb_probe_accessibility};
 use crate::probe::stlink::StLinkFactory;
 use crate::probe::usb_util::to_hex;
 use nusb::MaybeFuture;
@@ -12,7 +13,7 @@ pub(super) fn is_stlink_device(device: &nusb::DeviceInfo) -> bool {
 }
 
 #[tracing::instrument(skip_all)]
-pub(super) fn list_stlink_devices() -> Vec<DebugProbeInfo> {
+pub(super) fn list_stlink_devices() -> Vec<ProbeListItem> {
     let devices = match nusb::list_devices().wait() {
         Ok(d) => d,
         Err(e) => {
@@ -24,7 +25,7 @@ pub(super) fn list_stlink_devices() -> Vec<DebugProbeInfo> {
     devices
         .filter(is_stlink_device)
         .map(|device| {
-            DebugProbeInfo::new(
+            let info = DebugProbeInfo::new(
                 format!(
                     "STLink {}",
                     USB_PID_EP_MAP[&device.product_id()].version_name
@@ -35,7 +36,11 @@ pub(super) fn list_stlink_devices() -> Vec<DebugProbeInfo> {
                 &StLinkFactory,
                 None,
                 false,
-            )
+            );
+            ProbeListItem {
+                info,
+                accessibility: usb_probe_accessibility(&device),
+            }
         })
         .collect()
 }

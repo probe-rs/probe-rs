@@ -1,0 +1,1 @@
+Added ASR6601 series target support, custom sequence and flashing algorithm.

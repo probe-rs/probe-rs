@@ -1,12 +1,11 @@
 ---
 source: probe-rs-debug/src/debug_info.rs
-assertion_line: 2035
 expression: static_variables
 ---
 Child Variables:
   name: StaticScopeRoot
   type_name: Unknown
-  value: "<unknown> {\n\texception_table: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t_aTerminalId: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t_SEGGER_RTT: SEGGER_RTT_CB = SEGGER_RTT_CB @ 0x20002000,\n\tchar[1024] = [\n\t\tH,\n\t\te,\n\t\tl,\n\t\tl,\n\t\to,\n\t\t ,\n\t\tH,\n\t\te,\n\t\tl,\n\t\tl,\n\n\t\t... and 1014 more\n\t],\n\tchar[16] = [\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\n\t\t... and 6 more\n\t],\n\t_ActiveTerminal: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\tfoo: Foo_t = Foo_t @ 0x20000000,\n\tconst Foo_t[2] = [\n\t\tFoo_t @ 0x00001684,\n\t\tFoo_t @ 0x0000168C\n\t],\n\tuint8_t[9][6] = [\n\t\tuint8_t[9] = [\n\t\t\t0,\n\t\t\t1,\n\t\t\t2,\n\t\t\t3,\n\t\t\t4,\n\t\t\t5,\n\t\t\t6,\n\t\t\t7,\n\t\t\t8\n\t\t],\n\t\tuint8_t[9] = [\n\t\t\t10,\n\t\t\t11,\n\t\t\t12,\n\t\t\t13,\n\t\t\t14,\n\t\t\t15,\n\t\t\t16,\n\t\t\t17,\n\t\t\t18\n\t\t],\n\t\tuint8_t[9] = [\n\t\t\t20,\n\t\t\t21,\n\t\t\t22,\n\t\t\t23,\n\t\t\t24,\n\t\t\t25,\n\t\t\t26,\n\t\t\t27,\n\t\t\t28\n\t\t],\n\t\tuint8_t[9] = [\n\t\t\t30,\n\t\t\t31,\n\t\t\t32,\n\t\t\t33,\n\t\t\t34,\n\t\t\t35,\n\t\t\t36,\n\t\t\t37,\n\t\t\t38\n\t\t],\n\t\tuint8_t[9] = [\n\t\t\t40,\n\t\t\t41,\n\t\t\t42,\n\t\t\t43,\n\t\t\t44,\n\t\t\t45,\n\t\t\t46,\n\t\t\t47,\n\t\t\t48\n\t\t],\n\t\tuint8_t[9] = [\n\t\t\t50,\n\t\t\t51,\n\t\t\t52,\n\t\t\t53,\n\t\t\t54,\n\t\t\t55,\n\t\t\t56,\n\t\t\t57,\n\t\t\t58\n\t\t]\n\t],\n\tuint16_t[3][2] = [\n\t\tuint16_t[3] = [\n\t\t\t0,\n\t\t\t1,\n\t\t\t2\n\t\t],\n\t\tuint16_t[3] = [\n\t\t\t3,\n\t\t\t4,\n\t\t\t5\n\t\t]\n\t]}"
+  value: "<unknown> { exception_table = < The value of this variable may have been optimized out of the debug info, by the compiler. >, _aTerminalId = < The value of this variable may have been optimized out of the debug info, by the compiler. >, _SEGGER_RTT = SEGGER_RTT_CB @ 0x20002000, char[1024] = [H, e, l, l, o,  , H, e, l, l, ... and 1014 more], char[16] = [\u0000, \u0000, \u0000, \u0000, \u0000, \u0000, \u0000, \u0000, \u0000, \u0000, ... and 6 more], _ActiveTerminal = < The value of this variable may have been optimized out of the debug info, by the compiler. >, foo = Foo_t @ 0x20000000, const Foo_t[2] = [Foo_t @ 0x00001684, Foo_t @ 0x0000168C], uint8_t[9][6] = [uint8_t[9] = [0, 1, 2, 3, 4, 5, 6, 7, 8], uint8_t[9] = [10, 11, 12, 13, 14, 15, 16, 17, 18], uint8_t[9] = [20, 21, 22, 23, 24, 25, 26, 27, 28], uint8_t[9] = [30, 31, 32, 33, 34, 35, 36, 37, 38], uint8_t[9] = [40, 41, 42, 43, 44, 45, 46, 47, 48], uint8_t[9] = [50, 51, 52, 53, 54, 55, 56, 57, 58]], uint16_t[3][2] = [uint16_t[3] = [0, 1, 2], uint16_t[3] = [3, 4, 5]] }"
   children:
     - name:
         Named: exception_table
@@ -33,7 +32,10 @@ Child Variables:
       type_name:
         Modified:
           - Typedef: SEGGER_RTT_CB
-          - Struct: "<unnamed struct>"
+          - Struct:
+              ident: "<unnamed struct>"
+              namespace: []
+              args: []
       value: SEGGER_RTT_CB @ 0x20002000
       source_location:
         path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
@@ -49,7 +51,7 @@ Child Variables:
               item_type_name:
                 Base: char
               count: 16
-          value: "char[16] = [\n\tS,\n\tE,\n\tG,\n\tG,\n\tE,\n\tR,\n\t ,\n\tR,\n\tT,\n\tT,\n\t... and 6 more]"
+          value: "char[16] = [S, E, G, G, E, R,  , R, T, T, ... and 6 more]"
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
             line: 332
@@ -262,9 +264,12 @@ Child Variables:
               item_type_name:
                 Modified:
                   - Typedef: SEGGER_RTT_BUFFER_UP
-                  - Struct: "<unnamed struct>"
+                  - Struct:
+                      ident: "<unnamed struct>"
+                      namespace: []
+                      args: []
               count: 1
-          value: "SEGGER_RTT_BUFFER_UP[1] = [\n\tSEGGER_RTT_BUFFER_UP @ 0x20002018]"
+          value: "SEGGER_RTT_BUFFER_UP[1] = [SEGGER_RTT_BUFFER_UP @ 0x20002018]"
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
             line: 335
@@ -277,7 +282,10 @@ Child Variables:
               type_name:
                 Modified:
                   - Typedef: SEGGER_RTT_BUFFER_UP
-                  - Struct: "<unnamed struct>"
+                  - Struct:
+                      ident: "<unnamed struct>"
+                      namespace: []
+                      args: []
               value: SEGGER_RTT_BUFFER_UP @ 0x20002018
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
@@ -289,8 +297,9 @@ Child Variables:
                 - name:
                     Named: sName
                   type_name:
-                    Pointer: char
-                  value: char* @ 0x20002018
+                    Pointer:
+                      Other: char
+                  value: char* @ 0x00001654
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                     line: 305
@@ -308,8 +317,9 @@ Child Variables:
                 - name:
                     Named: pBuffer
                   type_name:
-                    Pointer: char
-                  value: char* @ 0x2000201C
+                    Pointer:
+                      Other: char
+                  value: char* @ 0x20002048
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                     line: 306
@@ -375,9 +385,12 @@ Child Variables:
               item_type_name:
                 Modified:
                   - Typedef: SEGGER_RTT_BUFFER_DOWN
-                  - Struct: "<unnamed struct>"
+                  - Struct:
+                      ident: "<unnamed struct>"
+                      namespace: []
+                      args: []
               count: 1
-          value: "SEGGER_RTT_BUFFER_DOWN[1] = [\n\tSEGGER_RTT_BUFFER_DOWN @ 0x20002030]"
+          value: "SEGGER_RTT_BUFFER_DOWN[1] = [SEGGER_RTT_BUFFER_DOWN @ 0x20002030]"
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
             line: 336
@@ -390,7 +403,10 @@ Child Variables:
               type_name:
                 Modified:
                   - Typedef: SEGGER_RTT_BUFFER_DOWN
-                  - Struct: "<unnamed struct>"
+                  - Struct:
+                      ident: "<unnamed struct>"
+                      namespace: []
+                      args: []
               value: SEGGER_RTT_BUFFER_DOWN @ 0x20002030
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
@@ -402,8 +418,9 @@ Child Variables:
                 - name:
                     Named: sName
                   type_name:
-                    Pointer: char
-                  value: char* @ 0x20002030
+                    Pointer:
+                      Other: char
+                  value: char* @ 0x00001654
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                     line: 318
@@ -421,8 +438,9 @@ Child Variables:
                 - name:
                     Named: pBuffer
                   type_name:
-                    Pointer: char
-                  value: char* @ 0x20002034
+                    Pointer:
+                      Other: char
+                  value: char* @ 0x20002448
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                     line: 319
@@ -488,7 +506,7 @@ Child Variables:
           item_type_name:
             Base: char
           count: 1024
-      value: "char[1024] = [\n\tH,\n\te,\n\tl,\n\tl,\n\to,\n\t ,\n\tH,\n\te,\n\tl,\n\tl,\n\t... and 1014 more]"
+      value: "char[1024] = [H, e, l, l, o,  , H, e, l, l, ... and 1014 more]"
       source_location:
         path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
         line: 280
@@ -1056,7 +1074,7 @@ Child Variables:
           item_type_name:
             Base: char
           count: 16
-      value: "char[16] = [\n\t\u0000,\n\t\u0000,\n\t\u0000,\n\t\u0000,\n\t\u0000,\n\t\u0000,\n\t\u0000,\n\t\u0000,\n\t\u0000,\n\t\u0000,\n\t... and 6 more]"
+      value: "char[16] = [\u0000, \u0000, \u0000, \u0000, \u0000, \u0000, \u0000, \u0000, \u0000, \u0000, ... and 6 more]"
       source_location:
         path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
         line: 281
@@ -1255,7 +1273,10 @@ Child Variables:
       type_name:
         Modified:
           - Typedef: Foo_t
-          - Struct: "<unnamed struct>"
+          - Struct:
+              ident: "<unnamed struct>"
+              namespace: []
+              args: []
       value: Foo_t @ 0x20000000
       source_location:
         path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
@@ -1267,11 +1288,14 @@ Child Variables:
         - name: Unknown
           type_name:
             Base: "<unnamed union>"
-          value: "<unnamed union> {\n\t<unknown>: <unnamed struct> = <unnamed struct> @ 0x20000000,\n\tx: uint32_t = 1200000}"
+          value: "<unnamed union> @ 0x20000000"
           children:
             - name: Unknown
               type_name:
-                Struct: "<unnamed struct>"
+                Struct:
+                  ident: "<unnamed struct>"
+                  namespace: []
+                  args: []
               value: "<unnamed struct> @ 0x20000000"
               children:
                 - name:
@@ -1352,7 +1376,10 @@ Child Variables:
         - name:
             Named: unsigned_bitfields
           type_name:
-            Struct: "<unnamed struct>"
+            Struct:
+              ident: "<unnamed struct>"
+              namespace: []
+              args: []
           value: "<unnamed struct> @ 0x20000004"
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
@@ -1402,7 +1429,10 @@ Child Variables:
         - name:
             Named: signed_bitfields
           type_name:
-            Struct: "<unnamed struct>"
+            Struct:
+              ident: "<unnamed struct>"
+              namespace: []
+              args: []
           value: "<unnamed struct> @ 0x20000005"
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
@@ -1460,9 +1490,12 @@ Child Variables:
                   - Const
                   - Modified:
                       - Typedef: Foo_t
-                      - Struct: "<unnamed struct>"
+                      - Struct:
+                          ident: "<unnamed struct>"
+                          namespace: []
+                          args: []
               count: 2
-      value: "const Foo_t[2] = [\n\tFoo_t @ 0x00001684,\n\tFoo_t @ 0x0000168C]"
+      value: "const Foo_t[2] = [Foo_t @ 0x00001684, Foo_t @ 0x0000168C]"
       source_location:
         path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
         line: 53
@@ -1477,7 +1510,10 @@ Child Variables:
               - Const
               - Modified:
                   - Typedef: Foo_t
-                  - Struct: "<unnamed struct>"
+                  - Struct:
+                      ident: "<unnamed struct>"
+                      namespace: []
+                      args: []
           value: Foo_t @ 0x00001684
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
@@ -1489,11 +1525,14 @@ Child Variables:
             - name: Unknown
               type_name:
                 Base: "<unnamed union>"
-              value: "<unnamed union> {\n\t<unknown>: <unnamed struct> = <unnamed struct> @ 0x00001684,\n\tx: uint32_t = 0}"
+              value: "<unnamed union> @ 0x00001684"
               children:
                 - name: Unknown
                   type_name:
-                    Struct: "<unnamed struct>"
+                    Struct:
+                      ident: "<unnamed struct>"
+                      namespace: []
+                      args: []
                   value: "<unnamed struct> @ 0x00001684"
                   children:
                     - name:
@@ -1574,7 +1613,10 @@ Child Variables:
             - name:
                 Named: unsigned_bitfields
               type_name:
-                Struct: "<unnamed struct>"
+                Struct:
+                  ident: "<unnamed struct>"
+                  namespace: []
+                  args: []
               value: "<unnamed struct> @ 0x00001688"
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
@@ -1624,7 +1666,10 @@ Child Variables:
             - name:
                 Named: signed_bitfields
               type_name:
-                Struct: "<unnamed struct>"
+                Struct:
+                  ident: "<unnamed struct>"
+                  namespace: []
+                  args: []
               value: "<unnamed struct> @ 0x00001689"
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
@@ -1678,7 +1723,10 @@ Child Variables:
               - Const
               - Modified:
                   - Typedef: Foo_t
-                  - Struct: "<unnamed struct>"
+                  - Struct:
+                      ident: "<unnamed struct>"
+                      namespace: []
+                      args: []
           value: Foo_t @ 0x0000168C
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
@@ -1690,11 +1738,14 @@ Child Variables:
             - name: Unknown
               type_name:
                 Base: "<unnamed union>"
-              value: "<unnamed union> {\n\t<unknown>: <unnamed struct> = <unnamed struct> @ 0x0000168C,\n\tx: uint32_t = 0}"
+              value: "<unnamed union> @ 0x0000168C"
               children:
                 - name: Unknown
                   type_name:
-                    Struct: "<unnamed struct>"
+                    Struct:
+                      ident: "<unnamed struct>"
+                      namespace: []
+                      args: []
                   value: "<unnamed struct> @ 0x0000168C"
                   children:
                     - name:
@@ -1775,7 +1826,10 @@ Child Variables:
             - name:
                 Named: unsigned_bitfields
               type_name:
-                Struct: "<unnamed struct>"
+                Struct:
+                  ident: "<unnamed struct>"
+                  namespace: []
+                  args: []
               value: "<unnamed struct> @ 0x00001690"
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
@@ -1825,7 +1879,10 @@ Child Variables:
             - name:
                 Named: signed_bitfields
               type_name:
-                Struct: "<unnamed struct>"
+                Struct:
+                  ident: "<unnamed struct>"
+                  namespace: []
+                  args: []
               value: "<unnamed struct> @ 0x00001691"
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
@@ -1886,7 +1943,7 @@ Child Variables:
                       - Base: unsigned char
               count: 9
           count: 6
-      value: "uint8_t[9][6] = [\n\tuint8_t[9] = [\n\t\t0,\n\t\t1,\n\t\t2,\n\t\t3,\n\t\t4,\n\t\t5,\n\t\t6,\n\t\t7,\n\t\t8\n\t],\n\tuint8_t[9] = [\n\t\t10,\n\t\t11,\n\t\t12,\n\t\t13,\n\t\t14,\n\t\t15,\n\t\t16,\n\t\t17,\n\t\t18\n\t],\n\tuint8_t[9] = [\n\t\t20,\n\t\t21,\n\t\t22,\n\t\t23,\n\t\t24,\n\t\t25,\n\t\t26,\n\t\t27,\n\t\t28\n\t],\n\tuint8_t[9] = [\n\t\t30,\n\t\t31,\n\t\t32,\n\t\t33,\n\t\t34,\n\t\t35,\n\t\t36,\n\t\t37,\n\t\t38\n\t],\n\tuint8_t[9] = [\n\t\t40,\n\t\t41,\n\t\t42,\n\t\t43,\n\t\t44,\n\t\t45,\n\t\t46,\n\t\t47,\n\t\t48\n\t],\n\tuint8_t[9] = [\n\t\t50,\n\t\t51,\n\t\t52,\n\t\t53,\n\t\t54,\n\t\t55,\n\t\t56,\n\t\t57,\n\t\t58\n\t]]"
+      value: "uint8_t[9][6] = [uint8_t[9] = [0, 1, 2, 3, 4, 5, 6, 7, 8], uint8_t[9] = [10, 11, 12, 13, 14, 15, 16, 17, 18], uint8_t[9] = [20, 21, 22, 23, 24, 25, 26, 27, 28], uint8_t[9] = [30, 31, 32, 33, 34, 35, 36, 37, 38], uint8_t[9] = [40, 41, 42, 43, 44, 45, 46, 47, 48], uint8_t[9] = [50, 51, 52, 53, 54, 55, 56, 57, 58]]"
       source_location:
         path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
         line: 54
@@ -1905,7 +1962,7 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               count: 9
-          value: "uint8_t[9] = [\n\t0,\n\t1,\n\t2,\n\t3,\n\t4,\n\t5,\n\t6,\n\t7,\n\t8]"
+          value: "uint8_t[9] = [0, 1, 2, 3, 4, 5, 6, 7, 8]"
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 54
@@ -2059,7 +2116,7 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               count: 9
-          value: "uint8_t[9] = [\n\t10,\n\t11,\n\t12,\n\t13,\n\t14,\n\t15,\n\t16,\n\t17,\n\t18]"
+          value: "uint8_t[9] = [10, 11, 12, 13, 14, 15, 16, 17, 18]"
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 54
@@ -2213,7 +2270,7 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               count: 9
-          value: "uint8_t[9] = [\n\t20,\n\t21,\n\t22,\n\t23,\n\t24,\n\t25,\n\t26,\n\t27,\n\t28]"
+          value: "uint8_t[9] = [20, 21, 22, 23, 24, 25, 26, 27, 28]"
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 54
@@ -2367,7 +2424,7 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               count: 9
-          value: "uint8_t[9] = [\n\t30,\n\t31,\n\t32,\n\t33,\n\t34,\n\t35,\n\t36,\n\t37,\n\t38]"
+          value: "uint8_t[9] = [30, 31, 32, 33, 34, 35, 36, 37, 38]"
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 54
@@ -2521,7 +2578,7 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               count: 9
-          value: "uint8_t[9] = [\n\t40,\n\t41,\n\t42,\n\t43,\n\t44,\n\t45,\n\t46,\n\t47,\n\t48]"
+          value: "uint8_t[9] = [40, 41, 42, 43, 44, 45, 46, 47, 48]"
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 54
@@ -2675,7 +2732,7 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               count: 9
-          value: "uint8_t[9] = [\n\t50,\n\t51,\n\t52,\n\t53,\n\t54,\n\t55,\n\t56,\n\t57,\n\t58]"
+          value: "uint8_t[9] = [50, 51, 52, 53, 54, 55, 56, 57, 58]"
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 54
@@ -2832,7 +2889,7 @@ Child Variables:
                       - Base: short unsigned int
               count: 3
           count: 2
-      value: "uint16_t[3][2] = [\n\tuint16_t[3] = [\n\t\t0,\n\t\t1,\n\t\t2\n\t],\n\tuint16_t[3] = [\n\t\t3,\n\t\t4,\n\t\t5\n\t]]"
+      value: "uint16_t[3][2] = [uint16_t[3] = [0, 1, 2], uint16_t[3] = [3, 4, 5]]"
       source_location:
         path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
         line: 65
@@ -2851,7 +2908,7 @@ Child Variables:
                       - Typedef: __uint16_t
                       - Base: short unsigned int
               count: 3
-          value: "uint16_t[3] = [\n\t0,\n\t1,\n\t2]"
+          value: "uint16_t[3] = [0, 1, 2]"
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 65
@@ -2915,7 +2972,7 @@ Child Variables:
                       - Typedef: __uint16_t
                       - Base: short unsigned int
               count: 3
-          value: "uint16_t[3] = [\n\t3,\n\t4,\n\t5]"
+          value: "uint16_t[3] = [3, 4, 5]"
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 65

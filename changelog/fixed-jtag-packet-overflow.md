@@ -1,0 +1,1 @@
+Fixed a case where JTAG packets would overflow the buffer and panic.

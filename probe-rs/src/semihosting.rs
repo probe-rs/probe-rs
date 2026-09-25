@@ -103,6 +103,32 @@ impl std::fmt::Display for ExitErrorDetails {
     }
 }
 
+impl std::fmt::Display for SemihostingCommand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::ExitSuccess => write!(f, "SYS_EXIT (success)"),
+            Self::ExitError(details) => write!(f, "SYS_EXIT ({details})"),
+            Self::GetCommandLine(_) => write!(f, "SYS_GET_CMDLINE"),
+            Self::Open(_) => write!(f, "SYS_OPEN"),
+            Self::Close(_) => write!(f, "SYS_CLOSE"),
+            Self::WriteConsole(_) => write!(f, "SYS_WRITEC/SYS_WRITE0"),
+            Self::Write(_) => write!(f, "SYS_WRITE"),
+            Self::Read(_) => write!(f, "SYS_READ"),
+            Self::Seek(_) => write!(f, "SYS_SEEK"),
+            Self::FileLength(_) => write!(f, "SYS_FLEN"),
+            Self::Remove(_) => write!(f, "SYS_REMOVE"),
+            Self::Rename(_) => write!(f, "SYS_RENAME"),
+            Self::Time(_) => write!(f, "SYS_TIME"),
+            Self::Errno(_) => write!(f, "SYS_ERRNO"),
+            Self::Unknown(details) => write!(
+                f,
+                "operation {:#x} with parameter {:#x}",
+                details.operation, details.parameter
+            ),
+        }
+    }
+}
+
 /// Details of a semihosting operation that we don't support yet
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub struct UnknownCommandDetails {
@@ -130,6 +156,15 @@ impl UnknownCommandDetails {
 pub struct GetCommandLineRequest(Buffer);
 
 impl GetCommandLineRequest {
+    /// Address of the `block` argument the target passed to
+    /// `SYS_GET_CMDLINE`.
+    ///
+    /// Useful when transporting semihosting halt metadata out of band
+    /// (for example over RPC) without serializing the full request.
+    pub fn block_address(&self) -> u32 {
+        self.0.buffer_location
+    }
+
     /// Writes the command line to the target. You have to continue the core manually afterwards.
     pub fn write_command_line_to_target(
         &self,

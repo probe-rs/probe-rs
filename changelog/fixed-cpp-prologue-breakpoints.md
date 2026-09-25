@@ -1,0 +1,1 @@
+Fixed breakpoints and stepping in C++ source files. The GDB-style prologue-end heuristic (used because GNU compilers do not emit `DW_LNS_set_prologue_end`) was gated to C only, so for C++ no line was ever classified as a valid breakpoint location.

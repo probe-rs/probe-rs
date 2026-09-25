@@ -34,7 +34,7 @@ where
 {
     fn from(val: Result<V, DebugError>) -> Self {
         val.map_or_else(
-            |err| VariableValue::Error(format!("{err:?}")),
+            |err| VariableValue::Error(err.to_string()),
             |value| VariableValue::Valid(value.to_string()),
         )
     }
@@ -46,9 +46,10 @@ impl Value for bool {
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        let mem_data = memory.read_word_8(variable.memory_location.memory_address()?)?;
-        let ret_value: bool = mem_data != 0;
-        Ok(ret_value)
+        let mut buff = [0u8; 1];
+        variable.memory_location.read(&mut buff, memory)?;
+
+        Ok(buff[0] != 0)
     }
 
     fn update_value(
@@ -84,12 +85,10 @@ impl Value for char {
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        let mem_data = memory.read_word_32(variable.memory_location.memory_address()?)?;
-        if let Some(return_value) = char::from_u32(mem_data) {
-            Ok(return_value)
-        } else {
-            Ok('?')
-        }
+        let mut buff = [0u8; 4];
+        variable.memory_location.read(&mut buff, memory)?;
+
+        Ok(char::from_u32(u32::from_le_bytes(buff)).unwrap_or('?'))
     }
 
     fn update_value(

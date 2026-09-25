@@ -1,25 +1,27 @@
 use std::fmt::Write;
 
 use linkme::distributed_slice;
-use probe_rs::{CoreInterface, RegisterValue};
-use probe_rs_debug::VariableName;
+use probe_rs::{CoreRegister, RegisterId};
+use probe_rs_debug::{StackFrame, VariableName};
 
 use crate::cmd::dap_server::{
     DebuggerError,
-    debug_adapter::{
-        dap::{
-            adapter::DebugAdapter,
-            dap_types::EvaluateArguments,
-            repl_commands::{
-                EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand, need_subcommand,
-            },
-            repl_commands_helpers::get_local_variable,
-            repl_types::{GdbFormat, GdbNuf, ReplCommandArgs},
+    backend::rpc::RpcBackend,
+    debug_adapter::dap::{
+        adapter::DebugAdapter,
+        dap_types::EvaluateArguments,
+        repl_commands::{
+            EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand, async_fn, need_subcommand,
         },
-        protocol::ProtocolAdapter,
+        repl_commands_helpers::{
+            PrintTree, format_repl_variables, get_local_variable, scope_variables, select_frame,
+            stack_frame_id,
+        },
+        repl_types::{GdbFormat, GdbNuf, ReplCommandArgs},
     },
-    server::core_data::CoreHandle,
+    server::core_data::CoreData,
 };
+use crate::util::style::{ReplAddress, ReplDim, ReplSymbol, format_source_location};
 
 #[distributed_slice(REPL_COMMANDS)]
 static INFO: ReplCommand = ReplCommand {
@@ -33,8 +35,7 @@ static INFO: ReplCommand = ReplCommand {
             requires_target_halted: true,
             sub_commands: &[],
             args: &[ReplCommandArgs::Optional("address")],
-            // TODO: This is easy to implement ... just requires deciding how to format the output.
-            handler: |_, _, _, _| Err(DebuggerError::Unimplemented),
+            handler: async_fn!(info_frame),
         },
         ReplCommand {
             command: "locals",
@@ -42,14 +43,7 @@ static INFO: ReplCommand = ReplCommand {
             requires_target_halted: true,
             sub_commands: &[],
             args: &[],
-            handler: |target_core, _, evaluate_arguments, _| {
-                let gdb_nuf = GdbNuf {
-                    format_specifier: GdbFormat::Native,
-                    ..Default::default()
-                };
-                let variable_name = VariableName::LocalScopeRoot;
-                get_local_variable(evaluate_arguments, target_core, variable_name, gdb_nuf)
-            },
+            handler: async_fn!(info_locals),
         },
         ReplCommand {
             command: "reg",
@@ -57,7 +51,7 @@ static INFO: ReplCommand = ReplCommand {
             requires_target_halted: true,
             sub_commands: &[],
             args: &[ReplCommandArgs::Optional("register name")],
-            handler: print_registers,
+            handler: async_fn!(print_registers),
         },
         ReplCommand {
             command: "var",
@@ -65,8 +59,7 @@ static INFO: ReplCommand = ReplCommand {
             requires_target_halted: true,
             sub_commands: &[],
             args: &[],
-            // TODO: This is easy to implement ... just requires deciding how to format the output.
-            handler: |_, _, _, _| Err(DebuggerError::Unimplemented),
+            handler: async_fn!(info_static_variables),
         },
         ReplCommand {
             command: "break",
@@ -74,43 +67,139 @@ static INFO: ReplCommand = ReplCommand {
             requires_target_halted: false,
             sub_commands: &[],
             args: &[],
-            handler: print_breakpoints,
+            handler: async_fn!(print_breakpoints),
         },
     ],
     args: &[],
-    handler: need_subcommand,
+    handler: async_fn!(need_subcommand),
 };
 
-fn print_registers(
-    target_core: &mut CoreHandle<'_>,
-    command_arguments: &str,
-    _: &EvaluateArguments,
-    _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
+async fn info_frame<'a>(
+    _backend: &'a mut RpcBackend,
+    core_data: &'a mut CoreData,
+    command_arguments: &'a str,
+    evaluate_arguments: &'a EvaluateArguments,
+    adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
-    let register_name = command_arguments.trim();
-    let regs = target_core.core.registers().all_registers().filter(|reg| {
-        if register_name.is_empty() {
-            true
-        } else {
-            reg.name().eq_ignore_ascii_case(register_name)
-        }
-    });
+    let frame_index = select_frame(
+        &core_data.stack_frames,
+        evaluate_arguments.frame_id,
+        command_arguments,
+    )?;
+    Ok(EvalResponse::Message(format_frame(
+        frame_index,
+        &core_data.stack_frames[frame_index],
+        adapter.supports_ansi_styling,
+    )))
+}
 
-    let mut results = vec![];
-    let mut failures = vec![];
-    let mut any_matched = false;
-    for reg in regs {
-        any_matched = true;
-        match target_core.core.read_core_reg::<RegisterValue>(reg.id()) {
-            Ok(reg_value) => results.push((format!("{reg}:"), reg_value.to_string())),
-            Err(error) => failures.push((reg.to_string(), error)),
-        }
+async fn info_static_variables<'a>(
+    backend: &'a mut RpcBackend,
+    core_data: &'a mut CoreData,
+    _command_arguments: &'a str,
+    evaluate_arguments: &'a EvaluateArguments,
+    adapter: &'a mut DebugAdapter,
+) -> EvalResult {
+    let frame_index = select_frame(&core_data.stack_frames, evaluate_arguments.frame_id, "")?;
+    let frame_id = stack_frame_id(&core_data.stack_frames[frame_index])?;
+    let Some(variables) =
+        scope_variables(backend, core_data.core_index, frame_id, "statics").await?
+    else {
+        return Ok(EvalResponse::Message(
+            "No static variables available.".to_string(),
+        ));
+    };
+    if variables.is_empty() {
+        return Ok(EvalResponse::Message("No static variables.".to_string()));
     }
 
-    if !any_matched {
+    Ok(EvalResponse::Body(format_repl_variables(
+        &variables,
+        &GdbNuf {
+            format_specifier: GdbFormat::Native,
+            ..Default::default()
+        },
+        adapter.supports_ansi_styling,
+    )))
+}
+
+fn format_frame(index: usize, frame: &StackFrame, colorize: bool) -> String {
+    let mut response = format!(
+        "Frame {}: {} @ {}",
+        index + 1,
+        ReplSymbol::new(&frame.function_name).colorize(colorize),
+        ReplAddress::new(frame.pc.to_string()).colorize(colorize)
+    );
+    if frame.is_inlined {
+        #[expect(clippy::unwrap_used, reason = "Writing to a string is infallible")]
+        write!(
+            &mut response,
+            " {}",
+            ReplDim::new("(inline)").colorize(colorize)
+        )
+        .unwrap();
+    }
+    if let Some(location) = &frame.source_location {
+        #[expect(clippy::unwrap_used, reason = "Writing to a string is infallible")]
+        write!(
+            &mut response,
+            "\nSource: {}",
+            ReplDim::new(format_source_location(location)).colorize(colorize)
+        )
+        .unwrap();
+    }
+    if let Some(frame_base) = frame.frame_base {
+        #[expect(clippy::unwrap_used, reason = "Writing to a string is infallible")]
+        write!(
+            &mut response,
+            "\nFrame base: {}",
+            ReplAddress::new(format!("{frame_base:#x}")).colorize(colorize)
+        )
+        .unwrap();
+    }
+    if let Some(cfa) = frame.canonical_frame_address {
+        #[expect(clippy::unwrap_used, reason = "Writing to a string is infallible")]
+        write!(
+            &mut response,
+            "\nCanonical frame address: {}",
+            ReplAddress::new(format!("{cfa:#x}")).colorize(colorize)
+        )
+        .unwrap();
+    }
+    response
+}
+
+async fn print_registers<'a>(
+    backend: &'a mut RpcBackend,
+    core_data: &'a mut CoreData,
+    command_arguments: &'a str,
+    _evaluate_arguments: &'a EvaluateArguments,
+    adapter: &'a mut DebugAdapter,
+) -> EvalResult {
+    let core_index = core_data.core_index;
+    let colorize = adapter.supports_ansi_styling;
+    let register_name = command_arguments.trim();
+    let registers = backend.core_metadata[core_index]
+        .registers
+        .all_registers()
+        .filter(|reg| register_name.is_empty() || reg.name().eq_ignore_ascii_case(register_name))
+        .collect::<Vec<&'static CoreRegister>>();
+    if registers.is_empty() {
         return Err(DebuggerError::UserMessage(format!(
             "No registers found matching {register_name:?}. See the `help` command for more information."
         )));
+    }
+
+    let ids: Vec<RegisterId> = registers.iter().map(|r| r.id()).collect();
+    let values = backend.read_core_registers(core_index, ids).await?;
+
+    let mut results = vec![];
+    let mut failures = vec![];
+    for (reg, value) in registers.into_iter().zip(values) {
+        match value {
+            Some(reg_value) => results.push((format!("{reg}:"), reg_value.to_string())),
+            None => failures.push((reg.to_string(), "unreadable".to_string())),
+        }
     }
 
     let mut response_message = String::new();
@@ -119,37 +208,41 @@ fn print_registers(
         response_message.push_str("Failed to read the following registers:");
         for (reg_name, error) in &failures {
             #[expect(clippy::unwrap_used, reason = "Writing to a string is infallible")]
-            writeln!(&mut response_message, "{reg_name}: {error}").unwrap();
+            writeln!(
+                &mut response_message,
+                "{}: {error}",
+                ReplSymbol::new(reg_name).colorize(colorize)
+            )
+            .unwrap();
         }
     }
     if !results.is_empty() {
         if !response_message.is_empty() {
             response_message.push('\n');
         }
-        response_message.push_str(&reg_table(&results, 80));
+        response_message.push_str(&reg_table(&results, 80, colorize));
     }
 
     Ok(EvalResponse::Message(response_message))
 }
 
-fn print_breakpoints(
-    target_core: &mut CoreHandle<'_>,
-    _: &str,
-    _: &EvaluateArguments,
-    _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
+async fn print_breakpoints<'a>(
+    _backend: &'a mut RpcBackend,
+    core_data: &'a mut CoreData,
+    _command_arguments: &'a str,
+    _evaluate_arguments: &'a EvaluateArguments,
+    adapter: &'a mut DebugAdapter,
 ) -> EvalResult {
-    let breakpoint_addrs = target_core
-        .core
-        .hw_breakpoints()?
-        .into_iter()
-        .enumerate()
-        .filter_map(|(idx, bpt)| bpt.map(|bpt| (idx, bpt)));
-
+    let colorize = adapter.supports_ansi_styling;
     let mut response_message = String::new();
-
-    for (idx, bpt) in breakpoint_addrs {
+    for (idx, ab) in core_data.breakpoints.iter().enumerate() {
         #[expect(clippy::unwrap_used, reason = "Writing to a string is infallible")]
-        writeln!(&mut response_message, "Breakpoint #{idx} @ {bpt:#010X}").unwrap();
+        writeln!(
+            &mut response_message,
+            "Breakpoint #{idx} @ {}",
+            ReplAddress::new(format!("{:010X}", ab.address)).colorize(colorize)
+        )
+        .unwrap();
     }
 
     if response_message.is_empty() {
@@ -159,7 +252,31 @@ fn print_breakpoints(
     Ok(EvalResponse::Message(response_message))
 }
 
-fn reg_table(results: &[(String, String)], max_line_length: usize) -> String {
+async fn info_locals<'a>(
+    backend: &'a mut RpcBackend,
+    core_data: &'a mut CoreData,
+    _command_arguments: &'a str,
+    evaluate_arguments: &'a EvaluateArguments,
+    adapter: &'a mut DebugAdapter,
+) -> EvalResult {
+    let gdb_nuf = GdbNuf {
+        format_specifier: GdbFormat::Native,
+        ..Default::default()
+    };
+    let variable_name = VariableName::LocalScopeRoot;
+    get_local_variable(
+        backend,
+        evaluate_arguments,
+        core_data,
+        variable_name,
+        gdb_nuf,
+        PrintTree { depth: 0, width: 0 },
+        adapter.supports_ansi_styling,
+    )
+    .await
+}
+
+fn reg_table(results: &[(String, String)], max_line_length: usize, colorize: bool) -> String {
     let mut max_reg_name_width = 0;
     let mut max_value_width = 0;
 
@@ -193,7 +310,8 @@ fn reg_table(results: &[(String, String)], max_line_length: usize) -> String {
         // Format the line name and value
         write!(
             &mut response_message,
-            "{reg_name:<max_reg_name_width$} {reg_value:>max_value_width$}"
+            "{} {reg_value:>max_value_width$}",
+            ReplSymbol::new(format!("{reg_name:<max_reg_name_width$}")).colorize(colorize)
         )
         .unwrap();
 
@@ -204,6 +322,71 @@ fn reg_table(results: &[(String, String)], max_line_length: usize) -> String {
 
 #[cfg(test)]
 mod test {
+    use probe_rs::RegisterValue;
+    use probe_rs_debug::{DebugRegisters, ObjectRef, StackFrame};
+
+    fn frame(id: i64, pc: u32, name: &str) -> StackFrame {
+        StackFrame {
+            id: ObjectRef::from(id),
+            function_name: name.to_string(),
+            source_location: None,
+            registers: DebugRegisters::default(),
+            pc: RegisterValue::U32(pc),
+            frame_base: Some(0x2000),
+            is_inlined: false,
+            local_variables: None,
+            canonical_frame_address: Some(0x2010),
+        }
+    }
+
+    #[test]
+    fn selects_info_frame_by_dap_id_or_address() {
+        let frames = vec![frame(11, 0x1000, "top"), frame(12, 0x1010, "caller")];
+
+        assert_eq!(
+            crate::cmd::dap_server::debug_adapter::dap::repl_commands_helpers::select_frame(
+                &frames,
+                Some(12),
+                ""
+            )
+            .unwrap(),
+            1
+        );
+        assert_eq!(
+            crate::cmd::dap_server::debug_adapter::dap::repl_commands_helpers::select_frame(
+                &frames, None, "0x1000"
+            )
+            .unwrap(),
+            0
+        );
+        assert!(
+            crate::cmd::dap_server::debug_adapter::dap::repl_commands_helpers::select_frame(
+                &frames, None, "0x9999"
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn formats_info_frame_metadata() {
+        let frame = frame(11, 0x1000, "main");
+
+        pretty_assertions::assert_eq!(
+            super::format_frame(0, &frame, false),
+            "Frame 1: main @ 0x00001000\nFrame base: 0x2000\nCanonical frame address: 0x2010"
+        );
+    }
+
+    #[test]
+    fn styles_the_frame_function_and_addresses_for_ansi_clients() {
+        let frame = frame(11, 0x1000, "main");
+
+        pretty_assertions::assert_eq!(
+            super::format_frame(0, &frame, true),
+            "Frame 1: \u{1b}[36mmain\u{1b}[0m @ \u{1b}[33m0x00001000\u{1b}[0m\nFrame base: \u{1b}[33m0x2000\u{1b}[0m\nCanonical frame address: \u{1b}[33m0x2010\u{1b}[0m"
+        );
+    }
+
     #[test]
     fn reg_table_output() {
         let results = vec![
@@ -216,15 +399,15 @@ mod test {
         ];
 
         pretty_assertions::assert_eq!(
-            super::reg_table(&results, 20),
+            super::reg_table(&results, 20, false),
             "PC/R0: 0x00000000\nR1:    0x00000001\nR2:    0x00000002\nR3:    0x00000003\nR4:    0x00000004\nR5:    0x00000005"
         );
         pretty_assertions::assert_eq!(
-            super::reg_table(&results, 40),
+            super::reg_table(&results, 40, false),
             "PC/R0: 0x00000000 R1:    0x00000001\nR2:    0x00000002 R3:    0x00000003\nR4:    0x00000004 R5:    0x00000005"
         );
         pretty_assertions::assert_eq!(
-            super::reg_table(&results, 80),
+            super::reg_table(&results, 80, false),
             "PC/R0: 0x00000000 R1:    0x00000001 R2:    0x00000002 R3:    0x00000003\nR4:    0x00000004 R5:    0x00000005"
         );
     }

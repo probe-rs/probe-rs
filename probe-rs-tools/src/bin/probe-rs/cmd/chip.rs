@@ -2,7 +2,8 @@ use std::io::Write;
 
 use bytesize::ByteSize;
 
-use crate::rpc::{client::RpcClient, functions::chip::MemoryRegion};
+use probe_rs_rpc::chip::MemoryRegion;
+use probe_rs_rpc_client::RpcClient;
 
 #[derive(clap::Parser)]
 pub struct Cmd {
@@ -90,6 +91,7 @@ pub async fn print_chip_info(
 mod test {
     use super::*;
     use std::future::Future;
+    use std::sync::Arc;
 
     async fn run_on_local_server<F, Fut>(f: F)
     where
@@ -99,8 +101,9 @@ mod test {
         use crate::rpc::functions::RpcApp;
 
         // Create a local server to run commands against.
-        let (mut local_server, tx, rx) =
-            RpcApp::create_server(16, crate::rpc::functions::ProbeAccess::All);
+        let probe_broker = Arc::new(crate::rpc::probe_broker::ProbeBroker::new());
+        let (local_server, tx, rx) =
+            RpcApp::create_server(16, crate::rpc::functions::ProbeAccess::All, probe_broker);
         let handle = tokio::spawn(async move { local_server.run().await });
 
         // Run the command locally.
@@ -109,7 +112,9 @@ mod test {
         f(client).await;
 
         // Wait for the server to shut down
-        _ = handle.await.unwrap();
+        if let Err(e) = handle.await {
+            tracing::warn!("local RPC server task failed during test: {e}");
+        }
     }
 
     #[tokio::test]

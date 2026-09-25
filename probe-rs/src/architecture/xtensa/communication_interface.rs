@@ -11,12 +11,15 @@ use zerocopy::IntoBytes;
 use crate::{
     BreakpointCause, Error as ProbeRsError, HaltReason, MemoryInterface,
     architecture::xtensa::{
-        arch::{CpuRegister, Register, SpecialRegister, instruction::Instruction},
+        arch::{
+            CpuRegister, FpRegister, Register, SpecialRegister, UserRegister,
+            instruction::Instruction,
+        },
         register_cache::RegisterCache,
         xdm::{DebugStatus, XdmState},
     },
     memory::{Operation, OperationKind},
-    probe::{DebugProbeError, JtagAccess, queue::DeferredResultIndex},
+    probe::{CommandResult, DebugProbeError, Handle},
 };
 
 use super::xdm::{Error as XdmError, Xdm};
@@ -45,6 +48,12 @@ pub enum XtensaError {
 
     /// The result index of a batched command is not available.
     BatchedResultNotAvailable,
+
+    /// Breakpoint unit {0} does not exist.
+    BreakpointOutOfBounds(usize),
+
+    /// The target description specifies an unsupported debug level: {0}.
+    UnsupportedDebugLevel(u8),
 }
 
 impl From<XtensaError> for ProbeRsError {
@@ -71,6 +80,22 @@ pub enum DebugLevel {
     L6 = 6,
     /// The CPU was configured to take Debug interrupts at level 7.
     L7 = 7,
+}
+
+impl TryFrom<u8> for DebugLevel {
+    type Error = XtensaError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            2 => Ok(DebugLevel::L2),
+            3 => Ok(DebugLevel::L3),
+            4 => Ok(DebugLevel::L4),
+            5 => Ok(DebugLevel::L5),
+            6 => Ok(DebugLevel::L6),
+            7 => Ok(DebugLevel::L7),
+            other => Err(XtensaError::UnsupportedDebugLevel(other)),
+        }
+    }
 }
 
 impl DebugLevel {
@@ -108,6 +133,9 @@ pub(super) struct XtensaInterfaceState {
     /// Whether the core is halted.
     // This roughly relates to Core Debug States (true = Running, false = [Stopped, Stepping])
     pub(super) is_halted: bool,
+
+    /// Whether `CPENABLE` was overwritten to allow access to coprocessor registers.
+    coprocessors_enabled: bool,
 }
 
 /// Properties of a memory region.
@@ -123,6 +151,13 @@ pub struct MemoryRegionProperties {
     pub fast_memory_access: bool,
 }
 
+/// Properties of the Floating-Point Coprocessor Option.
+#[derive(Clone, Copy, Debug)]
+pub struct FpuProperties {
+    /// Whether the FPU supports double-precision operations.
+    pub double_precision: bool,
+}
+
 /// Properties of an Xtensa CPU core.
 pub struct XtensaCoreProperties {
     /// The number of hardware breakpoints the target supports. CPU-specific configuration value.
@@ -136,6 +171,9 @@ pub struct XtensaCoreProperties {
 
     /// Configurable options in the Windowed Register Option
     pub window_option_properties: WindowProperties,
+
+    /// Floating-point coprocessor properties, if the CPU implements the option.
+    pub fpu: Option<FpuProperties>,
 }
 
 impl Default for XtensaCoreProperties {
@@ -144,8 +182,40 @@ impl Default for XtensaCoreProperties {
             hw_breakpoint_num: 2,
             debug_level: DebugLevel::L6,
             memory_ranges: HashMap::new(),
-            window_option_properties: WindowProperties::lx(64),
+            window_option_properties: WindowProperties {
+                has_windowed_registers: false,
+                num_aregs: 0,
+                window_regs: 0,
+                rotw_rotates: 0,
+            },
+            fpu: None,
         }
+    }
+}
+
+impl TryFrom<&probe_rs_target::XtensaCoreProperties> for XtensaCoreProperties {
+    type Error = XtensaError;
+
+    fn try_from(properties: &probe_rs_target::XtensaCoreProperties) -> Result<Self, Self::Error> {
+        let defaults = Self::default();
+
+        Ok(Self {
+            hw_breakpoint_num: properties.hw_breakpoint_num,
+            debug_level: DebugLevel::try_from(properties.debug_level)?,
+            fpu: properties.fpu.as_ref().map(|fpu| FpuProperties {
+                double_precision: fpu.double_precision,
+            }),
+            window_option_properties: match properties.window_properties.as_ref() {
+                Some(window) => WindowProperties {
+                    has_windowed_registers: true,
+                    num_aregs: window.num_aregs,
+                    window_regs: 16,
+                    rotw_rotates: 4,
+                },
+                None => defaults.window_option_properties,
+            },
+            memory_ranges: defaults.memory_ranges,
+        })
     }
 }
 
@@ -214,16 +284,6 @@ pub struct WindowProperties {
 }
 
 impl WindowProperties {
-    /// Create a new WindowProperties instance with the given number of AR registers.
-    pub fn lx(num_aregs: u8) -> Self {
-        Self {
-            has_windowed_registers: true,
-            num_aregs,
-            window_regs: 16,
-            rotw_rotates: 4,
-        }
-    }
-
     /// Returns the number of different valid WindowBase values.
     pub fn windowbase_size(&self) -> u8 {
         self.num_aregs / self.rotw_rotates
@@ -236,6 +296,16 @@ pub struct XtensaDebugInterfaceState {
     interface_state: XtensaInterfaceState,
     core_properties: XtensaCoreProperties,
     xdm_state: XdmState,
+}
+
+impl XtensaDebugInterfaceState {
+    /// Creates the state of a core with the given properties.
+    pub fn new(core_properties: XtensaCoreProperties) -> Self {
+        Self {
+            core_properties,
+            ..Default::default()
+        }
+    }
 }
 
 /// The higher level of the XDM functionality.
@@ -251,7 +321,7 @@ pub struct XtensaCommunicationInterface<'probe> {
 impl<'probe> XtensaCommunicationInterface<'probe> {
     /// Create the Xtensa communication interface using the underlying probe driver
     pub fn new(
-        probe: &'probe mut dyn JtagAccess,
+        probe: &'probe mut dyn crate::probe::JtagChainAccess,
         state: &'probe mut XtensaDebugInterfaceState,
     ) -> Self {
         let XtensaDebugInterfaceState {
@@ -259,7 +329,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             core_properties,
             xdm_state,
         } = state;
-        let xdm = Xdm::new(probe, xdm_state);
+        let xdm = Xdm::new(crate::probe::JtagChain::new(probe), xdm_state);
 
         Self {
             xdm,
@@ -273,8 +343,13 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         self.core_properties
     }
 
+    /// Returns whether the CPU implements the Floating-Point Coprocessor Option.
+    pub fn has_fpu(&self) -> bool {
+        self.core_properties.fpu.is_some()
+    }
+
     /// Read the targets IDCODE.
-    pub fn read_idcode(&mut self) -> Result<u32, XtensaError> {
+    pub fn read_idcode(&mut self) -> Result<Option<u32>, XtensaError> {
         self.xdm.read_idcode()
     }
 
@@ -317,8 +392,6 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     }
 
     /// Waits until the core is halted.
-    ///
-    /// This function lowers the interrupt level to allow halting on debug exceptions.
     pub fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), XtensaError> {
         // Wait until halted state is active again.
         let start = Instant::now();
@@ -416,22 +489,51 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     }
 
     /// Steps the core by one instruction.
+    ///
+    /// Instructions that run above `intlevel` do not count, so an interrupt handler delays the
+    /// step until it returns. If a handler takes longer than `STEP_TIMEOUT`, the core stops
+    /// inside it.
     pub fn step(&mut self, by: u32, intlevel: u32) -> Result<(), XtensaError> {
+        /// How long we wait before we look at the core.
+        const POLL_INTERVAL: Duration = Duration::from_millis(100);
+        /// How long we let interrupt handlers delay a step.
+        const STEP_TIMEOUT: Duration = Duration::from_secs(1);
+
         // Instructions executed below icountlevel increment the ICOUNT register.
-        self.schedule_write_register(ICountLevel(intlevel + 1))?;
+        self.schedule_write_register(ICountLevel(
+            (intlevel + 1).min(self.core_properties.debug_level as u32),
+        ))?;
 
         // An exception is generated at the beginning of an instruction that would overflow ICOUNT.
         self.schedule_write_register(ICount(-((1 + by) as i32) as u32))?;
 
         self.resume_core()?;
-        // TODO: instructions like WAITI should be emulated as they are not single steppable.
-        // For now it's good enough to force a halt on timeout (instead of crashing) although it can
-        // stop in a long-running interrupt handler which isn't necessarily what the user wants.
-        // Even then, WAITI should be detected and emulated.
-        match self.wait_for_core_halted(Duration::from_millis(100)) {
-            Ok(()) => {}
-            Err(XtensaError::Timeout) => self.halt(Duration::from_millis(100))?,
-            Err(e) => return Err(e),
+
+        let start = Instant::now();
+        loop {
+            match self.wait_for_core_halted(POLL_INTERVAL) {
+                Ok(()) => break,
+                Err(XtensaError::Timeout) => {}
+                Err(e) => return Err(e),
+            }
+
+            // Reading why the core has not stopped needs the core stopped. Halting does not
+            // disturb the step: ICOUNT is not restored on resume, so it keeps counting.
+            self.halt(POLL_INTERVAL)?;
+
+            if self.read_register::<DebugCause>()?.halt_reason() != HaltReason::Request {
+                // Something other than our halt request stopped the core.
+                break;
+            }
+
+            if start.elapsed() >= STEP_TIMEOUT {
+                tracing::warn!(
+                    "Timeout while stepping, the core is likely in an interrupt handler"
+                );
+                break;
+            }
+
+            self.resume_core()?;
         }
 
         // Avoid stopping again
@@ -455,12 +557,13 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         Ok(())
     }
 
-    fn schedule_write_special_register(
+    /// Writes `value` into a register that is only reachable through a CPU register, by
+    /// loading the value into a scratch register and executing `instruction`.
+    fn schedule_write_via_scratch(
         &mut self,
-        register: SpecialRegister,
         value: u32,
+        instruction: impl FnOnce(CpuRegister) -> Instruction,
     ) -> Result<(), XtensaError> {
-        tracing::debug!("Writing special register: {:?}", register);
         const SCRATCH_REGISTER: CpuRegister = CpuRegister::A3;
 
         self.ensure_register_saved(SCRATCH_REGISTER)?;
@@ -468,11 +571,62 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
 
         self.schedule_write_cpu_register(SCRATCH_REGISTER, value)?;
 
-        // scratch -> target special register
         self.xdm
-            .schedule_execute_instruction(Instruction::Wsr(register, SCRATCH_REGISTER));
+            .schedule_execute_instruction(instruction(SCRATCH_REGISTER));
 
         Ok(())
+    }
+
+    fn schedule_write_special_register(
+        &mut self,
+        register: SpecialRegister,
+        value: u32,
+    ) -> Result<(), XtensaError> {
+        tracing::debug!("Writing special register: {:?}", register);
+
+        self.schedule_write_via_scratch(value, |scratch| Instruction::Wsr(register, scratch))
+    }
+
+    fn schedule_write_user_register(
+        &mut self,
+        register: UserRegister,
+        value: u32,
+    ) -> Result<(), XtensaError> {
+        tracing::debug!("Writing user register: {:?}", register);
+
+        self.schedule_write_via_scratch(value, |scratch| Instruction::Wur(register, scratch))
+    }
+
+    fn schedule_write_fp_register(
+        &mut self,
+        register: FpRegister,
+        value: u32,
+    ) -> Result<(), XtensaError> {
+        tracing::debug!("Writing floating point register: {:?}", register);
+
+        self.schedule_write_via_scratch(value, |scratch| Instruction::Wfr(register, scratch))
+    }
+
+    /// Overwrites `CPENABLE` so that coprocessor registers can be accessed.
+    ///
+    /// The original value is written back by [`Self::restore_registers`].
+    fn enable_coprocessors(&mut self) -> Result<(), XtensaError> {
+        if !self.has_fpu() {
+            return Err(XtensaError::RegisterNotAvailable);
+        }
+        if self.state.coprocessors_enabled {
+            return Ok(());
+        }
+
+        self.ensure_register_saved(SpecialRegister::CpEnable)?;
+        self.state
+            .register_cache
+            .mark_dirty(SpecialRegister::CpEnable);
+        self.state.coprocessors_enabled = true;
+
+        self.schedule_write_via_scratch(u32::MAX, |scratch| {
+            Instruction::Wsr(SpecialRegister::CpEnable, scratch)
+        })
     }
 
     #[tracing::instrument(skip(self), level = "debug")]
@@ -536,31 +690,40 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     pub(crate) fn schedule_read_register_uncached(
         &mut self,
         register: impl Into<Register>,
-    ) -> Result<DeferredResultIndex, XtensaError> {
+    ) -> Result<Handle<CommandResult>, XtensaError> {
         let register = register.into();
 
         const SCRATCH_REGISTER: CpuRegister = CpuRegister::A3;
         let mut cpu_register = SCRATCH_REGISTER;
 
-        // Do we need to read a special register?
-        let special_register = match register {
+        // Registers other than the CPU registers have to be read through a scratch register.
+        let read_instruction = match register {
             Register::Cpu(register) => {
                 cpu_register = register;
                 None
             }
-            Register::Special(register) => Some(register),
-            Register::CurrentPc => Some(self.core_properties.debug_level.pc()),
-            Register::CurrentPs => Some(self.core_properties.debug_level.ps()),
+            Register::Special(register) => Some(Instruction::Rsr(register, cpu_register)),
+            Register::User(register) => Some(Instruction::Rur(register, cpu_register)),
+            Register::FloatingPoint(register) => Some(Instruction::Rfr(register, cpu_register)),
+            Register::CurrentPc => Some(Instruction::Rsr(
+                self.core_properties.debug_level.pc(),
+                cpu_register,
+            )),
+            Register::CurrentPs => Some(Instruction::Rsr(
+                self.core_properties.debug_level.ps(),
+                cpu_register,
+            )),
         };
 
-        if let Some(special_register) = special_register {
-            // If we need to read a special register, read through a scratch register.
+        if let Some(read_instruction) = read_instruction {
+            if register.is_coprocessor_register() {
+                self.enable_coprocessors()?;
+            }
+
             self.ensure_register_saved(cpu_register)?;
             self.state.register_cache.mark_dirty(cpu_register);
 
-            // Read special register into the scratch register.
-            self.xdm
-                .schedule_execute_instruction(Instruction::Rsr(special_register, cpu_register));
+            self.xdm.schedule_execute_instruction(read_instruction);
         }
 
         self.xdm
@@ -589,11 +752,17 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     ) -> Result<(), XtensaError> {
         let register = register.into();
 
+        if register.is_coprocessor_register() {
+            self.enable_coprocessors()?;
+        }
+
         self.state.register_cache.store(register, value);
 
         match register {
             Register::Cpu(register) => self.schedule_write_cpu_register(register, value),
             Register::Special(register) => self.schedule_write_special_register(register, value),
+            Register::User(register) => self.schedule_write_user_register(register, value),
+            Register::FloatingPoint(register) => self.schedule_write_fp_register(register, value),
             Register::CurrentPc => {
                 self.schedule_write_special_register(self.core_properties.debug_level.pc(), value)
             }
@@ -628,9 +797,14 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     pub(super) fn restore_registers(&mut self) -> Result<(), XtensaError> {
         tracing::debug!("Restoring registers");
 
+        const CPENABLE: Register = Register::Special(SpecialRegister::CpEnable);
+
         let filters = [
             // First, we restore special registers, as they may need to use scratch registers.
-            |r: &Register| !r.is_cpu_register(),
+            // CPENABLE is left for later: a coprocessor register can only be written while its
+            // coprocessor is enabled.
+            |r: &Register| !r.is_cpu_register() && *r != CPENABLE,
+            |r: &Register| *r == CPENABLE,
             // Next, we restore CPU registers, which include scratch registers.
             |r: &Register| r.is_cpu_register(),
         ];
@@ -656,6 +830,8 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
                 self.schedule_write_register_untyped(register, restore_value)?;
             }
         }
+
+        self.state.coprocessors_enabled = false;
 
         Ok(())
     }
@@ -896,18 +1072,14 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             if !address_loaded {
                 memory_access.load_initial_address_for_write(self, addr)?;
             }
-            let mut chunks = buffer.chunks_exact(4);
-            for chunk in chunks.by_ref() {
-                let mut word = [0; 4];
-                word[..].copy_from_slice(chunk);
-                let word = u32::from_le_bytes(word);
-
-                memory_access.write_one(self, word)?;
+            let (chunks, remainder) = buffer.as_chunks::<4>();
+            for chunk in chunks.iter() {
+                memory_access.write_one(self, u32::from_le_bytes(*chunk))?;
 
                 addr += 4;
             }
 
-            buffer = chunks.remainder();
+            buffer = remainder;
         }
 
         // We store the narrow tail of the data (1-3 bytes) separately.
@@ -954,6 +1126,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
 
     pub(crate) fn clear_register_cache(&mut self) {
         self.state.register_cache = RegisterCache::new();
+        self.state.coprocessors_enabled = false;
     }
 
     pub(crate) fn read_deferred_result(
@@ -1277,12 +1450,12 @@ trait MemoryAccess {
     fn read_one(
         &mut self,
         interface: &mut XtensaCommunicationInterface,
-    ) -> Result<DeferredResultIndex, XtensaError>;
+    ) -> Result<Handle<CommandResult>, XtensaError>;
 
     fn read_one_and_continue(
         &mut self,
         interface: &mut XtensaCommunicationInterface,
-    ) -> Result<DeferredResultIndex, XtensaError>;
+    ) -> Result<Handle<CommandResult>, XtensaError>;
 
     fn write_one(
         &mut self,
@@ -1361,14 +1534,14 @@ impl MemoryAccess for FastMemoryAccess {
     fn read_one(
         &mut self,
         interface: &mut XtensaCommunicationInterface,
-    ) -> Result<DeferredResultIndex, XtensaError> {
+    ) -> Result<Handle<CommandResult>, XtensaError> {
         Ok(interface.xdm.schedule_read_ddr())
     }
 
     fn read_one_and_continue(
         &mut self,
         interface: &mut XtensaCommunicationInterface,
-    ) -> Result<DeferredResultIndex, XtensaError> {
+    ) -> Result<Handle<CommandResult>, XtensaError> {
         Ok(interface.xdm.schedule_read_ddr_and_execute())
     }
 }
@@ -1433,7 +1606,7 @@ impl MemoryAccess for SlowMemoryAccess {
     fn read_one(
         &mut self,
         interface: &mut XtensaCommunicationInterface,
-    ) -> Result<DeferredResultIndex, XtensaError> {
+    ) -> Result<Handle<CommandResult>, XtensaError> {
         if !self.address_written {
             interface.schedule_write_cpu_register(CpuRegister::A3, self.current_address)?;
             interface.state.register_cache.mark_dirty(CpuRegister::A3);
@@ -1466,7 +1639,7 @@ impl MemoryAccess for SlowMemoryAccess {
     fn read_one_and_continue(
         &mut self,
         interface: &mut XtensaCommunicationInterface,
-    ) -> Result<DeferredResultIndex, XtensaError> {
+    ) -> Result<Handle<CommandResult>, XtensaError> {
         self.read_one(interface)
     }
 

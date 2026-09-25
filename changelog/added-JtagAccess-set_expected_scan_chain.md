@@ -1,1 +1,0 @@
-Added a function `JtagAccess::set_expected_scan_chain()` to set the expected scan chain.

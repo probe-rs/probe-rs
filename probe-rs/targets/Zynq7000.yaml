@@ -31,6 +31,7 @@ manufacturer:
   cc: 0x0
 variants:
 - name: X7Z
+  skip_reset_on_ram_boot: true
   cores:
   - name: core0
     type: armv7a

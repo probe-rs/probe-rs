@@ -9,7 +9,7 @@ use crate::architecture::arm::{ArmDebugInterface, ArmError};
 use crate::probe::sifliuart::arm::SifliUartArmDebug;
 use crate::probe::{
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
-    ProbeFactory, WireProtocol,
+    ProbeFactory, WireProtocol, list::ProbeListItem,
 };
 use serialport::{SerialPort, SerialPortType, available_ports};
 use std::io::{BufReader, BufWriter, Read, Write};
@@ -469,7 +469,7 @@ impl ProbeFactory for SifliUartFactory {
         ))
     }
 
-    fn list_probes(&self) -> Vec<DebugProbeInfo> {
+    fn list_probes(&self) -> Vec<ProbeListItem> {
         let mut probes = vec![];
         let Ok(ports) = available_ports() else {
             return probes;
@@ -479,7 +479,12 @@ impl ProbeFactory for SifliUartFactory {
             else {
                 continue;
             };
-            probes.push(info);
+            // The SiFli probe is accessed over a serial port; check that node, not usbfs.
+            let accessibility = crate::probe::list::device_node_accessibility(&port.port_name);
+            probes.push(ProbeListItem {
+                info,
+                accessibility,
+            });
         }
         probes
     }

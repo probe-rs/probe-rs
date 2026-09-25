@@ -1,0 +1,1 @@
+The debugger now treats a register as holding the value of a variable, not the address of the variable. A pointer in a register therefore points at the register value, and a write to such a variable fails instead of writing the memory at the register value.

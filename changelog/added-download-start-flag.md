@@ -1,0 +1,1 @@
+`probe-rs download --start` starts the firmware after the download. probe-rs resets the target only if the firmware needs a reset to start: firmware that runs from RAM starts without a reset. This makes it possible to start firmware on targets that you must not reset, for example some FPGA soft cores.

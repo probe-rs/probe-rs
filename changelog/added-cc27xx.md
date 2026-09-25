@@ -1,0 +1,1 @@
+Added support for Texas Instruments cc27xx family, including CC2745R10Q1

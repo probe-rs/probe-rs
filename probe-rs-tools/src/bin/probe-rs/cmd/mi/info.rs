@@ -1,6 +1,5 @@
-use crate::{
-    cmd::common::info::basic_info, rpc::client::RpcClient, util::common_options::ProbeOptions,
-};
+use crate::{cmd::common::info::basic_info, util::common_options::ProbeOptions};
+use probe_rs_rpc_client::RpcClient;
 
 #[derive(clap::Parser)]
 #[group(skip)]

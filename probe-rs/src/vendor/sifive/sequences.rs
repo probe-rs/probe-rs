@@ -89,29 +89,29 @@ impl SifiveSequence {
         //           [0x7b0][01001][010][00000][1110011] = 0x7B04A073
         const CSRRS_X0_DCSR_X9: u32 = 0x7B04A073;
 
-        // Step 1: Write the mask to GPR x9 (s1) via abstract GPR command.
-        // Abstract GPR access is implemented natively by the FU740 DM and
-        // does NOT use the program buffer, so ebreakm=0 is not a problem.
+        // The hart must stay halted for all of the steps below. If it runs in between, it
+        // can overwrite x9, and the `csrrs` then ORs arbitrary bits into DCSR.
         interface
-            .abstract_cmd_register_write(S1_REGNO, DCSR_EBREAKM_PRV_M)
-            .map_err(crate::Error::Riscv)?;
+            .halted_access(|interface| {
+                // Step 1: Write the mask to GPR x9 (s1) via abstract GPR command.
+                // Abstract GPR access is implemented natively by the FU740 DM and
+                // does NOT use the program buffer, so ebreakm=0 is not a problem.
+                interface.abstract_cmd_register_write(S1_REGNO, DCSR_EBREAKM_PRV_M)?;
 
-        // Step 2: Set up the program buffer with the csrrs instruction.
-        // schedule_setup_program_buffer appends ebreak automatically.
-        interface
-            .schedule_setup_program_buffer(&[CSRRS_X0_DCSR_X9])
-            .map_err(crate::Error::Riscv)?;
+                // Step 2: Set up the program buffer with the csrrs instruction.
+                // schedule_setup_program_buffer appends ebreak automatically.
+                interface.schedule_setup_program_buffer(&[CSRRS_X0_DCSR_X9])?;
 
-        // Step 3: Execute the program buffer (no data transfer, postexec=true).
-        // The csrrs instruction sets ebreakm=1 atomically *before* ebreak runs,
-        // so the ebreak correctly enters debug mode.
-        let mut cmd = AccessRegisterCommand(0);
-        cmd.set_cmd_type(0);
-        cmd.set_aarsize(RiscvBusAccess::A32); // ignored when transfer=false
-        cmd.set_postexec(true);
-        cmd.set_transfer(false);
-        interface
-            .execute_abstract_command(cmd.0)
+                // Step 3: Execute the program buffer (no data transfer, postexec=true).
+                // The csrrs instruction sets ebreakm=1 atomically *before* ebreak runs,
+                // so the ebreak correctly enters debug mode.
+                let mut cmd = AccessRegisterCommand(0);
+                cmd.set_cmd_type(0);
+                cmd.set_aarsize(RiscvBusAccess::A32); // ignored when transfer=false
+                cmd.set_postexec(true);
+                cmd.set_transfer(false);
+                interface.execute_abstract_command(cmd.0)
+            })
             .map_err(crate::Error::Riscv)?;
 
         tracing::debug!("SifiveSequence: dcsr.ebreakm=1 and prv=M set via progbuf bootstrap");

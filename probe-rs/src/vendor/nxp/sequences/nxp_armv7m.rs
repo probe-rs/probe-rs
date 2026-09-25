@@ -15,7 +15,6 @@ use crate::{
     architecture::arm::{
         ArmDebugInterface, ArmError, FullyQualifiedApAddress, Pins,
         armv7m::{Demcr, FpCtrl, FpRev2CompX, MpuCtrl},
-        communication_interface::DapProbe,
         core::{
             armv7m::{Aircr, Dhcsr},
             registers::cortex_m::PC,
@@ -23,6 +22,7 @@ use crate::{
         dp::DpAddress,
         memory::ArmMemoryInterface,
         sequences::{self, ArmDebugSequence, ArmDebugSequenceError},
+        traits::DebugPortWire,
     },
     core::MemoryMappedRegister,
 };
@@ -904,7 +904,7 @@ impl S32K3xx {
 }
 
 impl ArmDebugSequence for S32K3xx {
-    fn reset_hardware_assert(&self, interface: &mut dyn DapProbe) -> Result<(), ArmError> {
+    fn reset_hardware_assert(&self, interface: &mut dyn DebugPortWire) -> Result<(), ArmError> {
         // This is only called when connecting under reset; remember it so that
         // debug_device_unlock and reset_hardware_deassert can take the
         // connect-under-reset paths of the pack's sequences.
@@ -912,7 +912,7 @@ impl ArmDebugSequence for S32K3xx {
 
         let mut n_reset = Pins(0);
         n_reset.set_nreset(true);
-        let _ = interface.swj_pins(0, n_reset.0 as u32, 0)?;
+        let _ = interface.swj_pins(Pins(0), n_reset, Duration::ZERO)?;
 
         Ok(())
     }

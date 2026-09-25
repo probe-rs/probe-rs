@@ -267,9 +267,15 @@ pub fn build_target_description(
 }
 
 fn build_riscv_registers(desc: &mut TargetDescription, regs: &CoreRegisters) {
+    let is_csr = |r: &&CoreRegister| {
+        r.dwarf_id()
+            .is_some_and(|id| id >= architecture::riscv::registers::DWARF_CSR_BASE)
+    };
+
     // Create the main register group
     desc.add_gdb_feature("org.gnu.gdb.riscv.cpu");
-    desc.add_registers(regs.core_registers());
+    // GDB numbers x0-x31, pc and the FPU by their position in these features.
+    desc.add_registers(regs.core_registers().filter(|r| !is_csr(r)));
     desc.add_register(&architecture::riscv::PC);
 
     if regs.fpu_registers().is_some() {
@@ -277,6 +283,9 @@ fn build_riscv_registers(desc: &mut TargetDescription, regs: &CoreRegisters) {
         desc.add_registers(regs.fpu_registers().unwrap());
         desc.add_registers(regs.fpu_status_registers().unwrap());
     }
+
+    desc.add_gdb_feature("org.gnu.gdb.riscv.csr");
+    desc.add_registers(regs.core_registers().filter(is_csr));
 
     desc.update_register_type("pc", "code_ptr");
 }
@@ -365,7 +374,7 @@ fn build_cortex_m_registers(desc: &mut TargetDescription, regs: &CoreRegisters) 
     desc.update_register_type("PC", "code_ptr");
 }
 
-fn build_xtensa_registers(desc: &mut TargetDescription, _regs: &CoreRegisters) {
+fn build_xtensa_registers(desc: &mut TargetDescription, regs: &CoreRegisters) {
     // Xtensa GDB uses a compiled-in register layout rather than XML target
     // description features. We must match the exact register order and count
     // that xtensa-*-elf-gdb expects. This layout is for ESP32-class cores
@@ -374,12 +383,18 @@ fn build_xtensa_registers(desc: &mut TargetDescription, _regs: &CoreRegisters) {
     // RegisterId encoding used by probe-rs for Xtensa:
     //   CPU register N:     RegisterId(N)         where N = 0..15
     //   Special register N: RegisterId(0x0100 | N)
+    //   FP register N:      RegisterId(0x0200 | N)
+    //   User register N:    RegisterId(0x0300 | N)
     //   Current PC:         RegisterId(0xFF00)
     //   Current PS:         RegisterId(0xFF01)
     let cpu = |n: u16| -> RegisterId { RegisterId(n) };
     let sr = |n: u16| -> RegisterId { RegisterId(0x0100 | n) };
+    let fr = |n: u16| -> RegisterId { RegisterId(0x0200 | n) };
+    let ur = |n: u16| -> RegisterId { RegisterId(0x0300 | n) };
     let pc_id = RegisterId(0xFF00);
     let ps_id = RegisterId(0xFF01);
+
+    let has_fpu = regs.fpu_registers().is_some();
 
     desc.add_gdb_feature("org.gnu.gdb.xtensa.core");
 
@@ -444,13 +459,22 @@ fn build_xtensa_registers(desc: &mut TargetDescription, _regs: &CoreRegisters) {
     desc.add_unavailable_register("f64s", 32);
 
     // Registers 87-102: single-precision FPU registers
-    for i in 0..16 {
-        desc.add_unavailable_register(format!("f{i}"), 32);
+    for i in 0..16u16 {
+        if has_fpu {
+            desc.add_register_from_details(format!("f{i}"), 32, fr(i));
+        } else {
+            desc.add_unavailable_register(format!("f{i}"), 32);
+        }
     }
 
     // Registers 103-104: FPU control/status
-    desc.add_unavailable_register("fcr", 32);
-    desc.add_unavailable_register("fsr", 32);
+    if has_fpu {
+        desc.add_register_from_details("fcr", 32, ur(232));
+        desc.add_register_from_details("fsr", 32, ur(233));
+    } else {
+        desc.add_unavailable_register("fcr", 32);
+        desc.add_unavailable_register("fsr", 32);
+    }
 
     // Register 105: memory management ID
     desc.add_unavailable_register("mmid", 32);

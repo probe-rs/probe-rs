@@ -14,9 +14,10 @@ use axum::{
     routing::{any, get},
 };
 use base64::{Engine, engine::general_purpose::STANDARD};
-use futures_util::{SinkExt, StreamExt};
+use futures_util::{Sink, SinkExt, StreamExt};
 use postcard_rpc::server::WireRxErrorKind;
 use probe_rs::probe::list::Lister;
+use probe_rs_rpc::transport::{frame, websocket::WebsocketRx};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha512};
 use tokio::task::LocalSet;
@@ -25,14 +26,50 @@ use tokio_util::bytes::Bytes;
 #[cfg(unix)]
 use std::path::PathBuf;
 use std::{fmt::Write, sync::Arc};
+use std::{
+    pin::Pin,
+    task::{Context, Poll},
+};
 
 use crate::{
-    rpc::{
-        functions::{ProbeAccess, RpcApp},
-        transport::websocket::{AxumWebsocketTx, WebsocketRx},
-    },
+    rpc::functions::{ProbeAccess, RpcApp},
+    rpc::probe_broker::ProbeBroker,
     util::pwr,
 };
+
+// Sends length-prefixed binary messages to a websocket stream
+pub struct AxumWebsocketTx<S> {
+    writer: S,
+}
+impl<S> AxumWebsocketTx<S> {
+    pub fn new(writer: S) -> Self {
+        Self { writer }
+    }
+}
+
+impl<S> Sink<Vec<u8>> for AxumWebsocketTx<S>
+where
+    S: Sink<ws::Message> + Unpin,
+{
+    type Error = S::Error;
+
+    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.writer.poll_ready_unpin(cx)
+    }
+
+    fn start_send(mut self: Pin<&mut Self>, msg: Vec<u8>) -> Result<(), Self::Error> {
+        self.writer
+            .start_send_unpin(ws::Message::Binary(frame(&msg).freeze()))
+    }
+
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.writer.poll_flush_unpin(cx)
+    }
+
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.writer.poll_close_unpin(cx)
+    }
+}
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -73,11 +110,20 @@ pub(crate) struct ServerUser {
 struct ServerState {
     config: ServerConfig,
     requests: tokio::sync::mpsc::Sender<(WebSocket, String)>,
+    probe_broker: Arc<ProbeBroker>,
 }
 
 impl ServerState {
-    fn new(config: ServerConfig, requests: tokio::sync::mpsc::Sender<(WebSocket, String)>) -> Self {
-        Self { config, requests }
+    fn new(
+        config: ServerConfig,
+        requests: tokio::sync::mpsc::Sender<(WebSocket, String)>,
+        probe_broker: Arc<ProbeBroker>,
+    ) -> Self {
+        Self {
+            config,
+            requests,
+            probe_broker,
+        }
     }
 }
 
@@ -99,9 +145,8 @@ async fn server_info() -> Html<String> {
         for probe in probes {
             write!(body, "<li>{probe}</li>").unwrap();
         }
+        body.push_str("</ul>");
     }
-
-    body.push_str("</ul>");
 
     write!(body, "<p>Version: {}</p>", env!("PROBE_RS_LONG_VERSION")).unwrap();
 
@@ -126,15 +171,23 @@ impl Cmd {
             pwr::power_enable().await?;
         }
 
+        let probe_broker = Arc::new(ProbeBroker::new());
+
         #[cfg(unix)]
         if let Some(socket_path) = config.socket_path() {
-            return self.run_unix(&PathBuf::from(socket_path), config).await;
+            return self
+                .run_unix(&PathBuf::from(socket_path), config, probe_broker)
+                .await;
         }
 
-        self.run_tcp(config).await
+        self.run_tcp(config, probe_broker).await
     }
 
-    async fn run_tcp(self, config: ServerConfig) -> anyhow::Result<()> {
+    async fn run_tcp(
+        self,
+        config: ServerConfig,
+        probe_broker: Arc<ProbeBroker>,
+    ) -> anyhow::Result<()> {
         let address = config.address.as_deref().unwrap_or("0.0.0.0");
         let port = config.port.unwrap_or(3000);
 
@@ -145,7 +198,7 @@ impl Cmd {
         let (request_tx, mut request_rx) = tokio::sync::mpsc::channel(64);
 
         let set = LocalSet::new();
-        let state = Arc::new(ServerState::new(config, request_tx));
+        let state = Arc::new(ServerState::new(config, request_tx, probe_broker));
 
         set.spawn_local({
             let state = state.clone();
@@ -175,7 +228,12 @@ impl Cmd {
     }
 
     #[cfg(unix)]
-    async fn run_unix(self, socket_path: &PathBuf, _config: ServerConfig) -> anyhow::Result<()> {
+    async fn run_unix(
+        self,
+        socket_path: &PathBuf,
+        _config: ServerConfig,
+        probe_broker: Arc<ProbeBroker>,
+    ) -> anyhow::Result<()> {
         use std::fs::{metadata, set_permissions};
         use std::os::unix::fs::PermissionsExt;
         use tokio::net::UnixListener;
@@ -197,7 +255,7 @@ impl Cmd {
             let (stream, _) = listener.accept().await?;
 
             // Spawn a new task for each connection
-            tokio::spawn(handle_unix_rpc(stream));
+            tokio::spawn(handle_unix_rpc(stream, probe_broker.clone()));
         }
     }
 }
@@ -267,7 +325,11 @@ async fn handle_socket(socket: WebSocket, challenge: String, state: Arc<ServerSt
 
     tracing::info!("User {} connected", user.name);
 
-    let (mut server, tx, mut rx) = RpcApp::create_server(SERVER_DEPTH, user.access.clone());
+    let (server, tx, mut rx) = RpcApp::create_server(
+        SERVER_DEPTH,
+        user.access.clone(),
+        state.probe_broker.clone(),
+    );
 
     // Connect the server's channels to the websocket connection
     let sender = async {
@@ -295,14 +357,14 @@ async fn handle_socket(socket: WebSocket, challenge: String, state: Arc<ServerSt
 }
 
 #[cfg(unix)]
-async fn handle_unix_rpc(stream: tokio::net::UnixStream) {
-    use crate::rpc::transport::memory::{PostcardReceiver, PostcardSender};
-    use crate::rpc::transport::unix::{UnixStreamRx, UnixStreamTx};
+async fn handle_unix_rpc(stream: tokio::net::UnixStream, probe_broker: Arc<ProbeBroker>) {
+    use probe_rs_rpc::transport::memory::{PostcardReceiver, PostcardSender};
+    use probe_rs_rpc::transport::unix::{UnixStreamRx, UnixStreamTx};
 
     tracing::info!("Unix socket client connected");
 
     let (reader, writer) = stream.into_split();
-    let (mut server, tx, mut rx) = RpcApp::create_server(SERVER_DEPTH, ProbeAccess::All);
+    let (server, tx, mut rx) = RpcApp::create_server(SERVER_DEPTH, ProbeAccess::All, probe_broker);
 
     // Connect the server's channels to the unix socket connection
     let sender = async {

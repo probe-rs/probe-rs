@@ -25,7 +25,7 @@ use self::interface::{Interface, Interfaces};
 use self::speed::SpeedConfig;
 use self::swo::SwoMode;
 use crate::architecture::arm::sequences::ArmDebugSequence;
-use crate::architecture::arm::{ArmDebugInterface, ArmError, Pins};
+use crate::architecture::arm::{ArmDebugInterface, ArmError};
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::xtensa::communication_interface::{
     XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
@@ -34,17 +34,17 @@ use crate::probe::jlink::bits::IteratorExt;
 use crate::probe::jlink::config::JlinkConfig;
 use crate::probe::jlink::connection::JlinkConnection;
 use crate::probe::usb_util::InterfaceExt;
-use crate::probe::{AutoImplementJtagAccess, JtagAccess};
+use crate::probe::{BitbangJtag, JtagChain, JtagChainAccess, JtagChainState, TapState};
 use crate::{
     architecture::{
-        arm::{
-            ArmCommunicationInterface, SwoAccess, communication_interface::DapProbe, swo::SwoConfig,
-        },
+        arm::{ArmCommunicationInterface, SwoAccess, swo::SwoConfig},
         riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder},
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
-        JtagDriverState, ProbeFactory, RawJtagIo, RawSwdIo, SwdSettings, WireProtocol,
+        BitbangSwd, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+        IoSequenceItem, ProbeFactory, SwdProbe, SwdSettings, WireProtocol,
+        list::{ProbeListItem, usb_probe_accessibility},
+        swd::Pins,
     },
 };
 
@@ -191,7 +191,8 @@ impl ProbeFactory for JLinkFactory {
             swo_config: None,
             speed_khz: 0, // default is unknown
             swd_settings: SwdSettings::default(),
-            jtag_state: JtagDriverState::default(),
+            jtag_state: JtagChainState::default(),
+            force_legacy_jtag_command: selector.product_id == 0x0101,
 
             jtag_tms_bits: vec![],
             jtag_tdi_bits: vec![],
@@ -273,7 +274,7 @@ impl ProbeFactory for JLinkFactory {
         Ok(Box::new(this))
     }
 
-    fn list_probes(&self) -> Vec<DebugProbeInfo> {
+    fn list_probes(&self) -> Vec<ProbeListItem> {
         list_jlink_devices()
     }
 }
@@ -387,7 +388,8 @@ pub struct JLink {
     jtag_tdi_bits: Vec<bool>,
     jtag_capture_tdo: Vec<bool>,
     jtag_response: BitVec,
-    jtag_state: JtagDriverState,
+    jtag_state: JtagChainState,
+    force_legacy_jtag_command: bool,
 
     /// max number of bits in a transfer chunk, when using JTAG
     jtag_chunk_size: usize,
@@ -716,8 +718,6 @@ impl JLink {
         tdi: bool,
         capture: bool,
     ) -> Result<(), DebugProbeError> {
-        self.jtag_state.state.update(tms);
-
         self.jtag_tms_bits.push(tms);
         self.jtag_tdi_bits.push(tdi);
         self.jtag_capture_tdo.push(capture);
@@ -741,7 +741,10 @@ impl JLink {
         // version 5 and above, which adds the 3rd command. Unfortunately we cannot reliably use the
         // HW version to determine this since some embedded J-Link probes have a HW version of
         // 1.0.0, but still support SWD, so we use the `SELECT_IF` capability instead.
-        let cmd = if self.caps.contains(Capability::SelectIf) {
+        // J-Link ARM Lite V8 (USB PID 0x0101) reports SELECT_IF, but returns an
+        // all-low TDO stream for HW_JTAG3 on macOS. HW_JTAG2 scans the same target
+        // chain correctly, matching SEGGER J-Link Commander/GDB Server.
+        let cmd = if self.caps.contains(Capability::SelectIf) && !self.force_legacy_jtag_command {
             // Use the new JTAG3 command, make sure to select the JTAG interface mode
             has_status_byte = true;
             Command::HwJtag3
@@ -1070,8 +1073,6 @@ impl DebugProbe for JLink {
 
                 tracing::debug!("Resetting JTAG chain using trst");
                 self.reset_trst()?;
-
-                self.select_target(0)?;
             }
             WireProtocol::Swd => {
                 // Attaching is handled in sequence
@@ -1112,7 +1113,15 @@ impl DebugProbe for JLink {
         Ok(())
     }
 
-    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JtagAccess> {
+    fn try_as_jtag_chain(&mut self) -> Option<JtagChain<'_>> {
+        Some(JtagChain::new(self))
+    }
+
+    fn try_as_swd_probe_mut(&mut self) -> Option<&mut dyn SwdProbe> {
+        Some(self)
+    }
+
+    fn try_as_jtag_chain_access_mut(&mut self) -> Option<&mut dyn JtagChainAccess> {
         Some(self)
     }
 
@@ -1150,15 +1159,27 @@ impl DebugProbe for JLink {
         self
     }
 
-    fn try_as_dap_probe(&mut self) -> Option<&mut dyn DapProbe> {
-        Some(self)
-    }
-
     fn try_get_arm_debug_interface<'probe>(
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
-        Ok(ArmCommunicationInterface::create(self, sequence, true))
+        let settings = SwdProbe::swd_settings(self.as_ref());
+        let iface = match self.protocol {
+            WireProtocol::Jtag => {
+                ArmCommunicationInterface::create_jtag(self, settings, sequence, true)
+            }
+            WireProtocol::Swd => {
+                ArmCommunicationInterface::create_swd(self, settings, sequence, true)
+            }
+        };
+        Ok(iface)
+    }
+
+    fn try_as_swd_probe(self: Box<Self>) -> Result<Box<dyn SwdProbe>, Box<dyn DebugProbe>> {
+        match self.protocol {
+            WireProtocol::Jtag => Err(self.into_probe()),
+            _ => Ok(self),
+        }
     }
 
     fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
@@ -1186,7 +1207,7 @@ impl DebugProbe for JLink {
     }
 }
 
-impl RawSwdIo for JLink {
+impl BitbangSwd for JLink {
     fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
         S: IntoIterator<Item = IoSequenceItem>,
@@ -1194,52 +1215,35 @@ impl RawSwdIo for JLink {
         self.perform_swdio_transfer(swdio)
     }
 
-    fn swj_pins(
+    fn swj_pins_op(
         &mut self,
-        pin_out: u32,
-        pin_select: u32,
-        pin_wait: u32,
-    ) -> Result<u32, DebugProbeError> {
-        let mut unsupported_pins = Pins(0);
-        unsupported_pins.set_ntrst(true);
-        unsupported_pins.set_tdi(true);
-        unsupported_pins.set_tdo(true);
-        let unsupported_pins_mask = unsupported_pins.0 as u32;
-
-        // Only RESET, TCK and TMS are supported at the moment
-        if pin_select & unsupported_pins_mask == 0 {
-            let pin_select = Pins(pin_select as u8);
-            let pin_out = Pins(pin_out as u8);
-
-            if pin_select.swclk_tck() {
-                self.set_tck(pin_out.swclk_tck())?;
+        out: Pins,
+        select: Pins,
+        wait: Duration,
+    ) -> Result<(), DebugProbeError> {
+        if select.ntrst() || select.tdi() || select.tdo() {
+            Err(DebugProbeError::CommandNotSupportedByProbe {
+                command_name: "swj_pins",
+            })
+        } else {
+            if select.swclk_tck() {
+                self.set_tck(out.swclk_tck())?;
             }
 
-            if pin_select.swdio_tms() {
-                self.set_tms(pin_out.swdio_tms())?;
+            if select.swdio_tms() {
+                self.set_tms(out.swdio_tms())?;
             }
 
-            // Set reset as last of the pins as some chips might sample tms and tck on release of reset
-            if pin_select.nreset() {
-                if pin_out.nreset() {
+            if select.nreset() {
+                if out.nreset() {
                     self.target_reset_deassert()?;
                 } else {
                     self.target_reset_assert()?;
                 }
             }
 
-            // Normally this would be the timeout we pass to the probe to settle the pins.
-            // The J-Link is not capable of this, so we just wait for this time on the host
-            // and assume it has settled until then.
-            std::thread::sleep(Duration::from_micros(pin_wait as u64));
-
-            // We signal that we cannot read the pin state.
-            Ok(0xFFFF_FFFF)
-        } else {
-            // This is not supported for J-Links, unfortunately.
-            Err(DebugProbeError::CommandNotSupportedByProbe {
-                command_name: "swj_pins",
-            })
+            std::thread::sleep(wait);
+            Ok(())
         }
     }
 
@@ -1248,26 +1252,52 @@ impl RawSwdIo for JLink {
     }
 }
 
-impl RawJtagIo for JLink {
-    fn state_mut(&mut self) -> &mut JtagDriverState {
-        &mut self.jtag_state
+impl BitbangJtag for JLink {
+    fn tap_state(&mut self) -> &mut TapState {
+        &mut self.jtag_state.tap_state
     }
 
-    fn state(&self) -> &JtagDriverState {
-        &self.jtag_state
-    }
-
-    fn shift_bit(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError> {
+    fn shift(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError> {
         self.shift_jtag_bit(tms, tdi, capture)
     }
 
-    fn read_captured_bits(&mut self) -> Result<BitVec, DebugProbeError> {
+    fn flush(&mut self) -> Result<(), DebugProbeError> {
+        self.flush_jtag().map_err(DebugProbeError::from)
+    }
+
+    fn captured(&mut self) -> Result<BitVec, DebugProbeError> {
         self.read_captured_bits()
+    }
+
+    fn shift_all(
+        &mut self,
+        tms: impl IntoIterator<Item = bool>,
+        tdi: impl IntoIterator<Item = bool>,
+        cap: impl IntoIterator<Item = bool>,
+    ) -> Result<(), DebugProbeError> {
+        for ((tms, tdi), cap) in tms.into_iter().zip(tdi).zip(cap) {
+            self.jtag_tms_bits.push(tms);
+            self.jtag_tdi_bits.push(tdi);
+            self.jtag_capture_tdo.push(cap);
+
+            if self.jtag_tms_bits.len() >= self.jtag_chunk_size {
+                self.flush_jtag()?;
+            }
+        }
+
+        Ok(())
     }
 }
 
-impl AutoImplementJtagAccess for JLink {}
-impl DapProbe for JLink {}
+impl JtagChainAccess for JLink {
+    fn chain_state(&mut self) -> &mut crate::probe::JtagChainState {
+        &mut self.jtag_state
+    }
+
+    fn chain_state_ref(&self) -> &crate::probe::JtagChainState {
+        &self.jtag_state
+    }
+}
 
 impl SwoAccess for JLink {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ArmError> {
@@ -1309,7 +1339,7 @@ impl SwoAccess for JLink {
 }
 
 #[tracing::instrument]
-fn list_jlink_devices() -> Vec<DebugProbeInfo> {
+fn list_jlink_devices() -> Vec<ProbeListItem> {
     let devices = match nusb::list_devices().wait() {
         Ok(devices) => devices,
         Err(e) => {
@@ -1321,7 +1351,7 @@ fn list_jlink_devices() -> Vec<DebugProbeInfo> {
     devices
         .filter(is_jlink)
         .map(|info| {
-            DebugProbeInfo::new(
+            let debug_probe_info = DebugProbeInfo::new(
                 info.product_string().unwrap_or("J-Link").to_string(),
                 info.vendor_id(),
                 info.product_id(),
@@ -1329,7 +1359,11 @@ fn list_jlink_devices() -> Vec<DebugProbeInfo> {
                 &JLinkFactory,
                 None,
                 false,
-            )
+            );
+            ProbeListItem {
+                info: debug_probe_info,
+                accessibility: usb_probe_accessibility(&info),
+            }
         })
         .collect()
 }
@@ -1455,6 +1489,268 @@ fn is_jlink(info: &DeviceInfo) -> bool {
 
 #[cfg(test)]
 mod test {
+    #[test]
+    fn shift_all_uses_chunk_size() {
+        use crate::probe::BitbangJtag;
+        use crate::probe::TapState;
+        use bitvec::vec::BitVec;
+
+        #[derive(Debug)]
+        struct RecordingJlink {
+            tap_state: TapState,
+            chunk_sizes: Vec<usize>,
+            pending: Vec<(bool, bool, bool)>,
+            chunk_size: usize,
+        }
+
+        impl crate::probe::DebugProbe for RecordingJlink {
+            fn get_name(&self) -> &str {
+                "recording jlink"
+            }
+
+            fn speed_khz(&self) -> u32 {
+                0
+            }
+
+            fn set_speed(&mut self, speed_khz: u32) -> Result<u32, crate::probe::DebugProbeError> {
+                Ok(speed_khz)
+            }
+
+            fn attach(&mut self) -> Result<(), crate::probe::DebugProbeError> {
+                Ok(())
+            }
+
+            fn detach(&mut self) -> Result<(), crate::Error> {
+                Ok(())
+            }
+
+            fn target_reset(&mut self) -> Result<(), crate::probe::DebugProbeError> {
+                Err(crate::probe::DebugProbeError::CommandNotSupportedByProbe {
+                    command_name: "target_reset",
+                })
+            }
+
+            fn target_reset_assert(&mut self) -> Result<(), crate::probe::DebugProbeError> {
+                Err(crate::probe::DebugProbeError::CommandNotSupportedByProbe {
+                    command_name: "target_reset_assert",
+                })
+            }
+
+            fn target_reset_deassert(&mut self) -> Result<(), crate::probe::DebugProbeError> {
+                Ok(())
+            }
+
+            fn select_protocol(
+                &mut self,
+                _protocol: crate::probe::WireProtocol,
+            ) -> Result<(), crate::probe::DebugProbeError> {
+                Ok(())
+            }
+
+            fn active_protocol(&self) -> Option<crate::probe::WireProtocol> {
+                None
+            }
+
+            fn into_probe(self: Box<Self>) -> Box<dyn crate::probe::DebugProbe> {
+                self
+            }
+        }
+
+        impl RecordingJlink {
+            fn new(chunk_size: usize) -> Self {
+                Self {
+                    tap_state: TapState::TestLogicReset,
+                    chunk_sizes: Vec::new(),
+                    pending: Vec::new(),
+                    chunk_size,
+                }
+            }
+
+            fn flush_chunk(&mut self) {
+                if self.pending.is_empty() {
+                    return;
+                }
+                self.chunk_sizes.push(self.pending.len());
+                self.pending.clear();
+            }
+        }
+
+        impl BitbangJtag for RecordingJlink {
+            fn tap_state(&mut self) -> &mut TapState {
+                &mut self.tap_state
+            }
+
+            fn shift(
+                &mut self,
+                tms: bool,
+                tdi: bool,
+                capture: bool,
+            ) -> Result<(), crate::probe::DebugProbeError> {
+                self.pending.push((tms, tdi, capture));
+                if self.pending.len() >= self.chunk_size {
+                    self.flush_chunk();
+                }
+                Ok(())
+            }
+
+            fn flush(&mut self) -> Result<(), crate::probe::DebugProbeError> {
+                self.flush_chunk();
+                Ok(())
+            }
+
+            fn captured(&mut self) -> Result<BitVec, crate::probe::DebugProbeError> {
+                Ok(BitVec::new())
+            }
+
+            fn shift_all(
+                &mut self,
+                tms: impl IntoIterator<Item = bool>,
+                tdi: impl IntoIterator<Item = bool>,
+                cap: impl IntoIterator<Item = bool>,
+            ) -> Result<(), crate::probe::DebugProbeError> {
+                for ((tms, tdi), cap) in tms.into_iter().zip(tdi).zip(cap) {
+                    self.pending.push((tms, tdi, cap));
+                    if self.pending.len() >= self.chunk_size {
+                        self.flush_chunk();
+                    }
+                }
+                Ok(())
+            }
+        }
+
+        let mut link = RecordingJlink::new(8);
+        link.shift_all(vec![false; 20], vec![true; 20], vec![false; 20])
+            .unwrap();
+        link.flush().unwrap();
+        assert_eq!(link.chunk_sizes, [8, 8, 4]);
+    }
+
+    #[test]
+    fn batch_matches_golden_shift_ir() {
+        use crate::probe::jtag::golden::{
+            SHIFT_IR_ONE_TAP, assert_triples_eq, build_ir_exchange, one_tap_params,
+        };
+        use crate::probe::jtag::{BitbangJtag, JtagBatch, TapState, run_bitbang_batch};
+        use bitvec::vec::BitVec;
+
+        #[derive(Debug)]
+        struct RecordingJlink {
+            tap_state: TapState,
+            triples: Vec<(bool, bool, bool)>,
+            chunk_size: usize,
+            pending: Vec<(bool, bool, bool)>,
+        }
+
+        impl crate::probe::DebugProbe for RecordingJlink {
+            fn get_name(&self) -> &str {
+                "recording jlink"
+            }
+
+            fn speed_khz(&self) -> u32 {
+                0
+            }
+
+            fn set_speed(&mut self, speed_khz: u32) -> Result<u32, crate::probe::DebugProbeError> {
+                Ok(speed_khz)
+            }
+
+            fn attach(&mut self) -> Result<(), crate::probe::DebugProbeError> {
+                Ok(())
+            }
+
+            fn detach(&mut self) -> Result<(), crate::Error> {
+                Ok(())
+            }
+
+            fn target_reset(&mut self) -> Result<(), crate::probe::DebugProbeError> {
+                Err(crate::probe::DebugProbeError::CommandNotSupportedByProbe {
+                    command_name: "target_reset",
+                })
+            }
+
+            fn target_reset_assert(&mut self) -> Result<(), crate::probe::DebugProbeError> {
+                Err(crate::probe::DebugProbeError::CommandNotSupportedByProbe {
+                    command_name: "target_reset_assert",
+                })
+            }
+
+            fn target_reset_deassert(&mut self) -> Result<(), crate::probe::DebugProbeError> {
+                Ok(())
+            }
+
+            fn select_protocol(
+                &mut self,
+                _protocol: crate::probe::WireProtocol,
+            ) -> Result<(), crate::probe::DebugProbeError> {
+                Ok(())
+            }
+
+            fn active_protocol(&self) -> Option<crate::probe::WireProtocol> {
+                None
+            }
+
+            fn into_probe(self: Box<Self>) -> Box<dyn crate::probe::DebugProbe> {
+                self
+            }
+        }
+
+        impl RecordingJlink {
+            fn new(chunk_size: usize) -> Self {
+                Self {
+                    tap_state: TapState::TestLogicReset,
+                    triples: Vec::new(),
+                    chunk_size,
+                    pending: Vec::new(),
+                }
+            }
+
+            fn flush_chunk(&mut self) {
+                self.triples.append(&mut self.pending);
+            }
+        }
+
+        impl BitbangJtag for RecordingJlink {
+            fn tap_state(&mut self) -> &mut TapState {
+                &mut self.tap_state
+            }
+
+            fn shift(
+                &mut self,
+                tms: bool,
+                tdi: bool,
+                capture: bool,
+            ) -> Result<(), crate::probe::DebugProbeError> {
+                self.pending.push((tms, tdi, capture));
+                if self.pending.len() >= self.chunk_size {
+                    self.flush_chunk();
+                }
+                Ok(())
+            }
+
+            fn flush(&mut self) -> Result<(), crate::probe::DebugProbeError> {
+                self.flush_chunk();
+                Ok(())
+            }
+
+            fn captured(&mut self) -> Result<BitVec, crate::probe::DebugProbeError> {
+                Ok(BitVec::new())
+            }
+        }
+
+        let mut link = RecordingJlink::new(64);
+        let mut batch = JtagBatch::new();
+        batch.enter(TapState::ShiftIr);
+        batch.exchange_no_capture(build_ir_exchange(one_tap_params(), 0b10110, 5));
+        batch.enter(TapState::RunTestIdle);
+        run_bitbang_batch(&mut link, TapState::TestLogicReset, &batch).unwrap();
+        assert_triples_eq(
+            &link.triples,
+            SHIFT_IR_ONE_TAP.0,
+            SHIFT_IR_ONE_TAP.1,
+            SHIFT_IR_ONE_TAP.2,
+        );
+    }
+
     #[test]
     fn jlink_pid_cmsisdap() {
         // J-Link devices configured as CMSIS-DAP should not be detected as J-Link devices.

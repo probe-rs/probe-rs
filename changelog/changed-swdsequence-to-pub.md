@@ -1,1 +1,0 @@
-Changed `SwdSequence` to `pub` to allow for implementing `ArmDebugSequence` externally.

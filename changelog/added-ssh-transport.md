@@ -1,0 +1,1 @@
+The RPC client can connect to a remote `probe-rs serve` instance through SSH with `ssh://[user@]destination[:port]` as the `--host` URL. The port names the server on the loopback interface of the remote host, and every ssh setting comes from the ssh configuration file of the user.

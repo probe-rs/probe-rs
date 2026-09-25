@@ -7,10 +7,7 @@ use probe_rs::{
     Error, MemoryInterface,
     architecture::riscv::{
         Dmcontrol, Riscv32,
-        communication_interface::{
-            MemoryAccessMethod, RiscvBusAccess, RiscvCommunicationInterface, Sbaddress0, Sbcs,
-            Sbdata0,
-        },
+        communication_interface::{RiscvCommunicationInterface, Sbaddress0, Sbcs, Sbdata0},
         sequences::RiscvDebugSequence,
     },
     semihosting::{SemihostingCommand, UnknownCommandDetails},
@@ -42,7 +39,8 @@ impl ESP32C61 {
         // disable super wdt
         interface.write_word_32(0x600B_1C20, 0x50D83AA1)?; // write protection off
         let current = interface.read_word_32(0x600B_1C1C)?;
-        interface.write_word_32(0x600B_1C1C, current | (1 << 18))?; // set RTC_WDT_SWD_AUTO_FEED_EN
+        // set LP_WDT_SWD_DISABLE and LP_WDT_SWD_AUTO_FEED_EN
+        interface.write_word_32(0x600B_1C1C, current | (1 << 30) | (1 << 18))?;
 
         // rtc wdg
         interface.write_word_32(0x600B_1C18, 0x50D83AA1)?; // write protection off
@@ -53,45 +51,10 @@ impl ESP32C61 {
 
         Ok(())
     }
-
-    fn configure_memory_access(
-        &self,
-        interface: &mut RiscvCommunicationInterface<'_>,
-    ) -> Result<(), Error> {
-        let memory_access_config = interface.memory_access_config();
-
-        // Access peripheral registers via program buffer
-        memory_access_config.set_region_override(
-            RiscvBusAccess::A32,
-            0x6000_0000..0x600D_0000,
-            MemoryAccessMethod::ProgramBuffer,
-        );
-
-        let accesses = [
-            RiscvBusAccess::A8,
-            RiscvBusAccess::A16,
-            RiscvBusAccess::A32,
-            RiscvBusAccess::A64,
-            RiscvBusAccess::A128,
-        ];
-        for access in accesses {
-            // External data/instruction bus
-            // Loading external memory is slower than the CPU. If we can't access something via the
-            // system bus, select the waiting program buffer method.
-            memory_access_config.set_region_override(
-                access,
-                0x4200_0000..0x4400_0000,
-                MemoryAccessMethod::WaitingProgramBuffer,
-            );
-        }
-
-        Ok(())
-    }
 }
 
 impl RiscvDebugSequence for ESP32C61 {
     fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), Error> {
-        self.configure_memory_access(interface)?;
         self.disable_wdts(interface)?;
 
         Ok(())

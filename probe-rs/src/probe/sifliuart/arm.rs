@@ -3,7 +3,7 @@ use crate::MemoryInterface;
 use crate::architecture::arm::ap::{
     AccessPortType, ApRegister, CFG, CSW, IDR, MemoryAp, MemoryApType,
 };
-use crate::architecture::arm::communication_interface::{DapProbe, SwdSequence};
+use crate::architecture::arm::communication_interface::SwdSequence;
 use crate::architecture::arm::dp::{DpAddress, DpRegisterAddress};
 use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::sequences::ArmDebugSequence;
@@ -11,7 +11,7 @@ use crate::architecture::arm::{
     ArmDebugInterface, ArmError, DapAccess, FullyQualifiedApAddress, SwoAccess, SwoConfig,
 };
 use crate::probe::sifliuart::{SifliUart, SifliUartCommand, SifliUartResponse};
-use crate::probe::{DebugProbeError, Probe};
+use crate::probe::{BitSequence, DebugProbeError, Probe};
 use std::cmp::{max, min};
 use std::collections::BTreeSet;
 use std::sync::Arc;
@@ -88,18 +88,10 @@ impl DapAccess for SifliUartArmDebug {
     ) -> Result<(), ArmError> {
         Ok(())
     }
-
-    fn try_dap_probe(&self) -> Option<&dyn DapProbe> {
-        None
-    }
-
-    fn try_dap_probe_mut(&mut self) -> Option<&mut dyn DapProbe> {
-        None
-    }
 }
 
 impl SwdSequence for SifliUartArmDebug {
-    fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
+    fn swj_sequence(&mut self, _bits: &BitSequence) -> Result<(), DebugProbeError> {
         Err(DebugProbeError::NotImplemented {
             function_name: "swj_sequence",
         })
@@ -284,9 +276,10 @@ impl SifliUartMemoryInterface<'_> {
             }
         }
 
-        let words: Vec<u32> = buffer
-            .chunks_exact(4)
-            .map(|chunk| u32::from_le_bytes(chunk.try_into().expect("chunk length is 4")))
+        let (chunks, _rem) = buffer.as_chunks::<4>();
+        let words: Vec<u32> = chunks
+            .iter()
+            .map(|chunk| u32::from_le_bytes(*chunk))
             .collect();
 
         // Write the entire alignment area at once

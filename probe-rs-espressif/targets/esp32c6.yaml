@@ -5,8 +5,8 @@ manufacturer:
 chip_detection:
 - !Espressif
   idcode: 0xdc25
-  variants:
-    0x2ce0806f: esp32c6
+  magic_address: 0x40001000
+  variants: {} # IDCODE is unique to ESP32-C6
 variants:
 - name: esp32c6
   cores:

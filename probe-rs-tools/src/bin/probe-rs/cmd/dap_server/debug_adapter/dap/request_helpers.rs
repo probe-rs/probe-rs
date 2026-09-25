@@ -1,8 +1,6 @@
 use crate::cmd::dap_server::{
     DebuggerError,
-    debug_adapter::dap::dap_types::{DisassembledInstruction, Source},
-    peripherals::svd_cache::{SvdVariableCache, Variable},
-    server::{core_data::CoreHandle, session_data::BreakpointType},
+    debug_adapter::dap::dap_types::{Breakpoint, DisassembledInstruction, Source},
 };
 use addr2line::gimli::RunTimeEndian;
 use anyhow::{Result, anyhow};
@@ -11,30 +9,20 @@ use capstone::{
     arch::riscv::ArchMode as riscvArchMode, prelude::*,
 };
 use itertools::Itertools;
-use probe_rs::{CoreType, Error, InstructionSet, MemoryInterface};
-use probe_rs_debug::{ColumnType, ObjectRef, SourceLocation};
-use std::time::Duration;
-
-use super::dap_types::{Breakpoint, InstructionBreakpoint, MemoryAddress};
-
-pub(crate) enum DisassemblyAmount {
-    Instructions(i64),
-    #[allow(unused)]
-    Bytes(u64),
-}
+use probe_rs::{Core, CoreInterface, CoreType, Error, InstructionSet, MemoryInterface};
+use probe_rs_debug::{ColumnType, DebugInfo, SourceLocation};
 
 pub(crate) fn disassemble_target_memory(
-    target_core: &mut CoreHandle<'_>,
+    core: &mut Core<'_>,
+    debug_info: Option<&DebugInfo>,
     instruction_offset: i64,
     byte_offset: i64,
     memory_reference: u64,
-    count: DisassemblyAmount,
+    instruction_count: i64,
 ) -> Result<Vec<DisassembledInstruction>, DebuggerError> {
-    use probe_rs::CoreInterface;
-
-    let debug_info = target_core.core_data.debug_info.as_ref();
-
-    let instruction_set = target_core.core.instruction_set()?;
+    let instruction_set = core.instruction_set()?;
+    let core_type = core.core_type();
+    let endianness = core.endianness()?;
     match instruction_set {
         InstructionSet::Thumb2
         | InstructionSet::RV32C
@@ -70,13 +58,8 @@ pub(crate) fn disassemble_target_memory(
     //    offset and count of instructions even if all instructions happen
     //    to be max length instructions.
     let start_memory_offset = start_instruction_offset * max_instruction_size;
-    let end_memory_offset = match count {
-        DisassemblyAmount::Instructions(count) => {
-            let end_instruction_offset = i64::max(0, instruction_offset + count).unsigned_abs();
-            (end_instruction_offset + 1) * max_instruction_size
-        }
-        DisassemblyAmount::Bytes(count) => start_memory_offset + count + max_instruction_size,
-    };
+    let end_instruction_offset = i64::max(0, instruction_offset + instruction_count).unsigned_abs();
+    let end_memory_offset = (end_instruction_offset + 1) * max_instruction_size;
     let mut start_from_address = adjusted_memory_reference.saturating_sub(start_memory_offset);
     let mut read_until_address = adjusted_memory_reference.saturating_add(end_memory_offset);
 
@@ -100,8 +83,6 @@ pub(crate) fn disassemble_target_memory(
     start_from_address &= !(min_instruction_size - 1);
     read_until_address &= !(min_instruction_size - 1);
 
-    let instruction_set = target_core.core.instruction_set()?;
-    let core_type = target_core.core.core_type();
     let cs_le = get_capstone_le(instruction_set, core_type)?;
     let mut code_buffer_le: Vec<u8> = vec![];
     let mut disassembled_instructions: Vec<DisassembledInstruction> = vec![];
@@ -109,7 +90,7 @@ pub(crate) fn disassemble_target_memory(
     let mut maybe_reference_instruction_index = None;
     let convert_endianness = match debug_info {
         Some(di) => di.endianness() == RunTimeEndian::Big,
-        None => target_core.core.endianness()? == probe_rs::Endian::Big,
+        None => endianness == probe_rs::Endian::Big,
     };
 
     let mut instruction_pointer = start_from_address;
@@ -159,13 +140,13 @@ pub(crate) fn disassemble_target_memory(
                 // order or garble partial 32 bit instructions.
                 HALFWORD => read_instruction::<HALFWORD, _>(
                     &mut read_pointer,
-                    &mut target_core.core,
+                    core,
                     &mut code_buffer_le,
                     convert_endianness,
                 ),
                 WORD => read_instruction::<WORD, _>(
                     &mut read_pointer,
-                    &mut target_core.core,
+                    core,
                     &mut code_buffer_le,
                     convert_endianness,
                 ),
@@ -320,34 +301,78 @@ pub(crate) fn disassemble_target_memory(
             "<`Disassemble` request: invalid memory reference.>",
         )));
     };
-    // ... and at the end of the list.
-    let instructions = match count {
-        DisassemblyAmount::Instructions(count) => count as usize,
-        DisassemblyAmount::Bytes(count) => {
-            disassembled_instructions
-                .iter()
-                .scan(0, |total_bytes, insn| {
-                    // the byte count for this instruction is the count of spaces in the
-                    // instruction_bytes string, plus one -- unless it's None or empty,
-                    // when we want to use min_instruction_size.
-                    *total_bytes += insn
-                        .instruction_bytes
-                        .as_ref()
-                        .filter(|s| !s.is_empty())
-                        .map(|s| s.as_bytes().iter().filter(|&&c| c == b' ').count() + 1)
-                        .unwrap_or(min_instruction_size as usize);
-                    if *total_bytes > count as usize {
-                        None
-                    } else {
-                        Some(())
-                    }
-                })
-                .count()
-        }
-    };
-    disassembled_instructions.truncate(instructions);
+    disassembled_instructions.truncate(instruction_count as usize);
 
     Ok(disassembled_instructions)
+}
+
+pub(crate) fn instruction_breakpoint_response(
+    address: u64,
+    set_succeeded: bool,
+    set_error: Option<&str>,
+    source_location: Option<&SourceLocation>,
+) -> Breakpoint {
+    if set_succeeded {
+        let (source, line, column, message) = match source_location {
+            Some(loc) => {
+                let line = loc.line.map(|l| l as i64);
+                let column = loc.column.map(|c| match c {
+                    ColumnType::LeftEdge => 0_i64,
+                    ColumnType::Column(c) => c as i64,
+                });
+                let message = Some(format!(
+                    "Instruction breakpoint set @:{address:#010x}. File: {}: Line: {}, Column: {}",
+                    loc.file_name()
+                        .unwrap_or_else(|| "<unknown source file>".to_string()),
+                    line.unwrap_or(0),
+                    column.unwrap_or(0),
+                ));
+                (get_dap_source(loc), line, column, message)
+            }
+            None => (
+                None,
+                None,
+                None,
+                Some(format!(
+                    "Instruction breakpoint set @:{address:#010x}, but could not resolve a source location."
+                )),
+            ),
+        };
+        Breakpoint {
+            column,
+            end_column: None,
+            end_line: None,
+            id: Some(address as i64),
+            instruction_reference: Some(format!("{address:#010x}")),
+            line,
+            message,
+            offset: None,
+            source,
+            verified: true,
+            reason: None,
+        }
+    } else {
+        Breakpoint {
+            column: None,
+            end_column: None,
+            end_line: None,
+            id: None,
+            instruction_reference: Some(format!("{address:#010x}")),
+            line: None,
+            message: Some(match set_error {
+                Some(error) => format!(
+                    "Warning: Could not set breakpoint at memory address: {address:#010x}: {error}"
+                ),
+                None => {
+                    format!("Warning: Could not set breakpoint at memory address: {address:#010x}")
+                }
+            }),
+            offset: None,
+            source: None,
+            verified: false,
+            reason: None,
+        }
+    }
 }
 
 fn get_capstone_le(
@@ -411,15 +436,13 @@ fn get_capstone_le(
 
 /// A helper function to create a [`Source`] struct from a [`SourceLocation`].
 ///
-/// The path stored in the [`SourceLocation`] is the path recorded by the compiler in DWARF debug
-/// information at build time, and so refers to a file on the *client's* filesystem (where the
-/// firmware was built). The DAP server emits it verbatim to the client; resolution to an actual
-/// editor buffer is the client's responsibility, since the client is the side that has access to
-/// the source tree. This is correct in both local and remote (`remote_server_mode`) deployments.
-///
-/// Path rewrites that depend on knowledge of the user's local toolchain (e.g. mapping the
-/// synthetic `/rustc/<hash>/...` prefix on precompiled rustlib paths to the active sysroot) are
-/// performed by the VSCode extension on the client side, not here.
+/// The path is the build-time path recorded by the compiler in DWARF debug info
+/// and refers to a file on the *client's* filesystem. The server emits it
+/// verbatim; resolution to an editor buffer is the client's responsibility
+/// (correct in both local and `remote_server_mode` deployments). Path rewrites
+/// that need knowledge of the user's local toolchain (e.g. mapping the
+/// synthetic `/rustc/<hash>/...` prefix on precompiled rustlib paths to the
+/// active sysroot) are performed by the VSCode extension, not here.
 pub(crate) fn get_dap_source(source_location: &SourceLocation) -> Option<Source> {
     let file_path = source_location.path.to_path();
     let file_name = source_location.file_name();
@@ -434,151 +457,4 @@ pub(crate) fn get_dap_source(source_location: &SourceLocation) -> Option<Source>
         adapter_data: None,
         checksums: None,
     })
-}
-
-/// Provides halt functionality that is re-used elsewhere, in context of multiple DAP Requests
-pub(crate) fn halt_core(
-    target_core: &mut probe_rs::Core,
-) -> Result<probe_rs::CoreInformation, DebuggerError> {
-    target_core
-        .halt(Duration::from_millis(100))
-        .map_err(DebuggerError::from)
-}
-
-/// The DAP protocol uses three related values to determine how to invoke the `Variables` request.
-/// This function retrieves that information from the `DebugInfo::VariableCache` and returns it as
-/// (`variable_reference`, `named_child_variables_cnt`, `indexed_child_variables_cnt`)
-pub(crate) fn get_variable_reference(
-    parent_variable: &probe_rs_debug::Variable,
-    cache: &probe_rs_debug::VariableCache,
-) -> (ObjectRef, i64, i64) {
-    if !parent_variable.is_valid() {
-        return (ObjectRef::Invalid, 0, 0);
-    }
-
-    let mut named_child_variables_cnt = 0;
-    let mut indexed_child_variables_cnt = 0;
-    for child_variable in cache.get_children(parent_variable.variable_key()) {
-        if child_variable.is_indexed() {
-            indexed_child_variables_cnt += 1;
-        } else {
-            named_child_variables_cnt += 1;
-        }
-    }
-
-    if named_child_variables_cnt > 0 || indexed_child_variables_cnt > 0 {
-        (
-            parent_variable.variable_key(),
-            named_child_variables_cnt,
-            indexed_child_variables_cnt,
-        )
-    } else if parent_variable.variable_node_type.is_deferred()
-        && parent_variable.to_string(cache) != "()"
-    {
-        // We have not yet cached the children for this reference.
-        // Provide DAP Client with a reference so that it will explicitly ask for children when the user expands it.
-        (parent_variable.variable_key(), 0, 0)
-    } else {
-        // Returning 0's allows VSCode DAP Client to behave correctly for frames that have no variables, and variables that have no children.
-        (ObjectRef::Invalid, 0, 0)
-    }
-}
-
-/// The DAP protocol uses three related values to determine how to invoke the `Variables` request.
-/// This function retrieves that information from the `DebugInfo::VariableCache` and returns it as
-/// (`variable_reference`, `named_child_variables_cnt`, `indexed_child_variables_cnt`)
-pub(crate) fn get_svd_variable_reference(
-    parent_variable: &Variable,
-    cache: &SvdVariableCache,
-) -> (ObjectRef, i64) {
-    let named_child_variables_cnt = cache.get_children(parent_variable.variable_key()).len();
-
-    if named_child_variables_cnt > 0 {
-        (
-            parent_variable.variable_key(),
-            named_child_variables_cnt as i64,
-        )
-    } else {
-        // Returning 0's allows VSCode DAP Client to behave correctly for frames that have no variables, and variables that have no children.
-        (ObjectRef::Invalid, 0)
-    }
-}
-
-/// A helper function to set and return a [`Breakpoint`] struct from a [`InstructionBreakpoint`]
-pub(crate) fn set_instruction_breakpoint(
-    requested_breakpoint: InstructionBreakpoint,
-    target_core: &mut CoreHandle<'_>,
-) -> Breakpoint {
-    let mut breakpoint_response = Breakpoint {
-        column: None,
-        end_column: None,
-        end_line: None,
-        id: None,
-        instruction_reference: None,
-        line: None,
-        message: None,
-        offset: None,
-        source: None,
-        verified: false,
-        reason: None,
-    };
-
-    if let Ok(MemoryAddress(memory_reference)) = requested_breakpoint
-        .instruction_reference
-        .as_str()
-        .try_into()
-    {
-        match target_core.set_breakpoint(memory_reference, BreakpointType::InstructionBreakpoint) {
-            Ok(_) => {
-                breakpoint_response.verified = true;
-                breakpoint_response.instruction_reference =
-                    Some(format!("{memory_reference:#010x}"));
-                // Try to resolve the source location for this breakpoint.
-                match target_core
-                    .core_data
-                    .debug_info
-                    .as_ref()
-                    .and_then(|di| di.get_source_location(memory_reference))
-                {
-                    Some(source_location) => {
-                        breakpoint_response.id = Some(memory_reference as i64);
-                        breakpoint_response.source = get_dap_source(&source_location);
-                        breakpoint_response.line = source_location.line.map(|line| line as i64);
-                        breakpoint_response.column = source_location.column.map(|col| match col {
-                            ColumnType::LeftEdge => 0_i64,
-                            ColumnType::Column(c) => c as i64,
-                        });
-                        breakpoint_response.message = Some(format!(
-                            "Instruction breakpoint set @:{memory_reference:#010x}. File: {}: Line: {}, Column: {}",
-                            source_location
-                                .file_name()
-                                .unwrap_or_else(|| "<unknown source file>".to_string()),
-                            breakpoint_response.line.unwrap_or(0),
-                            breakpoint_response.column.unwrap_or(0)
-                        ));
-                    }
-                    None => {
-                        breakpoint_response.message = Some(format!(
-                            "Instruction breakpoint set @:{memory_reference:#010x}, but could not resolve a source location."
-                        ));
-                    }
-                }
-            }
-            Err(error) => {
-                breakpoint_response.instruction_reference =
-                    Some(requested_breakpoint.instruction_reference);
-                breakpoint_response.message = Some(format!(
-                    "Warning: Could not set breakpoint at memory address: {memory_reference:#010x}: {error}"
-                ));
-            }
-        }
-    } else {
-        breakpoint_response.instruction_reference =
-            Some(requested_breakpoint.instruction_reference.clone());
-        breakpoint_response.message = Some(format!(
-            "Invalid memory reference specified: {:?}",
-            requested_breakpoint.instruction_reference
-        ));
-    };
-    breakpoint_response
 }

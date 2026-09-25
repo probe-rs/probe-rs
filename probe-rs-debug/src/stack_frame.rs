@@ -18,6 +18,18 @@ pub struct StackFrameInfo<'a> {
 
     /// The value of the stack pointer just before the CALL instruction in the parent function.
     pub canonical_frame_address: Option<u64>,
+
+    /// The calling frame, used to evaluate `DW_OP_entry_value`.
+    pub caller: Option<&'a StackFrameInfo<'a>>,
+}
+
+impl<'a> StackFrameInfo<'a> {
+    pub fn program_counter(&self) -> Option<u64> {
+        self.registers
+            .get_program_counter()?
+            .value
+            .and_then(|value| value.try_into().ok())
+    }
 }
 
 /// A full stack frame with all its information contained.

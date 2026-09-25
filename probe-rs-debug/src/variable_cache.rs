@@ -5,7 +5,7 @@ use probe_rs::Error;
 use probe_rs_target::MemoryRange;
 use serde::{Serialize, Serializer};
 use std::{
-    collections::{BTreeMap, btree_map::Entry},
+    collections::{BTreeMap, BTreeSet, btree_map::Entry},
     ops::Range,
 };
 
@@ -15,6 +15,8 @@ pub struct VariableCache {
     root_variable_key: ObjectRef,
 
     variable_hash_map: BTreeMap<ObjectRef, Variable>,
+    /// Child keys are stored in a `BTreeSet` so sibling order matches a `BTreeMap::values()` scan.
+    children: BTreeMap<ObjectRef, BTreeSet<ObjectRef>>,
 }
 
 impl Serialize for VariableCache {
@@ -114,11 +116,15 @@ impl VariableCache {
         let key = get_object_reference();
 
         variable.variable_key = key;
+        let parent_key = variable.parent_key;
 
-        VariableCache {
+        let mut cache = VariableCache {
             root_variable_key: key,
             variable_hash_map: BTreeMap::from([(key, variable)]),
-        }
+            children: BTreeMap::new(),
+        };
+        cache.link(parent_key, key);
+        cache
     }
 
     /// Create a variable cache based on DWARF debug information
@@ -206,6 +212,8 @@ impl VariableCache {
             }
         }
 
+        self.link(parent_key, variable_to_add.variable_key);
+
         Ok(variable_to_add)
     }
 
@@ -255,6 +263,8 @@ impl VariableCache {
             )));
         }
 
+        self.link(parent_key, cache_variable.variable_key);
+
         Ok(())
     }
 
@@ -269,17 +279,29 @@ impl VariableCache {
             &cache_variable.name
         );
 
-        let Some(prev_entry) = self.variable_hash_map.get_mut(&cache_variable.variable_key) else {
-            return Err(DebugError::Other(format!(
-                "Attempt to update an existing `Variable`:{:?} with a non-existent cache key: {:?}. Please report this as a bug.",
-                cache_variable.name, cache_variable.variable_key
-            )));
-        };
+        let old_parent = {
+            let Some(prev_entry) = self.variable_hash_map.get_mut(&cache_variable.variable_key)
+            else {
+                return Err(DebugError::Other(format!(
+                    "Attempt to update an existing `Variable`:{:?} with a non-existent cache key: {:?}. Please report this as a bug.",
+                    cache_variable.name, cache_variable.variable_key
+                )));
+            };
 
-        if cache_variable != prev_entry {
+            if cache_variable == prev_entry {
+                return Ok(());
+            }
+
             tracing::trace!("Updated:  {:?}", cache_variable);
             tracing::trace!("Previous: {:?}", prev_entry);
+            let old_parent = prev_entry.parent_key;
             *prev_entry = cache_variable.clone();
+            old_parent
+        };
+
+        if old_parent != cache_variable.parent_key {
+            self.unlink(old_parent, cache_variable.variable_key);
+            self.link(cache_variable.parent_key, cache_variable.variable_key);
         }
 
         Ok(())
@@ -343,19 +365,36 @@ impl VariableCache {
         first.cloned()
     }
 
+    fn link(&mut self, parent_key: ObjectRef, child_key: ObjectRef) {
+        self.children
+            .entry(parent_key)
+            .or_default()
+            .insert(child_key);
+    }
+
+    fn unlink(&mut self, parent_key: ObjectRef, child_key: ObjectRef) {
+        let Entry::Occupied(mut entry) = self.children.entry(parent_key) else {
+            return;
+        };
+        entry.get_mut().remove(&child_key);
+        if entry.get().is_empty() {
+            entry.remove();
+        }
+    }
+
     /// Retrieve `clone`d version of all the children of a `Variable`.
     /// If `parent_key == None`, it will return all the top level variables (no parents) in this cache.
     pub fn get_children(&self, parent_key: ObjectRef) -> impl Iterator<Item = &Variable> + Clone {
-        self.variable_hash_map
-            .values()
-            .filter(move |child_variable| child_variable.parent_key == parent_key)
+        self.children
+            .get(&parent_key)
+            .into_iter()
+            .flatten()
+            .filter_map(|child_key| self.variable_hash_map.get(child_key))
     }
 
     /// Check if variable has children. If the variable doesn't exist, it will return false.
     pub fn has_children(&self, parent_variable: &Variable) -> bool {
-        self.get_children(parent_variable.variable_key)
-            .next()
-            .is_some()
+        self.children.contains_key(&parent_variable.variable_key)
     }
 
     /// Sometimes DWARF uses intermediate nodes that are not part of the coded variable structure.
@@ -373,12 +412,17 @@ impl VariableCache {
             || obsolete_child_variable.variable_node_type != VariableNodeType::DoNotRecurse
         {
             // Make sure we pass children up, past any intermediate nodes.
-            self.variable_hash_map
-                .values_mut()
-                .filter(|search_variable| {
-                    search_variable.parent_key == obsolete_child_variable.variable_key
-                })
-                .for_each(|grand_child| grand_child.parent_key = parent_variable.variable_key);
+            let new_parent_key = parent_variable.variable_key;
+            if let Some(grandchild_keys) =
+                self.children.remove(&obsolete_child_variable.variable_key)
+            {
+                for grandchild_key in grandchild_keys {
+                    if let Some(grand_child) = self.variable_hash_map.get_mut(&grandchild_key) {
+                        grand_child.parent_key = new_parent_key;
+                    }
+                    self.link(new_parent_key, grandchild_key);
+                }
+            }
             // Remove the intermediate variable from the cache
             self.remove_cache_entry(obsolete_child_variable.variable_key)?;
         }
@@ -391,14 +435,15 @@ impl VariableCache {
         parent_variable_key: ObjectRef,
     ) -> Result<(), Error> {
         let children = self
-            .variable_hash_map
-            .values()
-            .filter(|child_variable| child_variable.parent_key == parent_variable_key)
-            .cloned()
-            .collect::<Vec<Variable>>();
+            .children
+            .get(&parent_variable_key)
+            .into_iter()
+            .flatten()
+            .copied()
+            .collect::<Vec<_>>();
 
-        for child in children {
-            self.remove_cache_entry(child.variable_key)?;
+        for child_key in children {
+            self.remove_cache_entry(child_key)?;
         }
 
         Ok(())
@@ -406,11 +451,13 @@ impl VariableCache {
     /// Removing an entry from the `VariableCache` will recursively remove all its children
     pub fn remove_cache_entry(&mut self, variable_key: ObjectRef) -> Result<(), Error> {
         self.remove_cache_entry_children(variable_key)?;
-        if self.variable_hash_map.remove(&variable_key).is_none() {
+        let Some(variable) = self.variable_hash_map.remove(&variable_key) else {
             return Err(Error::Other(format!(
                 "Failed to remove a `VariableCache` entry with key: {variable_key:?}. Please report this as a bug."
             )));
         };
+        self.unlink(variable.parent_key, variable_key);
+        self.children.remove(&variable_key);
         Ok(())
     }
     /// Recursively process the deferred variables in the variable cache,
@@ -421,7 +468,7 @@ impl VariableCache {
         debug_info: &DebugInfo,
         memory: &mut dyn MemoryInterface,
         max_recursion_depth: usize,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
     ) {
         let mut parent_variable = self.root_variable().clone();
 
@@ -442,7 +489,7 @@ impl VariableCache {
         parent_variable: &mut Variable,
         max_recursion_depth: usize,
         current_recursion_depth: usize,
-        frame_info: StackFrameInfo<'_>,
+        frame_info: &StackFrameInfo<'_>,
     ) {
         if current_recursion_depth >= max_recursion_depth {
             return;
@@ -473,7 +520,7 @@ impl VariableCache {
     }
 
     /// Traverse the `VariableCache` and return a Vec of all the memory ranges that are referenced by the variables.
-    /// This is used to determine which memory ranges to read from the target when creating a 'default' [`crate::CoreDump`].
+    /// This is used to determine which memory ranges to read from the target when creating a 'default' [`probe_rs::CoreDump`].
     pub fn get_discrete_memory_ranges(&self) -> Vec<Range<u64>> {
         let mut memory_ranges: Vec<Range<u64>> = Vec::new();
         for variable in self.variable_hash_map.values() {
@@ -488,7 +535,8 @@ impl VariableCache {
 
             // The datatype &str is a special case, because it is stores a pointer to the string data,
             // and the length of the string.
-            if matches!(variable.type_name, VariableType::Struct(ref name) if name == "&str") {
+            if matches!(variable.type_name, VariableType::Struct(ref name) if name.ident_stem() == "&str")
+            {
                 let children: Vec<_> = self.get_children(variable.variable_key).collect();
                 if !children.is_empty() {
                     let string_length = match children.iter().find(|child_variable| {
@@ -749,5 +797,24 @@ mod test {
         vars[5].parent_key = vars[2].variable_key;
 
         assert_eq!(new_children, vec![&vars[4], &vars[5]]);
+    }
+
+    #[test]
+    fn update_variable_moves_a_child_to_a_new_parent() {
+        let mut cache = VariableCache::new_static_cache();
+        let root_key = cache.root_variable().variable_key;
+
+        let parent_a = cache.create_variable(root_key, None).unwrap();
+        let parent_b = cache.create_variable(root_key, None).unwrap();
+        let mut child = cache.create_variable(parent_a.variable_key, None).unwrap();
+
+        child.parent_key = parent_b.variable_key;
+        cache.update_variable(&child).unwrap();
+
+        let children_a: Vec<_> = cache.get_children(parent_a.variable_key).collect();
+        let children_b: Vec<_> = cache.get_children(parent_b.variable_key).collect();
+
+        assert!(children_a.is_empty());
+        assert_eq!(children_b, vec![&child]);
     }
 }

@@ -11,7 +11,7 @@ pub mod debug_step;
 pub mod function_die;
 /// Programming languages
 pub(crate) mod language;
-/// Target Register definitions, expanded from [`crate::core::registers::CoreRegister`] to include unwind specific information.
+/// Target Register definitions, expanded from [`probe_rs::CoreRegister`] to include unwind specific information.
 pub mod registers;
 /// The source statement information used while identifying haltpoints for debug stepping and breakpoints.
 pub(crate) mod source_instructions;
@@ -27,9 +27,15 @@ pub mod variable_cache;
 pub(crate) mod exception_handling;
 
 pub use self::{
-    debug_info::*, debug_step::SteppingMode, exception_handling::exception_handler_for_core,
-    registers::*, source_instructions::SourceLocation, source_instructions::VerifiedBreakpoint,
-    stack_frame::StackFrame, variable::*, variable_cache::VariableCache,
+    debug_info::*,
+    debug_step::SteppingMode,
+    exception_handling::exception_handler_for_core,
+    registers::*,
+    source_instructions::SourceLocation,
+    source_instructions::VerifiedBreakpoint,
+    stack_frame::{StackFrame, StackFrameInfo},
+    variable::*,
+    variable_cache::VariableCache,
 };
 
 use probe_rs::{Core, MemoryInterface};
@@ -38,7 +44,7 @@ use gimli::DebuggingInformationEntry;
 use gimli::EvaluationResult;
 use gimli::{AttributeValue, RunTimeEndian};
 use serde::Serialize;
-use typed_path::TypedPathBuf;
+pub use typed_path::{TypedPath, TypedPathBuf};
 
 use std::num::ParseIntError;
 use std::{
@@ -50,7 +56,16 @@ use std::{
 };
 
 /// A simplified type alias of the [`gimli::EndianReader`] type.
-pub type EndianReader = gimli::EndianReader<RunTimeEndian, std::rc::Rc<[u8]>>;
+pub type EndianReader = gimli::EndianReader<RunTimeEndian, std::sync::Arc<[u8]>>;
+
+// `DebugInfo` must be `Send + Sync` so a probe-rs RPC server can share it
+// across requests (e.g. behind `Arc`).
+const _: () = {
+    const fn assert_send_sync<T: Send + Sync>() {}
+    assert_send_sync::<crate::DebugInfo>();
+    assert_send_sync::<crate::VariableCache>();
+    assert_send_sync::<crate::StackFrame>();
+};
 
 /// An error occurred while debugging the target.
 #[derive(Debug, thiserror::Error)]
@@ -68,7 +83,7 @@ pub enum DebugError {
     #[error("Non-UTF8 data found in debug data")]
     NonUtf8(#[from] Utf8Error),
     /// A probe-rs error occurred.
-    #[error("Error using the probe")]
+    #[error(transparent)]
     Probe(#[from] probe_rs::Error),
     /// A char could not be created from the given string.
     #[error(transparent)]
@@ -198,6 +213,21 @@ fn extract_file(
                 "Unable to extract file information from attribute value {:?}: Not implemented.",
                 other
             );
+            None
+        }
+    }
+}
+
+/// If a DW_AT_alignment attribute exists, return the u64 value, otherwise (including errors) return None
+fn extract_alignment(node_die: &DebuggingInformationEntry<GimliReader>) -> Option<u64> {
+    match node_die.attr(gimli::DW_AT_alignment)?.value() {
+        AttributeValue::Udata(alignment) => Some(alignment),
+        AttributeValue::Data1(alignment) => Some(alignment as u64),
+        AttributeValue::Data2(alignment) => Some(alignment as u64),
+        AttributeValue::Data4(alignment) => Some(alignment as u64),
+        AttributeValue::Data8(alignment) => Some(alignment),
+        other => {
+            tracing::warn!("Unimplemented: DW_AT_alignment value: {other:?}");
             None
         }
     }
