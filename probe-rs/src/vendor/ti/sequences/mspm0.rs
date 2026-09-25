@@ -18,7 +18,7 @@ use std::sync::Arc;
 
 use crate::architecture::arm::dp::DpAddress;
 use crate::architecture::arm::memory::ArmMemoryInterface;
-use crate::architecture::arm::sequences::ArmDebugSequence;
+use crate::architecture::arm::sequences::{ArmDebugSequence, cortex_m_wait_for_reset};
 use crate::architecture::arm::{ArmError, DapAccess, FullyQualifiedApAddress};
 use probe_rs_target::CoreType;
 
@@ -33,6 +33,13 @@ impl From<ApSel> for FullyQualifiedApAddress {
     fn from(apsel: ApSel) -> Self {
         FullyQualifiedApAddress::v1_with_default_dp(apsel as u8)
     }
+}
+
+/// Reset levels used by this sequence.
+#[derive(Debug, Clone, Copy)]
+enum ResetLevel {
+    /// Reset CPU and peripherals only.
+    SysRst = 0,
 }
 
 /// Debug power and reset control register, PWR-AP register bank 0.
@@ -66,6 +73,17 @@ const DPREC0_DEBUG_ENABLE: u32 =
 
 /// `SPREC.SYS RST`.
 const SPREC_SYS_RST: u32 = 1 << 0;
+
+/// Address of the RESETLEVEL register in the SYSCTL peripheral.
+const SYSCTL_RESETLEVEL: u32 = 0x400B_0300;
+
+/// Address of the RESETCMD register in the SYSCTL peripheral.
+const SYSCTL_RESETCMD: u32 = 0x400B_0304;
+
+/// The word to write to execute a reset.
+///
+/// This is the combined KEY (E4h) and the GO bit.
+const SYSCTL_RESETCMD_COMMAND: u32 = 0xE400_0001;
 
 /// Marker struct indicating initialization sequencing for MSPM0 family parts.
 #[derive(Debug)]
@@ -184,6 +202,31 @@ impl ArmDebugSequence for MSPM0 {
         )?;
 
         Ok(())
+    }
+
+    fn reset_system(
+        &self,
+        interface: &mut dyn ArmMemoryInterface,
+        _core_type: CoreType,
+        _debug_base: Option<u64>,
+    ) -> Result<(), ArmError> {
+        // FIXME: This seems to fail to write sometimes?
+
+        // SLAAEO5 section 6 suggests using SYSCTL instead to reset the chip.
+        //
+        // Resets are done using the SYSRST level so that peripherals such as the WWDT get reset.
+        // Otherwise a watchdog timer could cause the flashing process to fail by resetting the chip
+        // midway.
+
+        // Set RESETLEVEL to SYSRST.
+        interface.write_word_32(SYSCTL_RESETLEVEL as u64, ResetLevel::SysRst as u32)?;
+
+        // Issue RESETCMD to reset.
+        interface.write_word_32(SYSCTL_RESETCMD as u64, SYSCTL_RESETCMD_COMMAND)?;
+
+        // SYSRST resets both the peripherals and CPU.
+        // Need to wait for the CPU to reset.
+        cortex_m_wait_for_reset(interface)
     }
 }
 
