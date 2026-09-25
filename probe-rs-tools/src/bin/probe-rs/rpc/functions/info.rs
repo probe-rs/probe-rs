@@ -8,7 +8,7 @@ use probe_rs::{
     MemoryMappedRegister as _,
     architecture::{
         arm::{
-            self, ApAddress, ApV2Address, ArmDebugInterface,
+            self, ApAddress, ApV2Address, ArmDebugInterface, ArmError,
             ap::{ApClass, ApRegister, ApType, IDR},
             armv6m::Demcr,
             component::Scs,
@@ -375,8 +375,29 @@ async fn show_arm_info(
     interface: &mut dyn ArmDebugInterface,
     dp: dp::DpAddress,
 ) -> anyhow::Result<dp::DebugPortVersion> {
-    let dp_info = interface.read_raw_dp_register(dp, DPIDR::ADDRESS)?;
-    let dp_info = dp::DebugPortId::from(DPIDR(dp_info));
+    let dp_info = match interface.read_raw_dp_register(dp, DPIDR::ADDRESS) {
+        Ok(dp_info) => dp::DebugPortId::from(DPIDR(dp_info)),
+        Err(ArmError::NotImplemented(_)) => {
+            ctx.publish::<TargetInfoDataTopic>(
+                VarSeq::Seq2(0),
+                &InfoEvent::Message(
+                    "This probe does not implement DAP register access, ID'ing target via memory access instead.".to_string(),
+                ),
+            )
+            .await?;
+
+            // We aren't a real Debug Port, so SWD multidrop can't work.
+            // Return a fake DPv0 DebugPortId to stop try_show_info from probing SWD multidrop after this.
+            dp::DebugPortId {
+                revision: 0,
+                part_no: 0,
+                version: dp::DebugPortVersion::DPv0,
+                min_dp_support: dp::MinDpSupport::NotImplemented,
+                designer: jep106::JEP106Code::new(0, 0),
+            }
+        }
+        Err(e) => return Err(e.into()),
+    };
 
     let dpinfo = if dp_info.version == dp::DebugPortVersion::DPv2 {
         let targetid = interface.read_raw_dp_register(dp, TARGETID::ADDRESS)?;
