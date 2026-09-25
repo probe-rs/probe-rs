@@ -768,6 +768,18 @@ impl Session {
         }
     }
 
+    /// Get mutable access to the probe for JTAG-attached sessions.
+    ///
+    /// This is used by host-side flash sequences that speak probe-native
+    /// protocols (e.g. WCH-Link fastprogram commands) instead of driving the
+    /// target through a debug interface. Returns `None` for non-JTAG sessions.
+    pub(crate) fn jtag_probe_mut(&mut self) -> Option<&mut Probe> {
+        match &mut self.interfaces {
+            ArchitectureInterface::Jtag(probe, _) => Some(probe),
+            _ => None,
+        }
+    }
+
     /// Get the Xtensa probe interface.
     pub fn get_xtensa_interface(
         &mut self,

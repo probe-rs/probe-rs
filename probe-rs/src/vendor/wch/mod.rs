@@ -12,13 +12,24 @@ use crate::{
     vendor::Vendor,
 };
 
+pub mod sequences;
+
+use sequences::WchRiscvSequence;
+
 /// WCH
 #[derive(docsplay::Display)]
 pub struct Wch;
 
 impl Vendor for Wch {
-    fn try_create_debug_sequence(&self, _chip: &Chip) -> Option<DebugSequence> {
-        None
+    fn try_create_debug_sequence(&self, chip: &Chip) -> Option<DebugSequence> {
+        // Enable native WCH-Link flashing for supported RISC-V parts. Chips
+        // without a vendored loader blob, non-WCH-Link probes, and non-RISC-V
+        // cores transparently keep using the generic flash algorithms.
+        if WchRiscvSequence::supports_chip(&chip.cores, &chip.name) {
+            Some(DebugSequence::Riscv(WchRiscvSequence::create()))
+        } else {
+            None
+        }
     }
 
     fn try_detect_chip_from_probe(

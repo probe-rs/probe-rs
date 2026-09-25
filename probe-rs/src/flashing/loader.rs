@@ -25,6 +25,13 @@ use crate::session::Session;
 trait FlasherOps {
     fn algorithm_name(&self) -> &str;
     fn core_index(&self) -> usize;
+    /// Whether this flasher programs through a host-side flash sequence.
+    ///
+    /// Used to group all host-side regions of one core into a single
+    /// flasher, so a fallback whole-chip erase runs exactly once.
+    fn is_host_side(&self) -> bool {
+        false
+    }
     fn double_buffering_supported(&self) -> bool;
     fn is_chip_erase_supported(&self, session: &Session) -> bool;
     fn add_region(
@@ -145,6 +152,9 @@ impl FlasherOps for HostSideFlasher {
     }
     fn core_index(&self) -> usize {
         self.core_index
+    }
+    fn is_host_side(&self) -> bool {
+        true
     }
     fn double_buffering_supported(&self) -> bool {
         HostSideFlasher::double_buffering_supported(self)
@@ -1091,6 +1101,16 @@ impl FlashLoader {
 
         let mut algos: Vec<Box<dyn FlasherOps>> = Vec::new();
 
+        // Resolve the host flash sequence once for the whole plan so every
+        // host-side region shares one sequence object. This needs `&mut`
+        // access to the session, so it happens before `target` below
+        // borrows it.
+        let host_sequence = session
+            .target()
+            .debug_sequence
+            .debug_flash_sequence()
+            .filter(|sequence| sequence.supports_probe(session));
+
         // Commit NVM first
 
         // Iterate all NvmRegions and group them by flash algorithm.
@@ -1099,7 +1119,9 @@ impl FlashLoader {
         // This also ensures correct operation when chip erase is used. We assume doing a chip erase
         // using a given algorithm erases all regions controlled by it. Therefore, we must do
         // chip erase once per algorithm, not once per region. Otherwise subsequent chip erases will
-        // erase previous regions' flashed contents.
+        // erase previous regions' flashed contents. Host-side regions of one
+        // core share a single flasher for the same reason: a fallback
+        // whole-chip erase must run exactly once.
         tracing::debug!("Regions:");
         for region in self
             .memory_map
@@ -1127,6 +1149,33 @@ impl FlashLoader {
                 return Err(FlashError::NoNvmCoreAccess(region));
             };
 
+            // Prefer host-side flashing when the resolved sequence covers
+            // this region and honors the requested options. Otherwise fall
+            // back to target-side flash algorithms, which also lets one
+            // image mix both paths (e.g. code flash natively, option bytes
+            // generically).
+            let use_host_side = match host_sequence.as_ref() {
+                Some(sequence) if !sequence.supports_region(&region) => {
+                    tracing::debug!(
+                        "Region {:#010X?} is not covered by the host flash sequence, \
+                         using a target-side algorithm",
+                        region.range,
+                    );
+                    false
+                }
+                Some(sequence)
+                    if restore_unwritten_bytes && !sequence.supports_keep_unwritten_bytes() =>
+                {
+                    tracing::debug!(
+                        "Host flash sequence does not preserve unwritten bytes, \
+                         using a target-side algorithm",
+                    );
+                    false
+                }
+                Some(_) => true,
+                None => false,
+            };
+
             let target = session.target();
             let core = target.core_index_by_name(core_name).unwrap();
             let algo = Self::get_flash_algorithm_for_region(
@@ -1139,22 +1188,37 @@ impl FlashLoader {
             // We don't usually have more than a handful of regions, linear search should be fine.
             tracing::debug!("     -- using algorithm: {}", algo.name);
 
-            // Add region to existing flasher for this algorithm+core, or create a new one.
-            if let Some(entry) = algos
-                .iter_mut()
-                .find(|f| f.algorithm_name() == algo.name && f.core_index() == core)
-            {
+            // Add region to an existing flasher, or create a new one. All
+            // host-side regions of one core share a single flasher (and its
+            // sequence object), so a fallback whole-chip erase runs exactly
+            // once; generic regions keep grouping by algorithm+core.
+            if use_host_side {
+                let sequence = host_sequence
+                    .as_ref()
+                    .expect("use_host_side is only true when a host sequence was resolved");
+                match algos
+                    .iter_mut()
+                    .find(|f| f.is_host_side() && f.core_index() == core)
+                {
+                    Some(entry) => {
+                        entry.add_region(region, &self.builder, restore_unwritten_bytes)?
+                    }
+                    None => {
+                        tracing::debug!("Using host-side flashing (algorithm: {})", algo.name);
+                        let mut flasher =
+                            Box::new(HostSideFlasher::new(sequence.clone(), core, algo.clone()));
+                        flasher.add_region(region, &self.builder, restore_unwritten_bytes)?;
+                        algos.push(flasher);
+                    }
+                }
+            } else if let Some(entry) = algos.iter_mut().find(|f| {
+                !f.is_host_side() && f.algorithm_name() == algo.name && f.core_index() == core
+            }) {
                 entry.add_region(region, &self.builder, restore_unwritten_bytes)?;
             } else {
-                let mut flasher: Box<dyn FlasherOps> = if let Some(flash_sequence) =
-                    session.target().debug_sequence.debug_flash_sequence()
-                {
-                    Box::new(HostSideFlasher::new(flash_sequence, core, algo.clone()))
-                } else {
-                    let mut f = Flasher::new(target, core, algo)?;
-                    f.read_rtt_output(self.read_flasher_rtt);
-                    Box::new(f)
-                };
+                let mut f = Flasher::new(target, core, algo)?;
+                f.read_rtt_output(self.read_flasher_rtt);
+                let mut flasher: Box<dyn FlasherOps> = Box::new(f);
                 flasher.add_region(region, &self.builder, restore_unwritten_bytes)?;
                 algos.push(flasher);
             }
