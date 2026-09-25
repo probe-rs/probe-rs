@@ -470,6 +470,13 @@ fn record_reset() -> Vec<(bool, bool, bool)> {
     recorder.take_triples()
 }
 
+/// The bit-bang lowering of any batch, as (TMS, TDI, capture) per clock.
+pub(crate) fn lowering_batch(start: TapState, batch: &JtagBatch) -> Vec<(bool, bool, bool)> {
+    let mut recorder = GoldenRecorder::new();
+    run_bitbang_batch(&mut recorder, start, batch).unwrap();
+    recorder.take_triples()
+}
+
 pub(crate) fn lowering_move_to(from: TapState, to: TapState) -> Vec<(bool, bool, bool)> {
     let mut recorder = GoldenRecorder::new();
     let mut batch = JtagBatch::new();

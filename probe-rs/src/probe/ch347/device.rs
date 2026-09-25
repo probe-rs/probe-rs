@@ -2,7 +2,6 @@
 
 use std::time::Duration;
 
-use bitvec::vec::BitVec;
 use nusb::{
     DeviceInfo, MaybeFuture,
     descriptors::TransferType,
@@ -17,7 +16,6 @@ use crate::probe::{
 use super::Ch347Factory;
 use super::board::{Board, LedActivity};
 use super::capabilities::{Capabilities, Clock, Pack, Variant, jtag_clock};
-use super::jtag::JtagCycle;
 use super::swd::{SwdClock, WAIT_BACKOFF};
 use super::transport::{Ch347Error, Transport, UsbTransport};
 
@@ -78,8 +76,7 @@ pub(crate) struct Ch347Device {
     pub(super) requested_khz: Option<u32>,
     pub(super) clock: Option<Clock>,
     pub(super) out_of_sync: bool,
-    pub(super) jtag_queue: Vec<JtagCycle>,
-    pub(super) jtag_captured: BitVec,
+    pub(super) jtag_tms_low: bool,
 }
 
 /// The vendor-class interface with a bulk pipe in each direction, as (number, out, in).
@@ -175,8 +172,7 @@ impl Ch347Device {
             requested_khz: None,
             clock: None,
             out_of_sync: false,
-            jtag_queue: Vec::new(),
-            jtag_captured: BitVec::new(),
+            jtag_tms_low: false,
         }
     }
 
@@ -248,6 +244,12 @@ impl Ch347Device {
     pub(crate) fn attach(&mut self) -> Result<(), DebugProbeError> {
         match self.clock()? {
             Clock::Jtag { index, khz } => {
+                if !self.capabilities.bytewise_jtag() {
+                    tracing::warn!("this firmware shifts JTAG bit by bit");
+                }
+                if self.capabilities.odd_jtag_clock() {
+                    tracing::warn!("this firmware's JTAG clock timing is uneven");
+                }
                 if self.jtag_init(index)? != 0 {
                     return Err(DebugProbeError::UnsupportedSpeed(khz));
                 }
@@ -266,10 +268,6 @@ impl Ch347Device {
             }
         }
         Ok(())
-    }
-
-    pub(crate) fn detach(&mut self) -> Result<(), DebugProbeError> {
-        self.flush_jtag()
     }
 }
 
@@ -307,9 +305,12 @@ pub(crate) mod tests {
     use std::io;
     use std::sync::{Arc, Mutex};
 
-    /// The frames a test expects, each with the reply it gets; an empty reply is a timeout.
+    /// A frame a test expects and the transfers that answer it, one per read. An empty
+    /// transfer is a timeout.
+    pub(crate) type Exchange = (Vec<u8>, Vec<Vec<u8>>);
+
     #[derive(Debug, Default)]
-    pub(crate) struct Script(Mutex<VecDeque<(Vec<u8>, Vec<u8>)>>);
+    pub(crate) struct Script(Mutex<VecDeque<Exchange>>);
 
     impl Script {
         pub fn finished(&self) -> bool {
@@ -320,7 +321,7 @@ pub(crate) mod tests {
     #[derive(Debug)]
     pub(crate) struct MockTransport {
         script: Arc<Script>,
-        pending: Option<Vec<u8>>,
+        pending: VecDeque<Vec<u8>>,
     }
 
     impl Transport for MockTransport {
@@ -333,12 +334,12 @@ pub(crate) mod tests {
                 .pop_front()
                 .expect("unexpected write");
             assert_eq!(data, &expected[..], "unexpected frame");
-            self.pending = Some(reply);
+            self.pending = reply.into();
             Ok(())
         }
 
-        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-            let reply = self.pending.take().expect("read without a write");
+        fn read(&mut self, buf: &mut [u8], _: Duration) -> io::Result<usize> {
+            let reply = self.pending.pop_front().expect("read without a write");
             if reply.is_empty() {
                 return Err(io::Error::new(io::ErrorKind::TimedOut, "scripted timeout"));
             }
@@ -356,25 +357,42 @@ pub(crate) mod tests {
         firmware: 0x120,
     };
 
-    /// A device whose transport follows the script.
+    /// A device whose transport follows the script, one transfer per reply.
     pub(crate) fn scripted(
         capabilities: Capabilities,
         board: Option<Board>,
         frames: &[(&[u8], &[u8])],
     ) -> (Ch347Device, Arc<Script>) {
-        let script = Arc::new(Script(Mutex::new(
-            frames
-                .iter()
-                .map(|(write, reply)| (write.to_vec(), reply.to_vec()))
-                .collect(),
-        )));
+        let exchanges = frames
+            .iter()
+            .map(|(write, reply)| (write.to_vec(), vec![reply.to_vec()]));
+        scripted_transfers(capabilities, board, exchanges.collect())
+    }
+
+    /// A device whose transport follows the script, with each reply split into transfers.
+    pub(crate) fn scripted_transfers(
+        capabilities: Capabilities,
+        board: Option<Board>,
+        exchanges: Vec<Exchange>,
+    ) -> (Ch347Device, Arc<Script>) {
+        let script = Arc::new(Script(Mutex::new(exchanges.into())));
         let transport = MockTransport {
             script: script.clone(),
-            pending: None,
+            pending: VecDeque::new(),
         };
-        let mut dev = Ch347Device::new(Box::new(transport), capabilities, board);
-        dev.timing = Timing::INSTANT;
+        let dev = on_transport(capabilities, board, Box::new(transport));
         (dev, script)
+    }
+
+    /// A device on a test transport, with no delays.
+    pub(crate) fn on_transport(
+        capabilities: Capabilities,
+        board: Option<Board>,
+        transport: Box<dyn Transport>,
+    ) -> Ch347Device {
+        let mut dev = Ch347Device::new(transport, capabilities, board);
+        dev.timing = Timing::INSTANT;
+        dev
     }
 
     /// A generic CH347: no board, no GPIO.
