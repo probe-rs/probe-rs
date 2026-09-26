@@ -797,7 +797,9 @@ impl BlackMagicProbe {
         };
 
         probe.command(RemoteCommand::SetNrst(false)).ok();
-        probe.command(RemoteCommand::SetSpeedHz(400_0000)).ok();
+        if let Ok(speed_khz) = probe.set_speed(4000) {
+            tracing::info!("Initial speed: {speed_khz} kHz");
+        }
 
         Ok(probe)
     }
@@ -953,7 +955,7 @@ impl BlackMagicProbe {
     fn get_speed(&mut self) -> Result<u32, DebugProbeError> {
         let speed: u32 = self.command(RemoteCommand::SpeedKhz)?.0.try_into().unwrap();
         // The reply contains hex-encoded little-endian bytes representing Hz.
-        Ok(u32::from_le_bytes(speed.to_be_bytes()) / 1000)
+        Ok(speed.swap_bytes() / 1000)
     }
 
     fn drain_swd_accumulator(
@@ -1939,15 +1941,34 @@ mod speed_tests {
         for (requested_khz, reply, expected_khz) in
             [(1000, "63a01700", 1548), (4000, "c0c62d00", 3000)]
         {
-            let responses = format!("&KBlack Magic Probe#&K4#&K0#&K0#&K0#&K{reply}#");
+            let responses = format!("&KBlack Magic Probe#&K4#&K0#&K0#&Kc0c62d00#&K0#&K{reply}#");
             let mut probe = BlackMagicProbe::new(
                 Box::new(Cursor::new(responses.into_bytes())),
                 Box::new(sink()),
             )
             .unwrap();
 
+            assert_eq!(probe.speed_khz(), 3000);
             assert_eq!(probe.set_speed(requested_khz).unwrap(), expected_khz);
             assert_eq!(probe.speed_khz(), expected_khz);
+        }
+    }
+
+    #[test]
+    fn initial_speed_errors_are_nonfatal() {
+        // The initial set or query can fail without preventing later use.
+        for initial_responses in ["&N0#", "&K0#&N0#"] {
+            let responses =
+                format!("&KBlack Magic Probe#&K4#&K0#{initial_responses}&K0#&K63a01700#");
+            let mut probe = BlackMagicProbe::new(
+                Box::new(Cursor::new(responses.into_bytes())),
+                Box::new(sink()),
+            )
+            .unwrap();
+
+            assert_eq!(probe.speed_khz(), 0);
+            assert_eq!(probe.set_speed(1000).unwrap(), 1548);
+            assert_eq!(probe.speed_khz(), 1548);
         }
     }
 }
