@@ -96,11 +96,12 @@ impl Cmd {
             speeds.extend_from_slice(&PROBE_SPEEDS);
         };
 
-        // Attach once per tested speed (not once per speed*size test) and reuse that session
-        // across all `TEST_SIZES`, printing the probe/target info from it instead of a separate
-        // throwaway session. Each attach is a real probe-reopen + JTAG reset, not a cheap no-op,
-        // and fragile backends can wedge under enough attach churn.
+        // Attach once per speed and reuse the session for all `TEST_SIZES`: each attach
+        // reopens the probe and resets the JTAG chain, and repeated attaches can wedge some
+        // targets.
         let mut printed_info = false;
+        let mut last_error = None;
+        let mut passed = 0;
         for speed in speeds
             .iter()
             .filter(|speed| (self.min_speed..=max_speed).contains(*speed))
@@ -114,21 +115,29 @@ impl Cmd {
                 self.iterations,
                 &mut printed_info,
             );
-            if let Err(e) = res {
-                println!(
-                    "Test failed for speed {} word_size {}bit - {}",
-                    speed, self.word_size, e
-                )
+            match res {
+                Ok(count) => passed += count,
+                Err(e) => {
+                    println!(
+                        "Test failed for speed {} word_size {}bit - {}",
+                        speed, self.word_size, e
+                    );
+                    last_error = Some(e);
+                }
             }
         }
 
+        // Fail if no test passed at any speed.
+        if passed == 0 {
+            return Err(last_error.unwrap_or_else(|| anyhow::anyhow!("No benchmark test passed")));
+        }
         Ok(())
     }
 
-    /// Attach once at `speed` and run every [`TEST_SIZES`] benchmark against that single session -
-    /// see [`Cmd::run`]'s doc comment for why this matters on some backends. Prints the probe/
-    /// target info from this same session the first time it's called (`printed_info`), instead of
-    /// a separate, earlier throwaway session.
+    /// Attach once at `speed` and run every [`TEST_SIZES`] benchmark in that session.
+    ///
+    /// Prints the probe and target info unless `printed_info` is already set. Returns the number
+    /// of tests that passed.
     fn benchmark_at_speed(
         common_options: &LoadedProbeOptions,
         lister: &Lister,
@@ -137,11 +146,11 @@ impl Cmd {
         word_size: u32,
         iterations: usize,
         printed_info: &mut bool,
-    ) -> Result<(), anyhow::Error> {
+    ) -> Result<usize, anyhow::Error> {
         let mut probe = common_options.attach_probe(lister)?;
         if probe.set_speed(speed).is_err() {
             println!("failed to set speed {speed}");
-            return Ok(());
+            return Ok(0);
         }
 
         let protocol_name = probe
@@ -166,14 +175,18 @@ impl Cmd {
             .context("Halting failed")?;
         let core_type = core.core_type();
 
+        let mut passed = 0;
         for size in TEST_SIZES {
-            Cmd::benchmark(&mut core, speed, size, address, word_size, iterations)?;
+            match Cmd::benchmark(&mut core, speed, size, address, word_size, iterations) {
+                Ok(()) => passed += 1,
+                Err(e) => println!(
+                    "Test failed for speed {speed} size {size} word_size {word_size}bit - {e}"
+                ),
+            }
         }
 
-        // Some backends can leave a core that just did real work unable to durably re-halt on
-        // the very next attach - the same issue flash operations already work around via
-        // `flashing::flasher::reset_after_flash_operation`. Reset here too so whatever attaches
-        // next (another speed, or a later command) finds a clean chain.
+        // Reset ARMv4T cores so that the next attach can halt them again (like
+        // `reset_after_flash_operation` does after flashing).
         drop(core);
         if core_type == CoreType::Armv4t {
             session
@@ -182,7 +195,7 @@ impl Cmd {
                 .reset()?;
         }
 
-        Ok(())
+        Ok(passed)
     }
 
     /// Run a specific benchmark against an already-attached, already-halted core.
