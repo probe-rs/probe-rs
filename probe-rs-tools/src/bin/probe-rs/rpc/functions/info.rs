@@ -369,6 +369,11 @@ async fn try_read_arm7tdmi_info(
         let mut state = Arm7tdmiDebugInterfaceState::default();
         let mut interface = Arm7tdmiCommunicationInterface::new(chain, &mut state);
         let idcode = interface.read_idcode()?;
+        // IEEE 1149.1 requires IDCODE bit 0 to be set; all-ones means nothing is driving TDO.
+        anyhow::ensure!(
+            idcode & 1 == 1 && idcode != u32::MAX,
+            "No valid JTAG IDCODE read ({idcode:#010x})"
+        );
 
         show_arm7tdmi_info(ctx, idcode).await?;
     } else if protocol == WireProtocol::Swd {
