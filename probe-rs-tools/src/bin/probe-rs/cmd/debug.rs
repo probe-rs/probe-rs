@@ -35,6 +35,7 @@ use crate::util::common_options::BinaryDownloadOptions;
 use crate::util::rtt::RttConfig;
 use crate::util::style::{Prompt, probe_rs_color_enabled};
 use crate::{CoreOptions, util::common_options::ProbeOptions};
+use probe_rs_rpc::core_ops::WireVectorCatchCondition;
 use probe_rs_rpc::flash::BootInfo;
 use probe_rs_rpc::format::FormatOptions;
 use probe_rs_rpc_client::{RpcClient, SessionInterface};
@@ -190,7 +191,7 @@ pub struct Cmd {
     pub no_catch_hardfault: bool,
 
     /// Disable SVC vector catch (halts on SVC exception).
-    /// Only applies to ARMv7-A/R cores.
+    /// Only applies to ARMv7-A/R and ARMv4T (ARM7TDMI) cores.
     #[clap(long)]
     pub no_catch_svc: bool,
 
@@ -209,22 +210,11 @@ pub struct Cmd {
 
 impl Cmd {
     pub async fn run(self, client: RpcClient, utc_offset: UtcOffset) -> anyhow::Result<()> {
-        // For `--launch` with a RAM-only target (`BootInfo::FromRam`, e.g. this project's
-        // chip), the core needs an explicit post-flash PC redirect
-        // (`Session::prepare_running_on_ram`, via `prepare_boot`/`prepare_boot_info`) or it
-        // never runs the freshly-written image at all - on a fresh attach it just sits in
-        // the boot ROM's own idle loop. Neither flashing path (`cli::flash` here, nor the
-        // DAP server's own `flash_binary_resolved` when `flashing_enabled: true`) ever calls
-        // this. Worse, `handle_launch_attach` (`debugger.rs`) unconditionally calls
-        // `restart_async` - a real reset+halt with no boot-info awareness - right after
-        // flashing for *every* launch, so redirecting the PC before the "launch" DAP request
-        // is sent (as an earlier version of this fix did) gets silently undone by that reset.
-        // The redirect has to happen *after* the whole launch/configurationDone handshake
-        // completes - i.e. after the `while !debug_client.is_initialized` loop below, once
-        // `handle_launch_attach`'s reset and `configuration_done`'s own halt/resume decision
-        // have both already run - so keep a clone of the session (the DAP server takes the
-        // original as `preattached_session`) and the `BootInfo` from flashing, and apply the
-        // redirect there instead of here.
+        // With `--launch`, an image for a RAM-only target (`BootInfo::FromRam`) only runs
+        // after the PC is redirected to it (`prepare_boot`). The DAP launch handshake resets
+        // the core after flashing (`handle_launch_attach`), which would undo that redirect,
+        // so it is applied after the handshake instead, using a clone of the session. On
+        // targets whose reset clears RAM (e.g. the MC1322x) the image is written again first.
         let mut pending_boot: Option<(SessionInterface, BootInfo)> = None;
         let preattached_session = if self.launch {
             if let Some(path) = &self.binary {
@@ -235,12 +225,16 @@ impl Cmd {
                     &session,
                     path,
                     FormatOptions::default(),
-                    self.download_options,
+                    self.download_options.clone(),
                     None,
                     None,
                 )
                 .await?;
-                pending_boot = Some((session.clone(), boot_info));
+                // Only a RAM-boot image needs the redirect; for any other target the DAP
+                // launch handshake's own reset already starts the new image.
+                if matches!(boot_info, BootInfo::FromRam { .. }) {
+                    pending_boot = Some((session.clone(), boot_info));
+                }
                 Some(session)
             } else {
                 None
@@ -416,15 +410,39 @@ impl Cmd {
             }
         }
 
-        // Now that the launch/configurationDone handshake has fully run server-side
-        // (including `handle_launch_attach`'s unconditional post-flash reset), redo the
-        // RAM-target PC redirect - see the long comment above `pending_boot`'s declaration.
-        // `prepare_boot` (not `boot`) leaves the core halted, matching `configurationDone`'s
-        // own `halt_after_reset` semantics rather than always running it loose immediately.
+        // The launch handshake (and its reset) is done: rewrite the RAM image and redirect
+        // the PC to it (see `pending_boot`). `prepare_boot` leaves the core halted, like
+        // `configurationDone` after a reset.
         if let Some((session, boot_info)) = pending_boot
             && server_result.is_none()
+            && let Some(path) = &self.binary
         {
+            cli::reflash_silent(
+                &session,
+                path,
+                FormatOptions::default(),
+                self.download_options.clone(),
+                None,
+            )
+            .await?;
             session.prepare_boot(boot_info, self.shared.core).await?;
+
+            // The re-flash reset also cleared the vector catch the debug session enabled when it
+            // attached; enable it again (ignoring targets that have none, like the session does).
+            let core = session.core(self.shared.core);
+            for (enabled, condition) in [
+                (
+                    !self.no_catch_hardfault,
+                    WireVectorCatchCondition::HardFault,
+                ),
+                (!self.no_catch_reset, WireVectorCatchCondition::CoreReset),
+                (!self.no_catch_svc, WireVectorCatchCondition::Svc),
+                (!self.no_catch_hlt, WireVectorCatchCondition::Hlt),
+            ] {
+                if enabled && let Err(e) = core.enable_vector_catch(condition).await {
+                    tracing::debug!("Not re-enabling vector catch {condition:?}: {e}");
+                }
+            }
         }
 
         // Execute the commands given with `-c` in order, then drop into the interactive
