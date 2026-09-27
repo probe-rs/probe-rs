@@ -221,7 +221,6 @@ pub struct WireCoreDump {
 
 #[derive(Debug, Serialize, Deserialize, Schema, Clone, Copy, PartialEq, Eq)]
 pub enum WireCoreType {
-    Armv4t,
     Armv6m,
     Armv7a,
     Armv7r,
@@ -232,6 +231,7 @@ pub enum WireCoreType {
     Riscv,
     Riscv64,
     Xtensa,
+    Armv4t,
 }
 
 /// UI event produced by server-side semihosting handling, to be replayed on
