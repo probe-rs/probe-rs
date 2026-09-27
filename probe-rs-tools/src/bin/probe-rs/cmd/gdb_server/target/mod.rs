@@ -29,7 +29,7 @@ use std::time::Duration;
 use gdbstub::common::Signal;
 use gdbstub::conn::ConnectionExt;
 use gdbstub::stub::state_machine::{GdbStubStateMachine, GdbStubStateMachineInner, state};
-use gdbstub::stub::{GdbStub, MultiThreadStopReason};
+use gdbstub::stub::{DisconnectReason, GdbStub, MultiThreadStopReason};
 use gdbstub::target::Target;
 use gdbstub::target::ext::base::BaseOps;
 use gdbstub::target::ext::breakpoints::BreakpointsOps;
@@ -171,7 +171,15 @@ impl RuntimeTarget {
             GdbStubStateMachine::Running(state) => self.handle_running(state, &mut wait_time),
             GdbStubStateMachine::CtrlCInterrupt(state) => self.handle_ctrl_c(state),
             GdbStubStateMachine::Disconnected(state) => {
-                tracing::info!("GDB client disconnected: {:?}", state.get_reason());
+                let reason = state.get_reason();
+                tracing::info!("GDB client disconnected: {reason:?}");
+                if matches!(reason, DisconnectReason::Disconnect)
+                    && let Err(e) = self.resume_all_cores()
+                {
+                    tracing::warn!(
+                        "Failed to resume the target after the GDB client detached: {e}"
+                    );
+                }
                 Ok(None)
             }
         };
@@ -188,6 +196,12 @@ impl RuntimeTarget {
         };
 
         Ok(wait_time)
+    }
+
+    fn resume_all_cores(&mut self) -> Result<(), ClientError> {
+        let cores = self.cores.iter().map(|core| core.index as u32).collect();
+        self.block_on(self.session.resume_cores(Some(cores)))?;
+        Ok(())
     }
 
     fn halt_all_cores(&mut self) -> Result<(), ClientError> {
