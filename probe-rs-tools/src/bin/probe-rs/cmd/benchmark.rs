@@ -98,6 +98,8 @@ impl Cmd {
 
         // Repeated attaches can make some targets stop responding.
         let mut printed_info = false;
+        let mut last_error = None;
+        let mut passed = 0;
         for speed in speeds
             .iter()
             .filter(|speed| (self.min_speed..=max_speed).contains(*speed))
@@ -111,20 +113,28 @@ impl Cmd {
                 self.iterations,
                 &mut printed_info,
             );
-            if let Err(e) = res {
-                println!(
-                    "Test failed for speed {} word_size {}bit - {}",
-                    speed, self.word_size, e
-                )
+            match res {
+                Ok(count) => passed += count,
+                Err(e) => {
+                    println!(
+                        "Test failed for speed {} word_size {}bit - {}",
+                        speed, self.word_size, e
+                    );
+                    last_error = Some(e);
+                }
             }
         }
 
+        if passed == 0 {
+            return Err(last_error.unwrap_or_else(|| anyhow::anyhow!("No benchmark test passed")));
+        }
         Ok(())
     }
 
     /// Attach once at `speed` and run every [`TEST_SIZES`] benchmark in that session.
     ///
-    /// Prints the probe and target info unless `printed_info` is already set.
+    /// Prints the probe and target info unless `printed_info` is already set. Returns the number
+    /// of tests that passed.
     fn benchmark_at_speed(
         common_options: &LoadedProbeOptions,
         lister: &Lister,
@@ -133,11 +143,11 @@ impl Cmd {
         word_size: u32,
         iterations: usize,
         printed_info: &mut bool,
-    ) -> Result<(), anyhow::Error> {
+    ) -> Result<usize, anyhow::Error> {
         let mut probe = common_options.attach_probe(lister)?;
         if probe.set_speed(speed).is_err() {
             println!("failed to set speed {speed}");
-            return Ok(());
+            return Ok(0);
         }
 
         let protocol_name = probe
@@ -161,11 +171,17 @@ impl Cmd {
         core.halt(Duration::from_millis(100))
             .context("Halting failed")?;
 
+        let mut passed = 0;
         for size in TEST_SIZES {
-            Cmd::benchmark(&mut core, speed, size, address, word_size, iterations)?;
+            match Cmd::benchmark(&mut core, speed, size, address, word_size, iterations) {
+                Ok(()) => passed += 1,
+                Err(e) => println!(
+                    "Test failed for speed {speed} size {size} word_size {word_size}bit - {e}"
+                ),
+            }
         }
 
-        Ok(())
+        Ok(passed)
     }
 
     /// Run a specific benchmark against an already-attached, already-halted core.
