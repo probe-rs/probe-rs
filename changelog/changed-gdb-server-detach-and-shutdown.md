@@ -1,0 +1,1 @@
+The GDB server now resumes the target when the GDB client detaches. It also shuts down cleanly (tearing down the debug session) on SIGTERM, and on Ctrl-C unless it spawned gdb with `--gdb`; a second signal exits immediately, and a spawned gdb is stopped with it.

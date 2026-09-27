@@ -392,9 +392,14 @@ async fn run_embed(
         let handle = Handle::current();
 
         gdb_task = Some(tokio::task::spawn_blocking(move || {
-            if let Err(e) =
-                crate::cmd::gdb_server::run(session_gdb, handle, context, instances.iter(), None)
-            {
+            if let Err(e) = crate::cmd::gdb_server::run(
+                session_gdb,
+                handle,
+                context,
+                instances.iter(),
+                None,
+                Default::default(),
+            ) {
                 logging::eprintln("During the execution of GDB an error was encountered:");
                 logging::eprintln(format!("{e:?}"));
             }
