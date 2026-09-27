@@ -50,18 +50,17 @@ struct JtagAdapter {
     ftdi: FtdiProperties,
 
     /// GPIO-driven nTRST/nSRST configuration, if the target requested one (see
-    /// [`probe_rs_target::JtagGpioReset`]). Recorded by `configure_gpio_reset` (which may be
-    /// called before [`JtagAdapter::attach`]) and applied once `attach` actually opens the
-    /// adapter.
+    /// [`probe_rs_target::JtagGpioReset`]). May be set before [`JtagAdapter::attach`], which
+    /// applies it.
     gpio_reset: Option<probe_rs_target::JtagGpioReset>,
 
-    /// The last (output, direction) pin state actually written via
+    /// The last (output, direction) pin state written via
     /// [`ftdaye::Device::set_pins`], so that toggling a single GPIO reset line doesn't
     /// disturb the JTAG signal pins (TCK/TDI/TDO/TMS) or any other configured GPIO pin.
     current_pins: (u16, u16),
 
-    /// Whether [`Self::attach`] has run yet (and therefore whether `current_pins` reflects
-    /// real hardware state that `configure_gpio_reset` can safely merge into).
+    /// Whether [`Self::attach`] has run, i.e. whether `current_pins` reflects the hardware
+    /// state.
     attached: bool,
 }
 
@@ -197,8 +196,8 @@ impl JtagAdapter {
         Ok(())
     }
 
-    /// Whether a GPIO-driven reset configuration is available (i.e. `target_reset*` is
-    /// actually supported on this adapter).
+    /// Returns whether a GPIO-driven reset is configured, i.e. whether `target_reset*` is
+    /// supported.
     fn has_gpio_reset(&self) -> bool {
         self.gpio_reset.is_some()
     }
@@ -299,10 +298,7 @@ impl JtagAdapter {
             }
         }
 
-        // Raw MPSSE response bytes, for low-level JTAG protocol debugging (e.g. with
-        // `jtag_decode.py` at the probe-rs repo root) - deliberately kept at `trace` level
-        // rather than removed, since it was essential to finding a real ARM7TDMI chain-1
-        // clocking bug on real hardware and will likely be needed again for similar work.
+        // Raw MPSSE response bytes, for low-level JTAG protocol debugging.
         tracing::trace!(
             "read_response raw_bytes={:02X?} counts={:?}",
             reply,
@@ -579,10 +575,9 @@ impl DebugProbe for FtdiProbe {
         self.adapter.set_reset_pins(true)?;
         std::thread::sleep(Duration::from_millis(10));
         self.adapter.set_reset_pins(false)?;
-        // Give the target time to actually come out of reset (re-run its boot ROM, etc.)
-        // before any further JTAG activity is attempted. OpenOCD's known-good config for
-        // this exact adapter/board combination (the `axm0432_jtag` FTDI layout) uses a
-        // 200 ms `jtag_ntrst_delay` for the same purpose.
+        // Give the target time to come out of reset (e.g. run its boot ROM) before further
+        // JTAG activity, like OpenOCD's `jtag_ntrst_delay` (200 ms in its `axm0432_jtag`
+        // configuration).
         std::thread::sleep(Duration::from_millis(200));
         Ok(())
     }

@@ -440,18 +440,10 @@ mod builtin {
                 );
             }
 
-            // Fall back to the ELF's own entry point if no section named `.vector_table` was
-            // found above. That name is a `cortex-m-rt`/Cortex-M convention - a RAM-resident
-            // image linked with any other linker script (e.g. a hand-written one, as used by
-            // `mc1322x-hal`'s examples) has no such section, so `boot_info()`/`prepare_boot_info`
-            // (see `probe-rs-tools`) would otherwise silently fall back to `BootInfo::Other` -
-            // just a plain `reset_and_halt` with nothing to redirect the core to the actual
-            // entry point - and `run`/`attach` would leave the core running whatever the
-            // (unrelated) reset vector happens to point to instead of the freshly loaded image.
-            // Confirmed on real hardware: this is exactly what was happening for a RAM-resident
-            // ARM7TDMI application with no `.vector_table` section - `probe-rs run` reported
-            // success and appeared to resume, but the core was still executing boot ROM the
-            // whole time, never having jumped to the loaded image at all.
+            // Fall back to the ELF entry point if there is no `.vector_table` section. That
+            // section name is a `cortex-m-rt` convention; without an address, a RAM image built
+            // with another linker script would never be started (the core would keep running
+            // from its reset vector).
             if flash_loader.vector_table_addr().is_none()
                 && let Ok(object_file) = object::File::parse(elf_buffer.as_slice())
             {
@@ -930,9 +922,8 @@ impl FlashLoader {
                 options.verify,
             )?;
 
-            // See `flasher::reset_after_flash_operation`'s doc comment - placed once per `algos`
-            // entry, after everything this entry does (chip erase + `program`'s own erase/write/
-            // verify sub-phases), not per-phase.
+            // See `flasher::reset_after_flash_operation`. Called once per `algos` entry, after
+            // all of its erase/program/verify phases.
             super::flasher::reset_after_flash_operation(session, flasher.core_index())?;
         }
 

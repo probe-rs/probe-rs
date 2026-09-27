@@ -753,14 +753,11 @@ pub trait DebugProbe: Any + Send + fmt::Debug {
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError>;
 
     /// Configure GPIO-driven nTRST/nSRST lines from the target's
-    /// [`probe_rs_target::JtagGpioReset`], for probes where these are plain bit-banged GPIO
-    /// outputs rather than pins handled by the probe's own reset-line firmware.
+    /// [`probe_rs_target::JtagGpioReset`], for probes where these are plain GPIO outputs.
     ///
-    /// Called by [`crate::Session`] while attaching, before [`DebugProbe::attach`], so
-    /// implementations should only record the configuration and apply it once the
-    /// underlying adapter is actually opened. The default implementation does nothing; only
-    /// probes that support GPIO-driven reset lines (currently: FTDI-based JTAG adapters) need
-    /// to override this.
+    /// Called by [`crate::Session`] before [`DebugProbe::attach`], so implementations should
+    /// record the configuration and apply it once the adapter is opened. The default
+    /// implementation does nothing.
     fn configure_gpio_reset(
         &mut self,
         _config: &probe_rs_target::JtagGpioReset,
@@ -911,12 +908,9 @@ pub struct DebugProbeInfo {
 
     /// USB (bus id, device address) of the underlying device, when known.
     ///
-    /// Disambiguates probes that otherwise look identical (same VID/PID, no
-    /// serial number - e.g. two of the same FTDI adapter), since it's unique
-    /// per physical device for as long as it stays plugged in. Not carried
-    /// through a [`DebugProbeSelector`]'s string form (`--probe` etc.): it's
-    /// only meant to round-trip a selection made from a just-listed probe
-    /// back to that same physical device, not to be typed by a user.
+    /// Disambiguates otherwise identical probes (same VID/PID, no serial number) while they
+    /// stay plugged in. Not part of a [`DebugProbeSelector`]'s string form: it only maps a
+    /// probe selected from a listing back to the same device.
     pub usb_location: Option<(String, u8)>,
 
     /// A reference to the [`ProbeFactory`] that created this info object.
