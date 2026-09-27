@@ -38,7 +38,7 @@ use crate::util::{
     },
 };
 use probe_rs_rpc::CancelTopic;
-use probe_rs_rpc::core_ops::{WireBreakpointCause, WireHaltReason};
+use probe_rs_rpc::core_ops::{WireBreakpointCause, WireCoreType, WireHaltReason};
 use probe_rs_rpc::flash::{BootInfo, DownloadOptions, FlashLayout, ProgressEvent, VerifyResult};
 use probe_rs_rpc::format::FormatOptions;
 use probe_rs_rpc::monitor::{ChannelInfo, MonitorExitReason};
@@ -627,14 +627,21 @@ pub async fn flash(
     Ok(loader.boot_info)
 }
 
-/// Re-flash `path`'s content, without any of `flash()`'s progress-bar/preverify/upload-cache
-/// machinery - for silently reflashing before every `embedded-test` case (see `create_trial`'s
-/// doc comment for why some targets need a real reflash, not just a PC redirect, between test
-/// cases). Also sidesteps a real rustc HRTB limitation ("implementation of Send is not general
-/// enough") that `flash()`'s own progress-callback closure hits when called this deep inside a
-/// `tokio::spawn`'d future - this simpler, closure-free version doesn't capture anything
-/// lifetime-dependent and doesn't trigger it.
-async fn reflash_silent(
+/// Returns whether the session's first core is an ARMv4T (ARM7TDMI) core.
+pub async fn is_armv4t_target(session: &SessionInterface) -> anyhow::Result<bool> {
+    let metadata = session.target_metadata().await?;
+    Ok(metadata
+        .cores
+        .first()
+        .is_some_and(|core| core.core_type == WireCoreType::Armv4t))
+}
+
+/// Re-flash `path` without the progress output, preverify and upload cache of [`flash`].
+///
+/// Used to re-flash before each test case (see `create_trial`). Unlike [`flash`], it can be
+/// called from a `tokio::spawn`ed future: the progress callback of [`flash`] hits a rustc
+/// limitation there ("implementation of `Send` is not general enough").
+pub(crate) async fn reflash_silent(
     session: &SessionInterface,
     path: &Path,
     format: FormatOptions,
@@ -1134,12 +1141,15 @@ pub async fn test(
             return Ok(());
         }
 
+        let reflash_each_test = is_armv4t_target(session).await?;
+
         let tests = tests
             .into_iter()
             .map(|test| {
                 create_trial(
                     session,
                     path,
+                    reflash_each_test,
                     boot_info.clone(),
                     format_options.clone(),
                     download_options.clone(),
@@ -1201,6 +1211,7 @@ pub async fn test(
 fn create_trial(
     session: &SessionInterface,
     path: &Path,
+    reflash_each_test: bool,
     boot_info: BootInfo,
     format_options: FormatOptions,
     download_options: BinaryDownloadOptions,
@@ -1226,30 +1237,24 @@ fn create_trial(
             }
 
             let handle = tokio::spawn(async move {
-                // Re-flash before every test, not just once at the start: some targets (e.g.
-                // this project's ARM7TDMI/ARMv4T RAM-boot chip) can only reach a genuinely
-                // clean, correctly-initialized state via a real hardware reset - and on such a
-                // target, `run_test_impl`'s own `prepare_boot_info` call is a bare PC redirect
-                // with no reset at all (a real reset would wipe the RAM-resident test binary,
-                // per the bug this whole mechanism was added to fix - see `arm7_pending_resume_pc_lost_across_core_calls`/`embedded_test_harness`
-                // memory in the `mc1322x-rs` project). Re-flashing here supplies the missing
-                // reset (this crate's own flash sequence always resets before writing) *and*
-                // restores the RAM content the reset would otherwise wipe, before that bare PC
-                // redirect runs. A no-op key/data recheck for flash-resident targets (already
-                // correctly reset per-test via `reset_and_halt` inside `prepare_boot_info`), at
-                // the cost of a real, if modest (RAM-write, not a slow persistent-flash cycle),
-                // per-test flash-time overhead for every target.
-                if let Err(err) = reflash_silent(
-                    &session,
-                    &path,
-                    format_options,
-                    download_options,
-                    rtt_client,
-                )
-                .await
+                // ARM7TDMI only: re-flash before every test. The MC1322x boots from RAM and only
+                // reaches a clean state through a hardware reset, but for a RAM-boot target
+                // `prepare_boot_info` only redirects the PC (a reset would clear the RAM image).
+                // Flashing resets the core and restores the image. Other targets are already
+                // reset per test by `prepare_boot_info`.
+                if reflash_each_test
+                    && let Err(err) = reflash_silent(
+                        &session,
+                        &path,
+                        format_options,
+                        download_options,
+                        rtt_client,
+                    )
+                    .await
                 {
-                    eprintln!("Error: {err:?}");
-                    std::process::exit(1);
+                    return Err(Failed::from(format!(
+                        "Re-flashing before the test failed: {err:?}"
+                    )));
                 }
 
                 match session

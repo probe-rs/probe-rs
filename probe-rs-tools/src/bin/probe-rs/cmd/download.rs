@@ -44,14 +44,13 @@ impl Cmd {
 
         if self.start {
             session.boot(boot_info, 0).await?;
-        } else {
-            // Without `--start`, nothing redirects the core to a meaningful address after
-            // flashing: the flash algorithm's own teardown leaves the core halted at its own
-            // load address (where its completion breakpoint sits), and the generic,
-            // command-agnostic session-detach logic then unconditionally *resumes* it from
-            // there - there is no real code left to run at that address once flashing is done.
-            // An explicit reset leaves the target in a clean, known state instead of running
-            // whatever garbage happens to occupy the flash algorithm's stale RAM image.
+        } else if cli::is_armv4t_target(&session).await? {
+            // ARM7TDMI only: without `--start`, the flash algorithm's teardown leaves the core
+            // halted at the algorithm's load address, and the ARM7 session detach resumes it
+            // from there - running whatever is left of the algorithm's RAM image. A reset leaves
+            // the target in a clean, known state instead. Other architectures keep the
+            // "no `--start` means no reset" behaviour, which some targets (e.g. FPGA soft cores)
+            // depend on.
             session.core(0).reset().await?;
         }
 
