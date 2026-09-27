@@ -37,10 +37,8 @@ pub struct RiscvJtagTunnel {
     pub ir_width: u32,
 }
 
-/// A GPIO pin used to drive a target reset line for JTAG adapters where nTRST/nSRST are
-/// plain bit-banged GPIO outputs rather than pins handled by the probe's own reset-line
-/// firmware (e.g. many FTDI-based JTAG adapters, following the same model as OpenOCD's
-/// `ftdi layout_init`/`layout_signal`).
+/// A GPIO pin driving a target reset line, for JTAG adapters where nTRST/nSRST are plain GPIO
+/// outputs (e.g. FTDI-based adapters, like OpenOCD's `ftdi layout_init`/`layout_signal`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct GpioResetPin {
     /// Bit position of this pin in the adapter's combined 16-bit GPIO space. For FTDI
@@ -61,9 +59,8 @@ pub struct JtagGpioReset {
     /// The GPIO pin driving nSRST, if any.
     #[serde(default)]
     pub nsrst: Option<GpioResetPin>,
-    /// Additional pins that must be actively driven as outputs, at a fixed level, for the
-    /// adapter to work at all (e.g. an output buffer/level-shifter enable line). Applied at
-    /// the same time as `ntrst`/`nsrst`, and never toggled afterwards.
+    /// Additional pins the adapter needs driven at a fixed level (e.g. an output buffer
+    /// enable). Applied together with `ntrst`/`nsrst` and never toggled.
     #[serde(default)]
     pub extra_outputs: Vec<GpioResetPin>,
 }
@@ -91,8 +88,7 @@ pub struct Jtag {
     pub riscv_tunnel: Option<RiscvJtagTunnel>,
 
     /// GPIO-driven nTRST/nSRST configuration, for adapters where these are plain GPIO
-    /// outputs rather than pins handled by the probe's own reset-line firmware. See
-    /// [`JtagGpioReset`].
+    /// outputs. See [`JtagGpioReset`].
     #[serde(default)]
     pub gpio_reset: Option<JtagGpioReset>,
 }
