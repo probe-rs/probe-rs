@@ -1,0 +1,1 @@
+Added hardware data watchpoints to the core API (`Core::set_hw_data_watchpoint_unit`, `Core::clear_hw_breakpoint_unit`) and `CoreInterface::reserved_breakpoint_units`, which lets address-based breakpoint functions leave units holding a data watchpoint or vector catch alone.

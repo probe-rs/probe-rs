@@ -76,15 +76,9 @@ pub trait CoreInterface: MemoryInterface {
 
     /// Read the values of several core registers in one batch.
     ///
-    /// The default implementation just calls [`Self::read_core_reg`] once per address, which is
-    /// correct (if not necessarily optimal) for every architecture. Architectures where a single
-    /// register read has a real cost beyond "one register's worth of work" - e.g. ARM7TDMI,
-    /// where every debug-speed register capture genuinely advances the core's real pipeline by a
-    /// few instructions (see [`crate::architecture::arm7`]'s docs) - can override this to fold
-    /// several registers into one lower-level operation instead of paying that cost per
-    /// register. A caller reading many registers at once (e.g. an "info reg"/register-view
-    /// refresh) should prefer this over a manual loop of [`Self::read_core_reg`] calls for
-    /// exactly that reason.
+    /// The default implementation calls [`Self::read_core_reg`] once per address. Backends with
+    /// a high per-read cost (e.g. ARM7TDMI) can override it to read several registers in one
+    /// operation, so callers reading many registers should prefer it over a loop.
     fn read_core_regs_batch(
         &mut self,
         addresses: &[RegisterId],
@@ -115,17 +109,25 @@ pub trait CoreInterface: MemoryInterface {
     /// Clears the breakpoint configured in unit `unit_index`.
     fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), Error>;
 
-    /// Genuinely, durably latch a halt just observed via a watchpoint match (as opposed to a
-    /// halt this core itself requested via [`CoreInterface::halt`]). A no-op on architectures
-    /// where a watchpoint match is already a durable halt on its own; see the ARM7TDMI
-    /// implementation for why this exists there.
+    /// Latches a halt caused by a watchpoint match (rather than by [`CoreInterface::halt`]).
+    ///
+    /// A no-op on architectures where a watchpoint match already is a durable halt.
     fn latch_watchpoint_halt(&mut self) -> Result<(), Error> {
         Ok(())
     }
 
-    /// Configure hardware unit `unit_index` as a *data-access* watchpoint at `addr` (halts on a
-    /// real read or write to that address, as opposed to [`CoreInterface::set_hw_breakpoint`]'s
-    /// instruction-fetch trigger) - not supported on every architecture backend.
+    /// Returns the breakpoint units that hold something other than a breakpoint set through the
+    /// breakpoint API - a data watchpoint (see [`CoreInterface::set_hw_data_watchpoint`]) or a
+    /// vector catch - by unit index, with their address.
+    ///
+    /// Such units are listed as occupied by [`CoreInterface::hw_breakpoints`]; the
+    /// address-based breakpoint functions of [`Core`] leave them alone. Empty by default.
+    fn reserved_breakpoint_units(&mut self) -> Result<Vec<Option<u64>>, Error> {
+        Ok(Vec::new())
+    }
+
+    /// Configure hardware unit `unit_index` as a data watchpoint, halting on a read or write
+    /// of `addr`. Not supported by every architecture.
     fn set_hw_data_watchpoint(&mut self, unit_index: usize, addr: u64) -> Result<(), Error> {
         let _ = (unit_index, addr);
         Err(Error::NotImplemented("data watchpoint"))
@@ -379,9 +381,8 @@ impl<'probe> Core<'probe> {
         value.try_into().into_crate_error()
     }
 
-    /// Read the values of several core registers in one batch - see
-    /// [`CoreInterface::read_core_regs_batch`] for why this can be meaningfully cheaper than a
-    /// loop of [`Self::read_core_reg`] calls on some architectures.
+    /// Read the values of several core registers in one batch. See
+    /// [`CoreInterface::read_core_regs_batch`].
     pub fn read_core_regs_batch(
         &mut self,
         addresses: &[RegisterId],
@@ -457,14 +458,19 @@ impl<'probe> Core<'probe> {
 
         // If there is a breakpoint set already, return its bp_unit_index, else find the next free index.
         let breakpoints = self.inner.hw_breakpoints()?;
-        let breakpoint_comparator_index =
-            match breakpoints.iter().position(|&bp| bp == Some(address)) {
-                Some(breakpoint_comparator_index) => breakpoint_comparator_index,
-                None => breakpoints
-                    .iter()
-                    .position(|bp| bp.is_none())
-                    .ok_or_else(|| Error::Other("No available hardware breakpoints".to_string()))?,
-            };
+        let reserved = self.inner.reserved_breakpoint_units()?;
+        let is_breakpoint_at = |unit: usize, bp: &Option<u64>| {
+            *bp == Some(address) && reserved.get(unit).copied().flatten().is_none()
+        };
+        let breakpoint_comparator_index = match (0..breakpoints.len())
+            .position(|unit| is_breakpoint_at(unit, &breakpoints[unit]))
+        {
+            Some(breakpoint_comparator_index) => breakpoint_comparator_index,
+            None => breakpoints
+                .iter()
+                .position(|bp| bp.is_none())
+                .ok_or_else(|| Error::Other("No available hardware breakpoints".to_string()))?,
+        };
 
         tracing::debug!(
             "Trying to set HW breakpoint #{} with comparator address  {:#08x}",
@@ -498,10 +504,8 @@ impl<'probe> Core<'probe> {
         self.inner.set_hw_breakpoint(unit_index, addr)
     }
 
-    /// Configure hardware unit `unit_index` as a data-access watchpoint at `addr` - halts on a
-    /// genuine read or write to that address by the core itself, rather than
-    /// [`Core::set_hw_breakpoint_unit`]'s instruction-fetch trigger. Not supported by every
-    /// architecture backend (returns [`Error::NotImplemented`] where it isn't).
+    /// Configure hardware unit `unit_index` as a data watchpoint, halting on a read or write
+    /// of `addr`. Returns [`Error::NotImplemented`] if the architecture doesn't support it.
     #[tracing::instrument(skip(self))]
     pub fn set_hw_data_watchpoint_unit(
         &mut self,
@@ -516,11 +520,16 @@ impl<'probe> Core<'probe> {
     /// This function will try to clear a hardware breakpoint at `address` if there exists a breakpoint at that address.
     #[tracing::instrument(skip(self))]
     pub fn clear_hw_breakpoint(&mut self, address: u64) -> Result<(), Error> {
+        // A reserved unit (data watchpoint, vector catch) at the same address is not a breakpoint.
+        let reserved = self.inner.reserved_breakpoint_units()?;
         let bp_position = self
             .inner
             .hw_breakpoints()?
             .iter()
-            .position(|bp| *bp == Some(address));
+            .enumerate()
+            .position(|(unit, bp)| {
+                *bp == Some(address) && reserved.get(unit).copied().flatten().is_none()
+            });
 
         tracing::debug!(
             "Will clear HW breakpoint    #{} with comparator address    {:#08x}",
@@ -539,17 +548,16 @@ impl<'probe> Core<'probe> {
         }
     }
 
-    /// Clear whatever is configured on hardware unit `unit_index`, by unit index rather than by
-    /// address - the counterpart to [`Core::set_hw_breakpoint_unit`]/
-    /// [`Core::set_hw_data_watchpoint_unit`], needed for a data watchpoint (which isn't recorded
-    /// in the address-indexed `hw_breakpoints()` list [`Core::clear_hw_breakpoint`] searches).
+    /// Clear hardware unit `unit_index`, whether it holds a breakpoint or a data watchpoint.
+    ///
+    /// Use this to clear a data watchpoint: [`Core::clear_hw_breakpoint`] only finds
+    /// breakpoints.
     #[tracing::instrument(skip(self))]
     pub fn clear_hw_breakpoint_unit(&mut self, unit_index: usize) -> Result<(), Error> {
         self.inner.clear_hw_breakpoint(unit_index)
     }
 
-    /// Genuinely, durably latch a halt just observed via a watchpoint match. See
-    /// [`CoreInterface::latch_watchpoint_halt`].
+    /// Latches a halt caused by a watchpoint match. See [`CoreInterface::latch_watchpoint_halt`].
     pub(crate) fn latch_watchpoint_halt(&mut self) -> Result<(), Error> {
         self.inner.latch_watchpoint_halt()
     }
@@ -561,8 +569,12 @@ impl<'probe> Core<'probe> {
     /// Also used as a helper function in [`Session::drop`](crate::session::Session).
     #[tracing::instrument(skip(self))]
     pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), Error> {
-        for breakpoint in (self.inner.hw_breakpoints()?).into_iter().flatten() {
-            self.clear_hw_breakpoint(breakpoint)?
+        // By unit, not by address: a reserved unit (a data watchpoint or vector catch, see
+        // `CoreInterface::reserved_breakpoint_units`) isn't found by the address-based clear.
+        for (unit, breakpoint) in self.inner.hw_breakpoints()?.into_iter().enumerate() {
+            if breakpoint.is_some() {
+                self.inner.clear_hw_breakpoint(unit)?;
+            }
         }
         Ok(())
     }
@@ -677,6 +689,10 @@ impl CoreInterface for Core<'_> {
 
     fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
         self.inner.hw_breakpoints()
+    }
+
+    fn reserved_breakpoint_units(&mut self) -> Result<Vec<Option<u64>>, Error> {
+        self.inner.reserved_breakpoint_units()
     }
 
     fn enable_breakpoints(&mut self, state: bool) -> Result<(), Error> {
