@@ -71,6 +71,8 @@ pub trait Arm7tdmiDebugSequence: Send + Sync + std::fmt::Debug {
     ) -> Result<(), crate::Error> {
         tracing::debug!("RAM flash start for ARM7TDMI core with ID {core_id}");
         let mut core = session.core(core_id)?;
+        // The image entry point is ARM code, but the core may have been halted in Thumb state.
+        super::enter_arm_state(&mut core)?;
         let pc = core.program_counter().id;
         core.write_core_reg(pc, vector_table_addr)?;
         Ok(())
