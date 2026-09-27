@@ -321,10 +321,7 @@ impl CoreState {
     }
 
     pub(crate) fn is_arm(&self) -> bool {
-        matches!(
-            &self.core_access_options,
-            ResolvedCoreOptions::Arm { .. } | ResolvedCoreOptions::Armv4t { .. }
-        )
+        matches!(&self.core_access_options, ResolvedCoreOptions::Arm { .. })
     }
 
     pub(crate) fn memory_ap(&self) -> FullyQualifiedApAddress {

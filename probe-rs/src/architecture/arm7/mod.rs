@@ -1,10 +1,25 @@
 //! ARM7TDMI architecture support
+//!
+//! Debugging goes through EmbeddedICE (see [`communication_interface`]). Hardware behaviour
+//! the implementation relies on, verified on the MC1322x:
+//!
+//! - While halted, every chain-1 register capture clocks injected instructions through the
+//!   core and advances the pipeline by a few instructions. The halt PC is therefore captured
+//!   once at debug entry and cached (`Arm7tdmiCommunicationInterface::cached_halt_pc`); PC reads,
+//!   halt reasons and `resume()` all use that value instead of a fresh capture.
+//! - The core is converted to ARM state at every halt, since all injected sequences are
+//!   ARM-encoded. Whether to resume in Thumb is remembered in software and also stored on the
+//!   target (the halt record), so a later session can take over the halt.
+//! - Halts use a wildcard fetch watchpoint rather than DBGRQ where possible, because a DBGRQ
+//!   halt during a pipeline refill reports the wrong PC.
+//! - Memory accesses run at system speed through injected `LDM`/`STM` instructions, which
+//!   clobber R0/R1 (R0-R4 for bulk reads); these are saved and restored around each access.
 
 use crate::{
     Architecture, CoreInformation, CoreInterface, CoreRegister, CoreStatus, CoreType, Error,
     HaltReason, InstructionSet, MemoryInterface,
     core::{BreakpointCause, CoreRegisters, RegisterId, RegisterValue, VectorCatchCondition},
-    memory::valid_32bit_address,
+    memory::{MemoryNotAlignedError, valid_32bit_address},
     semihosting::{SemihostingCommand, check_for_semihosting},
 };
 use std::sync::Arc;
@@ -15,27 +30,23 @@ pub mod registers;
 pub mod sequences;
 mod step_sim;
 
+use communication_interface::CPSR_TBIT;
 pub use communication_interface::{
     Arm7tdmiCommunicationInterface, Arm7tdmiDebugInterfaceState, Arm7tdmiError,
 };
 use registers::*;
 pub use sequences::{Arm7tdmiDebugSequence, DefaultArm7tdmiSequence};
 
-/// The hardware breakpoint unit reserved for `VectorCatchCondition::Svc` (see
-/// [`Arm7tdmi::enable_vector_catch`]) while it is enabled, leaving the other unit free for
-/// [`Arm7tdmi::step`]'s scratch use and ordinary user breakpoints.
+/// The hardware unit reserved for `VectorCatchCondition::Svc` (see
+/// [`Arm7tdmi::enable_vector_catch`]) while it is enabled.
 ///
-/// ARM7TDMI's EmbeddedICE debug module has no vector-catch register (no DBGVCR equivalent, as
-/// ARMv7-A/R has); this reserves one of the chip's [`Arm7tdmiCommunicationInterface::HW_BREAKPOINT_UNIT_COUNT`]
-/// (2) hardware breakpoint comparators to catch the SVC vector instead. It is tracked through
-/// the same `Arm7tdmiState::hw_breakpoints`/`Core::set_hw_breakpoint` bookkeeping as an ordinary
-/// breakpoint, so `Core::set_hw_breakpoint`'s free-slot search (which reads
-/// [`CoreInterface::hw_breakpoints`]) naturally avoids colliding with it once reserved.
+/// EmbeddedICE has no vector-catch register (no DBGVCR equivalent), so one of the
+/// [`Arm7tdmiCommunicationInterface::HW_BREAKPOINT_UNIT_COUNT`] units breaks on the SVC vector
+/// instead. It is tracked in `Arm7tdmiState::hw_breakpoints` like an ordinary breakpoint, so
+/// `Core::set_hw_breakpoint`'s free-unit search avoids it.
 const SVC_VECTOR_UNIT: usize = 0;
 
-/// Address of the SVC exception vector. ARM7TDMI, unlike ARMv6+, has no vector table
-/// relocation (no high/low vector control bit), so this is always where `SVC`/`SWI`
-/// instructions vector to.
+/// Address of the SVC exception vector (ARM7TDMI has no vector relocation).
 const SVC_VECTOR_ADDRESS: u32 = 0x08;
 
 /// ARM7TDMI core state
@@ -45,12 +56,18 @@ pub struct Arm7tdmiState {
     current_state: CoreStatus,
     breakpoints_enabled: bool,
     hw_breakpoints: [Option<u64>; Arm7tdmiCommunicationInterface::HW_BREAKPOINT_UNIT_COUNT],
+    /// Data watchpoints, by unit. A unit holds either a breakpoint (`hw_breakpoints`) or a data
+    /// watchpoint (here), never both.
+    data_watchpoints: [Option<u64>; Arm7tdmiCommunicationInterface::HW_BREAKPOINT_UNIT_COUNT],
     /// Whether `enable_vector_catch(VectorCatchCondition::Svc)` is currently active.
     svc_vector_catch_enabled: bool,
     /// The semihosting command decoded at the current SVC-vector-catch halt, if any. Cached so
-    /// repeated `status()` calls (see `poll_once` in the `probe-rs run`/`test` run loop) don't
-    /// re-decode, and consumed by `run()` to know a semihosting-call return sequence is needed.
+    /// repeated `status()` polls don't re-decode it; consumed by `run()` to return from the call.
     semihosting_command: Option<SemihostingCommand>,
+    /// Whether `status()` already checked the current halt at the SVC vector for a semihosting
+    /// call, so repeated polls don't redo the register/memory reads (or repeat a warning).
+    /// Cleared whenever the core runs, steps or resets.
+    svc_halt_checked: bool,
 }
 
 impl Arm7tdmiState {
@@ -61,8 +78,10 @@ impl Arm7tdmiState {
             current_state: CoreStatus::Unknown,
             breakpoints_enabled: false,
             hw_breakpoints: [None; Arm7tdmiCommunicationInterface::HW_BREAKPOINT_UNIT_COUNT],
+            data_watchpoints: [None; Arm7tdmiCommunicationInterface::HW_BREAKPOINT_UNIT_COUNT],
             svc_vector_catch_enabled: false,
             semihosting_command: None,
+            svc_halt_checked: false,
         }
     }
 }
@@ -80,7 +99,176 @@ pub struct Arm7tdmi<'probe> {
     sequence: Arc<dyn Arm7tdmiDebugSequence>,
 }
 
+/// Make a halted ARMv4T core resume in ARM state, by clearing CPSR.T if it is set.
+///
+/// A PC write keeps the instruction set the core was halted in, so callers that redirect PC
+/// into ARM code from a halt that may have been in Thumb state (the flash loader, the RAM-boot
+/// redirect) call this first.
+pub(crate) fn enter_arm_state(core: &mut crate::Core<'_>) -> Result<(), Error> {
+    let cpsr: u32 = core.read_core_reg(CPSR.id)?;
+    if cpsr & CPSR_TBIT != 0 {
+        core.write_core_reg(CPSR.id, cpsr & !CPSR_TBIT)?;
+    }
+    Ok(())
+}
+
 impl<'probe> Arm7tdmi<'probe> {
+    /// Execute exactly one instruction (see [`CoreInterface::step`]) and return the PC of the
+    /// next one. Leaves the hardware units configured for stepping - the caller restores them.
+    fn single_step(
+        &mut self,
+        current_pc: u32,
+        cpsr: u32,
+        next: step_sim::NextInstruction,
+    ) -> Result<u32, Error> {
+        self.interface
+            .configure_step_watchpoints(current_pc, next.pc)?;
+        // Interrupts stay masked while stepping, so the step executes the instruction instead
+        // of entering a pending IRQ/FIQ handler.
+        self.interface.resume_for_step()?;
+
+        // DBGACK+SYSCOMP, like OpenOCD's `arm7_9_step`: DBGACK alone can assert before the core
+        // reached the step watchpoint.
+        let start = std::time::Instant::now();
+        while !self.interface.is_halted_with_syscomp()? {
+            if start.elapsed() >= Duration::from_secs(1) {
+                // Don't leave the core running behind the caller's back: stop it the regular
+                // way, so the core state stays consistent, and report the failed step.
+                tracing::warn!("step at {current_pc:#010x} did not complete, halting the core");
+                // Both units hold the step configuration, which `step()` restores afterwards.
+                self.interface.halt_precisely_with_unit(0)?;
+                self.state.current_state = CoreStatus::Halted(HaltReason::Request);
+                return Err(Error::Timeout);
+            }
+            std::thread::sleep(Duration::from_millis(1));
+        }
+
+        // Not durable on its own, see `latch_current_halt`.
+        self.interface.latch_current_halt()?;
+
+        // The instruction set the core really halted in (a BX, an exception entry or an
+        // exception return can change it). Every chain-1 sequence assumes ARM state, so a
+        // Thumb halt is converted, using the predicted PC instead of a fresh capture.
+        let thumb = self.interface.halted_in_thumb()?;
+        let mut pc = next.pc;
+        // Where the core is if a predicted exception wasn't taken (an encoding the simulator
+        // considers undefined that this silicon executes after all).
+        let sequential = current_pc.wrapping_add(if cpsr & CPSR_TBIT != 0 { 2 } else { 4 });
+        if thumb {
+            // An exception entry always switches to ARM state.
+            if let Some(exception) = next.exception {
+                tracing::warn!(
+                    "step at {current_pc:#010x}: predicted {exception:?}, but the core is still \
+                     in Thumb state; assuming it executed the instruction"
+                );
+                pc = sequential;
+            }
+            self.interface.convert_to_arm_after_thumb_step(pc)?;
+        } else if let Some(exception) = next.exception {
+            let mode_after = self.interface.read_core_register(16)? & 0x1F;
+            if mode_after != exception.mode() {
+                tracing::warn!(
+                    "step at {current_pc:#010x}: predicted {exception:?}, but the core is in \
+                     mode {mode_after:#04x}; assuming it executed the instruction"
+                );
+                pc = sequential;
+            }
+        } else if !next.changes_mode {
+            // An exception the instruction itself doesn't imply (IRQ/FIQ are masked, so in
+            // practice a data abort, or an undefined instruction the simulator doesn't know):
+            // the core entered the exception's mode and halted at its vector instead.
+            let mode_before = cpsr & 0x1F;
+            let mode_after = self.interface.read_core_register(16)? & 0x1F;
+            if mode_after != mode_before
+                && let Some(exception) = step_sim::Exception::from_mode(mode_after)
+            {
+                tracing::debug!("step at {current_pc:#010x} entered {exception:?}");
+                pc = exception.vector();
+            }
+        }
+        if thumb != next.thumb && pc == next.pc {
+            tracing::warn!(
+                "step at {current_pc:#010x}: predicted {} state, core halted in {} state",
+                if next.thumb { "Thumb" } else { "ARM" },
+                if thumb { "Thumb" } else { "ARM" },
+            );
+        }
+
+        // The step's own `resume()` consumed the cached resume PC and Thumb flag; record where
+        // the core is now, the same way every other halt path does.
+        self.interface.cache_resume_pc(pc);
+        self.interface.set_pending_resume_thumb(thumb);
+        self.interface.mark_debug_entry_done()?;
+        Ok(pc)
+    }
+
+    /// Halt the core with an exact halt PC, through a wildcard fetch watchpoint (see
+    /// [`Arm7tdmiCommunicationInterface::halt_at_next_instruction`]). Uses a free unit if there
+    /// is one; otherwise borrows one, preferring the unit that doesn't hold the SVC vector catch
+    /// (a semihosting call in that short window would be missed). Falls back to a DBGRQ halt if
+    /// the watchpoint doesn't fire.
+    fn halt_precisely(&mut self) -> Result<(), Error> {
+        let free_unit = self
+            .state
+            .hw_breakpoints
+            .iter()
+            .zip(&self.state.data_watchpoints)
+            .position(|(breakpoint, watchpoint)| breakpoint.is_none() && watchpoint.is_none());
+        let unit = free_unit.unwrap_or(if self.state.svc_vector_catch_enabled {
+            1 - SVC_VECTOR_UNIT
+        } else {
+            0
+        });
+        self.interface.halt_precisely_with_unit(unit)?;
+        Ok(())
+    }
+
+    /// Why the core halted on its own (not through `halt()`/`step()`), inferred from what is
+    /// armed: EmbeddedICE doesn't report a reason. A halt PC on an armed breakpoint is that
+    /// breakpoint (or, at the SVC vector with the vector catch on, that exception); otherwise an
+    /// armed data watchpoint is the only thing that can have stopped the core.
+    fn fresh_halt_reason(&self) -> HaltReason {
+        // A halt this debugger requested (e.g. `ensure_halted` re-halting a core that didn't
+        // stay halted) isn't a breakpoint or watchpoint hit.
+        if self.interface.halt_was_requested() {
+            return HaltReason::Request;
+        }
+        let Some(pc) = self.interface.cached_halt_pc().map(u64::from) else {
+            return HaltReason::Unknown;
+        };
+        if self.state.svc_vector_catch_enabled && pc == SVC_VECTOR_ADDRESS as u64 {
+            HaltReason::Exception
+        } else if self.state.hw_breakpoints.contains(&Some(pc)) {
+            HaltReason::Breakpoint(BreakpointCause::Hardware)
+        } else if self.state.data_watchpoints.iter().any(Option::is_some) {
+            HaltReason::Watchpoint
+        } else {
+            HaltReason::Unknown
+        }
+    }
+
+    /// Reprogram both hardware units from the given bookkeeping (after `step()` used them),
+    /// attempting every unit even if one fails.
+    fn restore_hw_units(
+        &mut self,
+        breakpoints: [Option<u64>; Arm7tdmiCommunicationInterface::HW_BREAKPOINT_UNIT_COUNT],
+        watchpoints: [Option<u64>; Arm7tdmiCommunicationInterface::HW_BREAKPOINT_UNIT_COUNT],
+    ) -> Result<(), Error> {
+        let mut result = Ok(());
+        for (unit, (breakpoint, watchpoint)) in breakpoints.into_iter().zip(watchpoints).enumerate()
+        {
+            let restored = match (breakpoint, watchpoint) {
+                (Some(addr), _) => self.interface.set_hw_breakpoint(unit, addr as u32),
+                (None, Some(addr)) => self.interface.set_hw_data_watchpoint(unit, addr as u32),
+                (None, None) => self.interface.clear_hw_breakpoint(unit),
+            };
+            if result.is_ok() {
+                result = restored.map_err(Error::from);
+            }
+        }
+        result
+    }
+
     /// Create a new ARM7TDMI core
     pub fn new(
         interface: Arm7tdmiCommunicationInterface<'probe>,
@@ -95,19 +283,31 @@ impl<'probe> Arm7tdmi<'probe> {
 
         if !core.state.initialized {
             core.state.initialized = true;
-            // Real, physical TAP reset/IDCODE-read/watchpoint-clear - see
-            // `Arm7tdmiCommunicationInterface::new`'s doc comment for why this must happen here,
-            // gated on this session-persisted flag, rather than unconditionally in the
-            // interface's own constructor (which runs on every `Session::core` call, not just
-            // the first).
+            // One-time TAP reset and unit clearing, see `Arm7tdmiCommunicationInterface::new`.
             core.interface.init()?;
             core.sequence.debug_core_start(&mut core.interface)?;
-            // Initialize debug interface. Caches the real, freshly-halted PC (and, if halted in
-            // Thumb state, CPSR) for a later bare `resume()` to reuse - see `halt()`'s own doc
-            // comment for why this matters specifically for the plain `read`/`write` command
-            // path (attach -> this one-time halt -> the memory op -> an implicit `run()`/resume
-            // with no explicit PC write in between).
-            core.interface.halt()?;
+            // A core that is already halted was left that way by a previous session (killed,
+            // or a tool that doesn't resume on exit). Take over its halt state if that session
+            // recorded it: debug-state entry already converted a Thumb halt to ARM state, which
+            // can't be undone or detected from the core itself. A core halted in Thumb state was
+            // never converted, so a record found then is stale; the halt is entered normally.
+            if core.interface.is_halted()? {
+                if core.interface.halted_in_thumb()? {
+                    core.interface.discard_halt_record()?;
+                } else if !core.interface.adopt_recorded_halt()? {
+                    tracing::warn!(
+                        "The core was already halted in ARM state when attaching, without state \
+                         left by a probe-rs session. If another debugger halted it in Thumb code, \
+                         resuming it will misbehave; reset the target if it does."
+                    );
+                }
+            }
+            // Halt and cache the halt PC for a later bare `resume()` (e.g. the plain
+            // `read`/`write` commands: attach, halt, access, resume).
+            core.halt_precisely()?;
+            // Record the halt, as `Core::halt()` does: otherwise the first `status()` sees a
+            // "fresh" halt and re-runs debug-state entry (see `status()`).
+            core.state.current_state = CoreStatus::Halted(HaltReason::Request);
         }
 
         Ok(core)
@@ -119,15 +319,9 @@ impl<'probe> CoreInterface for Arm7tdmi<'probe> {
         let start = std::time::Instant::now();
 
         while start.elapsed() < timeout {
-            // Must go through `status()`, not a bare `self.interface.is_halted()` - only
-            // `status()` calls `latch_watchpoint_halt()` (which performs the required
-            // Thumb-to-ARM conversion via `enter_debug_state`) on a fresh halt transition. Every
-            // generic `Core::wait_for_core_halted` caller (this crate's own CLI/RPC
-            // flashing-completion poll loops, or any plain library caller) relies on this to
-            // leave the core genuinely ready for a subsequent chain-1 (ARM-encoded) register
-            // read - without it, a watchpoint match on Thumb-mode code would still report
-            // "halted" while the core is left mid-Thumb-decode, so every register read would
-            // misdecode as garbage.
+            // Must go through `status()`, which latches a fresh watchpoint halt and converts
+            // the core to ARM state (`latch_watchpoint_halt`); otherwise register reads after a
+            // Thumb-mode halt would misdecode.
             if matches!(self.status()?, CoreStatus::Halted(_)) {
                 return Ok(());
             }
@@ -138,10 +332,7 @@ impl<'probe> CoreInterface for Arm7tdmi<'probe> {
     }
 
     fn core_halted(&mut self) -> Result<bool, Error> {
-        // See `wait_for_core_halted`'s doc comment just above - same reasoning applies here:
-        // this must observe a fresh halt through `status()` so a watchpoint-triggered halt gets
-        // durably latched and Thumb-converted before any caller trusts this `true` result and
-        // proceeds straight to a chain-1 register/memory access.
+        // Through `status()`, see `wait_for_core_halted`.
         Ok(matches!(self.status()?, CoreStatus::Halted(_)))
     }
 
@@ -150,53 +341,33 @@ impl<'probe> CoreInterface for Arm7tdmi<'probe> {
 
         if !is_halted {
             self.state.current_state = CoreStatus::Running;
+            self.state.svc_halt_checked = false;
             return Ok(self.state.current_state);
         }
 
-        // A fresh transition into the halted state must be durably latched before any further
-        // chain-1 (debug-speed) access is attempted - see `latch_watchpoint_halt`'s own doc
-        // comment: a watchpoint-triggered halt reporting DBGACK here does not, on its own,
-        // durably stop the core on this silicon, and a caller that proceeds straight to chain-1
-        // reads/writes (this function's own SVC-vector-catch check just below, and - critically -
-        // any *external* caller that only ever sees this generic `status()` and then reads
-        // registers, e.g. over RPC, with no knowledge of `latch_watchpoint_halt` at all) can end
-        // up reading/writing a pipeline the core silently isn't actually listening to. Gated on
-        // "wasn't already known-halted" so a `Core::halt()`-initiated halt (already durably
-        // latched by its own sequence) doesn't pay this twice; calling it again in that case
-        // would be harmless (the same idempotent DBGRQ-then-STICKY_HALT sequence `halt()` itself
-        // uses) but is unnecessary JTAG traffic.
+        // A fresh halt must be latched before any chain-1 access (see `latch_watchpoint_halt`),
+        // also for external callers that only use `status()`. Skipped for halts `halt()` /
+        // `step()` already latched.
         let fresh_halt = !matches!(self.state.current_state, CoreStatus::Halted(_));
         if fresh_halt {
             self.interface.latch_watchpoint_halt()?;
         }
 
-        // Only reclassify `reason` on a fresh transition into halted - EmbeddedICE genuinely
-        // gives no reason info for one, unlike ARMv7-A/R's DBGDSCR, so `Unknown` is the correct
-        // starting point there. On a repeated poll of an already-halted core, keep whatever
-        // reason was already known (e.g. the explicit `HaltReason::Request`/`HaltReason::Step`
-        // `halt()`/`step()` set) instead of resetting it - a background status-watcher (like the
-        // DAP server's own poll loop) calls this repeatedly while halted and must keep seeing a
-        // consistent reason. The SVC-vector-catch check below can still refine/override it either
-        // way - that check's own semihosting-command caching is deliberately designed to run
-        // again on repeated polls of the same halt, see `Arm7tdmiState::semihosting_command`'s
-        // own doc.
+        // EmbeddedICE reports no halt reason, so a fresh halt's reason is inferred from the
+        // armed units (see `fresh_halt_reason`). A repeated poll keeps the known reason (e.g.
+        // `Request`/`Step`) so pollers such as the DAP server see a consistent one; the
+        // semihosting check below runs on every poll (see `Arm7tdmiState::semihosting_command`).
         let mut reason = if fresh_halt {
-            HaltReason::Unknown
+            self.fresh_halt_reason()
         } else if let CoreStatus::Halted(existing) = self.state.current_state {
             existing
         } else {
             HaltReason::Unknown
         };
 
-        // EmbeddedICE's Debug Status Register (unlike ARMv7-A/R's DBGDSCR) doesn't report *why*
-        // the core halted, only that it did - so the SVC-vector-catch breakpoint (see
-        // `enable_vector_catch`) can only be recognised by checking, after any halt, whether
-        // we're both expecting it and sitting exactly at the SVC vector.
+        // The SVC vector catch is recognised by the halt PC being the SVC vector.
         if self.state.svc_vector_catch_enabled {
-            // Use the PC `latch_watchpoint_halt` (just above, via `enter_debug_state`) already
-            // captured while latching this halt, rather than issuing a second, independent
-            // chain-1 read here - see `cached_halt_pc`'s doc comment for why a second read never
-            // sees the true halt-time value at all.
+            // Use the cached halt PC (see `cached_halt_pc`).
             let pc: u32 = self
                 .interface
                 .cached_halt_pc()
@@ -204,10 +375,20 @@ impl<'probe> CoreInterface for Arm7tdmi<'probe> {
             tracing::debug!(
                 "SVC vector-catch halt check: pc={pc:#010x} (expected {SVC_VECTOR_ADDRESS:#010x})"
             );
-            if pc == SVC_VECTOR_ADDRESS {
+            if pc == SVC_VECTOR_ADDRESS && !self.state.svc_halt_checked {
+                self.state.svc_halt_checked = true;
                 let lr: u32 = self.read_core_reg(LR.id)?.try_into()?;
-                self.state.semihosting_command =
-                    check_for_semihosting(self.state.semihosting_command.take(), self, pc, lr)?;
+                let cached = self.state.semihosting_command.take();
+                // A request the target set up wrongly (e.g. an unaligned parameter block) must
+                // not make every status poll fail: report the halt as the SVC exception.
+                self.state.semihosting_command = match check_for_semihosting(cached, self, pc, lr) {
+                    Ok(command) => command,
+                    Err(e) => {
+                        tracing::warn!("Could not decode the semihosting request: {e}");
+                        reason = HaltReason::Exception;
+                        None
+                    }
+                };
                 if let Some(command) = self.state.semihosting_command {
                     reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(command));
                 }
@@ -219,83 +400,51 @@ impl<'probe> CoreInterface for Arm7tdmi<'probe> {
     }
 
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
-        self.interface.halt()?;
+        self.halt_precisely()?;
 
-        // Set this *before* `wait_for_core_halted`, for two separate reasons at once.
-        // (1) - the reason this is here at all: `wait_for_core_halted` goes through `status()`,
-        // which has no way to distinguish *why* the core is halted - EmbeddedICE's Debug Status
-        // Register, unlike ARMv7-A/R's DBGDSCR, never reports a halt reason, only that a halt
-        // happened. This trait method, though, is unambiguous about *why* the core is halted:
-        // it's always this crate/a debugger explicitly requesting a halt (never a watchpoint/
-        // breakpoint match, which goes through `status()`'s own polling instead) - matching
-        // every real call site (`Session::halted_access`, flash-prep, `benchmark`, a DAP/REPL
-        // `break`/pause command, ...). Set it explicitly, the same way `step()` already does for
-        // its own, differently-caused halt.
-        //
-        // (2) - setting it *before* `wait_for_core_halted` runs at all, rather than after,
-        // matters because `status()`'s own `fresh_halt` check
-        // (`!matches!(self.state.current_state, CoreStatus::Halted(_))`, just below) needs to
-        // see this halt as already-latched on its very first poll - `self.interface` has
-        // already durably halted and correctly PC-captured the core, moments earlier, via its
-        // own `halt()` call above, so `fresh_halt` seeing a stale `Running` state here would
-        // make `status()` call `latch_watchpoint_halt()` a second, entirely redundant time on an
-        // already-halted core: another full chain-1 PC capture (further advancing the pipeline -
-        // the same "measuring it moves it" effect `cached_halt_pc`'s own doc comment describes),
-        // and overwriting the already-correct DBGRQ-corrected cached PC with a
-        // watchpoint-style-corrected (`dbgrq: false`) one, wrong for a DBGRQ halt. Setting
-        // `current_state` here first makes `fresh_halt` correctly see this halt as
-        // already-latched and skip that redundant call, exactly as `status()`'s own doc comment
-        // says is the intent ("a `Core::halt()`-initiated halt... doesn't pay this twice").
+        // Set before `wait_for_core_halted`: `status()` can't tell why the core halted, and it
+        // must see this halt as already latched, or `latch_watchpoint_halt` would run again,
+        // capturing PC once more and replacing the DBGRQ-corrected PC with a watchpoint-style
+        // one.
         self.state.current_state = CoreStatus::Halted(HaltReason::Request);
 
         self.wait_for_core_halted(timeout)?;
 
-        // Use the PC `self.interface.halt()` (via `enter_debug_state`) already captured and
-        // corrected while latching this exact halt, rather than issuing a second, independent
-        // chain-1 read here - see `cached_halt_pc`'s doc comment for why a second read never
-        // sees the true halt-time value (each chain-1 register read genuinely, physically
-        // advances this silicon's pipeline by a few real instructions, enough to silently jump
-        // clean over any loop, critical section, or exception-epilogue instruction sequence
-        // shorter than that). This mirrors `status()`'s own SVC-vector-catch check just above,
-        // which uses the same cached value for the same reason.
+        // The PC cached while latching the halt (see `cached_halt_pc`).
         let pc: u32 = self
             .interface
             .cached_halt_pc()
             .ok_or_else(|| Error::Other("no cached halt PC available".to_string()))?;
-        // Already cached by `enter_debug_state` - no need to redundantly re-cache it here.
 
         Ok(CoreInformation { pc: pc as u64 })
     }
 
     fn run(&mut self) -> Result<(), Error> {
+        self.state.svc_halt_checked = false;
         if self.state.semihosting_command.take().is_some() {
-            // We're halted right at the SVC vector (Supervisor mode), having intercepted a
-            // semihosting call. Return to the interrupted code exactly as the `SVC`
-            // instruction itself would have, had the debugger not caught it first.
+            // Halted at the SVC vector for a semihosting call: return to the caller as the SVC
+            // would have.
             self.interface.return_from_exception()?;
         } else if self
             .interface
             .cached_halt_pc()
             .is_some_and(|pc| self.state.hw_breakpoints.contains(&Some(pc as u64)))
         {
-            // Only when a hardware breakpoint is actually armed at the exact halt PC: step
-            // past it before resuming for real, matching every other architecture backend in
-            // this crate (armv6m/armv7m/armv8m/riscv/xtensa `run()` all unconditionally step
-            // first) - without this, resuming while a breakpoint sits at the halt PC just
-            // immediately re-traps before the core can make any real progress.
-            //
-            // Deliberately gated on an actual conflict, *not* done unconditionally the way the
-            // other backends do it: ARM7TDMI's DBGRQ halt is explicitly documented (in this
-            // same file, and in ARM's own DDI 0029G) as able to interrupt the pipeline at any
-            // point, not synchronized to an instruction boundary, unlike every other backend's
-            // halt mechanism that `step()`-first assumes. A breakpoint hit, by construction, *is*
-            // a clean, address-exact fetch-boundary halt, so `step()`'s own precondition holds
-            // here. Two things this relies on: `step()`'s completion must
-            // leave the core in ARM state before returning, even when the stepped instruction
-            // was Thumb (see `convert_to_arm_after_thumb_step`'s doc comment for why), and
-            // `Arm7tdmiCommunicationInterface::halt` must recognize an already-halted core
-            // rather than misattributing it as a fresh DBGRQ halt (see its own doc comment).
+            // Step over a hardware breakpoint at the halt PC first, or the core re-traps
+            // immediately. Other backends always step first; here it is limited to breakpoint
+            // halts, which stop at an exact instruction boundary, unlike a DBGRQ halt. `step()`
+            // leaves the core in ARM state (see `convert_to_arm_after_thumb_step`).
             self.step()?;
+            // Stepping over a breakpoint on an SVC lands on the SVC vector, where the vector
+            // catch would have stopped a free run: stay halted so `status()` reports the call.
+            if self.state.svc_vector_catch_enabled
+                && self.interface.cached_halt_pc() == Some(SVC_VECTOR_ADDRESS)
+            {
+                // Reported as the SVC exception (refined to the semihosting call, if it is
+                // one), not as the step that got here.
+                self.state.current_state = CoreStatus::Halted(HaltReason::Exception);
+                return Ok(());
+            }
         }
 
         self.interface.resume()?;
@@ -305,20 +454,14 @@ impl<'probe> CoreInterface for Arm7tdmi<'probe> {
 
     fn reset(&mut self) -> Result<(), Error> {
         self.sequence.reset_system(&mut self.interface)?;
-        // A stale cached command would make the next `run()` try to `return_from_exception`
-        // out of an exception mode the reset already took us out of.
+        // A stale command would make `run()` return from an exception the reset left.
         self.state.semihosting_command = None;
-        // A real hardware reset (a physical reset-line toggle, not just a PC redirect) clears
-        // EmbeddedICE's watchpoint comparator registers on the actual silicon along with
-        // everything else - so any breakpoint/vector-catch programmed before this reset is now
-        // gone on the real hardware, and this cached bookkeeping must be cleared to match.
-        // Otherwise `enable_vector_catch`'s own "already enabled, nothing to do" fast path (and
-        // any user `set_hw_breakpoint` caller relying on `hw_breakpoints` to know what's
-        // actually armed) would wrongly believe the breakpoint is still active and never
-        // reprogram it - letting e.g. a semihosting SVC call silently fall through to the
-        // target's own raw SWI vector instead of being caught, with no further debugger
-        // involvement at all until some later, unrelated halt.
+        self.state.svc_halt_checked = false;
+        // A hardware reset clears the EmbeddedICE units, so drop the bookkeeping; otherwise
+        // e.g. `enable_vector_catch`'s "already enabled" shortcut would never re-arm it.
         self.state.hw_breakpoints =
+            [None; Arm7tdmiCommunicationInterface::HW_BREAKPOINT_UNIT_COUNT];
+        self.state.data_watchpoints =
             [None; Arm7tdmiCommunicationInterface::HW_BREAKPOINT_UNIT_COUNT];
         self.state.svc_vector_catch_enabled = false;
         self.state.current_state = CoreStatus::Running;
@@ -327,131 +470,57 @@ impl<'probe> CoreInterface for Arm7tdmi<'probe> {
 
     fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         self.state.semihosting_command = None;
-        // See `reset`'s doc comment: a real reset clears EmbeddedICE's breakpoint comparators on
-        // the actual hardware, so this cached bookkeeping must not keep claiming they're armed.
+        self.state.svc_halt_checked = false;
+        // The reset clears the units, see `reset`.
         self.state.hw_breakpoints =
+            [None; Arm7tdmiCommunicationInterface::HW_BREAKPOINT_UNIT_COUNT];
+        self.state.data_watchpoints =
             [None; Arm7tdmiCommunicationInterface::HW_BREAKPOINT_UNIT_COUNT];
         self.state.svc_vector_catch_enabled = false;
         self.sequence.reset_catch_set(&mut self.interface)?;
         self.sequence.reset_system(&mut self.interface)?;
         self.sequence.reset_catch_clear(&mut self.interface)?;
 
-        self.interface.halt()?;
+        // This halts wherever the core is once JTAG works again, not at the reset vector.
+        // OpenOCD's method (DBGRQ while only nSRST is held) doesn't work on the MC1322x: its TAP
+        // reads all zeros during nSRST and for a few milliseconds after, by which time the boot
+        // ROM is running (verified with nTRST inactive).
+        self.halt_precisely()?;
+        // See `halt()`.
+        self.state.current_state = CoreStatus::Halted(HaltReason::Request);
         self.wait_for_core_halted(timeout)?;
 
         let pc: u32 = self.read_core_reg(PC.id)?.try_into()?;
-        // Avoid a later, redundant chain-1 PC re-read in `resume()` - see `cache_resume_pc`.
+        // Avoid a later PC re-read in `resume()`, see `cache_resume_pc`.
         self.interface.cache_resume_pc(pc);
 
         Ok(CoreInformation { pc: pc as u64 })
     }
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
-        // Calculate the address the next instruction will genuinely execute from, by
-        // decoding/simulating the current instruction (handling conditional execution and any
-        // control-flow redirection: branches, BX, and any instruction that writes PC directly)
-        // - the same technique OpenOCD's own ARM7/ARM9 `step` uses (`arm7_9_step`/
-        // `arm_simulate_step`). See `step_sim`'s module doc for why a naive
-        // "breakpoint at PC + instruction size" approach would get this wrong for any taken
-        // branch.
-        //
-        // Both hardware watchpoint units are temporarily repurposed as a "range-chained" pair
-        // (see `Arm7tdmiCommunicationInterface::configure_step_watchpoints`) rather than a lone
-        // wildcard or exact-match breakpoint on one unit: a target only one instruction ahead
-        // of where `resume()` redirects execution does not reliably fire a lone watchpoint on
-        // real ARM7TDMI silicon (observed directly: PC advancing by a large, fixed, multi-
-        // instruction amount per `step()` call instead of stopping after exactly one). Any
-        // breakpoints the user had set on either unit are restored afterwards.
-        let (current_pc, next_pc) = step_sim::calculate_next_pc(&mut self.interface)?;
+        // A step at a semihosting halt executes the SVC vector itself: the call is no longer
+        // pending, so a later `run()` must not return from it.
+        self.state.semihosting_command = None;
+        self.state.svc_halt_checked = false;
+        // Predict the next PC by simulating the current instruction, like OpenOCD's
+        // `arm7_9_step`/`arm_simulate_step` (see `step_sim`), then run to it with both units as
+        // a range-chained pair (see `configure_step_watchpoints`); a lone watchpoint one
+        // instruction ahead doesn't fire reliably. The user's units are restored afterwards,
+        // also on failure.
+        let (current_pc, cpsr, next) = step_sim::calculate_next_pc(&mut self.interface)?;
 
-        let previous = self.state.hw_breakpoints;
-        self.interface
-            .configure_step_watchpoints(current_pc, next_pc)?;
-
-        // `resume()` below consumes `pending_resume_thumb` (via `take()`) to correctly
-        // Thumb-interwork *into* the stepped instruction - save it now so it can be restored
-        // once the step completes: stepping past one ordinary (non-BX/BLX) instruction leaves
-        // the core's real T-bit unchanged, and a stale `false` left behind by the consumption
-        // would make a later `resume()` wrongly take the bare-ARM-branch path against
-        // Thumb-encoded code. Belongs here rather than in `Arm7tdmi::run()`, since `step()`
-        // itself should leave the interface self-consistent for *any* caller, not just that one.
-        let was_thumb = self.interface.pending_resume_thumb();
-        self.interface.resume()?;
-        // Uses the DBGACK+SYSCOMP dual check (matching `system_speed_access`/OpenOCD's
-        // `arm7_9_execute_sys_speed`, which `arm7_9_step` uses) instead of the generic
-        // DBGACK-only `wait_for_core_halted` - DBGACK alone can assert before the core has
-        // genuinely run to the intended watchpoint match on this silicon.
-        let start = std::time::Instant::now();
-        let timeout = Duration::from_secs(1);
-        let step_result = loop {
-            match self.interface.is_halted_with_syscomp() {
-                Ok(true) => break Ok(()),
-                Ok(false) => {
-                    if start.elapsed() >= timeout {
-                        break Err(Error::Timeout);
-                    }
-                    std::thread::sleep(Duration::from_millis(1));
-                }
-                Err(e) => break Err(e.into()),
-            }
-        };
-
-        // `is_halted_with_syscomp` above, like plain `is_halted`, does not on its own *durably*
-        // stop the core on this silicon - without latching it explicitly, it can keep running
-        // for real in the background after this wait loop returns, corrupting whatever the
-        // caller does next. See `latch_current_halt`'s own doc comment for the full story -
-        // matches `latch_watchpoint_halt`'s handling of the same non-durability for a plain
-        // breakpoint hit.
-        if step_result.is_ok() {
-            self.interface.latch_current_halt()?;
-
-            // If the stepped instruction was Thumb (the common case), the core is now
-            // genuinely halted in Thumb state - but every chain-1 sequence in this file assumes
-            // ARM state, and every other halt path (`enter_debug_state`) converts for exactly
-            // this reason, so this one must too, or the core is left mode-mismatched for
-            // whatever the *next* caller does (see `convert_to_arm_after_thumb_step`'s doc
-            // comment). Convert now, using the already-known, reliable `next_pc` rather than a
-            // fresh capture.
-            if was_thumb {
-                self.interface.convert_to_arm_after_thumb_step(next_pc)?;
-            }
-
-            // `step()`'s own internal `resume()` call (used to execute the step) consumes
-            // `pending_resume_pc` via `take()`, so it must be re-populated afterward for any
-            // subsequent consumer (a plain `resume()`, or `calculate_next_pc`'s own
-            // `cached_halt_pc()` read on the *next* `step()` call) to see where the core
-            // actually is now, rather than a stale value from *this* step or a fresh,
-            // less-precise read. `next_pc` is already known to be exactly where the core now
-            // sits (that's the entire point of arming the watchpoint there) - cache it, the
-            // same way every other halt path in this file already does.
-            //
-            // Set *after* the Thumb-conversion block above: `write_core_register_unchecked(15,
-            // ..)` (used there) resets `pending_resume_thumb` to `false` as its own side effect
-            // (see that function's doc comment) - setting it here, afterward, is what makes it
-            // stick.
-            self.interface.cache_resume_pc(next_pc);
-            self.interface.set_pending_resume_thumb(was_thumb);
-        }
-
-        for (unit, addr) in previous.into_iter().enumerate() {
-            match addr {
-                Some(addr) => self.interface.set_hw_breakpoint(unit, addr as u32)?,
-                None => self.interface.clear_hw_breakpoint(unit)?,
-            }
-        }
-        step_result?;
+        let breakpoints = self.state.hw_breakpoints;
+        let watchpoints = self.state.data_watchpoints;
+        let stepped = self.single_step(current_pc, cpsr, next);
+        let restored = self.restore_hw_units(breakpoints, watchpoints);
+        let pc = stepped?;
+        restored?;
 
         self.state.current_state = CoreStatus::Halted(HaltReason::Step);
 
-        // Deliberately *not* re-reading PC here to report the result: reading any register
-        // via ARM7TDMI's debug-speed chain-1 capture has a real, physical side effect on this
-        // silicon - it genuinely advances the core's pipeline by a further ~3 instructions, and
-        // a *second* read afterward would only report a further-advanced position, not verify
-        // the first one. `next_pc` (computed by `calculate_next_pc` before `resume()`, and the
-        // exact address armed via `configure_step_watchpoints`) is exactly where the watchpoint
-        // mechanism lands the core, so returning it directly is both more accurate and avoids
-        // compounding this side effect across repeated steps.
-        Ok(CoreInformation { pc: next_pc as u64 })
+        // Report the predicted PC, where the step watchpoint stopped the core; re-reading it
+        // would advance the pipeline.
+        Ok(CoreInformation { pc: pc as u64 })
     }
 
     fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, Error> {
@@ -463,10 +532,8 @@ impl<'probe> CoreInterface for Arm7tdmi<'probe> {
         &mut self,
         addresses: &[RegisterId],
     ) -> Vec<Result<RegisterValue, Error>> {
-        // Fold the plain R0-R15 register ids into one mask and read them all via a single
-        // `STMIA` (see `Arm7tdmiCommunicationInterface::read_core_registers`'s doc for why this
-        // matters on this architecture). CPSR (16) and anything else outside 0-15 falls back to
-        // `read_core_reg` below, same as if this override didn't exist at all.
+        // Read R0-R15 with one `STMIA` (see `read_core_registers`); others go through
+        // `read_core_reg`.
         let mask: u16 = addresses.iter().fold(0u16, |mask, address| {
             if address.0 <= 15 {
                 mask | (1 << address.0)
@@ -499,7 +566,16 @@ impl<'probe> CoreInterface for Arm7tdmi<'probe> {
 
     fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error> {
         let value: u32 = value.try_into()?;
+        let redirected = address == PC.id && self.interface.cached_halt_pc() != Some(value);
         self.interface.write_core_register(address.0 as u8, value)?;
+        if redirected {
+            // Redirecting the core at a semihosting halt abandons the call: `run()` must resume
+            // at the new PC instead of returning from the SVC. (Servicing a call only writes
+            // R0; writing back the unchanged PC, e.g. a debugger writing all registers, keeps
+            // the call.) A PC set to the SVC vector again is checked afresh.
+            self.state.semihosting_command = None;
+            self.state.svc_halt_checked = false;
+        }
         Ok(())
     }
 
@@ -508,37 +584,77 @@ impl<'probe> CoreInterface for Arm7tdmi<'probe> {
     }
 
     fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
-        Ok(self.state.hw_breakpoints.to_vec())
+        // A unit holding a data watchpoint is reported as occupied (by the watched address), so
+        // `Core::set_hw_breakpoint`'s free-unit search doesn't overwrite it.
+        Ok(self
+            .state
+            .hw_breakpoints
+            .iter()
+            .zip(&self.state.data_watchpoints)
+            .map(|(breakpoint, watchpoint)| breakpoint.or(*watchpoint))
+            .collect())
+    }
+
+    fn reserved_breakpoint_units(&mut self) -> Result<Vec<Option<u64>>, Error> {
+        // Data watchpoints, and the unit holding the SVC vector catch: a user breakpoint at the
+        // SVC vector then gets a unit of its own, and clearing it leaves the catch armed.
+        let mut reserved = self.state.data_watchpoints.to_vec();
+        if self.state.svc_vector_catch_enabled {
+            reserved[SVC_VECTOR_UNIT] = Some(SVC_VECTOR_ADDRESS as u64);
+        }
+        Ok(reserved)
     }
 
     fn enable_breakpoints(&mut self, state: bool) -> Result<(), Error> {
-        // Each EmbeddedICE watchpoint unit is enabled/disabled individually via its own
-        // control register (see `set_hw_breakpoint`/`clear_hw_breakpoint`); there is no
-        // separate global enable. This just tracks the state `Core::set_hw_breakpoint`
-        // expects to be able to query.
+        // EmbeddedICE units are enabled individually; there is no global enable to set.
         self.state.breakpoints_enabled = state;
         Ok(())
     }
 
     fn set_hw_breakpoint(&mut self, unit_index: usize, addr: u64) -> Result<(), Error> {
+        // `hw_breakpoints()` reports a data watchpoint as its watched address, so
+        // `Core::set_hw_breakpoint` can pick this unit for a breakpoint at that same address,
+        // believing it is already set. Refuse instead of silently dropping the watchpoint.
+        if let Some(watched) = self
+            .state
+            .data_watchpoints
+            .get(unit_index)
+            .copied()
+            .flatten()
+        {
+            return Err(Error::Other(format!(
+                "hardware unit {unit_index} holds a data watchpoint at {watched:#010x}; clear \
+                 it first"
+            )));
+        }
         self.interface.set_hw_breakpoint(unit_index, addr as u32)?;
         self.state.hw_breakpoints[unit_index] = Some(addr);
+        self.state.data_watchpoints[unit_index] = None;
+        if unit_index == SVC_VECTOR_UNIT && addr != SVC_VECTOR_ADDRESS as u64 {
+            self.state.svc_vector_catch_enabled = false;
+        }
         Ok(())
     }
 
     fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), Error> {
         self.interface.clear_hw_breakpoint(unit_index)?;
         self.state.hw_breakpoints[unit_index] = None;
+        self.state.data_watchpoints[unit_index] = None;
+        if unit_index == SVC_VECTOR_UNIT {
+            self.state.svc_vector_catch_enabled = false;
+        }
         Ok(())
     }
 
     fn set_hw_data_watchpoint(&mut self, unit_index: usize, addr: u64) -> Result<(), Error> {
-        // Deliberately does NOT record this into `self.state.hw_breakpoints` - that array is
-        // specifically for *fetch* breakpoints (`run()`'s step-over-breakpoint conflict check,
-        // `step()`'s "restore previous breakpoints" cleanup); recording a data watchpoint there
-        // too would make those unrelated, fetch-oriented code paths misinterpret it.
+        // Kept apart from `hw_breakpoints`, which holds fetch breakpoints only (used by `run()`).
         self.interface
             .set_hw_data_watchpoint(unit_index, addr as u32)?;
+        self.state.hw_breakpoints[unit_index] = None;
+        self.state.data_watchpoints[unit_index] = Some(addr);
+        if unit_index == SVC_VECTOR_UNIT {
+            self.state.svc_vector_catch_enabled = false;
+        }
         Ok(())
     }
 
@@ -581,9 +697,7 @@ impl<'probe> CoreInterface for Arm7tdmi<'probe> {
 
     fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
         let cpsr: u32 = self.read_core_reg(CPSR.id)?.try_into()?;
-        // CPSR bit 5 - T - Thumb mode. There's no dedicated "Thumb-1" variant in
-        // `InstructionSet`; `Thumb2` is used elsewhere in this codebase (e.g. Armv6-M, which is
-        // also Thumb-1-only) as the closest available tag for "the core is in Thumb state".
+        // CPSR.T. `Thumb2` is the closest tag for Thumb-1, as for Armv6-M.
         match (cpsr >> 5) & 1 {
             1 => Ok(InstructionSet::Thumb2),
             _ => Ok(InstructionSet::A32),
@@ -614,13 +728,9 @@ impl<'probe> CoreInterface for Arm7tdmi<'probe> {
         self.sequence.debug_core_stop(&mut self.interface)
     }
 
-    /// Only [`VectorCatchCondition::Svc`] is supported, via `SVC_VECTOR_UNIT` (see its docs).
-    ///
-    /// `HardFault`/`SecureFault` are Cortex-M-only concepts, and `CoreReset`/`Hlt` would need
-    /// their own vector-catch register - EmbeddedICE has none (no DEMCR/DBGVCR equivalent), and
-    /// ARM7TDMI has no `HLT` instruction at all. Those conditions keep the `CoreInterface`
-    /// default of `Err(Error::NotImplemented("vector catch"))`, which is the correct, honest
-    /// behaviour for them - unlike silently returning `Ok(())` while doing nothing.
+    /// Only [`VectorCatchCondition::Svc`] is supported, via `SVC_VECTOR_UNIT`. The other
+    /// conditions need a vector-catch register EmbeddedICE doesn't have (and ARM7TDMI has no
+    /// `HLT`), so they return `Error::NotImplemented`.
     fn enable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
         if condition != VectorCatchCondition::Svc {
             return Err(Error::NotImplemented("vector catch"));
@@ -628,14 +738,22 @@ impl<'probe> CoreInterface for Arm7tdmi<'probe> {
         if self.state.svc_vector_catch_enabled {
             return Ok(());
         }
-        if let Some(existing) = self.state.hw_breakpoints[SVC_VECTOR_UNIT]
-            && existing != SVC_VECTOR_ADDRESS as u64
-        {
-            return Err(Error::Other(format!(
-                "hardware breakpoint unit {SVC_VECTOR_UNIT} is already in use (address \
-                 {existing:#x}); ARM7TDMI's SVC vector catch needs it and there is no way to \
-                 relocate it to the other unit"
-            )));
+        if let Some(existing) = self.state.hw_breakpoints[SVC_VECTOR_UNIT] {
+            if existing != SVC_VECTOR_ADDRESS as u64 {
+                return Err(Error::Other(format!(
+                    "hardware breakpoint unit {SVC_VECTOR_UNIT} is already in use (address \
+                     {existing:#x}); ARM7TDMI's SVC vector catch needs it and there is no way \
+                     to relocate it to the other unit"
+                )));
+            }
+            // A user breakpoint at the SVC vector itself: move it to the other unit if that is
+            // free, so it stays separately clearable once the catch reserves this one.
+            let other = 1 - SVC_VECTOR_UNIT;
+            if self.state.hw_breakpoints[other].is_none()
+                && self.state.data_watchpoints[other].is_none()
+            {
+                self.set_hw_breakpoint(other, SVC_VECTOR_ADDRESS as u64)?;
+            }
         }
         self.set_hw_breakpoint(SVC_VECTOR_UNIT, SVC_VECTOR_ADDRESS as u64)?;
         self.state.svc_vector_catch_enabled = true;
@@ -652,8 +770,18 @@ impl<'probe> CoreInterface for Arm7tdmi<'probe> {
         self.clear_hw_breakpoint(SVC_VECTOR_UNIT)?;
         self.state.svc_vector_catch_enabled = false;
         self.state.semihosting_command = None;
+        self.state.svc_halt_checked = false;
         Ok(())
     }
+}
+
+/// Reject a memory access that isn't naturally aligned: the core's LDM/STM-based accesses would
+/// silently ignore the low address bits.
+fn check_alignment(address: u64, alignment: usize) -> Result<(), Error> {
+    if !address.is_multiple_of(alignment as u64) {
+        return Err(MemoryNotAlignedError { address, alignment }.into());
+    }
+    Ok(())
 }
 
 impl<'probe> MemoryInterface for Arm7tdmi<'probe> {
@@ -668,11 +796,13 @@ impl<'probe> MemoryInterface for Arm7tdmi<'probe> {
     }
 
     fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
+        check_alignment(address, 4)?;
         let address = valid_32bit_address(address)?;
         Ok(self.interface.read_memory_32(address)?)
     }
 
     fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
+        check_alignment(address, 2)?;
         let address = valid_32bit_address(address)?;
         let word = self.interface.read_memory_32(address & !0x3)?;
         let offset = (address & 0x3) * 8;
@@ -693,9 +823,8 @@ impl<'probe> MemoryInterface for Arm7tdmi<'probe> {
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
-        // Route through the burst form, `read_memory_32_bulk`, rather than a per-word loop
-        // calling `read_memory_32` - see its own doc comment and `write_memory_32_bulk`'s for why
-        // a per-word loop drifts the core's real PC.
+        // The burst form avoids per-word `STICKY_HALT` toggles (see `write_memory_32_bulk`).
+        check_alignment(address, 4)?;
         let address = valid_32bit_address(address)?;
         let values = self.interface.read_memory_32_bulk(address, data.len())?;
         data.copy_from_slice(&values);
@@ -703,14 +832,13 @@ impl<'probe> MemoryInterface for Arm7tdmi<'probe> {
     }
 
     fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
-        // Bulk-pack aligned pairs through `read_memory_32_bulk` (one `STICKY_HALT` toggle per up
-        // to 4 words, not one per halfword) - mirrors `write_16`'s own fix (same file). Only a
-        // leading/trailing halfword that isn't 4-byte-aligned still uses the individual
-        // `read_word_16` path, at most twice total.
+        // Aligned pairs go through `read_memory_32_bulk`; only an unaligned leading/trailing
+        // halfword uses `read_word_16`.
         if data.is_empty() {
             return Ok(());
         }
 
+        check_alignment(address, 2)?;
         let mut address = valid_32bit_address(address)?;
         let mut data = data;
 
@@ -739,9 +867,8 @@ impl<'probe> MemoryInterface for Arm7tdmi<'probe> {
     }
 
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
-        // Bulk-pack aligned 4-byte groups through `read_memory_32_bulk` - mirrors `write_8`'s
-        // own fix (same file). Only leading/trailing bytes short of a 4-byte boundary still use
-        // the individual `read_word_8` path, at most 3 on each end.
+        // Aligned words go through `read_memory_32_bulk`; only up to 3 bytes at each end use
+        // `read_word_8`.
         if data.is_empty() {
             return Ok(());
         }
@@ -780,12 +907,14 @@ impl<'probe> MemoryInterface for Arm7tdmi<'probe> {
     }
 
     fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
+        check_alignment(address, 4)?;
         let address = valid_32bit_address(address)?;
         self.interface.write_memory_32(address, data)?;
         Ok(())
     }
 
     fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
+        check_alignment(address, 2)?;
         let address = valid_32bit_address(address)?;
         let aligned_addr = address & !0x3;
         let word = self.interface.read_memory_32(aligned_addr)?;
@@ -814,29 +943,22 @@ impl<'probe> MemoryInterface for Arm7tdmi<'probe> {
     }
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
+        check_alignment(address, 4)?;
         let address = valid_32bit_address(address)?;
-        // Use the burst form, not a per-word loop calling `write_memory_32` - see
-        // `write_memory_32_bulk`'s doc comment for why: a per-word loop toggles the debug
-        // control register's `STICKY_HALT` bit off and back on for every single word, which
-        // reliably drifts the core's real PC over many words even though each individual write
-        // reports success.
+        // The burst form, see `write_memory_32_bulk` (per-word `STICKY_HALT` toggles drift PC).
         self.interface.write_memory_32_bulk(address, data)?;
         Ok(())
     }
 
     fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
-        // `write_word_16` is a read-modify-write (one `read_memory_32` plus one `write_memory_32`,
-        // each its own `system_speed_access` call, i.e. its own independent `STICKY_HALT`
-        // clear/restore cycle), so looping it once per halfword would do 2N separate STICKY_HALT
-        // toggle cycles for N halfwords - see `write_memory_32_bulk`'s doc comment for why that
-        // drifts the core's real PC. Route aligned pairs of halfwords through the single-toggle
-        // `write_memory_32_bulk` burst primitive instead. Only a leading/trailing halfword that
-        // isn't 4-byte-aligned still needs the individual read-modify-write path - at most twice
-        // total, not once per halfword.
+        // `write_word_16` is a read-modify-write of two system-speed accesses, so aligned pairs
+        // go through `write_memory_32_bulk` (see there); only an unaligned leading/trailing
+        // halfword uses the read-modify-write path.
         if data.is_empty() {
             return Ok(());
         }
 
+        check_alignment(address, 2)?;
         let mut address = valid_32bit_address(address)?;
         let mut data = data;
 
@@ -867,11 +989,8 @@ impl<'probe> MemoryInterface for Arm7tdmi<'probe> {
     }
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        // `write_word_8` is a read-modify-write (2 system-speed accesses per byte), so a per-byte
-        // loop over a large buffer would hit the same STICKY_HALT-toggle PC drift documented on
-        // `write_memory_32_bulk`. Bulk-pack aligned 4-byte groups through `write_memory_32_bulk`
-        // instead; only leading/trailing bytes short of a 4-byte boundary still use the
-        // individual `write_word_8` read-modify-write path, at most 3 on each end.
+        // As in `write_16`: aligned words go through `write_memory_32_bulk`, only up to 3 bytes
+        // at each end use the `write_word_8` read-modify-write.
         if data.is_empty() {
             return Ok(());
         }
@@ -906,13 +1025,8 @@ impl<'probe> MemoryInterface for Arm7tdmi<'probe> {
         Ok(())
     }
 
-    // Deliberately not overriding `write()`: the default `MemoryInterface::write()`
-    // implementation splits a byte slice into an aligned `write_32` bulk (the fast, single-DBGACK-
-    // toggle path - see `write_memory_32_bulk`) plus up to 3 leftover bytes on each end via
-    // `write_8`, rather than looping `write_8` (and its own per-byte `write_word_8` read-modify-
-    // write) over the entire buffer. `load_page_buffer` (used to stage each page of flashing data
-    // into RAM) writes buffers that are always a whole multiple of 4 bytes, so this always goes
-    // through the aligned bulk path entirely.
+    // The default `write()` already splits into an aligned `write_32` burst plus up to 3 bytes
+    // at each end via `write_8`; flash page buffers are always whole words.
 
     fn supports_8bit_transfers(&self) -> Result<bool, Error> {
         Ok(true)

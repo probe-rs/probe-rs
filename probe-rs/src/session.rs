@@ -23,7 +23,6 @@ use crate::{
         },
     },
     config::{CoreExt, DebugSequence, RegistryError, Target, TargetSelector, registry::Registry},
-    core::CoreInterface,
     core::{Architecture, CombinedCoreState},
     probe::{
         AttachMethod, DebugProbeError, Probe, ProbeCreationError, WireProtocol,
@@ -467,7 +466,7 @@ impl Session {
         if let Some(jtag) = target.jtag.as_ref()
             && let Some(gpio_reset) = jtag.gpio_reset.as_ref()
         {
-            // Recorded now, applied once the probe is actually opened below (see
+            // Recorded now, applied once the probe is opened below (see
             // `DebugProbe::configure_gpio_reset`).
             probe.configure_gpio_reset(gpio_reset)?;
         }
@@ -519,7 +518,20 @@ impl Session {
             }
 
             interfaces[iface_idx] = match core.core_type() {
-                CoreType::Armv4t => JtagInterface::Arm7tdmi(Box::default()),
+                CoreType::Armv4t => {
+                    // Without adaptive clocking, ARM7TDMI(-S) needs TCK at most 1/6 of the core
+                    // clock. Above that, debug accesses fail or silently corrupt the target
+                    // (measured on a 24 MHz MC1322x: fine at 3 MHz, broken from 4 MHz).
+                    let speed = probe.speed_khz();
+                    if speed > 3000 {
+                        tracing::warn!(
+                            "JTAG clock {speed} kHz: ARM7TDMI needs TCK <= core clock / 6 (4 MHz \
+                             for a 24 MHz MC1322x). Debug access may fail or corrupt the target; \
+                             use --speed 3000 or lower."
+                        );
+                    }
+                    JtagInterface::Arm7tdmi(Box::default())
+                }
                 _ => match core_arch {
                     Architecture::Riscv => {
                         let factory = probe.try_get_riscv_interface_builder()?;
@@ -1024,41 +1036,41 @@ impl Session {
             ArchitectureInterface::ArmWithRiscv { .. } => {
                 self.target.cores[0].core_type.architecture()
             }
-            ArchitectureInterface::Jtag(_, ifaces) => {
-                if let JtagInterface::Riscv(_) = &ifaces[0] {
-                    Architecture::Riscv
-                } else {
-                    Architecture::Xtensa
-                }
-            }
+            ArchitectureInterface::Jtag(_, ifaces) => match &ifaces[0] {
+                JtagInterface::Riscv(_) => Architecture::Riscv,
+                JtagInterface::Arm7tdmi(_) => Architecture::Arm,
+                _ => Architecture::Xtensa,
+            },
         }
     }
 
-    /// Clears all hardware breakpoints on all cores
-    pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), Error> {
-        // Skip the halt-then-clear dance entirely when there's nothing to clear - this runs on
-        // every session teardown (see `Drop for Session`), and `hw_breakpoints()` is a cheap,
-        // purely local/cached read (no hardware access) on every backend, so checking it first
-        // is free. This matters in practice: halting a target that wasn't already halted is a
-        // real, sometimes-flaky hardware operation on some backends (e.g. ARM7TDMI, where a
-        // fresh DBGRQ-based halt occasionally doesn't durably stick on the very first attempt -
-        // see `architecture::arm7`'s docs) - the overwhelmingly common case (a session that never
-        // set a breakpoint at all) has no reason to ever risk that operation just to discover
-        // there was nothing to do.
-        let mut any_breakpoints = false;
-        for (core, _) in self.list_cores() {
+    /// Whether every core is an ARM7TDMI core with no hardware breakpoint or watchpoint set.
+    fn arm7_cores_without_hw_breakpoints(&mut self) -> Result<bool, Error> {
+        use crate::core::CoreInterface;
+
+        for (core, core_type) in self.list_cores() {
+            if core_type != CoreType::Armv4t {
+                return Ok(false);
+            }
             match self.core(core) {
                 Ok(mut c) => {
-                    if c.hw_breakpoints()?.into_iter().flatten().next().is_some() {
-                        any_breakpoints = true;
-                        break;
+                    if c.hw_breakpoints()?.iter().any(Option::is_some) {
+                        return Ok(false);
                     }
                 }
                 Err(Error::CoreDisabled(_)) => continue,
                 Err(err) => return Err(err),
             }
         }
-        if !any_breakpoints {
+        Ok(true)
+    }
+
+    /// Clears all hardware breakpoints on all cores
+    pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), Error> {
+        // On ARM7TDMI, halting a running core and resuming it is a risky operation, and the
+        // breakpoint bookkeeping is a local cache that can be checked without halting. Skip the
+        // halt when nothing is set - this runs on every session teardown.
+        if self.arm7_cores_without_hw_breakpoints()? {
             return Ok(());
         }
 

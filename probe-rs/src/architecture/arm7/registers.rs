@@ -65,7 +65,11 @@ pub const R0: CoreRegister = CoreRegister {
 
 /// General purpose register R1
 pub const R1: CoreRegister = CoreRegister {
-    roles: &[RegisterRole::Core("R1"), RegisterRole::Argument("a2")],
+    roles: &[
+        RegisterRole::Core("R1"),
+        RegisterRole::Argument("a2"),
+        RegisterRole::Return("r2"),
+    ],
     id: RegisterId(1),
     dwarf_id: Some(1),
     data_type: RegisterDataType::UnsignedInteger(32),
