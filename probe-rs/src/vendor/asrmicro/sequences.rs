@@ -149,6 +149,15 @@ const SCB_ICSR: u64 = 0xE000_ED04;
 const SCB_VTOR: u64 = 0xE000_ED08;
 const SCB_SCR: u64 = 0xE000_ED10;
 const SCB_SHCSR: u64 = 0xE000_ED24;
+const SCB_SHPR1: u64 = 0xE000_ED18;
+const SCB_SHPR2: u64 = 0xE000_ED1C;
+const SCB_SHPR3: u64 = 0xE000_ED20;
+const SCB_CCR: u64 = 0xE000_ED14;
+const SCB_CPACR: u64 = 0xE000_ED88;
+const FPU_FPCCR: u64 = 0xE000_EF34;
+/// Reset value: ASPEN + LSPEN set (same default as STM32N6 uses).
+const FPU_FPCCR_RESET: u32 = 0xC000_0000;
+const NVIC_IPR: u64 = 0xE000_E400;
 const SCB_AIRCR: u64 = 0xE000_ED0C;
 const AIRCR_VECTKEY: u32 = 0x5FA << 16;
 const AIRCR_PRIGROUP_MASK: u32 = 0x700;
@@ -540,10 +549,27 @@ impl ArmDebugSequence for Asr6601 {
             let offset = u64::from(index) * 4;
             interface.write_word_32(NVIC_ICER + offset, u32::MAX)?;
             interface.write_word_32(NVIC_ICPR + offset, u32::MAX)?;
+            // Stale priorities would mislead resumed firmware that assumes
+            // reset defaults; a real reset zeroes them (8 priority bytes
+            // per 32-IRQ bank).
+            for sub in 0..8u64 {
+                interface.write_word_32(NVIC_IPR + (u64::from(index) * 8 + sub) * 4, 0)?;
+            }
         }
         interface.write_word_32(SCB_ICSR, (1 << 25) | (1 << 27))?;
         interface.write_word_32(SCB_SCR, 0)?;
         interface.write_word_32(SCB_SHCSR, 0)?;
+        // System-handler priorities and fault configuration: the writable
+        // fields all reset to 0, so restore that explicitly.
+        interface.write_word_32(SCB_SHPR1, 0)?;
+        interface.write_word_32(SCB_SHPR2, 0)?;
+        interface.write_word_32(SCB_SHPR3, 0)?;
+        interface.write_word_32(SCB_CCR, 0)?;
+        // Coprocessor/FPU configuration: a real reset denies coprocessor
+        // access and restores lazy stacking defaults. Firmware that uses
+        // the FPU enables it itself. Harmless where no FPU is implemented.
+        interface.write_word_32(SCB_CPACR, 0)?;
+        interface.write_word_32(FPU_FPCCR, FPU_FPCCR_RESET)?;
         // Restore default interrupt priority grouping: stale grouping would
         // mislead resumed firmware that never sets its own. AIRCR writes
         // require the key and must not set any reset bits.
