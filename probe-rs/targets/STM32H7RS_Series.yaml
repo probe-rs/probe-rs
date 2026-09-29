@@ -18,7 +18,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -35,7 +35,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -99,7 +99,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -116,7 +116,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -180,7 +180,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -197,7 +197,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -260,7 +260,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -277,7 +277,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -342,7 +342,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -359,7 +359,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -423,7 +423,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -440,7 +440,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -503,7 +503,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -520,7 +520,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -584,7 +584,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -601,7 +601,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -665,7 +665,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -682,7 +682,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -745,7 +745,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -762,7 +762,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -825,7 +825,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -842,7 +842,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -906,7 +906,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -923,7 +923,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -987,7 +987,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -1004,7 +1004,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -1067,7 +1067,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -1084,7 +1084,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -1149,7 +1149,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -1166,7 +1166,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -1230,7 +1230,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -1247,7 +1247,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -1310,7 +1310,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -1327,7 +1327,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -1391,7 +1391,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -1408,7 +1408,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -1472,7 +1472,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -1489,7 +1489,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -1552,7 +1552,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -1569,7 +1569,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
