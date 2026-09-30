@@ -18,11 +18,14 @@ use super::board::Drive;
 use super::device::Ch347Device;
 
 pub(super) const TIMEOUT: Duration = Duration::from_millis(500);
+/// A full round at the slowest clock takes under a second.
+const ROUND_TIMEOUT: Duration = Duration::from_secs(2);
 /// Long enough for a reply already in the chip to arrive.
 const DRAIN_TIMEOUT: Duration = Duration::from_millis(20);
 /// Every command and every reply starts with the command byte and a little-endian payload length.
 pub(super) const HEADER_LEN: usize = 3;
-/// The largest reply the chip sends, header included.
+/// One high-speed USB packet, the most a single command or an SWD batch carries each way. The
+/// replies of a JTAG round stream past it.
 pub(super) const MAX_PACKET: usize = 512;
 
 /// The command byte, the little-endian payload length, then the payload.
@@ -55,8 +58,8 @@ impl ProbeError for Ch347Error {}
 /// The bulk pipe pair of the chip's vendor interface.
 pub(crate) trait Transport: Debug + Send {
     fn write(&mut self, data: &[u8]) -> io::Result<()>;
-    /// Reads one reply and returns its length.
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize>;
+    /// Reads one transfer of at most the buffer's length and returns its length.
+    fn read(&mut self, buf: &mut [u8], timeout: Duration) -> io::Result<usize>;
 }
 
 #[derive(Debug)]
@@ -103,8 +106,8 @@ impl Transport for UsbTransport {
         }
     }
 
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.inp.read_bulk(buf, TIMEOUT)
+    fn read(&mut self, buf: &mut [u8], timeout: Duration) -> io::Result<usize> {
+        self.inp.read_bulk(buf, timeout)
     }
 }
 
@@ -127,24 +130,10 @@ impl Ch347Device {
         payload: &[u8],
         reply_len: usize,
     ) -> Result<Vec<u8>, DebugProbeError> {
-        if self.out_of_sync {
-            return Err(Ch347Error::OutOfSync.into());
-        }
-        let frame = frame(command, payload);
-        tracing::trace!("> {frame:02x?}");
-        if let Err(e) = self.transport.write(&frame) {
-            self.out_of_sync = true;
-            return Err(DebugProbeError::Usb(e));
-        }
+        self.send(&frame(command, payload))?;
 
         let mut reply = vec![0; HEADER_LEN + reply_len];
-        let len = match self.transport.read(&mut reply) {
-            Ok(len) => len,
-            Err(e) => {
-                self.out_of_sync = true;
-                return Err(DebugProbeError::Usb(e));
-            }
-        };
+        let len = self.read_transfer(&mut reply, TIMEOUT)?;
         reply.truncate(len);
         tracing::trace!("< {reply:02x?}");
 
@@ -159,6 +148,72 @@ impl Ch347Device {
         Ok(reply)
     }
 
+    /// Sends the concatenated `frames` of a JTAG round in one write and reads the replies of
+    /// its reading commands, given as command byte and payload length in order.
+    ///
+    /// The replies come back as one stream, which may arrive in several transfers. Returns
+    /// their payloads concatenated.
+    pub(super) fn round(
+        &mut self,
+        frames: &[u8],
+        replies: &[(u8, usize)],
+    ) -> Result<Vec<u8>, DebugProbeError> {
+        self.send(frames)?;
+
+        let total = replies.iter().map(|(_, len)| HEADER_LEN + len).sum();
+        let mut stream = vec![0; total];
+        let mut received = 0;
+        while received < total {
+            received += self.read_transfer(&mut stream[received..], ROUND_TIMEOUT)?;
+        }
+        tracing::trace!("< {stream:02x?}");
+
+        let mut payloads = Vec::with_capacity(total - HEADER_LEN * replies.len());
+        let mut at = 0;
+        for &(command, len) in replies {
+            let header = &stream[at..at + HEADER_LEN];
+            if header[0] != command
+                || usize::from(u16::from_le_bytes([header[1], header[2]])) != len
+            {
+                let header = header.to_vec();
+                return Err(self.desynced(command, header));
+            }
+            at += HEADER_LEN;
+            payloads.extend_from_slice(&stream[at..at + len]);
+            at += len;
+        }
+        Ok(payloads)
+    }
+
+    /// Writes `data` unless the reply stream is out of sync.
+    fn send(&mut self, data: &[u8]) -> Result<(), DebugProbeError> {
+        if self.out_of_sync {
+            return Err(Ch347Error::OutOfSync.into());
+        }
+        tracing::trace!("> {data:02x?}");
+        self.transport.write(data).map_err(|e| {
+            self.out_of_sync = true;
+            DebugProbeError::Usb(e)
+        })
+    }
+
+    /// Reads one transfer and skips a zero-length one before it. A reply of whole packets may
+    /// be ended by a zero-length packet, which the next read then gets first.
+    fn read_transfer(
+        &mut self,
+        buf: &mut [u8],
+        timeout: Duration,
+    ) -> Result<usize, DebugProbeError> {
+        let read = match self.transport.read(buf, timeout) {
+            Ok(0) => self.transport.read(buf, timeout),
+            read => read,
+        };
+        read.map_err(|e| {
+            self.out_of_sync = true;
+            DebugProbeError::Usb(e)
+        })
+    }
+
     /// The single status byte a command replies with.
     pub(super) fn command_status(
         &mut self,
@@ -166,5 +221,46 @@ impl Ch347Device {
         payload: &[u8],
     ) -> Result<u8, DebugProbeError> {
         Ok(self.command(command, payload, 1)?[0])
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::device::tests::{CH347F_1_20, scripted_transfers};
+    use super::*;
+
+    const D2: u8 = 0xD2;
+    const D4: u8 = 0xD4;
+
+    #[test]
+    fn round_reads_the_reply_stream_across_transfers_and_a_bad_one_poisons_the_device() {
+        // A D4 of three bytes and a D2 of two cycles.
+        let mut frames = frame(D4, &[1, 2, 3]);
+        frames.extend(frame(D2, &[0x20, 0x21, 0x20, 0x21, 0x20]));
+        let mut stream = frame(D4, &[0xA, 0xB, 0xC]);
+        stream.extend(frame(D2, &[1, 0]));
+        let mut wrong = stream.clone();
+        wrong[7] = 3;
+        let cases = [
+            // A split inside the second header.
+            (vec![stream[..7].to_vec(), stream[7..].to_vec()], true),
+            // The D2 reply claims three bytes.
+            (vec![wrong], false),
+            // A timeout after the first transfer.
+            (vec![stream[..4].to_vec(), vec![]], false),
+        ];
+        let replies = [(D4, 3), (D2, 2)];
+        for (transfers, good) in cases {
+            let exchanges = vec![
+                (frames.clone(), transfers),
+                (frames.clone(), vec![stream.clone()]),
+            ];
+            let (mut dev, script) = scripted_transfers(CH347F_1_20, None, exchanges);
+            let payloads = dev.round(&frames, &replies).ok();
+            assert_eq!(payloads, good.then(|| vec![0xA, 0xB, 0xC, 1, 0]));
+            // After a bad stream nothing more goes out.
+            assert_eq!(dev.round(&frames, &replies).is_ok(), good);
+            assert_eq!(script.finished(), good);
+        }
     }
 }

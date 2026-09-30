@@ -198,7 +198,9 @@ impl Ch347Device {
             .write(&frame(CMD_GPIO, &pin_block(pin, drive)))
             .is_ok()
         {
-            let _ = self.transport.read(&mut [0; HEADER_LEN + GPIO_COUNT]);
+            let _ = self
+                .transport
+                .read(&mut [0; HEADER_LEN + GPIO_COUNT], TIMEOUT);
         }
     }
 
