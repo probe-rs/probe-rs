@@ -3289,6 +3289,7 @@ dependencies = [
  "probe-rs-rpc",
  "probe-rs-rpc-client",
  "probe-rs-target",
+ "probe-rs-zephyr",
  "ratatui",
  "regex",
  "rustix",
@@ -3316,6 +3317,21 @@ dependencies = [
  "urlencoding",
  "uuid",
  "zip",
+]
+
+[[package]]
+name = "probe-rs-zephyr"
+version = "0.32.0"
+dependencies = [
+ "anyhow",
+ "base64 0.23.1",
+ "flate2",
+ "object 0.40.0",
+ "pretty_assertions",
+ "serde",
+ "serde_json",
+ "test-case",
+ "tracing",
 ]
 
 [[package]]

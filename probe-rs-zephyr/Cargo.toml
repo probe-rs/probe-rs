@@ -1,0 +1,29 @@
+[package]
+name = "probe-rs-zephyr"
+version.workspace = true
+edition.workspace = true
+documentation.workspace = true
+homepage.workspace = true
+repository.workspace = true
+readme.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+description = "Zephyr RTOS support built on top of the probe-rs crate"
+
+[dependencies]
+anyhow = { workspace = true }
+base64 = "0.23"
+flate2 = { version = "1.1.2", default-features = false, features = ["zlib-rs"] }
+object = { version = "0.40", default-features = false, features = [
+    "elf",
+    "read_core",
+    "std",
+] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1.0.116"
+tracing = "0.1"
+
+[dev-dependencies]
+pretty_assertions = "1.4.0"
+test-case = "3"

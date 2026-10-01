@@ -102,6 +102,7 @@ svg = "0.18"
 
 probe-rs = { version = "0.32.0", path = "../probe-rs" }
 probe-rs-debug = { version = "0.32.0", path = "../probe-rs-debug" }
+probe-rs-zephyr.workspace = true
 probe-rs-mi.workspace = true
 probe-rs-target.workspace = true
 probe-rs-espressif.workspace = true

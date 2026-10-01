@@ -1,0 +1,27 @@
+*** Booting Zephyr OS build v4.4.0-16111-g0f1e8acda2ac ***
+Running TESTSUITE zt
+===================================================================
+START - test_logging
+[         0] <inf> zt: int -42, unsigned 42, hex 0x00c0ffee
+[        10] <wrn> zt: 64-bit -1234567890123, char 'z', static "string"
+[        10] <dbg> zt: zt_test_logging: runtime string
+[        10] <inf> zt: hexdump
+                       de ad be ef 5a 65 70 68  79 72                   |....Zeph yr
+[        10] <err> zt: error level message
+ PASS - test_logging in 0.005 seconds
+===================================================================
+START - test_mode
+ PASS - test_mode in 0.001 seconds
+===================================================================
+TESTSUITE zt succeeded
+
+------ TESTSUITE SUMMARY START ------
+
+SUITE PASS - 100.00% [zt]: pass = 2, fail = 0, skip = 0, total = 2 duration = 0.006 seconds
+ - PASS - [zt.test_logging] duration = 0.005 seconds
+ - PASS - [zt.test_mode] duration = 0.001 seconds
+
+------ TESTSUITE SUMMARY END ------
+
+===================================================================
+PROJECT EXECUTION SUCCESSFUL

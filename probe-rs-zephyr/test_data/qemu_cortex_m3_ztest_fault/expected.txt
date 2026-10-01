@@ -1,0 +1,21 @@
+*** Booting Zephyr OS build v4.4.0-16111-g0f1e8acda2ac ***
+Running TESTSUITE zt
+===================================================================
+START - test_logging
+[         0] <inf> zt: int -42, unsigned 42, hex 0x00c0ffee
+[        10] <wrn> zt: 64-bit -1234567890123, char 'z', static "string"
+[        10] <dbg> zt: zt_test_logging: runtime string
+[        10] <inf> zt: hexdump
+                       de ad be ef 5a 65 70 68  79 72                   |....Zeph yr
+[        10] <err> zt: error level message
+ PASS - test_logging in 0.005 seconds
+===================================================================
+START - test_mode
+[       120] <err> os: ***** USAGE FAULT *****
+[       120] <err> os:   Attempt to execute undefined instruction
+[       120] <err> os: r0/a1:  0x00000000  r1/a2:  0x000059b0  r2/a3:  0x00000002
+[       120] <err> os: r3/a4:  0x00004c0f r12/ip:  0x00002331 r14/lr:  0x00002361
+[       120] <err> os:  xpsr:  0x21000000
+[       120] <err> os: Faulting instruction address (r15/pc): 0x00004c0a
+[       120] <err> os: >>> ZEPHYR FATAL ERROR 0: CPU exception on CPU 0
+[       120] <err> os: Current thread: 0x20000650 (test_mode)

@@ -159,6 +159,14 @@ pub(crate) struct MonitoringOptions {
     #[clap(long, help_heading = "LOG CONFIGURATION")]
     pub(crate) log_format: Option<String>,
 
+    /// Zephyr dictionary logging database (`log_dictionary.json`) to decode Zephyr
+    /// dictionary-based logs with.
+    ///
+    /// Not needed if the database is embedded into the ELF file
+    /// (`CONFIG_LOG_DICTIONARY_DB_EMBED`).
+    #[clap(long, help_heading = "LOG CONFIGURATION")]
+    pub(crate) zephyr_log_dictionary: Option<PathBuf>,
+
     /// File name to store formatted output at. Different channels can be assigned to different
     /// files using channel=file arguments to multiple occurrences (eg. `--target-output-file
     /// defmt=out/defmt.txt --target-output-file out/default`). Channel names can be prefixed with
