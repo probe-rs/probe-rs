@@ -10,9 +10,14 @@ chip_detection:
 variants:
 - name: esp32h4
   cores:
-  - name: main
+  - name: cpu0
     type: riscv
     core_access_options: !Riscv
+      hart_id: 0
+  - name: cpu1
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 1
   memory_map:
   - !Nvm
     name: 32 MB Max addressable Flash
@@ -20,7 +25,8 @@ variants:
       start: 0x0
       end: 0x2000000
     cores:
-    - main
+    - cpu0
+    - cpu1
     access:
       execute: false
       boot: true
@@ -30,21 +36,24 @@ variants:
       start: 0x40000000
       end: 0x40020000
     cores:
-    - main
+    - cpu0
+    - cpu1
   - !Ram
     name: Internal SRAM
     range:
       start: 0x40808000
       end: 0x40868000
     cores:
-    - main
+    - cpu0
+    - cpu1
   - !Nvm
     name: External flash (Read Only)
     range:
       start: 0x42000000
       end: 0x44000000
     cores:
-    - main
+    - cpu0
+    - cpu1
     is_alias: true
   flash_algorithms:
   - esp32h4-flashloader
@@ -86,5 +95,5 @@ flash_algorithms:
     - size: 0x10000
       address: 0x0
   cores:
-  - main
+  - cpu0
   transfer_encoding: miniz
