@@ -13,7 +13,7 @@ use crate::{
     },
     probe::{
         BitSequence, DebugProbe, DebugProbeError, JtagChainAccess, Probe, SwdProbe, SwdSettings,
-        WireProtocol,
+        TapState, WireProtocol,
         jtag::dap::{
             jtag_output_sequence, jtag_read_block, jtag_read_register, jtag_write_block,
             jtag_write_register,
@@ -262,6 +262,7 @@ impl DebugPortWire for SwdDebugPortWire<'_> {
         let mut batch = SwdBatch::new();
         let _ = batch.schedule(SwdOp::Pins { out, select, wait });
         self.run_probe_batch(&batch)?;
+        // The batch reports no levels; every pin high is what a released line reads.
         Ok(Pins(0xFF))
     }
 
@@ -333,7 +334,13 @@ impl DebugPortWire for JtagDebugPortWire<'_> {
     fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), ArmError> {
         let mut batch = SwdBatch::new();
         batch.sequence(bits.clone());
-        self.run_swj_batch(&batch)
+        self.run_swj_batch(&batch)?;
+
+        // Five clocks with TMS high reach Test-Logic-Reset from any TAP state.
+        if bits.len() >= 5 && bits.iter().skip(bits.len() - 5).all(|tms| tms) {
+            self.probe.chain_state().tap_state = TapState::TestLogicReset;
+        }
+        Ok(())
     }
 
     fn jtag_sequence(&mut self, tms: bool, tdi: &BitSequence) -> Result<(), ArmError> {
@@ -350,6 +357,7 @@ impl DebugPortWire for JtagDebugPortWire<'_> {
         let mut batch = SwdBatch::new();
         let _ = batch.schedule(SwdOp::Pins { out, select, wait });
         self.run_swj_batch(&batch)?;
+        // The batch reports no levels; every pin high is what a released line reads.
         Ok(Pins(0xFF))
     }
 
@@ -694,17 +702,8 @@ impl ArmDebugInterface for ArmCommunicationInterface {
 
 impl SwdSequence for ArmCommunicationInterface {
     fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError> {
-        match self.probe.as_mut().unwrap() {
-            ArmProbe::Swd(probe, _) => {
-                let mut batch = SwdBatch::new();
-                batch.sequence(bits.clone());
-                probe.run_batch(&batch).map_err(batch_probe_error)?;
-                Ok(())
-            }
-            ArmProbe::Jtag(_, _) => Err(DebugProbeError::CommandNotSupportedByProbe {
-                command_name: "swj_sequence",
-            }),
-        }
+        self.with_debug_port_wire(|wire| wire.swj_sequence(bits))
+            .map_err(wire_probe_error)
     }
 
     fn swj_pins(
@@ -713,22 +712,23 @@ impl SwdSequence for ArmCommunicationInterface {
         pin_select: u32,
         pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
-        match self.probe.as_mut().unwrap() {
-            ArmProbe::Swd(probe, _) => {
-                let mut batch = SwdBatch::new();
-                let _ = batch.schedule(SwdOp::Pins {
-                    out: Pins(pin_out as u8),
-                    select: Pins(pin_select as u8),
-                    wait: Duration::from_micros(pin_wait.into()),
-                });
-                probe.run_batch(&batch).map_err(batch_probe_error)?;
-                // The batch reports no levels; every pin high is what a released line reads.
-                Ok(0xFF)
-            }
-            ArmProbe::Jtag(_, _) => Err(DebugProbeError::CommandNotSupportedByProbe {
-                command_name: "swj_pins",
-            }),
-        }
+        let pins = self
+            .with_debug_port_wire(|wire| {
+                wire.swj_pins(
+                    Pins(pin_out as u8),
+                    Pins(pin_select as u8),
+                    Duration::from_micros(pin_wait.into()),
+                )
+            })
+            .map_err(wire_probe_error)?;
+        Ok(pins.0.into())
+    }
+}
+
+fn wire_probe_error(error: ArmError) -> DebugProbeError {
+    match error {
+        ArmError::Probe(error) => error,
+        error => DebugProbeError::Other(error.to_string()),
     }
 }
 
@@ -1263,9 +1263,10 @@ mod tests {
 
     use super::*;
     use crate::architecture::arm::sequences::DefaultArmSequence;
-    use crate::probe::BitSequence;
     use crate::probe::swd::mock::{MockSwdProbe, RecordedOp, RecordedPins, RecordedSequence};
-    use crate::probe::swd::{Direction, Port};
+    use crate::probe::swd::{Direction, Port, output_levels};
+    use crate::probe::{BitSequence, BitbangJtag, BitbangSwd, IoSequenceItem, JtagChainState};
+    use bitvec::vec::BitVec;
 
     const DP_RDBUFF_ADDR: u8 = 0b1100;
     const DP_SELECT_ADDR: u8 = 0b1000;
@@ -1577,6 +1578,179 @@ mod tests {
             &sequences,
             BitSequence::from_u64(31, 0x33BB_BBBA),
         ));
+    }
+
+    /// A JTAG probe that drives SWJ output on TMS and records every TMS level and pin request.
+    #[derive(Debug, Default)]
+    struct TmsRecorder {
+        tms: Vec<bool>,
+        pins: Arc<std::sync::Mutex<Vec<(u8, u8)>>>,
+        jtag_state: JtagChainState,
+        swd_settings: SwdSettings,
+    }
+
+    impl DebugProbe for TmsRecorder {
+        fn get_name(&self) -> &str {
+            "TMS recorder"
+        }
+
+        fn speed_khz(&self) -> u32 {
+            0
+        }
+
+        fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
+            Ok(speed_khz)
+        }
+
+        fn attach(&mut self) -> Result<(), DebugProbeError> {
+            Ok(())
+        }
+
+        fn detach(&mut self) -> Result<(), crate::Error> {
+            Ok(())
+        }
+
+        fn target_reset(&mut self) -> Result<(), DebugProbeError> {
+            Ok(())
+        }
+
+        fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+            Ok(())
+        }
+
+        fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+            Ok(())
+        }
+
+        fn select_protocol(&mut self, _protocol: WireProtocol) -> Result<(), DebugProbeError> {
+            Ok(())
+        }
+
+        fn active_protocol(&self) -> Option<WireProtocol> {
+            Some(WireProtocol::Jtag)
+        }
+
+        fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+            self
+        }
+
+        fn try_as_swd_probe_mut(&mut self) -> Option<&mut dyn SwdProbe> {
+            Some(self)
+        }
+
+        fn try_as_jtag_chain_access_mut(&mut self) -> Option<&mut dyn JtagChainAccess> {
+            Some(self)
+        }
+    }
+
+    impl BitbangJtag for TmsRecorder {
+        fn tap_state(&mut self) -> &mut TapState {
+            &mut self.jtag_state.tap_state
+        }
+
+        fn shift(&mut self, tms: bool, _tdi: bool, _capture: bool) -> Result<(), DebugProbeError> {
+            self.tms.push(tms);
+            Ok(())
+        }
+
+        fn flush(&mut self) -> Result<(), DebugProbeError> {
+            Ok(())
+        }
+
+        fn captured(&mut self) -> Result<BitVec, DebugProbeError> {
+            Ok(BitVec::new())
+        }
+    }
+
+    impl JtagChainAccess for TmsRecorder {
+        fn chain_state(&mut self) -> &mut JtagChainState {
+            &mut self.jtag_state
+        }
+
+        fn chain_state_ref(&self) -> &JtagChainState {
+            &self.jtag_state
+        }
+    }
+
+    impl BitbangSwd for TmsRecorder {
+        fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
+        where
+            S: IntoIterator<Item = IoSequenceItem>,
+        {
+            let levels = output_levels(swdio)?;
+            self.tms.extend(&levels);
+            Ok(vec![false; levels.len()])
+        }
+
+        fn swd_settings(&self) -> &SwdSettings {
+            &self.swd_settings
+        }
+
+        fn swj_pins_op(
+            &mut self,
+            out: Pins,
+            select: Pins,
+            _wait: Duration,
+        ) -> Result<(), DebugProbeError> {
+            self.pins.lock().unwrap().push((out.0, select.0));
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn jtag_swj_sequence_drives_tms_and_resets_the_tap_state() {
+        let mut probe = TmsRecorder::default();
+        probe.jtag_state.tap_state = TapState::RunTestIdle;
+        let mut wire = JtagDebugPortWire {
+            probe: &mut probe,
+            settings: SwdSettings::default(),
+        };
+
+        let switch = BitSequence::from_u64(16, 0xE73C);
+        wire.swj_sequence(&BitSequence::repeat(true, 51)).unwrap();
+        wire.swj_sequence(&switch).unwrap();
+        wire.swj_sequence(&BitSequence::from_u64(6, 0x3F)).unwrap();
+        wire.jtag_sequence(false, &BitSequence::from_u64(1, 0x01))
+            .unwrap();
+
+        let mut expected = vec![true; 51];
+        expected.extend(switch.iter());
+        expected.extend([true; 6]);
+        expected.push(false);
+        assert_eq!(probe.tms, expected);
+        assert_eq!(probe.jtag_state.tap_state, TapState::RunTestIdle);
+    }
+
+    #[test]
+    fn jtag_swd_transfer_is_refused() {
+        let mut probe = TmsRecorder::default();
+        let mut batch = SwdBatch::new();
+        let _ = batch.read(Port::Dp, 0);
+        let error = SwdProbe::run_batch(&mut probe, &batch).unwrap_err();
+        assert!(matches!(
+            batch_probe_error(error),
+            DebugProbeError::CommandNotSupportedByProbe { .. }
+        ));
+        assert!(probe.tms.is_empty());
+    }
+
+    #[test]
+    fn jtag_interface_passes_swj_pins_to_the_probe() {
+        // The reset release of connect-under-reset drives nRESET through swj_pins.
+        let probe = TmsRecorder::default();
+        let pins = probe.pins.clone();
+        let mut interface = ArmCommunicationInterface::create_jtag(
+            Box::new(probe),
+            SwdSettings::default(),
+            DefaultArmSequence::create(),
+            false,
+        );
+        let nreset = 1 << 7;
+        assert_eq!(interface.swj_pins(nreset, nreset, 10).unwrap(), 0xFF);
+        assert_eq!(*pins.lock().unwrap(), [(nreset as u8, nreset as u8)]);
+        interface
+            .swj_sequence(&BitSequence::repeat(true, 51))
+            .unwrap();
     }
 
     #[test]

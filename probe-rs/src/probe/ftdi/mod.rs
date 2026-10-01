@@ -19,6 +19,7 @@ use crate::{
         jtag::{TapState, distribute_captures, enter_tdi, exchange_leaves_shift},
         list::{ProbeListItem, usb_probe_accessibility},
         queue::{BatchExecutionError, Results},
+        swd::output_levels,
     },
 };
 use bitvec::prelude::*;
@@ -577,13 +578,15 @@ impl JtagProbe for FtdiProbe {
 }
 
 impl BitbangSwd for FtdiProbe {
-    fn swd_io<S>(&mut self, _swdio: S) -> Result<Vec<bool>, DebugProbeError>
+    fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
         S: IntoIterator<Item = IoSequenceItem>,
     {
-        Err(DebugProbeError::NotImplemented {
-            function_name: "swd_io",
-        })
+        let levels = output_levels(swdio)?;
+        self.adapter
+            .append_commands(&Command::encode_tms_path(&levels, false))?;
+        self.adapter.flush()?;
+        Ok(vec![false; levels.len()])
     }
 
     fn swd_settings(&self) -> &SwdSettings {

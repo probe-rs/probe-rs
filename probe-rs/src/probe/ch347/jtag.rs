@@ -5,7 +5,7 @@
 use bitvec::{field::BitField, slice::BitSlice, vec::BitVec};
 
 use crate::probe::{
-    BatchExecutionError, BitSequence, DebugProbeError, JtagBatch, JtagOp, Results,
+    BatchExecutionError, BitSequence, DebugProbeError, JtagBatch, JtagOp, Results, SwdBatch, SwdOp,
     jtag::{TapState, distribute_captures, enter_tdi, exchange_leaves_shift},
 };
 
@@ -353,15 +353,76 @@ impl Ch347Device {
         let rounds = rounds(encoded.commands, wire);
         // Unknown until the last round has answered.
         self.jtag_tms_low = false;
+        let captured = self.send_rounds(&rounds).map_err(failed)?;
+        self.jtag_tms_low = encoded.tms_low;
+        *tap = encoded.state;
+        // Once per batch.
+        if !rounds.is_empty() {
+            self.led_activity(CMD_SHIFT);
+        }
+        distribute_captures(batch.iter(), &captured, Results::new())
+    }
+
+    /// Runs the SWJ operations of `batch` on the JTAG pins.
+    ///
+    /// JTAG wiring has no bidirectional SWDIO, so a transfer fails. The caller tracks the TAP
+    /// state that the TMS levels leave.
+    pub(crate) fn run_swj_batch(
+        &mut self,
+        batch: &SwdBatch,
+    ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
+        for (index, (_, op)) in batch.iter().enumerate() {
+            let result = match op {
+                SwdOp::Sequence(bits) => self.drive_tms(bits.iter()),
+                SwdOp::Idle { cycles } => {
+                    self.drive_tms(std::iter::repeat_n(false, *cycles as usize))
+                }
+                SwdOp::Pins { out, select, wait } => self.swj_pins(*out, *select, *wait),
+                SwdOp::Transfer { .. } => Err(DebugProbeError::CommandNotSupportedByProbe {
+                    command_name: "SWD transfer",
+                }),
+            };
+            if let Err(error) = result {
+                return Err(BatchExecutionError::new_from_debug_probe_at(
+                    error,
+                    Results::new(),
+                    index,
+                ));
+            }
+        }
+        Ok(Results::new())
+    }
+
+    /// Drives `levels` on TMS, one TCK cycle each, with TDI low.
+    fn drive_tms(&mut self, levels: impl IntoIterator<Item = bool>) -> Result<(), DebugProbeError> {
+        let wire = Wire::new(self.pack()?, self.capabilities.bytewise_jtag());
+        let mut encoder = Encoder {
+            wire,
+            commands: Vec::new(),
+            state: TapState::TestLogicReset,
+            tms_low: self.jtag_tms_low,
+        };
+        for tms in levels {
+            encoder.cycle(Cycle { tms, tdi: false }, Tdo::Ignore);
+        }
+        let rounds = rounds(encoder.commands, wire);
+        self.jtag_tms_low = false;
+        self.send_rounds(&rounds)?;
+        self.jtag_tms_low = encoder.tms_low;
+        Ok(())
+    }
+
+    /// Sends `rounds` and returns the TDO bits of the commands that capture.
+    fn send_rounds(&mut self, rounds: &[Vec<Command>]) -> Result<BitVec, DebugProbeError> {
         let mut captured = BitVec::new();
-        for round in &rounds {
+        for round in rounds {
             let frames: Vec<_> = round.iter().flat_map(Command::frame).collect();
             let reading: Vec<_> = round.iter().filter(|command| command.read()).collect();
             let replies: Vec<_> = reading
                 .iter()
                 .map(|command| (command.code(), command.reply_len()))
                 .collect();
-            let payloads = self.round(&frames, &replies).map_err(failed)?;
+            let payloads = self.round(&frames, &replies)?;
             let mut at = 0;
             for command in reading {
                 let reply = &payloads[at..at + command.reply_len()];
@@ -375,13 +436,7 @@ impl Ch347Device {
                 }
             }
         }
-        self.jtag_tms_low = encoded.tms_low;
-        *tap = encoded.state;
-        // Once per batch.
-        if !rounds.is_empty() {
-            self.led_activity(CMD_SHIFT);
-        }
-        distribute_captures(batch.iter(), &captured, Results::new())
+        Ok(captured)
     }
 }
 
@@ -538,6 +593,27 @@ mod tests {
             assert_eq!((refused, dev.jtag_tms_low), (status == 1, false));
             assert!(script.finished());
         }
+    }
+
+    #[test]
+    fn swj_sequences_drive_tms_with_bit_ops() {
+        // Six clocks with TMS high, then one with TMS low, each a round that ends on a read.
+        let mut high_pins = [0x22, 0x23].repeat(6);
+        high_pins.push(0x22);
+        let high = frame(D2, &high_pins);
+        let low = frame(D2, &[0x20, 0x21, 0x20]);
+        let (mut dev, script) = device(&[(&high, &frame(D2, &[0; 6])), (&low, &frame(D2, &[0]))]);
+        dev.pack = Some(Pack::Larger);
+        let mut batch = SwdBatch::new();
+        batch.sequence(BitSequence::from_u64(6, 0x3F));
+        batch.sequence(BitSequence::from_u64(1, 0));
+        dev.run_swj_batch(&batch).unwrap();
+        assert!(script.finished() && dev.jtag_tms_low);
+
+        let mut batch = SwdBatch::new();
+        let _ = batch.read(crate::probe::Port::Dp, 0);
+        let error = dev.run_swj_batch(&batch).unwrap_err();
+        assert_eq!(error.fault_operation, 0);
     }
 
     /// Answers every read with the next transfer, an empty one a zero-length packet.

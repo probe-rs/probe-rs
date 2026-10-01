@@ -44,7 +44,7 @@ use crate::{
         BitbangSwd, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
         IoSequenceItem, ProbeFactory, SwdProbe, SwdSettings, WireProtocol,
         list::{ProbeListItem, usb_probe_accessibility},
-        swd::Pins,
+        swd::{Pins, output_levels},
     },
 };
 
@@ -1212,7 +1212,16 @@ impl BitbangSwd for JLink {
     where
         S: IntoIterator<Item = IoSequenceItem>,
     {
-        self.perform_swdio_transfer(swdio)
+        if self.interface != Interface::Jtag {
+            return self.perform_swdio_transfer(swdio);
+        }
+
+        let levels = output_levels(swdio)?;
+        for &tms in &levels {
+            self.shift_jtag_bit(tms, false, false)?;
+        }
+        self.flush_jtag()?;
+        Ok(vec![false; levels.len()])
     }
 
     fn swj_pins_op(

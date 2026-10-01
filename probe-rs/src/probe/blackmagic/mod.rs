@@ -28,7 +28,7 @@ use crate::{
         jtag::{TapState, distribute_captures, exchange_leaves_shift},
         list::ProbeListItem,
         queue::{BatchExecutionError, Results},
-        swd::Pins,
+        swd::{Pins, output_levels},
     },
 };
 use bitfield::bitfield;
@@ -42,6 +42,8 @@ const BLACK_MAGIC_PROBE_PID: u16 = 0x6018;
 const BLACK_MAGIC_PROBE: (u16, u16) = (BLACK_MAGIC_PROBE_VID, BLACK_MAGIC_PROBE_PID);
 const BLACK_MAGIC_PROTOCOL_RESPONSE_START: u8 = b'&';
 const BLACK_MAGIC_PROTOCOL_RESPONSE_END: u8 = b'#';
+/// TMS bits that one remote TMS command carries. The firmware reads two hex digits of state.
+const MAX_TMS_BITS: usize = 8;
 pub(crate) const BLACK_MAGIC_REMOTE_SIZE_MAX: usize = 1024;
 
 mod arm;
@@ -1081,11 +1083,13 @@ impl BlackMagicProbe {
     }
 
     fn send_jtag_tms(&mut self, bits: &[bool]) -> Result<(), DebugProbeError> {
-        let (value, length) = Self::pack_tms_bits(bits);
-        self.command(RemoteCommand::JtagTms {
-            bits: value,
-            length,
-        })?;
+        for chunk in bits.chunks(MAX_TMS_BITS) {
+            let (value, length) = Self::pack_tms_bits(chunk);
+            self.command(RemoteCommand::JtagTms {
+                bits: value,
+                length,
+            })?;
+        }
         Ok(())
     }
 
@@ -1416,7 +1420,13 @@ impl BitbangSwd for BlackMagicProbe {
     where
         S: IntoIterator<Item = IoSequenceItem>,
     {
-        self.perform_swdio_transfer(swdio)
+        if self.protocol != Some(WireProtocol::Jtag) {
+            return self.perform_swdio_transfer(swdio);
+        }
+
+        let levels = output_levels(swdio)?;
+        self.send_jtag_tms(&levels)?;
+        Ok(vec![false; levels.len()])
     }
 
     fn swj_pins_op(
@@ -1923,5 +1933,75 @@ mod golden_tests {
             REGISTER_WRITE_EIGHT_IDLE.1,
             REGISTER_WRITE_EIGHT_IDLE.2,
         );
+    }
+}
+
+#[cfg(test)]
+mod swj_tests {
+    use std::io::{BufReader, BufWriter, Cursor, Write};
+    use std::sync::{Arc, Mutex};
+
+    use bitvec::vec::BitVec;
+
+    use super::{BlackMagicProbe, ProtocolVersion, SwdDirection};
+    use crate::probe::{
+        BitbangSwd, DebugProbeError, IoSequenceItem, JtagChainState, SwdSettings, WireProtocol,
+    };
+
+    struct SharedWriter(Arc<Mutex<Vec<u8>>>);
+
+    impl Write for SharedWriter {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.0.lock().unwrap().extend_from_slice(buf);
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    /// A probe in JTAG mode that answers `replies` commands with OK.
+    fn jtag_probe(replies: usize) -> (BlackMagicProbe, Arc<Mutex<Vec<u8>>>) {
+        let sent = Arc::new(Mutex::new(Vec::new()));
+        let probe = BlackMagicProbe {
+            reader: BufReader::new(Box::new(Cursor::new(b"&K0#".repeat(replies)))),
+            writer: BufWriter::new(Box::new(SharedWriter(sent.clone()))),
+            protocol: Some(WireProtocol::Jtag),
+            version: String::new(),
+            remote_protocol: ProtocolVersion::V4,
+            speed_khz: 0,
+            jtag_state: JtagChainState::default(),
+            swd_settings: SwdSettings::default(),
+            in_bits: BitVec::new(),
+            swd_direction: SwdDirection::Output,
+        };
+        (probe, sent)
+    }
+
+    #[test]
+    fn swj_output_goes_out_as_tms_commands_under_jtag() {
+        let (mut probe, sent) = jtag_probe(7);
+        let levels = std::iter::repeat_n(IoSequenceItem::Output(true), 51);
+        assert_eq!(probe.swd_io(levels).unwrap().len(), 51);
+        let mut expected = b"!JT08ff#".repeat(6);
+        expected.extend_from_slice(b"!JT037#");
+        assert_eq!(*sent.lock().unwrap(), expected);
+
+        let (mut probe, sent) = jtag_probe(2);
+        let switch = (0..16).map(|bit| IoSequenceItem::Output(0xE73C & (1 << bit) != 0));
+        probe.swd_io(switch).unwrap();
+        assert_eq!(*sent.lock().unwrap(), b"!JT083c#!JT08e7#");
+    }
+
+    #[test]
+    fn swd_transfer_is_refused_under_jtag() {
+        let (mut probe, sent) = jtag_probe(0);
+        let items = [IoSequenceItem::Output(true), IoSequenceItem::Input];
+        assert!(matches!(
+            probe.swd_io(items),
+            Err(DebugProbeError::CommandNotSupportedByProbe { .. })
+        ));
+        assert!(sent.lock().unwrap().is_empty());
     }
 }

@@ -104,7 +104,11 @@ impl SwdProbe for Ch347 {
         &mut self,
         batch: &SwdBatch,
     ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
-        self.device.run_swd_batch(batch)
+        if self.jtag() {
+            self.device.run_swj_batch(batch)
+        } else {
+            self.device.run_swd_batch(batch)
+        }
     }
 
     /// The engine owns WAIT: a replay from the WAITed access would repeat those after it.
@@ -177,7 +181,7 @@ impl DebugProbe for Ch347 {
     }
 
     fn try_as_swd_probe_mut(&mut self) -> Option<&mut dyn SwdProbe> {
-        (!self.jtag()).then_some(self)
+        Some(self)
     }
 
     fn has_arm_interface(&self) -> bool {
