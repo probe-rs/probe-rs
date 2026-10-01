@@ -1,1 +1,0 @@
-Fixed the trailing bit on a CMSIS-DAP JTAG transfer from getting dropped.

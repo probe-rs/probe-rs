@@ -1,1 +1,1 @@
-Added STM32C5 targets
+Added STM32C5 targets.

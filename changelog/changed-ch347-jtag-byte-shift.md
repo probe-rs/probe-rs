@@ -1,1 +1,1 @@
-CH347-based probes uses the chip's JTAG engine instead of bit-banging.
+The CH347 probe now uses the JTAG engine of the chip instead of bit-banging, so JTAG is faster.

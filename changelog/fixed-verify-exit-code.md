@@ -1,1 +1,1 @@
-probe-rs verify exits with a non-zero status when the contents do not match.
+`probe-rs verify` now exits with an error when the contents do not match.

@@ -1,1 +1,1 @@
-The CH347 probe drives target reset and an activity LED on boards it recognizes by USB identity, starting with the wch-probe.
+The CH347 probe now drives target reset and an activity LED on known boards, such as the wch-probe.

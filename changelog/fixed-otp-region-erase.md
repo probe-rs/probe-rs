@@ -1,1 +1,1 @@
-Fixed OTP region erase failure on STM32 family chips by skipping regions without a flash loader.
+Fixed erase failing on STM32 chips that have an OTP region.
