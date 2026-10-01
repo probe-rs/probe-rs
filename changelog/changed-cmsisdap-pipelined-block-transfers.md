@@ -1,1 +1,1 @@
-CMSIS-DAP: several `DAP_TransferBlock` packets are now kept in flight at once, up to the packet count the probe reports.
+CMSIS-DAP probes now keep several `DAP_TransferBlock` packets in flight, up to the packet count of the probe.

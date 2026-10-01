@@ -1,1 +1,1 @@
-The RISC-V core register set includes mepc, mcause, mstatus and sepc so trap-handler CFI can unwind.
+Added `mepc`, `mcause`, `mstatus` and `sepc` to the RISC-V core registers, so stack unwinding can go through trap handlers.

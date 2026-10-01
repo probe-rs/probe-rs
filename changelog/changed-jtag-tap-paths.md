@@ -1,1 +1,1 @@
-probe-rs now walks one fixed path between two TAP states, so a JTAG target no longer sees a path that depends on the operation before it. A transfer now leaves the TAP in Run-Test/Idle instead of Update-DR, which adds one clock to a target that asks for no idle cycles.
+JTAG now uses one fixed path between two TAP states. A transfer now ends in Run-Test/Idle instead of Update-DR, which adds one clock when the target asks for no idle cycles.

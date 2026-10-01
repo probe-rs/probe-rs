@@ -1,1 +1,1 @@
-Stack unwinding stops when it reaches a frame it already unwound, so inconsistent unwind information no longer produces a backtrace that repeats until the frame limit.
+Stack unwinding now stops at a frame that it already unwound, so inconsistent unwind information no longer gives a repeating backtrace.

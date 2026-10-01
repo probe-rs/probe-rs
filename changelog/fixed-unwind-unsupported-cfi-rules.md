@@ -1,1 +1,1 @@
-Unsupported DWARF CFI rules now fall back instead of panicking, so a stack unwind can continue.
+Unsupported DWARF CFI rules no longer cause a panic during stack unwinding.
