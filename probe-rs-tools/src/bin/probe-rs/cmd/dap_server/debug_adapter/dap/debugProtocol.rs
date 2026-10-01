@@ -1557,7 +1557,7 @@ pub struct ExceptionOptions {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<Vec<ExceptionPathSegment>>,
 }
-#[doc = " An `ExceptionPathSegment` represents a segment in a path that is used to match leaves or nodes "]
+#[doc = " An `ExceptionPathSegment` represents a segment in a path that is used to match leafs or nodes "]
 #[doc = " in a tree of exceptions."]
 #[doc = " If a segment consists of more than one name, it matches the names provided if `negate` is false "]
 #[doc = " or missing, or it matches anything except the names provided if `negate` is true."]
@@ -4804,8 +4804,8 @@ pub struct VariablesArguments {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub format: Option<ValueFormat>,
     #[doc = " The index of the first variable to return; if omitted children start at 0. If the value of "]
-    #[doc = " `start` exceeds the number of available variables, the debug adapter should return an empty "]
-    #[doc = " array."]
+    #[doc = " `start` exceeeds the number of available variables, the debug adapter should return an "]
+    #[doc = " empty array."]
     #[doc = " The attribute is only honored by a debug adapter if the corresponding capability "]
     #[doc = " `supportsVariablePaging` is true."]
     #[serde(skip_serializing_if = "Option::is_none")]
