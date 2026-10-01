@@ -521,19 +521,33 @@ where
 /// The kind of memory operation that can be batched.
 #[derive(Debug)]
 pub enum OperationKind<'a> {
+    /// Read bytes into the slice.
     Read(&'a mut [u8]),
+    /// Read 8-bit words into the slice.
     Read8(&'a mut [u8]),
+    /// Read 16-bit words into the slice.
     Read16(&'a mut [u16]),
+    /// Read 32-bit words into the slice.
     Read32(&'a mut [u32]),
+    /// Read 64-bit words into the slice.
     Read64(&'a mut [u64]),
+    /// Write these bytes.
     Write(&'a [u8]),
+    /// Write these 8-bit words.
     Write8(&'a [u8]),
+    /// Write these 16-bit words.
     Write16(&'a [u16]),
+    /// Write these 32-bit words.
     Write32(&'a [u32]),
+    /// Write these 64-bit words.
     Write64(&'a [u64]),
+    /// Write one 8-bit word.
     WriteWord8(u8),
+    /// Write one 16-bit word.
     WriteWord16(u16),
+    /// Write one 32-bit word.
     WriteWord32(u32),
+    /// Write one 64-bit word.
     WriteWord64(u64),
 }
 

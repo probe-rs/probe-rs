@@ -1034,6 +1034,82 @@ mod tests {
         );
     }
 
+    /// TAR is at 0x04, so bits 2 and 3 are 0b0100.
+    const AP_TAR_ADDR: u8 = 0b0100;
+    /// DRW is at 0x0C, so bits 2 and 3 are 0b1100.
+    const AP_DRW_ADDR: u8 = 0b1100;
+
+    fn scattered_read_batch(addresses: &[u32]) -> (SwdBatch, Vec<Handle<u32>>) {
+        let mut batch = SwdBatch::new();
+        let mut handles = Vec::new();
+        for &address in addresses {
+            batch.write(Port::Ap, AP_TAR_ADDR, address);
+            handles.push(batch.read(Port::Ap, AP_DRW_ADDR));
+        }
+        (batch, handles)
+    }
+
+    #[test]
+    fn scattered_read_takes_each_value_from_the_rdbuff_that_follows_it() {
+        let mut probe = MockSwdProbe::new();
+        // The TAR write, the DRW read that posts the access, then the RDBUFF that carries it.
+        probe.push_response(ScriptedResponse::Ok(0));
+        probe.push_response(ScriptedResponse::Ok(0));
+        probe.push_response(ScriptedResponse::Ok(11));
+        probe.push_response(ScriptedResponse::Ok(0));
+        probe.push_response(ScriptedResponse::Ok(0));
+        probe.push_response(ScriptedResponse::Ok(22));
+
+        let (batch, handles) = scattered_read_batch(&[0x2000_0000, 0x2000_0040]);
+        let mut port = SwdPort::new(&mut probe, SwdSettings::default());
+        let mut results = port.run(batch).expect("run should succeed");
+
+        let values: Vec<u32> = handles
+            .into_iter()
+            .map(|handle| results.take(handle).unwrap())
+            .collect();
+        assert_eq!(values, vec![11, 22]);
+
+        let ops = probe.transfer_ops();
+        assert_eq!(ap_write_count(&ops), 2);
+        assert_eq!(
+            read_ops(&ops),
+            vec![
+                (Port::Ap, AP_DRW_ADDR),
+                (Port::Dp, DP_RDBUFF_ADDR),
+                (Port::Ap, AP_DRW_ADDR),
+                (Port::Dp, DP_RDBUFF_ADDR),
+            ]
+        );
+    }
+
+    #[test]
+    fn scattered_read_on_a_posting_probe_adds_nothing() {
+        let mut probe = MockSwdProbe::new().handles_ap_pipeline();
+        probe.push_response(ScriptedResponse::Ok(0));
+        probe.push_response(ScriptedResponse::Ok(11));
+        probe.push_response(ScriptedResponse::Ok(0));
+        probe.push_response(ScriptedResponse::Ok(22));
+
+        let (batch, handles) = scattered_read_batch(&[0x2000_0000, 0x2000_0040]);
+        let mut port = SwdPort::new(&mut probe, SwdSettings::default());
+        let mut results = port.run(batch).expect("run should succeed");
+
+        let values: Vec<u32> = handles
+            .into_iter()
+            .map(|handle| results.take(handle).unwrap())
+            .collect();
+        assert_eq!(values, vec![11, 22]);
+
+        let ops = probe.transfer_ops();
+        assert_eq!(ap_write_count(&ops), 2);
+        assert_eq!(
+            read_ops(&ops),
+            vec![(Port::Ap, AP_DRW_ADDR), (Port::Ap, AP_DRW_ADDR)]
+        );
+        assert!(probe.idles().is_empty());
+    }
+
     #[test]
     fn dropped_handle_sets_should_capture_false() {
         let mut probe = MockSwdProbe::new();

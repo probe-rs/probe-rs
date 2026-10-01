@@ -1,0 +1,1 @@
+`MemoryApType::datasize_setup` reports what it takes to put an access port into a transfer size, and `MemoryApType::note_datasize` records that the write reached the target, so a change of size can travel in the batch that carries the transfers it sets up.
