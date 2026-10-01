@@ -355,6 +355,24 @@ pub trait BitbangSwd: DebugProbe {
     }
 }
 
+/// Returns the levels of an [`IoSequenceItem`] sequence that only drives SWDIO.
+///
+/// A probe with JTAG wiring drives these levels on TMS. It has no bidirectional SWDIO, so it
+/// cannot sample the line, and it cannot run an SWD transfer.
+pub(crate) fn output_levels(
+    swdio: impl IntoIterator<Item = IoSequenceItem>,
+) -> Result<Vec<bool>, DebugProbeError> {
+    swdio
+        .into_iter()
+        .map(|item| match item {
+            IoSequenceItem::Output(level) => Ok(level),
+            IoSequenceItem::Input => Err(DebugProbeError::CommandNotSupportedByProbe {
+                command_name: "SWD transfer",
+            }),
+        })
+        .collect()
+}
+
 /// A transfer whose response the next [`BitbangSwd::swd_io`] call returns.
 struct PendingTransfer {
     id: HandleId,
