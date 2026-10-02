@@ -1,6 +1,12 @@
 //! Types and functions for interacting with target memory.
 
 mod adi_memory_interface;
+
+/// Selects the security attribute for a memory transfer address.
+///
+/// Returns `true` when the transfer must be issued as a non-secure master
+/// (`CSW.HNONSEC = 1`) for the given address.
+pub type MemoryAccessSecurityPolicy = fn(u64) -> bool;
 pub mod romtable;
 
 pub(crate) use adi_memory_interface::ADIMemoryInterface;

@@ -7,7 +7,7 @@ use crate::{
             Ctrl, DPIDR, DebugPortId, DebugPortVersion, DpAccess, DpAddress, DpRegisterAddress,
             Select1, SelectV1, SelectV3,
         },
-        memory::{ADIMemoryInterface, ArmMemoryInterface, Component},
+        memory::{ADIMemoryInterface, ArmMemoryInterface, Component, MemoryAccessSecurityPolicy},
         sequences::ArmDebugSequence,
         traits::DebugPortWire,
     },
@@ -98,6 +98,15 @@ pub trait ArmDebugInterface: DapAccess + SwdSequence + SwoAccess + Send {
         &mut self,
         access_port: &FullyQualifiedApAddress,
     ) -> Result<Box<dyn ArmMemoryInterface + '_>, ArmError>;
+
+    /// Returns a memory interface with an optional address-based security policy.
+    fn memory_interface_with_security_policy(
+        &mut self,
+        access_port_address: &FullyQualifiedApAddress,
+        _security_policy: Option<MemoryAccessSecurityPolicy>,
+    ) -> Result<Box<dyn ArmMemoryInterface + '_>, ArmError> {
+        self.memory_interface(access_port_address)
+    }
 
     /// Inform the probe driver of the attached core status.
     fn core_status_notification(&mut self, _state: CoreStatus) {}
@@ -631,9 +640,23 @@ impl ArmDebugInterface for ArmCommunicationInterface {
         &mut self,
         access_port_address: &FullyQualifiedApAddress,
     ) -> Result<Box<dyn ArmMemoryInterface + '_>, ArmError> {
+        self.memory_interface_with_security_policy(access_port_address, None)
+    }
+
+    fn memory_interface_with_security_policy(
+        &mut self,
+        access_port_address: &FullyQualifiedApAddress,
+        security_policy: Option<MemoryAccessSecurityPolicy>,
+    ) -> Result<Box<dyn ArmMemoryInterface + '_>, ArmError> {
         let memory_interface: Box<dyn ArmMemoryInterface + '_> = match access_port_address.ap() {
-            ApAddress::V1(_) => Box::new(ADIMemoryInterface::new(self, access_port_address)?),
-            ApAddress::V2(_) => ap::v2::new_memory_interface(self, access_port_address)?,
+            ApAddress::V1(_) => Box::new(ADIMemoryInterface::new(
+                self,
+                access_port_address,
+                security_policy,
+            )?),
+            ApAddress::V2(_) => {
+                ap::v2::new_memory_interface(self, access_port_address, security_policy)?
+            }
         };
         Ok(memory_interface)
     }

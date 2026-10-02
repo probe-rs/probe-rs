@@ -85,6 +85,15 @@ pub trait MemoryApType:
     /// Returns whether the Memory AP only supports 32 bit data size.
     fn supports_only_32bit_data_size(&self) -> bool;
 
+    /// Set the AHB non-secure transaction attribute when supported by this AP.
+    fn set_hnonsec<I: ApAccess>(
+        &mut self,
+        _interface: &mut I,
+        _hnonsec: bool,
+    ) -> Result<(), ArmError> {
+        Ok(())
+    }
+
     /// What it takes to put this AP into `data_size`.
     ///
     /// Returning the write rather than performing it lets it join the batch that carries the
@@ -286,6 +295,14 @@ impl AccessPortType for MemoryAp {
 
 impl MemoryApType for MemoryAp {
     type CSW = CSW;
+
+    fn set_hnonsec<I: ApAccess>(
+        &mut self,
+        interface: &mut I,
+        hnonsec: bool,
+    ) -> Result<(), ArmError> {
+        mem_ap_forward!(self, set_hnonsec(interface, hnonsec))
+    }
 
     fn has_large_address_extension(&self) -> bool {
         mem_ap_forward!(self, has_large_address_extension())

@@ -30,7 +30,7 @@ use super::{
     core::cortex_m::{Dhcsr, Vtor},
     dp::{Abort, DPIDR, DpAccess, DpAddress, SelectV1},
     memory::{
-        ArmMemoryInterface,
+        ArmMemoryInterface, MemoryAccessSecurityPolicy,
         romtable::{CoresightComponent, PeripheralType},
     },
     traits::DebugPortWire,
@@ -444,6 +444,19 @@ pub(crate) fn cortex_m_wait_for_reset(
 ///
 /// Should be implemented on a custom handle for chips that require special sequence code.
 pub trait ArmDebugSequence: Send + Sync + Debug {
+    /// Returns the address-based security policy to use for memory transfers through
+    /// `ap`, if the target's address map exposes separate secure/non-secure aliases.
+    ///
+    /// Targets that partition memory between aliases (via SAU/IDAU) reject a transfer
+    /// whose `CSW.HNONSEC` does not match the alias being addressed, so the bit has to
+    /// follow the address rather than stay as whatever the last access left behind.
+    fn memory_security_policy(
+        &self,
+        _ap: &FullyQualifiedApAddress,
+    ) -> Option<MemoryAccessSecurityPolicy> {
+        None
+    }
+
     /// Assert a system-wide reset line nRST. This is based on the
     /// `ResetHardwareAssert` function from the [ARM SVD Debug Description].
     ///

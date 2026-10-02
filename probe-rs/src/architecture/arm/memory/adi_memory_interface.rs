@@ -6,7 +6,7 @@ use crate::{
             AccessPortType, ApAccess, ApRegister, CSW, DRW, DataSize, TAR, TAR2,
             memory_ap::{DataSizeSetup, MemoryAp, MemoryApType},
         },
-        memory::ArmMemoryInterface,
+        memory::{ArmMemoryInterface, MemoryAccessSecurityPolicy},
     },
     memory::{Operation, OperationKind},
     probe::DebugProbeError,
@@ -25,6 +25,7 @@ const AUTOINCR_LIMIT: u64 = 0x400;
 pub(crate) struct ADIMemoryInterface<'interface, APA> {
     interface: &'interface mut APA,
     memory_ap: MemoryAp,
+    security_policy: Option<MemoryAccessSecurityPolicy>,
 }
 
 impl<'interface, APA> ADIMemoryInterface<'interface, APA>
@@ -35,11 +36,13 @@ where
     pub fn new(
         interface: &'interface mut APA,
         access_port_address: &FullyQualifiedApAddress,
+        security_policy: Option<MemoryAccessSecurityPolicy>,
     ) -> Result<ADIMemoryInterface<'interface, APA>, ArmError> {
         let memory_ap = MemoryAp::new(interface, access_port_address)?;
         Ok(Self {
             interface,
             memory_ap,
+            security_policy,
         })
     }
 }
@@ -237,9 +240,41 @@ where
     /// Read `shape` into the DRW words it produces.
     fn run_read(&mut self, shape: &Shape, words: &mut [u32]) -> Result<(), ArmError> {
         self.set_data_size(shape)?;
-        let accesses = self.lower(shape, |_, _| None)?;
-        self.interface
-            .access_raw_ap_registers(self.memory_ap.ap_address(), &accesses, words)
+        let drw_words = shape.width.drw_words();
+        for (start, end, hnonsec) in self.security_runs(shape) {
+            if let Some(hnonsec) = hnonsec {
+                self.memory_ap.set_hnonsec(self.interface, hnonsec)?;
+            }
+            let part = Shape::new(shape.element_address(start), shape.width, end - start);
+            let accesses = self.lower(&part, |_, _| None)?;
+            self.interface.access_raw_ap_registers(
+                self.memory_ap.ap_address(),
+                &accesses,
+                &mut words[start * drw_words..end * drw_words],
+            )?;
+        }
+        Ok(())
+    }
+
+    /// Split `shape` into element ranges `start..end` that share one `CSW.HNONSEC` value.
+    ///
+    /// Without a security policy the whole shape is one range with no value to set.
+    fn security_runs(&self, shape: &Shape) -> Vec<(usize, usize, Option<bool>)> {
+        let Some(policy) = self.security_policy else {
+            return vec![(0, shape.elements, None)];
+        };
+
+        let mut runs = Vec::new();
+        let mut start = 0;
+        while start < shape.elements {
+            let hnonsec = policy(shape.element_address(start));
+            let end = (start + 1..shape.elements)
+                .find(|&element| policy(shape.element_address(element)) != hnonsec)
+                .unwrap_or(shape.elements);
+            runs.push((start, end, Some(hnonsec)));
+            start = end;
+        }
+        runs
     }
 
     /// The shape of a memory operation, or `None` for one the lowering does not describe.
@@ -530,12 +565,50 @@ where
     /// Run a list of memory operations in as few probe transactions as possible.
     ///
     /// Every operation that completes records `Ok`; the list stops at the first failure, whose
-    /// index comes back with the error. A batch faults as a whole, so a failure inside one names
-    /// the first operation of that batch rather than the one the target refused.
+    /// index comes back with the error.
     fn run_operations(
         &mut self,
         operations: &mut [Operation<'_>],
     ) -> Result<(), (usize, ArmError)> {
+        if self.security_policy.is_none() {
+            return self.run_batched(operations);
+        }
+
+        // CSW.HNONSEC follows the address, so each operation runs on its own and splits
+        // wherever the security attribute changes.
+        for (index, operation) in operations.iter_mut().enumerate() {
+            self.run_one(operation).map_err(|error| (index, error))?;
+            operation.result = Some(Ok(()));
+        }
+        Ok(())
+    }
+
+    fn run_one(&mut self, operation: &mut Operation<'_>) -> Result<(), ArmError> {
+        let address = operation.address;
+        match &mut operation.operation {
+            OperationKind::Read(data) => self.read(address, data),
+            OperationKind::Read8(data) => self.read_8(address, data),
+            OperationKind::Read16(data) => self.read_16(address, data),
+            OperationKind::Read32(data) => self.read_32(address, data),
+            OperationKind::Read64(data) => self.read_64(address, data),
+            OperationKind::Write(data) => self.write(address, data),
+            OperationKind::Write8(data) => self.write_8(address, data),
+            OperationKind::Write16(data) => self.write_16(address, data),
+            OperationKind::Write32(data) => self.write_32(address, data),
+            OperationKind::Write64(data) => self.write_64(address, data),
+            OperationKind::WriteWord8(data) => self.write_word_8(address, *data),
+            OperationKind::WriteWord16(data) => self.write_word_16(address, *data),
+            OperationKind::WriteWord32(data) => self.write_word_32(address, *data),
+            OperationKind::WriteWord64(data) => self.write_word_64(address, *data),
+        }
+    }
+
+    /// Run a list of memory operations in as few probe transactions as possible.
+    ///
+    /// Every operation that completes records `Ok`; the list stops at the first failure, whose
+    /// index comes back with the error. A batch faults as a whole, so a failure inside one names
+    /// the first operation of that batch rather than the one the target refused.
+    fn run_batched(&mut self, operations: &mut [Operation<'_>]) -> Result<(), (usize, ArmError)> {
         let mut start = 0;
 
         while start < operations.len() {
@@ -594,12 +667,22 @@ where
     fn run_write(
         &mut self,
         shape: &Shape,
-        word: impl FnMut(usize, usize) -> Option<u32>,
+        mut word: impl FnMut(usize, usize) -> Option<u32>,
     ) -> Result<(), ArmError> {
         self.set_data_size(shape)?;
-        let accesses = self.lower(shape, word)?;
-        self.interface
-            .access_raw_ap_registers(self.memory_ap.ap_address(), &accesses, &mut [])
+        for (start, end, hnonsec) in self.security_runs(shape) {
+            if let Some(hnonsec) = hnonsec {
+                self.memory_ap.set_hnonsec(self.interface, hnonsec)?;
+            }
+            let part = Shape::new(shape.element_address(start), shape.width, end - start);
+            let accesses = self.lower(&part, |element, index| word(start + element, index))?;
+            self.interface.access_raw_ap_registers(
+                self.memory_ap.ap_address(),
+                &accesses,
+                &mut [],
+            )?;
+        }
+        Ok(())
     }
 }
 
@@ -782,9 +865,19 @@ where
     ///
     /// A byte head, a run of words and a byte tail, lowered into one batch.
     fn write(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError> {
-        let mut operations = [Operation::new(address, OperationKind::Write(data))];
-        self.run_operations(&mut operations)
-            .map_err(|(_, error)| error)
+        let shape = Shape::new(address, Width::U8, data.len());
+        for (start, end, hnonsec) in self.security_runs(&shape) {
+            if let Some(hnonsec) = hnonsec {
+                self.memory_ap.set_hnonsec(self.interface, hnonsec)?;
+            }
+            let mut operations = [Operation::new(
+                shape.element_address(start),
+                OperationKind::Write(&data[start..end]),
+            )];
+            self.run_batched(&mut operations)
+                .map_err(|(_, error)| error)?;
+        }
+        Ok(())
     }
 
     fn execute_memory_operations(&mut self, operations: &mut [Operation<'_>]) {
@@ -857,7 +950,7 @@ mod tests {
         fn new_mock(
             mock: &'interface mut MockMemoryAp,
         ) -> ADIMemoryInterface<'interface, MockMemoryAp> {
-            Self::new(mock, &FullyQualifiedApAddress::v1_with_default_dp(0)).unwrap()
+            Self::new(mock, &FullyQualifiedApAddress::v1_with_default_dp(0), None).unwrap()
         }
 
         fn mock_memory(&self) -> &[u8] {

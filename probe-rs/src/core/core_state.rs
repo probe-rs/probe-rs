@@ -79,7 +79,9 @@ impl CombinedCoreState {
             self.specific_state.core_type(),
         )?;
 
-        let memory = arm_interface.memory_interface(&self.arm_memory_ap())?;
+        let policy = debug_sequence.memory_security_policy(&self.arm_memory_ap());
+        let memory =
+            arm_interface.memory_interface_with_security_policy(&self.arm_memory_ap(), policy)?;
 
         Ok(match &mut self.specific_state {
             SpecificCoreState::Armv6m(s) => Core::new(

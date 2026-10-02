@@ -44,6 +44,14 @@ impl AmbaAhb5Hprot {
 impl super::MemoryApType for AmbaAhb5Hprot {
     type CSW = CSW;
 
+    fn set_hnonsec<P: ApAccess>(&mut self, probe: &mut P, hnonsec: bool) -> Result<(), ArmError> {
+        if self.csw.HNONSEC() != hnonsec {
+            self.csw.set_HNONSEC(hnonsec);
+            probe.write_ap_register(self, self.csw)?;
+        }
+        Ok(())
+    }
+
     fn status<P: ApAccess + ?Sized>(&mut self, probe: &mut P) -> Result<CSW, ArmError> {
         const { assert!(crate::architecture::arm::ap::CSW::ADDRESS == CSW::ADDRESS) };
         self.csw = probe.read_ap_register(self)?;
