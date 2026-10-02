@@ -259,20 +259,21 @@ impl CmsisDap {
             });
         }
 
-        if count < transfers.len() {
-            let fault_operation = transfers[count.saturating_sub(1)].batch_index;
-            return Err(BatchExecutionError::new_from_debug_probe_at(
-                DebugProbeError::Other(format!(
-                    "Possible error in CMSIS-DAP probe: Only {}/{} transfers were executed, but no error was reported.",
-                    count,
-                    transfers.len()
-                )),
-                results,
-                fault_operation,
-            ));
-        }
-
         match response.last_transfer_response.ack {
+            // The count excludes a transfer that failed, so a short count is only
+            // unexpected when the last ACK was OK.
+            Ack::Ok if count < transfers.len() => {
+                let fault_operation = transfers[count.saturating_sub(1)].batch_index;
+                Err(BatchExecutionError::new_from_debug_probe_at(
+                    DebugProbeError::Other(format!(
+                        "Possible error in CMSIS-DAP probe: Only {}/{} transfers were executed, but no error was reported.",
+                        count,
+                        transfers.len()
+                    )),
+                    results,
+                    fault_operation,
+                ))
+            }
             Ack::Ok => {
                 for (transfer, response_transfer) in transfers.iter().zip(response.transfers.iter())
                 {

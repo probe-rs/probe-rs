@@ -433,9 +433,23 @@ impl FakeProbe {
 
                 Ok(result)
             }
-            None => panic!(
-                "No more operations expected, but got read_raw_ap_register ap={expected_ap:?}, address:{expected_address}"
-            ),
+            None => {
+                // ADIv6 MEM-AP/APv2 register frame: CSW lives at offset 0xD00.
+                // Bit 6 of CSW is DeviceEn -- debug sequences read it to decide whether
+                // the AP is already open. Return a ready AP in dry-run contexts.
+                const ADI_V6_CSW_OFFSET: u64 = 0xD00;
+                const CSW_DEVICE_EN: u32 = 1 << 6;
+                let default = if expected_address == ADI_V6_CSW_OFFSET {
+                    CSW_DEVICE_EN
+                } else {
+                    0
+                };
+                tracing::warn!(
+                    "FakeProbe: no queued operation for read_raw_ap_register \
+                     ap={expected_ap:?}, address:{expected_address:#x} -- returning {default:#010x}"
+                );
+                Ok(default)
+            }
             Some(Operation::SwdTransfer { .. }) => {
                 panic!("unexpected SwdTransfer operation for read_raw_ap_register")
             }
@@ -810,7 +824,13 @@ impl DapAccess for FakeArmInterface {
         _dp: DpAddress,
         _address: DpRegisterAddress,
     ) -> Result<u32, ArmError> {
-        todo!()
+        // Debug sequences may read DP registers directly. Hand back a harmless
+        // default instead of panicking, like the AP register fallback below.
+        tracing::warn!(
+            "FakeProbe: no queued operation for read_raw_dp_register dp={_dp:?}, \
+             address:{_address:?} -- returning 0"
+        );
+        Ok(0)
     }
 
     fn write_raw_dp_register(
@@ -819,7 +839,8 @@ impl DapAccess for FakeArmInterface {
         _address: DpRegisterAddress,
         _value: u32,
     ) -> Result<(), ArmError> {
-        todo!()
+        // See read_raw_dp_register: writes must not panic either.
+        Ok(())
     }
 
     fn read_raw_ap_register(
@@ -845,7 +866,7 @@ impl DapAccess for FakeArmInterface {
         _address: u64,
         _value: u32,
     ) -> Result<(), ArmError> {
-        todo!()
+        Ok(())
     }
 
     fn write_raw_ap_register_repeated(

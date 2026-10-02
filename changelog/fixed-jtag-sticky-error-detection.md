@@ -1,0 +1,1 @@
+Fixed JTAG DAP transfers silently ignoring FAULT responses. The CTRL/STAT sticky-error check read the wrong scan result, so faulting memory reads returned `0` and faulting writes reported success; they now return a FAULT error.

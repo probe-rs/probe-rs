@@ -1,0 +1,1 @@
+Fixed ADIv6 (DPv3) AP accesses targeting the wrong AP or DP register bank. The cached SELECT/SELECT1 values are now updated after raw DP writes, and DP_BANK_SEL is restored to 0 after selecting an AP, so the JTAG CTRL/STAT fault check reads the correct register.
