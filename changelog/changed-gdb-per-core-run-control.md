@@ -1,0 +1,1 @@
+The GDB stub now tracks resume actions per core, so a thread-specific resume gives per-core run control on multi-core targets: single-stepping a thread steps only the selected core instead of letting a sibling core run free and raise a spurious interrupt. A bare `continue` with no thread selected still resumes every core.

@@ -1,0 +1,1 @@
+Fixed the GDB stub reporting a single-step completion without a thread-id on multi-core targets, which made GDB fall back to the first non-exited thread and switch away from the core that was actually stepped. The step stop is now reported with the stepped core's thread-id so GDB stays on the correct core.
