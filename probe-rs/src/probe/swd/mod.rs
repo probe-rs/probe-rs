@@ -149,6 +149,9 @@ pub enum SwdOp {
         cycles: u32,
     },
     /// Drive the CMSIS-DAP SWJ pins.
+    ///
+    /// A probe that reads the pin levels back returns them as [`CommandResult::U8`]. A probe
+    /// that cannot read them returns no result.
     Pins {
         /// The output levels.
         out: Pins,
@@ -195,6 +198,17 @@ impl SwdBatch {
     /// Schedule idle clock cycles with SWDIO driven low.
     pub fn idle(&mut self, cycles: u32) {
         let _ = self.schedule(SwdOp::Idle { cycles });
+    }
+
+    /// Schedule a pins operation and return a handle for the pin levels.
+    ///
+    /// The handle has no result when the probe cannot read the pins.
+    pub fn pins(&mut self, out: Pins, select: Pins, wait: Duration) -> Handle<Pins> {
+        self.schedule(SwdOp::Pins { out, select, wait })
+            .map(|result| match result {
+                CommandResult::U8(levels) => Pins(levels),
+                _ => panic!("unexpected CommandResult variant for an SWJ pins operation"),
+            })
     }
 }
 
