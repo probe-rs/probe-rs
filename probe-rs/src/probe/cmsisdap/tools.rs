@@ -104,18 +104,38 @@ fn get_cmsisdap_info(device: &DeviceInfo, list_both_versions: bool) -> Vec<Debug
     // 2. Any that are HID, if the product string says CMSIS-DAP,
     //    to save for potential HID-only operation.
     for interface in device.interfaces() {
-        let Some(interface_desc) = interface.interface_string() else {
+        let interface_desc = interface.interface_string();
+
+        // An interface qualifies either by its own string, or - when it has none - by the
+        // device's product string. SEGGER's J-Link in CMSIS-DAP mode omits the interface
+        // string that the CMSIS-DAP v2 spec recommends, but still presents a vendor-specific
+        // bulk interface and names itself "J-Link CMSIS-DAP". Requiring the v2 class here
+        // keeps a stringless HID interface out; those are found by the HID scan instead.
+        let qualifies = match interface_desc {
+            Some(desc) => is_cmsis_dap(desc),
+            None => {
+                cmsis_dap_product
+                    && (interface.class(), interface.subclass())
+                        == (USB_CMSIS_DAP_CLASS, USB_CMSIS_DAP_SUBCLASS)
+            }
+        };
+
+        if !qualifies {
             tracing::trace!(
-                "interface {} has no string, skipping",
-                interface.interface_number()
+                "interface {} ({:?}, class {:#04x}, subclass {:#04x}) is not CMSIS-DAP, skipping",
+                interface.interface_number(),
+                interface_desc,
+                interface.class(),
+                interface.subclass(),
             );
             continue;
-        };
-        if is_cmsis_dap(interface_desc) {
+        }
+
+        {
             tracing::trace!(
                 "  Interface {}: {}",
                 interface.interface_number(),
-                interface_desc,
+                interface_desc.unwrap_or("<no interface string>"),
             );
             let selected_interface = Some(interface.interface_number());
             let is_hid_interface = if interface.class() == USB_CLASS_HID {
@@ -210,6 +230,8 @@ pub fn open_v2_device(
     // Open device handle and read basic information
     let vid = device_info.vendor_id();
     let pid = device_info.product_id();
+    let cmsis_dap_product = is_cmsis_dap(device_info.product_string().unwrap_or(""))
+        || is_known_cmsis_dap_dev(device_info);
 
     tracing::trace!(
         "Trying to open {:04x}:{:04x} in cmsis-dap v2 mode",
@@ -253,18 +275,30 @@ pub fn open_v2_device(
             continue;
         }
         for i_desc in interface.alt_settings() {
-            // Skip interfaces without "CMSIS-DAP" like pattern in their string
-            let Some(interface_str) = device_info
+            // Skip interfaces without "CMSIS-DAP" like pattern in their string. An interface
+            // with no string at all is still accepted when the device's product string
+            // identifies it as CMSIS-DAP, which is how SEGGER's J-Link presents its
+            // CMSIS-DAP mode. The endpoint checks below remain the real gate.
+            let interface_str = device_info
                 .interfaces()
                 .find(|i| i.interface_number() == interface.interface_number())
-                .and_then(|i| i.interface_string())
-            else {
-                tracing::trace!("Interface does not have interface string");
-                continue;
-            };
-            if !is_cmsis_dap(interface_str) {
-                tracing::trace!("Interface does not have 'CMSIS-DAP' in string");
-                continue;
+                .and_then(|i| i.interface_string());
+
+            match interface_str {
+                Some(interface_str) if is_cmsis_dap(interface_str) => {}
+                Some(_) => {
+                    tracing::trace!("Interface does not have 'CMSIS-DAP' in string");
+                    continue;
+                }
+                None if cmsis_dap_product => {
+                    tracing::trace!(
+                        "Interface has no string; accepting it on the product string instead"
+                    );
+                }
+                None => {
+                    tracing::trace!("Interface does not have interface string");
+                    continue;
+                }
             }
 
             // Skip interfaces without 2 or 3 endpoints
