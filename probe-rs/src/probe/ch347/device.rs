@@ -325,7 +325,7 @@ pub(crate) mod tests {
     }
 
     impl Transport for MockTransport {
-        fn write(&mut self, data: &[u8]) -> io::Result<()> {
+        fn write(&mut self, data: &[u8], _: Duration) -> io::Result<()> {
             let (expected, reply) = self
                 .script
                 .0

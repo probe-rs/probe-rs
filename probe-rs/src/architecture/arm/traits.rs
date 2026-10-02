@@ -355,6 +355,9 @@ pub trait DebugPortWire {
     fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), ArmError>;
 
     /// Send an output-only JTAG bit sequence.
+    ///
+    /// The sequence must end in a stable TAP state. With `tms` high, the probe sends the
+    /// clocks that reach Test-Logic-Reset, which can be fewer than `tdi.len()`.
     fn jtag_sequence(&mut self, tms: bool, tdi: &BitSequence) -> Result<(), ArmError>;
 
     /// Configure the probe for JTAG use.

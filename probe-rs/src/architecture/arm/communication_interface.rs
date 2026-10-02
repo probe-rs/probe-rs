@@ -13,7 +13,7 @@ use crate::{
     },
     probe::{
         BitSequence, DebugProbe, DebugProbeError, JtagChainAccess, Probe, Results, SwdProbe,
-        SwdSettings, TapState, WireProtocol,
+        SwdSettings, WireProtocol,
         jtag::dap::{
             jtag_output_sequence, jtag_read_block, jtag_read_register, jtag_write_block,
             jtag_write_register,
@@ -23,7 +23,7 @@ use crate::{
 };
 use jep106::JEP106Code;
 
-use crate::probe::jtag::chain::JtagChain;
+use crate::probe::jtag::{FullTapState, chain::JtagChain};
 use crate::probe::swd::Pins;
 
 use std::{
@@ -355,9 +355,15 @@ impl DebugPortWire for JtagDebugPortWire<'_> {
         batch.sequence(bits.clone());
         self.run_swj_batch(&batch)?;
 
-        // Five clocks with TMS high reach Test-Logic-Reset from any TAP state.
-        if bits.len() >= 5 && bits.iter().skip(bits.len() - 5).all(|tms| tms) {
-            self.probe.chain_state().tap_state = TapState::TestLogicReset;
+        // The bits clock the TAP with TMS. If they end in a state that is not stable, the
+        // tracked state stays, and the caller must reset the TAP with five clocks with TMS
+        // high.
+        let state = &mut self.probe.chain_state().tap_state;
+        let end = bits
+            .iter()
+            .fold(FullTapState::from(*state), FullTapState::step);
+        if let Some(end) = end.stable() {
+            *state = end;
         }
         Ok(())
     }
@@ -1392,7 +1398,9 @@ mod tests {
     use crate::architecture::arm::sequences::DefaultArmSequence;
     use crate::probe::swd::mock::{MockSwdProbe, RecordedOp, RecordedPins, RecordedSequence};
     use crate::probe::swd::{Direction, Port, output_levels};
-    use crate::probe::{BitSequence, BitbangJtag, BitbangSwd, IoSequenceItem, JtagChainState};
+    use crate::probe::{
+        BitSequence, BitbangJtag, BitbangSwd, IoSequenceItem, JtagChainState, TapState,
+    };
     use bitvec::vec::BitVec;
 
     const DP_RDBUFF_ADDR: u8 = 0b1100;
@@ -1776,6 +1784,7 @@ mod tests {
     #[derive(Debug, Default)]
     struct TmsRecorder {
         tms: Vec<bool>,
+        tdi: Vec<bool>,
         pins: Arc<std::sync::Mutex<Vec<(u8, u8)>>>,
         jtag_state: JtagChainState,
         swd_settings: SwdSettings,
@@ -1840,8 +1849,9 @@ mod tests {
             &mut self.jtag_state.tap_state
         }
 
-        fn shift(&mut self, tms: bool, _tdi: bool, _capture: bool) -> Result<(), DebugProbeError> {
+        fn shift(&mut self, tms: bool, tdi: bool, _capture: bool) -> Result<(), DebugProbeError> {
             self.tms.push(tms);
+            self.tdi.push(tdi);
             Ok(())
         }
 
@@ -1911,6 +1921,85 @@ mod tests {
         expected.push(false);
         assert_eq!(probe.tms, expected);
         assert_eq!(probe.jtag_state.tap_state, TapState::RunTestIdle);
+    }
+
+    #[test]
+    fn jtag_swj_sequence_tracks_the_tap_through_the_bits() {
+        // The bits go out from the least significant one.
+        let cases = [
+            (TapState::ShiftDr, 6, 0b01_1111, TapState::RunTestIdle),
+            (TapState::RunTestIdle, 3, 0b001, TapState::ShiftDr),
+            (TapState::PauseDr, 6, 0x3F, TapState::TestLogicReset),
+            (TapState::ShiftIr, 54, (1 << 51) - 1, TapState::RunTestIdle),
+            // Exit2-DR is not stable, so the state stays.
+            (TapState::PauseDr, 1, 0b1, TapState::PauseDr),
+        ];
+        for (start, len, bits, end) in cases {
+            let mut probe = TmsRecorder::default();
+            probe.jtag_state.tap_state = start;
+            JtagDebugPortWire {
+                probe: &mut probe,
+                settings: SwdSettings::default(),
+            }
+            .swj_sequence(&BitSequence::from_u64(len, bits))
+            .unwrap();
+            assert_eq!(
+                probe.jtag_state.tap_state, end,
+                "{len} bits {bits:#b} from {start:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn jtag_sequence_ends_where_a_raw_sequence_ends() {
+        use crate::probe::jtag::FullTapState;
+
+        let states = [
+            TapState::TestLogicReset,
+            TapState::RunTestIdle,
+            TapState::ShiftIr,
+            TapState::ShiftDr,
+            TapState::PauseIr,
+            TapState::PauseDr,
+        ];
+        for start in states {
+            for bits in 1..=8 {
+                for tms in [false, true] {
+                    let mut probe = TmsRecorder::default();
+                    probe.jtag_state.tap_state = start;
+                    let tdi = BitSequence::from_u64(bits, 0b1011_0010);
+                    let result = JtagDebugPortWire {
+                        probe: &mut probe,
+                        settings: SwdSettings::default(),
+                    }
+                    .jtag_sequence(tms, &tdi);
+
+                    let case = format!("{bits} bits of TMS {tms} from {start:?}");
+                    let raw = (0..bits).fold(FullTapState::from(start), |state, _| state.step(tms));
+                    let Some(end) = raw.stable() else {
+                        assert!(result.is_err(), "{case}");
+                        assert!(probe.tms.is_empty(), "{case}");
+                        continue;
+                    };
+                    result.unwrap();
+                    let walked = probe
+                        .tms
+                        .iter()
+                        .fold(FullTapState::from(start), |state, &tms| state.step(tms));
+                    assert_eq!(walked, raw, "{case}");
+                    assert_eq!(probe.jtag_state.tap_state, end, "{case}");
+                    if !tms {
+                        assert_eq!(probe.tms, vec![false; bits], "{case}");
+                    }
+                    // A TAP in Shift samples TDI on every clock until it leaves.
+                    if matches!(start, TapState::ShiftIr | TapState::ShiftDr) {
+                        let sampled = if tms { 1 } else { bits };
+                        let sent: Vec<bool> = tdi.iter().take(sampled).collect();
+                        assert_eq!(probe.tdi[..sampled], sent[..], "{case}");
+                    }
+                }
+            }
+        }
     }
 
     #[test]
