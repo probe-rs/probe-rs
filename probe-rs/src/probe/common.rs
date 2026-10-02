@@ -195,9 +195,14 @@ pub(crate) fn extract_ir_lengths<T: BitStore>(
         Err(ScanChainError::InvalidIR)
     } else if let Some(expected) = expected {
         // If expected lengths are available, verify and return them.
-        if expected.len() != n_taps {
+        //
+        // The IDCODE scan stops at the first all-ones IDCODE, so a powered-down trailing
+        // TAP (e.g. the PSOC C3 boundary-scan TAP) is never detected. Allow the expected
+        // chain to declare more TAPs than were detected, as long as the detected TAPs line
+        // up with the leading expected entries; the caller pads the detected IDCODEs to match.
+        if expected.len() < n_taps {
             tracing::error!(
-                "Number of provided IR lengths ({}) does not match \
+                "Number of provided IR lengths ({}) is fewer than the \
                          number of detected TAPs ({n_taps})",
                 expected.len()
             );
@@ -221,7 +226,13 @@ pub(crate) fn extract_ir_lengths<T: BitStore>(
                 })
                 .collect::<Vec<usize>>();
             tracing::trace!("Provided IR start positions: {exp_starts:?}");
-            let unsupported = exp_starts.iter().filter(|s| !starts.contains(s)).count();
+            // Only the leading detected TAPs must line up with a start pattern; trailing
+            // undetected TAPs (all-ones IR) have no capture pattern to match against.
+            let unsupported = exp_starts
+                .iter()
+                .take(n_taps)
+                .filter(|s| !starts.contains(s))
+                .count();
             if unsupported > 0 {
                 tracing::error!(
                     "Provided IR lengths imply an IR start position \
@@ -329,6 +340,21 @@ mod tests {
         let ir_lengths = extract_ir_lengths(ir, n_taps, expected).unwrap();
 
         assert_eq!(ir_lengths, vec![4, 5]);
+    }
+
+    #[test]
+    fn extract_ir_lengths_with_undetected_trailing_tap() {
+        // PSOC C3: the IDCODE scan detects only the leading DAP TAP because the trailing
+        // boundary-scan TAP reports an all-ones IDCODE and is powered down. The expected
+        // chain declares both TAPs (4 + 4), so the extra IR bits must be attributed to the
+        // undetected trailing TAP rather than rejected.
+        let ir = bits![1, 0, 0, 0, 1, 1, 1, 1];
+        let n_taps = 1;
+        let expected = [4, 4];
+
+        let ir_lengths = extract_ir_lengths(ir, n_taps, Some(&expected)).unwrap();
+
+        assert_eq!(ir_lengths, vec![4, 4]);
     }
 
     #[test]
