@@ -22,6 +22,9 @@ const WCH_LINK_DTMCS_VERSION: u32 = 1;
 
 const COMMAND_TIMEOUT: Duration = Duration::from_secs(2);
 
+/// The DMI `op` field is 2 bits wide. The probe reports it in byte 5 of the DMI reply.
+const DMI_OP_MASK: u8 = 0b11;
+
 #[derive(Debug, Default)]
 struct WchLinkDtmState {
     pending: Vec<(Option<HandleId>, DmiOperation)>,
@@ -72,7 +75,11 @@ impl<'probe> WchLinkDtm<'probe> {
     }
 
     fn transform_dmi_response(data: u32, op: u8) -> Result<u32, DmiOperationError> {
-        let status = DmiOperationStatus::parse(op).expect("INVALID DMI OP status");
+        if op & !DMI_OP_MASK != 0 {
+            tracing::trace!("DMI status {op:#04x} has bits outside the 2-bit op field");
+        }
+        let status = DmiOperationStatus::parse(op & DMI_OP_MASK)
+            .expect("a 2-bit value is a valid DMI status");
 
         match status {
             DmiOperationStatus::Ok => Ok(data),
@@ -269,5 +276,31 @@ impl DtmAccess for WchLinkDtm<'_> {
     fn read_idcode(&mut self) -> Result<Option<u32>, DebugProbeError> {
         tracing::debug!("using hard coded idcode 0x00000001");
         Ok(Some(WCH_LINK_IDCODE))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::WchLinkDtm;
+    use crate::architecture::riscv::dtm::jtag_dtm::DmiOperationError;
+
+    #[test]
+    fn the_status_is_the_low_two_bits_of_the_reply() {
+        let transform = WchLinkDtm::transform_dmi_response;
+        assert!(matches!(transform(0x1234, 0), Ok(0x1234)));
+        assert!(matches!(transform(0, 1), Err(DmiOperationError::Reserved)));
+        assert!(matches!(
+            transform(0, 2),
+            Err(DmiOperationError::OperationFailed)
+        ));
+        assert!(matches!(
+            transform(0, 3),
+            Err(DmiOperationError::RequestInProgress)
+        ));
+        assert!(matches!(transform(0x1234, 0x04), Ok(0x1234)));
+        assert!(matches!(
+            transform(0, 0xFF),
+            Err(DmiOperationError::RequestInProgress)
+        ));
     }
 }
