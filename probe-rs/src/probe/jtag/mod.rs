@@ -306,7 +306,7 @@ pub trait BitbangJtag: DebugProbe {
     }
 }
 
-pub(crate) fn exchange_leaves_shift(current: TapState, next: Option<&JtagOp>) -> bool {
+fn exchange_leaves_shift(current: TapState, next: Option<&JtagOp>) -> bool {
     match next {
         Some(JtagOp::EnterState(target)) => {
             let path = current.path_to(*target);
@@ -316,8 +316,70 @@ pub(crate) fn exchange_leaves_shift(current: TapState, next: Option<&JtagOp>) ->
     }
 }
 
-pub(crate) fn enter_tdi(target: TapState) -> bool {
+fn enter_tdi(target: TapState) -> bool {
     target == TapState::TestLogicReset
+}
+
+/// One step of a JTAG batch on the wire.
+pub(crate) enum Step<'a> {
+    /// Clock `path` on TMS, with TDI at `tdi`.
+    Tms { path: &'a [bool], tdi: bool },
+    /// Shift `data` on TDI with TMS low. With `exit`, the last bit is clocked with TMS high
+    /// instead, which is the first step out of Shift. `exit` is only set when `data` is not
+    /// empty.
+    Shift {
+        data: &'a BitSequence,
+        exit: bool,
+        capture: bool,
+    },
+    /// Clock `count` idle cycles with the TAP in `state`.
+    Clock { count: u32, state: TapState },
+}
+
+/// Walk `batch` from `state`, and hand each step to `emit`.
+///
+/// An exchange with data that the batch follows with a move out of Shift takes the first step
+/// of that move with its last bit, so the move leaves that step out. `state` is the last state that a
+/// move reached, also when `emit` fails.
+pub(crate) fn walk_batch(
+    state: &mut TapState,
+    batch: &JtagBatch,
+    mut emit: impl FnMut(Step<'_>) -> Result<(), DebugProbeError>,
+) -> Result<(), DebugProbeError> {
+    let ops: Vec<_> = batch.iter().collect();
+    let mut skip = 0;
+    for (index, (id, op)) in ops.iter().enumerate() {
+        match op {
+            JtagOp::EnterState(target) => {
+                emit(Step::Tms {
+                    path: &state.path_to(*target)[skip..],
+                    tdi: enter_tdi(*target),
+                })?;
+                skip = 0;
+                *state = *target;
+            }
+            JtagOp::Exchange { data, capture } => {
+                if !matches!(*state, TapState::ShiftIr | TapState::ShiftDr) {
+                    return Err(DebugProbeError::Other(format!(
+                        "Exchange in state {state:?}, but ShiftIr or ShiftDr is required"
+                    )));
+                }
+                let exit = !data.is_empty()
+                    && exchange_leaves_shift(*state, ops.get(index + 1).map(|(_, op)| op));
+                emit(Step::Shift {
+                    data,
+                    exit,
+                    capture: *capture && id.should_capture(),
+                })?;
+                skip = usize::from(exit);
+            }
+            JtagOp::ClockTck { count } => emit(Step::Clock {
+                count: *count,
+                state: *state,
+            })?,
+        }
+    }
+    Ok(())
 }
 
 pub(crate) fn captured_bits_to_bytes(bits: impl IntoIterator<Item = bool>) -> Vec<u8> {
@@ -420,60 +482,24 @@ fn lower_batch<P: BitbangJtag>(
     state: &mut TapState,
     batch: &JtagBatch,
 ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
-    let ops: Vec<_> = batch.iter().collect();
     let results = Results::new();
-    let mut skip_enter_path_bits = 0usize;
-
-    for (index, (id, op)) in ops.iter().enumerate() {
-        match op {
-            JtagOp::EnterState(target) => {
-                let target = *target;
-                let path = &state.path_to(target)[skip_enter_path_bits..];
-                skip_enter_path_bits = 0;
-                let tdi = enter_tdi(target);
-                for &tms in path {
-                    if let Err(error) = probe.shift(tms, tdi, false) {
-                        return Err(BatchExecutionError::new_from_debug_probe(error, results));
-                    }
-                }
-                *state = target;
-            }
-            JtagOp::Exchange { data, capture } => {
-                if *state != TapState::ShiftIr && *state != TapState::ShiftDr {
-                    return Err(BatchExecutionError::new_from_debug_probe(
-                        DebugProbeError::Other(format!(
-                            "Exchange in state {state:?}, but ShiftIr or ShiftDr is required"
-                        )),
-                        results,
-                    ));
-                }
-                let merge_exit =
-                    exchange_leaves_shift(*state, ops.get(index + 1).map(|(_, op)| op));
-                let do_capture = *capture && id.should_capture();
-                let bit_count = data.len();
-                for bit_index in 0..bit_count {
-                    let is_last = bit_index + 1 == bit_count;
-                    let tms = if merge_exit && is_last {
-                        // The last exchange bit and the first exit bit are one clock on the wire.
-                        skip_enter_path_bits = 1;
-                        true
-                    } else {
-                        false
-                    };
-                    let tdi = data[bit_index];
-                    if let Err(error) = probe.shift(tms, tdi, do_capture) {
-                        return Err(BatchExecutionError::new_from_debug_probe(error, results));
-                    }
-                }
-            }
-            JtagOp::ClockTck { count } => {
-                for _ in 0..*count {
-                    if let Err(error) = probe.shift(false, false, false) {
-                        return Err(BatchExecutionError::new_from_debug_probe(error, results));
-                    }
-                }
-            }
+    let walked = walk_batch(state, batch, |step| match step {
+        Step::Tms { path, tdi } => path
+            .iter()
+            .try_for_each(|&tms| probe.shift(tms, tdi, false)),
+        Step::Shift {
+            data,
+            exit,
+            capture,
+        } => {
+            let last = data.len().saturating_sub(1);
+            (0..data.len())
+                .try_for_each(|index| probe.shift(exit && index == last, data[index], capture))
         }
+        Step::Clock { count, .. } => (0..count).try_for_each(|_| probe.shift(false, false, false)),
+    });
+    if let Err(error) = walked {
+        return Err(BatchExecutionError::new_from_debug_probe(error, results));
     }
 
     if let Err(error) = probe.flush() {
@@ -484,7 +510,7 @@ fn lower_batch<P: BitbangJtag>(
         Err(error) => return Err(BatchExecutionError::new_from_debug_probe(error, results)),
     };
 
-    distribute_captures(ops, &captured, results)
+    distribute_captures(batch.iter(), &captured, results)
 }
 
 impl<P: BitbangJtag> JtagProbe for P {
@@ -602,6 +628,22 @@ mod tests {
             visited.push(state);
         }
         (state, visited)
+    }
+
+    #[test]
+    fn an_exchange_of_any_length_ends_where_the_batch_says() {
+        for bits in [0, 1, 5] {
+            let mut batch = JtagBatch::new();
+            batch.enter(TapState::ShiftDr);
+            batch.exchange_no_capture(BitSequence::repeat(false, bits));
+            batch.enter(TapState::RunTestIdle);
+            let end = golden::lowering_batch(TapState::RunTestIdle, &batch)
+                .into_iter()
+                .fold(ModelState::RunTestIdle, |state, (tms, _, _)| {
+                    state.step(tms)
+                });
+            assert_eq!(end, ModelState::RunTestIdle, "{bits} bits");
+        }
     }
 
     #[test]

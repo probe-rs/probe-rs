@@ -25,7 +25,7 @@ use crate::{
         IoSequenceItem, JtagChain, JtagChainAccess, JtagChainState, JtagOp, JtagProbe,
         ProbeCreationError, ProbeError, ProbeFactory, SwdProbe, SwdSettings, WireProtocol,
         blackmagic::arm::BlackMagicProbeArmDebug,
-        jtag::{TapState, distribute_captures, exchange_leaves_shift},
+        jtag::{Step, TapState, distribute_captures, walk_batch},
         list::ProbeListItem,
         queue::{BatchExecutionError, Results},
         swd::{Pins, output_levels},
@@ -1160,28 +1160,18 @@ fn encode_jtag_batch(
     start: TapState,
     batch: &Batch<JtagOp, DebugProbeError>,
 ) -> Result<(TapState, Vec<JtagWireOp>), DebugProbeError> {
-    let ops: Vec<_> = batch.iter().collect();
     let mut state = start;
     let mut wire = Vec::new();
-    let mut skip_enter_path_bits = 0usize;
 
-    for (index, (id, op)) in ops.iter().enumerate() {
-        match op {
-            JtagOp::EnterState(target) => {
-                wire.extend(tms_ops(&state.path_to(*target)[skip_enter_path_bits..]));
-                skip_enter_path_bits = 0;
-                state = *target;
-            }
-            JtagOp::Exchange { data, capture } => {
-                if state != TapState::ShiftIr && state != TapState::ShiftDr {
-                    return Err(DebugProbeError::Other(format!(
-                        "Exchange in state {state:?}, but ShiftIr or ShiftDr is required"
-                    )));
-                }
-                let capture = *capture && id.should_capture();
+    walk_batch(&mut state, batch, |step| {
+        match step {
+            Step::Tms { path, .. } => wire.extend(tms_ops(path)),
+            Step::Shift {
+                data,
+                exit,
+                capture,
+            } => {
                 let bit_count = data.len();
-                let merge_exit = bit_count > 0
-                    && exchange_leaves_shift(state, ops.get(index + 1).map(|(_, op)| op));
                 let mut offset = 0;
                 while offset < bit_count {
                     let chunk = (bit_count - offset).min(32);
@@ -1190,19 +1180,15 @@ fn encode_jtag_batch(
                     wire.push(JtagWireOp::Tdi {
                         bits,
                         length,
-                        exit_tms: merge_exit && offset == bit_count,
+                        exit_tms: exit && offset == bit_count,
                         capture,
                     });
                 }
-                if merge_exit {
-                    skip_enter_path_bits = 1;
-                }
             }
-            JtagOp::ClockTck { count } => {
-                wire.extend(tms_ops(&vec![false; *count as usize]));
-            }
+            Step::Clock { count, .. } => wire.extend(tms_ops(&vec![false; count as usize])),
         }
-    }
+        Ok(())
+    })?;
 
     Ok((state, wire))
 }

@@ -5,8 +5,8 @@
 use bitvec::{field::BitField, slice::BitSlice, vec::BitVec};
 
 use crate::probe::{
-    BatchExecutionError, BitSequence, DebugProbeError, JtagBatch, JtagOp, Results, SwdBatch, SwdOp,
-    jtag::{TapState, distribute_captures, enter_tdi, exchange_leaves_shift},
+    BatchExecutionError, BitSequence, DebugProbeError, JtagBatch, Results, SwdBatch, SwdOp,
+    jtag::{Step, TapState, distribute_captures, walk_batch},
 };
 
 use super::capabilities::Pack;
@@ -174,8 +174,6 @@ impl Load {
 struct Encoder {
     wire: Wire,
     commands: Vec<Command>,
-    /// Where the batch leaves the TAP.
-    state: TapState,
     /// Whether the last pin byte had TMS low, which a byte shift needs, since it may hold
     /// TMS where it was.
     tms_low: bool,
@@ -227,62 +225,52 @@ impl Encoder {
     }
 }
 
-/// Encodes a batch that starts with the TAP in `start` and TMS low if `tms_low`.
+/// Encodes a batch that starts with the TAP in `start` and TMS low if `tms_low`, and returns
+/// where the batch leaves the TAP.
 fn encode(
     start: TapState,
     tms_low: bool,
     wire: Wire,
     batch: &JtagBatch,
-) -> Result<Encoder, DebugProbeError> {
-    let ops: Vec<_> = batch.iter().collect();
+) -> Result<(TapState, Encoder), DebugProbeError> {
     let mut encoder = Encoder {
         wire,
         commands: Vec::new(),
-        state: start,
         tms_low,
     };
-    // The first step of a path that the last exchange bit already took.
-    let mut skip = 0;
-    for (index, (id, op)) in ops.iter().enumerate() {
-        let state = encoder.state;
-        match op {
-            JtagOp::EnterState(target) => {
-                let tdi = enter_tdi(*target);
-                for &tms in &state.path_to(*target)[skip..] {
+    let mut state = start;
+    walk_batch(&mut state, batch, |step| {
+        match step {
+            Step::Tms { path, tdi } => {
+                for &tms in path {
                     encoder.cycle(Cycle { tms, tdi }, Tdo::Ignore);
                 }
-                skip = 0;
-                encoder.state = *target;
             }
-            JtagOp::Exchange { data, capture } => {
-                if !matches!(state, TapState::ShiftIr | TapState::ShiftDr) {
-                    return Err(DebugProbeError::Other(format!(
-                        "Exchange in state {state:?}, but ShiftIr or ShiftDr is required"
-                    )));
-                }
-                let leave = !data.is_empty()
-                    && exchange_leaves_shift(state, ops.get(index + 1).map(|(_, op)| op));
-                let tdo = if *capture && id.should_capture() {
-                    Tdo::Capture
-                } else {
-                    Tdo::Ignore
-                };
-                encoder.shift(data.as_bits(), tdo, leave);
-                skip = usize::from(leave);
+            Step::Shift {
+                data,
+                exit,
+                capture,
+            } => {
+                let tdo = if capture { Tdo::Capture } else { Tdo::Ignore };
+                encoder.shift(data.as_bits(), tdo, exit);
             }
             // Only bit ops can hold TMS high to stay in Test-Logic-Reset.
-            JtagOp::ClockTck { count } if state == TapState::TestLogicReset => {
-                for tms in std::iter::repeat_n(true, *count as usize) {
+            Step::Clock {
+                count,
+                state: TapState::TestLogicReset,
+            } => {
+                for tms in std::iter::repeat_n(true, count as usize) {
                     encoder.cycle(Cycle { tms, tdi: false }, Tdo::Ignore);
                 }
             }
-            JtagOp::ClockTck { count } => {
-                let idle = BitSequence::repeat(false, *count as usize);
+            Step::Clock { count, .. } => {
+                let idle = BitSequence::repeat(false, count as usize);
                 encoder.shift(idle.as_bits(), Tdo::Ignore, false);
             }
         }
-    }
-    Ok(encoder)
+        Ok(())
+    })?;
+    Ok((state, encoder))
 }
 
 /// Packs commands into rounds in order, each within the chip's buffers and ending on a
@@ -349,13 +337,13 @@ impl Ch347Device {
         let failed = |error| BatchExecutionError::new_from_debug_probe(error, Results::new());
         let pack = self.pack().map_err(failed)?;
         let wire = Wire::new(pack, self.capabilities.bytewise_jtag());
-        let encoded = encode(*tap, self.jtag_tms_low, wire, batch).map_err(failed)?;
+        let (state, encoded) = encode(*tap, self.jtag_tms_low, wire, batch).map_err(failed)?;
         let rounds = rounds(encoded.commands, wire);
         // Unknown until the last round has answered.
         self.jtag_tms_low = false;
         let captured = self.send_rounds(&rounds).map_err(failed)?;
         self.jtag_tms_low = encoded.tms_low;
-        *tap = encoded.state;
+        *tap = state;
         // Once per batch.
         if !rounds.is_empty() {
             self.led_activity(CMD_SHIFT);
@@ -399,7 +387,6 @@ impl Ch347Device {
         let mut encoder = Encoder {
             wire,
             commands: Vec::new(),
-            state: TapState::TestLogicReset,
             tms_low: self.jtag_tms_low,
         };
         for tms in levels {
@@ -459,7 +446,7 @@ mod tests {
 
     /// The code and payload length of every command, per round.
     fn sent(tms_low: bool, wire: Wire, batch: &JtagBatch) -> Vec<Vec<(u8, usize)>> {
-        let encoded = encode(TapState::RunTestIdle, tms_low, wire, batch).unwrap();
+        let (_, encoded) = encode(TapState::RunTestIdle, tms_low, wire, batch).unwrap();
         let shape = |command: &Command| (command.code(), command.payload_len());
         let shapes = |round: &Vec<Command>| round.iter().map(shape).collect();
         rounds(encoded.commands, wire).iter().map(shapes).collect()
@@ -500,6 +487,9 @@ mod tests {
             batch.enter(states[index / 6]);
             batch.enter(states[index % 6]);
         }
+        batch.enter(ShiftDr);
+        batch.exchange_no_capture(BitSequence::new());
+        batch.enter(RunTestIdle);
         for params in [one_tap_params(), three_tap_params()] {
             for len in [1, 32, 41, 64] {
                 batch.enter(ShiftIr);
@@ -512,7 +502,7 @@ mod tests {
         }
         let golden = lowering_batch(TestLogicReset, &batch);
         for bytewise in [true, false] {
-            let encoded = encode(TestLogicReset, false, wire(bytewise), &batch).unwrap();
+            let (_, encoded) = encode(TestLogicReset, false, wire(bytewise), &batch).unwrap();
             assert_eq!(decode(&encoded.commands), golden, "bytewise {bytewise}");
         }
     }

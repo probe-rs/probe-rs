@@ -7,7 +7,7 @@ use crate::probe::{
         CmsisDap,
         commands::jtag::sequence::{Sequence, SequenceRequest},
     },
-    jtag::{TapState, distribute_captures, enter_tdi, exchange_leaves_shift, tms_runs},
+    jtag::{Step, TapState, distribute_captures, tms_runs, walk_batch},
 };
 
 pub mod configure;
@@ -72,65 +72,53 @@ fn encode_jtag_batch(
     start: TapState,
     batch: &Batch<JtagOp, DebugProbeError>,
 ) -> Result<(TapState, Vec<SequenceRequest>), DebugProbeError> {
-    let ops: Vec<_> = batch.iter().collect();
     let mut state = start;
-    let mut skip_enter_path_bits = 0usize;
     let mut buffer = JtagBuffer::new(packet_size);
     let mut requests = Vec::new();
 
-    for (index, (id, op)) in ops.iter().enumerate() {
-        match op {
-            JtagOp::EnterState(target) => {
-                let target = *target;
-                let path = &state.path_to(target)[skip_enter_path_bits..];
-                skip_enter_path_bits = 0;
-                let tdi = enter_tdi(target);
-                for (tms, run_length) in tms_runs(path) {
-                    let data = BitVec::repeat(tdi, run_length);
-                    buffer.push_into(tms, &data, false, &mut requests)?;
-                }
-                state = target;
+    walk_batch(&mut state, batch, |step| match step {
+        Step::Tms { path, tdi } => {
+            for (tms, run_length) in tms_runs(path) {
+                let data = BitVec::repeat(tdi, run_length);
+                buffer.push_into(tms, &data, false, &mut requests)?;
             }
-            JtagOp::Exchange { data, capture } => {
-                if state != TapState::ShiftIr && state != TapState::ShiftDr {
-                    return Err(DebugProbeError::Other(format!(
-                        "Exchange in state {state:?}, but ShiftIr or ShiftDr is required"
-                    )));
-                }
-                let do_capture = *capture && id.should_capture();
-                let bit_count = data.len();
-                // Avoid panicking if there is no data.
-                let merge_exit = bit_count > 0
-                    && exchange_leaves_shift(state, ops.get(index + 1).map(|(_, op)| op));
-                let data_bits = if merge_exit { bit_count - 1 } else { bit_count };
-                let mut offset = 0;
-                while offset < data_bits {
-                    let chunk = (data_bits - offset).min(MAX_SEQUENCE_BITS);
-                    let mut sequence_data = BitVec::new();
-                    for bit_index in 0..chunk {
-                        sequence_data.push(data[offset + bit_index]);
-                    }
-                    buffer.push_into(false, &sequence_data, do_capture, &mut requests)?;
-                    offset += chunk;
-                }
-                if merge_exit {
-                    skip_enter_path_bits = 1;
-                    let last_tdi = data[bit_count - 1];
-                    let sequence_data = bitvec![last_tdi as usize; 1];
-                    buffer.push_into(true, &sequence_data, do_capture, &mut requests)?;
-                }
-            }
-            JtagOp::ClockTck { count } => {
-                let mut remaining = *count as usize;
-                while remaining > 0 {
-                    let chunk = remaining.min(MAX_SEQUENCE_BITS);
-                    let data = BitVec::repeat(false, chunk);
-                    buffer.push_into(false, &data, false, &mut requests)?;
-                    remaining -= chunk;
-                }
-            }
+            Ok(())
         }
-    }
+        Step::Shift {
+            data,
+            exit,
+            capture,
+        } => {
+            let bit_count = data.len();
+            let data_bits = if exit { bit_count - 1 } else { bit_count };
+            let mut offset = 0;
+            while offset < data_bits {
+                let chunk = (data_bits - offset).min(MAX_SEQUENCE_BITS);
+                let mut sequence_data = BitVec::new();
+                for bit_index in 0..chunk {
+                    sequence_data.push(data[offset + bit_index]);
+                }
+                buffer.push_into(false, &sequence_data, capture, &mut requests)?;
+                offset += chunk;
+            }
+            if exit {
+                let last_tdi = data[bit_count - 1];
+                let sequence_data = bitvec![last_tdi as usize; 1];
+                buffer.push_into(true, &sequence_data, capture, &mut requests)?;
+            }
+            Ok(())
+        }
+        Step::Clock { count, .. } => {
+            let mut remaining = count as usize;
+            while remaining > 0 {
+                let chunk = remaining.min(MAX_SEQUENCE_BITS);
+                let data = BitVec::repeat(false, chunk);
+                buffer.push_into(false, &data, false, &mut requests)?;
+                remaining -= chunk;
+            }
+            Ok(())
+        }
+    })?;
 
     requests.extend(buffer.take_request()?);
     Ok((state, requests))
@@ -443,6 +431,19 @@ mod golden_tests {
         }
         let (_, requests) = collect_cmsis_requests(1024, TapState::RunTestIdle, &batch);
         assert!(requests.len() > 1);
+        assert_eq!(
+            decode_requests(&requests),
+            lowering_batch(TapState::RunTestIdle, &batch)
+        );
+    }
+
+    #[test]
+    fn an_empty_exchange_matches_golden() {
+        let mut batch = JtagBatch::new();
+        batch.enter(TapState::ShiftDr);
+        batch.exchange_no_capture(BitSequence::new());
+        batch.enter(TapState::RunTestIdle);
+        let (_, requests) = collect_cmsis_requests(64, TapState::RunTestIdle, &batch);
         assert_eq!(
             decode_requests(&requests),
             lowering_batch(TapState::RunTestIdle, &batch)
