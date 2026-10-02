@@ -78,6 +78,14 @@ impl MCX {
     const VARIANT_N: [&str; 1] = ["MCXN"];
     const VARIANT_N0: [&str; 2] = ["MCXN947", "MCXN526"];
 
+    /// Parts whose reference manual documents the FMU at 0x4009_5000 with the Read into
+    /// MISR command, so flash can be verified by signature rather than by reading it back.
+    ///
+    /// Taken from the manual covering MCX A175, A176, A185, A186, A255, A256, A265 and
+    /// A266; confirmed against an MCXA266. Extend this only alongside the manual for the
+    /// part being added.
+    const VARIANT_FMU_MISR: [&str; 4] = ["MCXA17", "MCXA18", "MCXA25", "MCXA26"];
+
     /// How long to wait for the boot ROM to grant debug access after a successful
     /// `START_DBG_SESSION` debug mailbox command.
     const AP_ENABLE_TIMEOUT: Duration = Duration::from_millis(1000);
@@ -333,6 +341,21 @@ impl MCX {
 }
 
 impl ArmDebugSequence for MCX {
+    /// Verify flash with the FMU's MISR instead of reading the image back.
+    ///
+    /// Restricted to the parts whose reference manual places the FMU register block at
+    /// 0x4009_5000 and documents the Read into MISR command: MCX A175, A176, A185, A186,
+    /// A255, A256, A265 and A266. Launching a flash command at an address that has not been
+    /// confirmed would write to whatever else lives there, so every other MCX part keeps
+    /// reading the image back until its own manual has been checked.
+    fn flash_verify_sequence(&self) -> Option<Arc<dyn crate::flashing::FlashVerify>> {
+        if self.is_variant(Self::VARIANT_FMU_MISR) {
+            Some(Arc::new(super::mcx_verify::McxMisrVerify))
+        } else {
+            None
+        }
+    }
+
     fn debug_port_start(
         &self,
         interface: &mut dyn DapAccess,
