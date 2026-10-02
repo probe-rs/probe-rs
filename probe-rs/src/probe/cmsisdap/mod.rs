@@ -26,17 +26,14 @@ use crate::{
         JtagChainState, ProbeFactory, WireProtocol,
         cmsisdap::commands::{
             CmsisDapError, RequestError,
-            general::info::{
-                CapabilitiesCommand, PacketCountCommand, PacketSizeCommand,
-                SWOTraceBufferSizeCommand,
-            },
+            general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
         },
         swd::SwdProbe,
     },
 };
 
 use commands::{
-    CmsisDapDevice, SendError, Status,
+    CmsisDapDevice, Status,
     general::{
         connect::{ConnectRequest, ConnectResponse},
         disconnect::{DisconnectRequest, DisconnectResponse},
@@ -58,7 +55,7 @@ use commands::{
         sequence::{SequenceRequest, SequenceResponse},
     },
     swo,
-    transfer::{Ack, TransferAbortRequest, TransferRequest, configure::ConfigureRequest},
+    transfer::{Ack, TransferRequest, configure::ConfigureRequest},
 };
 use probe_rs_target::ScanChainElement;
 
@@ -136,81 +133,6 @@ const MAX_OPEN_ATTEMPTS: usize = 8;
 /// seen. Only paid on the recovery path.
 const BACKLOG_IDLE: Duration = Duration::from_millis(100);
 
-/// Rounds spent bringing replies back into step before giving up on the probe.
-const MAX_RESYNC_ROUNDS: usize = 32;
-
-/// How long to wait for a reply the probe was prompted to give up.
-const RESYNC_IDLE: Duration = Duration::from_millis(5);
-
-/// Bring requests and replies back into step.
-///
-/// A probe interrupted mid-transfer answers the next command with the previous one's reply, and
-/// goes on doing so across a close and reopen. Draining does not clear it: nothing is waiting on
-/// the endpoint, so a drain reads nothing and the next command is answered late all the same.
-/// Ordinary commands do not clear it either, however many are sent.
-///
-/// What does clear it, measured a reply at a time, is `DAP_TransferAbort`, which the probe answers
-/// with nothing at all.
-///
-/// Whether the stream is level has to be asked with two different commands. A repeated one cannot
-/// tell its own reply from the previous copy's, which is the same blindness that hides a slipped
-/// `DAP_Info`: all its sub-commands share one command ID. So level means a `DAP_HostStatus` sent
-/// after a `DAP_Info` comes back under its own ID.
-fn resynchronise(device: &mut CmsisDapDevice) {
-    for round in 0..MAX_RESYNC_ROUNDS {
-        // Unconditionally, and before asking anything: a probe that owes a reply does not give it
-        // up for a command that queues another one behind it, so the question cannot be asked
-        // until this has been done at least once.
-        let _ = commands::send_request(device, &TransferAbortRequest);
-        device.drain_idle_for(RESYNC_IDLE);
-
-        let _ = commands::send_command(device, &PacketSizeCommand {});
-        let host_status = commands::send_command(device, &HostStatusRequest::connected(false));
-        if ignore_unknown_command(host_status).is_ok() {
-            if round > 0 {
-                tracing::debug!("Probe back in step after {round} rounds");
-            }
-            return;
-        }
-    }
-
-    tracing::warn!(
-        "Probe is still answering with replies to an earlier session's commands after \
-         {MAX_RESYNC_ROUNDS} attempts to bring it back into step."
-    );
-}
-
-/// Whether an error says the probe answered with something that was not a reply to what was asked.
-///
-/// A timeout or a USB failure says the probe is gone or silent, which asking again does not fix.
-/// These say a reply arrived and made no sense as an answer to the question, which is what a
-/// backlog from an earlier session looks like.
-fn reply_is_not_ours(error: &CmsisDapError) -> bool {
-    matches!(
-        error,
-        CmsisDapError::Send {
-            source: SendError::CommandIdMismatch(..)
-                | SendError::UnexpectedAnswer
-                | SendError::NotEnoughData,
-            ..
-        }
-    )
-}
-
-/// Treats the `0xFF` reply of a probe that does not implement a command as success.
-///
-/// That reply still answers this command and not an earlier one, so the stream is in step.
-fn ignore_unknown_command<T>(result: Result<T, CmsisDapError>) -> Result<(), CmsisDapError> {
-    match result {
-        Ok(_)
-        | Err(CmsisDapError::Send {
-            source: SendError::CommandIdMismatch(0xFF, _),
-            ..
-        }) => Ok(()),
-        Err(error) => Err(error),
-    }
-}
-
 /// What `new_from_device` asks the probe about itself.
 struct ProbeInfo {
     packet_count: u8,
@@ -235,12 +157,12 @@ impl CmsisDap {
         // again for as long as the answers look like they belong to someone else.
         let mut info = Self::read_probe_info(&mut device);
         for _ in 1..MAX_OPEN_ATTEMPTS {
-            if !matches!(&info, Err(e) if reply_is_not_ours(e)) {
+            if !matches!(&info, Err(e) if commands::reply_is_not_ours(e)) {
                 break;
             }
 
             device.drain_idle_for(BACKLOG_IDLE);
-            resynchronise(&mut device);
+            device.resynchronise();
             info = Self::read_probe_info(&mut device);
         }
 
@@ -270,15 +192,16 @@ impl CmsisDap {
 
     fn read_probe_info(device: &mut CmsisDapDevice) -> Result<ProbeInfo, CmsisDapError> {
         // Read remaining probe information.
-        let packet_count = commands::send_command(device, &PacketCountCommand {})?;
+        let packet_count = commands::send_command_once(device, &PacketCountCommand {})?;
         tracing::debug!("Probe buffers {} packets", packet_count);
 
-        let capabilities: Capabilities = commands::send_command(device, &CapabilitiesCommand {})?;
+        let capabilities: Capabilities =
+            commands::send_command_once(device, &CapabilitiesCommand {})?;
         tracing::debug!("Detected probe capabilities: {:?}", capabilities);
 
         let mut swo_buffer_size = None;
         if capabilities.swo_uart_implemented || capabilities.swo_manchester_implemented {
-            let swo_size = commands::send_command(device, &SWOTraceBufferSizeCommand {})?;
+            let swo_size = commands::send_command_once(device, &SWOTraceBufferSizeCommand {})?;
             swo_buffer_size = Some(swo_size as usize);
             tracing::debug!("Probe SWO buffer size: {}", swo_size);
         }
@@ -288,7 +211,7 @@ impl CmsisDap {
         // a stale packet count reads as a capability mask and the probe comes out not supporting
         // SWD. A command with a different ID does say: if anything was queued ahead of it, its
         // reply arrives under the wrong ID, and everything read above came from the backlog.
-        ignore_unknown_command(commands::send_command(
+        commands::ignore_unknown_command(commands::send_command_once(
             device,
             &HostStatusRequest::connected(false),
         ))?;
@@ -866,6 +789,9 @@ impl DebugProbe for CmsisDap {
             )
             .leak(),
 
+            #[cfg(test)]
+            CmsisDapDevice::Fake(_) => "CMSIS-DAP fake",
+
             #[cfg(feature = "cmsisdap_v1")]
             _ => "CMSIS-DAP V1",
         }
@@ -1197,8 +1123,18 @@ impl From<ScanChainError> for CmsisDapError {
 
 #[cfg(test)]
 mod tests {
-    use super::commands::{CmsisDapError, CommandId, SendError};
-    use super::{HostStatusResponse, ignore_unknown_command};
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    };
+
+    use super::commands::{
+        self, CmsisDapDevice, CmsisDapError, CommandId, DEFAULT_USB_TIMEOUT, SendError,
+        fake::{FakeProbe, Reply, standard_reply},
+        ignore_unknown_command,
+    };
+    use super::commands::{Request, general::info::PacketSizeCommand};
+    use super::{CapabilitiesCommand, CmsisDap, HostStatusResponse, PacketCountCommand};
 
     fn failed(source: SendError) -> Result<HostStatusResponse, CmsisDapError> {
         Err(CmsisDapError::Send {
@@ -1229,5 +1165,93 @@ mod tests {
             .is_err()
         );
         assert!(ignore_unknown_command(failed(SendError::Timeout)).is_err());
+    }
+
+    #[test]
+    fn a_late_reply_does_not_answer_the_next_command() {
+        late_reply_does_not_answer_the_next_command(true, PacketCountCommand {}, 1);
+    }
+
+    #[test]
+    fn a_late_reply_does_not_answer_the_next_command_when_the_abort_waits() {
+        // A late packet size next to the abort's `0xFF` would pass a check that accepts `0xFF`.
+        late_reply_does_not_answer_the_next_command(false, PacketSizeCommand {}, 2);
+    }
+
+    fn late_reply_does_not_answer_the_next_command(
+        abort_interrupts: bool,
+        late: impl Request,
+        rounds: usize,
+    ) {
+        let hold = Arc::new(AtomicBool::new(false));
+        let probe = FakeProbe::shared(64, {
+            let hold = hold.clone();
+            move |command| match command {
+                // A probe without `DAP_HostStatus` is in step all the same.
+                [0x01, ..] => Reply::Now(vec![0xFF]),
+                [0x07, ..] if !abort_interrupts => Reply::Now(vec![0xFF]),
+                _ => match standard_reply(command, 64, 4) {
+                    Reply::Now(reply) if hold.swap(false, Ordering::Relaxed) => Reply::Held(reply),
+                    reply => reply,
+                },
+            }
+        });
+        probe.lock().unwrap().abort_interrupts = abort_interrupts;
+        let mut dap = CmsisDap::new_from_device(CmsisDapDevice::Fake(probe.clone())).unwrap();
+
+        hold.store(true, Ordering::Relaxed);
+        assert!(matches!(
+            commands::send_command(&mut dap.device, &late),
+            Err(CmsisDapError::Send {
+                source: SendError::Timeout,
+                ..
+            })
+        ));
+
+        // A late `DAP_Info` reply would read as a capability mask without SWD.
+        let capabilities = commands::send_command(&mut dap.device, &CapabilitiesCommand {});
+        assert!(capabilities.unwrap().swd_implemented);
+        assert!(probe.lock().unwrap().owes_nothing());
+
+        let aborts = probe.lock().unwrap().aborts();
+        assert_eq!(aborts, rounds);
+        let usb_timeout = probe.lock().unwrap().usb_timeout;
+        assert_eq!(usb_timeout, DEFAULT_USB_TIMEOUT);
+    }
+
+    #[test]
+    fn a_silent_probe_is_given_up_after_one_round() {
+        let silent = Arc::new(AtomicBool::new(false));
+        let probe = FakeProbe::shared(64, {
+            let silent = silent.clone();
+            move |command| {
+                if silent.load(Ordering::Relaxed) {
+                    Reply::None
+                } else {
+                    standard_reply(command, 64, 4)
+                }
+            }
+        });
+        let mut dap = CmsisDap::new_from_device(CmsisDapDevice::Fake(probe.clone())).unwrap();
+
+        silent.store(true, Ordering::Relaxed);
+        assert!(commands::send_command(&mut dap.device, &PacketCountCommand {}).is_err());
+
+        let aborts = probe.lock().unwrap().aborts();
+        assert_eq!(aborts, 1);
+        let usb_timeout = probe.lock().unwrap().usb_timeout;
+        assert_eq!(usb_timeout, DEFAULT_USB_TIMEOUT);
+    }
+
+    #[test]
+    fn a_retried_packet_size_keeps_the_usb_timeout() {
+        let mut answered = false;
+        let probe = FakeProbe::shared(64, move |command| match command {
+            [0x00, 0xFF, ..] if !std::mem::replace(&mut answered, true) => Reply::None,
+            _ => standard_reply(command, 64, 4),
+        });
+        let _dap = CmsisDap::new_from_device(CmsisDapDevice::Fake(probe.clone())).unwrap();
+        let usb_timeout = probe.lock().unwrap().usb_timeout;
+        assert_eq!(usb_timeout, DEFAULT_USB_TIMEOUT);
     }
 }
