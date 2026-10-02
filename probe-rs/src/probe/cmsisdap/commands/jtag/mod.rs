@@ -15,6 +15,8 @@ pub mod idcode;
 pub mod sequence;
 
 const MAX_SEQUENCE_BITS: usize = 64;
+/// The sequence count of a `DAP_JTAG_Sequence` request is one byte.
+const MAX_SEQUENCES: usize = u8::MAX as usize;
 
 impl JtagChainAccess for CmsisDap {
     fn chain_state(&mut self) -> &mut JtagChainState {
@@ -250,7 +252,10 @@ impl JtagBuffer {
 
     fn should_flush(&self) -> bool {
         // Checked after each push, so leave room for one more full sequence.
+        let sequences =
+            self.complete_sequences.len() + usize::from(self.current_sequence.is_some());
         self.total_buffer_bytes() + MAX_SEQUENCE_BITS.div_ceil(8) > self.packet_size
+            || sequences >= MAX_SEQUENCES
     }
 }
 
@@ -295,15 +300,17 @@ mod tests {
     use bitvec::vec::BitVec;
 
     /// Takes the buffered request, serializes it into `packet_size` bytes, and returns the
-    /// number of bytes written.
+    /// number of bytes written. Building the request checks the sequence count.
     fn flush(buffer: &mut JtagBuffer, packet_size: usize) -> usize {
-        let request = buffer.take_request().unwrap().unwrap();
-        request.to_bytes(&mut vec![0u8; packet_size]).unwrap()
+        buffer.take_request().unwrap().map_or(0, |request| {
+            request.to_bytes(&mut vec![0u8; packet_size]).unwrap()
+        })
     }
 
     /// `should_flush` is checked after each push, so it must trigger while one
-    /// more full sequence still fits. Mixed widths matter: uniform widths pass
-    /// at some packet sizes by luck.
+    /// more full sequence still fits, and before the request holds more
+    /// sequences than its count byte can describe. Mixed widths matter: uniform
+    /// widths pass at some packet sizes by luck.
     #[test]
     fn flushed_buffer_fits_packet() {
         for packet_size in [64u16, 128, 256, 512, 1024] {
@@ -327,6 +334,11 @@ mod tests {
                         );
                     }
                 }
+                let written = flush(&mut buffer, packet_size as usize);
+                assert!(
+                    written <= packet_size as usize,
+                    "{packet_size}-byte packet, widths {widths:?}: wrote {written} at the end"
+                );
             }
         }
     }
@@ -339,8 +351,8 @@ mod golden_tests {
     use crate::probe::BitSequence;
     use crate::probe::cmsisdap::commands::Request;
     use crate::probe::jtag::golden::{
-        SHIFT_IR_ONE_TAP, SHIFT_IR_THREE_TAP, assert_triples_eq, build_ir_exchange, move_literal,
-        one_tap_params, three_tap_params,
+        SHIFT_IR_ONE_TAP, SHIFT_IR_THREE_TAP, assert_triples_eq, build_ir_exchange, lowering_batch,
+        move_literal, one_tap_params, three_tap_params,
     };
     use crate::probe::jtag::{JtagBatch, TapState};
 
@@ -417,6 +429,24 @@ mod golden_tests {
         expected.extend([true; 41]);
         expected.extend([false; 2]);
         assert_eq!(captured, expected);
+    }
+
+    #[test]
+    fn many_short_scans_split_at_the_sequence_limit() {
+        // Each scan alternates TMS a few times, so the sequences are short and a 1024-byte
+        // packet would hold more of them than a request can count.
+        let mut batch = JtagBatch::new();
+        for _ in 0..300 {
+            batch.enter(TapState::ShiftDr);
+            batch.exchange_no_capture(BitSequence::from_u64(2, 0b01));
+            batch.enter(TapState::RunTestIdle);
+        }
+        let (_, requests) = collect_cmsis_requests(1024, TapState::RunTestIdle, &batch);
+        assert!(requests.len() > 1);
+        assert_eq!(
+            decode_requests(&requests),
+            lowering_batch(TapState::RunTestIdle, &batch)
+        );
     }
 
     #[test]
