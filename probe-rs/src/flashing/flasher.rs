@@ -1371,6 +1371,11 @@ impl ActiveFlasher<'_, '_, Erase> {
             return Err(FlashError::ChipEraseNotSupported);
         };
 
+        let props = &algo.flash_properties;
+        let sector_count = algo.iter_sectors().count() as u64;
+        let timeout = Duration::from_millis(props.erase_sector_timeout as u64 * sector_count)
+            .max(Duration::from_secs(300));
+
         let result = self
             .call_function_and_wait(
                 &Registers {
@@ -1381,7 +1386,7 @@ impl ActiveFlasher<'_, '_, Erase> {
                     r3: None,
                 },
                 false,
-                Duration::from_secs(40),
+                timeout,
             )
             .map_err(|error| FlashError::ChipEraseFailed {
                 source: Box::new(error),
