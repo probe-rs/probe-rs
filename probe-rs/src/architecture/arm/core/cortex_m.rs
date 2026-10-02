@@ -178,11 +178,8 @@ pub(crate) fn write_core_reg(
     dcrsr_val.set_regwnr(true); // Perform a write.
     dcrsr_val.set_regsel(addr.into()); // The address of the register to write.
 
-    // Stage the value, select the register, then read the ready flag, in one batch. The flag is
-    // read after the DCRSR write, so a flag that comes back set is evidence the transfer had
-    // already completed - which is what the architecture requires before the next write to
-    // DCRDR or DCRSR, since doing that while S_REGRDY is still 0 is UNPREDICTABLE
-    // (DDI0553B.y D1.2.39, and the DCRSR rules in C1.4).
+    // The DCRSR write clears the ready flag, so a flag that comes back set
+    // means the transfer is done.
     let mut ready = 0u32;
     memory.execute_operations(&mut [
         Operation::new(Dcrdr::get_mmio_address(), OperationKind::WriteWord32(value)),
@@ -200,8 +197,6 @@ pub(crate) fn write_core_reg(
         return Ok(());
     }
 
-    // Asked too early, which the flag is there to catch. Wait for the transfer to land before
-    // the caller is allowed to touch DCRDR or DCRSR again.
     wait_for_core_register_transfer(memory, Duration::from_millis(100))
 }
 
