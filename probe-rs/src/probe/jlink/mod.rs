@@ -617,6 +617,31 @@ impl JLink {
         self.read_u32().map(HardwareVersion::from_u32)
     }
 
+    /// Maps the currently selected [`WireProtocol`] to the corresponding J-Link
+    /// [`Interface`] — the interface that `select_interface` will (eventually) switch
+    /// the hardware to for this session.
+    fn expected_interface(&self) -> Interface {
+        match self.protocol {
+            WireProtocol::Swd => Interface::Swd,
+            WireProtocol::Jtag => Interface::Jtag,
+        }
+    }
+
+    /// Ensures the hardware is switched to [`Self::expected_interface`], if the probe
+    /// supports switching interfaces at all.
+    ///
+    /// Called from both `set_speed()` and `attach()`: `set_speed()` isn't always called
+    /// (only when a speed was explicitly requested), while `attach()` always runs, so
+    /// each needs its own independent guarantee that the interface is correct.
+    /// `select_interface()` is idempotent, so calling this twice in the same session is
+    /// a cheap no-op the second time.
+    fn ensure_expected_interface_selected(&mut self) -> Result<(), DebugProbeError> {
+        if self.caps.contains(Capability::SelectIf) {
+            self.select_interface(self.expected_interface())?;
+        }
+        Ok(())
+    }
+
     /// Selects the interface to use for talking to the target MCU.
     ///
     /// Switching interfaces will reset the configured transfer speed, so [`JLink::set_speed`]
@@ -642,8 +667,27 @@ impl JLink {
         self.interface = intf;
 
         if self.speed_khz != 0 {
-            // SelectIf resets the configured speed. Let's restore it.
-            self.set_interface_clock_speed(SpeedConfig::khz(self.speed_khz as u16).unwrap())?;
+            // SelectIf resets the configured speed. This is also the first point where
+            // `self.interface` truly matches the interface we're about to use, so this is
+            // the authoritative place to validate/clamp the requested speed against its
+            // real capability — `set_speed()` may have skipped that check (or checked a
+            // stale, previously-active interface) since the switch hadn't happened yet.
+            let mut speed_khz = self.speed_khz;
+
+            if let Ok(speeds) = self.read_interface_speeds() {
+                let max_speed_khz = speeds.max_speed_hz() / 1000;
+                if max_speed_khz < speed_khz {
+                    tracing::debug!(
+                        "Requested speed {speed_khz} kHz exceeds interface {:?}'s reported \
+                         maximum of {max_speed_khz} kHz; clamping",
+                        intf
+                    );
+                    speed_khz = max_speed_khz.max(1);
+                }
+            }
+
+            self.set_interface_clock_speed(SpeedConfig::khz(speed_khz as u16).unwrap())?;
+            self.speed_khz = speed_khz;
         }
 
         Ok(())
@@ -1013,6 +1057,19 @@ impl DebugProbe for JLink {
             return Err(DebugProbeError::UnsupportedSpeed(speed_khz));
         }
 
+        // `GetSpeeds` reports capabilities for whichever interface is *currently active
+        // on the probe hardware*, which is tracked separately from `self.protocol` (set
+        // by `select_protocol`) and can be stale: it reflects whatever a previous
+        // probe-rs session last selected (this persists on the probe's own hardware
+        // across separate invocations), or the firmware's cold-boot default after a
+        // power cycle. `set_speed` used to be called (via `attach_probe`) before the
+        // hardware interface switch that only happened later in `attach()`, so this
+        // capability query could silently validate against the wrong interface (e.g.
+        // JTAG's speed table when we're about to use SWD). Explicitly select the
+        // interface we're actually going to use first — `select_interface` is a no-op
+        // if the hardware is already on it — so the query below is accurate.
+        self.ensure_expected_interface_selected()?;
+
         if let Ok(speeds) = self.read_interface_speeds() {
             tracing::debug!("Supported speeds: {:?}", speeds);
 
@@ -1038,14 +1095,7 @@ impl DebugProbe for JLink {
 
         tracing::debug!("Attaching with protocol '{}'", self.protocol);
 
-        if self.caps.contains(Capability::SelectIf) {
-            let jlink_interface = match self.protocol {
-                WireProtocol::Swd => Interface::Swd,
-                WireProtocol::Jtag => Interface::Jtag,
-            };
-
-            self.select_interface(jlink_interface)?;
-        }
+        self.ensure_expected_interface_selected()?;
 
         // Log some information about the probe
         tracing::debug!("J-Link: Capabilities: {:?}", self.caps);

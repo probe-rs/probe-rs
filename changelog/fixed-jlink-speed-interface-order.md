@@ -1,0 +1,1 @@
+Fixed J-Link probes potentially validating and configuring the requested SWD/JTAG speed against the wrong interface's capabilities, since the interface switch was deferred until after the speed was already queried and set; this could cause a valid speed to be rejected (or silently clamped to the wrong interface's maximum) right after a probe power-cycle.
