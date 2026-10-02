@@ -18,14 +18,16 @@ use crate::{
 // Constant to be written to ABORT
 const JTAG_ABORT_VALUE: u64 = 0x8;
 
-// IR values for JTAG registers
-const JTAG_ABORT_IR_VALUE: u32 = 0x8; // A DAP abort, compatible with DPv0
-const JTAG_DEBUG_PORT_IR_VALUE: u32 = 0xA;
-const JTAG_ACCESS_PORT_IR_VALUE: u32 = 0xB;
+// IR values for JTAG registers: 8-bit SoC-600 opcodes, masked to 0x8/0xA/0xB on a 4-bit IR.
+const JTAG_ABORT_IR_VALUE: u32 = 0xF8; // A DAP abort, compatible with DPv0
+const JTAG_DEBUG_PORT_IR_VALUE: u32 = 0xFA;
+const JTAG_ACCESS_PORT_IR_VALUE: u32 = 0xFB;
 
 const JTAG_STATUS_WAIT: u32 = 0x1;
-/// OK/FAULT response
+/// OK/FAULT response (ADIv5). On ADIv6 this same value (0x2) means FAULT.
 const JTAG_STATUS_OK: u32 = 0x2;
+/// OK response on ADIv6; faults are caught by the CTRL/STAT sticky-error check.
+const JTAG_STATUS_OK_ADIV6: u32 = 0x4;
 
 // ARM DR accesses are always 35 bits wide
 const JTAG_DR_BIT_LENGTH: u32 = 35;
@@ -96,7 +98,7 @@ fn perform_jtag_transfer(
 
     let transfer_status = match status {
         s if s == JTAG_STATUS_WAIT => TransferStatus::Failed(DapError::WaitResponse),
-        s if s == JTAG_STATUS_OK => TransferStatus::Ok,
+        s if s == JTAG_STATUS_OK || s == JTAG_STATUS_OK_ADIV6 => TransferStatus::Ok,
         _ => {
             tracing::debug!("Unexpected DAP response: {}", status);
 
@@ -294,7 +296,9 @@ impl DapTransfer {
                 let status = (received & 0b111) as u32;
 
                 let error = match status {
-                    s if s == JTAG_STATUS_OK => return Ok(CommandResult::U32(received_value)),
+                    s if s == JTAG_STATUS_OK || s == JTAG_STATUS_OK_ADIV6 => {
+                        return Ok(CommandResult::U32(received_value));
+                    }
                     s if s == JTAG_STATUS_WAIT => DapError::WaitResponse,
                     _ => {
                         tracing::debug!("Unexpected DAP response: {}", status);
@@ -673,9 +677,10 @@ mod tests {
                     }
 
                     let jtag_transaction = self.jtag_transactions.remove(0);
+                    let ir_mask = self.jtag_state.chain_params.max_ir_address();
                     assert_eq!(
-                        jtag_transaction.ir_address,
-                        pending_ir.unwrap_or(jtag_transaction.ir_address),
+                        jtag_transaction.ir_address & ir_mask,
+                        pending_ir.unwrap_or(jtag_transaction.ir_address) & ir_mask,
                         "Address mismatch with {} remaining transactions",
                         self.jtag_transactions.len()
                     );
