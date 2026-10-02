@@ -165,7 +165,8 @@ fn resynchronise(device: &mut CmsisDapDevice) {
         device.drain_idle_for(RESYNC_IDLE);
 
         let _ = commands::send_command(device, &PacketSizeCommand {});
-        if commands::send_command(device, &HostStatusRequest::connected(false)).is_ok() {
+        let host_status = commands::send_command(device, &HostStatusRequest::connected(false));
+        if ignore_unknown_command(host_status).is_ok() {
             if round > 0 {
                 tracing::debug!("Probe back in step after {round} rounds");
             }
@@ -194,6 +195,20 @@ fn reply_is_not_ours(error: &CmsisDapError) -> bool {
             ..
         }
     )
+}
+
+/// Treats the `0xFF` reply of a probe that does not implement a command as success.
+///
+/// That reply still answers this command and not an earlier one, so the stream is in step.
+fn ignore_unknown_command<T>(result: Result<T, CmsisDapError>) -> Result<(), CmsisDapError> {
+    match result {
+        Ok(_)
+        | Err(CmsisDapError::Send {
+            source: SendError::CommandIdMismatch(0xFF, _),
+            ..
+        }) => Ok(()),
+        Err(error) => Err(error),
+    }
 }
 
 /// What `new_from_device` asks the probe about itself.
@@ -273,7 +288,10 @@ impl CmsisDap {
         // a stale packet count reads as a capability mask and the probe comes out not supporting
         // SWD. A command with a different ID does say: if anything was queued ahead of it, its
         // reply arrives under the wrong ID, and everything read above came from the backlog.
-        commands::send_command(device, &HostStatusRequest::connected(false))?;
+        ignore_unknown_command(commands::send_command(
+            device,
+            &HostStatusRequest::connected(false),
+        ))?;
 
         Ok(ProbeInfo {
             packet_count,
@@ -1174,5 +1192,42 @@ impl From<ScanChainError> for CmsisDapError {
             ScanChainError::InvalidIdCode => CmsisDapError::InvalidIdCode,
             ScanChainError::InvalidIR => CmsisDapError::InvalidIR,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::commands::{CmsisDapError, CommandId, SendError};
+    use super::{HostStatusResponse, ignore_unknown_command};
+
+    fn failed(source: SendError) -> Result<HostStatusResponse, CmsisDapError> {
+        Err(CmsisDapError::Send {
+            command_id: CommandId::HostStatus,
+            source,
+        })
+    }
+
+    #[test]
+    fn only_an_unknown_command_reply_is_ignored() {
+        assert!(ignore_unknown_command(Ok(HostStatusResponse)).is_ok());
+        assert!(
+            ignore_unknown_command(failed(SendError::CommandIdMismatch(
+                0xFF,
+                CommandId::HostStatus
+            )))
+            .is_ok()
+        );
+        assert!(
+            ignore_unknown_command(failed(SendError::CommandIdMismatch(0xFF, CommandId::Info)))
+                .is_ok()
+        );
+        assert!(
+            ignore_unknown_command(failed(SendError::CommandIdMismatch(
+                0x00,
+                CommandId::HostStatus
+            )))
+            .is_err()
+        );
+        assert!(ignore_unknown_command(failed(SendError::Timeout)).is_err());
     }
 }
