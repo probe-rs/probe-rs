@@ -45,7 +45,6 @@ use commands::{
         reset::{ResetRequest, ResetResponse},
     },
     jtag::{
-        JtagBuffer,
         configure::ConfigureRequest as JtagConfigureRequest,
         sequence::{
             Sequence as JtagSequence, SequenceRequest as JtagSequenceRequest,
@@ -112,7 +111,6 @@ pub struct CmsisDap {
     transfer_wait_retry: u16,
 
     jtag_state: JtagChainState,
-    jtag_buffer: JtagBuffer,
 }
 
 impl std::fmt::Debug for CmsisDap {
@@ -252,7 +250,6 @@ impl CmsisDap {
             speed_khz: 1_000,
             transfer_wait_retry: 0,
             jtag_state: JtagChainState::default(),
-            jtag_buffer: JtagBuffer::new(packet_size - 1),
         })
     }
 
