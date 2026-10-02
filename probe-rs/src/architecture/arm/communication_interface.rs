@@ -4,8 +4,8 @@ use crate::{
         ApAddress, ArmError, DapAccess, FullyQualifiedApAddress, RegisterAddress, SwoAccess,
         SwoConfig, ap,
         dp::{
-            Ctrl, DPIDR, DebugPortId, DebugPortVersion, DpAccess, DpAddress, DpRegisterAddress,
-            Select1, SelectV1, SelectV3,
+            Ctrl, DPIDR, DebugPortId, DebugPortVersion, DpAccess, DpAddress, DpRegister,
+            DpRegisterAddress, Select1, SelectV1, SelectV3,
         },
         memory::{ADIMemoryInterface, ArmMemoryInterface, Component},
         sequences::ArmDebugSequence,
@@ -934,6 +934,11 @@ impl ArmCommunicationInterface {
             }
         }
 
+        // Leave DP_BANK_SEL at 0 so DP address 0x4 is CTRL/STAT. The JTAG transfer path
+        // reads it after every batch to detect FAULT responses; with another bank selected
+        // (e.g. bank 5 after writing SELECT1) that check reads the wrong register.
+        dp_state.current_select.set_dp_bank_sel(0);
+
         if previous_select != dp_state.current_select {
             tracing::debug!("Changing SELECT to {:x?}", dp_state.current_select);
 
@@ -942,8 +947,11 @@ impl ArmCommunicationInterface {
                     self.write_dp_register(ap.dp(), select)?;
                 }
                 SelectCache::DPv3(select, select1) => {
-                    self.write_dp_register(ap.dp(), select)?;
+                    // SELECT1 is banked, so writing it switches DP_BANK_SEL; write SELECT
+                    // last to restore bank 0.
                     self.write_dp_register(ap.dp(), select1)?;
+                    self.select_dp(ap.dp())?.current_select.set_dp_bank_sel(0);
+                    self.write_dp_register(ap.dp(), select)?;
                 }
             }
         }
@@ -1031,12 +1039,25 @@ impl DapAccess for ArmCommunicationInterface {
                 batch.write(Port::Dp, addr, value);
                 port.run(batch)?;
                 Ok(())
-            })
+            })?;
         } else {
             self.with_jtag_chain(|chain, settings| {
                 jtag_write_register(chain, register, value, settings)
-            })
+            })?;
         }
+
+        // Keep the SELECT cache in sync with direct SELECT/SELECT1 writes (e.g. from
+        // `debug_port_start` re-run mid-session), otherwise the next AP access skips the
+        // SELECT update and targets whatever AP the raw write left selected.
+        if let Some(state) = self.dps.get_mut(&dp) {
+            match (&mut state.current_select, address) {
+                (SelectCache::DPv1(s), a) if a == SelectV1::ADDRESS => *s = SelectV1(value),
+                (SelectCache::DPv3(s, _), a) if a == SelectV3::ADDRESS => *s = SelectV3(value),
+                (SelectCache::DPv3(_, s1), a) if a == Select1::ADDRESS => *s1 = Select1(value),
+                _ => {}
+            }
+        }
+        Ok(())
     }
 
     fn read_raw_ap_register(
