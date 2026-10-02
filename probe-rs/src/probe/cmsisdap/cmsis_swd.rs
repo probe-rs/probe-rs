@@ -14,7 +14,10 @@ use crate::{
             commands::{
                 self,
                 swj::sequence::SequenceRequest,
-                transfer::{Ack, RW, TransferBlockRequest, TransferBlockResponse, TransferRequest},
+                transfer::{
+                    Ack, RW, TransferBlockRequest, TransferBlockResponse, TransferRequest,
+                    TransferResponse,
+                },
             },
         },
         swd::{Direction, Pins as SwdPins, Port, SwdBatch, SwdOp, SwdProbe, SwdTransferError},
@@ -225,6 +228,57 @@ impl CmsisDap {
         }
     }
 
+    /// Classify one `DAP_Transfer` reply.
+    ///
+    /// Pure, like [`Self::classify_block_response`], so recovery can wait until the reply has
+    /// been taken. Returns the batch index of the transfer the reply blames.
+    ///
+    /// The acknowledgement is classified before the transfer count. A FAULT or WAIT stops the
+    /// probe early, so a short count is the *consequence* of that error, not evidence that the
+    /// probe failed to report one. Checking the count first hides the acknowledgement and skips
+    /// recovery, leaving CTRL/STAT.STICKYERR set - after which the DP faults every subsequent
+    /// AP access (IHI0031G B4.2.4) and the session cannot recover on its own.
+    fn classify_transfer_response(
+        response: &TransferResponse,
+        transfers: &[PendingTransfer],
+    ) -> Result<(), (BatchError<DebugProbeError>, usize)> {
+        let count = response.transfers.len();
+        let fault_operation = transfers[count.min(transfers.len()).saturating_sub(1)].batch_index;
+
+        if response.last_transfer_response.protocol_error {
+            return Err((
+                BatchError::Specific(DebugProbeError::SwdTransfer(SwdTransferError::Protocol)),
+                fault_operation,
+            ));
+        }
+
+        match response.last_transfer_response.ack {
+            Ack::Ok => {}
+            ack => {
+                return Err((
+                    BatchError::Specific(DebugProbeError::SwdTransfer(
+                        Self::ack_to_transfer_error(ack),
+                    )),
+                    fault_operation,
+                ));
+            }
+        }
+
+        // An OK acknowledgement with a short count really is the probe not saying why.
+        if count < transfers.len() {
+            return Err((
+                BatchError::Probe(DebugProbeError::Other(format!(
+                    "Possible error in CMSIS-DAP probe: Only {}/{} transfers were executed, but no error was reported.",
+                    count,
+                    transfers.len()
+                ))),
+                fault_operation,
+            ));
+        }
+
+        Ok(())
+    }
+
     fn flush_pending_transfers(
         &mut self,
         pending: &PendingBatch,
@@ -247,93 +301,31 @@ impl CmsisDap {
             }
         };
 
-        let count = response.transfers.len();
-        if response.last_transfer_response.protocol_error {
-            let fault_operation = transfers[count.saturating_sub(1)].batch_index;
+        if let Err((error, fault_operation)) =
+            Self::classify_transfer_response(&response, transfers)
+        {
+            self.recover_from_block_error(&error);
             return Err(BatchExecutionError {
-                error: BatchError::Specific(DebugProbeError::SwdTransfer(
-                    SwdTransferError::Protocol,
-                )),
+                error,
                 results,
                 fault_operation,
             });
         }
 
-        if count < transfers.len() {
-            let fault_operation = transfers[count.saturating_sub(1)].batch_index;
-            return Err(BatchExecutionError::new_from_debug_probe_at(
-                DebugProbeError::Other(format!(
-                    "Possible error in CMSIS-DAP probe: Only {}/{} transfers were executed, but no error was reported.",
-                    count,
-                    transfers.len()
-                )),
-                results,
-                fault_operation,
-            ));
+        for (transfer, response_transfer) in transfers.iter().zip(response.transfers.iter()) {
+            if transfer.direction != Direction::Read || !transfer.id.should_capture() {
+                continue;
+            }
+            let Some(data) = response_transfer.data else {
+                return Err(BatchExecutionError::new_from_debug_probe_at(
+                    DebugProbeError::Other("CMSIS-DAP read did not return any data".to_string()),
+                    results,
+                    transfer.batch_index,
+                ));
+            };
+            results.push(&transfer.id, CommandResult::U32(data));
         }
-
-        match response.last_transfer_response.ack {
-            Ack::Ok => {
-                for (transfer, response_transfer) in transfers.iter().zip(response.transfers.iter())
-                {
-                    if transfer.direction != Direction::Read || !transfer.id.should_capture() {
-                        continue;
-                    }
-                    let Some(data) = response_transfer.data else {
-                        return Err(BatchExecutionError::new_from_debug_probe_at(
-                            DebugProbeError::Other(
-                                "CMSIS-DAP read did not return any data".to_string(),
-                            ),
-                            results,
-                            transfer.batch_index,
-                        ));
-                    };
-                    results.push(&transfer.id, CommandResult::U32(data));
-                }
-                Ok(results)
-            }
-            Ack::Fault => {
-                let fault_operation = transfers[count.saturating_sub(1)].batch_index;
-                if let Err(error) = self.handle_sticky_err() {
-                    tracing::warn!("Failed to clear the sticky error: {error}");
-                }
-                Err(BatchExecutionError {
-                    error: BatchError::Specific(DebugProbeError::SwdTransfer(
-                        SwdTransferError::FaultResponse,
-                    )),
-                    results,
-                    fault_operation,
-                })
-            }
-            Ack::Wait => {
-                let fault_operation = transfers[count.saturating_sub(1)].batch_index;
-                let abort = {
-                    let mut abort = Abort(0);
-                    abort.set_dapabort(true);
-                    abort
-                };
-                if let Err(error) = self.write_abort(abort) {
-                    tracing::warn!("Failed to abort the transfer: {error}");
-                }
-                Err(BatchExecutionError {
-                    error: BatchError::Specific(DebugProbeError::SwdTransfer(
-                        SwdTransferError::WaitResponse,
-                    )),
-                    results,
-                    fault_operation,
-                })
-            }
-            ack => {
-                let fault_operation = transfers[count.saturating_sub(1)].batch_index;
-                Err(BatchExecutionError {
-                    error: BatchError::Specific(DebugProbeError::SwdTransfer(
-                        Self::ack_to_transfer_error(ack),
-                    )),
-                    results,
-                    fault_operation,
-                })
-            }
-        }
+        Ok(results)
     }
 
     fn max_words_per_block_packet(&self) -> usize {
@@ -1036,5 +1028,95 @@ mod tests {
             u32::from_le_bytes(buffer[8..12].try_into().unwrap()),
             0x3333_4444
         );
+    }
+
+    fn pending_transfers(n: usize) -> Vec<PendingTransfer> {
+        (0..n)
+            .map(|i| PendingTransfer {
+                id: HandleId::new(),
+                direction: Direction::Read,
+                batch_index: 100 + i,
+            })
+            .collect()
+    }
+
+    fn transfer_response(count: usize, ack: Ack) -> TransferResponse {
+        TransferResponse {
+            last_transfer_response: LastTransferResponse {
+                ack,
+                protocol_error: false,
+                _value_mismatch: false,
+            },
+            transfers: (0..count)
+                .map(
+                    |_| crate::probe::cmsisdap::commands::transfer::InnerTransferResponse {
+                        td_timestamp: None,
+                        data: Some(0),
+                    },
+                )
+                .collect(),
+        }
+    }
+
+    #[test]
+    fn a_faulting_transfer_is_reported_as_a_fault_not_as_a_short_count() {
+        // The probe stops early *because* of the FAULT, so the short count must not mask it.
+        // Reporting a bare probe error here skips sticky-error recovery and leaves
+        // CTRL/STAT.STICKYERR set, after which every later AP access faults (IHI0031G B4.2.4).
+        let transfers = pending_transfers(4);
+        let response = transfer_response(2, Ack::Fault);
+
+        let (error, fault_operation) =
+            CmsisDap::classify_transfer_response(&response, &transfers).unwrap_err();
+
+        assert!(
+            matches!(
+                error,
+                BatchError::Specific(DebugProbeError::SwdTransfer(
+                    SwdTransferError::FaultResponse
+                ))
+            ),
+            "got {error:?}"
+        );
+        assert_eq!(fault_operation, 101);
+    }
+
+    #[test]
+    fn a_waiting_transfer_is_reported_as_a_wait_not_as_a_short_count() {
+        let transfers = pending_transfers(4);
+        let response = transfer_response(1, Ack::Wait);
+
+        let (error, _) = CmsisDap::classify_transfer_response(&response, &transfers).unwrap_err();
+
+        assert!(
+            matches!(
+                error,
+                BatchError::Specific(DebugProbeError::SwdTransfer(SwdTransferError::WaitResponse))
+            ),
+            "got {error:?}"
+        );
+    }
+
+    #[test]
+    fn a_short_transfer_count_with_an_ok_ack_is_reported_against_the_probe() {
+        let transfers = pending_transfers(4);
+        let response = transfer_response(3, Ack::Ok);
+
+        let (error, fault_operation) =
+            CmsisDap::classify_transfer_response(&response, &transfers).unwrap_err();
+
+        assert!(matches!(
+            error,
+            BatchError::Probe(DebugProbeError::Other(_))
+        ));
+        assert_eq!(fault_operation, 102);
+    }
+
+    #[test]
+    fn a_complete_transfer_reply_is_a_success() {
+        let transfers = pending_transfers(4);
+        let response = transfer_response(4, Ack::Ok);
+
+        assert!(CmsisDap::classify_transfer_response(&response, &transfers).is_ok());
     }
 }
