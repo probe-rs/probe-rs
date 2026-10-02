@@ -568,6 +568,57 @@ impl ArmCommunicationInterface {
         }
     }
 
+    /// Whether an error means the target stopped answering, rather than answering with a fault.
+    ///
+    /// A target that resets mid-session drops off the wire like this. The debug mailbox of the
+    /// NXP MCX parts resets the chip on purpose, so this is a normal step of attaching to one
+    /// held in ISP mode, not only a sign of broken wiring.
+    fn is_link_lost(error: &ArmError) -> bool {
+        matches!(
+            error,
+            ArmError::Dap(DapError::NoAcknowledge) | ArmError::Dap(DapError::Protocol(_))
+        )
+    }
+
+    /// Resynchronize the wire after the target stopped answering, then retry `op` once.
+    ///
+    /// ADIv5 (IHI0031G B4.2.5) says that a host which does not receive an expected response
+    /// must stop driving the line and attempt a line reset; that is what `debug_port_connect`
+    /// does. Without it a target that resets during a debug sequence never comes back, because
+    /// every later transfer is issued into a link that is still out of step.
+    fn retry_after_link_loss<T>(
+        &mut self,
+        dp: DpAddress,
+        mut op: impl FnMut(&mut Self) -> Result<T, ArmError>,
+    ) -> Result<T, ArmError> {
+        let first = op(self);
+        let Err(error) = first else {
+            return first;
+        };
+        if !Self::is_link_lost(&error) {
+            return Err(error);
+        }
+
+        tracing::debug!("target stopped answering ({error}), resynchronizing the wire");
+        let sequence = self.sequence.clone();
+        self.with_debug_port_wire(|wire| {
+            // The line is already out of step, so a failure to flush it says nothing new.
+            let _ = wire.raw_flush();
+            sequence.debug_port_connect(wire, dp)
+        })
+        .map_err(|reconnect| {
+            tracing::debug!("resynchronizing failed: {reconnect}");
+            error
+        })?;
+
+        // The reset took the selection with it.
+        if let Some(state) = self.dps.get_mut(&dp) {
+            state.select_valid = false;
+        }
+
+        op(self)
+    }
+
     fn swd_transfer_to_dap(error: SwdTransferError) -> DapError {
         match error {
             SwdTransferError::NoAcknowledge => DapError::NoAcknowledge,
@@ -1114,20 +1165,24 @@ impl DapAccess for ArmCommunicationInterface {
         ap: &FullyQualifiedApAddress,
         address: u64,
     ) -> Result<u32, ArmError> {
-        self.select_ap_and_ap_bank(ap, address)?;
-        let register = RegisterAddress::ApRegister((address & 0xFF) as u8);
+        self.retry_after_link_loss(ap.dp(), |this| {
+            this.select_ap_and_ap_bank(ap, address)?;
+            let register = RegisterAddress::ApRegister((address & 0xFF) as u8);
 
-        if self.is_swd() {
-            let addr = Self::ap_swd_addr(address);
-            self.with_swd_port(|port| {
-                let mut batch = SwdBatch::new();
-                let handle = port.read_ap_block(&mut batch, addr, 1);
-                let mut results = port.run(batch)?;
-                Ok(results.take(handle).unwrap()[0])
-            })
-        } else {
-            self.with_jtag_chain(|chain, settings| jtag_read_register(chain, register, settings))
-        }
+            if this.is_swd() {
+                let addr = Self::ap_swd_addr(address);
+                this.with_swd_port(|port| {
+                    let mut batch = SwdBatch::new();
+                    let handle = port.read_ap_block(&mut batch, addr, 1);
+                    let mut results = port.run(batch)?;
+                    Ok(results.take(handle).unwrap()[0])
+                })
+            } else {
+                this.with_jtag_chain(|chain, settings| {
+                    jtag_read_register(chain, register, settings)
+                })
+            }
+        })
     }
 
     fn read_raw_ap_register_repeated(
@@ -1239,22 +1294,24 @@ impl DapAccess for ArmCommunicationInterface {
         address: u64,
         value: u32,
     ) -> Result<(), ArmError> {
-        self.select_ap_and_ap_bank(ap, address)?;
-        let register = RegisterAddress::ApRegister((address & 0xFF) as u8);
+        self.retry_after_link_loss(ap.dp(), |this| {
+            this.select_ap_and_ap_bank(ap, address)?;
+            let register = RegisterAddress::ApRegister((address & 0xFF) as u8);
 
-        if self.is_swd() {
-            let addr = Self::ap_swd_addr(address);
-            self.with_swd_port(|port| {
-                let mut batch = SwdBatch::new();
-                batch.write(Port::Ap, addr, value);
-                port.run(batch)?;
-                Ok(())
-            })
-        } else {
-            self.with_jtag_chain(|chain, settings| {
-                jtag_write_register(chain, register, value, settings)
-            })
-        }
+            if this.is_swd() {
+                let addr = Self::ap_swd_addr(address);
+                this.with_swd_port(|port| {
+                    let mut batch = SwdBatch::new();
+                    batch.write(Port::Ap, addr, value);
+                    port.run(batch)?;
+                    Ok(())
+                })
+            } else {
+                this.with_jtag_chain(|chain, settings| {
+                    jtag_write_register(chain, register, value, settings)
+                })
+            }
+        })
     }
 
     fn write_raw_ap_register_repeated(

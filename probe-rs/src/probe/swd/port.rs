@@ -155,7 +155,14 @@ impl<'p> SwdPort<'p> {
                         }
                         Some(SwdTransferError::WaitResponse) => {
                             tracing::debug!("got WAIT on operation {}, retrying...", fault_index);
-                            self.clear_overrun_and_sticky_err()?;
+                            // Clearing is itself a transfer, so it can fail while the target is
+                            // not answering - a debug sequence that resets the chip makes the
+                            // link drop on purpose. Failing here would spend none of the retry
+                            // budget this loop exists to provide, and would report the failure
+                            // of the recovery rather than the condition that caused it.
+                            if let Err(error) = self.clear_overrun_and_sticky_err() {
+                                tracing::debug!("clearing after WAIT failed, retrying: {error:?}");
+                            }
                             expanded.consume(fault_index);
                             bump_write_idle(&mut expanded, idle_cycles as u32);
                             idle_cycles = idle_cycles
