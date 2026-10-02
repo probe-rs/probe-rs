@@ -160,6 +160,90 @@ impl TapState {
     }
 }
 
+/// Any of the sixteen states of the TAP controller.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum FullTapState {
+    TestLogicReset,
+    RunTestIdle,
+    SelectDr,
+    CaptureDr,
+    ShiftDr,
+    Exit1Dr,
+    PauseDr,
+    Exit2Dr,
+    UpdateDr,
+    SelectIr,
+    CaptureIr,
+    ShiftIr,
+    Exit1Ir,
+    PauseIr,
+    Exit2Ir,
+    UpdateIr,
+}
+
+impl FullTapState {
+    /// The state after one TCK clock with `tms`.
+    pub(crate) fn step(self, tms: bool) -> Self {
+        if tms {
+            match self {
+                Self::TestLogicReset => Self::TestLogicReset,
+                Self::RunTestIdle => Self::SelectDr,
+                Self::SelectDr => Self::SelectIr,
+                Self::CaptureDr | Self::ShiftDr => Self::Exit1Dr,
+                Self::Exit1Dr | Self::Exit2Dr => Self::UpdateDr,
+                Self::PauseDr => Self::Exit2Dr,
+                Self::UpdateDr => Self::SelectDr,
+                Self::SelectIr => Self::TestLogicReset,
+                Self::CaptureIr | Self::ShiftIr => Self::Exit1Ir,
+                Self::Exit1Ir | Self::Exit2Ir => Self::UpdateIr,
+                Self::PauseIr => Self::Exit2Ir,
+                Self::UpdateIr => Self::SelectDr,
+            }
+        } else {
+            match self {
+                Self::TestLogicReset => Self::RunTestIdle,
+                Self::RunTestIdle => Self::RunTestIdle,
+                Self::SelectDr => Self::CaptureDr,
+                Self::CaptureDr | Self::ShiftDr => Self::ShiftDr,
+                Self::Exit1Dr | Self::PauseDr => Self::PauseDr,
+                Self::Exit2Dr => Self::ShiftDr,
+                Self::UpdateDr => Self::RunTestIdle,
+                Self::SelectIr => Self::CaptureIr,
+                Self::CaptureIr | Self::ShiftIr => Self::ShiftIr,
+                Self::Exit1Ir | Self::PauseIr => Self::PauseIr,
+                Self::Exit2Ir => Self::ShiftIr,
+                Self::UpdateIr => Self::RunTestIdle,
+            }
+        }
+    }
+
+    /// The stable state, if the TAP is in one.
+    pub(crate) fn stable(self) -> Option<TapState> {
+        match self {
+            Self::TestLogicReset => Some(TapState::TestLogicReset),
+            Self::RunTestIdle => Some(TapState::RunTestIdle),
+            Self::ShiftIr => Some(TapState::ShiftIr),
+            Self::ShiftDr => Some(TapState::ShiftDr),
+            Self::PauseIr => Some(TapState::PauseIr),
+            Self::PauseDr => Some(TapState::PauseDr),
+            _ => None,
+        }
+    }
+}
+
+impl From<TapState> for FullTapState {
+    fn from(state: TapState) -> Self {
+        match state {
+            TapState::TestLogicReset => Self::TestLogicReset,
+            TapState::RunTestIdle => Self::RunTestIdle,
+            TapState::ShiftIr => Self::ShiftIr,
+            TapState::ShiftDr => Self::ShiftDr,
+            TapState::PauseIr => Self::PauseIr,
+            TapState::PauseDr => Self::PauseDr,
+        }
+    }
+}
+
 /// One JTAG operation in a batch.
 #[derive(Clone, Debug)]
 pub enum JtagOp {
@@ -540,61 +624,7 @@ mod tests {
         TapState::PauseDr,
     ];
 
-    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-    enum ModelState {
-        TestLogicReset,
-        RunTestIdle,
-        SelectDr,
-        CaptureDr,
-        ShiftDr,
-        Exit1Dr,
-        PauseDr,
-        Exit2Dr,
-        UpdateDr,
-        SelectIr,
-        CaptureIr,
-        ShiftIr,
-        Exit1Ir,
-        PauseIr,
-        Exit2Ir,
-        UpdateIr,
-    }
-
-    impl ModelState {
-        fn step(self, tms: bool) -> Self {
-            if tms {
-                match self {
-                    Self::TestLogicReset => Self::TestLogicReset,
-                    Self::RunTestIdle => Self::SelectDr,
-                    Self::SelectDr => Self::SelectIr,
-                    Self::CaptureDr | Self::ShiftDr => Self::Exit1Dr,
-                    Self::Exit1Dr | Self::Exit2Dr => Self::UpdateDr,
-                    Self::PauseDr => Self::Exit2Dr,
-                    Self::UpdateDr => Self::SelectDr,
-                    Self::SelectIr => Self::TestLogicReset,
-                    Self::CaptureIr | Self::ShiftIr => Self::Exit1Ir,
-                    Self::Exit1Ir | Self::Exit2Ir => Self::UpdateIr,
-                    Self::PauseIr => Self::Exit2Ir,
-                    Self::UpdateIr => Self::SelectDr,
-                }
-            } else {
-                match self {
-                    Self::TestLogicReset => Self::RunTestIdle,
-                    Self::RunTestIdle => Self::RunTestIdle,
-                    Self::SelectDr => Self::CaptureDr,
-                    Self::CaptureDr | Self::ShiftDr => Self::ShiftDr,
-                    Self::Exit1Dr | Self::PauseDr => Self::PauseDr,
-                    Self::Exit2Dr => Self::ShiftDr,
-                    Self::UpdateDr => Self::RunTestIdle,
-                    Self::SelectIr => Self::CaptureIr,
-                    Self::CaptureIr | Self::ShiftIr => Self::ShiftIr,
-                    Self::Exit1Ir | Self::PauseIr => Self::PauseIr,
-                    Self::Exit2Ir => Self::ShiftIr,
-                    Self::UpdateIr => Self::RunTestIdle,
-                }
-            }
-        }
-
+    impl FullTapState {
         fn is_capture(self) -> bool {
             matches!(self, Self::CaptureDr | Self::CaptureIr)
         }
@@ -608,20 +638,9 @@ mod tests {
         }
     }
 
-    fn tap_to_model(tap: TapState) -> ModelState {
-        match tap {
-            TapState::TestLogicReset => ModelState::TestLogicReset,
-            TapState::RunTestIdle => ModelState::RunTestIdle,
-            TapState::ShiftIr => ModelState::ShiftIr,
-            TapState::ShiftDr => ModelState::ShiftDr,
-            TapState::PauseIr => ModelState::PauseIr,
-            TapState::PauseDr => ModelState::PauseDr,
-        }
-    }
-
-    fn walk_path(from: TapState, to: TapState) -> (ModelState, Vec<ModelState>) {
+    fn walk_path(from: TapState, to: TapState) -> (FullTapState, Vec<FullTapState>) {
         let path = from.path_to(to);
-        let mut state = tap_to_model(from);
+        let mut state = FullTapState::from(from);
         let mut visited = vec![state];
         for &tms in path {
             state = state.step(tms);
@@ -639,10 +658,10 @@ mod tests {
             batch.enter(TapState::RunTestIdle);
             let end = golden::lowering_batch(TapState::RunTestIdle, &batch)
                 .into_iter()
-                .fold(ModelState::RunTestIdle, |state, (tms, _, _)| {
+                .fold(FullTapState::RunTestIdle, |state, (tms, _, _)| {
                     state.step(tms)
                 });
-            assert_eq!(end, ModelState::RunTestIdle, "{bits} bits");
+            assert_eq!(end, FullTapState::RunTestIdle, "{bits} bits");
         }
     }
 
@@ -651,7 +670,7 @@ mod tests {
         for from in STABLE_STATES {
             for to in STABLE_STATES {
                 let (end, _) = walk_path(from, to);
-                assert_eq!(end, tap_to_model(to), "from {:?} to {:?}", from, to);
+                assert_eq!(end, FullTapState::from(to), "from {:?} to {:?}", from, to);
             }
         }
     }
@@ -706,7 +725,7 @@ mod tests {
         for from in STABLE_STATES {
             for to in STABLE_STATES {
                 let path = from.path_to(to);
-                let mut state = tap_to_model(from);
+                let mut state = FullTapState::from(from);
                 let mut rti_entries = 0;
                 for &tms in path {
                     state = state.step(tms);

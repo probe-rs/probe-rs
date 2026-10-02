@@ -1776,6 +1776,7 @@ mod tests {
     #[derive(Debug, Default)]
     struct TmsRecorder {
         tms: Vec<bool>,
+        tdi: Vec<bool>,
         pins: Arc<std::sync::Mutex<Vec<(u8, u8)>>>,
         jtag_state: JtagChainState,
         swd_settings: SwdSettings,
@@ -1840,8 +1841,9 @@ mod tests {
             &mut self.jtag_state.tap_state
         }
 
-        fn shift(&mut self, tms: bool, _tdi: bool, _capture: bool) -> Result<(), DebugProbeError> {
+        fn shift(&mut self, tms: bool, tdi: bool, _capture: bool) -> Result<(), DebugProbeError> {
             self.tms.push(tms);
+            self.tdi.push(tdi);
             Ok(())
         }
 
@@ -1911,6 +1913,58 @@ mod tests {
         expected.push(false);
         assert_eq!(probe.tms, expected);
         assert_eq!(probe.jtag_state.tap_state, TapState::RunTestIdle);
+    }
+
+    #[test]
+    fn jtag_sequence_ends_where_a_raw_sequence_ends() {
+        use crate::probe::jtag::FullTapState;
+
+        let states = [
+            TapState::TestLogicReset,
+            TapState::RunTestIdle,
+            TapState::ShiftIr,
+            TapState::ShiftDr,
+            TapState::PauseIr,
+            TapState::PauseDr,
+        ];
+        for start in states {
+            for bits in 1..=8 {
+                for tms in [false, true] {
+                    let mut probe = TmsRecorder::default();
+                    probe.jtag_state.tap_state = start;
+                    let tdi = BitSequence::from_u64(bits, 0b1011_0010);
+                    let result = JtagDebugPortWire {
+                        probe: &mut probe,
+                        settings: SwdSettings::default(),
+                    }
+                    .jtag_sequence(tms, &tdi);
+
+                    let case = format!("{bits} bits of TMS {tms} from {start:?}");
+                    let raw = (0..bits).fold(FullTapState::from(start), |state, _| state.step(tms));
+                    let Some(end) = raw.stable() else {
+                        assert!(result.is_err(), "{case}");
+                        assert!(probe.tms.is_empty(), "{case}");
+                        continue;
+                    };
+                    result.unwrap();
+                    let walked = probe
+                        .tms
+                        .iter()
+                        .fold(FullTapState::from(start), |state, &tms| state.step(tms));
+                    assert_eq!(walked, raw, "{case}");
+                    assert_eq!(probe.jtag_state.tap_state, end, "{case}");
+                    if !tms {
+                        assert_eq!(probe.tms, vec![false; bits], "{case}");
+                    }
+                    // A TAP in Shift samples TDI on every clock until it leaves.
+                    if matches!(start, TapState::ShiftIr | TapState::ShiftDr) {
+                        let sampled = if tms { 1 } else { bits };
+                        let sent: Vec<bool> = tdi.iter().take(sampled).collect();
+                        assert_eq!(probe.tdi[..sampled], sent[..], "{case}");
+                    }
+                }
+            }
+        }
     }
 
     #[test]
