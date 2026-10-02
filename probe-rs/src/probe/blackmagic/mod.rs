@@ -1109,13 +1109,8 @@ impl BlackMagicProbe {
         })?;
 
         if capture {
-            let capture_len = if exit_tms && length > 0 {
-                length - 1
-            } else {
-                length
-            };
             let tdo = response.0;
-            for bit in 0..capture_len {
+            for bit in 0..length {
                 self.in_bits.push(tdo & (1 << bit) != 0);
             }
         }
@@ -1132,6 +1127,8 @@ impl BlackMagicProbe {
         let mut state = start;
         let results = Results::new();
         let mut skip_enter_path_bits = 0usize;
+        // A batch that failed part way left its captured bits behind.
+        self.in_bits.clear();
 
         for (index, (id, op)) in ops.iter().enumerate() {
             match op {
@@ -1155,10 +1152,10 @@ impl BlackMagicProbe {
                             results,
                         ));
                     }
-                    let merge_exit =
-                        exchange_leaves_shift(state, ops.get(index + 1).map(|(_, op)| op));
                     let do_capture = *capture && id.should_capture();
                     let bit_count = data.len();
+                    let merge_exit = bit_count > 0
+                        && exchange_leaves_shift(state, ops.get(index + 1).map(|(_, op)| op));
                     let mut offset = 0;
                     while offset < bit_count {
                         let remaining = bit_count - offset;
@@ -1169,7 +1166,7 @@ impl BlackMagicProbe {
                             offset,
                             chunk,
                             merge_exit && is_last,
-                            do_capture && is_last,
+                            do_capture,
                         ) {
                             return Err(BatchExecutionError::new_from_debug_probe(error, results));
                         }
@@ -1753,9 +1750,9 @@ mod golden_tests {
                     state = target;
                 }
                 JtagOp::Exchange { data, capture: _ } => {
-                    let merge_exit =
-                        exchange_leaves_shift(state, ops.get(index + 1).map(|(_, op)| op));
                     let bit_count = data.len();
+                    let merge_exit = bit_count > 0
+                        && exchange_leaves_shift(state, ops.get(index + 1).map(|(_, op)| op));
                     let mut offset = 0;
                     while offset < bit_count {
                         let remaining = bit_count - offset;
@@ -1937,7 +1934,7 @@ mod golden_tests {
 }
 
 #[cfg(test)]
-mod swj_tests {
+mod remote_tests {
     use std::io::{BufReader, BufWriter, Cursor, Write};
     use std::sync::{Arc, Mutex};
 
@@ -1945,7 +1942,8 @@ mod swj_tests {
 
     use super::{BlackMagicProbe, ProtocolVersion, SwdDirection};
     use crate::probe::{
-        BitbangSwd, DebugProbeError, IoSequenceItem, JtagChainState, SwdSettings, WireProtocol,
+        BitSequence, BitbangSwd, DebugProbeError, IoSequenceItem, JtagBatch, JtagChainState,
+        JtagProbe, SwdSettings, TapState, WireProtocol,
     };
 
     struct SharedWriter(Arc<Mutex<Vec<u8>>>);
@@ -1963,9 +1961,14 @@ mod swj_tests {
 
     /// A probe in JTAG mode that answers `replies` commands with OK.
     fn jtag_probe(replies: usize) -> (BlackMagicProbe, Arc<Mutex<Vec<u8>>>) {
+        scripted_jtag_probe(b"&K0#".repeat(replies))
+    }
+
+    /// A probe in JTAG mode that reads its replies from `replies`.
+    fn scripted_jtag_probe(replies: Vec<u8>) -> (BlackMagicProbe, Arc<Mutex<Vec<u8>>>) {
         let sent = Arc::new(Mutex::new(Vec::new()));
         let probe = BlackMagicProbe {
-            reader: BufReader::new(Box::new(Cursor::new(b"&K0#".repeat(replies)))),
+            reader: BufReader::new(Box::new(Cursor::new(replies))),
             writer: BufWriter::new(Box::new(SharedWriter(sent.clone()))),
             protocol: Some(WireProtocol::Jtag),
             version: String::new(),
@@ -2003,5 +2006,53 @@ mod swj_tests {
             Err(DebugProbeError::CommandNotSupportedByProbe { .. })
         ));
         assert!(sent.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn a_captured_scan_keeps_every_chunk_and_the_exit_bit() {
+        // The path to Shift-DR, two TDI chunks, then the rest of the path to Run-Test/Idle.
+        let replies = b"&K0#&K89abcdef#&K1a5#&K0#".to_vec();
+        let (mut probe, sent) = scripted_jtag_probe(replies);
+        let mut batch = JtagBatch::new();
+        batch.enter(TapState::ShiftDr);
+        let handle = batch.exchange(BitSequence::from_u64(41, 0x0123_4567_89AB));
+        batch.enter(TapState::RunTestIdle);
+
+        let mut results = JtagProbe::run_batch(&mut probe, &batch).unwrap();
+        assert_eq!(
+            results.take(handle).unwrap(),
+            BitSequence::from_u64(41, 0x1A5_89AB_CDEF)
+        );
+        assert_eq!(
+            *sent.lock().unwrap(),
+            b"!JT042#!Jd20456789ab#!JD09123#!JT021#"
+        );
+    }
+
+    #[test]
+    fn bits_left_by_a_failed_batch_are_not_captured() {
+        let (mut probe, _) = scripted_jtag_probe(b"&K1a5#".to_vec());
+        probe.jtag_state.tap_state = TapState::ShiftDr;
+        probe.in_bits.extend([true; 32]);
+        let mut batch = JtagBatch::new();
+        let handle = batch.exchange(BitSequence::from_u64(9, 0));
+
+        let mut results = JtagProbe::run_batch(&mut probe, &batch).unwrap();
+        assert_eq!(
+            results.take(handle).unwrap(),
+            BitSequence::from_u64(9, 0x1A5)
+        );
+    }
+
+    #[test]
+    fn an_empty_exchange_does_not_shorten_the_next_path() {
+        let (mut probe, sent) = jtag_probe(1);
+        probe.jtag_state.tap_state = TapState::ShiftDr;
+        let mut batch = JtagBatch::new();
+        batch.exchange_no_capture(BitSequence::new());
+        batch.enter(TapState::RunTestIdle);
+
+        JtagProbe::run_batch(&mut probe, &batch).unwrap();
+        assert_eq!(*sent.lock().unwrap(), b"!JT033#");
     }
 }
