@@ -27,7 +27,9 @@ type StderrTail = Arc<Mutex<Vec<String>>>;
 
 /// Parse `[user@]destination[:port]` from an `ssh://` URL (without the prefix).
 fn parse_ssh_connect(host: &str) -> Result<(String, u16), ClientError> {
-    if host.is_empty() {
+    let host = host.trim_end_matches('/');
+    // ssh reads an argument that starts with `-` as an option.
+    if host.is_empty() || host.starts_with('-') {
         return Err(ClientError::InvalidRemoteHost);
     }
 
@@ -270,6 +272,24 @@ mod tests {
             parse_ssh_connect("user@host:4000").unwrap(),
             ("user@host".to_string(), 4000)
         );
+    }
+
+    #[test]
+    fn parse_trailing_slash() {
+        assert_eq!(
+            parse_ssh_connect("host/").unwrap(),
+            ("host".to_string(), 3000)
+        );
+        assert_eq!(
+            parse_ssh_connect("user@host:4000/").unwrap(),
+            ("user@host".to_string(), 4000)
+        );
+    }
+
+    #[test]
+    fn parse_rejects_an_option() {
+        assert!(parse_ssh_connect("-oProxyCommand=true").is_err());
+        assert!(parse_ssh_connect("-oProxyCommand=true/").is_err());
     }
 
     #[test]
