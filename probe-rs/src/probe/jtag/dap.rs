@@ -17,14 +17,25 @@ use crate::{
 // Constant to be written to ABORT
 const JTAG_ABORT_VALUE: u64 = 0x8;
 
-// IR values for JTAG registers
-const JTAG_ABORT_IR_VALUE: u32 = 0x8; // A DAP abort, compatible with DPv0
-const JTAG_DEBUG_PORT_IR_VALUE: u32 = 0xA;
-const JTAG_ACCESS_PORT_IR_VALUE: u32 = 0xB;
+// IR values for the ARM JTAG-DP / SWJ-DP.
+// These are the 8-bit CoreSight SoC-600 opcodes; the low nibble is the classic 4-bit
+// ADIv5 opcode, so on a 4-bit-IR TAP the IR shift masks them down to 0x8/0xA/0xB.
+const JTAG_ABORT_IR_VALUE: u32 = 0xF8; // A DAP abort, compatible with DPv0
+const JTAG_DEBUG_PORT_IR_VALUE: u32 = 0xFA;
+const JTAG_ACCESS_PORT_IR_VALUE: u32 = 0xFB;
 
 const JTAG_STATUS_WAIT: u32 = 0x1;
-/// OK/FAULT response
+/// OK/FAULT response (ADIv5). On ADIv6 this same value (0x2) means FAULT.
 const JTAG_STATUS_OK: u32 = 0x2;
+/// OK response on ADIv6; faults are caught by the CTRL/STAT sticky-error check.
+const JTAG_STATUS_OK_ADIV6: u32 = 0x4;
+
+/// Minimum Run-Test/Idle clocks after each DAP access; SoC-600 DPs return a bad ACK without them.
+const JTAG_DAP_IDLE_CYCLES: usize = 8;
+
+fn dap_idle_cycles(requested: usize) -> u32 {
+    requested.clamp(JTAG_DAP_IDLE_CYCLES, 255) as u32
+}
 
 // ARM DR accesses are always 35 bits wide
 const JTAG_DR_BIT_LENGTH: u32 = 35;
@@ -72,7 +83,7 @@ fn perform_jtag_transfer(
     chain.shift_ir(&mut batch, &ir);
     let dr = BitSequence::from_bytes(&payload.to_le_bytes(), JTAG_DR_BIT_LENGTH as usize);
     let handle = chain.exchange_dr(&mut batch, &dr);
-    chain.run_test_idle(&mut batch, transfer.idle_cycles_after.min(255) as u32);
+    chain.run_test_idle(&mut batch, dap_idle_cycles(transfer.idle_cycles_after));
     let mut results = chain.run(batch)?;
     let response = results
         .take(handle)
@@ -91,7 +102,7 @@ fn perform_jtag_transfer(
 
     let transfer_status = match status {
         s if s == JTAG_STATUS_WAIT => TransferStatus::Failed(DapError::WaitResponse),
-        s if s == JTAG_STATUS_OK => TransferStatus::Ok,
+        s if s == JTAG_STATUS_OK || s == JTAG_STATUS_OK_ADIV6 => TransferStatus::Ok,
         _ => {
             tracing::debug!("Unexpected DAP response: {}", status);
 
@@ -270,7 +281,7 @@ impl DapTransfer {
             data: JtagWriteData {
                 address,
                 data: BitSequence::from_bytes(&payload.to_le_bytes(), JTAG_DR_BIT_LENGTH as usize),
-                idle_cycles: self.idle_cycles_after.min(255) as u32,
+                idle_cycles: dap_idle_cycles(self.idle_cycles_after),
             },
             transform: |data, response| {
                 // No responses returned for aborts.
@@ -286,7 +297,9 @@ impl DapTransfer {
                 let status = (received & 0b111) as u32;
 
                 let error = match status {
-                    s if s == JTAG_STATUS_OK => return Ok(CommandResult::U32(received_value)),
+                    s if s == JTAG_STATUS_OK || s == JTAG_STATUS_OK_ADIV6 => {
+                        return Ok(CommandResult::U32(received_value));
+                    }
                     s if s == JTAG_STATUS_WAIT => DapError::WaitResponse,
                     _ => {
                         tracing::debug!("Unexpected DAP response: {}", status);
@@ -745,9 +758,10 @@ mod tests {
                     }
 
                     let jtag_transaction = self.jtag_transactions.remove(0);
+                    let ir_mask = self.jtag_state.chain_params.max_ir_address();
                     assert_eq!(
-                        jtag_transaction.ir_address,
-                        pending_ir.unwrap_or(jtag_transaction.ir_address),
+                        jtag_transaction.ir_address & ir_mask,
+                        pending_ir.unwrap_or(jtag_transaction.ir_address) & ir_mask,
                         "Address mismatch with {} remaining transactions",
                         self.jtag_transactions.len()
                     );

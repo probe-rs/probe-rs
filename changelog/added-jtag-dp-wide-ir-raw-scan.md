@@ -1,0 +1,1 @@
+Added support for 8-bit-IR CoreSight SoC-600 / ADIv6 JTAG-DPs (e.g. Infineon PSoC Edge and PSoC C3): DAP IR opcodes are now the 8-bit values masked to the TAP's IR length (unchanged on 4-bit-IR ADIv5 DPs), the ADIv6 OK acknowledge (`0b100`) is accepted, and at least 8 Run-Test/Idle clocks follow each DAP access.

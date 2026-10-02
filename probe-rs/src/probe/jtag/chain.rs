@@ -310,17 +310,28 @@ impl<'p> JtagChain<'p> {
         for (idx, command) in writes.iter() {
             match command {
                 JtagCommand::WriteRegister(write) => {
-                    if write.inner.address > max_ir {
+                    if ir_len == 0 {
                         return Err(BatchExecutionError::new_from_debug_probe(
                             DebugProbeError::Other(format!(
-                                "Invalid instruction register access: {}",
+                                "Invalid instruction register access: {} (no TAP selected)",
                                 write.inner.address
                             )),
                             Results::new(),
                         ));
                     }
 
-                    let ir = BitSequence::from_bytes(&write.inner.address.to_le_bytes(), ir_len);
+                    // 8-bit SoC-600 opcodes mask down to the ADIv5 ones on a 4-bit IR.
+                    let address = write.inner.address & max_ir;
+
+                    tracing::trace!(
+                        target: "probe_rs::probe::jtag_trace",
+                        ir = format_args!("{address:#x}"),
+                        dr_len = write.inner.data.len(),
+                        idle_cycles = write.inner.idle_cycles,
+                        "JTAG IR/DR transaction"
+                    );
+
+                    let ir = BitSequence::from_bytes(&address.to_le_bytes(), ir_len);
                     self.shift_ir(&mut batch, &ir);
                     let handle = self.exchange_dr(&mut batch, &write.inner.data);
                     self.run_test_idle(&mut batch, write.inner.idle_cycles);
