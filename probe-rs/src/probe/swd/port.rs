@@ -120,6 +120,7 @@ impl<'p> SwdPort<'p> {
             read_handles,
             logical,
             pipeline_handles,
+            pins_handles,
         } = expand_batch(&batch, &self.settings, self.probe.handles_ap_pipeline());
         drop(batch);
         let mut expanded = expanded;
@@ -131,8 +132,13 @@ impl<'p> SwdPort<'p> {
             match self.probe.run_batch(&expanded) {
                 Ok(results) => {
                     collected.merge_from(results);
-                    let remapped =
-                        remap_results(read_handles, logical, collected, &self.block_read_counts);
+                    let remapped = remap_results(
+                        read_handles,
+                        logical,
+                        &pins_handles,
+                        collected,
+                        &self.block_read_counts,
+                    );
                     self.block_read_counts.clear();
                     self.block_read_handles.clear();
                     drop(pipeline_handles);
@@ -221,6 +227,7 @@ struct ExpansionPlan {
     read_handles: Vec<Option<HandleId>>,
     logical: Vec<LogicalMapping>,
     pipeline_handles: Vec<Handle<()>>,
+    pins_handles: Vec<HandleId>,
 }
 
 enum LogicalMapping {
@@ -251,6 +258,7 @@ fn expand_batch(
     let mut read_handles = Vec::new();
     let mut logical_mappings = Vec::new();
     let mut pipeline_handles = Vec::new();
+    let mut pins_handles = Vec::new();
     let mut transfer_index = 0usize;
 
     for (handle_id, op) in batch.iter() {
@@ -324,7 +332,13 @@ fn expand_batch(
             SwdOp::Sequence(bits) => expanded.sequence(bits),
             SwdOp::Idle { cycles } => expanded.idle(cycles),
             SwdOp::Pins { out, select, wait } => {
-                let _ = expanded.schedule(SwdOp::Pins { out, select, wait });
+                let op = SwdOp::Pins { out, select, wait };
+                if handle_id.should_capture() {
+                    expanded.schedule_preserved(handle_id.clone(), op);
+                    pins_handles.push(handle_id.clone());
+                } else {
+                    let _ = expanded.schedule(op);
+                }
             }
         }
     }
@@ -338,6 +352,7 @@ fn expand_batch(
         read_handles,
         logical: logical_mappings,
         pipeline_handles,
+        pins_handles,
     }
 }
 
@@ -502,10 +517,17 @@ fn block_value_indices(read_handles: &[Option<HandleId>], count: usize) -> Vec<u
 fn remap_results(
     read_handles: Vec<Option<HandleId>>,
     logical: Vec<LogicalMapping>,
+    pins_handles: &[HandleId],
     mut expanded_results: Results,
     block_read_counts: &[usize],
 ) -> Results {
     let mut logical_results = Results::new();
+    for handle_id in pins_handles {
+        let handle = Handle::from_parts(handle_id.clone(), Box::new(|result| result));
+        if let Ok(result) = expanded_results.take(handle) {
+            logical_results.push(handle_id, result);
+        }
+    }
     let mut expanded_read_values: Vec<Option<u32>> = vec![None; read_handles.len()];
     let block_aggregate_ids: HashSet<HandleId> = block_read_counts
         .iter()
@@ -615,7 +637,9 @@ impl SwdPort<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::probe::swd::Pins;
     use crate::probe::swd::mock::{MockSwdProbe, RecordedOp, ScriptedResponse};
+    use std::time::Duration;
 
     fn duplicate_settings(settings: &SwdSettings) -> SwdSettings {
         SwdSettings {
@@ -682,6 +706,18 @@ mod tests {
         assert_eq!(reads[2], (Port::Dp, DP_CTRL_ADDR));
         assert_eq!(reads[3], (Port::Dp, DP_CTRL_ADDR));
         assert_eq!(reads[4], (Port::Dp, DP_CTRL_ADDR));
+    }
+
+    #[test]
+    fn pin_levels_pass_through_the_port() {
+        let mut probe = MockSwdProbe::new().reads_pins(0x81);
+        let mut batch = SwdBatch::new();
+        let _ = batch.read(Port::Dp, DP_CTRL_ADDR);
+        let levels = batch.pins(Pins(0x80), Pins(0x80), Duration::ZERO);
+
+        let mut port = SwdPort::new(&mut probe, SwdSettings::default());
+        let mut results = port.run(batch).expect("run should succeed");
+        assert_eq!(results.take(levels).unwrap().0, 0x81);
     }
 
     #[test]

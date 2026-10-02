@@ -109,20 +109,116 @@ impl ProbeFactory for LinuxSpidevSwdFactory {
     }
 }
 
+/// One write in a [`WriteQueue`].
+#[derive(Debug, Clone, Copy)]
+struct QueuedWrite {
+    /// The byte offset of the packet in the queue.
+    offset: usize,
+    /// The index of the operation in the batch.
+    index: usize,
+}
+
+/// Write packets and idle bytes that go out in one SPI transfer.
+#[derive(Debug, Default)]
+struct WriteQueue {
+    tx: Vec<u8>,
+    writes: Vec<QueuedWrite>,
+}
+
+impl WriteQueue {
+    fn is_empty(&self) -> bool {
+        self.tx.is_empty()
+    }
+
+    /// Returns the bytes that still fit, after the `trailing` idle bytes of the transfer.
+    fn room(&self, trailing: usize) -> usize {
+        MAX_QUEUE_BYTES.saturating_sub(self.tx.len() + trailing)
+    }
+
+    fn push_write(&mut self, index: usize, packet: &[u8]) {
+        self.writes.push(QueuedWrite {
+            offset: self.tx.len(),
+            index,
+        });
+        self.tx.extend_from_slice(packet);
+    }
+
+    /// Queues up to `bytes` idle bytes that fit before `trailing`, and returns the number.
+    fn push_idle(&mut self, bytes: usize, trailing: usize) -> usize {
+        let bytes = bytes.min(self.room(trailing));
+        self.tx.extend(std::iter::repeat_n(0u8, bytes));
+        bytes
+    }
+
+    /// Checks the ACK of every write in `rx`, the bytes received for the queue.
+    ///
+    /// On a failure, returns the batch index of the first write that failed.
+    fn check_acks(&self, rx: &[u8]) -> Result<(), (usize, DebugProbeError)> {
+        for write in &self.writes {
+            let packet = decode_packet(&rx[write.offset..write.offset + WRITE_PACKET_SIZE]);
+            parse_swd_ack(SwdWritePacket(packet).ack()).map_err(|error| (write.index, error))?;
+        }
+        Ok(())
+    }
+
+    fn clear(&mut self) {
+        self.tx.clear();
+        self.writes.clear();
+    }
+}
+
+/// Converts the received bytes of one packet to the bit order of the packet bitfields.
+fn decode_packet(bytes: &[u8]) -> u64 {
+    let mut data = [0u8; 8];
+    data[0..bytes.len()].copy_from_slice(bytes);
+    u64::from_be_bytes(data).reverse_bits()
+}
+
+/// A full-duplex SPI bus.
+trait SpiBus: Debug + Send {
+    /// Sets the clock speed in Hz.
+    fn configure(&mut self, speed_hz: u32) -> std::io::Result<()>;
+
+    /// Clocks out `tx` and fills `rx`, of the same length, with the bytes that come back.
+    fn transfer(&mut self, tx: &[u8], rx: &mut [u8]) -> std::io::Result<()>;
+}
+
+impl SpiBus for spidev::Spidev {
+    fn configure(&mut self, speed_hz: u32) -> std::io::Result<()> {
+        let options = SpidevOptions::new()
+            .bits_per_word(8)
+            .max_speed_hz(speed_hz)
+            .mode(SpiModeFlags::SPI_MODE_3)
+            .build();
+        spidev::Spidev::configure(self, &options)
+    }
+
+    fn transfer(&mut self, tx: &[u8], rx: &mut [u8]) -> std::io::Result<()> {
+        // The kernel takes the length from `tx` and writes that many bytes into `rx`.
+        debug_assert_eq!(tx.len(), rx.len());
+        let mut transfer = SpidevTransfer::read_write(tx, rx);
+        spidev::Spidev::transfer(self, &mut transfer)
+    }
+}
+
+fn io_error(error: std::io::Error) -> DebugProbeError {
+    DebugProbeError::ProbeSpecific(LinuxSpidevSwdError::Io(error).into())
+}
+
 /// Probe using Linux spidev to emulate SWD with full-duplex SPI.
 pub struct LinuxSpidevSwdProbe {
-    spidev: spidev::Spidev,
+    bus: Box<dyn SpiBus>,
     speed_khz: u32,
     swd_settings: SwdSettings,
 
-    tx_buffer: Vec<u8>,
+    queue: WriteQueue,
     rx_buffer: Vec<u8>,
 }
 
 impl Debug for LinuxSpidevSwdProbe {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("LinuxSpidevSwdProbe")
-            .field("spidev", &self.spidev)
+            .field("bus", &self.bus)
             .field("speed_khz", &self.speed_khz)
             .finish_non_exhaustive()
     }
@@ -131,110 +227,99 @@ impl Debug for LinuxSpidevSwdProbe {
 impl LinuxSpidevSwdProbe {
     /// Construct a new spidev SWD probe for the given SPI port.
     pub fn new(spidev: spidev::Spidev) -> Self {
+        Self::with_bus(Box::new(spidev))
+    }
+
+    fn with_bus(bus: Box<dyn SpiBus>) -> Self {
         LinuxSpidevSwdProbe {
-            spidev,
+            bus,
             speed_khz: 1000,
             swd_settings: SwdSettings::default(),
-            tx_buffer: Vec::new(),
+            queue: WriteQueue::default(),
             rx_buffer: vec![0; MAX_QUEUE_BYTES],
         }
     }
 
     /// Configure the spidev device.
     fn configure_spidev(&mut self) -> Result<(), DebugProbeError> {
-        let options = SpidevOptions::new()
-            .bits_per_word(8)
-            .max_speed_hz(self.speed_khz * 1000)
-            .mode(SpiModeFlags::SPI_MODE_3)
-            .build();
-        self.spidev
-            .configure(&options)
-            .map_err(|e| DebugProbeError::ProbeSpecific(LinuxSpidevSwdError::Io(e).into()))
+        self.bus.configure(self.speed_khz * 1000).map_err(io_error)
     }
 
-    /// Transfer the TX buffer, packetize, and fix bit order.
-    fn transfer(
-        &mut self,
-        packet_size: usize,
-    ) -> Result<impl Iterator<Item = u64>, DebugProbeError> {
-        // Add idle cycles after the transfer as required by SwdSettings.
-        let idle_bytes = self.swd_settings.idle_cycles_after_transfer.div_ceil(8);
-        self.tx_buffer.extend(std::iter::repeat_n(0u8, idle_bytes));
-
-        assert!(packet_size <= 8);
-
-        let rx_buffer = &mut self.rx_buffer[0..self.tx_buffer.len()];
-        let mut transfer = SpidevTransfer::read_write(&self.tx_buffer, rx_buffer);
-
-        let result = self.spidev.transfer(&mut transfer);
-        self.tx_buffer.clear();
-        result.map_err(|e| DebugProbeError::ProbeSpecific(LinuxSpidevSwdError::Io(e).into()))?;
-
-        Ok(rx_buffer.chunks_exact(packet_size).map(move |packet| {
-            let mut data = [0u8; 8];
-            data[0..packet_size].copy_from_slice(packet);
-            u64::from_be_bytes(data).reverse_bits()
-        }))
+    /// Idle bytes that follow every transfer, as `SwdSettings` requires, capped so that one
+    /// write packet still fits in the queue.
+    fn trailing_idle_bytes(&self) -> usize {
+        self.swd_settings
+            .idle_cycles_after_transfer
+            .div_ceil(8)
+            .min(MAX_QUEUE_BYTES - WRITE_PACKET_SIZE)
     }
 
-    /// Flush pending writes in the TX buffer.
-    fn flush_writes(&mut self) -> Result<(), DebugProbeError> {
-        if self.tx_buffer.is_empty() {
+    /// Sends the queued writes and checks their ACKs.
+    ///
+    /// On a failure, returns the batch index of the first write that failed, or `index` if
+    /// the transfer itself failed. The queue is empty afterwards in either case.
+    fn flush_writes(&mut self, index: usize) -> Result<(), (usize, DebugProbeError)> {
+        if self.queue.is_empty() {
             return Ok(());
         }
 
-        // Do the transfer and verify.
-        for packet in self.transfer(WRITE_PACKET_SIZE)? {
-            let response = SwdWritePacket(packet);
-            parse_swd_ack(response.ack())?;
-        }
-
-        Ok(())
+        let index = self.queue.writes.first().map_or(index, |write| write.index);
+        self.queue.push_idle(self.trailing_idle_bytes(), 0);
+        let len = self.queue.tx.len();
+        let result = self
+            .bus
+            .transfer(&self.queue.tx, &mut self.rx_buffer[0..len])
+            .map_err(|e| (index, io_error(e)))
+            .and_then(|()| self.queue.check_acks(&self.rx_buffer[0..len]));
+        self.queue.clear();
+        result
     }
 
     fn transfer_raw_bytes(&mut self, tx: &[u8]) -> Result<(), DebugProbeError> {
         let mut rx = vec![0; tx.len()];
-        let mut transfer = SpidevTransfer::read_write(tx, &mut rx);
-        self.spidev
-            .transfer(&mut transfer)
-            .map_err(|e| DebugProbeError::ProbeSpecific(LinuxSpidevSwdError::Io(e).into()))?;
-        Ok(())
+        self.bus.transfer(tx, &mut rx).map_err(io_error)
     }
 
-    fn queue_write(&mut self, is_ap: bool, addr: u8, data: u32) -> Result<(), DebugProbeError> {
-        self.tx_buffer.reserve(WRITE_PACKET_SIZE);
+    fn queue_write(
+        &mut self,
+        index: usize,
+        is_ap: bool,
+        addr: u8,
+        data: u32,
+    ) -> Result<(), (usize, DebugProbeError)> {
+        if self.queue.room(self.trailing_idle_bytes()) < WRITE_PACKET_SIZE {
+            self.flush_writes(index)?;
+        }
         let packet = SwdWritePacket::new(is_ap, addr, data);
         let packet = packet.0.reverse_bits().to_be_bytes();
-        self.tx_buffer
-            .extend_from_slice(&packet[0..WRITE_PACKET_SIZE]);
+        self.queue.push_write(index, &packet[0..WRITE_PACKET_SIZE]);
+        Ok(())
+    }
 
-        let available = MAX_QUEUE_BYTES - self.tx_buffer.len() - 1;
-        if available < WRITE_PACKET_SIZE {
-            self.flush_writes()?;
+    fn queue_idle(&mut self, index: usize, cycles: u32) -> Result<(), (usize, DebugProbeError)> {
+        let mut remaining = cycles.div_ceil(8) as usize;
+        while remaining > 0 {
+            let queued = self.queue.push_idle(remaining, self.trailing_idle_bytes());
+            if queued == 0 {
+                self.flush_writes(index)?;
+            }
+            remaining -= queued;
         }
-
         Ok(())
     }
 
-    fn queue_idle(&mut self, cycles: u32) -> Result<(), DebugProbeError> {
-        let bytes = cycles.div_ceil(8) as usize;
-        self.tx_buffer.extend(std::iter::repeat_n(0u8, bytes));
-        Ok(())
-    }
-
+    /// Sends one read as its own transfer. The queue must be empty.
     fn transfer_read(&mut self, is_ap: bool, addr: u8) -> Result<u32, DebugProbeError> {
-        self.flush_writes()?;
-
+        debug_assert!(self.queue.is_empty());
         let packet = SwdReadPacket::new(is_ap, addr);
         let packet = packet.0.reverse_bits().to_be_bytes();
-        self.tx_buffer
-            .extend_from_slice(&packet[0..READ_PACKET_SIZE]);
+        let mut tx = packet[0..READ_PACKET_SIZE].to_vec();
+        tx.extend(std::iter::repeat_n(0u8, self.trailing_idle_bytes()));
+        self.bus
+            .transfer(&tx, &mut self.rx_buffer[0..tx.len()])
+            .map_err(io_error)?;
 
-        let response = self
-            .transfer(READ_PACKET_SIZE)?
-            .next()
-            .ok_or_else(|| DebugProbeError::Other("missing SWD read response".into()))?;
-        let response = SwdReadPacket(response);
+        let response = SwdReadPacket(decode_packet(&self.rx_buffer[0..READ_PACKET_SIZE]));
         parse_swd_ack(response.ack())?;
 
         let parity = (response.data().count_ones() & 1) == 1;
@@ -325,53 +410,49 @@ impl SwdProbe for LinuxSpidevSwdProbe {
     ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
         let mut results = Results::new();
 
-        for (fault_operation, (id, op)) in batch.iter().enumerate() {
-            let op_result: Result<(), DebugProbeError> = match op {
+        for (index, (id, op)) in batch.iter().enumerate() {
+            let at_index = |error| (index, error);
+            let op_result = match op {
                 SwdOp::Transfer {
                     port,
                     addr,
-                    direction,
+                    direction: Direction::Write,
                     data,
-                } => match direction {
-                    Direction::Write => self.queue_write(*port == Port::Ap, *addr, *data),
-                    Direction::Read => self.transfer_read(*port == Port::Ap, *addr).map(|value| {
-                        if id.should_capture() {
-                            results.push(id, CommandResult::U32(value));
-                        }
-                    }),
-                },
-                SwdOp::Sequence(bits) => {
-                    let tx = encode_swj_sequence(bits);
-                    self.transfer_raw_bytes(&tx)
-                }
-                SwdOp::Idle { cycles } => self.queue_idle(*cycles),
-                SwdOp::Pins { .. } => Err(DebugProbeError::NotImplemented {
-                    function_name: "swj_pins",
+                } => self.queue_write(index, *port == Port::Ap, *addr, *data),
+                SwdOp::Transfer {
+                    port,
+                    addr,
+                    direction: Direction::Read,
+                    ..
+                } => self.flush_writes(index).and_then(|()| {
+                    let value = self
+                        .transfer_read(*port == Port::Ap, *addr)
+                        .map_err(at_index)?;
+                    if id.should_capture() {
+                        results.push(id, CommandResult::U32(value));
+                    }
+                    Ok(())
+                }),
+                SwdOp::Sequence(bits) => self.flush_writes(index).and_then(|()| {
+                    self.transfer_raw_bytes(&encode_swj_sequence(bits))
+                        .map_err(at_index)
+                }),
+                SwdOp::Idle { cycles } => self.queue_idle(index, *cycles),
+                SwdOp::Pins { .. } => self.flush_writes(index).and_then(|()| {
+                    Err(at_index(DebugProbeError::NotImplemented {
+                        function_name: "swj_pins",
+                    }))
                 }),
             };
 
-            if let Err(error) = op_result {
-                return match error {
-                    DebugProbeError::SwdTransfer(transfer_error) => Err(BatchExecutionError {
-                        error: BatchError::Specific(DebugProbeError::SwdTransfer(transfer_error)),
-                        results,
-                        fault_operation,
-                    }),
-                    error => Err(BatchExecutionError::new_from_debug_probe_at(
-                        error,
-                        results,
-                        fault_operation,
-                    )),
-                };
+            if let Err((fault_operation, error)) = op_result {
+                self.queue.clear();
+                return Err(batch_error(error, results, fault_operation));
             }
         }
 
-        if let Err(error) = self.flush_writes() {
-            return Err(BatchExecutionError::new_from_debug_probe_at(
-                error,
-                results,
-                batch.len().saturating_sub(1),
-            ));
+        if let Err((fault_operation, error)) = self.flush_writes(batch.len().saturating_sub(1)) {
+            return Err(batch_error(error, results, fault_operation));
         }
 
         Ok(results)
@@ -379,6 +460,22 @@ impl SwdProbe for LinuxSpidevSwdProbe {
 
     fn swd_settings(&self) -> SwdSettings {
         self.swd_settings.clone()
+    }
+}
+
+/// Reports an SWD transfer error as specific to the batch, and any other error as a probe error.
+fn batch_error(
+    error: DebugProbeError,
+    results: Results,
+    fault_operation: usize,
+) -> BatchExecutionError<DebugProbeError> {
+    match error {
+        DebugProbeError::SwdTransfer(transfer_error) => BatchExecutionError {
+            error: BatchError::Specific(DebugProbeError::SwdTransfer(transfer_error)),
+            results,
+            fault_operation,
+        },
+        error => BatchExecutionError::new_from_debug_probe_at(error, results, fault_operation),
     }
 }
 
@@ -603,6 +700,9 @@ fn is_line_reset_pattern(bits: &BitSequence) -> bool {
 mod tests {
     use super::*;
 
+    use std::collections::VecDeque;
+    use std::sync::{Arc, Mutex};
+
     const SWD_LINE_RESET_ONES: u64 = 0x0007_FFFF_FFFF_FFFF;
 
     #[test]
@@ -648,6 +748,150 @@ mod tests {
             probes[0].info.serial_number.as_deref(),
             Some("/dev/spidev0.0")
         );
+    }
+
+    /// The bytes that a target returns for a write with `ack`, in wire order.
+    fn write_reply(ack: u64) -> Vec<u8> {
+        let mut packet = SwdWritePacket(0);
+        packet.set_ack(ack);
+        packet.0.reverse_bits().to_be_bytes()[0..WRITE_PACKET_SIZE].to_vec()
+    }
+
+    /// A queue of two writes, at batch indices 0 and 2, with one idle byte between them.
+    fn two_writes() -> WriteQueue {
+        let mut queue = WriteQueue::default();
+        queue.push_write(0, &[0; WRITE_PACKET_SIZE]);
+        queue.push_idle(1, 0);
+        queue.push_write(2, &[0; WRITE_PACKET_SIZE]);
+        queue
+    }
+
+    #[test]
+    fn acks_are_read_at_each_write_after_idle_bytes() {
+        let queue = two_writes();
+        let mut rx = write_reply(0b001);
+        rx.push(0);
+        rx.extend(write_reply(0b001));
+        assert!(queue.check_acks(&rx).is_ok());
+    }
+
+    #[test]
+    fn the_earliest_failure_is_reported() {
+        let queue = two_writes();
+        let mut rx = write_reply(0b010);
+        rx.push(0);
+        rx.extend(write_reply(0b100));
+        assert!(matches!(
+            queue.check_acks(&rx),
+            Err((
+                0,
+                DebugProbeError::SwdTransfer(SwdTransferError::WaitResponse)
+            ))
+        ));
+    }
+
+    /// A bus that records every transfer. It answers with the next scripted reply, or with an
+    /// OK for a write packet at every multiple of `stride` bytes.
+    #[derive(Debug)]
+    struct FakeBus {
+        sent: Arc<Mutex<Vec<usize>>>,
+        replies: VecDeque<Vec<u8>>,
+        stride: usize,
+    }
+
+    impl FakeBus {
+        fn new(replies: impl IntoIterator<Item = Vec<u8>>, stride: usize) -> Self {
+            Self {
+                sent: Arc::default(),
+                replies: replies.into_iter().collect(),
+                stride,
+            }
+        }
+    }
+
+    impl SpiBus for FakeBus {
+        fn configure(&mut self, _speed_hz: u32) -> std::io::Result<()> {
+            Ok(())
+        }
+
+        fn transfer(&mut self, tx: &[u8], rx: &mut [u8]) -> std::io::Result<()> {
+            self.sent.lock().unwrap().push(tx.len());
+            let reply = self.replies.pop_front().unwrap_or_else(|| {
+                let mut write = write_reply(0b001);
+                write.resize(self.stride, 0);
+                write.repeat(tx.len().div_ceil(self.stride))
+            });
+            rx.copy_from_slice(&reply[0..rx.len()]);
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn a_wait_on_a_queued_write_stops_the_batch_at_that_write() {
+        let mut reply = write_reply(0b001);
+        reply.push(0);
+        reply.extend(write_reply(0b010));
+        reply.push(0);
+        let bus = FakeBus::new([reply], WRITE_PACKET_SIZE);
+        let sent = bus.sent.clone();
+        let mut probe = LinuxSpidevSwdProbe::with_bus(Box::new(bus));
+
+        let mut batch = SwdBatch::new();
+        batch.write(Port::Dp, 0x8, 1);
+        batch.idle(2);
+        batch.write(Port::Dp, 0x8, 2);
+        let _ = batch.read(Port::Dp, 0x0);
+        let error = probe.run_batch(&batch).unwrap_err();
+
+        assert_eq!(error.fault_operation, 2);
+        assert!(matches!(
+            error.error,
+            BatchError::Specific(DebugProbeError::SwdTransfer(SwdTransferError::WaitResponse))
+        ));
+        // The writes, the idle byte and the trailing idle byte; the read is not sent.
+        assert_eq!(*sent.lock().unwrap(), [18]);
+    }
+
+    #[test]
+    fn a_full_queue_is_sent_before_the_next_write() {
+        // Each write is followed by one idle byte, as `SwdPort` schedules them.
+        let bus = FakeBus::new([], WRITE_PACKET_SIZE + 1);
+        let sent = bus.sent.clone();
+        let mut probe = LinuxSpidevSwdProbe::with_bus(Box::new(bus));
+
+        let mut batch = SwdBatch::new();
+        for value in 0..600 {
+            batch.write(Port::Ap, 0xC, value);
+            batch.idle(2);
+        }
+        probe.run_batch(&batch).unwrap();
+
+        // 455 writes with their idle bytes and the trailing idle byte fill the queue exactly;
+        // the other 145 follow.
+        assert_eq!(*sent.lock().unwrap(), [455 * 9 + 1, 145 * 9 + 1]);
+    }
+
+    #[test]
+    fn a_wait_names_the_write_that_got_it() {
+        let queue = two_writes();
+        let mut rx = write_reply(0b001);
+        rx.push(0);
+        rx.extend(write_reply(0b010));
+        assert!(matches!(
+            queue.check_acks(&rx),
+            Err((
+                2,
+                DebugProbeError::SwdTransfer(SwdTransferError::WaitResponse)
+            ))
+        ));
+    }
+
+    #[test]
+    fn idle_bytes_stop_at_the_queue_limit() {
+        let mut queue = WriteQueue::default();
+        assert_eq!(queue.push_idle(MAX_QUEUE_BYTES, 1), MAX_QUEUE_BYTES - 1);
+        assert_eq!(queue.room(1), 0);
+        assert_eq!(queue.push_idle(8, 1), 0);
     }
 
     #[test]

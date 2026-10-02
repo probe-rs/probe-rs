@@ -15,6 +15,8 @@ pub mod idcode;
 pub mod sequence;
 
 const MAX_SEQUENCE_BITS: usize = 64;
+/// The sequence count of a `DAP_JTAG_Sequence` request is one byte.
+const MAX_SEQUENCES: usize = u8::MAX as usize;
 
 impl JtagChainAccess for CmsisDap {
     fn chain_state(&mut self) -> &mut JtagChainState {
@@ -43,151 +45,98 @@ impl JtagProbe for CmsisDap {
 }
 
 impl CmsisDap {
-    fn flush_jtag(&mut self) -> Result<(), DebugProbeError> {
-        if let Some(seq) = self.jtag_buffer.current_sequence.take()
-            && !seq.is_empty()
-        {
-            self.jtag_buffer.complete_sequences.push(seq);
-        }
-
-        if self.jtag_buffer.complete_sequences.is_empty() {
-            return Ok(());
-        }
-
-        let sequences = self
-            .jtag_buffer
-            .complete_sequences
-            .drain(..)
-            .map(|s| {
-                if s.tdo_capture {
-                    Sequence::capture(s.tms, &s.data)
-                } else {
-                    Sequence::no_capture(s.tms, &s.data)
-                }
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let command = SequenceRequest::new(sequences)?;
-
-        let response = self.send_jtag_sequences(command)?;
-        self.jtag_buffer.response.extend_from_bitslice(&response);
-
-        Ok(())
-    }
-
     fn run_jtag_batch(
         &mut self,
         start: TapState,
         batch: &Batch<JtagOp, DebugProbeError>,
     ) -> Result<(TapState, Results), BatchExecutionError<DebugProbeError>> {
-        let ops: Vec<_> = batch.iter().collect();
-        let mut state = start;
-        let results = Results::new();
-        let mut skip_enter_path_bits = 0usize;
-
-        for (index, (id, op)) in ops.iter().enumerate() {
-            match op {
-                JtagOp::EnterState(target) => {
-                    let target = *target;
-                    let path = &state.path_to(target)[skip_enter_path_bits..];
-                    skip_enter_path_bits = 0;
-                    let tdi = enter_tdi(target);
-                    for (tms, run_length) in tms_runs(path) {
-                        let data = BitVec::repeat(tdi, run_length);
-                        if let Err(error) = self.jtag_buffer.push_sequence(tms, &data, false) {
-                            return Err(BatchExecutionError::new_from_debug_probe(error, results));
-                        }
-                        if self.jtag_buffer.should_flush()
-                            && let Err(error) = self.flush_jtag()
-                        {
-                            return Err(BatchExecutionError::new_from_debug_probe(error, results));
-                        }
-                    }
-                    state = target;
-                }
-                JtagOp::Exchange { data, capture } => {
-                    if state != TapState::ShiftIr && state != TapState::ShiftDr {
-                        return Err(BatchExecutionError::new_from_debug_probe(
-                            DebugProbeError::Other(format!(
-                                "Exchange in state {state:?}, but ShiftIr or ShiftDr is required"
-                            )),
-                            results,
-                        ));
-                    }
-                    let do_capture = *capture && id.should_capture();
-                    let bit_count = data.len();
-                    // Avoid panicking if there is no data.
-                    let merge_exit = bit_count > 0
-                        && exchange_leaves_shift(state, ops.get(index + 1).map(|(_, op)| op));
-                    let data_bits = if merge_exit { bit_count - 1 } else { bit_count };
-                    let mut offset = 0;
-                    while offset < data_bits {
-                        let chunk = (data_bits - offset).min(MAX_SEQUENCE_BITS);
-                        let mut sequence_data = BitVec::new();
-                        for bit_index in 0..chunk {
-                            sequence_data.push(data[offset + bit_index]);
-                        }
-                        if let Err(error) =
-                            self.jtag_buffer
-                                .push_sequence(false, &sequence_data, do_capture)
-                        {
-                            return Err(BatchExecutionError::new_from_debug_probe(error, results));
-                        }
-                        if self.jtag_buffer.should_flush()
-                            && let Err(error) = self.flush_jtag()
-                        {
-                            return Err(BatchExecutionError::new_from_debug_probe(error, results));
-                        }
-                        offset += chunk;
-                    }
-                    if merge_exit {
-                        skip_enter_path_bits = 1;
-                        let last_tdi = data[bit_count - 1];
-                        let sequence_data = bitvec![last_tdi as usize; 1];
-                        if let Err(error) =
-                            self.jtag_buffer
-                                .push_sequence(true, &sequence_data, do_capture)
-                        {
-                            return Err(BatchExecutionError::new_from_debug_probe(error, results));
-                        }
-                        if self.jtag_buffer.should_flush()
-                            && let Err(error) = self.flush_jtag()
-                        {
-                            return Err(BatchExecutionError::new_from_debug_probe(error, results));
-                        }
-                    }
-                }
-                JtagOp::ClockTck { count } => {
-                    let mut remaining = *count as usize;
-                    while remaining > 0 {
-                        let chunk = remaining.min(MAX_SEQUENCE_BITS);
-                        let data = BitVec::repeat(false, chunk);
-                        if let Err(error) = self.jtag_buffer.push_sequence(false, &data, false) {
-                            return Err(BatchExecutionError::new_from_debug_probe(error, results));
-                        }
-                        if self.jtag_buffer.should_flush()
-                            && let Err(error) = self.flush_jtag()
-                        {
-                            return Err(BatchExecutionError::new_from_debug_probe(error, results));
-                        }
-                        remaining -= chunk;
-                    }
-                }
-            }
+        let failed = |error| BatchExecutionError::new_from_debug_probe(error, Results::new());
+        let (state, requests) =
+            encode_jtag_batch(self.packet_size - 1, start, batch).map_err(failed)?;
+        let mut captured = BitVec::new();
+        for request in requests {
+            let response = self
+                .send_jtag_sequences(request)
+                .map_err(|error| failed(error.into()))?;
+            captured.extend_from_bitslice(&response);
         }
-
-        if let Err(error) = self.flush_jtag() {
-            return Err(BatchExecutionError::new_from_debug_probe(error, results));
-        }
-
-        let captured = std::mem::take(&mut self.jtag_buffer.response);
-        let results = distribute_captures(ops, &captured, results)?;
-
+        let results = distribute_captures(batch.iter(), &captured, Results::new())?;
         Ok((state, results))
     }
 }
 
-pub(crate) struct BufferedJtagSequence {
+/// Encodes a batch that starts with the TAP in `start` into `DAP_JTAG_Sequence` requests that
+/// each fit in `packet_size` bytes.
+fn encode_jtag_batch(
+    packet_size: u16,
+    start: TapState,
+    batch: &Batch<JtagOp, DebugProbeError>,
+) -> Result<(TapState, Vec<SequenceRequest>), DebugProbeError> {
+    let ops: Vec<_> = batch.iter().collect();
+    let mut state = start;
+    let mut skip_enter_path_bits = 0usize;
+    let mut buffer = JtagBuffer::new(packet_size);
+    let mut requests = Vec::new();
+
+    for (index, (id, op)) in ops.iter().enumerate() {
+        match op {
+            JtagOp::EnterState(target) => {
+                let target = *target;
+                let path = &state.path_to(target)[skip_enter_path_bits..];
+                skip_enter_path_bits = 0;
+                let tdi = enter_tdi(target);
+                for (tms, run_length) in tms_runs(path) {
+                    let data = BitVec::repeat(tdi, run_length);
+                    buffer.push_into(tms, &data, false, &mut requests)?;
+                }
+                state = target;
+            }
+            JtagOp::Exchange { data, capture } => {
+                if state != TapState::ShiftIr && state != TapState::ShiftDr {
+                    return Err(DebugProbeError::Other(format!(
+                        "Exchange in state {state:?}, but ShiftIr or ShiftDr is required"
+                    )));
+                }
+                let do_capture = *capture && id.should_capture();
+                let bit_count = data.len();
+                // Avoid panicking if there is no data.
+                let merge_exit = bit_count > 0
+                    && exchange_leaves_shift(state, ops.get(index + 1).map(|(_, op)| op));
+                let data_bits = if merge_exit { bit_count - 1 } else { bit_count };
+                let mut offset = 0;
+                while offset < data_bits {
+                    let chunk = (data_bits - offset).min(MAX_SEQUENCE_BITS);
+                    let mut sequence_data = BitVec::new();
+                    for bit_index in 0..chunk {
+                        sequence_data.push(data[offset + bit_index]);
+                    }
+                    buffer.push_into(false, &sequence_data, do_capture, &mut requests)?;
+                    offset += chunk;
+                }
+                if merge_exit {
+                    skip_enter_path_bits = 1;
+                    let last_tdi = data[bit_count - 1];
+                    let sequence_data = bitvec![last_tdi as usize; 1];
+                    buffer.push_into(true, &sequence_data, do_capture, &mut requests)?;
+                }
+            }
+            JtagOp::ClockTck { count } => {
+                let mut remaining = *count as usize;
+                while remaining > 0 {
+                    let chunk = remaining.min(MAX_SEQUENCE_BITS);
+                    let data = BitVec::repeat(false, chunk);
+                    buffer.push_into(false, &data, false, &mut requests)?;
+                    remaining -= chunk;
+                }
+            }
+        }
+    }
+
+    requests.extend(buffer.take_request()?);
+    Ok((state, requests))
+}
+
+struct BufferedJtagSequence {
     tdo_capture: bool,
     tms: bool,
     data: BitVec,
@@ -204,21 +153,61 @@ impl BufferedJtagSequence {
     }
 }
 
-pub(crate) struct JtagBuffer {
+struct JtagBuffer {
     packet_size: usize,
-    pub(crate) current_sequence: Option<BufferedJtagSequence>,
-    pub(crate) complete_sequences: Vec<BufferedJtagSequence>,
-    response: BitVec,
+    current_sequence: Option<BufferedJtagSequence>,
+    complete_sequences: Vec<BufferedJtagSequence>,
 }
 
 impl JtagBuffer {
-    pub(crate) fn new(packet_size: u16) -> Self {
+    fn new(packet_size: u16) -> Self {
         Self {
             packet_size: packet_size as usize,
             current_sequence: None,
             complete_sequences: Vec::with_capacity(packet_size as usize),
-            response: BitVec::with_capacity(packet_size as usize),
         }
+    }
+
+    /// Pushes a sequence, and moves the buffer into `requests` when it is full.
+    fn push_into(
+        &mut self,
+        tms: bool,
+        data: &BitSlice,
+        tdo_capture: bool,
+        requests: &mut Vec<SequenceRequest>,
+    ) -> Result<(), DebugProbeError> {
+        self.push_sequence(tms, data, tdo_capture)?;
+        if self.should_flush() {
+            requests.extend(self.take_request()?);
+        }
+        Ok(())
+    }
+
+    /// Takes the buffered sequences as one request, if there are any.
+    fn take_request(&mut self) -> Result<Option<SequenceRequest>, DebugProbeError> {
+        if let Some(seq) = self.current_sequence.take()
+            && !seq.is_empty()
+        {
+            self.complete_sequences.push(seq);
+        }
+
+        if self.complete_sequences.is_empty() {
+            return Ok(None);
+        }
+
+        let sequences = self
+            .complete_sequences
+            .drain(..)
+            .map(|s| {
+                if s.tdo_capture {
+                    Sequence::capture(s.tms, &s.data)
+                } else {
+                    Sequence::no_capture(s.tms, &s.data)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(Some(SequenceRequest::new(sequences)?))
     }
 
     fn total_buffer_bytes(&self) -> usize {
@@ -231,7 +220,7 @@ impl JtagBuffer {
             + self.current_sequence.as_ref().map_or(0, |s| s.size())
     }
 
-    pub(crate) fn push_sequence(
+    fn push_sequence(
         &mut self,
         tms: bool,
         data: &BitSlice,
@@ -261,9 +250,12 @@ impl JtagBuffer {
         Ok(())
     }
 
-    pub(crate) fn should_flush(&self) -> bool {
+    fn should_flush(&self) -> bool {
         // Checked after each push, so leave room for one more full sequence.
+        let sequences =
+            self.complete_sequences.len() + usize::from(self.current_sequence.is_some());
         self.total_buffer_bytes() + MAX_SEQUENCE_BITS.div_ceil(8) > self.packet_size
+            || sequences >= MAX_SEQUENCES
     }
 }
 
@@ -305,34 +297,20 @@ pub(crate) mod decoder {
 mod tests {
     use super::{JtagBuffer, MAX_SEQUENCE_BITS};
     use crate::probe::cmsisdap::commands::Request;
-    use crate::probe::cmsisdap::commands::jtag::sequence::{Sequence, SequenceRequest};
     use bitvec::vec::BitVec;
 
-    /// Serializes the buffer into the `packet_size` bytes `flush_jtag` has
-    /// available and returns the number of bytes written.
+    /// Takes the buffered request, serializes it into `packet_size` bytes, and returns the
+    /// number of bytes written. Building the request checks the sequence count.
     fn flush(buffer: &mut JtagBuffer, packet_size: usize) -> usize {
-        if let Some(seq) = buffer.current_sequence.take() {
-            buffer.complete_sequences.push(seq);
-        }
-        let sequences = buffer
-            .complete_sequences
-            .drain(..)
-            .map(|s| {
-                if s.tdo_capture {
-                    Sequence::capture(s.tms, &s.data)
-                } else {
-                    Sequence::no_capture(s.tms, &s.data)
-                }
-            })
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap();
-        let request = SequenceRequest::new(sequences).unwrap();
-        request.to_bytes(&mut vec![0u8; packet_size]).unwrap()
+        buffer.take_request().unwrap().map_or(0, |request| {
+            request.to_bytes(&mut vec![0u8; packet_size]).unwrap()
+        })
     }
 
     /// `should_flush` is checked after each push, so it must trigger while one
-    /// more full sequence still fits. Mixed widths matter: uniform widths pass
-    /// at some packet sizes by luck.
+    /// more full sequence still fits, and before the request holds more
+    /// sequences than its count byte can describe. Mixed widths matter: uniform
+    /// widths pass at some packet sizes by luck.
     #[test]
     fn flushed_buffer_fits_packet() {
         for packet_size in [64u16, 128, 256, 512, 1024] {
@@ -356,6 +334,11 @@ mod tests {
                         );
                     }
                 }
+                let written = flush(&mut buffer, packet_size as usize);
+                assert!(
+                    written <= packet_size as usize,
+                    "{packet_size}-byte packet, widths {widths:?}: wrote {written} at the end"
+                );
             }
         }
     }
@@ -364,123 +347,30 @@ mod tests {
 #[cfg(test)]
 mod golden_tests {
     use super::decoder::decode_requests;
-    use super::{JtagBuffer, MAX_SEQUENCE_BITS, enter_tdi, exchange_leaves_shift, tms_runs};
+    use super::encode_jtag_batch;
+    use crate::probe::BitSequence;
     use crate::probe::cmsisdap::commands::Request;
-    use crate::probe::cmsisdap::commands::jtag::sequence::{Sequence, SequenceRequest};
     use crate::probe::jtag::golden::{
-        SHIFT_IR_ONE_TAP, SHIFT_IR_THREE_TAP, assert_triples_eq, build_ir_exchange, move_literal,
-        one_tap_params, three_tap_params,
+        SHIFT_IR_ONE_TAP, SHIFT_IR_THREE_TAP, assert_triples_eq, build_ir_exchange, lowering_batch,
+        move_literal, one_tap_params, three_tap_params,
     };
     use crate::probe::jtag::{JtagBatch, TapState};
-    use crate::probe::{Batch, BitSequence, DebugProbeError, JtagOp};
-    use bitvec::{bitvec, vec::BitVec};
 
     fn collect_cmsis_requests(
-        packet_size: usize,
+        packet_size: u16,
         start: TapState,
-        batch: &Batch<JtagOp, DebugProbeError>,
+        batch: &JtagBatch,
     ) -> (TapState, Vec<Vec<u8>>) {
-        let ops: Vec<_> = batch.iter().collect();
-        let mut state = start;
-        let mut skip_enter_path_bits = 0usize;
-        let mut jtag_buffer = JtagBuffer::new(packet_size as u16);
-        let mut requests = Vec::new();
-
-        let mut flush = |buffer: &mut JtagBuffer| {
-            if let Some(seq) = buffer.current_sequence.take()
-                && !seq.is_empty()
-            {
-                buffer.complete_sequences.push(seq);
-            }
-            if buffer.complete_sequences.is_empty() {
-                return;
-            }
-            let sequences = buffer
-                .complete_sequences
-                .drain(..)
-                .map(|s| {
-                    if s.tdo_capture {
-                        Sequence::capture(s.tms, &s.data)
-                    } else {
-                        Sequence::no_capture(s.tms, &s.data)
-                    }
-                })
-                .collect::<Result<Vec<_>, _>>()
-                .expect("sequence encoding failed");
-            let request = SequenceRequest::new(sequences).expect("request encoding failed");
-            let mut bytes = vec![0u8; 4096];
-            let length = request.to_bytes(&mut bytes).expect("request bytes failed");
-            requests.push(bytes[..length].to_vec());
-        };
-
-        for (index, (_id, op)) in ops.iter().enumerate() {
-            match op {
-                JtagOp::EnterState(target) => {
-                    let target = *target;
-                    let path = &state.path_to(target)[skip_enter_path_bits..];
-                    skip_enter_path_bits = 0;
-                    let tdi = enter_tdi(target);
-                    for (tms, run_length) in tms_runs(path) {
-                        let data = BitVec::repeat(tdi, run_length);
-                        jtag_buffer
-                            .push_sequence(tms, &data, false)
-                            .expect("push failed");
-                        if jtag_buffer.should_flush() {
-                            flush(&mut jtag_buffer);
-                        }
-                    }
-                    state = target;
-                }
-                JtagOp::Exchange { data, capture: _ } => {
-                    let merge_exit =
-                        exchange_leaves_shift(state, ops.get(index + 1).map(|(_, op)| op));
-                    let bit_count = data.len();
-                    let data_bits = if merge_exit { bit_count - 1 } else { bit_count };
-                    let mut offset = 0;
-                    while offset < data_bits {
-                        let chunk = (data_bits - offset).min(MAX_SEQUENCE_BITS);
-                        let mut sequence_data = BitVec::new();
-                        for bit_index in 0..chunk {
-                            sequence_data.push(data[offset + bit_index]);
-                        }
-                        jtag_buffer
-                            .push_sequence(false, &sequence_data, false)
-                            .expect("push failed");
-                        if jtag_buffer.should_flush() {
-                            flush(&mut jtag_buffer);
-                        }
-                        offset += chunk;
-                    }
-                    if merge_exit {
-                        skip_enter_path_bits = 1;
-                        let last_tdi = data[bit_count - 1];
-                        let sequence_data = bitvec![last_tdi as usize; 1];
-                        jtag_buffer
-                            .push_sequence(true, &sequence_data, false)
-                            .expect("push failed");
-                        if jtag_buffer.should_flush() {
-                            flush(&mut jtag_buffer);
-                        }
-                    }
-                }
-                JtagOp::ClockTck { count } => {
-                    let mut remaining = *count as usize;
-                    while remaining > 0 {
-                        let chunk = remaining.min(MAX_SEQUENCE_BITS);
-                        let data = BitVec::repeat(false, chunk);
-                        jtag_buffer
-                            .push_sequence(false, &data, false)
-                            .expect("push failed");
-                        if jtag_buffer.should_flush() {
-                            flush(&mut jtag_buffer);
-                        }
-                        remaining -= chunk;
-                    }
-                }
-            }
-        }
-
-        flush(&mut jtag_buffer);
+        let (state, requests) = encode_jtag_batch(packet_size, start, batch).unwrap();
+        let requests = requests
+            .iter()
+            .map(|request| {
+                let mut bytes = vec![0u8; usize::from(packet_size)];
+                let length = request.to_bytes(&mut bytes).unwrap();
+                bytes.truncate(length);
+                bytes
+            })
+            .collect();
         (state, requests)
     }
 
@@ -524,6 +414,39 @@ mod golden_tests {
             let triples = decode_requests(&requests);
             assert_triples_eq(&triples, literal.0, literal.1, literal.2);
         }
+    }
+
+    #[test]
+    fn a_captured_scan_captures_every_bit_including_the_exit_bit() {
+        let mut batch = JtagBatch::new();
+        batch.enter(TapState::ShiftDr);
+        let _handle = batch.exchange(BitSequence::repeat(true, 41));
+        batch.enter(TapState::RunTestIdle);
+        let (_, requests) = collect_cmsis_requests(64, TapState::RunTestIdle, &batch);
+        let triples = decode_requests(&requests);
+        let captured: Vec<_> = triples.iter().map(|(_, _, capture)| *capture).collect();
+        let mut expected = vec![false; 3];
+        expected.extend([true; 41]);
+        expected.extend([false; 2]);
+        assert_eq!(captured, expected);
+    }
+
+    #[test]
+    fn many_short_scans_split_at_the_sequence_limit() {
+        // Each scan alternates TMS a few times, so the sequences are short and a 1024-byte
+        // packet would hold more of them than a request can count.
+        let mut batch = JtagBatch::new();
+        for _ in 0..300 {
+            batch.enter(TapState::ShiftDr);
+            batch.exchange_no_capture(BitSequence::from_u64(2, 0b01));
+            batch.enter(TapState::RunTestIdle);
+        }
+        let (_, requests) = collect_cmsis_requests(1024, TapState::RunTestIdle, &batch);
+        assert!(requests.len() > 1);
+        assert_eq!(
+            decode_requests(&requests),
+            lowering_batch(TapState::RunTestIdle, &batch)
+        );
     }
 
     #[test]

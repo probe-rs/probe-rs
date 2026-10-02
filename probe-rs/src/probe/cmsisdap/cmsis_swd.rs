@@ -436,7 +436,11 @@ impl CmsisDap {
         };
         let address = Self::swd_register(port, addr);
         let words_per_packet = self.max_words_per_block_packet();
-        let depth = (self.packet_count as usize).clamp(1, MAX_PIPELINED_BLOCKS);
+        // Leave one packet buffer free. A probe with all buffers full does not take
+        // `DAP_TransferAbort` before the current transfer ends.
+        let depth = (self.packet_count as usize)
+            .saturating_sub(1)
+            .clamp(1, MAX_PIPELINED_BLOCKS);
 
         let mut chunks = run.chunks(words_per_packet).enumerate();
         let mut in_flight = VecDeque::with_capacity(depth);
@@ -479,12 +483,16 @@ impl CmsisDap {
             let response = match commands::receive_response(&mut self.device, &request) {
                 Ok(response) => response,
                 Err(error) => {
+                    // A late reply arrives ahead of the replies still in flight, so reading on
+                    // would give each request the reply of the one before it.
+                    if commands::may_be_out_of_step(&error) || !in_flight.is_empty() {
+                        self.device.resynchronise();
+                    }
                     failure.get_or_insert((
                         BatchError::Probe(DebugProbeError::from(error)),
                         chunk_start,
                     ));
-                    capture = false;
-                    continue;
+                    break;
                 }
             };
 
@@ -563,7 +571,7 @@ impl CmsisDap {
         out: SwdPins,
         select: SwdPins,
         wait: Duration,
-    ) -> Result<(), DebugProbeError> {
+    ) -> Result<SwdPins, DebugProbeError> {
         self.connect_if_needed()?;
 
         let request = commands::swj::pins::SWJPinsRequest::from_raw_values(
@@ -571,8 +579,8 @@ impl CmsisDap {
             select.0,
             wait.as_micros() as u32,
         );
-        commands::send_command(&mut self.device, &request)?;
-        Ok(())
+        let levels = commands::send_command(&mut self.device, &request)?;
+        Ok(SwdPins(levels.0))
     }
 }
 
@@ -603,7 +611,7 @@ impl SwdProbe for CmsisDap {
             }
 
             // Whatever ended the run is handled on its own, and cannot share a packet.
-            let Some((_, op)) = ops.get(batch_index) else {
+            let Some((id, op)) = ops.get(batch_index) else {
                 break;
             };
 
@@ -637,12 +645,19 @@ impl SwdProbe for CmsisDap {
                     }
                 }
                 SwdOp::Pins { out, select, wait } => {
-                    if let Err(error) = self.run_swj_pins_op(*out, *select, *wait) {
-                        return Err(BatchExecutionError::new_from_debug_probe_at(
-                            error,
-                            results,
-                            batch_index,
-                        ));
+                    match self.run_swj_pins_op(*out, *select, *wait) {
+                        Ok(levels) => {
+                            if id.should_capture() {
+                                results.push(id, CommandResult::U8(levels.0));
+                            }
+                        }
+                        Err(error) => {
+                            return Err(BatchExecutionError::new_from_debug_probe_at(
+                                error,
+                                results,
+                                batch_index,
+                            ));
+                        }
                     }
                 }
             }
@@ -680,6 +695,57 @@ mod tests {
             },
             transfer_data: Vec::new(),
         }
+    }
+
+    #[test]
+    fn a_late_block_reply_does_not_reach_the_next_command() {
+        use crate::probe::cmsisdap::commands::{
+            CmsisDapDevice, CommandId,
+            fake::{FakeProbe, Reply, standard_reply},
+            general::info::PacketCountCommand,
+        };
+
+        let mut blocks = 0;
+        let probe = FakeProbe::shared(64, move |command| {
+            if command[0] != CommandId::TransferBlock as u8 {
+                return standard_reply(command, 64, 4);
+            }
+            let count = u16::from_le_bytes([command[2], command[3]]);
+            let mut reply = vec![command[0], command[2], command[3], Ack::Ok as u8];
+            for word in 0..u32::from(count) {
+                reply.extend((blocks * 100 + word).to_le_bytes());
+            }
+            blocks += 1;
+            // The probe is slow on the second block, so its reply and the third come late.
+            if blocks == 2 {
+                Reply::Held(reply)
+            } else {
+                Reply::Now(reply)
+            }
+        });
+        let mut dap = CmsisDap::new_from_device(CmsisDapDevice::Fake(probe.clone())).unwrap();
+
+        let mut batch = SwdBatch::new();
+        let reads: Vec<_> = (0..30).map(|_| batch.read(Port::Ap, 0xC)).collect();
+        let ops: Vec<_> = batch
+            .iter()
+            .map(|(id, op)| (id.clone(), op.clone()))
+            .collect();
+
+        let error = dap.run_transfer_block(&ops, 0, Results::new()).unwrap_err();
+        let words_per_packet = dap.max_words_per_block_packet();
+        assert_eq!(error.fault_operation, words_per_packet);
+        let mut results = error.results;
+        for (word, read) in reads.into_iter().take(words_per_packet).enumerate() {
+            assert_eq!(results.take(read).ok(), Some(word as u32));
+        }
+
+        // One resynchronisation, without a wait for the third reply.
+        let aborts = probe.lock().unwrap().aborts();
+        assert_eq!(aborts, 1);
+
+        let packet_count = commands::send_command(&mut dap.device, &PacketCountCommand {});
+        assert_eq!(packet_count.unwrap(), 4);
     }
 
     #[test]
