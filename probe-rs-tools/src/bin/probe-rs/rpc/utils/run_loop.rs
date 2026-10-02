@@ -64,7 +64,8 @@ impl RunLoop {
     /// Vector catch, the initial resume, and the poller run only on [`Self::core_id`]. Other cores
     /// are observed with `status()` only. A disabled hart is skipped and retried later. An
     /// unexpected halt or semihosting result on any observed core uses the same predicate as the
-    /// primary core. A lock-up of another core does not end the run loop.
+    /// primary core. A lock-up of another core does not end the run loop. A non-primary core that
+    /// is already halted when the loop starts is ignored until it has been seen running.
     ///
     /// Upon halt the predicate is invoked with the halt reason:
     /// * If the predicate returns `Ok(Some(r))` the run loop returns `Ok(ReturnReason::Predicate(r))`.
@@ -180,6 +181,17 @@ impl RunLoop {
         let start = Instant::now();
         let core_count = shared_session.session_blocking().target().cores.len();
         let mut next_wakeup = vec![start; core_count];
+        let mut parked = vec![false; core_count];
+        {
+            let mut session = shared_session.session_blocking();
+            for (idx, parked) in parked.iter_mut().enumerate() {
+                if idx != self.core_id
+                    && let Ok(mut core) = session.core(idx)
+                {
+                    *parked = core.core_halted().unwrap_or(false);
+                }
+            }
+        }
 
         loop {
             let mut next_poll;
@@ -243,6 +255,22 @@ impl RunLoop {
                             continue;
                         }
                     };
+
+                    if parked[idx] {
+                        match core.core_halted() {
+                            Ok(false) => parked[idx] = false,
+                            result => {
+                                if let Err(error) = result {
+                                    tracing::debug!(
+                                        "Skipping core {idx} while the run loop observes it: {error}"
+                                    );
+                                }
+                                *wakeup = Instant::now() + WATCH_POLL_INTERVAL;
+                                next_poll = next_poll.min(WATCH_POLL_INTERVAL);
+                                continue;
+                            }
+                        }
+                    }
 
                     let mut duration = WATCH_POLL_INTERVAL;
                     match self
