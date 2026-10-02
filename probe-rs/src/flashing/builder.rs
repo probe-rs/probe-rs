@@ -433,6 +433,7 @@ mod tests {
             range: 0..1 << 16,
             cores: vec!["main".into()],
             is_alias: false,
+            alias_of: None,
         };
 
         (region, flash_algorithm)
@@ -465,6 +466,7 @@ mod tests {
             range: 0..1 << 16,
             cores: vec!["main".into()],
             is_alias: false,
+            alias_of: None,
         };
 
         (region, flash_algorithm)
