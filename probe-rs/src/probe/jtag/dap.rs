@@ -159,12 +159,14 @@ fn perform_jtag_transfers(
         transfer.status = *status_responses.get(i + 1).unwrap_or(&TransferStatus::Ok);
     }
 
-    // Pluck off the extra 2 results that do error checking
+    // Pluck off the extra 2 results that do error checking. A JTAG-DP read returns its
+    // data in the *next* scan, so the CTRL/STAT value is captured by the trailing RDBUFF
+    // read, not by the CTRL/STAT read scan itself (which captures the previous read).
     let ctrl_value = if !last_is_abort {
-        _ = results
+        let rdbuff_result = results
             .pop()
             .expect("Failed to pop value that was pushed here.");
-        let rdbuff_result = results
+        _ = results
             .pop()
             .expect("Failed to pop value that was pushed here.");
 
@@ -618,7 +620,7 @@ mod tests {
     };
     use crate::{
         architecture::arm::{
-            ApAddress, RegisterAddress,
+            ApAddress, ArmError, DapError, RegisterAddress,
             dp::{Ctrl, DpRegister, RdBuff},
         },
         error::Error,
@@ -847,6 +849,34 @@ mod tests {
                 .expect("read should succeed");
 
         assert_eq!(result, read_value);
+        assert_eq!(mock.performed_transfer_count, mock.expected_transfer_count);
+    }
+
+    #[test]
+    fn read_register_jtag_detects_sticky_error() {
+        const STICKYERR: u32 = 1 << 5;
+
+        let mut mock = MockJaylink::new();
+        mock.select_protocol(WireProtocol::Jtag).unwrap();
+
+        // An ADIv5 JTAG-DP acks OK/FAULT identically, so a faulting AP read looks
+        // successful until CTRL/STAT is checked. The CTRL/STAT value is returned by the
+        // trailing RDBUFF scan, not the CTRL/STAT scan itself.
+        mock.add_jtag_response(ApAddress::V1(4), true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(Ctrl::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, STICKYERR, 0);
+        // Write-1-to-clear of the latched sticky error.
+        mock.add_jtag_response(Ctrl::ADDRESS, false, DapAcknowledge::Ok, 0, STICKYERR);
+
+        let mut chain = JtagChain::new(&mut mock);
+        let result =
+            jtag_read_register(&mut chain, ApAddress::V1(4).into(), &SwdSettings::default());
+
+        assert!(
+            matches!(result, Err(ArmError::Dap(DapError::FaultResponse))),
+            "{result:?}"
+        );
         assert_eq!(mock.performed_transfer_count, mock.expected_transfer_count);
     }
 
