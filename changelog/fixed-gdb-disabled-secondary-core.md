@@ -1,0 +1,1 @@
+Fixed the GDB server failing to start on multi-core targets when a secondary Cortex-M core is still held in reset; that core is now served with the base register set so the other cores stay debuggable.

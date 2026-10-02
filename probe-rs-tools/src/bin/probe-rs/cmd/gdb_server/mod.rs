@@ -156,14 +156,34 @@ impl GdbSessionContext {
         let mut cores = Vec::with_capacity(metadata.cores.len());
         for wire_core in &metadata.cores {
             let core_type = from_wire_core_type(wire_core.core_type);
-            let meta = session.core(wire_core.index as usize).metadata().await?;
-            let registers = CoreRegisters::for_core_type(
-                core_type,
-                meta.fpu_support,
-                meta.floating_point_register_count
-                    .map(|count| count as usize),
-            );
-            let instruction_set = from_wire_instruction_set(meta.instruction_set);
+            let (registers, instruction_set) =
+                match session.core(wire_core.index as usize).metadata().await {
+                    Ok(meta) => (
+                        CoreRegisters::for_core_type(
+                            core_type,
+                            meta.fpu_support,
+                            meta.floating_point_register_count
+                                .map(|count| count as usize),
+                        ),
+                        from_wire_instruction_set(meta.instruction_set),
+                    ),
+                    // A secondary core that is still held in reset cannot be queried.
+                    // Serve it with the base Cortex-M register set so the other cores
+                    // stay debuggable.
+                    Err(e)
+                        if core_type.is_cortex_m() && {
+                            let text = e.to_string();
+                            text.contains("is not enabled") || text.contains("CoreDisabled")
+                        } =>
+                    {
+                        tracing::debug!("Core {} is not enabled: {e}", wire_core.index);
+                        (
+                            CoreRegisters::for_core_type(core_type, false, None),
+                            InstructionSet::Thumb2,
+                        )
+                    }
+                    Err(e) => return Err(e.into()),
+                };
 
             let name = target
                 .as_ref()
