@@ -78,6 +78,10 @@ impl MCX {
     const VARIANT_N: [&str; 1] = ["MCXN"];
     const VARIANT_N0: [&str; 2] = ["MCXN947", "MCXN526"];
 
+    /// How long to wait for the boot ROM to grant debug access after a successful
+    /// `START_DBG_SESSION` debug mailbox command.
+    const AP_ENABLE_TIMEOUT: Duration = Duration::from_millis(1000);
+
     fn is_variant<'a, V>(&self, v: V) -> bool
     where
         V: IntoIterator<Item = &'a str>,
@@ -179,7 +183,47 @@ impl MCX {
 
         interface.flush()?;
 
+        // The ROM acknowledges "Start Debug Session" *before* it actually enables debug
+        // access. Per the reference manual, section 49.6.1 (Debug session with uninitialized
+        // or invalid image or ISP mode): "Upon receiving the command, the boot code disables
+        // any unwanted peripheral and manages NXP secrets before enabling debug access.
+        // After enabling debug access, the ROM enters a while(1) loop."
+        //
+        // Measured on an MCXA266 held in ISP mode, AP0 only reports CSW.DeviceEn ~25 ms
+        // after the mailbox returns success. Returning here immediately makes the very next
+        // AP transaction fault, which is why flashing a part in ISP mode used to fail on the
+        // first attempt and only succeed on the second.
+        self.wait_for_ap_enabled(interface, &FullyQualifiedApAddress::v1_with_dp(dp, 0))?;
+
         Ok(true)
+    }
+
+    /// Wait until the given memory AP reports `CSW.DeviceEn`, meaning debug access has
+    /// actually been granted and the AP can be used for memory transactions.
+    fn wait_for_ap_enabled(
+        &self,
+        interface: &mut dyn DapAccess,
+        mem_ap: &FullyQualifiedApAddress,
+    ) -> Result<(), ArmError> {
+        let start = Instant::now();
+        loop {
+            // While the ROM is still bringing debug up, reading the AP can transiently
+            // fault. Treat that the same as "not enabled yet" and keep polling.
+            if matches!(self.is_ap_enabled(interface, mem_ap), Ok(true)) {
+                tracing::debug!("AP {mem_ap:?} enabled after {:?}", start.elapsed());
+                return Ok(());
+            }
+
+            if start.elapsed() > Self::AP_ENABLE_TIMEOUT {
+                tracing::error!(
+                    "AP {mem_ap:?} was not enabled within {:?}",
+                    Self::AP_ENABLE_TIMEOUT
+                );
+                return Err(ArmError::Timeout);
+            }
+
+            thread::sleep(Duration::from_millis(10));
+        }
     }
 
     fn configure_trace_clock(
