@@ -352,13 +352,12 @@ pub trait JtagChainAccess: JtagProbe {
 
 /// Bit-banging JTAG interface for probe drivers.
 ///
-/// Three differences from a raw bit-bang driver:
+/// A blanket [`JtagProbe`] implementation lowers each batch to single bits.
 ///
 /// - [`BitbangJtag::shift`] does not track the TAP state. The lowering tracks it.
-/// - [`BitbangJtag::flush`] is new. A driver that buffers bits sends them at a
-///   flush. The lowering calls flush before it reads with [`BitbangJtag::captured`].
-/// - This trait has no `reset_jtag_state_machine`. [`JtagOp::EnterState`] with
-///   [`TapState::TestLogicReset`] replaces it.
+/// - A driver that buffers bits sends them at [`BitbangJtag::flush`]. The lowering
+///   calls flush before it reads with [`BitbangJtag::captured`].
+/// - A TAP reset is [`JtagOp::EnterState`] with [`TapState::TestLogicReset`].
 pub trait BitbangJtag: DebugProbe {
     /// Return the state that the TAP rests in between two batches.
     ///
@@ -416,8 +415,8 @@ pub(crate) enum Step<'a> {
         exit: bool,
         capture: bool,
     },
-    /// Clock `count` idle cycles with the TAP in `state`.
-    Clock { count: u32, state: TapState },
+    /// Clock `count` idle cycles with TMS at `tms`, which holds the TAP in its stable state.
+    Clock { count: u32, tms: bool },
 }
 
 /// Walk `batch` from `state`, and hand each step to `emit`.
@@ -459,7 +458,7 @@ pub(crate) fn walk_batch(
             }
             JtagOp::ClockTck { count } => emit(Step::Clock {
                 count: *count,
-                state: *state,
+                tms: *state == TapState::TestLogicReset,
             })?,
         }
     }
@@ -580,7 +579,7 @@ fn lower_batch<P: BitbangJtag>(
             (0..data.len())
                 .try_for_each(|index| probe.shift(exit && index == last, data[index], capture))
         }
-        Step::Clock { count, .. } => (0..count).try_for_each(|_| probe.shift(false, false, false)),
+        Step::Clock { count, tms } => (0..count).try_for_each(|_| probe.shift(tms, false, false)),
     });
     if let Err(error) = walked {
         return Err(BatchExecutionError::new_from_debug_probe(error, results));
@@ -662,6 +661,20 @@ mod tests {
                     state.step(tms)
                 });
             assert_eq!(end, FullTapState::RunTestIdle, "{bits} bits");
+        }
+    }
+
+    #[test]
+    fn clocks_hold_every_stable_state() {
+        for state in STABLE_STATES {
+            let mut batch = JtagBatch::new();
+            batch.clock(3);
+            let end = golden::lowering_batch(state, &batch)
+                .into_iter()
+                .fold(FullTapState::from(state), |state, (tms, _, _)| {
+                    state.step(tms)
+                });
+            assert_eq!(end, FullTapState::from(state), "{state:?}");
         }
     }
 

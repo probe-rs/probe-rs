@@ -108,12 +108,12 @@ fn encode_jtag_batch(
             }
             Ok(())
         }
-        Step::Clock { count, .. } => {
+        Step::Clock { count, tms } => {
             let mut remaining = count as usize;
             while remaining > 0 {
                 let chunk = remaining.min(MAX_SEQUENCE_BITS);
                 let data = BitVec::repeat(false, chunk);
-                buffer.push_into(false, &data, false, &mut requests)?;
+                buffer.push_into(tms, &data, false, &mut requests)?;
                 remaining -= chunk;
             }
             Ok(())
@@ -339,8 +339,9 @@ mod golden_tests {
     use crate::probe::BitSequence;
     use crate::probe::cmsisdap::commands::Request;
     use crate::probe::jtag::golden::{
-        SHIFT_IR_ONE_TAP, SHIFT_IR_THREE_TAP, assert_triples_eq, build_ir_exchange, lowering_batch,
-        move_literal, one_tap_params, three_tap_params,
+        SHIFT_IR_ONE_TAP, SHIFT_IR_THREE_TAP, assert_triples_eq, build_ir_exchange,
+        clock_in_every_stable_state, lowering_batch, move_literal, one_tap_params,
+        three_tap_params,
     };
     use crate::probe::jtag::{JtagBatch, TapState};
 
@@ -443,6 +444,16 @@ mod golden_tests {
         batch.enter(TapState::ShiftDr);
         batch.exchange_no_capture(BitSequence::new());
         batch.enter(TapState::RunTestIdle);
+        let (_, requests) = collect_cmsis_requests(64, TapState::RunTestIdle, &batch);
+        assert_eq!(
+            decode_requests(&requests),
+            lowering_batch(TapState::RunTestIdle, &batch)
+        );
+    }
+
+    #[test]
+    fn clocks_match_the_bitbang_lowering() {
+        let batch = clock_in_every_stable_state();
         let (_, requests) = collect_cmsis_requests(64, TapState::RunTestIdle, &batch);
         assert_eq!(
             decode_requests(&requests),

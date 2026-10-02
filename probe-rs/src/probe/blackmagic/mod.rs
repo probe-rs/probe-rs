@@ -1170,27 +1170,33 @@ fn encode_jtag_batch(
                 data,
                 exit,
                 capture,
-            } => {
-                let bit_count = data.len();
-                let mut offset = 0;
-                while offset < bit_count {
-                    let chunk = (bit_count - offset).min(32);
-                    let (bits, length) = BlackMagicProbe::pack_tdi_bits(data, offset, chunk);
-                    offset += chunk;
-                    wire.push(JtagWireOp::Tdi {
-                        bits,
-                        length,
-                        exit_tms: exit && offset == bit_count,
-                        capture,
-                    });
-                }
+            } => wire.extend(tdi_ops(data, exit, capture)),
+            Step::Clock { count, tms: true } => wire.extend(tms_ops(&vec![true; count as usize])),
+            Step::Clock { count, tms: false } => {
+                let idle = BitSequence::repeat(false, count as usize);
+                wire.extend(tdi_ops(&idle, false, false));
             }
-            Step::Clock { count, .. } => wire.extend(tms_ops(&vec![false; count as usize])),
         }
         Ok(())
     })?;
 
     Ok((state, wire))
+}
+
+/// Splits `data` into remote TDI commands with TMS low. With `exit`, the last bit is clocked
+/// with TMS high.
+fn tdi_ops(data: &BitSequence, exit: bool, capture: bool) -> impl Iterator<Item = JtagWireOp> + '_ {
+    let bit_count = data.len();
+    (0..bit_count).step_by(32).map(move |offset| {
+        let chunk = (bit_count - offset).min(32);
+        let (bits, length) = BlackMagicProbe::pack_tdi_bits(data, offset, chunk);
+        JtagWireOp::Tdi {
+            bits,
+            length,
+            exit_tms: exit && offset + chunk == bit_count,
+            capture,
+        }
+    })
 }
 
 impl DebugProbe for BlackMagicProbe {
@@ -1717,7 +1723,8 @@ mod golden_tests {
         SHIFT_DR_ONE_TAP_SIXTY_FOUR, SHIFT_DR_ONE_TAP_THIRTY_TWO, SHIFT_DR_THREE_TAP_FORTY_ONE,
         SHIFT_DR_THREE_TAP_ONE, SHIFT_DR_THREE_TAP_SIXTY_FOUR, SHIFT_DR_THREE_TAP_THIRTY_TWO,
         SHIFT_IR_ONE_TAP, SHIFT_IR_THREE_TAP, assert_triples_eq, build_dr_exchange,
-        build_ir_exchange, move_literal, one_tap_params, three_tap_params,
+        build_ir_exchange, clock_in_every_stable_state, lowering_batch, move_literal,
+        one_tap_params, three_tap_params,
     };
     use crate::probe::jtag::{JtagBatch, TapState};
 
@@ -1774,6 +1781,18 @@ mod golden_tests {
                 assert_triples_eq(&triples, tms, tdi, cap);
             }
         }
+    }
+
+    #[test]
+    fn clocks_match_the_bitbang_lowering_on_tms() {
+        let batch = clock_in_every_stable_state();
+        let tms = |triples: Vec<(bool, bool, bool)>| -> Vec<bool> {
+            triples.into_iter().map(|(tms, _, _)| tms).collect()
+        };
+        assert_eq!(
+            tms(triples_for_batch(TapState::RunTestIdle, &batch)),
+            tms(lowering_batch(TapState::RunTestIdle, &batch))
+        );
     }
 
     #[test]
@@ -1978,5 +1997,40 @@ mod remote_tests {
 
         JtagProbe::run_batch(&mut probe, &batch).unwrap();
         assert_eq!(*sent.lock().unwrap(), b"!JT033#");
+    }
+
+    #[test]
+    fn idle_clocks_go_out_as_tdi_shifts() {
+        let (mut probe, sent) = jtag_probe(2);
+        probe.jtag_state.tap_state = TapState::RunTestIdle;
+        let mut batch = JtagBatch::new();
+        batch.clock(40);
+
+        JtagProbe::run_batch(&mut probe, &batch).unwrap();
+        assert_eq!(*sent.lock().unwrap(), b"!Jd200#!Jd080#");
+    }
+
+    #[test]
+    fn a_scan_and_clocks_in_shift_dr_split_at_32_bits() {
+        let (mut probe, sent) = jtag_probe(4);
+        probe.jtag_state.tap_state = TapState::RunTestIdle;
+        let mut batch = JtagBatch::new();
+        batch.enter(TapState::ShiftDr);
+        batch.exchange_no_capture(BitSequence::repeat(false, 33));
+        batch.clock(3);
+
+        JtagProbe::run_batch(&mut probe, &batch).unwrap();
+        assert_eq!(*sent.lock().unwrap(), b"!JT031#!Jd200#!Jd010#!Jd030#");
+    }
+
+    #[test]
+    fn clocks_in_test_logic_reset_hold_tms_high() {
+        let (mut probe, sent) = jtag_probe(1);
+        probe.jtag_state.tap_state = TapState::TestLogicReset;
+        let mut batch = JtagBatch::new();
+        batch.clock(3);
+
+        JtagProbe::run_batch(&mut probe, &batch).unwrap();
+        assert_eq!(*sent.lock().unwrap(), b"!JT037#");
     }
 }

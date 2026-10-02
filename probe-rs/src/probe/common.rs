@@ -72,6 +72,17 @@ impl IdCode {
     }
 }
 
+/// Interpret a raw 32-bit capture of the IDCODE instruction, returning `None` if it is not an
+/// IDCODE.
+///
+/// Per IEEE 1149.1, bit 0 of an IDCODE is always 1. The 1-bit BYPASS register and a bus that
+/// reads low give 0, and a bus that floats high gives all ones.
+///
+/// Unlike [`IdCode::valid`], this accepts any manufacturer code.
+pub(crate) fn valid_idcode(value: u32) -> Option<u32> {
+    (value & 1 == 1 && value != u32::MAX).then_some(value)
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum ScanChainError {
     #[error("Invalid IDCODE")]
@@ -291,6 +302,20 @@ mod tests {
 
         let debug_fmt = format!("{STM_BS_TAP}");
         assert_eq!(debug_fmt, "0x06433041 (STMicroelectronics)");
+    }
+
+    #[test]
+    fn valid_idcode_needs_bit_0_set() {
+        assert_eq!(valid_idcode(0), None);
+        assert_eq!(valid_idcode(0xffff_fffe), None);
+        assert_eq!(valid_idcode(0x1234_5678), None);
+        assert_eq!(valid_idcode(0x1234_5679), Some(0x1234_5679));
+        assert_eq!(valid_idcode(1), Some(1));
+    }
+
+    #[test]
+    fn valid_idcode_refuses_all_ones() {
+        assert_eq!(valid_idcode(u32::MAX), None);
     }
 
     #[test]

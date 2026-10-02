@@ -255,15 +255,12 @@ fn encode(
                 encoder.shift(data.as_bits(), tdo, exit);
             }
             // Only bit ops can hold TMS high to stay in Test-Logic-Reset.
-            Step::Clock {
-                count,
-                state: TapState::TestLogicReset,
-            } => {
+            Step::Clock { count, tms: true } => {
                 for tms in std::iter::repeat_n(true, count as usize) {
                     encoder.cycle(Cycle { tms, tdi: false }, Tdo::Ignore);
                 }
             }
-            Step::Clock { count, .. } => {
+            Step::Clock { count, tms: false } => {
                 let idle = BitSequence::repeat(false, count as usize);
                 encoder.shift(idle.as_bits(), Tdo::Ignore, false);
             }
@@ -490,6 +487,10 @@ mod tests {
         batch.enter(ShiftDr);
         batch.exchange_no_capture(BitSequence::new());
         batch.enter(RunTestIdle);
+        for state in states {
+            batch.enter(state);
+            batch.clock(3);
+        }
         for params in [one_tap_params(), three_tap_params()] {
             for len in [1, 32, 41, 64] {
                 batch.enter(ShiftIr);
@@ -611,7 +612,7 @@ mod tests {
     struct Transfers(VecDeque<Vec<u8>>);
 
     impl Transport for Transfers {
-        fn write(&mut self, _: &[u8]) -> io::Result<()> {
+        fn write(&mut self, _: &[u8], _: Duration) -> io::Result<()> {
             Ok(())
         }
 

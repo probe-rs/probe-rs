@@ -328,7 +328,10 @@ fn collect_ftdi_commands(
                 exit,
                 capture,
             } => Command::encode_tdi_exchange(data, exit, capture),
-            Step::Clock { count, .. } => Command::encode_clock_tck(count),
+            Step::Clock { count, tms: true } => {
+                Command::encode_tms_path(&vec![true; count as usize], false)
+            }
+            Step::Clock { count, tms: false } => Command::encode_clock_tck(count),
         });
         Ok(())
     })
@@ -734,7 +737,8 @@ mod golden_tests {
         SHIFT_DR_ONE_TAP_SIXTY_FOUR, SHIFT_DR_ONE_TAP_THIRTY_TWO, SHIFT_DR_THREE_TAP_FORTY_ONE,
         SHIFT_DR_THREE_TAP_ONE, SHIFT_DR_THREE_TAP_SIXTY_FOUR, SHIFT_DR_THREE_TAP_THIRTY_TWO,
         SHIFT_IR_ONE_TAP, SHIFT_IR_THREE_TAP, assert_triples_eq, build_dr_exchange,
-        build_ir_exchange, move_literal, one_tap_params, three_tap_params,
+        build_ir_exchange, clock_in_every_stable_state, lowering_batch, move_literal,
+        one_tap_params, three_tap_params,
     };
     use crate::probe::jtag::{JtagBatch, TapState};
 
@@ -768,6 +772,15 @@ mod golden_tests {
             state.update(tms);
         }
         assert_eq!(state, OldJtagState::Idle);
+    }
+
+    #[test]
+    fn clocks_match_the_bitbang_lowering() {
+        let batch = clock_in_every_stable_state();
+        assert_eq!(
+            triples_for_batch(TapState::RunTestIdle, &batch),
+            lowering_batch(TapState::RunTestIdle, &batch)
+        );
     }
 
     #[test]

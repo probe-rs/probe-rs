@@ -16,6 +16,7 @@ use crate::{
 };
 
 use crate::probe::DebugProbeError;
+use crate::probe::common::valid_idcode;
 
 use super::communication_interface::XtensaError;
 
@@ -137,17 +138,6 @@ fn print_narsel(narsel: &u8) -> String {
         _ => "an unknown",
     };
     format!("{name} ({narsel:#04X})")
-}
-
-/// Interpret a raw 32-bit JTAG IDCODE-instruction capture, returning `None` if it isn't actually a
-/// valid IDCODE.
-///
-/// Per IEEE 1149.1, a TAP's IDCODE register always has bit 0 hardwired to 1, distinguishing a real
-/// capture from the 1-bit BYPASS register (always 0) or a floating/no-response bus. Without this
-/// check, probing a JTAG target with no Xtensa TAP at all reads back all-zero bits, which would be
-/// reported as a bogus "IDCODE 0000000000, Unknown Manufacturer" instead of "No Xtensa ID code returned.".
-fn valid_idcode(value: u32) -> Option<u32> {
-    if value & 1 == 1 { Some(value) } else { None }
 }
 
 #[derive(Debug, Default)]
