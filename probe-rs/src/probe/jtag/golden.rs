@@ -8,7 +8,7 @@ use crate::probe::{ChainParams, DebugProbe, DebugProbeError, JtagChainState, Wir
 use super::{BitSequence, BitbangJtag, JtagBatch, TapState, run_bitbang_batch};
 
 #[derive(Clone, Copy, PartialEq, Debug)]
-enum RegisterState {
+pub(crate) enum RegisterState {
     Select,
     Capture,
     Shift,
@@ -51,7 +51,7 @@ impl RegisterState {
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
-enum OldJtagState {
+pub(crate) enum OldJtagState {
     Reset,
     Idle,
     Dr(RegisterState),
@@ -89,7 +89,7 @@ impl OldJtagState {
         Some(tms)
     }
 
-    fn update(&mut self, tms: bool) {
+    pub(crate) fn update(&mut self, tms: bool) {
         *self = match *self {
             Self::Reset if tms => Self::Reset,
             Self::Reset => Self::Idle,

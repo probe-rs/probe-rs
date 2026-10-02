@@ -169,8 +169,9 @@ pub enum JtagOp {
     /// Shift bits through the selected register.
     ///
     /// The TAP stays in `Shift-Ir` or `Shift-Dr`, so two neighbour exchanges
-    /// concatenate. The preceding [`JtagOp::EnterState`] selects the
-    /// register. This operation does not select the register.
+    /// concatenate, also across batches. The preceding [`JtagOp::EnterState`],
+    /// or the state that the previous batch left, selects the register. This
+    /// operation does not select the register.
     Exchange {
         /// TDI bits to shift.
         data: BitSequence,
