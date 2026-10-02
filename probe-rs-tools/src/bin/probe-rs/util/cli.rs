@@ -746,17 +746,11 @@ pub async fn monitor(
         .await;
     });
 
-    // SIGTERM handler on *nix systems
+    // SIGTERM (Unix) / Ctrl+Break (Windows) handler
     let terminate = async {
-        #[cfg(unix)]
-        {
-            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-                .expect("failed to install signal handler")
-                .recv()
-                .await;
-            eprintln!("Received SIGTERM, exiting");
-            session.client().publish::<CancelTopic>(&()).await.unwrap();
-        }
+        let signal = terminate_signal().await;
+        eprintln!("Received {signal}, exiting");
+        session.client().publish::<CancelTopic>(&()).await.unwrap();
         pending().await
     };
 
@@ -1234,7 +1228,29 @@ pub(crate) fn format_stack_frame(frame: &StackTraceFrame) -> String {
     s
 }
 
-/// Runs a future until completion, running another future when Ctrl+C is received.
+/// Waits for SIGTERM (Unix) or Ctrl+Break (Windows), as sent by process supervisors.
+async fn terminate_signal() -> &'static str {
+    #[cfg(unix)]
+    {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+        "SIGTERM"
+    }
+    #[cfg(windows)]
+    {
+        tokio::signal::windows::ctrl_break()
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+        "Ctrl+Break"
+    }
+    #[cfg(not(any(unix, windows)))]
+    std::future::pending().await
+}
+
+/// Runs a future until completion, running another future when a shutdown signal is received.
 ///
 /// This function enables cooperative asynchronous cancellation without dropping the future.
 async fn with_ctrl_c<F, I>(f: F, on_ctrl_c: I) -> F::Output
@@ -1243,19 +1259,10 @@ where
     I: Future,
 {
     let mut run = std::pin::pin!(f);
-    #[cfg(unix)]
-    let terminate = async {
-        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-            .expect("failed to install signal handler")
-            .recv()
-            .await;
-    };
-    #[cfg(not(unix))]
-    let terminate = std::future::pending::<()>();
 
     tokio::select! {
         _ = tokio::signal::ctrl_c() => eprintln!("Received Ctrl+C, exiting"),
-        _ = terminate => eprintln!("Received SIGTERM, exiting"),
+        signal = terminate_signal() => eprintln!("Received {signal}, exiting"),
         result = &mut run => return result,
     };
 
