@@ -173,18 +173,36 @@ pub(crate) fn write_core_reg(
     addr: RegisterId,
     value: u32,
 ) -> Result<(), ArmError> {
-    memory.write_word_32(Dcrdr::get_mmio_address(), value)?;
-
     // write the DCRSR value to select the register we want to write.
     let mut dcrsr_val = Dcrsr(0);
     dcrsr_val.set_regwnr(true); // Perform a write.
     dcrsr_val.set_regsel(addr.into()); // The address of the register to write.
 
-    memory.write_word_32(Dcrsr::get_mmio_address(), dcrsr_val.into())?;
+    // Stage the value, select the register, then read the ready flag, in one batch. The flag is
+    // read after the DCRSR write, so a flag that comes back set is evidence the transfer had
+    // already completed - which is what the architecture requires before the next write to
+    // DCRDR or DCRSR, since doing that while S_REGRDY is still 0 is UNPREDICTABLE
+    // (DDI0553B.y D1.2.39, and the DCRSR rules in C1.4).
+    let mut ready = 0u32;
+    memory.execute_operations(&mut [
+        Operation::new(Dcrdr::get_mmio_address(), OperationKind::WriteWord32(value)),
+        Operation::new(
+            Dcrsr::get_mmio_address(),
+            OperationKind::WriteWord32(dcrsr_val.into()),
+        ),
+        Operation::new(
+            Dhcsr::get_mmio_address(),
+            OperationKind::Read32(std::slice::from_mut(&mut ready)),
+        ),
+    ])?;
 
-    wait_for_core_register_transfer(memory, Duration::from_millis(100))?;
+    if Dhcsr(ready).s_regrdy() {
+        return Ok(());
+    }
 
-    Ok(())
+    // Asked too early, which the flag is there to catch. Wait for the transfer to land before
+    // the caller is allowed to touch DCRDR or DCRSR again.
+    wait_for_core_register_transfer(memory, Duration::from_millis(100))
 }
 
 /// Check if the current breakpoint is a semihosting call.
