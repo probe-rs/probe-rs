@@ -94,6 +94,14 @@ pub trait RiscvDebugSequence: Send + Sync + Debug {
         None
     }
 
+    /// Return the fast flash verification implementation if one exists.
+    ///
+    /// Override this for a target whose flash controller can compute a signature over a
+    /// range of flash. The default returns `None`.
+    fn flash_verify_sequence(&self) -> Option<Arc<dyn crate::flashing::FlashVerify>> {
+        None
+    }
+
     /// This sequence is called if an image was flashed to RAM directly. It should perform the
     /// necessary preparation to run that image on the core with the ID passed to the function.
     ///

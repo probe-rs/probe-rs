@@ -9,7 +9,7 @@ use crate::{
         riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
         xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
     },
-    flashing::DebugFlashSequence,
+    flashing::{DebugFlashSequence, FlashVerify},
     rtt::ScanRegion,
 };
 use probe_rs_target::{
@@ -283,6 +283,19 @@ impl DebugSequence {
             DebugSequence::Arm(seq) => seq.debug_flash_sequence(),
             DebugSequence::Riscv(seq) => seq.debug_flash_sequence(),
             DebugSequence::Xtensa(seq) => seq.debug_flash_sequence(),
+        }
+    }
+
+    /// Return the fast flash verification implementation for this target, if one is
+    /// registered.
+    ///
+    /// Like [`Self::debug_flash_sequence`], this gives the flash loader one
+    /// architecture-agnostic entry point.
+    pub fn flash_verify_sequence(&self) -> Option<Arc<dyn FlashVerify>> {
+        match self {
+            DebugSequence::Arm(seq) => seq.flash_verify_sequence(),
+            DebugSequence::Riscv(seq) => seq.flash_verify_sequence(),
+            DebugSequence::Xtensa(seq) => seq.flash_verify_sequence(),
         }
     }
 }

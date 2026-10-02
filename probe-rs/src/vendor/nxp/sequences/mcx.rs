@@ -78,6 +78,24 @@ impl MCX {
     const VARIANT_N: [&str; 1] = ["MCXN"];
     const VARIANT_N0: [&str; 2] = ["MCXN947", "MCXN526"];
 
+    /// Parts whose reference manual documents the FMU at 0x4009_5000 with the Read into
+    /// MISR command, so flash can be verified by signature rather than by reading it back.
+    ///
+    /// Taken from two manuals, which describe the same register block and the same command:
+    ///
+    /// - MCX A175, A176, A185, A186, A255, A256, A265 and A266, confirmed against an
+    ///   MCXA266.
+    /// - MCX A577, A567, A566, A557, A556, A537, A536, A457, A456, A287 and A286.
+    ///
+    /// A27x is also here without a manual of its own: it is the same die as A265/A266, and
+    /// early boards identify as A275/A276 rather than A265/A266.
+    ///
+    /// Extend this only alongside the manual for the part being added.
+    const VARIANT_FMU_MISR: [&str; 11] = [
+        "MCXA17", "MCXA18", "MCXA25", "MCXA26", "MCXA27", "MCXA28", "MCXA45", "MCXA53", "MCXA55",
+        "MCXA56", "MCXA57",
+    ];
+
     /// How long to wait for the boot ROM to grant debug access after a successful
     /// `START_DBG_SESSION` debug mailbox command.
     const AP_ENABLE_TIMEOUT: Duration = Duration::from_millis(1000);
@@ -333,6 +351,21 @@ impl MCX {
 }
 
 impl ArmDebugSequence for MCX {
+    /// Verify flash with the FMU's MISR instead of reading the image back.
+    ///
+    /// Restricted to `VARIANT_FMU_MISR`, the parts whose reference manual places the FMU
+    /// register block at 0x4009_5000 and documents the Read into MISR command. Launching a
+    /// flash command at an address that has not been confirmed would write to whatever else
+    /// lives there, so every other MCX part keeps reading the image back until its own
+    /// manual has been checked.
+    fn flash_verify_sequence(&self) -> Option<Arc<dyn crate::flashing::FlashVerify>> {
+        if self.is_variant(Self::VARIANT_FMU_MISR) {
+            Some(Arc::new(super::mcx_verify::McxMisrVerify))
+        } else {
+            None
+        }
+    }
+
     fn debug_port_start(
         &self,
         interface: &mut dyn DapAccess,
