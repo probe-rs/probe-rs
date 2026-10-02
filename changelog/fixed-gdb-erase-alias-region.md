@@ -1,0 +1,1 @@
+Fixed GDB `vFlashErase` failing with no flash algorithm for addresses inside a flash alias region (e.g. PSOC C3 `IROM_S_CBUS`); the range is now resolved to its canonical flash region, as flash programming already does.

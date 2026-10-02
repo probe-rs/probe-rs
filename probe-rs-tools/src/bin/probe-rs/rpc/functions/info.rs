@@ -74,17 +74,47 @@ fn wire_flash_sectors(target: &probe_rs::Target) -> Vec<WireFlashSector> {
     use std::collections::BTreeMap;
     use std::collections::btree_map::Entry;
 
-    let mut regions = BTreeMap::new();
+    // Collect the flash ranges to advertise as `(start, end, sectors)` tuples.
+    // This includes the canonical flash algorithm ranges as well as any virtual
+    // alias windows (regions with `alias_of` set). Alias windows are advertised
+    // at their own address using the sector geometry of the algorithm that covers
+    // their canonical target. This lets GDB `load` write to alias windows,
+    // which the flash loader then transparently redirects to the canonical flash.
+    let mut flash_sources: Vec<(u64, u64, Vec<probe_rs::config::SectorDescription>)> = Vec::new();
+
     for algo in target.flash_algorithms.iter() {
         let start = algo.flash_properties.address_range.start;
-        let end = if let Some(region) =
-            target.memory_region_by_address(algo.flash_properties.address_range.start)
-        {
+        let end = if let Some(region) = target.memory_region_by_address(start) {
             region.address_range().end
         } else {
             algo.flash_properties.address_range.end
         };
-        let mut sectors = algo.flash_properties.sectors.clone();
+        flash_sources.push((start, end, algo.flash_properties.sectors.clone()));
+    }
+
+    for region in &target.memory_map {
+        let probe_rs::config::MemoryRegion::Nvm(nvm) = region else {
+            continue;
+        };
+        let Some(canonical) = nvm.alias_of else {
+            continue;
+        };
+        // Borrow the sector geometry from the algorithm covering the canonical target.
+        if let Some(algo) = target
+            .flash_algorithms
+            .iter()
+            .find(|algo| algo.flash_properties.address_range.contains(&canonical))
+        {
+            flash_sources.push((
+                nvm.range.start,
+                nvm.range.end,
+                algo.flash_properties.sectors.clone(),
+            ));
+        }
+    }
+
+    let mut regions = BTreeMap::new();
+    for (start, end, mut sectors) in flash_sources {
         sectors.sort_by_key(|s| s.address);
         sectors.push(probe_rs::config::SectorDescription {
             size: 0,

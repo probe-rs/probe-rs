@@ -165,7 +165,16 @@ impl<'p> JtagChain<'p> {
             idcodes
         );
 
-        tracing::debug!("Scanning JTAG chain for IR lengths");
+        // A dormant DP (e.g. PSOC Edge before debug_port_setup's wake) shows no TAPs;
+        // the IR-length scan below would shift a zero-length IR and error. Return an
+        // empty chain so the caller can defer to the sequence's wake and rescan.
+        if idcodes.is_empty() {
+            self.probe.chain_state().scan_chain = Vec::new();
+            let state = (*self.probe).chain_state_ref();
+            return Ok(&state.scan_chain);
+        }
+
+        tracing::info!("Scanning JTAG chain for IR lengths");
 
         let ones = vec![0xff; idcodes.len()];
         let mut batch = JtagBatch::new();

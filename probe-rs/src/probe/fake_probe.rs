@@ -754,7 +754,7 @@ impl ArmDebugInterface for FakeArmInterface {
     ) -> Result<Box<dyn ArmMemoryInterface + '_>, ArmError> {
         match self.probe.memory_ap {
             MockedAp::MemoryAp(ref mut _memory_ap) => {
-                let memory = ADIMemoryInterface::new(self, access_port_address)?;
+                let memory = ADIMemoryInterface::new(self, access_port_address, None)?;
 
                 Ok(Box::new(memory) as _)
             }

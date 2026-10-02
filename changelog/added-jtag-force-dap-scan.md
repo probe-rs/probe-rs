@@ -1,0 +1,1 @@
+Added the `jtag.force_dap_scan` target option, which seeds the declared `scan_chain` at attach instead of relying on a live scan, for targets whose DAP TAP is dormant until the debug sequence wakes it.

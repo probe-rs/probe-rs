@@ -88,6 +88,7 @@ fn process_root_component<ADI: ArmDebugInterface>(
 pub fn new_memory_interface<'i>(
     iface: &'i mut ArmCommunicationInterface,
     address: &FullyQualifiedApAddress,
+    security_policy: Option<crate::architecture::arm::memory::MemoryAccessSecurityPolicy>,
 ) -> Result<Box<dyn ArmMemoryInterface + 'i>, ArmError> {
     let ApAddress::V2(ap_address) = address.ap() else {
         unimplemented!("this is only for APv2 addresses")
@@ -96,6 +97,10 @@ pub fn new_memory_interface<'i>(
     if ap_address.0.is_none() {
         Ok(Box::new(RootMemoryInterface::new(iface, address.dp())?))
     } else {
-        Ok(Box::new(ADIMemoryInterface::new(iface, address)?))
+        Ok(Box::new(ADIMemoryInterface::new(
+            iface,
+            address,
+            security_policy,
+        )?))
     }
 }

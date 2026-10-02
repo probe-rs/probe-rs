@@ -1,0 +1,1 @@
+Added support for PSOC Control C3 x6 (M6/P6) devices (pack release 1.2.0), with reset-and-halt handling, single/dual flash bank detection, and the secure C-bus flash window exposed as an alias of the system-bus flash so C-bus images can be flashed directly.

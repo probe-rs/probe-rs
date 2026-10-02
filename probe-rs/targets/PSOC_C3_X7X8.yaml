@@ -30,7 +30,7 @@ chip_detection:
     0xee95: PSC3P7FES2PLGQ1
     0xee96: PSC3M7FES2PLGQ1
 generated_from_pack: true
-pack_file_release: 1.1.0
+pack_file_release: 1.2.0
 variants:
 - name: PSC3M7FES2PLGQ1
   cores:
@@ -42,6 +42,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -87,6 +92,7 @@ variants:
   - !Nvm
     name: IROM_S_CBUS
     is_alias: true
+    alias_of: 0x32000000
     range:
       start: 0x12000000
       end: 0x12040000
@@ -158,6 +164,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -203,6 +214,7 @@ variants:
   - !Nvm
     name: IROM_S_CBUS
     is_alias: true
+    alias_of: 0x32000000
     range:
       start: 0x12000000
       end: 0x12040000
@@ -274,6 +286,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -319,6 +336,7 @@ variants:
   - !Nvm
     name: IROM_S_CBUS
     is_alias: true
+    alias_of: 0x32000000
     range:
       start: 0x12000000
       end: 0x12080000
@@ -394,6 +412,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0008000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -443,6 +466,7 @@ variants:
   - !Nvm
     name: IROM_S_CBUS
     is_alias: true
+    alias_of: 0x32000000
     range:
       start: 0x12000000
       end: 0x12040000
@@ -552,6 +576,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0008000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -601,6 +630,7 @@ variants:
   - !Nvm
     name: IROM_S_CBUS
     is_alias: true
+    alias_of: 0x32000000
     range:
       start: 0x12000000
       end: 0x12040000
@@ -710,6 +740,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0008000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -759,6 +794,7 @@ variants:
   - !Nvm
     name: IROM_S_CBUS
     is_alias: true
+    alias_of: 0x32000000
     range:
       start: 0x12000000
       end: 0x12080000
@@ -868,6 +904,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0008000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -917,6 +958,7 @@ variants:
   - !Nvm
     name: IROM_S_CBUS
     is_alias: true
+    alias_of: 0x32000000
     range:
       start: 0x12000000
       end: 0x12080000
@@ -1026,6 +1068,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0008000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -1075,6 +1122,7 @@ variants:
   - !Nvm
     name: IROM_S_CBUS
     is_alias: true
+    alias_of: 0x32000000
     range:
       start: 0x12000000
       end: 0x12080000
@@ -1184,6 +1232,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0008000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -1233,6 +1286,7 @@ variants:
   - !Nvm
     name: IROM_S_CBUS
     is_alias: true
+    alias_of: 0x32000000
     range:
       start: 0x12000000
       end: 0x12080000
@@ -1342,6 +1396,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0008000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -1391,6 +1450,7 @@ variants:
   - !Nvm
     name: IROM_S_CBUS
     is_alias: true
+    alias_of: 0x32000000
     range:
       start: 0x12000000
       end: 0x12080000
@@ -1500,6 +1560,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0008000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -1549,6 +1614,7 @@ variants:
   - !Nvm
     name: IROM_S_CBUS
     is_alias: true
+    alias_of: 0x32000000
     range:
       start: 0x12000000
       end: 0x12080000
@@ -1654,6 +1720,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -1699,6 +1770,7 @@ variants:
   - !Nvm
     name: IROM_S_CBUS
     is_alias: true
+    alias_of: 0x32000000
     range:
       start: 0x12000000
       end: 0x12040000
@@ -1770,6 +1842,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -1815,6 +1892,7 @@ variants:
   - !Nvm
     name: IROM_S_CBUS
     is_alias: true
+    alias_of: 0x32000000
     range:
       start: 0x12000000
       end: 0x12040000
@@ -1886,6 +1964,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -1931,6 +2014,7 @@ variants:
   - !Nvm
     name: IROM_S_CBUS
     is_alias: true
+    alias_of: 0x32000000
     range:
       start: 0x12000000
       end: 0x12040000
@@ -2002,6 +2086,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -2047,6 +2136,7 @@ variants:
   - !Nvm
     name: IROM_S_CBUS
     is_alias: true
+    alias_of: 0x32000000
     range:
       start: 0x12000000
       end: 0x12080000
@@ -2122,6 +2212,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0008000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -2171,6 +2266,7 @@ variants:
   - !Nvm
     name: IROM_S_CBUS
     is_alias: true
+    alias_of: 0x32000000
     range:
       start: 0x12000000
       end: 0x12040000
@@ -2280,6 +2376,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0008000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -2329,6 +2430,7 @@ variants:
   - !Nvm
     name: IROM_S_CBUS
     is_alias: true
+    alias_of: 0x32000000
     range:
       start: 0x12000000
       end: 0x12040000
@@ -2438,6 +2540,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0008000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -2487,6 +2594,7 @@ variants:
   - !Nvm
     name: IROM_S_CBUS
     is_alias: true
+    alias_of: 0x32000000
     range:
       start: 0x12000000
       end: 0x12080000
@@ -2596,6 +2704,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0008000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -2645,6 +2758,7 @@ variants:
   - !Nvm
     name: IROM_S_CBUS
     is_alias: true
+    alias_of: 0x32000000
     range:
       start: 0x12000000
       end: 0x12080000
@@ -2754,6 +2868,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0008000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -2803,6 +2922,7 @@ variants:
   - !Nvm
     name: IROM_S_CBUS
     is_alias: true
+    alias_of: 0x32000000
     range:
       start: 0x12000000
       end: 0x12080000
@@ -2912,6 +3032,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0008000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -2961,6 +3086,7 @@ variants:
   - !Nvm
     name: IROM_S_CBUS
     is_alias: true
+    alias_of: 0x32000000
     range:
       start: 0x12000000
       end: 0x12080000
@@ -3070,6 +3196,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0008000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -3119,6 +3250,7 @@ variants:
   - !Nvm
     name: IROM_S_CBUS
     is_alias: true
+    alias_of: 0x32000000
     range:
       start: 0x12000000
       end: 0x12080000
@@ -3228,6 +3360,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0008000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -3277,6 +3414,7 @@ variants:
   - !Nvm
     name: IROM_S_CBUS
     is_alias: true
+    alias_of: 0x32000000
     range:
       start: 0x12000000
       end: 0x12080000

@@ -239,9 +239,9 @@ impl PsocC3ChipErase {
         let dp = memory.fully_qualified_address().dp();
         let arm = memory.get_arm_debug_interface()?;
 
-        // The reset latches the DP sticky-error flags, and every subsequent AP access
+        // The reset latches the DP sticky-error flags, and on the x6 family every AP access
         // faults until they are cleared.
-        psoc_c3_common::clear_dp_sticky_errors(arm, dp);
+        let _ = super::common::clear_dp_sticky_errors(arm, dp);
 
         // The soft reset clears the CM33 AP CSW, so it has to be re-applied before the next
         // AP access.
@@ -263,8 +263,7 @@ impl PsocC3ChipErase {
             SysApCsw::secure_word().0,
         )?;
 
-        let erase_row_fn =
-            psoc_c3_common::read_mem32(interface, &sys_ap, SROMAPI_ERASE_ROW as u32)?;
+        let erase_row_fn = super::common::read_mem32(interface, &sys_ap, SROMAPI_ERASE_ROW as u32)?;
         tracing::debug!("PSOC C3: cyboot_flash_erase_row is at {erase_row_fn:#010x}");
 
         // Jumping to a pointer that was never read back would run the core into the weeds,
@@ -278,11 +277,11 @@ impl PsocC3ChipErase {
 
         // A blocking call needs an all-zero flash context.
         for offset in (0..CTX_LEN).step_by(4) {
-            psoc_c3_common::write_mem32(interface, &sys_ap, (CTX_ADDR + offset) as u32, 0)?;
+            super::common::write_mem32(interface, &sys_ap, (CTX_ADDR + offset) as u32, 0)?;
         }
 
         // The SROM call returns to `lr`, which points here, so the core halts itself.
-        psoc_c3_common::write_mem32(interface, &sys_ap, BKPT_ADDR as u32, DUAL_BKPT_INSTR)?;
+        super::common::write_mem32(interface, &sys_ap, BKPT_ADDR as u32, DUAL_BKPT_INSTR)?;
 
         Ok(erase_row_fn)
     }
