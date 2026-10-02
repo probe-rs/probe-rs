@@ -1,0 +1,1 @@
+The chip-erase (erase all) timeout is now derived from the flash geometry — `erase_sector_timeout` multiplied by the number of sectors, with a 300 s floor — instead of a fixed 40 s. This prevents spurious timeouts when mass-erasing large flashes.

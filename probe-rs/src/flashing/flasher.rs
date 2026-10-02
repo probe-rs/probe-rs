@@ -1351,6 +1351,19 @@ impl ActiveFlasher<'_, '_, Erase> {
             return Err(FlashError::ChipEraseNotSupported);
         };
 
+        // Derive the chip-erase timeout from the flash geometry: a full erase
+        // touches every sector, so scale the per-sector timeout by the sector
+        // count. Apply a 300 s floor so parts with few/fast sectors still get
+        // enough headroom for a whole-chip erase.
+        let props = &algo.flash_properties;
+        let sector_count = if props.sectors.first().map(|s| s.address) == Some(0) {
+            algo.iter_sectors().count() as u64
+        } else {
+            0
+        };
+        let timeout = Duration::from_millis(props.erase_sector_timeout as u64 * sector_count)
+            .max(Duration::from_secs(300));
+
         let result = self
             .call_function_and_wait(
                 &Registers {
@@ -1361,7 +1374,7 @@ impl ActiveFlasher<'_, '_, Erase> {
                     r3: None,
                 },
                 false,
-                Duration::from_secs(40),
+                timeout,
             )
             .map_err(|error| FlashError::ChipEraseFailed {
                 source: Box::new(error),
