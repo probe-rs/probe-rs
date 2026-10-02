@@ -173,18 +173,31 @@ pub(crate) fn write_core_reg(
     addr: RegisterId,
     value: u32,
 ) -> Result<(), ArmError> {
-    memory.write_word_32(Dcrdr::get_mmio_address(), value)?;
-
     // write the DCRSR value to select the register we want to write.
     let mut dcrsr_val = Dcrsr(0);
     dcrsr_val.set_regwnr(true); // Perform a write.
     dcrsr_val.set_regsel(addr.into()); // The address of the register to write.
 
-    memory.write_word_32(Dcrsr::get_mmio_address(), dcrsr_val.into())?;
+    // The DCRSR write clears the ready flag, so a flag that comes back set
+    // means the transfer is done.
+    let mut ready = 0u32;
+    memory.execute_operations(&mut [
+        Operation::new(Dcrdr::get_mmio_address(), OperationKind::WriteWord32(value)),
+        Operation::new(
+            Dcrsr::get_mmio_address(),
+            OperationKind::WriteWord32(dcrsr_val.into()),
+        ),
+        Operation::new(
+            Dhcsr::get_mmio_address(),
+            OperationKind::Read32(std::slice::from_mut(&mut ready)),
+        ),
+    ])?;
 
-    wait_for_core_register_transfer(memory, Duration::from_millis(100))?;
+    if Dhcsr(ready).s_regrdy() {
+        return Ok(());
+    }
 
-    Ok(())
+    wait_for_core_register_transfer(memory, Duration::from_millis(100))
 }
 
 /// Check if the current breakpoint is a semihosting call.

@@ -802,6 +802,7 @@ impl CoreInterface for Armv7m<'_> {
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         // TODO: Generic halt support
         self.state.clear_pending_step();
+        self.state.pc_written = false;
 
         let mut value = Dhcsr(0);
         value.set_c_halt(true);
@@ -823,9 +824,15 @@ impl CoreInterface for Armv7m<'_> {
     }
 
     fn run(&mut self) -> Result<(), Error> {
-        // Before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction.
-        self.step()?;
-        self.state.clear_pending_step();
+        // Before we run, we always perform a single instruction step, to account for possible
+        // breakpoints that might get us stuck on the current instruction. If the PC was written
+        // since we halted, the core is no longer on that instruction and there is nothing to
+        // step over.
+        if !self.state.pc_written {
+            self.step()?;
+            self.state.clear_pending_step();
+        }
+        self.state.pc_written = false;
 
         let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
 
@@ -855,6 +862,7 @@ impl CoreInterface for Armv7m<'_> {
     fn reset(&mut self) -> Result<(), Error> {
         self.state.semihosting_command = None;
         self.state.clear_pending_step();
+        self.state.pc_written = false;
 
         self.sequence
             .reset_system(&mut *self.memory, crate::CoreType::Armv7m, None)?;
@@ -869,6 +877,7 @@ impl CoreInterface for Armv7m<'_> {
         // This will halt the core after reset.
         self.reset_catch_set()?;
         self.state.clear_pending_step();
+        self.state.pc_written = false;
 
         self.sequence
             .reset_system(&mut *self.memory, crate::CoreType::Armv7m, None)?;
@@ -985,6 +994,9 @@ impl CoreInterface for Armv7m<'_> {
 
         self.state.semihosting_command = None;
 
+        // The core halted again, and any PC write above was this function's own doing.
+        self.state.pc_written = false;
+
         Ok(CoreInformation {
             pc: pc_after_step.try_into()?,
         })
@@ -1002,6 +1014,9 @@ impl CoreInterface for Armv7m<'_> {
     fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error> {
         if self.state.current_state.is_halted() {
             super::cortex_m::write_core_reg(&mut *self.memory, address, value.try_into()?)?;
+            if address == self.program_counter().id() {
+                self.state.pc_written = true;
+            }
             Ok(())
         } else {
             Err(Error::Arm(ArmError::CoreNotHalted))
