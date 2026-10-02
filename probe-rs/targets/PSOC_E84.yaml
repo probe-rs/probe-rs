@@ -77,6 +77,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -176,9 +181,10 @@ variants:
     core_access_options: !Arm
       ap: !v2 0xf0006000
   jtag:
+    force_dap_scan: true
     scan_chain:
-    - name: chain
-      ir_len: 8
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -277,6 +283,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -375,6 +386,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -473,6 +489,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -571,6 +592,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -669,6 +695,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -767,6 +798,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -865,6 +901,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -963,6 +1004,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -1061,6 +1107,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -1257,6 +1308,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -1355,6 +1411,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -1453,6 +1514,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -1551,6 +1617,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -1649,6 +1720,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -1747,6 +1823,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -1845,6 +1926,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -1943,6 +2029,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -2041,6 +2132,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -2139,6 +2235,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -2237,6 +2338,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -2335,6 +2441,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -2433,6 +2544,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -2531,6 +2647,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -2629,6 +2750,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -2727,6 +2853,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -2825,6 +2956,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -2923,6 +3059,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -3021,6 +3162,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -3119,6 +3265,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -3217,6 +3368,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -3315,6 +3471,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -3413,6 +3574,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -3511,6 +3677,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -3609,6 +3780,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -3707,6 +3883,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -3805,6 +3986,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -3903,6 +4089,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -4001,6 +4192,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -4099,6 +4295,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -4197,6 +4398,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -4295,6 +4501,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -4393,6 +4604,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -4491,6 +4707,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -4589,6 +4810,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -4687,6 +4913,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -4785,6 +5016,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -4883,6 +5119,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -4981,6 +5222,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -5079,6 +5325,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -5177,6 +5428,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -5275,6 +5531,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -5373,6 +5634,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -5471,6 +5737,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -5569,6 +5840,11 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v2 0xf0006000
+  jtag:
+    force_dap_scan: true
+    scan_chain:
+      - name: chain
+        ir_len: 8
   memory_map:
   - !Nvm
     name: IROM1
@@ -5712,7 +5988,7 @@ flash_algorithms:
   pc_uninit: 0x5455
   pc_program_page: 0x3e51
   pc_erase_sector: 0x3c41
-  #pc_erase_all: 0x3c3d
+  pc_erase_all: 0x3c3d
   pc_verify: 0x5459
   pc_blank_check: 0x4a5
   data_section_offset: 0x5864
@@ -5735,7 +6011,7 @@ flash_algorithms:
   pc_uninit: 0x5455
   pc_program_page: 0x3e51
   pc_erase_sector: 0x3c41
-  #pc_erase_all: 0x3c3d
+  pc_erase_all: 0x3c3d
   pc_verify: 0x5459
   pc_blank_check: 0x4a5
   data_section_offset: 0x5864

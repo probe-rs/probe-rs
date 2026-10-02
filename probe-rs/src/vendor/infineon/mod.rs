@@ -41,18 +41,20 @@ impl Vendor for Infineon {
             // MOTIX™ TLE98xx/TLE99xx motor-control MCUs gate SWD behind their
             // BootROM and need a special debug-mode entry sequence.
             DebugSequence::Arm(InfineonTle::create())
-        } else if chip.name.starts_with("PSC3M3")
-            || chip.name.starts_with("PSC3M5")
-            || chip.name.starts_with("PSC3P2")
-            || chip.name.starts_with("PSC3P5")
-        {
-            DebugSequence::Arm(PsocC3::create(chip))
         } else if chip.name.starts_with("PSC3M7")
             || chip.name.starts_with("PSC3M8")
             || chip.name.starts_with("PSC3P7")
             || chip.name.starts_with("PSC3P8")
         {
             DebugSequence::Arm(PsocC3X7X8::create(chip))
+        } else if chip.name.starts_with("PSC3M6") || chip.name.starts_with("PSC3P6") {
+            DebugSequence::Arm(PsocC3::create_x6(chip))
+        } else if chip.name.starts_with("PSC3M3")
+            || chip.name.starts_with("PSC3M5")
+            || chip.name.starts_with("PSC3P2")
+            || chip.name.starts_with("PSC3P5")
+        {
+            DebugSequence::Arm(PsocC3::create(chip))
         } else {
             return None;
         };

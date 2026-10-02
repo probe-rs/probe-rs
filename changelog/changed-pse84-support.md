@@ -1,0 +1,1 @@
+Improved PSOC Edge E84 support: extended the list of supported targets and their memory map, enabled chip erase, made the CM55 attach enable its power domain and debug AP through the CM33 first, fixed reset-free JTAG attach to a firmware-gated CM33 AP, and fixed system reset failing when the AIRCR write is not acknowledged because the reset also resets the debug port.

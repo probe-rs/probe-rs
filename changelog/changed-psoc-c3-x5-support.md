@@ -1,0 +1,1 @@
+Improved PSOC Control C3 (M3/M5/P2/P5) support: added new target variants, improved dormant-JTAG recovery and JTAG attach with a powered-down boundary-scan TAP, and fixed the debug port not reconnecting after a system reset.

@@ -1,0 +1,1 @@
+Improved PSOC Control C3 x7/x8 (P7/P8/M7/M8) support: updated the memory map to pack release 1.2.0 (IRAM1/IRAM2 are 128 KB), gave each PPCA core its own local SRAM regions for multi-core debugging, and improved dormant-JTAG recovery, PPCA core startup and JTAG attach with a powered-down boundary-scan TAP.
