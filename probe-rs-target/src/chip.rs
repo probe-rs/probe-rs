@@ -55,6 +55,14 @@ pub struct Jtag {
     #[serde(default)]
     pub force_scan_chain: bool,
 
+    /// When set to `true` and a `scan_chain` is declared, the declared chain is seeded into the
+    /// probe's JTAG chain state after attach instead of relying on a live scan. This is needed
+    /// for targets whose DAP TAP may still be dormant at attach time (e.g. Infineon PSOC Edge
+    /// and PSOC C3), where a live scan would find no TAPs. DAP register access over JTAG always
+    /// uses host-side raw IR/DR scans. Default `false`.
+    #[serde(default)]
+    pub force_dap_scan: bool,
+
     /// Describes JTAG tunnel for Risc-V
     #[serde(default)]
     pub riscv_tunnel: Option<RiscvJtagTunnel>,

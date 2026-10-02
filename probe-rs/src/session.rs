@@ -266,11 +266,21 @@ impl Session {
         probe.attach_to_unspecified()?;
         if probe.protocol() == Some(WireProtocol::Jtag)
             && let Some(mut chain) = probe.try_as_jtag_chain()
-            && let Ok(_) = chain.scan_chain()
-            && !chain.chain().is_empty()
         {
-            for core in &cores {
-                chain.select(core.jtag_tap_index())?;
+            // `force_dap_scan` targets can keep their TAP dormant until the debug sequence
+            // wakes it. Seed the declared chain directly; the sequence performs the live
+            // scan after attach and reselects the target once the TAP is visible.
+            if let Some(jtag) = target.jtag.as_ref()
+                && jtag.force_dap_scan
+                && let Some(scan_chain) = jtag.scan_chain.as_ref()
+            {
+                chain.set_chain(scan_chain);
+            }
+
+            if chain.scan_chain().is_ok() && !chain.chain().is_empty() {
+                for core in &cores {
+                    chain.select(core.jtag_tap_index())?;
+                }
             }
         }
 
