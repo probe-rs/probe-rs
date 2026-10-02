@@ -210,6 +210,16 @@ pub fn erase(
     restore: bool,
     read_flasher_rtt: bool,
 ) -> Result<(), FlashError> {
+    // Redirect a range inside a virtual alias window to its canonical flash, like `add_data`.
+    let (address_start, address_end) =
+        match FlashLoader::get_region_for_address(&session.target().memory_map, address_start) {
+            Some(MemoryRegion::Nvm(region)) if region.alias_of.is_some() => {
+                let start = region.resolve_alias(address_start);
+                (start, start + address_end.saturating_sub(address_start))
+            }
+            _ => (address_start, address_end),
+        };
+
     tracing::debug!("Erasing {address_start:08x}..{address_end:08x} (restore={restore})");
 
     let address_range = address_start..address_end;
