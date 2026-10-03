@@ -6,7 +6,7 @@ use super::{FlashAlgorithm, FlashBuilder, FlashError, FlashPage, FlashProgress};
 use crate::config::NvmRegion;
 use crate::error::Error;
 use crate::flashing::encoder::FlashEncoder;
-use crate::flashing::{FlashLayout, FlashSector};
+use crate::flashing::{FlashLayout, FlashSector, FlashVerify, VerifyOutcome};
 use crate::memory::MemoryInterface;
 use crate::rtt::{Rtt, ScanRegion};
 use crate::{Core, InstructionSet, RegisterValue, core::CoreRegisters, session::Session};
@@ -517,6 +517,51 @@ impl Flasher {
         result
     }
 
+    /// Check every loaded region with the target's own signature facility.
+    ///
+    /// Returns `None` when any part of the image cannot be checked this way, so the caller
+    /// falls back to reading the contents back. Falling back is deliberate: a range that
+    /// cannot be signed has not been verified, and must not be reported as if it had.
+    fn verify_with_sequence(
+        &mut self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+        sequence: &dyn FlashVerify,
+        ignore_filled: bool,
+    ) -> Result<Option<bool>, FlashError> {
+        let encoding = self.flash_algorithm.transfer_encoding;
+        let core_index = self.core_index;
+        let mut core = session.core(core_index).map_err(FlashError::Core)?;
+
+        for region in self.regions.iter_mut() {
+            let flash_encoder = region.data.encoder(encoding, ignore_filled);
+            for page in flash_encoder.pages() {
+                let started = Instant::now();
+                let outcome = sequence
+                    .verify_range(&mut core, page.address(), page.data())
+                    .map_err(FlashError::Core)?;
+                match outcome {
+                    VerifyOutcome::Match => {
+                        progress.page_verified(page.size() as u64, started.elapsed())
+                    }
+                    VerifyOutcome::Mismatch => {
+                        tracing::debug!("Signature mismatch for page at {:#010x}", page.address());
+                        return Ok(Some(false));
+                    }
+                    VerifyOutcome::Unsupported => {
+                        tracing::debug!(
+                            "Target cannot sign the page at {:#010x}; reading the image back instead",
+                            page.address()
+                        );
+                        return Ok(None);
+                    }
+                }
+            }
+        }
+
+        Ok(Some(true))
+    }
+
     fn do_verify(
         &mut self,
         session: &mut Session,
@@ -524,6 +569,16 @@ impl Flasher {
         ignore_filled: bool,
     ) -> Result<bool, FlashError> {
         let encoding = self.flash_algorithm.transfer_encoding;
+
+        // A flash controller that can sign a range of flash lets us check the image without
+        // reading it back, which is otherwise the slowest part of a download.
+        if let Some(sequence) = session.target().debug_sequence.flash_verify_sequence()
+            && let Some(result) =
+                self.verify_with_sequence(session, progress, sequence.as_ref(), ignore_filled)?
+        {
+            return Ok(result);
+        }
+
         if let Some(verify) = self.flash_algorithm.pc_verify {
             // Try to use the verify function if available.
             self.run_verify(session, progress, |active, data| {
