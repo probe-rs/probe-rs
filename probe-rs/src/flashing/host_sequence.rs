@@ -38,6 +38,41 @@ use crate::session::Session;
 /// finish_flash()
 /// ```
 pub trait DebugFlashSequence: Send + Sync + Debug {
+    /// Whether the probe attached to `session` can execute this sequence.
+    ///
+    /// The flash loader calls this before selecting host-side flashing; when
+    /// it returns `false` the loader falls back to target-side flash
+    /// algorithms. The default returns `true`. Sequences that require a
+    /// specific probe (e.g. native WCH-Link commands) override this to check
+    /// the probe type.
+    fn supports_probe(&self, _session: &mut Session) -> bool {
+        true
+    }
+
+    /// Whether `region` may be programmed through this sequence.
+    ///
+    /// The flash loader calls this per NVM region with data; regions it
+    /// rejects keep using target-side flash algorithms, so a single image
+    /// can mix both paths (e.g. code flash natively, option bytes
+    /// generically). The default returns `true`. Sequences whose native
+    /// operations only cover part of the flash (e.g. code flash but not
+    /// system/option regions) must override this.
+    fn supports_region(&self, _region: &NvmRegion) -> bool {
+        true
+    }
+
+    /// Whether this sequence honors `keep_unwritten_bytes` (preserving flash
+    /// contents outside the programmed data).
+    ///
+    /// When `false` and preservation is requested, the loader falls back to
+    /// target-side flash algorithms. The default returns `true`, preserving
+    /// existing sequences' behavior; implementors whose erase strategy is a
+    /// whole-chip erase without readback (e.g. native WCH-Link flashing)
+    /// must override this to `false`.
+    fn supports_keep_unwritten_bytes(&self) -> bool {
+        true
+    }
+
     /// Called once before any erase/program/verify operations begin.
     ///
     /// Use this to enter a required programming mode or, for external-toolbox devices,
@@ -170,7 +205,7 @@ mod tests {
         // supports_sector_erase defaults to true
         assert!(seq.supports_sector_erase());
 
-        // program_image defaults to None — the method exists with a default implementation.
+        // program_image is not overridden here — the method exists with a default implementation.
         // We verify this by confirming NoOpSequence compiles without overriding it.
 
         // prepare_flash, finish_flash, erase_sector all have defaults

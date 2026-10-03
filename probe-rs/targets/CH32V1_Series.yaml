@@ -78,6 +78,7 @@ variants:
   - ch32-v1-sys-1
   - ch32-v1-opt
   - ch32-v1-sys-2
+  - ch32-v1-usr-native
 - name: CH32V103C8T6
   cores:
   - name: main
@@ -150,6 +151,7 @@ variants:
   - ch32-v1-sys-1
   - ch32-v1-opt
   - ch32-v1-sys-2
+  - ch32-v1-usr-native
 - name: CH32V103C8U6
   cores:
   - name: main
@@ -222,6 +224,7 @@ variants:
   - ch32-v1-sys-1
   - ch32-v1-opt
   - ch32-v1-sys-2
+  - ch32-v1-usr-native
 - name: CH32V103R8T6
   cores:
   - name: main
@@ -294,6 +297,7 @@ variants:
   - ch32-v1-sys-1
   - ch32-v1-opt
   - ch32-v1-sys-2
+  - ch32-v1-usr-native
 flash_algorithms:
 - name: ch32-v1-opt
   description: ch32-v1-opt
@@ -402,4 +406,22 @@ flash_algorithms:
     erase_sector_timeout: 2000
     sectors:
     - size: 0x80
+      address: 0x0
+- name: ch32-v1-usr-native
+  description: "WCH-Link native fastprogram loader for CH32V103. NOT a CMSIS flash algorithm: its address range is intentionally empty so it is never selected for target-side flashing; the WCH-Link native flashing path looks it up by name and streams its `instructions` blob to the probe. the `pc_*` fields only exist so generic algorithm validation passes; they are never used (the blob is position-independent, the probe firmware chooses where it runs)."
+  default: false
+  instructions: ARECzpN3FQCZz7cGZ0W3JwJAk4Y2EjeX783UwxMHt5rYw9TT2NOTdyUAnce3JwJAmEutZjc4AEATZ0cAmMuYS5OGpqoTZwcEmMvYRwWLYx8HEJhLbZuYy5N3RQCpy5MH9gedgy7GLWiBdj7KtwgCALcnAkA3MwBAEwioqv0WmEszZxcBmMsyR9jLmEsTZwcEmMvYRwWLce+YS3WPmMsyRxMHBwg6xlJHfRc6ymn7k3eFAO3Dkwf2By7GnYM3JwJAPsocS8FmNwgIANWPHMuhSDcXACC3JwJANwMEAJRLs+YGAZTL1EeFivX+skY6jjbIRszCRoMuBwBBByOg1gHCRoMuR/8jotYBwkaDLof/I6TWAcJGAy7OACOmxgGUS7PmZgCUy9RHhYr1/sJGOo7BBjbI4kb9FjbMzf6yRtTLlEuT5gYElMvUR4WK9f7UR9GKhcbYR7cG8//9FhNnRwHYx5hLIUV1j5jLBWECkCMg2ADpvSMgAwExv7JGk4YGCDbG0kb9FjbKufqYS7cG8//9FnWPmMtBiRnhAUX5ty7GDQYCygmCMsy3FwAgmEMThkcA0keyRooHtpecQ2MY9wLSRzJHige6l5hD8ke6lz7O0keFBz7K0kZiR7KH4+jm/LcnACCYS/JH4wn3+kFFtb8=
+  pc_program_page: 0x0
+  pc_erase_sector: 0x0
+  data_section_offset: 0x0
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x0
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x100
       address: 0x0

@@ -87,6 +87,7 @@ variants:
   - ch32-v00x-usr-legacy
   - ch32-v00x-sys
   - ch32-v00x-opt
+  - ch32-v00x-usr-native
 - name: CH32M007E8U6
   cores:
   - name: main
@@ -150,6 +151,7 @@ variants:
   - ch32-v00x-usr-legacy
   - ch32-v00x-sys
   - ch32-v00x-opt
+  - ch32-v00x-usr-native
 - name: CH32M007G8R6
   cores:
   - name: main
@@ -213,6 +215,7 @@ variants:
   - ch32-v00x-usr-legacy
   - ch32-v00x-sys
   - ch32-v00x-opt
+  - ch32-v00x-usr-native
 - name: CH32M007K8U7
   cores:
   - name: main
@@ -276,6 +279,7 @@ variants:
   - ch32-v00x-usr-legacy
   - ch32-v00x-sys
   - ch32-v00x-opt
+  - ch32-v00x-usr-native
 - name: CH32V002F4P6
   cores:
   - name: main
@@ -339,6 +343,7 @@ variants:
   - ch32-v00x-usr-legacy
   - ch32-v00x-sys
   - ch32-v00x-opt
+  - ch32-v00x-usr-native
 - name: CH32V002F4U6
   cores:
   - name: main
@@ -402,6 +407,7 @@ variants:
   - ch32-v00x-usr-legacy
   - ch32-v00x-sys
   - ch32-v00x-opt
+  - ch32-v00x-usr-native
 - name: CH32V002A4M6
   cores:
   - name: main
@@ -465,6 +471,7 @@ variants:
   - ch32-v00x-usr-legacy
   - ch32-v00x-sys
   - ch32-v00x-opt
+  - ch32-v00x-usr-native
 - name: CH32V002D4U6
   cores:
   - name: main
@@ -528,6 +535,7 @@ variants:
   - ch32-v00x-usr-legacy
   - ch32-v00x-sys
   - ch32-v00x-opt
+  - ch32-v00x-usr-native
 - name: CH32V002J4M6
   cores:
   - name: main
@@ -591,6 +599,7 @@ variants:
   - ch32-v00x-usr-legacy
   - ch32-v00x-sys
   - ch32-v00x-opt
+  - ch32-v00x-usr-native
 - name: CH32V004F6P1
   cores:
   - name: main
@@ -654,6 +663,7 @@ variants:
   - ch32-v00x-usr-legacy
   - ch32-v00x-sys
   - ch32-v00x-opt
+  - ch32-v00x-usr-native
 - name: CH32V004F6U1
   cores:
   - name: main
@@ -717,6 +727,7 @@ variants:
   - ch32-v00x-usr-legacy
   - ch32-v00x-sys
   - ch32-v00x-opt
+  - ch32-v00x-usr-native
 - name: CH32V005E6R6
   cores:
   - name: main
@@ -780,6 +791,7 @@ variants:
   - ch32-v00x-usr-legacy
   - ch32-v00x-sys
   - ch32-v00x-opt
+  - ch32-v00x-usr-native
 - name: CH32V005F6U6
   cores:
   - name: main
@@ -843,6 +855,7 @@ variants:
   - ch32-v00x-usr-legacy
   - ch32-v00x-sys
   - ch32-v00x-opt
+  - ch32-v00x-usr-native
 - name: CH32V005F6P6
   cores:
   - name: main
@@ -906,6 +919,7 @@ variants:
   - ch32-v00x-usr-legacy
   - ch32-v00x-sys
   - ch32-v00x-opt
+  - ch32-v00x-usr-native
 - name: CH32V005D6U6
   cores:
   - name: main
@@ -969,6 +983,7 @@ variants:
   - ch32-v00x-usr-legacy
   - ch32-v00x-sys
   - ch32-v00x-opt
+  - ch32-v00x-usr-native
 - name: CH32V006K8U6
   cores:
   - name: main
@@ -1032,6 +1047,7 @@ variants:
   - ch32-v00x-usr-legacy
   - ch32-v00x-sys
   - ch32-v00x-opt
+  - ch32-v00x-usr-native
 - name: CH32V006E8R6
   cores:
   - name: main
@@ -1095,6 +1111,7 @@ variants:
   - ch32-v00x-usr-legacy
   - ch32-v00x-sys
   - ch32-v00x-opt
+  - ch32-v00x-usr-native
 - name: CH32V006F8U6
   cores:
   - name: main
@@ -1158,6 +1175,7 @@ variants:
   - ch32-v00x-usr-legacy
   - ch32-v00x-sys
   - ch32-v00x-opt
+  - ch32-v00x-usr-native
 - name: CH32V006F8P6
   cores:
   - name: main
@@ -1221,6 +1239,7 @@ variants:
   - ch32-v00x-usr-legacy
   - ch32-v00x-sys
   - ch32-v00x-opt
+  - ch32-v00x-usr-native
 - name: CH32V007E8R6
   cores:
   - name: main
@@ -1284,6 +1303,7 @@ variants:
   - ch32-v00x-usr-legacy
   - ch32-v00x-sys
   - ch32-v00x-opt
+  - ch32-v00x-usr-native
 - name: CH32V007K8U6
   cores:
   - name: main
@@ -1347,6 +1367,7 @@ variants:
   - ch32-v00x-usr-legacy
   - ch32-v00x-sys
   - ch32-v00x-opt
+  - ch32-v00x-usr-native
 flash_algorithms:
 - name: ch32-v00x-opt
   description: ch32-v00x-opt
@@ -1428,6 +1449,24 @@ flash_algorithms:
     address_range:
       start: 0x0
       end: 0xf800
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x100
+      address: 0x0
+- name: ch32-v00x-usr-native
+  description: "WCH-Link native fastprogram loader for CH32V00x. NOT a CMSIS flash algorithm: its address range is intentionally empty so it is never selected for target-side flashing; the WCH-Link native flashing path looks it up by name and streams its `instructions` blob to the probe. the `pc_*` fields only exist so generic algorithm validation passes; they are never used (the blob is position-independent, the probe firmware chooses where it runs)."
+  default: false
+  instructions: EREizCbKAsiTdxUAmc+3BmdFtycCQJOGNhI3l+/N1MMTB7ea2MPU09jTk3clAJ3HtycCQJhLrWY3MwBAE2dHAJjLmEuThqaqE2cHBJjL2EcFi2MXBxCYS22bmMuTd0UAqcuTB/YPoYMuwC1jgXY+xLcyAEC3JwJAEwOjqv0WmEu3AwIAM2d3AJjLAkfYy5hLE2cHBJjL2EcFi3HnmEt1j5jLAkcTBwcQOsAiR30XOsR595N3hQD5z5MH9g8uwKGDNycCQD7EHEvBZi1j1Y8cyzcHACATBwcgtycCQLcDCAC3MgBAEwOjqpRLs+Z2AJTL1EeFivX+gka6hDcEBAA2wpMGAAQ2xpJGhEARB4TClEvBjpTL1EeFirHqkka6hJEGNsKyRv0WNsb5/oJG1MuUS5PmBgSUy9RHhYqF7tRHwYqFzthHtwbz//0WE2cHAdjHmEshRXWPmMtiRNJEcQECkCMg0wDttSOgYgA1tyOgYgBVtyOgYgDBt4JGk4YGEDbAokb9FjbErfKYS7cG8//9FnWPmMtBiRnhAUV9vy7ADQYCxAmCtwcAIDLGk4cHIJRDE4dHAKJHAkaKB7KXnENjmfYCokeCRooHtpeUQ8JHtpc+yKJHhQc+xCJGska6h+No1vy3BwAgA6cHYcJH4wb3+kFFnbc=
+  pc_program_page: 0x0
+  pc_erase_sector: 0x0
+  data_section_offset: 0x0
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x0
     page_size: 0x100
     erased_byte_value: 0xff
     program_page_timeout: 1000
