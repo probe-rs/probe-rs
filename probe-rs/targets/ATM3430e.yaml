@@ -1,0 +1,58 @@
+name: Atmosic ATM34
+variants:
+- name: ATM3430e
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 1
+  memory_map:
+  - !Nvm
+    name: RRAM_S
+    range:
+      start: 0x10010000
+      end: 0x1008f800
+    cores:
+    - main
+    access:
+      boot: true
+  - !Ram
+    name: SRAM_NS_RTT
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM_S
+    range:
+      start: 0x30000000
+      end: 0x30040000
+    cores:
+    - main
+  flash_algorithms:
+  - atm34-rram
+flash_algorithms:
+- name: atm34-rram
+  description: ATM34 RRAM
+  default: true
+  instructions: APFvQQH1fwIBIbL1/i8o2EDyOCLD8gACEngSs4C1b0YA9QBhCRo4vwAhAzFf6pEMB9BP8P8yY0YBRkH4BCsBO/vRb+oMAb/zT48BMQbSAh0AaAEwEEb40AIhAOAAIb3ogEAIRnBH8LUDr034BL1A8jglFEbD8gAFKHgIsQDwoPgBJmAeBCgucDTSQ/IgAEjyUAHF8hUAxPIVAQZgACK/80+PCmBE9hQDv/NPjwJgT/YAcMDyHwBP9BAhwPYoAwZgQmBkJApgA2AVI0NgLCPA8gkDGmAEYEJg2mACYEJgACAKYL/zT48A8Hz4LnAAIF34BLvwvQDwjPhA8jgjw/IAAxt4ASsR0fC1A69N+ASNDhgBI4ZCIr8AJcHyAQWoQgfSXfgEi73o8EAA4AEjGEZwR0/2AAXB8ggFrkLx2IMHlEYDRg1GENCURgNGDUZhsQxGA0aURhz4AWtlHgP4AWueBwLQASwsRvXRT/b8dgXwAw7H9v92FeoGCAjQyPEABWZGVvgESwQ1Q/gES/nRvvEADwjQDOsIBRX4AWu+8QEOA/gBa/jRv/NPj0GxEPgBOwE5EvgBa7NC99ACI7HnACOv59C1Aq9A8jgkw/IABCB4ASgF0QEgAPAF+AAgIHDQvQEg0L2AtW9GQ/K0AgAhxPIUAgAjHCkIv0/wAEMAKBi/T/D/M4tQBDEgKfLRv/NPj4C9gLVvRgDe/t4A1NTU
+  load_address: 0x30000020
+  pc_init: 0x67
+  pc_uninit: 0x1c1
+  pc_program_page: 0xf9
+  pc_erase_sector: 0x1
+  data_section_offset: 0x21c
+  flash_properties:
+    address_range:
+      start: 0x10010000
+      end: 0x1008f800
+    page_size: 0x800
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x800
+      address: 0x0
+  cores:
+  - main
