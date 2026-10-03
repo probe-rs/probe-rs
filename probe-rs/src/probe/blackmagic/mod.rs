@@ -112,7 +112,7 @@ enum RemoteCommand<'a> {
         enable: bool,
     },
     SetSpeedHz(u32),
-    SpeedKhz,
+    SpeedKhz(&'a mut [u8]),
     TargetReset(bool),
     RawAccessV0P {
         rnw: u8,
@@ -305,6 +305,7 @@ impl RemoteCommand<'_> {
         match self {
             RemoteCommand::Handshake(data) => Some(data),
             RemoteCommand::GetVoltage(data) => Some(data),
+            RemoteCommand::SpeedKhz(data) => Some(data),
             RemoteCommand::MemReadV0P { data, .. } => Some(data),
             RemoteCommand::MemReadV1 { data, .. } => Some(data),
             RemoteCommand::MemReadV3 { data, .. } => Some(data),
@@ -345,7 +346,7 @@ impl std::string::ToString for RemoteCommand<'_> {
             RemoteCommand::TargetClockOutput { enable } => {
                 format!("!GE{}#", if *enable { '1' } else { '0' })
             }
-            RemoteCommand::SpeedKhz => "!Gf#".to_string(),
+            RemoteCommand::SpeedKhz(_) => "!Gf#".to_string(),
             RemoteCommand::RawAccessV0P { rnw, addr, value } => {
                 format!("!HL{rnw:02x}{addr:04x}{value:08x}#")
             }
@@ -797,7 +798,9 @@ impl BlackMagicProbe {
         };
 
         probe.command(RemoteCommand::SetNrst(false)).ok();
-        probe.command(RemoteCommand::SetSpeedHz(400_0000)).ok();
+        if let Ok(speed_khz) = probe.set_speed(4000) {
+            tracing::info!("Initial speed: {speed_khz} kHz");
+        }
 
         Ok(probe)
     }
@@ -951,8 +954,21 @@ impl BlackMagicProbe {
     }
 
     fn get_speed(&mut self) -> Result<u32, DebugProbeError> {
-        let speed = self.command(RemoteCommand::SpeedKhz)?.0.try_into().unwrap();
-        Ok(speed)
+        // The reply contains four hex-encoded little-endian bytes representing Hz.
+        // Read one extra character so oversized replies are rejected as well.
+        let mut response = [0u8; 9];
+        if self.command(RemoteCommand::SpeedKhz(&mut response))?.0 != 8 {
+            return Err(RemoteError::ParameterError(0).into());
+        }
+        let mut bytes = [0u8; 4];
+        for (byte, hex) in bytes.iter_mut().zip(response[..8].as_chunks::<2>().0) {
+            let high =
+                Self::hex_val(hex[0]).map_err(|_| RemoteError::ParameterError(hex[0].into()))?;
+            let low =
+                Self::hex_val(hex[1]).map_err(|_| RemoteError::ParameterError(hex[1].into()))?;
+            *byte = (high << 4) | low;
+        }
+        Ok(u32::from_le_bytes(bytes) / 1000)
     }
 
     fn drain_swd_accumulator(
@@ -1891,6 +1907,82 @@ mod golden_tests {
             REGISTER_WRITE_EIGHT_IDLE.1,
             REGISTER_WRITE_EIGHT_IDLE.2,
         );
+    }
+}
+
+#[cfg(test)]
+mod speed_tests {
+    use super::BlackMagicProbe;
+    use crate::probe::DebugProbe;
+    use std::io::{Cursor, sink};
+
+    #[test]
+    fn speed_reply_is_little_endian_hz() {
+        // Replies captured in #4242, after requesting 1000 and 4000 kHz.
+        for (requested_khz, reply, expected_khz) in [
+            (1000, "63a01700", 1548),
+            (4000, "c0c62d00", 3000),
+            (4000, "C0c62D00", 3000),
+            (1000, "00000000", 0),
+            (1000, "ffffffff", u32::MAX / 1000),
+        ] {
+            let responses = format!("&KBlack Magic Probe#&K4#&K0#&K0#&Kc0c62d00#&K0#&K{reply}#");
+            let mut probe = BlackMagicProbe::new(
+                Box::new(Cursor::new(responses.into_bytes())),
+                Box::new(sink()),
+            )
+            .unwrap();
+
+            assert_eq!(probe.speed_khz(), 3000);
+            assert_eq!(probe.set_speed(requested_khz).unwrap(), expected_khz);
+            assert_eq!(probe.speed_khz(), expected_khz);
+        }
+    }
+
+    #[test]
+    fn initial_speed_errors_are_nonfatal() {
+        // The initial set or query can fail without preventing later use.
+        for initial_responses in ["&N0#", "&K0#&N0#"] {
+            let responses =
+                format!("&KBlack Magic Probe#&K4#&K0#{initial_responses}&K0#&K63a01700#");
+            let mut probe = BlackMagicProbe::new(
+                Box::new(Cursor::new(responses.into_bytes())),
+                Box::new(sink()),
+            )
+            .unwrap();
+
+            assert_eq!(probe.speed_khz(), 0);
+            assert_eq!(probe.set_speed(1000).unwrap(), 1548);
+            assert_eq!(probe.speed_khz(), 1548);
+        }
+    }
+
+    #[test]
+    fn malformed_speed_replies_do_not_update_cached_speed() {
+        for reply in [
+            "",
+            "0",
+            "000000",
+            "0000000",
+            "000000000",
+            "0000000000",
+            "zz000000",
+            "0000000z",
+            "0xc0c62d00",
+        ] {
+            let responses =
+                format!("&KBlack Magic Probe#&K4#&K0#&K0#&Kc0c62d00#&K0#&K{reply}#&K0#&K63a01700#");
+            let mut probe = BlackMagicProbe::new(
+                Box::new(Cursor::new(responses.into_bytes())),
+                Box::new(sink()),
+            )
+            .unwrap();
+
+            assert!(probe.set_speed(1000).is_err(), "accepted {reply:?}");
+            assert_eq!(probe.speed_khz(), 3000);
+            assert_eq!(probe.set_speed(1000).unwrap(), 1548);
+            assert_eq!(probe.speed_khz(), 1548);
+        }
     }
 }
 
