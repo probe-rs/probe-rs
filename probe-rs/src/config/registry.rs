@@ -508,6 +508,15 @@ mod tests {
         assert_eq!(target.name, "nRF51822_xxAA");
     }
 
+    #[cfg(feature = "builtin-targets")]
+    #[test]
+    fn try_fetch_gd32h737() {
+        let registry = Registry::from_builtin_families();
+        let target = registry.get_target_by_name("GD32H737VG").unwrap();
+        assert_eq!(target.name, "GD32H737VG");
+        assert_eq!(target.memory_map.len(), 6);
+    }
+
     #[test]
     fn validate_generic_targets() {
         let mut families = vec![];
