@@ -157,7 +157,7 @@ impl<'p> JtagChain<'p> {
 
         tracing::debug!("DR: {:?}", response.as_bits());
 
-        let idcodes = extract_idcodes(response.as_bits())?;
+        let mut idcodes = extract_idcodes(response.as_bits())?;
 
         tracing::info!(
             "JTAG DR scan complete, found {} TAPs. {:?}",
@@ -213,6 +213,10 @@ impl<'p> JtagChain<'p> {
 
         tracing::info!("Found {} TAPs on reset scan", idcodes.len());
         tracing::debug!("Detected IR lens: {:?}", ir_lens);
+
+        // The IR scan may reveal more TAPs than the IDCODE scan when a trailing TAP reports
+        // an all-ones IDCODE. Pad the detected IDCODEs so each IR length maps to a chain entry.
+        idcodes.resize(ir_lens.len(), None);
 
         self.probe.chain_state().scan_chain = idcodes
             .into_iter()
@@ -310,17 +314,28 @@ impl<'p> JtagChain<'p> {
         for (idx, command) in writes.iter() {
             match command {
                 JtagCommand::WriteRegister(write) => {
-                    if write.inner.address > max_ir {
+                    if ir_len == 0 {
                         return Err(BatchExecutionError::new_from_debug_probe(
                             DebugProbeError::Other(format!(
-                                "Invalid instruction register access: {}",
+                                "Invalid instruction register access: {} (no TAP selected)",
                                 write.inner.address
                             )),
                             Results::new(),
                         ));
                     }
 
-                    let ir = BitSequence::from_bytes(&write.inner.address.to_le_bytes(), ir_len);
+                    // 8-bit SoC-600 opcodes mask down to the ADIv5 ones on a 4-bit IR.
+                    let address = write.inner.address & max_ir;
+
+                    tracing::trace!(
+                        target: "probe_rs::probe::jtag_trace",
+                        ir = format_args!("{address:#x}"),
+                        dr_len = write.inner.data.len(),
+                        idle_cycles = write.inner.idle_cycles,
+                        "JTAG IR/DR transaction"
+                    );
+
+                    let ir = BitSequence::from_bytes(&address.to_le_bytes(), ir_len);
                     self.shift_ir(&mut batch, &ir);
                     let handle = self.exchange_dr(&mut batch, &write.inner.data);
                     self.run_test_idle(&mut batch, write.inner.idle_cycles);

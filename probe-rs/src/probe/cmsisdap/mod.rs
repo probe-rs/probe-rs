@@ -293,8 +293,13 @@ impl CmsisDap {
         ir_lengths: Option<&[usize]>,
     ) -> Result<Vec<ScanChainElement>, CmsisDapError> {
         let (ir, dr) = self.jtag_reset_scan()?;
-        let idcodes = extract_idcodes(&dr)?;
+        let mut idcodes = extract_idcodes(&dr)?;
         let ir_lens = extract_ir_lengths(&ir, idcodes.len(), ir_lengths)?;
+
+        // A trailing TAP that reports an all-ones IDCODE (e.g. a powered-down boundary-scan
+        // TAP) is not seen by the IDCODE scan but still occupies IR bits. Pad the detected
+        // IDCODEs so each IR length maps to a chain entry.
+        idcodes.resize(ir_lens.len(), None);
 
         Ok(idcodes
             .into_iter()
@@ -385,7 +390,7 @@ impl CmsisDap {
             }
             None => {
                 let expected_bit = 1;
-                tracing::error!(
+                tracing::debug!(
                     "JTAG {name} scan chain either broken or too long: did not detect {expected_bit}"
                 );
                 return Err(CmsisDapError::ErrorResponse(
@@ -396,7 +401,9 @@ impl CmsisDap {
 
         // Check at least one register is detected in the scan chain.
         if n == 0 {
-            tracing::error!("JTAG {name} scan chain is empty");
+            // An empty chain is also the normal result while a dormant target is
+            // being probed before the protocol-specific wake sequence.
+            tracing::debug!("JTAG {name} scan chain is empty");
             return Err(CmsisDapError::ErrorResponse(RequestError::EmptyScanChain {
                 name,
             }));
@@ -405,7 +412,7 @@ impl CmsisDap {
         // Check d0[n..] are all 0.
         if d0[n..].any() {
             let expected_bit = 0;
-            tracing::error!(
+            tracing::debug!(
                 "JTAG {name} scan chain either broken or too long: did not detect {expected_bit}"
             );
             return Err(CmsisDapError::ErrorResponse(

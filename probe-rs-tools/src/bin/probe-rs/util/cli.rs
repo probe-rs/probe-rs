@@ -996,7 +996,11 @@ pub async fn monitor(
 
     if print_stack_trace {
         if let Some(path) = path {
-            display_stack_trace(session, path, monitor_options.stack_frame_limit).await?;
+            if let Err(error) =
+                display_stack_trace(session, path, monitor_options.stack_frame_limit).await
+            {
+                eprintln!("Can not print stack trace: {error}");
+            }
         } else {
             eprintln!("Can not print stack trace because firmware is not available");
         }
