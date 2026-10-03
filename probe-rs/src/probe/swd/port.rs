@@ -120,6 +120,7 @@ impl<'p> SwdPort<'p> {
             read_handles,
             logical,
             pipeline_handles,
+            pins_handles,
         } = expand_batch(&batch, &self.settings, self.probe.handles_ap_pipeline());
         drop(batch);
         let mut expanded = expanded;
@@ -131,8 +132,13 @@ impl<'p> SwdPort<'p> {
             match self.probe.run_batch(&expanded) {
                 Ok(results) => {
                     collected.merge_from(results);
-                    let remapped =
-                        remap_results(read_handles, logical, collected, &self.block_read_counts);
+                    let remapped = remap_results(
+                        read_handles,
+                        logical,
+                        &pins_handles,
+                        collected,
+                        &self.block_read_counts,
+                    );
                     self.block_read_counts.clear();
                     self.block_read_handles.clear();
                     drop(pipeline_handles);
@@ -149,7 +155,14 @@ impl<'p> SwdPort<'p> {
                         }
                         Some(SwdTransferError::WaitResponse) => {
                             tracing::debug!("got WAIT on operation {}, retrying...", fault_index);
-                            self.clear_overrun_and_sticky_err()?;
+                            // Clearing is itself a transfer, so it can fail while the target is
+                            // not answering - a debug sequence that resets the chip makes the
+                            // link drop on purpose. Failing here would spend none of the retry
+                            // budget this loop exists to provide, and would report the failure
+                            // of the recovery rather than the condition that caused it.
+                            if let Err(error) = self.clear_overrun_and_sticky_err() {
+                                tracing::debug!("clearing after WAIT failed, retrying: {error:?}");
+                            }
                             expanded.consume(fault_index);
                             bump_write_idle(&mut expanded, idle_cycles as u32);
                             idle_cycles = idle_cycles
@@ -221,6 +234,7 @@ struct ExpansionPlan {
     read_handles: Vec<Option<HandleId>>,
     logical: Vec<LogicalMapping>,
     pipeline_handles: Vec<Handle<()>>,
+    pins_handles: Vec<HandleId>,
 }
 
 enum LogicalMapping {
@@ -251,6 +265,7 @@ fn expand_batch(
     let mut read_handles = Vec::new();
     let mut logical_mappings = Vec::new();
     let mut pipeline_handles = Vec::new();
+    let mut pins_handles = Vec::new();
     let mut transfer_index = 0usize;
 
     for (handle_id, op) in batch.iter() {
@@ -324,7 +339,13 @@ fn expand_batch(
             SwdOp::Sequence(bits) => expanded.sequence(bits),
             SwdOp::Idle { cycles } => expanded.idle(cycles),
             SwdOp::Pins { out, select, wait } => {
-                let _ = expanded.schedule(SwdOp::Pins { out, select, wait });
+                let op = SwdOp::Pins { out, select, wait };
+                if handle_id.should_capture() {
+                    expanded.schedule_preserved(handle_id.clone(), op);
+                    pins_handles.push(handle_id.clone());
+                } else {
+                    let _ = expanded.schedule(op);
+                }
             }
         }
     }
@@ -338,6 +359,7 @@ fn expand_batch(
         read_handles,
         logical: logical_mappings,
         pipeline_handles,
+        pins_handles,
     }
 }
 
@@ -502,10 +524,17 @@ fn block_value_indices(read_handles: &[Option<HandleId>], count: usize) -> Vec<u
 fn remap_results(
     read_handles: Vec<Option<HandleId>>,
     logical: Vec<LogicalMapping>,
+    pins_handles: &[HandleId],
     mut expanded_results: Results,
     block_read_counts: &[usize],
 ) -> Results {
     let mut logical_results = Results::new();
+    for handle_id in pins_handles {
+        let handle = Handle::from_parts(handle_id.clone(), Box::new(|result| result));
+        if let Ok(result) = expanded_results.take(handle) {
+            logical_results.push(handle_id, result);
+        }
+    }
     let mut expanded_read_values: Vec<Option<u32>> = vec![None; read_handles.len()];
     let block_aggregate_ids: HashSet<HandleId> = block_read_counts
         .iter()
@@ -615,7 +644,9 @@ impl SwdPort<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::probe::swd::Pins;
     use crate::probe::swd::mock::{MockSwdProbe, RecordedOp, ScriptedResponse};
+    use std::time::Duration;
 
     fn duplicate_settings(settings: &SwdSettings) -> SwdSettings {
         SwdSettings {
@@ -682,6 +713,18 @@ mod tests {
         assert_eq!(reads[2], (Port::Dp, DP_CTRL_ADDR));
         assert_eq!(reads[3], (Port::Dp, DP_CTRL_ADDR));
         assert_eq!(reads[4], (Port::Dp, DP_CTRL_ADDR));
+    }
+
+    #[test]
+    fn pin_levels_pass_through_the_port() {
+        let mut probe = MockSwdProbe::new().reads_pins(0x81);
+        let mut batch = SwdBatch::new();
+        let _ = batch.read(Port::Dp, DP_CTRL_ADDR);
+        let levels = batch.pins(Pins(0x80), Pins(0x80), Duration::ZERO);
+
+        let mut port = SwdPort::new(&mut probe, SwdSettings::default());
+        let mut results = port.run(batch).expect("run should succeed");
+        assert_eq!(results.take(levels).unwrap().0, 0x81);
     }
 
     #[test]
@@ -1032,6 +1075,82 @@ mod tests {
                 (Port::Dp, DP_CTRL_ADDR),
             ]
         );
+    }
+
+    /// TAR is at 0x04, so bits 2 and 3 are 0b0100.
+    const AP_TAR_ADDR: u8 = 0b0100;
+    /// DRW is at 0x0C, so bits 2 and 3 are 0b1100.
+    const AP_DRW_ADDR: u8 = 0b1100;
+
+    fn scattered_read_batch(addresses: &[u32]) -> (SwdBatch, Vec<Handle<u32>>) {
+        let mut batch = SwdBatch::new();
+        let mut handles = Vec::new();
+        for &address in addresses {
+            batch.write(Port::Ap, AP_TAR_ADDR, address);
+            handles.push(batch.read(Port::Ap, AP_DRW_ADDR));
+        }
+        (batch, handles)
+    }
+
+    #[test]
+    fn scattered_read_takes_each_value_from_the_rdbuff_that_follows_it() {
+        let mut probe = MockSwdProbe::new();
+        // The TAR write, the DRW read that posts the access, then the RDBUFF that carries it.
+        probe.push_response(ScriptedResponse::Ok(0));
+        probe.push_response(ScriptedResponse::Ok(0));
+        probe.push_response(ScriptedResponse::Ok(11));
+        probe.push_response(ScriptedResponse::Ok(0));
+        probe.push_response(ScriptedResponse::Ok(0));
+        probe.push_response(ScriptedResponse::Ok(22));
+
+        let (batch, handles) = scattered_read_batch(&[0x2000_0000, 0x2000_0040]);
+        let mut port = SwdPort::new(&mut probe, SwdSettings::default());
+        let mut results = port.run(batch).expect("run should succeed");
+
+        let values: Vec<u32> = handles
+            .into_iter()
+            .map(|handle| results.take(handle).unwrap())
+            .collect();
+        assert_eq!(values, vec![11, 22]);
+
+        let ops = probe.transfer_ops();
+        assert_eq!(ap_write_count(&ops), 2);
+        assert_eq!(
+            read_ops(&ops),
+            vec![
+                (Port::Ap, AP_DRW_ADDR),
+                (Port::Dp, DP_RDBUFF_ADDR),
+                (Port::Ap, AP_DRW_ADDR),
+                (Port::Dp, DP_RDBUFF_ADDR),
+            ]
+        );
+    }
+
+    #[test]
+    fn scattered_read_on_a_posting_probe_adds_nothing() {
+        let mut probe = MockSwdProbe::new().handles_ap_pipeline();
+        probe.push_response(ScriptedResponse::Ok(0));
+        probe.push_response(ScriptedResponse::Ok(11));
+        probe.push_response(ScriptedResponse::Ok(0));
+        probe.push_response(ScriptedResponse::Ok(22));
+
+        let (batch, handles) = scattered_read_batch(&[0x2000_0000, 0x2000_0040]);
+        let mut port = SwdPort::new(&mut probe, SwdSettings::default());
+        let mut results = port.run(batch).expect("run should succeed");
+
+        let values: Vec<u32> = handles
+            .into_iter()
+            .map(|handle| results.take(handle).unwrap())
+            .collect();
+        assert_eq!(values, vec![11, 22]);
+
+        let ops = probe.transfer_ops();
+        assert_eq!(ap_write_count(&ops), 2);
+        assert_eq!(
+            read_ops(&ops),
+            vec![(Port::Ap, AP_DRW_ADDR), (Port::Ap, AP_DRW_ADDR)]
+        );
+        assert!(probe.idles().is_empty());
     }
 
     #[test]

@@ -6,7 +6,9 @@ use crate::architecture::arm::{
         memory_ap::{MemoryAp, MemoryApType},
         v1::valid_access_ports,
     },
-    communication_interface::{DpState, SelectCache, SwdSequence, probe_debug_port_wire},
+    communication_interface::{
+        DpState, SelectCache, SwdSequence, probe_debug_port_wire, raw_pin_levels,
+    },
     dp::{
         Ctrl, DPIDR, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, DpAddress,
         DpRegisterAddress, Select1, SelectV3,
@@ -450,7 +452,7 @@ impl SwdSequence for BlackMagicProbeArmDebug {
         pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
         probe_debug_port_wire(self.probe.as_mut(), |wire| {
-            let pins = wire
+            let levels = wire
                 .swj_pins(
                     Pins(pin_out as u8),
                     Pins(pin_select as u8),
@@ -460,7 +462,7 @@ impl SwdSequence for BlackMagicProbeArmDebug {
                     ArmError::Probe(error) => error,
                     error => DebugProbeError::Other(error.to_string()),
                 })?;
-            Ok(pins.0 as u32)
+            Ok(raw_pin_levels(levels))
         })
         .map_err(|error| match error {
             ArmError::Probe(error) => error,

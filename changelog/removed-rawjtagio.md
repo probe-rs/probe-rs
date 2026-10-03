@@ -1,1 +1,1 @@
-A JTAG probe now implements `BitbangJtag` or `JtagProbe` in place of `RawJtagIo` and `AutoImplementJtagAccess`, so a probe no longer tracks the state of the TAP.
+Removed `RawJtagIo` and `AutoImplementJtagAccess`. JTAG probes implement `BitbangJtag` or `JtagProbe` instead.

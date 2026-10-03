@@ -367,14 +367,6 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4864
       value: ~
-    - core_register:
-        id: 321
-        roles:
-          - Core: sepc
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 4417
-      value: ~
   pc:
     U32: 1107362982
   frame_base: 1082582384
@@ -2153,14 +2145,6 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 4864
-      value: ~
-    - core_register:
-        id: 321
-        roles:
-          - Core: sepc
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 4417
       value: ~
   pc:
     U32: 1107362504
@@ -4142,14 +4126,6 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4864
       value: ~
-    - core_register:
-        id: 321
-        roles:
-          - Core: sepc
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 4417
-      value: ~
   pc:
     U32: 1107400706
   frame_base: 1082582416
@@ -4520,14 +4496,6 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 4864
-      value: ~
-    - core_register:
-        id: 321
-        roles:
-          - Core: sepc
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 4417
       value: ~
   pc:
     U32: 1107400702
@@ -4983,14 +4951,6 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4864
       value: ~
-    - core_register:
-        id: 321
-        roles:
-          - Core: sepc
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 4417
-      value: ~
   pc:
     U32: 1107400670
   frame_base: 1082582416
@@ -5353,14 +5313,6 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4864
       value: ~
-    - core_register:
-        id: 321
-        roles:
-          - Core: sepc
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 4417
-      value: ~
   pc:
     U32: 1107400670
   frame_base: 1082582416
@@ -5719,14 +5671,6 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 4864
-      value: ~
-    - core_register:
-        id: 321
-        roles:
-          - Core: sepc
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 4417
       value: ~
   pc:
     U32: 1107362254
@@ -7069,14 +7013,6 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4864
       value: ~
-    - core_register:
-        id: 321
-        roles:
-          - Core: sepc
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 4417
-      value: ~
   pc:
     U32: 1107362164
   frame_base: 1082582480
@@ -8094,14 +8030,6 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4864
       value: ~
-    - core_register:
-        id: 321
-        roles:
-          - Core: sepc
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 4417
-      value: ~
   pc:
     U32: 1107363836
   frame_base: 1082582496
@@ -8805,14 +8733,6 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4864
       value: ~
-    - core_register:
-        id: 321
-        roles:
-          - Core: sepc
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 4417
-      value: ~
   pc:
     U32: 1107397612
   frame_base: 1082582512
@@ -9187,14 +9107,6 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4864
       value: ~
-    - core_register:
-        id: 321
-        roles:
-          - Core: sepc
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 4417
-      value: ~
   pc:
     U32: 1107362126
   frame_base: 1082582544
@@ -9566,14 +9478,6 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 4864
-      value: ~
-    - core_register:
-        id: 321
-        roles:
-          - Core: sepc
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 4417
       value: ~
   pc:
     U32: 1107361976

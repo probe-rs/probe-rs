@@ -12,18 +12,18 @@ use crate::{
         traits::DebugPortWire,
     },
     probe::{
-        BitSequence, DebugProbe, DebugProbeError, JtagChainAccess, Probe, SwdProbe, SwdSettings,
-        WireProtocol,
+        BitSequence, DebugProbe, DebugProbeError, JtagChainAccess, Probe, Results, SwdProbe,
+        SwdSettings, WireProtocol,
         jtag::dap::{
             jtag_output_sequence, jtag_read_block, jtag_read_register, jtag_write_block,
             jtag_write_register,
         },
-        swd::{Port, SwdBatch, SwdOp, SwdPort, SwdPortError, SwdTransferError},
+        swd::{Port, SwdBatch, SwdPort, SwdPortError, SwdTransferError},
     },
 };
 use jep106::JEP106Code;
 
-use crate::probe::jtag::chain::JtagChain;
+use crate::probe::jtag::{FullTapState, chain::JtagChain};
 use crate::probe::swd::Pins;
 
 use std::{
@@ -149,12 +149,21 @@ pub trait SwdSequence {
     fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError>;
 
     /// Corresponds to the DAP_SWJ_Pins function from the ARM Debug sequences
+    ///
+    /// Returns the pin levels that the probe reads back, or `0xFFFF_FFFF` when the probe cannot
+    /// read the pins.
     fn swj_pins(
         &mut self,
         pin_out: u32,
         pin_select: u32,
         pin_wait: u32,
     ) -> Result<u32, DebugProbeError>;
+}
+
+/// Converts the result of [`DebugPortWire::swj_pins`] to the value that
+/// [`SwdSequence::swj_pins`] returns.
+pub(crate) fn raw_pin_levels(levels: Option<Pins>) -> u32 {
+    levels.map_or(0xFFFF_FFFF, |levels| levels.0.into())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -181,6 +190,12 @@ pub(crate) struct DpState {
     pub debug_port_version: DebugPortVersion,
 
     pub(crate) current_select: SelectCache,
+
+    /// Whether `current_select` is known to describe the debug port's actual selection.
+    ///
+    /// Cleared when a SELECT write fails, because the selection is then genuinely unknown
+    /// and the cached value must not be used to skip the next write.
+    pub(crate) select_valid: bool,
 }
 
 impl DpState {
@@ -188,6 +203,7 @@ impl DpState {
         Self {
             debug_port_version: DebugPortVersion::Unsupported(0xFF),
             current_select: SelectCache::DPv1(SelectV1(0)),
+            select_valid: false,
         }
     }
 }
@@ -223,11 +239,10 @@ impl SwdDebugPortWire<'_> {
         f(&mut port).map_err(ArmCommunicationInterface::swd_port_error)
     }
 
-    fn run_probe_batch(&mut self, batch: &SwdBatch) -> Result<(), ArmError> {
+    fn run_probe_batch(&mut self, batch: &SwdBatch) -> Result<Results, ArmError> {
         self.probe
             .run_batch(batch)
-            .map_err(|error| ArmError::Probe(batch_probe_error(error)))?;
-        Ok(())
+            .map_err(|error| ArmError::Probe(batch_probe_error(error)))
     }
 }
 
@@ -239,7 +254,8 @@ impl DebugPortWire for SwdDebugPortWire<'_> {
     fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), ArmError> {
         let mut batch = SwdBatch::new();
         batch.sequence(bits.clone());
-        self.run_probe_batch(&batch)
+        self.run_probe_batch(&batch)?;
+        Ok(())
     }
 
     fn jtag_sequence(&mut self, _tms: bool, _tdi: &BitSequence) -> Result<(), ArmError> {
@@ -258,11 +274,16 @@ impl DebugPortWire for SwdDebugPortWire<'_> {
         ))
     }
 
-    fn swj_pins(&mut self, out: Pins, select: Pins, wait: Duration) -> Result<Pins, ArmError> {
+    fn swj_pins(
+        &mut self,
+        out: Pins,
+        select: Pins,
+        wait: Duration,
+    ) -> Result<Option<Pins>, ArmError> {
         let mut batch = SwdBatch::new();
-        let _ = batch.schedule(SwdOp::Pins { out, select, wait });
-        self.run_probe_batch(&batch)?;
-        Ok(Pins(0xFF))
+        let levels = batch.pins(out, select, wait);
+        let mut results = self.run_probe_batch(&batch)?;
+        Ok(results.take(levels).ok())
     }
 
     fn target_reset(&mut self) -> Result<(), ArmError> {
@@ -311,7 +332,7 @@ struct JtagDebugPortWire<'a> {
 
 impl JtagDebugPortWire<'_> {
     /// Try to run a batch of SWJ operations through SWD.
-    fn run_swj_batch(&mut self, batch: &SwdBatch) -> Result<(), ArmError> {
+    fn run_swj_batch(&mut self, batch: &SwdBatch) -> Result<Results, ArmError> {
         let Some(swd) = self.probe.try_as_swd_probe_mut() else {
             return Err(ArmError::Probe(
                 DebugProbeError::CommandNotSupportedByProbe {
@@ -320,8 +341,7 @@ impl JtagDebugPortWire<'_> {
             ));
         };
         swd.run_batch(batch)
-            .map_err(|error| ArmError::Probe(batch_probe_error(error)))?;
-        Ok(())
+            .map_err(|error| ArmError::Probe(batch_probe_error(error)))
     }
 }
 
@@ -333,7 +353,19 @@ impl DebugPortWire for JtagDebugPortWire<'_> {
     fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), ArmError> {
         let mut batch = SwdBatch::new();
         batch.sequence(bits.clone());
-        self.run_swj_batch(&batch)
+        self.run_swj_batch(&batch)?;
+
+        // The bits clock the TAP with TMS. If they end in a state that is not stable, the
+        // tracked state stays, and the caller must reset the TAP with five clocks with TMS
+        // high.
+        let state = &mut self.probe.chain_state().tap_state;
+        let end = bits
+            .iter()
+            .fold(FullTapState::from(*state), FullTapState::step);
+        if let Some(end) = end.stable() {
+            *state = end;
+        }
+        Ok(())
     }
 
     fn jtag_sequence(&mut self, tms: bool, tdi: &BitSequence) -> Result<(), ArmError> {
@@ -346,11 +378,16 @@ impl DebugPortWire for JtagDebugPortWire<'_> {
             .map_err(ArmError::Probe)
     }
 
-    fn swj_pins(&mut self, out: Pins, select: Pins, wait: Duration) -> Result<Pins, ArmError> {
+    fn swj_pins(
+        &mut self,
+        out: Pins,
+        select: Pins,
+        wait: Duration,
+    ) -> Result<Option<Pins>, ArmError> {
         let mut batch = SwdBatch::new();
-        let _ = batch.schedule(SwdOp::Pins { out, select, wait });
-        self.run_swj_batch(&batch)?;
-        Ok(Pins(0xFF))
+        let levels = batch.pins(out, select, wait);
+        let mut results = self.run_swj_batch(&batch)?;
+        Ok(results.take(levels).ok())
     }
 
     fn target_reset(&mut self) -> Result<(), ArmError> {
@@ -537,6 +574,57 @@ impl ArmCommunicationInterface {
         }
     }
 
+    /// Whether an error means the target stopped answering, rather than answering with a fault.
+    ///
+    /// A target that resets mid-session drops off the wire like this. The debug mailbox of the
+    /// NXP MCX parts resets the chip on purpose, so this is a normal step of attaching to one
+    /// held in ISP mode, not only a sign of broken wiring.
+    fn is_link_lost(error: &ArmError) -> bool {
+        matches!(
+            error,
+            ArmError::Dap(DapError::NoAcknowledge) | ArmError::Dap(DapError::Protocol(_))
+        )
+    }
+
+    /// Resynchronize the wire after the target stopped answering, then retry `op` once.
+    ///
+    /// ADIv5 (IHI0031G B4.2.5) says that a host which does not receive an expected response
+    /// must stop driving the line and attempt a line reset; that is what `debug_port_connect`
+    /// does. Without it a target that resets during a debug sequence never comes back, because
+    /// every later transfer is issued into a link that is still out of step.
+    fn retry_after_link_loss<T>(
+        &mut self,
+        dp: DpAddress,
+        mut op: impl FnMut(&mut Self) -> Result<T, ArmError>,
+    ) -> Result<T, ArmError> {
+        let first = op(self);
+        let Err(error) = first else {
+            return first;
+        };
+        if !Self::is_link_lost(&error) {
+            return Err(error);
+        }
+
+        tracing::debug!("target stopped answering ({error}), resynchronizing the wire");
+        let sequence = self.sequence.clone();
+        self.with_debug_port_wire(|wire| {
+            // The line is already out of step, so a failure to flush it says nothing new.
+            let _ = wire.raw_flush();
+            sequence.debug_port_connect(wire, dp)
+        })
+        .map_err(|reconnect| {
+            tracing::debug!("resynchronizing failed: {reconnect}");
+            error
+        })?;
+
+        // The reset took the selection with it.
+        if let Some(state) = self.dps.get_mut(&dp) {
+            state.select_valid = false;
+        }
+
+        op(self)
+    }
+
     fn swd_transfer_to_dap(error: SwdTransferError) -> DapError {
         match error {
             SwdTransferError::NoAcknowledge => DapError::NoAcknowledge,
@@ -694,17 +782,8 @@ impl ArmDebugInterface for ArmCommunicationInterface {
 
 impl SwdSequence for ArmCommunicationInterface {
     fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError> {
-        match self.probe.as_mut().unwrap() {
-            ArmProbe::Swd(probe, _) => {
-                let mut batch = SwdBatch::new();
-                batch.sequence(bits.clone());
-                probe.run_batch(&batch).map_err(batch_probe_error)?;
-                Ok(())
-            }
-            ArmProbe::Jtag(_, _) => Err(DebugProbeError::CommandNotSupportedByProbe {
-                command_name: "swj_sequence",
-            }),
-        }
+        self.with_debug_port_wire(|wire| wire.swj_sequence(bits))
+            .map_err(wire_probe_error)
     }
 
     fn swj_pins(
@@ -713,22 +792,23 @@ impl SwdSequence for ArmCommunicationInterface {
         pin_select: u32,
         pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
-        match self.probe.as_mut().unwrap() {
-            ArmProbe::Swd(probe, _) => {
-                let mut batch = SwdBatch::new();
-                let _ = batch.schedule(SwdOp::Pins {
-                    out: Pins(pin_out as u8),
-                    select: Pins(pin_select as u8),
-                    wait: Duration::from_micros(pin_wait.into()),
-                });
-                probe.run_batch(&batch).map_err(batch_probe_error)?;
-                // The batch reports no levels; every pin high is what a released line reads.
-                Ok(0xFF)
-            }
-            ArmProbe::Jtag(_, _) => Err(DebugProbeError::CommandNotSupportedByProbe {
-                command_name: "swj_pins",
-            }),
-        }
+        let levels = self
+            .with_debug_port_wire(|wire| {
+                wire.swj_pins(
+                    Pins(pin_out as u8),
+                    Pins(pin_select as u8),
+                    Duration::from_micros(pin_wait.into()),
+                )
+            })
+            .map_err(wire_probe_error)?;
+        Ok(raw_pin_levels(levels))
+    }
+}
+
+fn wire_probe_error(error: ArmError) -> DebugProbeError {
+    match error {
+        ArmError::Probe(error) => error,
+        error => DebugProbeError::Other(error.to_string()),
     }
 }
 
@@ -877,7 +957,7 @@ impl ArmCommunicationInterface {
 
         let bank = bank.unwrap_or(0);
 
-        if bank != dp_state.current_select.dp_bank_sel() {
+        if !dp_state.select_valid || bank != dp_state.current_select.dp_bank_sel() {
             dp_state.current_select.set_dp_bank_sel(bank);
 
             tracing::debug!("Changing DP_BANK_SEL to {:x?}", dp_state.current_select);
@@ -891,6 +971,48 @@ impl ArmCommunicationInterface {
         Ok(())
     }
 
+    /// Fold a direct SELECT/SELECT1 write into the cached selection.
+    ///
+    /// SELECT holds the current AP and the active register banks (IHI0031G B2.2.9). The cache
+    /// exists to skip redundant SELECT writes, so anything writing SELECT without going
+    /// through [`Self::select_ap_and_ap_bank`] has to be folded in, or the cache keeps
+    /// describing a selection the debug port no longer has. Debug sequences do exactly that:
+    /// the MCX sequence opens with SELECT=0.
+    ///
+    /// A failed write leaves the selection genuinely unknown, so the cache is marked invalid
+    /// and the next access writes SELECT again rather than trusting a value that may never
+    /// have reached the target.
+    fn sync_select_cache(
+        &mut self,
+        dp: DpAddress,
+        address: DpRegisterAddress,
+        value: u32,
+        wrote: bool,
+    ) {
+        let is_select = address.address == 0x8 && address.bank.unwrap_or(0) == 0;
+        let is_select1 = address.address == 0x4 && address.bank == Some(0x5);
+        if !is_select && !is_select1 {
+            return;
+        }
+
+        let Some(state) = self.dps.get_mut(&dp) else {
+            return;
+        };
+
+        if !wrote {
+            state.select_valid = false;
+            return;
+        }
+
+        state.current_select = match (state.current_select, is_select) {
+            (SelectCache::DPv1(_), true) => SelectCache::DPv1(SelectV1(value)),
+            (SelectCache::DPv3(_, s1), true) => SelectCache::DPv3(SelectV3(value), s1),
+            (SelectCache::DPv3(s, _), false) => SelectCache::DPv3(s, Select1(value)),
+            (current, false) => current,
+        };
+        state.select_valid = true;
+    }
+
     fn select_ap_and_ap_bank(
         &mut self,
         ap: &FullyQualifiedApAddress,
@@ -899,6 +1021,7 @@ impl ArmCommunicationInterface {
         let dp_state = self.select_dp(ap.dp())?;
 
         let previous_select = dp_state.current_select;
+        let was_valid = dp_state.select_valid;
         match (ap.ap(), &mut dp_state.current_select) {
             (ApAddress::V1(port), SelectCache::DPv1(s)) => {
                 let ap_register_address = (ap_register_address & 0xFF) as u8;
@@ -934,7 +1057,7 @@ impl ArmCommunicationInterface {
             }
         }
 
-        if previous_select != dp_state.current_select {
+        if !was_valid || previous_select != dp_state.current_select {
             tracing::debug!("Changing SELECT to {:x?}", dp_state.current_select);
 
             match dp_state.current_select {
@@ -987,6 +1110,14 @@ impl SwoAccess for ArmCommunicationInterface {
     }
 }
 
+/// Whether two accesses belong to the same run: one register, in one direction.
+///
+/// A transport with no batch replays runs with its repeated-access commands -- its block
+/// transfers -- so a run must not span a change of register or of direction.
+fn same_run(a: &(u64, Option<u32>), b: &(u64, Option<u32>)) -> bool {
+    a.0 == b.0 && a.1.is_some() == b.1.is_some()
+}
+
 impl DapAccess for ArmCommunicationInterface {
     fn read_raw_dp_register(
         &mut self,
@@ -1016,7 +1147,7 @@ impl DapAccess for ArmCommunicationInterface {
     ) -> Result<(), ArmError> {
         self.select_dp_and_dp_bank(dp, &address)?;
         let register = RegisterAddress::DpRegister(address);
-        if self.is_swd() {
+        let result = if self.is_swd() {
             let addr = Self::swd_addr(register);
             self.with_swd_port(|port| {
                 let mut batch = SwdBatch::new();
@@ -1028,7 +1159,11 @@ impl DapAccess for ArmCommunicationInterface {
             self.with_jtag_chain(|chain, settings| {
                 jtag_write_register(chain, register, value, settings)
             })
-        }
+        };
+
+        self.sync_select_cache(dp, address, value, result.is_ok());
+
+        result
     }
 
     fn read_raw_ap_register(
@@ -1036,20 +1171,24 @@ impl DapAccess for ArmCommunicationInterface {
         ap: &FullyQualifiedApAddress,
         address: u64,
     ) -> Result<u32, ArmError> {
-        self.select_ap_and_ap_bank(ap, address)?;
-        let register = RegisterAddress::ApRegister((address & 0xFF) as u8);
+        self.retry_after_link_loss(ap.dp(), |this| {
+            this.select_ap_and_ap_bank(ap, address)?;
+            let register = RegisterAddress::ApRegister((address & 0xFF) as u8);
 
-        if self.is_swd() {
-            let addr = Self::ap_swd_addr(address);
-            self.with_swd_port(|port| {
-                let mut batch = SwdBatch::new();
-                let handle = port.read_ap_block(&mut batch, addr, 1);
-                let mut results = port.run(batch)?;
-                Ok(results.take(handle).unwrap()[0])
-            })
-        } else {
-            self.with_jtag_chain(|chain, settings| jtag_read_register(chain, register, settings))
-        }
+            if this.is_swd() {
+                let addr = Self::ap_swd_addr(address);
+                this.with_swd_port(|port| {
+                    let mut batch = SwdBatch::new();
+                    let handle = port.read_ap_block(&mut batch, addr, 1);
+                    let mut results = port.run(batch)?;
+                    Ok(results.take(handle).unwrap()[0])
+                })
+            } else {
+                this.with_jtag_chain(|chain, settings| {
+                    jtag_read_register(chain, register, settings)
+                })
+            }
+        })
     }
 
     fn read_raw_ap_register_repeated(
@@ -1079,28 +1218,106 @@ impl DapAccess for ArmCommunicationInterface {
         }
     }
 
+    fn access_raw_ap_registers(
+        &mut self,
+        ap: &FullyQualifiedApAddress,
+        accesses: &[(u64, Option<u32>)],
+        values: &mut [u32],
+    ) -> Result<(), ArmError> {
+        let Some(&(first, _)) = accesses.first() else {
+            return Ok(());
+        };
+
+        // The bank is selected once, from the first address, so an access from another bank would
+        // reach a different register and report success. Checked in release builds too.
+        assert!(
+            accesses
+                .iter()
+                .all(|&(address, _)| address >> 4 == first >> 4),
+            "every access has to be in the same AP register bank"
+        );
+        debug_assert!(
+            values.len() >= accesses.iter().filter(|(_, value)| value.is_none()).count(),
+            "every read needs a word to land in"
+        );
+
+        if !self.is_swd() {
+            // JTAG has no batch to pack, so the list is replayed. A repeat of one register is
+            // still a block transfer here, and one access at a time would undo it.
+            let mut read = 0;
+            for run in accesses.chunk_by(same_run) {
+                match run {
+                    [(address, Some(value))] => self.write_raw_ap_register(ap, *address, *value)?,
+                    [(address, Some(_)), ..] => {
+                        let data: Vec<u32> = run
+                            .iter()
+                            .map(|(_, value)| value.expect("a run of writes holds only writes"))
+                            .collect();
+                        self.write_raw_ap_register_repeated(ap, *address, &data)?;
+                    }
+                    [(address, None)] => {
+                        values[read] = self.read_raw_ap_register(ap, *address)?;
+                        read += 1;
+                    }
+                    [(address, None), ..] => {
+                        self.read_raw_ap_register_repeated(
+                            ap,
+                            *address,
+                            &mut values[read..read + run.len()],
+                        )?;
+                        read += run.len();
+                    }
+                    [] => unreachable!("a run holds at least one access"),
+                }
+            }
+            return Ok(());
+        }
+
+        self.select_ap_and_ap_bank(ap, first)?;
+
+        self.with_swd_port(|port| {
+            let mut batch = SwdBatch::new();
+            let mut handles = Vec::new();
+            for &(address, value) in accesses {
+                let addr = Self::ap_swd_addr(address);
+                match value {
+                    Some(value) => batch.write(Port::Ap, addr, value),
+                    None => handles.push(batch.read(Port::Ap, addr)),
+                }
+            }
+
+            let mut results = port.run(batch)?;
+            for (read, handle) in handles.into_iter().enumerate() {
+                values[read] = results.take(handle).unwrap();
+            }
+            Ok(())
+        })
+    }
+
     fn write_raw_ap_register(
         &mut self,
         ap: &FullyQualifiedApAddress,
         address: u64,
         value: u32,
     ) -> Result<(), ArmError> {
-        self.select_ap_and_ap_bank(ap, address)?;
-        let register = RegisterAddress::ApRegister((address & 0xFF) as u8);
+        self.retry_after_link_loss(ap.dp(), |this| {
+            this.select_ap_and_ap_bank(ap, address)?;
+            let register = RegisterAddress::ApRegister((address & 0xFF) as u8);
 
-        if self.is_swd() {
-            let addr = Self::ap_swd_addr(address);
-            self.with_swd_port(|port| {
-                let mut batch = SwdBatch::new();
-                batch.write(Port::Ap, addr, value);
-                port.run(batch)?;
-                Ok(())
-            })
-        } else {
-            self.with_jtag_chain(|chain, settings| {
-                jtag_write_register(chain, register, value, settings)
-            })
-        }
+            if this.is_swd() {
+                let addr = Self::ap_swd_addr(address);
+                this.with_swd_port(|port| {
+                    let mut batch = SwdBatch::new();
+                    batch.write(Port::Ap, addr, value);
+                    port.run(batch)?;
+                    Ok(())
+                })
+            } else {
+                this.with_jtag_chain(|chain, settings| {
+                    jtag_write_register(chain, register, value, settings)
+                })
+            }
+        })
     }
 
     fn write_raw_ap_register_repeated(
@@ -1179,9 +1396,12 @@ mod tests {
 
     use super::*;
     use crate::architecture::arm::sequences::DefaultArmSequence;
-    use crate::probe::BitSequence;
     use crate::probe::swd::mock::{MockSwdProbe, RecordedOp, RecordedPins, RecordedSequence};
-    use crate::probe::swd::{Direction, Port};
+    use crate::probe::swd::{Direction, Port, output_levels};
+    use crate::probe::{
+        BitSequence, BitbangJtag, BitbangSwd, IoSequenceItem, JtagChainState, TapState,
+    };
+    use bitvec::vec::BitVec;
 
     const DP_RDBUFF_ADDR: u8 = 0b1100;
     const DP_SELECT_ADDR: u8 = 0b1000;
@@ -1249,7 +1469,7 @@ mod tests {
         let pins = probe.shared_pins();
         let (mut interface, _) = swd_interface(probe);
         let nreset = 1 << 7;
-        assert_eq!(interface.swj_pins(nreset, nreset, 10).unwrap(), 0xFF);
+        assert_eq!(interface.swj_pins(nreset, nreset, 10).unwrap(), 0xFFFF_FFFF);
         assert_eq!(
             *pins.lock().unwrap(),
             [RecordedPins {
@@ -1258,6 +1478,30 @@ mod tests {
                 wait: Duration::from_micros(10),
             }]
         );
+    }
+
+    #[test]
+    fn swj_pins_returns_the_levels_that_the_probe_reads() {
+        let (mut interface, _) = swd_interface(MockSwdProbe::new().reads_pins(0x01));
+        let nreset = 1 << 7;
+        assert_eq!(interface.swj_pins(nreset, nreset, 0).unwrap(), 0x01);
+    }
+
+    #[test]
+    fn reset_hardware_deassert_polls_nreset_when_the_probe_reads_pins() {
+        let ap = FullyQualifiedApAddress::v1_with_default_dp(0);
+        let nreset = 1 << 7;
+
+        let (mut interface, _) = swd_interface(MockSwdProbe::new().reads_pins(nreset));
+        DefaultArmSequence(())
+            .reset_hardware_deassert(interface.as_mut(), &ap)
+            .unwrap();
+
+        let (mut interface, _) = swd_interface(MockSwdProbe::new().reads_pins(0));
+        assert!(matches!(
+            DefaultArmSequence(()).reset_hardware_deassert(interface.as_mut(), &ap),
+            Err(ArmError::Timeout)
+        ));
     }
 
     #[test]
@@ -1312,6 +1556,45 @@ mod tests {
                 (Port::Dp, DP_CTRL_ADDR, 0x1234),
             ]
         );
+    }
+
+    #[test]
+    fn an_access_list_groups_into_runs_of_one_register() {
+        // The shape a block read reaches the probe as: the address, then the data register again
+        // and again. A transport without a batch has to see that repeat to keep using its block
+        // command.
+        let accesses = [
+            (0xD04, Some(0x2000_0000)),
+            (0xD0C, None),
+            (0xD0C, None),
+            (0xD0C, None),
+            (0xD04, Some(0x2000_1000)),
+            (0xD0C, Some(1)),
+            (0xD0C, Some(2)),
+        ];
+
+        let runs: Vec<usize> = accesses.chunk_by(same_run).map(<[_]>::len).collect();
+        assert_eq!(runs, vec![1, 3, 1, 2]);
+    }
+
+    #[test]
+    fn a_run_ends_where_the_direction_turns_around() {
+        // A read and a write of one register are different commands, so they are different runs.
+        let accesses = [
+            (0xD0C, None),
+            (0xD0C, None),
+            (0xD0C, Some(7)),
+            (0xD0C, None),
+        ];
+
+        let runs: Vec<usize> = accesses.chunk_by(same_run).map(<[_]>::len).collect();
+        assert_eq!(runs, vec![2, 1, 1]);
+    }
+
+    #[test]
+    fn an_empty_access_list_has_no_runs() {
+        let empty: [(u64, Option<u32>); 0] = [];
+        assert_eq!(empty.chunk_by(same_run).count(), 0);
     }
 
     #[test]
@@ -1377,6 +1660,47 @@ mod tests {
             16
         );
         assert_eq!(read_ops(&ops).last(), Some(&(Port::Dp, DP_RDBUFF_ADDR)));
+    }
+
+    #[test]
+    fn swd_direct_select_write_invalidates_the_cached_selection() {
+        // SELECT holds APSEL and the active register banks (IHI0031G B2.2.9). Debug sequences
+        // write it directly - the MCX sequence opens with SELECT=0 - so the cache has to
+        // follow. Otherwise the next access to the previously selected AP skips its SELECT
+        // write and the transfer lands on whichever AP the direct write left selected.
+        let mut probe = MockSwdProbe::new();
+        prepare_swd_probe(&mut probe);
+        probe.set_read_value(Port::Dp, DP_RDBUFF_ADDR, 42);
+        let (mut interface, operations) = swd_interface(probe);
+        finish_attach(&mut interface, &operations);
+
+        let ap1 = FullyQualifiedApAddress::v1_with_default_dp(1);
+        interface
+            .read_raw_ap_register(&ap1, 0x0C)
+            .expect("read should succeed");
+
+        interface
+            .write_raw_dp_register(
+                DpAddress::Default,
+                DpRegisterAddress {
+                    address: DP_SELECT_ADDR,
+                    bank: None,
+                },
+                0,
+            )
+            .expect("write should succeed");
+
+        operations.lock().unwrap().clear();
+        interface
+            .read_raw_ap_register(&ap1, 0x0C)
+            .expect("read should succeed");
+
+        let ops = operations.lock().unwrap();
+        assert_eq!(
+            write_ops(&ops),
+            vec![(Port::Dp, DP_SELECT_ADDR, 1 << 24)],
+            "AP1 must be reselected after a direct SELECT write"
+        );
     }
 
     type SwdTestInterface = (
@@ -1454,6 +1778,260 @@ mod tests {
             &sequences,
             BitSequence::from_u64(31, 0x33BB_BBBA),
         ));
+    }
+
+    /// A JTAG probe that drives SWJ output on TMS and records every TMS level and pin request.
+    #[derive(Debug, Default)]
+    struct TmsRecorder {
+        tms: Vec<bool>,
+        tdi: Vec<bool>,
+        pins: Arc<std::sync::Mutex<Vec<(u8, u8)>>>,
+        jtag_state: JtagChainState,
+        swd_settings: SwdSettings,
+    }
+
+    impl DebugProbe for TmsRecorder {
+        fn get_name(&self) -> &str {
+            "TMS recorder"
+        }
+
+        fn speed_khz(&self) -> u32 {
+            0
+        }
+
+        fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
+            Ok(speed_khz)
+        }
+
+        fn attach(&mut self) -> Result<(), DebugProbeError> {
+            Ok(())
+        }
+
+        fn detach(&mut self) -> Result<(), crate::Error> {
+            Ok(())
+        }
+
+        fn target_reset(&mut self) -> Result<(), DebugProbeError> {
+            Ok(())
+        }
+
+        fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+            Ok(())
+        }
+
+        fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+            Ok(())
+        }
+
+        fn select_protocol(&mut self, _protocol: WireProtocol) -> Result<(), DebugProbeError> {
+            Ok(())
+        }
+
+        fn active_protocol(&self) -> Option<WireProtocol> {
+            Some(WireProtocol::Jtag)
+        }
+
+        fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+            self
+        }
+
+        fn try_as_swd_probe_mut(&mut self) -> Option<&mut dyn SwdProbe> {
+            Some(self)
+        }
+
+        fn try_as_jtag_chain_access_mut(&mut self) -> Option<&mut dyn JtagChainAccess> {
+            Some(self)
+        }
+    }
+
+    impl BitbangJtag for TmsRecorder {
+        fn tap_state(&mut self) -> &mut TapState {
+            &mut self.jtag_state.tap_state
+        }
+
+        fn shift(&mut self, tms: bool, tdi: bool, _capture: bool) -> Result<(), DebugProbeError> {
+            self.tms.push(tms);
+            self.tdi.push(tdi);
+            Ok(())
+        }
+
+        fn flush(&mut self) -> Result<(), DebugProbeError> {
+            Ok(())
+        }
+
+        fn captured(&mut self) -> Result<BitVec, DebugProbeError> {
+            Ok(BitVec::new())
+        }
+    }
+
+    impl JtagChainAccess for TmsRecorder {
+        fn chain_state(&mut self) -> &mut JtagChainState {
+            &mut self.jtag_state
+        }
+
+        fn chain_state_ref(&self) -> &JtagChainState {
+            &self.jtag_state
+        }
+    }
+
+    impl BitbangSwd for TmsRecorder {
+        fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
+        where
+            S: IntoIterator<Item = IoSequenceItem>,
+        {
+            let levels = output_levels(swdio)?;
+            self.tms.extend(&levels);
+            Ok(vec![false; levels.len()])
+        }
+
+        fn swd_settings(&self) -> &SwdSettings {
+            &self.swd_settings
+        }
+
+        fn swj_pins_op(
+            &mut self,
+            out: Pins,
+            select: Pins,
+            _wait: Duration,
+        ) -> Result<(), DebugProbeError> {
+            self.pins.lock().unwrap().push((out.0, select.0));
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn jtag_swj_sequence_drives_tms_and_resets_the_tap_state() {
+        let mut probe = TmsRecorder::default();
+        probe.jtag_state.tap_state = TapState::RunTestIdle;
+        let mut wire = JtagDebugPortWire {
+            probe: &mut probe,
+            settings: SwdSettings::default(),
+        };
+
+        let switch = BitSequence::from_u64(16, 0xE73C);
+        wire.swj_sequence(&BitSequence::repeat(true, 51)).unwrap();
+        wire.swj_sequence(&switch).unwrap();
+        wire.swj_sequence(&BitSequence::from_u64(6, 0x3F)).unwrap();
+        wire.jtag_sequence(false, &BitSequence::from_u64(1, 0x01))
+            .unwrap();
+
+        let mut expected = vec![true; 51];
+        expected.extend(switch.iter());
+        expected.extend([true; 6]);
+        expected.push(false);
+        assert_eq!(probe.tms, expected);
+        assert_eq!(probe.jtag_state.tap_state, TapState::RunTestIdle);
+    }
+
+    #[test]
+    fn jtag_swj_sequence_tracks_the_tap_through_the_bits() {
+        // The bits go out from the least significant one.
+        let cases = [
+            (TapState::ShiftDr, 6, 0b01_1111, TapState::RunTestIdle),
+            (TapState::RunTestIdle, 3, 0b001, TapState::ShiftDr),
+            (TapState::PauseDr, 6, 0x3F, TapState::TestLogicReset),
+            (TapState::ShiftIr, 54, (1 << 51) - 1, TapState::RunTestIdle),
+            // Exit2-DR is not stable, so the state stays.
+            (TapState::PauseDr, 1, 0b1, TapState::PauseDr),
+        ];
+        for (start, len, bits, end) in cases {
+            let mut probe = TmsRecorder::default();
+            probe.jtag_state.tap_state = start;
+            JtagDebugPortWire {
+                probe: &mut probe,
+                settings: SwdSettings::default(),
+            }
+            .swj_sequence(&BitSequence::from_u64(len, bits))
+            .unwrap();
+            assert_eq!(
+                probe.jtag_state.tap_state, end,
+                "{len} bits {bits:#b} from {start:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn jtag_sequence_ends_where_a_raw_sequence_ends() {
+        use crate::probe::jtag::FullTapState;
+
+        let states = [
+            TapState::TestLogicReset,
+            TapState::RunTestIdle,
+            TapState::ShiftIr,
+            TapState::ShiftDr,
+            TapState::PauseIr,
+            TapState::PauseDr,
+        ];
+        for start in states {
+            for bits in 1..=8 {
+                for tms in [false, true] {
+                    let mut probe = TmsRecorder::default();
+                    probe.jtag_state.tap_state = start;
+                    let tdi = BitSequence::from_u64(bits, 0b1011_0010);
+                    let result = JtagDebugPortWire {
+                        probe: &mut probe,
+                        settings: SwdSettings::default(),
+                    }
+                    .jtag_sequence(tms, &tdi);
+
+                    let case = format!("{bits} bits of TMS {tms} from {start:?}");
+                    let raw = (0..bits).fold(FullTapState::from(start), |state, _| state.step(tms));
+                    let Some(end) = raw.stable() else {
+                        assert!(result.is_err(), "{case}");
+                        assert!(probe.tms.is_empty(), "{case}");
+                        continue;
+                    };
+                    result.unwrap();
+                    let walked = probe
+                        .tms
+                        .iter()
+                        .fold(FullTapState::from(start), |state, &tms| state.step(tms));
+                    assert_eq!(walked, raw, "{case}");
+                    assert_eq!(probe.jtag_state.tap_state, end, "{case}");
+                    if !tms {
+                        assert_eq!(probe.tms, vec![false; bits], "{case}");
+                    }
+                    // A TAP in Shift samples TDI on every clock until it leaves.
+                    if matches!(start, TapState::ShiftIr | TapState::ShiftDr) {
+                        let sampled = if tms { 1 } else { bits };
+                        let sent: Vec<bool> = tdi.iter().take(sampled).collect();
+                        assert_eq!(probe.tdi[..sampled], sent[..], "{case}");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn jtag_swd_transfer_is_refused() {
+        let mut probe = TmsRecorder::default();
+        let mut batch = SwdBatch::new();
+        let _ = batch.read(Port::Dp, 0);
+        let error = SwdProbe::run_batch(&mut probe, &batch).unwrap_err();
+        assert!(matches!(
+            batch_probe_error(error),
+            DebugProbeError::CommandNotSupportedByProbe { .. }
+        ));
+        assert!(probe.tms.is_empty());
+    }
+
+    #[test]
+    fn jtag_interface_passes_swj_pins_to_the_probe() {
+        // The reset release of connect-under-reset drives nRESET through swj_pins.
+        let probe = TmsRecorder::default();
+        let pins = probe.pins.clone();
+        let mut interface = ArmCommunicationInterface::create_jtag(
+            Box::new(probe),
+            SwdSettings::default(),
+            DefaultArmSequence::create(),
+            false,
+        );
+        let nreset = 1 << 7;
+        assert_eq!(interface.swj_pins(nreset, nreset, 10).unwrap(), 0xFFFF_FFFF);
+        assert_eq!(*pins.lock().unwrap(), [(nreset as u8, nreset as u8)]);
+        interface
+            .swj_sequence(&BitSequence::repeat(true, 51))
+            .unwrap();
     }
 
     #[test]

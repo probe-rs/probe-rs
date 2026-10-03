@@ -72,7 +72,6 @@ use super::registers::{
     S9,
     S10,
     S11,
-    SEPC,
     SP,
     T0,
     T1,
@@ -154,7 +153,6 @@ static RISCV64_COMMON_REGS_SET: &[CoreRegister] = &[
     registers::as_64bit(MEPC),
     registers::as_64bit(MCAUSE),
     registers::as_64bit(MSTATUS),
-    registers::as_64bit(SEPC),
 ];
 
 static RISCV64_WITH_FP_REGS_SET: &[CoreRegister] = &[

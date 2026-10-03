@@ -16,9 +16,10 @@ use crate::{
         BitbangSwd, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
         IoSequenceItem, JtagChain, JtagChainAccess, JtagChainState, JtagOp, JtagProbe,
         ProbeCreationError, ProbeFactory, SwdProbe, SwdSettings, WireProtocol,
-        jtag::{TapState, distribute_captures, enter_tdi, exchange_leaves_shift},
+        jtag::{Step, TapState, distribute_captures, walk_batch},
         list::{ProbeListItem, usb_probe_accessibility},
         queue::{BatchExecutionError, Results},
+        swd::output_levels,
     },
 };
 use bitvec::prelude::*;
@@ -317,42 +318,24 @@ fn collect_ftdi_commands(
     start: TapState,
     batch: &Batch<JtagOp, DebugProbeError>,
 ) -> Result<(TapState, Vec<Command>), BatchExecutionError<DebugProbeError>> {
-    let ops: Vec<_> = batch.iter().collect();
     let mut state = start;
     let mut commands = Vec::new();
-    let mut skip_enter_path_bits = 0usize;
-    let results = Results::new();
-
-    for (index, (id, op)) in ops.iter().enumerate() {
-        match op {
-            JtagOp::EnterState(target) => {
-                let target = *target;
-                let path = &state.path_to(target)[skip_enter_path_bits..];
-                skip_enter_path_bits = 0;
-                commands.extend(Command::encode_tms_path(path, enter_tdi(target)));
-                state = target;
+    walk_batch(&mut state, batch, |step| {
+        commands.extend(match step {
+            Step::Tms { path, tdi } => Command::encode_tms_path(path, tdi),
+            Step::Shift {
+                data,
+                exit,
+                capture,
+            } => Command::encode_tdi_exchange(data, exit, capture),
+            Step::Clock { count, tms: true } => {
+                Command::encode_tms_path(&vec![true; count as usize], false)
             }
-            JtagOp::Exchange { data, capture } => {
-                if state != TapState::ShiftIr && state != TapState::ShiftDr {
-                    return Err(BatchExecutionError::new_from_debug_probe(
-                        DebugProbeError::Other(format!(
-                            "Exchange in state {state:?}, but ShiftIr or ShiftDr is required"
-                        )),
-                        results,
-                    ));
-                }
-                let merge_exit = exchange_leaves_shift(state, ops.get(index + 1).map(|(_, op)| op));
-                let do_capture = *capture && id.should_capture();
-                commands.extend(Command::encode_tdi_exchange(data, merge_exit, do_capture));
-                if merge_exit {
-                    skip_enter_path_bits = 1;
-                }
-            }
-            JtagOp::ClockTck { count } => {
-                commands.extend(Command::encode_clock_tck(*count));
-            }
-        }
-    }
+            Step::Clock { count, tms: false } => Command::encode_clock_tck(count),
+        });
+        Ok(())
+    })
+    .map_err(|error| BatchExecutionError::new_from_debug_probe(error, Results::new()))?;
 
     Ok((state, commands))
 }
@@ -577,13 +560,15 @@ impl JtagProbe for FtdiProbe {
 }
 
 impl BitbangSwd for FtdiProbe {
-    fn swd_io<S>(&mut self, _swdio: S) -> Result<Vec<bool>, DebugProbeError>
+    fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
         S: IntoIterator<Item = IoSequenceItem>,
     {
-        Err(DebugProbeError::NotImplemented {
-            function_name: "swd_io",
-        })
+        let levels = output_levels(swdio)?;
+        self.adapter
+            .append_commands(&Command::encode_tms_path(&levels, false))?;
+        self.adapter.flush()?;
+        Ok(vec![false; levels.len()])
     }
 
     fn swd_settings(&self) -> &SwdSettings {
@@ -746,12 +731,14 @@ fn list_ftdi_devices() -> Vec<ProbeListItem> {
 mod golden_tests {
     use super::collect_ftdi_commands;
     use super::command_compacter::decoder::decode_commands_full;
+    use crate::probe::BitSequence;
     use crate::probe::jtag::golden::{
-        REGISTER_WRITE_EIGHT_IDLE, SHIFT_DR_ONE_TAP_FORTY_ONE, SHIFT_DR_ONE_TAP_ONE,
+        OldJtagState, REGISTER_WRITE_EIGHT_IDLE, SHIFT_DR_ONE_TAP_FORTY_ONE, SHIFT_DR_ONE_TAP_ONE,
         SHIFT_DR_ONE_TAP_SIXTY_FOUR, SHIFT_DR_ONE_TAP_THIRTY_TWO, SHIFT_DR_THREE_TAP_FORTY_ONE,
         SHIFT_DR_THREE_TAP_ONE, SHIFT_DR_THREE_TAP_SIXTY_FOUR, SHIFT_DR_THREE_TAP_THIRTY_TWO,
         SHIFT_IR_ONE_TAP, SHIFT_IR_THREE_TAP, assert_triples_eq, build_dr_exchange,
-        build_ir_exchange, move_literal, one_tap_params, three_tap_params,
+        build_ir_exchange, clock_in_every_stable_state, lowering_batch, move_literal,
+        one_tap_params, three_tap_params,
     };
     use crate::probe::jtag::{JtagBatch, TapState};
 
@@ -771,6 +758,29 @@ mod golden_tests {
             command.encode(&mut bytes);
         }
         decode_commands_full(&bytes)
+    }
+
+    #[test]
+    fn an_empty_exchange_does_not_shorten_the_next_path() {
+        let mut batch = JtagBatch::new();
+        batch.enter(TapState::ShiftDr);
+        batch.exchange_no_capture(BitSequence::new());
+        batch.enter(TapState::RunTestIdle);
+
+        let mut state = OldJtagState::Idle;
+        for (tms, _, _) in triples_for_batch(TapState::RunTestIdle, &batch) {
+            state.update(tms);
+        }
+        assert_eq!(state, OldJtagState::Idle);
+    }
+
+    #[test]
+    fn clocks_match_the_bitbang_lowering() {
+        let batch = clock_in_every_stable_state();
+        assert_eq!(
+            triples_for_batch(TapState::RunTestIdle, &batch),
+            lowering_batch(TapState::RunTestIdle, &batch)
+        );
     }
 
     #[test]

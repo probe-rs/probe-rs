@@ -1,0 +1,1 @@
+`probe-rs run` and `probe-rs attach` decode Zephyr dictionary-based logs from RTT. The log dictionary database is loaded from the ELF file when Zephyr embeds it (`CONFIG_LOG_DICTIONARY_DB_EMBED`), or from `--zephyr-log-dictionary <log_dictionary.json>`.

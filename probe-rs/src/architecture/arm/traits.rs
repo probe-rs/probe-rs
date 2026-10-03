@@ -254,6 +254,38 @@ pub trait DapAccess {
         Ok(())
     }
 
+    /// Read and write Access Port registers in order, in as few probe transactions as possible.
+    ///
+    /// An entry carrying a value is written; an entry without one is read, and each read writes one
+    /// word to `values` in the order the reads appear. `values` has to be long enough for every
+    /// read, since a short one panics rather than reporting. Every address has to be in the same
+    /// register bank, because the bank is selected once for the whole sequence.
+    ///
+    /// This is for callers holding a list of addresses whose accesses depend on each other, where
+    /// the alternative is one probe round trip per address. The default performs them one at a
+    /// time.
+    ///
+    /// # Note
+    /// The address format is the one [`DapAccess::read_raw_ap_register`] takes.
+    fn access_raw_ap_registers(
+        &mut self,
+        ap: &FullyQualifiedApAddress,
+        accesses: &[(u64, Option<u32>)],
+        values: &mut [u32],
+    ) -> Result<(), ArmError> {
+        let mut read = 0;
+        for &(addr, value) in accesses {
+            match value {
+                Some(value) => self.write_raw_ap_register(ap, addr, value)?,
+                None => {
+                    values[read] = self.read_raw_ap_register(ap, addr)?;
+                    read += 1;
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Write an AP register.
     ///
     /// # Note
@@ -323,13 +355,23 @@ pub trait DebugPortWire {
     fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), ArmError>;
 
     /// Send an output-only JTAG bit sequence.
+    ///
+    /// The sequence must end in a stable TAP state. With `tms` high, the probe sends the
+    /// clocks that reach Test-Logic-Reset, which can be fewer than `tdi.len()`.
     fn jtag_sequence(&mut self, tms: bool, tdi: &BitSequence) -> Result<(), ArmError>;
 
     /// Configure the probe for JTAG use.
     fn configure_jtag(&mut self, skip_scan: bool) -> Result<(), ArmError>;
 
-    /// Drive SWJ pins and return the pin input state when supported.
-    fn swj_pins(&mut self, out: Pins, select: Pins, wait: Duration) -> Result<Pins, ArmError>;
+    /// Drive SWJ pins and return the pin levels that the probe reads back.
+    ///
+    /// Returns `None` when the probe cannot read the pins.
+    fn swj_pins(
+        &mut self,
+        out: Pins,
+        select: Pins,
+        wait: Duration,
+    ) -> Result<Option<Pins>, ArmError>;
 
     /// Pulse the target reset line.
     fn target_reset(&mut self) -> Result<(), ArmError>;

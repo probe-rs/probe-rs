@@ -195,10 +195,12 @@ impl Ch347Device {
     fn gpio_final(&mut self, pin: usize, drive: Drive) {
         if self
             .transport
-            .write(&frame(CMD_GPIO, &pin_block(pin, drive)))
+            .write(&frame(CMD_GPIO, &pin_block(pin, drive)), TIMEOUT)
             .is_ok()
         {
-            let _ = self.transport.read(&mut [0; HEADER_LEN + GPIO_COUNT]);
+            let _ = self
+                .transport
+                .read(&mut [0; HEADER_LEN + GPIO_COUNT], TIMEOUT);
         }
     }
 

@@ -25,10 +25,10 @@ use crate::{
         IoSequenceItem, JtagChain, JtagChainAccess, JtagChainState, JtagOp, JtagProbe,
         ProbeCreationError, ProbeError, ProbeFactory, SwdProbe, SwdSettings, WireProtocol,
         blackmagic::arm::BlackMagicProbeArmDebug,
-        jtag::{TapState, distribute_captures, exchange_leaves_shift},
+        jtag::{Step, TapState, distribute_captures, walk_batch},
         list::ProbeListItem,
         queue::{BatchExecutionError, Results},
-        swd::Pins,
+        swd::{Pins, output_levels},
     },
 };
 use bitfield::bitfield;
@@ -42,6 +42,8 @@ const BLACK_MAGIC_PROBE_PID: u16 = 0x6018;
 const BLACK_MAGIC_PROBE: (u16, u16) = (BLACK_MAGIC_PROBE_VID, BLACK_MAGIC_PROBE_PID);
 const BLACK_MAGIC_PROTOCOL_RESPONSE_START: u8 = b'&';
 const BLACK_MAGIC_PROTOCOL_RESPONSE_END: u8 = b'#';
+/// TMS bits that one remote TMS command carries. The firmware reads two hex digits of state.
+const MAX_TMS_BITS: usize = 8;
 pub(crate) const BLACK_MAGIC_REMOTE_SIZE_MAX: usize = 1024;
 
 mod arm;
@@ -110,7 +112,7 @@ enum RemoteCommand<'a> {
         enable: bool,
     },
     SetSpeedHz(u32),
-    SpeedKhz,
+    SpeedKhz(&'a mut [u8]),
     TargetReset(bool),
     RawAccessV0P {
         rnw: u8,
@@ -303,6 +305,7 @@ impl RemoteCommand<'_> {
         match self {
             RemoteCommand::Handshake(data) => Some(data),
             RemoteCommand::GetVoltage(data) => Some(data),
+            RemoteCommand::SpeedKhz(data) => Some(data),
             RemoteCommand::MemReadV0P { data, .. } => Some(data),
             RemoteCommand::MemReadV1 { data, .. } => Some(data),
             RemoteCommand::MemReadV3 { data, .. } => Some(data),
@@ -343,7 +346,7 @@ impl std::string::ToString for RemoteCommand<'_> {
             RemoteCommand::TargetClockOutput { enable } => {
                 format!("!GE{}#", if *enable { '1' } else { '0' })
             }
-            RemoteCommand::SpeedKhz => "!Gf#".to_string(),
+            RemoteCommand::SpeedKhz(_) => "!Gf#".to_string(),
             RemoteCommand::RawAccessV0P { rnw, addr, value } => {
                 format!("!HL{rnw:02x}{addr:04x}{value:08x}#")
             }
@@ -718,7 +721,6 @@ pub struct BlackMagicProbe {
     speed_khz: u32,
     jtag_state: JtagChainState,
     swd_settings: SwdSettings,
-    in_bits: BitVec,
     swd_direction: SwdDirection,
 }
 
@@ -792,7 +794,6 @@ impl BlackMagicProbe {
             remote_protocol,
             jtag_state: JtagChainState::default(),
             swd_settings: SwdSettings::default(),
-            in_bits: BitVec::new(),
             swd_direction: SwdDirection::Output,
         };
 
@@ -953,9 +954,21 @@ impl BlackMagicProbe {
     }
 
     fn get_speed(&mut self) -> Result<u32, DebugProbeError> {
-        let speed: u32 = self.command(RemoteCommand::SpeedKhz)?.0.try_into().unwrap();
-        // The reply contains hex-encoded little-endian bytes representing Hz.
-        Ok(speed.swap_bytes() / 1000)
+        // The reply contains four hex-encoded little-endian bytes representing Hz.
+        // Read one extra character so oversized replies are rejected as well.
+        let mut response = [0u8; 9];
+        if self.command(RemoteCommand::SpeedKhz(&mut response))?.0 != 8 {
+            return Err(RemoteError::ParameterError(0).into());
+        }
+        let mut bytes = [0u8; 4];
+        for (byte, hex) in bytes.iter_mut().zip(response[..8].as_chunks::<2>().0) {
+            let high =
+                Self::hex_val(hex[0]).map_err(|_| RemoteError::ParameterError(hex[0].into()))?;
+            let low =
+                Self::hex_val(hex[1]).map_err(|_| RemoteError::ParameterError(hex[1].into()))?;
+            *byte = (high << 4) | low;
+        }
+        Ok(u32::from_le_bytes(bytes) / 1000)
     }
 
     fn drain_swd_accumulator(
@@ -1084,41 +1097,39 @@ impl BlackMagicProbe {
     }
 
     fn send_jtag_tms(&mut self, bits: &[bool]) -> Result<(), DebugProbeError> {
-        let (value, length) = Self::pack_tms_bits(bits);
-        self.command(RemoteCommand::JtagTms {
-            bits: value,
-            length,
-        })?;
+        for op in tms_ops(bits) {
+            self.send_jtag_op(op, &mut BitVec::new())?;
+        }
         Ok(())
     }
 
-    fn send_jtag_tdi(
+    /// Sends one remote JTAG command, and appends its TDO bits to `captured` if it captures.
+    fn send_jtag_op(
         &mut self,
-        data: &BitSequence,
-        start: usize,
-        length: usize,
-        exit_tms: bool,
-        capture: bool,
+        op: JtagWireOp,
+        captured: &mut BitVec,
     ) -> Result<(), DebugProbeError> {
-        let (value, length) = Self::pack_tdi_bits(data, start, length);
-        let response = self.command(RemoteCommand::JtagTdi {
-            bits: value,
-            length,
-            tms: exit_tms,
-        })?;
-
-        if capture {
-            let capture_len = if exit_tms && length > 0 {
-                length - 1
-            } else {
-                length
-            };
-            let tdo = response.0;
-            for bit in 0..capture_len {
-                self.in_bits.push(tdo & (1 << bit) != 0);
+        match op {
+            JtagWireOp::Tms { bits, length } => {
+                self.command(RemoteCommand::JtagTms { bits, length })?;
+            }
+            JtagWireOp::Tdi {
+                bits,
+                length,
+                exit_tms,
+                capture,
+            } => {
+                let response = self.command(RemoteCommand::JtagTdi {
+                    bits,
+                    length,
+                    tms: exit_tms,
+                })?;
+                if capture {
+                    let tdo = response.0;
+                    captured.extend((0..length).map(|bit| tdo & (1 << bit) != 0));
+                }
             }
         }
-
         Ok(())
     }
 
@@ -1127,71 +1138,81 @@ impl BlackMagicProbe {
         start: TapState,
         batch: &Batch<JtagOp, DebugProbeError>,
     ) -> Result<(TapState, Results), BatchExecutionError<DebugProbeError>> {
-        let ops: Vec<_> = batch.iter().collect();
-        let mut state = start;
-        let results = Results::new();
-        let mut skip_enter_path_bits = 0usize;
-
-        for (index, (id, op)) in ops.iter().enumerate() {
-            match op {
-                JtagOp::EnterState(target) => {
-                    let target = *target;
-                    let path = &state.path_to(target)[skip_enter_path_bits..];
-                    skip_enter_path_bits = 0;
-                    if !path.is_empty()
-                        && let Err(error) = self.send_jtag_tms(path)
-                    {
-                        return Err(BatchExecutionError::new_from_debug_probe(error, results));
-                    }
-                    state = target;
-                }
-                JtagOp::Exchange { data, capture } => {
-                    if state != TapState::ShiftIr && state != TapState::ShiftDr {
-                        return Err(BatchExecutionError::new_from_debug_probe(
-                            DebugProbeError::Other(format!(
-                                "Exchange in state {state:?}, but ShiftIr or ShiftDr is required"
-                            )),
-                            results,
-                        ));
-                    }
-                    let merge_exit =
-                        exchange_leaves_shift(state, ops.get(index + 1).map(|(_, op)| op));
-                    let do_capture = *capture && id.should_capture();
-                    let bit_count = data.len();
-                    let mut offset = 0;
-                    while offset < bit_count {
-                        let remaining = bit_count - offset;
-                        let chunk = remaining.min(32);
-                        let is_last = offset + chunk == bit_count;
-                        if let Err(error) = self.send_jtag_tdi(
-                            data,
-                            offset,
-                            chunk,
-                            merge_exit && is_last,
-                            do_capture && is_last,
-                        ) {
-                            return Err(BatchExecutionError::new_from_debug_probe(error, results));
-                        }
-                        offset += chunk;
-                    }
-                    if merge_exit {
-                        skip_enter_path_bits = 1;
-                    }
-                }
-                JtagOp::ClockTck { count } => {
-                    let bits = vec![false; *count as usize];
-                    if let Err(error) = self.send_jtag_tms(&bits) {
-                        return Err(BatchExecutionError::new_from_debug_probe(error, results));
-                    }
-                }
-            }
+        let failed = |error| BatchExecutionError::new_from_debug_probe(error, Results::new());
+        let (state, ops) = encode_jtag_batch(start, batch).map_err(failed)?;
+        let mut captured = BitVec::new();
+        for op in ops {
+            self.send_jtag_op(op, &mut captured).map_err(failed)?;
         }
-
-        let captured = std::mem::take(&mut self.in_bits);
-        let results = distribute_captures(ops, &captured, results)?;
-
+        let results = distribute_captures(batch.iter(), &captured, Results::new())?;
         Ok((state, results))
     }
+}
+
+/// A remote JTAG command that a batch lowers to.
+#[derive(Debug, Clone, Copy)]
+enum JtagWireOp {
+    /// `!JT`: clock TMS bits.
+    Tms { bits: u32, length: usize },
+    /// `!Jd`: shift TDI bits with TMS low, or `!JD`: raise TMS on the last bit.
+    Tdi {
+        bits: u32,
+        length: usize,
+        exit_tms: bool,
+        capture: bool,
+    },
+}
+
+/// Splits `bits` into remote TMS commands.
+fn tms_ops(bits: &[bool]) -> impl Iterator<Item = JtagWireOp> + '_ {
+    bits.chunks(MAX_TMS_BITS).map(|chunk| {
+        let (bits, length) = BlackMagicProbe::pack_tms_bits(chunk);
+        JtagWireOp::Tms { bits, length }
+    })
+}
+
+/// Lowers a batch that starts with the TAP in `start` to remote JTAG commands.
+fn encode_jtag_batch(
+    start: TapState,
+    batch: &Batch<JtagOp, DebugProbeError>,
+) -> Result<(TapState, Vec<JtagWireOp>), DebugProbeError> {
+    let mut state = start;
+    let mut wire = Vec::new();
+
+    walk_batch(&mut state, batch, |step| {
+        match step {
+            Step::Tms { path, .. } => wire.extend(tms_ops(path)),
+            Step::Shift {
+                data,
+                exit,
+                capture,
+            } => wire.extend(tdi_ops(data, exit, capture)),
+            Step::Clock { count, tms: true } => wire.extend(tms_ops(&vec![true; count as usize])),
+            Step::Clock { count, tms: false } => {
+                let idle = BitSequence::repeat(false, count as usize);
+                wire.extend(tdi_ops(&idle, false, false));
+            }
+        }
+        Ok(())
+    })?;
+
+    Ok((state, wire))
+}
+
+/// Splits `data` into remote TDI commands with TMS low. With `exit`, the last bit is clocked
+/// with TMS high.
+fn tdi_ops(data: &BitSequence, exit: bool, capture: bool) -> impl Iterator<Item = JtagWireOp> + '_ {
+    let bit_count = data.len();
+    (0..bit_count).step_by(32).map(move |offset| {
+        let chunk = (bit_count - offset).min(32);
+        let (bits, length) = BlackMagicProbe::pack_tdi_bits(data, offset, chunk);
+        JtagWireOp::Tdi {
+            bits,
+            length,
+            exit_tms: exit && offset + chunk == bit_count,
+            capture,
+        }
+    })
 }
 
 impl DebugProbe for BlackMagicProbe {
@@ -1419,7 +1440,13 @@ impl BitbangSwd for BlackMagicProbe {
     where
         S: IntoIterator<Item = IoSequenceItem>,
     {
-        self.perform_swdio_transfer(swdio)
+        if self.protocol != Some(WireProtocol::Jtag) {
+            return self.perform_swdio_transfer(swdio);
+        }
+
+        let levels = output_levels(swdio)?;
+        self.send_jtag_tms(&levels)?;
+        Ok(vec![false; levels.len()])
     }
 
     fn swj_pins_op(
@@ -1706,79 +1733,16 @@ impl ProbeFactory for BlackMagicProbeFactory {
 
 #[cfg(test)]
 mod golden_tests {
-    use super::BlackMagicProbe;
-    use crate::probe::jtag::exchange_leaves_shift;
+    use super::{JtagWireOp, encode_jtag_batch};
     use crate::probe::jtag::golden::{
         REGISTER_WRITE_EIGHT_IDLE, SHIFT_DR_ONE_TAP_FORTY_ONE, SHIFT_DR_ONE_TAP_ONE,
         SHIFT_DR_ONE_TAP_SIXTY_FOUR, SHIFT_DR_ONE_TAP_THIRTY_TWO, SHIFT_DR_THREE_TAP_FORTY_ONE,
         SHIFT_DR_THREE_TAP_ONE, SHIFT_DR_THREE_TAP_SIXTY_FOUR, SHIFT_DR_THREE_TAP_THIRTY_TWO,
         SHIFT_IR_ONE_TAP, SHIFT_IR_THREE_TAP, assert_triples_eq, build_dr_exchange,
-        build_ir_exchange, move_literal, one_tap_params, three_tap_params,
+        build_ir_exchange, clock_in_every_stable_state, lowering_batch, move_literal,
+        one_tap_params, three_tap_params,
     };
     use crate::probe::jtag::{JtagBatch, TapState};
-    use crate::probe::{Batch, DebugProbeError, JtagOp};
-
-    #[derive(Debug, Clone)]
-    enum BmpWireCmd {
-        Tms { bits: u32, length: usize },
-        Tdi { bits: u32, length: usize, tms: bool },
-    }
-
-    fn collect_bmp_commands(
-        start: TapState,
-        batch: &Batch<JtagOp, DebugProbeError>,
-    ) -> (TapState, Vec<BmpWireCmd>) {
-        let ops: Vec<_> = batch.iter().collect();
-        let mut state = start;
-        let mut commands = Vec::new();
-        let mut skip_enter_path_bits = 0usize;
-
-        for (index, (_id, op)) in ops.iter().enumerate() {
-            match op {
-                JtagOp::EnterState(target) => {
-                    let target = *target;
-                    let path = &state.path_to(target)[skip_enter_path_bits..];
-                    skip_enter_path_bits = 0;
-                    if !path.is_empty() {
-                        let (bits, length) = BlackMagicProbe::pack_tms_bits(path);
-                        commands.push(BmpWireCmd::Tms { bits, length });
-                    }
-                    state = target;
-                }
-                JtagOp::Exchange { data, capture: _ } => {
-                    let merge_exit =
-                        exchange_leaves_shift(state, ops.get(index + 1).map(|(_, op)| op));
-                    let bit_count = data.len();
-                    let mut offset = 0;
-                    while offset < bit_count {
-                        let remaining = bit_count - offset;
-                        let chunk = remaining.min(32);
-                        let is_last = offset + chunk == bit_count;
-                        let (bits, length) = BlackMagicProbe::pack_tdi_bits(data, offset, chunk);
-                        commands.push(BmpWireCmd::Tdi {
-                            bits,
-                            length,
-                            tms: merge_exit && is_last,
-                        });
-                        offset += chunk;
-                    }
-                    if merge_exit {
-                        skip_enter_path_bits = 1;
-                    }
-                }
-                JtagOp::ClockTck { count } => {
-                    let bits = vec![false; *count as usize];
-                    let (value, length) = BlackMagicProbe::pack_tms_bits(&bits);
-                    commands.push(BmpWireCmd::Tms {
-                        bits: value,
-                        length,
-                    });
-                }
-            }
-        }
-
-        (state, commands)
-    }
 
     const STABLE_STATES: [TapState; 6] = [
         TapState::TestLogicReset,
@@ -1789,19 +1753,24 @@ mod golden_tests {
         TapState::PauseDr,
     ];
 
-    fn decode_bmp_commands(commands: &[BmpWireCmd]) -> Vec<(bool, bool, bool)> {
+    fn decode_bmp_commands(commands: &[JtagWireOp]) -> Vec<(bool, bool, bool)> {
         let mut triples = Vec::new();
         for command in commands {
-            match command {
-                BmpWireCmd::Tms { bits, length } => {
-                    for bit in 0..*length {
+            match *command {
+                JtagWireOp::Tms { bits, length } => {
+                    for bit in 0..length {
                         triples.push((bits & (1 << bit) != 0, false, false));
                     }
                 }
-                BmpWireCmd::Tdi { bits, length, tms } => {
-                    for bit in 0..*length {
-                        let is_last = bit + 1 == *length;
-                        triples.push((is_last && *tms, bits & (1 << bit) != 0, false));
+                JtagWireOp::Tdi {
+                    bits,
+                    length,
+                    exit_tms,
+                    capture,
+                } => {
+                    for bit in 0..length {
+                        let is_last = bit + 1 == length;
+                        triples.push((is_last && exit_tms, bits & (1 << bit) != 0, capture));
                     }
                 }
             }
@@ -1810,7 +1779,7 @@ mod golden_tests {
     }
 
     fn triples_for_batch(start: TapState, batch: &JtagBatch) -> Vec<(bool, bool, bool)> {
-        let (_, commands) = collect_bmp_commands(start, batch);
+        let (_, commands) = encode_jtag_batch(start, batch).unwrap();
         decode_bmp_commands(&commands)
     }
 
@@ -1828,6 +1797,18 @@ mod golden_tests {
                 assert_triples_eq(&triples, tms, tdi, cap);
             }
         }
+    }
+
+    #[test]
+    fn clocks_match_the_bitbang_lowering_on_tms() {
+        let batch = clock_in_every_stable_state();
+        let tms = |triples: Vec<(bool, bool, bool)>| -> Vec<bool> {
+            triples.into_iter().map(|(tms, _, _)| tms).collect()
+        };
+        assert_eq!(
+            tms(triples_for_batch(TapState::RunTestIdle, &batch)),
+            tms(lowering_batch(TapState::RunTestIdle, &batch))
+        );
     }
 
     #[test]
@@ -1938,9 +1919,13 @@ mod speed_tests {
     #[test]
     fn speed_reply_is_little_endian_hz() {
         // Replies captured in #4242, after requesting 1000 and 4000 kHz.
-        for (requested_khz, reply, expected_khz) in
-            [(1000, "63a01700", 1548), (4000, "c0c62d00", 3000)]
-        {
+        for (requested_khz, reply, expected_khz) in [
+            (1000, "63a01700", 1548),
+            (4000, "c0c62d00", 3000),
+            (4000, "C0c62D00", 3000),
+            (1000, "00000000", 0),
+            (1000, "ffffffff", u32::MAX / 1000),
+        ] {
             let responses = format!("&KBlack Magic Probe#&K4#&K0#&K0#&Kc0c62d00#&K0#&K{reply}#");
             let mut probe = BlackMagicProbe::new(
                 Box::new(Cursor::new(responses.into_bytes())),
@@ -1970,5 +1955,174 @@ mod speed_tests {
             assert_eq!(probe.set_speed(1000).unwrap(), 1548);
             assert_eq!(probe.speed_khz(), 1548);
         }
+    }
+
+    #[test]
+    fn malformed_speed_replies_do_not_update_cached_speed() {
+        for reply in [
+            "",
+            "0",
+            "000000",
+            "0000000",
+            "000000000",
+            "0000000000",
+            "zz000000",
+            "0000000z",
+            "0xc0c62d00",
+        ] {
+            let responses =
+                format!("&KBlack Magic Probe#&K4#&K0#&K0#&Kc0c62d00#&K0#&K{reply}#&K0#&K63a01700#");
+            let mut probe = BlackMagicProbe::new(
+                Box::new(Cursor::new(responses.into_bytes())),
+                Box::new(sink()),
+            )
+            .unwrap();
+
+            assert!(probe.set_speed(1000).is_err(), "accepted {reply:?}");
+            assert_eq!(probe.speed_khz(), 3000);
+            assert_eq!(probe.set_speed(1000).unwrap(), 1548);
+            assert_eq!(probe.speed_khz(), 1548);
+        }
+    }
+}
+
+#[cfg(test)]
+mod remote_tests {
+    use std::io::{BufReader, BufWriter, Cursor, Write};
+    use std::sync::{Arc, Mutex};
+
+    use super::{BlackMagicProbe, ProtocolVersion, SwdDirection};
+    use crate::probe::{
+        BitSequence, BitbangSwd, DebugProbeError, IoSequenceItem, JtagBatch, JtagChainState,
+        JtagProbe, SwdSettings, TapState, WireProtocol,
+    };
+
+    struct SharedWriter(Arc<Mutex<Vec<u8>>>);
+
+    impl Write for SharedWriter {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.0.lock().unwrap().extend_from_slice(buf);
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    /// A probe in JTAG mode that answers `replies` commands with OK.
+    fn jtag_probe(replies: usize) -> (BlackMagicProbe, Arc<Mutex<Vec<u8>>>) {
+        scripted_jtag_probe(b"&K0#".repeat(replies))
+    }
+
+    /// A probe in JTAG mode that reads its replies from `replies`.
+    fn scripted_jtag_probe(replies: Vec<u8>) -> (BlackMagicProbe, Arc<Mutex<Vec<u8>>>) {
+        let sent = Arc::new(Mutex::new(Vec::new()));
+        let probe = BlackMagicProbe {
+            reader: BufReader::new(Box::new(Cursor::new(replies))),
+            writer: BufWriter::new(Box::new(SharedWriter(sent.clone()))),
+            protocol: Some(WireProtocol::Jtag),
+            version: String::new(),
+            remote_protocol: ProtocolVersion::V4,
+            speed_khz: 0,
+            jtag_state: JtagChainState::default(),
+            swd_settings: SwdSettings::default(),
+            swd_direction: SwdDirection::Output,
+        };
+        (probe, sent)
+    }
+
+    #[test]
+    fn swj_output_goes_out_as_tms_commands_under_jtag() {
+        let (mut probe, sent) = jtag_probe(7);
+        let levels = std::iter::repeat_n(IoSequenceItem::Output(true), 51);
+        assert_eq!(probe.swd_io(levels).unwrap().len(), 51);
+        let mut expected = b"!JT08ff#".repeat(6);
+        expected.extend_from_slice(b"!JT037#");
+        assert_eq!(*sent.lock().unwrap(), expected);
+
+        let (mut probe, sent) = jtag_probe(2);
+        let switch = (0..16).map(|bit| IoSequenceItem::Output(0xE73C & (1 << bit) != 0));
+        probe.swd_io(switch).unwrap();
+        assert_eq!(*sent.lock().unwrap(), b"!JT083c#!JT08e7#");
+    }
+
+    #[test]
+    fn swd_transfer_is_refused_under_jtag() {
+        let (mut probe, sent) = jtag_probe(0);
+        let items = [IoSequenceItem::Output(true), IoSequenceItem::Input];
+        assert!(matches!(
+            probe.swd_io(items),
+            Err(DebugProbeError::CommandNotSupportedByProbe { .. })
+        ));
+        assert!(sent.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn a_captured_scan_keeps_every_chunk_and_the_exit_bit() {
+        // The path to Shift-DR, two TDI chunks, then the rest of the path to Run-Test/Idle.
+        let replies = b"&K0#&K89abcdef#&K1a5#&K0#".to_vec();
+        let (mut probe, sent) = scripted_jtag_probe(replies);
+        let mut batch = JtagBatch::new();
+        batch.enter(TapState::ShiftDr);
+        let handle = batch.exchange(BitSequence::from_u64(41, 0x0123_4567_89AB));
+        batch.enter(TapState::RunTestIdle);
+
+        let mut results = JtagProbe::run_batch(&mut probe, &batch).unwrap();
+        assert_eq!(
+            results.take(handle).unwrap(),
+            BitSequence::from_u64(41, 0x1A5_89AB_CDEF)
+        );
+        assert_eq!(
+            *sent.lock().unwrap(),
+            b"!JT042#!Jd20456789ab#!JD09123#!JT021#"
+        );
+    }
+
+    #[test]
+    fn an_empty_exchange_does_not_shorten_the_next_path() {
+        let (mut probe, sent) = jtag_probe(1);
+        probe.jtag_state.tap_state = TapState::ShiftDr;
+        let mut batch = JtagBatch::new();
+        batch.exchange_no_capture(BitSequence::new());
+        batch.enter(TapState::RunTestIdle);
+
+        JtagProbe::run_batch(&mut probe, &batch).unwrap();
+        assert_eq!(*sent.lock().unwrap(), b"!JT033#");
+    }
+
+    #[test]
+    fn idle_clocks_go_out_as_tdi_shifts() {
+        let (mut probe, sent) = jtag_probe(2);
+        probe.jtag_state.tap_state = TapState::RunTestIdle;
+        let mut batch = JtagBatch::new();
+        batch.clock(40);
+
+        JtagProbe::run_batch(&mut probe, &batch).unwrap();
+        assert_eq!(*sent.lock().unwrap(), b"!Jd200#!Jd080#");
+    }
+
+    #[test]
+    fn a_scan_and_clocks_in_shift_dr_split_at_32_bits() {
+        let (mut probe, sent) = jtag_probe(4);
+        probe.jtag_state.tap_state = TapState::RunTestIdle;
+        let mut batch = JtagBatch::new();
+        batch.enter(TapState::ShiftDr);
+        batch.exchange_no_capture(BitSequence::repeat(false, 33));
+        batch.clock(3);
+
+        JtagProbe::run_batch(&mut probe, &batch).unwrap();
+        assert_eq!(*sent.lock().unwrap(), b"!JT031#!Jd200#!Jd010#!Jd030#");
+    }
+
+    #[test]
+    fn clocks_in_test_logic_reset_hold_tms_high() {
+        let (mut probe, sent) = jtag_probe(1);
+        probe.jtag_state.tap_state = TapState::TestLogicReset;
+        let mut batch = JtagBatch::new();
+        batch.clock(3);
+
+        JtagProbe::run_batch(&mut probe, &batch).unwrap();
+        assert_eq!(*sent.lock().unwrap(), b"!JT037#");
     }
 }

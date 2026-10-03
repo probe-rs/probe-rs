@@ -1,1 +1,1 @@
-The CH347 probe opens its interface even when a kernel driver holds it, is listed by its USB product string, and errors on an unexpected USB reply instead of returning wrong data.
+The CH347 probe now opens when a kernel driver holds its interface, shows its USB product string, and returns an error on an unexpected USB reply.

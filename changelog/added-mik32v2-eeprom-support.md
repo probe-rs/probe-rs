@@ -1,1 +1,1 @@
-Add support for MIK32V2 RV32IEC RISC-V MCU
+Added support for the MIK32V2 RISC-V MCU.

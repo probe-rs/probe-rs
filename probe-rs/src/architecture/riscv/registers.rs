@@ -346,14 +346,6 @@ pub(crate) const MSTATUS: CoreRegister = CoreRegister {
     unwind_rule: UnwindRule::Preserve,
 };
 
-pub(crate) const SEPC: CoreRegister = CoreRegister {
-    roles: &[RegisterRole::Core("sepc")],
-    id: RegisterId(0x141),
-    dwarf_id: Some(DWARF_CSR_BASE + 0x141),
-    data_type: RegisterDataType::UnsignedInteger(32),
-    unwind_rule: UnwindRule::Preserve,
-};
-
 // ── Floating-point CSRs (32-bit in both RV32 and RV64) ───────────────────────
 
 pub(crate) const FFLAGS: CoreRegister = CoreRegister {
@@ -788,7 +780,7 @@ pub static RISCV_WITH_FP_CORE_REGISTERS: LazyLock<CoreRegisters> = LazyLock::new
 // Non-FPU registers
 static RISCV_COMMON_REGS_SET: &[CoreRegister] = &[
     ZERO, RA, SP, GP, TP, T0, T1, T2, FP, S1, A0, A1, A2, A3, A4, A5, A6, A7, S2, S3, S4, S5, S6,
-    S7, S8, S9, S10, S11, T3, T4, T5, T6, PC, MEPC, MCAUSE, MSTATUS, SEPC,
+    S7, S8, S9, S10, S11, T3, T4, T5, T6, PC, MEPC, MCAUSE, MSTATUS,
 ];
 
 // FPU registers

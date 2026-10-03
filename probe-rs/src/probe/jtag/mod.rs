@@ -160,6 +160,90 @@ impl TapState {
     }
 }
 
+/// Any of the sixteen states of the TAP controller.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum FullTapState {
+    TestLogicReset,
+    RunTestIdle,
+    SelectDr,
+    CaptureDr,
+    ShiftDr,
+    Exit1Dr,
+    PauseDr,
+    Exit2Dr,
+    UpdateDr,
+    SelectIr,
+    CaptureIr,
+    ShiftIr,
+    Exit1Ir,
+    PauseIr,
+    Exit2Ir,
+    UpdateIr,
+}
+
+impl FullTapState {
+    /// The state after one TCK clock with `tms`.
+    pub(crate) fn step(self, tms: bool) -> Self {
+        if tms {
+            match self {
+                Self::TestLogicReset => Self::TestLogicReset,
+                Self::RunTestIdle => Self::SelectDr,
+                Self::SelectDr => Self::SelectIr,
+                Self::CaptureDr | Self::ShiftDr => Self::Exit1Dr,
+                Self::Exit1Dr | Self::Exit2Dr => Self::UpdateDr,
+                Self::PauseDr => Self::Exit2Dr,
+                Self::UpdateDr => Self::SelectDr,
+                Self::SelectIr => Self::TestLogicReset,
+                Self::CaptureIr | Self::ShiftIr => Self::Exit1Ir,
+                Self::Exit1Ir | Self::Exit2Ir => Self::UpdateIr,
+                Self::PauseIr => Self::Exit2Ir,
+                Self::UpdateIr => Self::SelectDr,
+            }
+        } else {
+            match self {
+                Self::TestLogicReset => Self::RunTestIdle,
+                Self::RunTestIdle => Self::RunTestIdle,
+                Self::SelectDr => Self::CaptureDr,
+                Self::CaptureDr | Self::ShiftDr => Self::ShiftDr,
+                Self::Exit1Dr | Self::PauseDr => Self::PauseDr,
+                Self::Exit2Dr => Self::ShiftDr,
+                Self::UpdateDr => Self::RunTestIdle,
+                Self::SelectIr => Self::CaptureIr,
+                Self::CaptureIr | Self::ShiftIr => Self::ShiftIr,
+                Self::Exit1Ir | Self::PauseIr => Self::PauseIr,
+                Self::Exit2Ir => Self::ShiftIr,
+                Self::UpdateIr => Self::RunTestIdle,
+            }
+        }
+    }
+
+    /// The stable state, if the TAP is in one.
+    pub(crate) fn stable(self) -> Option<TapState> {
+        match self {
+            Self::TestLogicReset => Some(TapState::TestLogicReset),
+            Self::RunTestIdle => Some(TapState::RunTestIdle),
+            Self::ShiftIr => Some(TapState::ShiftIr),
+            Self::ShiftDr => Some(TapState::ShiftDr),
+            Self::PauseIr => Some(TapState::PauseIr),
+            Self::PauseDr => Some(TapState::PauseDr),
+            _ => None,
+        }
+    }
+}
+
+impl From<TapState> for FullTapState {
+    fn from(state: TapState) -> Self {
+        match state {
+            TapState::TestLogicReset => Self::TestLogicReset,
+            TapState::RunTestIdle => Self::RunTestIdle,
+            TapState::ShiftIr => Self::ShiftIr,
+            TapState::ShiftDr => Self::ShiftDr,
+            TapState::PauseIr => Self::PauseIr,
+            TapState::PauseDr => Self::PauseDr,
+        }
+    }
+}
+
 /// One JTAG operation in a batch.
 #[derive(Clone, Debug)]
 pub enum JtagOp {
@@ -169,8 +253,9 @@ pub enum JtagOp {
     /// Shift bits through the selected register.
     ///
     /// The TAP stays in `Shift-Ir` or `Shift-Dr`, so two neighbour exchanges
-    /// concatenate. The preceding [`JtagOp::EnterState`] selects the
-    /// register. This operation does not select the register.
+    /// concatenate, also across batches. The preceding [`JtagOp::EnterState`],
+    /// or the state that the previous batch left, selects the register. This
+    /// operation does not select the register.
     Exchange {
         /// TDI bits to shift.
         data: BitSequence,
@@ -267,13 +352,12 @@ pub trait JtagChainAccess: JtagProbe {
 
 /// Bit-banging JTAG interface for probe drivers.
 ///
-/// Three differences from a raw bit-bang driver:
+/// A blanket [`JtagProbe`] implementation lowers each batch to single bits.
 ///
 /// - [`BitbangJtag::shift`] does not track the TAP state. The lowering tracks it.
-/// - [`BitbangJtag::flush`] is new. A driver that buffers bits sends them at a
-///   flush. The lowering calls flush before it reads with [`BitbangJtag::captured`].
-/// - This trait has no `reset_jtag_state_machine`. [`JtagOp::EnterState`] with
-///   [`TapState::TestLogicReset`] replaces it.
+/// - A driver that buffers bits sends them at [`BitbangJtag::flush`]. The lowering
+///   calls flush before it reads with [`BitbangJtag::captured`].
+/// - A TAP reset is [`JtagOp::EnterState`] with [`TapState::TestLogicReset`].
 pub trait BitbangJtag: DebugProbe {
     /// Return the state that the TAP rests in between two batches.
     ///
@@ -305,7 +389,7 @@ pub trait BitbangJtag: DebugProbe {
     }
 }
 
-pub(crate) fn exchange_leaves_shift(current: TapState, next: Option<&JtagOp>) -> bool {
+fn exchange_leaves_shift(current: TapState, next: Option<&JtagOp>) -> bool {
     match next {
         Some(JtagOp::EnterState(target)) => {
             let path = current.path_to(*target);
@@ -315,8 +399,70 @@ pub(crate) fn exchange_leaves_shift(current: TapState, next: Option<&JtagOp>) ->
     }
 }
 
-pub(crate) fn enter_tdi(target: TapState) -> bool {
+fn enter_tdi(target: TapState) -> bool {
     target == TapState::TestLogicReset
+}
+
+/// One step of a JTAG batch on the wire.
+pub(crate) enum Step<'a> {
+    /// Clock `path` on TMS, with TDI at `tdi`.
+    Tms { path: &'a [bool], tdi: bool },
+    /// Shift `data` on TDI with TMS low. With `exit`, the last bit is clocked with TMS high
+    /// instead, which is the first step out of Shift. `exit` is only set when `data` is not
+    /// empty.
+    Shift {
+        data: &'a BitSequence,
+        exit: bool,
+        capture: bool,
+    },
+    /// Clock `count` idle cycles with TMS at `tms`, which holds the TAP in its stable state.
+    Clock { count: u32, tms: bool },
+}
+
+/// Walk `batch` from `state`, and hand each step to `emit`.
+///
+/// An exchange with data that the batch follows with a move out of Shift takes the first step
+/// of that move with its last bit, so the move leaves that step out. `state` is the last state that a
+/// move reached, also when `emit` fails.
+pub(crate) fn walk_batch(
+    state: &mut TapState,
+    batch: &JtagBatch,
+    mut emit: impl FnMut(Step<'_>) -> Result<(), DebugProbeError>,
+) -> Result<(), DebugProbeError> {
+    let ops: Vec<_> = batch.iter().collect();
+    let mut skip = 0;
+    for (index, (id, op)) in ops.iter().enumerate() {
+        match op {
+            JtagOp::EnterState(target) => {
+                emit(Step::Tms {
+                    path: &state.path_to(*target)[skip..],
+                    tdi: enter_tdi(*target),
+                })?;
+                skip = 0;
+                *state = *target;
+            }
+            JtagOp::Exchange { data, capture } => {
+                if !matches!(*state, TapState::ShiftIr | TapState::ShiftDr) {
+                    return Err(DebugProbeError::Other(format!(
+                        "Exchange in state {state:?}, but ShiftIr or ShiftDr is required"
+                    )));
+                }
+                let exit = !data.is_empty()
+                    && exchange_leaves_shift(*state, ops.get(index + 1).map(|(_, op)| op));
+                emit(Step::Shift {
+                    data,
+                    exit,
+                    capture: *capture && id.should_capture(),
+                })?;
+                skip = usize::from(exit);
+            }
+            JtagOp::ClockTck { count } => emit(Step::Clock {
+                count: *count,
+                tms: *state == TapState::TestLogicReset,
+            })?,
+        }
+    }
+    Ok(())
 }
 
 pub(crate) fn captured_bits_to_bytes(bits: impl IntoIterator<Item = bool>) -> Vec<u8> {
@@ -419,60 +565,24 @@ fn lower_batch<P: BitbangJtag>(
     state: &mut TapState,
     batch: &JtagBatch,
 ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
-    let ops: Vec<_> = batch.iter().collect();
     let results = Results::new();
-    let mut skip_enter_path_bits = 0usize;
-
-    for (index, (id, op)) in ops.iter().enumerate() {
-        match op {
-            JtagOp::EnterState(target) => {
-                let target = *target;
-                let path = &state.path_to(target)[skip_enter_path_bits..];
-                skip_enter_path_bits = 0;
-                let tdi = enter_tdi(target);
-                for &tms in path {
-                    if let Err(error) = probe.shift(tms, tdi, false) {
-                        return Err(BatchExecutionError::new_from_debug_probe(error, results));
-                    }
-                }
-                *state = target;
-            }
-            JtagOp::Exchange { data, capture } => {
-                if *state != TapState::ShiftIr && *state != TapState::ShiftDr {
-                    return Err(BatchExecutionError::new_from_debug_probe(
-                        DebugProbeError::Other(format!(
-                            "Exchange in state {state:?}, but ShiftIr or ShiftDr is required"
-                        )),
-                        results,
-                    ));
-                }
-                let merge_exit =
-                    exchange_leaves_shift(*state, ops.get(index + 1).map(|(_, op)| op));
-                let do_capture = *capture && id.should_capture();
-                let bit_count = data.len();
-                for bit_index in 0..bit_count {
-                    let is_last = bit_index + 1 == bit_count;
-                    let tms = if merge_exit && is_last {
-                        // The last exchange bit and the first exit bit are one clock on the wire.
-                        skip_enter_path_bits = 1;
-                        true
-                    } else {
-                        false
-                    };
-                    let tdi = data[bit_index];
-                    if let Err(error) = probe.shift(tms, tdi, do_capture) {
-                        return Err(BatchExecutionError::new_from_debug_probe(error, results));
-                    }
-                }
-            }
-            JtagOp::ClockTck { count } => {
-                for _ in 0..*count {
-                    if let Err(error) = probe.shift(false, false, false) {
-                        return Err(BatchExecutionError::new_from_debug_probe(error, results));
-                    }
-                }
-            }
+    let walked = walk_batch(state, batch, |step| match step {
+        Step::Tms { path, tdi } => path
+            .iter()
+            .try_for_each(|&tms| probe.shift(tms, tdi, false)),
+        Step::Shift {
+            data,
+            exit,
+            capture,
+        } => {
+            let last = data.len().saturating_sub(1);
+            (0..data.len())
+                .try_for_each(|index| probe.shift(exit && index == last, data[index], capture))
         }
+        Step::Clock { count, tms } => (0..count).try_for_each(|_| probe.shift(tms, false, false)),
+    });
+    if let Err(error) = walked {
+        return Err(BatchExecutionError::new_from_debug_probe(error, results));
     }
 
     if let Err(error) = probe.flush() {
@@ -483,7 +593,7 @@ fn lower_batch<P: BitbangJtag>(
         Err(error) => return Err(BatchExecutionError::new_from_debug_probe(error, results)),
     };
 
-    distribute_captures(ops, &captured, results)
+    distribute_captures(batch.iter(), &captured, results)
 }
 
 impl<P: BitbangJtag> JtagProbe for P {
@@ -513,61 +623,7 @@ mod tests {
         TapState::PauseDr,
     ];
 
-    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-    enum ModelState {
-        TestLogicReset,
-        RunTestIdle,
-        SelectDr,
-        CaptureDr,
-        ShiftDr,
-        Exit1Dr,
-        PauseDr,
-        Exit2Dr,
-        UpdateDr,
-        SelectIr,
-        CaptureIr,
-        ShiftIr,
-        Exit1Ir,
-        PauseIr,
-        Exit2Ir,
-        UpdateIr,
-    }
-
-    impl ModelState {
-        fn step(self, tms: bool) -> Self {
-            if tms {
-                match self {
-                    Self::TestLogicReset => Self::TestLogicReset,
-                    Self::RunTestIdle => Self::SelectDr,
-                    Self::SelectDr => Self::SelectIr,
-                    Self::CaptureDr | Self::ShiftDr => Self::Exit1Dr,
-                    Self::Exit1Dr | Self::Exit2Dr => Self::UpdateDr,
-                    Self::PauseDr => Self::Exit2Dr,
-                    Self::UpdateDr => Self::SelectDr,
-                    Self::SelectIr => Self::TestLogicReset,
-                    Self::CaptureIr | Self::ShiftIr => Self::Exit1Ir,
-                    Self::Exit1Ir | Self::Exit2Ir => Self::UpdateIr,
-                    Self::PauseIr => Self::Exit2Ir,
-                    Self::UpdateIr => Self::SelectDr,
-                }
-            } else {
-                match self {
-                    Self::TestLogicReset => Self::RunTestIdle,
-                    Self::RunTestIdle => Self::RunTestIdle,
-                    Self::SelectDr => Self::CaptureDr,
-                    Self::CaptureDr | Self::ShiftDr => Self::ShiftDr,
-                    Self::Exit1Dr | Self::PauseDr => Self::PauseDr,
-                    Self::Exit2Dr => Self::ShiftDr,
-                    Self::UpdateDr => Self::RunTestIdle,
-                    Self::SelectIr => Self::CaptureIr,
-                    Self::CaptureIr | Self::ShiftIr => Self::ShiftIr,
-                    Self::Exit1Ir | Self::PauseIr => Self::PauseIr,
-                    Self::Exit2Ir => Self::ShiftIr,
-                    Self::UpdateIr => Self::RunTestIdle,
-                }
-            }
-        }
-
+    impl FullTapState {
         fn is_capture(self) -> bool {
             matches!(self, Self::CaptureDr | Self::CaptureIr)
         }
@@ -581,20 +637,9 @@ mod tests {
         }
     }
 
-    fn tap_to_model(tap: TapState) -> ModelState {
-        match tap {
-            TapState::TestLogicReset => ModelState::TestLogicReset,
-            TapState::RunTestIdle => ModelState::RunTestIdle,
-            TapState::ShiftIr => ModelState::ShiftIr,
-            TapState::ShiftDr => ModelState::ShiftDr,
-            TapState::PauseIr => ModelState::PauseIr,
-            TapState::PauseDr => ModelState::PauseDr,
-        }
-    }
-
-    fn walk_path(from: TapState, to: TapState) -> (ModelState, Vec<ModelState>) {
+    fn walk_path(from: TapState, to: TapState) -> (FullTapState, Vec<FullTapState>) {
         let path = from.path_to(to);
-        let mut state = tap_to_model(from);
+        let mut state = FullTapState::from(from);
         let mut visited = vec![state];
         for &tms in path {
             state = state.step(tms);
@@ -604,11 +649,41 @@ mod tests {
     }
 
     #[test]
+    fn an_exchange_of_any_length_ends_where_the_batch_says() {
+        for bits in [0, 1, 5] {
+            let mut batch = JtagBatch::new();
+            batch.enter(TapState::ShiftDr);
+            batch.exchange_no_capture(BitSequence::repeat(false, bits));
+            batch.enter(TapState::RunTestIdle);
+            let end = golden::lowering_batch(TapState::RunTestIdle, &batch)
+                .into_iter()
+                .fold(FullTapState::RunTestIdle, |state, (tms, _, _)| {
+                    state.step(tms)
+                });
+            assert_eq!(end, FullTapState::RunTestIdle, "{bits} bits");
+        }
+    }
+
+    #[test]
+    fn clocks_hold_every_stable_state() {
+        for state in STABLE_STATES {
+            let mut batch = JtagBatch::new();
+            batch.clock(3);
+            let end = golden::lowering_batch(state, &batch)
+                .into_iter()
+                .fold(FullTapState::from(state), |state, (tms, _, _)| {
+                    state.step(tms)
+                });
+            assert_eq!(end, FullTapState::from(state), "{state:?}");
+        }
+    }
+
+    #[test]
     fn path_to_reaches_target_for_all_pairs() {
         for from in STABLE_STATES {
             for to in STABLE_STATES {
                 let (end, _) = walk_path(from, to);
-                assert_eq!(end, tap_to_model(to), "from {:?} to {:?}", from, to);
+                assert_eq!(end, FullTapState::from(to), "from {:?} to {:?}", from, to);
             }
         }
     }
@@ -663,7 +738,7 @@ mod tests {
         for from in STABLE_STATES {
             for to in STABLE_STATES {
                 let path = from.path_to(to);
-                let mut state = tap_to_model(from);
+                let mut state = FullTapState::from(from);
                 let mut rti_entries = 0;
                 for &tms in path {
                     state = state.step(tms);

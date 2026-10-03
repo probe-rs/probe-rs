@@ -80,7 +80,11 @@ impl ArmDebugSequence for CC23xxCC27xx {
         aircr.vectkey();
         aircr.set_sysresetreq(true);
 
-        probe.write_word_32(Aircr::get_mmio_address(), aircr.into())?;
+        // The reset puts the device back into SACI mode
+        // This removes AHB-AP access, so the write is not going to be acknowledged.
+        probe
+            .write_word_32(Aircr::get_mmio_address(), aircr.into())
+            .ok();
         probe.flush().ok();
         thread::sleep(Duration::from_millis(10));
 

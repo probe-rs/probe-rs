@@ -833,11 +833,16 @@ pub trait DebugProbe: Any + Send + fmt::Debug {
     }
 
     /// Convert this probe into a layer-0 SWD probe, if it implements [`SwdProbe`].
+    ///
+    /// A probe in JTAG mode refuses, so that the caller uses the JTAG transport.
     fn try_as_swd_probe(self: Box<Self>) -> Result<Box<dyn SwdProbe>, Box<dyn DebugProbe>> {
         Err(self.into_probe())
     }
 
     /// Borrow this probe as a layer-0 SWD probe, if it implements [`SwdProbe`].
+    ///
+    /// A probe in JTAG mode may return itself, to run SWJ sequences and pin operations on the
+    /// JTAG pins.
     fn try_as_swd_probe_mut(&mut self) -> Option<&mut dyn SwdProbe> {
         None
     }

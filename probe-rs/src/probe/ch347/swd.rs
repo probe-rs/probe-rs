@@ -579,32 +579,35 @@ impl Ch347Device {
         let mut results = Results::new();
         let mut transfers = Vec::new();
         for (index, (id, op)) in batch.iter().enumerate() {
+            if let SwdOp::Transfer {
+                port,
+                addr,
+                direction,
+                data,
+            } = *op
+            {
+                let register = Register::new(port, addr);
+                let op = match direction {
+                    Direction::Read => Op::read(register),
+                    Direction::Write => Op::write(register, data),
+                };
+                transfers.push(Transfer {
+                    index,
+                    id: id.clone(),
+                    op,
+                });
+                continue;
+            }
+
+            self.run_transfers(&mut transfers, &mut results)?;
             let line = match *op {
-                SwdOp::Transfer {
-                    port,
-                    addr,
-                    direction,
-                    data,
-                } => {
-                    let register = Register::new(port, addr);
-                    let op = match direction {
-                        Direction::Read => Op::read(register),
-                        Direction::Write => Op::write(register, data),
-                    };
-                    transfers.push(Transfer {
-                        index,
-                        id: id.clone(),
-                        op,
-                    });
-                    continue;
-                }
                 SwdOp::Sequence(ref bits) => self.line_sequence(bits),
                 SwdOp::Idle { cycles } => {
                     self.line_sequence(&BitSequence::repeat(false, cycles as usize))
                 }
                 SwdOp::Pins { out, select, wait } => self.swj_pins(out, select, wait),
+                SwdOp::Transfer { .. } => unreachable!("transfers are queued above"),
             };
-            self.run_transfers(&mut transfers, &mut results)?;
             if let Err(error) = line {
                 return Err(BatchExecutionError::new_from_debug_probe_at(
                     error, results, index,
@@ -1122,8 +1125,35 @@ mod tests {
     }
 
     #[test]
+    fn line_operations_run_after_the_transfers_before_them() {
+        let (mut dev, script) = device(&[
+            (&req(&[Op::write(SELECT, 0)]), &frame(WRITE_OK)),
+            (&frame(&[0xA1, 8, 0, 0]), &frame(&[SUB_SEQUENCE])),
+            (&req(&[Op::write(SELECT, 1)]), &frame(WRITE_OK)),
+        ]);
+        let mut batch = SwdBatch::new();
+        batch.write(Port::Dp, 0x8, 0);
+        batch.idle(8);
+        batch.write(Port::Dp, 0x8, 1);
+        dev.run_swd_batch(&batch).unwrap();
+        assert!(script.finished());
+    }
+
+    #[test]
+    fn a_failed_transfer_stops_the_line_operations_after_it() {
+        let (mut dev, script) =
+            device(&[(&req(&[Op::read(DPIDR)]), &reply(&[read_reply(ACK_NONE, 0)]))]);
+        let mut batch = SwdBatch::new();
+        let _ = batch.read(Port::Dp, 0x0);
+        batch.idle(8);
+        let failure = dev.run_swd_batch(&batch).unwrap_err();
+        assert_eq!(failure.fault_operation, 0);
+        assert!(script.finished());
+    }
+
+    #[test]
     fn pins_are_not_supported() {
-        // The transfers before the pins op still go out, in order; the op itself is refused.
+        // The transfers before the pins op still go out; the op itself is refused.
         let (mut dev, script) = device(&[(&req(&[Op::write(SELECT, 0)]), &frame(WRITE_OK))]);
         let mut batch = SwdBatch::new();
         batch.write(Port::Dp, 0x8, 0);

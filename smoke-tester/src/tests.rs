@@ -42,7 +42,7 @@ fn test_register_write(_definition: &DutDefinition, core: &mut Core) -> TestResu
                 // Hardwired to zero.
                 "x0" => continue,
                 // Writing a trap CSR changes how the core resumes.
-                "mepc" | "mcause" | "mstatus" | "sepc" => continue,
+                "mepc" | "mcause" | "mstatus" => continue,
                 _ => (),
             }
         }

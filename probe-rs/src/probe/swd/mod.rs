@@ -149,6 +149,9 @@ pub enum SwdOp {
         cycles: u32,
     },
     /// Drive the CMSIS-DAP SWJ pins.
+    ///
+    /// A probe that reads the pin levels back returns them as [`CommandResult::U8`]. A probe
+    /// that cannot read them returns no result.
     Pins {
         /// The output levels.
         out: Pins,
@@ -195,6 +198,17 @@ impl SwdBatch {
     /// Schedule idle clock cycles with SWDIO driven low.
     pub fn idle(&mut self, cycles: u32) {
         let _ = self.schedule(SwdOp::Idle { cycles });
+    }
+
+    /// Schedule a pins operation and return a handle for the pin levels.
+    ///
+    /// The handle has no result when the probe cannot read the pins.
+    pub fn pins(&mut self, out: Pins, select: Pins, wait: Duration) -> Handle<Pins> {
+        self.schedule(SwdOp::Pins { out, select, wait })
+            .map(|result| match result {
+                CommandResult::U8(levels) => Pins(levels),
+                _ => panic!("unexpected CommandResult variant for an SWJ pins operation"),
+            })
     }
 }
 
@@ -353,6 +367,24 @@ pub trait BitbangSwd: DebugProbe {
             command_name: "swj_pins",
         })
     }
+}
+
+/// Returns the levels of an [`IoSequenceItem`] sequence that only drives SWDIO.
+///
+/// A probe with JTAG wiring drives these levels on TMS. It has no bidirectional SWDIO, so it
+/// cannot sample the line, and it cannot run an SWD transfer.
+pub(crate) fn output_levels(
+    swdio: impl IntoIterator<Item = IoSequenceItem>,
+) -> Result<Vec<bool>, DebugProbeError> {
+    swdio
+        .into_iter()
+        .map(|item| match item {
+            IoSequenceItem::Output(level) => Ok(level),
+            IoSequenceItem::Input => Err(DebugProbeError::CommandNotSupportedByProbe {
+                command_name: "SWD transfer",
+            }),
+        })
+        .collect()
 }
 
 /// A transfer whose response the next [`BitbangSwd::swd_io`] call returns.

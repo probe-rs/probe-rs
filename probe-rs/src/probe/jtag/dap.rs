@@ -10,6 +10,7 @@ use crate::{
     probe::{
         BitSequence, CommandResult, DebugProbeError, JtagBatch, JtagChain, JtagChainAccess,
         JtagWriteCommand, JtagWriteData, SwdSettings, TapState,
+        jtag::FullTapState,
         queue::{BatchError, JtagQueue},
     },
 };
@@ -393,137 +394,51 @@ fn perform_jtag_transfers_with_retry(
     Ok(())
 }
 
+/// Clock `tdi` with TMS at `tms`.
+///
+/// Only a TAP in Shift-IR or Shift-DR samples TDI, so elsewhere the bits are idle clocks.
+/// The sequence must end in a stable state, so that the TAP state stays known. With `tms`
+/// high, that state is Test-Logic-Reset, and the clocks that reach it are sent.
 pub(crate) fn jtag_output_sequence(
     probe: &mut dyn JtagChainAccess,
     tms: bool,
     tdi: &BitSequence,
 ) -> Result<(), DebugProbeError> {
-    if tms {
-        shift_tms_bits(probe, true, tdi.len())?;
+    let bits = tdi.len();
+    if bits == 0 {
         return Ok(());
     }
+    let clocks = u32::try_from(bits).map_err(|_| {
+        DebugProbeError::Other(format!("A JTAG sequence of {bits} bits is too long"))
+    })?;
 
-    if tdi.len() == 1 {
-        shift_tms_bits(probe, false, 1)?;
-        return Ok(());
-    }
-
-    let mut chain = JtagChain::new(probe);
-    let mut batch = JtagBatch::new();
-    batch.enter(TapState::ShiftDr);
-    batch.exchange_no_capture(tdi.clone());
-    batch.enter(TapState::RunTestIdle);
-    chain.run(batch)?;
-    Ok(())
-}
-
-fn shift_tms_bits(
-    probe: &mut dyn JtagChainAccess,
-    tms: bool,
-    bit_count: usize,
-) -> Result<(), DebugProbeError> {
     let start = probe.chain_state_ref().tap_state;
-    let end = stable_state_after_tms(start, tms, bit_count)?;
-    let mut chain = JtagChain::new(probe);
+    let in_shift = matches!(start, TapState::ShiftIr | TapState::ShiftDr);
     let mut batch = JtagBatch::new();
-    batch.enter(end);
-    chain.run(batch)?;
+    if tms {
+        let end = (0..bits).fold(FullTapState::from(start), |state, _| state.step(true));
+        let Some(end) = end.stable() else {
+            return Err(DebugProbeError::Other(format!(
+                "{bits} clocks with TMS high from {start:?} do not end in a stable TAP state"
+            )));
+        };
+        if in_shift {
+            // The first clock out of Shift still shifts its TDI bit into the register.
+            batch.exchange_no_capture(tdi.slice(0, 1));
+        }
+        batch.enter(end);
+    } else if in_shift {
+        batch.exchange_no_capture(tdi.clone());
+    } else if start == TapState::TestLogicReset {
+        batch.enter(TapState::RunTestIdle);
+        if clocks > 1 {
+            batch.clock(clocks - 1);
+        }
+    } else {
+        batch.clock(clocks);
+    }
+    JtagChain::new(probe).run(batch)?;
     Ok(())
-}
-
-fn stable_state_after_tms(
-    start: TapState,
-    tms: bool,
-    bit_count: usize,
-) -> Result<TapState, DebugProbeError> {
-    let mut state = FullTapState::from_stable(start);
-    for _ in 0..bit_count {
-        state = state.step(tms);
-    }
-    state.to_stable()
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum FullTapState {
-    TestLogicReset,
-    RunTestIdle,
-    SelectDr,
-    CaptureDr,
-    ShiftDr,
-    Exit1Dr,
-    PauseDr,
-    Exit2Dr,
-    UpdateDr,
-    SelectIr,
-    CaptureIr,
-    ShiftIr,
-    Exit1Ir,
-    PauseIr,
-    Exit2Ir,
-    UpdateIr,
-}
-
-impl FullTapState {
-    fn from_stable(state: TapState) -> Self {
-        match state {
-            TapState::TestLogicReset => Self::TestLogicReset,
-            TapState::RunTestIdle => Self::RunTestIdle,
-            TapState::ShiftIr => Self::ShiftIr,
-            TapState::ShiftDr => Self::ShiftDr,
-            TapState::PauseIr => Self::PauseIr,
-            TapState::PauseDr => Self::PauseDr,
-        }
-    }
-
-    fn step(self, tms: bool) -> Self {
-        if tms {
-            match self {
-                Self::TestLogicReset => Self::TestLogicReset,
-                Self::RunTestIdle => Self::SelectDr,
-                Self::SelectDr => Self::SelectIr,
-                Self::CaptureDr | Self::ShiftDr => Self::Exit1Dr,
-                Self::Exit1Dr | Self::Exit2Dr => Self::UpdateDr,
-                Self::UpdateDr => Self::SelectDr,
-                Self::SelectIr => Self::CaptureIr,
-                Self::CaptureIr | Self::ShiftIr => Self::Exit1Ir,
-                Self::Exit1Ir | Self::Exit2Ir => Self::UpdateIr,
-                Self::UpdateIr => Self::SelectDr,
-                Self::PauseDr => Self::Exit2Dr,
-                Self::PauseIr => Self::Exit2Ir,
-            }
-        } else {
-            match self {
-                Self::TestLogicReset => Self::RunTestIdle,
-                Self::RunTestIdle => Self::RunTestIdle,
-                Self::SelectDr => Self::CaptureDr,
-                Self::CaptureDr | Self::ShiftDr => Self::ShiftDr,
-                Self::Exit1Dr => Self::PauseDr,
-                Self::PauseDr => Self::PauseDr,
-                Self::Exit2Dr => Self::ShiftDr,
-                Self::UpdateDr => Self::RunTestIdle,
-                Self::SelectIr => Self::CaptureIr,
-                Self::CaptureIr | Self::ShiftIr => Self::ShiftIr,
-                Self::Exit1Ir => Self::PauseIr,
-                Self::PauseIr => Self::PauseIr,
-                Self::Exit2Ir => Self::ShiftIr,
-                Self::UpdateIr => Self::RunTestIdle,
-            }
-        }
-    }
-
-    fn to_stable(self) -> Result<TapState, DebugProbeError> {
-        match self {
-            Self::TestLogicReset => Ok(TapState::TestLogicReset),
-            Self::RunTestIdle => Ok(TapState::RunTestIdle),
-            Self::ShiftIr => Ok(TapState::ShiftIr),
-            Self::ShiftDr => Ok(TapState::ShiftDr),
-            Self::PauseIr => Ok(TapState::PauseIr),
-            Self::PauseDr => Ok(TapState::PauseDr),
-            _ => Err(DebugProbeError::Other(
-                "SWJ sequence did not end in a stable TAP state".into(),
-            )),
-        }
-    }
 }
 
 pub(crate) fn jtag_read_register(

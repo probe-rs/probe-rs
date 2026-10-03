@@ -1,1 +1,1 @@
-The WCH-Link probe now serves the RISC-V debug module directly, so it no longer emulates a JTAG TAP that the hardware does not have.
+The WCH-Link probe now accesses the RISC-V debug module directly instead of through an emulated JTAG TAP.

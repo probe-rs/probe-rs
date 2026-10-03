@@ -5,7 +5,7 @@ use crate::{
     architecture::arm::{
         ArmDebugInterface, ArmError, FullyQualifiedApAddress, Pins,
         armv7m::Dhcsr,
-        communication_interface::SwdSequence,
+        communication_interface::{SwdSequence, raw_pin_levels},
         memory::ArmMemoryInterface,
         sequences::{ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence},
         traits::DebugPortWire,
@@ -262,7 +262,7 @@ impl SwdSequence for SwdSequenceShim<'_> {
                 Pins(pin_select as u8),
                 Duration::from_micros(pin_wait as u64),
             )
-            .map(|pins| pins.0 as u32)
+            .map(raw_pin_levels)
             .map_err(|error| match error {
                 ArmError::Probe(error) => error,
                 other => DebugProbeError::Other(other.to_string()),

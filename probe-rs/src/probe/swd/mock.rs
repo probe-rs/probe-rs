@@ -67,6 +67,7 @@ pub(crate) struct MockSwdProbe {
     capture_flags: Arc<Mutex<Vec<bool>>>,
     idles: Arc<Mutex<Vec<u32>>>,
     pins: Arc<Mutex<Vec<RecordedPins>>>,
+    pin_levels: Option<u8>,
     swd_settings: SwdSettings,
 }
 
@@ -85,8 +86,15 @@ impl MockSwdProbe {
             capture_flags: Arc::new(Mutex::new(Vec::new())),
             idles: Arc::new(Mutex::new(Vec::new())),
             pins: Arc::new(Mutex::new(Vec::new())),
+            pin_levels: None,
             swd_settings: SwdSettings::default(),
         }
+    }
+
+    /// Read `levels` back for every pins operation, as a CMSIS-DAP probe does.
+    pub(crate) fn reads_pins(mut self, levels: u8) -> Self {
+        self.pin_levels = Some(levels);
+        self
     }
 
     /// Return a handle to the recorded operations.
@@ -304,6 +312,11 @@ impl SwdProbe for MockSwdProbe {
                         select: select.0,
                         wait: *wait,
                     });
+                    if let Some(levels) = self.pin_levels
+                        && id.should_capture()
+                    {
+                        results.push(id, CommandResult::U8(levels));
+                    }
                 }
             }
         }
