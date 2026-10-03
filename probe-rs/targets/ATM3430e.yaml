@@ -1,96 +1,58 @@
-# probe-rs chip description for the Atmosic ATM3430e (ATM34/e series).
-#
-# probe-rs ships no Atmosic targets, and Atmosic publish no CMSIS-Pack.
-# Numbers come from the Atmosic OpenAir tree:
-#   dts/arm/atmosic/ATM34.dtsi, ATM34xx.dtsi
-#   modules/hal_atmosic/ATM34xx/rev-5/openocd/m33_cpu.tcl
-#
-# Use with:  probe-rs <cmd> --chip ATM3430e --chip-description-path probe-rs/ATM3430e.yaml
-#
-# RRAM (the on-chip non-volatile memory; this part's "flash") is programmed by the flash
-# algorithm at the bottom of this file, built from ./atm34-rram-algo. An ELF linked into SRAM
-# instead still works: probe-rs sees the vector table in a !Ram region and loads it there
-# directly, setting VTOR/SP/PC itself.
-#
-# TrustZone note: secure address = non-secure address + 0x1000_0000. The core boots Secure with
-# the SAU disabled, so code must live at the secure aliases. probe-rs drives CSW.HNONSEC = !SPIDEN,
-# i.e. secure bus accesses, so the secure aliases are the ones to download into. The non-secure
-# RRAM alias (0x0001_0000) is deliberately not listed for programming. The non-secure SRAM alias
-# is listed for RTT attachment: on a running board, SWD sees the live RTT control block there.
-
 name: Atmosic ATM34
 variants:
-  - name: ATM3430e
+- name: ATM3430e
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 1
+  memory_map:
+  - !Nvm
+    name: RRAM_S
+    range:
+      start: 0x10010000
+      end: 0x1008f800
     cores:
-      # The M33 is on AP 1, not AP 0 (AP 0 carries the CTI at 0xF0002000).
-      # Getting this wrong gives you a DAP that answers and a core that never appears.
-      - name: main
-        type: armv8m
-        core_access_options: !Arm
-          ap: !v1 1
-
-    memory_map:
-      # --- On-chip RRAM, 510 KiB usable. Byte-writable, no erase cycle, but gated behind the
-      #     RRAM_WRITE_PROTECTION registers, hence the flash algorithm. ---
-      - !Nvm
-        name: RRAM_S
-        range:
-          start: 0x10010000
-          end: 0x1008F800
-        cores: [main]
-        access:
-          boot: true
-
-      # Secure journal / counters / sideload keys live at 0x1008_F800..0x1009_0000.
-      # Deliberately not described: writing there bricks the part. The flash algorithm refuses
-      # to touch it and leaves its write-protect bit set.
-
-      # --- SRAM: 256 KiB. The flash algorithm is loaded at the bottom of it. ---
-      - !Ram
-        name: SRAM_S
-        range:
-          start: 0x30000000
-          end: 0x30040000
-        cores: [main]
-
-      # The live RTT control block is visible to SWD at this alias. Listing it allows
-      # `tools/rtt_attach.py` to read logs without reflashing.
-      - !Ram
-        name: SRAM_NS_RTT
-        range:
-          start: 0x20000000
-          end: 0x20040000
-        cores: [main]
-
-    flash_algorithms:
-      - atm34-rram
-
+    - main
+    access:
+      boot: true
+  - !Ram
+    name: SRAM_NS_RTT
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM_S
+    range:
+      start: 0x30000000
+      end: 0x30040000
+    cores:
+    - main
+  flash_algorithms:
+  - atm34-rram
 flash_algorithms:
-  # Generated from ./atm34-rram-algo; see its README section before editing by hand. To
-  # regenerate, rebuild it and run
-  #   target-gen elf target/thumbv8m.main-none-eabi/release/atm34-rram-algo --fixed-load-address --name atm34-rram
-  # then paste the fields below `name` over these, keeping `data_section_offset` relative to
-  # `load_address` (target-gen prints it absolute).
-  - name: atm34-rram
-    description: ATM34 RRAM
-    default: true
-    instructions: APFvQQH1fwIBIbL1/i8o2EDyOCLD8gACEngSs4C1b0YA9QBhCRo4vwAhAzFf6pEMB9BP8P8yY0YBRkH4BCsBO/vRb+oMAb/zT48BMQbSAh0AaAEwEEb40AIhAOAAIb3ogEAIRnBH8LUDr034BL1A8jglFEbD8gAFKHgIsQDwoPgBJmAeBCgucDTSQ/IgAEjyUAHF8hUAxPIVAQZgACK/80+PCmBE9hQDv/NPjwJgT/YAcMDyHwBP9BAhwPYoAwZgQmBkJApgA2AVI0NgLCPA8gkDGmAEYEJg2mACYEJgACAKYL/zT48A8Hz4LnAAIF34BLvwvQDwjPhA8jgjw/IAAxt4ASsR0fC1A69N+ASNDhgBI4ZCIr8AJcHyAQWoQgfSXfgEi73o8EAA4AEjGEZwR0/2AAXB8ggFrkLx2IMHlEYDRg1GENCURgNGDUZhsQxGA0aURhz4AWtlHgP4AWueBwLQASwsRvXRT/b8dgXwAw7H9v92FeoGCAjQyPEABWZGVvgESwQ1Q/gES/nRvvEADwjQDOsIBRX4AWu+8QEOA/gBa/jRv/NPj0GxEPgBOwE5EvgBa7NC99ACI7HnACOv59C1Aq9A8jgkw/IABCB4ASgF0QEgAPAF+AAgIHDQvQEg0L2AtW9GQ/K0AgAhxPIUAgAjHCkIv0/wAEMAKBi/T/D/M4tQBDEgKfLRv/NPj4C9gLVvRgDe/t4A1NTU
-    load_address: 0x30000020
-    pc_init: 0x67
-    pc_uninit: 0x1c1
-    pc_program_page: 0xf9
-    pc_erase_sector: 0x1
-    data_section_offset: 0x21c
-    flash_properties:
-      address_range:
-        start: 0x10010000
-        end: 0x1008F800
-      page_size: 0x800
-      erased_byte_value: 0xff
-      program_page_timeout: 1000
-      erase_sector_timeout: 1000
-      sectors:
-        - size: 0x800
-          address: 0x0
-    cores:
-      - main
+- name: atm34-rram
+  description: ATM34 RRAM
+  default: true
+  instructions: APFvQQH1fwIBIbL1/i8o2EDyOCLD8gACEngSs4C1b0YA9QBhCRo4vwAhAzFf6pEMB9BP8P8yY0YBRkH4BCsBO/vRb+oMAb/zT48BMQbSAh0AaAEwEEb40AIhAOAAIb3ogEAIRnBH8LUDr034BL1A8jglFEbD8gAFKHgIsQDwoPgBJmAeBCgucDTSQ/IgAEjyUAHF8hUAxPIVAQZgACK/80+PCmBE9hQDv/NPjwJgT/YAcMDyHwBP9BAhwPYoAwZgQmBkJApgA2AVI0NgLCPA8gkDGmAEYEJg2mACYEJgACAKYL/zT48A8Hz4LnAAIF34BLvwvQDwjPhA8jgjw/IAAxt4ASsR0fC1A69N+ASNDhgBI4ZCIr8AJcHyAQWoQgfSXfgEi73o8EAA4AEjGEZwR0/2AAXB8ggFrkLx2IMHlEYDRg1GENCURgNGDUZhsQxGA0aURhz4AWtlHgP4AWueBwLQASwsRvXRT/b8dgXwAw7H9v92FeoGCAjQyPEABWZGVvgESwQ1Q/gES/nRvvEADwjQDOsIBRX4AWu+8QEOA/gBa/jRv/NPj0GxEPgBOwE5EvgBa7NC99ACI7HnACOv59C1Aq9A8jgkw/IABCB4ASgF0QEgAPAF+AAgIHDQvQEg0L2AtW9GQ/K0AgAhxPIUAgAjHCkIv0/wAEMAKBi/T/D/M4tQBDEgKfLRv/NPj4C9gLVvRgDe/t4A1NTU
+  load_address: 0x30000020
+  pc_init: 0x67
+  pc_uninit: 0x1c1
+  pc_program_page: 0xf9
+  pc_erase_sector: 0x1
+  data_section_offset: 0x21c
+  flash_properties:
+    address_range:
+      start: 0x10010000
+      end: 0x1008f800
+    page_size: 0x800
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x800
+      address: 0x0
+  cores:
+  - main
