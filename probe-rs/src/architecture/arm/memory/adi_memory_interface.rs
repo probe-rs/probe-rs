@@ -183,14 +183,6 @@ where
         Ok(())
     }
 
-    /// Put the AP in the transfer size `shape` needs.
-    fn set_data_size(&mut self, shape: &Shape) -> Result<(), ArmError> {
-        let size = shape
-            .width
-            .data_size(self.memory_ap.has_large_data_extension());
-        self.memory_ap.try_set_datasize(self.interface, size)
-    }
-
     /// The AP register accesses that perform `shape`.
     ///
     /// `word` supplies each written DRW word by element and word index, and returns `None`
@@ -236,10 +228,7 @@ where
 
     /// Read `shape` into the DRW words it produces.
     fn run_read(&mut self, shape: &Shape, words: &mut [u32]) -> Result<(), ArmError> {
-        self.set_data_size(shape)?;
-        let accesses = self.lower(shape, |_, _| None)?;
-        self.interface
-            .access_raw_ap_registers(self.memory_ap.ap_address(), &accesses, words)
+        self.run_shape(shape, |_, _| None, words)
     }
 
     /// The shape of a memory operation, or `None` for one the lowering does not describe.
@@ -596,10 +585,44 @@ where
         shape: &Shape,
         word: impl FnMut(usize, usize) -> Option<u32>,
     ) -> Result<(), ArmError> {
-        self.set_data_size(shape)?;
-        let accesses = self.lower(shape, word)?;
-        self.interface
-            .access_raw_ap_registers(self.memory_ap.ap_address(), &accesses, &mut [])
+        self.run_shape(shape, word, &mut [])
+    }
+
+    /// Perform `shape` in one batch. The CSW write for its transfer size goes in the same batch,
+    /// unless the AP has to be set up separately.
+    fn run_shape(
+        &mut self,
+        shape: &Shape,
+        word: impl FnMut(usize, usize) -> Option<u32>,
+        words: &mut [u32],
+    ) -> Result<(), ArmError> {
+        // Lowered before the size is settled: `push_datasize` records a CSW write as sent, so a
+        // shape that does not lower must not record a size.
+        let transfers = self.lower(shape, word)?;
+        let size = shape
+            .width
+            .data_size(self.memory_ap.has_large_data_extension());
+
+        let mut accesses = Vec::with_capacity(transfers.len() + 1);
+        if !self.push_datasize(&mut accesses, size)?
+            && let Err(error) = self.memory_ap.try_set_datasize(self.interface, size)
+        {
+            // `try_set_datasize` writes CSW and notes the size as two steps, and may have
+            // failed between them. Re-read rather than trust the note.
+            let _ = self.memory_ap.status(self.interface);
+            return Err(error);
+        }
+        let carries_csw = !accesses.is_empty();
+        accesses.extend(transfers);
+
+        let result =
+            self.interface
+                .access_raw_ap_registers(self.memory_ap.ap_address(), &accesses, words);
+        if result.is_err() && carries_csw {
+            // The CSW write may not have reached the target. Re-read rather than trust the note.
+            let _ = self.memory_ap.status(self.interface);
+        }
+        result
     }
 }
 
@@ -976,6 +999,26 @@ mod tests {
         assert_eq!(word, 0xDEAD_BEEF);
         assert_eq!(half, 0x1234);
         assert_eq!(mi.read_word_8(0x20).expect("read_word_8 failed"), 0xAB);
+    }
+
+    #[test]
+    fn a_size_change_shares_the_batch_with_its_transfers() {
+        use crate::architecture::arm::ap::{ApRegister, CSW, DRW, TAR};
+
+        let mut mock = MockMemoryAp::with_pattern_and_size(256);
+        let mut mi = ADIMemoryInterface::new_mock(&mut mock);
+        mi.write_word_32(0x20, 0x1122_3344)
+            .expect("write_word_32 failed");
+        mi.write_8(0x11, &[0xAB]).expect("write_8 failed");
+
+        let batches = &mi.interface.batches;
+        assert_eq!(batches.len(), 2, "one batch per access");
+        for batch in batches {
+            let registers: Vec<u64> = batch.iter().map(|&(address, _)| address).collect();
+            assert_eq!(registers, [CSW::ADDRESS, TAR::ADDRESS, DRW::ADDRESS]);
+        }
+        assert_eq!(mi.mock_memory()[0x11], 0xAB);
+        assert_eq!(&mi.mock_memory()[0x20..0x24], &0x1122_3344u32.to_le_bytes());
     }
 
     #[test]

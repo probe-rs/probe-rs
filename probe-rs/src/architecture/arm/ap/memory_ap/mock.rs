@@ -12,6 +12,8 @@ use std::collections::HashMap;
 pub struct MockMemoryAp {
     pub memory: Vec<u8>,
     store: HashMap<u64, u32>,
+    /// Every access list passed to `access_raw_ap_registers`, in order.
+    pub batches: Vec<Vec<(u64, Option<u32>)>>,
 }
 
 impl MockMemoryAp {
@@ -43,6 +45,7 @@ impl MockMemoryAp {
         Self {
             memory: std::iter::repeat(1..=255).flatten().take(size).collect(),
             store,
+            batches: Vec::new(),
         }
     }
 }
@@ -203,5 +206,25 @@ impl DapAccess for MockMemoryAp {
             }
             _ => panic!("MockMemoryAp: unknown register"),
         }
+    }
+
+    fn access_raw_ap_registers(
+        &mut self,
+        ap: &crate::architecture::arm::FullyQualifiedApAddress,
+        accesses: &[(u64, Option<u32>)],
+        values: &mut [u32],
+    ) -> Result<(), ArmError> {
+        self.batches.push(accesses.to_vec());
+        let mut read = 0;
+        for &(addr, value) in accesses {
+            match value {
+                Some(value) => self.write_raw_ap_register(ap, addr, value)?,
+                None => {
+                    values[read] = self.read_raw_ap_register(ap, addr)?;
+                    read += 1;
+                }
+            }
+        }
+        Ok(())
     }
 }
