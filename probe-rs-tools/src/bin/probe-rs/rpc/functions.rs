@@ -27,7 +27,7 @@ use crate::rpc::{
         info::{target_info, target_metadata},
         memory::{read_bytes, read_memory, write_memory},
         monitor::monitor,
-        probe::{attach, list_probes, select_probe},
+        probe::{attach, detach, list_probes, select_probe},
         reset::{reset, reset_and_halt},
         rtt_client::{
             clean_up_rtt, clear_rtt_control_block, create_rtt_client, get_rtt_channels,
@@ -372,6 +372,10 @@ impl RpcContext {
         })
     }
 
+    pub async fn session_clear(&self, key: Key<Session>) {
+        self.state.clear_session(key).await;
+    }
+
     pub fn debug_states(&self) -> DebugStatesMap {
         self.state.debug_states.clone()
     }
@@ -467,6 +471,7 @@ postcard_rpc::define_dispatch! {
         | ListProbesEndpoint        | blocking  | list_probes       |
         | SelectProbeEndpoint       | async     | select_probe      |
         | AttachEndpoint            | spawn     | attach            |
+        | DetachEndpoint            | async     | detach            |
 
         | HaltCoresEndpoint                | async | halt_cores                 |
         | ResumeCoresEndpoint              | async | resume_cores               |

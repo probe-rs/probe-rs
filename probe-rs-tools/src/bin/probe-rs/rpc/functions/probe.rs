@@ -3,8 +3,8 @@ use std::time::{Duration, Instant};
 use postcard_rpc::{header::VarHeader, server::Sender};
 use probe_rs::probe::DebugProbeSelector;
 use probe_rs_rpc::probe::{
-    AttachRequest, AttachResult, DebugProbeEntry, ListProbesResponse, SelectProbeRequest,
-    SelectProbeResponse, SelectProbeResult, WireProtocol,
+    AttachRequest, AttachResult, DebugProbeEntry, DetachRequest, DetachResponse,
+    ListProbesResponse, SelectProbeRequest, SelectProbeResponse, SelectProbeResult, WireProtocol,
 };
 
 use crate::rpc::functions::{RpcContext, RpcSpawnContext, WireTxImpl};
@@ -66,6 +66,16 @@ pub async fn select_probe(
                 .collect(),
         )),
     }
+}
+
+pub async fn detach(
+    ctx: &mut RpcContext,
+    _hdr: VarHeader,
+    request: DetachRequest,
+) -> DetachResponse {
+    ctx.session_clear(request.sessid).await;
+
+    Ok(())
 }
 
 pub async fn attach(
