@@ -95,113 +95,144 @@ impl Cmd {
         } else {
             speeds.extend_from_slice(&PROBE_SPEEDS);
         };
-        // if we can't print basic info, we're probably not going to succeed with testing so bubble up the error
-        Cmd::print_info(&common_options, lister)?;
 
+        // Repeated attaches can make some targets stop responding.
+        let mut printed_info = false;
+        let mut last_error = None;
+        let mut passed = 0;
         for speed in speeds
             .iter()
             .filter(|speed| (self.min_speed..=max_speed).contains(*speed))
         {
-            for size in TEST_SIZES {
-                let res = Cmd::benchmark(
-                    &common_options,
-                    lister,
-                    *speed,
-                    size,
-                    self.address,
-                    self.word_size,
-                    self.iterations,
-                );
-                if let Err(e) = res {
+            let res = Cmd::benchmark_at_speed(
+                &common_options,
+                lister,
+                *speed,
+                self.address,
+                self.word_size,
+                self.iterations,
+                &mut printed_info,
+            );
+            match res {
+                Ok(count) => passed += count,
+                Err(e) => {
                     println!(
-                        "Test failed for speed {} size {} word_size {}bit - {}",
-                        speed, size, self.word_size, e
-                    )
+                        "Test failed for speed {} word_size {}bit - {}",
+                        speed, self.word_size, e
+                    );
+                    last_error = Some(e);
                 }
             }
         }
 
+        if passed == 0 {
+            return Err(last_error.unwrap_or_else(|| anyhow::anyhow!("No benchmark test passed")));
+        }
         Ok(())
     }
 
-    /// Print probe and target info
-    fn print_info(common_options: &LoadedProbeOptions, lister: &Lister) -> anyhow::Result<()> {
-        let probe = common_options.attach_probe(lister)?;
+    /// Attach once at `speed` and run every [`TEST_SIZES`] benchmark in that session.
+    ///
+    /// Prints the probe and target info unless `printed_info` is already set. Returns the number
+    /// of tests that passed.
+    fn benchmark_at_speed(
+        common_options: &LoadedProbeOptions,
+        lister: &Lister,
+        speed: u32,
+        address: u64,
+        word_size: u32,
+        iterations: usize,
+        printed_info: &mut bool,
+    ) -> Result<usize, anyhow::Error> {
+        let mut probe = common_options.attach_probe(lister)?;
+        if probe.set_speed(speed).is_err() {
+            println!("failed to set speed {speed}");
+            return Ok(0);
+        }
+
         let protocol_name = probe
             .protocol()
             .map(|p| p.to_string())
             .unwrap_or_else(|| "not specified".to_string());
+        let probe_name = probe.get_name();
 
         let target = common_options.get_target_selector()?;
-        let probe_name = probe.get_name();
-        let session = common_options.attach_session(probe, target)?;
-        let target_name = session.target().name.clone();
-        println!(
-            "Probe: Probe type {probe_name}, debug interface {protocol_name}, target chip {target_name}\n"
-        );
-        Ok(())
+        let mut session = common_options.attach_session(probe, target)?;
+
+        if !*printed_info {
+            let target_name = session.target().name.clone();
+            println!(
+                "Probe: Probe type {probe_name}, debug interface {protocol_name}, target chip {target_name}\n"
+            );
+            *printed_info = true;
+        }
+
+        let mut core = session.core(0).context("Failed to attach to core")?;
+        core.halt(Duration::from_millis(100))
+            .context("Halting failed")?;
+
+        let mut passed = 0;
+        for size in TEST_SIZES {
+            match Cmd::benchmark(&mut core, speed, size, address, word_size, iterations) {
+                Ok(()) => passed += 1,
+                Err(e) => println!(
+                    "Test failed for speed {speed} size {size} word_size {word_size}bit - {e}"
+                ),
+            }
+        }
+
+        Ok(passed)
     }
 
-    /// Run a specific benchmark
+    /// Run a specific benchmark against an already-attached, already-halted core.
     fn benchmark(
-        common_options: &LoadedProbeOptions,
-        lister: &Lister,
+        core: &mut probe_rs::Core,
         speed: u32,
         size: usize,
         address: u64,
         word_size: u32,
         iterations: usize,
     ) -> Result<(), anyhow::Error> {
-        let mut probe = common_options.attach_probe(lister)?;
-        let target = common_options.get_target_selector()?;
-        if probe.set_speed(speed).is_ok() {
-            let mut session = common_options.attach_session(probe, target)?;
-            let mut test = TestData::new(address, word_size, size);
-            println!(
-                "Test: Speed {}, Word size {}bit, Data length {} bytes, Number of iterations {}",
-                speed,
-                word_size,
-                test.data_type.size() * size,
-                iterations
-            );
-            let mut core = session.core(0).context("Failed to attach to core")?;
-            core.halt(Duration::from_millis(100))
-                .context("Halting failed")?;
+        let mut test = TestData::new(address, word_size, size);
+        println!(
+            "Test: Speed {}, Word size {}bit, Data length {} bytes, Number of iterations {}",
+            speed,
+            word_size,
+            test.data_type.size() * size,
+            iterations
+        );
 
-            let mut read_results = Vec::<f64>::with_capacity(iterations);
-            let mut write_results = Vec::<f64>::with_capacity(iterations);
-            'inner: for _ in 0..iterations {
-                let write_throughput = test.block_write(&mut core)?;
-                let read_throughput = test.block_read(&mut core)?;
-                let verify_success = test.block_verify();
-                if verify_success {
-                    read_results.push(read_throughput);
-                    write_results.push(write_throughput);
-                } else {
-                    eprintln!("Verification failed.");
-                    break 'inner;
-                }
+        let mut read_results = Vec::<f64>::with_capacity(iterations);
+        let mut write_results = Vec::<f64>::with_capacity(iterations);
+        'inner: for _ in 0..iterations {
+            let write_throughput = test.block_write(core)?;
+            let read_throughput = test.block_read(core)?;
+            let verify_success = test.block_verify();
+            if verify_success {
+                read_results.push(read_throughput);
+                write_results.push(write_throughput);
+            } else {
+                eprintln!("Verification failed.");
+                break 'inner;
             }
-            println!(
-                "Results: Read: {:.2} bytes/s Std Dev {:.2}, Write: {:.2} bytes/s Std Dev {:.2}",
-                mean(&read_results).expect("invalid mean"),
-                std_deviation(&read_results).expect("invalid std deviation"),
-                mean(&write_results).expect("invalid mean"),
-                std_deviation(&write_results).expect("invalid std deviation")
-            );
-            if read_results.len() != iterations || write_results.len() != iterations {
-                println!(
-                    "Warning: {} reads and {} writes successful (out of {} iterations)",
-                    read_results.len(),
-                    write_results.len(),
-                    iterations
-                )
-            }
-            // Insert another blank line to visually separate results
-            println!();
-        } else {
-            println!("failed to set speed {speed}");
         }
+        println!(
+            "Results: Read: {:.2} bytes/s Std Dev {:.2}, Write: {:.2} bytes/s Std Dev {:.2}",
+            mean(&read_results).expect("invalid mean"),
+            std_deviation(&read_results).expect("invalid std deviation"),
+            mean(&write_results).expect("invalid mean"),
+            std_deviation(&write_results).expect("invalid std deviation")
+        );
+        if read_results.len() != iterations || write_results.len() != iterations {
+            println!(
+                "Warning: {} reads and {} writes successful (out of {} iterations)",
+                read_results.len(),
+                write_results.len(),
+                iterations
+            )
+        }
+        // Insert another blank line to visually separate results
+        println!();
         Ok(())
     }
 }

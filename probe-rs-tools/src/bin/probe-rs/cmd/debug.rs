@@ -227,7 +227,14 @@ impl Cmd {
                 None
             }
         } else {
-            None
+            // The DAP "attach" request cannot ask for a probe. The core stays halted, like in
+            // the DAP server's own attach, until `configurationDone` resumes it.
+            let elf_meta = if let Some(path) = &self.binary {
+                parse_metadata(path).await?.1
+            } else {
+                Default::default()
+            };
+            Some(cli::attach_probe(&client, self.common.clone(), elf_meta, false).await?)
         };
 
         let (req_sender, req_receiver) = mpsc::channel(100);

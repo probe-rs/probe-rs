@@ -26,6 +26,10 @@ pub struct DebugProbeEntry {
     /// The probe was found but the current user cannot access its device
     /// (e.g. a missing udev rule on Linux).
     pub inaccessible: bool,
+
+    /// USB bus ID and device address, if known.
+    /// See `probe_rs::probe::DebugProbeInfo::usb_location`.
+    pub usb_location: Option<(String, u8)>,
 }
 
 impl Display for DebugProbeEntry {
@@ -53,6 +57,7 @@ impl DebugProbeEntry {
             product_id: self.product_id,
             serial_number: Some(self.serial_number.clone()),
             interface: self.interface,
+            usb_location: self.usb_location.clone(),
         }
     }
 }
@@ -103,6 +108,9 @@ pub struct DebugProbeSelector {
     pub interface: Option<u8>,
     /// The the serial number of the debug probe to be used.
     pub serial_number: Option<String>,
+    /// USB bus ID and device address, if known.
+    /// See `probe_rs::probe::DebugProbeInfo::usb_location`.
+    pub usb_location: Option<(String, u8)>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]

@@ -889,6 +889,12 @@ pub struct DebugProbeInfo {
     /// This is a composite HID device.
     pub is_hid_interface: bool,
 
+    /// USB bus ID and device address, if known.
+    ///
+    /// Tells identical probes (same VID/PID, no serial number) apart while they stay plugged
+    /// in. It is not part of the string form of a [`DebugProbeSelector`].
+    pub usb_location: Option<(String, u8)>,
+
     /// A reference to the [`ProbeFactory`] that created this info object.
     probe_factory: &'static dyn ProbeFactory,
 }
@@ -933,6 +939,7 @@ impl DebugProbeInfo {
             probe_factory,
             interface,
             is_hid_interface,
+            usb_location: None,
         }
     }
 

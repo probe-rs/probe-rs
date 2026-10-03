@@ -12,6 +12,8 @@ pub(crate) use stub::{GdbInstanceConfiguration, run};
 
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use probe_rs::CoreRegisters;
@@ -89,6 +91,19 @@ impl Cmd {
             );
         }
 
+        let shutdown = Arc::new(AtomicBool::new(false));
+        #[cfg(unix)]
+        {
+            let shutdown = shutdown.clone();
+            let mut terminate =
+                tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
+            tokio::spawn(async move {
+                while terminate.recv().await.is_some() {
+                    request_shutdown(&shutdown);
+                }
+            });
+        }
+
         let gdb = if let Some(gdb) = self.gdb {
             tokio::spawn(async move {
                 loop {
@@ -110,12 +125,18 @@ impl Cmd {
             eprintln!("Spawning {cmd:?}");
             Some(cmd.spawn()?)
         } else {
+            let shutdown = shutdown.clone();
+            tokio::spawn(async move {
+                while tokio::signal::ctrl_c().await.is_ok() {
+                    request_shutdown(&shutdown);
+                }
+            });
             None
         };
 
         let handle = Handle::current();
         tokio::task::spawn_blocking(move || {
-            if let Err(e) = run(session, handle, context, instances.iter(), gdb) {
+            if let Err(e) = run(session, handle, context, instances.iter(), gdb, shutdown) {
                 eprintln!("During the execution of GDB an error was encountered:");
                 eprintln!("{e:?}");
             }
@@ -187,4 +208,14 @@ impl GdbSessionContext {
             flash_sectors: metadata.flash_sectors,
         })
     }
+}
+
+/// Asks the server loop to stop. A second request exits immediately, in case the loop is stuck
+/// in a probe operation.
+fn request_shutdown(shutdown: &AtomicBool) {
+    if shutdown.swap(true, Ordering::Relaxed) {
+        eprintln!("Exiting without tearing down the debug session.");
+        std::process::exit(130);
+    }
+    eprintln!("Shutting down the GDB server (repeat to exit immediately).");
 }

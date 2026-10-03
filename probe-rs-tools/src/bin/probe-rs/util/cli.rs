@@ -86,7 +86,7 @@ pub async fn attach_probe(
         client.load_chip_family(file).await?;
     }
 
-    let probe = match select_probe(
+    let mut probe = match select_probe(
         client,
         probe_options.probe.map(to_wire_debug_probe_selector),
         probe_options.non_interactive,
@@ -106,6 +106,8 @@ pub async fn attach_probe(
             Duration::from_secs(1),
         )
         .await?;
+        // The probe gets a new USB device address when it enumerates again.
+        probe.usb_location = None;
     }
 
     let result = with_slow_attach_feedback(client.attach_probe(AttachRequest {
