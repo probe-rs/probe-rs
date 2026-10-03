@@ -1,0 +1,1 @@
+Fixed a GDB stub bug where a secondary core that could not be resumed (e.g. a Cortex-M55 still clock-gated in CPU_WAIT after a reset) was reported as a spurious SIGINT, hijacking a `continue` from the core actually running and leaving GDB on a bogus stack. Only cores that actually started executing are now scanned for a stop reason.

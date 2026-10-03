@@ -21,6 +21,7 @@ use probe_rs_rpc::{FlashLoader, Key};
 use probe_rs_rpc_client::{ClientError, CoreInterface, SessionInterface};
 use tokio::runtime::Handle;
 
+use std::collections::HashMap;
 use std::future::Future;
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::num::NonZeroUsize;
@@ -45,7 +46,7 @@ use super::GdbSessionContext;
 /// Actions for resuming a core
 #[derive(Debug, Copy, Clone)]
 pub(crate) enum ResumeAction {
-    Unchanged,
+    /// Resume core
     Resume,
     Step,
 }
@@ -71,7 +72,24 @@ pub(crate) struct RuntimeTarget {
 
     listener: TcpListener,
     gdb: Option<GdbStubStateMachine<'static, RuntimeTarget, TcpStream>>,
-    resume_action: (usize, ResumeAction),
+    /// Per-core resume actions requested by GDB via vCont before a resume.
+    ///
+    /// Only cores listed here have an explicit action. Cores not listed are
+    /// resumed by default (the implicit all-stop continue) unless
+    /// `scheduler_locked` is set, in which case they stay frozen.
+    resume_actions: HashMap<usize, ResumeAction>,
+    /// Whether GDB requested "scheduler locking" for the upcoming resume.
+    ///
+    /// gdbstub sets this (via `set_resume_action_scheduler_lock`) when the vCont
+    /// packet omits a wildcard continue, meaning only the explicitly listed cores
+    /// may run and every other core must remain frozen.
+    scheduler_locked: bool,
+    /// Cores that were actually resumed or single-stepped by the last resume.
+    ///
+    /// The run loop only scans these cores for a stop reason, so a
+    /// single-stepped or continued core cannot have its stop hijacked by
+    /// another core that was left halted (e.g. a clock-gated secondary core).
+    running_cores: Vec<usize>,
 
     target_desc: TargetDescription,
     /// Server-side flash loader created for an in-progress GDB `load`.
@@ -120,7 +138,9 @@ impl RuntimeTarget {
             flash_sectors: context.flash_sectors.clone(),
             listener,
             gdb: None,
-            resume_action: (0, ResumeAction::Unchanged),
+            resume_actions: HashMap::new(),
+            scheduler_locked: false,
+            running_cores: Vec::new(),
             target_desc: TargetDescription::default(),
             flash_loader: None,
             flash_erased: false,
@@ -231,12 +251,27 @@ impl RuntimeTarget {
                 continue;
             };
 
-            let tid = NonZeroUsize::new(index as usize + 1).unwrap();
+            let index = index as usize;
+            // Only scan cores that were actually resumed/stepped by the last
+            // resume request. A core left halted (not in this list) must not
+            // supply the stop reason, or GDB would switch to the wrong thread.
+            if !self.running_cores.contains(&index) {
+                continue;
+            }
+
+            let tid = NonZeroUsize::new(index + 1).unwrap();
             stop_reason = Some(match reason {
                 WireHaltReason::Breakpoint(
                     WireBreakpointCause::Hardware | WireBreakpointCause::Unknown,
                 ) => MultiThreadStopReason::HwBreak(tid),
-                WireHaltReason::Step => MultiThreadStopReason::DoneStep,
+                // Report the step completion with the stepped core's thread-id
+                // (not a bare `DoneStep`, which omits it) so GDB attributes the
+                // stop to the correct core instead of falling back to the first
+                // non-exited thread and switching away from the stepped core.
+                WireHaltReason::Step => MultiThreadStopReason::SignalWithThread {
+                    tid,
+                    signal: Signal::SIGTRAP,
+                },
                 _ => MultiThreadStopReason::SignalWithThread {
                     tid,
                     signal: Signal::SIGINT,
