@@ -978,7 +978,15 @@ pub async fn monitor(
 
             println!("Firmware exited with: {reason}{subcode}");
 
-            (true, Err(anyhow::anyhow!(reason)))
+            let (error, print_stack_trace) = match (details.reason, details.subcode) {
+                // A deliberate exit, so like a successful one, only print a stack trace on request.
+                (0x20026, Some(status)) => (
+                    FirmwareExitStatus(status).into(),
+                    monitor_options.always_print_stacktrace,
+                ),
+                _ => (anyhow::anyhow!(reason), true),
+            };
+            (print_stack_trace, Err(error))
         }
         Err(e) => {
             // Some irrecoverable error happened, probably can't print the stack trace.
@@ -995,6 +1003,21 @@ pub async fn monitor(
     }
 
     result
+}
+
+/// The firmware exited with a non-zero status through semihosting.
+#[derive(Debug, thiserror::Error)]
+#[error("Firmware exited with status {0}")]
+pub struct FirmwareExitStatus(pub u32);
+
+impl FirmwareExitStatus {
+    /// Statuses that don't fit in an exit code map to 1, so a failure never reads as success.
+    pub fn exit_code(&self) -> u8 {
+        match u8::try_from(self.0) {
+            Ok(0) | Err(_) => 1,
+            Ok(code) => code,
+        }
+    }
 }
 
 /// Describes why the core halted, for a user who runs firmware and does not
@@ -1443,5 +1466,27 @@ impl Channel {
                 _ = copy_to.write_all(data.as_bytes()).await;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::FirmwareExitStatus;
+
+    #[test]
+    fn firmware_exit_code() {
+        assert_eq!(FirmwareExitStatus(1).exit_code(), 1);
+        assert_eq!(FirmwareExitStatus(42).exit_code(), 42);
+        assert_eq!(FirmwareExitStatus(255).exit_code(), 255);
+        // Must not be reported as success
+        assert_eq!(FirmwareExitStatus(256).exit_code(), 1);
+        assert_eq!(FirmwareExitStatus(0).exit_code(), 1);
+    }
+
+    #[test]
+    fn firmware_exit_status_through_anyhow() {
+        let error = anyhow::Error::from(FirmwareExitStatus(3)).context("while running");
+        let status = error.downcast_ref::<FirmwareExitStatus>().unwrap();
+        assert_eq!(status.exit_code(), 3);
     }
 }

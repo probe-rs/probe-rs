@@ -7,6 +7,7 @@ use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use std::process::ExitCode;
 use std::sync::Arc;
 use std::{ffi::OsString, path::PathBuf};
 
@@ -24,6 +25,7 @@ use serde::{Deserialize, Serialize};
 use time::{OffsetDateTime, UtcOffset};
 
 use crate::rpc::functions::RpcApp;
+use crate::util::cli::FirmwareExitStatus;
 use crate::util::logging::setup_logging;
 use probe_rs_rpc_client::{RemoteParams, RpcClient};
 
@@ -318,7 +320,20 @@ fn multicall_check(args: &[OsString], want: &str) -> Option<Vec<OsString>> {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> ExitCode {
+    match run().await {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+            eprintln!("Error: {error:?}");
+            let code = error
+                .downcast_ref::<FirmwareExitStatus>()
+                .map_or(1, FirmwareExitStatus::exit_code);
+            ExitCode::from(code)
+        }
+    }
+}
+
+async fn run() -> Result<()> {
     probe_rs_espressif::register_plugin();
     #[cfg(target_os = "linux")]
     probe_rs_linux::register_plugin();
