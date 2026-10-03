@@ -17,6 +17,7 @@ mod selector;
 pub mod sifliuart;
 pub mod stlink;
 pub mod swd;
+pub mod ti_icdi;
 pub mod wlink;
 pub mod xvc;
 
@@ -74,6 +75,7 @@ static DRIVERS: LazyLock<RwLock<Vec<&'static dyn ProbeFactory>>> = LazyLock::new
         &glasgow::GlasgowFactory,
         &ch347::Ch347Factory,
         &xvc::XvcFactory,
+        &ti_icdi::IcdiFactory,
     ];
 
     RwLock::new(probes)
