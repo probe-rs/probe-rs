@@ -29,7 +29,7 @@ use std::time::Duration;
 use gdbstub::common::Signal;
 use gdbstub::conn::ConnectionExt;
 use gdbstub::stub::state_machine::{GdbStubStateMachine, GdbStubStateMachineInner, state};
-use gdbstub::stub::{GdbStub, MultiThreadStopReason};
+use gdbstub::stub::{DisconnectReason, GdbStub, MultiThreadStopReason};
 use gdbstub::target::Target;
 use gdbstub::target::ext::base::BaseOps;
 use gdbstub::target::ext::breakpoints::BreakpointsOps;
@@ -166,17 +166,47 @@ impl RuntimeTarget {
 
         let mut wait_time = Duration::ZERO;
 
-        self.gdb = match gdb {
-            GdbStubStateMachine::Idle(state) => self.handle_idle(state, &mut wait_time)?,
-            GdbStubStateMachine::Running(state) => self.handle_running(state, &mut wait_time)?,
-            GdbStubStateMachine::CtrlCInterrupt(state) => self.handle_ctrl_c(state)?,
+        let result = match gdb {
+            GdbStubStateMachine::Idle(state) => self.handle_idle(state, &mut wait_time),
+            GdbStubStateMachine::Running(state) => self.handle_running(state, &mut wait_time),
+            GdbStubStateMachine::CtrlCInterrupt(state) => self.handle_ctrl_c(state),
             GdbStubStateMachine::Disconnected(state) => {
-                tracing::info!("GDB client disconnected: {:?}", state.get_reason());
-                None
+                let reason = state.get_reason();
+                tracing::info!("GDB client disconnected: {reason:?}");
+                // `detach` lets the program continue, as it does with any GDB target.
+                if matches!(reason, DisconnectReason::Disconnect)
+                    && let Err(e) = self.resume_all_cores()
+                {
+                    // Keep serving: the next client can still resume or reset the target.
+                    tracing::warn!(
+                        "Failed to resume the target after the GDB client detached: {e}"
+                    );
+                }
+                Ok(None)
             }
         };
 
+        self.gdb = match result {
+            Ok(next) => next,
+            // A client that disconnects mid-packet (e.g. a GDB batch script exiting right
+            // after `continue`) surfaces as an I/O error rather than as
+            // `GdbStubStateMachine::Disconnected`: gdbstub's `ConnectionExt::peek` for
+            // `TcpStream` reports EOF as an available byte, and the following read fails with
+            // `UnexpectedEof`. End only this client's session instead of the whole server.
+            Err(e) if is_disconnect_error(&e) => {
+                tracing::info!("GDB client connection lost: {e:#}");
+                None
+            }
+            Err(e) => return Err(e),
+        };
+
         Ok(wait_time)
+    }
+
+    fn resume_all_cores(&mut self) -> Result<(), ClientError> {
+        let cores = self.cores.iter().map(|core| core.index as u32).collect();
+        self.block_on(self.session.resume_cores(Some(cores)))?;
+        Ok(())
     }
 
     fn halt_all_cores(&mut self) -> Result<(), ClientError> {
@@ -301,6 +331,19 @@ impl Target for RuntimeTarget {
     fn guard_rail_implicit_sw_breakpoints(&self) -> bool {
         true
     }
+}
+
+/// Returns whether `err` is caused by a lost or closed client connection.
+fn is_disconnect_error(err: &anyhow::Error) -> bool {
+    err.downcast_ref::<std::io::Error>().is_some_and(|e| {
+        matches!(
+            e.kind(),
+            std::io::ErrorKind::UnexpectedEof
+                | std::io::ErrorKind::ConnectionReset
+                | std::io::ErrorKind::ConnectionAborted
+                | std::io::ErrorKind::BrokenPipe
+        )
+    })
 }
 
 fn read_if_available(conn: &mut TcpStream) -> Result<Option<u8>, anyhow::Error> {

@@ -82,6 +82,10 @@ impl Cmd {
             }
         }
 
+        // Resume the core explicitly, like `read` does, instead of relying on the teardown in
+        // `Session::drop`. Otherwise an ARM7TDMI core cannot be halted again on the next attach.
+        session.resume_all_cores().await?;
+
         Ok(())
     }
 }

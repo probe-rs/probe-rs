@@ -35,8 +35,10 @@ use crate::util::common_options::BinaryDownloadOptions;
 use crate::util::rtt::RttConfig;
 use crate::util::style::{Prompt, probe_rs_color_enabled};
 use crate::{CoreOptions, util::common_options::ProbeOptions};
+use probe_rs_rpc::core_ops::WireVectorCatchCondition;
+use probe_rs_rpc::flash::BootInfo;
 use probe_rs_rpc::format::FormatOptions;
-use probe_rs_rpc_client::RpcClient;
+use probe_rs_rpc_client::{RpcClient, SessionInterface};
 
 use super::dap_server::debug_adapter::dap::dap_types::Request;
 use super::dap_server::debug_adapter::dap::dap_types::Response;
@@ -189,7 +191,7 @@ pub struct Cmd {
     pub no_catch_hardfault: bool,
 
     /// Disable SVC vector catch (halts on SVC exception).
-    /// Only applies to ARMv7-A/R cores.
+    /// Only applies to ARMv7-A/R and ARMv4T (ARM7TDMI) cores.
     #[clap(long)]
     pub no_catch_svc: bool,
 
@@ -208,26 +210,47 @@ pub struct Cmd {
 
 impl Cmd {
     pub async fn run(self, client: RpcClient, utc_offset: UtcOffset) -> anyhow::Result<()> {
+        // With `--launch`, an image for a RAM-only target (`BootInfo::FromRam`) only runs
+        // after the PC is redirected to it (`prepare_boot`). The DAP launch handshake resets
+        // the core after flashing (`handle_launch_attach`), which would undo that redirect,
+        // so it is applied after the handshake instead, using a clone of the session. On
+        // targets whose reset clears RAM (e.g. the MC1322x) the image is written again first.
+        let mut pending_boot: Option<(SessionInterface, BootInfo)> = None;
         let preattached_session = if self.launch {
             if let Some(path) = &self.binary {
                 let (_file_meta, elf_meta) = parse_metadata(path).await?;
                 let session =
                     cli::attach_probe(&client, self.common.clone(), elf_meta, false).await?;
-                cli::flash(
+                let boot_info = cli::flash(
                     &session,
                     path,
                     FormatOptions::default(),
-                    self.download_options,
+                    self.download_options.clone(),
                     None,
                     None,
                 )
                 .await?;
+                // Only a RAM-boot image needs the redirect; for any other target the DAP
+                // launch handshake's own reset already starts the new image.
+                if matches!(boot_info, BootInfo::FromRam { .. }) {
+                    pending_boot = Some((session.clone(), boot_info));
+                }
                 Some(session)
             } else {
                 None
             }
         } else {
-            None
+            // Attach here as well, so the user can pick a probe interactively when several
+            // are connected: the DAP "attach" request is non-interactive and would fail. The
+            // DAP session reuses this connection. The core is not resumed, like in the DAP
+            // server's own attach: core metadata is read while halted (required on e.g.
+            // Armv7-A/R and RISC-V), and `configurationDone` resumes the core.
+            let elf_meta = if let Some(path) = &self.binary {
+                parse_metadata(path).await?.1
+            } else {
+                Default::default()
+            };
+            Some(cli::attach_probe(&client, self.common.clone(), elf_meta, false).await?)
         };
 
         let (req_sender, req_receiver) = mpsc::channel(100);
@@ -386,6 +409,41 @@ impl Cmd {
                         debug_client.process_event(&event, body)?;
                     }
                     break;
+                }
+            }
+        }
+
+        // The launch handshake (and its reset) is done: rewrite the RAM image and redirect
+        // the PC to it (see `pending_boot`). `prepare_boot` leaves the core halted, like
+        // `configurationDone` after a reset.
+        if let Some((session, boot_info)) = pending_boot
+            && server_result.is_none()
+            && let Some(path) = &self.binary
+        {
+            cli::reflash_silent(
+                &session,
+                path,
+                FormatOptions::default(),
+                self.download_options.clone(),
+                None,
+            )
+            .await?;
+            session.prepare_boot(boot_info, self.shared.core).await?;
+
+            // The re-flash reset also cleared the vector catch the debug session enabled when it
+            // attached; enable it again (ignoring targets that have none, like the session does).
+            let core = session.core(self.shared.core);
+            for (enabled, condition) in [
+                (
+                    !self.no_catch_hardfault,
+                    WireVectorCatchCondition::HardFault,
+                ),
+                (!self.no_catch_reset, WireVectorCatchCondition::CoreReset),
+                (!self.no_catch_svc, WireVectorCatchCondition::Svc),
+                (!self.no_catch_hlt, WireVectorCatchCondition::Hlt),
+            ] {
+                if enabled && let Err(e) = core.enable_vector_catch(condition).await {
+                    tracing::debug!("Not re-enabling vector catch {condition:?}: {e}");
                 }
             }
         }

@@ -6,6 +6,7 @@ use crate::{
             dp::DpAddress,
             sequences::{ArmDebugSequence, DefaultArmSequence},
         },
+        arm7::sequences::{Arm7tdmiDebugSequence, DefaultArm7tdmiSequence},
         riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
         xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
     },
@@ -118,10 +119,14 @@ impl Target {
         let debug_sequence = crate::vendor::try_create_debug_sequence(chip).unwrap_or_else(|| {
             // Default to the architecture of the first core, which is okay if
             // there is no mixed architectures.
-            match chip.cores[0].core_type.architecture() {
-                Architecture::Arm => DebugSequence::Arm(DefaultArmSequence::create()),
-                Architecture::Riscv => DebugSequence::Riscv(DefaultRiscvSequence::create()),
-                Architecture::Xtensa => DebugSequence::Xtensa(DefaultXtensaSequence::create()),
+            if chip.cores[0].core_type == probe_rs_target::CoreType::Armv4t {
+                DebugSequence::Armv4t(DefaultArm7tdmiSequence::create())
+            } else {
+                match chip.cores[0].core_type.architecture() {
+                    Architecture::Arm => DebugSequence::Arm(DefaultArmSequence::create()),
+                    Architecture::Riscv => DebugSequence::Riscv(DefaultRiscvSequence::create()),
+                    Architecture::Xtensa => DebugSequence::Xtensa(DefaultXtensaSequence::create()),
+                }
             }
         });
 
@@ -215,7 +220,7 @@ pub enum TargetSelector {
     /// targets.
     Unspecified(String),
     /// Directly specify a target.
-    Specified(Target),
+    Specified(Box<Target>),
     /// Try to automatically identify the target,
     /// by reading identifying information from
     /// the probe and / or target.
@@ -257,7 +262,7 @@ impl From<()> for TargetSelector {
 
 impl From<Target> for TargetSelector {
     fn from(target: Target) -> Self {
-        TargetSelector::Specified(target)
+        TargetSelector::Specified(Box::new(target))
     }
 }
 
@@ -267,6 +272,8 @@ impl From<Target> for TargetSelector {
 pub enum DebugSequence {
     /// An ARM debug sequence.
     Arm(Arc<dyn ArmDebugSequence>),
+    /// An ARMv4T (ARM7TDMI) debug sequence.
+    Armv4t(Arc<dyn Arm7tdmiDebugSequence>),
     /// A RISC-V debug sequence.
     Riscv(Arc<dyn RiscvDebugSequence>),
     /// An Xtensa debug sequence.
@@ -281,6 +288,9 @@ impl DebugSequence {
     pub fn debug_flash_sequence(&self) -> Option<Arc<dyn DebugFlashSequence>> {
         match self {
             DebugSequence::Arm(seq) => seq.debug_flash_sequence(),
+            // ARM7TDMI has no host-side flash sequence concept - it always flashes via the
+            // standard RAM-resident flash-algorithm mechanism.
+            DebugSequence::Armv4t(_) => None,
             DebugSequence::Riscv(seq) => seq.debug_flash_sequence(),
             DebugSequence::Xtensa(seq) => seq.debug_flash_sequence(),
         }
@@ -310,6 +320,7 @@ impl CoreExt for Core {
                     }
                 })
             }
+            probe_rs_target::CoreAccessOptions::Armv4t(_) => None,
             probe_rs_target::CoreAccessOptions::Riscv(options) => {
                 options.mem_ap.as_ref().map(|ap| {
                     let dp = DpAddress::Default;

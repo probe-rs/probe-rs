@@ -6,6 +6,8 @@ use tokio::runtime::Handle;
 
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::process::Child;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use super::GdbSessionContext;
@@ -63,6 +65,7 @@ pub fn run<'a>(
     context: GdbSessionContext,
     instances: impl Iterator<Item = &'a GdbInstanceConfiguration>,
     mut gdb_process: Option<Child>,
+    shutdown: Arc<AtomicBool>,
 ) -> anyhow::Result<()> {
     let mut targets = instances
         .map(|instance| {
@@ -81,6 +84,17 @@ pub fn run<'a>(
     }
 
     loop {
+        // Return normally instead of letting a signal kill the process, so the session is torn
+        // down (breakpoints cleared, cores resumed where the backend does that).
+        if shutdown.load(Ordering::Relaxed) {
+            if let Some(gdb_process) = &mut gdb_process {
+                // Don't leave a spawned gdb behind.
+                _ = gdb_process.kill();
+                _ = gdb_process.wait();
+            }
+            return Ok(());
+        }
+
         if let Some(gdb_process) = &mut gdb_process
             && let Some(exit_status) = gdb_process.try_wait()?
         {
@@ -96,7 +110,8 @@ pub fn run<'a>(
             wait_time = wait_time.min(target.process()?);
         }
 
-        std::thread::sleep(wait_time);
+        // Bounded, so a shutdown request is noticed promptly.
+        std::thread::sleep(wait_time.min(Duration::from_millis(100)));
     }
 }
 

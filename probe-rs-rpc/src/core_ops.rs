@@ -231,6 +231,7 @@ pub enum WireCoreType {
     Riscv,
     Riscv64,
     Xtensa,
+    Armv4t,
 }
 
 /// UI event produced by server-side semihosting handling, to be replayed on

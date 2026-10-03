@@ -25,7 +25,7 @@ use crate::session::Session;
 trait FlasherOps {
     fn algorithm_name(&self) -> &str;
     fn core_index(&self) -> usize;
-    fn double_buffering_supported(&self) -> bool;
+    fn double_buffering_supported(&self, session: &mut Session) -> Result<bool, FlashError>;
     fn is_chip_erase_supported(&self, session: &Session) -> bool;
     fn add_region(
         &mut self,
@@ -65,8 +65,8 @@ impl FlasherOps for Flasher {
     fn core_index(&self) -> usize {
         self.core_index
     }
-    fn double_buffering_supported(&self) -> bool {
-        Flasher::double_buffering_supported(self)
+    fn double_buffering_supported(&self, session: &mut Session) -> Result<bool, FlashError> {
+        Flasher::double_buffering_supported(self, session)
     }
     fn is_chip_erase_supported(&self, session: &Session) -> bool {
         Flasher::is_chip_erase_supported(self, session)
@@ -146,8 +146,8 @@ impl FlasherOps for HostSideFlasher {
     fn core_index(&self) -> usize {
         self.core_index
     }
-    fn double_buffering_supported(&self) -> bool {
-        HostSideFlasher::double_buffering_supported(self)
+    fn double_buffering_supported(&self, _session: &mut Session) -> Result<bool, FlashError> {
+        Ok(HostSideFlasher::double_buffering_supported(self))
     }
     fn is_chip_erase_supported(&self, session: &Session) -> bool {
         HostSideFlasher::is_chip_erase_supported(self, session)
@@ -438,6 +438,16 @@ mod builtin {
                     section.data.len(),
                     if section.data.len() == 1 { "" } else { "s" }
                 );
+            }
+
+            // Fall back to the ELF entry point if there is no `.vector_table` section. That
+            // section name is a `cortex-m-rt` convention; without an address, a RAM image built
+            // with another linker script would never be started (the core would keep running
+            // from its reset vector).
+            if flash_loader.vector_table_addr().is_none()
+                && let Ok(object_file) = object::File::parse(elf_buffer.as_slice())
+            {
+                flash_loader.set_vector_table_addr(object_file.entry());
             }
 
             for data in extracted_data {
@@ -843,6 +853,9 @@ impl FlashLoader {
             if !flasher.verify(session, progress, true)? {
                 return Err(FlashError::Verify);
             }
+
+            // See `flasher::reset_after_flash_operation`'s doc comment.
+            super::flasher::reset_after_flash_operation(session, flasher.core_index())?;
         }
 
         self.verify_ram(session)?;
@@ -891,7 +904,7 @@ impl FlashLoader {
                 did_chip_erase = true;
             }
 
-            let mut do_use_double_buffering = flasher.double_buffering_supported();
+            let mut do_use_double_buffering = flasher.double_buffering_supported(session)?;
             if do_use_double_buffering && options.disable_double_buffering {
                 tracing::info!(
                     "Disabled double-buffering support for loader via passed option, though target supports it."
@@ -908,6 +921,10 @@ impl FlashLoader {
                 options.skip_erase || did_chip_erase,
                 options.verify,
             )?;
+
+            // See `flasher::reset_after_flash_operation`. Called once per `algos` entry, after
+            // all of its erase/program/verify phases.
+            super::flasher::reset_after_flash_operation(session, flasher.core_index())?;
         }
 
         tracing::debug!("Committing RAM!");
