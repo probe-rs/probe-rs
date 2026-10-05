@@ -390,7 +390,7 @@ pub fn run_read(
     let mut progress = progress_callbacks();
 
     let raw_flash_algorithm = &session.target().flash_algorithms[algo_index];
-    let mut flasher = Flasher::new(session.target(), 0, &raw_flash_algorithm)?.with_rtt();
+    let mut flasher = Flasher::new(session.target(), 0, raw_flash_algorithm)?.with_rtt();
 
     flasher.run_read(session, &mut progress, |active, _region| {
         active.read_flash(address, data)
