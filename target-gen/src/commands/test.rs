@@ -1,8 +1,10 @@
 use std::path::Path;
 use std::time::Instant;
 
+use crate::commands::elf::cmd_elf;
 use anyhow::{Context, Result, anyhow};
 use colored::Colorize;
+use probe_rs::flashing::Flasher;
 use probe_rs::{
     MemoryInterface, Permissions, Session, SessionConfig,
     config::Registry,
@@ -14,8 +16,6 @@ use probe_rs::{
 };
 use probe_rs_target::RawFlashAlgorithm;
 use xshell::{Shell, cmd};
-use probe_rs::flashing::Flasher;
-use crate::commands::elf::cmd_elf;
 
 #[expect(clippy::too_many_arguments)]
 pub fn cmd_test(
@@ -124,7 +124,9 @@ pub fn cmd_test(
     // Register callback to update the progress.
     let mut progress = progress_callbacks();
 
-    let (algo_index, flash_algorithm) = if let Some(test_start_sector_address) = test_start_sector_address {
+    let (algo_index, flash_algorithm) = if let Some(test_start_sector_address) =
+        test_start_sector_address
+    {
         let predicate = |(_, x): &(usize, &RawFlashAlgorithm)| {
             x.flash_properties.address_range.start <= test_start_sector_address
                 && test_start_sector_address < x.flash_properties.address_range.end
@@ -194,7 +196,12 @@ pub fn cmd_test(
 
     if have_read {
         println!("{test}: Reading back two pages (via API) ...");
-        run_read(&mut session, algo_index, test_start_sector_address + 1, &mut readback)?;
+        run_read(
+            &mut session,
+            algo_index,
+            test_start_sector_address + 1,
+            &mut readback,
+        )?;
     } else {
         println!("{test}: Reading back two pages (via core) ...");
         session
@@ -227,7 +234,12 @@ pub fn cmd_test(
     let mut readback = vec![0; data_size as usize];
     if have_read {
         println!("{test}: Reading back two pages (via API) ...");
-        run_read(&mut session, algo_index, test_start_sector_address + 1, &mut readback)?;
+        run_read(
+            &mut session,
+            algo_index,
+            test_start_sector_address + 1,
+            &mut readback,
+        )?;
     } else {
         println!("{test}: Reading back two pages (via core) ...");
         session
@@ -273,7 +285,12 @@ pub fn cmd_test(
     let mut readback = vec![0; data_size as usize];
     if have_read {
         println!("{test}: Reading back two pages (via API) ...");
-        run_read(&mut session, algo_index, test_start_sector_address + 1, &mut readback)?;
+        run_read(
+            &mut session,
+            algo_index,
+            test_start_sector_address + 1,
+            &mut readback,
+        )?;
     } else {
         println!("{test}: Reading back two pages (via core) ...");
         session
@@ -364,12 +381,16 @@ pub fn run_flash_erase(session: &mut Session, erase_type: EraseType) -> Result<(
     Ok(())
 }
 
-pub fn run_read(session: &mut Session, algo_index: usize, address: u64, data: &mut [u8]) -> Result<()> {
+pub fn run_read(
+    session: &mut Session,
+    algo_index: usize,
+    address: u64,
+    data: &mut [u8],
+) -> Result<()> {
     let mut progress = progress_callbacks();
 
     let raw_flash_algorithm = &session.target().flash_algorithms[algo_index];
-    let mut flasher = Flasher::new(session.target(), 0, &raw_flash_algorithm)?
-        .with_rtt();
+    let mut flasher = Flasher::new(session.target(), 0, &raw_flash_algorithm)?.with_rtt();
 
     flasher.run_read(session, &mut progress, |active, _region| {
         active.read_flash(address, data)
