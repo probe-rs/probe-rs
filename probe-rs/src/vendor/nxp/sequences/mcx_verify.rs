@@ -38,6 +38,7 @@ const CCIF: u32 = 1 << 7;
 const ACCERR: u32 = 1 << 5;
 const PVIOL: u32 = 1 << 4;
 const CMDABT: u32 = 1 << 2;
+const FAIL: u32 = 1 << 0;
 
 /// Read into MISR.
 const CMD_RDMISR: u32 = 0x05;
@@ -145,8 +146,9 @@ impl FlashVerify for McxMisrVerify {
             }
         };
 
-        if status & (ACCERR | PVIOL | CMDABT) != 0 {
-            // The controller rejected the range rather than disagreeing about its contents.
+        // FAIL covers an uncorrectable ECC fault, which leaves no signature in FCCOB. It is a
+        // status flag, so it is not in the write that clears the rest.
+        if status & (ACCERR | PVIOL | CMDABT | FAIL) != 0 {
             tracing::debug!("RDMISR rejected {address:#010x}, FSTAT={status:#010x}");
             core.write_word_32(FSTAT, ACCERR | PVIOL | CMDABT)?;
             return Ok(VerifyOutcome::Unsupported);
