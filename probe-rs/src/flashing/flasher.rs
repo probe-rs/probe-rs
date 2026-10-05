@@ -400,22 +400,6 @@ impl Flasher {
         Ok(r)
     }
 
-    /// Initializes the flashing algorithm for the [`Read`] operation and provides an interface to it via the callback.
-    pub fn run_read<'p, T, F>(
-        &mut self,
-        session: &mut Session,
-        progress: &mut FlashProgress<'p>,
-        f: F,
-    ) -> Result<T, FlashError>
-    where
-        F: FnOnce(&mut ActiveFlasher<'_, 'p, Verify>, &mut [LoadedRegion]) -> Result<T, FlashError>,
-    {
-        let (mut active, data) = self.init(session, progress, None)?;
-        let r = f(&mut active, data)?;
-        active.uninit()?;
-        Ok(r)
-    }
-
     pub(super) fn is_chip_erase_supported(&self, session: &Session) -> bool {
         session.has_sequence_erase_all() || self.flash_algorithm().pc_erase_all.is_some()
     }

@@ -196,7 +196,7 @@ pub fn cmd_test(
 
     if have_read {
         println!("{test}: Reading back two pages (via API) ...");
-        run_read(
+        run_read_flash(
             &mut session,
             algo_index,
             test_start_sector_address + 1,
@@ -234,7 +234,7 @@ pub fn cmd_test(
     let mut readback = vec![0; data_size as usize];
     if have_read {
         println!("{test}: Reading back two pages (via API) ...");
-        run_read(
+        run_read_flash(
             &mut session,
             algo_index,
             test_start_sector_address + 1,
@@ -285,7 +285,7 @@ pub fn cmd_test(
     let mut readback = vec![0; data_size as usize];
     if have_read {
         println!("{test}: Reading back two pages (via API) ...");
-        run_read(
+        run_read_flash(
             &mut session,
             algo_index,
             test_start_sector_address + 1,
@@ -381,7 +381,7 @@ pub fn run_flash_erase(session: &mut Session, erase_type: EraseType) -> Result<(
     Ok(())
 }
 
-pub fn run_read(
+pub fn run_read_flash(
     session: &mut Session,
     algo_index: usize,
     address: u64,
@@ -392,7 +392,7 @@ pub fn run_read(
     let raw_flash_algorithm = &session.target().flash_algorithms[algo_index];
     let mut flasher = Flasher::new(session.target(), 0, raw_flash_algorithm)?.with_rtt();
 
-    flasher.run_read(session, &mut progress, |active, _region| {
+    flasher.run_verify(session, &mut progress, |active, _region| {
         active.read_flash(address, data)
     })?;
     Ok(())
