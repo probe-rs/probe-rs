@@ -1046,7 +1046,7 @@ variants:
     name: BootROM
     range:
       start: 0x3000000
-      end: 0x3002000
+      end: 0x3040000
     cores:
     - main
     access:
@@ -1066,10 +1066,24 @@ variants:
     cores:
     - main
   - !Ram
+    name: SRAMX2
+    range:
+      start: 0x4010000
+      end: 0x4018000
+    cores:
+    - main
+  - !Ram
+    name: SRAMX3
+    range:
+      start: 0x4018000
+      end: 0x4020000
+    cores:
+    - main
+  - !Ram
     name: SRAM
     range:
       start: 0x20000000
-      end: 0x200a0000
+      end: 0x20080000
     cores:
     - main
   flash_algorithms:
