@@ -16,7 +16,8 @@ description = "A collection of on chip debugging tools to communicate with micro
 default-run = "probe-rs"
 
 [features]
-default = ["remote"]
+default = ["remote", "cmsisdap_v1"]
+cmsisdap_v1 = ["probe-rs/cmsisdap_v1"]
 # Include server/client functionality. Disable with `--no-default-features`.
 remote = ["dep:axum", "probe-rs-rpc/remote", "probe-rs-rpc-client/remote"]
 
@@ -102,7 +103,7 @@ zip = { version = "8.0.0", default-features = false, features = [
 urlencoding = "2"
 svg = "0.18"
 
-probe-rs = { version = "0.32.0", path = "../probe-rs" }
+probe-rs = { version = "0.32.0", path = "../probe-rs", default-features = false, features = ["builtin-targets", "builtin-formats", "coredump"] }
 probe-rs-debug = { version = "0.32.0", path = "../probe-rs-debug" }
 probe-rs-zephyr.workspace = true
 probe-rs-mi.workspace = true
