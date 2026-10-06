@@ -131,6 +131,8 @@ impl JtagAdapter {
             (0x0403, 0x6010, "Digilent Adept USB Device") => (0x0088, 0x008b),
             // Built-in Digilent HS1 (on-board)
             (0x0403, 0x6010, "Digilent USB Device") => (0x0088, 0x008b),
+            // TinCanTools Flyswatter2
+            (0x0403, 0x6010, "Flyswatter2") => (0x0538, 0x057b),
             // Other devices:
             // TMS starts high
             // TMS, TDO and TCK are outputs
