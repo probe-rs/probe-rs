@@ -2,7 +2,7 @@
 
 use super::{
     CortexMState, Dfsr,
-    cortex_m::Mvfr0,
+    cortex_m::{Mvfr0, exit_halt},
     registers::cortex_m::{
         CORTEX_M_CORE_REGISTERS, CORTEX_M_WITH_FP_CORE_REGISTERS, FP, PC, RA, SP,
     },
@@ -834,24 +834,7 @@ impl CoreInterface for Armv7m<'_> {
         }
         self.state.pc_written = false;
 
-        let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
-
-        // First disable the DHCSR->C_MASKINTS.
-        if dhcsr.c_maskints() {
-            dhcsr.set_c_maskints(false);
-            dhcsr.enable_write();
-            self.memory
-                .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
-            self.memory.flush()?;
-        }
-
-        // Exit halt state ..
-        dhcsr.set_c_step(false);
-        dhcsr.set_c_halt(false);
-        dhcsr.enable_write();
-        self.memory
-            .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
-        self.memory.flush()?;
+        exit_halt(&mut *self.memory, false)?;
 
         // We assume that the core is running now
         self.set_core_status(CoreStatus::Running);
@@ -933,29 +916,10 @@ impl CoreInterface for Armv7m<'_> {
             None
         };
 
-        let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
-
-        // Follow the rules of the ... ARMv7-M Architecture reference, C1.6 Debug System Registers - DHCSR, with respect to setting maskints
-        if !dhcsr.c_debugen() {
-            tracing::warn!("Attempting to STEP while DHCSR->C_DEBUGEN is false");
-        }
-        if !dhcsr.c_maskints() {
-            dhcsr.set_c_maskints(true); // This must be reset to false when we run() again.
-            dhcsr.enable_write();
-            self.memory
-                .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
-            self.memory.flush()?;
-        }
-
         // Leave halted state.
         // Step one instruction.
         self.state.begin_step();
-        dhcsr.set_c_step(true);
-        dhcsr.set_c_halt(false);
-        dhcsr.enable_write();
-        self.memory
-            .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
-        self.memory.flush()?;
+        exit_halt(&mut *self.memory, true)?;
 
         // The single-step might put the core in lockup state. Lockup isn't considered "halted"
         // so we can't use `wait_for_core_halted` here.

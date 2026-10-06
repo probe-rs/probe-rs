@@ -200,6 +200,33 @@ pub(crate) fn write_core_reg(
     wait_for_core_register_transfer(memory, Duration::from_millis(100))
 }
 
+/// Leave Debug state, either running freely or stepping one instruction.
+///
+/// A single DHCSR write cannot clear C_HALT and change C_MASKINTS, so C_MASKINTS is settled in
+/// its own write first. See ARM DDI 0419E C1.6.3, DDI 0403E.e C1.6.3 and DDI 0553B.v D1.2.38.
+pub(crate) fn exit_halt(memory: &mut dyn ArmMemoryInterface, step: bool) -> Result<(), ArmError> {
+    let mut dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address())?);
+
+    if !dhcsr.c_debugen() {
+        tracing::warn!("Leaving halt while DHCSR.C_DEBUGEN is false");
+    }
+
+    // C_HALT stays 1 in this write, which is what makes the C_MASKINTS change predictable.
+    if dhcsr.c_maskints() != step {
+        dhcsr.set_c_maskints(step);
+        dhcsr.enable_write();
+        memory.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
+        memory.flush()?;
+    }
+
+    dhcsr.set_c_step(step);
+    dhcsr.set_c_halt(false);
+    dhcsr.set_c_debugen(true);
+    dhcsr.enable_write();
+    memory.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
+    memory.flush()
+}
+
 /// Check if the current breakpoint is a semihosting call.
 ///
 /// Call this if you get some kind of breakpoint. Works on ARMv6-M, ARMv7-M and ARMv8-M.

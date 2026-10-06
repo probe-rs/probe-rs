@@ -1,6 +1,6 @@
 //! Register types and the core interface for armv6-M
 
-use super::{CortexMState, Dfsr, registers::cortex_m::*};
+use super::{CortexMState, Dfsr, cortex_m::exit_halt, registers::cortex_m::*};
 use crate::{
     Architecture, BreakpointCause, CoreInformation, CoreInterface, CoreRegister, CoreStatus,
     CoreType, HaltReason, InstructionSet, MemoryInterface, MemoryMappedRegister,
@@ -611,25 +611,7 @@ impl CoreInterface for Armv6m<'_> {
         }
         self.state.pc_written = false;
 
-        let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
-
-        // A single write cannot clear C_HALT and change C_MASKINTS, so unmask first.
-        if dhcsr.c_maskints() {
-            dhcsr.set_c_maskints(false);
-            dhcsr.enable_write();
-            self.memory
-                .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
-            self.memory.flush()?;
-        }
-
-        dhcsr.set_c_step(false);
-        dhcsr.set_c_halt(false);
-        dhcsr.set_c_debugen(true);
-        dhcsr.enable_write();
-
-        self.memory
-            .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
-        self.memory.flush()?;
+        exit_halt(&mut *self.memory, false)?;
 
         // We assume that the core is running now.
         self.set_core_status(CoreStatus::Running);
@@ -708,28 +690,8 @@ impl CoreInterface for Armv6m<'_> {
             None
         };
 
-        let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
-
-        // A single write cannot clear C_HALT and change C_MASKINTS, so mask first.
-        if !dhcsr.c_maskints() {
-            dhcsr.set_c_maskints(true);
-            dhcsr.enable_write();
-            self.memory
-                .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
-            self.memory.flush()?;
-        }
-
-        // Leave halted state.
-        // Step one instruction.
         self.state.begin_step();
-        dhcsr.set_c_step(true);
-        dhcsr.set_c_halt(false);
-        dhcsr.set_c_debugen(true);
-        dhcsr.enable_write();
-
-        self.memory
-            .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
-        self.memory.flush()?;
+        exit_halt(&mut *self.memory, true)?;
 
         // The single-step might put the core in lockup state. Lockup isn't considered "halted"
         // so we can't use `wait_for_core_halted` here.
