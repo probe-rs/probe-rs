@@ -555,6 +555,7 @@ impl CoreInterface for Armv8m<'_> {
     fn enable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
         let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
         dhcsr.set_c_debugen(true);
+        dhcsr.enable_write();
         self.memory
             .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
 
