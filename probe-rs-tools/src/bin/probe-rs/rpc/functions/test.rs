@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use anyhow::Context;
 use postcard_rpc::{header::VarHeader, server::Sender};
-use probe_rs::{BreakpointCause, Core, HaltReason, semihosting::SemihostingCommand};
+use probe_rs::{BreakpointCause, Core, CoreType, HaltReason, semihosting::SemihostingCommand};
 use probe_rs_rpc::test::{
     ListTestsRequest, RunTestRequest, Test, TestDefinitions, TestKickoffRequest,
     TestKickoffResponse, TestOutcome, TestResult, Tests,
@@ -142,13 +142,15 @@ fn run_test_impl(
 
     {
         let mut session = shared_session.session_blocking();
-        // Use the same boot mechanism `list_tests_impl` already uses, instead of an
-        // unconditional real hardware reset: for a RAM-resident target (`BootInfo::FromRam`),
-        // `prepare_boot_info` only redirects PC (`Session::prepare_running_on_ram`) rather than
-        // resetting the chip - necessary because a real reset can wipe the RAM image the test
-        // binary lives in. Flash-resident targets (`BootInfo::Other`) still get a real
-        // `reset_and_halt` via the same function, so this is not a behavior change for them.
-        prepare_boot_info(&request.boot_info, &mut session, core_id)?;
+        if session.target().cores[core_id].core_type == CoreType::Armv4t {
+            // A reset wipes RAM on ARMv4T targets (MC1322x), so a RAM image is only restarted
+            // (`prepare_running_on_ram`), like in `list_tests_impl`.
+            prepare_boot_info(&request.boot_info, &mut session, core_id)?;
+        } else {
+            session
+                .core(core_id)?
+                .reset_and_halt(Duration::from_millis(500))?;
+        }
     }
 
     let expected_outcome = request.test.expected_outcome;

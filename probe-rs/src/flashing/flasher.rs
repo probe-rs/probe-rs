@@ -186,9 +186,11 @@ pub(super) fn reset_after_flash_operation(
     session: &mut Session,
     core_index: usize,
 ) -> Result<(), FlashError> {
-    let mut core = session.core(core_index).map_err(FlashError::Core)?;
-    if core.core_type() == CoreType::Armv4t {
-        core.reset().map_err(FlashError::Core)?;
+    if session.target().cores[core_index].core_type == CoreType::Armv4t {
+        session
+            .core(core_index)
+            .and_then(|mut core| core.reset())
+            .map_err(FlashError::Core)?;
     }
     Ok(())
 }
@@ -235,11 +237,7 @@ impl Flasher {
         // ARMv4T has no MEM-AP equivalent: memory can only be accessed while the core is
         // halted, so the next page buffer cannot be loaded while the previous page is being
         // written.
-        let core_type = session
-            .core(self.core_index)
-            .map_err(FlashError::Core)?
-            .core_type();
-        if core_type == CoreType::Armv4t {
+        if session.target().cores[self.core_index].core_type == CoreType::Armv4t {
             return Ok(false);
         }
 

@@ -68,6 +68,9 @@ pub struct Arm7tdmiState {
     /// call, so repeated polls don't redo the register/memory reads (or repeat a warning).
     /// Cleared whenever the core runs, steps or resets.
     svc_halt_checked: bool,
+    /// Whether PC was redirected since the core halted: `run()` then has no breakpoint to step
+    /// over (like Cortex-M's `pc_written`).
+    pc_written: bool,
 }
 
 impl Arm7tdmiState {
@@ -82,6 +85,7 @@ impl Arm7tdmiState {
             svc_vector_catch_enabled: false,
             semihosting_command: None,
             svc_halt_checked: false,
+            pc_written: false,
         }
     }
 }
@@ -269,6 +273,34 @@ impl<'probe> Arm7tdmi<'probe> {
         result
     }
 
+    /// Run a memory access, which needs a halted core (it executes LDM/STM on the core).
+    ///
+    /// A core last seen running is halted for the access and resumed afterwards, like a
+    /// Cortex-M memory access leaves the core running (e.g. RTT polling). A halt the core reached
+    /// on its own since is latched through `status()` first. The resume is a plain one, not
+    /// `run()`: a breakpoint at the halt PC must still trap instead of being stepped over.
+    fn with_halted_core<T>(
+        &mut self,
+        access: impl FnOnce(&mut Self) -> Result<T, Error>,
+    ) -> Result<T, Error> {
+        if self.state.current_state != CoreStatus::Running
+            || matches!(self.status()?, CoreStatus::Halted(_))
+        {
+            return access(self);
+        }
+
+        self.halt(Duration::from_millis(500))?;
+        let result = access(self);
+        let resumed = self.interface.resume();
+        self.state.current_state = CoreStatus::Running;
+        // At the SVC vector, the vector catch traps again on the refetch.
+        self.state.semihosting_command = None;
+        self.state.svc_halt_checked = false;
+        let value = result?;
+        resumed?;
+        Ok(value)
+    }
+
     /// Create a new ARM7TDMI core
     pub fn new(
         interface: Arm7tdmiCommunicationInterface<'probe>,
@@ -342,6 +374,10 @@ impl<'probe> CoreInterface for Arm7tdmi<'probe> {
         if !is_halted {
             self.state.current_state = CoreStatus::Running;
             self.state.svc_halt_checked = false;
+            // A command cached for a halt that didn't stick would make the next `run()` return
+            // from an exception the core isn't in.
+            self.state.semihosting_command = None;
+            self.state.pc_written = false;
             return Ok(self.state.current_state);
         }
 
@@ -400,6 +436,7 @@ impl<'probe> CoreInterface for Arm7tdmi<'probe> {
     }
 
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
+        self.state.pc_written = false;
         self.halt_precisely()?;
 
         // Set before `wait_for_core_halted`: `status()` can't tell why the core halted, and it
@@ -421,14 +458,16 @@ impl<'probe> CoreInterface for Arm7tdmi<'probe> {
 
     fn run(&mut self) -> Result<(), Error> {
         self.state.svc_halt_checked = false;
+        let pc_written = std::mem::take(&mut self.state.pc_written);
         if self.state.semihosting_command.take().is_some() {
             // Halted at the SVC vector for a semihosting call: return to the caller as the SVC
             // would have.
             self.interface.return_from_exception()?;
-        } else if self
-            .interface
-            .cached_halt_pc()
-            .is_some_and(|pc| self.state.hw_breakpoints.contains(&Some(pc as u64)))
+        } else if !pc_written
+            && self
+                .interface
+                .cached_halt_pc()
+                .is_some_and(|pc| self.state.hw_breakpoints.contains(&Some(pc as u64)))
         {
             // Step over a hardware breakpoint at the halt PC first, or the core re-traps
             // immediately. Other backends always step first; here it is limited to breakpoint
@@ -453,6 +492,7 @@ impl<'probe> CoreInterface for Arm7tdmi<'probe> {
     }
 
     fn reset(&mut self) -> Result<(), Error> {
+        self.state.pc_written = false;
         self.sequence.reset_system(&mut self.interface)?;
         // A stale command would make `run()` return from an exception the reset left.
         self.state.semihosting_command = None;
@@ -469,6 +509,7 @@ impl<'probe> CoreInterface for Arm7tdmi<'probe> {
     }
 
     fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
+        self.state.pc_written = false;
         self.state.semihosting_command = None;
         self.state.svc_halt_checked = false;
         // The reset clears the units, see `reset`.
@@ -502,6 +543,7 @@ impl<'probe> CoreInterface for Arm7tdmi<'probe> {
         // pending, so a later `run()` must not return from it.
         self.state.semihosting_command = None;
         self.state.svc_halt_checked = false;
+        self.state.pc_written = false;
         // Predict the next PC by simulating the current instruction, like OpenOCD's
         // `arm7_9_step`/`arm_simulate_step` (see `step_sim`), then run to it with both units as
         // a range-chained pair (see `configure_step_watchpoints`); a lone watchpoint one
@@ -575,6 +617,7 @@ impl<'probe> CoreInterface for Arm7tdmi<'probe> {
             // the call.) A PC set to the SVC vector again is checked afresh.
             self.state.semihosting_command = None;
             self.state.svc_halt_checked = false;
+            self.state.pc_written = true;
         }
         Ok(())
     }
@@ -796,24 +839,30 @@ impl<'probe> MemoryInterface for Arm7tdmi<'probe> {
     }
 
     fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
-        check_alignment(address, 4)?;
-        let address = valid_32bit_address(address)?;
-        Ok(self.interface.read_memory_32(address)?)
+        self.with_halted_core(|core| {
+            check_alignment(address, 4)?;
+            let address = valid_32bit_address(address)?;
+            Ok(core.interface.read_memory_32(address)?)
+        })
     }
 
     fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
-        check_alignment(address, 2)?;
-        let address = valid_32bit_address(address)?;
-        let word = self.interface.read_memory_32(address & !0x3)?;
-        let offset = (address & 0x3) * 8;
-        Ok(((word >> offset) & 0xFFFF) as u16)
+        self.with_halted_core(|core| {
+            check_alignment(address, 2)?;
+            let address = valid_32bit_address(address)?;
+            let word = core.interface.read_memory_32(address & !0x3)?;
+            let offset = (address & 0x3) * 8;
+            Ok(((word >> offset) & 0xFFFF) as u16)
+        })
     }
 
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
-        let address = valid_32bit_address(address)?;
-        let word = self.interface.read_memory_32(address & !0x3)?;
-        let offset = (address & 0x3) * 8;
-        Ok(((word >> offset) & 0xFF) as u8)
+        self.with_halted_core(|core| {
+            let address = valid_32bit_address(address)?;
+            let word = core.interface.read_memory_32(address & !0x3)?;
+            let offset = (address & 0x3) * 8;
+            Ok(((word >> offset) & 0xFF) as u8)
+        })
     }
 
     fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), Error> {
@@ -823,81 +872,87 @@ impl<'probe> MemoryInterface for Arm7tdmi<'probe> {
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
-        // The burst form avoids per-word `STICKY_HALT` toggles (see `write_memory_32_bulk`).
-        check_alignment(address, 4)?;
-        let address = valid_32bit_address(address)?;
-        let values = self.interface.read_memory_32_bulk(address, data.len())?;
-        data.copy_from_slice(&values);
-        Ok(())
+        self.with_halted_core(|core| {
+            // The burst form avoids per-word `STICKY_HALT` toggles (see `write_memory_32_bulk`).
+            check_alignment(address, 4)?;
+            let address = valid_32bit_address(address)?;
+            let values = core.interface.read_memory_32_bulk(address, data.len())?;
+            data.copy_from_slice(&values);
+            Ok(())
+        })
     }
 
     fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
-        // Aligned pairs go through `read_memory_32_bulk`; only an unaligned leading/trailing
-        // halfword uses `read_word_16`.
-        if data.is_empty() {
-            return Ok(());
-        }
-
-        check_alignment(address, 2)?;
-        let mut address = valid_32bit_address(address)?;
-        let mut data = data;
-
-        if address & 0x3 != 0 {
-            data[0] = self.read_word_16(address as u64)?;
-            address = address.wrapping_add(2);
-            data = &mut data[1..];
-        }
-
-        let paired = data.len() / 2;
-        if paired > 0 {
-            let words = self.interface.read_memory_32_bulk(address, paired)?;
-            for (i, word) in words.into_iter().enumerate() {
-                data[i * 2] = (word & 0xFFFF) as u16;
-                data[i * 2 + 1] = (word >> 16) as u16;
+        self.with_halted_core(|core| {
+            // Aligned pairs go through `read_memory_32_bulk`; only an unaligned leading/trailing
+            // halfword uses `read_word_16`.
+            if data.is_empty() {
+                return Ok(());
             }
-            address = address.wrapping_add((paired as u32) * 4);
-            data = &mut data[paired * 2..];
-        }
 
-        if let Some(trailing) = data.first_mut() {
-            *trailing = self.read_word_16(address as u64)?;
-        }
+            check_alignment(address, 2)?;
+            let mut address = valid_32bit_address(address)?;
+            let mut data = data;
 
-        Ok(())
+            if address & 0x3 != 0 {
+                data[0] = core.read_word_16(address as u64)?;
+                address = address.wrapping_add(2);
+                data = &mut data[1..];
+            }
+
+            let paired = data.len() / 2;
+            if paired > 0 {
+                let words = core.interface.read_memory_32_bulk(address, paired)?;
+                for (i, word) in words.into_iter().enumerate() {
+                    data[i * 2] = (word & 0xFFFF) as u16;
+                    data[i * 2 + 1] = (word >> 16) as u16;
+                }
+                address = address.wrapping_add((paired as u32) * 4);
+                data = &mut data[paired * 2..];
+            }
+
+            if let Some(trailing) = data.first_mut() {
+                *trailing = core.read_word_16(address as u64)?;
+            }
+
+            Ok(())
+        })
     }
 
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
-        // Aligned words go through `read_memory_32_bulk`; only up to 3 bytes at each end use
-        // `read_word_8`.
-        if data.is_empty() {
-            return Ok(());
-        }
-
-        let mut address = valid_32bit_address(address)?;
-        let mut data = data;
-
-        while address & 0x3 != 0 && !data.is_empty() {
-            data[0] = self.read_word_8(address as u64)?;
-            address = address.wrapping_add(1);
-            data = &mut data[1..];
-        }
-
-        let full_words = data.len() / 4;
-        if full_words > 0 {
-            let words = self.interface.read_memory_32_bulk(address, full_words)?;
-            for (i, word) in words.into_iter().enumerate() {
-                data[i * 4..i * 4 + 4].copy_from_slice(&word.to_le_bytes());
+        self.with_halted_core(|core| {
+            // Aligned words go through `read_memory_32_bulk`; only up to 3 bytes at each end use
+            // `read_word_8`.
+            if data.is_empty() {
+                return Ok(());
             }
-            address = address.wrapping_add((full_words as u32) * 4);
-            data = &mut data[full_words * 4..];
-        }
 
-        for byte in data.iter_mut() {
-            *byte = self.read_word_8(address as u64)?;
-            address = address.wrapping_add(1);
-        }
+            let mut address = valid_32bit_address(address)?;
+            let mut data = data;
 
-        Ok(())
+            while address & 0x3 != 0 && !data.is_empty() {
+                data[0] = core.read_word_8(address as u64)?;
+                address = address.wrapping_add(1);
+                data = &mut data[1..];
+            }
+
+            let full_words = data.len() / 4;
+            if full_words > 0 {
+                let words = core.interface.read_memory_32_bulk(address, full_words)?;
+                for (i, word) in words.into_iter().enumerate() {
+                    data[i * 4..i * 4 + 4].copy_from_slice(&word.to_le_bytes());
+                }
+                address = address.wrapping_add((full_words as u32) * 4);
+                data = &mut data[full_words * 4..];
+            }
+
+            for byte in data.iter_mut() {
+                *byte = core.read_word_8(address as u64)?;
+                address = address.wrapping_add(1);
+            }
+
+            Ok(())
+        })
     }
 
     fn write_word_64(&mut self, _address: u64, _data: u64) -> Result<(), Error> {
@@ -907,33 +962,39 @@ impl<'probe> MemoryInterface for Arm7tdmi<'probe> {
     }
 
     fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
-        check_alignment(address, 4)?;
-        let address = valid_32bit_address(address)?;
-        self.interface.write_memory_32(address, data)?;
-        Ok(())
+        self.with_halted_core(|core| {
+            check_alignment(address, 4)?;
+            let address = valid_32bit_address(address)?;
+            core.interface.write_memory_32(address, data)?;
+            Ok(())
+        })
     }
 
     fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
-        check_alignment(address, 2)?;
-        let address = valid_32bit_address(address)?;
-        let aligned_addr = address & !0x3;
-        let word = self.interface.read_memory_32(aligned_addr)?;
-        let offset = (address & 0x3) * 8;
-        let mask = !(0xFFFF << offset);
-        let new_word = (word & mask) | ((data as u32) << offset);
-        self.interface.write_memory_32(aligned_addr, new_word)?;
-        Ok(())
+        self.with_halted_core(|core| {
+            check_alignment(address, 2)?;
+            let address = valid_32bit_address(address)?;
+            let aligned_addr = address & !0x3;
+            let word = core.interface.read_memory_32(aligned_addr)?;
+            let offset = (address & 0x3) * 8;
+            let mask = !(0xFFFF << offset);
+            let new_word = (word & mask) | ((data as u32) << offset);
+            core.interface.write_memory_32(aligned_addr, new_word)?;
+            Ok(())
+        })
     }
 
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
-        let address = valid_32bit_address(address)?;
-        let aligned_addr = address & !0x3;
-        let word = self.interface.read_memory_32(aligned_addr)?;
-        let offset = (address & 0x3) * 8;
-        let mask = !(0xFF << offset);
-        let new_word = (word & mask) | ((data as u32) << offset);
-        self.interface.write_memory_32(aligned_addr, new_word)?;
-        Ok(())
+        self.with_halted_core(|core| {
+            let address = valid_32bit_address(address)?;
+            let aligned_addr = address & !0x3;
+            let word = core.interface.read_memory_32(aligned_addr)?;
+            let offset = (address & 0x3) * 8;
+            let mask = !(0xFF << offset);
+            let new_word = (word & mask) | ((data as u32) << offset);
+            core.interface.write_memory_32(aligned_addr, new_word)?;
+            Ok(())
+        })
     }
 
     fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), Error> {
@@ -943,86 +1004,92 @@ impl<'probe> MemoryInterface for Arm7tdmi<'probe> {
     }
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
-        check_alignment(address, 4)?;
-        let address = valid_32bit_address(address)?;
-        // The burst form, see `write_memory_32_bulk` (per-word `STICKY_HALT` toggles drift PC).
-        self.interface.write_memory_32_bulk(address, data)?;
-        Ok(())
+        self.with_halted_core(|core| {
+            check_alignment(address, 4)?;
+            let address = valid_32bit_address(address)?;
+            // The burst form, see `write_memory_32_bulk` (per-word `STICKY_HALT` toggles drift PC).
+            core.interface.write_memory_32_bulk(address, data)?;
+            Ok(())
+        })
     }
 
     fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
-        // `write_word_16` is a read-modify-write of two system-speed accesses, so aligned pairs
-        // go through `write_memory_32_bulk` (see there); only an unaligned leading/trailing
-        // halfword uses the read-modify-write path.
-        if data.is_empty() {
-            return Ok(());
-        }
+        self.with_halted_core(|core| {
+            // `write_word_16` is a read-modify-write of two system-speed accesses, so aligned pairs
+            // go through `write_memory_32_bulk` (see there); only an unaligned leading/trailing
+            // halfword uses the read-modify-write path.
+            if data.is_empty() {
+                return Ok(());
+            }
 
-        check_alignment(address, 2)?;
-        let mut address = valid_32bit_address(address)?;
-        let mut data = data;
+            check_alignment(address, 2)?;
+            let mut address = valid_32bit_address(address)?;
+            let mut data = data;
 
-        if address & 0x3 != 0 {
-            self.write_word_16(address as u64, data[0])?;
-            address = address.wrapping_add(2);
-            data = &data[1..];
-        }
+            if address & 0x3 != 0 {
+                core.write_word_16(address as u64, data[0])?;
+                address = address.wrapping_add(2);
+                data = &data[1..];
+            }
 
-        let paired = data.len() / 2;
-        if paired > 0 {
-            let words: Vec<u32> = data[..paired * 2]
-                .as_chunks::<2>()
-                .0
-                .iter()
-                .map(|pair| (pair[0] as u32) | ((pair[1] as u32) << 16))
-                .collect();
-            self.interface.write_memory_32_bulk(address, &words)?;
-            address = address.wrapping_add((paired as u32) * 4);
-            data = &data[paired * 2..];
-        }
+            let paired = data.len() / 2;
+            if paired > 0 {
+                let words: Vec<u32> = data[..paired * 2]
+                    .as_chunks::<2>()
+                    .0
+                    .iter()
+                    .map(|pair| (pair[0] as u32) | ((pair[1] as u32) << 16))
+                    .collect();
+                core.interface.write_memory_32_bulk(address, &words)?;
+                address = address.wrapping_add((paired as u32) * 4);
+                data = &data[paired * 2..];
+            }
 
-        if let Some(&trailing) = data.first() {
-            self.write_word_16(address as u64, trailing)?;
-        }
+            if let Some(&trailing) = data.first() {
+                core.write_word_16(address as u64, trailing)?;
+            }
 
-        Ok(())
+            Ok(())
+        })
     }
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        // As in `write_16`: aligned words go through `write_memory_32_bulk`, only up to 3 bytes
-        // at each end use the `write_word_8` read-modify-write.
-        if data.is_empty() {
-            return Ok(());
-        }
+        self.with_halted_core(|core| {
+            // As in `write_16`: aligned words go through `write_memory_32_bulk`, only up to 3 bytes
+            // at each end use the `write_word_8` read-modify-write.
+            if data.is_empty() {
+                return Ok(());
+            }
 
-        let mut address = valid_32bit_address(address)?;
-        let mut data = data;
+            let mut address = valid_32bit_address(address)?;
+            let mut data = data;
 
-        while address & 0x3 != 0 && !data.is_empty() {
-            self.write_word_8(address as u64, data[0])?;
-            address = address.wrapping_add(1);
-            data = &data[1..];
-        }
+            while address & 0x3 != 0 && !data.is_empty() {
+                core.write_word_8(address as u64, data[0])?;
+                address = address.wrapping_add(1);
+                data = &data[1..];
+            }
 
-        let full_words = data.len() / 4;
-        if full_words > 0 {
-            let words: Vec<u32> = data[..full_words * 4]
-                .as_chunks::<4>()
-                .0
-                .iter()
-                .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
-                .collect();
-            self.interface.write_memory_32_bulk(address, &words)?;
-            address = address.wrapping_add((full_words as u32) * 4);
-            data = &data[full_words * 4..];
-        }
+            let full_words = data.len() / 4;
+            if full_words > 0 {
+                let words: Vec<u32> = data[..full_words * 4]
+                    .as_chunks::<4>()
+                    .0
+                    .iter()
+                    .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+                    .collect();
+                core.interface.write_memory_32_bulk(address, &words)?;
+                address = address.wrapping_add((full_words as u32) * 4);
+                data = &data[full_words * 4..];
+            }
 
-        for &byte in data {
-            self.write_word_8(address as u64, byte)?;
-            address = address.wrapping_add(1);
-        }
+            for &byte in data {
+                core.write_word_8(address as u64, byte)?;
+                address = address.wrapping_add(1);
+            }
 
-        Ok(())
+            Ok(())
+        })
     }
 
     // The default `write()` already splits into an aligned `write_32` burst plus up to 3 bytes

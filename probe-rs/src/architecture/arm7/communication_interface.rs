@@ -408,6 +408,13 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
         }
     }
 
+    /// Drop the cached IR and scan chain selection after a failed batch: the TAP may hold
+    /// either the old or the new selection.
+    fn forget_tap_selection(&mut self) {
+        self.current_instruction = None;
+        self.current_scan_chain = None;
+    }
+
     /// Reset the JTAG TAP and read back its IDCODE.
     ///
     /// Unlike `Self::init` this does not touch the EmbeddedICE units, so it is safe for plain
@@ -415,7 +422,9 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
     pub fn read_idcode(&mut self) -> Result<u32, Arm7tdmiError> {
         let mut batch = JtagBatch::new();
         self.probe.tap_reset(&mut batch);
-        self.probe.run(batch)?;
+        self.probe
+            .run(batch)
+            .inspect_err(|_| self.forget_tap_selection())?;
         // TAP reset invalidates the cached IR/scan chain selection.
         self.current_instruction = None;
         self.current_scan_chain = None;
@@ -473,7 +482,10 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
         }
         let handle = self.probe.exchange_dr(&mut batch, &dr_seq);
         self.probe.run_test_idle(&mut batch, 0);
-        let mut results = self.probe.run(batch)?;
+        let mut results = self
+            .probe
+            .run(batch)
+            .inspect_err(|_| self.forget_tap_selection())?;
         let captured = results
             .take(handle)
             .map_err(|_| Arm7tdmiError::Other("missing JTAG capture result".to_string()))?;
@@ -503,7 +515,10 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
         let handle = self.probe.exchange_dr(&mut batch, &dr_seq);
         batch.enter(TapState::PauseDr);
         self.probe.run_test_idle(&mut batch, 0);
-        let mut results = self.probe.run(batch)?;
+        let mut results = self
+            .probe
+            .run(batch)
+            .inspect_err(|_| self.forget_tap_selection())?;
         let captured = results
             .take(handle)
             .map_err(|_| Arm7tdmiError::Other("missing JTAG capture result".to_string()))?;
@@ -531,7 +546,9 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
         let _ = self.probe.exchange_dr(&mut batch, &dr_seq);
         batch.enter(TapState::PauseDr);
         self.probe.run_test_idle(&mut batch, 0);
-        self.probe.run(batch)?;
+        self.probe
+            .run(batch)
+            .inspect_err(|_| self.forget_tap_selection())?;
         Ok(())
     }
 
@@ -544,7 +561,10 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
         let mut batch = JtagBatch::new();
         let handle = self.probe.exchange_dr(&mut batch, &dr_seq);
         self.probe.run_test_idle(&mut batch, 0);
-        let mut results = self.probe.run(batch)?;
+        let mut results = self
+            .probe
+            .run(batch)
+            .inspect_err(|_| self.forget_tap_selection())?;
         let captured = results
             .take(handle)
             .map_err(|_| Arm7tdmiError::Other("missing JTAG capture result".to_string()))?;
@@ -569,7 +589,9 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
         let dr_seq = BitSequence::from_u64(4, chain_num as u64);
         let _ = self.probe.exchange_dr(&mut batch, &dr_seq);
         batch.enter(TapState::PauseDr);
-        self.probe.run(batch)?;
+        self.probe
+            .run(batch)
+            .inspect_err(|_| self.forget_tap_selection())?;
         self.current_instruction = Some(JtagInstruction::ScanN);
         self.current_scan_chain = Some(chain);
         tracing::trace!("Selected scan chain {}", chain_num);
@@ -841,7 +863,9 @@ impl<'probe> Arm7tdmiCommunicationInterface<'probe> {
         let ir_seq = BitSequence::from_u64(IR_LEN, instruction as u64);
         self.probe.shift_ir(&mut batch, &ir_seq);
         self.probe.run_test_idle(&mut batch, 1);
-        self.probe.run(batch)?;
+        self.probe
+            .run(batch)
+            .inspect_err(|_| self.forget_tap_selection())?;
         self.current_instruction = Some(instruction);
         Ok(())
     }

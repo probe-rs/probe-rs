@@ -312,6 +312,7 @@ mod builtin {
     use crate::flashing::loader::{FlashLoader, ImageFormat, ImageLoader, ImageReader};
     use crate::flashing::{BinOptions, ElfOptions, FileDownloadError};
     use crate::session::Session;
+    use probe_rs_target::CoreType;
 
     pub(super) struct ElfLoaderFactory;
     pub(super) struct BinLoaderFactory;
@@ -407,7 +408,7 @@ mod builtin {
         fn load(
             &self,
             flash_loader: &mut FlashLoader,
-            _session: &mut Session,
+            session: &mut Session,
             file: &mut dyn ImageReader,
         ) -> Result<(), FileDownloadError> {
             const VECTOR_TABLE_SECTION_NAME: &str = ".vector_table";
@@ -440,11 +441,18 @@ mod builtin {
                 );
             }
 
-            // Fall back to the ELF entry point if there is no `.vector_table` section. That
-            // section name is a `cortex-m-rt` convention; without an address, a RAM image built
-            // with another linker script would never be started (the core would keep running
-            // from its reset vector).
-            if flash_loader.vector_table_addr().is_none()
+            // On ARMv4T, fall back to the ELF entry point if there is no `.vector_table` section.
+            // That section name is a `cortex-m-rt` convention; without an address, a RAM image
+            // built with another linker script would never be started (the core would keep
+            // running from its reset vector). Other architectures can't start RAM images this
+            // way (RISC-V and Xtensa don't implement `prepare_running_on_ram`).
+            let is_armv4t = session
+                .target()
+                .cores
+                .iter()
+                .any(|core| core.core_type == CoreType::Armv4t);
+            if is_armv4t
+                && flash_loader.vector_table_addr().is_none()
                 && let Ok(object_file) = object::File::parse(elf_buffer.as_slice())
             {
                 flash_loader.set_vector_table_addr(object_file.entry());

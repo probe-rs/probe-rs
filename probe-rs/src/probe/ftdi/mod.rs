@@ -154,6 +154,19 @@ impl JtagAdapter {
         &mut self,
         config: probe_rs_target::JtagGpioReset,
     ) -> Result<(), FtdiError> {
+        // Bits 0-3 are TCK/TDI/TDO/TMS; the pin word has 16 bits.
+        let pins = config
+            .ntrst
+            .iter()
+            .chain(&config.nsrst)
+            .chain(&config.extra_outputs);
+        if let Some(pin) = pins.into_iter().find(|pin| !(4..16).contains(&pin.bit)) {
+            return Err(FtdiError::Other(format!(
+                "GPIO reset pin bit {} is not a free FTDI GPIO (4-15)",
+                pin.bit
+            )));
+        }
+
         self.gpio_reset = Some(config.clone());
 
         if !self.attached {
