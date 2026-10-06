@@ -480,7 +480,7 @@ impl std::string::ToString for RemoteCommand<'_> {
                 index,
                 apsel,
                 0x100 | *addr as u16,
-                value.to_be()
+                value
             ),
             RemoteCommand::MemReadV3 {
                 index,
@@ -571,7 +571,7 @@ impl std::string::ToString for RemoteCommand<'_> {
                 index,
                 apsel,
                 0x1000 | addr,
-                value.to_be()
+                value
             ),
             RemoteCommand::AdiV6MemReadV4 {
                 index,
@@ -1901,7 +1901,7 @@ mod remote_tests {
     use std::io::{BufReader, BufWriter, Cursor, Write};
     use std::sync::{Arc, Mutex};
 
-    use super::{BlackMagicProbe, ProtocolVersion, SwdDirection};
+    use super::{BlackMagicProbe, ProtocolVersion, RemoteCommand, SwdDirection};
     use crate::probe::{
         BitSequence, BitbangSwd, DebugProbeError, IoSequenceItem, JtagBatch, JtagChainState,
         JtagProbe, SwdSettings, TapState, WireProtocol,
@@ -2034,5 +2034,58 @@ mod remote_tests {
 
         JtagProbe::run_batch(&mut probe, &batch).unwrap();
         assert_eq!(*sent.lock().unwrap(), b"!JT037#");
+    }
+
+    #[test]
+    fn ap_writes_send_the_value_most_significant_digit_first() {
+        let cases = [
+            (
+                RemoteCommand::WriteApV0P {
+                    apsel: 0,
+                    addr: 0x04,
+                    value: 0x1234_5678,
+                },
+                "!HA00010412345678#",
+            ),
+            (
+                RemoteCommand::WriteApV1 {
+                    index: 0,
+                    apsel: 0,
+                    addr: 0x04,
+                    value: 0x1234_5678,
+                },
+                "!HA0000010412345678#",
+            ),
+            (
+                RemoteCommand::WriteApV3 {
+                    index: 0,
+                    apsel: 0,
+                    addr: 0x04,
+                    value: 0x1234_5678,
+                },
+                "!AA0000010412345678#",
+            ),
+            (
+                RemoteCommand::WriteApV3 {
+                    index: 1,
+                    apsel: 2,
+                    addr: 0x00,
+                    value: 0x0000_0001,
+                },
+                "!AA0102010000000001#",
+            ),
+            (
+                RemoteCommand::AdiV6WriteApV4 {
+                    index: 0,
+                    apsel: 0x0000_0000_e000_2000,
+                    addr: 0xd04,
+                    value: 0x1234_5678,
+                },
+                "!A6A0000000000e00020001d0412345678#",
+            ),
+        ];
+        for (command, expected) in cases {
+            assert_eq!(command.to_string(), expected);
+        }
     }
 }
