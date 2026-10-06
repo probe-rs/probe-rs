@@ -4,7 +4,7 @@ use crate::memory::{Operation, OperationKind};
 use crate::{
     CoreInterface, Error, MemoryMappedRegister,
     architecture::arm::{ArmError, memory::ArmMemoryInterface},
-    core::RegisterId,
+    core::{RegisterId, VectorCatchCondition},
     memory_mapped_bitfield_register,
     semihosting::SemihostingCommand,
     semihosting::decode_semihosting_syscall,
@@ -46,6 +46,17 @@ impl Dhcsr {
         self.0 &= !(0xffff << 16);
         self.0 |= 0xa05f << 16;
     }
+}
+
+memory_mapped_bitfield_register! {
+    /// Debug Exception and Monitor Control Register, DEMCR
+    ///
+    /// Only the vector catch bits common to ARMv6-M and ARMv7-M are modelled here.
+    pub struct Demcr(u32);
+    0xE000_EDFC, "DEMCR",
+    impl From;
+    pub vc_harderr, set_vc_harderr: 10;
+    pub vc_corereset, set_vc_corereset: 0;
 }
 
 memory_mapped_bitfield_register! {
@@ -225,6 +236,42 @@ pub(crate) fn exit_halt(memory: &mut dyn ArmMemoryInterface, step: bool) -> Resu
     dhcsr.enable_write();
     memory.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
     memory.flush()
+}
+
+/// Set DHCSR.C_DEBUGEN, keeping the debug key so the write is not ignored.
+pub(crate) fn enable_halting_debug(memory: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
+    let mut dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address())?);
+    dhcsr.set_c_debugen(true);
+    dhcsr.enable_write();
+    memory.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())
+}
+
+/// Enable or disable a vector catch condition.
+///
+/// ARMv6-M and ARMv7-M only. ARMv8-M also has VC_SFERR and keeps its own copy.
+pub(crate) fn set_vector_catch(
+    memory: &mut dyn ArmMemoryInterface,
+    condition: VectorCatchCondition,
+    enable: bool,
+) -> Result<(), Error> {
+    let mut demcr = Demcr(memory.read_word_32(Demcr::get_mmio_address())?);
+    match condition {
+        VectorCatchCondition::HardFault => demcr.set_vc_harderr(enable),
+        VectorCatchCondition::CoreReset => demcr.set_vc_corereset(enable),
+        VectorCatchCondition::All => {
+            demcr.set_vc_harderr(enable);
+            demcr.set_vc_corereset(enable);
+        }
+        VectorCatchCondition::SecureFault => {
+            return Err(Error::Arm(ArmError::ArchitectureRequired(&["ARMv8"])));
+        }
+        VectorCatchCondition::Svc | VectorCatchCondition::Hlt => {
+            return Err(Error::NotImplemented("vector catch condition Svc/Hlt"));
+        }
+    };
+
+    memory.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
+    Ok(())
 }
 
 /// Check if the current breakpoint is a semihosting call.
