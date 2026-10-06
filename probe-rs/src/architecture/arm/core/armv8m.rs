@@ -2,7 +2,7 @@
 
 use super::{
     CortexMState, Dfsr,
-    cortex_m::{IdPfr1, Mvfr0},
+    cortex_m::{IdPfr1, Mvfr0, exit_halt},
     registers::armv8m::{
         V8M_BASE_SEC_FP_REGISTERS, V8M_BASE_SEC_REGISTERS, V8M_MAIN_FP_REGISTERS,
         V8M_MAIN_REGISTERS, V8M_MAIN_SEC_FP_REGISTERS, V8M_MAIN_SEC_REGISTERS,
@@ -245,14 +245,7 @@ impl CoreInterface for Armv8m<'_> {
         }
         self.state.pc_written = false;
 
-        let mut value = Dhcsr(0);
-        value.set_c_halt(false);
-        value.set_c_debugen(true);
-        value.enable_write();
-
-        self.memory
-            .write_word_32(Dhcsr::get_mmio_address(), value.into())?;
-        self.memory.flush()?;
+        exit_halt(&mut *self.memory, false)?;
 
         // We assume that the core is running now
         self.set_core_status(CoreStatus::Running);
@@ -334,19 +327,10 @@ impl CoreInterface for Armv8m<'_> {
             None
         };
 
-        let mut value = Dhcsr(0);
         // Leave halted state.
         // Step one instruction.
         self.state.begin_step();
-        value.set_c_step(true);
-        value.set_c_halt(false);
-        value.set_c_debugen(true);
-        value.set_c_maskints(true);
-        value.enable_write();
-
-        self.memory
-            .write_word_32(Dhcsr::get_mmio_address(), value.into())?;
-        self.memory.flush()?;
+        exit_halt(&mut *self.memory, true)?;
 
         // The single-step might put the core in lockup state. Lockup isn't considered "halted"
         // so we can't use `wait_for_core_halted` here.
