@@ -327,10 +327,9 @@ impl CoreInterface for Armv8m<'_> {
             None
         };
 
-        // Leave halted state.
-        // Step one instruction.
-        self.state.begin_step();
+        // Only arm the pending step once the write has landed.
         exit_halt(&mut *self.memory, true)?;
+        self.state.begin_step();
 
         // The single-step might put the core in lockup state. Lockup isn't considered "halted"
         // so we can't use `wait_for_core_halted` here.
