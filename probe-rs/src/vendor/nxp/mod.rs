@@ -8,7 +8,8 @@ use crate::{
         Vendor,
         nxp::sequences::{
             mcx::MCX,
-            nxp_armv6m::{LPC80x, MKL82},
+            mkl82::MKL82,
+            nxp_armv6m::LPC80x,
             nxp_armv7m::{MIMXRT10xx, MIMXRT11xx, S32K3xx},
             nxp_armv8m::{
                 LPC55Sxx, MIMXRT5xxS, MIMXRT118x,
