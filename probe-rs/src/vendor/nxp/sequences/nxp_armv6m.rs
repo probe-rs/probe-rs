@@ -714,10 +714,7 @@ impl ArmDebugSequence for LPC80x {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::architecture::arm::{
-        communication_interface::DapProbe,
-        dp::{DpAddress, DpRegisterAddress},
-    };
+    use crate::architecture::arm::dp::{DpAddress, DpRegisterAddress};
 
     #[derive(Default)]
     struct BufferedMdm {
@@ -772,14 +769,6 @@ mod tests {
             }
             self.control = pending;
             Ok(())
-        }
-
-        fn try_dap_probe(&self) -> Option<&dyn DapProbe> {
-            None
-        }
-
-        fn try_dap_probe_mut(&mut self) -> Option<&mut dyn DapProbe> {
-            None
         }
     }
 
