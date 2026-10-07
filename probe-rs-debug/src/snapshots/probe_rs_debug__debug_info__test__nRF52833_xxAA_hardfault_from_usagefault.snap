@@ -1047,7 +1047,7 @@ expression: stack_frames
       type_name: Unknown
       value: "<unknown>"
   canonical_frame_address: 536887128
-- function_name: "trigger_hardfault_from_usagefault : ERROR: UNWIND: Failed to read value for register R14/LR from address 0x0000000020003f5c (4 bytes): The coredump does not include the memory for address 0x20003f5c of size 0x4"
+- function_name: trigger_hardfault_from_usagefault (unwinding stopped due to an error)
   source_location:
     path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
     line: 55

@@ -62,8 +62,6 @@ impl Cmd {
                 catch_hlt: !self.run_options.no_catch_hlt,
             },
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 }

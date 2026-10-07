@@ -814,10 +814,15 @@ impl DebugInfo {
                     exception_handler,
                 ) {
                     Err(error) => {
-                        tracing::error!("{:?}", &error);
+                        tracing::warn!(
+                            "Failed to unwind register {} for frame at {frame_pc:#010x}: {error}",
+                            debug_register.core_register
+                        );
                         if let Some(first_frame) = stack_frames.last_mut() {
-                            first_frame.function_name =
-                                format!("{} : ERROR: {error}", first_frame.function_name);
+                            first_frame.function_name = format!(
+                                "{} (unwinding stopped due to an error)",
+                                first_frame.function_name
+                            );
                         };
                         break 'unwind;
                     }

@@ -3255,6 +3255,7 @@ dependencies = [
  "debugid",
  "defmt-decoder",
  "directories",
+ "docsplay",
  "dunce",
  "espflash",
  "fastrand",

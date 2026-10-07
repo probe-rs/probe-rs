@@ -25,7 +25,7 @@ use serde::{Deserialize, Serialize};
 use time::{OffsetDateTime, UtcOffset};
 
 use crate::rpc::functions::RpcApp;
-use crate::util::cli::FirmwareExitStatus;
+use crate::util::cli::FirmwareExited;
 use crate::util::logging::setup_logging;
 use probe_rs_rpc_client::{RemoteParams, RpcClient};
 
@@ -324,11 +324,15 @@ async fn main() -> ExitCode {
     match run().await {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
-            eprintln!("Error: {error:?}");
-            let code = error
-                .downcast_ref::<FirmwareExitStatus>()
-                .map_or(1, FirmwareExitStatus::exit_code);
-            ExitCode::from(code)
+            if let Some(error) = error.downcast_ref::<FirmwareExited>() {
+                // not a probe-rs error, don't print "Error:"
+                eprintln!("{error}");
+                let code = error.exit_code();
+                ExitCode::from(code)
+            } else {
+                eprintln!("Error: {error:?}");
+                ExitCode::from(1)
+            }
         }
     }
 }
