@@ -14,6 +14,7 @@ use std::time::{Duration, Instant};
 
 /// The sequence handle for the MKL82 family.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct MKL82;
 
 impl MKL82 {
