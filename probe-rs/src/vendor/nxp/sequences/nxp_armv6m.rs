@@ -6,7 +6,7 @@ use crate::architecture::arm::sequences::{
     ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence, DefaultArmSequence,
     cortex_m_core_start, cortex_m_wait_for_reset,
 };
-use crate::architecture::arm::{ArmDebugInterface, ArmError, FullyQualifiedApAddress};
+use crate::architecture::arm::{ArmDebugInterface, ArmError, DapAccess, FullyQualifiedApAddress};
 use crate::core::MemoryMappedRegister;
 use crate::session::MissingPermissions;
 use std::sync::Arc;
@@ -17,11 +17,8 @@ use std::time::{Duration, Instant};
 pub struct MKL82(());
 
 impl MKL82 {
-    /// RCM Force Mode register. The ROM bootloader sets the sticky FORCEROM
-    /// field when it runs (for example after a mass erase leaves the flash
-    /// option byte blank), and the field survives system resets, so the chip
-    /// keeps booting into the ROM instead of the flashed firmware until a
-    /// power-on reset.
+    /// RCM Force Mode register. The ROM bootloader sets FORCEROM, which
+    /// survives system resets and overrides the flash boot configuration.
     const RCM_FM: u64 = 0x4007_F006;
 
     /// The Kinetis MDM-AP, always accessible even when flash security blocks
@@ -54,8 +51,6 @@ impl MKL82 {
         FullyQualifiedApAddress::v1_with_default_dp(Self::MDM_AP)
     }
 
-    /// Wait until the masked MDM-AP status bits have the requested value.
-    /// Transient read errors are retried until the deadline.
     fn wait_for_mdm_status(
         interface: &mut dyn ArmDebugInterface,
         mask: u32,
@@ -77,16 +72,20 @@ impl MKL82 {
         }
     }
 
-    /// Write the MDM-AP control register, retrying transient access errors.
     fn write_mdm_control(
-        interface: &mut dyn ArmDebugInterface,
+        interface: &mut dyn DapAccess,
         value: u32,
         timeout: Duration,
     ) -> Result<(), ArmError> {
         let mdm_ap = Self::mdm_ap();
         let start = Instant::now();
         loop {
-            match interface.write_raw_ap_register(&mdm_ap, Self::MDM_CONTROL, value) {
+            // Flush buffered writes so access errors are retried here and
+            // cleanup takes effect even if no further reads follow.
+            let result = interface
+                .write_raw_ap_register(&mdm_ap, Self::MDM_CONTROL, value)
+                .and_then(|()| interface.flush());
+            match result {
                 Ok(()) => return Ok(()),
                 Err(e) if start.elapsed() >= timeout => return Err(e),
                 Err(e) => tracing::trace!("MDM-AP control write failed, retrying: {e}"),
@@ -113,9 +112,7 @@ impl MKL82 {
         }
     }
 
-    /// Mass erase the flash via the MDM-AP. This works even when flash
-    /// security blocks the AHB-AP, and unlocks a secured device (an erased
-    /// KL82 is treated as unsecure while its flash is fully blank).
+    /// Erase and unlock flash through the MDM-AP, including secured devices.
     fn mass_erase(interface: &mut dyn ArmDebugInterface) -> Result<(), ArmError> {
         let mdm_ap = Self::mdm_ap();
 
@@ -143,8 +140,7 @@ impl MKL82 {
                 Duration::from_secs(1),
             )?;
 
-            // Flash initialization completes while the debugger holds the
-            // system in reset.
+            // Flash must finish initializing before it accepts an erase request.
             let status = Self::wait_for_mdm_status(
                 interface,
                 Self::MDM_STATUS_FLASH_READY,
@@ -229,7 +225,7 @@ impl MKL82 {
         interface: &mut dyn ArmDebugInterface,
         core_ap: &FullyQualifiedApAddress,
     ) -> Result<(), ArmError> {
-        let mut reset_catch_armed = false;
+        let mut previous_reset_catch = None;
         let result = Self::with_mdm_control(interface, |interface| {
             // CORE_HOLD_RESET is sampled during reset sequencing.
             Self::write_mdm_control(
@@ -264,9 +260,11 @@ impl MKL82 {
                 core.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
 
                 let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address())?);
+                // A failed write may still reach the target, so record the
+                // original state before attempting to arm the catch.
+                previous_reset_catch = Some(demcr.vc_corereset());
                 demcr.set_vc_corereset(true);
                 core.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
-                reset_catch_armed = true;
             }
 
             Self::write_mdm_control(interface, 0, Duration::from_secs(1))?;
@@ -287,17 +285,16 @@ impl MKL82 {
             Ok(())
         });
 
-        // Do not leave reset vector catch armed after either success or
-        // failure. Releasing the MDM control bits above makes the AHB-AP
-        // available again in most failure cases, so retry transient errors.
-        let cleanup = if reset_catch_armed {
+        // Preserve a reset catch armed by the caller, including on error.
+        let cleanup = if let Some(previous_reset_catch) = previous_reset_catch {
             let start = Instant::now();
             loop {
                 let clear_result = (|| {
                     let mut core = interface.memory_interface(core_ap)?;
                     let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address())?);
-                    demcr.set_vc_corereset(false);
-                    core.write_word_32(Demcr::get_mmio_address(), demcr.into())
+                    demcr.set_vc_corereset(previous_reset_catch);
+                    core.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
+                    core.flush()
                 })();
                 match clear_result {
                     Ok(()) => break Ok(()),
@@ -313,7 +310,7 @@ impl MKL82 {
             (Ok(()), Ok(())) => {}
             (Err(error), Ok(())) | (Ok(()), Err(error)) => return Err(error),
             (Err(error), Err(cleanup_error)) => {
-                tracing::warn!("Failed to clear reset vector catch: {cleanup_error}");
+                tracing::warn!("Failed to restore reset vector catch: {cleanup_error}");
                 return Err(error);
             }
         }
@@ -322,8 +319,6 @@ impl MKL82 {
         Ok(())
     }
 
-    /// Request one system reset through the MDM-AP without touching the
-    /// core's debug registers, and wait for the system to come out of reset.
     fn system_reset_via_mdm(interface: &mut dyn ArmDebugInterface) -> Result<(), ArmError> {
         Self::with_mdm_control(interface, |interface| {
             Self::write_mdm_control(
@@ -349,8 +344,6 @@ impl MKL82 {
         })
     }
 
-    /// Whether the MDM-AP reports the system as held in reset right now
-    /// (for example by an asserted nRESET pin). Read errors count as "no".
     fn system_in_reset(interface: &mut dyn ArmDebugInterface) -> bool {
         interface
             .read_raw_ap_register(&Self::mdm_ap(), Self::MDM_STATUS)
@@ -427,16 +420,13 @@ impl ArmDebugSequence for MKL82 {
         ) {
             Ok(status) => status,
             Err(_) if Self::system_in_reset(interface) => {
-                // Connect under reset: nRESET is asserted, so the flash
-                // controller is held in reset too. The security check moves
-                // to `reset_hardware_deassert`.
+                // The security state is not yet available. Check it after
+                // releasing nRESET in `reset_hardware_deassert`.
                 tracing::debug!("System held in reset; deferring the flash security check");
                 return Ok(());
             }
             Err(_) => {
-                // Wake a target in WAIT or STOP without losing its state.
-                // Fall back to reset if it is inaccessible for another
-                // reason, such as reset-looping firmware.
+                // Try waking the core without resetting its state first.
                 if let Err(error) = Self::halt_via_debug_request(interface, default_ap) {
                     tracing::debug!("MDM-AP debug request failed: {error}");
                     Self::halt_via_mdm_reset(interface, default_ap)?;
@@ -488,9 +478,8 @@ impl ArmDebugSequence for MKL82 {
         _core_type: crate::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
-        // Clear RCM_FM so the boot source is determined by the flash
-        // configuration field again. Ignore errors: if this fails the reset
-        // itself may still succeed.
+        // Restore the flash boot configuration. A failed write should not
+        // prevent resetting a sleeping target through the MDM-AP.
         if let Err(e) = interface.write_word_8(Self::RCM_FM, 0) {
             tracing::warn!("Failed to clear RCM_FM before reset: {e}");
         }
@@ -548,11 +537,8 @@ impl ArmDebugSequence for MKL82 {
             .into());
         }
 
-        // Whatever the core did after the pin was released, the vector
-        // catch armed under reset cannot be relied on (the debug logic may
-        // have been unreachable, and C_DEBUGEN is not set yet). Reset once
-        // more through the MDM-AP with the core held, so it halts at the
-        // reset vector with debug enabled, as the caller expects.
+        // Debug registers may have been inaccessible under nRESET. Reset
+        // through the MDM-AP to enable debug before releasing the core.
         Self::halt_via_mdm_reset(interface, default_ap)
     }
 }
@@ -722,5 +708,117 @@ impl ArmDebugSequence for LPC80x {
         let _ = LPC80x::force_core_halt(interface);
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::architecture::arm::{
+        communication_interface::DapProbe,
+        dp::{DpAddress, DpRegisterAddress},
+    };
+
+    #[derive(Default)]
+    struct BufferedMdm {
+        control: u32,
+        pending: Option<u32>,
+        flush_failures: usize,
+    }
+
+    impl DapAccess for BufferedMdm {
+        fn read_raw_dp_register(
+            &mut self,
+            _dp: DpAddress,
+            _address: DpRegisterAddress,
+        ) -> Result<u32, ArmError> {
+            unreachable!()
+        }
+
+        fn write_raw_dp_register(
+            &mut self,
+            _dp: DpAddress,
+            _address: DpRegisterAddress,
+            _value: u32,
+        ) -> Result<(), ArmError> {
+            unreachable!()
+        }
+
+        fn read_raw_ap_register(
+            &mut self,
+            _ap: &FullyQualifiedApAddress,
+            _address: u64,
+        ) -> Result<u32, ArmError> {
+            unreachable!()
+        }
+
+        fn write_raw_ap_register(
+            &mut self,
+            ap: &FullyQualifiedApAddress,
+            address: u64,
+            value: u32,
+        ) -> Result<(), ArmError> {
+            assert_eq!(*ap, MKL82::mdm_ap());
+            assert_eq!(address, MKL82::MDM_CONTROL);
+            self.pending = Some(value);
+            Ok(())
+        }
+
+        fn flush(&mut self) -> Result<(), ArmError> {
+            let pending = self.pending.take().unwrap();
+            if self.flush_failures > 0 {
+                self.flush_failures -= 1;
+                return Err(ArmError::Timeout);
+            }
+            self.control = pending;
+            Ok(())
+        }
+
+        fn try_dap_probe(&self) -> Option<&dyn DapProbe> {
+            None
+        }
+
+        fn try_dap_probe_mut(&mut self) -> Option<&mut dyn DapProbe> {
+            None
+        }
+    }
+
+    #[test]
+    fn mdm_cleanup_flushes_the_reset_release() {
+        let mut interface = BufferedMdm {
+            control: MKL82::MDM_CONTROL_SYSTEM_RESET_REQUEST,
+            ..Default::default()
+        };
+
+        MKL82::write_mdm_control(&mut interface, 0, Duration::from_secs(1)).unwrap();
+
+        assert_eq!(interface.control, 0);
+        assert_eq!(interface.pending, None);
+    }
+
+    #[test]
+    fn mdm_control_retries_failed_flushes() {
+        let mut interface = BufferedMdm {
+            flush_failures: 1,
+            ..Default::default()
+        };
+        let value = MKL82::MDM_CONTROL_SYSTEM_RESET_REQUEST;
+
+        MKL82::write_mdm_control(&mut interface, value, Duration::from_secs(1)).unwrap();
+
+        assert_eq!(interface.control, value);
+        assert_eq!(interface.pending, None);
+    }
+
+    #[test]
+    fn mdm_control_reports_failed_flushes_at_the_deadline() {
+        let mut interface = BufferedMdm {
+            flush_failures: 1,
+            ..Default::default()
+        };
+
+        let result = MKL82::write_mdm_control(&mut interface, 0, Duration::ZERO);
+
+        assert!(matches!(result, Err(ArmError::Timeout)));
     }
 }
