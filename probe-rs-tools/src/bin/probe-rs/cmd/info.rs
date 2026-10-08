@@ -3,9 +3,12 @@ use std::{fmt::Write, num::ParseIntError};
 use anyhow::Result;
 use jep106::JEP106Code;
 use probe_rs::{
-    architecture::arm::{
-        ap::IDR,
-        dp::{DLPIDR, TARGETID},
+    architecture::{
+        arm::{
+            ap::IDR,
+            dp::{DLPIDR, TARGETID},
+        },
+        riscv::communication_interface::HartIsa,
     },
     probe::WireProtocol,
 };
@@ -16,7 +19,8 @@ use crate::rpc::functions::probe::convert::{to_wire_debug_probe_selector, to_wir
 use crate::util::{cli::select_probe, common_options::ProbeOptions};
 use probe_rs_rpc::info::{
     ApInfo, ComponentTreeNode, DebugPortInfo, DebugPortInfoNode, DebugPortVersion, InfoEvent,
-    MinDpSupport, TargetInfoRequest,
+    JtagTapInfo, MinDpSupport, RiscvDebugModuleInfo, RiscvDebugModuleVersion, RiscvHartIsa,
+    TargetInfoRequest,
 };
 use probe_rs_rpc_client::RpcClient;
 
@@ -83,6 +87,7 @@ impl Cmd {
                 println!("{}", "-".repeat(msg.len()));
                 println!();
 
+                let mut events = vec![];
                 let mut successes = vec![];
                 let mut errors = vec![];
 
@@ -99,8 +104,9 @@ impl Cmd {
 
                 let result = client
                     .info(req, async |message| {
-                        let is_success =
-                            matches!(message, InfoEvent::Idcode { .. } | InfoEvent::ArmDp(_));
+                        events.push(message.clone());
+
+                        let is_success = is_success(&message);
 
                         if matches!(message, InfoEvent::Message(_)) {
                             successes.push(message.clone());
@@ -119,7 +125,16 @@ impl Cmd {
                     println!("Error while probing target: {error}");
                 }
 
-                if successes.is_empty() {
+                // The TAPs of a scanned chain are probed only for the architecture that their IR
+                // length and IDCODE tell, so most errors there are not from a wrong guess.
+                let scanned_chain = events
+                    .iter()
+                    .any(|event| matches!(event, InfoEvent::JtagScanChain(_)));
+
+                if scanned_chain {
+                    any_success |= events.iter().any(is_success);
+                    println!("{}", format_jtag_scan_chain(&events));
+                } else if successes.is_empty() {
                     for message in errors {
                         println!("{}", format_info_event(&message));
                     }
@@ -158,6 +173,13 @@ impl Cmd {
 
         Ok(())
     }
+}
+
+fn is_success(event: &InfoEvent) -> bool {
+    matches!(
+        event,
+        InfoEvent::Idcode { .. } | InfoEvent::ArmDp(_) | InfoEvent::RiscvDebugModule(_)
+    )
 }
 
 fn format_info_event(event: &InfoEvent) -> String {
@@ -229,9 +251,149 @@ fn format_info_event(event: &InfoEvent) -> String {
             writeln!(output, "The chip is presumably not {architecture}.").unwrap();
         }
         InfoEvent::ArmDp(dp_info) => {
-            writeln!(output, "{}", format_debug_port_info(dp_info)).unwrap();
+            writeln!(output, "{}", debug_port_info_tree(dp_info)).unwrap();
+        }
+        InfoEvent::JtagScanChain(taps) => {
+            writeln!(output, "{}", jtag_scan_chain_tree(taps)).unwrap();
+        }
+        InfoEvent::JtagTap { index } => {
+            writeln!(output, "TAP {index}:").unwrap();
+        }
+        InfoEvent::RiscvDebugModule(info) => {
+            writeln!(output, "{}", riscv_debug_module_tree(info)).unwrap();
         }
     }
+    output
+}
+
+fn jtag_scan_chain_tree(taps: &[JtagTapInfo]) -> Tree<String> {
+    let mut tree = Tree::new(format!("JTAG scan chain with {} TAPs", taps.len()));
+    for (index, tap) in taps.iter().enumerate() {
+        tree.push(Tree::new(format!(
+            "TAP {index}: {}, IR length: {}",
+            format_idcode(tap.idcode),
+            tap.ir_len
+        )));
+    }
+    tree
+}
+
+/// Shows the events of a scanned JTAG chain as one tree, with the result of each TAP under it.
+fn format_jtag_scan_chain(events: &[InfoEvent]) -> String {
+    let mut output = String::new();
+    let mut tree: Option<Tree<String>> = None;
+    let mut current_tap = None;
+
+    for event in events {
+        let tap = current_tap.and_then(|index| tree.as_mut()?.leaves.get_mut(index));
+        match (event, tap) {
+            (InfoEvent::JtagScanChain(taps), _) => tree = Some(jtag_scan_chain_tree(taps)),
+            (InfoEvent::JtagTap { index }, _) => current_tap = Some(*index as usize),
+            (InfoEvent::ArmDp(info), Some(tap)) => {
+                tap.push(debug_port_info_tree(info));
+            }
+            (InfoEvent::RiscvDebugModule(info), Some(tap)) => {
+                tap.push(riscv_debug_module_tree(info));
+            }
+            // The IDCODE is already on the TAP.
+            (
+                InfoEvent::Idcode {
+                    architecture,
+                    idcode: Some(_),
+                },
+                Some(tap),
+            ) => {
+                tap.push(Tree::new(format!("{architecture} Chip")));
+            }
+            (event, Some(tap)) => {
+                tap.push(Tree::new(format_info_event(event).trim_end().to_string()));
+            }
+            (event, None) => output.push_str(&format_info_event(event)),
+        }
+    }
+
+    if let Some(tree) = tree {
+        write!(output, "{tree}").unwrap();
+    }
+    output
+}
+
+fn format_idcode(idcode: Option<u32>) -> String {
+    let Some(idcode) = idcode else {
+        return "No IDCODE".to_string();
+    };
+
+    let version = (idcode >> 28) & 0xf;
+    let part_number = (idcode >> 12) & 0xffff;
+    let manufacturer_id = (idcode >> 1) & 0x7ff;
+    let designer = JEP106Code::new((manufacturer_id >> 7) as u8, (manufacturer_id & 0x7f) as u8);
+
+    format!(
+        "IDCODE {idcode:#010x} (Designer: {}, Part: {part_number:#06x}, Version: {version})",
+        designer.get().unwrap_or("<unknown>")
+    )
+}
+
+fn riscv_debug_module_tree(info: &RiscvDebugModuleInfo) -> Tree<String> {
+    let version = match info.version {
+        RiscvDebugModuleVersion::NoModule => "none".to_string(),
+        RiscvDebugModuleVersion::Version { major, minor } => format!("{major}.{minor}"),
+        RiscvDebugModuleVersion::NonConforming => "non-conforming".to_string(),
+        RiscvDebugModuleVersion::Unknown(version) => format!("<unknown version {version}>"),
+    };
+
+    let mut tree = Tree::new(format!(
+        "RISC-V Debug Module (Version: {version}, Harts: {})",
+        info.harts.len()
+    ));
+    for hart in &info.harts {
+        let isa = match &hart.isa {
+            RiscvHartIsa::Unavailable => "unavailable".to_string(),
+            RiscvHartIsa::NotImplemented => "misa is not implemented".to_string(),
+            RiscvHartIsa::Isa { xlen, extensions } => format_riscv_isa(&HartIsa {
+                xlen: *xlen,
+                extensions: *extensions,
+            }),
+            RiscvHartIsa::Error(error) => format!("Error reading misa: {error}"),
+        };
+        tree.push(Tree::new(format!("Hart {}: {isa}", hart.index)));
+    }
+
+    tree
+}
+
+fn format_riscv_isa(isa: &HartIsa) -> String {
+    // The order of the single-letter extensions in an ISA string. `misa` uses S and U for the
+    // privilege modes, and X for the presence of non-standard extensions.
+    const ISA_STRING_ORDER: &str = "IEMAFDQLCBKJTPVNH";
+    const NOT_IN_ISA_STRING: &str = "SUX";
+
+    let mut output = match isa.xlen {
+        Some(xlen) => format!("RV{xlen}"),
+        None => "RV".to_string(),
+    };
+    output.extend(ISA_STRING_ORDER.chars().filter(|&e| isa.has_extension(e)));
+    output.extend(('A'..='Z').filter(|&e| {
+        isa.has_extension(e) && !ISA_STRING_ORDER.contains(e) && !NOT_IN_ISA_STRING.contains(e)
+    }));
+
+    if isa.xlen.is_none() {
+        output.push_str(" (XLEN unknown)");
+    }
+
+    let mut modes = vec!["M"];
+    if isa.has_extension('S') {
+        modes.push("S");
+    }
+    if isa.has_extension('U') {
+        modes.push("U");
+    }
+    write!(output, ", Privilege modes: {}", modes.join(", ")).unwrap();
+
+    if isa.has_extension('X') {
+        output.push_str(", Non-standard extensions");
+    }
+
     output
 }
 
@@ -302,7 +464,7 @@ fn format_debug_port_info_node(node: &DebugPortInfoNode) -> String {
     output
 }
 
-fn format_debug_port_info(info: &DebugPortInfo) -> String {
+fn debug_port_info_tree(info: &DebugPortInfo) -> Tree<String> {
     let mut tree = Tree::new(format_debug_port_info_node(&info.dp_info));
     if info.aps.is_empty() {
         tree.push(Tree::new("No access ports found on this chip.".to_string()));
@@ -350,13 +512,51 @@ fn format_debug_port_info(info: &DebugPortInfo) -> String {
         }
     }
 
-    format!("{tree}")
+    tree
 }
 
 #[cfg(test)]
 mod tests {
+    use probe_rs::architecture::riscv::communication_interface::HartIsa;
+
     #[test]
     fn jep_arm_is_arm() {
         assert_eq!(super::JEP_ARM.get(), Some("ARM Ltd"))
+    }
+
+    #[test]
+    fn rv32imac_isa_string() {
+        let isa = HartIsa::from_misa(0x4010_1105).unwrap();
+        assert_eq!(
+            super::format_riscv_isa(&isa),
+            "RV32IMAC, Privilege modes: M, U"
+        );
+    }
+
+    #[test]
+    fn rv64gc_isa_string() {
+        let isa = HartIsa::from_misa(0x8000_0000_0094_112d).unwrap();
+        assert_eq!(
+            super::format_riscv_isa(&isa),
+            "RV64IMAFDC, Privilege modes: M, S, U, Non-standard extensions"
+        );
+    }
+
+    #[test]
+    fn isa_string_without_xlen() {
+        let isa = HartIsa::from_misa(0x0000_0020_0000_1100).unwrap();
+        assert_eq!(
+            super::format_riscv_isa(&isa),
+            "RVIM (XLEN unknown), Privilege modes: M"
+        );
+    }
+
+    #[test]
+    fn idcode_format() {
+        assert_eq!(
+            super::format_idcode(Some(0x4ba0_0477)),
+            "IDCODE 0x4ba00477 (Designer: ARM Ltd, Part: 0xba00, Version: 4)"
+        );
+        assert_eq!(super::format_idcode(None), "No IDCODE");
     }
 }

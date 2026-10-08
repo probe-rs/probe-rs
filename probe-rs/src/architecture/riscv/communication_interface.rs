@@ -186,6 +186,51 @@ impl From<u8> for DebugModuleVersion {
     }
 }
 
+/// The ISA of a hart, as the `misa` CSR reports it.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct HartIsa {
+    /// The width of the base integer ISA in bits: 32, 64 or 128. `None` when `misa.MXL` is not
+    /// known.
+    pub xlen: Option<u32>,
+    /// The `Extensions` field of `misa`. Bit 0 is extension `A`, bit 25 is extension `Z`.
+    pub extensions: u32,
+}
+
+impl HartIsa {
+    /// Decodes a `misa` value that was read with a 32-bit or a 64-bit access.
+    ///
+    /// Returns `None` for the value 0, which tells that the hart does not implement `misa`.
+    pub fn from_misa(misa: u64) -> Option<Self> {
+        if misa == 0 {
+            return None;
+        }
+
+        // On RV64 and RV128, bits 31:30 are in the reserved zero field. A 32-bit access on such a
+        // hart returns only these bits, so MXL is not known then.
+        let mxl = match (misa >> 30) & 0b11 {
+            0 => (misa >> 62) & 0b11,
+            mxl => mxl,
+        };
+        let xlen = match mxl {
+            1 => Some(32),
+            2 => Some(64),
+            3 => Some(128),
+            _ => None,
+        };
+
+        Some(Self {
+            xlen,
+            extensions: (misa & 0x3ff_ffff) as u32,
+        })
+    }
+
+    /// Returns `true` when the hart implements the extension with the letter `extension`.
+    pub fn has_extension(&self, extension: char) -> bool {
+        let extension = extension.to_ascii_uppercase();
+        extension.is_ascii_uppercase() && self.extensions & (1 << (extension as u8 - b'A')) != 0
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 struct CoreRegisterAbstractCmdSupport(u8);
 
@@ -708,6 +753,85 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// Check if the given hart is enabled
     pub fn hart_enabled(&self, hart: u32) -> bool {
         self.state.enabled_harts.contains(&hart)
+    }
+
+    /// Returns the number of harts that the debug module reports.
+    ///
+    /// The value is valid after [`Self::enter_debug_mode`].
+    pub fn num_harts(&self) -> u32 {
+        self.state.num_harts
+    }
+
+    /// Returns the version of the debug module.
+    ///
+    /// The value is valid after [`Self::enter_debug_mode`].
+    pub fn debug_module_version(&self) -> DebugModuleVersion {
+        self.state.debug_version
+    }
+
+    /// Reads the ISA of the selected hart from the `misa` CSR.
+    ///
+    /// A running hart is halted for the read, and resumed after it. Returns `None` when the hart
+    /// does not implement `misa`.
+    pub fn read_hart_isa(&mut self) -> Result<Option<HartIsa>, RiscvError> {
+        let status: Dmstatus = self.read_dm_register()?;
+        if status.anynonexistent() || status.allunavail() {
+            return Err(RiscvError::HartUnavailable);
+        }
+
+        self.state.is_halted = status.allhalted();
+        let was_running = !self.state.is_halted;
+        if was_running {
+            self.halt_selected_hart(Duration::from_millis(100))?;
+        }
+
+        let misa = self.read_misa();
+
+        if was_running {
+            self.resume_core()?;
+        }
+
+        Ok(HartIsa::from_misa(misa?))
+    }
+
+    /// Halts the selected hart.
+    ///
+    /// Unlike [`Self::halt`], this does not change the debug configuration of the hart.
+    fn halt_selected_hart(&mut self, timeout: Duration) -> Result<(), RiscvError> {
+        let mut dmcontrol = self.state.current_dmcontrol;
+        dmcontrol.set_dmactive(true);
+        dmcontrol.set_haltreq(true);
+        self.write_dm_register(dmcontrol)?;
+
+        let halted = self.wait_for_core_halted(timeout);
+
+        // A halt request that stays set halts the hart again when it comes out of reset.
+        dmcontrol.set_haltreq(false);
+        self.write_dm_register(dmcontrol)?;
+
+        if halted.is_err() && self.core_halted()? {
+            self.resume_core()?;
+        }
+
+        halted
+    }
+
+    /// Reads `misa` of the halted hart at the width of the hart.
+    fn read_misa(&mut self) -> Result<u64, RiscvError> {
+        // The debug specification requires abstract access to the GPRs at XLEN, and an RV32 hart
+        // rejects a 64-bit access. A program buffer access saves and restores `s0` at the XLEN
+        // that is set, so a wrong XLEN corrupts `s0` of an RV64 hart.
+        let xlen_64 = match self.abstract_cmd_register_read_64(registers::S0) {
+            Ok(_) => true,
+            Err(RiscvError::AbstractCommand(_)) => false,
+            Err(error) => return Err(error),
+        };
+
+        let saved_xlen_64 = std::mem::replace(&mut self.state.xlen_64, xlen_64);
+        let misa = self.read_csr(Misa::ADDRESS_OFFSET as u16);
+        self.state.xlen_64 = saved_xlen_64;
+
+        misa
     }
 
     /// Assert the target reset
@@ -3848,3 +3972,47 @@ memory_mapped_bitfield_register! { pub struct Confstrptr0(u32); 0x19, "confstrpt
 memory_mapped_bitfield_register! { pub struct Confstrptr1(u32); 0x1a, "confstrptr1", impl From; }
 memory_mapped_bitfield_register! { pub struct Confstrptr2(u32); 0x1b, "confstrptr2", impl From; }
 memory_mapped_bitfield_register! { pub struct Confstrptr3(u32); 0x1c, "confstrptr3", impl From; }
+
+#[cfg(test)]
+mod tests {
+    use super::HartIsa;
+
+    #[test]
+    fn hart_isa_from_rv32_misa() {
+        // RV32IMAC
+        let isa = HartIsa::from_misa(0x4000_1105).unwrap();
+        assert_eq!(isa.xlen, Some(32));
+        for extension in ['I', 'M', 'A', 'C'] {
+            assert!(isa.has_extension(extension));
+        }
+        assert!(!isa.has_extension('F'));
+    }
+
+    #[test]
+    fn hart_isa_from_rv64_misa() {
+        // RV64IMAFDC with S and U modes
+        let isa = HartIsa::from_misa(0x8000_0000_0014_112d).unwrap();
+        assert_eq!(isa.xlen, Some(64));
+        assert!(isa.has_extension('d'));
+        assert!(isa.has_extension('S'));
+    }
+
+    #[test]
+    fn hart_isa_from_rv64_misa_low_word() {
+        let isa = HartIsa::from_misa(0x0014_112d).unwrap();
+        assert_eq!(isa.xlen, None);
+        assert!(isa.has_extension('F'));
+    }
+
+    #[test]
+    fn hart_isa_prefers_rv32_mxl_over_upper_bits() {
+        let isa = HartIsa::from_misa(0xdead_beef_4000_1105).unwrap();
+        assert_eq!(isa.xlen, Some(32));
+        assert_eq!(isa.extensions, 0x1105);
+    }
+
+    #[test]
+    fn hart_isa_without_misa() {
+        assert_eq!(HartIsa::from_misa(0), None);
+    }
+}

@@ -743,6 +743,7 @@ impl CmsisDap {
                 .unwrap_or_default();
 
             self.jtag_state.scan_chain = expected.clone();
+            self.jtag_state.idcodes.clear();
             let selected = self.jtag_state.chain_params.index;
             if let Some(params) = crate::probe::jtag::ChainParams::from_jtag_chain(
                 &self.jtag_state.scan_chain,
