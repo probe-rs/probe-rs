@@ -121,7 +121,9 @@ impl<'p> JtagChain<'p> {
 
     /// Set the scan chain without measuring it.
     pub fn set_chain(&mut self, chain: &[ScanChainElement]) {
-        self.probe.chain_state().scan_chain = chain.to_vec();
+        let state = self.probe.chain_state();
+        state.scan_chain = chain.to_vec();
+        state.idcodes.clear();
     }
 
     /// Return the current scan chain.
@@ -214,17 +216,30 @@ impl<'p> JtagChain<'p> {
         tracing::info!("Found {} TAPs on reset scan", idcodes.len());
         tracing::debug!("Detected IR lens: {:?}", ir_lens);
 
-        self.probe.chain_state().scan_chain = idcodes
-            .into_iter()
+        let state = self.probe.chain_state();
+        state.scan_chain = idcodes
+            .iter()
             .zip(ir_lens)
             .map(|(idcode, irlen)| ScanChainElement {
                 ir_len: Some(irlen as u8),
                 name: idcode.map(|i| i.to_string()),
             })
             .collect();
+        state.idcodes = idcodes
+            .into_iter()
+            .map(|idcode| idcode.map(u32::from))
+            .collect();
 
         let state = (*self.probe).chain_state_ref();
         Ok(&state.scan_chain)
+    }
+
+    /// Return the IDCODEs that the scan found, with one entry for each TAP of [`Self::chain`].
+    ///
+    /// The entry is `None` for a TAP without an IDCODE register. The result is empty when the
+    /// chain was set with [`Self::set_chain`] and not measured.
+    pub fn idcodes(&mut self) -> &[Option<u32>] {
+        &(*self.probe).chain_state_ref().idcodes
     }
 
     fn tap_reset_run(&mut self) -> Result<(), DebugProbeError> {
@@ -396,6 +411,7 @@ impl<'p> JtagChain<'p> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::VecDeque;
     use std::fmt;
 
     use super::*;
@@ -407,6 +423,9 @@ mod tests {
     struct BatchRecorder {
         exchanges: Vec<BitSequence>,
         jtag_state: JtagChainState,
+        /// For each capturing exchange in order, the bits that the chain shifts out before the
+        /// shifted-in data.
+        chain_bits: VecDeque<Vec<bool>>,
     }
 
     impl BatchRecorder {
@@ -414,6 +433,7 @@ mod tests {
             Self {
                 exchanges: Vec::new(),
                 jtag_state: JtagChainState::default(),
+                chain_bits: VecDeque::new(),
             }
         }
     }
@@ -498,7 +518,9 @@ mod tests {
                     if *capture && id.should_capture() {
                         let byte_len = data.len().div_ceil(8);
                         let mut bytes = vec![0u8; byte_len];
-                        for (index, bit) in data.iter().enumerate() {
+                        let chain_bits = self.chain_bits.pop_front().unwrap_or_default();
+                        let captured = chain_bits.into_iter().chain(data.iter());
+                        for (index, bit) in captured.take(data.len()).enumerate() {
                             if bit {
                                 bytes[index / 8] |= 1 << (index % 8);
                             }
@@ -647,6 +669,44 @@ mod tests {
             chain.select(3),
             Err(DebugProbeError::TargetNotFound)
         ));
+    }
+
+    fn idcode_bits(idcode: u32) -> impl Iterator<Item = bool> {
+        (0..32).map(move |bit| idcode & (1 << bit) != 0)
+    }
+
+    #[test]
+    fn scan_chain_keeps_idcodes() {
+        // A TAP in BYPASS, then a TAP with an IDCODE. Both have an IR length of 4.
+        let ir_capture = vec![true, false, false, false, true, false, false, false];
+        let mut probe = BatchRecorder::new();
+        probe.chain_bits = VecDeque::from([
+            std::iter::once(false)
+                .chain(idcode_bits(0x4BA0_0477))
+                .collect(),
+            ir_capture.clone(),
+            ir_capture,
+        ]);
+
+        let mut chain = JtagChain::new(&mut probe);
+        let ir_lens = chain
+            .scan_chain()
+            .unwrap()
+            .iter()
+            .map(|e| e.ir_len())
+            .collect::<Vec<_>>();
+        assert_eq!(ir_lens, vec![4, 4]);
+        assert_eq!(chain.idcodes(), [None, Some(0x4BA0_0477)]);
+    }
+
+    #[test]
+    fn set_chain_clears_idcodes() {
+        let mut probe = BatchRecorder::new();
+        probe.jtag_state.idcodes = vec![Some(0x4BA0_0477)];
+
+        let mut chain = JtagChain::new(&mut probe);
+        chain.set_chain(&three_tap_chain());
+        assert!(chain.idcodes().is_empty());
     }
 
     #[test]

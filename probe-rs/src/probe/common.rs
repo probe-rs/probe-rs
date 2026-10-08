@@ -57,6 +57,12 @@ impl std::fmt::Display for IdCode {
     }
 }
 
+impl From<IdCode> for u32 {
+    fn from(idcode: IdCode) -> Self {
+        idcode.0
+    }
+}
+
 impl IdCode {
     /// Returns `true` iff the IDCODE's least significant bit is `1`
     /// and the 7-bit `manufacturer_identity` is set to one of the non-reserved values in the range `[1,126]`.

@@ -47,6 +47,10 @@ pub struct JtagChainState {
     /// The actual scan chain.
     pub scan_chain: Vec<ScanChainElement>,
 
+    /// The IDCODEs that the last scan found, with one entry for each element of `scan_chain`.
+    /// `None` is a TAP without an IDCODE register. Empty when `scan_chain` was not measured.
+    pub idcodes: Vec<Option<u32>>,
+
     /// The parameters of the scan chain.
     pub chain_params: ChainParams,
 }
@@ -57,6 +61,7 @@ impl Default for JtagChainState {
             tap_state: TapState::TestLogicReset,
             expected_scan_chain: None,
             scan_chain: Vec::new(),
+            idcodes: Vec::new(),
             chain_params: ChainParams::default(),
         }
     }
