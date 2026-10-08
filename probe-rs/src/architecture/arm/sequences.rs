@@ -1199,25 +1199,12 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         Ok(())
     }
 
-    /// Called before attaching to a core.
+    /// Called before attaching to a core. May update the session-local memory map.
     fn on_attach(
         &self,
         _interface: &mut dyn ArmDebugInterface,
         _ap: &FullyQualifiedApAddress,
         _core_type: CoreType,
-    ) -> Result<(), ArmError> {
-        Ok(())
-    }
-
-    /// Hook called after the ARM debug interface and all cores have been enabled.
-    ///
-    /// This runs before the session exposes its target and memory interfaces, so a
-    /// vendor sequence can read device configuration and adjust the session-local
-    /// target description. The default implementation leaves the target unchanged.
-    fn on_connect(
-        &self,
-        _interface: &mut dyn ArmDebugInterface,
-        _default_ap: &FullyQualifiedApAddress,
         _target: &mut crate::Target,
     ) -> Result<(), ArmError> {
         Ok(())

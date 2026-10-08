@@ -144,11 +144,24 @@ impl ArmDebugSequence for Gd32H7Sequence {
     fn reset_hardware_deassert(
         &self,
         probe: &mut dyn ArmDebugInterface,
-        _default_ap: &FullyQualifiedApAddress,
+        default_ap: &FullyQualifiedApAddress,
     ) -> Result<(), ArmError> {
         let mut n_reset = Pins(0);
         n_reset.set_nreset(true);
         let n_reset = n_reset.0 as u32;
+
+        let reset_active = {
+            let mut core = probe.memory_interface(default_ap)?;
+            Dhcsr(core.read_word_32(Dhcsr::get_mmio_address())?).s_reset_st()
+        };
+        // GD32H7 may ignore the initial NRST while core debugging is disabled.
+        // Reset catch is armed, so retrigger NRST if the core is not in reset.
+        if !reset_active {
+            probe.swj_pins(n_reset, n_reset, 0)?;
+            thread::sleep(Duration::from_millis(100));
+            probe.swj_pins(0, n_reset, 0)?;
+            thread::sleep(Duration::from_millis(100));
+        }
 
         let can_read_pins = probe.swj_pins(n_reset, n_reset, 0)? != 0xffff_ffff;
 
@@ -179,10 +192,11 @@ impl ArmDebugSequence for Gd32H7Sequence {
         Ok(())
     }
 
-    fn on_connect(
+    fn on_attach(
         &self,
         interface: &mut dyn ArmDebugInterface,
         default_ap: &FullyQualifiedApAddress,
+        _core_type: CoreType,
         target: &mut Target,
     ) -> Result<(), ArmError> {
         let mut memory = interface.memory_interface(default_ap)?;
@@ -513,5 +527,50 @@ mod tests {
             0x2400_0000..0x2400_0000 + 832 * 1024
         );
         assert_eq!(map[3].address_range(), 0x3000_0000..0x3000_4000);
+    }
+
+    #[cfg(feature = "builtin-targets")]
+    #[test]
+    fn attach_updates_session_target_and_preserves_custom_regions() {
+        use crate::{Permissions, config::Registry, probe::fake_probe::FakeProbe};
+
+        let registry = Registry::from_builtin_families();
+        let mut target = registry.get_target_by_name("GD32H737VG").unwrap();
+        let original_map = target.memory_map.clone();
+        let custom = MemoryRegion::Ram(probe_rs_target::RamRegion {
+            name: Some("custom".into()),
+            range: 0x6000_0000..0x6000_1000,
+            cores: vec!["main".into()],
+            is_alias: false,
+            access: None,
+        });
+        target.memory_map.push(custom.clone());
+
+        // The mocked core reports EFT=0, so TCM is empty and AXI RAM is 1 MiB.
+        let mut session = FakeProbe::with_mocked_core()
+            .into_probe()
+            .attach(target, Permissions::default())
+            .unwrap();
+        for _ in 0..2 {
+            let _core = session.core(0).unwrap();
+        }
+        let map = &session.target().memory_map;
+        let range = |name: &str| {
+            map.iter()
+                .find(|region| matches!(region, MemoryRegion::Ram(r) if r.name.as_deref() == Some(name)))
+                .unwrap()
+                .address_range()
+        };
+        assert_eq!(range("ITCMRAM"), 0..0);
+        assert_eq!(range("DTCMRAM"), 0x2000_0000..0x2000_0000);
+        assert_eq!(range("AXISRAM"), 0x2400_0000..0x2410_0000);
+        assert_eq!(map.last(), Some(&custom));
+        assert_eq!(
+            registry
+                .get_target_by_name("GD32H737VG")
+                .unwrap()
+                .memory_map,
+            original_map
+        );
     }
 }

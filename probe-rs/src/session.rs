@@ -130,7 +130,7 @@ impl fmt::Debug for ArchitectureInterface {
 impl ArchitectureInterface {
     fn attach<'probe, 'target: 'probe>(
         &'probe mut self,
-        target: &'probe Target,
+        target: &'probe mut Target,
         combined_state: &'probe mut CombinedCoreState,
     ) -> Result<Core<'probe>, Error> {
         match self {
@@ -216,21 +216,18 @@ impl Session {
 
     fn attach_arm_debug_interface(
         mut probe: Probe,
-        mut target: Target,
+        target: Target,
         attach_method: AttachMethod,
         permissions: Permissions,
         cores: Vec<CombinedCoreState>,
     ) -> Result<Self, Error> {
         let default_core = target.default_core();
 
-        let default_memory_ap = default_core
-            .memory_ap()
-            .ok_or_else(|| {
-                Error::Other(format!(
-                    "Unable to connect to core {default_core:?}, no memory AP configured"
-                ))
-            })?
-            .clone();
+        let default_memory_ap = default_core.memory_ap().ok_or_else(|| {
+            Error::Other(format!(
+                "Unable to connect to core {default_core:?}, no memory AP configured"
+            ))
+        })?;
 
         let default_dp = default_memory_ap.dp();
 
@@ -333,8 +330,6 @@ impl Session {
                 }
             }
 
-            sequence_handle.on_connect(&mut *interface, &default_memory_ap, &mut target)?;
-
             let interfaces = Self::build_arm_interfaces(&target, interface)?;
             let mut session = Session {
                 target,
@@ -376,8 +371,6 @@ impl Session {
                     core.enable_arm_debug(&mut *interface)?;
                 }
             }
-
-            sequence_handle.on_connect(&mut *interface, &default_memory_ap, &mut target)?;
 
             let interfaces = Self::build_arm_interfaces(&target, interface)?;
             Ok(Session {
@@ -665,7 +658,7 @@ impl Session {
             .ok_or(Error::CoreNotFound(core_index))?;
 
         self.interfaces
-            .attach(&self.target, combined_state)
+            .attach(&mut self.target, combined_state)
             .map_err(|e| {
                 if matches!(
                     e,

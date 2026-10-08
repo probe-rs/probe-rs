@@ -192,6 +192,7 @@ impl ArmDebugSequence for PsocEdge {
         interface: &mut dyn ArmDebugInterface,
         core_ap: &FullyQualifiedApAddress,
         core_type: CoreType,
+        target: &mut crate::Target,
     ) -> Result<(), ArmError> {
         if core_ap == &self.cm55_ap {
             let dp = self.cm33_ap.dp();
@@ -205,7 +206,8 @@ impl ArmDebugSequence for PsocEdge {
             if self.cm55_enabled.load(Ordering::Relaxed) {
                 match self.ensure_cm55_halted(interface) {
                     Ok(()) => {
-                        return DefaultArmSequence(()).on_attach(interface, core_ap, core_type);
+                        return DefaultArmSequence(())
+                            .on_attach(interface, core_ap, core_type, target);
                     }
                     Err(e) => {
                         // Interface no longer responding — fall back to a full re-enable.
@@ -235,7 +237,7 @@ impl ArmDebugSequence for PsocEdge {
             }
         }
 
-        DefaultArmSequence(()).on_attach(interface, core_ap, core_type)
+        DefaultArmSequence(()).on_attach(interface, core_ap, core_type, target)
     }
 
     fn debug_device_unlock(
