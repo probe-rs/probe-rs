@@ -4,7 +4,7 @@ use anyhow::Context;
 use libtest_mimic::Failed;
 use linkme::distributed_slice;
 use probe_rs::{
-    Architecture, Core, CoreInterface, MemoryInterface, Session,
+    Architecture, Core, CoreInterface, CoreType, MemoryInterface, Session,
     config::MemoryRegion,
     flashing::{DownloadOptions, FlashProgress, download_file_with_options, image_format},
 };
@@ -55,6 +55,12 @@ fn test_register_write(_definition: &DutDefinition, core: &mut Core) -> TestResu
                 "XPSR" => continue,
                 _ => (),
             }
+        }
+
+        // ARMv4T: CPSR's reserved bits read as zero and mode bit 4 is fixed to one, so an
+        // arbitrary test value can't be read back.
+        if core.core_type() == CoreType::Armv4t && register.name() == "CPSR" {
+            continue;
         }
 
         // Write new value

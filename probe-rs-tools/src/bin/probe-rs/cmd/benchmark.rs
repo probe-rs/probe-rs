@@ -4,7 +4,7 @@ use std::{
 };
 
 use anyhow::Context;
-use probe_rs::{MemoryInterface, config::Registry, probe::list::Lister};
+use probe_rs::{CoreType, MemoryInterface, config::Registry, probe::list::Lister};
 
 use crate::util::common_options::LoadedProbeOptions;
 use crate::util::common_options::ProbeOptions;
@@ -96,7 +96,9 @@ impl Cmd {
             speeds.extend_from_slice(&PROBE_SPEEDS);
         };
 
-        // Repeated attaches can make some targets stop responding.
+        // Attach once per speed and reuse the session for all `TEST_SIZES`: each attach
+        // reopens the probe and resets the JTAG chain, and repeated attaches can wedge some
+        // targets.
         let mut printed_info = false;
         let mut last_error = None;
         let mut passed = 0;
@@ -125,6 +127,7 @@ impl Cmd {
             }
         }
 
+        // Fail if no test passed at any speed.
         if passed == 0 {
             return Err(last_error.unwrap_or_else(|| anyhow::anyhow!("No benchmark test passed")));
         }
@@ -170,6 +173,7 @@ impl Cmd {
         let mut core = session.core(0).context("Failed to attach to core")?;
         core.halt(Duration::from_millis(100))
             .context("Halting failed")?;
+        let core_type = core.core_type();
 
         let mut passed = 0;
         for size in TEST_SIZES {
@@ -179,6 +183,16 @@ impl Cmd {
                     "Test failed for speed {speed} size {size} word_size {word_size}bit - {e}"
                 ),
             }
+        }
+
+        // Reset ARMv4T cores so that the next attach can halt them again (like
+        // `reset_after_flash_operation` does after flashing).
+        drop(core);
+        if core_type == CoreType::Armv4t {
+            session
+                .core(0)
+                .context("Failed to attach to core")?
+                .reset()?;
         }
 
         Ok(passed)

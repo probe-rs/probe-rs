@@ -26,17 +26,75 @@ impl MultiThreadBase for RuntimeTarget {
             .pc()
             .ok_or_else(|| TargetError::Fatal(anyhow::anyhow!("Core has no program counter")))?
             .id();
-        let pc_value = self
-            .block_on(core.read_core_reg(to_wire_register_id(pc_id)))
+
+        // Read PC and the whole main group in one batched request instead of one capture per
+        // register: on some backends every capture disturbs the target (on ARM7TDMI it advances
+        // the pipeline, see `CoreInterface::read_core_regs_batch`), and GDB refreshes its
+        // register cache often, e.g. after every register write.
+        let mut ids = vec![to_wire_register_id(pc_id)];
+        for reg in self.target_desc.get_registers_for_main_group() {
+            match reg.source() {
+                GdbRegisterSource::SingleRegister(id) => ids.push(to_wire_register_id(id)),
+                GdbRegisterSource::TwoWordRegister { low, high, .. } => {
+                    ids.push(to_wire_register_id(low));
+                    ids.push(to_wire_register_id(high));
+                }
+                GdbRegisterSource::Unavailable => {}
+            }
+        }
+
+        let results = self
+            .block_on(core.read_registers(ids))
             .into_target_result()?;
+        let mut results = results.into_iter();
+
+        let pc_result = results.next().ok_or_else(|| {
+            TargetError::Fatal(anyhow::anyhow!("Missing PC in batched register read"))
+        })?;
+        let pc_value = pc_result
+            .result
+            .map_err(|e| TargetError::Fatal(anyhow::anyhow!("{e}")))?;
         regs.pc = register_value_to_u64(from_wire_register_value(pc_value))?;
 
         let mut reg_buffer = Vec::<u8>::new();
 
         for reg in self.target_desc.get_registers_for_main_group() {
             let bytesize = reg.size_in_bytes();
-            let mut value: u128 =
-                read_register_from_source(self, core_index, reg.source()).into_target_result()?;
+            let mut value: u128 = match reg.source() {
+                GdbRegisterSource::SingleRegister(_) => {
+                    let result = results.next().ok_or_else(|| {
+                        TargetError::Fatal(anyhow::anyhow!(
+                            "Missing register in batched register read"
+                        ))
+                    })?;
+                    let value = result
+                        .result
+                        .map_err(|e| TargetError::Fatal(anyhow::anyhow!("{e}")))?;
+                    register_value_to_u128(from_wire_register_value(value))
+                }
+                GdbRegisterSource::TwoWordRegister { word_size, .. } => {
+                    let low = results.next().ok_or_else(|| {
+                        TargetError::Fatal(anyhow::anyhow!(
+                            "Missing register in batched register read"
+                        ))
+                    })?;
+                    let high = results.next().ok_or_else(|| {
+                        TargetError::Fatal(anyhow::anyhow!(
+                            "Missing register in batched register read"
+                        ))
+                    })?;
+                    let low_val = register_value_to_u128(from_wire_register_value(
+                        low.result
+                            .map_err(|e| TargetError::Fatal(anyhow::anyhow!("{e}")))?,
+                    ));
+                    let high_val = register_value_to_u128(from_wire_register_value(
+                        high.result
+                            .map_err(|e| TargetError::Fatal(anyhow::anyhow!("{e}")))?,
+                    ));
+                    low_val | (high_val << word_size)
+                }
+                GdbRegisterSource::Unavailable => 0,
+            };
 
             for _ in 0..bytesize {
                 reg_buffer.push(value as u8);

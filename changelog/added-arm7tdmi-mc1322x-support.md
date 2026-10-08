@@ -1,0 +1,1 @@
+Added ARM7TDMI (ARMv4T) architecture support, including a JTAG/EmbeddedICE debug backend with breakpoints, watchpoints and semihosting, enabling flashing and debugging of Freescale/NXP MC1322x microcontrollers (MC13224V, MC13226V).

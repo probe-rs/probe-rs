@@ -100,6 +100,7 @@ pub(crate) mod convert {
 
     pub(crate) fn to_wire_core_type(value: probe_rs_target::CoreType) -> CoreType {
         match value {
+            probe_rs_target::CoreType::Armv4t => CoreType::Armv4t,
             probe_rs_target::CoreType::Armv6m => CoreType::Armv6m,
             probe_rs_target::CoreType::Armv7a => CoreType::Armv7a,
             probe_rs_target::CoreType::Armv7r => CoreType::Armv7r,

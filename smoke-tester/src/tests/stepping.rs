@@ -2,8 +2,8 @@ use std::time::Duration;
 
 use linkme::distributed_slice;
 use probe_rs::{
-    Architecture, BreakpointCause, Core, CoreStatus, Error, HaltReason, MemoryInterface,
-    config::MemoryRegion, probe::DebugProbeError,
+    Architecture, BreakpointCause, Core, CoreStatus, CoreType, Error, HaltReason, MemoryInterface,
+    RegisterId, config::MemoryRegion, probe::DebugProbeError,
 };
 
 use crate::{CORE_TESTS, TestResult, dut_definition::DutDefinition, skip_test};
@@ -47,6 +47,37 @@ fn test_stepping(_definition: &DutDefinition, core: &mut Core) -> TestResult {
     let registers = core.registers();
     core.write_core_reg(registers.pc().unwrap(), code_load_address)?;
 
+    // ARMv4T has no BKPT instruction (it is undefined there), so hardware breakpoints stand in
+    // for the two in the test code: they halt before the instruction executes, at the same
+    // address. The core also isn't necessarily in Thumb state after the reset.
+    let armv4t = core.core_type() == CoreType::Armv4t;
+    if armv4t {
+        let cpsr = RegisterId(16);
+        let value: u32 = core.read_core_reg(cpsr)?;
+        // Thumb state (T), and IRQ/FIQ masked (I, F) so the boot ROM's interrupts can't run.
+        core.write_core_reg(cpsr, value | (1 << 5) | (1 << 7) | (1 << 6))?;
+        core.set_hw_breakpoint(code_load_address + 0x6)?;
+        core.set_hw_breakpoint(code_load_address + 0x10)?;
+    }
+
+    // Clear the ARMv4T stand-in breakpoints on every exit, also when an assertion fails, so
+    // they don't break later tests.
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        step_and_run(core, code_load_address)
+    }));
+    if armv4t {
+        core.clear_all_hw_breakpoints()?;
+    }
+    match result {
+        Ok(result) => result,
+        Err(panic) => std::panic::resume_unwind(panic),
+    }
+}
+
+/// Step once from the start of the test code, then run to each breakpoint in turn.
+fn step_and_run(core: &mut Core, code_load_address: u64) -> TestResult {
+    let registers = core.registers();
+
     let core_information = core.step()?;
 
     let expected_pc = code_load_address + 2;
@@ -79,7 +110,8 @@ fn test_stepping(_definition: &DutDefinition, core: &mut Core) -> TestResult {
 
     match core.wait_for_core_halted(Duration::from_millis(100)) {
         Ok(()) => {}
-        Err(Error::Probe(DebugProbeError::Timeout)) => {
+        // ARMv4T reports a plain timeout.
+        Err(Error::Probe(DebugProbeError::Timeout) | Error::Timeout) => {
             println!("Core did not halt after timeout!");
             core.halt(Duration::from_millis(100))?;
 
@@ -124,7 +156,8 @@ fn test_stepping(_definition: &DutDefinition, core: &mut Core) -> TestResult {
 
     match core.wait_for_core_halted(Duration::from_millis(100)) {
         Ok(()) => {}
-        Err(Error::Probe(DebugProbeError::Timeout)) => {
+        // ARMv4T reports a plain timeout.
+        Err(Error::Probe(DebugProbeError::Timeout) | Error::Timeout) => {
             println!("Core did not halt after timeout!");
             core.halt(Duration::from_millis(100))?;
 

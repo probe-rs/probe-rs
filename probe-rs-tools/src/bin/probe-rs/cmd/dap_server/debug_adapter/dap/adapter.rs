@@ -1758,7 +1758,8 @@ impl DebugAdapter {
     }
 
     /// Reset and halt the core (REPL `reset` / DAP `restart`), re-applying
-    /// hardware breakpoints on RISC-V / Xtensa.
+    /// hardware breakpoints on RISC-V / Xtensa / ARMv4T, and the vector catch on
+    /// ARMv4T (an ARM7TDMI reset clears both).
     pub(crate) async fn reset_and_halt_core_async(
         &mut self,
         backend: &mut RpcBackend,
@@ -1779,7 +1780,19 @@ impl DebugAdapter {
                 probe_rs::Error::Other(format!("No core metadata for core {core_index}"))
             })
             .map_err(DebuggerError::ProbeRs)?;
-        if [Architecture::Riscv, Architecture::Xtensa].contains(&arch) {
+        let armv4t = backend.is_armv4t_core(core_index);
+        if armv4t {
+            // Before the breakpoints: the SVC vector catch needs a specific unit.
+            backend
+                .reapply_vector_catch(core_index)
+                .await
+                .map_err(|e| {
+                    DebuggerError::Other(anyhow!(
+                        "Failed to re-apply vector catch after reset: {e}"
+                    ))
+                })?;
+        }
+        if armv4t || [Architecture::Riscv, Architecture::Xtensa].contains(&arch) {
             let addrs: Vec<u64> = core_data.breakpoints.iter().map(|bp| bp.address).collect();
             if !addrs.is_empty() {
                 backend

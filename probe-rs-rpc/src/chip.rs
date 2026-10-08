@@ -85,6 +85,8 @@ pub enum CoreType {
     Riscv64,
     /// Xtensa - TODO: may need to split into NX, LX6 and LX7
     Xtensa,
+    /// ARMv4T: ARM7TDMI(-S), ARM720T
+    Armv4t,
 }
 
 /// Declares the type of a memory region.

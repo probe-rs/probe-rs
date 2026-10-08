@@ -38,7 +38,7 @@ use crate::util::{
     },
 };
 use probe_rs_rpc::CancelTopic;
-use probe_rs_rpc::core_ops::{WireBreakpointCause, WireHaltReason};
+use probe_rs_rpc::core_ops::{WireBreakpointCause, WireCoreType, WireHaltReason};
 use probe_rs_rpc::flash::{BootInfo, DownloadOptions, FlashLayout, ProgressEvent, VerifyResult};
 use probe_rs_rpc::format::FormatOptions;
 use probe_rs_rpc::monitor::{ChannelInfo, MonitorExitReason};
@@ -627,6 +627,55 @@ pub async fn flash(
     Ok(loader.boot_info)
 }
 
+/// Returns whether the session's first core is an ARMv4T (ARM7TDMI) core.
+pub async fn is_armv4t_target(session: &SessionInterface) -> anyhow::Result<bool> {
+    let metadata = session.target_metadata().await?;
+    Ok(metadata
+        .cores
+        .first()
+        .is_some_and(|core| core.core_type == WireCoreType::Armv4t))
+}
+
+/// Re-flash `path` without the progress output, preverify and upload cache of [`flash`].
+///
+/// Used to re-flash before each test case (see `create_trial`). Unlike [`flash`], it can be
+/// called from a `tokio::spawn`ed future: the progress callback of [`flash`] hits a rustc
+/// limitation there ("implementation of `Send` is not general enough").
+pub(crate) async fn reflash_silent(
+    session: &SessionInterface,
+    path: &Path,
+    format: FormatOptions,
+    download_options: BinaryDownloadOptions,
+    rtt_client: Option<Key<RttClient>>,
+) -> anyhow::Result<()> {
+    let mut options = DownloadOptions {
+        keep_unwritten_bytes: download_options.restore_unwritten,
+        do_chip_erase: download_options.chip_erase,
+        skip_erase: false,
+        verify: download_options.verify,
+        disable_double_buffering: download_options.disable_double_buffering,
+        preferred_algos: download_options.prefer_flash_algorithm,
+        ram_chunk_size: download_options.ram_chunk_size,
+    };
+    options.sanitize();
+
+    let loader = session
+        .build_flash_loader(
+            path.to_path_buf(),
+            format,
+            None,
+            download_options.read_flasher_rtt,
+            rtt_client,
+        )
+        .await?;
+
+    session
+        .flash(options, loader.loader, async |_event| {})
+        .await?;
+
+    Ok(())
+}
+
 // Monitor starts in read-only mode: it outputs logs, but has no prompt to type into.
 // When channels are discovered, it can either stay in read-only mode, or switch to interactive mode if down channels are available.
 // Interactive mode allows the user to type into the prompt, and send data to the target.
@@ -1068,9 +1117,12 @@ fn describe_halt_reason(reason: WireHaltReason) -> &'static str {
     }
 }
 
+#[expect(clippy::too_many_arguments)]
 pub async fn test(
     session: &SessionInterface,
     boot_info: BootInfo,
+    format_options: FormatOptions,
+    download_options: BinaryDownloadOptions,
     elf_info: EmbeddedTestElfInfo,
     libtest_args: libtest_mimic::Arguments,
     monitor_options: &MonitoringOptions,
@@ -1093,7 +1145,7 @@ pub async fn test(
             // In embedded test < 0.7, we have to query the tests from the target via semihosting
             session
                 .list_tests(
-                    boot_info,
+                    boot_info.clone(),
                     rtt_handle,
                     semihosting_options.clone(),
                     async |msg| sender.send(msg).unwrap(),
@@ -1109,12 +1161,18 @@ pub async fn test(
             return Ok(());
         }
 
+        let reflash_each_test = is_armv4t_target(session).await?;
+
         let tests = tests
             .into_iter()
             .map(|test| {
                 create_trial(
                     session,
                     path,
+                    reflash_each_test,
+                    boot_info.clone(),
+                    format_options.clone(),
+                    download_options.clone(),
                     rtt_handle,
                     semihosting_options.clone(),
                     sender.clone(),
@@ -1173,6 +1231,10 @@ pub async fn test(
 fn create_trial(
     session: &SessionInterface,
     path: &Path,
+    reflash_each_test: bool,
+    boot_info: BootInfo,
+    format_options: FormatOptions,
+    download_options: BinaryDownloadOptions,
     rtt_client: Option<Key<RttClient>>,
     semihosting_options: SemihostingOptions,
     sender: UnboundedSender<MonitorEvent>,
@@ -1195,10 +1257,34 @@ fn create_trial(
             }
 
             let handle = tokio::spawn(async move {
+                // ARM7TDMI only: re-flash before every test. The MC1322x boots from RAM and only
+                // reaches a clean state through a hardware reset, but for a RAM-boot target
+                // `prepare_boot_info` only redirects the PC (a reset would clear the RAM image).
+                // Flashing resets the core and restores the image. Other targets are already
+                // reset per test by `prepare_boot_info`.
+                if reflash_each_test
+                    && let Err(err) = reflash_silent(
+                        &session,
+                        &path,
+                        format_options,
+                        download_options,
+                        rtt_client,
+                    )
+                    .await
+                {
+                    return Err(Failed::from(format!(
+                        "Re-flashing before the test failed: {err:?}"
+                    )));
+                }
+
                 match session
-                    .run_test(test, rtt_client, semihosting_options, async move |msg| {
-                        sender.send(msg).unwrap()
-                    })
+                    .run_test(
+                        boot_info,
+                        test,
+                        rtt_client,
+                        semihosting_options,
+                        async move |msg| sender.send(msg).unwrap(),
+                    )
                     .await
                 {
                     Ok(TestResult::Success) => Ok(()),

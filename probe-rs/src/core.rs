@@ -2,6 +2,7 @@ use crate::{
     CoreType, Endian, InstructionSet, MemoryInterface, Target,
     architecture::{
         arm::sequences::{ArmDebugSequence, DefaultArmSequence},
+        arm7::sequences::{Arm7tdmiDebugSequence, DefaultArm7tdmiSequence},
         riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
         xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
     },
@@ -11,7 +12,8 @@ use crate::{
 };
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
 use probe_rs_target::{
-    ArmCoreAccessOptions, MemoryRegion, RiscvCoreAccessOptions, XtensaCoreAccessOptions,
+    ArmCoreAccessOptions, Armv4tCoreAccessOptions, MemoryRegion, RiscvCoreAccessOptions,
+    XtensaCoreAccessOptions,
 };
 use std::{sync::Arc, time::Duration};
 
@@ -72,6 +74,21 @@ pub trait CoreInterface: MemoryInterface {
     /// Read the value of a core register.
     fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, Error>;
 
+    /// Read the values of several core registers in one batch.
+    ///
+    /// The default implementation calls [`Self::read_core_reg`] once per address. Backends with
+    /// a high per-read cost (e.g. ARM7TDMI) can override it to read several registers in one
+    /// operation, so callers reading many registers should prefer it over a loop.
+    fn read_core_regs_batch(
+        &mut self,
+        addresses: &[RegisterId],
+    ) -> Vec<Result<RegisterValue, Error>> {
+        addresses
+            .iter()
+            .map(|&address| self.read_core_reg(address))
+            .collect()
+    }
+
     /// Write the value of a core register.
     fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error>;
 
@@ -91,6 +108,30 @@ pub trait CoreInterface: MemoryInterface {
 
     /// Clears the breakpoint configured in unit `unit_index`.
     fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), Error>;
+
+    /// Latches a halt caused by a watchpoint match (rather than by [`CoreInterface::halt`]).
+    ///
+    /// A no-op on architectures where a watchpoint match already is a durable halt.
+    fn latch_watchpoint_halt(&mut self) -> Result<(), Error> {
+        Ok(())
+    }
+
+    /// Returns the breakpoint units that hold something other than a breakpoint set through the
+    /// breakpoint API - a data watchpoint (see [`CoreInterface::set_hw_data_watchpoint`]) or a
+    /// vector catch - by unit index, with their address.
+    ///
+    /// Such units are listed as occupied by [`CoreInterface::hw_breakpoints`]; the
+    /// address-based breakpoint functions of [`Core`] leave them alone. Empty by default.
+    fn reserved_breakpoint_units(&mut self) -> Result<Vec<Option<u64>>, Error> {
+        Ok(Vec::new())
+    }
+
+    /// Configure hardware unit `unit_index` as a data watchpoint, halting on a read or write
+    /// of `addr`. Not supported by every architecture.
+    fn set_hw_data_watchpoint(&mut self, unit_index: usize, addr: u64) -> Result<(), Error> {
+        let _ = (unit_index, addr);
+        Err(Error::NotImplemented("data watchpoint"))
+    }
 
     /// Returns a list of all the registers of this core.
     fn registers(&self) -> &'static CoreRegisters;
@@ -340,6 +381,15 @@ impl<'probe> Core<'probe> {
         value.try_into().into_crate_error()
     }
 
+    /// Read the values of several core registers in one batch. See
+    /// [`CoreInterface::read_core_regs_batch`].
+    pub fn read_core_regs_batch(
+        &mut self,
+        addresses: &[RegisterId],
+    ) -> Vec<Result<RegisterValue, Error>> {
+        self.inner.read_core_regs_batch(addresses)
+    }
+
     /// Write the value of a core register.
     ///
     /// # Errors
@@ -408,14 +458,19 @@ impl<'probe> Core<'probe> {
 
         // If there is a breakpoint set already, return its bp_unit_index, else find the next free index.
         let breakpoints = self.inner.hw_breakpoints()?;
-        let breakpoint_comparator_index =
-            match breakpoints.iter().position(|&bp| bp == Some(address)) {
-                Some(breakpoint_comparator_index) => breakpoint_comparator_index,
-                None => breakpoints
-                    .iter()
-                    .position(|bp| bp.is_none())
-                    .ok_or_else(|| Error::Other("No available hardware breakpoints".to_string()))?,
-            };
+        let reserved = self.inner.reserved_breakpoint_units()?;
+        let is_breakpoint_at = |unit: usize, bp: &Option<u64>| {
+            *bp == Some(address) && reserved.get(unit).copied().flatten().is_none()
+        };
+        let breakpoint_comparator_index = match (0..breakpoints.len())
+            .position(|unit| is_breakpoint_at(unit, &breakpoints[unit]))
+        {
+            Some(breakpoint_comparator_index) => breakpoint_comparator_index,
+            None => breakpoints
+                .iter()
+                .position(|bp| bp.is_none())
+                .ok_or_else(|| Error::Other("No available hardware breakpoints".to_string()))?,
+        };
 
         tracing::debug!(
             "Trying to set HW breakpoint #{} with comparator address  {:#08x}",
@@ -449,16 +504,32 @@ impl<'probe> Core<'probe> {
         self.inner.set_hw_breakpoint(unit_index, addr)
     }
 
+    /// Configure hardware unit `unit_index` as a data watchpoint, halting on a read or write
+    /// of `addr`. Returns [`Error::NotImplemented`] if the architecture doesn't support it.
+    #[tracing::instrument(skip(self))]
+    pub fn set_hw_data_watchpoint_unit(
+        &mut self,
+        unit_index: usize,
+        addr: u64,
+    ) -> Result<(), Error> {
+        self.inner.set_hw_data_watchpoint(unit_index, addr)
+    }
+
     /// Set a hardware breakpoint
     ///
     /// This function will try to clear a hardware breakpoint at `address` if there exists a breakpoint at that address.
     #[tracing::instrument(skip(self))]
     pub fn clear_hw_breakpoint(&mut self, address: u64) -> Result<(), Error> {
+        // A reserved unit (data watchpoint, vector catch) at the same address is not a breakpoint.
+        let reserved = self.inner.reserved_breakpoint_units()?;
         let bp_position = self
             .inner
             .hw_breakpoints()?
             .iter()
-            .position(|bp| *bp == Some(address));
+            .enumerate()
+            .position(|(unit, bp)| {
+                *bp == Some(address) && reserved.get(unit).copied().flatten().is_none()
+            });
 
         tracing::debug!(
             "Will clear HW breakpoint    #{} with comparator address    {:#08x}",
@@ -477,6 +548,20 @@ impl<'probe> Core<'probe> {
         }
     }
 
+    /// Clear hardware unit `unit_index`, whether it holds a breakpoint or a data watchpoint.
+    ///
+    /// Use this to clear a data watchpoint: [`Core::clear_hw_breakpoint`] only finds
+    /// breakpoints.
+    #[tracing::instrument(skip(self))]
+    pub fn clear_hw_breakpoint_unit(&mut self, unit_index: usize) -> Result<(), Error> {
+        self.inner.clear_hw_breakpoint(unit_index)
+    }
+
+    /// Latches a halt caused by a watchpoint match. See [`CoreInterface::latch_watchpoint_halt`].
+    pub(crate) fn latch_watchpoint_halt(&mut self) -> Result<(), Error> {
+        self.inner.latch_watchpoint_halt()
+    }
+
     /// Clear all hardware breakpoints
     ///
     /// This function will clear all HW breakpoints which are configured on the target,
@@ -484,8 +569,12 @@ impl<'probe> Core<'probe> {
     /// Also used as a helper function in [`Session::drop`](crate::session::Session).
     #[tracing::instrument(skip(self))]
     pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), Error> {
-        for breakpoint in (self.inner.hw_breakpoints()?).into_iter().flatten() {
-            self.clear_hw_breakpoint(breakpoint)?
+        // By unit, not by address: a reserved unit (a data watchpoint or vector catch, see
+        // `CoreInterface::reserved_breakpoint_units`) isn't found by the address-based clear.
+        for (unit, breakpoint) in self.inner.hw_breakpoints()?.into_iter().enumerate() {
+            if breakpoint.is_some() {
+                self.inner.clear_hw_breakpoint(unit)?;
+            }
         }
         Ok(())
     }
@@ -602,6 +691,10 @@ impl CoreInterface for Core<'_> {
         self.inner.hw_breakpoints()
     }
 
+    fn reserved_breakpoint_units(&mut self) -> Result<Vec<Option<u64>>, Error> {
+        self.inner.reserved_breakpoint_units()
+    }
+
     fn enable_breakpoints(&mut self, state: bool) -> Result<(), Error> {
         self.enable_breakpoints(state)
     }
@@ -691,6 +784,10 @@ pub enum ResolvedCoreOptions {
         sequence: Arc<dyn ArmDebugSequence>,
         options: ArmCoreAccessOptions,
     },
+    Armv4t {
+        sequence: Arc<dyn Arm7tdmiDebugSequence>,
+        options: Armv4tCoreAccessOptions,
+    },
     Riscv {
         sequence: Arc<dyn RiscvDebugSequence>,
         options: RiscvCoreAccessOptions,
@@ -714,6 +811,13 @@ impl ResolvedCoreOptions {
                 };
                 Self::Arm { sequence, options }
             }
+            CoreAccessOptions::Armv4t(options) => {
+                let sequence = match &target.debug_sequence {
+                    DebugSequence::Armv4t(s) => s.clone(),
+                    _ => DefaultArm7tdmiSequence::create(),
+                };
+                Self::Armv4t { sequence, options }
+            }
             CoreAccessOptions::Riscv(options) => {
                 let sequence = match &target.debug_sequence {
                     DebugSequence::Riscv(s) => s.clone(),
@@ -734,6 +838,7 @@ impl ResolvedCoreOptions {
     fn jtag_tap_index(&self) -> usize {
         match self {
             Self::Arm { options, .. } => options.jtag_tap.unwrap_or(0),
+            Self::Armv4t { options, .. } => options.jtag_tap.unwrap_or(0),
             Self::Riscv { options, .. } => options.jtag_tap.unwrap_or(0),
             Self::Xtensa { options, .. } => options.jtag_tap.unwrap_or(0),
         }
@@ -746,6 +851,11 @@ impl std::fmt::Debug for ResolvedCoreOptions {
             Self::Arm { options, .. } => f
                 .debug_struct("Arm")
                 .field("sequence", &"<ArmDebugSequence>")
+                .field("options", options)
+                .finish(),
+            Self::Armv4t { options, .. } => f
+                .debug_struct("Armv4t")
+                .field("sequence", &"<Arm7tdmiDebugSequence>")
                 .field("options", options)
                 .finish(),
             Self::Riscv { options, .. } => f

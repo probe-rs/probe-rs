@@ -114,6 +114,9 @@ pub struct RpcBackend {
     /// Per-core metadata cached at attach-time so static-property methods
     /// (register file, architecture, ...) need no round trip.
     pub(crate) core_metadata: Vec<CoreMetadata>,
+    /// The vector catch conditions [`Self::apply_vector_catch`] enabled, by core index, so they
+    /// can be enabled again after a reset that cleared them.
+    vector_catch: HashMap<usize, Vec<VectorCatchCondition>>,
 }
 
 #[derive(Clone)]
@@ -217,7 +220,30 @@ impl RpcBackend {
             sessid,
             target_metadata,
             core_metadata,
+            vector_catch: HashMap::new(),
         }
+    }
+
+    /// Whether core `core_index` is an ARMv4T (ARM7TDMI) core.
+    pub(crate) fn is_armv4t_core(&self, core_index: usize) -> bool {
+        self.target_metadata
+            .cores
+            .iter()
+            .any(|&(index, core_type)| index == core_index && core_type == CoreType::Armv4t)
+    }
+
+    /// Enable again the vector catch conditions [`Self::apply_vector_catch`] set up for
+    /// `core_index`, e.g. after a reset that cleared them. The core must be halted.
+    pub(crate) async fn reapply_vector_catch(&mut self, core_index: usize) -> Result<(), Error> {
+        let conditions = self
+            .vector_catch
+            .get(&core_index)
+            .cloned()
+            .unwrap_or_default();
+        for condition in conditions {
+            self.enable_vector_catch(core_index, condition).await?;
+        }
+        Ok(())
     }
 
     pub(crate) async fn read_memory_8(
@@ -568,8 +594,12 @@ impl RpcBackend {
             (config.catch_svc, VectorCatchCondition::Svc),
             (config.catch_hlt, VectorCatchCondition::Hlt),
         ];
+        let mut applied = Vec::new();
         for (enabled, condition) in requested {
-            if enabled && let Err(e) = self.enable_vector_catch(core_index, condition).await {
+            if !enabled {
+                continue;
+            }
+            if let Err(e) = self.enable_vector_catch(core_index, condition).await {
                 // A target that has no vector catch must not raise an error
                 // popup in the client on every attach.
                 if matches!(e, Error::NotImplemented(_)) {
@@ -577,8 +607,11 @@ impl RpcBackend {
                 } else {
                     tracing::error!("Failed to enable_vector_catch: {e}");
                 }
+            } else {
+                applied.push(condition);
             }
         }
+        self.vector_catch.insert(core_index, applied);
         if was_halted {
             self.run(core_index).await?;
         }

@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use anyhow::Context;
 use postcard_rpc::{header::VarHeader, server::Sender};
-use probe_rs::{BreakpointCause, Core, HaltReason, semihosting::SemihostingCommand};
+use probe_rs::{BreakpointCause, Core, CoreType, HaltReason, semihosting::SemihostingCommand};
 use probe_rs_rpc::test::{
     ListTestsRequest, RunTestRequest, Test, TestDefinitions, TestKickoffRequest,
     TestKickoffResponse, TestOutcome, TestResult, Tests,
@@ -12,6 +12,7 @@ use crate::rpc::{
     functions::{
         RpcContext, RpcSpawnContext, WireTxImpl,
         convert::lift,
+        flash::prepare_boot_info,
         monitor::{MonitorSender, RttPoller},
     },
     utils::{
@@ -141,8 +142,15 @@ fn run_test_impl(
 
     {
         let mut session = shared_session.session_blocking();
-        let mut core = session.core(core_id)?;
-        core.reset_and_halt(Duration::from_millis(500))?;
+        if session.target().cores[core_id].core_type == CoreType::Armv4t {
+            // A reset wipes RAM on ARMv4T targets (MC1322x), so a RAM image is only restarted
+            // (`prepare_running_on_ram`), like in `list_tests_impl`.
+            prepare_boot_info(&request.boot_info, &mut session, core_id)?;
+        } else {
+            session
+                .core(core_id)?
+                .reset_and_halt(Duration::from_millis(500))?;
+        }
     }
 
     let expected_outcome = request.test.expected_outcome;
