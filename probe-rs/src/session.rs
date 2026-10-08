@@ -130,7 +130,7 @@ impl fmt::Debug for ArchitectureInterface {
 impl ArchitectureInterface {
     fn attach<'probe, 'target: 'probe>(
         &'probe mut self,
-        target: &'probe Target,
+        target: &'probe mut Target,
         combined_state: &'probe mut CombinedCoreState,
     ) -> Result<Core<'probe>, Error> {
         match self {
@@ -658,7 +658,7 @@ impl Session {
             .ok_or(Error::CoreNotFound(core_index))?;
 
         self.interfaces
-            .attach(&self.target, combined_state)
+            .attach(&mut self.target, combined_state)
             .map_err(|e| {
                 if matches!(
                     e,

@@ -1199,12 +1199,13 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         Ok(())
     }
 
-    /// Called before attaching to a core.
+    /// Called before attaching to a core. May update the session-local memory map.
     fn on_attach(
         &self,
         _interface: &mut dyn ArmDebugInterface,
         _ap: &FullyQualifiedApAddress,
         _core_type: CoreType,
+        _target: &mut crate::Target,
     ) -> Result<(), ArmError> {
         Ok(())
     }

@@ -60,11 +60,9 @@ impl CombinedCoreState {
 
     pub(crate) fn attach_arm<'probe>(
         &'probe mut self,
-        target: &'probe Target,
+        target: &'probe mut Target,
         arm_interface: &'probe mut Box<dyn ArmDebugInterface>,
     ) -> Result<Core<'probe>, Error> {
-        let name = &target.cores[self.id].name;
-
         let ResolvedCoreOptions::Arm { options, sequence } = &self.core_state.core_access_options
         else {
             unreachable!(
@@ -77,8 +75,10 @@ impl CombinedCoreState {
             &mut **arm_interface,
             &self.arm_memory_ap(),
             self.specific_state.core_type(),
+            target,
         )?;
 
+        let name = &target.cores[self.id].name;
         let memory = arm_interface.memory_interface(&self.arm_memory_ap())?;
 
         Ok(match &mut self.specific_state {

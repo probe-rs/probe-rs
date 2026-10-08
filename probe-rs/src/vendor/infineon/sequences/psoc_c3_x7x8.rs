@@ -465,6 +465,7 @@ impl ArmDebugSequence for PsocC3X7X8 {
         interface: &mut dyn ArmDebugInterface,
         core_ap: &FullyQualifiedApAddress,
         core_type: probe_rs_target::CoreType,
+        target: &mut crate::Target,
     ) -> Result<(), ArmError> {
         if let Some(core_index) = self.ppca_core_index(core_ap) {
             self.ppca_acquire(interface, core_index, false)
@@ -472,7 +473,7 @@ impl ArmDebugSequence for PsocC3X7X8 {
                     tracing::warn!("PSoC C3 x7/x8: ppca_acquire for Core{core_index} failed: {e}");
                 })
         } else {
-            DefaultArmSequence(()).on_attach(interface, core_ap, core_type)
+            DefaultArmSequence(()).on_attach(interface, core_ap, core_type, target)
         }
     }
 
