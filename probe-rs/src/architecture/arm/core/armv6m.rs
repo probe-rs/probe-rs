@@ -1,6 +1,10 @@
 //! Register types and the core interface for armv6-M
 
-use super::{CortexMState, Dfsr, registers::cortex_m::*};
+use super::{
+    CortexMState, Dfsr,
+    cortex_m::{enable_halting_debug, exit_halt, set_vector_catch},
+    registers::cortex_m::*,
+};
 use crate::{
     Architecture, BreakpointCause, CoreInformation, CoreInterface, CoreRegister, CoreStatus,
     CoreType, HaltReason, InstructionSet, MemoryInterface, MemoryMappedRegister,
@@ -611,14 +615,7 @@ impl CoreInterface for Armv6m<'_> {
         }
         self.state.pc_written = false;
 
-        let mut value = Dhcsr(0);
-        value.set_c_halt(false);
-        value.set_c_debugen(true);
-        value.enable_write();
-
-        self.memory
-            .write_word_32(Dhcsr::get_mmio_address(), value.into())?;
-        self.memory.flush()?;
+        exit_halt(&mut *self.memory, false)?;
 
         // We assume that the core is running now.
         self.set_core_status(CoreStatus::Running);
@@ -697,19 +694,9 @@ impl CoreInterface for Armv6m<'_> {
             None
         };
 
-        let mut value = Dhcsr(0);
-        // Leave halted state.
-        // Step one instruction.
+        // Only arm the pending step once the write has landed.
+        exit_halt(&mut *self.memory, true)?;
         self.state.begin_step();
-        value.set_c_step(true);
-        value.set_c_halt(false);
-        value.set_c_debugen(true);
-        value.set_c_maskints(true);
-        value.enable_write();
-
-        self.memory
-            .write_word_32(Dhcsr::get_mmio_address(), value.into())?;
-        self.memory.flush()?;
 
         // The single-step might put the core in lockup state. Lockup isn't considered "halted"
         // so we can't use `wait_for_core_halted` here.
@@ -932,52 +919,12 @@ impl CoreInterface for Armv6m<'_> {
 
     #[tracing::instrument(skip(self))]
     fn enable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
-        let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
-        dhcsr.set_c_debugen(true);
-        self.memory
-            .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
-
-        let mut demcr = Demcr(self.memory.read_word_32(Demcr::get_mmio_address())?);
-        match condition {
-            VectorCatchCondition::HardFault => demcr.set_vc_harderr(true),
-            VectorCatchCondition::CoreReset => demcr.set_vc_corereset(true),
-            VectorCatchCondition::SecureFault => {
-                return Err(Error::Arm(ArmError::ArchitectureRequired(&["ARMv8"])));
-            }
-            VectorCatchCondition::All => {
-                demcr.set_vc_harderr(true);
-                demcr.set_vc_corereset(true);
-            }
-            VectorCatchCondition::Svc | VectorCatchCondition::Hlt => {
-                return Err(Error::NotImplemented("vector catch condition Svc/Hlt"));
-            }
-        };
-
-        self.memory
-            .write_word_32(Demcr::get_mmio_address(), demcr.into())?;
-        Ok(())
+        enable_halting_debug(&mut *self.memory)?;
+        set_vector_catch(&mut *self.memory, condition, true)
     }
 
     fn disable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
-        let mut demcr = Demcr(self.memory.read_word_32(Demcr::get_mmio_address())?);
-        match condition {
-            VectorCatchCondition::HardFault => demcr.set_vc_harderr(false),
-            VectorCatchCondition::CoreReset => demcr.set_vc_corereset(false),
-            VectorCatchCondition::SecureFault => {
-                return Err(Error::Arm(ArmError::ArchitectureRequired(&["ARMv8"])));
-            }
-            VectorCatchCondition::All => {
-                demcr.set_vc_harderr(false);
-                demcr.set_vc_corereset(false);
-            }
-            VectorCatchCondition::Svc | VectorCatchCondition::Hlt => {
-                return Err(Error::NotImplemented("vector catch condition Svc/Hlt"));
-            }
-        };
-
-        self.memory
-            .write_word_32(Demcr::get_mmio_address(), demcr.into())?;
-        Ok(())
+        set_vector_catch(&mut *self.memory, condition, false)
     }
 }
 
