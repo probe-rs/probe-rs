@@ -11,6 +11,7 @@ use std::{
 use probe_rs_target::CoreType;
 
 pub use crate::flashing::DebugFlashSequence;
+use crate::flashing::FlashVerify;
 
 use crate::{
     MemoryInterface, MemoryMappedRegister,
@@ -1221,6 +1222,15 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// operations are performed from the host via debug interface commands
     /// rather than a RAM-based flash algorithm.
     fn debug_flash_sequence(&self) -> Option<Arc<dyn DebugFlashSequence>> {
+        None
+    }
+
+    /// Return the fast flash verification implementation if one exists.
+    ///
+    /// A target whose flash controller can compute a signature over a range of flash lets the
+    /// flash loader check an image without reading it back. The default is `None`, so
+    /// verification reads the contents back as before.
+    fn flash_verify_sequence(&self) -> Option<Arc<dyn FlashVerify>> {
         None
     }
 

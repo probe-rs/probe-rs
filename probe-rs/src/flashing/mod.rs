@@ -53,6 +53,7 @@ mod host_flasher;
 pub mod host_sequence;
 mod loader;
 mod progress;
+pub mod verify_sequence;
 
 use builder::*;
 
@@ -68,3 +69,4 @@ pub use host_flasher::HostSideFlasher;
 pub use host_sequence::DebugFlashSequence;
 pub use loader::*;
 pub use progress::*;
+pub use verify_sequence::{FlashVerify, VerifyOutcome};

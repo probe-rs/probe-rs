@@ -69,6 +69,14 @@ pub trait XtensaDebugSequence: Send + Sync + Debug {
     fn debug_flash_sequence(&self) -> Option<Arc<dyn DebugFlashSequence>> {
         None
     }
+
+    /// Return the fast flash verification implementation if one exists.
+    ///
+    /// Override this for a target whose flash controller can compute a signature over a
+    /// range of flash. The default returns `None`.
+    fn flash_verify_sequence(&self) -> Option<Arc<dyn crate::flashing::FlashVerify>> {
+        None
+    }
 }
 
 /// The default sequences that is used for Xtensa chips that do not specify a specific sequence.
