@@ -104,6 +104,27 @@ fn selector_matches(selector: &DebugProbeSelector, info: &DeviceInfo) -> bool {
 }
 
 impl StLinkUsbDevice {
+    /// ST-Link devices won't take a command if there is a reply in the
+    /// send buffer. Read and drain any replies to unblock it.
+    fn drain_replies(&mut self) -> Result<(), StlinkError> {
+        /// How long the pipe must stay quiet to count as drained.
+        const QUIET: Duration = Duration::from_millis(100);
+        /// Stop here in case the probe never stops sending.
+        const MAX_DRAIN: usize = 64 * 1024;
+
+        let mut buf = [0; 512];
+        let mut drained = 0;
+        while drained < MAX_DRAIN {
+            match self.interface.read_bulk(self.info.ep_in, &mut buf, QUIET) {
+                Ok(read) => drained += read,
+                Err(e) if e.kind() == std::io::ErrorKind::TimedOut => break,
+                Err(e) => return Err(StlinkError::Usb(e)),
+            }
+        }
+        tracing::debug!("Discarded {drained} bytes from STLink.");
+        Ok(())
+    }
+
     /// Creates and initializes a new USB device.
     pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, ProbeCreationError> {
         let device = nusb::list_devices()
@@ -277,9 +298,12 @@ impl StLinkUsb for StLinkUsbDevice {
     /// STLink does not respond to USB requests.
     fn reset(&mut self) -> Result<(), StlinkError> {
         tracing::debug!("Resetting USB device of STLink");
-        self.device_handle
-            .reset()
-            .wait()
-            .map_err(|e| StlinkError::Usb(e.into()))
+        match self.device_handle.reset().wait() {
+            Ok(()) => Ok(()),
+            // `.reset()` doesn't work on all targets, so just drain all
+            // pending replies instead.
+            Err(e) if e.kind() == nusb::ErrorKind::Unsupported => self.drain_replies(),
+            Err(e) => Err(StlinkError::Usb(e.into())),
+        }
     }
 }
