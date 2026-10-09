@@ -5,6 +5,38 @@ use probe_rs::{
     rtt::{Error, Rtt, ScanRegion},
 };
 use probe_rs_rpc::rtt_config::ChannelMode;
+use std::time::{Duration, Instant};
+
+/// How long the control block may be missing before the user is told about it.
+const MISSING_CONTROL_BLOCK_WARNING_DELAY: Duration = Duration::from_secs(5);
+
+/// Tracks a control block that has not been found, so that the user is only told once per
+/// attach. Reset by replacing it with the default value.
+#[derive(Default)]
+struct MissingControlBlock {
+    /// When we first failed to find the control block since we were last attached.
+    since: Option<Instant>,
+
+    /// Whether the user has been told that the control block is missing.
+    warned: bool,
+}
+
+impl MissingControlBlock {
+    fn not_found(&mut self) {
+        self.since.get_or_insert_with(Instant::now);
+    }
+
+    /// Returns true once the control block has been missing for `delay`, and only the first
+    /// time that is the case since we were last attached.
+    fn should_warn(&mut self, delay: Duration) -> bool {
+        if self.warned {
+            return false;
+        }
+
+        self.warned = self.since.is_some_and(|since| since.elapsed() >= delay);
+        self.warned
+    }
+}
 
 pub struct RttClient {
     pub scan_region: ScanRegion,
@@ -25,6 +57,10 @@ pub struct RttClient {
     /// Whether we have polled data since the last time the control block was corrupted. Used to
     /// prevent spamming the log with messages about corrupted control blocks.
     polled_data: bool,
+
+    /// How long the control block has been missing, and whether the user was told. Used to
+    /// only warn once per attach.
+    missing_control_block: MissingControlBlock,
 
     /// The core used to poll the target.
     core_id: usize,
@@ -48,6 +84,7 @@ impl RttClient {
             disallow_clearing_rtt_header: false,
             try_attaching: true,
             polled_data: false,
+            missing_control_block: MissingControlBlock::default(),
             core_id,
         }
     }
@@ -94,6 +131,7 @@ impl RttClient {
                 Ok(location) => location,
                 Err(Error::ControlBlockNotFound) => {
                     tracing::debug!("Failed to attach - control block not found");
+                    self.missing_control_block.not_found();
                     return Ok(false);
                 }
                 Err(Error::NoControlBlockLocation) => {
@@ -113,6 +151,7 @@ impl RttClient {
             Err(Error::ControlBlockNotFound) => {
                 self.last_control_block_address = None;
                 tracing::debug!("Failed to attach - control block not found");
+                self.missing_control_block.not_found();
                 return Ok(false);
             }
             Err(Error::ControlBlockCorrupted(error)) => {
@@ -123,7 +162,10 @@ impl RttClient {
         };
 
         match RttConnection::new(rtt) {
-            Ok(rtt) => self.target = Some(rtt),
+            Ok(rtt) => {
+                self.target = Some(rtt);
+                self.missing_control_block = MissingControlBlock::default();
+            }
             Err(Error::ControlBlockCorrupted(error)) => {
                 tracing::debug!("Failed to attach - control block corrupted: {}", error);
             }
@@ -143,6 +185,31 @@ impl RttClient {
         }
 
         Ok(self.is_attached())
+    }
+
+    /// Tells the user, once, that the control block has not shown up. Attaching fails silently
+    /// while the firmware has yet to initialize RTT, which looks the same as firmware that
+    /// never does, or an ELF file that does not match the firmware on the target.
+    pub(crate) fn warn_if_control_block_is_missing(&mut self) {
+        if !self
+            .missing_control_block
+            .should_warn(MISSING_CONTROL_BLOCK_WARNING_DELAY)
+        {
+            return;
+        }
+
+        let delay = MISSING_CONTROL_BLOCK_WARNING_DELAY.as_secs();
+        match self.scan_region {
+            ScanRegion::Exact(address) => tracing::warn!(
+                "No RTT control block found at {address:#010x} after {delay} seconds. \
+                 The ELF file may not match the firmware on the target, or the firmware \
+                 has not initialized RTT. Still trying to attach."
+            ),
+            _ => tracing::warn!(
+                "No RTT control block found after {delay} seconds. The firmware may not \
+                 have initialized RTT. Still trying to attach."
+            ),
+        }
     }
 
     pub fn poll_channel(&mut self, core: &mut Core, channel: u32) -> Result<&[u8], Error> {
@@ -366,5 +433,29 @@ mod test {
         client.configure_from_loader(&loader_writing(&target, CONTROL_BLOCK));
 
         assert!(!client.disallow_clearing_rtt_header);
+    }
+
+    #[test]
+    fn a_control_block_that_was_not_looked_for_is_not_missing() {
+        let mut missing = MissingControlBlock::default();
+
+        assert!(!missing.should_warn(Duration::ZERO));
+    }
+
+    #[test]
+    fn a_control_block_is_not_missing_before_the_delay_has_passed() {
+        let mut missing = MissingControlBlock::default();
+        missing.not_found();
+
+        assert!(!missing.should_warn(Duration::from_secs(3600)));
+    }
+
+    #[test]
+    fn a_missing_control_block_is_reported_once() {
+        let mut missing = MissingControlBlock::default();
+        missing.not_found();
+
+        assert!(missing.should_warn(Duration::ZERO));
+        assert!(!missing.should_warn(Duration::ZERO));
     }
 }
