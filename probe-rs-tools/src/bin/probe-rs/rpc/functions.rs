@@ -129,7 +129,9 @@ where
                 biased;
 
                 _ = self.token.cancelled() => break,
-                Some(event) = self.rx.recv() => {
+                event = self.rx.recv() => {
+                    // The task has dropped its sender, and everything it sent is published.
+                    let Some(event) = event else { break };
                     sender
                         .publish::<T>(VarSeq::Seq2(0), &event)
                         .await
@@ -137,9 +139,6 @@ where
                 }
             }
         }
-        std::mem::drop(self.rx);
-
-        futures_util::future::pending().await
     }
 }
 
@@ -205,12 +204,10 @@ impl RpcSpawnContext {
         let ctx = self.clone();
         let blocking = tokio::task::spawn_blocking(move || task(ctx, request, sender));
 
-        tokio::select! {
-            _ =  publisher.publish(&self.sender) => unreachable!(),
-            response = blocking => {
-                response.unwrap()
-            }
-        }
+        // The publisher returns once the task has dropped its sender, so the events the task
+        // sent are all published before its response.
+        let (_, response) = tokio::join!(publisher.publish(&self.sender), blocking);
+        response.unwrap()
     }
 }
 
@@ -669,5 +666,48 @@ pub(crate) mod convert {
         fn from(e: OperationError) -> RpcError {
             rpc_error_anyhow_from(e)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use postcard_rpc::header::VarKeyKind;
+    use probe_rs_rpc::{RttTopic, monitor::RttEvent};
+
+    #[tokio::test]
+    async fn run_blocking_publishes_every_event_before_it_returns() {
+        const EVENTS: usize = 16;
+
+        // A wire that holds a single frame keeps the publisher behind the task.
+        let (wire_tx, mut wire_rx) = channel::<Vec<u8>>(1);
+        let frames = tokio::spawn(async move {
+            let mut frames = 0;
+            while wire_rx.recv().await.is_some() {
+                frames += 1;
+            }
+            frames
+        });
+
+        let mut ctx = RpcSpawnContext {
+            state: ConnectionState::new(),
+            sender: PostcardSender::new(WireTx::new(wire_tx), VarKeyKind::Key4),
+            probe_broker: Arc::new(ProbeBroker::new()),
+            lister: Arc::new(LimitedLister::new(ProbeAccess::All)),
+        };
+
+        ctx.run_blocking::<RttTopic, _, _, _>((), |_, (), sender| {
+            for _ in 0..EVENTS {
+                let event = RttEvent::Output {
+                    channel: 0,
+                    bytes: vec![0],
+                };
+                sender.blocking_send(event).unwrap();
+            }
+        })
+        .await;
+
+        drop(ctx);
+        assert_eq!(frames.await.unwrap(), EVENTS);
     }
 }
