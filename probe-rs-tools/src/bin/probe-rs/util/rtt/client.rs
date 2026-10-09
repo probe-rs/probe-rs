@@ -1,8 +1,8 @@
 use crate::util::rtt::{RttActiveDownChannel, RttActiveUpChannel, RttConfig, RttConnection};
 use probe_rs::{
-    Core, MemoryInterface, Target,
+    Target,
     flashing::FlashLoader,
-    rtt::{Error, Rtt, ScanRegion},
+    rtt::{Error, Rtt, RttAccess, ScanRegion},
 };
 use probe_rs_rpc::rtt_config::ChannelMode;
 use std::time::{Duration, Instant};
@@ -115,7 +115,7 @@ impl RttClient {
         self.target.is_some()
     }
 
-    fn try_attach_impl(&mut self, core: &mut Core) -> Result<bool, Error> {
+    fn try_attach_impl(&mut self, rtt: &mut impl RttAccess) -> Result<bool, Error> {
         if self.is_attached() {
             return Ok(true);
         }
@@ -127,7 +127,7 @@ impl RttClient {
         let location = if let Some(location) = self.last_control_block_address {
             location
         } else {
-            let location = match Rtt::find_control_block(core, &self.scan_region) {
+            let location = match Rtt::find_control_block(rtt, &self.scan_region) {
                 Ok(location) => location,
                 Err(Error::ControlBlockNotFound) => {
                     tracing::debug!("Failed to attach - control block not found");
@@ -146,7 +146,7 @@ impl RttClient {
             location
         };
 
-        let rtt = match Rtt::attach_at(core, location) {
+        let rtt = match Rtt::attach_at(rtt, location) {
             Ok(rtt) => rtt,
             Err(Error::ControlBlockNotFound) => {
                 self.last_control_block_address = None;
@@ -176,11 +176,11 @@ impl RttClient {
         Ok(self.target.is_some())
     }
 
-    pub fn try_attach(&mut self, core: &mut Core) -> Result<bool, Error> {
-        let attached = self.try_attach_impl(core)?;
+    pub fn try_attach(&mut self, rtt: &mut impl RttAccess) -> Result<bool, Error> {
+        let attached = self.try_attach_impl(rtt)?;
 
         if attached && self.need_configure {
-            self.configure(core)?;
+            self.configure(rtt)?;
             self.need_configure = false;
         }
 
@@ -212,11 +212,11 @@ impl RttClient {
         }
     }
 
-    pub fn poll_channel(&mut self, core: &mut Core, channel: u32) -> Result<&[u8], Error> {
-        self.try_attach(core)?;
+    pub fn poll_channel(&mut self, rtt: &mut impl RttAccess, channel: u32) -> Result<&[u8], Error> {
+        self.try_attach(rtt)?;
 
         if let Some(ref mut target) = self.target {
-            match target.poll_channel(core, channel) {
+            match target.poll_channel(rtt, channel) {
                 Ok(()) => self.polled_data = true,
 
                 Err(Error::ControlBlockCorrupted(error)) => {
@@ -249,24 +249,24 @@ impl RttClient {
     /// Returns 0 if RTT is not attached yet, in which case nothing was sent.
     pub(crate) fn write_down_channel(
         &mut self,
-        core: &mut Core,
+        rtt: &mut impl RttAccess,
         channel: u32,
         input: impl AsRef<[u8]>,
     ) -> Result<usize, Error> {
-        self.try_attach(core)?;
+        self.try_attach(rtt)?;
 
         let Some(target) = self.target.as_mut() else {
             return Ok(0);
         };
 
-        target.write_down_channel(core, channel, input)
+        target.write_down_channel(rtt, channel, input)
     }
 
-    pub fn clean_up(&mut self, core: &mut Core) -> Result<(), Error> {
+    pub fn clean_up(&mut self, rtt: &mut impl RttAccess) -> Result<(), Error> {
         self.need_configure = true;
 
         if let Some(target) = self.target.as_mut() {
-            target.clean_up(core)?;
+            target.clean_up(rtt)?;
         }
 
         Ok(())
@@ -275,17 +275,17 @@ impl RttClient {
     /// This function prevents probe-rs from attaching to an RTT control block that is not
     /// supposed to be valid. This is useful when probe-rs has reset the MCU before attaching,
     /// or during/after flashing, when the MCU has not yet been started.
-    pub(crate) fn clear_control_block(&mut self, core: &mut Core) -> Result<(), Error> {
+    pub(crate) fn clear_control_block(&mut self, rtt: &mut impl RttAccess) -> Result<(), Error> {
         if self.disallow_clearing_rtt_header {
             tracing::debug!("Not clearing RTT control block");
             return Ok(());
         }
 
-        self.try_attach_impl(core)?;
+        self.try_attach_impl(rtt)?;
 
         tracing::debug!("Clearing RTT control block");
         if let Some(mut target) = self.target.take() {
-            target.clear_control_block(core)?;
+            target.clear_control_block(rtt)?;
         } else {
             // While the entire block isn't valid in itself, some parts of it may be.
             // Depending on the firmware, the control block may be initialized in such
@@ -295,21 +295,21 @@ impl RttClient {
                     // If we know the exact location where a control block should be, we can clear
                     // the whole block.
                     if location == scan_location {
-                        if core.is_64_bit() {
+                        if rtt.is_64_bit() {
                             const SIZE_64B: usize = 16 + 2 * 8;
-                            core.write_8(location, &[0; SIZE_64B])?;
+                            rtt.write_8(location, &[0; SIZE_64B])?;
                         } else {
                             const SIZE_32B: usize = 16 + 2 * 4;
-                            core.write_8(location, &[0; SIZE_32B])?;
+                            rtt.write_8(location, &[0; SIZE_32B])?;
                         }
                     }
                 } else {
                     // If we have to scan for the location or we somehow found the magic string
                     // somewhere else, we can only clear the magic string.
                     let mut magic = [0; Rtt::RTT_ID.len()];
-                    core.read_8(location, &mut magic)?;
+                    rtt.read_8(location, &mut magic)?;
                     if magic == Rtt::RTT_ID {
-                        core.write_8(location, &[0; 16])?;
+                        rtt.write_8(location, &[0; 16])?;
                     }
                 }
             }
@@ -338,7 +338,7 @@ impl RttClient {
         self.core_id
     }
 
-    pub(crate) fn configure(&mut self, core: &mut Core<'_>) -> Result<(), Error> {
+    pub(crate) fn configure(&mut self, rtt: &mut impl RttAccess) -> Result<(), Error> {
         let Some(target) = self.target.as_mut() else {
             return Ok(());
         };
@@ -358,7 +358,7 @@ impl RttClient {
                 });
 
             if let Some(mode) = channel_mode {
-                channel.change_mode(core, mode)?;
+                channel.change_mode(rtt, mode)?;
             }
         }
 

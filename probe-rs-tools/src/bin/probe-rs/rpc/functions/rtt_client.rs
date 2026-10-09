@@ -1,6 +1,6 @@
 use crate::{
     rpc::functions::{RpcContext, convert::lift},
-    util::rtt::RttConfig,
+    util::rtt::{RttConfig, rtt_access},
 };
 use postcard_rpc::header::VarHeader;
 use probe_rs::rtt;
@@ -74,9 +74,9 @@ pub async fn write_rtt_down(
             let mut rtt_client = ctx.object_mut(request.rtt_client).await;
 
             let core_id = rtt_client.core_id();
-            let mut core = lift(session.core(core_id))?;
+            let mut rtt = lift(rtt_access(&mut session, core_id))?;
             written += lift(rtt_client.write_down_channel(
-                &mut core,
+                &mut rtt,
                 request.channel,
                 &request.data[written..],
             ))?;
@@ -110,8 +110,8 @@ pub async fn get_rtt_channels(
     let mut rtt_client = ctx.object_mut(request.rtt_client).await;
 
     let core_id = rtt_client.core_id();
-    let mut core = lift(session.core(core_id))?;
-    lift(rtt_client.try_attach(&mut core))?;
+    let mut rtt = lift(rtt_access(&mut session, core_id))?;
+    lift(rtt_client.try_attach(&mut rtt))?;
 
     let up = rtt_client
         .up_channels()
@@ -142,8 +142,8 @@ pub async fn clear_rtt_control_block(
     let mut rtt_client = ctx.object_mut(request.rtt_client).await;
 
     let core_id = rtt_client.core_id();
-    let mut core = lift(session.core(core_id))?;
-    lift(rtt_client.clear_control_block(&mut core))?;
+    let mut rtt = lift(rtt_access(&mut session, core_id))?;
+    lift(rtt_client.clear_control_block(&mut rtt))?;
 
     Ok(())
 }
@@ -157,11 +157,11 @@ pub async fn poll_rtt_up(
     let mut rtt_client = ctx.object_mut(request.rtt_client).await;
 
     let core_id = rtt_client.core_id();
-    let mut core = lift(session.core(core_id))?;
+    let mut rtt = lift(rtt_access(&mut session, core_id))?;
 
     let mut results = Vec::with_capacity(request.channels.len());
     for channel in request.channels {
-        let result = match rtt_client.poll_channel(&mut core, channel) {
+        let result = match rtt_client.poll_channel(&mut rtt, channel) {
             Ok(bytes) => Ok(bytes.to_vec()),
             Err(error) => {
                 tracing::warn!("RTT poll of channel {channel} failed: {error}");
@@ -183,8 +183,8 @@ pub async fn clean_up_rtt(
     let mut rtt_client = ctx.object_mut(request.rtt_client).await;
 
     let core_id = rtt_client.core_id();
-    let mut core = lift(session.core(core_id))?;
-    lift(rtt_client.clean_up(&mut core))?;
+    let mut rtt = lift(rtt_access(&mut session, core_id))?;
+    lift(rtt_client.clean_up(&mut rtt))?;
 
     Ok(())
 }

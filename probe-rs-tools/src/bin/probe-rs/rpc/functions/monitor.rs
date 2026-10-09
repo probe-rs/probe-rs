@@ -12,7 +12,9 @@ use crate::rpc::{
 };
 use anyhow::Context;
 use postcard_rpc::{header::VarHeader, server::Sender};
-use probe_rs::{BreakpointCause, Core, HaltReason, semihosting::SemihostingCommand};
+use probe_rs::{
+    BreakpointCause, Core, HaltReason, rtt::RttAccess, semihosting::SemihostingCommand,
+};
 use probe_rs_rpc::monitor::{
     ChannelInfo, MonitorExitReason, MonitorMode, MonitorRequest, RttEvent, SemihostingEvent,
     SemihostingExitError,
@@ -183,9 +185,9 @@ where
         Ok(())
     }
 
-    fn poll(&mut self, core: &mut Core<'_>) -> anyhow::Result<Duration> {
+    fn poll(&mut self, rtt: &mut impl RttAccess) -> anyhow::Result<Duration> {
         let mut rtt_client = self.rtt_client.get_blocking();
-        if !rtt_client.is_attached() && matches!(rtt_client.try_attach(core), Ok(true)) {
+        if !rtt_client.is_attached() && matches!(rtt_client.try_attach(rtt), Ok(true)) {
             tracing::debug!("Attached to RTT");
             let up_channels = rtt_client
                 .up_channels()
@@ -213,7 +215,7 @@ where
 
         let mut next_poll = Duration::from_millis(100);
         for channel in 0..rtt_client.up_channels().len() {
-            let bytes = rtt_client.poll_channel(core, channel as u32)?;
+            let bytes = rtt_client.poll_channel(rtt, channel as u32)?;
             if !bytes.is_empty() {
                 next_poll = Duration::ZERO;
 
