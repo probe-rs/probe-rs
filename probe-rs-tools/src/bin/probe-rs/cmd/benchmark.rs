@@ -216,6 +216,9 @@ impl Cmd {
                 break 'inner;
             }
         }
+        if read_results.is_empty() {
+            anyhow::bail!("No iteration passed verification");
+        }
         println!(
             "Results: Read: {:.2} bytes/s Std Dev {:.2}, Write: {:.2} bytes/s Std Dev {:.2}",
             mean(&read_results).expect("invalid mean"),
