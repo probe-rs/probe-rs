@@ -387,7 +387,7 @@ async fn run_embed(
 
         let context = GdbSessionContext::from_session(&session, &registry).await?;
         let instances =
-            GdbInstanceConfiguration::from_context(&context, Some(gdb_connection_string));
+            GdbInstanceConfiguration::from_context(&context, Some(gdb_connection_string))?;
         let session_gdb = session.clone();
         let handle = Handle::current();
 

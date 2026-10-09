@@ -1,4 +1,4 @@
-use anyhow::bail;
+use anyhow::{Context, bail};
 use indexmap::IndexMap;
 use probe_rs::CoreType;
 use probe_rs_rpc_client::SessionInterface;
@@ -30,13 +30,16 @@ impl GdbInstanceConfiguration {
     pub fn from_context(
         context: &GdbSessionContext,
         connection_string: Option<impl AsRef<str>>,
-    ) -> Vec<Self> {
+    ) -> anyhow::Result<Vec<Self>> {
         let connection_string = connection_string
             .as_ref()
             .map(|s| s.as_ref())
             .unwrap_or(CONNECTION_STRING);
 
-        let addrs: Vec<SocketAddr> = connection_string.to_socket_addrs().unwrap().collect();
+        let addrs: Vec<SocketAddr> = connection_string
+            .to_socket_addrs()
+            .with_context(|| format!("invalid GDB connection string '{connection_string}'"))?
+            .collect();
 
         let mut groups = IndexMap::new();
         for core in &context.cores {
@@ -46,7 +49,7 @@ impl GdbInstanceConfiguration {
                 .push(core.index);
         }
 
-        groups
+        Ok(groups
             .into_iter()
             .enumerate()
             .map(|(i, (core_type, cores))| GdbInstanceConfiguration {
@@ -54,7 +57,7 @@ impl GdbInstanceConfiguration {
                 cores,
                 socket_addrs: adjust_addrs(&addrs, i),
             })
-            .collect()
+            .collect())
     }
 }
 

@@ -82,7 +82,7 @@ impl Cmd {
 
         let context = GdbSessionContext::from_session(&session, &registry).await?;
         let instances =
-            GdbInstanceConfiguration::from_context(&context, Some(gdb_connection_string));
+            GdbInstanceConfiguration::from_context(&context, Some(gdb_connection_string))?;
 
         for instance in instances.iter() {
             println!(
