@@ -161,7 +161,7 @@ fn perform_jtag_transfers(
     }
 
     // Pluck off the extra 2 results that do error checking. Each response is read in the next
-    // transaction, so the CTRL/STATUS value arrives with the trailing RDBUFF read.
+    // transaction.
     let ctrl_value = if !last_is_abort {
         let rdbuff_result = results
             .pop()
