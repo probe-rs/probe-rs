@@ -11,6 +11,10 @@ variants:
       ap: !v1 5
       debug_base: 0x90030000
       cti_base: 0x90038000
+  memory_ports:
+  - name: ahb-ap
+    memory_port_options: !Arm
+      ap: !v1 6
   memory_map:
   - !Ram
     name: TCMA
@@ -42,6 +46,8 @@ variants:
       end: 0x70080000
     cores:
     - core0
+    memory_ports:
+    - ahb-ap
   - !Ram
     name: L2OCRAM_BANK1
     range:
@@ -49,6 +55,8 @@ variants:
       end: 0x70100000
     cores:
     - core0
+    memory_ports:
+    - ahb-ap
   - !Ram
     name: L2OCRAM_BANK2
     range:
@@ -56,6 +64,8 @@ variants:
       end: 0x70180000
     cores:
     - core0
+    memory_ports:
+    - ahb-ap
   - !Ram
     name: SOC_MAILBOX_RAM0
     range:
@@ -63,4 +73,6 @@ variants:
       end: 0x72004000
     cores:
     - core0
+    memory_ports:
+    - ahb-ap
   jtag:
