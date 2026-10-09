@@ -10,7 +10,7 @@ use probe_rs::{
     architecture::{
         arm::{
             self, ApAddress, ApV2Address, ArmDebugInterface, ArmError,
-            ap::{ApClass, ApRegister, ApType, IDR},
+            ap::{ApClass, ApRegister, ApType, BASE, IDR},
             armv6m::Demcr,
             component::Scs,
             dp::{self, Ctrl, DLPIDR, DPIDR, DpRegister, TARGETID},
@@ -802,6 +802,8 @@ fn handle_memory_ap(
     let component = {
         let raw_idr = interface.read_raw_ap_register(access_port, IDR::ADDRESS)?;
         let idr: IDR = raw_idr.try_into()?;
+        let raw_base = interface.read_raw_ap_register(access_port, BASE::ADDRESS)?;
+        let base: BASE = raw_base.try_into()?;
         let mut memory = interface.memory_interface(access_port)?;
 
         // Check if the AP is accessible
@@ -810,6 +812,11 @@ fn handle_memory_ap(
             *parent = ComponentTreeNode::new(
                 "Memory AP is not accessible, DeviceEn bit not set".to_string(),
             );
+            return Ok(());
+        }
+
+        if !base.present() {
+            parent.push("No debug components, BASE register reports no debug entry".to_string());
             return Ok(());
         }
 
