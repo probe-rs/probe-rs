@@ -160,12 +160,13 @@ fn perform_jtag_transfers(
         transfer.status = *status_responses.get(i + 1).unwrap_or(&TransferStatus::Ok);
     }
 
-    // Pluck off the extra 2 results that do error checking
+    // Pluck off the extra 2 results that do error checking. Each response is read in the next
+    // transaction.
     let ctrl_value = if !last_is_abort {
-        _ = results
+        let rdbuff_result = results
             .pop()
             .expect("Failed to pop value that was pushed here.");
-        let rdbuff_result = results
+        _ = results
             .pop()
             .expect("Failed to pop value that was pushed here.");
 
@@ -533,7 +534,7 @@ mod tests {
     };
     use crate::{
         architecture::arm::{
-            ApAddress, RegisterAddress,
+            ApAddress, ArmError, DapError, RegisterAddress,
             dp::{Ctrl, DpRegister, RdBuff},
         },
         error::Error,
@@ -789,6 +790,31 @@ mod tests {
                 .expect("read should succeed");
 
         assert_eq!(result, read_value);
+        assert_eq!(mock.performed_transfer_count, mock.expected_transfer_count);
+    }
+
+    #[test]
+    fn read_register_with_sticky_error_jtag() {
+        let ctrl = 0xf000_0020;
+        let mut mock = MockJaylink::new();
+        mock.select_protocol(WireProtocol::Jtag).unwrap();
+
+        mock.add_jtag_response(ApAddress::V1(4), true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(Ctrl::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, ctrl, 0);
+
+        // The sticky flags are cleared by writing them back.
+        mock.add_jtag_response(Ctrl::ADDRESS, false, DapAcknowledge::Ok, 0, ctrl);
+
+        let mut chain = JtagChain::new(&mut mock);
+        let result =
+            jtag_read_register(&mut chain, ApAddress::V1(4).into(), &SwdSettings::default());
+
+        assert!(matches!(
+            result,
+            Err(ArmError::Dap(DapError::FaultResponse))
+        ));
         assert_eq!(mock.performed_transfer_count, mock.expected_transfer_count);
     }
 
