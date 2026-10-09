@@ -1,0 +1,1 @@
+`probe-rs run` and `probe-rs attach` warn when no RTT control block has been found after 5 seconds, for example because the ELF file does not match the firmware on the target. They keep trying to attach.
