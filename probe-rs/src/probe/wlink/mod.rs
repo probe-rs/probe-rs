@@ -21,6 +21,7 @@ use crate::{
 };
 
 mod commands;
+pub(crate) mod flash;
 mod usb_interface;
 
 const VENDOR_ID: u16 = 0x1a86;
@@ -263,6 +264,12 @@ impl WchLink {
     /// `chip_id` reported by the probe's `AttachChip`; zero before attach.
     pub fn chip_id(&self) -> u32 {
         self.chip_id
+    }
+
+    /// Whether the USB interface exposes the bulk data endpoints required
+    /// for native flashing.
+    pub(crate) fn has_native_data_endpoints(&self) -> bool {
+        self.device.has_data_endpoints()
     }
 
     /// Chip family reported by the probe's `AttachChip`.
