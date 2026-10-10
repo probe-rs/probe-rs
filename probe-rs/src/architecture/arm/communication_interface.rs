@@ -2,7 +2,8 @@ use crate::{
     CoreStatus,
     architecture::arm::{
         ApAddress, ArmError, DapAccess, FullyQualifiedApAddress, RegisterAddress, SwoAccess,
-        SwoConfig, ap,
+        SwoConfig,
+        ap::{self, AccessPortType},
         dp::{
             Ctrl, DPIDR, DebugPortId, DebugPortVersion, DpAccess, DpAddress, DpRegisterAddress,
             Select1, SelectV1, SelectV3,
@@ -196,6 +197,9 @@ pub(crate) struct DpState {
     /// Cleared when a SELECT write fails, because the selection is then genuinely unknown
     /// and the cached value must not be used to skip the next write.
     pub(crate) select_valid: bool,
+
+    /// Memory APs set up by earlier memory interfaces, so the next one can skip that.
+    memory_aps: HashMap<ApAddress, ap::MemoryAp>,
 }
 
 impl DpState {
@@ -204,6 +208,7 @@ impl DpState {
             debug_port_version: DebugPortVersion::Unsupported(0xFF),
             current_select: SelectCache::DPv1(SelectV1(0)),
             select_valid: false,
+            memory_aps: HashMap::new(),
         }
     }
 }
@@ -485,6 +490,8 @@ pub struct ArmCommunicationInterface {
     dps: HashMap<DpAddress, DpState>,
     use_overrun_detect: bool,
     sequence: Arc<dyn ArmDebugSequence>,
+    /// Bumped when the debug ports are reset, so memory AP state from before is not kept.
+    memory_ap_epoch: u64,
 }
 
 impl Drop for ArmCommunicationInterface {
@@ -499,6 +506,21 @@ impl Drop for ArmCommunicationInterface {
 }
 
 impl ArmCommunicationInterface {
+    /// Forgets the state of all memory APs, also of those in use by a memory interface.
+    fn forget_memory_aps(&mut self) {
+        self.memory_ap_epoch += 1;
+        for state in self.dps.values_mut() {
+            state.memory_aps.clear();
+        }
+    }
+
+    /// Forgets a memory AP's state when its registers are written from outside its interface.
+    fn forget_memory_ap(&mut self, ap: &FullyQualifiedApAddress) {
+        if let Some(state) = self.dps.get_mut(&ap.dp()) {
+            state.memory_aps.remove(ap.ap());
+        }
+    }
+
     /// Whether register accesses run as DAP transfers through an [`SwdPort`].
     fn uses_swd_port(&mut self) -> bool {
         match self.probe.as_mut() {
@@ -558,6 +580,7 @@ impl ArmCommunicationInterface {
         }
 
         self.dps.clear();
+        self.forget_memory_aps();
         let _ = self.with_debug_port_wire(|wire| {
             wire.raw_flush().ok();
             Ok(())
@@ -626,6 +649,7 @@ impl ArmCommunicationInterface {
         if let Some(state) = self.dps.get_mut(&dp) {
             state.select_valid = false;
         }
+        self.forget_memory_aps();
 
         op(self)
     }
@@ -845,6 +869,7 @@ impl ArmCommunicationInterface {
             dps: Default::default(),
             use_overrun_detect,
             sequence,
+            memory_ap_epoch: 0,
         };
 
         Box::new(interface)
@@ -863,6 +888,7 @@ impl ArmCommunicationInterface {
             dps: Default::default(),
             use_overrun_detect,
             sequence,
+            memory_ap_epoch: 0,
         };
 
         Box::new(interface)
@@ -904,6 +930,7 @@ impl ArmCommunicationInterface {
 
             entry.insert(DpState::new());
 
+            self.forget_memory_aps();
             let start_span = tracing::debug_span!("debug_port_start").entered();
             sequence.debug_port_start(self, dp)?;
             drop(start_span);
@@ -937,6 +964,7 @@ impl ArmCommunicationInterface {
         } else if switched_dp {
             let sequence = self.sequence.clone();
 
+            self.forget_memory_aps();
             let start_span = tracing::debug_span!("debug_port_start").entered();
             sequence.debug_port_start(self, dp)?;
             drop(start_span);
@@ -1315,6 +1343,7 @@ impl DapAccess for ArmCommunicationInterface {
         address: u64,
         value: u32,
     ) -> Result<(), ArmError> {
+        self.forget_memory_ap(ap);
         self.retry_after_link_loss(ap.dp(), |this| {
             this.select_ap_and_ap_bank(ap, address)?;
             let register = RegisterAddress::ApRegister((address & 0xFF) as u8);
@@ -1341,6 +1370,7 @@ impl DapAccess for ArmCommunicationInterface {
         address: u64,
         values: &[u32],
     ) -> Result<(), ArmError> {
+        self.forget_memory_ap(ap);
         self.select_ap_and_ap_bank(ap, address)?;
         let register = RegisterAddress::ApRegister((address & 0xFF) as u8);
 
@@ -1374,7 +1404,26 @@ impl DapAccess for ArmCommunicationInterface {
         &mut self,
         connect: &mut dyn FnMut(&mut dyn DebugPortWire) -> Result<(), ArmError>,
     ) -> Result<(), ArmError> {
+        self.forget_memory_aps();
         self.with_debug_port_wire(|wire| connect(wire))
+    }
+
+    fn memory_ap_epoch(&self) -> u64 {
+        self.memory_ap_epoch
+    }
+
+    fn take_memory_ap(&mut self, ap: &FullyQualifiedApAddress) -> Option<ap::MemoryAp> {
+        self.dps.get_mut(&ap.dp())?.memory_aps.remove(ap.ap())
+    }
+
+    fn store_memory_ap(&mut self, memory_ap: ap::MemoryAp) {
+        let address = memory_ap.ap_address().clone();
+        if let Some(state) = self.dps.get_mut(&address.dp()) {
+            // Another interface stored this AP while ours was in use, so neither state is trusted.
+            if state.memory_aps.remove(address.ap()).is_none() {
+                state.memory_aps.insert(address.ap().clone(), memory_ap);
+            }
+        }
     }
 }
 
