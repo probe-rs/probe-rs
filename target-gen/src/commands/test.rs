@@ -1,8 +1,10 @@
 use std::path::Path;
 use std::time::Instant;
 
+use crate::commands::elf::cmd_elf;
 use anyhow::{Context, Result, anyhow};
 use colored::Colorize;
+use probe_rs::flashing::Flasher;
 use probe_rs::{
     MemoryInterface, Permissions, Session, SessionConfig,
     config::Registry,
@@ -14,8 +16,6 @@ use probe_rs::{
 };
 use probe_rs_target::RawFlashAlgorithm;
 use xshell::{Shell, cmd};
-
-use crate::commands::elf::cmd_elf;
 
 #[expect(clippy::too_many_arguments)]
 pub fn cmd_test(
@@ -124,8 +124,10 @@ pub fn cmd_test(
     // Register callback to update the progress.
     let mut progress = progress_callbacks();
 
-    let flash_algorithm = if let Some(test_start_sector_address) = test_start_sector_address {
-        let predicate = |x: &&RawFlashAlgorithm| {
+    let (algo_index, flash_algorithm) = if let Some(test_start_sector_address) =
+        test_start_sector_address
+    {
+        let predicate = |(_, x): &(usize, &RawFlashAlgorithm)| {
             x.flash_properties.address_range.start <= test_start_sector_address
                 && test_start_sector_address < x.flash_properties.address_range.end
         };
@@ -134,11 +136,16 @@ pub fn cmd_test(
             .target()
             .flash_algorithms
             .iter()
+            .enumerate()
             .find(predicate)
             .ok_or(error_message)?
     } else {
-        &session.target().flash_algorithms[0]
+        (0, &session.target().flash_algorithms[0])
     };
+
+    let have_read = flash_algorithm.pc_read.is_some();
+    let have_verify = flash_algorithm.pc_verify.is_some();
+
     let flash_properties = &flash_algorithm.flash_properties;
     let start_address = flash_properties.address_range.start;
     let end_address = flash_properties.address_range.end;
@@ -181,15 +188,28 @@ pub fn cmd_test(
     loader.read_rtt_output(true);
     let data = (0..data_size).map(|n| (n % 256) as u8).collect::<Vec<_>>();
     loader.add_data(test_start_sector_address + 1, &data)?;
-    run_flash_download(&mut session, loader, true)?;
+    run_flash_download(&mut session, &mut loader, true)?;
 
     println!("{test}: Write done");
 
     let mut readback = vec![0; data_size as usize];
-    session
-        .core(0)?
-        .read(test_start_sector_address + 1, &mut readback)?;
+
+    if have_read {
+        println!("{test}: Reading back two pages (via API) ...");
+        run_read_flash(
+            &mut session,
+            algo_index,
+            test_start_sector_address + 1,
+            &mut readback,
+        )?;
+    } else {
+        println!("{test}: Reading back two pages (via core) ...");
+        session
+            .core(0)?
+            .read(test_start_sector_address + 1, &mut readback)?;
+    }
     assert_eq!(readback, data);
+    println!("{test}: Write verified OK");
 
     println!("{test}: Erasing the entire chip and writing two pages ...");
     run_flash_erase(&mut session, EraseType::EraseAll)?;
@@ -207,15 +227,27 @@ pub fn cmd_test(
     loader.read_rtt_output(true);
     let data = (0..data_size).map(|n| (n % 256) as u8).collect::<Vec<_>>();
     loader.add_data(test_start_sector_address + 1, &data)?;
-    run_flash_download(&mut session, loader, true)?;
+    run_flash_download(&mut session, &mut loader, true)?;
 
     println!("{test}: Write done");
 
     let mut readback = vec![0; data_size as usize];
-    session
-        .core(0)?
-        .read_8(test_start_sector_address + 1, &mut readback)?;
+    if have_read {
+        println!("{test}: Reading back two pages (via API) ...");
+        run_read_flash(
+            &mut session,
+            algo_index,
+            test_start_sector_address + 1,
+            &mut readback,
+        )?;
+    } else {
+        println!("{test}: Reading back two pages (via core) ...");
+        session
+            .core(0)?
+            .read_8(test_start_sector_address + 1, &mut readback)?;
+    }
     assert_eq!(readback, data);
+    println!("{test}: Write verified OK");
 
     println!("{test}: Erasing sectorwise and writing two pages double buffered ...");
     run_flash_erase(
@@ -240,14 +272,33 @@ pub fn cmd_test(
     loader.read_rtt_output(true);
     let data = (0..data_size).map(|n| (n % 256) as u8).collect::<Vec<_>>();
     loader.add_data(test_start_sector_address + 1, &data)?;
-    run_flash_download(&mut session, loader, false)?;
+    run_flash_download(&mut session, &mut loader, false)?;
     println!("{test}: Write done");
 
+    if have_verify {
+        println!("{test}: Verifying");
+        let mut progress = progress_callbacks();
+        loader.verify(&mut session, &mut progress)?;
+        println!("{test}: verification done");
+    }
+
     let mut readback = vec![0; data_size as usize];
-    session
-        .core(0)?
-        .read_8(test_start_sector_address + 1, &mut readback)?;
+    if have_read {
+        println!("{test}: Reading back two pages (via API) ...");
+        run_read_flash(
+            &mut session,
+            algo_index,
+            test_start_sector_address + 1,
+            &mut readback,
+        )?;
+    } else {
+        println!("{test}: Reading back two pages (via core) ...");
+        session
+            .core(0)?
+            .read_8(test_start_sector_address + 1, &mut readback)?;
+    }
     assert_eq!(readback, data);
+    println!("{test}: Write verified OK");
 
     Ok(())
 }
@@ -298,7 +349,7 @@ fn ensure_is_file(file_path: &Path) -> Result<()> {
 /// This function also manages the update and display of progress bars.
 pub fn run_flash_download(
     session: &mut Session,
-    loader: FlashLoader,
+    loader: &mut FlashLoader,
     disable_double_buffering: bool,
 ) -> Result<()> {
     let mut download_option = DownloadOptions::default();
@@ -327,6 +378,23 @@ pub fn run_flash_erase(session: &mut Session, erase_type: EraseType) -> Result<(
         erase_all(session, &mut progress, true)?;
     }
 
+    Ok(())
+}
+
+pub fn run_read_flash(
+    session: &mut Session,
+    algo_index: usize,
+    address: u64,
+    data: &mut [u8],
+) -> Result<()> {
+    let mut progress = progress_callbacks();
+
+    let raw_flash_algorithm = &session.target().flash_algorithms[algo_index];
+    let mut flasher = Flasher::new(session.target(), 0, raw_flash_algorithm)?.with_rtt();
+
+    flasher.run_verify(session, &mut progress, |active, _region| {
+        active.read_flash(address, data)
+    })?;
     Ok(())
 }
 

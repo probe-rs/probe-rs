@@ -1,0 +1,1 @@
+Changed `target-gen` to use the flash-algo to read the flash.
