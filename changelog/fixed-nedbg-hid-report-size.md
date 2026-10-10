@@ -1,1 +1,1 @@
-Fixed the CMSIS-DAP v1 HID report-size override for Microchip EDBG probes matching the nEDBG on the Curiosity Nano boards as well, which has 64-byte reports and so answered every command with an unexpected Info response since 0.31.
+Fixed the Microchip EDBG probes matching the nEDBG on the Curiosity Nano boards.
