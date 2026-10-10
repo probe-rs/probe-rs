@@ -208,7 +208,7 @@ macro_rules! memory_aps {
         ),*
     ) => {
         /// Sum type for all memory access ports.
-        #[derive(Debug)]
+        #[derive(Debug, Clone)]
         pub enum MemoryAp {
             $(
                 $(#[$outer])*

@@ -13,7 +13,7 @@ use crate::architecture::arm::{
 ///
 /// The memory AP can be used to access a memory-mapped
 /// set of debug resources of the attached system.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AmbaApb4Apb5 {
     address: FullyQualifiedApAddress,
     csw: CSW,
