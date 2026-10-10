@@ -48,6 +48,18 @@ bitfield! {
     pub u8, _, set_match: 3, 0;
 }
 
+bitfield! {
+    /// `SYSCON3->CPU_STATUS`, the sense core's run state.
+    #[derive(Copy, Clone)]
+    pub struct CpuStatus(u32);
+    impl Debug;
+    /// Stalls the core. Resets to 1, so it has to be cleared for the core to fetch
+    /// anything at all.
+    cpu_wait, _: 0;
+    /// Latched when the core locks up.
+    cpu_lockup, _: 1;
+}
+
 /// Debug sequences for the i.MX RT7xx family.
 ///
 /// These parts have no internal flash, and they are picky about how debug power is
@@ -93,6 +105,25 @@ impl MIMXRT7xx {
     /// `START_DBG_SESSION`
     const DM_START_DEBUG_SESSION: u32 = 0x0000_0007;
 
+    /// `RSTCTL3->PRSTCTL0_CLR` and its `CPU1` bit, which releases the sense core's reset.
+    const RSTCTL3_PRSTCTL0_CLR: u64 = 0x4006_0070;
+    const PRSTCTL0_CPU1: u32 = 1 << 31;
+
+    const SYSCON3_CPU_STATUS: u64 = 0x4006_208C;
+
+    /// Where the sense core fetches `SP`/`PC` from on its way out of reset, selected by
+    /// the reset value of `SYSCON3->CPU1_SVTOR`.
+    const CORE1_LANDING_ZONE: u64 = 0x0058_0000;
+
+    /// The vector table the sense core is brought up on, as NXP's `enableCPU1` writes
+    /// it. Its reset handler is an endless loop so that the core comes up parked and
+    /// halt-able, rather than running whatever happens to be in SRAM.
+    const LANDING_ZONE: [(u64, u32); 3] = [
+        (Self::CORE1_LANDING_ZONE, 0x005c_0000),     // initial SP
+        (Self::CORE1_LANDING_ZONE + 4, 0x0058_0009), // reset vector -> 0x580008, thumb
+        (Self::CORE1_LANDING_ZONE + 8, 0xe7fe_e7fe), // b .
+    ];
+
     /// DWT registers, used to catch the boot ROM before it leaves for the application.
     const DWT_COMP0: u64 = 0xE000_1020;
     const DWT_FUNCTION0: u64 = 0xE000_1028;
@@ -131,6 +162,32 @@ impl MIMXRT7xx {
         abort.set_stkcmpclr(true);
         abort.set_dapabort(abort_transfer);
         abort
+    }
+
+    /// Halt a core, with debug enabled. Not flushed, so callers batch it with whatever
+    /// they write next.
+    fn halt(core: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
+        let mut dhcsr = Dhcsr(0);
+        dhcsr.set_c_halt(true);
+        dhcsr.set_c_debugen(true);
+        dhcsr.enable_write();
+        core.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())
+    }
+
+    /// Write [`MIMXRT7xx::LANDING_ZONE`].
+    ///
+    /// Through core 0's AP, since this has to work before the sense core exists as far
+    /// as AP 1 is concerned.
+    ///
+    /// Clobbering this memory is safe: the family's linker scripts reserve the window it
+    /// sits in for shared memory, clear of both the RPMsg regions and the sense core's
+    /// application, so a stock image is undisturbed.
+    fn write_landing_zone(core0: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
+        for (address, value) in Self::LANDING_ZONE {
+            core0.write_word_32(address, value)?;
+        }
+
+        Ok(())
     }
 
     /// Request debug and system power-up, and report whether both requests were
@@ -206,12 +263,13 @@ impl MIMXRT7xx {
         Ok(csw.DeviceEn())
     }
 
-    /// Enable debug on `cm33_core1` and report whether it actually took effect, i.e.
+    /// Make `cm33_core1` debuggable, and report whether it actually took effect, i.e.
     /// `DHCSR.C_DEBUGEN` reads back as set.
     ///
     /// For a core whose power domain is off the write is swallowed and DHCSR reads back
     /// as zero, which is what distinguishes a real core from an AP with nothing behind
-    /// it. This is the readback that `cortex_m_core_start` omits.
+    /// it. That is also how the caller knows to run [`MIMXRT7xx::boot_core1`] first.
+    /// This is the readback that `cortex_m_core_start` omits.
     fn enable_core1_debug(
         &self,
         interface: &mut dyn ArmDebugInterface,
@@ -224,6 +282,21 @@ impl MIMXRT7xx {
                 return false;
             }
         };
+
+        // A read error is deliberately not an answer either way: it says nothing about
+        // whether debug is enabled, so fall through and let the write and its readback
+        // decide.
+        if let Ok(dhcsr) = memory.read_word_32(Dhcsr::get_mmio_address()) {
+            let dhcsr = Dhcsr(dhcsr);
+            if dhcsr.c_debugen() {
+                tracing::trace!(
+                    "{core_ap:?} already has debug enabled, leaving it as it is. \
+                     DHCSR: {:#010x}",
+                    dhcsr.0
+                );
+                return true;
+            }
+        }
 
         let mut request = Dhcsr(0);
         request.set_c_debugen(true);
@@ -246,14 +319,16 @@ impl MIMXRT7xx {
         }
     }
 
-    /// Release the sense core from reset: unlock the compute domain's access through
-    /// GLIKEY and the arbiter, enable its clock, and drop its reset.
+    /// Start `cm33_core1`: unlock the compute domain's access through GLIKEY and the
+    /// arbiter, enable its clock, drop its reset and un-stall it. A port of NXP's
+    /// `enableCPU1` debug sequence.
+    ///
+    /// This is about getting the core *running*; [`MIMXRT7xx::enable_core1_debug`] is
+    /// about getting it *debuggable*, and the core has to be running first.
     ///
     /// All writes go through AP 0, because the core behind AP 1 does not respond until
-    /// this has run. The landing zone matters: the core is brought up on a vector table
-    /// whose reset handler is an endless loop, so it comes out of reset parked and
-    /// halt-able instead of running whatever happens to be in SRAM.
-    fn enable_cpu1(
+    /// this has run.
+    fn boot_core1(
         &self,
         interface: &mut dyn ArmDebugInterface,
         dp: DpAddress,
@@ -277,26 +352,49 @@ impl MIMXRT7xx {
             (0x4022_0f84, 0x3fff_ffff),
             // SLEEPCON0->RUNCFG_CLR[1:] = 0
             (0x4000_3030, 0x0000_0002),
-            // Landing zone
-            (0x0058_0000, 0x005c_0000), // initial SP
-            (0x0058_0004, 0x0058_0009), // reset vector -> 0x580008, thumb
-            (0x0058_0008, 0xe7fe_e7fe), // b .
-            // GLIKEY4: clear config
-            (0x4006_2c00, 0x0006_0000),
-            // CLKCTL3->PSCCTL0_COMP_SET = 1
-            (0x4006_1040, 0x0000_0001),
-            // RSTCTL3->PRSTCTL0_CLR: release the sense core's reset
-            (0x4006_0070, 0x8000_0000),
-            // SYSCON3->CPU_STATUS = 0
-            (0x4006_208c, 0x0000_0000),
         ] {
             core0.write_word_32(address, value)?;
         }
+
+        Self::write_landing_zone(&mut *core0)?;
+
+        for (address, value) in [
+            // GLIKEY4: clear config
+            (0x4006_2c00u64, 0x0006_0000u32),
+            // CLKCTL3->PSCCTL0_COMP_SET = 1
+            (0x4006_1040, 0x0000_0001),
+        ] {
+            core0.write_word_32(address, value)?;
+        }
+
+        // Split out of the table above because this pair is what actually starts the
+        // core, and it is easy to mistake for bookkeeping: see `CpuStatus::cpu_wait`.
+        core0.write_word_32(Self::RSTCTL3_PRSTCTL0_CLR, Self::PRSTCTL0_CPU1)?;
+        core0.write_word_32(Self::SYSCON3_CPU_STATUS, 0)?;
         core0.flush()?;
 
         tracing::info!("RT7xx cm33_core1 booted");
 
         Ok(())
+    }
+
+    /// Read `SYSCON3->CPU_STATUS`, which tells a sense core still stalled or held in
+    /// reset apart from one that locked up.
+    ///
+    /// Goes through core 0's AP, the sense core's own being the one that just failed to
+    /// answer. `None` if even that read fails.
+    fn core1_status(
+        &self,
+        interface: &mut dyn ArmDebugInterface,
+        dp: DpAddress,
+    ) -> Option<CpuStatus> {
+        let core0_ap = FullyQualifiedApAddress::v1_with_dp(dp, Self::CORE0_AP);
+
+        interface
+            .memory_interface(&core0_ap)
+            .and_then(|mut core0| core0.read_word_32(Self::SYSCON3_CPU_STATUS))
+            .map(CpuStatus)
+            .ok()
     }
 
     /// Re-establish debug access after the boot ROM has run, halt the core and undo the
@@ -324,11 +422,7 @@ impl MIMXRT7xx {
         }
 
         // Halt the core, in case it did not stop at the watchpoint.
-        let mut dhcsr = Dhcsr(0);
-        dhcsr.set_c_halt(true);
-        dhcsr.set_c_debugen(true);
-        dhcsr.enable_write();
-        core.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
+        Self::halt(core)?;
 
         core.write_word_32(Self::DWT_COMP0, 0)?;
         core.write_word_32(Self::DWT_FUNCTION0, 0)?;
@@ -522,9 +616,11 @@ impl ArmDebugSequence for MIMXRT7xx {
         // `cortex_m_core_start` writes C_DEBUGEN without reading it back, left alone this
         // only surfaces later as a halt timeout that fails the whole operation.
         //
-        // Releasing the core runs at most once per session: afterwards the check below
-        // passes straight away, and if the application started the sense domain itself we
-        // never touch it.
+        // Releasing the core runs at most once per session: `enable_core1_debug` returns
+        // straight away, without touching the core, once debug is enabled, and if the
+        // application started the sense domain itself we never touch it at all. That
+        // early return is load-bearing rather than a shortcut: the DHCSR write it skips
+        // has `C_HALT` clear, which on an already-enabled core is a resume request.
         //
         // `on_attach` does fire for every core on every `Session::core()` access, though,
         // including the sweeps `clear_all_hw_breakpoints` and `halted_access` do. So a
@@ -536,14 +632,15 @@ impl ArmDebugSequence for MIMXRT7xx {
             // tolerates `CoreDisabled`, so letting anything else out of here fails
             // session creation and takes cm33_core0 down with a core we were only trying
             // to bring up as a bonus.
-            if let Err(error) = self.enable_cpu1(interface, ap.dp()) {
+            if let Err(error) = self.boot_core1(interface, ap.dp()) {
                 tracing::debug!("could not release cm33_core1 from reset: {error}");
             }
 
             if !self.enable_core1_debug(interface, ap) {
                 tracing::warn!(
                     "cm33_core1 did not respond after being released from reset; \
-                     reporting it as disabled. Only cm33_core0 will be available."
+                     reporting it as disabled. Only cm33_core0 will be available. {:?}",
+                    self.core1_status(interface, ap.dp())
                 );
                 return Err(ArmError::CoreDisabled);
             }
@@ -560,33 +657,26 @@ impl ArmDebugSequence for MIMXRT7xx {
     ) -> Result<(), ArmError> {
         tracing::trace!("RT7xx reset system");
 
-        // The sense core has no reset of its own. The only reset reachable from here is
-        // SYSRESETREQ, which resets the whole chip and puts that core back under the boot
-        // ROM's control, undoing the release that made it debuggable. Doing that behind
-        // the back of someone who asked to reset core 1 would be worse than not
-        // resetting, so halt the core and say what happened.
+        // `SYSRESETREQ` resets the whole chip and puts this core back under the boot ROM,
+        // undoing the release that made it debuggable; and there is no core-local reset --
+        // `RSTCTL3->PRSTCTL0.CPU1` honours only the release direction, and `SHCSR.*ACT`
+        // and `IPSR` ignore debug writes while an exception is active. Both measured on an
+        // MIMXRT798S-EVK, and NXP disables `ResetSystem` here for the same reason.
+        //
+        // Parking the core on the landing zone instead would be worse than halting: that
+        // table is three words long, so the first enabled interrupt vectors into SRAM.
         if core.fully_qualified_address().ap() == &ApAddress::V1(Self::CORE1_AP) {
             tracing::warn!(
-                "cm33_core1 has no core-local system reset on this part, so it was only \
-                 halted. Reset cm33_core0 to reset the chip."
+                "cm33_core1 cannot be reset on this part, so it was only halted -- its \
+                 state carries over, including a latched fault. Reset cm33_core0 to \
+                 reset the chip, which is the only way to give this core a clean start."
             );
 
-            let mut dhcsr = Dhcsr(0);
-            dhcsr.set_c_halt(true);
-            dhcsr.set_c_debugen(true);
-            dhcsr.enable_write();
-            core.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
-            core.flush()?;
-
-            return Ok(());
+            Self::halt(core)?;
+            return core.flush();
         }
 
-        // Halt the core.
-        let mut dhcsr = Dhcsr(0);
-        dhcsr.set_c_halt(true);
-        dhcsr.set_c_debugen(true);
-        dhcsr.enable_write();
-        core.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
+        Self::halt(core)?;
 
         // Execution restarts in the boot ROM, so a reset vector catch would fire there
         // rather than in the application -- and the ROM disables debug access while it
@@ -625,7 +715,15 @@ impl ArmDebugSequence for MIMXRT7xx {
 #[cfg(test)]
 mod test {
     use super::{DwtFunction, MIMXRT7xx};
-    use crate::architecture::arm::core::registers::cortex_m::XPSR;
+    use crate::{
+        MemoryMappedRegister,
+        architecture::arm::{
+            FullyQualifiedApAddress,
+            core::{armv8m::Dhcsr, registers::cortex_m::XPSR},
+            dp::DpAddress,
+        },
+        probe::{DebugProbe, fake_probe::FakeProbe},
+    };
 
     /// NXP's own debug description arms the reset catch watchpoint with a bare
     /// `DWT_FUNCTION0 = 0x0000_0814`. Pin the field decomposition to that value, so that
@@ -646,5 +744,72 @@ mod test {
     fn core_register_selectors_are_xpsr_and_msplim() {
         assert_eq!(XPSR.id.0, 0x0010);
         assert_eq!(MIMXRT7xx::REGSEL_MSPLIM_S, 0x001C);
+    }
+
+    /// The landing zone is what the sense core executes when it is released, so getting
+    /// it wrong means releasing the core onto stale SRAM rather than onto an endless
+    /// loop. Pin it to the three `Write32`s NXP's `enableCPU1` does, address included.
+    #[test]
+    fn landing_zone_matches_the_debug_description() {
+        assert_eq!(
+            MIMXRT7xx::LANDING_ZONE,
+            [
+                (0x0058_0000, 0x005c_0000),
+                (0x0058_0004, 0x0058_0009),
+                (0x0058_0008, 0xe7fe_e7fe),
+            ]
+        );
+    }
+
+    /// The two writes that actually start the sense core, pinned to NXP's `enableCPU1`.
+    /// `CPU_STATUS` is easy to mistake for a cosmetic write, but `CPU_WAIT` resets to 1
+    /// and stalls the core, so dropping it would leave the core released and stalled.
+    #[test]
+    fn releasing_core1_matches_the_debug_description() {
+        assert_eq!(MIMXRT7xx::RSTCTL3_PRSTCTL0_CLR, 0x4006_0070);
+        assert_eq!(MIMXRT7xx::PRSTCTL0_CPU1, 0x8000_0000);
+        assert_eq!(MIMXRT7xx::SYSCON3_CPU_STATUS, 0x4006_208c);
+    }
+
+    /// `on_attach` -- and so `enable_core1_debug` -- runs on every `Session::core()`
+    /// access, which means it has to be safe to run against a core the debugger has
+    /// already halted. A DHCSR write with `C_HALT` clear is a resume request on a core
+    /// with `C_DEBUGEN` set, so an unconditional "enable debug" write restarts the core
+    /// behind the debugger's back; that showed up as `halt` never sticking on
+    /// `cm33_core1`.
+    #[test]
+    fn enabling_debug_leaves_an_already_halted_core_halted() {
+        let probe = Box::new(FakeProbe::with_mocked_core());
+        let mut interface =
+            DebugProbe::try_get_arm_debug_interface(probe, MIMXRT7xx::create()).unwrap();
+
+        let ap = FullyQualifiedApAddress::v1_with_dp(DpAddress::Default, MIMXRT7xx::CORE1_AP);
+
+        // Cold attach: debug is off, so the sequence turns it on.
+        assert!(MIMXRT7xx.enable_core1_debug(&mut *interface, &ap));
+
+        // Halt the core the way `Armv8m::halt` does.
+        let mut request = Dhcsr(0);
+        request.set_c_halt(true);
+        request.set_c_debugen(true);
+        request.enable_write();
+        let mut memory = interface.memory_interface(&ap).unwrap();
+        memory
+            .write_word_32(Dhcsr::get_mmio_address(), request.into())
+            .unwrap();
+        let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address()).unwrap());
+        assert!(dhcsr.s_halt(), "the core should be halted at this point");
+        drop(memory);
+
+        // Re-attaching has to be a no-op, both in what it reports and in what it does.
+        assert!(MIMXRT7xx.enable_core1_debug(&mut *interface, &ap));
+
+        let mut memory = interface.memory_interface(&ap).unwrap();
+        let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address()).unwrap());
+        assert!(
+            dhcsr.s_halt(),
+            "re-enabling debug resumed a halted core, DHCSR: {:#010x}",
+            dhcsr.0
+        );
     }
 }
