@@ -4,6 +4,7 @@ use crate::probe::{BitSequence, WireProtocol, jtag::chain::JtagChain, swd::Port}
 
 use super::{
     ArmError,
+    ap::MemoryAp,
     dp::{DpAddress, DpRegisterAddress},
 };
 
@@ -344,6 +345,19 @@ pub trait DapAccess {
     ) -> Result<(), ArmError> {
         Err(ArmError::NotImplemented("debug_port_reconnect"))
     }
+
+    /// Changes when the debug ports are reset, so memory AP state from before is not kept.
+    fn memory_ap_epoch(&self) -> u64 {
+        0
+    }
+
+    /// Takes the state of a memory AP that an earlier memory interface left behind.
+    fn take_memory_ap(&mut self, _ap: &FullyQualifiedApAddress) -> Option<MemoryAp> {
+        None
+    }
+
+    /// Keeps the state of a memory AP, so the next memory interface on it can skip its setup.
+    fn store_memory_ap(&mut self, _memory_ap: MemoryAp) {}
 }
 
 /// Layer-agnostic debug port wiring used by attach sequences.
