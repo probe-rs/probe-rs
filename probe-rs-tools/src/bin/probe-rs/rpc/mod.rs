@@ -94,6 +94,10 @@ impl ObjectStorage {
         }
     }
 
+    pub fn clear_object<M: ObjectMarker>(&mut self, key: Key<M>) {
+        self.storage.remove(&key.id());
+    }
+
     pub fn store_object<M: ObjectMarker>(&mut self, obj: M::Object) -> Key<M> {
         let key = Key::new();
         self.storage.insert(key.id(), Arc::new(Mutex::new(obj)));
@@ -155,6 +159,10 @@ impl ConnectionState {
         // MUST be two separate statements so that the lock is released.
         let locked_cell = self.object_storage.blocking_lock().cell(key);
         locked_cell.get_blocking()
+    }
+
+    pub async fn clear_session(&self, key: Key<Session>) {
+        self.object_storage.lock().await.clear_object(key);
     }
 
     pub async fn set_session(
