@@ -581,9 +581,12 @@ fn is_known_cmsis_dap_dev(device: &DeviceInfo) -> bool {
 #[cfg(feature = "cmsisdap_v1")]
 fn hid_report_size(device: &hidapi::DeviceInfo) -> usize {
     // EDBG are 512-bytes and don't respond until you give them 512 bytes.
+    // The nEDBG on the Curiosity Nano boards also says "EDBG" in its
+    // product string ("nEDBG CMSIS-DAP"), but its reports are the usual
+    // 64 bytes.
     if device.vendor_id() == 0x03eb
         && let Some(s) = device.product_string()
-        && s.contains("EDBG")
+        && s.starts_with("EDBG")
     {
         tracing::debug!("Overriding packet size to 512 bytes for EDBG device");
         return 512;
