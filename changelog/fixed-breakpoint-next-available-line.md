@@ -1,0 +1,1 @@
+Fixed breakpoints on a source line with no instructions of its own (e.g. a line a few levels deep, or one the compiler folded) being reported as unverified/disabled. Such a breakpoint now moves forward to the next line that has a halt location, matching the documented behaviour.
