@@ -1,0 +1,1 @@
+Fixed NXP MIMXRT798S secondary core (cm33_core1) cannot debug issue.
