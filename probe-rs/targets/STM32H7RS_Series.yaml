@@ -18,7 +18,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -35,7 +35,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -87,8 +87,8 @@ variants:
   - mx66uw1g45g_stm32h7s78-dk-xspim1
 - name: STM32H7R3I8
   package_variants:
-  - STM32H7R3I8Tx
   - STM32H7R3I8Kx
+  - STM32H7R3I8Tx
   cores:
   - name: main
     type: armv7em
@@ -99,7 +99,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -116,7 +116,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -180,7 +180,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -197,7 +197,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -260,7 +260,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -277,7 +277,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -329,9 +329,9 @@ variants:
   - mx66uw1g45g_stm32h7s78-dk-xspim1
 - name: STM32H7R3V8
   package_variants:
+  - STM32H7R3V8Hx
   - STM32H7R3V8Tx
   - STM32H7R3V8Yx
-  - STM32H7R3V8Hx
   cores:
   - name: main
     type: armv7em
@@ -342,7 +342,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -359,7 +359,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -411,8 +411,8 @@ variants:
   - mx66uw1g45g_stm32h7s78-dk-xspim1
 - name: STM32H7R3Z8
   package_variants:
-  - STM32H7R3Z8Tx
   - STM32H7R3Z8Jx
+  - STM32H7R3Z8Tx
   cores:
   - name: main
     type: armv7em
@@ -423,7 +423,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -440,7 +440,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -503,7 +503,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -520,7 +520,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -572,8 +572,8 @@ variants:
   - mx66uw1g45g_stm32h7s78-dk-xspim1
 - name: STM32H7R7I8
   package_variants:
-  - STM32H7R7I8Tx
   - STM32H7R7I8Kx
+  - STM32H7R7I8Tx
   cores:
   - name: main
     type: armv7em
@@ -584,7 +584,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -601,7 +601,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -665,7 +665,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -682,7 +682,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -745,7 +745,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -762,7 +762,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -825,7 +825,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -842,7 +842,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -894,8 +894,8 @@ variants:
   - mx66uw1g45g_stm32h7s78-dk-xspim1
 - name: STM32H7S3I8
   package_variants:
-  - STM32H7S3I8Tx
   - STM32H7S3I8Kx
+  - STM32H7S3I8Tx
   cores:
   - name: main
     type: armv7em
@@ -906,7 +906,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -923,7 +923,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -987,7 +987,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -1004,7 +1004,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -1067,7 +1067,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -1084,7 +1084,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -1136,9 +1136,9 @@ variants:
   - mx66uw1g45g_stm32h7s78-dk-xspim1
 - name: STM32H7S3V8
   package_variants:
+  - STM32H7S3V8Hx
   - STM32H7S3V8Tx
   - STM32H7S3V8Yx
-  - STM32H7S3V8Hx
   cores:
   - name: main
     type: armv7em
@@ -1149,7 +1149,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -1166,7 +1166,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -1218,8 +1218,8 @@ variants:
   - mx66uw1g45g_stm32h7s78-dk-xspim1
 - name: STM32H7S3Z8
   package_variants:
-  - STM32H7S3Z8Tx
   - STM32H7S3Z8Jx
+  - STM32H7S3Z8Tx
   cores:
   - name: main
     type: armv7em
@@ -1230,7 +1230,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -1247,7 +1247,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -1310,7 +1310,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -1327,7 +1327,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -1379,8 +1379,8 @@ variants:
   - mx66uw1g45g_stm32h7s78-dk-xspim1
 - name: STM32H7S7I8
   package_variants:
-  - STM32H7S7I8Tx
   - STM32H7S7I8Kx
+  - STM32H7S7I8Tx
   cores:
   - name: main
     type: armv7em
@@ -1391,7 +1391,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -1408,7 +1408,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -1472,7 +1472,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -1489,7 +1489,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
@@ -1552,7 +1552,7 @@ variants:
     name: ITCM
     range:
       start: 0x0
-      end: 0x30000
+      end: 0x10000
     cores:
     - main
   - !Nvm
@@ -1569,7 +1569,7 @@ variants:
     name: DTCM
     range:
       start: 0x20000000
-      end: 0x20030000
+      end: 0x20010000
     cores:
     - main
   - !Ram
