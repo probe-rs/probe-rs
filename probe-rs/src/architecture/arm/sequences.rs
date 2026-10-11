@@ -372,6 +372,16 @@ fn cortex_m_reset_catch_clear(core: &mut dyn ArmMemoryInterface) -> Result<(), A
 fn cortex_m_reset_catch_set(core: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
     use crate::architecture::arm::core::armv7m::{Demcr, Dhcsr};
 
+    // The vector catch only halts with halting debug enabled. Under hardware reset this runs
+    // before DebugCoreStart, and a previous session's DebugCoreStop has cleared C_DEBUGEN.
+    // A core can only be halted with C_DEBUGEN set, so writing C_DEBUGEN alone resumes nothing.
+    if !Dhcsr(core.read_word_32(Dhcsr::get_mmio_address())?).c_debugen() {
+        let mut dhcsr = Dhcsr(0);
+        dhcsr.set_c_debugen(true);
+        dhcsr.enable_write();
+        core.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
+    }
+
     // Request halt after reset
     let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address())?);
     demcr.set_vc_corereset(true);
