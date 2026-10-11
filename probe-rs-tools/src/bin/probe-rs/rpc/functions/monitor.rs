@@ -12,7 +12,9 @@ use crate::rpc::{
 };
 use anyhow::Context;
 use postcard_rpc::{header::VarHeader, server::Sender};
-use probe_rs::{BreakpointCause, Core, HaltReason, semihosting::SemihostingCommand};
+use probe_rs::{
+    BreakpointCause, Core, HaltReason, MemoryInterface, semihosting::SemihostingCommand,
+};
 use probe_rs_rpc::monitor::{
     ChannelInfo, MonitorExitReason, MonitorMode, MonitorRequest, RttEvent, SemihostingEvent,
     SemihostingExitError,
@@ -175,7 +177,7 @@ impl<S> RunLoopPoller for RttPoller<S>
 where
     S: FnMut(RttEvent) -> anyhow::Result<()>,
 {
-    fn start(&mut self, core: &mut Core<'_>) -> anyhow::Result<()> {
+    fn start(&mut self, core: &mut impl MemoryInterface) -> anyhow::Result<()> {
         if self.clear_control_block {
             let mut rtt_client = self.rtt_client.get_blocking();
             rtt_client.clear_control_block(core)?;
@@ -183,7 +185,11 @@ where
         Ok(())
     }
 
-    fn poll(&mut self, core: &mut Core<'_>) -> anyhow::Result<Duration> {
+    fn memory_port(&mut self, core: &Core) -> Option<usize> {
+        self.rtt_client.get_blocking().memory_port(core)
+    }
+
+    fn poll(&mut self, core: &mut impl MemoryInterface) -> anyhow::Result<Duration> {
         let mut rtt_client = self.rtt_client.get_blocking();
         if !rtt_client.is_attached() && matches!(rtt_client.try_attach(core), Ok(true)) {
             tracing::debug!("Attached to RTT");
@@ -228,7 +234,7 @@ where
         Ok(next_poll)
     }
 
-    fn exit(&mut self, core: &mut Core<'_>) -> anyhow::Result<()> {
+    fn exit(&mut self, core: &mut impl MemoryInterface) -> anyhow::Result<()> {
         let mut rtt_client = self.rtt_client.get_blocking();
         rtt_client.clean_up(core)?;
         Ok(())

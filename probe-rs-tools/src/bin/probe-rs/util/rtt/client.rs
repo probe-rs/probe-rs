@@ -1,4 +1,6 @@
-use crate::util::rtt::{RttActiveDownChannel, RttActiveUpChannel, RttConfig, RttConnection};
+use crate::util::rtt::{
+    RttActiveDownChannel, RttActiveUpChannel, RttConfig, RttConnection, port_reaching,
+};
 use probe_rs::{
     Core, MemoryInterface, Target,
     flashing::FlashLoader,
@@ -64,6 +66,18 @@ pub struct RttClient {
 
     /// The core used to poll the target.
     core_id: usize,
+
+    /// Whether the user was told that RTT is polled through the core.
+    warned_core_polling: bool,
+
+    /// The memory port the next attach goes through, or `None` for the core.
+    attach_port: Option<usize>,
+
+    /// Whether attaching through a memory port failed, so attaching uses the core.
+    port_attach_failed: bool,
+
+    /// What RTT needs to know about the target, for the path the next attach takes.
+    attach_target: Option<RttTarget>,
 }
 
 impl RttClient {
@@ -73,7 +87,6 @@ impl RttClient {
         } else {
             0
         };
-
         Self {
             scan_region,
             channel_modes: config.channels.iter().map(|c| c.mode).collect(),
@@ -86,6 +99,10 @@ impl RttClient {
             polled_data: false,
             missing_control_block: MissingControlBlock::default(),
             core_id,
+            warned_core_polling: false,
+            attach_port: None,
+            port_attach_failed: false,
+            attach_target: None,
         }
     }
 
@@ -111,11 +128,62 @@ impl RttClient {
         }
     }
 
+    /// Returns the memory port to access RTT through, or `None` to use `core`.
+    ///
+    /// A memory port is used when it reaches the control block and, once attached, all channel
+    /// buffers.
+    pub fn memory_port(&mut self, core: &Core) -> Option<usize> {
+        let port = self.select_memory_port(core);
+        if !self.is_attached() {
+            let port_target = port
+                .and_then(|port| RttTarget::for_memory_port(core.target(), port, core.is_64_bit()));
+            self.attach_target = Some(port_target.unwrap_or_else(|| RttTarget::from(core)));
+        }
+        port
+    }
+
+    fn select_memory_port(&mut self, core: &Core) -> Option<usize> {
+        let target = core.target();
+        if target.memory_ports.is_empty() {
+            return None;
+        }
+
+        let Some(connection) = self.target.as_ref() else {
+            let address = match self.scan_region {
+                ScanRegion::Exact(address) => Some(address),
+                _ => self.last_control_block_address,
+            };
+            let port = address
+                .filter(|_| !self.port_attach_failed)
+                .and_then(|address| {
+                    let control_block = address..address + Rtt::control_block_size() as u64;
+                    port_reaching(target, std::slice::from_ref(&control_block))
+                });
+            self.attach_port = port;
+            return port;
+        };
+
+        let port = connection.memory_port(target);
+        // A re-attach goes through the same path as the polling.
+        self.attach_port = port;
+        if port.is_some() {
+            self.port_attach_failed = false;
+        } else if !self.warned_core_polling {
+            self.warned_core_polling = true;
+            tracing::warn!(
+                "No memory port reaches the RTT control block and buffers, so RTT is polled \
+                 through the core, which may halt it. Place them in memory a memory port can \
+                 reach to poll RTT while the core runs."
+            );
+        }
+        port
+    }
+
     pub fn is_attached(&self) -> bool {
         self.target.is_some()
     }
 
-    fn try_attach_impl(&mut self, core: &mut Core) -> Result<bool, Error> {
+    fn try_attach_impl(&mut self, core: &mut impl MemoryInterface) -> Result<bool, Error> {
         if self.is_attached() {
             return Ok(true);
         }
@@ -124,7 +192,10 @@ impl RttClient {
             return Ok(false);
         }
 
-        let rtt_target = RttTarget::from(&*core);
+        let Some(rtt_target) = self.attach_target.clone() else {
+            tracing::debug!("Failed to attach - no memory access selected yet");
+            return Ok(false);
+        };
         let location = if let Some(location) = self.last_control_block_address {
             location
         } else {
@@ -157,10 +228,12 @@ impl RttClient {
             }
             Err(Error::ControlBlockCorrupted(error)) => {
                 tracing::debug!("Failed to attach - control block corrupted: {}", error);
+                self.port_attach_failed |= self.attach_port.is_some();
                 return Ok(false);
             }
             Err(error @ Error::BufferNotReachable { .. }) => {
                 tracing::debug!("Failed to attach - {error}");
+                self.port_attach_failed |= self.attach_port.is_some();
                 return Ok(false);
             }
             Err(error) => return Err(error),
@@ -173,6 +246,7 @@ impl RttClient {
             }
             Err(Error::ControlBlockCorrupted(error)) => {
                 tracing::debug!("Failed to attach - control block corrupted: {}", error);
+                self.port_attach_failed |= self.attach_port.is_some();
             }
             Err(error) => return Err(error),
         };
@@ -181,7 +255,7 @@ impl RttClient {
         Ok(self.target.is_some())
     }
 
-    pub fn try_attach(&mut self, core: &mut Core) -> Result<bool, Error> {
+    pub fn try_attach(&mut self, core: &mut impl MemoryInterface) -> Result<bool, Error> {
         let attached = self.try_attach_impl(core)?;
 
         if attached && self.need_configure {
@@ -217,7 +291,11 @@ impl RttClient {
         }
     }
 
-    pub fn poll_channel(&mut self, core: &mut Core, channel: u32) -> Result<&[u8], Error> {
+    pub fn poll_channel(
+        &mut self,
+        core: &mut impl MemoryInterface,
+        channel: u32,
+    ) -> Result<&[u8], Error> {
         self.try_attach(core)?;
 
         if let Some(ref mut target) = self.target {
@@ -254,7 +332,7 @@ impl RttClient {
     /// Returns 0 if RTT is not attached yet, in which case nothing was sent.
     pub(crate) fn write_down_channel(
         &mut self,
-        core: &mut Core,
+        core: &mut impl MemoryInterface,
         channel: u32,
         input: impl AsRef<[u8]>,
     ) -> Result<usize, Error> {
@@ -267,7 +345,7 @@ impl RttClient {
         target.write_down_channel(core, channel, input)
     }
 
-    pub fn clean_up(&mut self, core: &mut Core) -> Result<(), Error> {
+    pub fn clean_up(&mut self, core: &mut impl MemoryInterface) -> Result<(), Error> {
         self.need_configure = true;
 
         if let Some(target) = self.target.as_mut() {
@@ -280,7 +358,10 @@ impl RttClient {
     /// This function prevents probe-rs from attaching to an RTT control block that is not
     /// supposed to be valid. This is useful when probe-rs has reset the MCU before attaching,
     /// or during/after flashing, when the MCU has not yet been started.
-    pub(crate) fn clear_control_block(&mut self, core: &mut Core) -> Result<(), Error> {
+    pub(crate) fn clear_control_block(
+        &mut self,
+        core: &mut impl MemoryInterface,
+    ) -> Result<(), Error> {
         if self.disallow_clearing_rtt_header {
             tracing::debug!("Not clearing RTT control block");
             return Ok(());
@@ -300,7 +381,7 @@ impl RttClient {
                     // If we know the exact location where a control block should be, we can clear
                     // the whole block.
                     if location == scan_location {
-                        if core.is_64_bit() {
+                        if self.attach_target.as_ref().is_some_and(|t| t.is_64_bit) {
                             const SIZE_64B: usize = 16 + 2 * 8;
                             core.write_8(location, &[0; SIZE_64B])?;
                         } else {
@@ -343,7 +424,7 @@ impl RttClient {
         self.core_id
     }
 
-    pub(crate) fn configure(&mut self, core: &mut Core<'_>) -> Result<(), Error> {
+    pub(crate) fn configure(&mut self, core: &mut impl MemoryInterface) -> Result<(), Error> {
         let Some(target) = self.target.as_mut() else {
             return Ok(());
         };

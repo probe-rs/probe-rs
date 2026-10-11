@@ -30,6 +30,17 @@ impl core::fmt::Debug for MemoryAccessPort<'_> {
 }
 
 impl<'probe> MemoryAccessPort<'probe> {
+    /// Create a new [`MemoryAccessPort`].
+    pub fn new_for_core(core: crate::Core<'probe>) -> MemoryAccessPort<'probe> {
+        let id = core.id();
+        let name = core.name().to_string();
+        Self {
+            id,
+            name,
+            memory: Box::new(core),
+        }
+    }
+
     /// Create a new [`MemoryAccessPort`] from an [ArmMemoryInterface].
     pub(crate) fn new_for_arm_memory_interface(
         id: usize,
