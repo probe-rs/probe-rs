@@ -315,6 +315,30 @@ pub(crate) fn check_for_semihosting(
     Ok(command)
 }
 
+/// Returns true if `instruction` is a Thumb `BKPT` (`0xBExx`).
+pub(crate) fn is_bkpt_instruction(instruction: u16) -> bool {
+    const BKPT_MASK: u16 = 0xFF00;
+    const BKPT_ENCODING: u16 = 0xBE00;
+
+    instruction & BKPT_MASK == BKPT_ENCODING
+}
+
+/// Reads the halfword at `address` and checks if it is a `BKPT`.
+///
+/// If the read fails we treat it as not a `BKPT`, so we never skip an instruction we couldn't read.
+pub(crate) fn is_bkpt_at(core: &mut dyn CoreInterface, address: u64) -> bool {
+    let mut instruction = [0u8; 2];
+    match core.read_8(address, &mut instruction) {
+        Ok(()) => is_bkpt_instruction(u16::from_le_bytes(instruction)),
+        Err(error) => {
+            tracing::warn!(
+                "Could not read the instruction at {address:#010x}, not advancing the PC: {error}"
+            );
+            false
+        }
+    }
+}
+
 fn wait_for_core_register_transfer(
     memory: &mut dyn ArmMemoryInterface,
     timeout: Duration,
@@ -331,4 +355,25 @@ fn wait_for_core_register_transfer(
         }
     }
     Err(ArmError::Timeout)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_bkpt_instruction;
+
+    #[test]
+    fn is_bkpt_instruction_tells_bkpt_from_branch_to_self() {
+        for (instruction, expected) in [
+            (0xBE00, true),  // BKPT #0
+            (0xBEAB, true),  // BKPT #0xAB (semihosting)
+            (0xE7FE, false), // B . (branch to itself)
+            (0xBF00, false), // NOP
+        ] {
+            assert_eq!(
+                is_bkpt_instruction(instruction),
+                expected,
+                "{instruction:#06x}"
+            );
+        }
+    }
 }

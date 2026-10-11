@@ -717,10 +717,14 @@ impl CoreInterface for Armv6m<'_> {
         // Re-enable breakpoints before we continue.
         if let Some(pc_before_step) = breakpoint_at_pc {
             // If we were stopped on a software breakpoint, then we need to manually advance the PC, or else we will be stuck here forever.
+            // A `b .` (branch to itself) also leaves the PC unchanged, so only skip a real `BKPT`.
             if pc_before_step == pc_after_step
                 && !self
                     .hw_breakpoints()?
                     .contains(&pc_before_step.try_into().ok())
+                && pc_before_step
+                    .try_into()
+                    .is_ok_and(|pc: u64| super::cortex_m::is_bkpt_at(self, pc))
             {
                 tracing::debug!(
                     "Encountered a breakpoint instruction @ {}. We need to manually advance the program counter to the next instruction.",
