@@ -1,6 +1,6 @@
 use crate::{
     rpc::functions::{RpcContext, convert::lift},
-    util::rtt::RttConfig,
+    util::rtt::{RttConfig, rtt_access},
 };
 use postcard_rpc::header::VarHeader;
 use probe_rs::rtt;
@@ -73,8 +73,7 @@ pub async fn write_rtt_down(
             let mut session = ctx.session(request.sessid).await;
             let mut rtt_client = ctx.object_mut(request.rtt_client).await;
 
-            let core_id = rtt_client.core_id();
-            let mut core = lift(session.core(core_id))?;
+            let mut core = lift(rtt_access(&mut session, &mut rtt_client))?;
             written += lift(rtt_client.write_down_channel(
                 &mut core,
                 request.channel,
@@ -109,8 +108,7 @@ pub async fn get_rtt_channels(
     let mut session = ctx.session(request.sessid).await;
     let mut rtt_client = ctx.object_mut(request.rtt_client).await;
 
-    let core_id = rtt_client.core_id();
-    let mut core = lift(session.core(core_id))?;
+    let mut core = lift(rtt_access(&mut session, &mut rtt_client))?;
     lift(rtt_client.try_attach(&mut core))?;
 
     let up = rtt_client
@@ -141,8 +139,7 @@ pub async fn clear_rtt_control_block(
     let mut session = ctx.session(request.sessid).await;
     let mut rtt_client = ctx.object_mut(request.rtt_client).await;
 
-    let core_id = rtt_client.core_id();
-    let mut core = lift(session.core(core_id))?;
+    let mut core = lift(rtt_access(&mut session, &mut rtt_client))?;
     lift(rtt_client.clear_control_block(&mut core))?;
 
     Ok(())
@@ -156,8 +153,7 @@ pub async fn poll_rtt_up(
     let mut session = ctx.session(request.sessid).await;
     let mut rtt_client = ctx.object_mut(request.rtt_client).await;
 
-    let core_id = rtt_client.core_id();
-    let mut core = lift(session.core(core_id))?;
+    let mut core = lift(rtt_access(&mut session, &mut rtt_client))?;
 
     let mut results = Vec::with_capacity(request.channels.len());
     for channel in request.channels {
@@ -182,8 +178,7 @@ pub async fn clean_up_rtt(
     let mut session = ctx.session(request.sessid).await;
     let mut rtt_client = ctx.object_mut(request.rtt_client).await;
 
-    let core_id = rtt_client.core_id();
-    let mut core = lift(session.core(core_id))?;
+    let mut core = lift(rtt_access(&mut session, &mut rtt_client))?;
     lift(rtt_client.clean_up(&mut core))?;
 
     Ok(())

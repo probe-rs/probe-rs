@@ -345,6 +345,11 @@ impl UpChannel {
         self.0.buffer_size()
     }
 
+    /// Returns the address of the buffer.
+    pub fn buffer_address(&self) -> u64 {
+        self.0.info.buffer_start_pointer()
+    }
+
     /// Reads the current channel mode from the target and returns its.
     ///
     /// See [`ChannelMode`] for more information on what the modes mean.
@@ -501,6 +506,11 @@ impl DownChannel {
     /// ring buffer is implemented.
     pub fn buffer_size(&self) -> usize {
         self.0.buffer_size()
+    }
+
+    /// Returns the address of the buffer.
+    pub fn buffer_address(&self) -> u64 {
+        self.0.info.buffer_start_pointer()
     }
 
     /// Writes some bytes into the channel buffer and returns the number of bytes written.

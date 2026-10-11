@@ -1,13 +1,47 @@
 use postcard_schema::Schema;
 use probe_rs::rtt::{self, DownChannel, Error, Rtt, UpChannel};
-use probe_rs::{Core, MemoryInterface};
+use probe_rs::{MemoryAccessPort, MemoryInterface, Session, Target, config::MemoryRegion};
 use probe_rs_rpc::rtt_config::{ChannelMode, RttChannelConfig};
+use probe_rs_target::RegionMergeIterator;
 use serde::{Deserialize, Serialize};
+use std::ops::Range;
 
 pub(crate) mod client;
 pub(crate) mod processing;
 
 pub use processing::*;
+
+/// Returns the first memory port that reaches all of `ranges`.
+fn port_reaching(target: &Target, ranges: &[Range<u64>]) -> Option<usize> {
+    target.memory_ports.iter().position(|port| {
+        let regions = target
+            .memory_map
+            .iter()
+            .filter(|region| region.accessible_by(&port.name))
+            .filter_map(MemoryRegion::as_ram_region)
+            .merge_consecutive()
+            .collect::<Vec<_>>();
+        ranges.iter().all(|range| {
+            regions
+                .iter()
+                .any(|region| region.range.start <= range.start && range.end <= region.range.end)
+        })
+    })
+}
+
+/// Memory access for RTT, through a memory port when one reaches the RTT memory.
+pub fn rtt_access<'s>(
+    session: &'s mut Session,
+    client: &mut client::RttClient,
+) -> Result<MemoryAccessPort<'s>, probe_rs::Error> {
+    let port = client.memory_port(&session.core(client.core_id())?);
+    match port {
+        Some(index) => session.memory_access_port(index),
+        None => session
+            .core(client.core_id())
+            .map(MemoryAccessPort::new_for_core),
+    }
+}
 
 pub(crate) fn from_wire_channel_mode(mode: ChannelMode) -> rtt::ChannelMode {
     match mode {
@@ -72,7 +106,11 @@ impl RttActiveUpChannel {
         }
     }
 
-    pub fn change_mode(&mut self, core: &mut Core, mode: ChannelMode) -> Result<(), Error> {
+    pub fn change_mode(
+        &mut self,
+        core: &mut impl MemoryInterface,
+        mode: ChannelMode,
+    ) -> Result<(), Error> {
         if self.original_mode.is_none() {
             self.original_mode = Some(to_wire_channel_mode(self.up_channel.mode(core)?));
         }
@@ -97,7 +135,7 @@ impl RttActiveUpChannel {
     }
 
     /// Reads available channel data into the internal buffer.
-    pub fn poll(&mut self, core: &mut Core) -> Result<(), Error> {
+    pub fn poll(&mut self, core: &mut impl MemoryInterface) -> Result<(), Error> {
         self.bytes_buffered = self.up_channel.read(core, self.rtt_buffer.as_mut())?;
         Ok(())
     }
@@ -108,7 +146,7 @@ impl RttActiveUpChannel {
     }
 
     /// Clean up temporary changes made to the channel.
-    pub fn clean_up(&mut self, core: &mut Core) -> Result<(), Error> {
+    pub fn clean_up(&mut self, core: &mut impl MemoryInterface) -> Result<(), Error> {
         if let Some(mode) = self.original_mode.take() {
             self.up_channel
                 .set_mode(core, from_wire_channel_mode(mode))?;
@@ -147,7 +185,11 @@ impl RttActiveDownChannel {
     /// Writes as much of `data` as the target's buffer accepts, returning how many
     /// bytes were taken. This does not block: a caller that discards the count
     /// cannot know what to retry, and silently loses the remainder.
-    pub fn write(&mut self, core: &mut Core<'_>, data: impl AsRef<[u8]>) -> Result<usize, Error> {
+    pub fn write(
+        &mut self,
+        core: &mut impl MemoryInterface,
+        data: impl AsRef<[u8]>,
+    ) -> Result<usize, Error> {
         self.down_channel.write(core, data.as_ref())
     }
 }
@@ -157,6 +199,7 @@ impl RttActiveDownChannel {
 #[derive(Debug)]
 pub struct RttConnection {
     control_block_addr: u64,
+    control_block_size: u64,
     pub active_up_channels: Vec<RttActiveUpChannel>,
     pub active_down_channels: Vec<RttActiveDownChannel>,
 }
@@ -165,6 +208,7 @@ impl RttConnection {
     /// RttActiveTarget collects references to all the `RttActiveChannel`s, for latter polling/pushing of data.
     pub fn new(rtt: Rtt) -> Result<Self, Error> {
         let control_block_addr = rtt.ptr();
+        let control_block_size = rtt.size() as u64;
 
         let active_up_channels = rtt
             .up_channels
@@ -180,14 +224,39 @@ impl RttConnection {
 
         Ok(Self {
             control_block_addr,
+            control_block_size,
             active_up_channels,
             active_down_channels,
         })
     }
 
+    /// The memory used by the control block and the channel buffers.
+    fn memory_ranges(&self) -> impl Iterator<Item = Range<u64>> + '_ {
+        let control_block =
+            self.control_block_addr..self.control_block_addr + self.control_block_size;
+        let up = self.active_up_channels.iter().map(|c| {
+            let start = c.up_channel.buffer_address();
+            start..start + c.up_channel.buffer_size() as u64
+        });
+        let down = self.active_down_channels.iter().map(|c| {
+            let start = c.down_channel.buffer_address();
+            start..start + c.down_channel.buffer_size() as u64
+        });
+        std::iter::once(control_block).chain(up).chain(down)
+    }
+
+    /// Returns the first memory port that reaches all RTT memory.
+    fn memory_port(&self, target: &Target) -> Option<usize> {
+        port_reaching(target, &self.memory_ranges().collect::<Vec<_>>())
+    }
+
     /// Polls the RTT target on all channels and returns available data.
     /// An error on any channel will return an error instead of incomplete data.
-    pub fn poll_channel(&mut self, core: &mut Core, channel_idx: u32) -> Result<(), Error> {
+    pub fn poll_channel(
+        &mut self,
+        core: &mut impl MemoryInterface,
+        channel_idx: u32,
+    ) -> Result<(), Error> {
         let channel_idx = channel_idx as usize;
         if let Some(channel) = self.active_up_channels.get_mut(channel_idx) {
             channel.poll(core)
@@ -208,7 +277,7 @@ impl RttConnection {
     /// Send data to a down channel, returning how many bytes it accepted.
     pub fn write_down_channel(
         &mut self,
-        core: &mut Core,
+        core: &mut impl MemoryInterface,
         channel_idx: u32,
         data: impl AsRef<[u8]>,
     ) -> Result<usize, Error> {
@@ -221,7 +290,7 @@ impl RttConnection {
     }
 
     /// Clean up temporary changes made to the channels.
-    pub fn clean_up(&mut self, core: &mut Core) -> Result<(), Error> {
+    pub fn clean_up(&mut self, core: &mut impl MemoryInterface) -> Result<(), Error> {
         for channel in self.active_up_channels.iter_mut() {
             channel.clean_up(core)?;
         }
@@ -229,7 +298,7 @@ impl RttConnection {
     }
 
     /// Overwrites the control block with zeros. This is useful after resets.
-    pub fn clear_control_block(&mut self, core: &mut Core) -> Result<(), Error> {
+    pub fn clear_control_block(&mut self, core: &mut impl MemoryInterface) -> Result<(), Error> {
         let zeros = vec![0; Rtt::control_block_size()];
         core.write(self.control_block_addr, &zeros)?;
         self.active_down_channels.clear();
