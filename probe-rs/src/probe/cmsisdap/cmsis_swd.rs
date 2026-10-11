@@ -4,11 +4,12 @@ use std::time::Duration;
 use crate::{
     architecture::arm::{
         RegisterAddress,
-        dp::{Abort, DpRegisterAddress},
+        communication_interface::wire_probe_error,
+        dp::{Abort, Ctrl, DpRegister, DpRegisterAddress},
     },
     probe::{
         BatchError, BatchExecutionError, BitSequence, CommandResult, DebugProbeError, HandleId,
-        Results,
+        Results, WireProtocol,
         cmsisdap::{
             CmsisDap,
             commands::{
@@ -582,14 +583,58 @@ impl SwdProbe for CmsisDap {
         batch: &SwdBatch,
     ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
         let mut results = Results::new();
-        let ops: Vec<(HandleId, SwdOp)> = batch
+        let mut ops: Vec<(HandleId, SwdOp)> = batch
             .iter()
             .map(|(id, op)| (id.clone(), op.clone()))
             .collect();
         let dap_index = self.jtag_state.chain_params.index as u8;
+        let jtag = self.protocol == Some(WireProtocol::Jtag);
+
+        // A failed AP access over JTAG is acknowledged as OK, and only shows in the sticky flags.
+        // CTRL/STAT is read at the end of the batch, where it usually shares the last packet.
+        let last_ap_access = ops
+            .iter()
+            .rposition(|(_, op)| matches!(op, SwdOp::Transfer { port: Port::Ap, .. }));
+        let ctrl = (jtag && last_ap_access.is_some()).then(|| {
+            let mut extra = SwdBatch::new();
+            let handle = extra.read(Port::Dp, RegisterAddress::from(Ctrl::ADDRESS).a2_and_3());
+            ops.extend(extra.iter().map(|(id, op)| (id.clone(), op.clone())));
+            handle
+        });
+        // JTAG reaches ABORT through its own instruction, which DAP_Transfer cannot.
+        let is_jtag_abort = |op: &SwdOp| {
+            jtag && matches!(
+                op,
+                SwdOp::Transfer {
+                    port: Port::Dp,
+                    addr: 0,
+                    direction: Direction::Write,
+                    ..
+                }
+            )
+        };
 
         let mut batch_index = 0;
         while batch_index < ops.len() {
+            if let SwdOp::Transfer { data, .. } = ops[batch_index].1
+                && is_jtag_abort(&ops[batch_index].1)
+            {
+                if let Err(error) = self.write_abort(Abort(data)) {
+                    return Err(BatchExecutionError::new_from_debug_probe_at(
+                        wire_probe_error(error),
+                        results,
+                        batch_index,
+                    ));
+                }
+                batch_index += 1;
+                continue;
+            }
+
+            let end = ops[batch_index..]
+                .iter()
+                .position(|(_, op)| is_jtag_abort(op))
+                .map_or(ops.len(), |offset| batch_index + offset);
+            let ops = &ops[..end];
             let packets = split_into_packets(
                 &ops[batch_index..],
                 batch_index,
@@ -604,12 +649,12 @@ impl SwdProbe for CmsisDap {
 
             // Whatever ended the run is handled on its own, and cannot share a packet.
             let Some((id, op)) = ops.get(batch_index) else {
-                break;
+                continue;
             };
 
             match op {
                 SwdOp::Transfer { .. } => {
-                    let run = run_length(&ops, batch_index);
+                    let run = run_length(ops, batch_index);
                     results = self.run_transfer_block(
                         &ops[batch_index..batch_index + run],
                         batch_index,
@@ -657,6 +702,29 @@ impl SwdProbe for CmsisDap {
             batch_index += 1;
         }
 
+        if let Some(ctrl) = ctrl {
+            let value = results
+                .take(ctrl)
+                .expect("the CTRL/STAT read was part of the batch");
+            if Ctrl(value).sticky_err() {
+                let fault_operation = last_ap_access.expect("only checked after an AP access");
+                if let Err(error) = self.write_dp_register(Ctrl::ADDRESS, value) {
+                    return Err(BatchExecutionError::new_from_debug_probe_at(
+                        wire_probe_error(error),
+                        results,
+                        fault_operation,
+                    ));
+                }
+                return Err(BatchExecutionError {
+                    error: BatchError::Specific(DebugProbeError::SwdTransfer(
+                        SwdTransferError::FaultResponse,
+                    )),
+                    results,
+                    fault_operation,
+                });
+            }
+        }
+
         Ok(results)
     }
 
@@ -676,6 +744,7 @@ mod tests {
         cmsisdap::commands::{Request, transfer::LastTransferResponse},
         swd::{Direction, Port, SwdOp},
     };
+    use std::sync::{Arc, Mutex};
 
     fn block_response(count: u16, ack: Ack) -> TransferBlockResponse {
         TransferBlockResponse {
@@ -1118,5 +1187,67 @@ mod tests {
         let response = transfer_response(4, Ack::Ok);
 
         assert!(CmsisDap::classify_transfer_response(&response, &transfers).is_ok());
+    }
+    /// A probe in JTAG mode whose CTRL/STAT reads return `ctrl`, and all other reads zero.
+    fn jtag_dap(ctrl: u32) -> (CmsisDap, Arc<Mutex<commands::fake::FakeProbe>>) {
+        use commands::fake::{FakeProbe, Reply, standard_reply};
+
+        let probe = FakeProbe::shared(64, move |command| match command {
+            [0x05, _, count, requests @ ..] => {
+                let mut reply = vec![0x05, *count, Ack::Ok as u8];
+                let mut requests = requests.iter();
+                while let Some(&request) = requests.next() {
+                    match request & 0b1111 {
+                        0b0110 => reply.extend(ctrl.to_le_bytes()),
+                        r if r & 0b10 != 0 => reply.extend([0; 4]),
+                        _ => _ = requests.nth(3),
+                    }
+                }
+                Reply::Now(reply)
+            }
+            [0x08, ..] => Reply::Now(vec![0x08, 0x00]),
+            _ => standard_reply(command, 64, 4),
+        });
+        let device = commands::CmsisDapDevice::Fake(probe.clone());
+        let mut dap = CmsisDap::new_from_device(device).unwrap();
+        dap.protocol = Some(WireProtocol::Jtag);
+        (dap, probe)
+    }
+
+    fn sent(probe: &Arc<Mutex<commands::fake::FakeProbe>>, id: u8) -> Vec<Vec<u8>> {
+        let sent = &probe.lock().unwrap().sent;
+        sent.iter().filter(|c| c[0] == id).cloned().collect()
+    }
+
+    #[test]
+    fn a_jtag_sticky_error_fails_the_batch_and_is_written_back() {
+        let (mut dap, probe) = jtag_dap(0x20);
+        let mut batch = SwdBatch::new();
+        let _ = batch.read(Port::Ap, 0xC);
+
+        let error = dap.run_batch(&batch).unwrap_err();
+        assert!(matches!(
+            error.error,
+            BatchError::Specific(DebugProbeError::SwdTransfer(
+                SwdTransferError::FaultResponse
+            ))
+        ));
+        assert_eq!(
+            sent(&probe, 0x05).last().unwrap(),
+            &[0x05, 0, 1, 0b0100, 0x20, 0, 0, 0]
+        );
+    }
+
+    #[test]
+    fn a_jtag_abort_sends_only_dapabort() {
+        let (mut dap, probe) = jtag_dap(0);
+        let mut batch = SwdBatch::new();
+        batch.write(Port::Dp, 0x0, 0x1f);
+        dap.run_batch(&batch).unwrap();
+        assert_eq!(sent(&probe, 0x08), [[0x08, 0, 1, 0, 0, 0]]);
+
+        dap.protocol = Some(WireProtocol::Swd);
+        dap.run_batch(&batch).unwrap();
+        assert_eq!(sent(&probe, 0x08).len(), 1);
     }
 }

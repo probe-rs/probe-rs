@@ -499,8 +499,13 @@ impl Drop for ArmCommunicationInterface {
 }
 
 impl ArmCommunicationInterface {
-    fn is_swd(&self) -> bool {
-        matches!(self.probe.as_ref(), Some(ArmProbe::Swd(_, _)))
+    /// Whether register accesses run as DAP transfers through an [`SwdPort`].
+    fn uses_swd_port(&mut self) -> bool {
+        match self.probe.as_mut() {
+            Some(ArmProbe::Swd(_, _)) => true,
+            Some(ArmProbe::Jtag(probe, _)) => probe.dap_transfer_probe().is_some(),
+            None => false,
+        }
     }
 
     fn close(mut self) -> Probe {
@@ -645,7 +650,14 @@ impl ArmCommunicationInterface {
                 let mut port = SwdPort::new(probe.as_mut(), settings);
                 f(&mut port).map_err(Self::swd_port_error)
             }
-            _ => panic!("ArmCommunicationInterface does not hold an SwdProbe"),
+            ArmProbe::Jtag(probe, settings) => {
+                let settings = settings.clone();
+                let probe = probe
+                    .dap_transfer_probe()
+                    .expect("ArmCommunicationInterface does not hold an SwdProbe");
+                let mut port = SwdPort::new(probe, settings);
+                f(&mut port).map_err(Self::swd_port_error)
+            }
         }
     }
 
@@ -805,7 +817,7 @@ impl SwdSequence for ArmCommunicationInterface {
     }
 }
 
-fn wire_probe_error(error: ArmError) -> DebugProbeError {
+pub(crate) fn wire_probe_error(error: ArmError) -> DebugProbeError {
     match error {
         ArmError::Probe(error) => error,
         error => DebugProbeError::Other(error.to_string()),
@@ -1056,6 +1068,8 @@ impl ArmCommunicationInterface {
                 )));
             }
         }
+        // Errors are checked through CTRL/STAT, which is in DP bank 0.
+        dp_state.current_select.set_dp_bank_sel(0);
 
         if !was_valid || previous_select != dp_state.current_select {
             tracing::debug!("Changing SELECT to {:x?}", dp_state.current_select);
@@ -1065,8 +1079,9 @@ impl ArmCommunicationInterface {
                     self.write_dp_register(ap.dp(), select)?;
                 }
                 SelectCache::DPv3(select, select1) => {
-                    self.write_dp_register(ap.dp(), select)?;
+                    // SELECT1 is in DP bank 5, so SELECT is written last to return to bank 0.
                     self.write_dp_register(ap.dp(), select1)?;
+                    self.write_dp_register(ap.dp(), select)?;
                 }
             }
         }
@@ -1126,7 +1141,7 @@ impl DapAccess for ArmCommunicationInterface {
     ) -> Result<u32, ArmError> {
         self.select_dp_and_dp_bank(dp, &address)?;
         let register = RegisterAddress::DpRegister(address);
-        if self.is_swd() {
+        if self.uses_swd_port() {
             let addr = Self::swd_addr(register);
             self.with_swd_port(|port| {
                 let mut batch = SwdBatch::new();
@@ -1147,7 +1162,7 @@ impl DapAccess for ArmCommunicationInterface {
     ) -> Result<(), ArmError> {
         self.select_dp_and_dp_bank(dp, &address)?;
         let register = RegisterAddress::DpRegister(address);
-        let result = if self.is_swd() {
+        let result = if self.uses_swd_port() {
             let addr = Self::swd_addr(register);
             self.with_swd_port(|port| {
                 let mut batch = SwdBatch::new();
@@ -1175,7 +1190,7 @@ impl DapAccess for ArmCommunicationInterface {
             this.select_ap_and_ap_bank(ap, address)?;
             let register = RegisterAddress::ApRegister((address & 0xFF) as u8);
 
-            if this.is_swd() {
+            if this.uses_swd_port() {
                 let addr = Self::ap_swd_addr(address);
                 this.with_swd_port(|port| {
                     let mut batch = SwdBatch::new();
@@ -1200,7 +1215,7 @@ impl DapAccess for ArmCommunicationInterface {
         self.select_ap_and_ap_bank(ap, address)?;
         let register = RegisterAddress::ApRegister((address & 0xFF) as u8);
 
-        if self.is_swd() {
+        if self.uses_swd_port() {
             let addr = Self::ap_swd_addr(address);
             let count = values.len();
             self.with_swd_port(|port| {
@@ -1241,8 +1256,8 @@ impl DapAccess for ArmCommunicationInterface {
             "every read needs a word to land in"
         );
 
-        if !self.is_swd() {
-            // JTAG has no batch to pack, so the list is replayed. A repeat of one register is
+        if !self.uses_swd_port() {
+            // Without an SwdPort there is no batch to pack, so the list is replayed. A repeat of one register is
             // still a block transfer here, and one access at a time would undo it.
             let mut read = 0;
             for run in accesses.chunk_by(same_run) {
@@ -1304,7 +1319,7 @@ impl DapAccess for ArmCommunicationInterface {
             this.select_ap_and_ap_bank(ap, address)?;
             let register = RegisterAddress::ApRegister((address & 0xFF) as u8);
 
-            if this.is_swd() {
+            if this.uses_swd_port() {
                 let addr = Self::ap_swd_addr(address);
                 this.with_swd_port(|port| {
                     let mut batch = SwdBatch::new();
@@ -1329,7 +1344,7 @@ impl DapAccess for ArmCommunicationInterface {
         self.select_ap_and_ap_bank(ap, address)?;
         let register = RegisterAddress::ApRegister((address & 0xFF) as u8);
 
-        if self.is_swd() {
+        if self.uses_swd_port() {
             let addr = Self::ap_swd_addr(address);
             self.with_swd_port(|port| {
                 let mut batch = SwdBatch::new();
