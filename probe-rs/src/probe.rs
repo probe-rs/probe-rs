@@ -121,6 +121,13 @@ impl std::str::FromStr for WireProtocol {
     }
 }
 
+/// Sends a line reset, the SWJ-DP SWD to JTAG switch sequence and a TAP reset.
+fn switch_swd_to_jtag(wire: &mut dyn DebugPortWire) -> Result<(), ArmError> {
+    wire.swj_sequence(&BitSequence::from_u64(51, (1 << 51) - 1))?;
+    wire.swj_sequence(&BitSequence::from_u64(16, 0xE73C))?;
+    wire.swj_sequence(&BitSequence::from_u64(6, 0x3F))
+}
+
 /// Marker trait for all probe errors.
 pub trait ProbeError: std::error::Error + Send + Sync + std::any::Any {}
 
@@ -378,6 +385,16 @@ impl Probe {
     pub fn attach_to_unspecified(&mut self) -> Result<(), Error> {
         self.inner.attach()?;
         self.attached = true;
+
+        // A debug port with SWJ pin switching that an earlier session left in SWD mode keeps
+        // its JTAG TAPs off TDO, so the scan below would find an empty chain. The switch
+        // sequence never enters a Capture or Update state, so JTAG-only TAPs ignore it.
+        if self.protocol() == Some(WireProtocol::Jtag)
+            && self.inner.try_as_jtag_chain_access_mut().is_some()
+            && let Err(error) = self.with_debug_port_wire(switch_swd_to_jtag)
+        {
+            tracing::debug!("Unable to send the SWD to JTAG switch sequence: {error}");
+        }
 
         // A JTAG consumer needs the padding parameters of a TAP. Select the first one, so that a
         // caller that does not know the chain can access the target. A chain that is not visible
