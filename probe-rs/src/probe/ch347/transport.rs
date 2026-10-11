@@ -50,7 +50,9 @@ pub(crate) enum Ch347Error {
     BatchTooLarge,
     #[error("the reset GPIO did not switch to {0:?}")]
     Reset(Drive),
-    #[error("target reset needs a board with a reset GPIO; this is a generic CH347")]
+    #[error(
+        "target reset needs SWD, where the TRST pin is the reset line, or a board with a reset GPIO"
+    )]
     NoResetPin,
 }
 

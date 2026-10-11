@@ -1,4 +1,5 @@
 //! Board GPIO wiring. Supports the target reset line and an activity LED, opt-in by USB identity.
+//! Without a known board, SWD drives the reset line on the otherwise unused TRST pin.
 
 use std::num::NonZeroU8;
 use std::thread::sleep;
@@ -6,8 +7,9 @@ use std::time::{Duration, Instant};
 
 use nusb::{DeviceInfo, MaybeFuture};
 
-use crate::probe::{DebugProbeError, Pins};
+use crate::probe::{DebugProbeError, Pins, WireProtocol};
 
+use super::capabilities::Variant;
 use super::device::{Ch347Device, PID_CH347F, VID_WCH};
 use super::transport::{Ch347Error, HEADER_LEN, TIMEOUT, frame};
 
@@ -175,10 +177,31 @@ impl PinState {
     }
 }
 
+/// SWD leaves the TRST pin free, so without a board it is the reset line. It is pin 9 on both
+/// chips, but a different GPIO. Released to input, so the line needs a pull-up.
+fn trst_reset_pin(variant: Variant) -> ResetPin {
+    ResetPin {
+        gpio: match variant {
+            Variant::Ch347F => 3,
+            Variant::Ch347T => 5,
+        },
+        release: Drive::Input,
+    }
+}
+
 impl Ch347Device {
+    /// A known board's wiring wins; without a board, the TRST pin while in SWD.
+    fn reset_line(&self, protocol: WireProtocol) -> Option<ResetPin> {
+        match self.board {
+            Some(board) => board.reset,
+            None => {
+                (protocol == WireProtocol::Swd).then(|| trst_reset_pin(self.capabilities.variant))
+            }
+        }
+    }
+
     fn reset_pin(&self) -> Result<ResetPin, DebugProbeError> {
-        self.board
-            .and_then(|board| board.reset)
+        self.reset_line(self.protocol)
             .ok_or(Ch347Error::NoResetPin.into())
     }
 
@@ -215,7 +238,7 @@ impl Ch347Device {
         let drive = if assert { Drive::Low } else { pin.release };
         // Recorded before the write, so a lost reply still gets the line released.
         if assert {
-            self.reset_asserted = true;
+            self.reset_asserted = Some(pin);
         }
         let state = self.gpio(pin.gpio, drive)?;
         if state.output != (drive != Drive::Input) {
@@ -225,7 +248,7 @@ impl Ch347Device {
             "target reset {}",
             if assert { "asserted" } else { "released" }
         );
-        self.reset_asserted = assert;
+        self.reset_asserted = assert.then_some(pin);
         Ok(state.high)
     }
 
@@ -245,7 +268,30 @@ impl Ch347Device {
     /// Releases the reset line at session start, whatever the protocol. The chip keeps GPIO
     /// state, so a session killed mid-reset leaves the target held.
     pub(super) fn release_reset(&mut self) -> Result<(), DebugProbeError> {
-        if let Some(pin) = self.board.and_then(|board| board.reset) {
+        if let Some(pin) = self.reset_line(self.protocol) {
+            self.drive_reset(pin, false)?;
+        }
+        Ok(())
+    }
+
+    /// Hands the reset line over to `protocol`. A line that only exists in the old protocol is
+    /// released rather than lost track of, and one that appears is released like at session
+    /// start, as an earlier session may have left it low.
+    pub(super) fn switch_reset_line(
+        &mut self,
+        protocol: WireProtocol,
+    ) -> Result<(), DebugProbeError> {
+        let old = self.reset_line(self.protocol);
+        let new = self.reset_line(protocol);
+        if old == new {
+            return Ok(());
+        }
+        if let Some(pin) = old
+            && self.reset_asserted.is_some()
+        {
+            self.drive_reset(pin, false)?;
+        }
+        if let Some(pin) = new {
             self.drive_reset(pin, false)?;
         }
         Ok(())
@@ -333,16 +379,11 @@ impl Drop for Ch347Device {
         if std::thread::panicking() {
             return;
         }
-        let Some(board) = self.board else {
-            return;
-        };
-        if self.reset_asserted
-            && let Some(pin) = board.reset
-        {
+        if let Some(pin) = self.reset_asserted {
             self.gpio_final(pin.gpio, pin.release);
         }
         if self.led.is_some()
-            && let Some(led) = board.led
+            && let Some(led) = self.board.and_then(|board| board.led)
         {
             self.gpio_final(led.gpio, led.drive(false));
         }
@@ -351,7 +392,7 @@ impl Drop for Ch347Device {
 
 #[cfg(test)]
 mod tests {
-    use super::super::device::tests::{CH347F_1_20, device, scripted};
+    use super::super::device::tests::{CH347F_1_20, PACK_PROBE, TRST_RELEASE, device, scripted};
     use super::*;
     use crate::probe::{BitSequence, WireProtocol};
 
@@ -421,6 +462,69 @@ mod tests {
 
         let (mut dev, _) = device(&[]);
         dev.release_reset().unwrap();
+    }
+
+    // The generic CH347F's TRST pin is GPIO3, byte index 6 of the pin block.
+    const TRST_LOW: (&[u8], &[u8]) = (
+        &[0xCC, 8, 0, 0, 0, 0, 0xF0, 0, 0, 0, 0],
+        &[0xCC, 8, 0, 0, 0, 0, 0x80, 0, 0, 0, 0],
+    );
+
+    /// A generic CH347F, switched to SWD.
+    fn generic_swd(
+        frames: &[(&[u8], &[u8])],
+    ) -> (
+        Ch347Device,
+        std::sync::Arc<super::super::device::tests::Script>,
+    ) {
+        let frames: Vec<_> = std::iter::once(TRST_RELEASE)
+            .chain(frames.iter().copied())
+            .collect();
+        let (mut dev, script) = device(&frames);
+        dev.select_protocol(WireProtocol::Swd).unwrap();
+        (dev, script)
+    }
+
+    #[test]
+    fn generic_reset_is_the_trst_pin_in_swd() {
+        let (mut dev, script) = generic_swd(&[TRST_LOW, TRST_RELEASE]);
+        dev.target_reset_assert().unwrap();
+        dev.target_reset_deassert().unwrap();
+        assert!(script.finished());
+    }
+
+    #[test]
+    fn leaving_swd_releases_a_held_trst_reset() {
+        let (mut dev, script) =
+            generic_swd(&[TRST_LOW, TRST_RELEASE, (PACK_PROBE, &[0xD0, 1, 0, 1])]);
+        dev.target_reset_assert().unwrap();
+        dev.select_protocol(WireProtocol::Jtag).unwrap();
+        // Over JTAG the pin is TRST, and the line is gone.
+        assert!(matches!(
+            dev.target_reset_assert(),
+            Err(DebugProbeError::ProbeSpecific(_))
+        ));
+        drop(dev);
+        assert!(script.finished());
+    }
+
+    #[test]
+    fn drop_releases_a_held_trst_reset() {
+        let (mut dev, script) = generic_swd(&[TRST_LOW, TRST_RELEASE]);
+        dev.target_reset_assert().unwrap();
+        drop(dev);
+        assert!(script.finished());
+    }
+
+    #[test]
+    fn a_board_overrides_the_trst_pin() {
+        let (mut dev, script) =
+            wch_probe(&[(RESET_LOW, PINS_RESET_LOW), (RESET_INPUT, PINS_RESET_HIGH)]);
+        // The board's line is the same in both protocols, so switching leaves it alone.
+        dev.select_protocol(WireProtocol::Swd).unwrap();
+        dev.target_reset_assert().unwrap();
+        drop(dev);
+        assert!(script.finished());
     }
 
     #[test]
