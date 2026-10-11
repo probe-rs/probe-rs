@@ -49,11 +49,19 @@ impl ArmDebugSequence for Va416xx {
         Ok(())
     }
 
-    /// Resetting the VA416XX breaks the debug connection.
+    /// Resets the system and re-initializes the debug connection, which the reset breaks.
     ///
-    /// This custom implementation is similar to the
-    /// [crate::vendor::ti::sequences::cc13xx_cc26xx::CC13xxCC26xx::reset_system] implementation
-    /// and re-initializes the debug connection after a reset.
+    /// This is similar to
+    /// [crate::vendor::ti::sequences::cc13xx_cc26xx::CC13xxCC26xx::reset_system].
+    ///
+    /// On a system reset, the ROM copies the NVM into the code RAM and the core starts to run
+    /// that code. If a halt after reset was requested, the core can only be halted once the debug
+    /// connection is back, so the code from the NVM already ran for a few milliseconds. A core
+    /// reset (VECTRESET) then drops the core state that code left behind, like an active
+    /// HardFault, and the reset vector catch halts the core before it runs any instruction.
+    ///
+    /// The core reset keeps the memory, so the NVM is not copied again. Peripherals also keep
+    /// the changes the code from the NVM made.
     fn reset_system(
         &self,
         interface: &mut dyn ArmMemoryInterface,
@@ -107,6 +115,24 @@ impl ArmDebugSequence for Va416xx {
             const NUM_HALT_RETRIES: u32 = 10;
             for i in 0..NUM_HALT_RETRIES {
                 interface.write_word_32(Dhcsr::get_mmio_address(), value.into())?;
+                let dhcsr = Dhcsr(interface.read_word_32(Dhcsr::get_mmio_address())?);
+                if dhcsr.s_halt() {
+                    break;
+                }
+                if i >= NUM_HALT_RETRIES - 1 {
+                    return Err(ArmError::Timeout);
+                }
+                thread::sleep(Duration::from_millis(50));
+            }
+
+            // Core reset to drop the state of the code which ran before the halt above, see the
+            // method docs. Restore the reset vector catch first, so the core halts again.
+            interface.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
+            let mut aircr = Aircr(0);
+            aircr.vectkey();
+            aircr.set_vectreset(true);
+            interface.write_word_32(Aircr::get_mmio_address(), aircr.into())?;
+            for i in 0..NUM_HALT_RETRIES {
                 let dhcsr = Dhcsr(interface.read_word_32(Dhcsr::get_mmio_address())?);
                 if dhcsr.s_halt() {
                     break;
