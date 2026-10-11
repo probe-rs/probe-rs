@@ -461,6 +461,15 @@ impl MemoryRegion {
         }
     }
 
+    /// Returns whether the region is accessible by the given core or memory port.
+    pub fn accessible_by(&self, core_or_mem_port_name: &str) -> bool {
+        match self {
+            MemoryRegion::Ram(region) => region.accessible_by(core_or_mem_port_name),
+            MemoryRegion::Generic(region) => region.accessible_by(core_or_mem_port_name),
+            MemoryRegion::Nvm(region) => region.accessible_by(core_or_mem_port_name),
+        }
+    }
+
     /// Returns `true` if the memory region is [`Ram`].
     ///
     /// [`Ram`]: MemoryRegion::Ram
