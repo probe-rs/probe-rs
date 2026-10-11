@@ -43,8 +43,9 @@ impl std::fmt::Display for Ch347Factory {
 /// A CH347-based debug probe.
 ///
 /// JTAG runs on the chip's byte shifts and bit ops, SWD on its transaction engine. Target
-/// reset needs a board whose GPIO wiring the driver knows, recognised by its USB identity. On
-/// a generic CH347 no GPIO is ever written.
+/// reset uses the GPIO wiring of a board the driver knows, recognised by its USB identity. On
+/// a generic CH347 it is the TRST pin in SWD mode, which needs a pull-up on the reset line;
+/// over JTAG a generic CH347 writes no GPIO.
 #[derive(Debug)]
 pub struct Ch347 {
     device: Ch347Device,
