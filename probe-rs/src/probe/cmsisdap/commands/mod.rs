@@ -139,6 +139,11 @@ pub enum RequestError {
         request: transfer::configure::ConfigureRequest,
     },
 
+    /// Failed to write the ABORT register with the following request: {request:?}
+    WriteAbort {
+        request: transfer::write_abort::WriteAbortRequest,
+    },
+
     /// Failed to send the SWD sequence to the probe with the following request: {request:?}
     SwjSequence {
         request: swj::sequence::SequenceRequest,

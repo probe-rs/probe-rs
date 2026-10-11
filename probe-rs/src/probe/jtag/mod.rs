@@ -29,7 +29,7 @@ use bitvec::{slice::BitSlice, vec::BitVec};
 
 use super::{
     Batch, BatchExecutionError, BitSequence, CommandResult, DebugProbe, DebugProbeError, Handle,
-    Results, queue::HandleId,
+    Results, queue::HandleId, swd::SwdProbe,
 };
 use probe_rs_target::ScanChainElement;
 
@@ -343,6 +343,12 @@ pub trait JtagProbe: DebugProbe {
     /// for it.
     fn configure_jtag(&mut self, _skip_scan: bool) -> Result<(), DebugProbeError> {
         Ok(())
+    }
+
+    /// The probe as an [`SwdProbe`], if it runs debug and access port register accesses on
+    /// JTAG itself.
+    fn dap_transfer_probe(&mut self) -> Option<&mut dyn SwdProbe> {
+        None
     }
 }
 
