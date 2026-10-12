@@ -13,7 +13,8 @@ use crate::{
     rtt::ScanRegion,
 };
 use probe_rs_target::{
-    Architecture, Chip, ChipFamily, Jtag, MemoryAccess, MemoryRange as _, NvmRegion,
+    Architecture, Chip, ChipFamily, CoreAccessOptions, Jtag, MemoryAccess, MemoryRange as _,
+    NvmRegion,
 };
 use std::sync::Arc;
 
@@ -169,6 +170,25 @@ impl Target {
     pub fn default_core(&self) -> &Core {
         // TODO: Check if this is specified in the target description.
         &self.cores[0]
+    }
+
+    /// Returns whether the described JTAG scan chain has a TAP for any core of the target.
+    ///
+    /// A target that describes its scan chain without a TAP at any core's `jtag_tap` index can't
+    /// be debugged over JTAG, for example because its JTAG pins only reach a boundary-scan TAP.
+    /// A target without a described scan chain is assumed to be reachable.
+    pub(crate) fn jtag_reaches_any_core(&self) -> bool {
+        let Some(scan_chain) = self.jtag.as_ref().and_then(|jtag| jtag.scan_chain.as_ref()) else {
+            return true;
+        };
+        self.cores.iter().any(|core| {
+            let jtag_tap = match &core.core_access_options {
+                CoreAccessOptions::Arm(options) => options.jtag_tap,
+                CoreAccessOptions::Riscv(options) => options.jtag_tap,
+                CoreAccessOptions::Xtensa(options) => options.jtag_tap,
+            };
+            jtag_tap.unwrap_or(0) < scan_chain.len()
+        })
     }
 
     /// Source description of this target.
@@ -338,5 +358,39 @@ impl CoreExt for Core {
             }
             probe_rs_target::CoreAccessOptions::Xtensa(_) => None,
         }
+    }
+}
+
+#[cfg(all(test, feature = "builtin-targets"))]
+mod tests {
+    use crate::config::{Registry, Target};
+    use probe_rs_target::CoreAccessOptions;
+
+    fn target(name: &str) -> Target {
+        Registry::from_builtin_families()
+            .get_target_by_name(name)
+            .unwrap()
+    }
+
+    #[test]
+    fn jtag_reaches_any_core() {
+        // No described scan chain.
+        assert!(target("nRF52840_xxAA").jtag_reaches_any_core());
+        // The core TAP is the second of two.
+        assert!(target("X7Z").jtag_reaches_any_core());
+        // The core TAP is the first of two.
+        assert!(target("CC2652R").jtag_reaches_any_core());
+        // The JTAG pins only reach a boundary-scan TAP.
+        assert!(!target("S32K118xxxxVLHx").jtag_reaches_any_core());
+    }
+
+    #[test]
+    fn jtag_reaches_one_of_two_cores() {
+        let mut zynq = target("X7Z");
+        let CoreAccessOptions::Arm(options) = &mut zynq.cores[1].core_access_options else {
+            panic!("X7Z has ARM cores");
+        };
+        options.jtag_tap = Some(2);
+        assert!(zynq.jtag_reaches_any_core());
     }
 }

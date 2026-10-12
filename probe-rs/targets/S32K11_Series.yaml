@@ -16,6 +16,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: !v1 0
+      jtag_tap: 1
   memory_map:
   - !Nvm
     name: IROM1
@@ -50,12 +51,19 @@ variants:
     - main
   flash_algorithms:
   - s32k118_p256_2kb_sec
+  jtag:
+    # The JTAG pins only reach a boundary-scan TAP. The core has no TAP on the chain, so its
+    # debug port is only reachable over SWD.
+    scan_chain:
+    - name: boundary-scan
+      ir_len: 4
 - name: S32K118xxxxMLHx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: !v1 0
+      jtag_tap: 1
   memory_map:
   - !Nvm
     name: IROM1
@@ -90,12 +98,19 @@ variants:
     - main
   flash_algorithms:
   - s32k118_p256_2kb_sec
+  jtag:
+    # The JTAG pins only reach a boundary-scan TAP. The core has no TAP on the chain, so its
+    # debug port is only reachable over SWD.
+    scan_chain:
+    - name: boundary-scan
+      ir_len: 4
 - name: S32K118xxxxVLFx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: !v1 0
+      jtag_tap: 1
   memory_map:
   - !Nvm
     name: IROM1
@@ -130,12 +145,19 @@ variants:
     - main
   flash_algorithms:
   - s32k118_p256_2kb_sec
+  jtag:
+    # The JTAG pins only reach a boundary-scan TAP. The core has no TAP on the chain, so its
+    # debug port is only reachable over SWD.
+    scan_chain:
+    - name: boundary-scan
+      ir_len: 4
 - name: S32K118xxxxVLHx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
       ap: !v1 0
+      jtag_tap: 1
   memory_map:
   - !Nvm
     name: IROM1
@@ -170,6 +192,12 @@ variants:
     - main
   flash_algorithms:
   - s32k118_p256_2kb_sec
+  jtag:
+    # The JTAG pins only reach a boundary-scan TAP. The core has no TAP on the chain, so its
+    # debug port is only reachable over SWD.
+    scan_chain:
+    - name: boundary-scan
+      ir_len: 4
 flash_algorithms:
 - name: s32k118_p256_2kb_sec
   description: S32K118 256KB PFlash (2KB Sector)
