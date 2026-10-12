@@ -239,6 +239,10 @@ impl Session {
             _ => unreachable!("DAP path only used for ARM or RISC-V-over-mem-AP targets"),
         };
 
+        if probe.protocol() == Some(WireProtocol::Jtag) && !target.jtag_reaches_any_core() {
+            return Err(Error::NoCoreOnJtagScanChain(target.name.clone()));
+        }
+
         if AttachMethod::UnderReset == attach_method {
             let _span = tracing::debug_span!("Asserting hardware reset").entered();
 
