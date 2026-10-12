@@ -458,6 +458,15 @@ impl MemoryRegion {
         }
     }
 
+    /// Get the memory ports that can access the region.
+    pub fn memory_ports(&self) -> &[String] {
+        match self {
+            MemoryRegion::Ram(region) => &region.memory_ports,
+            MemoryRegion::Generic(region) => &region.memory_ports,
+            MemoryRegion::Nvm(region) => &region.memory_ports,
+        }
+    }
+
     /// Returns `true` if the memory region is [`Ram`].
     ///
     /// [`Ram`]: MemoryRegion::Ram
