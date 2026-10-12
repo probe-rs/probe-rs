@@ -403,6 +403,15 @@ impl ChipFamily {
                     }
                 }
 
+                for port in memory.memory_ports() {
+                    if !variant.memory_ports.iter().any(|p| &p.name == port) {
+                        return Err(format!(
+                            "Variant {}, memory region {:?} is assigned to a non-existent memory port {}",
+                            variant.name, memory, port
+                        ));
+                    }
+                }
+
                 if memory.cores().is_empty() {
                     return Err(format!(
                         "Variant {}, memory region {:?} is not assigned to a core",
@@ -493,5 +502,55 @@ impl ChipFamily {
                 ..algo.clone()
             }
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn family_with_region_port(port: &str) -> ChipFamily {
+        let yaml = format!(
+            r#"
+name: Test Family
+variants:
+- name: TestChip
+  cores:
+  - name: core0
+    type: armv7a
+    core_access_options: !Arm
+      ap: !v1 1
+      debug_base: 0x80090000
+  memory_ports:
+  - name: ahb-ap
+    memory_port_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x0
+      end: 0x1000
+    cores:
+    - core0
+    memory_ports:
+    - {port}
+"#
+        );
+        yaml_serde::from_str(&yaml).expect("test family YAML should parse")
+    }
+
+    #[test]
+    fn memory_region_with_known_port_is_valid() {
+        family_with_region_port("ahb-ap")
+            .validate()
+            .expect("region with existing memory port should be valid");
+    }
+
+    #[test]
+    fn memory_region_with_unknown_port_is_rejected() {
+        let error = family_with_region_port("does-not-exist")
+            .validate()
+            .expect_err("region with unknown memory port should be rejected");
+        assert!(error.contains("non-existent memory port does-not-exist"));
     }
 }

@@ -23,6 +23,8 @@ pub enum Error {
     CoreNotFound(usize),
     /// No core of {0} has a TAP on the JTAG scan chain. Connect over SWD instead.
     NoCoreOnJtagScanChain(String),
+    /// Memory access port {0} does not exist.
+    MemoryAccessPortNotFound(usize),
     /// Unable to load specification for chip
     ChipNotFound(#[from] RegistryError),
     /// An operation was not performed because the required permissions were not given: {0}.

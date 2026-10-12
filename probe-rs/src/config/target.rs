@@ -13,8 +13,8 @@ use crate::{
     rtt::ScanRegion,
 };
 use probe_rs_target::{
-    Architecture, Chip, ChipFamily, CoreAccessOptions, Jtag, MemoryAccess, MemoryRange as _,
-    NvmRegion,
+    Architecture, Chip, ChipFamily, CoreAccessOptions, Jtag, MemoryAccess, MemoryPort,
+    MemoryRange as _, NvmRegion,
 };
 use std::sync::Arc;
 
@@ -25,6 +25,8 @@ pub struct Target {
     pub name: String,
     /// The cores of the target.
     pub cores: Vec<Core>,
+    /// Additional memory access ports of the target.
+    pub memory_ports: Vec<MemoryPort>,
     /// The list of available flash algorithms.
     pub flash_algorithms: Vec<RawFlashAlgorithm>,
     /// The memory map of the target.
@@ -110,6 +112,7 @@ impl Target {
                         execute: false,
                         boot: false,
                     }),
+                    memory_ports: vec![],
                 }));
             }
 
@@ -136,6 +139,7 @@ impl Target {
         Target {
             name: chip.name.clone(),
             cores: chip.cores.clone(),
+            memory_ports: chip.memory_ports.clone(),
             flash_algorithms,
             source: family.source.clone(),
             memory_map,
@@ -234,8 +238,8 @@ pub enum TargetSelector {
     /// be used to search the internal list of
     /// targets.
     Unspecified(String),
-    /// Directly specify a target.
-    Specified(Target),
+    /// Directly specify a target. Boxed, because the target structure has become quite large.
+    Specified(Box<Target>),
     /// Try to automatically identify the target,
     /// by reading identifying information from
     /// the probe and / or target.
@@ -277,7 +281,7 @@ impl From<()> for TargetSelector {
 
 impl From<Target> for TargetSelector {
     fn from(target: Target) -> Self {
-        TargetSelector::Specified(target)
+        TargetSelector::Specified(Box::new(target))
     }
 }
 
@@ -320,43 +324,49 @@ impl DebugSequence {
     }
 }
 
-pub(crate) trait CoreExt {
-    // Retrieve the Coresight MemoryAP which should be used to
-    // access the core, if available.
+pub(crate) trait MemoryApExt {
+    // Retrieve the Coresight MemoryAP through which this core or
+    // memory port is accessed, if available.
     fn memory_ap(&self) -> Option<FullyQualifiedApAddress>;
 }
 
-impl CoreExt for Core {
+fn fully_qualified_ap(
+    targetsel: Option<u32>,
+    ap: &probe_rs_target::ApAddress,
+) -> FullyQualifiedApAddress {
+    let dp = match targetsel {
+        None => DpAddress::Default,
+        Some(x) => DpAddress::Multidrop(x),
+    };
+    match ap {
+        probe_rs_target::ApAddress::V1(ap) => FullyQualifiedApAddress::v1_with_dp(dp, *ap),
+        probe_rs_target::ApAddress::V2(ap) => {
+            FullyQualifiedApAddress::v2_with_dp(dp, ApV2Address::new(*ap))
+        }
+    }
+}
+
+impl MemoryApExt for Core {
     fn memory_ap(&self) -> Option<FullyQualifiedApAddress> {
         match &self.core_access_options {
             probe_rs_target::CoreAccessOptions::Arm(options) => {
-                let dp = match options.targetsel {
-                    None => DpAddress::Default,
-                    Some(x) => DpAddress::Multidrop(x),
-                };
-                Some(match &options.ap {
-                    probe_rs_target::ApAddress::V1(ap) => {
-                        FullyQualifiedApAddress::v1_with_dp(dp, *ap)
-                    }
-                    probe_rs_target::ApAddress::V2(ap) => {
-                        FullyQualifiedApAddress::v2_with_dp(dp, ApV2Address::new(*ap))
-                    }
-                })
+                Some(fully_qualified_ap(options.targetsel, &options.ap))
             }
-            probe_rs_target::CoreAccessOptions::Riscv(options) => {
-                options.mem_ap.as_ref().map(|ap| {
-                    let dp = DpAddress::Default;
-                    match ap {
-                        probe_rs_target::ApAddress::V1(ap_num) => {
-                            FullyQualifiedApAddress::v1_with_dp(dp, *ap_num)
-                        }
-                        probe_rs_target::ApAddress::V2(ap_num) => {
-                            FullyQualifiedApAddress::v2_with_dp(dp, ApV2Address::new(*ap_num))
-                        }
-                    }
-                })
-            }
+            probe_rs_target::CoreAccessOptions::Riscv(options) => options
+                .mem_ap
+                .as_ref()
+                .map(|ap| fully_qualified_ap(None, ap)),
             probe_rs_target::CoreAccessOptions::Xtensa(_) => None,
+        }
+    }
+}
+
+impl MemoryApExt for MemoryPort {
+    fn memory_ap(&self) -> Option<FullyQualifiedApAddress> {
+        match &self.memory_port_options {
+            probe_rs_target::MemoryPortOptions::Arm(options) => {
+                Some(fully_qualified_ap(options.targetsel, &options.ap))
+            }
         }
     }
 }
