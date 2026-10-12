@@ -51,6 +51,10 @@ pub struct JtagChainState {
     /// `None` is a TAP without an IDCODE register. Empty when `scan_chain` was not measured.
     pub idcodes: Vec<Option<u32>>,
 
+    /// Whether each TAP of `scan_chain` is a JTAG-DP, as the last scan found. `None` is a TAP
+    /// that the scan could not check. Empty when `scan_chain` was not measured.
+    pub jtag_dps: Vec<Option<bool>>,
+
     /// The parameters of the scan chain.
     pub chain_params: ChainParams,
 }
@@ -62,6 +66,7 @@ impl Default for JtagChainState {
             expected_scan_chain: None,
             scan_chain: Vec::new(),
             idcodes: Vec::new(),
+            jtag_dps: Vec::new(),
             chain_params: ChainParams::default(),
         }
     }
