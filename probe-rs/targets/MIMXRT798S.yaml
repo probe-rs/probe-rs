@@ -6,12 +6,6 @@ generated_from_pack: true
 pack_file_release: 26.09.00
 variants:
 - name: MIMXRT798SGAWBR
-  # A RAM image for cm33_core1 lives in SRAM_SENSE, and the only system reset this part
-  # has is SYSRESETREQ, which resets the whole chip and puts the sense core back in
-  # reset -- undoing the enableCPU1 that made it debuggable in the first place. Halt the
-  # cores before writing the image instead; `prepare_running_on_ram` sets SP/PC from the
-  # image's own vector table afterwards, so the reset buys nothing here.
-  skip_reset_on_ram_boot: true
   cores:
   - name: cm33_core0
     type: armv8m
@@ -287,7 +281,6 @@ variants:
   - mimxrt700_frdm_xspi0
   - mimxrt700_frdm_xspi0_s
 - name: MIMXRT798SGFOB
-  skip_reset_on_ram_boot: true
   cores:
   - name: cm33_core0
     type: armv8m
@@ -563,7 +556,6 @@ variants:
   - mimxrt700_frdm_xspi0
   - mimxrt700_frdm_xspi0_s
 - name: MIMXRT798SGVKB
-  skip_reset_on_ram_boot: true
   cores:
   - name: cm33_core0
     type: armv8m
