@@ -51,7 +51,19 @@ enum IcepickRoutingRegister {
     SdTap(u8),
 }
 
+impl IcepickRoutingRegister {
+    /// The router data register that writes `payload` to this register.
+    ///
+    /// Bit 31 selects a write, bits 30 to 24 address the register and the low 24 bits carry the
+    /// payload. The ICEPick addresses a register by a three-bit block and a four-bit register
+    /// within it, which is what the seven address bits hold.
+    fn write(self, payload: u32) -> u32 {
+        (1 << 31) | (u32::from(self) << 24) | (payload & 0xFF_FFFF)
+    }
+}
+
 impl From<IcepickRoutingRegister> for u32 {
+    /// Block in bits 6 to 4, register in bits 3 to 0.
     fn from(value: IcepickRoutingRegister) -> Self {
         match value {
             IcepickRoutingRegister::Sysctrl => 1u32,
@@ -153,13 +165,37 @@ impl<'a> Icepick<'a> {
         Ok(tap_count)
     }
 
+    /// Selects a secondary TAP and leaves the ICEPick in BYPASS, in one pass.
+    ///
+    /// The TAP joins the scan chain when the TAP controller next reaches Run-Test/Idle, and
+    /// from that moment every scan needs a TAP more of padding. So the ICEPick's own BYPASS
+    /// instruction has to be shifted while the chain is still short, with nothing reaching
+    /// Run-Test/Idle in between. That also rules out reading the register back here.
+    fn select_secondary_tap(&mut self, tap: u8, payload: u32) -> Result<(), ArmError> {
+        let dr = IcepickRoutingRegister::SdTap(tap).write(payload);
+
+        let mut batch = JtagBatch::new();
+        let router = BitSequence::from_bytes(&IR_ROUTER.to_le_bytes(), IR_LEN_IN_BITS as usize);
+        self.probe.shift_ir(&mut batch, &router);
+        self.probe
+            .exchange_dr(&mut batch, &BitSequence::from_bytes(&dr.to_le_bytes(), 32));
+
+        let bypass = BitSequence::from_bytes(&IR_BYPASS.to_le_bytes(), IR_LEN_IN_BITS as usize);
+        self.probe.shift_ir(&mut batch, &bypass);
+
+        // Three cycles of Run/Test Idle for the TAP to appear.
+        self.probe.run_test_idle(&mut batch, 3);
+        self.probe.run(batch).map_err(ArmError::Probe)?;
+        Ok(())
+    }
+
     /// Reads or writes a given register using the ICEPICK router
     ///
     /// This function is used to load the router register of the ICEPICK TAP
     /// and connect a given data register to the TDO.
     ///
     /// This is a direct port from the openocd implementation:
-    /// <https://github.com/openocd-org/openocd/blob/master/tcl/target/icepick.cfg#L56-L70>
+    /// <https://github.com/openocd-org/openocd/blob/master/tcl/target/ti/icepick.cfg#L56-L70>
     ///
     /// * `register`  - The register to access
     /// * `payload`   - The data to write to the register
@@ -168,9 +204,7 @@ impl<'a> Icepick<'a> {
         register: IcepickRoutingRegister,
         payload: u32,
     ) -> Result<(), ArmError> {
-        // The current implementation only supports register writes.
-        let rw = 1;
-        let dr = (rw << 31) | (u32::from(register) << 24) | (payload & 0xFFFFFF);
+        let dr = register.write(payload);
         let dr_bits = BitSequence::from_bytes(&dr.to_le_bytes(), 32);
         let zero = BitSequence::from_bytes(&0u32.to_le_bytes(), 32);
         let ir = BitSequence::from_bytes(&IR_ROUTER.to_le_bytes(), IR_LEN_IN_BITS as usize);
@@ -200,27 +234,16 @@ impl<'a> Icepick<'a> {
     /// present on the scan chain.
     ///
     /// This is a direct port of the openocd implementation:
-    /// <https://github.com/openocd-org/openocd/blob/master/tcl/target/icepick.cfg#L81-L124>
+    /// <https://github.com/openocd-org/openocd/blob/master/tcl/target/ti/icepick.cfg#L81-L124>
     /// A few things were removed to fit the cc13xx_cc26xx family.
     pub(crate) fn select_tap(&mut self, secondary_tap: u8, tap_name: &str) -> Result<(), ArmError> {
         tracing::trace!("Selecting secondary tap {secondary_tap}");
-        self.icepick_router(IcepickRoutingRegister::SdTap(secondary_tap), SD_TAP_DEFAULT)?;
+        self.select_secondary_tap(secondary_tap, SD_TAP_DEFAULT)?;
 
-        // Stay in Run/Test Idle for at least three cycles to activate the TAP
-        // Enter the bypass state to remove the ICEPick from the scan chain.
-        // This will insert three cycles after the configuration in order to make
-        // the target TAP appear.
-        {
-            let mut batch = JtagBatch::new();
-            let ir = BitSequence::from_bytes(&IR_BYPASS.to_le_bytes(), IR_LEN_IN_BITS as usize);
-            self.probe.shift_ir(&mut batch, &ir);
-            self.probe
-                .exchange_dr(&mut batch, &BitSequence::repeat(false, 1));
-            self.probe.run_test_idle(&mut batch, 3);
-            self.probe.run(batch).map_err(ArmError::Probe)?;
-        }
-
-        self.probe.set_expected(&[
+        // The secondary TAP now sits in front of the ICEPick, so every later scan needs a
+        // different amount of padding. Measuring the chain means entering Test-Logic-Reset,
+        // which would deselect the TAP, so it is declared instead.
+        self.probe.set_chain(&[
             ScanChainElement {
                 name: Some(tap_name.to_owned()),
                 ir_len: Some(4),
@@ -230,9 +253,7 @@ impl<'a> Icepick<'a> {
                 ir_len: Some(IR_LEN_IN_BITS),
             },
         ]);
-
-        tracing::trace!("Should be active now");
-        self.scan_jtag()?;
+        self.probe.select(0).map_err(ArmError::Probe)?;
 
         Ok(())
     }
@@ -444,5 +465,30 @@ mod tests {
         assert_eq!(chain.tms, format!("100{}110", "0".repeat(3 * 32)));
         assert_eq!(chain.tap, OldJtagState::Idle);
         assert_eq!(chain.jtag_state.tap_state, TapState::RunTestIdle);
+    }
+
+    #[test]
+    fn selecting_a_tap_pads_later_scans_for_it() {
+        let mut chain = IdcodeChain::new(vec![0x0B9B_E02F]);
+        let mut icepick = Icepick {
+            probe: JtagChain::new(&mut chain),
+        };
+
+        icepick.select_tap(0, "CPU").unwrap();
+
+        // The secondary TAP is in front of the ICEPick, whose six instruction bits and one
+        // bypass bit every later scan now has to shift past.
+        let params = icepick.probe.params();
+        assert_eq!(
+            (
+                params.index,
+                params.irpre,
+                params.irpost,
+                params.drpre,
+                params.drpost,
+                params.irlen
+            ),
+            (0, 0, super::IR_LEN_IN_BITS as usize, 0, 1, 4)
+        );
     }
 }
