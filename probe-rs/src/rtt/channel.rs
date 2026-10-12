@@ -1,7 +1,7 @@
+use crate::MemoryInterface;
 use crate::memory::{Operation, OperationKind};
 use crate::rtt::Error;
-use crate::{Core, MemoryInterface};
-use probe_rs_target::RegionMergeIterator;
+use probe_rs_target::{MemoryRegion, RegionMergeIterator};
 use std::cmp::min;
 use std::ffi::CStr;
 use std::num::NonZeroU64;
@@ -99,16 +99,20 @@ impl RttChannelBuffer {
     }
 
     /// return (write_buffer_ptr, read_buffer_ptr)
-    pub fn read_buffer_offsets(&self, core: &mut Core, ptr: u64) -> Result<(u64, u64), Error> {
+    pub fn read_buffer_offsets(
+        &self,
+        memory: &mut impl MemoryInterface,
+        ptr: u64,
+    ) -> Result<(u64, u64), Error> {
         Ok(match self {
             RttChannelBuffer::Buffer32(h32) => {
                 let mut block = [0u32; 2];
-                core.read_32(ptr + h32.write_buffer_ptr_offset() as u64, block.as_mut())?;
+                memory.read_32(ptr + h32.write_buffer_ptr_offset() as u64, block.as_mut())?;
                 (u64::from(block[0]), u64::from(block[1]))
             }
             RttChannelBuffer::Buffer64(h64) => {
                 let mut block = [0u32; 2];
-                core.read_32(ptr + h64.write_buffer_ptr_offset() as u64, block.as_mut())?;
+                memory.read_32(ptr + h64.write_buffer_ptr_offset() as u64, block.as_mut())?;
                 (u64::from(block[0]), u64::from(block[1]))
             }
         })
@@ -116,19 +120,19 @@ impl RttChannelBuffer {
 
     pub fn write_write_buffer_ptr(
         &self,
-        core: &mut Core,
+        memory: &mut impl MemoryInterface,
         ptr: u64,
         buffer_ptr: u64,
     ) -> Result<(), Error> {
         match self {
             RttChannelBuffer::Buffer32(h32) => {
-                core.write_word_32(
+                memory.write_word_32(
                     ptr + h32.write_buffer_ptr_offset() as u64,
                     buffer_ptr.try_into().unwrap(),
                 )?;
             }
             RttChannelBuffer::Buffer64(h64) => {
-                core.write_word_64(ptr + h64.write_buffer_ptr_offset() as u64, buffer_ptr)?;
+                memory.write_word_64(ptr + h64.write_buffer_ptr_offset() as u64, buffer_ptr)?;
             }
         };
         Ok(())
@@ -147,24 +151,29 @@ impl RttChannelBuffer {
         }
     }
 
-    pub fn read_flags(&self, core: &mut Core, ptr: u64) -> Result<u64, Error> {
+    pub fn read_flags(&self, memory: &mut impl MemoryInterface, ptr: u64) -> Result<u64, Error> {
         Ok(match self {
             RttChannelBuffer::Buffer32(h32) => {
-                u64::from(core.read_word_32(ptr + h32.flags_offset() as u64)?)
+                u64::from(memory.read_word_32(ptr + h32.flags_offset() as u64)?)
             }
             RttChannelBuffer::Buffer64(h64) => {
-                u64::from(core.read_word_32(ptr + h64.flags_offset() as u64)?)
+                u64::from(memory.read_word_32(ptr + h64.flags_offset() as u64)?)
             }
         })
     }
 
-    pub fn write_flags(&self, core: &mut Core, ptr: u64, flags: u64) -> Result<(), Error> {
+    pub fn write_flags(
+        &self,
+        memory: &mut impl MemoryInterface,
+        ptr: u64,
+        flags: u64,
+    ) -> Result<(), Error> {
         match self {
             RttChannelBuffer::Buffer32(h32) => {
-                core.write_word_32(ptr + h32.flags_offset() as u64, flags.try_into().unwrap())?;
+                memory.write_word_32(ptr + h32.flags_offset() as u64, flags.try_into().unwrap())?;
             }
             RttChannelBuffer::Buffer64(h64) => {
-                core.write_word_32(ptr + h64.flags_offset() as u64, flags.try_into().unwrap())?;
+                memory.write_word_32(ptr + h64.flags_offset() as u64, flags.try_into().unwrap())?;
             }
         };
         Ok(())
@@ -195,7 +204,8 @@ pub(crate) struct Channel {
 
 impl Channel {
     pub(crate) fn from(
-        core: &mut Core,
+        memory: &mut impl MemoryInterface,
+        memory_regions: &[MemoryRegion],
         number: usize,
         metadata_ptr: u64,
         info: RttChannelBuffer,
@@ -205,6 +215,26 @@ impl Channel {
             // This buffer isn't in use
             return Ok(None);
         };
+
+        // We skip memory region check if target is a generic target without memory_map item
+        if !memory_regions.is_empty() {
+            let end = buffer_ptr.checked_add(info.size_of_buffer());
+            let buffer_fully_in_memory_region = memory_regions
+                .iter()
+                .filter_map(MemoryRegion::as_ram_region)
+                .merge_consecutive()
+                // `end` points at one beyond the last byte, and so does `rr.range.end`.
+                .any(|rr| {
+                    rr.range.contains(&buffer_ptr) && end.is_some_and(|end| end <= rr.range.end)
+                });
+
+            if !buffer_fully_in_memory_region {
+                return Err(Error::ControlBlockCorrupted(format!(
+                    "the buffer doesn't fully fit in any known (consecutive) ram region according to its own pointers: (start_pointer: {buffer_ptr:#X}, size: {})",
+                    info.size_of_buffer(),
+                )));
+            }
+        }
 
         let mut this = Channel {
             number,
@@ -217,14 +247,14 @@ impl Channel {
         // It's possible that the channel is not initialized with the magic string written last.
         // We call read_pointers to validate that the channel pointers are in an expected range.
         // This should at least catch most cases where the control block is partially initialized.
-        this.read_pointers(core, "")?;
+        this.read_pointers(memory, "")?;
         // Read channel name just after the pointer was validated to be within an expected range.
         this.name = if let Some(ptr) = this.info.standard_name_pointer() {
-            read_c_string(core, ptr)?
+            read_c_string(memory, memory_regions, ptr)?
         } else {
             None
         };
-        this.mode(core)?;
+        this.mode(memory)?;
 
         Ok(Some(this))
     }
@@ -240,8 +270,8 @@ impl Channel {
     /// Reads the current channel mode from the target and returns its.
     ///
     /// See [`ChannelMode`] for more information on what the modes mean.
-    pub fn mode(&self, core: &mut Core) -> Result<ChannelMode, Error> {
-        let flags = self.info.read_flags(core, self.metadata_ptr)?;
+    pub fn mode(&self, memory: &mut impl MemoryInterface) -> Result<ChannelMode, Error> {
+        let flags = self.info.read_flags(memory, self.metadata_ptr)?;
 
         ChannelMode::try_from(flags & ChannelMode::MASK)
     }
@@ -249,18 +279,27 @@ impl Channel {
     /// Changes the channel mode on the target to the specified mode.
     ///
     /// See [`ChannelMode`] for more information on what the modes mean.
-    pub fn set_mode(&self, core: &mut Core, mode: ChannelMode) -> Result<(), Error> {
+    pub fn set_mode(
+        &self,
+        memory: &mut impl MemoryInterface,
+        mode: ChannelMode,
+    ) -> Result<(), Error> {
         tracing::debug!("Setting RTT channel {} mode to {:?}", self.number, mode);
-        let flags = self.info.read_flags(core, self.metadata_ptr)?;
+        let flags = self.info.read_flags(memory, self.metadata_ptr)?;
 
         let new_flags = ChannelMode::set(mode, flags);
-        self.info.write_flags(core, self.metadata_ptr, new_flags)?;
+        self.info
+            .write_flags(memory, self.metadata_ptr, new_flags)?;
 
         Ok(())
     }
 
-    fn read_pointers(&self, core: &mut Core, channel_kind: &str) -> Result<(u64, u64), Error> {
-        let (write, read) = self.info.read_buffer_offsets(core, self.metadata_ptr)?;
+    fn read_pointers(
+        &self,
+        memory: &mut impl MemoryInterface,
+        channel_kind: &str,
+    ) -> Result<(u64, u64), Error> {
+        let (write, read) = self.info.read_buffer_offsets(memory, self.metadata_ptr)?;
 
         // Validate whether the buffers are sensible
         let validate = |which, value| {
@@ -273,33 +312,6 @@ impl Channel {
                     self.number,
                     self.name().unwrap_or("no name"),
                 )));
-            }
-
-            // We skip memory region check if target is a generic target without memory_map item
-            if !core.target().memory_map.is_empty() {
-                let buffer_fully_in_memory_region = core
-                    .target()
-                    .memory_map
-                    .iter()
-                    .filter_map(|mr| mr.as_ram_region())
-                    .merge_consecutive()
-                    .any(|rr| {
-                        let start = self.info.buffer_start_pointer();
-                        let end = self.info.buffer_start_pointer() + self.info.size_of_buffer();
-
-                        // `end` points at one beyond the last byte, and so does `rr.range.end`. Since
-                        // `rr.range` is exclusive, `contains` will return `false` if `end` is equal to
-                        // `rr.range.end`.
-                        rr.range.contains(&start) && end <= rr.range.end
-                    });
-
-                if !buffer_fully_in_memory_region {
-                    return Err(Error::ControlBlockCorrupted(format!(
-                        "the {which} buffer doesn't fully fit in any known (consecutive) ram region according to its own pointers: (start_pointer: {:#X}, size: {})",
-                        self.info.buffer_start_pointer(),
-                        self.info.size_of_buffer(),
-                    )));
-                }
             }
 
             Ok(())
@@ -336,24 +348,28 @@ impl UpChannel {
     /// Reads the current channel mode from the target and returns its.
     ///
     /// See [`ChannelMode`] for more information on what the modes mean.
-    pub fn mode(&self, core: &mut Core) -> Result<ChannelMode, Error> {
-        self.0.mode(core)
+    pub fn mode(&self, memory: &mut impl MemoryInterface) -> Result<ChannelMode, Error> {
+        self.0.mode(memory)
     }
 
     /// Changes the channel mode on the target to the specified mode.
     ///
     /// See [`ChannelMode`] for more information on what the modes mean.
-    pub fn set_mode(&self, core: &mut Core, mode: ChannelMode) -> Result<(), Error> {
-        self.0.set_mode(core, mode)
+    pub fn set_mode(
+        &self,
+        memory: &mut impl MemoryInterface,
+        mode: ChannelMode,
+    ) -> Result<(), Error> {
+        self.0.set_mode(memory, mode)
     }
 
     fn read_core(
         &mut self,
-        core: &mut Core,
+        memory: &mut impl MemoryInterface,
         mut buf: &mut [u8],
         consume: bool,
     ) -> Result<usize, Error> {
-        let (write, mut read) = self.0.read_pointers(core, "up ")?;
+        let (write, mut read) = self.0.read_pointers(memory, "up ")?;
 
         let mut total = 0;
 
@@ -397,7 +413,7 @@ impl UpChannel {
             );
         }
 
-        core.execute_memory_operations(&mut operations);
+        memory.execute_memory_operations(&mut operations);
 
         for op in operations.into_iter() {
             if let Some(result) = op.result {
@@ -418,8 +434,12 @@ impl UpChannel {
     ///
     /// This method will not block waiting for data in the target buffer, and may read less bytes
     /// than would fit in `buf`.
-    pub fn read(&mut self, core: &mut Core, buf: &mut [u8]) -> Result<usize, Error> {
-        self.read_core(core, buf, true)
+    pub fn read(
+        &mut self,
+        memory: &mut impl MemoryInterface,
+        buf: &mut [u8],
+    ) -> Result<usize, Error> {
+        self.read_core(memory, buf, true)
     }
 
     /// Peeks at the current data in the channel buffer, copies data into the specified buffer and
@@ -427,8 +447,12 @@ impl UpChannel {
     ///
     /// The difference from [`read`](UpChannel::read) is that this does not discard the data in the
     /// buffer.
-    pub fn peek(&mut self, core: &mut Core, buf: &mut [u8]) -> Result<usize, Error> {
-        self.read_core(core, buf, false)
+    pub fn peek(
+        &mut self,
+        memory: &mut impl MemoryInterface,
+        buf: &mut [u8],
+    ) -> Result<usize, Error> {
+        self.read_core(memory, buf, false)
     }
 
     /// Calculates amount of contiguous data available for reading
@@ -483,8 +507,12 @@ impl DownChannel {
     ///
     /// This method will not block waiting for space to become available in the channel buffer, and
     /// may not write all of `buf`.
-    pub fn write(&mut self, core: &mut Core, mut buf: &[u8]) -> Result<usize, Error> {
-        let (mut write, read) = self.0.read_pointers(core, "down ")?;
+    pub fn write(
+        &mut self,
+        memory: &mut impl MemoryInterface,
+        mut buf: &[u8],
+    ) -> Result<usize, Error> {
+        let (mut write, read) = self.0.read_pointers(memory, "down ")?;
 
         let mut total = 0;
 
@@ -495,7 +523,7 @@ impl DownChannel {
                 break;
             }
 
-            core.write(self.0.info.buffer_start_pointer() + write, &buf[..count])?;
+            memory.write(self.0.info.buffer_start_pointer() + write, &buf[..count])?;
 
             total += count;
             write += count as u64;
@@ -511,7 +539,7 @@ impl DownChannel {
         // Write write pointer back to target
         self.0
             .info
-            .write_write_buffer_ptr(core, self.0.metadata_ptr, write)?;
+            .write_write_buffer_ptr(memory, self.0.metadata_ptr, write)?;
 
         Ok(total)
     }
@@ -544,27 +572,31 @@ impl RttChannel for DownChannel {
 }
 
 /// Reads a null-terminated string from target memory. Lossy UTF-8 decoding is used.
-fn read_c_string(core: &mut Core, ptr: NonZeroU64) -> Result<Option<String>, Error> {
+fn read_c_string(
+    memory: &mut impl MemoryInterface,
+    memory_regions: &[MemoryRegion],
+    ptr: NonZeroU64,
+) -> Result<Option<String>, Error> {
     let ptr = ptr.get();
 
     let mut bytes;
 
-    if core.target().memory_map.is_empty() {
+    if memory_regions.is_empty() {
         // We read byte by byte if target is a generic target without memory_map item
         bytes = Vec::with_capacity(128);
 
         tracing::trace!("read_c_string() ptr = {ptr:#X}");
 
         for i in 0..128 {
-            let byte = core.read_word_8(ptr + i)?;
+            let byte = memory.read_word_8(ptr + i)?;
             bytes.push(byte);
             if byte == 0 {
                 break;
             }
         }
     } else {
-        let Some(range) = core
-            .memory_regions()
+        let Some(range) = memory_regions
+            .iter()
             .filter(|r| r.is_ram() || r.is_nvm())
             .find_map(|r| r.contains(ptr).then_some(r.address_range()))
         else {
@@ -576,7 +608,7 @@ fn read_c_string(core: &mut Core, ptr: NonZeroU64) -> Result<Option<String>, Err
         tracing::trace!("read_c_string() ptr = {ptr:#X}");
         // Read up to 128 bytes not going past the end of the region
         bytes = vec![0u8; min(128, (range.end - ptr) as usize)];
-        core.read(ptr, bytes.as_mut())?;
+        memory.read(ptr, bytes.as_mut())?;
     }
 
     // If the bytes read contain a null, return the preceding part as a string, otherwise None.

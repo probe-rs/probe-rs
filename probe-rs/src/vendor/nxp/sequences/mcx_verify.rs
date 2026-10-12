@@ -212,6 +212,7 @@ c088dea677e0c12e697511b7d52bd36a72204ca6f0212c699896155f96222f9f";
             name: None,
             range,
             cores: vec!["main".to_string()],
+            memory_ports: vec![],
             is_alias: false,
             access: None,
         }
