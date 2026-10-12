@@ -9,7 +9,7 @@ variants:
   memory_map:
   - !Nvm
     range:
-      start: 0x10008000
+      start: 0x10000000
       end: 0x10099000
     cores:
     - main
@@ -38,7 +38,7 @@ flash_algorithms:
   rtt_poll_interval: 20
   flash_properties:
     address_range:
-      start: 0x10008000
+      start: 0x10000000
       end: 0x10099000
     page_size: 0x1000
     erased_byte_value: 0xff
