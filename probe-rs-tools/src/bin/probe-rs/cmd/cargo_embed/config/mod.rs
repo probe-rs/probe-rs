@@ -1,5 +1,5 @@
 use anyhow::bail;
-use figment::{
+use figment2::{
     Figment,
     providers::{Format, Json, Toml, Yaml},
 };
@@ -255,7 +255,7 @@ impl Configs {
             .iter()
             .any(|p| p.to_lowercase() == name.to_lowercase());
 
-        let figext: figment::error::Result<Config> = self.figment.select(name).extract();
+        let figext: figment2::error::Result<Config> = self.figment.select(name).extract();
         match figext {
             Err(figerr) => {
                 // Join all the figment errors into a multiline string.
@@ -301,7 +301,7 @@ impl Configs {
 
 #[cfg(test)]
 mod test {
-    use figment::providers::{Format, Toml};
+    use figment2::providers::{Format, Toml};
     use probe_rs::probe::WireProtocol;
 
     use super::Configs;
