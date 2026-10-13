@@ -594,17 +594,18 @@ fn compile_report(
 }
 
 fn load_config() -> anyhow::Result<Config> {
-    // Paths to search for the configuration file.
-    // cwd
-    let mut paths = vec![PathBuf::from(".")];
-    // path to executable
-    if let Ok(exe) = std::env::current_exe() {
-        paths.push(exe.parent().unwrap().to_path_buf());
-    }
+    // Paths to search for the configuration file, lowest priority first.
+    let mut paths = vec![];
     // home directory
     if let Some(home) = directories::UserDirs::new().map(|user| user.home_dir().to_path_buf()) {
         paths.push(home);
     }
+    // path to executable
+    if let Ok(exe) = std::env::current_exe() {
+        paths.push(exe.parent().unwrap().to_path_buf());
+    }
+    // cwd and its parents, so a project file wins.
+    paths.push(PathBuf::from("."));
 
     // Files to search for, without extension.
     let files = [".probe-rs"];
