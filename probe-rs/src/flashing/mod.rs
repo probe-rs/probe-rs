@@ -53,6 +53,8 @@ mod host_flasher;
 pub mod host_sequence;
 mod loader;
 mod progress;
+#[cfg(feature = "builtin-formats")]
+mod vector_table;
 pub mod verify_sequence;
 
 use builder::*;
