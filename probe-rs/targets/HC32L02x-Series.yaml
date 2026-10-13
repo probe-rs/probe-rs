@@ -1,0 +1,105 @@
+name: HC32L02x-Series
+generated_from_pack: true
+pack_file_release: 1.1.0
+variants:
+- name: HC32L021B8UB
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
+  flash_algorithms:
+  - hc32l021_64kb
+- name: HC32L021C8PB
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
+  flash_algorithms:
+  - hc32l021_64kb
+- name: HC32L021C8UB
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
+  flash_algorithms:
+  - hc32l021_64kb
+flash_algorithms:
+- name: hc32l021_64kb
+  description: HC32L021_64KB Flash
+  default: true
+  instructions: QLpwR8C6cEcJSAFqyQb81AhJwWIIScFiAWoDIhFDAWIAIQlgAWrJBvzUACBwRwAAAAACQFpaAAClpQAACUkKatIG/NQISspiCErKYgpqkgiSAJIcCmIAIgJgCGrABvzUACBwRwAAAkBaWgAApaUAAAVIBEnBYgVJwWIAIclDAWMAIHBHWloAAAAAAkClpQAA8LQtSxxqLU4tT6QHCNDeYt9iHGqkCKQAHGIcaqQH9tElSxtqWwUK1AEkI0ukAt5i32IdaiVDHWIdam0F99UAIwApCNkcTdRcxFQsauQG/NRbHItC99MYSAFqiQeJDwEpC9DGYsdiAWqJCIkASRwBYgFqiQeJDwEp89EBakkFCdUBIYkCxmLHYgJqikMCYgJqUgX31AFqyQb81AFqiQcI0MZix2IBaokIiQABYgFqiQf20fC8ACBwRwAAAkBaWgAApaUAAAVIBEnBYgVJwWIAIQFjCEZwRwAAWloAAAAAAkClpQAA8LQAIwApINB3JM0HZAbtDwRAAC0G2dZcx1y+Qg/RWxyrQvjTK0aNQg/S1VzGXLVCBdHVGMYYbXh2eLVCAtAgRvC8cEebHItC79PwvMAYcEcAAAAA
+  pc_init: 0x71
+  pc_uninit: 0x155
+  pc_program_page: 0x91
+  pc_erase_sector: 0x3d
+  pc_erase_all: 0x9
+  pc_verify: 0x175
+  data_section_offset: 0x1c4
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x10000
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x200
+      address: 0x0
