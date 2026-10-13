@@ -469,7 +469,11 @@ pub struct CargoOptions {
     /// Escape hatch: all args passed after a sentinel `--` end up here,
     /// unprocessed. Used to pass arguments to cargo not declared in
     /// [CargoOptions].
-    #[arg(hide = true)]
+    ///
+    /// `last = true` keeps these values from being claimed by an earlier
+    /// positional (notably cargo-embed's optional config profile), matching
+    /// cargo-flash and the help text above.
+    #[arg(hide = true, last = true)]
     pub trailing_opts: Vec<String>,
 }
 
