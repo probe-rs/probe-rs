@@ -414,7 +414,6 @@ mod builtin {
             _session: &mut Session,
             file: &mut dyn ImageReader,
         ) -> Result<(), FileDownloadError> {
-            const VECTOR_TABLE_SECTION_NAME: &str = ".vector_table";
             let mut elf_buffer = Vec::new();
             file.read_to_end(&mut elf_buffer)?;
 
@@ -428,16 +427,9 @@ mod builtin {
             tracing::info!("Found {} loadable sections:", extracted_data.len());
 
             for section in &extracted_data {
-                let sources = &section.section_names;
-                for name in &section.section_names {
-                    if name == VECTOR_TABLE_SECTION_NAME {
-                        flash_loader.set_vector_table_addr(section.address as _);
-                    }
-                }
-
                 tracing::info!(
                     "    {:?} at {:#010X} ({} byte{})",
-                    sources,
+                    &section.section_names,
                     section.address,
                     section.data.len(),
                     if section.data.len() == 1 { "" } else { "s" }
@@ -446,6 +438,14 @@ mod builtin {
 
             for data in extracted_data {
                 flash_loader.add_data(data.address.into(), data.data)?;
+            }
+
+            // get the vector_table_addr, it will be used to prepare boot
+            if let Some(address) = crate::flashing::vector_table::find_in_elf(
+                &elf_buffer,
+                flash_loader.flash_builder(),
+            ) {
+                flash_loader.set_vector_table_addr(address);
             }
 
             Ok(())
