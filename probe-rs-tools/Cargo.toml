@@ -96,7 +96,7 @@ parking_lot = "0.12.2"
 toml = "1.0"
 clap_complete = "4.5.2"
 regex = "1.10.4"
-zip = { version = "8.0.0", default-features = false, features = [
+zip = { version = "9.0.0", default-features = false, features = [
     "deflate",
     "time",
 ] }

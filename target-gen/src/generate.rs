@@ -302,7 +302,7 @@ pub fn visit_file(path: &Path, families: &mut Vec<ChipFamily>) -> Result<()> {
     let package = Package::from_string(&pdsc).map_err(|e| {
         anyhow!(
             "Failed to parse pdsc file '{}' in CMSIS Pack {}: {}",
-            pdsc_file.name(),
+            String::from_utf8_lossy(pdsc_file.name_raw()),
             path.display(),
             e
         )
@@ -413,13 +413,13 @@ pub(crate) async fn visit_arm_file(
         Err(error) => {
             log::error!(
                 "Failed to parse pdsc file '{}' in CMSIS Pack {url}: {error}",
-                pdsc_file.name(),
+                String::from_utf8_lossy(pdsc_file.name_raw()),
             );
             return vec![];
         }
     };
 
-    let pdsc_name = pdsc_file.name().to_owned();
+    let pdsc_name = String::from_utf8_lossy(pdsc_file.name_raw()).into_owned();
 
     drop(pdsc_file);
 
@@ -451,7 +451,7 @@ where
         let outpath = file.enclosed_name().ok_or_else(|| {
             anyhow!(
                 "Error handling the ZIP file content with path '{}': Path seems to be malformed",
-                file.name()
+                String::from_utf8_lossy(file.name_raw())
             )
         })?;
 
