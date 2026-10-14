@@ -605,14 +605,69 @@ fn create_rtt_config(config: &config::Config) -> RttConfig {
 #[cfg(test)]
 mod test {
     use super::CliOptions;
+    use clap::{CommandFactory, FromArgMatches};
 
     /// clap finds duplicate argument names only in a debug build, and only when it
     /// builds the command. Release builds accept a duplicate and give one of the
     /// two arguments to both fields.
     #[test]
     fn cli_is_valid() {
-        use clap::CommandFactory;
-
         CliOptions::command().debug_assert();
+    }
+
+    fn parse(args: &[&str]) -> CliOptions {
+        let matches = CliOptions::command()
+            .try_get_matches_from(args)
+            .unwrap_or_else(|e| panic!("parse failed for {args:?}: {e}"));
+        CliOptions::from_arg_matches(&matches).expect("from_arg_matches")
+    }
+
+    /// Regression for https://github.com/probe-rs/probe-rs/issues/4185:
+    /// args after `--` must go to cargo, not become the Embed.toml profile name.
+    #[test]
+    fn double_dash_cargo_opts_are_not_a_config_profile() {
+        let opt = parse(&["cargo-embed", "--", "--verbose"]);
+        assert_eq!(opt.config_profile, None);
+        assert_eq!(
+            opt.cargo_options.trailing_opts,
+            vec!["--verbose".to_string()]
+        );
+
+        let opt = parse(&["cargo-embed", "--release", "--", "--verbose"]);
+        assert_eq!(opt.config_profile, None);
+        assert!(opt.cargo_options.release);
+        assert_eq!(
+            opt.cargo_options.trailing_opts,
+            vec!["--verbose".to_string()]
+        );
+
+        let opt = parse(&["cargo-embed", "default", "--", "--verbose"]);
+        assert_eq!(opt.config_profile.as_deref(), Some("default"));
+        assert_eq!(
+            opt.cargo_options.trailing_opts,
+            vec!["--verbose".to_string()]
+        );
+
+        let opt = parse(&[
+            "cargo-embed",
+            "--release",
+            "default",
+            "--",
+            "--verbose",
+            "--locked",
+        ]);
+        assert_eq!(opt.config_profile.as_deref(), Some("default"));
+        assert!(opt.cargo_options.release);
+        assert_eq!(
+            opt.cargo_options.trailing_opts,
+            vec!["--verbose".to_string(), "--locked".to_string()]
+        );
+    }
+
+    #[test]
+    fn bare_profile_name_still_selects_the_config_profile() {
+        let opt = parse(&["cargo-embed", "release"]);
+        assert_eq!(opt.config_profile.as_deref(), Some("release"));
+        assert!(opt.cargo_options.trailing_opts.is_empty());
     }
 }
