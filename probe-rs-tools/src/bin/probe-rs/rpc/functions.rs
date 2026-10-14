@@ -26,7 +26,7 @@ use crate::rpc::{
         },
         info::{target_info, target_metadata},
         memory::{read_bytes, read_memory, write_memory},
-        monitor::monitor,
+        monitor::{monitor, write_serial},
         probe::{attach, list_probes, select_probe},
         reset::{reset, reset_and_halt, reset_target},
         rtt_client::{
@@ -181,9 +181,10 @@ impl RpcSpawnContext {
     pub(crate) async fn set_session(
         &self,
         session: probe_rs::Session,
+        target_serial: Option<crate::rpc::SharedTargetSerial>,
         lease: crate::rpc::probe_broker::ProbeLease,
     ) -> Key<Session> {
-        self.state.set_session(session, lease).await
+        self.state.set_session(session, target_serial, lease).await
     }
 
     pub async fn run_blocking<T, F, REQ, RESP>(&mut self, request: REQ, task: F) -> RESP
@@ -366,6 +367,20 @@ impl RpcContext {
         })
     }
 
+    /// Returns the serial port to the target of a session.
+    pub async fn session_entry_target_serial(
+        &self,
+        sid: Key<Session>,
+    ) -> Option<crate::rpc::SharedTargetSerial> {
+        let locked_cell = self.state.object_storage.lock().await.cell(sid);
+        let guard = locked_cell.obj.clone().lock_owned().await;
+        guard
+            .downcast_ref::<SessionEntry>()
+            .unwrap()
+            .target_serial
+            .clone()
+    }
+
     pub fn debug_states(&self) -> DebugStatesMap {
         self.state.debug_states.clone()
     }
@@ -488,6 +503,7 @@ postcard_rpc::define_dispatch! {
         | BootEndpoint                     | async | boot                       |
         | MonitorEndpoint                  | spawn | monitor                    |
         | RttDownEndpoint                  | async | write_rtt_down             |
+        | SerialWriteEndpoint              | async | write_serial               |
         | GetRttChannelsEndpoint           | async | get_rtt_channels           |
         | PollRttUpEndpoint                | async | poll_rtt_up                |
         | CleanUpRttEndpoint               | async | clean_up_rtt               |
