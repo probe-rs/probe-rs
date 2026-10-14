@@ -135,10 +135,6 @@ impl SerialConfig {
 
     /// Takes the serial port to the target from `probe`, or the replacement port, and returns it
     /// with its settings. Returns `None` if there is no port or the config disables it.
-    #[expect(
-        dead_code,
-        reason = "The RPC serial stream uses this in the next change."
-    )]
     pub fn target_serial(
         &self,
         probe: &mut Probe,

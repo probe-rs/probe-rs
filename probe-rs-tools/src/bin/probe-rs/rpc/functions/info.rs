@@ -1123,6 +1123,7 @@ pub(crate) mod convert {
                 cycle_power: false,
                 allow_erase_all: false,
                 attach_timeout: None,
+                target_serial: false,
             }
         }
     }
