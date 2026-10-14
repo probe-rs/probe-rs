@@ -112,10 +112,10 @@ impl SemihostingFileManager {
         core: &mut Core<'_>,
         send: &mut impl FnMut(SemihostingEvent),
     ) -> anyhow::Result<()> {
-        let mut send_output = |stream: &str, data: String| {
+        let mut send_output = |stream: &str, bytes: Vec<u8>| {
             send(SemihostingEvent::Output {
                 stream: stream.into(),
-                data,
+                bytes,
             });
         };
 
@@ -124,7 +124,7 @@ impl SemihostingFileManager {
             SemihostingCommand::Close(request) => self.handle_close(core, request),
             SemihostingCommand::Write(request) => self.handle_write(core, request, send_output),
             SemihostingCommand::WriteConsole(request) => {
-                send_output("stdout", request.read(core)?);
+                send_output("stdout", request.read(core)?.into_bytes());
                 Ok(())
             }
             SemihostingCommand::Read(request) => self.handle_read(core, request),
@@ -268,7 +268,7 @@ impl SemihostingFileManager {
         &mut self,
         core: &mut Core<'_>,
         request: WriteRequest,
-        mut send_output: impl FnMut(&str, String),
+        mut send_output: impl FnMut(&str, Vec<u8>),
     ) -> anyhow::Result<()> {
         let Some((f, log)) = self.get_file_handle("write to", request.file_handle()) else {
             return Ok(());
@@ -277,11 +277,11 @@ impl SemihostingFileManager {
         let buf = request.read(core)?;
         let len = match f {
             FileHandle::Stdout => {
-                send_output("stdout", String::from_utf8_lossy(&buf).into());
+                send_output("stdout", buf.clone());
                 Some(buf.len())
             }
             FileHandle::Stderr => {
-                send_output("stderr", String::from_utf8_lossy(&buf).into());
+                send_output("stderr", buf.clone());
                 Some(buf.len())
             }
             FileHandle::File(file) => log.inspect(file.write(&buf)),

@@ -76,7 +76,7 @@ pub enum RttEvent {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub enum SemihostingEvent {
-    Output { stream: String, data: String },
+    Output { stream: String, bytes: Vec<u8> },
 }
 
 /// Data from the serial port to the target.
