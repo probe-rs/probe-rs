@@ -24,7 +24,7 @@ use probe_rs_rpc::rtt_config::{DataFormat, RttChannelConfig};
 
 use crate::{
     cmd::cargo_embed::rttui::{channel::ChannelData, tab::TabConfig},
-    util::stream_decoder::{DefmtProcessor, DefmtState, StreamDecoder},
+    util::stream_decoder::{DefmtProcessor, DefmtState, StreamDecoder, TextDecoder},
 };
 
 use super::super::config;
@@ -145,13 +145,12 @@ impl App {
             };
 
             let data_format = match channel_format {
-                DataFormat::String => StreamDecoder::String {
-                    timestamp_offset: Some(timestamp_offset),
-                    last_line_done: false,
-                    show_timestamps: channel_config
+                DataFormat::String => StreamDecoder::String(TextDecoder::new(
+                    Some(timestamp_offset),
+                    channel_config
                         .show_timestamps
                         .unwrap_or(default_channel_config.show_timestamps),
-                },
+                )),
                 DataFormat::BinaryLE => StreamDecoder::BinaryLE,
                 DataFormat::Defmt if defmt_data.is_none() => {
                     tracing::warn!("Defmt data not found in ELF file");
