@@ -1,0 +1,1 @@
+CLI: added hardware reset selection via the --method option in probe-rs reset.

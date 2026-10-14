@@ -124,7 +124,7 @@ pub struct ReadWriteOptions {
 }
 
 /// Common options and logic when interfacing with a [Probe].
-#[derive(clap::Parser, Clone, Debug, Serialize, Deserialize)]
+#[derive(clap::Parser, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ProbeOptions {
     #[arg(long, env = "PROBE_RS_CHIP", help_heading = "PROBE CONFIGURATION")]
     pub chip: Option<String>,
