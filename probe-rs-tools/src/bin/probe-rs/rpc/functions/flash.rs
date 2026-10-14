@@ -179,13 +179,11 @@ fn flash_impl(
     request: FlashRequest,
     sender: Sender<ProgressEvent>,
 ) -> NoResponse {
-    let dry_run = ctx.dry_run(request.sessid);
     let mut session = ctx.session_blocking(request.sessid);
 
     let loader = ctx.object_mut_blocking(request.loader);
 
     let mut options = flash_request_download_options(&request);
-    options.dry_run = dry_run;
     options.progress = FlashProgress::new(move |event| {
         from_library_progress_event(event, |event| sender.blocking_send(event).unwrap());
     });

@@ -260,7 +260,6 @@ async fn run_embed(
         cycle_power: false,
         speed: config.probe.speed,
         connect_under_reset: config.general.connect_under_reset,
-        dry_run: false,
         allow_erase_all: config.flashing.enabled || config.gdb.enabled,
         attach_timeout: None,
     };

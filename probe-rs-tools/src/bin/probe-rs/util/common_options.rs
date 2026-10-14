@@ -10,7 +10,6 @@ use probe_rs::{
     Permissions, Session, Target,
     config::{Registry, RegistryError, TargetSelector},
     flashing::{FileDownloadError, FlashError},
-    integration::FakeProbe,
     probe::{
         DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError,
         WireProtocol,
@@ -176,8 +175,6 @@ pub struct ProbeOptions {
     )]
     pub connect_under_reset: bool,
 
-    #[arg(long, env = "PROBE_RS_DRY_RUN", help_heading = "PROBE CONFIGURATION")]
-    pub dry_run: bool,
     /// Use this flag to allow all memory, including security keys and 3rd party
     /// firmware, to be erased even when it has read-only protection.
     #[arg(
@@ -359,11 +356,7 @@ impl<'r> LoadedProbeOptions<'r> {
 
     /// Attaches to specified probe and configures it.
     pub fn attach_probe(&self, lister: &Lister) -> Result<Probe, OperationError> {
-        let mut probe = if self.0.dry_run {
-            Probe::from_specific_probe(Box::new(FakeProbe::with_mocked_core()))
-        } else {
-            self.open_probe(lister)?
-        };
+        let mut probe = self.open_probe(lister)?;
 
         if let Some(protocol) = self.0.protocol {
             // Select protocol and speed
@@ -429,10 +422,6 @@ impl<'r> LoadedProbeOptions<'r> {
 
     pub(crate) fn connect_under_reset(&self) -> bool {
         self.0.connect_under_reset
-    }
-
-    pub(crate) fn dry_run(&self) -> bool {
-        self.0.dry_run
     }
 
     pub(crate) fn chip(&self) -> Option<String> {
@@ -687,6 +676,7 @@ impl From<std::io::Error> for OperationError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use probe_rs::integration::FakeProbe;
     use probe_rs::probe::{DebugProbe, DebugProbeInfo, ProbeCreationError, ProbeFactory};
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -817,7 +807,6 @@ mod tests {
             probe: None,
             speed: None,
             connect_under_reset: false,
-            dry_run: false,
             allow_erase_all: false,
             attach_timeout,
         }

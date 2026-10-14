@@ -120,7 +120,6 @@ pub struct AttachRequest {
     pub probe: DebugProbeEntry,
     pub speed: Option<u32>,
     pub connect_under_reset: bool,
-    pub dry_run: bool,
     pub allow_erase_all: bool,
     pub resume_target: bool,
     pub wait_for_probe: Option<Duration>,

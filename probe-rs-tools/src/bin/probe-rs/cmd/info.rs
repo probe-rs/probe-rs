@@ -98,7 +98,6 @@ impl Cmd {
                     probe: probe.clone(),
                     speed: self.common.speed,
                     connect_under_reset: self.common.connect_under_reset,
-                    dry_run: self.common.dry_run,
                     scan_chain: self.scan_chain.clone(),
                 };
 

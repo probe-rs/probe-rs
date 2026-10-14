@@ -143,10 +143,6 @@ where
 }
 
 impl RpcSpawnContext {
-    fn dry_run(&self, sessid: Key<Session>) -> bool {
-        self.shared_session(sessid).dry_run()
-    }
-
     fn session_blocking(
         &self,
         sessid: Key<Session>,
@@ -184,10 +180,9 @@ impl RpcSpawnContext {
     pub(crate) async fn set_session(
         &self,
         session: probe_rs::Session,
-        dry_run: bool,
-        lease: Option<crate::rpc::probe_broker::ProbeLease>,
+        lease: crate::rpc::probe_broker::ProbeLease,
     ) -> Key<Session> {
-        self.state.set_session(session, dry_run, lease).await
+        self.state.set_session(session, lease).await
     }
 
     pub async fn run_blocking<T, F, REQ, RESP>(&mut self, request: REQ, task: F) -> RESP
