@@ -1,0 +1,1 @@
+Fixed smoke-tester not resetting target as normal on panic
