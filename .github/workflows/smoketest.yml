@@ -2,6 +2,7 @@ on:
   push:
     branches: [master, staging, trying]
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   merge_group:
   workflow_dispatch:
 
@@ -20,6 +21,8 @@ concurrency:
 
 jobs:
   build-smoke-tester:
+    # Skip the slow hardware tests on draft PRs.
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04-arm
 
     steps:
@@ -46,6 +49,7 @@ jobs:
           path: smoke_tester.tar.zst
 
   build-probe-rs:
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
 
     steps:
