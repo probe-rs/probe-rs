@@ -1,9 +1,8 @@
 use anyhow::{Context, anyhow};
 use defmt_decoder::{
-    DecodeError, StreamDecoder,
+    DecodeError, StreamDecoder as DefmtStreamDecoder,
     log::format::{Formatter, FormatterConfig, FormatterFormat},
 };
-use probe_rs::rtt::Error;
 use time::{OffsetDateTime, UtcOffset, macros::format_description};
 
 use std::{
@@ -15,7 +14,8 @@ use probe_rs_rpc::rtt_config::DataFormat;
 
 use probe_rs_zephyr::log::Decoder as ZephyrLogDecoder;
 
-pub enum RttDecoder {
+/// Decodes a byte stream from the target, for example an RTT channel.
+pub enum StreamDecoder {
     String {
         /// UTC offset used for creating timestamps, if enabled.
         ///
@@ -35,22 +35,22 @@ pub enum RttDecoder {
     },
 }
 
-impl From<&RttDecoder> for DataFormat {
-    fn from(config: &RttDecoder) -> Self {
+impl From<&StreamDecoder> for DataFormat {
+    fn from(config: &StreamDecoder) -> Self {
         match config {
-            RttDecoder::String { .. } => DataFormat::String,
-            RttDecoder::BinaryLE => DataFormat::BinaryLE,
-            RttDecoder::Defmt { .. } => DataFormat::Defmt,
+            StreamDecoder::String { .. } => DataFormat::String,
+            StreamDecoder::BinaryLE => DataFormat::BinaryLE,
+            StreamDecoder::Defmt { .. } => DataFormat::Defmt,
             // The decoded output is text.
-            RttDecoder::ZephyrDict { .. } => DataFormat::String,
+            StreamDecoder::ZephyrDict { .. } => DataFormat::String,
         }
     }
 }
 
-impl fmt::Debug for RttDecoder {
+impl fmt::Debug for StreamDecoder {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            RttDecoder::String {
+            StreamDecoder::String {
                 timestamp_offset,
                 last_line_done,
                 show_timestamps,
@@ -60,29 +60,31 @@ impl fmt::Debug for RttDecoder {
                 .field("last_line_done", last_line_done)
                 .field("show_timestamps", show_timestamps)
                 .finish(),
-            RttDecoder::BinaryLE => f.debug_struct("BinaryLE").finish(),
-            RttDecoder::Defmt { .. } => f.debug_struct("Defmt").finish_non_exhaustive(),
-            RttDecoder::ZephyrDict { .. } => f.debug_struct("ZephyrDict").finish_non_exhaustive(),
+            StreamDecoder::BinaryLE => f.debug_struct("BinaryLE").finish(),
+            StreamDecoder::Defmt { .. } => f.debug_struct("Defmt").finish_non_exhaustive(),
+            StreamDecoder::ZephyrDict { .. } => {
+                f.debug_struct("ZephyrDict").finish_non_exhaustive()
+            }
         }
     }
 }
 
-impl RttDecoder {
+impl StreamDecoder {
     /// Returns whether the channel is expected to output binary data (`true`)
     /// or human-readable strings (`false`).
     pub fn is_binary(&self) -> bool {
-        matches!(self, RttDecoder::BinaryLE)
+        matches!(self, StreamDecoder::BinaryLE)
     }
 
-    pub fn process<'d>(&mut self, buffer: &'d [u8]) -> Result<Option<ProcessedRttData<'d>>, Error> {
+    pub fn process<'d>(&mut self, buffer: &'d [u8]) -> anyhow::Result<Option<DecodedData<'d>>> {
         // Prevent the format processors generating empty strings.
         if buffer.is_empty() {
             return Ok(None);
         }
 
         let data = match self {
-            RttDecoder::BinaryLE => ProcessedRttData::Binary(buffer),
-            RttDecoder::String {
+            StreamDecoder::BinaryLE => DecodedData::Binary(buffer),
+            StreamDecoder::String {
                 timestamp_offset,
                 last_line_done,
                 show_timestamps,
@@ -93,15 +95,15 @@ impl RttDecoder {
                     last_line_done,
                     *show_timestamps,
                 )?;
-                ProcessedRttData::String(string)
+                DecodedData::String(string)
             }
-            RttDecoder::Defmt { processor } => {
+            StreamDecoder::Defmt { processor } => {
                 let string = processor.process(buffer)?;
 
-                ProcessedRttData::String(string)
+                DecodedData::String(string)
             }
-            RttDecoder::ZephyrDict { processor } => {
-                ProcessedRttData::String(processor.process(buffer))
+            StreamDecoder::ZephyrDict { processor } => {
+                DecodedData::String(processor.process(buffer))
             }
         };
 
@@ -113,7 +115,7 @@ impl RttDecoder {
         offset: Option<UtcOffset>,
         last_line_done: &mut bool,
         show_timestamps: bool,
-    ) -> Result<String, Error> {
+    ) -> anyhow::Result<String> {
         let incoming = String::from_utf8_lossy(buffer);
 
         if !show_timestamps {
@@ -143,16 +145,16 @@ impl RttDecoder {
     }
 }
 
-pub enum ProcessedRttData<'a> {
+pub enum DecodedData<'a> {
     String(String),
     Binary(&'a [u8]),
 }
 
-impl Display for ProcessedRttData<'_> {
+impl Display for DecodedData<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ProcessedRttData::String(s) => f.write_str(s),
-            ProcessedRttData::Binary(data) => {
+            DecodedData::String(s) => f.write_str(s),
+            DecodedData::Binary(data) => {
                 for element in *data {
                     // Width of 4 allows 0xFF to be printed.
                     write!(f, "{element:#04x}").expect("Writing to String cannot fail");
@@ -163,26 +165,13 @@ impl Display for ProcessedRttData<'_> {
     }
 }
 
-pub trait RttDataHandler {
-    async fn on_binary_data(&mut self, data: &[u8]) -> Result<(), Error> {
-        let mut formatted_data = String::with_capacity(data.len() * 4);
-        for element in data {
-            // Width of 4 allows 0xFF to be printed.
-            write!(&mut formatted_data, "{element:#04x}").expect("Writing to String cannot fail");
-        }
-        self.on_string_data(formatted_data).await
-    }
-
-    async fn on_string_data(&mut self, data: String) -> Result<(), Error>;
-}
-
 pub struct DefmtStateInner {
     pub table: defmt_decoder::Table,
     pub locs: Option<defmt_decoder::Locations>,
 }
 
 impl DefmtStateInner {
-    pub fn try_from_bytes(buffer: &[u8]) -> Result<Option<Self>, Error> {
+    pub fn try_from_bytes(buffer: &[u8]) -> anyhow::Result<Option<Self>> {
         let table = match defmt_decoder::Table::parse(buffer) {
             // Parsing ok, still no table found.
             Ok(None) => return Ok(None),
@@ -218,7 +207,7 @@ pub struct DefmtState {
     inner: Arc<DefmtStateInner>,
 }
 impl DefmtState {
-    pub fn try_from_bytes(buffer: &[u8]) -> Result<Option<Self>, Error> {
+    pub fn try_from_bytes(buffer: &[u8]) -> anyhow::Result<Option<Self>> {
         Ok(
             DefmtStateInner::try_from_bytes(buffer)?.map(|inner| DefmtState {
                 inner: Arc::new(inner),
@@ -245,7 +234,7 @@ pub struct DefmtProcessor {
     formatter: Formatter,
     // Fields are dropped in declaration order. `decoder` is holding a reference to defmt_data's
     // inner table, so it must be dropped first.
-    decoder: Box<dyn StreamDecoder>,
+    decoder: Box<dyn DefmtStreamDecoder>,
     defmt_data: DefmtState,
 }
 
@@ -280,15 +269,16 @@ impl DefmtProcessor {
             decoder: unsafe {
                 // Extend lifetime to 'static. We can do this because we hold a reference to the
                 // defmt_data's inner table for the lifetime of the processor.
-                std::mem::transmute::<Box<dyn StreamDecoder>, Box<dyn StreamDecoder + 'static>>(
-                    defmt_data.as_ref().table.new_stream_decoder(),
-                )
+                std::mem::transmute::<
+                    Box<dyn DefmtStreamDecoder>,
+                    Box<dyn DefmtStreamDecoder + 'static>,
+                >(defmt_data.as_ref().table.new_stream_decoder())
             },
             defmt_data: defmt_data.clone(),
         }
     }
 
-    fn process(&mut self, buffer: &[u8]) -> Result<String, Error> {
+    fn process(&mut self, buffer: &[u8]) -> anyhow::Result<String> {
         let DefmtStateInner { table, locs } = self.defmt_data.as_ref();
         self.decoder.received(buffer);
 
@@ -323,11 +313,11 @@ impl DefmtProcessor {
                     // If recovery is possible, skip the current frame and continue with new data.
                 }
                 Err(DecodeError::Malformed) => {
-                    return Err(Error::Other(anyhow!(
+                    return Err(anyhow!(
                         "Unrecoverable error while decoding Defmt \
                         data. Some data may have been lost: {}",
                         DecodeError::Malformed
-                    )));
+                    ));
                 }
             }
         }

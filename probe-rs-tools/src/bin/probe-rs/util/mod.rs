@@ -7,6 +7,7 @@ pub mod meta;
 pub mod pwr;
 pub mod rtt;
 pub mod setup_hints;
+pub mod stream_decoder;
 pub mod style;
 pub mod visualizer;
 

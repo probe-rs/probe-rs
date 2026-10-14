@@ -3,11 +3,22 @@ use probe_rs::rtt::{self, DownChannel, Error, Rtt, UpChannel};
 use probe_rs::{Core, MemoryInterface};
 use probe_rs_rpc::rtt_config::{ChannelMode, RttChannelConfig};
 use serde::{Deserialize, Serialize};
+use std::fmt::Write;
 
 pub(crate) mod client;
-pub(crate) mod processing;
 
-pub use processing::*;
+pub trait RttDataHandler {
+    async fn on_binary_data(&mut self, data: &[u8]) -> Result<(), Error> {
+        let mut formatted_data = String::with_capacity(data.len() * 4);
+        for element in data {
+            // Width of 4 allows 0xFF to be printed.
+            write!(&mut formatted_data, "{element:#04x}").expect("Writing to String cannot fail");
+        }
+        self.on_string_data(formatted_data).await
+    }
+
+    async fn on_string_data(&mut self, data: String) -> Result<(), Error>;
+}
 
 pub(crate) fn from_wire_channel_mode(mode: ChannelMode) -> rtt::ChannelMode {
     match mode {

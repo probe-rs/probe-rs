@@ -1,7 +1,7 @@
 use crate::{
     cmd::dap_server::{DebuggerError, debug_adapter::dap::adapter::*},
     rpc::{Key, RttClient},
-    util::rtt::RttDecoder,
+    util::stream_decoder::StreamDecoder,
 };
 use anyhow::anyhow;
 use probe_rs::rtt::Error as RttError;
@@ -147,7 +147,7 @@ pub(crate) struct DebuggerRttChannel {
     pub(crate) channel_number: u32,
     // We will not poll target RTT channels until we have confirmation from the client that the output window has been opened.
     pub(crate) has_client_window: bool,
-    pub(crate) channel_data_format: RttDecoder,
+    pub(crate) channel_data_format: StreamDecoder,
 }
 
 impl DebuggerRttChannel {
