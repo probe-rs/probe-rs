@@ -29,11 +29,11 @@ use crate::{
         list::ProbeListItem,
         queue::{BatchExecutionError, Results},
         swd::{Pins, output_levels},
+        usb_util::{UsbSerialFilter, UsbSerialPort, usb_serial_ports},
     },
 };
 use bitfield::bitfield;
 use bitvec::vec::BitVec;
-use serialport::{SerialPortType, available_ports};
 
 use crate::probe::{Batch, BitSequence};
 
@@ -1461,95 +1461,44 @@ impl BitbangSwd for BlackMagicProbe {
 /// Determine if a given serial port is a Black Magic Probe GDB interface.
 /// The BMP has at least two serial ports, and we want to make sure we get
 /// the correct one.
-fn black_magic_debug_port_info(
-    port_type: SerialPortType,
-    port_name: &str,
-) -> Option<DebugProbeInfo> {
-    // Only accept /dev/cu.* values on macos, to avoid having two
-    // copies of the port (both /dev/tty.* and /dev/cu.*)
-    if cfg!(target_os = "macos") && !port_name.contains("/cu.") {
-        tracing::trace!(
-            "{}: port name doesn't contain `/cu.` -- skipping",
-            port_name
-        );
-        return None;
-    }
-
-    let (vendor_id, product_id, serial_number, mut interface, identifier) = match port_type {
-        SerialPortType::UsbPort(info) => (
-            info.vid,
-            info.pid,
-            info.serial_number.map(|s| s.to_string()),
-            info.interface,
-            info.product
-                .unwrap_or_else(|| "Black Magic Probe".to_string()),
-        ),
-        _ => {
-            tracing::trace!(
-                "{}: serial port {:?} is not USB -- skipping",
-                port_name,
-                port_type,
-            );
-            return None;
-        }
-    };
-
-    if vendor_id != BLACK_MAGIC_PROBE_VID {
-        tracing::trace!(
-            "{}: vid is {:04x}, not {:04x} -- skipping",
-            port_name,
-            vendor_id,
-            BLACK_MAGIC_PROBE_VID
-        );
-        return None;
-    }
-
-    if product_id != BLACK_MAGIC_PROBE_PID {
-        tracing::trace!(
-            "{}: pid is {:04x}, not {:04x} -- skipping",
-            port_name,
-            product_id,
-            BLACK_MAGIC_PROBE_PID
-        );
-        return None;
-    }
-
-    // The `interface` property has been observed on Mac to occasionally be `None`.
-    // This shouldn't happen on any known devices. If this happens, derive the
-    // interface number from the last character of the filename.
-    if cfg!(target_os = "macos") && interface.is_none() {
-        tracing::warn!(
-            "{}: interface number is `None` -- applying interface number workaround",
-            port_name
-        );
-        interface = port_name.as_bytes().last().map(|v| *v - b'0');
-    }
-
+fn black_magic_debug_port_info(port: &UsbSerialPort) -> Option<DebugProbeInfo> {
     // Mac specifies the interface as the CDC Data interface, whereas Linux and
-    // Windows use the CDC Communications interface. Accept either one here.
-    if interface != Some(0) && interface != Some(1) {
+    // Windows use the CDC Communications interface. The filter handles both.
+    let filter = UsbSerialFilter {
+        vendor_id: Some(BLACK_MAGIC_PROBE_VID),
+        product_id: Some(BLACK_MAGIC_PROBE_PID),
+        interface: Some(0),
+        ..Default::default()
+    };
+    if !filter.matches(port) {
         tracing::trace!(
-            "{}: interface is {:?}, not Some(0) or Some(1) -- skipping",
-            port_name,
-            interface
+            "{}: {:04x}:{:04x} interface {:?} is not a Black Magic Probe -- skipping",
+            port.port_name,
+            port.info.vid,
+            port.info.pid,
+            port.interface()
         );
         return None;
     }
 
+    let info = &port.info;
     tracing::debug!(
         "{}: returning port {}:{}:{:?}",
-        port_name,
-        vendor_id,
-        product_id,
-        serial_number
+        port.port_name,
+        info.vid,
+        info.pid,
+        info.serial_number
     );
     Some(DebugProbeInfo {
-        identifier,
-        vendor_id,
-        product_id,
-        serial_number,
+        identifier: info
+            .product
+            .clone()
+            .unwrap_or_else(|| "Black Magic Probe".to_string()),
+        vendor_id: info.vid,
+        product_id: info.pid,
+        serial_number: info.serial_number.clone(),
         probe_factory: &BlackMagicProbeFactory,
-        interface,
+        interface: port.interface(),
         is_hid_interface: false,
         usb_location: None,
     })
@@ -1590,7 +1539,7 @@ impl ProbeFactory for BlackMagicProbeFactory {
         }
 
         // Otherwise, treat it as a serial port and iterate through all ports.
-        let Ok(ports) = available_ports() else {
+        let Ok(ports) = usb_serial_ports() else {
             tracing::trace!("unable to get available serial ports");
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
                 ProbeCreationError::CouldNotOpen,
@@ -1598,10 +1547,7 @@ impl ProbeFactory for BlackMagicProbeFactory {
         };
 
         for port_description in ports {
-            let Some(info) = black_magic_debug_port_info(
-                port_description.port_type,
-                &port_description.port_name,
-            ) else {
+            let Some(info) = black_magic_debug_port_info(&port_description) else {
                 continue;
             };
 
@@ -1645,7 +1591,7 @@ impl ProbeFactory for BlackMagicProbeFactory {
 
     fn list_probes(&self) -> Vec<ProbeListItem> {
         let mut probes = vec![];
-        let ports = match available_ports() {
+        let ports = match usb_serial_ports() {
             Ok(ports) => ports,
             Err(e) => {
                 tracing::trace!("Unable to enumerate serial ports: {}", e);
@@ -1654,7 +1600,7 @@ impl ProbeFactory for BlackMagicProbeFactory {
         };
 
         for port in ports {
-            let Some(info) = black_magic_debug_port_info(port.port_type, &port.port_name) else {
+            let Some(info) = black_magic_debug_port_info(&port) else {
                 continue;
             };
             // Black Magic probes are accessed over a serial port; check that node, not usbfs.
