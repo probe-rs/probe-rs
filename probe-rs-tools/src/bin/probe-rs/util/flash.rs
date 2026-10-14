@@ -50,7 +50,6 @@ fn run_flash_download_inner(
 ) -> Result<(), OperationError> {
     let mut options = DownloadOptions::default();
     options.keep_unwritten_bytes = download_options.restore_unwritten;
-    options.dry_run = probe_options.dry_run();
     options.do_chip_erase = download_options.chip_erase;
     options.disable_double_buffering = download_options.disable_double_buffering;
     options.verify = download_options.verify;

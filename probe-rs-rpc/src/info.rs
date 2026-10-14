@@ -41,7 +41,6 @@ pub struct TargetInfoRequest {
     pub probe: DebugProbeEntry,
     pub speed: Option<u32>,
     pub connect_under_reset: bool,
-    pub dry_run: bool,
     pub target_sel: Option<u32>,
     pub protocol: WireProtocol,
     /// IR lengths for each TAP in the scan chain, in scan-chain order.

@@ -84,24 +84,17 @@ pub async fn attach(
 
 async fn attach_impl(ctx: RpcSpawnContext, request: AttachRequest) -> RpcResult<AttachResult> {
     let probe_options = ProbeOptions::from(&request);
-    let dry_run = probe_options.dry_run;
     let selector = convert::from_wire_debug_probe_selector(request.probe.selector());
     let cancel = ctx.cancellation_token();
 
     let wait_for_probe = request.wait_for_probe.unwrap_or(Duration::ZERO);
-    // A dry run drives a `FakeProbe` and claims no device.
-    let lease = if dry_run {
-        None
-    } else {
-        let acquire = ctx.probe_broker().acquire(selector.clone());
-
-        tokio::select! {
-            granted = tokio::time::timeout(wait_for_probe, acquire) => match granted {
-                Ok(lease) => Some(lease),
-                Err(_) => return Ok(AttachResult::ProbeInUse),
-            },
-            _ = cancel.cancelled() => return Err("attach cancelled".into()),
-        }
+    let acquire = ctx.probe_broker().acquire(selector.clone());
+    let lease = tokio::select! {
+        granted = tokio::time::timeout(wait_for_probe, acquire) => match granted {
+            Ok(lease) => lease,
+            Err(_) => return Ok(AttachResult::ProbeInUse),
+        },
+        _ = cancel.cancelled() => return Err("attach cancelled".into()),
     };
 
     let start = Instant::now();
@@ -123,7 +116,7 @@ async fn attach_impl(ctx: RpcSpawnContext, request: AttachRequest) -> RpcResult<
         // learns why the probe is unusable now, not why it was earlier.
         let failure = match attempt {
             AttachAttempt::Attached(session) => {
-                let session_id = ctx.set_session(*session, dry_run, lease).await;
+                let session_id = ctx.set_session(*session, lease).await;
                 return Ok(AttachResult::Success(session_id));
             }
             AttachAttempt::ProbeGone => None,
@@ -382,7 +375,6 @@ mod tests {
                 probe,
                 speed: None,
                 connect_under_reset: false,
-                dry_run: false,
                 allow_erase_all: false,
                 resume_target: false,
                 wait_for_probe,
@@ -556,7 +548,6 @@ pub(crate) mod convert {
                 speed: request.speed,
                 connect_under_reset: request.connect_under_reset,
                 cycle_power: false,
-                dry_run: request.dry_run,
                 allow_erase_all: request.allow_erase_all,
                 // `attach_impl` runs the wait, so that it can also retry a
                 // probe that has dropped out of the probe list, and so that the

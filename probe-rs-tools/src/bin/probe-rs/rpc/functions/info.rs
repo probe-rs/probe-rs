@@ -1121,7 +1121,6 @@ pub(crate) mod convert {
                 speed: request.speed,
                 connect_under_reset: request.connect_under_reset,
                 cycle_power: false,
-                dry_run: request.dry_run,
                 allow_erase_all: false,
                 attach_timeout: None,
             }

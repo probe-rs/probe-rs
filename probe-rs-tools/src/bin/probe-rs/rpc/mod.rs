@@ -1,12 +1,11 @@
 use std::{
     any::Any,
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     marker::PhantomData,
     ops::{Deref, DerefMut},
     sync::Arc,
 };
 
-use parking_lot::Mutex as ParkingMutex;
 use probe_rs::config::Registry;
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
@@ -19,7 +18,7 @@ pub trait ObjectMarker: 'static {
 
 pub struct SessionEntry {
     pub session: probe_rs::Session,
-    pub _lease: Option<probe_broker::ProbeLease>,
+    pub _lease: probe_broker::ProbeLease,
 }
 
 impl Deref for SessionEntry {
@@ -113,7 +112,6 @@ impl ObjectStorage {
 /// State associated with a single connection.
 #[derive(Clone)]
 pub struct ConnectionState {
-    dry_run_sessions: Arc<ParkingMutex<HashSet<Key<Session>>>>,
     /// Generic object storage.
     object_storage: Arc<Mutex<ObjectStorage>>,
     registry: Arc<Mutex<Registry>>,
@@ -127,7 +125,6 @@ pub struct ConnectionState {
 impl ConnectionState {
     pub fn new() -> Self {
         Self {
-            dry_run_sessions: Arc::new(ParkingMutex::new(HashSet::new())),
             object_storage: Arc::new(Mutex::new(ObjectStorage::new())),
             registry: Arc::new(Mutex::new(Registry::from_builtin_families())),
             debug_states: Arc::new(Mutex::new(HashMap::new())),
@@ -160,24 +157,18 @@ impl ConnectionState {
     pub async fn set_session(
         &self,
         session: probe_rs::Session,
-        dry_run: bool,
-        lease: Option<probe_broker::ProbeLease>,
+        lease: probe_broker::ProbeLease,
     ) -> Key<Session> {
-        let key = self.object_storage.lock().await.store_object(SessionEntry {
+        self.object_storage.lock().await.store_object(SessionEntry {
             session,
             _lease: lease,
-        });
-        if dry_run {
-            self.dry_run_sessions.lock().insert(key);
-        }
-        key
+        })
     }
 
     pub fn shared_session(&self, sid: Key<Session>) -> SessionState<'_> {
         SessionState {
             object_storage: self.object_storage.as_ref(),
             session: sid,
-            dry_run: self.dry_run_sessions.lock().contains(&sid),
         }
     }
 }
@@ -187,7 +178,6 @@ impl ConnectionState {
 pub struct SessionState<'a> {
     object_storage: &'a Mutex<ObjectStorage>,
     session: Key<Session>,
-    dry_run: bool,
 }
 
 impl SessionState<'_> {
@@ -203,9 +193,5 @@ impl SessionState<'_> {
         tokio::sync::OwnedMutexGuard::map(guard, |e: &mut (dyn Any + Send)| {
             &mut e.downcast_mut::<SessionEntry>().unwrap().session
         })
-    }
-
-    pub fn dry_run(&self) -> bool {
-        self.dry_run
     }
 }
