@@ -153,6 +153,7 @@ impl ProtocolHandler {
                 product_id: Some(device.product_id()),
                 serial_number: device.serial_number().map(str::to_string),
                 interface: Some(0),
+                port_name: None,
             });
 
         let device_handle = device

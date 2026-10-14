@@ -204,6 +204,8 @@ pub struct UsbSerialFilter {
     /// On macOS, the CDC data interface (this number + 1) also matches, because macOS reports the
     /// data interface.
     pub interface: Option<u8>,
+    /// The OS name of the port, for example `COM3` or `/dev/ttyACM0`.
+    pub port_name: Option<String>,
 }
 
 impl std::fmt::Display for UsbSerialFilter {
@@ -215,6 +217,9 @@ impl std::fmt::Display for UsbSerialFilter {
         }
         if let Some(interface) = self.interface {
             write!(f, " interface {interface}")?;
+        }
+        if let Some(port_name) = &self.port_name {
+            write!(f, " port {port_name}")?;
         }
         Ok(())
     }
@@ -229,6 +234,13 @@ impl UsbSerialFilter {
             return false;
         }
         if self.product_id.is_some_and(|pid| pid != info.pid) {
+            return false;
+        }
+        if self
+            .port_name
+            .as_deref()
+            .is_some_and(|name| name != port.port_name)
+        {
             return false;
         }
         if self

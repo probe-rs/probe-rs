@@ -344,6 +344,7 @@ mod tests {
             product_id: Some(0x1001),
             serial_number: serial_number.map(str::to_string),
             interface: Some(0),
+            port_name: None,
         }
     }
 
