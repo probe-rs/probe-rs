@@ -31,7 +31,7 @@ use crate::util::{
     common_options::{BinaryDownloadOptions, ProbeOptions},
     flash::CliProgressBars,
     logging,
-    stream_decoder::{DefmtProcessor, DefmtState, StreamDecoder},
+    stream_decoder::{AutoDecoder, DefmtProcessor, DefmtState, StreamDecoder, TextDecoder},
     style::{
         Prompt, StackTraceAddress, StackTraceFunction, StackTraceInlineMarker,
         StackTraceSourceLocation, probe_rs_color_enabled,
@@ -1375,10 +1375,19 @@ impl CliRttClient {
                     StreamDecoder::BinaryLE
                 }
             } else {
-                StreamDecoder::String {
-                    timestamp_offset: self.timestamp_offset,
-                    last_line_done: false,
-                    show_timestamps: self.show_timestamps,
+                let defmt = self.defmt_data.clone().map(|defmt_data| {
+                    DefmtProcessor::new(
+                        defmt_data,
+                        self.show_timestamps,
+                        self.show_location,
+                        self.log_format.as_deref(),
+                    )
+                });
+                StreamDecoder::Auto {
+                    decoder: AutoDecoder::new(
+                        TextDecoder::new(self.timestamp_offset, self.show_timestamps),
+                        defmt,
+                    ),
                 }
             };
 

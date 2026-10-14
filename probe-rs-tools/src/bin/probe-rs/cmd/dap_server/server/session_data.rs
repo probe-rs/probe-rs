@@ -19,7 +19,7 @@ use crate::cmd::{
 };
 use crate::rpc::{Key, RttClient};
 use crate::util::cli::attach_probe as attach_probe_rpc;
-use crate::util::stream_decoder::{DefmtProcessor, DefmtState, StreamDecoder};
+use crate::util::stream_decoder::{DefmtProcessor, DefmtState, StreamDecoder, TextDecoder};
 use anyhow::{Result, anyhow};
 use probe_rs::{BreakpointCause, CoreStatus, HaltReason, rtt::find_rtt_control_block_in_raw_file};
 use probe_rs_debug::SourceLocation;
@@ -604,11 +604,9 @@ impl SessionData {
             let log_format = channel_config.log_format.clone();
 
             let channel_data_format = match channel_config.data_format {
-                DataFormat::String => StreamDecoder::String {
-                    timestamp_offset: Some(timestamp_offset),
-                    last_line_done: false,
-                    show_timestamps,
-                },
+                DataFormat::String => {
+                    StreamDecoder::String(TextDecoder::new(Some(timestamp_offset), show_timestamps))
+                }
                 DataFormat::BinaryLE => StreamDecoder::BinaryLE,
                 DataFormat::Defmt => {
                     let defmt_state = if let Some(data) = defmt_data.as_ref() {
