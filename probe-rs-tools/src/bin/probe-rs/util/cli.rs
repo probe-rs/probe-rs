@@ -291,29 +291,48 @@ pub struct TargetAttachFailed {
     pub connect_under_reset: bool,
 }
 
-/// A selector for a named stream, be it an RTT or a semihosting channel.
+/// A source of named output streams.
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
+pub(crate) enum StreamSource {
+    Rtt,
+    Semihosting,
+}
+
+impl StreamSource {
+    const ALL: &[Self] = &[Self::Rtt, Self::Semihosting];
+
+    /// The prefix that qualifies a channel name, for example `rtt` in `rtt:defmt`.
+    fn prefix(self) -> &'static str {
+        match self {
+            Self::Rtt => "rtt",
+            Self::Semihosting => "semihosting",
+        }
+    }
+}
+
+/// A selector for a named stream of a [`StreamSource`].
 ///
 /// When converting from text (eg. as a CLI argument), the `Unqualified` variant is only produced
-/// when there is no colon in the name; otherwise, the prefix before the colon is matched into a
-/// variant.
+/// when there is no colon in the name; otherwise, the prefix before the colon selects the source.
 ///
-/// ```
+/// ```ignore
 /// assert_eq!(ChannelIdentifier::Unqualified("foo".to_string()), "foo".parse().unwrap());
-/// assert_eq!(ChannelIdentifier::Rtt("defmt".to_string()), "rtt:defmt".parse().unwrap());
+/// assert_eq!(
+///     ChannelIdentifier::Qualified(StreamSource::Rtt, "defmt".to_string()),
+///     "rtt:defmt".parse().unwrap()
+/// );
 /// assert_eq!(ChannelIdentifier::CatchAll, "".parse().unwrap());
 /// ```
 // Could we be smart with the Strings and implement this for any type and then do some AsRef and
 // the right tricks to access a hashmap keyed with an owned identifier with a borrowed one? Maybe.
 // But allocators are fast, this won't be a bottleneck, and it is easy to maintain with
 // always-owned channels.
-#[derive(PartialEq, Eq, Hash, Clone)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub(crate) enum ChannelIdentifier {
-    /// A named channel (might match a semihosting or an RTT channel)
+    /// A named channel of any source.
     Unqualified(String),
-    /// A named RTT channel
-    Rtt(String),
-    /// A named semihosting channel
-    Semihosting(String),
+    /// A named channel of one source.
+    Qualified(StreamSource, String),
     /// Selector that matches any channel; depending on the context, this usually means "any
     /// channel that is not explicitly handled".
     CatchAll,
@@ -327,11 +346,20 @@ impl std::str::FromStr for ChannelIdentifier {
             [] => unreachable!(),
             [""] => ChannelIdentifier::CatchAll,
             [unqualified] => ChannelIdentifier::Unqualified(unqualified.to_string()),
-            ["rtt", rtt] => ChannelIdentifier::Rtt(rtt.to_string()),
-            ["semihosting", semihosting] => ChannelIdentifier::Semihosting(semihosting.to_string()),
-            _ => anyhow::bail!(
-                "Channel identifiers with colons need to be qualified as `rtt:name` or `semihosting:name`."
-            ),
+            [prefix, name] => {
+                let Some(source) = StreamSource::ALL.iter().find(|s| s.prefix() == *prefix) else {
+                    let prefixes = StreamSource::ALL
+                        .iter()
+                        .map(|s| format!("`{}:name`", s.prefix()))
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    anyhow::bail!(
+                        "Channel identifiers with colons need to be qualified as one of {prefixes}."
+                    );
+                };
+                ChannelIdentifier::Qualified(*source, name.to_string())
+            }
+            _ => unreachable!(),
         })
     }
 }
@@ -340,8 +368,7 @@ impl ChannelIdentifier {
     /// Returns an `Unqualified(name)` for any qualified name.
     fn unqualified(&self) -> Option<Self> {
         match self {
-            ChannelIdentifier::Rtt(n) => Some(ChannelIdentifier::Unqualified(n.clone())),
-            ChannelIdentifier::Semihosting(n) => Some(ChannelIdentifier::Unqualified(n.clone())),
+            ChannelIdentifier::Qualified(_, n) => Some(ChannelIdentifier::Unqualified(n.clone())),
             _ => None,
         }
     }
@@ -1433,7 +1460,8 @@ async fn handle_monitor_event(
                     // more efficient to resolve those lookups at channel discovery, it doesn't really
                     // matter, and again, ease of maintenance beats theoretical performance unless
                     // benchmarked otherwise.
-                    ChannelIdentifier::Rtt(processor.channel.clone()).find_in(target_output_files),
+                    ChannelIdentifier::Qualified(StreamSource::Rtt, processor.channel.clone())
+                        .find_in(target_output_files),
                 )
                 .await;
         }
@@ -1445,7 +1473,8 @@ async fn handle_monitor_event(
             };
 
             if let Some(remote_processor) =
-                ChannelIdentifier::Semihosting(stream).find_in(target_output_files)
+                ChannelIdentifier::Qualified(StreamSource::Semihosting, stream)
+                    .find_in(target_output_files)
             {
                 // Silently discarding output file errors
                 _ = remote_processor.write_all(data.as_bytes()).await;
@@ -1501,7 +1530,26 @@ impl Channel {
 
 #[cfg(test)]
 mod tests {
-    use super::FirmwareExited;
+    use super::{ChannelIdentifier, FirmwareExited, StreamSource};
+
+    #[test]
+    fn parse_channel_identifier() {
+        let parse = |s: &str| s.parse::<ChannelIdentifier>();
+        assert_eq!(
+            parse("foo").unwrap(),
+            ChannelIdentifier::Unqualified("foo".to_string())
+        );
+        assert_eq!(parse("").unwrap(), ChannelIdentifier::CatchAll);
+        assert_eq!(
+            parse("rtt:defmt").unwrap(),
+            ChannelIdentifier::Qualified(StreamSource::Rtt, "defmt".to_string())
+        );
+        assert_eq!(
+            parse("semihosting:a:b").unwrap(),
+            ChannelIdentifier::Qualified(StreamSource::Semihosting, "a:b".to_string())
+        );
+        assert!(parse("foo:bar").is_err());
+    }
 
     #[test]
     fn firmware_exit_code() {
