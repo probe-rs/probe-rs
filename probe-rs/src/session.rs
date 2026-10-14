@@ -680,19 +680,7 @@ impl Session {
                     }
                 }
             }
-            ArchitectureInterface::Jtag(probe, jtag_interfaces) => {
-                // Only RISC-V and Xtensa targets end up here. They have no dedicated memory
-                // ports, so fall back to the memory interface of the first core. This covers
-                // most use cases. The index is ignored because it is the memory port index and
-                // not a core index.
-                let combined_state = self.cores.get_mut(0).ok_or(Error::CoreNotFound(0))?;
-                Ok(MemoryAccessPort::new_for_core(attach_jtag(
-                    combined_state,
-                    probe,
-                    jtag_interfaces,
-                    &self.target,
-                )?))
-            }
+            ArchitectureInterface::Jtag(_, _) => Err(Error::MemoryAccessPortNotFound(index)),
             ArchitectureInterface::ArmWithRiscv {
                 arm: _,
                 riscv_mem_ap_cores: _,

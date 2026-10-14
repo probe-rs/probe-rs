@@ -13,8 +13,8 @@ pub struct NvmRegion {
     pub range: Range<u64>,
     /// List of cores that can access this region
     pub cores: Vec<String>,
+    /// List of memory ports that can access this region
     #[serde(default)]
-    /// List of memories that can access this region
     pub memory_ports: Vec<String>,
     /// True if the memory region is an alias of a different memory region.
     #[serde(default)]
@@ -109,8 +109,8 @@ pub struct RamRegion {
     pub range: Range<u64>,
     /// List of cores that can access this region
     pub cores: Vec<String>,
+    /// List of memory ports that can access this region
     #[serde(default)]
-    /// List of memories that can access this region
     pub memory_ports: Vec<String>,
     /// True if the memory region is an alias of a different memory region.
     #[serde(default)]
@@ -260,8 +260,8 @@ pub struct GenericRegion {
     pub range: Range<u64>,
     /// List of cores that can access this region
     pub cores: Vec<String>,
+    /// List of memory ports that can access this region
     #[serde(default)]
-    /// List of memories that can access this region
     pub memory_ports: Vec<String>,
     /// Access permissions for the region.
     #[serde(default)]
