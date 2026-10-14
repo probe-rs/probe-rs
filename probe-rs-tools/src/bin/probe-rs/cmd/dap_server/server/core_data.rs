@@ -8,7 +8,7 @@ use probe_rs_rpc::rtt_client::ScanRegion as WireScanRegion;
 /// `(channel number, channel name)` pairs returned while attaching to RTT.
 pub(crate) type ChannelNames = Vec<(u32, String)>;
 use crate::cmd::dap_server::server::debug_rtt;
-use crate::util::rtt::DefmtState;
+use crate::util::stream_decoder::DefmtState;
 use probe_rs::CoreStatus;
 
 /// [CoreData] is used to cache data needed by the debugger, on a per-core basis.

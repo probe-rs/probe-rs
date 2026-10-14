@@ -4,7 +4,10 @@ use probe_rs::rtt::Error;
 
 use crate::{
     cmd::cargo_embed::rttui::tcp::TcpPublisher,
-    util::rtt::{ProcessedRttData, RttDataHandler, RttDecoder},
+    util::{
+        rtt::RttDataHandler,
+        stream_decoder::{DecodedData, StreamDecoder},
+    },
 };
 
 pub enum ChannelData {
@@ -44,7 +47,7 @@ pub struct UpChannel {
     channel_number: u32,
     tcp_stream: Option<TcpPublisher>,
     channel_name: String,
-    data_format: RttDecoder,
+    data_format: StreamDecoder,
     pub data: ChannelData,
 }
 
@@ -52,7 +55,7 @@ impl UpChannel {
     pub fn new(
         channel_number: u32,
         channel_name: String,
-        data_format: RttDecoder,
+        data_format: StreamDecoder,
         tcp_stream: Option<SocketAddr>,
     ) -> Self {
         Self {
@@ -76,12 +79,12 @@ impl UpChannel {
 
     pub async fn push_bytes(&mut self, bytes: &[u8]) -> Result<(), Error> {
         match self.data_format.process(bytes)? {
-            Some(ProcessedRttData::Binary(bytes)) => {
+            Some(DecodedData::Binary(bytes)) => {
                 (&mut self.tcp_stream, &mut self.data)
                     .on_binary_data(bytes)
                     .await?;
             }
-            Some(ProcessedRttData::String(bytes)) => {
+            Some(DecodedData::String(bytes)) => {
                 (&mut self.tcp_stream, &mut self.data)
                     .on_string_data(bytes)
                     .await?;

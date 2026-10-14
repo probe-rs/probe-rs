@@ -31,7 +31,7 @@ use crate::util::{
     common_options::{BinaryDownloadOptions, ProbeOptions},
     flash::CliProgressBars,
     logging,
-    rtt::{DefmtProcessor, DefmtState, RttDecoder},
+    stream_decoder::{DefmtProcessor, DefmtState, StreamDecoder},
     style::{
         Prompt, StackTraceAddress, StackTraceFunction, StackTraceInlineMarker,
         StackTraceSourceLocation, probe_rs_color_enabled,
@@ -1357,12 +1357,12 @@ impl CliRttClient {
                 .as_ref()
                 .filter(|_| zephyr_dict_channel == Some(number))
             {
-                RttDecoder::ZephyrDict {
+                StreamDecoder::ZephyrDict {
                     processor: ZephyrLogDecoder::new(db.clone()),
                 }
             } else if channel.name == "defmt" {
                 if let Some(defmt_data) = self.defmt_data.clone() {
-                    RttDecoder::Defmt {
+                    StreamDecoder::Defmt {
                         processor: DefmtProcessor::new(
                             defmt_data,
                             self.show_timestamps,
@@ -1372,10 +1372,10 @@ impl CliRttClient {
                     }
                 } else {
                     // Not much we can do. Don't silently eat the data.
-                    RttDecoder::BinaryLE
+                    StreamDecoder::BinaryLE
                 }
             } else {
-                RttDecoder::String {
+                StreamDecoder::String {
                     timestamp_offset: self.timestamp_offset,
                     last_line_done: false,
                     show_timestamps: self.show_timestamps,
@@ -1464,12 +1464,12 @@ impl<'a> std::fmt::Display for ChannelInfoPrinter<'a> {
 
 struct Channel {
     channel: String,
-    decoder: RttDecoder,
+    decoder: StreamDecoder,
     printer_prefix: String,
 }
 
 impl Channel {
-    fn new(channel: String, decoder: RttDecoder) -> Self {
+    fn new(channel: String, decoder: StreamDecoder) -> Self {
         Self {
             channel,
             decoder,
