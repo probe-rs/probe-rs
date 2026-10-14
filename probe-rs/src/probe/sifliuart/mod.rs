@@ -7,11 +7,12 @@ use crate::Error;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::architecture::arm::{ArmDebugInterface, ArmError};
 use crate::probe::sifliuart::arm::SifliUartArmDebug;
+use crate::probe::usb_util::{UsbSerialPort, usb_serial_ports};
 use crate::probe::{
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
     ProbeFactory, WireProtocol, list::ProbeListItem,
 };
-use serialport::{SerialPort, SerialPortType, available_ports};
+use serialport::SerialPort;
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -369,43 +370,29 @@ impl DebugProbe for SifliUart {
 pub struct SifliUartFactory;
 
 impl SifliUartFactory {
-    fn is_sifli_uart(port_type: SerialPortType, port_name: &str) -> Option<DebugProbeInfo> {
-        // Only accept /dev/cu.* values on macos, to avoid having two
-        // copies of the port (both /dev/tty.* and /dev/cu.*)
-        if cfg!(target_os = "macos") && !port_name.contains("/cu.") {
+    fn is_sifli_uart(port: &UsbSerialPort) -> bool {
+        env::var("SIFLI_UART_DEBUG").is_ok()
+            || port
+                .info
+                .product
+                .as_ref()
+                .is_some_and(|product| product.to_lowercase().contains("sifli"))
+    }
+
+    /// Returns the probe info if `port` is a SiFli UART probe.
+    fn sifli_probe_info(port: &UsbSerialPort) -> Option<DebugProbeInfo> {
+        if !Self::is_sifli_uart(port) {
             return None;
         }
-
-        let usb_info = match port_type {
-            SerialPortType::UsbPort(info) => info,
-            _ => return None,
-        };
-
-        if env::var("SIFLI_UART_DEBUG").is_err()
-            && (usb_info.product.is_none()
-                || !usb_info
-                    .product
-                    .as_ref()
-                    .unwrap()
-                    .to_lowercase()
-                    .contains("sifli"))
-        {
-            return None;
-        }
-
-        let vendor_id = usb_info.vid;
-        let product_id = usb_info.pid;
-        let serial_number = Some(port_name.to_string()); //We set serial_number to the serial device number to make it easier to specify the
-        let interface = usb_info.interface;
-        let identifier = "Sifli uart debug probe".to_string();
 
         Some(DebugProbeInfo {
-            identifier,
-            vendor_id,
-            product_id,
-            serial_number,
+            identifier: "Sifli uart debug probe".to_string(),
+            vendor_id: port.info.vid,
+            product_id: port.info.pid,
+            // The port name is the serial number, so that the user can select the port.
+            serial_number: Some(port.port_name.clone()),
             probe_factory: &SifliUartFactory,
-            interface,
+            interface: port.info.interface,
             is_hid_interface: false,
             usb_location: None,
         })
@@ -446,7 +433,7 @@ impl std::fmt::Display for SifliUartFactory {
 
 impl ProbeFactory for SifliUartFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
-        let Ok(ports) = available_ports() else {
+        let Ok(ports) = usb_serial_ports() else {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
                 ProbeCreationError::CouldNotOpen,
             ));
@@ -456,37 +443,27 @@ impl ProbeFactory for SifliUartFactory {
             return self.open_port(serial_number);
         }
 
-        for port in ports {
-            let Some(_info) = SifliUartFactory::is_sifli_uart(port.port_type, &port.port_name)
-            else {
-                continue;
-            };
-
-            return self.open_port(&port.port_name);
+        match ports.iter().find(|port| Self::is_sifli_uart(port)) {
+            Some(port) => self.open_port(&port.port_name),
+            None => Err(DebugProbeError::ProbeCouldNotBeCreated(
+                ProbeCreationError::NotFound,
+            )),
         }
-
-        Err(DebugProbeError::ProbeCouldNotBeCreated(
-            ProbeCreationError::NotFound,
-        ))
     }
 
     fn list_probes(&self) -> Vec<ProbeListItem> {
-        let mut probes = vec![];
-        let Ok(ports) = available_ports() else {
-            return probes;
+        let Ok(ports) = usb_serial_ports() else {
+            return vec![];
         };
-        for port in ports {
-            let Some(info) = SifliUartFactory::is_sifli_uart(port.port_type, &port.port_name)
-            else {
-                continue;
-            };
-            // The SiFli probe is accessed over a serial port; check that node, not usbfs.
-            let accessibility = crate::probe::list::device_node_accessibility(&port.port_name);
-            probes.push(ProbeListItem {
-                info,
-                accessibility,
-            });
-        }
-        probes
+        ports
+            .iter()
+            .filter_map(|port| {
+                Some(ProbeListItem {
+                    info: Self::sifli_probe_info(port)?,
+                    // The SiFli probe is accessed over a serial port; check that node, not usbfs.
+                    accessibility: crate::probe::list::device_node_accessibility(&port.port_name),
+                })
+            })
+            .collect()
     }
 }
