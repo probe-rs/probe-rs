@@ -10,8 +10,6 @@ mod utils;
 
 use crate::cmd::gdb_server::arch::RuntimeArch;
 use crate::cmd::gdb_server::target::desc::TargetDescription;
-use probe_rs::CoreRegisters;
-use probe_rs::InstructionSet;
 use probe_rs_rpc::chip::MemoryRegion;
 use probe_rs_rpc::core_ops::WireBreakpointCause;
 use probe_rs_rpc::core_ops::WireCoreStatus;
@@ -40,7 +38,7 @@ use gdbstub::target::ext::target_description_xml_override::TargetDescriptionXmlO
 
 pub(crate) use traits::GdbErrorExt;
 
-use super::GdbSessionContext;
+use super::{CoreMetadata, GdbSessionContext};
 
 /// Actions for resuming a core
 #[derive(Debug, Copy, Clone)]
@@ -56,8 +54,8 @@ pub(crate) struct CoreCache {
     pub index: usize,
     pub name: String,
     pub core_type: probe_rs::CoreType,
-    pub registers: &'static CoreRegisters,
-    pub instruction_set: InstructionSet,
+    /// `None` until the core has been seen enabled.
+    pub metadata: Option<CoreMetadata>,
 }
 
 /// The top level gdbstub target for a probe-rs RPC debug session
@@ -104,8 +102,7 @@ impl RuntimeTarget {
                         index: c.index,
                         name: c.name,
                         core_type: c.core_type,
-                        registers: c.registers,
-                        instruction_set: c.instruction_set,
+                        metadata: c.metadata,
                     })
                     .ok_or_else(|| anyhow::anyhow!("Missing core metadata for core {index}"))
             })
@@ -134,6 +131,20 @@ impl RuntimeTarget {
 
     pub(crate) fn core(&self, index: usize) -> CoreInterface {
         self.session.core(index)
+    }
+
+    /// Returns the metadata of the core at `position` in `self.cores`, fetching it if the core
+    /// was disabled when the stub started. Fails if the core is still disabled.
+    pub(crate) fn core_metadata(&mut self, position: usize) -> Result<CoreMetadata, ClientError> {
+        let cache = &self.cores[position];
+        if let Some(metadata) = cache.metadata {
+            return Ok(metadata);
+        }
+
+        let (index, core_type) = (cache.index, cache.core_type);
+        let metadata = self.block_on(CoreMetadata::fetch(&self.core(index), core_type))?;
+        self.cores[position].metadata = Some(metadata);
+        Ok(metadata)
     }
 
     pub fn process(&mut self) -> Result<Duration, anyhow::Error> {

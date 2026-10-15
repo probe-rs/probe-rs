@@ -16,12 +16,11 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
-use probe_rs::CoreRegisters;
-use probe_rs::InstructionSet;
 use probe_rs::config::Registry;
+use probe_rs::{CoreRegisters, CoreType, InstructionSet};
 use probe_rs_rpc::chip::MemoryRegion;
 use probe_rs_rpc::info::WireFlashSector;
-use probe_rs_rpc_client::{RpcClient, SessionInterface};
+use probe_rs_rpc_client::{ClientError, CoreInterface, RpcClient, SessionInterface};
 use tokio::runtime::Handle;
 
 use crate::rpc::functions::core_ops::convert::{from_wire_core_type, from_wire_instruction_set};
@@ -162,8 +161,32 @@ pub(crate) struct GdbCoreInfo {
     pub index: usize,
     pub name: String,
     pub core_type: probe_rs::CoreType,
+    /// `None` while the core is disabled, as a disabled core can't be queried.
+    pub metadata: Option<CoreMetadata>,
+}
+
+/// Register and instruction set of a core, read from the core itself.
+#[derive(Clone, Copy)]
+pub(crate) struct CoreMetadata {
     pub registers: &'static CoreRegisters,
     pub instruction_set: InstructionSet,
+}
+
+impl CoreMetadata {
+    pub async fn fetch(core: &CoreInterface, core_type: CoreType) -> Result<Self, ClientError> {
+        let meta = core.metadata().await?;
+        let instruction_set = from_wire_instruction_set(meta.instruction_set);
+        Ok(Self {
+            registers: CoreRegisters::for_core_type(
+                core_type,
+                meta.fpu_support,
+                meta.floating_point_register_count
+                    .map(|count| count as usize),
+                Some(instruction_set),
+            ),
+            instruction_set,
+        })
+    }
 }
 
 impl GdbSessionContext {
@@ -173,19 +196,24 @@ impl GdbSessionContext {
     ) -> anyhow::Result<Self> {
         let metadata = session.target_metadata().await?;
         let target = registry.get_target_by_name(&metadata.target_name).ok();
+        let enabled_cores: Vec<u32> = session
+            .cores_status(None)
+            .await?
+            .statuses
+            .into_iter()
+            .map(|(index, _)| index)
+            .collect();
 
         let mut cores = Vec::with_capacity(metadata.cores.len());
         for wire_core in &metadata.cores {
             let core_type = from_wire_core_type(wire_core.core_type);
-            let meta = session.core(wire_core.index as usize).metadata().await?;
-            let instruction_set = from_wire_instruction_set(meta.instruction_set);
-            let registers = CoreRegisters::for_core_type(
-                core_type,
-                meta.fpu_support,
-                meta.floating_point_register_count
-                    .map(|count| count as usize),
-                Some(instruction_set),
-            );
+            // The metadata of a disabled core is fetched later, once the core is enabled.
+            let core_metadata = if enabled_cores.contains(&wire_core.index) {
+                let core = session.core(wire_core.index as usize);
+                Some(CoreMetadata::fetch(&core, core_type).await?)
+            } else {
+                None
+            };
 
             let name = target
                 .as_ref()
@@ -197,8 +225,7 @@ impl GdbSessionContext {
                 index: wire_core.index as usize,
                 name,
                 core_type,
-                registers,
-                instruction_set,
+                metadata: core_metadata,
             });
         }
 
