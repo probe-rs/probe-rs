@@ -741,7 +741,7 @@ impl Ch347Device {
 mod tests {
     use super::*;
     use crate::probe::WireProtocol;
-    use crate::probe::ch347::device::tests::{CH347F_1_20, TRST_RELEASE, device, scripted};
+    use crate::probe::ch347::device::tests::{CH347F_1_20, device, scripted};
 
     const DPIDR: Register = Register::dp(0x0);
     const CTRL: Register = Register::CTRL_STAT;
@@ -1405,8 +1405,9 @@ mod tests {
             assert!(request.len() <= MAX_PACKET);
             assert!(reply.len() <= MAX_PACKET);
         }
-        let frames: Vec<(&[u8], &[u8])> = std::iter::once(TRST_RELEASE)
-            .chain(script.iter().map(|(w, r)| (w.as_slice(), r.as_slice())))
+        let frames: Vec<(&[u8], &[u8])> = script
+            .iter()
+            .map(|(w, r)| (w.as_slice(), r.as_slice()))
             .collect();
         let (mut dev, script) = scripted(CH347F_1_20, None, &frames);
         dev.select_protocol(WireProtocol::Swd).unwrap();

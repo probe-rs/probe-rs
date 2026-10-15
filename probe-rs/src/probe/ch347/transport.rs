@@ -50,10 +50,12 @@ pub(crate) enum Ch347Error {
     BatchTooLarge,
     #[error("the reset GPIO did not switch to {0:?}")]
     Reset(Drive),
-    #[error(
-        "target reset needs SWD, where the TRST pin is the reset line, or a board with a reset GPIO"
-    )]
+    #[error("the probe has no reset line: name the reset pin in the driver settings")]
     NoResetPin,
+    #[error("the reset line is on the TRST pin, which JTAG drives: use SWD")]
+    ResetOnTrst,
+    #[error("GPIO{0} is the LED of the board, not a reset line")]
+    ResetPinIsLed(usize),
 }
 
 impl ProbeError for Ch347Error {}

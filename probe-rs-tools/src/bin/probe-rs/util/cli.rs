@@ -59,36 +59,32 @@ type TargetOutputFiles = std::collections::HashMap<ChannelIdentifier, tokio::fs:
 
 pub async fn attach_probe(
     client: &RpcClient,
-    mut probe_options: ProbeOptions,
+    probe_options: ProbeOptions,
     elf_meta: Option<ElfMetadata>,
     resume_target: bool,
 ) -> anyhow::Result<SessionInterface> {
-    let elf_meta = elf_meta.unwrap_or_default();
-
-    if let Some(elf_chip) = &elf_meta.chip
+    if let Some(elf_chip) = elf_meta.as_ref().and_then(|meta| meta.chip.as_ref())
         && let Some(probe_chip) = &probe_options.chip
         && elf_chip.to_lowercase() != probe_chip.to_lowercase()
     {
         anyhow::bail!("elf_chip does not match probe_chip");
     }
 
-    // Load the chip description if provided.
-    if let Some(chip_description) = probe_options.chip_description_path.take() {
-        let file = tokio::fs::read_to_string(&chip_description)
-            .await
-            .with_context(|| {
-                format!(
-                    "Failed to read chip description from {}",
-                    chip_description.display()
-                )
-            })?;
+    let probe = select_attach_probe(client, &probe_options).await?;
+    attach_selected_probe(client, probe, probe_options, elf_meta, resume_target).await
+}
 
-        client.load_chip_family(file).await?;
-    }
-
+/// Selects the probe of `probe_options`, and cycles its power if they ask for it.
+pub async fn select_attach_probe(
+    client: &RpcClient,
+    probe_options: &ProbeOptions,
+) -> anyhow::Result<DebugProbeEntry> {
     let mut probe = match select_probe(
         client,
-        probe_options.probe.map(to_wire_debug_probe_selector),
+        probe_options
+            .probe
+            .clone()
+            .map(to_wire_debug_probe_selector),
         probe_options.non_interactive,
     )
     .await
@@ -109,6 +105,41 @@ pub async fn attach_probe(
         // The probe gets a new USB device address when it enumerates again.
         probe.usb_location = None;
     }
+
+    Ok(probe)
+}
+
+/// Sends the chip description of `probe_options` to the server, and takes it out of the options.
+pub async fn load_chip_description(
+    client: &RpcClient,
+    probe_options: &mut ProbeOptions,
+) -> anyhow::Result<()> {
+    if let Some(chip_description) = probe_options.chip_description_path.take() {
+        let file = tokio::fs::read_to_string(&chip_description)
+            .await
+            .with_context(|| {
+                format!(
+                    "Failed to read chip description from {}",
+                    chip_description.display()
+                )
+            })?;
+
+        client.load_chip_family(file).await?;
+    }
+    Ok(())
+}
+
+/// Attaches to `probe`, which [`select_attach_probe`] selected.
+pub async fn attach_selected_probe(
+    client: &RpcClient,
+    probe: DebugProbeEntry,
+    mut probe_options: ProbeOptions,
+    elf_meta: Option<ElfMetadata>,
+    resume_target: bool,
+) -> anyhow::Result<SessionInterface> {
+    let elf_meta = elf_meta.unwrap_or_default();
+
+    load_chip_description(client, &mut probe_options).await?;
 
     let result = with_slow_attach_feedback(client.attach_probe(AttachRequest {
         chip: probe_options.chip.or(elf_meta.chip),
