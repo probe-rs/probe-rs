@@ -28,6 +28,14 @@ flash_test_binary = "gpio_hal_blinky"
 
 Specifying a binary for flashing is optional.
 
+To turn the USB port power of the probe off and on before each test, add:
+
+```toml
+cycle_power = true
+```
+
+This works only on Linux. The user needs write access to the `disable` file of the USB port in sysfs.
+
 The smoke tester can called like this:
 
 ```console
