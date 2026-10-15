@@ -24,6 +24,7 @@ use std::{
 use time::UtcOffset;
 
 use crate::util::common_options::OperationError;
+use crate::util::probe_config::ProbeConfigs;
 use probe_rs_rpc_client::RpcClient;
 
 #[derive(Debug, thiserror::Error)]
@@ -109,6 +110,7 @@ pub async fn run(
     cmd: Cmd,
     stdio_client: Option<RpcClient>,
     remote: probe_rs_rpc_client::RemoteParams,
+    probe_configs: ProbeConfigs,
     time_offset: UtcOffset,
     log_file: Option<&Path>,
 ) -> Result<()> {
@@ -116,7 +118,15 @@ pub async fn run(
         Some(port) => {
             let ip = cmd.ip.unwrap_or(IpAddr::V4(Ipv4Addr::LOCALHOST));
             let addr = SocketAddr::new(ip, port);
-            debug_tcp(remote, addr, cmd.single_session, log_file, time_offset).await
+            debug_tcp(
+                remote,
+                probe_configs,
+                addr,
+                cmd.single_session,
+                log_file,
+                time_offset,
+            )
+            .await
         }
         None => {
             let Some(client) = stdio_client else {

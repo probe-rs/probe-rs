@@ -19,14 +19,16 @@ use figment2::providers::{Data, Format as _, Json, Toml, Yaml};
 use figment2::value::Value;
 use itertools::Itertools;
 use probe_rs::config::Registry;
-use probe_rs::probe::list::Lister;
+use probe_rs::probe::list::{AllProbesLister, Lister};
 use report::Report;
 use serde::{Deserialize, Serialize};
 use time::{OffsetDateTime, UtcOffset};
 
 use crate::rpc::functions::RpcApp;
+use crate::rpc::probe_broker::ProbeBroker;
 use crate::util::cli::FirmwareExited;
 use crate::util::logging::setup_logging;
+use crate::util::probe_config::{ConfiguredLister, ProbeConfigs};
 use probe_rs_rpc_client::{RemoteParams, RpcClient};
 
 const MAX_LOG_FILES: usize = 20;
@@ -59,6 +61,9 @@ pub(crate) struct Config {
 
     /// A named set of `--key=value` pairs.
     pub presets: HashMap<String, ConfigPreset>,
+
+    /// Settings for each probe, keyed by probe selector.
+    pub probes: ProbeConfigs,
 }
 
 #[derive(clap::Parser)]
@@ -126,16 +131,20 @@ struct Cli {
 }
 
 impl Cli {
-    async fn run(self, client: RpcClient, _config: Config, utc_offset: UtcOffset) -> Result<()> {
-        let lister = Lister::new();
+    async fn run(self, client: RpcClient, config: Config, utc_offset: UtcOffset) -> Result<()> {
+        let lister = Lister::with_lister(Box::new(ConfiguredLister::new(
+            AllProbesLister::new(),
+            config.probes.clone(),
+        )));
         let mut registry = Registry::from_builtin_families();
         match self.subcommand {
             Subcommand::DapServer(cmd) => {
                 let log_path = self.log_file.as_deref();
-                cmd::dap_server::run(cmd, Some(client), None, utc_offset, log_path).await
+                cmd::dap_server::run(cmd, Some(client), None, config.probes, utc_offset, log_path)
+                    .await
             }
             #[cfg(feature = "remote")]
-            Subcommand::Serve(cmd) => cmd.run(_config.server).await,
+            Subcommand::Serve(cmd) => cmd.run(config.server, config.probes).await,
             Subcommand::List(cmd) => cmd.run(client).await,
             Subcommand::Info(cmd) => cmd.run(client).await,
             Subcommand::Gdb(cmd) => cmd.run(client).await,
@@ -405,9 +414,17 @@ async fn run() -> Result<()> {
             unreachable!("checked DapServer above");
         };
         let log_path = log_path.as_deref();
-        cmd::dap_server::run(cmd, None, connection_params, utc_offset, log_path).await
+        cmd::dap_server::run(
+            cmd,
+            None,
+            connection_params,
+            config.probes,
+            utc_offset,
+            log_path,
+        )
+        .await
     } else {
-        run_app(connection_params, async |client| {
+        run_app(connection_params, config.probes.clone(), async |client| {
             anyhow::ensure!(
                 client.is_local_session() || cli.subcommand.is_remote_cmd(),
                 "The subcommand is not supported in remote mode."
@@ -429,6 +446,7 @@ async fn run() -> Result<()> {
 /// Runs the callback using either a local or remote RPC client.
 async fn run_app<R>(
     #[cfg_attr(not(feature = "remote"), expect(unused_variables))] connection_params: RemoteParams,
+    probe_configs: ProbeConfigs,
     cb: impl AsyncFnOnce(RpcClient) -> Result<R>,
 ) -> Result<R> {
     #[cfg(feature = "remote")]
@@ -445,7 +463,7 @@ async fn run_app<R>(
     }
 
     // Create a local server to run commands against.
-    let probe_broker = Arc::new(crate::rpc::probe_broker::ProbeBroker::new());
+    let probe_broker = Arc::new(ProbeBroker::new_with_config(probe_configs));
     let (local_server, tx, rx) =
         RpcApp::create_server(16, rpc::functions::ProbeAccess::All, probe_broker);
     let handle = tokio::spawn(async move { local_server.run().await });

@@ -34,7 +34,7 @@ use std::{
 use crate::{
     rpc::functions::{ProbeAccess, RpcApp},
     rpc::probe_broker::ProbeBroker,
-    util::pwr,
+    util::{probe_config::ProbeConfigs, pwr},
 };
 
 // Sends length-prefixed binary messages to a websocket stream
@@ -160,7 +160,11 @@ async fn server_info() -> Html<String> {
 pub struct Cmd {}
 
 impl Cmd {
-    pub async fn run(self, config: ServerConfig) -> anyhow::Result<()> {
+    pub async fn run(
+        self,
+        config: ServerConfig,
+        probe_configs: ProbeConfigs,
+    ) -> anyhow::Result<()> {
         config.validate()?;
 
         if config.users.is_empty() {
@@ -171,7 +175,7 @@ impl Cmd {
             pwr::power_enable().await?;
         }
 
-        let probe_broker = Arc::new(ProbeBroker::new());
+        let probe_broker = Arc::new(ProbeBroker::new_with_config(probe_configs));
 
         #[cfg(unix)]
         if let Some(socket_path) = config.socket_path() {

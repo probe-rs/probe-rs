@@ -6,6 +6,8 @@ use parking_lot::Mutex;
 use probe_rs::probe::DebugProbeSelector;
 use tokio::sync::oneshot;
 
+use crate::util::probe_config::ProbeConfigs;
+
 /// Grants exclusive use of a probe to one waiter at a time, in the order the
 /// waiters arrived.
 ///
@@ -13,6 +15,8 @@ use tokio::sync::oneshot;
 /// the probe drops the future, which takes it out of the queue.
 pub struct ProbeBroker {
     inner: Mutex<Inner>,
+    /// The probe table of the configuration file.
+    probe_configs: ProbeConfigs,
 }
 
 struct Inner {
@@ -44,12 +48,24 @@ impl Default for ProbeBroker {
 }
 
 impl ProbeBroker {
+    /// Creates a broker with an empty probe table.
     pub fn new() -> Self {
+        Self::new_with_config(ProbeConfigs::default())
+    }
+
+    /// Creates a broker. It gives `probe_configs` to the users of the probes.
+    pub fn new_with_config(probe_configs: ProbeConfigs) -> Self {
         Self {
             inner: Mutex::new(Inner {
                 lanes: HashMap::new(),
             }),
+            probe_configs,
         }
+    }
+
+    /// The probe table of the configuration file.
+    pub fn probe_configs(&self) -> &ProbeConfigs {
+        &self.probe_configs
     }
 
     /// Wait until the probe is free, then take it.

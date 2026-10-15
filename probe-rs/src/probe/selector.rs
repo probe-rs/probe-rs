@@ -96,6 +96,16 @@ impl DebugProbeSelector {
         )
     }
 
+    /// Returns whether a probe that `probe` selects matches this selector.
+    pub fn matches_selector(&self, probe: &DebugProbeSelector) -> bool {
+        self.match_probe_selector(
+            probe.vendor_id,
+            probe.product_id,
+            probe.interface,
+            probe.serial_number.as_deref(),
+        )
+    }
+
     fn match_probe_selector(
         &self,
         vendor_id: u16,

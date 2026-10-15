@@ -162,7 +162,7 @@ async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Res
     #[cfg(not(feature = "remote"))]
     let connection_params = None;
 
-    run_app(connection_params, async move |client| {
+    run_app(connection_params, config.probes, async move |client| {
         run_embed(client, opt, embed_config, &profile_name, work_dir, offset).await
     })
     .await

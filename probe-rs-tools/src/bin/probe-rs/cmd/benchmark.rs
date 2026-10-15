@@ -84,30 +84,29 @@ struct TestData {
 
 impl Cmd {
     pub fn run(self, registry: &mut Registry, lister: &Lister) -> anyhow::Result<()> {
-        let speed = self.common.speed;
         let common_options = self.common.load(registry)?;
-        let mut max_speed = self.max_speed;
-        let mut speeds = vec![];
-        // if no max-speed specified, assume the user just wants to use a single speed (as per other cli cmds)
-        if self.max_speed == 0 {
-            max_speed = speed.unwrap_or(3000);
-            speeds.push(max_speed);
+        // Without a max speed, use one speed like the other commands: from the command line, the
+        // probe table or the probe.
+        let speeds = if self.max_speed == 0 {
+            vec![None]
         } else {
-            speeds.extend_from_slice(&PROBE_SPEEDS);
+            PROBE_SPEEDS
+                .iter()
+                .copied()
+                .filter(|speed| (self.min_speed..=self.max_speed).contains(speed))
+                .map(Some)
+                .collect()
         };
 
         // Repeated attaches can make some targets stop responding.
         let mut printed_info = false;
         let mut last_error = None;
         let mut passed = 0;
-        for speed in speeds
-            .iter()
-            .filter(|speed| (self.min_speed..=max_speed).contains(*speed))
-        {
+        for speed in speeds {
             let res = Cmd::benchmark_at_speed(
                 &common_options,
                 lister,
-                *speed,
+                speed,
                 self.address,
                 self.word_size,
                 self.iterations,
@@ -116,6 +115,7 @@ impl Cmd {
             match res {
                 Ok(count) => passed += count,
                 Err(e) => {
+                    let speed = speed.map_or("default".to_string(), |speed| speed.to_string());
                     println!(
                         "Test failed for speed {} word_size {}bit - {}",
                         speed, self.word_size, e
@@ -131,24 +131,28 @@ impl Cmd {
         Ok(())
     }
 
-    /// Attach once at `speed` and run every [`TEST_SIZES`] benchmark in that session.
+    /// Attach once at `speed`, or at the default speed, and run every [`TEST_SIZES`] benchmark in
+    /// that session.
     ///
     /// Prints the probe and target info unless `printed_info` is already set. Returns the number
     /// of tests that passed.
     fn benchmark_at_speed(
         common_options: &LoadedProbeOptions,
         lister: &Lister,
-        speed: u32,
+        speed: Option<u32>,
         address: u64,
         word_size: u32,
         iterations: usize,
         printed_info: &mut bool,
     ) -> Result<usize, anyhow::Error> {
         let mut probe = common_options.attach_probe(lister)?;
-        if probe.set_speed(speed).is_err() {
+        if let Some(speed) = speed
+            && probe.set_speed(speed).is_err()
+        {
             println!("failed to set speed {speed}");
             return Ok(0);
         }
+        let speed = probe.speed_khz();
 
         let protocol_name = probe
             .protocol()

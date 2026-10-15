@@ -37,6 +37,7 @@ use crate::rpc::{
         test::{list_tests, run_test, test_kickoff},
     },
 };
+use crate::util::probe_config::ConfiguredLister;
 use probe_rs_rpc::transport::memory::{WireRx, WireTx};
 
 use anyhow::anyhow;
@@ -316,10 +317,11 @@ impl RpcContext {
         lister: Arc<dyn ProbeLister + Send + Sync>,
         probe_broker: Arc<ProbeBroker>,
     ) -> Self {
+        let configs = probe_broker.probe_configs().clone();
         Self {
             state: ConnectionState::new(),
             sender: None,
-            lister,
+            lister: Arc::new(ConfiguredLister::new(ArcLister(lister), configs)),
             probe_broker,
         }
     }
