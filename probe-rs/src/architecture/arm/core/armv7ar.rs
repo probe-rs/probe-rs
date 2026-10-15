@@ -181,6 +181,12 @@ impl<'probe> Armv7ar<'probe> {
             };
 
             state.current_state = core_state;
+
+            // DBGVCR persists across sessions. U is shared by HardFault and HLT, count it as HLT.
+            let address = Dbgvcr::get_mmio_address_from_base(base_address)?;
+            let dbgvcr = Dbgvcr(memory.read_word_32(address)?);
+            state.catch_hardfault = dbgvcr.sp() || dbgvcr.sd();
+            state.catch_hlt = dbgvcr.su();
         }
 
         let mut core = Self {
@@ -400,11 +406,116 @@ impl<'probe> Armv7ar<'probe> {
         super::update_core_status(&mut self.memory, &mut self.state.current_state, new_status);
     }
 
+    fn set_vector_catch(
+        &mut self,
+        condition: VectorCatchCondition,
+        enable: bool,
+    ) -> Result<(), Error> {
+        let address = Dbgvcr::get_mmio_address_from_base(self.base_address)?;
+        let mut dbgvcr = Dbgvcr(self.memory.read_word_32(address)?);
+
+        match condition {
+            VectorCatchCondition::CoreReset => dbgvcr.set_r(enable),
+            VectorCatchCondition::Svc => dbgvcr.set_ss(enable),
+            // Undefined Instruction, Prefetch Abort and Data Abort.
+            VectorCatchCondition::HardFault => {
+                self.state.catch_hardfault = enable;
+                dbgvcr.set_sp(enable);
+                dbgvcr.set_sd(enable);
+            }
+            VectorCatchCondition::Hlt => self.state.catch_hlt = enable,
+            VectorCatchCondition::SecureFault | VectorCatchCondition::All => {
+                return Err(Error::NotImplemented(
+                    "vector catch condition SecureFault/All",
+                ));
+            }
+        }
+        if matches!(
+            condition,
+            VectorCatchCondition::HardFault | VectorCatchCondition::Hlt
+        ) {
+            dbgvcr.set_su(self.state.catch_hardfault || self.state.catch_hlt);
+        }
+
+        self.memory.write_word_32(address, dbgvcr.into())?;
+        Ok(())
+    }
+
+    /// Whether the core halted on the Undefined Instruction vector catch, which only HLT
+    /// semihosting asked for. Call it after [`check_for_semihosting`] found no semihosting call.
+    fn undef_left_to_application(&mut self) -> Result<bool, Error> {
+        if !self.state.catch_hlt || self.state.catch_hardfault {
+            return Ok(false);
+        }
+        let pc: u32 = self.read_core_reg(self.program_counter().id)?.try_into()?;
+        Ok(pc & VECTOR_TABLE_MASK == UNDEF_VECTOR_OFFSET)
+    }
+
+    /// Resumes a core halted by the Undefined Instruction vector catch into the exception handler.
+    fn resume_into_undef_handler(&mut self) -> Result<(), Error> {
+        let address = Dbgvcr::get_mmio_address_from_base(self.base_address)?;
+        let dbgvcr = Dbgvcr(self.memory.read_word_32(address)?);
+
+        // The catch may match the vector address, so step over the vector with it disabled.
+        let mut stepping = dbgvcr;
+        stepping.set_su(false);
+        self.memory.write_word_32(address, stepping.into())?;
+        let stepped = self.step();
+        self.memory.write_word_32(address, dbgvcr.into())?;
+        stepped?;
+
+        self.update_status()?;
+        self.run()
+    }
+
+    /// Reads the core status. Unlike [`CoreInterface::status`], it never resumes the core.
+    fn update_status(&mut self) -> Result<CoreStatus, Error> {
+        let address = Dbgdscr::get_mmio_address_from_base(self.base_address)?;
+        let dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
+
+        if dbgdscr.halted() {
+            let mut reason = dbgdscr.halt_reason();
+
+            // Set the status so semihosting decoding can read registers
+            self.set_core_status(CoreStatus::Halted(reason));
+
+            self.read_fp_reg_count()?;
+
+            // Check for semihosting on SVC & HLT (UNDEF) vector catch
+            if let HaltReason::Exception = reason {
+                let lr: u32 = self.read_core_reg(RegisterId(14))?.try_into()?;
+                let catch_hlt = self.state.catch_hlt;
+
+                self.state.semihosting_command = check_for_semihosting(
+                    self.state.semihosting_command.take(),
+                    self,
+                    lr,
+                    catch_hlt,
+                )?;
+                if let Some(command) = self.state.semihosting_command {
+                    reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(command));
+                    self.set_core_status(CoreStatus::Halted(reason));
+                }
+            }
+
+            return Ok(CoreStatus::Halted(reason));
+        }
+        // Core is neither halted nor sleeping, so we assume it is running.
+        if self.state.current_state.is_halted() {
+            tracing::warn!("Core is running, but we expected it to be halted");
+        }
+
+        self.set_core_status(CoreStatus::Running);
+
+        Ok(CoreStatus::Running)
+    }
+
     pub(crate) fn halted_access<R>(
         &mut self,
         op: impl FnOnce(&mut Self) -> Result<R, Error>,
     ) -> Result<R, Error> {
-        let was_running = !(self.state.current_state.is_halted() || self.status()?.is_halted());
+        let was_running =
+            !(self.state.current_state.is_halted() || self.update_status()?.is_halted());
 
         if was_running {
             self.halt(Duration::from_millis(100))?;
@@ -725,40 +836,14 @@ impl CoreInterface for Armv7ar<'_> {
     }
 
     fn status(&mut self) -> Result<crate::core::CoreStatus, Error> {
-        // determine current state
-        let address = Dbgdscr::get_mmio_address_from_base(self.base_address)?;
-        let dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
-
-        if dbgdscr.halted() {
-            let mut reason = dbgdscr.halt_reason();
-
-            // Set the status so semihosting decoding can read registers
-            self.set_core_status(CoreStatus::Halted(reason));
-
-            self.read_fp_reg_count()?;
-
-            // Check for semihosting on SVC & HLT (UNDEF) vector catch
-            if let HaltReason::Exception = reason {
-                let lr: u32 = self.read_core_reg(RegisterId(14))?.try_into()?;
-
-                self.state.semihosting_command =
-                    check_for_semihosting(self.state.semihosting_command.take(), self, lr)?;
-                if let Some(command) = self.state.semihosting_command {
-                    reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(command));
-                    self.set_core_status(CoreStatus::Halted(reason));
-                }
-            }
-
-            return Ok(CoreStatus::Halted(reason));
+        let status = self.update_status()?;
+        if status == CoreStatus::Halted(HaltReason::Exception)
+            && self.undef_left_to_application()?
+        {
+            self.resume_into_undef_handler()?;
+            return Ok(CoreStatus::Running);
         }
-        // Core is neither halted nor sleeping, so we assume it is running.
-        if self.state.current_state.is_halted() {
-            tracing::warn!("Core is running, but we expected it to be halted");
-        }
-
-        self.set_core_status(CoreStatus::Running);
-
-        Ok(CoreStatus::Running)
+        Ok(status)
     }
 
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
@@ -770,7 +855,7 @@ impl CoreInterface for Armv7ar<'_> {
             self.reset_register_cache();
         }
         // Update core status
-        let _ = self.status()?;
+        let _ = self.update_status()?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(self.program_counter().into())?;
@@ -835,7 +920,7 @@ impl CoreInterface for Armv7ar<'_> {
 
         // Recompute / verify current state
         self.set_core_status(CoreStatus::Running);
-        let _ = self.status()?;
+        let _ = self.update_status()?;
 
         Ok(())
     }
@@ -852,7 +937,7 @@ impl CoreInterface for Armv7ar<'_> {
 
         // Recompute / verify current state
         self.set_core_status(CoreStatus::Running);
-        let _ = self.status()?;
+        let _ = self.update_status()?;
 
         Ok(())
     }
@@ -890,7 +975,7 @@ impl CoreInterface for Armv7ar<'_> {
         // Clear any cached semihosting command from before reset
         self.state.semihosting_command = None;
 
-        let _ = self.status()?;
+        let _ = self.update_status()?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(self.program_counter().into())?;
@@ -932,16 +1017,16 @@ impl CoreInterface for Armv7ar<'_> {
         self.memory
             .write_word_32(bp_control_addr, bp_control.into())?;
 
-        // Resume
-        self.run()?;
-
-        // Wait for halt
-        self.wait_for_core_halted(Duration::from_millis(100))?;
+        // Resume and wait for halt
+        let stepped = self
+            .run()
+            .and_then(|()| self.wait_for_core_halted(Duration::from_millis(100)));
 
         // Reset breakpoint
         self.memory.write_word_32(bp_value_addr, saved_bp_value)?;
         self.memory
             .write_word_32(bp_control_addr, saved_bp_control)?;
+        stepped?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(self.program_counter().into())?;
@@ -1252,43 +1337,11 @@ impl CoreInterface for Armv7ar<'_> {
     }
 
     fn enable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
-        let address = Dbgvcr::get_mmio_address_from_base(self.base_address)?;
-        let mut dbgvcr = Dbgvcr(self.memory.read_word_32(address)?);
-
-        match condition {
-            VectorCatchCondition::CoreReset => dbgvcr.set_r(true),
-            VectorCatchCondition::Svc => dbgvcr.set_ss(true),
-            VectorCatchCondition::Hlt => dbgvcr.set_su(true),
-            // HardFault/SecureFault are Cortex-M concepts, not applicable to ARMv7-A/R
-            _ => {
-                return Err(Error::NotImplemented(
-                    "vector catch condition Hardfault/SecureFault",
-                ));
-            }
-        }
-
-        self.memory.write_word_32(address, dbgvcr.into())?;
-        Ok(())
+        self.set_vector_catch(condition, true)
     }
 
     fn disable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
-        let address = Dbgvcr::get_mmio_address_from_base(self.base_address)?;
-        let mut dbgvcr = Dbgvcr(self.memory.read_word_32(address)?);
-
-        match condition {
-            VectorCatchCondition::CoreReset => dbgvcr.set_r(false),
-            VectorCatchCondition::Svc => dbgvcr.set_ss(false),
-            VectorCatchCondition::Hlt => dbgvcr.set_su(false),
-            // HardFault/SecureFault are Cortex-M concepts, not applicable to ARMv7-A/R
-            _ => {
-                return Err(Error::NotImplemented(
-                    "vector catch condition Hardfault/SecureFault",
-                ));
-            }
-        }
-
-        self.memory.write_word_32(address, dbgvcr.into())?;
-        Ok(())
+        self.set_vector_catch(condition, false)
     }
 }
 
@@ -1687,6 +1740,11 @@ impl MemoryInterface for Armv7ar<'_> {
     }
 }
 
+/// Offset of the Undefined Instruction vector in the vector table.
+const UNDEF_VECTOR_OFFSET: u32 = 0x04;
+/// The vector table is 32-byte aligned.
+const VECTOR_TABLE_MASK: u32 = 32 - 1;
+
 /// Check if the current vector catch halt is a semihosting call.
 ///
 /// Supports two semihosting mechanisms on A/R-profile cores:
@@ -1699,6 +1757,7 @@ pub(crate) fn check_for_semihosting(
     cached_command: Option<SemihostingCommand>,
     core: &mut dyn CoreInterface,
     lr: u32,
+    catch_hlt: bool,
 ) -> Result<Option<SemihostingCommand>, Error> {
     // Return cached command if already decoded (avoid re-decoding on repeated status() calls)
     if let Some(command) = cached_command {
@@ -1713,9 +1772,7 @@ pub(crate) fn check_for_semihosting(
     // - UNDEF vector (0x04): HLT-based semihosting (HLT is undefined on ARMv7)
     let pc: u32 = core.read_core_reg(core.program_counter().id)?.try_into()?;
 
-    const UNDEF_VECTOR_OFFSET: u32 = 0x04;
     const SVC_VECTOR_OFFSET: u32 = 0x08;
-    const VECTOR_TABLE_MASK: u32 = 32 - 1;
 
     let vector_offset = pc & VECTOR_TABLE_MASK;
 
@@ -1727,6 +1784,12 @@ pub(crate) fn check_for_semihosting(
             pc,
             vector_offset
         );
+        return Ok(None);
+    }
+
+    // The Undefined Instruction vector catch is also used by HardFault, only service HLT when
+    // asked to.
+    if vector_offset == UNDEF_VECTOR_OFFSET && !catch_hlt {
         return Ok(None);
     }
 
@@ -1997,6 +2060,13 @@ mod test {
         );
     }
 
+    fn add_vector_catch_expectations(probe: &mut MockProbe) {
+        probe.expected_read(
+            Dbgvcr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            0,
+        );
+    }
+
     fn add_enable_itr_expectations(probe: &mut MockProbe) {
         let mut dbgdscr = Dbgdscr(0);
         dbgdscr.set_halted(true);
@@ -2163,6 +2233,7 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
+        add_vector_catch_expectations(&mut probe);
         add_enable_itr_expectations(&mut probe);
         add_read_reg_expectations(&mut probe, 0, 0);
         add_read_fp_count_expectations(&mut probe);
@@ -2186,6 +2257,7 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
+        add_vector_catch_expectations(&mut probe);
         add_enable_itr_expectations(&mut probe);
         add_read_reg_expectations(&mut probe, 0, 0);
         add_read_fp_count_expectations(&mut probe);
@@ -2226,6 +2298,7 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
+        add_vector_catch_expectations(&mut probe);
         add_enable_itr_expectations(&mut probe);
         add_read_reg_expectations(&mut probe, 0, 0);
         add_read_fp_count_expectations(&mut probe);
@@ -2267,6 +2340,7 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
+        add_vector_catch_expectations(&mut probe);
         add_enable_itr_expectations(&mut probe);
         add_read_reg_expectations(&mut probe, 0, 0);
         add_read_fp_count_expectations(&mut probe);
@@ -2300,6 +2374,7 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
+        add_vector_catch_expectations(&mut probe);
         add_enable_itr_expectations(&mut probe);
         add_read_reg_expectations(&mut probe, 0, 0);
         add_read_fp_count_expectations(&mut probe);
@@ -2338,6 +2413,7 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
+        add_vector_catch_expectations(&mut probe);
         add_enable_itr_expectations(&mut probe);
         add_read_reg_expectations(&mut probe, 0, 0);
         add_read_fp_count_expectations(&mut probe);
@@ -2378,6 +2454,7 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
+        add_vector_catch_expectations(&mut probe);
         add_enable_itr_expectations(&mut probe);
         add_read_reg_expectations(&mut probe, 0, 0);
         add_read_fp_count_expectations(&mut probe);
@@ -2418,6 +2495,7 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
+        add_vector_catch_expectations(&mut probe);
         add_enable_itr_expectations(&mut probe);
         add_read_reg_expectations(&mut probe, 0, 0);
         add_read_fp_count_expectations(&mut probe);
@@ -2458,6 +2536,7 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, false);
+        add_vector_catch_expectations(&mut probe);
 
         // Write halt request
         let mut dbgdrcr = Dbgdrcr(0);
@@ -2504,6 +2583,7 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
+        add_vector_catch_expectations(&mut probe);
         add_enable_itr_expectations(&mut probe);
         add_read_reg_expectations(&mut probe, 0, 0);
         add_read_fp_count_expectations(&mut probe);
@@ -2560,6 +2640,7 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
+        add_vector_catch_expectations(&mut probe);
         add_enable_itr_expectations(&mut probe);
         add_read_reg_expectations(&mut probe, 0, 0);
         add_read_fp_count_expectations(&mut probe);
@@ -2591,6 +2672,7 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
+        add_vector_catch_expectations(&mut probe);
         add_enable_itr_expectations(&mut probe);
         add_read_reg_expectations(&mut probe, 0, 0);
         add_read_fp_count_expectations(&mut probe);
@@ -2661,6 +2743,7 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
+        add_vector_catch_expectations(&mut probe);
         add_enable_itr_expectations(&mut probe);
         add_read_reg_expectations(&mut probe, 0, 0);
         add_read_fp_count_expectations(&mut probe);
@@ -2705,6 +2788,7 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
+        add_vector_catch_expectations(&mut probe);
         add_enable_itr_expectations(&mut probe);
         add_read_reg_expectations(&mut probe, 0, 0);
         add_read_fp_count_expectations(&mut probe);
@@ -2743,6 +2827,7 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
+        add_vector_catch_expectations(&mut probe);
         add_enable_itr_expectations(&mut probe);
         add_read_reg_expectations(&mut probe, 0, 0);
         add_read_fp_count_expectations(&mut probe);
@@ -2770,6 +2855,7 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
+        add_vector_catch_expectations(&mut probe);
         add_enable_itr_expectations(&mut probe);
         add_read_reg_expectations(&mut probe, 0, 0);
         add_read_fp_count_expectations(&mut probe);

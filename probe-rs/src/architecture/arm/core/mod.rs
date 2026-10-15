@@ -220,6 +220,10 @@ pub struct CortexARState {
 
     // Cached semihosting command (for A/R-profile semihosting)
     pub(crate) semihosting_command: Option<SemihostingCommand>,
+
+    // Enabled vector catches that use the Undefined Instruction vector catch
+    pub(crate) catch_hardfault: bool,
+    pub(crate) catch_hlt: bool,
 }
 
 impl CortexARState {
@@ -231,6 +235,8 @@ impl CortexARState {
             register_cache: vec![],
             fp_reg_count: 0,
             semihosting_command: None,
+            catch_hardfault: false,
+            catch_hlt: false,
         }
     }
 
