@@ -26,6 +26,7 @@ clap = { version = "4.5", features = ["derive", "env"] }
 linkme = "0.3.25"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
 tracing = "0.1.44"
+nusb.workspace = true
 libtest-mimic = "0.8.1"
 smoke_tester_macros = { version = "0.32.0", path = "../smoke-tester-macros" }
 
