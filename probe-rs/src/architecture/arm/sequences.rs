@@ -1223,6 +1223,12 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         Ok(())
     }
 
+    /// This sequence is called before an image that boots from RAM is written, after the cores
+    /// that boot from it were reset and halted.
+    fn prepare_loading_to_ram(&self, _session: &mut crate::Session) -> Result<(), crate::Error> {
+        Ok(())
+    }
+
     /// Called before attaching to a core. May update the session-local memory map.
     fn on_attach(
         &self,
