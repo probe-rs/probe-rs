@@ -1,5 +1,5 @@
-//! Board GPIO wiring. Supports the target reset line and an activity LED, opt-in by USB identity.
-//! Without a known board, SWD drives the reset line on the otherwise unused TRST pin.
+//! Board GPIO wiring. Supports the target reset line and an activity LED, opt-in by USB identity
+//! or by the driver settings.
 
 use std::num::NonZeroU8;
 use std::thread::sleep;
@@ -7,8 +7,9 @@ use std::time::{Duration, Instant};
 
 use nusb::{DeviceInfo, MaybeFuture};
 
-use crate::probe::{DebugProbeError, Pins, WireProtocol};
+use crate::probe::{DebugProbeError, Pins};
 
+use super::Ch347ResetPin;
 use super::capabilities::Variant;
 use super::device::{Ch347Device, PID_CH347F, VID_WCH};
 use super::transport::{Ch347Error, HEADER_LEN, TIMEOUT, frame};
@@ -51,8 +52,8 @@ impl Drive {
     }
 }
 
-/// A board's GPIO wiring, matched on the full USB identity. An unmatched device never gets a GPIO
-/// written.
+/// A board's GPIO wiring, matched on the full USB identity. An unmatched device gets no GPIO write,
+/// unless the driver settings name a reset pin.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Board {
     pub name: &'static str,
@@ -177,32 +178,44 @@ impl PinState {
     }
 }
 
-/// SWD leaves the TRST pin free, so without a board it is the reset line. It is pin 9 on both
-/// chips, but a different GPIO. Released to input, so the line needs a pull-up.
-fn trst_reset_pin(variant: Variant) -> ResetPin {
-    ResetPin {
-        gpio: match variant {
-            Variant::Ch347F => 3,
-            Variant::Ch347T => 5,
-        },
-        release: Drive::Input,
+/// The GPIO behind the TRST pin. It is pin 9 on both chips, but a different GPIO.
+fn trst_gpio(variant: Variant) -> usize {
+    match variant {
+        Variant::Ch347F => 3,
+        Variant::Ch347T => 5,
     }
 }
 
 impl Ch347Device {
-    /// A known board's wiring wins; without a board, the TRST pin while in SWD.
-    fn reset_line(&self, protocol: WireProtocol) -> Option<ResetPin> {
-        match self.board {
-            Some(board) => board.reset,
-            None => {
-                (protocol == WireProtocol::Swd).then(|| trst_reset_pin(self.capabilities.variant))
-            }
+    /// Puts the target's reset line on `pin`, in place of the board's. The line is released to
+    /// an input, so it needs a pull-up.
+    pub(crate) fn set_reset_pin(&mut self, pin: Ch347ResetPin) -> Result<(), DebugProbeError> {
+        let gpio = match pin {
+            Ch347ResetPin::Trst => trst_gpio(self.capabilities.variant),
+            Ch347ResetPin::Gpio(gpio) => usize::from(gpio),
+        };
+        if self
+            .board
+            .and_then(|board| board.led)
+            .is_some_and(|led| led.gpio == gpio)
+        {
+            return Err(Ch347Error::ResetPinIsLed(gpio).into());
         }
+        self.reset_pin = Some(ResetPin {
+            gpio,
+            release: Drive::Input,
+        });
+        Ok(())
+    }
+
+    /// JTAG drives the TRST pin, so it cannot also be the reset line.
+    pub(super) fn reset_on_trst(&self) -> bool {
+        self.reset_pin
+            .is_some_and(|pin| pin.gpio == trst_gpio(self.capabilities.variant))
     }
 
     fn reset_pin(&self) -> Result<ResetPin, DebugProbeError> {
-        self.reset_line(self.protocol)
-            .ok_or(Ch347Error::NoResetPin.into())
+        self.reset_pin.ok_or(Ch347Error::NoResetPin.into())
     }
 
     fn gpio_frame(
@@ -236,6 +249,7 @@ impl Ch347Device {
     /// the line's level afterwards.
     fn drive_reset(&mut self, pin: ResetPin, assert: bool) -> Result<bool, DebugProbeError> {
         let drive = if assert { Drive::Low } else { pin.release };
+        self.reset_driven = true;
         // Recorded before the write, so a lost reply still gets the line released.
         if assert {
             self.reset_asserted = Some(pin);
@@ -265,33 +279,10 @@ impl Ch347Device {
         self.set_reset(false)
     }
 
-    /// Releases the reset line at session start, whatever the protocol. The chip keeps GPIO
-    /// state, so a session killed mid-reset leaves the target held.
+    /// Releases the reset line. The chip keeps GPIO state, so a session killed mid-reset leaves
+    /// the target held.
     pub(super) fn release_reset(&mut self) -> Result<(), DebugProbeError> {
-        if let Some(pin) = self.reset_line(self.protocol) {
-            self.drive_reset(pin, false)?;
-        }
-        Ok(())
-    }
-
-    /// Hands the reset line over to `protocol`. A line that only exists in the old protocol is
-    /// released rather than lost track of, and one that appears is released like at session
-    /// start, as an earlier session may have left it low.
-    pub(super) fn switch_reset_line(
-        &mut self,
-        protocol: WireProtocol,
-    ) -> Result<(), DebugProbeError> {
-        let old = self.reset_line(self.protocol);
-        let new = self.reset_line(protocol);
-        if old == new {
-            return Ok(());
-        }
-        if let Some(pin) = old
-            && self.reset_asserted.is_some()
-        {
-            self.drive_reset(pin, false)?;
-        }
-        if let Some(pin) = new {
+        if let Some(pin) = self.reset_pin {
             self.drive_reset(pin, false)?;
         }
         Ok(())
@@ -392,7 +383,7 @@ impl Drop for Ch347Device {
 
 #[cfg(test)]
 mod tests {
-    use super::super::device::tests::{CH347F_1_20, PACK_PROBE, TRST_RELEASE, device, scripted};
+    use super::super::device::tests::{CH347F_1_20, device, scripted};
     use super::*;
     use crate::probe::{BitSequence, WireProtocol};
 
@@ -464,67 +455,50 @@ mod tests {
         dev.release_reset().unwrap();
     }
 
-    // The generic CH347F's TRST pin is GPIO3, byte index 6 of the pin block.
+    // The CH347F's TRST pin is GPIO3, byte index 6 of the pin block.
     const TRST_LOW: (&[u8], &[u8]) = (
         &[0xCC, 8, 0, 0, 0, 0, 0xF0, 0, 0, 0, 0],
         &[0xCC, 8, 0, 0, 0, 0, 0x80, 0, 0, 0, 0],
     );
-
-    /// A generic CH347F, switched to SWD.
-    fn generic_swd(
-        frames: &[(&[u8], &[u8])],
-    ) -> (
-        Ch347Device,
-        std::sync::Arc<super::super::device::tests::Script>,
-    ) {
-        let frames: Vec<_> = std::iter::once(TRST_RELEASE)
-            .chain(frames.iter().copied())
-            .collect();
-        let (mut dev, script) = device(&frames);
-        dev.select_protocol(WireProtocol::Swd).unwrap();
-        (dev, script)
-    }
+    const TRST_RELEASE: (&[u8], &[u8]) = (
+        &[0xCC, 8, 0, 0, 0, 0, 0xC0, 0, 0, 0, 0],
+        &[0xCC, 8, 0, 0, 0, 0, 0x40, 0, 0, 0, 0],
+    );
 
     #[test]
-    fn generic_reset_is_the_trst_pin_in_swd() {
-        let (mut dev, script) = generic_swd(&[TRST_LOW, TRST_RELEASE]);
+    fn trst_reset_pin_is_released_at_attach() {
+        let swd_init: (&[u8], &[u8]) = (
+            &[0xE5, 8, 0, 0x40, 0x42, 0x0F, 0x00, 4, 0, 0, 0],
+            &[0xE5, 1, 0, 0],
+        );
+        let (mut dev, script) = device(&[TRST_RELEASE, swd_init, TRST_LOW, TRST_RELEASE]);
+        dev.set_reset_pin(Ch347ResetPin::Trst).unwrap();
+        dev.select_protocol(WireProtocol::Swd).unwrap();
+        dev.set_speed(300).unwrap();
+        dev.attach().unwrap();
         dev.target_reset_assert().unwrap();
         dev.target_reset_deassert().unwrap();
         assert!(script.finished());
     }
 
     #[test]
-    fn leaving_swd_releases_a_held_trst_reset() {
-        let (mut dev, script) =
-            generic_swd(&[TRST_LOW, TRST_RELEASE, (PACK_PROBE, &[0xD0, 1, 0, 1])]);
-        dev.target_reset_assert().unwrap();
-        dev.select_protocol(WireProtocol::Jtag).unwrap();
-        // Over JTAG the pin is TRST, and the line is gone.
-        assert!(matches!(
-            dev.target_reset_assert(),
-            Err(DebugProbeError::ProbeSpecific(_))
-        ));
-        drop(dev);
-        assert!(script.finished());
+    fn trst_reset_pin_rejects_jtag() {
+        // GPIO3 is the TRST pin of the CH347F.
+        for pin in [Ch347ResetPin::Trst, Ch347ResetPin::Gpio(3)] {
+            let (mut dev, script) = device(&[]);
+            dev.set_reset_pin(pin).unwrap();
+            assert!(matches!(
+                dev.set_speed(1000),
+                Err(DebugProbeError::ProbeSpecific(_))
+            ));
+            assert!(script.finished());
+        }
     }
 
     #[test]
-    fn drop_releases_a_held_trst_reset() {
-        let (mut dev, script) = generic_swd(&[TRST_LOW, TRST_RELEASE]);
-        dev.target_reset_assert().unwrap();
-        drop(dev);
-        assert!(script.finished());
-    }
-
-    #[test]
-    fn a_board_overrides_the_trst_pin() {
-        let (mut dev, script) =
-            wch_probe(&[(RESET_LOW, PINS_RESET_LOW), (RESET_INPUT, PINS_RESET_HIGH)]);
-        // The board's line is the same in both protocols, so switching leaves it alone.
-        dev.select_protocol(WireProtocol::Swd).unwrap();
-        dev.target_reset_assert().unwrap();
-        drop(dev);
-        assert!(script.finished());
+    fn reset_pin_is_not_the_led() {
+        let (mut dev, _) = wch_probe(&[]);
+        assert!(dev.set_reset_pin(Ch347ResetPin::Gpio(0)).is_err());
     }
 
     #[test]

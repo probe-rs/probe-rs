@@ -67,8 +67,13 @@ pub(crate) struct Ch347Device {
     pub(super) capabilities: Capabilities,
     pub(super) board: Option<Board>,
     pub(super) protocol: WireProtocol,
+    /// The GPIO wired to the target's reset line: the board's, or the one the driver settings
+    /// name.
+    pub(super) reset_pin: Option<ResetPin>,
     /// The reset line while pulled low.
     pub(super) reset_asserted: Option<ResetPin>,
+    /// Set once this session drives the reset line.
+    pub(super) reset_driven: bool,
     /// Some for a session, between attach and detach.
     pub(super) led: Option<LedActivity>,
     pub(super) timing: Timing,
@@ -150,8 +155,7 @@ impl Ch347Device {
         let transport = UsbTransport::open(interface, out, inp);
 
         let mut device = Self::new(Box::new(transport), capabilities, board);
-        // The chip keeps GPIO state across sessions, set to known state.
-        device.release_reset()?;
+        // The chip keeps GPIO state across sessions.
         device.set_led(false)?;
         Ok(device)
     }
@@ -166,7 +170,9 @@ impl Ch347Device {
             capabilities,
             board,
             protocol: WireProtocol::Jtag,
+            reset_pin: board.and_then(|board| board.reset),
             reset_asserted: None,
+            reset_driven: false,
             led: None,
             timing: Timing::DEFAULT,
             pack: None,
@@ -209,7 +215,6 @@ impl Ch347Device {
         &mut self,
         protocol: WireProtocol,
     ) -> Result<(), DebugProbeError> {
-        self.switch_reset_line(protocol)?;
         self.protocol = protocol;
         let khz = self.requested_khz.unwrap_or(self.default_khz());
         self.clock = Some(match self.resolve(khz) {
@@ -244,6 +249,11 @@ impl Ch347Device {
 
     /// Runs the protocol's init with the resolved clock.
     pub(crate) fn attach(&mut self) -> Result<(), DebugProbeError> {
+        // The chip keeps GPIO state across sessions, and an earlier session may have left the
+        // target held. Connect under reset asserts the line before attach, so leave it then.
+        if !self.reset_driven {
+            self.release_reset()?;
+        }
         match self.clock()? {
             Clock::Jtag { index, khz } => {
                 if !self.capabilities.bytewise_jtag() {
@@ -397,23 +407,17 @@ pub(crate) mod tests {
         dev
     }
 
-    /// A generic CH347: no board, so the only GPIO is the reset line on the TRST pin in SWD.
+    /// A generic CH347: no board, no GPIO.
     pub(crate) fn device(frames: &[(&[u8], &[u8])]) -> (Ch347Device, Arc<Script>) {
         scripted(CH347F_1_20, None, frames)
     }
 
     pub(crate) const PACK_PROBE: &[u8] = &[0xD0, 6, 0, 0, 9, 0x22, 0x22, 0x22, 0x22];
 
-    /// Entering SWD releases the generic CH347F's reset line, GPIO3 on the TRST pin.
-    pub(crate) const TRST_RELEASE: (&[u8], &[u8]) = (
-        &[0xCC, 8, 0, 0, 0, 0, 0xC0, 0, 0, 0, 0],
-        &[0xCC, 8, 0, 0, 0, 0, 0x40, 0, 0, 0, 0],
-    );
-
     #[test]
     fn the_5mhz_gate_caps_the_swd_default() {
         // A firmware past the gate (see `Capabilities::swd_5mhz`) defaults SWD to 5 MHz.
-        let (mut dev, _) = device(&[TRST_RELEASE]);
+        let (mut dev, _) = device(&[]);
         dev.select_protocol(WireProtocol::Swd).unwrap();
         assert_eq!(dev.speed_khz(), 5000);
         // One below it caps at 1 MHz instead.
@@ -421,7 +425,7 @@ pub(crate) mod tests {
             variant: Variant::Ch347F,
             firmware: 0x100,
         };
-        let (mut dev, _) = scripted(pre_gate, None, &[TRST_RELEASE]);
+        let (mut dev, _) = scripted(pre_gate, None, &[]);
         dev.select_protocol(WireProtocol::Swd).unwrap();
         assert_eq!(dev.speed_khz(), 1000);
     }
@@ -429,13 +433,11 @@ pub(crate) mod tests {
     #[test]
     fn speed_is_resolved_per_protocol_and_sent_at_attach() {
         let (mut dev, script) = device(&[
-            TRST_RELEASE,
             (PACK_PROBE, &[0xD0, 1, 0, 1]),
             (
                 &[0xD0, 6, 0, 0, 3, 0x22, 0x22, 0x22, 0x22],
                 &[0xD0, 1, 0, 0],
             ),
-            TRST_RELEASE,
         ]);
         dev.select_protocol(WireProtocol::Swd).unwrap();
         assert_eq!(dev.set_speed(4000).unwrap(), 1000);
@@ -449,13 +451,10 @@ pub(crate) mod tests {
 
     #[test]
     fn swd_attach_sends_the_divisor_and_skips_the_pack_probe() {
-        let (mut dev, script) = device(&[
-            TRST_RELEASE,
-            (
-                &[0xE5, 8, 0, 0x40, 0x42, 0x0F, 0x00, 4, 0, 0, 0],
-                &[0xE5, 1, 0, 0],
-            ),
-        ]);
+        let (mut dev, script) = device(&[(
+            &[0xE5, 8, 0, 0x40, 0x42, 0x0F, 0x00, 4, 0, 0, 0],
+            &[0xE5, 1, 0, 0],
+        )]);
         dev.select_protocol(WireProtocol::Swd).unwrap();
         assert_eq!(dev.set_speed(300).unwrap(), 250);
         dev.attach().unwrap();
@@ -465,11 +464,7 @@ pub(crate) mod tests {
     #[test]
     fn mismatched_reply_poisons_the_device() {
         let init: &[u8] = &[0xE5, 8, 0, 0x40, 0x42, 0x0F, 0x00, 0, 0, 0, 0];
-        let (mut dev, script) = device(&[
-            TRST_RELEASE,
-            (init, &[0xD0, 1, 0, 0]),
-            (init, &[0xE5, 1, 0, 0]),
-        ]);
+        let (mut dev, script) = device(&[(init, &[0xD0, 1, 0, 0]), (init, &[0xE5, 1, 0, 0])]);
         dev.select_protocol(WireProtocol::Swd).unwrap();
         assert!(dev.attach().is_err());
         assert!(dev.attach().is_err());
@@ -479,7 +474,7 @@ pub(crate) mod tests {
     #[test]
     fn timeout_poisons_the_device() {
         let init: &[u8] = &[0xE5, 8, 0, 0x40, 0x42, 0x0F, 0x00, 0, 0, 0, 0];
-        let (mut dev, script) = device(&[TRST_RELEASE, (init, &[]), (init, &[0xE5, 1, 0, 0])]);
+        let (mut dev, script) = device(&[(init, &[]), (init, &[0xE5, 1, 0, 0])]);
         dev.select_protocol(WireProtocol::Swd).unwrap();
         assert!(matches!(dev.attach(), Err(DebugProbeError::Usb(_))));
         assert!(dev.attach().is_err());
@@ -488,7 +483,7 @@ pub(crate) mod tests {
 
     #[test]
     fn unsupported_speed_falls_back_to_the_default_on_protocol_change() {
-        let (mut dev, script) = device(&[TRST_RELEASE, (PACK_PROBE, &[0xD0, 1, 0, 1])]);
+        let (mut dev, script) = device(&[(PACK_PROBE, &[0xD0, 1, 0, 1])]);
         dev.select_protocol(WireProtocol::Swd).unwrap();
         assert_eq!(dev.set_speed(100).unwrap(), 100);
         dev.select_protocol(WireProtocol::Jtag).unwrap();

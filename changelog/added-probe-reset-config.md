@@ -1,0 +1,1 @@
+Added `reset_line_connected` and driver settings to the `probes` table of the configuration file. The CH347 reset pin can be configured to TRST or a GPIO.
