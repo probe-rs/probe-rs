@@ -6,9 +6,9 @@
 macro_rules! skip_test {
     ($reason:expr) => {
         println!("Skipping test: {}", $reason);
-        return Ok(());
+        return Err($crate::TestError::Skipped);
     };
     () => {
-        return Ok(());
+        return Err($crate::TestError::Skipped);
     };
 }

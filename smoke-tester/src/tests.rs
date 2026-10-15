@@ -1,7 +1,6 @@
 use std::time::Instant;
 
 use anyhow::Context;
-use libtest_mimic::Failed;
 use linkme::distributed_slice;
 use probe_rs::{
     Architecture, Core, CoreInterface, MemoryInterface, Session,
@@ -286,7 +285,7 @@ fn test_hw_breakpoints(_definition: &DutDefinition, core: &mut Core) -> TestResu
 }
 
 #[smoke_tester_macros::test(session)]
-pub fn test_flashing(dut_definition: &DutDefinition, session: &mut Session) -> Result<(), Failed> {
+pub fn test_flashing(dut_definition: &DutDefinition, session: &mut Session) -> TestResult {
     let Some(test_binary) = dut_definition.flash_test_binary.as_deref() else {
         skip_test!("No flash test binary specified");
     };
