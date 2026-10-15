@@ -527,6 +527,19 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         interface: &mut dyn DebugPortWire,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
+        self.debug_port_setup_default(interface, dp)
+    }
+
+    /// The stock `DebugPortSetup` implementation, split out from
+    /// [`debug_port_setup`](ArmDebugSequence::debug_port_setup) so that vendor sequences which
+    /// only need to add device-specific steps can run it without copying the body.
+    ///
+    /// There is no reason to override this; override `debug_port_setup` and call this from it.
+    fn debug_port_setup_default(
+        &self,
+        interface: &mut dyn DebugPortWire,
+        dp: DpAddress,
+    ) -> Result<(), ArmError> {
         // TODO: Handle this differently for ST-Link?
         tracing::debug!("Setting up debug port {dp:x?}");
 

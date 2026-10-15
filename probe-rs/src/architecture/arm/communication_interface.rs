@@ -522,19 +522,24 @@ impl ArmCommunicationInterface {
 
         let sequence = self.sequence.clone();
 
-        if let Some(current_dp) = self.current_dp.take() {
-            let others: Vec<DpAddress> = self
-                .dps
-                .keys()
-                .copied()
-                .filter(|dp| *dp != current_dp)
-                .collect();
+        // `current_dp` is `None` if the last DP switch failed. Then the wire selects no
+        // known DP, and all DPs need a connection before they can be stopped.
+        let current_dp = self.current_dp.take();
+        let others: Vec<DpAddress> = self
+            .dps
+            .keys()
+            .copied()
+            .filter(|dp| Some(*dp) != current_dp)
+            .collect();
 
+        if current_dp.is_some() || !others.is_empty() {
             let _ = self.with_debug_port_wire(|wire| {
                 let _stop_span = tracing::debug_span!("debug_port_stop").entered();
 
                 // Stop the current DP, which may not be one of the known ones (i.e. RP2040 rescue DP).
-                sequence.debug_port_stop(&mut *wire, current_dp).ok();
+                if let Some(current_dp) = current_dp {
+                    sequence.debug_port_stop(&mut *wire, current_dp).ok();
+                }
 
                 drop(_stop_span);
 
@@ -865,7 +870,8 @@ impl ArmCommunicationInterface {
             tracing::debug!("Selecting DP {:x?}", dp);
 
             switched_dp = true;
-            let previous_dp = self.current_dp;
+            // If the switch fails, the wire does not select any known DP.
+            let previous_dp = self.current_dp.take();
 
             self.with_debug_port_wire(|wire| {
                 wire.raw_flush()?;
