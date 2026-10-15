@@ -1,5 +1,6 @@
 use super::{debugger::Debugger, rpc_lifetime::with_dap_rpc_connection};
 use crate::cmd::dap_server::debug_adapter::{dap::adapter::*, protocol::DapAdapter};
+use crate::util::probe_config::ProbeConfigs;
 use anyhow::{Context, Result};
 use probe_rs_rpc_client::{RemoteParams, RpcClient};
 use serde::Deserialize;
@@ -35,6 +36,7 @@ impl std::str::FromStr for TargetSessionType {
 
 pub async fn debug_tcp(
     remote: RemoteParams,
+    probe_configs: ProbeConfigs,
     addr: std::net::SocketAddr,
     single_session: bool,
     log_file: Option<&Path>,
@@ -85,20 +87,21 @@ pub async fn debug_tcp(
                 // Flush any pending log messages to the debug adapter Console Log.
                 debugger.debug_logger.flush_to_dap(&mut debug_adapter)?;
 
-                let end_message = match with_dap_rpc_connection(&remote, async |client| {
-                    debugger
-                        .debug_session_rpc(client, debug_adapter)
-                        .await
-                        .map_err(|error| anyhow::anyhow!("{error:?}"))
-                })
-                .await
-                {
-                    Err(error) => {
-                        eprintln!("Session ended with error: {error:?}");
-                        format!("Session ended: {error}")
-                    }
-                    Ok(()) => format!("Closing debug session from: {addr}"),
-                };
+                let end_message =
+                    match with_dap_rpc_connection(&remote, &probe_configs, async |client| {
+                        debugger
+                            .debug_session_rpc(client, debug_adapter)
+                            .await
+                            .map_err(|error| anyhow::anyhow!("{error:?}"))
+                    })
+                    .await
+                    {
+                        Err(error) => {
+                            eprintln!("Session ended with error: {error:?}");
+                            format!("Session ended: {error}")
+                        }
+                        Ok(()) => format!("Closing debug session from: {addr}"),
+                    };
                 debugger.debug_logger.log_to_console(&end_message)?;
 
                 // Terminate after a single debug session. This is the behaviour expected by VSCode

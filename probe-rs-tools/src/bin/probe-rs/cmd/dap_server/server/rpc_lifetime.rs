@@ -12,6 +12,8 @@ use std::sync::Arc;
 use tokio::task::JoinHandle;
 
 use crate::rpc::functions::{ProbeAccess, RpcApp};
+use crate::rpc::probe_broker::ProbeBroker;
+use crate::util::probe_config::ProbeConfigs;
 #[cfg(feature = "remote")]
 use probe_rs_rpc_client::connect;
 use probe_rs_rpc_client::{RemoteParams, RpcClient};
@@ -27,6 +29,7 @@ impl DapRpcConnection {
     /// Open a fresh RPC connection for one DAP client session.
     pub(crate) async fn open(
         #[cfg_attr(not(feature = "remote"), expect(unused))] remote: &RemoteParams,
+        probe_configs: &ProbeConfigs,
     ) -> Result<Self> {
         #[cfg(feature = "remote")]
         if let Some((host, token)) = remote {
@@ -39,7 +42,7 @@ impl DapRpcConnection {
             });
         }
 
-        let probe_broker = Arc::new(crate::rpc::probe_broker::ProbeBroker::new());
+        let probe_broker = Arc::new(ProbeBroker::new_with_config(probe_configs.clone()));
         let (local_server, tx, rx) = RpcApp::create_server(16, ProbeAccess::All, probe_broker);
         let handle = tokio::spawn(local_server.run());
         let client = RpcClient::new_local_from_wire(tx, rx);
@@ -74,9 +77,10 @@ impl DapRpcConnection {
 /// normal and error exits from `f`.
 pub(crate) async fn with_dap_rpc_connection<R>(
     remote: &RemoteParams,
+    probe_configs: &ProbeConfigs,
     f: impl AsyncFnOnce(&RpcClient) -> Result<R>,
 ) -> Result<R> {
-    let conn = DapRpcConnection::open(remote).await?;
+    let conn = DapRpcConnection::open(remote, probe_configs).await?;
     let result = f(conn.client()).await;
     conn.close().await;
     result
@@ -217,19 +221,21 @@ mod tests {
 
         let local_remote: RemoteParams = None;
 
-        let first_hash = with_dap_rpc_connection(&local_remote, async |client| {
-            let resolved = client.resolve_upload(&path).await?;
-            Ok(resolved.content_hash)
-        })
-        .await
-        .unwrap();
+        let first_hash =
+            with_dap_rpc_connection(&local_remote, &ProbeConfigs::default(), async |client| {
+                let resolved = client.resolve_upload(&path).await?;
+                Ok(resolved.content_hash)
+            })
+            .await
+            .unwrap();
 
-        let second_hash = with_dap_rpc_connection(&local_remote, async |client| {
-            let resolved = client.resolve_upload(&path).await?;
-            Ok(resolved.content_hash)
-        })
-        .await
-        .unwrap();
+        let second_hash =
+            with_dap_rpc_connection(&local_remote, &ProbeConfigs::default(), async |client| {
+                let resolved = client.resolve_upload(&path).await?;
+                Ok(resolved.content_hash)
+            })
+            .await
+            .unwrap();
 
         assert_eq!(first_hash, second_hash);
     }
