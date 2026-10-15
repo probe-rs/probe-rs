@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::{
     MemoryMappedRegister,
     architecture::arm::{
-        ArmError,
+        ArmError, DebugPortWire,
         armv6m::{Aircr, Demcr},
         dp::{Ctrl, DpAddress, DpRegister},
         memory::ArmMemoryInterface,
@@ -34,6 +34,25 @@ impl Rp2040 {
 }
 
 impl ArmDebugSequence for Rp2040 {
+    fn debug_port_setup(
+        &self,
+        interface: &mut dyn DebugPortWire,
+        dp: DpAddress,
+    ) -> Result<(), ArmError> {
+        let result = self.debug_port_setup_default(interface, dp);
+        if result.is_err() && dp != RESCUE_DP {
+            // A power-up request on the rescue DP holds the chip in reset. An interrupted
+            // reset sequence can leave the request set, so clear it and try again.
+            tracing::warn!("Debug port {dp:x?} does not respond, clearing the rescue DP");
+            if self.debug_port_connect(interface, RESCUE_DP).is_ok()
+                && self.debug_port_stop(interface, RESCUE_DP).is_ok()
+            {
+                return self.debug_port_setup_default(interface, dp);
+            }
+        }
+        result
+    }
+
     fn reset_system(
         &self,
         core: &mut dyn ArmMemoryInterface,
