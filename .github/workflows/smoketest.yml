@@ -11,19 +11,15 @@ name: Run smoke test
 env:
   CARGO_INCREMENTAL: 0
 
-# Cancel any currently running workflows from the same PR, branch, or
-# tag when a new workflow is triggered.
-#
-# https://stackoverflow.com/a/66336834
-concurrency:
-  cancel-in-progress: true
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-
 jobs:
   build-smoke-tester:
     # Skip the slow hardware tests on draft PRs.
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04-arm
+    # A new run of the same PR, branch, or tag cancels this job.
+    concurrency:
+      cancel-in-progress: true
+      group: ${{ github.workflow }}-build-smoke-tester-${{ github.event.pull_request.number || github.ref }}
 
     steps:
       - name: Checkout sources
@@ -51,6 +47,10 @@ jobs:
   build-probe-rs:
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
+    # A new run of the same PR, branch, or tag cancels this job.
+    concurrency:
+      cancel-in-progress: true
+      group: ${{ github.workflow }}-build-probe-rs-${{ github.event.pull_request.number || github.ref }}
 
     steps:
       - name: Checkout sources
@@ -77,6 +77,11 @@ jobs:
 
   test:
     runs-on: ["self-hosted", "linux", "ARM64", "${{ matrix.runner }}"]
+    # Do not cancel a running hardware job: that can leave the boards in a bad state.
+    # A new run of the same PR, branch, or tag waits for it.
+    concurrency:
+      cancel-in-progress: false
+      group: ${{ github.workflow }}-test-${{ matrix.runner }}-${{ github.event.pull_request.number || github.ref }}
     strategy:
       fail-fast: false
       matrix:
@@ -107,6 +112,11 @@ jobs:
 
   embedded-test:
     runs-on: ["self-hosted", "linux", "ARM64", "${{ matrix.runner }}"]
+    # Do not cancel a running hardware job: that can leave the boards in a bad state.
+    # A new run of the same PR, branch, or tag waits for it.
+    concurrency:
+      cancel-in-progress: false
+      group: ${{ github.workflow }}-embedded-test-${{ matrix.runner }}-${{ github.event.pull_request.number || github.ref }}
     strategy:
       matrix:
         runner: ["smoke-tester-2"]
