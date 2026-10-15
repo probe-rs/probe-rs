@@ -238,6 +238,36 @@ pub(crate) fn exit_halt(memory: &mut dyn ArmMemoryInterface, step: bool) -> Resu
     memory.flush()
 }
 
+/// Clear C_STEP and C_MASKINTS left by a step since a system reset does not clear DHCSR.
+///
+/// C_HALT is set in the write that changes C_MASKINTS as exit_halt does.
+/// When halt is false and the core was running a second write clears C_HALT again.
+pub(crate) fn clear_step_before_reset(
+    memory: &mut dyn ArmMemoryInterface,
+    halt: bool,
+) -> Result<(), ArmError> {
+    let mut dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address())?);
+    if !dhcsr.c_step() && !dhcsr.c_maskints() {
+        return Ok(());
+    }
+    let was_halted = dhcsr.c_halt();
+
+    dhcsr.set_c_step(false);
+    dhcsr.set_c_maskints(false);
+    dhcsr.set_c_halt(true);
+    dhcsr.enable_write();
+    memory.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
+    memory.flush()?;
+
+    if !halt && !was_halted {
+        dhcsr.set_c_halt(false);
+        dhcsr.enable_write();
+        memory.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
+        memory.flush()?;
+    }
+    Ok(())
+}
+
 /// Set DHCSR.C_DEBUGEN, keeping the debug key so the write is not ignored.
 pub(crate) fn enable_halting_debug(memory: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
     let mut dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address())?);
