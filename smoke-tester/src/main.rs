@@ -13,7 +13,19 @@ mod dut_definition;
 mod macros;
 mod tests;
 
-pub type TestResult = Result<(), Failed>;
+pub type TestResult = Result<(), TestError>;
+
+/// The reason a test did not pass.
+pub enum TestError {
+    Skipped,
+    Failed(Failed),
+}
+
+impl<E: Into<Failed>> From<E> for TestError {
+    fn from(error: E) -> Self {
+        TestError::Failed(error.into())
+    }
+}
 
 #[derive(Debug, Parser)]
 #[clap(name = "smoke-tester")]
@@ -96,8 +108,8 @@ fn run_test(mut args: Arguments, definitions: &[DutDefinition]) -> Result<ExitCo
                     .context("Failed to attach to chip")?;
 
                 match (test.test_fn)(&session_definition, &mut session) {
-                    Ok(()) => Ok(()),
-                    Err(err) => Err(err),
+                    Ok(()) | Err(TestError::Skipped) => Ok(()),
+                    Err(TestError::Failed(err)) => Err(err),
                 }
             })
             .with_kind(&chip_name);
@@ -154,7 +166,12 @@ fn run_test(mut args: Arguments, definitions: &[DutDefinition]) -> Result<ExitCo
 
                     core.reset_and_halt(Duration::from_millis(500))?;
 
-                    let result = (test_struct.test_fn)(&definition, &mut core);
+                    let result = match (test_struct.test_fn)(&definition, &mut core) {
+                        Ok(()) => Ok(()),
+                        // A skipped test leaves the core halted.
+                        Err(TestError::Skipped) => return Ok(()),
+                        Err(TestError::Failed(err)) => Err(err),
+                    };
 
                     // Ensure core is not running anymore.
                     core.reset_and_halt(Duration::from_millis(200))
