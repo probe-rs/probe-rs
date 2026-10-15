@@ -113,6 +113,12 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
     }
 
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
+        // `attach` sets the speed of the other protocol.
+        match self.protocol {
+            WireProtocol::Swd => self.jtag_speed_khz = speed_khz,
+            WireProtocol::Jtag => self.swd_speed_khz = speed_khz,
+        }
+
         match self.hw_version.cmp(&3) {
             Ordering::Less => match self.protocol {
                 WireProtocol::Swd => {
