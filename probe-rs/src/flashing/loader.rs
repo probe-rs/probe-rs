@@ -948,6 +948,8 @@ impl FlashLoader {
                     })
                     .map_err(FlashError::Core)?;
             }
+
+            session.prepare_loading_to_ram().map_err(FlashError::Core)?;
         }
 
         let mut ram_write_result = Ok(());
