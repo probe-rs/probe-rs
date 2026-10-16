@@ -420,6 +420,23 @@ impl Cmd {
                             break 'commands;
                         }
                     },
+                    // The debug session runs inline (see `server` above), so it
+                    // has to be polled here too: nothing else advances the
+                    // session that answers the command this loop waits for.
+                    res = &mut server, if server_result.is_none() => {
+                        server_result = Some(res);
+
+                        // Drain what the session queued before it returned: a
+                        // failing command is answered with an error response
+                        // and then ends the session, so without this drain the
+                        // error would be discarded.
+                        while let Ok((event, body)) = msg_receiver.try_recv() {
+                            if let Err(error) = debug_client.process_event(&event, body) {
+                                command_result = Err(error);
+                            }
+                        }
+                        break 'commands;
+                    },
                     _ = debug_client.req_sender.closed() => break 'commands,
                 }
             }
