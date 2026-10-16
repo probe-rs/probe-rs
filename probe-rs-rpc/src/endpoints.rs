@@ -28,7 +28,8 @@ use crate::info::{InfoEvent, TargetInfoRequest, TargetMetadataRequest, TargetMet
 use crate::memory::{ReadBytesRequest, ReadMemoryRequest, WriteMemoryRequest};
 use crate::monitor::{MonitorRequest, MonitorResponse, RttEvent, SemihostingEvent};
 use crate::probe::{
-    AttachRequest, AttachResponse, ListProbesResponse, SelectProbeRequest, SelectProbeResponse,
+    AttachRequest, AttachResponse, DetachRequest, DetachResponse, ListProbesResponse,
+    SelectProbeRequest, SelectProbeResponse,
 };
 use crate::reset::{ResetCoreAndHaltRequest, ResetCoreRequest};
 use crate::rtt_client::{
@@ -73,6 +74,7 @@ endpoints! {
     | ListProbesEndpoint        | ()                      | ListProbesResponse      | "probe/list"       |
     | SelectProbeEndpoint       | SelectProbeRequest      | SelectProbeResponse     | "probe/select"     |
     | AttachEndpoint            | AttachRequest           | AttachResponse          | "probe/attach"     |
+    | DetachEndpoint            | DetachRequest           | DetachResponse          | "probe/detach"     |
 
     | HaltCoresEndpoint         | HaltCoresRequest        | CoresStatusResponse     | "cores/halt"       |
     | ResumeCoresEndpoint       | CoresRequest            | CoresStatusResponse     | "cores/resume"     |
