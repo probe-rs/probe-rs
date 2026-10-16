@@ -209,11 +209,11 @@ impl RunLoop {
                     if let Some(reason) = return_reason {
                         return reason;
                     }
+                    // The poll fails once the client stops listening.
+                    if self.cancellation_token.is_cancelled() {
+                        return Ok(ReturnReason::Cancelled);
+                    }
                     next_poll = next_poll.min(poller_result?);
-                }
-
-                if self.cancellation_token.is_cancelled() {
-                    return Ok(ReturnReason::Cancelled);
                 }
 
                 let now = Instant::now();
