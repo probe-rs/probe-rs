@@ -296,6 +296,14 @@ fn expand_batch(
                 }
 
                 let next_transfer = transfers.get(transfer_index + 1);
+                // Give the AP time to finish the write.
+                // A read sent too soon gets WAIT.
+                if !probe_handles_pipeline
+                    && buffered_write
+                    && next_transfer.is_some_and(is_ap_read)
+                {
+                    expanded.idle(settings.idle_cycles_before_write_verify as u32);
+                }
                 let need_extra = !probe_handles_pipeline
                     && extra_rdbuff_needed(
                         need_ap_read,
