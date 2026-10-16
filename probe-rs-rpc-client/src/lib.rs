@@ -296,10 +296,13 @@ pub async fn connect(
     let req = ClientRequestBuilder::new(uri).with_header("User-Agent", user_agent);
 
     // TODO: implement something more secure
-    let rustls_connector = ClientConfig::builder()
+    let provider = Arc::new(rustls::crypto::ring::default_provider());
+    let rustls_connector = ClientConfig::builder_with_provider(provider.clone())
+        .with_safe_default_protocol_versions()
+        .map_err(|error| TransportError::Message(format!("Failed to configure TLS: {error}")))?
         .dangerous()
         .with_custom_certificate_verifier(Arc::new(tls::NoCertificateVerification::new(
-            rustls::crypto::ring::default_provider(),
+            (*provider).clone(),
         )))
         .with_no_client_auth();
 
