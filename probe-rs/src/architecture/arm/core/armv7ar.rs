@@ -29,7 +29,7 @@ use crate::{
         VectorCatchCondition,
     },
     error::Error,
-    memory::{MemoryNotAlignedError, valid_32bit_address},
+    memory::{MemoryNotAlignedError, Operation, OperationKind, valid_32bit_address},
     semihosting::{SemihostingCommand, decode_semihosting_syscall},
 };
 use std::{
@@ -285,14 +285,13 @@ impl<'probe> Armv7ar<'probe> {
         instruction: u32,
         value: u32,
     ) -> Result<(), Error> {
-        // Move value
+        // Move value, and see whether the core has it
         let address = Dbgdtrrx::get_mmio_address_from_base(self.base_address)?;
-        self.memory.write_word_32(address, value)?;
+        let mut dbgdscr =
+            write_then_read_dbgdscr(&mut *self.memory, self.base_address, address, value)?;
 
         // Wait for RXfull
         let address = Dbgdscr::get_mmio_address_from_base(self.base_address)?;
-        let mut dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
-
         let start = Instant::now();
         while !dbgdscr.rxfull_l() {
             dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
@@ -597,20 +596,46 @@ fn check_and_clear_data_abort(
     Ok(())
 }
 
+/// Write a debug register and read back DBGDSCR, in one probe transaction where the memory
+/// interface can batch them.
+///
+/// Feeding the core is a run of these: put a value in DBGDTRRX or an instruction in DBGITR, then
+/// read DBGDSCR to see whether it was taken. Done as two accesses, every step costs two round
+/// trips to the probe. The write has finished before the read in either case, so batching
+/// changes nothing but the count.
+fn write_then_read_dbgdscr(
+    memory: &mut dyn ArmMemoryInterface,
+    base_address: u64,
+    address: u64,
+    value: u32,
+) -> Result<Dbgdscr, ArmError> {
+    let dbgdscr_address = Dbgdscr::get_mmio_address_from_base(base_address)?;
+    let mut dbgdscr = 0;
+    {
+        let mut operations = [
+            Operation::new(address, OperationKind::WriteWord32(value)),
+            Operation::new(
+                dbgdscr_address,
+                OperationKind::Read32(std::slice::from_mut(&mut dbgdscr)),
+            ),
+        ];
+        memory.execute_operations(&mut operations)?;
+    }
+    Ok(Dbgdscr(dbgdscr))
+}
+
 /// Execute a single instruction.
 fn execute_instruction(
     memory: &mut dyn ArmMemoryInterface,
     base_address: u64,
     instruction: u32,
 ) -> Result<Dbgdscr, ArmError> {
-    // Run instruction
+    // Run instruction, and see whether it has completed
     let address = Dbgitr::get_mmio_address_from_base(base_address)?;
-    memory.write_word_32(address, instruction)?;
+    let mut dbgdscr = write_then_read_dbgdscr(memory, base_address, address, instruction)?;
 
     // Wait for completion
     let address = Dbgdscr::get_mmio_address_from_base(base_address)?;
-    let mut dbgdscr = Dbgdscr(memory.read_word_32(address)?);
-
     let start = Instant::now();
     while !dbgdscr.instrcoml_l() {
         dbgdscr = Dbgdscr(memory.read_word_32(address)?);
@@ -634,14 +659,12 @@ fn set_instruction_input(
     base_address: u64,
     value: u32,
 ) -> Result<(), ArmError> {
-    // Move value
+    // Move value, and see whether the core has it
     let address = Dbgdtrrx::get_mmio_address_from_base(base_address)?;
-    memory.write_word_32(address, value)?;
+    let mut dbgdscr = write_then_read_dbgdscr(memory, base_address, address, value)?;
 
     // Wait for RXfull
     let address = Dbgdscr::get_mmio_address_from_base(base_address)?;
-    let mut dbgdscr = Dbgdscr(memory.read_word_32(address)?);
-
     let start = Instant::now();
     while !dbgdscr.rxfull_l() {
         dbgdscr = Dbgdscr(memory.read_word_32(address)?);
