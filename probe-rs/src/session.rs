@@ -154,34 +154,27 @@ impl ArchitectureInterface {
                 }
             }
             ArchitectureInterface::Jtag(probe, ifaces) => {
-                attach_jtag(combined_state, probe, ifaces, target)
+                let idx = combined_state.jtag_tap_index();
+                if let Some(mut chain) = probe.try_as_jtag_chain() {
+                    chain.select(idx)?;
+                }
+                match &mut ifaces[idx] {
+                    JtagInterface::Riscv(state) => {
+                        let factory = probe.try_get_riscv_interface_builder()?;
+                        let iface = factory.attach_auto(target, state)?;
+                        combined_state.attach_riscv(target, iface)
+                    }
+                    JtagInterface::Xtensa(state) => {
+                        let iface = probe.try_get_xtensa_interface(state)?;
+                        combined_state.attach_xtensa(target, iface)
+                    }
+                    JtagInterface::Unknown => {
+                        unreachable!(
+                            "Tried to attach to unknown interface {idx}. This should never happen."
+                        )
+                    }
+                }
             }
-        }
-    }
-}
-
-fn attach_jtag<'probe>(
-    combined_state: &'probe mut CombinedCoreState,
-    probe: &'probe mut Probe,
-    ifaces: &'probe mut [JtagInterface],
-    target: &'probe Target,
-) -> Result<Core<'probe>, Error> {
-    let idx = combined_state.jtag_tap_index();
-    if let Some(mut chain) = probe.try_as_jtag_chain() {
-        chain.select(idx)?;
-    }
-    match &mut ifaces[idx] {
-        JtagInterface::Riscv(state) => {
-            let factory = probe.try_get_riscv_interface_builder()?;
-            let iface = factory.attach_auto(target, state)?;
-            combined_state.attach_riscv(target, iface)
-        }
-        JtagInterface::Xtensa(state) => {
-            let iface = probe.try_get_xtensa_interface(state)?;
-            combined_state.attach_xtensa(target, iface)
-        }
-        JtagInterface::Unknown => {
-            unreachable!("Tried to attach to unknown interface {idx}. This should never happen.")
         }
     }
 }
