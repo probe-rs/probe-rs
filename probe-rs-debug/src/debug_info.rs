@@ -1680,6 +1680,12 @@ pub fn unwind_program_counter_register(
                         "PC=(unwound (LR - 2) & !0b1) (dwarf Undefined)",
                     )
                 }
+                // The return address is the instruction after the call. Back up to the call,
+                // which belongs to the caller even when a noreturn call is its last instruction.
+                Some(InstructionSet::A32) => (
+                    Some(RegisterValue::U32(return_address - 4)),
+                    "PC=(unwound LR - 4) (dwarf Undefined)",
+                ),
                 Some(InstructionSet::RV32C) => (
                     Some(RegisterValue::U32(return_address - 2)),
                     "PC=(unwound x1 - 2) (dwarf Undefined)",
@@ -2709,6 +2715,16 @@ mod test {
         assert_eq!(
             unwind_program_counter_register(mepc, 0x8000_2000, Some(InstructionSet::RV32), false),
             Some(RegisterValue::U32(0x8000_1230))
+        );
+    }
+
+    #[test]
+    fn unwind_pc_from_a32_call() {
+        let lr = RegisterValue::U32(0x104);
+
+        assert_eq!(
+            unwind_program_counter_register(lr, 0x200, Some(InstructionSet::A32), false),
+            Some(RegisterValue::U32(0x100))
         );
     }
 
