@@ -325,8 +325,8 @@ impl DebugSequence {
 }
 
 pub(crate) trait MemoryApExt {
-    // Retrieve the Coresight MemoryAP through which this core or
-    // memory port is accessed, if available.
+    /// Retrieve the Coresight MemoryAP through which this core or
+    /// memory port is accessed, if available.
     fn memory_ap(&self) -> Option<FullyQualifiedApAddress>;
 }
 
