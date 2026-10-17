@@ -8,6 +8,7 @@ use crate::probe::{
         commands::jtag::sequence::{Sequence, SequenceRequest},
     },
     jtag::{Step, TapState, distribute_captures, tms_runs, walk_batch},
+    swd::SwdProbe,
 };
 
 pub mod configure;
@@ -25,6 +26,15 @@ impl JtagChainAccess for CmsisDap {
 
     fn chain_state_ref(&self) -> &JtagChainState {
         &self.jtag_state
+    }
+
+    fn native_dap_transfers_mut(&mut self) -> Option<&mut dyn SwdProbe> {
+        // `DAP_Transfer` works over JTAG once the firmware knows the scan chain.
+        if self.native_jtag_transfers() {
+            Some(self)
+        } else {
+            None
+        }
     }
 }
 

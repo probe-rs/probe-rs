@@ -33,6 +33,8 @@ use super::{
 };
 use probe_rs_target::ScanChainElement;
 
+use crate::probe::swd::SwdProbe;
+
 pub(crate) use self::chain::ChainParams;
 
 /// Scan chain state held by a JTAG probe between batch runs.
@@ -353,6 +355,20 @@ pub trait JtagChainAccess: JtagProbe {
 
     /// Returns the driver state.
     fn chain_state_ref(&self) -> &JtagChainState;
+
+    /// Returns the probe's own DP and AP transfers, if its firmware performs them over JTAG.
+    ///
+    /// Without this, the ARM interface builds every DP and AP access from raw JTAG shifts, which
+    /// costs several round trips to the probe per access. A probe whose firmware performs a
+    /// DPACC or APACC access itself, as CMSIS-DAP's `DAP_Transfer` and `DAP_TransferBlock` do,
+    /// returns them here, and the ARM interface sends its DP and AP accesses that way instead.
+    ///
+    /// The transfers must reach the DAP at [`JtagChainState::chain_params`], start and end
+    /// with the TAP in Run-Test/Idle, and send a write to ABORT to the JTAG ABORT instruction,
+    /// since DP address 0 is reserved in JTAG.
+    fn native_dap_transfers_mut(&mut self) -> Option<&mut dyn SwdProbe> {
+        None
+    }
 }
 
 /// Bit-banging JTAG interface for probe drivers.

@@ -22,12 +22,13 @@ use crate::{
         },
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeSelector, JtagChain, JtagChainAccess,
+        BatchError, DebugProbe, DebugProbeError, DebugProbeSelector, JtagChain, JtagChainAccess,
         JtagChainState, ProbeFactory, WireProtocol,
         cmsisdap::commands::{
             CmsisDapError, RequestError,
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
         },
+        jtag::{JtagBatch, JtagProbe, TapState},
         swd::SwdProbe,
     },
 };
@@ -55,7 +56,7 @@ use commands::{
         sequence::{SequenceRequest, SequenceResponse},
     },
     swo,
-    transfer::{Ack, TransferRequest, configure::ConfigureRequest},
+    transfer::{Ack, TransferRequest, configure::ConfigureRequest, write_abort::WriteAbortRequest},
 };
 use probe_rs_target::ScanChainElement;
 
@@ -108,6 +109,11 @@ pub struct CmsisDap {
     transfer_wait_retry: u16,
 
     jtag_state: JtagChainState,
+
+    /// Whether the firmware has been given the scan chain with `DAP_JTAG_Configure` since it
+    /// last connected. In JTAG mode `DAP_Transfer` needs it to reach the DAP, so the native
+    /// transfers are only offered once it is set.
+    jtag_configured: bool,
 }
 
 impl std::fmt::Debug for CmsisDap {
@@ -187,6 +193,7 @@ impl CmsisDap {
             speed_khz: 1_000,
             transfer_wait_retry: 0,
             jtag_state: JtagChainState::default(),
+            jtag_configured: false,
         })
     }
 
@@ -533,6 +540,12 @@ impl CmsisDap {
     }
 
     fn write_abort(&mut self, abort: Abort) -> Result<(), ArmError> {
+        if self.protocol == Some(WireProtocol::Jtag) {
+            return self
+                .write_abort_command(abort.into())
+                .map_err(ArmError::Probe);
+        }
+
         let mut request = TransferRequest::write(Abort::ADDRESS, abort.into());
         request.dap_index = self.jtag_state.chain_params.index as u8;
         let response =
@@ -730,11 +743,14 @@ impl CmsisDap {
             .ok();
         }
         self.connected = true;
+        self.jtag_configured = false;
 
         Ok(())
     }
 
     pub(crate) fn configure_jtag(&mut self, skip_scan: bool) -> Result<(), DebugProbeError> {
+        // Until the new chain is in the firmware, the old one may not describe the target.
+        self.jtag_configured = false;
         let ir_lengths = if skip_scan {
             let expected = self
                 .jtag_state
@@ -775,8 +791,50 @@ impl CmsisDap {
         };
         tracing::info!("Configuring JTAG with ir lengths: {:?}", ir_lengths);
         self.send_jtag_configure(JtagConfigureRequest::new(ir_lengths)?)?;
+        self.jtag_configured = true;
 
         Ok(())
+    }
+
+    /// Write ABORT with `DAP_WriteABORT`.
+    ///
+    /// Over JTAG, ABORT is an instruction of its own and DP address 0 is reserved, so a
+    /// `DAP_Transfer` write to it does not reach ABORT. This command does, in either mode.
+    pub(crate) fn write_abort_command(&mut self, value: u32) -> Result<(), DebugProbeError> {
+        let request = WriteAbortRequest {
+            dap_index: self.jtag_state.chain_params.index as u8,
+            abort: value,
+        };
+        let response =
+            commands::send_command(&mut self.device, &request).map_err(DebugProbeError::from)?;
+        match response.status {
+            Status::DapOk => Ok(()),
+            Status::DapError => Err(DebugProbeError::Other(
+                "the probe could not write ABORT".to_string(),
+            )),
+        }
+    }
+
+    /// Put the TAP in Run-Test/Idle, where `DAP_Transfer` over JTAG expects to start.
+    ///
+    /// The firmware's transfers leave it there again, so this only moves the TAP when JTAG
+    /// operations of our own left it somewhere else.
+    pub(crate) fn enter_run_test_idle(&mut self) -> Result<(), DebugProbeError> {
+        if self.jtag_state.tap_state == TapState::RunTestIdle {
+            return Ok(());
+        }
+        let mut batch = JtagBatch::new();
+        batch.enter(TapState::RunTestIdle);
+        JtagProbe::run_batch(self, &batch)
+            .map(drop)
+            .map_err(|error| match error.error {
+                BatchError::Probe(error) | BatchError::Specific(error) => error,
+            })
+    }
+
+    /// Whether `DAP_Transfer` and `DAP_TransferBlock` can reach the DAP over JTAG now.
+    pub(crate) fn native_jtag_transfers(&self) -> bool {
+        self.protocol == Some(WireProtocol::Jtag) && self.connected && self.jtag_configured
     }
 }
 
@@ -863,6 +921,7 @@ impl DebugProbe for CmsisDap {
         let _: Result<HostStatusResponse, _> = commands::send_command(&mut self.device, &request);
 
         self.connected = false;
+        self.jtag_configured = false;
 
         match response {
             DisconnectResponse(Status::DapOk) => Ok(()),
@@ -876,10 +935,12 @@ impl DebugProbe for CmsisDap {
         match protocol {
             WireProtocol::Jtag if self.capabilities.jtag_implemented => {
                 self.protocol = Some(WireProtocol::Jtag);
+                self.jtag_configured = false;
                 Ok(())
             }
             WireProtocol::Swd if self.capabilities.swd_implemented => {
                 self.protocol = Some(WireProtocol::Swd);
+                self.jtag_configured = false;
                 Ok(())
             }
             _ => Err(DebugProbeError::UnsupportedProtocol(protocol)),

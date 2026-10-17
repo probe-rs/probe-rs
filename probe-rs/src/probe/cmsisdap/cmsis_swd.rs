@@ -8,7 +8,7 @@ use crate::{
     },
     probe::{
         BatchError, BatchExecutionError, BitSequence, CommandResult, DebugProbeError, HandleId,
-        Results,
+        Results, WireProtocol,
         cmsisdap::{
             CmsisDap,
             commands::{
@@ -20,7 +20,9 @@ use crate::{
                 },
             },
         },
-        swd::{Direction, Pins as SwdPins, Port, SwdBatch, SwdOp, SwdProbe, SwdTransferError},
+        swd::{
+            Direction, Pins as SwdPins, Port, SwdBatch, SwdOp, SwdProbe, SwdTransferError, is_abort,
+        },
     },
 };
 
@@ -86,11 +88,14 @@ pub(crate) fn run_length(ops: &[(HandleId, SwdOp)], start: usize) -> usize {
 ///
 /// Each packet arrives with its request built and its transfers carrying the batch index a fault
 /// is reported against. `run_start` is where the run sits in the batch.
+///
+/// With `abort_alone`, a write to ABORT ends the run too, so that it can be sent on its own.
 fn split_into_packets(
     ops: &[(HandleId, SwdOp)],
     run_start: usize,
     dap_index: u8,
     packet_size: u16,
+    abort_alone: bool,
 ) -> impl Iterator<Item = PendingBatch> {
     let mut offset = 0;
 
@@ -98,6 +103,9 @@ fn split_into_packets(
         let mut packet = PendingBatch::new(dap_index);
 
         while let Some((_, op)) = ops.get(offset) {
+            if abort_alone && is_abort(op) {
+                break;
+            }
             let SwdOp::Transfer { direction, .. } = op else {
                 break;
             };
@@ -588,6 +596,15 @@ impl SwdProbe for CmsisDap {
             .collect();
         let dap_index = self.jtag_state.chain_params.index as u8;
 
+        // Over JTAG the firmware performs these transfers on the JTAG-DP, starting from
+        // Run-Test/Idle, and ABORT is not a register it can reach with them.
+        let jtag = self.protocol == Some(WireProtocol::Jtag);
+        if jtag && let Err(error) = self.enter_run_test_idle() {
+            return Err(BatchExecutionError::new_from_debug_probe_at(
+                error, results, 0,
+            ));
+        }
+
         let mut batch_index = 0;
         while batch_index < ops.len() {
             let packets = split_into_packets(
@@ -595,6 +612,7 @@ impl SwdProbe for CmsisDap {
                 batch_index,
                 dap_index,
                 self.packet_size,
+                jtag,
             );
             for packet in packets {
                 let packed = packet.transfers.len();
@@ -608,6 +626,15 @@ impl SwdProbe for CmsisDap {
             };
 
             match op {
+                SwdOp::Transfer { data, .. } if jtag && is_abort(op) => {
+                    if let Err(error) = self.write_abort_command(*data) {
+                        return Err(BatchExecutionError::new_from_debug_probe_at(
+                            error,
+                            results,
+                            batch_index,
+                        ));
+                    }
+                }
                 SwdOp::Transfer { .. } => {
                     let run = run_length(&ops, batch_index);
                     results = self.run_transfer_block(
@@ -829,7 +856,7 @@ mod tests {
             ops.push(transfer(Port::Ap, 0b1100, Direction::Read, 0));
         }
 
-        let packets: Vec<_> = split_into_packets(&ops, 0, 0, 1024).collect();
+        let packets: Vec<_> = split_into_packets(&ops, 0, 0, 1024, false).collect();
         assert_eq!(packets[0].transfers.len(), 255);
     }
 
@@ -845,10 +872,29 @@ mod tests {
             ops.push(transfer(Port::Dp, addr, Direction::Read, 0));
         }
 
-        let packets: Vec<_> = split_into_packets(&ops, 0, 0, packet_size).collect();
+        let packets: Vec<_> = split_into_packets(&ops, 0, 0, packet_size, false).collect();
         assert_eq!(packets.len(), 2);
         assert_eq!(packets[0].transfers.len(), max_per_packet);
         assert_eq!(packets[1].transfers.len(), 2);
+    }
+
+    /// Over JTAG, ABORT is not a register `DAP_Transfer` can reach, so it has to leave the
+    /// packet to be sent with `DAP_WriteABORT`. Over SWD it is an ordinary DP write.
+    #[test]
+    fn abort_leaves_the_packet_only_when_asked() {
+        let ops = vec![
+            transfer(Port::Dp, 0b1000, Direction::Write, 0),
+            transfer(Port::Dp, 0b0000, Direction::Write, 0x1e),
+            transfer(Port::Dp, 0b0100, Direction::Read, 0),
+        ];
+
+        let alone: Vec<_> = split_into_packets(&ops, 0, 0, 64, true).collect();
+        assert_eq!(alone.len(), 1);
+        assert_eq!(alone[0].transfers.len(), 1);
+
+        let together: Vec<_> = split_into_packets(&ops, 0, 0, 64, false).collect();
+        assert_eq!(together.len(), 1);
+        assert_eq!(together[0].transfers.len(), 3);
     }
 
     #[test]
@@ -907,7 +953,7 @@ mod tests {
 
     #[test]
     fn a_repeat_that_fits_travels_with_the_address_that_set_it_up() {
-        let packets: Vec<_> = split_into_packets(&address_then_reads(2), 0, 0, 64).collect();
+        let packets: Vec<_> = split_into_packets(&address_then_reads(2), 0, 0, 64, false).collect();
 
         assert_eq!(packets.len(), 1);
         assert_eq!(packets[0].transfers.len(), 3);
@@ -917,18 +963,20 @@ mod tests {
     fn a_repeat_rides_along_until_the_reply_is_full() {
         // Three header bytes and four per read leave room for fifteen in a 64-byte reply, and the
         // address write costs the reply nothing.
-        let fits: Vec<_> = split_into_packets(&address_then_reads(15), 0, 0, 64).collect();
+        let fits: Vec<_> = split_into_packets(&address_then_reads(15), 0, 0, 64, false).collect();
         assert_eq!(fits.len(), 1);
         assert_eq!(fits[0].transfers.len(), 16);
 
-        let one_more: Vec<_> = split_into_packets(&address_then_reads(16), 0, 0, 64).collect();
+        let one_more: Vec<_> =
+            split_into_packets(&address_then_reads(16), 0, 0, 64, false).collect();
         assert_eq!(one_more.len(), 1);
         assert_eq!(one_more[0].transfers.len(), 1);
     }
 
     #[test]
     fn a_repeat_too_long_for_the_packet_is_left_to_the_block_command() {
-        let packets: Vec<_> = split_into_packets(&address_then_reads(40), 0, 0, 64).collect();
+        let packets: Vec<_> =
+            split_into_packets(&address_then_reads(40), 0, 0, 64, false).collect();
 
         // Only the address write is packed. `run_batch` sends the reads as `DAP_TransferBlock`,
         // which is pipelined.
