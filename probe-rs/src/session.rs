@@ -1,5 +1,3 @@
-use probe_rs_target::{MemoryPort, MemoryPortOptions};
-
 use crate::{
     Core, CoreType, Error,
     architecture::{
@@ -57,7 +55,6 @@ pub struct Session {
     target: Target,
     interfaces: ArchitectureInterface,
     cores: Vec<CombinedCoreState>,
-    memory_ports: Vec<MemoryPort>,
     configured_trace_sink: Option<TraceSink>,
 }
 
@@ -313,8 +310,6 @@ impl Session {
             Err(e) => return Err(Error::Arm(e)),
         }
 
-        let memory_ports = target.memory_ports.clone();
-
         if attach_method == AttachMethod::UnderReset {
             {
                 for core in &cores {
@@ -355,7 +350,6 @@ impl Session {
                 interfaces,
                 cores,
                 configured_trace_sink: None,
-                memory_ports,
             };
 
             {
@@ -398,7 +392,6 @@ impl Session {
                 interfaces,
                 cores,
                 configured_trace_sink: None,
-                memory_ports,
             })
         }
     }
@@ -542,7 +535,6 @@ impl Session {
             interfaces,
             cores,
             configured_trace_sink: None,
-            memory_ports: vec![],
         };
 
         // Connect to the cores
@@ -658,29 +650,26 @@ impl Session {
 
     /// Attaches to a memory access port with the given index number.
     pub fn memory_access_port(&mut self, index: usize) -> Result<MemoryAccessPort<'_>, Error> {
+        let memory_port = self
+            .target
+            .memory_ports
+            .get(index)
+            .ok_or(Error::MemoryAccessPortNotFound(index))?;
         match &mut self.interfaces {
             ArchitectureInterface::Arm(arm_debug_interface) => {
-                let memory_port = self
-                    .memory_ports
-                    .get_mut(index)
-                    .ok_or(Error::MemoryAccessPortNotFound(index))?
-                    .clone();
-                match &memory_port.memory_port_options {
-                    MemoryPortOptions::Arm(_arm_memory_port_options) => {
-                        let memory_port = &self.target.memory_ports[index];
-                        let memory_ap = memory_port
-                            .memory_ap()
-                            .ok_or(Error::MemoryAccessPortNotFound(index))?;
-                        let memory_interface = arm_debug_interface.memory_interface(&memory_ap)?;
-                        Ok(MemoryAccessPort::new_for_arm_memory_interface(
-                            index,
-                            &memory_port.name,
-                            memory_interface,
-                        ))
-                    }
-                }
+                let memory_ap = memory_port
+                    .memory_ap()
+                    .ok_or(Error::MemoryAccessPortNotFound(index))?;
+                let memory_interface = arm_debug_interface.memory_interface(&memory_ap)?;
+                Ok(MemoryAccessPort::new_for_arm_memory_interface(
+                    index,
+                    &memory_port.name,
+                    memory_interface,
+                ))
             }
-            ArchitectureInterface::Jtag(_, _) => Err(Error::MemoryAccessPortNotFound(index)),
+            ArchitectureInterface::Jtag(_, _) => Err(Error::NotImplemented(
+                "Memory port access on RISC-V and Xtensa",
+            )),
             ArchitectureInterface::ArmWithRiscv {
                 arm: _,
                 riscv_mem_ap_cores: _,
