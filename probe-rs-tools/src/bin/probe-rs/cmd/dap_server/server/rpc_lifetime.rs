@@ -147,6 +147,7 @@ mod tests {
             connect_under_reset: false,
             allow_erase_all: false,
             attach_timeout: None,
+            target_serial: false,
         };
 
         attach_probe(client, options, None, false).await?;

@@ -14,7 +14,9 @@ use probe_rs::{
     },
     probe::{
         BitbangJtag, DebugProbe, DebugProbeError, DebugProbeSelector, JtagChain, JtagChainAccess,
-        JtagChainState, ProbeFactory, TapState, WireProtocol, list::ProbeListItem,
+        JtagChainState, ProbeFactory, TapState, WireProtocol,
+        list::ProbeListItem,
+        target_serial::{LineState, SerialSettings, TargetSerial, UsbCdcSerial},
     },
 };
 
@@ -124,6 +126,17 @@ impl DebugProbe for EspUsbJtag {
         Err(DebugProbeError::NotImplemented {
             function_name: "target_reset",
         })
+    }
+
+    fn target_serial(&mut self) -> Option<Box<dyn TargetSerial>> {
+        let filter = self.protocol.serial_filter.clone()?;
+        // DTR and RTS control reset and boot mode. Low on both lines is the idle state.
+        let settings = SerialSettings {
+            dtr: LineState::Low,
+            rts: LineState::Low,
+            ..SerialSettings::default()
+        };
+        Some(Box::new(UsbCdcSerial::new(filter, settings)))
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {

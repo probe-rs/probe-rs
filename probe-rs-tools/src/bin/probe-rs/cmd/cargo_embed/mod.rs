@@ -262,6 +262,7 @@ async fn run_embed(
         connect_under_reset: config.general.connect_under_reset,
         allow_erase_all: config.flashing.enabled || config.gdb.enabled,
         attach_timeout: None,
+        target_serial: false,
     };
 
     let session = match cli::attach_probe(&client, probe_options, None, false).await {

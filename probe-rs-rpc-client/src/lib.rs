@@ -61,6 +61,7 @@ use probe_rs_rpc::info::{
 use probe_rs_rpc::memory::{ReadBytesRequest, ReadMemoryRequest, WriteMemoryRequest};
 use probe_rs_rpc::monitor::{
     MonitorExitReason, MonitorMode, MonitorOptions, MonitorRequest, RttEvent, SemihostingEvent,
+    SerialEvent, SerialWriteRequest,
 };
 use probe_rs_rpc::probe::{
     AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, SelectProbeRequest,
@@ -96,10 +97,11 @@ use probe_rs_rpc::{
     ReadMemory64Endpoint, ResetCoreAndHaltEndpoint, ResetCoreEndpoint,
     ResolveSourceBreakpointsEndpoint, ResolveSourceLocationsEndpoint, ResumeCoresEndpoint,
     RpcError, RpcResult, RttDownEndpoint, RttTopic, RunTestEndpoint, ScopesEndpoint,
-    SelectProbeEndpoint, SemihostingTopic, SetVariableEndpoint, TakeRichStackTraceEndpoint,
-    TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint, TargetMetadataEndpoint,
-    TempFileDataEndpoint, TestKickoffEndpoint, TokioSpawner, VariablesEndpoint, VerifyEndpoint,
-    WriteMemory8Endpoint, WriteMemory16Endpoint, WriteMemory32Endpoint, WriteMemory64Endpoint,
+    SelectProbeEndpoint, SemihostingTopic, SerialTopic, SerialWriteEndpoint, SetVariableEndpoint,
+    TakeRichStackTraceEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint,
+    TargetMetadataEndpoint, TempFileDataEndpoint, TestKickoffEndpoint, TokioSpawner,
+    VariablesEndpoint, VerifyEndpoint, WriteMemory8Endpoint, WriteMemory16Endpoint,
+    WriteMemory32Endpoint, WriteMemory64Endpoint,
 };
 use probe_rs_rpc::{FlashLoader, Key, RttClient, Session};
 
@@ -1046,6 +1048,16 @@ impl SessionInterface {
             .await
     }
 
+    /// Writes to the serial port to the target. Returns the number of bytes written.
+    pub async fn send_to_serial(&self, data: Vec<u8>) -> Result<u32, ClientError> {
+        self.client
+            .send_resp::<SerialWriteEndpoint, _>(&SerialWriteRequest {
+                sessid: self.sessid,
+                data,
+            })
+            .await
+    }
+
     /// Write to an RTT down channel, returning how many bytes the target
     /// accepted until finish or Timeout. Timeout = 0 -> single attempt
     pub async fn send_to_rtt(
@@ -1844,6 +1856,7 @@ pub(crate) trait MultiSubscription {
 pub enum MonitorEvent {
     Rtt(RttEvent),
     Semihosting(SemihostingEvent),
+    Serial(SerialEvent),
 }
 
 impl MultiTopic for MonitorEvent {
@@ -1861,13 +1874,19 @@ impl MultiTopic for MonitorEvent {
         // one for RTT, one for semihosting, then introduce a MultiSubscription impl for them
         let rtt = RttTopic::subscribe(client, depth).await?;
         let semihosting = SemihostingTopic::subscribe(client, depth).await?;
-        Ok(MonitorSubscription { rtt, semihosting })
+        let serial = SerialTopic::subscribe(client, depth).await?;
+        Ok(MonitorSubscription {
+            rtt,
+            semihosting,
+            serial,
+        })
     }
 }
 
 pub(crate) struct MonitorSubscription {
     rtt: <RttTopic as MultiTopic>::Subscription,
     semihosting: <SemihostingTopic as MultiTopic>::Subscription,
+    serial: <SerialTopic as MultiTopic>::Subscription,
 }
 impl MultiSubscription for MonitorSubscription {
     type Message = MonitorEvent;
@@ -1876,6 +1895,7 @@ impl MultiSubscription for MonitorSubscription {
         tokio::select! {
             message = self.rtt.recv() => message.map(MonitorEvent::Rtt),
             message = self.semihosting.recv() => message.map(MonitorEvent::Semihosting),
+            message = self.serial.recv() => message.map(MonitorEvent::Serial),
         }
     }
 }
