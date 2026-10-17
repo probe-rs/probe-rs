@@ -29,7 +29,7 @@ use crate::{
         VectorCatchCondition,
     },
     error::Error,
-    memory::{MemoryNotAlignedError, valid_32bit_address},
+    memory::{MemoryNotAlignedError, Operation, OperationKind, valid_32bit_address},
     semihosting::{SemihostingCommand, decode_semihosting_syscall},
 };
 use std::{
@@ -291,14 +291,13 @@ impl<'probe> Armv7ar<'probe> {
         instruction: u32,
         value: u32,
     ) -> Result<(), Error> {
-        // Move value
+        // Move `value`, and see whether the core has it
         let address = Dbgdtrrx::get_mmio_address_from_base(self.base_address)?;
-        self.memory.write_word_32(address, value)?;
+        let mut dbgdscr =
+            write_then_read_dbgdscr(&mut *self.memory, self.base_address, address, value)?;
 
         // Wait for RXfull
         let address = Dbgdscr::get_mmio_address_from_base(self.base_address)?;
-        let mut dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
-
         let start = Instant::now();
         while !dbgdscr.rxfull_l() {
             dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
@@ -708,20 +707,40 @@ fn check_and_clear_data_abort(
     Ok(())
 }
 
+/// Write a debug register and read back DBGDSCR in one batched probe transaction.
+fn write_then_read_dbgdscr(
+    memory: &mut dyn ArmMemoryInterface,
+    base_address: u64,
+    address: u64,
+    value: u32,
+) -> Result<Dbgdscr, ArmError> {
+    let dbgdscr_address = Dbgdscr::get_mmio_address_from_base(base_address)?;
+    let mut dbgdscr = 0;
+    {
+        let mut operations = [
+            Operation::new(address, OperationKind::WriteWord32(value)),
+            Operation::new(
+                dbgdscr_address,
+                OperationKind::Read32(std::slice::from_mut(&mut dbgdscr)),
+            ),
+        ];
+        memory.execute_operations(&mut operations)?;
+    }
+    Ok(Dbgdscr(dbgdscr))
+}
+
 /// Execute a single instruction.
 fn execute_instruction(
     memory: &mut dyn ArmMemoryInterface,
     base_address: u64,
     instruction: u32,
 ) -> Result<Dbgdscr, ArmError> {
-    // Run instruction
+    // Run instruction and see whether it has completed
     let address = Dbgitr::get_mmio_address_from_base(base_address)?;
-    memory.write_word_32(address, instruction)?;
+    let mut dbgdscr = write_then_read_dbgdscr(memory, base_address, address, instruction)?;
 
     // Wait for completion
     let address = Dbgdscr::get_mmio_address_from_base(base_address)?;
-    let mut dbgdscr = Dbgdscr(memory.read_word_32(address)?);
-
     let start = Instant::now();
     while !dbgdscr.instrcoml_l() {
         dbgdscr = Dbgdscr(memory.read_word_32(address)?);
@@ -745,14 +764,12 @@ fn set_instruction_input(
     base_address: u64,
     value: u32,
 ) -> Result<(), ArmError> {
-    // Move value
+    // Move value, and see whether the core has it
     let address = Dbgdtrrx::get_mmio_address_from_base(base_address)?;
-    memory.write_word_32(address, value)?;
+    let mut dbgdscr = write_then_read_dbgdscr(memory, base_address, address, value)?;
 
     // Wait for RXfull
     let address = Dbgdscr::get_mmio_address_from_base(base_address)?;
-    let mut dbgdscr = Dbgdscr(memory.read_word_32(address)?);
-
     let start = Instant::now();
     while !dbgdscr.rxfull_l() {
         dbgdscr = Dbgdscr(memory.read_word_32(address)?);
@@ -1874,12 +1891,16 @@ mod test {
 
     pub struct MockProbe {
         expected_ops: Vec<ExpectedMemoryOp>,
+        /// Every call of `execute_operations`: each operation's address, and the value if it
+        /// was a write.
+        batches: Vec<Vec<(u64, Option<u32>)>>,
     }
 
     impl MockProbe {
         pub fn new() -> Self {
             MockProbe {
                 expected_ops: vec![],
+                batches: vec![],
             }
         }
 
@@ -2012,6 +2033,33 @@ mod test {
     }
 
     impl ArmMemoryInterface for MockProbe {
+        /// Records the batch, then performs it one operation at a time like the default.
+        fn execute_operations(&mut self, operations: &mut [Operation<'_>]) -> Result<(), ArmError> {
+            self.batches.push(
+                operations
+                    .iter()
+                    .map(|operation| {
+                        let value = match operation.operation {
+                            OperationKind::WriteWord32(value) => Some(value),
+                            OperationKind::Read32(_) => None,
+                            _ => unimplemented!("only word writes and reads are mocked"),
+                        };
+                        (operation.address, value)
+                    })
+                    .collect(),
+            );
+            for operation in operations.iter_mut() {
+                let address = operation.address;
+                match &mut operation.operation {
+                    OperationKind::WriteWord32(value) => self.write_32(address, &[*value])?,
+                    OperationKind::Read32(data) => self.read_32(address, data)?,
+                    _ => unimplemented!("only word writes and reads are mocked"),
+                }
+                operation.result = Some(Ok(()));
+            }
+            Ok(())
+        }
+
         fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
             todo!()
         }
@@ -2216,6 +2264,26 @@ mod test {
         probe.expected_read(
             Dbgdtrtx::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
             value,
+        );
+    }
+
+    /// Feeding the core is a write to a debug register followed by a read of DBGDSCR. The two
+    /// reach the memory interface as one batch, or every step would cost two probe round trips.
+    #[test]
+    fn a_debug_register_write_and_the_dbgdscr_read_are_one_batch() {
+        let dtrrx = Dbgdtrrx::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap();
+        let dbgdscr = Dbgdscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap();
+        let mut probe = MockProbe::new();
+        probe.expected_write(dtrrx, 0x1234_5678);
+        probe.expected_read(dbgdscr, 0x4000_0000);
+
+        let read =
+            write_then_read_dbgdscr(&mut probe, TEST_BASE_ADDRESS, dtrrx, 0x1234_5678).unwrap();
+
+        assert_eq!(u32::from(read), 0x4000_0000);
+        assert_eq!(
+            probe.batches,
+            vec![vec![(dtrrx, Some(0x1234_5678)), (dbgdscr, None)]]
         );
     }
 
