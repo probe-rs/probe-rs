@@ -29,7 +29,7 @@ use crate::{
         VectorCatchCondition,
     },
     error::Error,
-    memory::{MemoryNotAlignedError, valid_32bit_address},
+    memory::{MemoryNotAlignedError, Operation, OperationKind, valid_32bit_address},
     semihosting::{SemihostingCommand, decode_semihosting_syscall},
 };
 use std::{
@@ -61,11 +61,6 @@ impl<'a> BankedAccess<'a> {
             .write_raw_ap_register(&self.ap, self.dtrrx, value)
     }
 
-    fn set_dtrrx_repeated(&mut self, values: &[u32]) -> Result<(), ArmError> {
-        self.interface
-            .write_raw_ap_register_repeated(&self.ap, self.dtrrx, values)
-    }
-
     fn dscr(&mut self) -> Result<Dbgdscr, ArmError> {
         self.interface
             .read_raw_ap_register(&self.ap, self.dscr)
@@ -77,46 +72,135 @@ impl<'a> BankedAccess<'a> {
             .write_raw_ap_register(&self.ap, self.dscr, value.into())
     }
 
-    fn set_itr(&mut self, value: u32) -> Result<(), ArmError> {
-        self.interface
-            .write_raw_ap_register(&self.ap, self.itr, value)
-    }
-
-    fn dtrtx(&mut self) -> Result<u32, ArmError> {
-        self.interface.read_raw_ap_register(&self.ap, self.dtrtx)
-    }
-
-    fn dtrtx_repeated(&mut self, buf: &mut [u32]) -> Result<(), ArmError> {
-        self.interface
-            .read_raw_ap_register_repeated(&self.ap, self.dtrtx, buf)?;
-        Ok(())
-    }
-
-    /// Operate the core in DCC Fast mode. For more information, see
-    /// ARM Architecture Reference Manual ARMv7-A and ARMv7-R edition
-    /// section C8.2.2.
+    /// Leave DCC Fast mode, then return DBGDSCR, one access at a time.
     ///
-    /// In this mode, writing to the ITR register does not immediately
-    /// trigger the instruction. Instead, it waits for a read from DTRTX
-    /// or a write to DTRRX. By placing an instruction with address-increment
-    /// in the pipeline this way, a load or store can be retriggered
-    /// repeatedly to quickly stream memory.
-    fn with_dcc_fast_mode<R>(
-        &mut self,
-        f: impl FnOnce(&mut Self) -> Result<R, ArmError>,
-    ) -> Result<R, ArmError> {
-        // Place DSCR in DCC Fast mode
-        let mut dscr = self.dscr()?;
-        dscr.set_extdccmode(2);
-        self.set_dscr(dscr)?;
-        let result = f(self);
-
-        // Return DSCR back to DCC Non Blocking mode
+    /// For when the batched exit could not be completed: the core must not be left in Fast mode,
+    /// where the next read of DTRTX would run the load again.
+    fn leave_fast_mode(&mut self) -> Result<Dbgdscr, ArmError> {
         let mut dscr = self.dscr()?;
         dscr.set_extdccmode(0);
         self.set_dscr(dscr)?;
+        self.dscr()
+    }
 
-        result
+    /// The DBGDSCR to write to leave DCC Fast mode, given the one read at the end of a transfer.
+    ///
+    /// It has to be the register as it is once the last instruction has finished. In the
+    /// external view RXfull and TXfull are writable -- that is how a debugger saves and restores
+    /// the DCC -- so writing any older value back tells the core that DTRTX or DTRRX is in a
+    /// state it is not. A stale TXfull of 0, written after the last load had filled DTRTX,
+    /// desynchronised the DCC and made the next result read from the core a stale word.
+    ///
+    /// The read at the end of the transfer normally lands after the last instruction has
+    /// finished, but nothing guarantees it, so wait for InstrCompl_l if it has not.
+    fn exit_value(&mut self, mut dscr: Dbgdscr) -> Result<Dbgdscr, ArmError> {
+        let start = Instant::now();
+        while !dscr.instrcoml_l() {
+            if start.elapsed() >= OPERATION_TIMEOUT {
+                return Err(ArmError::Timeout);
+            }
+            dscr = self.dscr()?;
+        }
+        dscr.set_extdccmode(0);
+        Ok(dscr)
+    }
+
+    /// Run `instruction` in DCC Fast mode once for every word of `data`, reading each result
+    /// from DTRTX, and return DBGDSCR afterwards so that an abort can be checked for.
+    ///
+    /// In Fast mode, writing ITR does not run the instruction; each read of DTRTX runs it again.
+    /// For more information, see ARM Architecture Reference Manual ARMv7-A and ARMv7-R
+    /// edition section C8.2.2. With an address-incrementing load in ITR, that streams memory.
+    ///
+    /// Reads lag the loads by one: the first read returns what was left in DTRTX before and
+    /// runs the first load, and the last word is collected only after Fast mode is left, or
+    /// the load would run once more, past the end of `data`.
+    ///
+    /// This takes three transactions however many words there are -- read DBGDSCR; enter Fast
+    /// mode, set ITR, stream and read DBGDSCR; leave Fast mode, collect the last word and read
+    /// DBGDSCR -- where it was nine for each access going by itself. A failure while streaming
+    /// is not an error here: a faulting load raises an abort, which DBGDSCR reports.
+    fn read_in_fast_mode(
+        &mut self,
+        instruction: u32,
+        data: &mut [u32],
+    ) -> Result<Dbgdscr, ArmError> {
+        let count = data.len();
+        let mut fast = self.dscr()?;
+        fast.set_extdccmode(2);
+
+        let mut accesses = vec![
+            (self.dscr, Some(u32::from(fast))),
+            (self.itr, Some(instruction)),
+        ];
+        accesses.extend(std::iter::repeat_n((self.dtrtx, None), count));
+        accesses.push((self.dscr, None));
+        let mut streamed = vec![0; count + 1];
+        if self
+            .interface
+            .access_raw_ap_registers(&self.ap, &accesses, &mut streamed)
+            .is_err()
+        {
+            return self.leave_fast_mode();
+        }
+        // The first word read was left over from before the first load.
+        data[..count - 1].copy_from_slice(&streamed[1..count]);
+        let non_blocking = self.exit_value(Dbgdscr(streamed[count]))?;
+
+        let mut tail = [0; 2];
+        let leave = [
+            (self.dscr, Some(u32::from(non_blocking))),
+            (self.dtrtx, None),
+            (self.dscr, None),
+        ];
+        match self
+            .interface
+            .access_raw_ap_registers(&self.ap, &leave, &mut tail)
+        {
+            Ok(()) => {
+                data[count - 1] = tail[0];
+                Ok(Dbgdscr(tail[1]))
+            }
+            Err(_) => self.leave_fast_mode(),
+        }
+    }
+
+    /// Run `instruction` in DCC Fast mode once for every word of `data`, writing each word to
+    /// DTRRX, and return DBGDSCR afterwards so that an abort can be checked for.
+    ///
+    /// The store counterpart of [`Self::read_in_fast_mode`]: each write of DTRRX runs the
+    /// instruction again, so three transactions write any number of words.
+    fn write_in_fast_mode(&mut self, instruction: u32, data: &[u32]) -> Result<Dbgdscr, ArmError> {
+        let mut fast = self.dscr()?;
+        fast.set_extdccmode(2);
+
+        let mut accesses = vec![
+            (self.dscr, Some(u32::from(fast))),
+            (self.itr, Some(instruction)),
+        ];
+        accesses.extend(data.iter().map(|&word| (self.dtrrx, Some(word))));
+        accesses.push((self.dscr, None));
+        let mut dscr = [0];
+        if self
+            .interface
+            .access_raw_ap_registers(&self.ap, &accesses, &mut dscr)
+            .is_err()
+        {
+            return self.leave_fast_mode();
+        }
+        let non_blocking = self.exit_value(Dbgdscr(dscr[0]))?;
+
+        let leave = [
+            (self.dscr, Some(u32::from(non_blocking))),
+            (self.dscr, None),
+        ];
+        match self
+            .interface
+            .access_raw_ap_registers(&self.ap, &leave, &mut dscr)
+        {
+            Ok(()) => Ok(Dbgdscr(dscr[0])),
+            Err(_) => self.leave_fast_mode(),
+        }
     }
 }
 
@@ -285,14 +369,13 @@ impl<'probe> Armv7ar<'probe> {
         instruction: u32,
         value: u32,
     ) -> Result<(), Error> {
-        // Move value
+        // Move value, and see whether the core has it
         let address = Dbgdtrrx::get_mmio_address_from_base(self.base_address)?;
-        self.memory.write_word_32(address, value)?;
+        let mut dbgdscr =
+            write_then_read_dbgdscr(&mut *self.memory, self.base_address, address, value)?;
 
         // Wait for RXfull
         let address = Dbgdscr::get_mmio_address_from_base(self.base_address)?;
-        let mut dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
-
         let start = Instant::now();
         while !dbgdscr.rxfull_l() {
             dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
@@ -597,20 +680,46 @@ fn check_and_clear_data_abort(
     Ok(())
 }
 
+/// Write a debug register and read back DBGDSCR, in one probe transaction where the memory
+/// interface can batch them.
+///
+/// Feeding the core is a run of these: put a value in DBGDTRRX or an instruction in DBGITR, then
+/// read DBGDSCR to see whether it was taken. Done as two accesses, every step costs two round
+/// trips to the probe. The write has finished before the read in either case, so batching
+/// changes nothing but the count.
+fn write_then_read_dbgdscr(
+    memory: &mut dyn ArmMemoryInterface,
+    base_address: u64,
+    address: u64,
+    value: u32,
+) -> Result<Dbgdscr, ArmError> {
+    let dbgdscr_address = Dbgdscr::get_mmio_address_from_base(base_address)?;
+    let mut dbgdscr = 0;
+    {
+        let mut operations = [
+            Operation::new(address, OperationKind::WriteWord32(value)),
+            Operation::new(
+                dbgdscr_address,
+                OperationKind::Read32(std::slice::from_mut(&mut dbgdscr)),
+            ),
+        ];
+        memory.execute_operations(&mut operations)?;
+    }
+    Ok(Dbgdscr(dbgdscr))
+}
+
 /// Execute a single instruction.
 fn execute_instruction(
     memory: &mut dyn ArmMemoryInterface,
     base_address: u64,
     instruction: u32,
 ) -> Result<Dbgdscr, ArmError> {
-    // Run instruction
+    // Run instruction, and see whether it has completed
     let address = Dbgitr::get_mmio_address_from_base(base_address)?;
-    memory.write_word_32(address, instruction)?;
+    let mut dbgdscr = write_then_read_dbgdscr(memory, base_address, address, instruction)?;
 
     // Wait for completion
     let address = Dbgdscr::get_mmio_address_from_base(base_address)?;
-    let mut dbgdscr = Dbgdscr(memory.read_word_32(address)?);
-
     let start = Instant::now();
     while !dbgdscr.instrcoml_l() {
         dbgdscr = Dbgdscr(memory.read_word_32(address)?);
@@ -634,14 +743,12 @@ fn set_instruction_input(
     base_address: u64,
     value: u32,
 ) -> Result<(), ArmError> {
-    // Move value
+    // Move value, and see whether the core has it
     let address = Dbgdtrrx::get_mmio_address_from_base(base_address)?;
-    memory.write_word_32(address, value)?;
+    let mut dbgdscr = write_then_read_dbgdscr(memory, base_address, address, value)?;
 
     // Wait for RXfull
     let address = Dbgdscr::get_mmio_address_from_base(base_address)?;
-    let mut dbgdscr = Dbgdscr(memory.read_word_32(address)?);
-
     let start = Instant::now();
     while !dbgdscr.rxfull_l() {
         dbgdscr = Dbgdscr(memory.read_word_32(address)?);
@@ -1398,37 +1505,10 @@ impl MemoryInterface for Armv7ar<'_> {
 
                 let mut banked = core.banked_access()?;
 
-                // Ignore any errors encountered here -- they will set a Data Abort
-                // which we will pick up in `check_and_clear_data_abort()`
-                if banked
-                    .with_dcc_fast_mode(|banked| {
-                        // LDC p14, c5, [r0], #4
-                        banked.set_itr(build_ldc(14, 5, 0, 4))?;
-
-                        // Throw away the first value, which is from a previous operation
-                        let _ = banked.dtrtx()?;
-
-                        // Continually write the tx register, which will auto-increment.
-                        // Because reads lag by one instruction, we need to break before
-                        // we read the final value. If we don't we will end up reading one
-                        // extra word past the buffer, which may end up outside valid RAM.
-                        banked.dtrtx_repeated(&mut data[0..count - 1])?;
-                        Ok(())
-                    })
-                    .is_ok()
-                {
-                    // Grab the last value that we skipped during the main sequence.
-                    // Ignore any errors here since they will generate an abort that
-                    // will be caught below.
-                    if let Ok(last) = banked.dtrtx()
-                        && let Some(v) = data.last_mut()
-                    {
-                        *v = last;
-                    }
-                }
+                // LDC p14, c5, [r0], #4
+                let dscr = banked.read_in_fast_mode(build_ldc(14, 5, 0, 4), data)?;
 
                 // Check if we had any aborts, if so clear them and fail
-                let dscr = banked.dscr()?;
                 check_and_clear_data_abort(&mut *core.memory, core.base_address, dscr)?;
             } else {
                 for (i, word) in data.iter_mut().enumerate() {
@@ -1594,19 +1674,10 @@ impl MemoryInterface for Armv7ar<'_> {
 
                 let mut banked = core.banked_access()?;
 
-                banked
-                    .with_dcc_fast_mode(|banked| {
-                        // STC p14, c5, [r0], #4
-                        banked.set_itr(build_stc(14, 5, 0, 4))?;
-
-                        // Continually write the tx register, which will auto-increment
-                        banked.set_dtrrx_repeated(data)?;
-                        Ok(())
-                    })
-                    .ok();
+                // STC p14, c5, [r0], #4
+                let dscr = banked.write_in_fast_mode(build_stc(14, 5, 0, 4), data)?;
 
                 // Check if we had any aborts, if so clear them and fail
-                let dscr = banked.dscr()?;
                 check_and_clear_data_abort(&mut *core.memory, core.base_address, dscr)?;
             } else {
                 // Slow path -- perform multiple writes

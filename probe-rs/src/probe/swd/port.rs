@@ -481,7 +481,8 @@ fn is_write(op: &SwdOp) -> bool {
     )
 }
 
-fn is_abort(op: &SwdOp) -> bool {
+/// Whether `op` writes the DP's ABORT register.
+pub(crate) fn is_abort(op: &SwdOp) -> bool {
     matches!(
         op,
         SwdOp::Transfer {

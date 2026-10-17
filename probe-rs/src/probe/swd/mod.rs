@@ -74,6 +74,7 @@ use crate::probe::{
     DebugProbeError, Handle, HandleId, Results,
 };
 
+pub(crate) use port::is_abort;
 pub use port::{SwdPort, SwdPortError};
 
 bitfield::bitfield! {
