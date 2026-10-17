@@ -25,7 +25,7 @@ pub struct NvmRegion {
 }
 
 impl NvmRegion {
-    /// Returns whether the region is accessible by the given core.
+    /// Returns whether the region is accessible by the given core or memory port.
     pub fn accessible_by(&self, core_or_mem_port_name: &str) -> bool {
         self.cores.iter().any(|c| c == core_or_mem_port_name)
             || self.memory_ports.iter().any(|c| c == core_or_mem_port_name)
@@ -121,13 +121,10 @@ pub struct RamRegion {
 }
 
 impl RamRegion {
-    /// Returns whether the region is accessible by the given core.
-    pub fn accessible_by(&self, core_or_mem_ports_name: &str) -> bool {
-        self.cores.iter().any(|c| c == core_or_mem_ports_name)
-            || self
-                .memory_ports
-                .iter()
-                .any(|c| c == core_or_mem_ports_name)
+    /// Returns whether the region is accessible by the given core or memory port.
+    pub fn accessible_by(&self, core_or_mem_port_name: &str) -> bool {
+        self.cores.iter().any(|c| c == core_or_mem_port_name)
+            || self.memory_ports.iter().any(|c| c == core_or_mem_port_name)
     }
 
     /// Returns the access permissions for the region.
@@ -269,13 +266,10 @@ pub struct GenericRegion {
 }
 
 impl GenericRegion {
-    /// Returns whether the region is accessible by the given core.
-    pub fn accessible_by(&self, core_or_mem_ports_name: &str) -> bool {
-        self.cores.iter().any(|c| c == core_or_mem_ports_name)
-            || self
-                .memory_ports
-                .iter()
-                .any(|c| c == core_or_mem_ports_name)
+    /// Returns whether the region is accessible by the given core or memory port.
+    pub fn accessible_by(&self, core_or_mem_port_name: &str) -> bool {
+        self.cores.iter().any(|c| c == core_or_mem_port_name)
+            || self.memory_ports.iter().any(|c| c == core_or_mem_port_name)
     }
 
     /// Returns the access permissions for the region.

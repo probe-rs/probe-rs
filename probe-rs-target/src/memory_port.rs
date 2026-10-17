@@ -22,14 +22,14 @@ pub enum MemoryPortOptions {
     Arm(ArmMemoryPortOptions),
 }
 
-/// The data required to access an ARM core
+/// The data required to access an ARM memory port.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(deny_unknown_fields)]
 pub struct ArmMemoryPortOptions {
     /// The access port number to access the memory.
     pub ap: ApAddress,
 
-    /// The TARGETSEL value used to access the core
+    /// The TARGETSEL value used to access the memory port.
     #[serde(serialize_with = "hex_option")]
     pub targetsel: Option<u32>,
 }
