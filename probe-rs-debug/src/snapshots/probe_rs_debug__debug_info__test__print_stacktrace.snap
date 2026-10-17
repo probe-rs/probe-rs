@@ -66,7 +66,7 @@ Frame:
   column: Some(Column(1))
  frame_base:      Some(20003ff8)
 Frame:
- function:        Reset (unwinding stopped due to an error)
+ function:        Reset
  source_location:
 None
  frame_base:      None
