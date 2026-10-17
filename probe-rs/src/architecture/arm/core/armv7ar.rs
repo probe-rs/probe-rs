@@ -61,11 +61,6 @@ impl<'a> BankedAccess<'a> {
             .write_raw_ap_register(&self.ap, self.dtrrx, value)
     }
 
-    fn set_dtrrx_repeated(&mut self, values: &[u32]) -> Result<(), ArmError> {
-        self.interface
-            .write_raw_ap_register_repeated(&self.ap, self.dtrrx, values)
-    }
-
     fn dscr(&mut self) -> Result<Dbgdscr, ArmError> {
         self.interface
             .read_raw_ap_register(&self.ap, self.dscr)
@@ -77,46 +72,137 @@ impl<'a> BankedAccess<'a> {
             .write_raw_ap_register(&self.ap, self.dscr, value.into())
     }
 
-    fn set_itr(&mut self, value: u32) -> Result<(), ArmError> {
-        self.interface
-            .write_raw_ap_register(&self.ap, self.itr, value)
+    /// Leave DCC Fast mode, then return DBGDSCR.
+    ///
+    /// Used when a batched exit fails.
+    fn leave_fast_mode(&mut self) -> Result<Dbgdscr, ArmError> {
+        let mut dscr = self.dscr()?;
+        dscr.set_extdccmode(0);
+        self.set_dscr(dscr)?;
+        self.dscr()
     }
 
-    fn dtrtx(&mut self) -> Result<u32, ArmError> {
-        self.interface.read_raw_ap_register(&self.ap, self.dtrtx)
+    /// Wait for the instruction to complete, then return DBGDSCR.
+    fn exit_value(&mut self, mut dscr: Dbgdscr) -> Result<Dbgdscr, ArmError> {
+        let start = Instant::now();
+        while !dscr.instrcoml_l() {
+            if start.elapsed() >= OPERATION_TIMEOUT {
+                return Err(ArmError::Timeout);
+            }
+            dscr = self.dscr()?;
+        }
+        dscr.set_extdccmode(0);
+        Ok(dscr)
     }
 
-    fn dtrtx_repeated(&mut self, buf: &mut [u32]) -> Result<(), ArmError> {
-        self.interface
-            .read_raw_ap_register_repeated(&self.ap, self.dtrtx, buf)?;
-        Ok(())
-    }
-
-    /// Operate the core in DCC Fast mode. For more information, see
+    /// Enter DCC Fast mode and run `instruction` for each word in `data`, returning
+    /// DBGDSCR as a result. For more information, see
     /// ARM Architecture Reference Manual ARMv7-A and ARMv7-R edition
     /// section C8.2.2.
     ///
     /// In this mode, writing to the ITR register does not immediately
     /// trigger the instruction. Instead, it waits for a read from DTRTX
-    /// or a write to DTRRX. By placing an instruction with address-increment
+    /// (or a write to DTRRX). By placing an instruction with address-increment
     /// in the pipeline this way, a load or store can be retriggered
     /// repeatedly to quickly stream memory.
-    fn with_dcc_fast_mode<R>(
+    ///
+    /// Reads lag the loads by one operation so the last word is collected after
+    /// leaving Fast mode. In case of failure, the error is returned after leaving
+    /// Fast mode.
+    fn read_in_fast_mode(
         &mut self,
-        f: impl FnOnce(&mut Self) -> Result<R, ArmError>,
-    ) -> Result<R, ArmError> {
-        // Place DSCR in DCC Fast mode
-        let mut dscr = self.dscr()?;
-        dscr.set_extdccmode(2);
-        self.set_dscr(dscr)?;
-        let result = f(self);
+        instruction: u32,
+        data: &mut [u32],
+    ) -> Result<Dbgdscr, ArmError> {
+        if data.is_empty() {
+            // Nothing to stream.
+            return self.dscr();
+        }
+        let count = data.len();
+        let mut fast = self.dscr()?;
+        fast.set_extdccmode(2);
 
-        // Return DSCR back to DCC Non Blocking mode
-        let mut dscr = self.dscr()?;
-        dscr.set_extdccmode(0);
-        self.set_dscr(dscr)?;
+        let mut accesses = vec![
+            (self.dscr, Some(u32::from(fast))),
+            (self.itr, Some(instruction)),
+        ];
+        accesses.extend(std::iter::repeat_n((self.dtrtx, None), count));
+        accesses.push((self.dscr, None));
+        let mut streamed = vec![0; count + 1];
+        if let Err(error) =
+            self.interface
+                .access_raw_ap_registers(&self.ap, &accesses, &mut streamed)
+        {
+            let _ = self.leave_fast_mode()?;
+            return Err(error);
+        }
+        // The first word read was left over from before the first load.
+        data[..count - 1].copy_from_slice(&streamed[1..count]);
+        let non_blocking = match self.exit_value(Dbgdscr(streamed[count])) {
+            Ok(val) => val,
+            Err(error) => {
+                let _ = self.leave_fast_mode()?;
+                return Err(error);
+            }
+        };
 
-        result
+        let mut tail = [0; 2];
+        let leave = [
+            (self.dscr, Some(u32::from(non_blocking))),
+            (self.dtrtx, None),
+            (self.dscr, None),
+        ];
+        match self
+            .interface
+            .access_raw_ap_registers(&self.ap, &leave, &mut tail)
+        {
+            Ok(()) => {
+                data[count - 1] = tail[0];
+                Ok(Dbgdscr(tail[1]))
+            }
+            Err(error) => {
+                let _ = self.leave_fast_mode()?;
+                Err(error)
+            }
+        }
+    }
+
+    /// Enter DCC Fast mode and run `instruction` for every word of `data`, returning
+    /// `DBGDSCR` as a result. See [`Self::read_in_fast_mode`] for more information.
+    fn write_in_fast_mode(&mut self, instruction: u32, data: &[u32]) -> Result<Dbgdscr, ArmError> {
+        let mut fast = self.dscr()?;
+        fast.set_extdccmode(2);
+
+        let mut accesses = vec![
+            (self.dscr, Some(u32::from(fast))),
+            (self.itr, Some(instruction)),
+        ];
+        accesses.extend(data.iter().map(|&word| (self.dtrrx, Some(word))));
+        accesses.push((self.dscr, None));
+        let mut dscr = [0];
+        if let Err(error) = self
+            .interface
+            .access_raw_ap_registers(&self.ap, &accesses, &mut dscr)
+        {
+            self.leave_fast_mode()?;
+            return Err(error);
+        }
+        let non_blocking = self.exit_value(Dbgdscr(dscr[0]))?;
+
+        let leave = [
+            (self.dscr, Some(u32::from(non_blocking))),
+            (self.dscr, None),
+        ];
+        match self
+            .interface
+            .access_raw_ap_registers(&self.ap, &leave, &mut dscr)
+        {
+            Ok(()) => Ok(Dbgdscr(dscr[0])),
+            Err(error) => {
+                self.leave_fast_mode()?;
+                Err(error)
+            }
+        }
     }
 }
 
@@ -1468,37 +1554,22 @@ impl MemoryInterface for Armv7ar<'_> {
 
                 let mut banked = core.banked_access()?;
 
-                // Ignore any errors encountered here -- they will set a Data Abort
-                // which we will pick up in `check_and_clear_data_abort()`
-                if banked
-                    .with_dcc_fast_mode(|banked| {
-                        // LDC p14, c5, [r0], #4
-                        banked.set_itr(build_ldc(14, 5, 0, 4))?;
-
-                        // Throw away the first value, which is from a previous operation
-                        let _ = banked.dtrtx()?;
-
-                        // Continually write the tx register, which will auto-increment.
-                        // Because reads lag by one instruction, we need to break before
-                        // we read the final value. If we don't we will end up reading one
-                        // extra word past the buffer, which may end up outside valid RAM.
-                        banked.dtrtx_repeated(&mut data[0..count - 1])?;
-                        Ok(())
-                    })
-                    .is_ok()
-                {
-                    // Grab the last value that we skipped during the main sequence.
-                    // Ignore any errors here since they will generate an abort that
-                    // will be caught below.
-                    if let Ok(last) = banked.dtrtx()
-                        && let Some(v) = data.last_mut()
-                    {
-                        *v = last;
+                // LDC p14, c5, [r0], #4
+                let dscr = match banked.read_in_fast_mode(build_ldc(14, 5, 0, 4), data) {
+                    Ok(dscr) => dscr,
+                    Err(error) => {
+                        if let Ok(dscr) = banked.dscr() {
+                            let _ = check_and_clear_data_abort(
+                                &mut *core.memory,
+                                core.base_address,
+                                dscr,
+                            );
+                        }
+                        return Err(error.into());
                     }
-                }
+                };
 
                 // Check if we had any aborts, if so clear them and fail
-                let dscr = banked.dscr()?;
                 check_and_clear_data_abort(&mut *core.memory, core.base_address, dscr)?;
             } else {
                 for (i, word) in data.iter_mut().enumerate() {
@@ -1664,19 +1735,21 @@ impl MemoryInterface for Armv7ar<'_> {
 
                 let mut banked = core.banked_access()?;
 
-                banked
-                    .with_dcc_fast_mode(|banked| {
-                        // STC p14, c5, [r0], #4
-                        banked.set_itr(build_stc(14, 5, 0, 4))?;
-
-                        // Continually write the tx register, which will auto-increment
-                        banked.set_dtrrx_repeated(data)?;
-                        Ok(())
-                    })
-                    .ok();
-
+                // STC p14, c5, [r0], #4
                 // Check if we had any aborts, if so clear them and fail
-                let dscr = banked.dscr()?;
+                let dscr = match banked.write_in_fast_mode(build_stc(14, 5, 0, 4), data) {
+                    Ok(dscr) => dscr,
+                    Err(error) => {
+                        if let Ok(dscr) = banked.dscr() {
+                            let _ = check_and_clear_data_abort(
+                                &mut *core.memory,
+                                core.base_address,
+                                dscr,
+                            );
+                        }
+                        return Err(error.into());
+                    }
+                };
                 check_and_clear_data_abort(&mut *core.memory, core.base_address, dscr)?;
             } else {
                 // Slow path -- perform multiple writes
@@ -1875,6 +1948,8 @@ mod test {
     };
 
     use super::*;
+    use crate::architecture::arm::dp::{DpAddress, DpRegisterAddress};
+    use std::collections::VecDeque;
 
     const TEST_BASE_ADDRESS: u64 = 0x8000_1000;
 
@@ -2285,6 +2360,211 @@ mod test {
             probe.batches,
             vec![vec![(dtrrx, Some(0x1234_5678)), (dbgdscr, None)]]
         );
+    }
+
+    /// A DAP that records every batch of raw AP accesses and answers reads from a script.
+    struct RecordingDap {
+        batches: Vec<Vec<(u64, Option<u32>)>>,
+        reads: VecDeque<u32>,
+        /// The batch, counted from zero, that fails with a probe error.
+        failing_batch: Option<usize>,
+    }
+
+    impl RecordingDap {
+        fn new(reads: &[u32]) -> Self {
+            Self {
+                batches: Vec::new(),
+                reads: reads.iter().copied().collect(),
+                failing_batch: None,
+            }
+        }
+
+        /// The values written to DBGDSCR, in order.
+        fn dscr_writes(&self) -> Vec<Dbgdscr> {
+            self.batches
+                .iter()
+                .flatten()
+                .filter(|(address, _)| *address == BD2::ADDRESS)
+                .filter_map(|(_, value)| value.map(Dbgdscr))
+                .collect()
+        }
+    }
+
+    impl DapAccess for RecordingDap {
+        fn read_raw_dp_register(
+            &mut self,
+            _dp: DpAddress,
+            _address: DpRegisterAddress,
+        ) -> Result<u32, ArmError> {
+            unimplemented!()
+        }
+
+        fn write_raw_dp_register(
+            &mut self,
+            _dp: DpAddress,
+            _address: DpRegisterAddress,
+            _value: u32,
+        ) -> Result<(), ArmError> {
+            unimplemented!()
+        }
+
+        fn read_raw_ap_register(
+            &mut self,
+            ap: &FullyQualifiedApAddress,
+            address: u64,
+        ) -> Result<u32, ArmError> {
+            let mut value = [0];
+            self.access_raw_ap_registers(ap, &[(address, None)], &mut value)?;
+            Ok(value[0])
+        }
+
+        fn write_raw_ap_register(
+            &mut self,
+            ap: &FullyQualifiedApAddress,
+            address: u64,
+            value: u32,
+        ) -> Result<(), ArmError> {
+            self.access_raw_ap_registers(ap, &[(address, Some(value))], &mut [])
+        }
+
+        fn access_raw_ap_registers(
+            &mut self,
+            _ap: &FullyQualifiedApAddress,
+            accesses: &[(u64, Option<u32>)],
+            values: &mut [u32],
+        ) -> Result<(), ArmError> {
+            let index = self.batches.len();
+            self.batches.push(accesses.to_vec());
+            if self.failing_batch == Some(index) {
+                return Err(ArmError::Probe(DebugProbeError::Other(
+                    "the probe went away".to_string(),
+                )));
+            }
+            let reads = accesses.iter().filter(|(_, value)| value.is_none()).count();
+            for value in &mut values[..reads] {
+                *value = self
+                    .reads
+                    .pop_front()
+                    .expect("a scripted value for every read");
+            }
+            Ok(())
+        }
+    }
+
+    fn banked(dap: &mut RecordingDap) -> BankedAccess<'_> {
+        BankedAccess {
+            interface: dap,
+            ap: FullyQualifiedApAddress::v1_with_default_dp(1),
+            dtrrx: BD0::ADDRESS,
+            itr: BD1::ADDRESS,
+            dscr: BD2::ADDRESS,
+            dtrtx: BD3::ADDRESS,
+        }
+    }
+
+    /// DBGDSCR with the last instruction complete: in Non-blocking mode, and in Fast mode.
+    fn done_and_fast() -> (u32, u32) {
+        let mut done = Dbgdscr(0);
+        done.set_instrcoml_l(true);
+        let done = u32::from(done);
+        let mut fast = Dbgdscr(done);
+        fast.set_extdccmode(2);
+        (done, u32::from(fast))
+    }
+
+    const LDC: u32 = 0xEC50_5E04;
+    const STC: u32 = 0xEC40_5E04;
+
+    #[test]
+    fn a_fast_mode_read_is_three_batches_with_the_last_word_after_leaving() {
+        let (done, fast) = done_and_fast();
+        // DBGDSCR before; the stale word, two loaded words and DBGDSCR while streaming; the last
+        // word and DBGDSCR after leaving.
+        let mut dap = RecordingDap::new(&[done, 0xDEAD, 11, 22, fast, 33, done]);
+        let mut data = [0; 3];
+
+        let dscr = banked(&mut dap).read_in_fast_mode(LDC, &mut data).unwrap();
+
+        assert_eq!(data, [11, 22, 33]);
+        assert_eq!(u32::from(dscr), done);
+        assert_eq!(
+            dap.batches,
+            vec![
+                vec![(BD2::ADDRESS, None)],
+                vec![
+                    (BD2::ADDRESS, Some(fast)),
+                    (BD1::ADDRESS, Some(LDC)),
+                    (BD3::ADDRESS, None),
+                    (BD3::ADDRESS, None),
+                    (BD3::ADDRESS, None),
+                    (BD2::ADDRESS, None),
+                ],
+                vec![
+                    (BD2::ADDRESS, Some(done)),
+                    (BD3::ADDRESS, None),
+                    (BD2::ADDRESS, None),
+                ],
+            ]
+        );
+    }
+
+    #[test]
+    fn a_fast_mode_write_is_three_batches() {
+        let (done, fast) = done_and_fast();
+        let mut dap = RecordingDap::new(&[done, fast, done]);
+
+        let dscr = banked(&mut dap)
+            .write_in_fast_mode(STC, &[1, 2, 3])
+            .unwrap();
+
+        assert_eq!(u32::from(dscr), done);
+        assert_eq!(
+            dap.batches,
+            vec![
+                vec![(BD2::ADDRESS, None)],
+                vec![
+                    (BD2::ADDRESS, Some(fast)),
+                    (BD1::ADDRESS, Some(STC)),
+                    (BD0::ADDRESS, Some(1)),
+                    (BD0::ADDRESS, Some(2)),
+                    (BD0::ADDRESS, Some(3)),
+                    (BD2::ADDRESS, None),
+                ],
+                vec![(BD2::ADDRESS, Some(done)), (BD2::ADDRESS, None)],
+            ]
+        );
+    }
+
+    /// A probe error while streaming is returned, after Fast mode has been left so that the
+    /// next read of DTRTX does not run the load again.
+    #[test]
+    fn a_failed_stream_leaves_fast_mode_and_returns_the_error() {
+        let (done, fast) = done_and_fast();
+        // DBGDSCR before; then, leaving by hand, DBGDSCR in Fast mode and after.
+        let mut dap = RecordingDap::new(&[done, fast, done]);
+        dap.failing_batch = Some(1);
+        let mut data = [0; 3];
+
+        let error = banked(&mut dap)
+            .read_in_fast_mode(LDC, &mut data)
+            .unwrap_err();
+
+        assert!(matches!(error, ArmError::Probe(_)), "{error:?}");
+        assert_eq!(data, [0; 3]);
+        assert_eq!(dap.batches.len(), 5);
+        let left = dap.dscr_writes().last().map(|dscr| dscr.extdccmode());
+        assert_eq!(left, Some(0));
+    }
+
+    #[test]
+    fn an_empty_fast_mode_read_only_reads_dbgdscr() {
+        let (done, _) = done_and_fast();
+        let mut dap = RecordingDap::new(&[done]);
+
+        let dscr = banked(&mut dap).read_in_fast_mode(LDC, &mut []).unwrap();
+
+        assert_eq!(u32::from(dscr), done);
+        assert_eq!(dap.batches, vec![vec![(BD2::ADDRESS, None)]]);
     }
 
     impl Drop for MockProbe {
