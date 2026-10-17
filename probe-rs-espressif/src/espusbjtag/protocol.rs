@@ -13,7 +13,7 @@ use std::{
 use probe_rs::probe::{
     DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError, ProbeError,
     list::{ProbeListItem, usb_probe_accessibility},
-    usb_util::BulkReadExt,
+    usb_util::{BulkReadExt, UsbSerialFilter},
 };
 
 use super::EspUsbJtagFactory;
@@ -116,6 +116,9 @@ pub(super) struct ProtocolHandler {
     pub(crate) base_speed_khz: u32,
     pub(crate) div_min: u16,
     pub(crate) div_max: u16,
+
+    /// Selects the CDC-ACM port of the same device. `None` if the device has no such port.
+    pub(crate) serial_filter: Option<UsbSerialFilter>,
 }
 
 impl Debug for ProtocolHandler {
@@ -142,6 +145,16 @@ impl ProtocolHandler {
             .ok_or(ProbeCreationError::NotFound)?;
 
         let is_bridge = device.product_id() == USB_PID_BRIDGE;
+
+        // The built-in USB-Serial-JTAG has a CDC-ACM port on interfaces 0 and 1.
+        let serial_filter =
+            (device.product_id() == USB_PID_BUILTIN_JTAG).then(|| UsbSerialFilter {
+                vendor_id: Some(device.vendor_id()),
+                product_id: Some(device.product_id()),
+                serial_number: device.serial_number().map(str::to_string),
+                interface: Some(0),
+                port_name: None,
+            });
 
         let device_handle = device
             .open()
@@ -297,6 +310,8 @@ impl ProtocolHandler {
             base_speed_khz,
             div_min,
             div_max,
+
+            serial_filter,
         };
 
         this.sync_capture_stream().map_err(|error| match error {
