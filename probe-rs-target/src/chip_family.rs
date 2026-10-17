@@ -248,6 +248,7 @@ impl ChipFamily {
         self.ensure_algorithms_exist()?;
         self.ensure_at_least_one_core()?;
         self.reject_incorrect_core_access_options()?;
+        self.reject_ambiguous_memory_port_names()?;
         self.validate_memory_regions()?;
         self.validate_rtt_scan_regions()?;
 
@@ -370,6 +371,27 @@ impl ChipFamily {
                         }
                     }
                     _ => {}
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Memory regions name cores and memory ports in the same way, so a memory port must not
+    /// share its name with a core or another memory port.
+    fn reject_ambiguous_memory_port_names(&self) -> Result<(), String> {
+        for variant in &self.variants {
+            for (index, port) in variant.memory_ports.iter().enumerate() {
+                let is_core = variant.cores.iter().any(|core| core.name == port.name);
+                let is_duplicate = variant.memory_ports[..index]
+                    .iter()
+                    .any(|other| other.name == port.name);
+                if is_core || is_duplicate {
+                    return Err(format!(
+                        "Variant {}, memory port name {} is not unique among cores and memory ports",
+                        variant.name, port.name
+                    ));
                 }
             }
         }
@@ -510,6 +532,16 @@ mod tests {
     use super::*;
 
     fn family_with_region_port(port: &str) -> ChipFamily {
+        family(&["ahb-ap"], port)
+    }
+
+    fn family(ports: &[&str], region_port: &str) -> ChipFamily {
+        let ports = ports
+            .iter()
+            .map(|port| {
+                format!("  - name: {port}\n    memory_port_options: !Arm\n      ap: !v1 0\n")
+            })
+            .collect::<String>();
         let yaml = format!(
             r#"
 name: Test Family
@@ -522,10 +554,7 @@ variants:
       ap: !v1 1
       debug_base: 0x80090000
   memory_ports:
-  - name: ahb-ap
-    memory_port_options: !Arm
-      ap: !v1 0
-  memory_map:
+{ports}  memory_map:
   - !Ram
     range:
       start: 0x0
@@ -533,7 +562,7 @@ variants:
     cores:
     - core0
     memory_ports:
-    - {port}
+    - {region_port}
 "#
         );
         yaml_serde::from_str(&yaml).expect("test family YAML should parse")
@@ -552,5 +581,21 @@ variants:
             .validate()
             .expect_err("region with unknown memory port should be rejected");
         assert!(error.contains("non-existent memory port does-not-exist"));
+    }
+
+    #[test]
+    fn memory_port_named_like_a_core_is_rejected() {
+        let error = family(&["core0"], "core0")
+            .validate()
+            .expect_err("memory port named like a core should be rejected");
+        assert!(error.contains("memory port name core0 is not unique"));
+    }
+
+    #[test]
+    fn duplicate_memory_port_names_are_rejected() {
+        let error = family(&["ahb-ap", "ahb-ap"], "ahb-ap")
+            .validate()
+            .expect_err("duplicate memory port names should be rejected");
+        assert!(error.contains("memory port name ahb-ap is not unique"));
     }
 }

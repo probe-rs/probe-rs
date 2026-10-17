@@ -53,7 +53,7 @@ use object::{Object as _, ObjectSymbol as _};
 use crate::Session;
 #[cfg(feature = "object")]
 use crate::meta::ElfMetadata;
-use crate::{Core, MemoryInterface, config::MemoryRegion};
+use crate::{Core, MemoryInterface, Target, config::MemoryRegion};
 use std::ops::Range;
 use std::thread;
 use std::time::Duration;
@@ -253,6 +253,24 @@ pub struct RttTarget {
     pub is_64_bit: bool,
     /// The memory that RTT is scanned for in, and that its buffers have to be in.
     pub memory_regions: Vec<MemoryRegion>,
+}
+
+impl RttTarget {
+    /// RTT through the memory port with index `port` of `target`, or `None` if there is no such
+    /// port. The memory port does not know the pointer width of the firmware, so `is_64_bit`
+    /// gives it, e.g. from [`Core::is_64_bit`].
+    pub fn for_memory_port(target: &Target, port: usize, is_64_bit: bool) -> Option<Self> {
+        let port = target.memory_ports.get(port)?;
+        Some(Self {
+            is_64_bit,
+            memory_regions: target
+                .memory_map
+                .iter()
+                .filter(|region| region.memory_ports().contains(&port.name))
+                .cloned()
+                .collect(),
+        })
+    }
 }
 
 impl From<&Core<'_>> for RttTarget {
@@ -480,9 +498,12 @@ impl Rtt {
     ///
     /// This should be called while the core is halted, before a reset, to prevent
     /// attaching to stale data from a previous session.
-    pub fn clear_control_block(core: &mut Core, region: &ScanRegion) -> Result<(), Error> {
-        let target = RttTarget::from(&*core);
-        match Self::find_control_block(core, &target, region) {
+    pub fn clear_control_block(
+        memory: &mut impl MemoryInterface,
+        target: &RttTarget,
+        region: &ScanRegion,
+    ) -> Result<(), Error> {
+        match Self::find_control_block(memory, target, region) {
             Ok(address) => {
                 tracing::debug!("Clearing RTT control block at {:#010x}", address);
                 let clear_size = if matches!(region, ScanRegion::Exact(_)) {
@@ -497,7 +518,7 @@ impl Rtt {
                     Self::RTT_ID.len()
                 };
                 let zeros = vec![0u8; clear_size];
-                core.write_8(address, &zeros)?;
+                memory.write_8(address, &zeros)?;
                 Ok(())
             }
             Err(Error::ControlBlockNotFound | Error::NoControlBlockLocation) => {
@@ -635,12 +656,12 @@ fn try_attach_to_rtt_inner(
 
 /// Try to attach to RTT, with the given timeout.
 pub fn try_attach_to_rtt(
-    core: &mut Core,
+    memory: &mut impl MemoryInterface,
+    target: &RttTarget,
     timeout: Duration,
     rtt_region: &ScanRegion,
 ) -> Result<Rtt, Error> {
-    let target = RttTarget::from(&*core);
-    try_attach_to_rtt_inner(|| Rtt::attach_region(core, &target, rtt_region), timeout)
+    try_attach_to_rtt_inner(|| Rtt::attach_region(memory, target, rtt_region), timeout)
 }
 
 /// Try to attach to RTT, with the given timeout.
@@ -664,6 +685,24 @@ pub fn try_attach_to_rtt_shared(
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[cfg(feature = "builtin-targets")]
+    #[test]
+    fn rtt_target_for_memory_port_has_the_regions_the_port_reaches() {
+        let target = crate::config::Registry::from_builtin_families()
+            .get_target_by_name("X7Z")
+            .unwrap();
+
+        let rtt_target = RttTarget::for_memory_port(&target, 0, false).unwrap();
+        let names = rtt_target
+            .memory_regions
+            .iter()
+            .map(|region| region.as_ram_region().and_then(|ram| ram.name.as_deref()))
+            .collect::<Vec<_>>();
+        assert_eq!(names, [Some("OCM"), Some("DDR")]);
+
+        assert!(RttTarget::for_memory_port(&target, 1, false).is_none());
+    }
 
     #[test]
     fn test_how_control_block_list_looks() {
