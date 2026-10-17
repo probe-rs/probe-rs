@@ -26,7 +26,10 @@ use crate::flash::{
 };
 use crate::info::{InfoEvent, TargetInfoRequest, TargetMetadataRequest, TargetMetadataResponse};
 use crate::memory::{ReadBytesRequest, ReadMemoryRequest, WriteMemoryRequest};
-use crate::monitor::{MonitorRequest, MonitorResponse, RttEvent, SemihostingEvent};
+use crate::monitor::{
+    MonitorRequest, MonitorResponse, RttEvent, SemihostingEvent, SerialEvent, SerialWriteRequest,
+    SerialWriteResponse,
+};
 use crate::probe::{
     AttachRequest, AttachResponse, ListProbesResponse, SelectProbeRequest, SelectProbeResponse,
 };
@@ -107,6 +110,8 @@ endpoints! {
     | CleanUpRttEndpoint           | RttChannelRequest      | NoResponse              | "rtt/clean_up"            |
     | ClearRttControlBlockEndpoint | RttChannelRequest      | NoResponse              | "rtt/clear_control_block" |
 
+    | SerialWriteEndpoint | SerialWriteRequest | SerialWriteResponse | "serial/write" |
+
     | ListTestsEndpoint         | ListTestsRequest        | ListTestsResponse       | "tests/list"       |
     | RunTestEndpoint           | RunTestRequest          | RunTestResponse         | "tests/run"        |
     | TestKickoffEndpoint       | TestKickoffRequest      | TestKickoffResponse     | "tests/kickoff"    |
@@ -166,4 +171,5 @@ topics! {
     | ProgressEventTopic  | ProgressEvent    | "flash/progress" |     |
     | RttTopic            | RttEvent         | "rtt"            |     |
     | SemihostingTopic    | SemihostingEvent | "semihosting"    |     |
+    | SerialTopic         | SerialEvent      | "serial"         |     |
 }

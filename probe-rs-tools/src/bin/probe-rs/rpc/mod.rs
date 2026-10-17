@@ -18,8 +18,15 @@ pub trait ObjectMarker: 'static {
 
 pub struct SessionEntry {
     pub session: probe_rs::Session,
+    /// The serial port to the target. It is dropped with the session. Its users get a clone of
+    /// the `Arc` and then read and write without the session lock.
+    pub target_serial: Option<SharedTargetSerial>,
     pub _lease: probe_broker::ProbeLease,
 }
+
+/// A serial port to the target that more than one task uses.
+pub type SharedTargetSerial =
+    Arc<parking_lot::Mutex<Box<dyn probe_rs::probe::target_serial::TargetSerial>>>;
 
 impl Deref for SessionEntry {
     type Target = probe_rs::Session;
@@ -157,10 +164,12 @@ impl ConnectionState {
     pub async fn set_session(
         &self,
         session: probe_rs::Session,
+        target_serial: Option<SharedTargetSerial>,
         lease: probe_broker::ProbeLease,
     ) -> Key<Session> {
         self.object_storage.lock().await.store_object(SessionEntry {
             session,
+            target_serial,
             _lease: lease,
         })
     }
@@ -193,5 +202,16 @@ impl SessionState<'_> {
         tokio::sync::OwnedMutexGuard::map(guard, |e: &mut (dyn Any + Send)| {
             &mut e.downcast_mut::<SessionEntry>().unwrap().session
         })
+    }
+
+    /// Returns the serial port to the target. Blocks while other users hold the session.
+    pub fn target_serial(&self) -> Option<SharedTargetSerial> {
+        let obj_cell = self.object_storage().cell(self.session);
+        let guard = obj_cell.obj.clone().blocking_lock_owned();
+        guard
+            .downcast_ref::<SessionEntry>()
+            .unwrap()
+            .target_serial
+            .clone()
     }
 }

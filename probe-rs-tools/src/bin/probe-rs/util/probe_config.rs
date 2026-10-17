@@ -2,9 +2,12 @@
 
 use std::collections::HashMap;
 
+use anyhow::Context as _;
 use probe_rs::probe::{
     DebugProbeError, DebugProbeSelector, Probe, WireProtocol,
     list::{ProbeListItem, ProbeLister},
+    target_serial::{LineState, SerialSettings, TargetSerial, UsbCdcSerial},
+    usb_util::UsbSerialFilter,
 };
 use serde::{Deserialize, Deserializer, Serialize};
 
@@ -15,6 +18,9 @@ use serde::{Deserialize, Deserializer, Serialize};
 /// [probes."0403:6010-1"]
 /// speed = 4000
 /// protocol = "swd"
+///
+/// [probes."303a:1001".serial]
+/// rts = "low"
 /// ```
 #[derive(Debug, Default, Clone, Serialize)]
 #[serde(transparent)]
@@ -55,6 +61,100 @@ pub struct ProbeConfig {
     /// The wire protocol, if the command does not set it.
     #[serde(deserialize_with = "deserialize_protocol")]
     pub protocol: Option<WireProtocol>,
+    /// The serial port to the target.
+    pub serial: SerialConfig,
+}
+
+/// Settings of the serial port to the target. A `None` field keeps the driver default.
+///
+/// The machine with the probe owns these settings. In remote mode, the client can only ask for
+/// the port and its baud rate.
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct SerialConfig {
+    /// `false` never opens the port.
+    pub enabled: Option<bool>,
+    pub baud: Option<u32>,
+    pub dtr: Option<LineState>,
+    pub rts: Option<LineState>,
+    /// Use this USB serial port instead of the port of the probe: `VID:PID[:serial]`.
+    pub usb: Option<String>,
+    /// Use the USB serial port with this OS name instead of the port of the probe.
+    pub port: Option<String>,
+}
+
+impl SerialConfig {
+    /// Sets the fields of `self` that `other` sets.
+    fn merge(&mut self, other: &SerialConfig) {
+        let other = other.clone();
+        self.enabled = other.enabled.or(self.enabled);
+        self.baud = other.baud.or(self.baud);
+        self.dtr = other.dtr.or(self.dtr);
+        self.rts = other.rts.or(self.rts);
+        // A replacement port is one setting: `usb` and `port` replace each other.
+        if other.usb.is_some() || other.port.is_some() {
+            self.usb = other.usb;
+            self.port = other.port;
+        }
+    }
+
+    fn apply(&self, settings: &mut SerialSettings) {
+        if let Some(baud) = self.baud {
+            settings.baud = baud;
+        }
+        if let Some(dtr) = self.dtr {
+            settings.dtr = dtr;
+        }
+        if let Some(rts) = self.rts {
+            settings.rts = rts;
+        }
+    }
+
+    /// The filter of the replacement port, if the config names one.
+    fn replacement(&self) -> anyhow::Result<Option<UsbSerialFilter>> {
+        if let Some(port) = &self.port {
+            return Ok(Some(UsbSerialFilter {
+                port_name: Some(port.clone()),
+                ..Default::default()
+            }));
+        }
+        let Some(usb) = &self.usb else {
+            return Ok(None);
+        };
+        let selector = usb
+            .parse::<DebugProbeSelector>()
+            .with_context(|| format!("Invalid serial port `{usb}`"))?;
+        Ok(Some(UsbSerialFilter {
+            vendor_id: Some(selector.vendor_id),
+            product_id: Some(selector.product_id),
+            serial_number: selector.serial_number,
+            interface: selector.interface,
+            port_name: None,
+        }))
+    }
+
+    /// Takes the serial port to the target from `probe`, or the replacement port, and returns it
+    /// with its settings. Returns `None` if there is no port or the config disables it.
+    pub fn target_serial(
+        &self,
+        probe: &mut Probe,
+    ) -> anyhow::Result<Option<(Box<dyn TargetSerial>, SerialSettings)>> {
+        if self.enabled == Some(false) {
+            return Ok(None);
+        }
+
+        let serial: Box<dyn TargetSerial> = match self.replacement()? {
+            Some(filter) => Box::new(UsbCdcSerial::new(filter, SerialSettings::default())),
+            None => match probe.target_serial() {
+                Some(serial) => serial,
+                None => return Ok(None),
+            },
+        };
+
+        let mut settings = serial.default_settings();
+        self.apply(&mut settings);
+        Ok(Some((serial, settings)))
+    }
 }
 
 fn deserialize_protocol<'de, D>(deserializer: D) -> Result<Option<WireProtocol>, D::Error>
@@ -71,6 +171,7 @@ impl ProbeConfig {
     fn merge(&mut self, other: &ProbeConfig) {
         self.speed = other.speed.or(self.speed);
         self.protocol = other.protocol.or(self.protocol);
+        self.serial.merge(&other.serial);
     }
 }
 
@@ -343,5 +444,38 @@ mod tests {
         assert!(configs.needs_serial_number(&probe("0012:0023")));
         assert!(!configs.needs_serial_number(&probe("0012:0023:ABC")));
         assert!(!configs.needs_serial_number(&probe("0012:0024")));
+    }
+
+    #[test]
+    fn serial_settings_merge_and_apply() {
+        let configs = configs(
+            r#"
+            ["303a:1001".serial]
+            baud = 9600
+            dtr = "low"
+            usb = "1a86:7523"
+
+            ["303a:1001:ABC".serial]
+            dtr = "high"
+            port = "COM7"
+            "#,
+        );
+
+        let serial = configs.resolve(&probe("303a:1001:ABC")).serial;
+        let mut settings = SerialSettings::default();
+        serial.apply(&mut settings);
+        assert_eq!(settings.baud, 9600);
+        assert_eq!(settings.dtr, LineState::High);
+        assert_eq!(settings.rts, LineState::Keep);
+
+        // The specific entry replaces the replacement port of the general entry.
+        let filter = serial.replacement().unwrap().unwrap();
+        assert_eq!(filter.port_name.as_deref(), Some("COM7"));
+        assert_eq!(filter.vendor_id, None);
+
+        let serial = configs.resolve(&probe("303a:1001:OTHER")).serial;
+        let filter = serial.replacement().unwrap().unwrap();
+        assert_eq!(filter.vendor_id, Some(0x1a86));
+        assert_eq!(filter.product_id, Some(0x7523));
     }
 }

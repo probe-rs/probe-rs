@@ -39,7 +39,12 @@ impl Cmd {
             None => (FileMetadata::default(), None),
         };
 
-        let session = cli::attach_probe(&client, self.probe_options, elf_meta, true).await?;
+        // Show the output of the serial port to the target.
+        let probe_options = ProbeOptions {
+            target_serial: true,
+            ..self.probe_options
+        };
+        let session = cli::attach_probe(&client, probe_options, elf_meta, true).await?;
 
         let rtt_client = rtt_client(
             &session,
