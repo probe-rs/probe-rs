@@ -2,7 +2,7 @@ use crate::util::rtt::{RttActiveDownChannel, RttActiveUpChannel, RttConfig, RttC
 use probe_rs::{
     Core, MemoryInterface, Target,
     flashing::FlashLoader,
-    rtt::{Error, Rtt, ScanRegion},
+    rtt::{Error, Rtt, RttTarget, ScanRegion},
 };
 use probe_rs_rpc::rtt_config::ChannelMode;
 use std::time::{Duration, Instant};
@@ -124,10 +124,11 @@ impl RttClient {
             return Ok(false);
         }
 
+        let rtt_target = RttTarget::from(&*core);
         let location = if let Some(location) = self.last_control_block_address {
             location
         } else {
-            let location = match Rtt::find_control_block(core, &self.scan_region) {
+            let location = match Rtt::find_control_block(core, &rtt_target, &self.scan_region) {
                 Ok(location) => location,
                 Err(Error::ControlBlockNotFound) => {
                     tracing::debug!("Failed to attach - control block not found");
@@ -146,7 +147,7 @@ impl RttClient {
             location
         };
 
-        let rtt = match Rtt::attach_at(core, location) {
+        let rtt = match Rtt::attach_at(core, &rtt_target, location) {
             Ok(rtt) => rtt,
             Err(Error::ControlBlockNotFound) => {
                 self.last_control_block_address = None;

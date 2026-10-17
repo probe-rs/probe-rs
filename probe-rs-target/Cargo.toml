@@ -24,6 +24,9 @@ serde_with = { version = "3.8", default-features = false, features = [
 bincode = { version = "2", features = ["serde"], optional = true }
 yaml_serde = { version = "0.10", optional = true }
 
+[dev-dependencies]
+yaml_serde.workspace = true
+
 [features]
 bincode = ["dep:bincode", "dep:yaml_serde"]
 

@@ -46,7 +46,7 @@ use crate::{
         },
         traits::DebugPortWire,
     },
-    config::CoreExt,
+    config::MemoryApExt,
     probe::BitSequence,
     probe::swd::Port,
 };

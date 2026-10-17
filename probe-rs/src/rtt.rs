@@ -13,7 +13,7 @@
 //! ```no_run
 //! use probe_rs::probe::list::Lister;
 //! use probe_rs::Permissions;
-//! use probe_rs::rtt::Rtt;
+//! use probe_rs::rtt::{Rtt, RttTarget};
 //!
 //! // First obtain a probe-rs session (see probe-rs documentation for details)
 //! let lister = Lister::new();
@@ -26,7 +26,8 @@
 //! let mut core = session.core(0)?;
 //!
 //! // Attach to RTT
-//! let mut rtt = Rtt::attach(&mut core)?;
+//! let target = RttTarget::from(&core);
+//! let mut rtt = Rtt::attach(&mut core, &target)?;
 //!
 //! // Read from a channel
 //! if let Some(input) = rtt.up_channel(0) {
@@ -52,7 +53,7 @@ use object::{Object as _, ObjectSymbol as _};
 use crate::Session;
 #[cfg(feature = "object")]
 use crate::meta::ElfMetadata;
-use crate::{Core, MemoryInterface, config::MemoryRegion};
+use crate::{Core, MemoryInterface, Target, config::MemoryRegion};
 use std::ops::Range;
 use std::thread;
 use std::time::Duration;
@@ -98,9 +99,9 @@ pub fn find_rtt_control_block_in_file(file: &object::File) -> Option<u64> {
 
 /// The RTT interface.
 ///
-/// Use [`Rtt::attach`] or [`Rtt::attach_region`] to attach to a probe-rs [`Core`] and detect the
-///     channels, as they were configured on the target. The timing of when this is called is really
-///     important, or else unexpected results can be expected.
+/// Use [`Rtt::attach`] or [`Rtt::attach_region`] to attach to a probe-rs [`crate::Core`] or
+///     [`crate::MemoryAccessPort`] and detect the channels, as they were configured on the target.
+///     The timing of when this is called is really important, or else unexpected results can be expected.
 ///
 /// ## Examples of how timing between host and target effects the results
 ///
@@ -245,6 +246,42 @@ impl RttControlBlockHeader {
     }
 }
 
+/// What RTT needs to know about the target besides access to its memory.
+#[derive(Debug, Clone)]
+pub struct RttTarget {
+    /// Whether the target uses 64-bit pointers.
+    pub is_64_bit: bool,
+    /// The memory that RTT is scanned for in, and that its buffers have to be in.
+    pub memory_regions: Vec<MemoryRegion>,
+}
+
+impl RttTarget {
+    /// RTT through the memory port with index `port` of `target`, or `None` if there is no such
+    /// port. The memory port does not know the pointer width of the firmware, so `is_64_bit`
+    /// gives it, e.g. from [`Core::is_64_bit`].
+    pub fn for_memory_port(target: &Target, port: usize, is_64_bit: bool) -> Option<Self> {
+        let port = target.memory_ports.get(port)?;
+        Some(Self {
+            is_64_bit,
+            memory_regions: target
+                .memory_map
+                .iter()
+                .filter(|region| region.memory_ports().contains(&port.name))
+                .cloned()
+                .collect(),
+        })
+    }
+}
+
+impl From<&Core<'_>> for RttTarget {
+    fn from(core: &Core<'_>) -> Self {
+        Self {
+            is_64_bit: core.is_64_bit(),
+            memory_regions: core.memory_regions().cloned().collect(),
+        }
+    }
+}
+
 // Rtt must follow this data layout when reading/writing memory in order to be compatible with the
 // official RTT implementation.
 //
@@ -263,17 +300,18 @@ impl Rtt {
 
     /// Tries to attach to an RTT control block at the specified memory address.
     pub fn attach_at(
-        core: &mut Core,
+        memory: &mut impl MemoryInterface,
+        target: &RttTarget,
         // Pointer from which to scan
         ptr: u64,
     ) -> Result<Rtt, Error> {
-        let is_64_bit = core.is_64_bit();
+        let is_64_bit = target.is_64_bit;
 
         let mut mem = [0u32; RttControlBlockHeader::minimal_header_size() / 4];
         // Read the magic value first as unordered data, and read the subsequent pointers
         // as ordered u32 values.
-        core.read(ptr, &mut mem.as_mut_bytes()[0..Self::RTT_ID.len()])?;
-        core.read_32(
+        memory.read(ptr, &mut mem.as_mut_bytes()[0..Self::RTT_ID.len()])?;
+        memory.read_32(
             ptr + Self::RTT_ID.len() as u64,
             &mut mem[Self::RTT_ID.len() / 4..],
         )?;
@@ -305,7 +343,7 @@ impl Rtt {
         // Read the rest of the control block
         let channel_buffer_len = rtt_header.total_rtt_buffer_size() - rtt_header.header_size();
         let mut mem = vec![0; channel_buffer_len / 4];
-        core.read_32(ptr + rtt_header.header_size() as u64, &mut mem)?;
+        memory.read_32(ptr + rtt_header.header_size() as u64, &mut mem)?;
 
         let mut up_channels = Vec::new();
         let mut down_channels = Vec::new();
@@ -326,7 +364,13 @@ impl Rtt {
         for (channel_index, buffer) in up_channels_buffer.into_iter().enumerate() {
             let buffer_size = buffer.size() as u64;
 
-            if let Some(chan) = Channel::from(core, channel_index, offset, buffer)? {
+            if let Some(chan) = Channel::from(
+                memory,
+                &target.memory_regions,
+                channel_index,
+                offset,
+                buffer,
+            )? {
                 up_channels.push(UpChannel(chan));
             } else {
                 tracing::warn!("Buffer for up channel {channel_index} not initialized");
@@ -338,7 +382,13 @@ impl Rtt {
         for (channel_index, buffer) in down_channels_buffer.into_iter().enumerate() {
             let buffer_size = buffer.size() as u64;
 
-            if let Some(chan) = Channel::from(core, channel_index, offset, buffer)? {
+            if let Some(chan) = Channel::from(
+                memory,
+                &target.memory_regions,
+                channel_index,
+                offset,
+                buffer,
+            )? {
                 down_channels.push(DownChannel(chan));
             } else {
                 tracing::warn!("Buffer for down channel {channel_index} not initialized");
@@ -355,20 +405,28 @@ impl Rtt {
 
     /// Attempts to detect an RTT control block in the specified RAM region(s) and returns an
     /// instance if a valid control block was found.
-    pub fn attach_region(core: &mut Core, region: &ScanRegion) -> Result<Rtt, Error> {
-        let ptr = Self::find_control_block(core, region)?;
-        Self::attach_at(core, ptr)
+    pub fn attach_region(
+        memory: &mut impl MemoryInterface,
+        target: &RttTarget,
+        region: &ScanRegion,
+    ) -> Result<Rtt, Error> {
+        let ptr = Self::find_control_block(memory, target, region)?;
+        Self::attach_at(memory, target, ptr)
     }
 
     /// Attempts to detect an RTT control block anywhere in the target RAM and returns an instance
     /// if a valid control block was found.
-    pub fn attach(core: &mut Core) -> Result<Rtt, Error> {
-        Self::attach_region(core, &ScanRegion::default())
+    pub fn attach(memory: &mut impl MemoryInterface, target: &RttTarget) -> Result<Rtt, Error> {
+        Self::attach_region(memory, target, &ScanRegion::default())
     }
 
     /// Attempts to detect an RTT control block in the specified RAM region(s) and returns an
     /// address if a valid control block location was found.
-    pub fn find_control_block(core: &mut Core, region: &ScanRegion) -> Result<u64, Error> {
+    pub fn find_control_block(
+        memory: &mut impl MemoryInterface,
+        target: &RttTarget,
+        region: &ScanRegion,
+    ) -> Result<u64, Error> {
         let ranges = match region.clone() {
             ScanRegion::Exact(addr) => {
                 tracing::debug!("Scanning at exact address: {:#010x}", addr);
@@ -378,7 +436,9 @@ impl Rtt {
             ScanRegion::Ram => {
                 tracing::debug!("Scanning whole RAM");
 
-                core.memory_regions()
+                target
+                    .memory_regions
+                    .iter()
                     .filter_map(MemoryRegion::as_ram_region)
                     .filter(|r| !r.is_alias)
                     .map(|r| r.range.clone())
@@ -411,7 +471,7 @@ impl Rtt {
                 };
 
                 let mut mem = vec![0; range_len];
-                core.read(range.start, &mut mem).ok()?;
+                memory.read(range.start, &mut mem).ok()?;
 
                 let offset = mem
                     .windows(Self::RTT_ID.len())
@@ -438,13 +498,17 @@ impl Rtt {
     ///
     /// This should be called while the core is halted, before a reset, to prevent
     /// attaching to stale data from a previous session.
-    pub fn clear_control_block(core: &mut Core, region: &ScanRegion) -> Result<(), Error> {
-        match Self::find_control_block(core, region) {
+    pub fn clear_control_block(
+        memory: &mut impl MemoryInterface,
+        target: &RttTarget,
+        region: &ScanRegion,
+    ) -> Result<(), Error> {
+        match Self::find_control_block(memory, target, region) {
             Ok(address) => {
                 tracing::debug!("Clearing RTT control block at {:#010x}", address);
                 let clear_size = if matches!(region, ScanRegion::Exact(_)) {
                     // Full header: 16 bytes magic + channel count fields
-                    if core.is_64_bit() {
+                    if target.is_64_bit {
                         16 + 2 * 8
                     } else {
                         16 + 2 * 4
@@ -454,7 +518,7 @@ impl Rtt {
                     Self::RTT_ID.len()
                 };
                 let zeros = vec![0u8; clear_size];
-                core.write_8(address, &zeros)?;
+                memory.write_8(address, &zeros)?;
                 Ok(())
             }
             Err(Error::ControlBlockNotFound | Error::NoControlBlockLocation) => {
@@ -592,11 +656,12 @@ fn try_attach_to_rtt_inner(
 
 /// Try to attach to RTT, with the given timeout.
 pub fn try_attach_to_rtt(
-    core: &mut Core<'_>,
+    memory: &mut impl MemoryInterface,
+    target: &RttTarget,
     timeout: Duration,
     rtt_region: &ScanRegion,
 ) -> Result<Rtt, Error> {
-    try_attach_to_rtt_inner(|| Rtt::attach_region(core, rtt_region), timeout)
+    try_attach_to_rtt_inner(|| Rtt::attach_region(memory, target, rtt_region), timeout)
 }
 
 /// Try to attach to RTT, with the given timeout.
@@ -610,7 +675,8 @@ pub fn try_attach_to_rtt_shared(
         || {
             let mut session_handle = session.lock();
             let mut core = session_handle.core(core_id)?;
-            Rtt::attach_region(&mut core, rtt_region)
+            let target = RttTarget::from(&core);
+            Rtt::attach_region(&mut core, &target, rtt_region)
         },
         timeout,
     )
@@ -619,6 +685,24 @@ pub fn try_attach_to_rtt_shared(
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[cfg(feature = "builtin-targets")]
+    #[test]
+    fn rtt_target_for_memory_port_has_the_regions_the_port_reaches() {
+        let target = crate::config::Registry::from_builtin_families()
+            .get_target_by_name("X7Z")
+            .unwrap();
+
+        let rtt_target = RttTarget::for_memory_port(&target, 0, false).unwrap();
+        let names = rtt_target
+            .memory_regions
+            .iter()
+            .map(|region| region.as_ram_region().and_then(|ram| ram.name.as_deref()))
+            .collect::<Vec<_>>();
+        assert_eq!(names, [Some("OCM"), Some("DDR")]);
+
+        assert!(RttTarget::for_memory_port(&target, 1, false).is_none());
+    }
 
     #[test]
     fn test_how_control_block_list_looks() {
