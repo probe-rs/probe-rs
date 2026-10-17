@@ -74,6 +74,7 @@ use crate::probe::{
     DebugProbeError, Handle, HandleId, Results,
 };
 
+pub(crate) use port::is_abort;
 pub use port::{SwdPort, SwdPortError};
 
 bitfield::bitfield! {
@@ -343,6 +344,12 @@ pub trait SwdProbe: DebugProbe {
     /// Returns the SWD wire-protocol timing settings used by this probe.
     fn swd_settings(&self) -> SwdSettings {
         SwdSettings::default()
+    }
+
+    /// Report whether [`SwdOp::Transfer`] works when using JTAG as the protocol.
+    /// If this is `false` then bit-banged JTAG must be used instead.
+    fn transfers_over_jtag(&self) -> bool {
+        false
     }
 }
 
