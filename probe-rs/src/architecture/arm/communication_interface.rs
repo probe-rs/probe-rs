@@ -514,7 +514,7 @@ impl ArmCommunicationInterface {
         }
     }
 
-    /// Forgets a memory AP's state when its registers are written from outside its interface.
+    /// Forgets a memory AP's state after a write to its registers.
     fn forget_memory_ap(&mut self, ap: &FullyQualifiedApAddress) {
         if let Some(state) = self.dps.get_mut(&ap.dp()) {
             state.memory_aps.remove(ap.ap());
@@ -1307,6 +1307,9 @@ impl DapAccess for ArmCommunicationInterface {
             return Ok(());
         }
 
+        if accesses.iter().any(|(_, value)| value.is_some()) {
+            self.forget_memory_ap(ap);
+        }
         self.select_ap_and_ap_bank(ap, first)?;
 
         self.with_swd_port(|port| {
