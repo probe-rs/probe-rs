@@ -8,8 +8,8 @@ use super::{
 };
 use crate::{SourceLocation, VerifiedBreakpoint, stack_frame::StackFrameInfo, unit_info::RangeExt};
 use gimli::{
-    BaseAddresses, DebugFrame, DebugInfoOffset, RunTimeEndian, UnwindContext, UnwindSection,
-    UnwindTableRow, read::RegisterRule,
+    BaseAddresses, CieOrFde, DebugFrame, DebugInfoOffset, FrameDescriptionEntry, RunTimeEndian,
+    UnwindContext, UnwindSection, UnwindTableRow, read::RegisterRule,
 };
 use object::read::{Object, ObjectSection};
 use probe_rs::{
@@ -1298,13 +1298,9 @@ pub fn get_unwind_info<'a>(
 
     let unwind_bases = BaseAddresses::default();
 
-    let frame_descriptor_entry = frame_section
-        .fde_for_address(
-            &unwind_bases,
-            frame_program_counter,
-            DebugFrame::cie_from_offset,
-        )
-        .map_err(transform_error)?;
+    let frame_descriptor_entry =
+        fde_for_address(frame_section, &unwind_bases, frame_program_counter)
+            .map_err(transform_error)?;
 
     let return_address_register = frame_descriptor_entry.cie().return_address_register();
 
@@ -1318,6 +1314,26 @@ pub fn get_unwind_info<'a>(
         .map_err(transform_error)?;
 
     Ok((unwind_info, return_address_register))
+}
+
+/// Like [`UnwindSection::fde_for_address`], but skips the FDEs of discarded functions. Linkers
+/// relocate those to address 0, where they shadow the FDEs of the functions that were kept and
+/// cover code that really is at 0, such as a vector table.
+fn fde_for_address(
+    frame_section: &DebugFrame<DwarfReader>,
+    bases: &BaseAddresses,
+    address: u64,
+) -> gimli::Result<FrameDescriptionEntry<DwarfReader>> {
+    let mut entries = frame_section.entries(bases);
+    while let Some(entry) = entries.next()? {
+        if let CieOrFde::Fde(partial) = entry {
+            let fde = partial.parse(DebugFrame::cie_from_offset)?;
+            if fde.initial_address() != 0 && fde.contains(address) {
+                return Ok(fde);
+            }
+        }
+    }
+    Err(gimli::Error::NoUnwindInfoForAddress)
 }
 
 /// Determines the CFA (canonical frame address) for the current [`gimli::UnwindTableRow`], using the current register values.
@@ -1664,6 +1680,12 @@ pub fn unwind_program_counter_register(
                         "PC=(unwound (LR - 2) & !0b1) (dwarf Undefined)",
                     )
                 }
+                // The return address is the instruction after the call. Back up to the call,
+                // which belongs to the caller even when a noreturn call is its last instruction.
+                Some(InstructionSet::A32) => (
+                    Some(RegisterValue::U32(return_address - 4)),
+                    "PC=(unwound LR - 4) (dwarf Undefined)",
+                ),
                 Some(InstructionSet::RV32C) => (
                     Some(RegisterValue::U32(return_address - 2)),
                     "PC=(unwound x1 - 2) (dwarf Undefined)",
@@ -1765,8 +1787,8 @@ mod test {
     use test_case::test_case;
 
     use super::{
-        DwarfUnwind, TypedPath, path_matches, unwind_program_counter_register,
-        unwind_register_using_rule,
+        DwarfReader, DwarfUnwind, TypedPath, get_unwind_info, path_matches,
+        unwind_program_counter_register, unwind_register_using_rule,
     };
 
     /// Get the full path to a file in the `tests` directory.
@@ -2694,6 +2716,54 @@ mod test {
             unwind_program_counter_register(mepc, 0x8000_2000, Some(InstructionSet::RV32), false),
             Some(RegisterValue::U32(0x8000_1230))
         );
+    }
+
+    #[test]
+    fn unwind_pc_from_a32_call() {
+        let lr = RegisterValue::U32(0x104);
+
+        assert_eq!(
+            unwind_program_counter_register(lr, 0x200, Some(InstructionSet::A32), false),
+            Some(RegisterValue::U32(0x100))
+        );
+    }
+
+    #[test]
+    fn unwind_info_ignores_discarded_fde() {
+        use gimli::write::{
+            Address, CommonInformationEntry, EndianVec, FrameDescriptionEntry, FrameTable,
+        };
+
+        let encoding = gimli::Encoding {
+            format: gimli::Format::Dwarf32,
+            version: 1,
+            address_size: 4,
+        };
+        let mut table = FrameTable::default();
+        let cie = table.add_cie(CommonInformationEntry::new(
+            encoding,
+            2,
+            -4,
+            gimli::Register(14),
+        ));
+        // A discarded function, which covers a vector table at 0 and comes before the FDE of a
+        // function that was kept.
+        let fde = FrameDescriptionEntry::new;
+        table.add_fde(cie, fde(Address::Constant(0), 0x200));
+        table.add_fde(cie, fde(Address::Constant(0x100), 0x10));
+
+        let mut debug_frame = gimli::write::DebugFrame::from(EndianVec::new(gimli::LittleEndian));
+        table.write_debug_frame(&mut debug_frame).unwrap();
+        let mut frame_section = gimli::DebugFrame::from(DwarfReader::new(
+            debug_frame.slice().into(),
+            gimli::RunTimeEndian::Little,
+        ));
+        frame_section.set_address_size(4);
+
+        let mut context = gimli::UnwindContext::new();
+        assert!(get_unwind_info(&mut context, &frame_section, 0x4).is_err());
+        let (row, _) = get_unwind_info(&mut context, &frame_section, 0x104).unwrap();
+        assert_eq!(row.start_address(), 0x100);
     }
 
     #[test]

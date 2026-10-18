@@ -116,6 +116,12 @@ pub trait RiscvDebugSequence: Send + Sync + Debug {
             "RAM running on RISC-V targets",
         ))
     }
+
+    /// This sequence is called before an image that boots from RAM is written, after the cores
+    /// that boot from it were reset and halted.
+    fn prepare_loading_to_ram(&self, _session: &mut crate::Session) -> Result<(), crate::Error> {
+        Ok(())
+    }
 }
 
 /// The default sequences that is used for RISC-V chips that do not specify a specific sequence.

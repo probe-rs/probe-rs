@@ -880,6 +880,21 @@ impl Session {
         }
     }
 
+    /// Prepares the target before an image that boots from RAM is written.
+    pub(crate) fn prepare_loading_to_ram(&mut self) -> Result<(), crate::Error> {
+        match self.target.debug_sequence.clone() {
+            DebugSequence::Arm(arm_debug_sequence) => {
+                arm_debug_sequence.prepare_loading_to_ram(self)
+            }
+            DebugSequence::Riscv(riscv_debug_sequence) => {
+                riscv_debug_sequence.prepare_loading_to_ram(self)
+            }
+            DebugSequence::Xtensa(xtensa_debug_sequence) => {
+                xtensa_debug_sequence.prepare_loading_to_ram(self)
+            }
+        }
+    }
+
     /// Check if the connected device has a debug erase sequence defined
     pub fn has_sequence_erase_all(&self) -> bool {
         match &self.target.debug_sequence {
