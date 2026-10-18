@@ -228,7 +228,6 @@ impl RttClient {
             }
             Err(Error::ControlBlockCorrupted(error)) => {
                 tracing::debug!("Failed to attach - control block corrupted: {}", error);
-                self.port_attach_failed |= self.attach_port.is_some();
                 return Ok(false);
             }
             Err(error @ Error::BufferNotReachable { .. }) => {
@@ -246,7 +245,6 @@ impl RttClient {
             }
             Err(Error::ControlBlockCorrupted(error)) => {
                 tracing::debug!("Failed to attach - control block corrupted: {}", error);
-                self.port_attach_failed |= self.attach_port.is_some();
             }
             Err(error) => return Err(error),
         };
