@@ -218,21 +218,25 @@ impl Channel {
 
         // We skip memory region check if target is a generic target without memory_map item
         if !memory_regions.is_empty() {
-            let end = buffer_ptr.checked_add(info.size_of_buffer());
+            let size = info.size_of_buffer();
+            let Some(end) = buffer_ptr.checked_add(size) else {
+                return Err(Error::ControlBlockCorrupted(format!(
+                    "the buffer at {buffer_ptr:#X} with size {size} ends past the address space",
+                )));
+            };
             let buffer_fully_in_memory_region = memory_regions
                 .iter()
                 .filter_map(MemoryRegion::as_ram_region)
                 .merge_consecutive()
                 // `end` points at one beyond the last byte, and so does `rr.range.end`.
-                .any(|rr| {
-                    rr.range.contains(&buffer_ptr) && end.is_some_and(|end| end <= rr.range.end)
-                });
+                .any(|rr| rr.range.contains(&buffer_ptr) && end <= rr.range.end);
 
             if !buffer_fully_in_memory_region {
-                return Err(Error::ControlBlockCorrupted(format!(
-                    "the buffer doesn't fully fit in any known (consecutive) ram region according to its own pointers: (start_pointer: {buffer_ptr:#X}, size: {})",
-                    info.size_of_buffer(),
-                )));
+                return Err(Error::BufferNotReachable {
+                    channel: number,
+                    address: buffer_ptr,
+                    size,
+                });
             }
         }
 

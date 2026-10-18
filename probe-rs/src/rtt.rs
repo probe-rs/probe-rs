@@ -607,6 +607,16 @@ pub enum Error {
     /// The control block has been corrupted: {0}
     ControlBlockCorrupted(String),
 
+    /// The buffer of channel {channel} at {address:#010x} ({size} bytes) is not reachable through this memory interface.
+    BufferNotReachable {
+        /// The channel number.
+        channel: usize,
+        /// The start address of the buffer.
+        address: u64,
+        /// The size of the buffer in bytes.
+        size: u64,
+    },
+
     /// Attempted an RTT operation against a Core number that is different from the Core number against which RTT was initialized. Expected {0}, found {1}
     IncorrectCoreSpecified(usize, usize),
 
@@ -702,6 +712,19 @@ mod test {
         assert_eq!(names, [Some("OCM"), Some("DDR")]);
 
         assert!(RttTarget::for_memory_port(&target, 1, false).is_none());
+    }
+
+    #[test]
+    fn buffer_not_reachable_message() {
+        let error = Error::BufferNotReachable {
+            channel: 1,
+            address: 0x2000_0000,
+            size: 1024,
+        };
+        assert_eq!(
+            error.to_string(),
+            "The buffer of channel 1 at 0x20000000 (1024 bytes) is not reachable through this memory interface."
+        );
     }
 
     #[test]

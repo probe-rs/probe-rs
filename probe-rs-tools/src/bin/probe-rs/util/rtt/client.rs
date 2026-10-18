@@ -159,6 +159,10 @@ impl RttClient {
                 tracing::debug!("Failed to attach - control block corrupted: {}", error);
                 return Ok(false);
             }
+            Err(error @ Error::BufferNotReachable { .. }) => {
+                tracing::debug!("Failed to attach - {error}");
+                return Ok(false);
+            }
             Err(error) => return Err(error),
         };
 
