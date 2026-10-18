@@ -8,7 +8,7 @@ use crate::error::Error;
 use crate::flashing::encoder::FlashEncoder;
 use crate::flashing::{FlashLayout, FlashSector, FlashVerify, VerifyOutcome};
 use crate::memory::MemoryInterface;
-use crate::rtt::{Rtt, ScanRegion};
+use crate::rtt::{Rtt, RttTarget, ScanRegion};
 use crate::{Core, InstructionSet, RegisterValue, core::CoreRegisters, session::Session};
 use crate::{CoreStatus, Target};
 use std::borrow::Cow;
@@ -1104,8 +1104,10 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
             && self.rtt.is_none()
             && self.read_flasher_rtt
         {
+            let target = RttTarget::from(&self.core);
             match crate::rtt::try_attach_to_rtt(
                 &mut self.core,
+                &target,
                 Duration::from_secs(1),
                 &ScanRegion::Exact(rtt_address),
             ) {

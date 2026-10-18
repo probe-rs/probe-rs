@@ -19,8 +19,11 @@ use crate::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
         },
     },
-    config::{CoreExt, DebugSequence, RegistryError, Target, TargetSelector, registry::Registry},
+    config::{
+        DebugSequence, MemoryApExt, RegistryError, Target, TargetSelector, registry::Registry,
+    },
     core::{Architecture, CombinedCoreState},
+    memory_port::MemoryAccessPort,
     probe::{
         AttachMethod, DebugProbeError, Probe, ProbeCreationError, WireProtocol,
         fake_probe::FakeProbe, list::Lister,
@@ -638,6 +641,37 @@ impl Session {
             .ok_or(Error::CoreNotFound(core))
     }
 
+    /// Attaches to a memory access port with the given index number.
+    pub fn memory_access_port(&mut self, index: usize) -> Result<MemoryAccessPort<'_>, Error> {
+        let memory_port = self
+            .target
+            .memory_ports
+            .get(index)
+            .ok_or(Error::MemoryAccessPortNotFound(index))?;
+        match &mut self.interfaces {
+            ArchitectureInterface::Arm(arm_debug_interface) => {
+                let memory_ap = memory_port
+                    .memory_ap()
+                    .ok_or(Error::MemoryAccessPortNotFound(index))?;
+                let memory_interface = arm_debug_interface.memory_interface(&memory_ap)?;
+                Ok(MemoryAccessPort::new_for_arm_memory_interface(
+                    index,
+                    &memory_port.name,
+                    memory_interface,
+                ))
+            }
+            ArchitectureInterface::Jtag(_, _) => Err(Error::NotImplemented(
+                "Memory port access on RISC-V and Xtensa",
+            )),
+            ArchitectureInterface::ArmWithRiscv {
+                arm: _,
+                riscv_mem_ap_cores: _,
+            } => Err(Error::NotImplemented(
+                "Memory port access on ARM with RiscV",
+            )),
+        }
+    }
+
     /// Attaches to the core with the given number.
     ///
     /// ## Usage
@@ -1094,7 +1128,7 @@ fn get_target_from_selector(
 ) -> Result<(Probe, Target), Error> {
     let target = match target {
         TargetSelector::Unspecified(name) => registry.get_target_by_name(name)?,
-        TargetSelector::Specified(target) => target,
+        TargetSelector::Specified(target) => *target,
         TargetSelector::Auto => {
             // At this point we do not know what the target is, so we cannot use the chip specific reset sequence.
             // Thus, we try just using a normal reset for target detection if we want to do so under reset.

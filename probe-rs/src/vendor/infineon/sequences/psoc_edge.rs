@@ -18,7 +18,7 @@ use crate::{
             ArmDebugSequence, DefaultArmSequence, cortex_m_reset_system, cortex_m_wait_for_reset,
         },
     },
-    config::CoreExt,
+    config::MemoryApExt,
     core::memory_mapped_registers::MemoryMappedRegister,
 };
 
