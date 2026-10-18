@@ -10,7 +10,7 @@ use super::{AddressIncrement, DataSize, DataSizeSetup};
 ///
 /// The memory AP can be used to access a memory-mapped
 /// set of debug resources of the attached system.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AmbaAhb5Hprot {
     address: FullyQualifiedApAddress,
     csw: CSW,

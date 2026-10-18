@@ -22,9 +22,13 @@ fn autoincr_max_bytes(address: u64) -> usize {
 const AUTOINCR_LIMIT: u64 = 0x400;
 
 /// A struct to give access to a targets memory using a certain DAP.
-pub(crate) struct ADIMemoryInterface<'interface, APA> {
+pub(crate) struct ADIMemoryInterface<'interface, APA: DapAccess> {
     interface: &'interface mut APA,
     memory_ap: MemoryAp,
+    /// The memory AP epoch when this interface was created.
+    epoch: u64,
+    /// Whether `memory_ap` is known to match the hardware.
+    trusted: bool,
 }
 
 impl<'interface, APA> ADIMemoryInterface<'interface, APA>
@@ -36,11 +40,27 @@ where
         interface: &'interface mut APA,
         access_port_address: &FullyQualifiedApAddress,
     ) -> Result<ADIMemoryInterface<'interface, APA>, ArmError> {
-        let memory_ap = MemoryAp::new(interface, access_port_address)?;
+        let memory_ap = match interface.take_memory_ap(access_port_address) {
+            Some(memory_ap) => memory_ap,
+            None => MemoryAp::new(interface, access_port_address)?,
+        };
         Ok(Self {
+            epoch: interface.memory_ap_epoch(),
             interface,
             memory_ap,
+            trusted: true,
         })
+    }
+}
+
+impl<APA> Drop for ADIMemoryInterface<'_, APA>
+where
+    APA: DapAccess,
+{
+    fn drop(&mut self) {
+        if self.trusted && self.interface.memory_ap_epoch() == self.epoch {
+            self.interface.store_memory_ap(self.memory_ap.clone());
+        }
     }
 }
 
@@ -546,7 +566,7 @@ where
                 Err(error) => {
                     // `try_set_datasize` on the way here writes CSW and notes the size as two
                     // steps, and may have failed between them. Re-read rather than trust the note.
-                    let _ = self.memory_ap.status(self.interface);
+                    self.trusted &= self.memory_ap.status(self.interface).is_ok();
                     return Err((start, error));
                 }
             };
@@ -564,7 +584,7 @@ where
             ) {
                 // The batch may have carried a CSW write that never reached the target.
                 // Re-read rather than trust the note.
-                let _ = self.memory_ap.status(self.interface);
+                self.trusted &= self.memory_ap.status(self.interface).is_ok();
                 return Err((start, error));
             }
 
@@ -609,18 +629,18 @@ where
         {
             // `try_set_datasize` writes CSW and notes the size as two steps, and may have
             // failed between them. Re-read rather than trust the note.
-            let _ = self.memory_ap.status(self.interface);
+            self.trusted &= self.memory_ap.status(self.interface).is_ok();
             return Err(error);
         }
-        let carries_csw = !accesses.is_empty();
         accesses.extend(transfers);
 
         let result =
             self.interface
                 .access_raw_ap_registers(self.memory_ap.ap_address(), &accesses, words);
-        if result.is_err() && carries_csw {
-            // The CSW write may not have reached the target. Re-read rather than trust the note.
-            let _ = self.memory_ap.status(self.interface);
+        if result.is_err() {
+            // A CSW write may not have reached the target, or the link was lost. Re-read rather
+            // than trust the note.
+            self.trusted &= self.memory_ap.status(self.interface).is_ok();
         }
         result
     }
