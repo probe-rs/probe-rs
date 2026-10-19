@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::probe::{BitSequence, WireProtocol, jtag::chain::JtagChain, swd::Port};
+use crate::probe::{BitSequence, DebugProbe, WireProtocol, jtag::chain::JtagChain, swd::Port};
 
 use super::{
     ArmError,
@@ -407,4 +407,14 @@ pub trait DebugPortWire {
 
     /// Returns a [`JtagChain`] when the probe supports JTAG batching.
     fn try_jtag_chain(&mut self) -> Option<JtagChain<'_>>;
+}
+
+/// A probe that runs DP and AP accesses in its firmware.
+pub trait DapProbe: DebugProbe + DebugPortWire {
+    /// Runs the accesses in order, a read is `None`, and lands the reads in `values`.
+    fn access_registers(
+        &mut self,
+        accesses: &[(RegisterAddress, Option<u32>)],
+        values: &mut [u32],
+    ) -> Result<(), ArmError>;
 }
