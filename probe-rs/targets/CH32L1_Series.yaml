@@ -73,6 +73,7 @@ variants:
   - ch32-l1-usr-legacy
   - ch32-l1-sys
   - ch32-l1-opt
+  - ch32-l1-usr-native
 - name: CH32L103F7P6
   cores:
   - name: main
@@ -136,6 +137,7 @@ variants:
   - ch32-l1-usr-legacy
   - ch32-l1-sys
   - ch32-l1-opt
+  - ch32-l1-usr-native
 - name: CH32L103F8P6
   cores:
   - name: main
@@ -199,6 +201,7 @@ variants:
   - ch32-l1-usr-legacy
   - ch32-l1-sys
   - ch32-l1-opt
+  - ch32-l1-usr-native
 - name: CH32L103F8U6
   cores:
   - name: main
@@ -262,6 +265,7 @@ variants:
   - ch32-l1-usr-legacy
   - ch32-l1-sys
   - ch32-l1-opt
+  - ch32-l1-usr-native
 - name: CH32L103G8R6
   cores:
   - name: main
@@ -325,6 +329,7 @@ variants:
   - ch32-l1-usr-legacy
   - ch32-l1-sys
   - ch32-l1-opt
+  - ch32-l1-usr-native
 - name: CH32L103K8U6
   cores:
   - name: main
@@ -388,6 +393,7 @@ variants:
   - ch32-l1-usr-legacy
   - ch32-l1-sys
   - ch32-l1-opt
+  - ch32-l1-usr-native
 flash_algorithms:
 - name: ch32-l1-opt
   description: ch32-l1-opt
@@ -469,6 +475,24 @@ flash_algorithms:
     address_range:
       start: 0x0
       end: 0x10000
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x100
+      address: 0x0
+- name: ch32-l1-usr-native
+  description: "WCH-Link native fastprogram loader for CH32L103. NOT a CMSIS flash algorithm: its address range is intentionally empty so it is never selected for target-side flashing; the WCH-Link native flashing path looks it up by name and streams its `instructions` blob to the probe. the `pc_*` fields only exist so generic algorithm validation passes; they are never used (the blob is position-independent, the probe firmware chooses where it runs)."
+  default: false
+  instructions: ARECzpN3FQCZz7cGZ0W3JwJAk4Y2EjeX783UwxMHt5rYw9TT2NOTdyUAnce3JwJAmEutZjc4AEATZ0cAmMuYS5OGpqoTZwcEmMvYRwWLYxYHEJhLbZuYy5N3RQCpy5MH9g+hgy7GLWiBdj7KtwgCALcnAkA3MwBAEwioqv0WmEszZxcBmMsyR9jLmEsTZwcEmMvYRwWLaeeYS3WPmMsyRxMHBxA6xlJHfRc6ymn7k3eFAPHPkwf2Dy7GoYM+yjcnAkAcS8FmLWjVjxzLtxYAILcnAkA3AwgAEw4ABLcOBAC3OABAEwioqphLM2dnAJjL2EcFi3X/Mkc2jzrIcsxCRwMvDwCRBiMg5wGYSzNn1wGYy9hHBYsh60JHNo8RBzrIYkd9FzrMYf8yR9jLmEsTZwcEmMvYRwWLFevYR0GLFcvYR7cG8//9FhNnBwHYx5hLIUV1j5jLBWECkCMg2AD1tSMgAwE9tyOgCAFltyOgCAHRtzJHEwcHEDrGUkd9FzrKJfeYS7cG8//9FnWPmMtBiRnhAUXJty7GDQYCygmCMsy3FwAgmEMThkcA0keyRooHtpecQ2MY9wLSRzJHige6l5hD8ke6lz7O0keFBz7K0kZiR7KH4+jm/LcnACCYS/JH4wn3+kFFhb////////////////////////////////8=
+  pc_program_page: 0x0
+  pc_erase_sector: 0x0
+  data_section_offset: 0x0
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x0
     page_size: 0x100
     erased_byte_value: 0xff
     program_page_timeout: 1000
