@@ -1,6 +1,7 @@
 //! CMSIS-DAP probe implementation.
 mod cmsis_swd;
 mod commands;
+mod tcp;
 mod tools;
 
 use crate::{
@@ -77,7 +78,18 @@ impl std::fmt::Display for CmsisDapFactory {
 
 impl ProbeFactory for CmsisDapFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
-        CmsisDap::new_from_device(tools::open_device_from_selector(selector)?)
+        let device = match tcp_address(selector) {
+            Some(address) => CmsisDapDevice::Tcp {
+                device: tcp::TcpDevice::connect(address).map_err(|error| {
+                    DebugProbeError::ProbeCouldNotBeCreated(CmsisDapError::TcpConnect(error).into())
+                })?,
+                // Large enough for the packet size query; the reply to it replaces this.
+                max_packet_size: 1024,
+                timeout: commands::DEFAULT_USB_TIMEOUT,
+            },
+            None => tools::open_device_from_selector(selector)?,
+        };
+        CmsisDap::new_from_device(device)
             .map(Box::new)
             .map(DebugProbe::into_probe)
     }
@@ -85,6 +97,44 @@ impl ProbeFactory for CmsisDapFactory {
     fn list_probes(&self) -> Vec<crate::probe::list::ProbeListItem> {
         tools::list_cmsisdap_devices()
     }
+
+    fn list_probes_filtered(
+        &self,
+        selector: Option<&DebugProbeSelector>,
+    ) -> Vec<crate::probe::list::ProbeListItem> {
+        // A TCP probe cannot be enumerated, so list it when the selector names one.
+        if let Some(selector) = selector
+            && let Some(address) = tcp_address(selector)
+        {
+            return vec![crate::probe::list::ProbeListItem::accessible(
+                crate::probe::DebugProbeInfo {
+                    identifier: "CMSIS-DAP TCP".to_string(),
+                    vendor_id: tcp::TCP_VID,
+                    product_id: tcp::TCP_PID,
+                    serial_number: Some(address.to_string()),
+                    probe_factory: &Self,
+                    is_hid_interface: false,
+                    interface: None,
+                    usb_location: None,
+                },
+            )];
+        }
+        self.list_probes()
+            .into_iter()
+            .filter(|probe| selector.is_none_or(|s| s.matches_probe(&probe.info)))
+            .collect()
+    }
+}
+
+/// The address of the TCP probe a selector names, if it names one.
+fn tcp_address(selector: &DebugProbeSelector) -> Option<&str> {
+    if selector.vendor_id != tcp::TCP_VID || selector.product_id != tcp::TCP_PID {
+        return None;
+    }
+    selector
+        .serial_number
+        .as_deref()
+        .filter(|address| !address.is_empty())
 }
 
 /// A CMSIS-DAP probe.
@@ -789,6 +839,10 @@ impl DebugProbe for CmsisDap {
                 handle.descriptor()
             )
             .leak(),
+
+            CmsisDapDevice::Tcp { device, .. } => {
+                format!("CMSIS-DAP TCP {}", device.address()).leak()
+            }
 
             #[cfg(test)]
             CmsisDapDevice::Fake(_) => "CMSIS-DAP fake",

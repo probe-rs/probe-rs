@@ -8,6 +8,7 @@ pub mod swo;
 pub mod transfer;
 
 use crate::probe::cmsisdap::commands::general::info::{PacketCountCommand, PacketSizeCommand};
+use crate::probe::cmsisdap::tcp::TcpDevice;
 use crate::probe::usb_util::{BulkReadExt, BulkWriteExt};
 use crate::probe::{ProbeError, WireProtocol};
 use nusb::{
@@ -62,6 +63,9 @@ pub enum CmsisDapError {
 
     /// Could not determine a suitable packet size for this probe.
     NoPacketSize,
+
+    /// Could not connect to the probe over TCP.
+    TcpConnect(#[source] std::io::Error),
 
     /// Invalid IDCODE detected.
     InvalidIdCode,
@@ -202,6 +206,13 @@ pub enum CmsisDapDevice {
         usb_timeout: Duration,
     },
 
+    /// CMSIS-DAP over TCP, with the framing of OpenOCD's TCP backend.
+    Tcp {
+        device: TcpDevice,
+        max_packet_size: usize,
+        timeout: Duration,
+    },
+
     /// A scripted probe for host tests.
     #[cfg(test)]
     Fake(std::sync::Arc<std::sync::Mutex<fake::FakeProbe>>),
@@ -213,6 +224,7 @@ impl CmsisDapDevice {
             #[cfg(feature = "cmsisdap_v1")]
             Self::V1 { usb_timeout, .. } => *usb_timeout,
             Self::V2 { usb_timeout, .. } => *usb_timeout,
+            Self::Tcp { timeout, .. } => *timeout,
             #[cfg(test)]
             Self::Fake(probe) => probe.lock().unwrap().usb_timeout,
         }
@@ -223,6 +235,7 @@ impl CmsisDapDevice {
             #[cfg(feature = "cmsisdap_v1")]
             Self::V1 { usb_timeout, .. } => *usb_timeout = timeout,
             Self::V2 { usb_timeout, .. } => *usb_timeout = timeout,
+            Self::Tcp { timeout: t, .. } => *t = timeout,
             #[cfg(test)]
             Self::Fake(probe) => probe.lock().unwrap().usb_timeout = timeout,
         }
@@ -246,6 +259,9 @@ impl CmsisDapDevice {
             CmsisDapDevice::V2 {
                 in_ep, usb_timeout, ..
             } => Ok(in_ep.read_bulk(buf, *usb_timeout)?),
+            CmsisDapDevice::Tcp {
+                device, timeout, ..
+            } => Ok(device.read(buf, *timeout)?),
             #[cfg(test)]
             CmsisDapDevice::Fake(probe) => {
                 let reply = probe.lock().unwrap().read().ok_or(SendError::Timeout)?;
@@ -268,6 +284,8 @@ impl CmsisDapDevice {
                 // Skip first byte as it's set to 0 for HID transfers
                 Ok(out_ep.write_bulk(&buf[1..], *usb_timeout)?)
             }
+            // Skip the HID report byte, as for v2.
+            CmsisDapDevice::Tcp { device, .. } => Ok(device.write(&buf[1..])?),
             #[cfg(test)]
             CmsisDapDevice::Fake(probe) => {
                 probe.lock().unwrap().write(&buf[1..]);
@@ -324,6 +342,17 @@ impl CmsisDapDevice {
                 }
             }
 
+            CmsisDapDevice::Tcp {
+                device,
+                max_packet_size,
+                ..
+            } => {
+                let mut discard = vec![0u8; *max_packet_size];
+                while device.read(&mut discard, idle).is_ok() {
+                    drained = true;
+                }
+            }
+
             #[cfg(test)]
             CmsisDapDevice::Fake(probe) => drained = probe.lock().unwrap().drain(),
         }
@@ -342,6 +371,9 @@ impl CmsisDapDevice {
                 *report_size = packet_size;
             }
             CmsisDapDevice::V2 {
+                max_packet_size, ..
+            }
+            | CmsisDapDevice::Tcp {
                 max_packet_size, ..
             } => {
                 *max_packet_size = packet_size;
@@ -474,6 +506,7 @@ impl CmsisDapDevice {
             #[cfg(feature = "cmsisdap_v1")]
             CmsisDapDevice::V1 { .. } => false,
             CmsisDapDevice::V2 { swo_ep, .. } => swo_ep.is_some(),
+            CmsisDapDevice::Tcp { .. } => false,
             #[cfg(test)]
             CmsisDapDevice::Fake(_) => false,
         }
@@ -505,6 +538,7 @@ impl CmsisDapDevice {
                 }
                 None => Err(CmsisDapError::SwoModeNotAvailable),
             },
+            CmsisDapDevice::Tcp { .. } => Err(CmsisDapError::SwoModeNotAvailable),
             #[cfg(test)]
             CmsisDapDevice::Fake(_) => Err(CmsisDapError::SwoModeNotAvailable),
         }
@@ -691,6 +725,9 @@ fn packet_buffer_len(device: &CmsisDapDevice) -> usize {
         #[cfg(feature = "cmsisdap_v1")]
         CmsisDapDevice::V1 { report_size, .. } => *report_size + 1,
         CmsisDapDevice::V2 {
+            max_packet_size, ..
+        }
+        | CmsisDapDevice::Tcp {
             max_packet_size, ..
         } => *max_packet_size + 1,
         #[cfg(test)]
