@@ -105,12 +105,12 @@ fn get_cmsisdap_info(device: &DeviceInfo, list_both_versions: bool) -> Vec<Debug
     //    to save for potential HID-only operation.
     for interface in device.interfaces() {
         let interface_desc = interface.interface_string().map(str::to_owned).or_else(|| {
-            // Windows may omit interface strings for devices bound directly to WinUSB.
+            // Windows may omit interface strings for devices bound directly to
+            // WinUSB, in which case nusb can fetch it from the device.
             if (interface.class(), interface.subclass())
                 == (USB_CMSIS_DAP_CLASS, USB_CMSIS_DAP_SUBCLASS)
             {
-                let device = device.open().wait().ok()?;
-                read_interface_string(&device, interface.interface_number())
+                interface.get_interface_string().wait().ok().flatten()
             } else {
                 None
             }
@@ -204,25 +204,6 @@ fn get_cmsisdap_info(device: &DeviceInfo, list_both_versions: bool) -> Vec<Debug
     results
 }
 
-/// Read an interface string from the active USB configuration when enumeration omitted it.
-fn read_interface_string(device: &nusb::Device, interface_number: u8) -> Option<String> {
-    let config = device.active_configuration().ok()?;
-    let index = config
-        .interfaces()
-        .find(|i| i.interface_number() == interface_number)?
-        .first_alt_setting()
-        .string_index()?;
-    let language = device
-        .get_string_descriptor_supported_languages(DEFAULT_USB_TIMEOUT)
-        .wait()
-        .ok()?
-        .next()?;
-    device
-        .get_string_descriptor(index, language, DEFAULT_USB_TIMEOUT)
-        .wait()
-        .ok()
-}
-
 /// Checks if a given HID device is a CMSIS-DAP v1 probe, returning Some(DebugProbeInfo) if so.
 #[cfg(feature = "cmsisdap_v1")]
 fn get_cmsisdap_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> {
@@ -307,9 +288,7 @@ pub fn open_v2_device(
             let interface_str = device_info
                 .interfaces()
                 .find(|i| i.interface_number() == interface.interface_number())
-                .and_then(|i| i.interface_string())
-                .map(str::to_owned)
-                .or_else(|| read_interface_string(&device, interface.interface_number()));
+                .and_then(|i| i.get_interface_string().wait().ok().flatten());
 
             match interface_str.as_deref() {
                 Some(interface_str) if is_cmsis_dap(interface_str) => {}
