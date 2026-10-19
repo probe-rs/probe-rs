@@ -104,13 +104,23 @@ fn get_cmsisdap_info(device: &DeviceInfo, list_both_versions: bool) -> Vec<Debug
     // 2. Any that are HID, if the product string says CMSIS-DAP,
     //    to save for potential HID-only operation.
     for interface in device.interfaces() {
-        let interface_desc = interface.interface_string();
+        let interface_desc = interface.interface_string().map(str::to_owned).or_else(|| {
+            // Windows may omit interface strings for devices bound directly to
+            // WinUSB, in which case nusb can fetch it from the device.
+            if (interface.class(), interface.subclass())
+                == (USB_CMSIS_DAP_CLASS, USB_CMSIS_DAP_SUBCLASS)
+            {
+                interface.get_interface_string().wait().ok().flatten()
+            } else {
+                None
+            }
+        });
 
         // An interface qualifies by its own string. An interface with no string
         // at all qualifies only for a device in the known list, because a
         // stringless vendor-specific interface is not otherwise distinguishable
         // from an unrelated one that happens to sit on the same device.
-        let qualifies = match interface_desc {
+        let qualifies = match interface_desc.as_deref() {
             Some(desc) => is_cmsis_dap(desc),
             None => {
                 is_known_cmsis_dap_dev(device)
@@ -134,7 +144,7 @@ fn get_cmsisdap_info(device: &DeviceInfo, list_both_versions: bool) -> Vec<Debug
             tracing::trace!(
                 "  Interface {}: {}",
                 interface.interface_number(),
-                interface_desc.unwrap_or("<no interface string>"),
+                interface_desc.as_deref().unwrap_or("<no interface string>"),
             );
             let selected_interface = Some(interface.interface_number());
             let is_hid_interface = if interface.class() == USB_CLASS_HID {
@@ -278,9 +288,9 @@ pub fn open_v2_device(
             let interface_str = device_info
                 .interfaces()
                 .find(|i| i.interface_number() == interface.interface_number())
-                .and_then(|i| i.interface_string());
+                .and_then(|i| i.get_interface_string().wait().ok().flatten());
 
-            match interface_str {
+            match interface_str.as_deref() {
                 Some(interface_str) if is_cmsis_dap(interface_str) => {}
                 Some(_) => {
                     tracing::trace!("Interface does not have 'CMSIS-DAP' in string");
