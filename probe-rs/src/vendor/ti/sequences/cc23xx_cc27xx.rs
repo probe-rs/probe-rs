@@ -359,6 +359,11 @@ impl CC23xxCC27xxFlashSequence {
 
     /// Program the SCFG sector using FLASH_PROG_SCFG_SECTOR (0x1A).
     fn program_scfg(&self, interface: &mut dyn DapAccess, data: &[u8]) -> Result<(), ArmError> {
+        // Clamp the number of bytes in the SCFG to be 0x400.
+        // The sector and page size for the SCFG region is actually 0x400
+        // This is different than the other pages in main flash which are 0x800
+        // We need this today until probe-rs allows per region page size. Otherwise the loader drops the SCFG
+        let data = &data[..data.len().min(0x400)];
         let byte_count = data.len() as u32;
         let header = saci::make_header(saci::cmd::FLASH_PROG_SCFG_SECTOR, byte_count);
 

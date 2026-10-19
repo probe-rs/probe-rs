@@ -67,7 +67,7 @@ variants:
   - !Nvm
     range:
       start: 0x4e040000
-      end: 0x4e040400
+      end: 0x4e040800 # SCFG is actually 0x400, but this is handled in the sequence, see comment below
     cores:
     - main
     access:
@@ -103,7 +103,7 @@ flash_algorithms:
   flash_properties:
     address_range:
       start: 0x0
-      end: 0x4E040400
+      end: 0x4e040800 # Artificially inflate to ensure SCFG is programmed
     page_size: 0x800
     erased_byte_value: 0xff
     program_page_timeout: 1000
@@ -113,7 +113,9 @@ flash_algorithms:
       address: 0x0
     - size: 0x800
       address: 0x4E020000
-    - size: 0x400
+    # SCFG - this actually has a sector size and flash size of 0x400
+    # Handle SCFG in the flash sequence until this feature is added
+    - size: 0x800
       address: 0x4E040000
   cores:
   - main
