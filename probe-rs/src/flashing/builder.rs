@@ -292,6 +292,13 @@ impl FlashBuilder {
         self.build_layout(region, flash_properties, include_empty_pages)
     }
 
+    /// Whether there is data where `range` and the region overlap.
+    fn has_data_in_overlap(&self, range: &Range<u64>, region: &NvmRegion) -> bool {
+        let start = range.start.max(region.range.start);
+        let end = range.end.min(region.range.end);
+        start < end && self.has_data_in_range(&(start..end))
+    }
+
     /// Core layout algorithm used by both RAM-based and host-side flash programming paths.
     ///
     /// Both [`build_sectors_and_pages`] (which has a full [`FlashAlgorithm`]) and
@@ -311,6 +318,12 @@ impl FlashBuilder {
 
             // Ignore the sector if it's outside the NvmRegion.
             if !region.range.contains_range(&range) {
+                if self.has_data_in_overlap(&range, region) {
+                    tracing::warn!(
+                        "Sector {range:#010x?} is only partially inside region {:#010x?} and thus is skipped.",
+                        region.range
+                    );
+                }
                 continue;
             }
 
@@ -339,6 +352,12 @@ impl FlashBuilder {
 
             // Ignore the page if it's outside the NvmRegion.
             if !region.range.contains_range(&range) {
+                if self.has_data_in_overlap(&range, region) {
+                    tracing::warn!(
+                        "Page {range:#010x?} is only partially inside region {:#010x?} and thus is skipped.",
+                        region.range
+                    );
+                }
                 continue;
             }
 
