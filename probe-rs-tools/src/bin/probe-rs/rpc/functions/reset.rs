@@ -104,7 +104,7 @@ fn reset_once(
     };
 
     pulse_reset(&mut probe)
-        .map_err(|error| format!("The probe cannot pulse the reset line: {error}"))?;
+        .map_err(|error| format!("The probe cannot pulse the reset line: {error:?}"))?;
     // A pin reset keeps the debug state of the cores, for example a halt that an earlier
     // session left.
     if let Err(error) = clear_debug_state(&loaded, probe) {
