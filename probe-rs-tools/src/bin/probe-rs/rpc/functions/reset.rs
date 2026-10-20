@@ -143,18 +143,26 @@ fn clear_debug_state(options: &LoadedProbeOptions, probe: Probe) -> anyhow::Resu
 }
 
 fn pulse_reset(probe: &mut Probe) -> anyhow::Result<()> {
-    // Some probes drive the reset line only after they start the wire protocol.
-    probe
-        .attach_to_unspecified()
-        .context("The probe cannot start the wire protocol")?;
-    probe
-        .target_reset_assert()
-        .context("The probe cannot pulse the reset line")?;
+    // Starting the wire protocol can fail on a target that does not answer, so try without it.
+    let attached = match probe.target_reset_assert() {
+        Ok(()) => false,
+        Err(error) => {
+            // Some probes drive the reset line only after they start the wire protocol.
+            tracing::debug!("Asserting reset without the wire protocol failed: {error:?}");
+            probe
+                .attach_to_unspecified()
+                .context("The probe cannot start the wire protocol")?;
+            probe
+                .target_reset_assert()
+                .context("The probe cannot pulse the reset line")?;
+            true
+        }
+    };
     std::thread::sleep(RESET_HOLD_TIME);
     probe
         .target_reset_deassert()
         .context("The probe cannot release the reset line. The target can stay in reset")?;
-    if let Err(error) = probe.detach() {
+    if attached && let Err(error) = probe.detach() {
         tracing::warn!("Could not detach from the probe after the reset: {error:?}");
     }
     Ok(())
