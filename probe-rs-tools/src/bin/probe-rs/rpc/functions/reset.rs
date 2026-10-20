@@ -85,11 +85,17 @@ async fn reset_target_impl(
 
 fn reset_once(
     ctx: &RpcSpawnContext,
-    probe_options: ProbeOptions,
+    mut probe_options: ProbeOptions,
     selector: &DebugProbeSelector,
     method: ResetMethod,
     core: usize,
 ) -> RpcResult<Result<(), OpenFailure>> {
+    if method == ResetMethod::Pin {
+        // With a chip, attaching under reset runs the reset sequences of the chip. Without a
+        // chip, the reset line is pulsed directly.
+        probe_options.connect_under_reset = probe_options.chip.is_some();
+    }
+
     let lister = ctx.lister();
     let mut registry = ctx.registry_blocking();
     let loaded = probe_options.load(&mut registry)?;
@@ -99,6 +105,11 @@ fn reset_once(
     };
 
     match method {
+        ResetMethod::Pin if loaded.connect_under_reset() => {
+            let target = loaded.get_target_selector()?;
+            let mut session = loaded.attach_session(probe, target)?;
+            lift(session.resume_all_cores())?;
+        }
         ResetMethod::Pin => {
             pulse_reset(&mut probe).map_err(|error| format!("{error:?}"))?;
             // A pin reset keeps the debug state of the cores, for example a halt that an
