@@ -78,8 +78,8 @@ pub enum SelectProbeResult {
 pub type SelectProbeResponse = RpcResult<SelectProbeResult>;
 
 #[derive(Serialize, Deserialize, Schema)]
-pub enum AttachResult {
-    Success(Key<Session>),
+pub enum AttachResult<T = Key<Session>> {
+    Success(T),
     ProbeNotFound,
     FailedToOpenProbe(String),
     ProbeInUse,

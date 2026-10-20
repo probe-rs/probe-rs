@@ -103,23 +103,10 @@ async fn attach_impl(ctx: RpcSpawnContext, request: AttachRequest) -> RpcResult<
         }
     };
 
-    let result = match open_with_retry(&ctx, &selector, wait_for_probe, "attach", attempt).await? {
-        OpenResult::Opened(session, lease) => {
-            let session_id = ctx.set_session(*session, lease).await;
-            AttachResult::Success(session_id)
-        }
-        OpenResult::InUse => AttachResult::ProbeInUse,
-        OpenResult::Failed(error) => match *error {
-            OperationError::AttachingFailed {
-                source,
-                connect_under_reset,
-            } => AttachResult::TargetAttachFailed {
-                message: source.to_string(),
-                connect_under_reset,
-            },
-            other => AttachResult::FailedToOpenProbe(format!("{:?}", anyhow::anyhow!(other))),
-        },
-        OpenResult::Gone => AttachResult::ProbeNotFound,
+    let opened = open_with_retry(&ctx, &selector, wait_for_probe, "attach", attempt).await?;
+    let result = match opened.into_opened() {
+        Ok((session, lease)) => AttachResult::Success(ctx.set_session(*session, lease).await),
+        Err(failure) => failure,
     };
     Ok(result)
 }
@@ -142,6 +129,27 @@ pub(super) enum OpenResult<T> {
     Failed(Box<OperationError>),
     /// The probe was not in the probe list at the last attempt.
     Gone,
+}
+
+impl<T> OpenResult<T> {
+    /// Returns the opened value, or the failure as an [`AttachResult`].
+    pub(super) fn into_opened<S>(self) -> Result<(T, ProbeLease), AttachResult<S>> {
+        match self {
+            OpenResult::Opened(value, lease) => Ok((value, lease)),
+            OpenResult::InUse => Err(AttachResult::ProbeInUse),
+            OpenResult::Failed(error) => Err(match *error {
+                OperationError::AttachingFailed {
+                    source,
+                    connect_under_reset,
+                } => AttachResult::TargetAttachFailed {
+                    message: source.to_string(),
+                    connect_under_reset,
+                },
+                other => AttachResult::FailedToOpenProbe(format!("{:?}", anyhow::anyhow!(other))),
+            }),
+            OpenResult::Gone => Err(AttachResult::ProbeNotFound),
+        }
+    }
 }
 
 /// Leases the probe of `selector`, then runs `attempt` until it opens the probe, the probe

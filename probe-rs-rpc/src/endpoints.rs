@@ -31,7 +31,7 @@ use crate::probe::{
     AttachRequest, AttachResponse, ListProbesResponse, SelectProbeRequest, SelectProbeResponse,
 };
 use crate::reset::{
-    ResetCoreAndHaltRequest, ResetCoreRequest, ResetProbeRequest, ResetProbeResponse,
+    ResetCoreAndHaltRequest, ResetCoreRequest, ResetTargetRequest, ResetTargetResponse,
 };
 use crate::rtt_client::{
     CreateRttClientRequest, CreateRttClientResponse, PollRttUpRequest, PollRttUpResponse,
@@ -124,7 +124,7 @@ endpoints! {
     | TargetInfoEndpoint        | TargetInfoRequest       | NoResponse              | "info"             |
     | ResetCoreEndpoint         | ResetCoreRequest        | NoResponse              | "reset"            |
     | ResetCoreAndHaltEndpoint  | ResetCoreAndHaltRequest | ResetAndHaltResponse    | "reset_and_halt"   |
-    | ResetProbeEndpoint        | ResetProbeRequest       | ResetProbeResponse      | "reset/probe"      |
+    | ResetTargetEndpoint       | ResetTargetRequest      | ResetTargetResponse     | "reset/target"     |
 
     | CoreStatusEndpoint           | CoreAccessRequest        | CoreStatusResponse         | "core/status"             |
     | CoreHaltEndpoint             | CoreHaltRequest          | CoreInfoResponse           | "core/halt"               |

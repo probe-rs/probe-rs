@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     Key, RpcResult, Session,
-    probe::{DebugProbeEntry, WireProtocol},
+    probe::{AttachRequest, AttachResult},
 };
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -30,19 +30,15 @@ pub enum ResetMethod {
     Core,
 }
 
-/// Pulses the reset line of the probe, if the method or the probe settings say so. Needs no
-/// target description.
+/// Opens the probe and resets the target.
 #[derive(Serialize, Deserialize, Schema)]
-pub struct ResetProbeRequest {
-    pub probe: DebugProbeEntry,
+pub struct ResetTargetRequest {
+    /// How to open the probe. `resume_target` is not used.
+    pub attach: AttachRequest,
     /// Overrides `reset_line_connected` of the probe settings, but `Pin` fails if it is false.
     pub method: Option<ResetMethod>,
-    /// The chip, to clear the debug state of its cores after the reset.
-    pub chip: Option<String>,
-    pub protocol: Option<WireProtocol>,
-    /// How long to wait for a busy probe.
-    pub wait_for_probe: Option<Duration>,
+    /// The core that a core reset resets.
+    pub core: u32,
 }
 
-/// `false` if the reset line is not connected. The target is not reset then.
-pub type ResetProbeResponse = RpcResult<bool>;
+pub type ResetTargetResponse = RpcResult<AttachResult<()>>;

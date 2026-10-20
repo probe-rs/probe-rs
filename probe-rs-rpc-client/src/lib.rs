@@ -66,7 +66,7 @@ use probe_rs_rpc::probe::{
     AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, SelectProbeRequest,
     SelectProbeResult,
 };
-use probe_rs_rpc::reset::{ResetCoreAndHaltRequest, ResetCoreRequest, ResetProbeRequest};
+use probe_rs_rpc::reset::{ResetCoreAndHaltRequest, ResetCoreRequest, ResetTargetRequest};
 use probe_rs_rpc::rtt_client::{
     CreateRttClientRequest, PollRttUpRequest, RttChannelRequest, RttChannels, RttClientData,
     RttDownRequest, RttPollResult, ScanRegion,
@@ -93,7 +93,7 @@ use probe_rs_rpc::{
     LoadChipFamilyEndpoint, LoadDebugInfoEndpoint, LoadRegionEndpoint, LoadSvdEndpoint,
     MonitorEndpoint, NewFlashLoaderEndpoint, PollRttUpEndpoint, ProgressEventTopic,
     ReadBytesEndpoint, ReadMemory8Endpoint, ReadMemory16Endpoint, ReadMemory32Endpoint,
-    ReadMemory64Endpoint, ResetCoreAndHaltEndpoint, ResetCoreEndpoint, ResetProbeEndpoint,
+    ReadMemory64Endpoint, ResetCoreAndHaltEndpoint, ResetCoreEndpoint, ResetTargetEndpoint,
     ResolveSourceBreakpointsEndpoint, ResolveSourceLocationsEndpoint, ResumeCoresEndpoint,
     RpcError, RpcResult, RttDownEndpoint, RttTopic, RunTestEndpoint, ScopesEndpoint,
     SelectProbeEndpoint, SemihostingTopic, SetVariableEndpoint, TakeRichStackTraceEndpoint,
@@ -734,10 +734,13 @@ impl RpcClient {
             .await
     }
 
-    /// Pulses the reset line of the probe. Returns `false` if the probe settings do not say that
-    /// the reset line is connected.
-    pub async fn reset_probe(&self, request: ResetProbeRequest) -> Result<bool, ClientError> {
-        self.send_resp::<ResetProbeEndpoint, _>(&request).await
+    /// Resets the target with the reset line of the probe or through the debug interface. The
+    /// probe settings select the method if the request does not.
+    pub async fn reset_target(
+        &self,
+        request: ResetTargetRequest,
+    ) -> Result<AttachResult<()>, ClientError> {
+        self.send_resp::<ResetTargetEndpoint, _>(&request).await
     }
 
     pub async fn info(
