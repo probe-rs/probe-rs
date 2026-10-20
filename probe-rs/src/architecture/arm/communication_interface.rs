@@ -562,18 +562,10 @@ impl ArmCommunicationInterface {
 
     fn swd_port_error(error: SwdPortError) -> ArmError {
         match error {
-            SwdPortError::Transfer(error) => ArmError::Dap(Self::swd_transfer_to_dap(error)),
+            SwdPortError::Transfer(error) => {
+                ArmError::Dap(transfer_error_to_dap(error, WireProtocol::Swd))
+            }
             SwdPortError::Probe(error) => ArmError::Probe(error),
-        }
-    }
-
-    fn swd_transfer_to_dap(error: SwdTransferError) -> DapError {
-        match error {
-            SwdTransferError::NoAcknowledge => DapError::NoAcknowledge,
-            SwdTransferError::WaitResponse => DapError::WaitResponse,
-            SwdTransferError::FaultResponse => DapError::FaultResponse,
-            SwdTransferError::IncorrectParity => DapError::IncorrectParity,
-            SwdTransferError::Protocol => DapError::Protocol(WireProtocol::Swd),
         }
     }
 
@@ -704,7 +696,7 @@ impl ArmDebugInterface for ArmCommunicationInterface {
     }
 }
 
-impl SwdSequence for ArmCommunicationInterface {
+impl<T: DpHost> SwdSequence for T {
     fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError> {
         self.with_debug_port_wire(|wire| wire.swj_sequence(bits))
             .map_err(wire_probe_error)
@@ -726,6 +718,17 @@ impl SwdSequence for ArmCommunicationInterface {
             })
             .map_err(wire_probe_error)?;
         Ok(raw_pin_levels(levels))
+    }
+}
+
+/// Converts the error of a DP or AP transfer over `protocol`.
+pub(crate) fn transfer_error_to_dap(error: SwdTransferError, protocol: WireProtocol) -> DapError {
+    match error {
+        SwdTransferError::NoAcknowledge => DapError::NoAcknowledge,
+        SwdTransferError::WaitResponse => DapError::WaitResponse,
+        SwdTransferError::FaultResponse => DapError::FaultResponse,
+        SwdTransferError::IncorrectParity => DapError::IncorrectParity,
+        SwdTransferError::Protocol => DapError::Protocol(protocol),
     }
 }
 

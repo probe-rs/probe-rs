@@ -6,9 +6,11 @@ use crate::{
     CoreStatus,
     architecture::arm::{
         ArmDebugInterface, ArmError, DapAccess, DapError, FullyQualifiedApAddress, Pins,
-        RegisterAddress, SwdSequence, SwoAccess, SwoConfig,
+        RegisterAddress, SwoAccess, SwoConfig,
         ap::MemoryAp,
-        communication_interface::{DpHost, DpManager, probe_debug_port_wire, raw_pin_levels},
+        communication_interface::{
+            DpHost, DpManager, probe_debug_port_wire, transfer_error_to_dap,
+        },
         dp::{Abort, Ctrl, DpAddress, DpRegister, DpRegisterAddress},
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
@@ -18,7 +20,7 @@ use crate::{
         BatchError, BitSequence, DebugProbe, DebugProbeError, JtagChain, Probe, WireProtocol,
         cmsisdap::CmsisDap,
         jtag::{JtagBatch, JtagProbe, TapState},
-        swd::{Port, SwdBatch, SwdProbe, SwdTransferError},
+        swd::{Port, SwdBatch, SwdProbe},
     },
 };
 
@@ -122,15 +124,8 @@ impl CmsisDap {
                 return Err(ArmError::Probe(error));
             }
         };
-        Err(ArmError::Dap(match error {
-            SwdTransferError::NoAcknowledge => DapError::NoAcknowledge,
-            SwdTransferError::WaitResponse => DapError::WaitResponse,
-            SwdTransferError::FaultResponse => DapError::FaultResponse,
-            SwdTransferError::IncorrectParity => DapError::IncorrectParity,
-            SwdTransferError::Protocol => {
-                DapError::Protocol(self.protocol.unwrap_or(WireProtocol::Swd))
-            }
-        }))
+        let protocol = self.protocol.unwrap_or(WireProtocol::Swd);
+        Err(ArmError::Dap(transfer_error_to_dap(error, protocol)))
     }
 
     /// Put the TAP in Run-Test/Idle, where `DAP_Transfer` over JTAG starts and ends.
@@ -451,30 +446,6 @@ impl DapAccess for CmsisDapArmDebug {
     }
 }
 
-fn wire_probe_error(error: ArmError) -> DebugProbeError {
-    match error {
-        ArmError::Probe(error) => error,
-        error => DebugProbeError::Other(error.to_string()),
-    }
-}
-
-impl SwdSequence for CmsisDapArmDebug {
-    fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError> {
-        self.with_debug_port_wire(|wire| wire.swj_sequence(bits))
-            .map_err(wire_probe_error)
-    }
-
-    fn swj_pins(&mut self, out: u32, select: u32, wait: u32) -> Result<u32, DebugProbeError> {
-        let levels = self
-            .with_debug_port_wire(|wire| {
-                let wait = Duration::from_micros(wait.into());
-                wire.swj_pins(Pins(out as u8), Pins(select as u8), wait)
-            })
-            .map_err(wire_probe_error)?;
-        Ok(raw_pin_levels(levels))
-    }
-}
-
 impl SwoAccess for CmsisDapArmDebug {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ArmError> {
         self.probe().enable_swo(config)
@@ -592,5 +563,139 @@ mod tests {
 
         let _ = CmsisDapWire(&mut dap).try_jtag_chain();
         assert!(!dap.jtag_configured);
+    }
+
+    /// Answers each `DAP_Transfer` and `DAP_TransferBlock` request as a powered-up DPv2, and
+    /// connects over `port` (1 is SWD, 2 is JTAG).
+    fn firmware_dap(port: u8) -> (Box<CmsisDap>, Arc<Mutex<FakeProbe>>) {
+        let probe = FakeProbe::shared(64, move |command| match command {
+            // SWD and JTAG.
+            [0x00, 0xF0, ..] => Reply::Now(vec![0x00, 0x01, 0x03]),
+            [0x02, ..] => Reply::Now(vec![0x02, port]),
+            [0x05, _, count, requests @ ..] => {
+                let mut reply = vec![0x05, *count, Ack::Ok as u8];
+                let mut requests = requests.iter();
+                while let Some(&request) = requests.next() {
+                    match request & 0b1111 {
+                        // DPIDR
+                        0b0010 => reply.extend(0x2BA0_1477u32.to_le_bytes()),
+                        // CTRL/STAT, with the power-up requests acknowledged.
+                        0b0110 => reply.extend(0xF000_0000u32.to_le_bytes()),
+                        r if r & 0b10 != 0 => reply.extend([0; 4]),
+                        _ => _ = requests.nth(3),
+                    }
+                }
+                Reply::Now(reply)
+            }
+            [0x06, _, lo, hi, request, ..] => {
+                let mut reply = vec![0x06, *lo, *hi, Ack::Ok as u8];
+                if request & 0b10 != 0 {
+                    reply.resize(
+                        reply.len() + 4 * usize::from(u16::from_le_bytes([*lo, *hi])),
+                        0,
+                    );
+                }
+                Reply::Now(reply)
+            }
+            [0x10, ..] => Reply::Now(vec![0x10, 0xFF]),
+            [0x14, count, sequences @ ..] => {
+                let mut reply = vec![0x14, 0x00];
+                let mut sequences = sequences.iter();
+                for _ in 0..*count {
+                    let info = *sequences.next().unwrap();
+                    let clocks = match info & 0x3F {
+                        0 => 64,
+                        clocks => usize::from(clocks),
+                    };
+                    let bytes = clocks.div_ceil(8);
+                    _ = sequences.nth(bytes - 1);
+                    if info & 0x80 != 0 {
+                        reply.resize(reply.len() + bytes, 0);
+                    }
+                }
+                Reply::Now(reply)
+            }
+            [id @ (0x04 | 0x08 | 0x11 | 0x12 | 0x13 | 0x15), ..] => Reply::Now(vec![*id, 0x00]),
+            _ => standard_reply(command, 64, 4),
+        });
+        let device = CmsisDapDevice::Fake(probe.clone());
+        let dap = CmsisDap::new_from_device(device).unwrap();
+        (Box::new(dap), probe)
+    }
+
+    /// Tells the probe the scan chain without a scan, as the TI sequences do.
+    #[derive(Debug)]
+    struct KnownChain;
+
+    impl ArmDebugSequence for KnownChain {
+        fn debug_port_setup(
+            &self,
+            interface: &mut dyn DebugPortWire,
+            _dp: DpAddress,
+        ) -> Result<(), ArmError> {
+            interface.configure_jtag(true)
+        }
+    }
+
+    /// Attaches over `protocol`, then returns the commands that a mix of AP accesses sends.
+    fn ap_access_commands(protocol: WireProtocol) -> Vec<u8> {
+        let port = match protocol {
+            WireProtocol::Swd => 1,
+            WireProtocol::Jtag => 2,
+        };
+        let (mut dap, probe) = firmware_dap(port);
+        let sequence: Arc<dyn ArmDebugSequence> = match protocol {
+            WireProtocol::Swd => crate::architecture::arm::sequences::DefaultArmSequence::create(),
+            WireProtocol::Jtag => Arc::new(KnownChain),
+        };
+        dap.jtag_state.expected_scan_chain = Some(vec![probe_rs_target::ScanChainElement {
+            name: None,
+            ir_len: Some(4),
+        }]);
+        DebugProbe::select_protocol(dap.as_mut(), protocol).unwrap();
+        DebugProbe::attach(dap.as_mut()).unwrap();
+        let mut interface = dap
+            .try_get_arm_debug_interface(sequence)
+            .map_err(|(_, error)| error)
+            .unwrap();
+        interface.select_debug_port(DpAddress::Default).unwrap();
+        probe.lock().unwrap().sent.clear();
+
+        let ap = FullyQualifiedApAddress::v1_with_default_dp(0);
+        interface.read_raw_ap_register(&ap, 0xFC).unwrap();
+        interface
+            .write_raw_ap_register(&ap, 0x04, 0x2000_0000)
+            .unwrap();
+        interface
+            .read_raw_ap_register_repeated(&ap, 0x0C, &mut [0; 32])
+            .unwrap();
+        interface
+            .write_raw_ap_register_repeated(&ap, 0x0C, &[0; 32])
+            .unwrap();
+        interface
+            .access_raw_ap_registers(&ap, &[(0x04, Some(0x2000_0000)), (0x0C, None)], &mut [0])
+            .unwrap();
+
+        probe.lock().unwrap().sent.iter().map(|c| c[0]).collect()
+    }
+
+    #[test]
+    fn swd_ap_accesses_run_in_the_probe_firmware() {
+        let commands = ap_access_commands(WireProtocol::Swd);
+        assert!(
+            commands.iter().all(|id| [0x05, 0x06].contains(id)),
+            "{commands:x?}"
+        );
+        assert!(commands.contains(&0x06), "{commands:x?}");
+    }
+
+    #[test]
+    fn jtag_ap_accesses_run_in_the_probe_firmware() {
+        let commands = ap_access_commands(WireProtocol::Jtag);
+        assert!(
+            commands.iter().all(|id| [0x05, 0x06].contains(id)),
+            "{commands:x?}"
+        );
+        assert!(commands.contains(&0x06), "{commands:x?}");
     }
 }
