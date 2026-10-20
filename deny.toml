@@ -85,6 +85,10 @@ ignore = [
 
     # espflash 4.6 uses ruzstd 0.8 via object 0.39. No fixed 0.8 release. Remove when espflash updates object.
     "RUSTSEC-2026-0344",
+
+    # tokio-tungstenite 0.30 uses webpki-roots 0.26.11, which only re-exports the fixed webpki-roots 1.0.10.
+    # Remove when tokio-tungstenite uses webpki-roots 1.
+    "RUSTSEC-2026-0381",
 ]
 # Threshold for security vulnerabilities, any vulnerability with a CVSS score
 # lower than the range specified will be ignored. Note that ignored advisories
