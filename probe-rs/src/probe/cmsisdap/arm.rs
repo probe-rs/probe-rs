@@ -174,7 +174,12 @@ impl DebugPortWire for CmsisDapWire<'_> {
         select: Pins,
         wait: Duration,
     ) -> Result<Option<Pins>, ArmError> {
-        probe_debug_port_wire(self.0, |wire| wire.swj_pins(out, select, wait))
+        let levels = probe_debug_port_wire(self.0, |wire| wire.swj_pins(out, select, wait))?;
+        if select.ntrst() && !out.ntrst() {
+            // nTRST puts the TAP in Test-Logic-Reset.
+            self.0.jtag_state.tap_state = TapState::TestLogicReset;
+        }
+        Ok(levels)
     }
 
     fn target_reset(&mut self) -> Result<(), ArmError> {
@@ -204,6 +209,9 @@ impl DebugPortWire for CmsisDapWire<'_> {
     }
 
     fn try_jtag_chain(&mut self) -> Option<JtagChain<'_>> {
+        // The caller can change the scan chain. Until it calls `configure_jtag` again, the
+        // accesses run as JTAG scans.
+        self.0.jtag_configured = false;
         Some(JtagChain::new(self.0))
     }
 }
@@ -478,5 +486,111 @@ impl SwoAccess for CmsisDapArmDebug {
 
     fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ArmError> {
         self.probe().read_swo_timeout(timeout)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::{Arc, Mutex};
+
+    use super::*;
+    use crate::probe::cmsisdap::commands::{
+        CmsisDapDevice,
+        fake::{FakeProbe, Reply, standard_reply},
+        transfer::Ack,
+    };
+
+    /// A configured probe in JTAG mode. CTRL/STAT reads return `ctrl`, other reads return zero.
+    fn jtag_dap(ctrl: u32) -> (CmsisDap, Arc<Mutex<FakeProbe>>) {
+        let probe = FakeProbe::shared(64, move |command| match command {
+            [0x05, _, count, requests @ ..] => {
+                let mut reply = vec![0x05, *count, Ack::Ok as u8];
+                let mut requests = requests.iter();
+                while let Some(&request) = requests.next() {
+                    match request & 0b1111 {
+                        0b0110 => reply.extend(ctrl.to_le_bytes()),
+                        r if r & 0b10 != 0 => reply.extend([0; 4]),
+                        _ => _ = requests.nth(3),
+                    }
+                }
+                Reply::Now(reply)
+            }
+            [0x08, ..] => Reply::Now(vec![0x08, 0x00]),
+            _ => standard_reply(command, 64, 4),
+        });
+        let device = CmsisDapDevice::Fake(probe.clone());
+        let mut dap = CmsisDap::new_from_device(device).unwrap();
+        dap.protocol = Some(WireProtocol::Jtag);
+        dap.jtag_configured = true;
+        dap.jtag_state.tap_state = TapState::RunTestIdle;
+        (dap, probe)
+    }
+
+    /// The commands with `id` that the probe got.
+    fn sent(probe: &Arc<Mutex<FakeProbe>>, id: u8) -> Vec<Vec<u8>> {
+        let sent = &probe.lock().unwrap().sent;
+        sent.iter().filter(|c| c[0] == id).cloned().collect()
+    }
+
+    #[test]
+    fn a_sticky_error_fails_the_accesses_and_is_written_back() {
+        let (mut dap, probe) = jtag_dap(0x20);
+
+        let error = dap
+            .transfer(&[(Port::Ap, 0xC, None)], &mut [0])
+            .unwrap_err();
+        assert!(matches!(error, ArmError::Dap(DapError::FaultResponse)));
+        assert_eq!(
+            sent(&probe, 0x05).last().unwrap(),
+            &[0x05, 0, 1, 0b0100, 0x20, 0, 0, 0]
+        );
+    }
+
+    #[test]
+    fn an_abort_sends_only_dapabort() {
+        let (mut dap, probe) = jtag_dap(0);
+
+        dap.transfer(&[(Port::Dp, 0, Some(0x1f))], &mut []).unwrap();
+        assert_eq!(sent(&probe, 0x08), [[0x08, 0, 1, 0, 0, 0]]);
+        // The clear bits read CTRL/STAT, and write nothing when no flag is set.
+        assert!(sent(&probe, 0x05).iter().all(|c| c[3] & 0b10 != 0));
+    }
+
+    #[test]
+    fn an_abort_without_dapabort_clears_the_sticky_flags_through_ctrl_stat() {
+        let (mut dap, probe) = jtag_dap(0x20);
+
+        dap.transfer(&[(Port::Dp, 0, Some(0x1e))], &mut []).unwrap();
+        assert!(sent(&probe, 0x08).is_empty());
+        assert_eq!(
+            sent(&probe, 0x05).last().unwrap(),
+            &[0x05, 0, 1, 0b0100, 0x20, 0, 0, 0]
+        );
+    }
+
+    #[test]
+    fn reads_land_in_order_around_an_abort() {
+        let (mut dap, probe) = jtag_dap(0);
+        let mut values = [1, 1];
+
+        dap.transfer(
+            &[
+                (Port::Ap, 0xC, None),
+                (Port::Dp, 0, Some(1)),
+                (Port::Dp, 0x4, None),
+            ],
+            &mut values,
+        )
+        .unwrap();
+        assert_eq!(values, [0, 0]);
+        assert_eq!(sent(&probe, 0x05).len(), 2);
+    }
+
+    #[test]
+    fn a_changed_chain_runs_the_accesses_as_scans() {
+        let (mut dap, _probe) = jtag_dap(0);
+
+        let _ = CmsisDapWire(&mut dap).try_jtag_chain();
+        assert!(!dap.jtag_configured);
     }
 }

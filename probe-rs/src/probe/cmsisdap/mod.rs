@@ -10,7 +10,7 @@ use crate::{
     architecture::{
         arm::{
             ArmDebugInterface, ArmError, DapError, SwoAccess, SwoConfig, SwoMode,
-            dp::{Abort, Ctrl, DpRegister},
+            dp::{Abort, Ctrl, DpRegister, DpRegisterAddress},
             sequences::ArmDebugSequence,
             swo::poll_interval_from_buf_size,
         },
@@ -596,23 +596,49 @@ impl CmsisDap {
 
     fn write_abort(&mut self, abort: Abort) -> Result<(), ArmError> {
         if self.protocol == Some(WireProtocol::Jtag) {
-            // Over JTAG, DP address 0 is not ABORT.
-            let request = WriteAbortRequest {
-                dap_index: self.jtag_state.chain_params.index as u8,
-                value: abort.into(),
-            };
-            let response = commands::send_command(&mut self.device, &request)
-                .map_err(DebugProbeError::from)?;
-            return match response.status {
-                Status::DapOk => Ok(()),
-                Status::DapError => Err(DebugProbeError::from(CmsisDapError::ErrorResponse(
-                    RequestError::WriteAbort { request },
-                ))
-                .into()),
-            };
+            // A JTAG-DP has only DAPABORT, and clears its sticky flags through CTRL/STAT. The
+            // abort goes first, because CTRL/STAT answers WAIT while an AP transaction is stuck.
+            let value = u32::from(abort);
+            if value & 1 != 0 {
+                let request = WriteAbortRequest {
+                    dap_index: self.jtag_state.chain_params.index as u8,
+                    value: 1,
+                };
+                let response = commands::send_command(&mut self.device, &request)
+                    .map_err(DebugProbeError::from)?;
+                if response.status == Status::DapError {
+                    return Err(DebugProbeError::from(CmsisDapError::ErrorResponse(
+                        RequestError::WriteAbort { request },
+                    ))
+                    .into());
+                }
+            }
+            if value & !1 != 0 {
+                self.clear_jtag_sticky_err()?;
+            }
+            return Ok(());
         }
 
-        let mut request = TransferRequest::write(Abort::ADDRESS, abort.into());
+        self.write_dp_register(Abort::ADDRESS, abort.into())
+    }
+
+    /// Clears the sticky error flags of a JTAG-DP.
+    ///
+    /// Its ABORT register has no STKERRCLR. The flags clear when they are written back as one.
+    fn clear_jtag_sticky_err(&mut self) -> Result<(), ArmError> {
+        let ctrl = self.read_ctrl_register()?;
+        if ctrl.sticky_err() {
+            self.write_dp_register(Ctrl::ADDRESS, ctrl.into())?;
+        }
+        Ok(())
+    }
+
+    fn write_dp_register(
+        &mut self,
+        address: DpRegisterAddress,
+        value: u32,
+    ) -> Result<(), ArmError> {
+        let mut request = TransferRequest::write(address, value);
         request.dap_index = self.jtag_state.chain_params.index as u8;
         let response =
             commands::send_command(&mut self.device, &request).map_err(DebugProbeError::from)?;

@@ -1109,16 +1109,27 @@ pub(crate) trait DpHost: ArmDebugInterface + Sized {
             }
         }
 
+        // Leave DP bank 0 selected, so that address 0x4 is CTRL/STAT. The JTAG transfers read it
+        // after the AP accesses to find a failed access.
+        dp_state.current_select.set_dp_bank_sel(0);
+
         if !was_valid || previous_select != dp_state.current_select {
             tracing::debug!("Changing SELECT to {:x?}", dp_state.current_select);
 
-            match dp_state.current_select {
-                SelectCache::DPv1(select) => {
+            match (previous_select, dp_state.current_select) {
+                (_, SelectCache::DPv1(select)) => {
                     self.write_dp_register(ap.dp(), select)?;
                 }
-                SelectCache::DPv3(select, select1) => {
+                (previous, SelectCache::DPv3(select, select1)) => {
+                    // SELECT1 is in DP bank 5, so it goes first, and SELECT selects bank 0 again.
+                    let select1_changed = !matches!(
+                        previous,
+                        SelectCache::DPv3(_, previous_select1) if previous_select1 == select1
+                    );
+                    if !was_valid || select1_changed {
+                        self.write_dp_register(ap.dp(), select1)?;
+                    }
                     self.write_dp_register(ap.dp(), select)?;
-                    self.write_dp_register(ap.dp(), select1)?;
                 }
             }
         }
@@ -1815,6 +1826,60 @@ mod tests {
             write_ops(&ops),
             vec![(Port::Dp, DP_SELECT_ADDR, 1 << 24)],
             "AP1 must be reselected after a direct SELECT write"
+        );
+    }
+
+    #[test]
+    fn an_ap_access_selects_dp_bank_0_again() {
+        // The JTAG transfers of CMSIS-DAP read CTRL/STAT at address 0x4 after the AP accesses.
+        let mut probe = MockSwdProbe::new();
+        prepare_swd_probe(&mut probe);
+        let (mut interface, operations) = swd_interface(probe);
+        finish_attach(&mut interface, &operations);
+
+        let dlcr = DpRegisterAddress {
+            address: DP_CTRL_ADDR,
+            bank: Some(1),
+        };
+        interface
+            .read_raw_dp_register(DpAddress::Default, dlcr)
+            .expect("read should succeed");
+
+        operations.lock().unwrap().clear();
+        let ap = FullyQualifiedApAddress::v1_with_default_dp(0);
+        interface
+            .read_raw_ap_register(&ap, 0x0C)
+            .expect("read should succeed");
+
+        let ops = operations.lock().unwrap();
+        assert_eq!(write_ops(&ops), vec![(Port::Dp, DP_SELECT_ADDR, 0)]);
+    }
+
+    #[test]
+    fn a_dpv3_ap_select_writes_select1_before_select() {
+        // SELECT1 is in DP bank 5, so SELECT has to come last to select bank 0 again.
+        let mut probe = MockSwdProbe::new();
+        probe.set_read_value(Port::Dp, 0, 0x2BA0_3477);
+        probe.set_read_value(Port::Dp, DP_RDBUFF_ADDR, 0);
+        attach_ctrl_reads(&mut probe, 0);
+        let (mut interface, operations) = swd_interface(probe);
+        finish_attach(&mut interface, &operations);
+
+        let ap = FullyQualifiedApAddress::v2_with_default_dp(
+            crate::architecture::arm::ApV2Address::new(0x1_0000_2000),
+        );
+        interface
+            .read_raw_ap_register(&ap, 0x0C)
+            .expect("read should succeed");
+
+        let ops = operations.lock().unwrap();
+        assert_eq!(
+            write_ops(&ops),
+            vec![
+                (Port::Dp, DP_SELECT_ADDR, 0x2005),
+                (Port::Dp, DP_CTRL_ADDR, 1),
+                (Port::Dp, DP_SELECT_ADDR, 0x2000),
+            ]
         );
     }
 
