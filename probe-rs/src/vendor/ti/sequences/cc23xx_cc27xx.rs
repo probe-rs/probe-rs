@@ -122,8 +122,6 @@ impl ArmDebugSequence for CC23xxCC27xx {
             }
 
             // Normal debug session: exit SACI so the AHB-AP becomes accessible.
-            // debug_port_connect already asserted nRESET so the ROM started fresh
-            // with isExitAllowed=true, meaning DEBUG_EXIT_SACI_HALT will succeed.
             saci::send_command(interface, saci::cmd::DEBUG_EXIT_SACI_HALT)?;
 
             thread::sleep(Duration::from_millis(30));
@@ -191,22 +189,19 @@ impl ArmDebugSequence for CC23xxCC27xx {
         )))
     }
 
-    /// Assert and deassert nRESET on every connect.
+    /// Connect without a reset, so a running application keeps running.
     ///
-    /// Matches OpenOCD's behaviour for CC27xx: every init begins with
-    /// `adapter assert srst` so the device always starts from a known state
-    /// (ROM SACI handler active, isExitAllowed=true). Without this, a device
-    /// left stuck in SACI mode with isExitAllowed=false cannot exit SACI via
-    /// software commands alone.
-    ///
-    /// After the reset the default SWD reconnect sequence runs, and
-    /// debug_port_start then exits SACI (or stays in it during flash mode).
-    fn debug_port_connect(
+    /// When the debug port does not answer, pulse nRESET and try again, as the
+    /// TI OpenOCD scripts do on every connect.
+    fn debug_port_setup(
         &self,
         interface: &mut dyn DebugPortWire,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
-        tracing::info!("CC23xx/CC27xx: Asserting nRESET before SWD connect (OpenOCD-compatible)");
+        let Err(error) = self.debug_port_setup_default(interface, dp) else {
+            return Ok(());
+        };
+        tracing::info!("CC23xx/CC27xx: no answer ({error}), retrying after a pin reset");
 
         // Assert nRESET (drive low).
         self.reset_hardware_assert(interface)?;
@@ -219,11 +214,9 @@ impl ArmDebugSequence for CC23xxCC27xx {
         let _ = interface.swj_pins(n_reset, n_reset, Duration::ZERO)?;
 
         // Give the ROM time to reach the SACI handler before the SWD connect
-        // sequence reads DPIDR (60 ms matches OpenOCD's timing).
         thread::sleep(Duration::from_millis(60));
 
-        let default = crate::architecture::arm::sequences::DefaultArmSequence::create();
-        default.debug_port_connect(interface, dp)
+        self.debug_port_setup_default(interface, dp)
     }
 }
 
@@ -267,21 +260,17 @@ impl CC23xxCC27xxFlashSequence {
         Self::new_with_flag(Arc::new(AtomicBool::new(false)))
     }
 
-    /// Reset the device via hardware nRESET and wait for SACI mode.
+    /// Reset the device and wait for SACI mode.
     ///
     /// debug_port_start exits SACI mode so the AHB-AP is accessible for normal
     /// debug. Before flash commands can be sent the device must be reset back
-    /// into SACI mode via a hardware nRESET.
-    ///
-    /// SYSRESETRQ (writing AIRCR) does not trigger the ROM to re-enter SACI;
-    /// only a hardware reset does. This matches the OpenOCD sequence in
-    /// ti_cc27xx.cfg: assert srst -> 5 ms -> deassert -> 60 ms -> dap init -> 100 ms.
+    /// into SACI mode.
     fn reset_into_saci_mode(&self, interface: &mut dyn ArmDebugInterface) -> Result<(), ArmError> {
         tracing::info!("CC23xx/CC27xx: Re-initializing to enter SACI mode for flash programming");
 
-        // reinitialize calls debug_port_connect which asserts nRESET, causing
-        // the ROM to re-enter SACI mode. debug_port_start will see
+        // After the reset the ROM waits in SACI. debug_port_start will see
         // saci_flash_mode == true and skip EXIT_SACI.
+        saci::reset_device(interface);
         interface.reinitialize()?;
 
         // Give the ROM time to reach the SACI handler after reinitialize.
@@ -295,10 +284,7 @@ impl CC23xxCC27xxFlashSequence {
                 return Ok(());
             }
             if start.elapsed() >= Duration::from_secs(3) {
-                tracing::error!(
-                    "CC23xx/CC27xx: Timeout waiting for SACI mode. \
-                     Ensure nRESET is connected to the debug probe."
-                );
+                tracing::error!("CC23xx/CC27xx: Timeout waiting for SACI mode.");
                 return Err(ArmError::Timeout);
             }
             thread::sleep(Duration::from_millis(50));
@@ -523,8 +509,8 @@ impl DebugFlashSequence for CC23xxCC27xxFlashSequence {
         //
         // Sequence (matches OpenOCD cc27xx reset_halt after programming):
         // 1. Clear saci_flash_mode so the next debug_port_start exits SACI.
-        // 2. Call reinitialize which triggers debug_port_connect (nRESET -> SACI)
-        //    then debug_port_start (EXIT_SACI_HALT -> device boots, AHB-AP available).
+        // 2. Reset into SACI and reinitialize, so debug_port_start sends
+        //    EXIT_SACI_HALT (device boots, AHB-AP available).
         tracing::info!("CC23xx/CC27xx: Flash complete, exiting SACI for normal debug access");
 
         // Clear the flag BEFORE reinitialize so debug_port_start sends
@@ -532,6 +518,7 @@ impl DebugFlashSequence for CC23xxCC27xxFlashSequence {
         self.saci_flash_mode.store(false, Ordering::SeqCst);
 
         let interface = session.get_arm_interface()?;
+        saci::reset_device(interface);
         interface.reinitialize()?;
 
         Ok(())
