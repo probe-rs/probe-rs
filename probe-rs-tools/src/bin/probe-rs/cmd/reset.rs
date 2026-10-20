@@ -22,7 +22,7 @@ pub struct Cmd {
     #[clap(flatten)]
     common: ProbeOptions,
 
-    /// How to reset the target. Overrides `reset_line_connected` of the probe settings.
+    /// How to reset the target. `pin` fails if `reset_line_connected` is false in the probe settings.
     #[clap(long, value_enum)]
     method: Option<Method>,
 }

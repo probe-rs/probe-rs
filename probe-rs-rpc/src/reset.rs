@@ -35,7 +35,7 @@ pub enum ResetMethod {
 #[derive(Serialize, Deserialize, Schema)]
 pub struct ResetProbeRequest {
     pub probe: DebugProbeEntry,
-    /// Overrides `reset_line_connected` of the probe settings.
+    /// Overrides `reset_line_connected` of the probe settings, but `Pin` fails if it is false.
     pub method: Option<ResetMethod>,
     /// The chip, to clear the debug state of its cores after the reset.
     pub chip: Option<String>,

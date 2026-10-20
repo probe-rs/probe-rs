@@ -56,6 +56,9 @@ async fn reset_probe_impl(ctx: RpcSpawnContext, request: ResetProbeRequest) -> R
     let selector = from_wire_debug_probe_selector(request.probe.selector());
     let probe_config = ctx.probe_broker().probe_configs().resolve(&selector);
     let pin_reset = match request.method {
+        Some(ResetMethod::Pin) if probe_config.reset_line_connected == Some(false) => {
+            return Err("`reset_line_connected` is false in the probe settings".into());
+        }
         Some(method) => method == ResetMethod::Pin,
         None => probe_config.reset_line_connected == Some(true),
     };
