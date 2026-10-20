@@ -14,7 +14,7 @@ use crate::MemoryMappedRegister;
 use crate::Session;
 use crate::architecture::arm::ArmDebugInterface;
 use crate::architecture::arm::DapAccess;
-use crate::architecture::arm::armv6m::{Aircr, BpCtrl, Demcr, Dhcsr};
+use crate::architecture::arm::armv6m::{BpCtrl, Demcr, Dhcsr};
 use crate::architecture::arm::core::cortex_m;
 use crate::architecture::arm::dp::DpAddress;
 use crate::architecture::arm::memory::ArmMemoryInterface;
@@ -76,21 +76,12 @@ impl ArmDebugSequence for CC23xxCC27xx {
         let demcr = Demcr(probe.read_word_32(Demcr::get_mmio_address())?);
         let mut bpt_ctrl = BpCtrl(probe.read_word_32(BpCtrl::get_mmio_address())?);
 
-        let mut aircr = Aircr(0);
-        aircr.vectkey();
-        aircr.set_sysresetreq(true);
-
-        // The reset puts the device back into SACI mode
-        // This removes AHB-AP access, so the write is not going to be acknowledged.
-        probe
-            .write_word_32(Aircr::get_mmio_address(), aircr.into())
-            .ok();
-        probe.flush().ok();
-        thread::sleep(Duration::from_millis(10));
-
         let ap = probe.fully_qualified_address();
         let interface = probe.get_arm_debug_interface()?;
 
+        // Reset from the SEC-AP as CCS does. The ROM then waits in SACI.
+        // Unlike an AIRCR write, nothing else is sent while the device resets.
+        saci::reset_device(interface);
         interface.reinitialize()?;
         self.debug_core_start(interface, &ap, core_type, debug_base, None)?;
 
