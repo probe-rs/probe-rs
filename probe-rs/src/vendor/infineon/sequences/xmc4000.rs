@@ -52,7 +52,7 @@ bitfield::bitfield! {
     /// SCU->STCON startup configuration register, as documented in XMC4700/XMC4800 reference
     /// manual v1.3 § 11-73.
     #[derive(Copy,Clone)]
-    pub struct Stcon(u32);
+    pub struct Stcon(pub u32);
     impl Debug;
 
     /// > HW Configuration

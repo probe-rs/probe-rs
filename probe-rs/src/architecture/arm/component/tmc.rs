@@ -157,7 +157,7 @@ impl<'a> TraceMemoryController<'a> {
 }
 
 memory_mapped_bitfield_register! {
-    pub struct FormatFlushControl(u32);
+    pub struct FormatFlushControl(pub u32);
     0x304, "ETF_FFCR",
     impl From;
 
@@ -176,7 +176,7 @@ memory_mapped_bitfield_register! {
 impl DebugComponentInterface for FormatFlushControl {}
 
 memory_mapped_bitfield_register! {
-    pub struct Status(u32);
+    pub struct Status(pub u32);
     0xC, "ETF_STS",
     impl From;
 
@@ -190,7 +190,7 @@ memory_mapped_bitfield_register! {
 impl DebugComponentInterface for Status {}
 
 memory_mapped_bitfield_register! {
-    pub struct EtfMode(u32);
+    pub struct EtfMode(pub u32);
     0x28, "ETF_MODE",
     impl From;
 
@@ -202,7 +202,7 @@ impl DebugComponentInterface for EtfMode {}
 
 /// Trace ID (a.k.a. ATID or trace source ID)
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Id(u8);
+pub struct Id(pub u8);
 impl From<u8> for Id {
     fn from(id: u8) -> Self {
         Self(id)

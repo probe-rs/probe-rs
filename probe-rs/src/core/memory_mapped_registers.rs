@@ -50,7 +50,7 @@ pub trait MemoryMappedRegister<T>: Clone + From<T> + Into<T> + Sized + std::fmt:
 /// use probe_rs::memory_mapped_bitfield_register;
 /// memory_mapped_bitfield_register! {
 ///    /// Abstract Control and Status (see section xyz of some reference manual)
-///    pub struct AbstractCS(u32);
+///    pub struct AbstractCS(pub u32);
 ///    0x16,"abstractcs",
 ///    impl From;
 ///    progbufsize, _: 28, 24;
@@ -71,9 +71,9 @@ pub trait MemoryMappedRegister<T>: Clone + From<T> + Into<T> + Sized + std::fmt:
 /// - A `const ADDRESS_OFFSET: u64 = 0x16;`.
 /// - A `const NAME: &'static str = "abstractcs";`.
 macro_rules! memory_mapped_bitfield_register {
-    ($(#[$outer:meta])* $visibility:vis struct $struct_name:ident($reg_type:ty); $addr:expr, $reg_name:expr, impl From; $($rest:tt)*) => {
+    ($(#[$outer:meta])* $visibility:vis struct $struct_name:ident($field_vis:vis $reg_type:ty); $addr:expr, $reg_name:expr, impl From; $($rest:tt)*) => {
         $crate::memory_mapped_bitfield_register!{
-            $(#[$outer])* $visibility struct $struct_name($reg_type); $addr, $reg_name, $($rest)*
+            $(#[$outer])* $visibility struct $struct_name($field_vis $reg_type); $addr, $reg_name, $($rest)*
         }
 
         impl From<$struct_name> for $reg_type {
@@ -88,7 +88,7 @@ macro_rules! memory_mapped_bitfield_register {
             }
         }
     };
-    ($(#[$outer:meta])* $vis_modifier:vis struct $struct_name:ident($reg_type:ty); $addr:expr, $reg_name:expr, $($rest:tt)*) => {
+    ($(#[$outer:meta])* $vis_modifier:vis struct $struct_name:ident($field_vis:vis $reg_type:ty); $addr:expr, $reg_name:expr, $($rest:tt)*) => {
         // Using paste here, because as of bitfield = "0.14.0" they do not use the 'vis' specifier, and balks at being passed a visibility token.
         bitfield::bitfield!{
             $(#[$outer])*
@@ -96,7 +96,7 @@ macro_rules! memory_mapped_bitfield_register {
             #[derive(Copy, Clone)]
             #[allow(clippy::upper_case_acronyms)]
             #[allow(non_camel_case_types)]
-            $vis_modifier struct $struct_name($reg_type);
+            $vis_modifier struct $struct_name($field_vis $reg_type);
             impl Debug;
             $($rest)*
         }

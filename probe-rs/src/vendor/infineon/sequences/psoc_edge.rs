@@ -25,7 +25,7 @@ use crate::{
 bitfield! {
     /// CM55 control register.
     #[derive(Clone, Copy)]
-    struct MxCm55Ctl(u32);
+    struct MxCm55Ctl(pub u32);
     impl Debug;
 
     /// Clock-gates the CM55, preventing it from starting until the CM33
@@ -45,7 +45,7 @@ bitfield! {
     /// Writing the reset value triggers a local CM55 reset without affecting CM33
     /// or the rest of the system. The 0xA5FA key must be included in the write.
     #[derive(Clone, Copy)]
-    struct MxCm55Cmd(u32);
+    struct MxCm55Cmd(pub u32);
     impl Debug;
 }
 impl MxCm55Cmd {
@@ -58,7 +58,7 @@ impl MxCm55Cmd {
 bitfield! {
     /// Application CPU subsystem access port control register.
     #[derive(Clone, Copy)]
-    struct AppCpussApCtl(u32);
+    struct AppCpussApCtl(pub u32);
     impl Debug;
 
     /// Enables the CM55 debug access port.
@@ -80,7 +80,7 @@ bitfield! {
     /// Controls whether the CM55 power domain is turned on. After a reset the CM55
     /// domain is off; the debugger must enable it before accessing any CM55 registers.
     #[derive(Clone, Copy)]
-    struct PwrmodePd6PdSense(u32);
+    struct PwrmodePd6PdSense(pub u32);
     impl Debug;
 
     /// Powers on the CM55 core power domain.

@@ -35,7 +35,7 @@ bitfield! {
     ///
     /// Reflects the current device and boot state.
     #[derive(Copy, Clone)]
-    pub struct DeviceStatusRegister(u32);
+    pub struct DeviceStatusRegister(pub u32);
     impl Debug;
     /// Indicates whether the AHB-AP is accessible.
     ///
@@ -61,7 +61,7 @@ bitfield! {
     ///
     /// Controls transmission of SACI command words to the device.
     #[derive(Copy, Clone)]
-    struct TxCtrlRegister(u32);
+    struct TxCtrlRegister(pub u32);
     impl Debug;
     /// TX data register is full; wait before writing another word.
     ///
@@ -90,7 +90,7 @@ bitfield! {
     ///
     /// Indicates whether a response word is available from the device.
     #[derive(Copy, Clone)]
-    struct RxCtrlRegister(u32);
+    struct RxCtrlRegister(pub u32);
     impl Debug;
     /// Response word is ready.
     ///

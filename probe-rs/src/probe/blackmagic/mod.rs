@@ -89,7 +89,7 @@ impl core::fmt::Display for ProtocolVersion {
 
 bitfield! {
     #[derive(Copy, Clone)]
-    struct Accelerators(u64);
+    struct Accelerators(pub u64);
     impl Debug;
 
     bool, has_adiv5, set_has_adiv5: 0;
@@ -683,7 +683,7 @@ impl core::fmt::Display for RemoteError {
 
 impl ProbeError for RemoteError {}
 
-struct RemoteResponse(u64);
+struct RemoteResponse(pub u64);
 
 #[derive(PartialEq, Copy, Clone)]
 enum SwdDirection {

@@ -24,7 +24,7 @@ mod pmuc {
 
     bitfield! {
         /// The control register (CR) of the PMUC.
-        pub struct Control(u32);
+        pub struct Control(pub u32);
         impl Debug;
 
         pub u8, pin1_sel, set_pin1_sel: 19, 15;

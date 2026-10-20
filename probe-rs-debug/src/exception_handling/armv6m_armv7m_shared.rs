@@ -27,7 +27,7 @@ pub(crate) static EXCEPTION_STACK_REGISTERS: &[RegisterRole] = &[
 bitfield! {
     /// The EXC_RETURN value (The value of the link address register) is used to
     /// determine the stack to return to when returning from an exception.
-    pub struct ExcReturn(u32);
+    pub struct ExcReturn(pub u32);
     impl Debug;
     /// If the value is 0xF, then this is a valid EXC_RETURN value.
     pub is_exception_flag, _: 31, 28;
@@ -51,7 +51,7 @@ bitfield! {
     #[derive(Copy, Clone)]
     /// xPSR - XPSR register is a combined view of APSR, EPSR and IPSR registers.
     /// This is an incomplete/selective mapping of the xPSR register.
-    pub struct Xpsr(u32);
+    pub struct Xpsr(pub u32);
     impl Debug;
     pub apsr_n_bit, _: 31;
     pub apsr_z_bit, _: 30;

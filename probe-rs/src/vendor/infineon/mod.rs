@@ -132,7 +132,7 @@ fn read_xmc4xxx_scu_idchip(memory: &mut dyn ArmMemoryInterface) -> Result<Option
     bitfield::bitfield! {
         /// SCU->ID register.
         #[derive(Copy,Clone)]
-        struct ScuId(u32);
+        struct ScuId(pub u32);
         impl Debug;
         pub mod_rev, _: 7, 0;
         pub mod_type, _: 15, 8;

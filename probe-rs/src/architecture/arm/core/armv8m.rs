@@ -636,7 +636,7 @@ bitfield! {
     ///
     /// To write this register successfully, you need to set the debug key via [`Dhcsr::enable_write`] first!
     #[derive(Copy, Clone)]
-    pub struct Dhcsr(u32);
+    pub struct Dhcsr(pub u32);
     impl Debug;
     /// Restart sticky status. Indicates the PE has processed a request to clear DHCSR.C_HALT to 0. That is, either
     /// a write to DHCSR that clears DHCSR.C_HALT from 1 to 0, or an External Restart Request.
@@ -896,7 +896,7 @@ bitfield! {
     ///
     /// [`Aircr::vectkey`] must be called before this register can effectively be written!
     #[derive(Copy, Clone)]
-    pub struct Aircr(u32);
+    pub struct Aircr(pub u32);
     impl Debug;
     /// Vector Key. The value `0x05FA` must be written to this register, otherwise
     /// the register write is UNPREDICTABLE.
@@ -989,7 +989,7 @@ impl MemoryMappedRegister<u32> for Aircr {
 
 /// Debug Core Register Data Register, DCRDR (see armv8-M Architecture Reference Manual D1.2.32)
 #[derive(Debug, Copy, Clone)]
-pub struct Dcrdr(u32);
+pub struct Dcrdr(pub u32);
 
 impl From<u32> for Dcrdr {
     fn from(value: u32) -> Self {
@@ -1011,7 +1011,7 @@ impl MemoryMappedRegister<u32> for Dcrdr {
 bitfield! {
     /// /// Debug Exception and Monitor Control Register, DEMCR (see armv8-M Architecture Reference Manual D1.2.36)
     #[derive(Copy, Clone)]
-    pub struct Demcr(u32);
+    pub struct Demcr(pub u32);
     impl Debug;
     /// Global enable for DWT, PMU and ITM features
     pub trcena, set_trcena: 24;
@@ -1074,7 +1074,7 @@ impl MemoryMappedRegister<u32> for Demcr {
 bitfield! {
     /// Flash Patch Control Register, FP_CTRL (see armv8-M Architecture Reference Manual D1.2.108)
     #[derive(Copy,Clone)]
-    pub struct FpCtrl(u32);
+    pub struct FpCtrl(pub u32);
     impl Debug;
     /// Flash Patch breakpoint architecture revision:
     /// 0000 Flash Patch breakpoint version 1.
@@ -1124,7 +1124,7 @@ impl From<FpCtrl> for u32 {
 bitfield! {
     /// FP_COMPn, Flash Patch Comparator Register, n = 0 - 125 (see armv8-M Architecture Reference Manual D1.2.107)
     #[derive(Copy,Clone)]
-    pub struct FpCompN(u32);
+    pub struct FpCompN(pub u32);
     impl Debug;
     /// BPADDR, `bits[31:1]` Breakpoint address. Specifies bits`[31:1]` of the breakpoint instruction address.
     /// If BE == 0, this field is Reserved, UNK/SBZP.

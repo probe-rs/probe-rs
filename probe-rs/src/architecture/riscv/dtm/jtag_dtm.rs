@@ -918,7 +918,7 @@ const DMI_OP_MASK: u128 = 0x3;
 
 bitfield! {
     /// The `dtmcs` register is
-    pub struct Dtmcs(u32);
+    pub struct Dtmcs(pub u32);
     impl Debug;
 
 

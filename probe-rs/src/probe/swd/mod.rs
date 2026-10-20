@@ -79,7 +79,7 @@ pub use port::{SwdPort, SwdPortError};
 bitfield::bitfield! {
     /// A struct to describe the default CMSIS-DAP pins that one can toggle from the host.
     #[derive(Copy, Clone)]
-    pub struct Pins(u8);
+    pub struct Pins(pub u8);
     impl Debug;
     /// The active low reset of the debug probe.
     pub nreset, set_nreset: 7;

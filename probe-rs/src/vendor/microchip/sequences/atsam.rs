@@ -24,7 +24,7 @@ use std::{
 bitfield! {
     /// Device Service Unit Control Register, DSU - CTRL
     #[derive(Copy, Clone)]
-    pub struct DsuCtrl(u8);
+    pub struct DsuCtrl(pub u8);
     impl Debug;
     /// Chip-Erase
     ///
@@ -68,7 +68,7 @@ impl From<DsuCtrl> for u8 {
 bitfield! {
     /// Device Service Unit Status A Register, DSU - STATUSA
     #[derive(Copy, Clone)]
-    pub struct DsuStatusA(u8);
+    pub struct DsuStatusA(pub u8);
     impl Debug;
     /// Protection Error
     ///
@@ -131,7 +131,7 @@ impl DsuStatusA {
 bitfield! {
     /// Device Service Unit Status B Register, DSU - STATUSB
     #[derive(Copy, Clone)]
-    pub struct DsuStatusB(u8);
+    pub struct DsuStatusB(pub u8);
     impl Debug;
 
     /// Chip Erase Locked
@@ -191,7 +191,7 @@ impl DsuStatusB {
 bitfield! {
     /// Device Identification, DSU - DID
     #[derive(Copy, Clone, PartialEq, Eq)]
-    pub struct DsuDid(u32);
+    pub struct DsuDid(pub u32);
     impl Debug;
 
     /// The value of this field defines the processor used on the device.

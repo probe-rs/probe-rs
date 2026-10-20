@@ -4,7 +4,7 @@ use crate::{HaltReason, core::BreakpointCause, memory_mapped_bitfield_register};
 
 memory_mapped_bitfield_register! {
     /// DBGDSCR - Debug Status and Control Registers
-    pub struct Dbgdscr(u32);
+    pub struct Dbgdscr(pub u32);
     0x088, "DBGDSCR",
     impl From;
 
@@ -244,7 +244,7 @@ impl Dbgdscr {
 
 memory_mapped_bitfield_register! {
     /// DBGDIDR - Debug ID Register
-    pub struct Dbgdidr(u32);
+    pub struct Dbgdidr(pub u32);
     0x000, "DBGDIDR",
     impl From;
 
@@ -298,7 +298,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// DBGDRCR - Debug Run Control Register
-    pub struct Dbgdrcr(u32);
+    pub struct Dbgdrcr(pub u32);
     0x090, "DBGDRCR",
     impl From;
 
@@ -320,7 +320,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// DBGBVR - Breakpoint Value Register
-    pub struct Dbgbvr(u32);
+    pub struct Dbgbvr(pub u32);
     0x100, "DBGBVR",
     impl From;
 
@@ -330,7 +330,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// DBGBCR - Breakpoint Control Register
-    pub struct Dbgbcr(u32);
+    pub struct Dbgbcr(pub u32);
     0x140, "DBGBCR",
     impl From;
 
@@ -361,7 +361,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// DBGLAR - Lock Access Register
-    pub struct Dbglar(u32);
+    pub struct Dbglar(pub u32);
     0xFB0, "DBGLAR",
     impl From;
 
@@ -372,7 +372,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// DBGDSCCR - State Cache Control Register
-    pub struct Dbgdsccr(u32);
+    pub struct Dbgdsccr(pub u32);
     0x028, "DBGDSCCR",
     impl From;
 
@@ -388,7 +388,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// DBGDSMCR - Debug State MMU Control Register
-    pub struct Dbgdsmcr(u32);
+    pub struct Dbgdsmcr(pub u32);
     0x02C, "DBGDSMCR",
     impl From;
 
@@ -407,7 +407,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// DBGITR - Instruction Transfer Register
-    pub struct Dbgitr(u32);
+    pub struct Dbgitr(pub u32);
     0x084, "DBGITR",
     impl From;
 
@@ -417,7 +417,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// DBGDTRTX - Target to Host data transfer register
-    pub struct Dbgdtrtx(u32);
+    pub struct Dbgdtrtx(pub u32);
     0x08C, "DBGDTRTX",
     impl From;
 
@@ -427,7 +427,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// DBGDTRRX - Host to Target data transfer register
-    pub struct Dbgdtrrx(u32);
+    pub struct Dbgdtrrx(pub u32);
     0x080, "DBGDTRRX",
     impl From;
 
@@ -437,7 +437,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// DBGPRCR - Powerdown and Reset Control Register
-    pub struct Dbgprcr(u32);
+    pub struct Dbgprcr(pub u32);
     0x310, "DBGPRCR",
     impl From;
 
@@ -456,7 +456,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// DBGPRSR - Powerdown and Reset Status Register
-    pub struct Dbgprsr(u32);
+    pub struct Dbgprsr(pub u32);
     0x314, "DBGPRSR",
     impl From;
 
@@ -484,7 +484,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// DBGVCR - Vector Catch Register
-    pub struct Dbgvcr(u32);
+    pub struct Dbgvcr(pub u32);
     0x01C, "DBGVCR",
     impl From;
 
@@ -582,7 +582,7 @@ bitfield::bitfield! {
     #[derive(Copy, Clone)]
     #[allow(clippy::upper_case_acronyms)]
     #[allow(non_camel_case_types)]
-    pub struct Cpacr(u32);
+    pub struct Cpacr(pub u32);
     impl Debug;
 
     /// Access rights for coprocessor n for accesses from PL1 and PL0
