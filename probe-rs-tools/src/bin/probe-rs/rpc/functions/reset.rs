@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use anyhow::Context as _;
 use postcard_rpc::{header::VarHeader, server::Sender};
 use probe_rs::probe::{DebugProbeSelector, Probe};
 use probe_rs_rpc::probe::AttachResult;
@@ -99,8 +100,7 @@ fn reset_once(
 
     match method {
         ResetMethod::Pin => {
-            pulse_reset(&mut probe)
-                .map_err(|error| format!("The probe cannot pulse the reset line: {error:?}"))?;
+            pulse_reset(&mut probe).map_err(|error| format!("{error:?}"))?;
             // A pin reset keeps the debug state of the cores, for example a halt that an
             // earlier session left.
             if let Err(error) = clear_debug_state(&loaded, probe) {
@@ -127,11 +127,19 @@ fn clear_debug_state(options: &LoadedProbeOptions, probe: Probe) -> anyhow::Resu
 
 fn pulse_reset(probe: &mut Probe) -> anyhow::Result<()> {
     // Some probes drive the reset line only after they start the wire protocol.
-    probe.attach_to_unspecified()?;
-    probe.target_reset_assert()?;
+    probe
+        .attach_to_unspecified()
+        .context("The probe cannot start the wire protocol")?;
+    probe
+        .target_reset_assert()
+        .context("The probe cannot pulse the reset line")?;
     std::thread::sleep(RESET_HOLD_TIME);
-    probe.target_reset_deassert()?;
-    probe.detach()?;
+    probe
+        .target_reset_deassert()
+        .context("The probe cannot release the reset line. The target can stay in reset")?;
+    if let Err(error) = probe.detach() {
+        tracing::warn!("Could not detach from the probe after the reset: {error:?}");
+    }
     Ok(())
 }
 
