@@ -402,19 +402,29 @@ impl<'r> LoadedProbeOptions<'r> {
         probe: Probe,
         target: TargetSelector,
     ) -> Result<Session, OperationError> {
+        self.attach_session_with(probe, target, self.0.connect_under_reset)
+    }
+
+    /// Attaches to target device session. Attaches under reset if `under_reset` is set.
+    pub fn attach_session_with(
+        &self,
+        probe: Probe,
+        target: TargetSelector,
+        under_reset: bool,
+    ) -> Result<Session, OperationError> {
         let mut permissions = Permissions::new();
         if self.0.allow_erase_all {
             permissions = permissions.allow_erase_all();
         }
 
-        let session = if self.0.connect_under_reset {
+        let session = if under_reset {
             probe.attach_under_reset_with_registry(target, permissions, self.1)
         } else {
             probe.attach_with_registry(target, permissions, self.1)
         }
         .map_err(|error| OperationError::AttachingFailed {
             source: error,
-            connect_under_reset: self.0.connect_under_reset,
+            connect_under_reset: under_reset,
         })?;
 
         Ok(session)

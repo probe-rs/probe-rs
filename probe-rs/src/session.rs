@@ -209,7 +209,7 @@ impl Session {
 
         // Use ARM DAP path when the target connects via SWD/DAP: either ARM cores or RISC-V cores
         // over mem-AP (e.g. RP235x_riscv).
-        let mut session = if target.default_core().memory_ap().is_some() {
+        let mut session = if target.uses_arm_debug_interface() {
             Self::attach_arm_debug_interface(probe, target, attach_method, permissions, cores)?
         } else {
             Self::attach_jtag(probe, target, attach_method, permissions, cores)?
