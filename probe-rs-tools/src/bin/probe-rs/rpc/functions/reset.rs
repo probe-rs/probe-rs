@@ -66,6 +66,9 @@ async fn reset_target_impl(
         ResetMethod::Pin => tracing::info!("Pulsing the reset line of the probe"),
         ResetMethod::Core => tracing::info!("Resetting the core"),
     }
+    if method == ResetMethod::Pin && request.attach.connect_under_reset {
+        tracing::warn!("A pin reset ignores connect under reset");
+    }
 
     let wait_for_probe = request.attach.wait_for_probe.unwrap_or(Duration::ZERO);
     let probe_options = ProbeOptions::from(&request.attach);
