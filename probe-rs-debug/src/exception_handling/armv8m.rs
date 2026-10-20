@@ -13,7 +13,7 @@ use super::{
 bitfield! {
     /// The EXC_RETURN value (The value of the link address register) is used to
     /// determine the stack to return to when returning from an exception.
-    struct ExcReturn(u32);
+    struct ExcReturn(pub u32);
     /// If the value is 0xFF, then this is a valid EXC_RETURN value.
     is_exception_flag, _: 31, 24;
     /// Indicates whether to restore registers from the secure stack or the unsecure stack
@@ -32,7 +32,7 @@ bitfield! {
 
 memory_mapped_bitfield_register! {
     /// HFSR - HardFault Status Register
-    pub struct Hfsr(u32);
+    pub struct Hfsr(pub u32);
     0xE000ED2C, "HFSR",
     impl From;
     debug_event, _: 31;
@@ -42,7 +42,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// CFSR - Configurable Status Register (`UFSR[31:16]`, `BFSR[15:8]`, `MMFSR[7:0]`)
-    pub struct Cfsr(u32);
+    pub struct Cfsr(pub u32);
     0xE000ED28, "CFSR",
     impl From;
     /// When SDIV or UDIV instruction is used with a divisor of 0, this fault occurs if DIV_0_TRP is enabled in the CCR.
@@ -172,7 +172,7 @@ impl Cfsr {
 
 memory_mapped_bitfield_register! {
     /// SFSR - Secure Fault Status Register
-    pub struct Sfsr(u32);
+    pub struct Sfsr(pub u32);
     0xE000EDE4, "SFSR",
     impl From;
     /// Sticky flag indicating that an error occurred during lazy Floating-point state preservation activation or deactivation.
@@ -234,21 +234,21 @@ impl Sfsr {
 
 memory_mapped_bitfield_register! {
     /// MMFAR - MemManage Fault Address Register
-    pub struct Mmfar(u32);
+    pub struct Mmfar(pub u32);
     0xE000ED34, "MMFAR",
     impl From;
 }
 
 memory_mapped_bitfield_register! {
     /// BFAR - Bus Fault Address Register
-    pub struct Bfar(u32);
+    pub struct Bfar(pub u32);
     0xE000ED38, "BFAR",
     impl From;
 }
 
 memory_mapped_bitfield_register! {
     /// SFAR - Secure Fault Address Register
-    pub struct Sfar(u32);
+    pub struct Sfar(pub u32);
     0xE000EDE8, "SFAR",
     impl From;
 }
@@ -407,7 +407,7 @@ impl From<u8> for SecurityExtension {
 
 memory_mapped_bitfield_register! {
     /// Processor Feature Register 1
-    pub struct IdPfr1(u32);
+    pub struct IdPfr1(pub u32);
     0xE000_ED44, "ID_PFR1",
     impl From;
     /// Identifies support for the M-Profile programmer's model

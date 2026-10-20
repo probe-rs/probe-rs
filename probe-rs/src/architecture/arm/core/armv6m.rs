@@ -25,7 +25,7 @@ bitfield! {
     ///
     /// To write this register successfully, you need to set the debug key via [`Dhcsr::enable_write`] first!
     #[derive(Copy, Clone)]
-    pub struct Dhcsr(u32);
+    pub struct Dhcsr(pub u32);
     impl Debug;
     /// Indicates whether the processor has been reset since the last read of DHCSR:
     ///
@@ -178,7 +178,7 @@ impl MemoryMappedRegister<u32> for Dhcsr {
 
 /// Debug Core Register Data Register, DCRDR (see armv6-M Architecture Reference Manual C1.6.5)
 #[derive(Debug, Copy, Clone)]
-pub struct Dcrdr(u32);
+pub struct Dcrdr(pub u32);
 
 impl From<u32> for Dcrdr {
     fn from(value: u32) -> Self {
@@ -202,7 +202,7 @@ bitfield! {
     ///
     /// Provides BPU implementation information, and the global enable for the BPU.
     #[derive(Copy, Clone)]
-    pub struct BpCtrl(u32);
+    pub struct BpCtrl(pub u32);
     impl Debug;
     /// The number of breakpoint comparators. If NUM_CODE is zero, the implementation does not support any comparators
     pub num_code, _: 7, 4;
@@ -240,7 +240,7 @@ bitfield! {
     /// Holds a breakpoint address for comparison with instruction addresses in the Code memory
     /// region, see The system address map on page B3-224 for more information.
     #[derive(Copy, Clone)]
-    pub struct BpCompx(u32);
+    pub struct BpCompx(pub u32);
     impl Debug;
     /// BP_MATCH defines the behavior when the COMP address is matched:
     ///
@@ -308,7 +308,7 @@ bitfield! {
     ///
     /// [`Aircr::vectkey`] must be called before this register can effectively be written!
     #[derive(Copy, Clone)]
-    pub struct Aircr(u32);
+    pub struct Aircr(pub u32);
     impl Debug;
     /// Vector Key. The value 0x05FA must be written to this register, otherwise
     /// the register write is UNPREDICTABLE.
@@ -376,7 +376,7 @@ impl MemoryMappedRegister<u32> for Aircr {
 bitfield! {
     /// Debug Exception and Monitor Control Register, DEMCR (see armv6-M Architecture Reference Manual C1.6.6)
     #[derive(Copy, Clone)]
-    pub struct Demcr(u32);
+    pub struct Demcr(pub u32);
     impl Debug;
     /// Global enable for DWT.
     ///

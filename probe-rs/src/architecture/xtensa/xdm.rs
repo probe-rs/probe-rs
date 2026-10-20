@@ -813,7 +813,7 @@ fn transform_instruction_status(
 bitfield::bitfield! {
     /// Power and Reset Control register
     #[derive(Copy, Clone)]
-    pub struct PowerControl(u8);
+    pub struct PowerControl(pub u8);
     impl Debug;
 
     /// Request power to core
@@ -840,7 +840,7 @@ bitfield::bitfield! {
 bitfield::bitfield! {
     /// Power and Reset Status register
     #[derive(Copy, Clone)]
-    pub struct PowerStatus(u8);
+    pub struct PowerStatus(pub u8);
     impl Debug;
 
     /// Set if core is powered on
@@ -872,7 +872,7 @@ bitfield::bitfield! {
     ///
     /// The DSR register provides OCD status to host debugger.
     #[derive(Copy, Clone)]
-    pub struct DebugStatus(u32);
+    pub struct DebugStatus(pub u32);
     impl Debug;
 
     /// Instruction in DIR completed execution (w/ or w/o exception)
@@ -990,7 +990,7 @@ impl NexusRegister for DebugStatus {
 
 /// Writes and executes DIR.
 #[derive(Copy, Clone, Debug)]
-struct OcdId(u32);
+struct OcdId(pub u32);
 
 impl NexusRegister for OcdId {
     const ADDRESS: u8 = NARADR_OCDID;
@@ -1008,7 +1008,7 @@ impl NexusRegister for OcdId {
 bitfield::bitfield! {
     /// Debug Control register bits.
     #[derive(Copy, Clone)]
-    pub struct DebugControlBits(u32);
+    pub struct DebugControlBits(pub u32);
     impl Debug;
 
     /// Set to activate the OCD.
@@ -1080,7 +1080,7 @@ impl NexusRegister for DebugControlClear {
 
 /// Writes DDR.
 #[derive(Copy, Clone, Debug)]
-struct DebugDataRegister(u32);
+struct DebugDataRegister(pub u32);
 
 impl NexusRegister for DebugDataRegister {
     const ADDRESS: u8 = NARADR_DDR;
@@ -1097,7 +1097,7 @@ impl NexusRegister for DebugDataRegister {
 
 /// Writes DDR and executes DIR on write AND READ.
 #[derive(Copy, Clone, Debug)]
-struct DebugDataAndExecRegister(u32);
+struct DebugDataAndExecRegister(pub u32);
 
 impl NexusRegister for DebugDataAndExecRegister {
     const ADDRESS: u8 = NARADR_DDREXEC;
@@ -1114,7 +1114,7 @@ impl NexusRegister for DebugDataAndExecRegister {
 
 /// Writes DIR.
 #[derive(Copy, Clone, Debug)]
-struct DebugInstructionRegister(u32);
+struct DebugInstructionRegister(pub u32);
 
 impl NexusRegister for DebugInstructionRegister {
     const ADDRESS: u8 = NARADR_DIR0;
@@ -1131,7 +1131,7 @@ impl NexusRegister for DebugInstructionRegister {
 
 /// Writes and executes DIR.
 #[derive(Copy, Clone, Debug)]
-struct DebugInstructionAndExecRegister(u32);
+struct DebugInstructionAndExecRegister(pub u32);
 
 impl NexusRegister for DebugInstructionAndExecRegister {
     const ADDRESS: u8 = NARADR_DIR0EXEC;

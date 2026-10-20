@@ -232,7 +232,7 @@ impl HartIsa {
 }
 
 #[derive(Copy, Clone, Debug)]
-struct CoreRegisterAbstractCmdSupport(u8);
+struct CoreRegisterAbstractCmdSupport(pub u8);
 
 impl CoreRegisterAbstractCmdSupport {
     const READ: Self = Self(1 << 0);
@@ -249,7 +249,7 @@ impl CoreRegisterAbstractCmdSupport {
 }
 
 #[derive(Copy, Clone, Debug)]
-struct MemoryAbstractCmdSupport(u8);
+struct MemoryAbstractCmdSupport(pub u8);
 
 impl MemoryAbstractCmdSupport {
     const READ: Self = Self(1 << 0);
@@ -3781,7 +3781,7 @@ memory_mapped_bitfield_register! {
     /// Abstract command register, located at address 0x17
     /// This is not for all commands, only for the ones
     /// from the debug spec.
-    pub struct AccessRegisterCommand(u32);
+    pub struct AccessRegisterCommand(pub u32);
     0x17, "command",
     impl From;
     /// This is 0 to indicate Access Register Command.
@@ -3822,7 +3822,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// System Bus Access Control and Status (see 3.12.18)
-    pub struct Sbcs(u32);
+    pub struct Sbcs(pub u32);
     0x38, "sbcs",
     impl From;
     /// 0: The System Bus interface conforms to mainline
@@ -3897,7 +3897,7 @@ memory_mapped_bitfield_register! {
 memory_mapped_bitfield_register! {
     /// Abstract Command Autoexec (see 3.12.8)
     #[derive(Eq, PartialEq)]
-    pub struct Abstractauto(u32);
+    pub struct Abstractauto(pub u32);
     0x18, "abstractauto",
     impl From;
     /// When a bit in this field is 1, read or write accesses to the corresponding `progbuf` word cause
@@ -3912,7 +3912,7 @@ memory_mapped_bitfield_register! {
     /// Abstract command register, located at address 0x17
     /// This is not for all commands, only for the ones
     /// from the debug spec. (see 3.6.1.3)
-    pub struct AccessMemoryCommand(u32);
+    pub struct AccessMemoryCommand(pub u32);
     0x17, "command",
     /// This is 2 to indicate Access Memory Command.
     _, set_cmd_type: 31, 24;
@@ -3958,20 +3958,20 @@ impl From<u32> for AccessMemoryCommand {
     }
 }
 
-memory_mapped_bitfield_register! { pub struct Sbaddress0(u32); 0x39, "sbaddress0", impl From; }
-memory_mapped_bitfield_register! { pub struct Sbaddress1(u32); 0x3a, "sbaddress1", impl From; }
-memory_mapped_bitfield_register! { pub struct Sbaddress2(u32); 0x3b, "sbaddress2", impl From; }
-memory_mapped_bitfield_register! { pub struct Sbaddress3(u32); 0x37, "sbaddress3", impl From; }
+memory_mapped_bitfield_register! { pub struct Sbaddress0(pub u32); 0x39, "sbaddress0", impl From; }
+memory_mapped_bitfield_register! { pub struct Sbaddress1(pub u32); 0x3a, "sbaddress1", impl From; }
+memory_mapped_bitfield_register! { pub struct Sbaddress2(pub u32); 0x3b, "sbaddress2", impl From; }
+memory_mapped_bitfield_register! { pub struct Sbaddress3(pub u32); 0x37, "sbaddress3", impl From; }
 
-memory_mapped_bitfield_register! { pub struct Sbdata0(u32); 0x3c, "sbdata0", impl From; }
-memory_mapped_bitfield_register! { pub struct Sbdata1(u32); 0x3d, "sbdata1", impl From; }
-memory_mapped_bitfield_register! { pub struct Sbdata2(u32); 0x3e, "sbdata2", impl From; }
-memory_mapped_bitfield_register! { pub struct Sbdata3(u32); 0x3f, "sbdata3", impl From; }
+memory_mapped_bitfield_register! { pub struct Sbdata0(pub u32); 0x3c, "sbdata0", impl From; }
+memory_mapped_bitfield_register! { pub struct Sbdata1(pub u32); 0x3d, "sbdata1", impl From; }
+memory_mapped_bitfield_register! { pub struct Sbdata2(pub u32); 0x3e, "sbdata2", impl From; }
+memory_mapped_bitfield_register! { pub struct Sbdata3(pub u32); 0x3f, "sbdata3", impl From; }
 
-memory_mapped_bitfield_register! { pub struct Confstrptr0(u32); 0x19, "confstrptr0", impl From; }
-memory_mapped_bitfield_register! { pub struct Confstrptr1(u32); 0x1a, "confstrptr1", impl From; }
-memory_mapped_bitfield_register! { pub struct Confstrptr2(u32); 0x1b, "confstrptr2", impl From; }
-memory_mapped_bitfield_register! { pub struct Confstrptr3(u32); 0x1c, "confstrptr3", impl From; }
+memory_mapped_bitfield_register! { pub struct Confstrptr0(pub u32); 0x19, "confstrptr0", impl From; }
+memory_mapped_bitfield_register! { pub struct Confstrptr1(pub u32); 0x1a, "confstrptr1", impl From; }
+memory_mapped_bitfield_register! { pub struct Confstrptr2(pub u32); 0x1b, "confstrptr2", impl From; }
+memory_mapped_bitfield_register! { pub struct Confstrptr3(pub u32); 0x1c, "confstrptr3", impl From; }
 
 #[cfg(test)]
 mod tests {

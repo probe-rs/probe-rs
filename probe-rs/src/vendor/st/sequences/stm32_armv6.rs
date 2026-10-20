@@ -87,7 +87,7 @@ mod dbgmcu {
     bitfield! {
         /// The control register (CR) of the DBGMCU. This register is described in "RM0360: STM32F0
         /// family reference manual" section 26.9.3.
-        pub struct Control(u32);
+        pub struct Control(pub u32);
         impl Debug;
 
         pub u8, dbg_standby, enable_standby_debug: 2;

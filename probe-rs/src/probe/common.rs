@@ -20,7 +20,7 @@ bitfield! {
     /// A JTAG IDCODE.
     /// Identifies a particular Test Access Port (TAP) on the JTAG scan chain.
     #[derive(Copy, Clone, Eq, PartialEq)]
-    pub struct IdCode(u32);
+    pub struct IdCode(pub u32);
     impl Debug;
 
     u8;

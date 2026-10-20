@@ -36,7 +36,7 @@ mod dbgmcu {
     bitfield! {
         /// The control register (CR) of the DBGMCU. This register is described in "RM0456: STM32U5
         /// family reference manual" section 75.12.4
-        pub struct Control(u32);
+        pub struct Control(pub u32);
         impl Debug;
 
         pub u8, trace_mode, set_tracemode: 7, 6;

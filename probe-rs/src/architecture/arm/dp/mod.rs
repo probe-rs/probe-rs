@@ -164,7 +164,7 @@ bitfield! {
     ///
     /// Only for write operations.
     #[derive(Copy, Clone, Default)]
-    pub struct Abort(u32);
+    pub struct Abort(pub u32);
     impl Debug;
     /// To clear the CTRL/STAT.STICKYORUN overrun error bit to `0b0`, write `0b1` to this bit.
     pub _, set_orunerrclr: 4;
@@ -182,7 +182,7 @@ impl_dpregister!(Abort, DebugPortVersion::DPv1, 0x0, "ABORT");
 bitfield! {
     /// CTRL/STAT, Control/Status register (see ADI v5.2 B2.2.2)
     #[derive(Clone, Default)]
-    pub struct Ctrl(u32);
+    pub struct Ctrl(pub u32);
     impl Debug;
     /// System powerup acknowledge. Indicates the status of the CSYSPWRUPACK signal. See Power control requirements and operation on page B2-78.
     pub csyspwrupack, _: 31;
@@ -341,7 +341,7 @@ impl_dpregister!(Ctrl, DebugPortVersion::DPv1, 0x4, "CTRL/STAT");
 bitfield! {
     /// SELECT, AP Select register (see ADI v5.2 B2.2.9)
     #[derive(Clone, Copy, PartialEq, Eq)]
-    pub struct SelectV1(u32);
+    pub struct SelectV1(pub u32);
     impl Debug;
     /// Selects the AP with the ID number APSEL. If there is no AP with the ID APSEL, all AP transactions return zero on reads and are ignored on writes. See Register maps, and accesses to reserved addresses on page B2-52.
     /// After a powerup reset, the value of this field is UNKNOWN.
@@ -377,7 +377,7 @@ impl_dpregister!(SelectV1, DebugPortVersion::DPv1, 0x8, "SELECT");
 bitfield! {
     /// SELECT, AP Select register (see ADI v5.2 B2.2.9)
     #[derive(Clone, Copy, PartialEq, Eq)]
-    pub struct SelectV3(u32);
+    pub struct SelectV3(pub u32);
     impl Debug;
     /// Address output bits\[63:4\], formed by concatenating bits\[31:0\] of SELECT1 with bits\[31:4\] of SELECT.
     /// The ADDR field selects a four-word bank of system locations to access.
@@ -394,7 +394,7 @@ impl_dpregister!(SelectV3, DebugPortVersion::DPv3, 0x8, "SELECT");
 bitfield! {
     /// SELECT1, AP Select register (see ADI v5.2 B2.2.9)
     #[derive(Clone, Copy, PartialEq, Eq)]
-    pub struct Select1(u32);
+    pub struct Select1(pub u32);
     impl Debug;
     /// Address output bits\[63:4\], formed by concatenating bits\[31:0\] of SELECT1 with bits\[31:4\] of SELECT.
     /// The ADDR field selects a four-word bank of system locations to access.
@@ -412,7 +412,7 @@ bitfield! {
     /// DPIDR provides information about the Debug Port.
     /// Only for read operations.
     #[derive(Clone)]
-    pub struct DPIDR(u32);
+    pub struct DPIDR(pub u32);
     impl Debug;
     /// Revision code. The meaning of this field is IMPLEMENTATION DEFINED.
     pub u8, revision, _: 31, 28;
@@ -457,7 +457,7 @@ bitfield! {
     /// DPIDR1 provides information about the Debug Port.
     /// Only for read operations.
     #[derive(Clone)]
-    pub struct DPIDR1(u32);
+    pub struct DPIDR1(pub u32);
     impl Debug;
     /// Error reporting mode support.
     ///
@@ -476,7 +476,7 @@ bitfield! {
     ///
     /// TARGETID provides information about the target when the host is connected to a single device.
     #[derive(Clone)]
-    pub struct TARGETID(u32);
+    pub struct TARGETID(pub u32);
     impl Debug;
     /// Target revision.
     pub u8, trevision, _: 31, 28;
@@ -510,7 +510,7 @@ bitfield! {
     ///
     /// Only for read operations.
     #[derive(Clone)]
-    pub struct DLPIDR(u32);
+    pub struct DLPIDR(pub u32);
     impl Debug;
     /// IMPLEMENTATION DEFINED. Instance number for this device.
     pub u8, tinstance, _: 31, 28;
@@ -524,7 +524,7 @@ bitfield! {
     ///
     /// Only for read operations.
     #[derive(Clone)]
-    pub struct BASEPTR0(u32);
+    pub struct BASEPTR0(pub u32);
     impl Debug;
     /// Pointer least significant bits (bits `[31:12]` of the full address).
     pub u32, ptr, _: 31, 12;
@@ -538,7 +538,7 @@ bitfield! {
     ///
     /// Only for read operations.
     #[derive(Clone)]
-    pub struct BASEPTR1(u32);
+    pub struct BASEPTR1(pub u32);
     impl Debug;
     /// Pointer most significant bits (bits `[63:32]` of the full address).
     pub u32, ptr, _: 31, 0;
