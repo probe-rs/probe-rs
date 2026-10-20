@@ -55,13 +55,7 @@ pub async fn reset_probe(
 async fn reset_probe_impl(ctx: RpcSpawnContext, request: ResetProbeRequest) -> ResetProbeResponse {
     let selector = from_wire_debug_probe_selector(request.probe.selector());
     let probe_config = ctx.probe_broker().probe_configs().resolve(&selector);
-    let pin_reset = match request.method {
-        Some(ResetMethod::Pin) if probe_config.reset_line_connected == Some(false) => {
-            return Err("`reset_line_connected` is false in the probe settings".into());
-        }
-        Some(method) => method == ResetMethod::Pin,
-        None => probe_config.reset_line_connected == Some(true),
-    };
+    let pin_reset = wants_pin_reset(request.method, probe_config.reset_line_connected)?;
     if !pin_reset {
         tracing::info!("Resetting the core");
         return Ok(false);
@@ -135,4 +129,49 @@ fn pulse_reset(probe: &mut Probe) -> anyhow::Result<()> {
     probe.target_reset_deassert()?;
     probe.detach()?;
     Ok(())
+}
+
+/// Whether to pulse the reset line. `method` overrides the probe settings, but a line that the
+/// settings call unconnected cannot be pulsed.
+fn wants_pin_reset(
+    method: Option<ResetMethod>,
+    reset_line_connected: Option<bool>,
+) -> Result<bool, &'static str> {
+    match (method, reset_line_connected) {
+        (Some(ResetMethod::Pin), Some(false)) => {
+            Err("`reset_line_connected` is false in the probe settings")
+        }
+        (Some(method), _) => Ok(method == ResetMethod::Pin),
+        (None, connected) => Ok(connected == Some(true)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_settings_decide_without_a_method() {
+        assert_eq!(wants_pin_reset(None, None), Ok(false));
+        assert_eq!(wants_pin_reset(None, Some(false)), Ok(false));
+        assert_eq!(wants_pin_reset(None, Some(true)), Ok(true));
+    }
+
+    #[test]
+    fn the_method_overrides_the_settings() {
+        for connected in [None, Some(true)] {
+            assert_eq!(wants_pin_reset(Some(ResetMethod::Pin), connected), Ok(true));
+        }
+        for connected in [None, Some(false), Some(true)] {
+            assert_eq!(
+                wants_pin_reset(Some(ResetMethod::Core), connected),
+                Ok(false)
+            );
+        }
+    }
+
+    #[test]
+    fn pin_is_refused_for_an_unconnected_line() {
+        assert!(wants_pin_reset(Some(ResetMethod::Pin), Some(false)).is_err());
+    }
 }
