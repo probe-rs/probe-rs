@@ -220,6 +220,9 @@ pub enum DebugProbeError {
     /// Failed to find or attach to the target. Please check the wiring before retrying.
     TargetNotFound,
 
+    /// The reset line of the probe is marked as not connected to the target.
+    ResetLineNotConnected,
+
     /// The '{function_name}' functionality is not implemented yet.
     ///
     /// The variant of the function you called is not yet implemented.
@@ -313,21 +316,20 @@ impl<T: ProbeError> From<T> for ProbeCreationError {
 pub struct Probe {
     inner: Box<dyn DebugProbe>,
     attached: bool,
+    reset_line_connected: bool,
 }
 
 impl Probe {
     /// Create a new probe from a more specific probe driver.
     pub fn new(probe: impl DebugProbe + 'static) -> Self {
-        Self {
-            inner: Box::new(probe),
-            attached: false,
-        }
+        Self::from_specific_probe(Box::new(probe))
     }
 
     pub(crate) fn from_attached_probe(probe: Box<dyn DebugProbe>) -> Self {
         Self {
             inner: probe,
             attached: true,
+            reset_line_connected: true,
         }
     }
 
@@ -336,6 +338,22 @@ impl Probe {
         Probe {
             inner: probe,
             attached: false,
+            reset_line_connected: true,
+        }
+    }
+
+    /// Sets whether the reset line of the probe is connected to the target. If it is not,
+    /// attaching under reset fails.
+    pub fn set_reset_line_connected(&mut self, connected: bool) {
+        self.reset_line_connected = connected;
+    }
+
+    /// Fails if the reset line is marked as not connected.
+    pub(crate) fn check_reset_line(&self) -> Result<(), DebugProbeError> {
+        if self.reset_line_connected {
+            Ok(())
+        } else {
+            Err(DebugProbeError::ResetLineNotConnected)
         }
     }
 
@@ -419,6 +437,7 @@ impl Probe {
 
     /// A combination of [`Probe::attach_to_unspecified`] and [`Probe::attach_under_reset`].
     pub fn attach_to_unspecified_under_reset(&mut self) -> Result<(), Error> {
+        self.check_reset_line()?;
         if self.inner.try_as_swd_probe_mut().is_some()
             || self.inner.try_as_jtag_chain_access_mut().is_some()
         {

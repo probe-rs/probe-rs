@@ -188,6 +188,9 @@ impl Session {
         permissions: Permissions,
         registry: &Registry,
     ) -> Result<Self, Error> {
+        if attach_method == AttachMethod::UnderReset {
+            probe.check_reset_line()?;
+        }
         let (probe, target) = get_target_from_selector(target, attach_method, probe, registry)?;
 
         let cores = target

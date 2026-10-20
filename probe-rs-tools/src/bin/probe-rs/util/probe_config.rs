@@ -66,7 +66,7 @@ pub struct ProbeConfig {
     pub protocol: Option<WireProtocol>,
     /// The reset line of the probe is connected to the target's nRESET. `probe-rs reset` then uses a
     /// pin reset. The other commands use a pin reset only on request, for example for connect under
-    /// reset.
+    /// reset. If `false`, a pin reset and connect under reset fail.
     pub reset_line_connected: Option<bool>,
     /// Settings of the probe driver.
     pub driver: Option<DriverConfig>,
@@ -196,6 +196,9 @@ impl<L: ProbeLister> ProbeLister for ConfiguredLister<L> {
         let config = self.configs.resolve(&self.complete_selector(selector));
         if let Some(driver) = &config.driver {
             driver.apply(&mut probe)?;
+        }
+        if let Some(connected) = config.reset_line_connected {
+            probe.set_reset_line_connected(connected);
         }
         if let Some(protocol) = config.protocol {
             probe.select_protocol(protocol)?;
@@ -407,6 +410,25 @@ mod tests {
 
         let probe = lister.open(&probe("0012:0023")).unwrap();
         assert_eq!(probe.speed_khz(), 1234);
+    }
+
+    #[test]
+    fn unconnected_reset_line_refuses_connect_under_reset() {
+        let configs = configs(
+            r#"
+            ["0012:0023"]
+            reset_line_connected = false
+            "#,
+        );
+        let lister = ConfiguredLister::new(OneProbeLister::default(), configs);
+
+        let mut probe = lister.open(&probe("0012:0023")).unwrap();
+        assert!(matches!(
+            probe.attach_to_unspecified_under_reset(),
+            Err(probe_rs::Error::Probe(
+                DebugProbeError::ResetLineNotConnected
+            ))
+        ));
     }
 
     #[test]
