@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 
 use nusb::{DeviceInfo, MaybeFuture};
 
-use crate::probe::{DebugProbeError, Pins};
+use crate::probe::{DebugProbeError, Pins, WireProtocol};
 
 use super::Ch347ResetPin;
 use super::capabilities::Variant;
@@ -188,7 +188,7 @@ fn trst_gpio(variant: Variant) -> usize {
 
 impl Ch347Device {
     /// Puts the target's reset line on `pin`, in place of the board's. The line is released to
-    /// an input, so it needs a pull-up.
+    /// an input, so it needs a pull-up. JTAG drives TRST, so a reset line on TRST forces SWD.
     pub(crate) fn set_reset_pin(&mut self, pin: Ch347ResetPin) -> Result<(), DebugProbeError> {
         let gpio = match pin {
             Ch347ResetPin::Trst => trst_gpio(self.capabilities.variant),
@@ -205,6 +205,10 @@ impl Ch347Device {
             gpio,
             release: Drive::Input,
         });
+        // Leave JTAG before its clock setup runs a JTAG init, which drives TRST.
+        if self.reset_on_trst() && self.protocol == WireProtocol::Jtag {
+            self.select_protocol(WireProtocol::Swd)?;
+        }
         Ok(())
     }
 
@@ -385,7 +389,7 @@ impl Drop for Ch347Device {
 mod tests {
     use super::super::device::tests::{CH347F_1_20, device, scripted};
     use super::*;
-    use crate::probe::{BitSequence, WireProtocol};
+    use crate::probe::BitSequence;
 
     /// The wch-probe board, left in the default JTAG protocol to show reset works there.
     fn wch_probe(
@@ -482,17 +486,27 @@ mod tests {
     }
 
     #[test]
-    fn trst_reset_pin_rejects_jtag() {
+    fn trst_reset_pin_selects_swd_and_rejects_jtag() {
         // GPIO3 is the TRST pin of the CH347F.
         for pin in [Ch347ResetPin::Trst, Ch347ResetPin::Gpio(3)] {
             let (mut dev, script) = device(&[]);
             dev.set_reset_pin(pin).unwrap();
+            assert_eq!(dev.protocol(), WireProtocol::Swd);
+            dev.set_speed(1000).unwrap();
             assert!(matches!(
-                dev.set_speed(1000),
+                dev.select_protocol(WireProtocol::Jtag),
                 Err(DebugProbeError::ProbeSpecific(_))
             ));
             assert!(script.finished());
         }
+    }
+
+    #[test]
+    fn gpio_reset_pin_keeps_jtag() {
+        let (mut dev, script) = device(&[]);
+        dev.set_reset_pin(Ch347ResetPin::Gpio(1)).unwrap();
+        assert_eq!(dev.protocol(), WireProtocol::Jtag);
+        assert!(script.finished());
     }
 
     #[test]

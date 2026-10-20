@@ -64,7 +64,7 @@ pub struct Ch347Config {
 /// needs a pull-up.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Ch347ResetPin {
-    /// The TRST pin. JTAG drives this pin, so it works over SWD only.
+    /// The TRST pin. JTAG drives this pin, so this forces SWD.
     Trst,
     /// A GPIO, 0 to 7. Check the schematic of the board: the GPIO must carry no other signal.
     Gpio(u8),
