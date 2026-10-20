@@ -3,8 +3,16 @@ use crate::{
     CoreOptions,
     util::{cli, common_options::ProbeOptions},
 };
-use probe_rs_rpc::reset::ResetProbeRequest;
+use probe_rs_rpc::reset::{ResetMethod, ResetProbeRequest};
 use probe_rs_rpc_client::RpcClient;
+
+#[derive(clap::ValueEnum, Clone, Copy)]
+enum Method {
+    /// Pulse the reset line of the probe.
+    Pin,
+    /// Reset the core through the debug interface.
+    Core,
+}
 
 #[derive(clap::Parser)]
 pub struct Cmd {
@@ -13,6 +21,10 @@ pub struct Cmd {
 
     #[clap(flatten)]
     common: ProbeOptions,
+
+    /// How to reset the target. Overrides `reset_line_connected` of the probe settings.
+    #[clap(long, value_enum)]
+    method: Option<Method>,
 }
 
 impl Cmd {
@@ -24,6 +36,10 @@ impl Cmd {
         let reset = client
             .reset_probe(ResetProbeRequest {
                 probe: probe.clone(),
+                method: self.method.map(|method| match method {
+                    Method::Pin => ResetMethod::Pin,
+                    Method::Core => ResetMethod::Core,
+                }),
                 chip: self.common.chip.clone(),
                 protocol: self.common.protocol.map(to_wire_protocol),
                 wait_for_probe: self.common.attach_timeout,

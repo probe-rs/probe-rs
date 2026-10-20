@@ -21,11 +21,22 @@ pub struct ResetCoreAndHaltRequest {
     pub timeout: Duration,
 }
 
-/// Pulses the reset line of the probe, if the probe settings say that it is connected. Needs no
+/// How `probe-rs reset` resets the target.
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize, Schema)]
+pub enum ResetMethod {
+    /// Pulse the reset line of the probe.
+    Pin,
+    /// Reset the core through the debug interface.
+    Core,
+}
+
+/// Pulses the reset line of the probe, if the method or the probe settings say so. Needs no
 /// target description.
 #[derive(Serialize, Deserialize, Schema)]
 pub struct ResetProbeRequest {
     pub probe: DebugProbeEntry,
+    /// Overrides `reset_line_connected` of the probe settings.
+    pub method: Option<ResetMethod>,
     /// The chip, to clear the debug state of its cores after the reset.
     pub chip: Option<String>,
     pub protocol: Option<WireProtocol>,
