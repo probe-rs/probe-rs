@@ -305,7 +305,7 @@ impl Ch347Device {
         let unsupported = || DebugProbeError::CommandNotSupportedByProbe {
             command_name: "swj_pins",
         };
-        let pin = self.reset_pin().map_err(|_| unsupported())?;
+        let pin = self.reset_pin()?;
         if select.0 != PIN_NRESET {
             return Err(unsupported());
         }
@@ -510,7 +510,7 @@ mod tests {
         ));
         assert!(matches!(
             dev.swj_pins(Pins(0), Pins(PIN_NRESET), Duration::ZERO),
-            Err(DebugProbeError::CommandNotSupportedByProbe { .. })
+            Err(DebugProbeError::ProbeSpecific(_))
         ));
         dev.set_led(true).unwrap();
     }

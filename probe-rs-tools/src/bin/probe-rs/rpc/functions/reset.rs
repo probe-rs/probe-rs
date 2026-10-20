@@ -106,7 +106,7 @@ fn reset_once(
     // A pin reset keeps the debug state of the cores, for example a halt that an earlier
     // session left.
     if let Err(error) = clear_debug_state(&loaded, probe) {
-        tracing::debug!("Could not clear the debug state after the reset: {error:?}");
+        tracing::warn!("Could not clear the debug state after the reset: {error:?}");
     }
     Ok(Ok(()))
 }
