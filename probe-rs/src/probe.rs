@@ -220,7 +220,7 @@ pub enum DebugProbeError {
     /// Failed to find or attach to the target. Please check the wiring before retrying.
     TargetNotFound,
 
-    /// The reset line of the probe is marked as not connected to the target.
+    /// The reset line of the probe cannot be used: `reset_line_connected` is false for this probe.
     ResetLineNotConnected,
 
     /// The '{function_name}' functionality is not implemented yet.
