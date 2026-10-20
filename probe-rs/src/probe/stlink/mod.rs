@@ -1269,6 +1269,8 @@ struct StlinkArmDebug {
     /// Information about the APs of the target.
     /// APs are identified by a number, starting from zero.
     pub access_ports: BTreeSet<FullyQualifiedApAddress>,
+
+    reset_line_connected: bool,
 }
 
 impl StlinkArmDebug {
@@ -1278,6 +1280,7 @@ impl StlinkArmDebug {
             probe,
             access_ports: BTreeSet::new(),
             connected_to_dp: false,
+            reset_line_connected: true,
         }
     }
 
@@ -1432,7 +1435,11 @@ impl ArmDebugInterface for StlinkArmDebug {
     }
 
     fn close(self: Box<Self>) -> Probe {
-        Probe::from_attached_probe(self.probe)
+        Probe::from_attached_probe(self.probe, self.reset_line_connected)
+    }
+
+    fn set_reset_line_connected(&mut self, connected: bool) {
+        self.reset_line_connected = connected;
     }
 
     fn current_debug_port(&self) -> Option<DpAddress> {

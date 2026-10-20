@@ -38,6 +38,7 @@ pub(crate) struct IcdiArmDebug {
     is_connected_to_dp: bool,
     rom_table_base: Option<u64>,
     _sequence: Arc<dyn ArmDebugSequence>,
+    reset_line_connected: bool,
 }
 
 impl IcdiArmDebug {
@@ -47,6 +48,7 @@ impl IcdiArmDebug {
             is_connected_to_dp: false,
             rom_table_base: None,
             _sequence: sequence,
+            reset_line_connected: true,
         }
     }
 }
@@ -161,7 +163,11 @@ impl ArmDebugInterface for IcdiArmDebug {
     }
 
     fn close(self: Box<Self>) -> Probe {
-        Probe::from_attached_probe(self.probe)
+        Probe::from_attached_probe(self.probe, self.reset_line_connected)
+    }
+
+    fn set_reset_line_connected(&mut self, connected: bool) {
+        self.reset_line_connected = connected;
     }
 
     fn current_debug_port(&self) -> Option<DpAddress> {

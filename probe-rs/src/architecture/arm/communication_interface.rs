@@ -82,6 +82,10 @@ pub trait ArmDebugInterface: DapAccess + SwdSequence + SwoAccess + Send {
     /// Closes the interface and returns back the generic probe it consumed.
     fn close(self: Box<Self>) -> Probe;
 
+    /// Sets whether the reset line of the probe is connected. The probe that
+    /// [`ArmDebugInterface::close`] returns keeps the setting.
+    fn set_reset_line_connected(&mut self, connected: bool);
+
     /// Explicitly select a debug port.
     ///
     /// It is required that implementations connect to a debug port automatically,
@@ -492,6 +496,7 @@ pub struct ArmCommunicationInterface {
     sequence: Arc<dyn ArmDebugSequence>,
     /// Bumped when the debug ports are reset, so memory AP state from before is not kept.
     memory_ap_epoch: u64,
+    reset_line_connected: bool,
 }
 
 impl Drop for ArmCommunicationInterface {
@@ -530,8 +535,12 @@ impl ArmCommunicationInterface {
 
         let probe = self.probe.take().unwrap();
         match probe {
-            ArmProbe::Swd(probe, _) => Probe::from_attached_probe(probe.into_probe()),
-            ArmProbe::Jtag(probe, _) => Probe::from_attached_probe(probe.into_probe()),
+            ArmProbe::Swd(probe, _) => {
+                Probe::from_attached_probe(probe.into_probe(), self.reset_line_connected)
+            }
+            ArmProbe::Jtag(probe, _) => {
+                Probe::from_attached_probe(probe.into_probe(), self.reset_line_connected)
+            }
         }
     }
 
@@ -755,6 +764,10 @@ impl ArmDebugInterface for ArmCommunicationInterface {
         ArmCommunicationInterface::close(*self)
     }
 
+    fn set_reset_line_connected(&mut self, connected: bool) {
+        self.reset_line_connected = connected;
+    }
+
     fn access_ports(
         &mut self,
         dp: DpAddress,
@@ -863,6 +876,7 @@ impl ArmCommunicationInterface {
             use_overrun_detect,
             sequence,
             memory_ap_epoch: 0,
+            reset_line_connected: true,
         };
 
         Box::new(interface)
@@ -882,6 +896,7 @@ impl ArmCommunicationInterface {
             use_overrun_detect,
             sequence,
             memory_ap_epoch: 0,
+            reset_line_connected: true,
         };
 
         Box::new(interface)

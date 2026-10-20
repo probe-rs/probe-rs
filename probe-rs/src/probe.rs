@@ -325,11 +325,14 @@ impl Probe {
         Self::from_specific_probe(Box::new(probe))
     }
 
-    pub(crate) fn from_attached_probe(probe: Box<dyn DebugProbe>) -> Self {
+    pub(crate) fn from_attached_probe(
+        probe: Box<dyn DebugProbe>,
+        reset_line_connected: bool,
+    ) -> Self {
         Self {
             inner: probe,
             attached: true,
-            reset_line_connected: true,
+            reset_line_connected,
         }
     }
 
@@ -613,24 +616,30 @@ impl Probe {
             return Err((self, DebugProbeError::NotAttached.into()));
         }
 
-        match self.inner.try_get_arm_debug_interface(sequence.clone()) {
-            Ok(interface) => Ok(interface),
+        let reset_line_connected = self.reset_line_connected;
+        let mut interface = match self.inner.try_get_arm_debug_interface(sequence.clone()) {
+            Ok(interface) => interface,
             Err((probe, err)) => match probe.try_as_swd_probe() {
                 Ok(swd_probe) => {
                     let settings = swd_probe.swd_settings();
                     // A probe that answers WAIT itself paces the transfers, the
                     // others need overrun detection for stable communication.
                     let use_overrun_detect = !swd_probe.handles_wait();
-                    Ok(ArmCommunicationInterface::create_swd(
+                    ArmCommunicationInterface::create_swd(
                         swd_probe,
                         settings,
                         sequence,
                         use_overrun_detect,
-                    ))
+                    )
                 }
-                Err(probe) => Err((Probe::from_attached_probe(probe), err)),
+                Err(probe) => {
+                    return Err((Probe::from_attached_probe(probe, reset_line_connected), err));
+                }
             },
-        }
+        };
+        // The probe that `close` returns keeps the setting.
+        interface.set_reset_line_connected(reset_line_connected);
+        Ok(interface)
     }
 
     /// Check if the probe has an interface to debug RISC-V chips.
