@@ -22,6 +22,10 @@ type Responder = Box<dyn FnMut(&[u8]) -> Reply + Send>;
 pub(crate) struct FakeProbe {
     /// Every command written, from the command ID on.
     pub(crate) sent: Vec<Vec<u8>>,
+    /// For every command written, how many replies the probe owed when it arrived.
+    pub(crate) owed_at_write: Vec<usize>,
+    /// The most replies the probe owed at once.
+    pub(crate) most_owed: usize,
     /// Replies that a read or a drain can take.
     ready: VecDeque<Vec<u8>>,
     /// Replies that arrive while a read waits, after any drain before it.
@@ -46,6 +50,8 @@ impl FakeProbe {
     ) -> Arc<Mutex<Self>> {
         Arc::new(Mutex::new(Self {
             sent: Vec::new(),
+            owed_at_write: Vec::new(),
+            most_owed: 0,
             ready: VecDeque::new(),
             late: VecDeque::new(),
             held: VecDeque::new(),
@@ -59,6 +65,7 @@ impl FakeProbe {
 
     pub(crate) fn write(&mut self, command: &[u8]) {
         self.sent.push(command.to_vec());
+        self.owed_at_write.push(self.owed());
         let abort = command.first() == Some(&(CommandId::TransferAbort as u8));
         if abort && self.abort_interrupts {
             self.ready.extend(self.late.drain(..));
@@ -75,6 +82,12 @@ impl FakeProbe {
             Reply::Now(reply) => self.ready.push_back(reply),
             Reply::None => {}
         }
+        self.most_owed = self.most_owed.max(self.owed());
+    }
+
+    /// How many replies the probe owes.
+    fn owed(&self) -> usize {
+        self.ready.len() + self.late.len() + self.held.len()
     }
 
     /// Returns the next reply, or `None` for a read that times out.
