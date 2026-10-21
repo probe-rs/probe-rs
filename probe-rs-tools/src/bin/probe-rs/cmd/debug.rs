@@ -420,20 +420,15 @@ impl Cmd {
                             break 'commands;
                         }
                     },
-                    // The debug session runs inline (see `server` above), so it
-                    // has to be polled here too: nothing else advances the
-                    // session that answers the command this loop waits for.
+                    // The session runs only while this task polls it. Without
+                    // this arm, the session does not answer the command.
                     res = &mut server, if server_result.is_none() => {
                         server_result = Some(res);
 
-                        // Drain what the session queued before it returned: a
-                        // failing command is answered with an error response
-                        // and then ends the session, so without this drain the
-                        // error would be discarded.
+                        // Show the messages that the session sent before it stopped.
+                        // Keep the first error.
                         while let Ok((event, body)) = msg_receiver.try_recv() {
-                            if let Err(error) = debug_client.process_event(&event, body) {
-                                command_result = Err(error);
-                            }
+                            command_result = command_result.and(debug_client.process_event(&event, body));
                         }
                         break 'commands;
                     },

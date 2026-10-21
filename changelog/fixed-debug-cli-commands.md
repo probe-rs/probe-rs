@@ -1,1 +1,1 @@
-Fixed `probe-rs debug -c <command>` hang bug.
+`probe-rs debug -c` no longer hangs before it runs the commands.
