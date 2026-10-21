@@ -924,7 +924,6 @@ mod test {
         probe.set_reset_line_connected(false);
         probe.attach_to_unspecified().unwrap();
 
-        // The fake probe panics on a reset assert, so these fail only if the guard works.
         assert!(matches!(
             probe.target_reset_assert(),
             Err(DebugProbeError::ResetLineNotConnected)
@@ -958,7 +957,7 @@ mod test {
             interface.swj_pins(0, nreset, 0),
             Err(DebugProbeError::ResetLineNotConnected)
         ));
-        // A release passes the guard. The fake probe does not implement pins.
+        // A release passes the guard.
         assert!(matches!(
             interface.swj_pins(nreset, nreset, 0),
             Err(DebugProbeError::NotImplemented { .. })
