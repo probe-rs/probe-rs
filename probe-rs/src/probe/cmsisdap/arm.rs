@@ -20,7 +20,7 @@ use crate::{
         BatchError, BitSequence, DebugProbe, DebugProbeError, JtagChain, Probe, WireProtocol,
         cmsisdap::CmsisDap,
         jtag::{JtagBatch, JtagProbe, TapState},
-        swd::{Port, SwdBatch, SwdProbe},
+        swd::{Port, SwdBatch, SwdProbe, SwdTransferError},
     },
 };
 
@@ -125,6 +125,15 @@ impl CmsisDap {
             }
         };
         let protocol = self.protocol.unwrap_or(WireProtocol::Swd);
+        if protocol == WireProtocol::Swd && error == SwdTransferError::FaultResponse {
+            // The probe clears only STICKYERR. A FAULT can also come from the other flags.
+            let mut abort = Abort(0);
+            abort.set_orunerrclr(true);
+            abort.set_wderrclr(true);
+            abort.set_stkerrclr(true);
+            abort.set_stkcmpclr(true);
+            self.write_abort(abort)?;
+        }
         Err(ArmError::Dap(transfer_error_to_dap(error, protocol)))
     }
 
@@ -555,6 +564,40 @@ mod tests {
         .unwrap();
         assert_eq!(values, [0, 0]);
         assert_eq!(sent(&probe, 0x05).len(), 2);
+    }
+
+    #[test]
+    fn a_swd_fault_clears_all_sticky_flags() {
+        // AP accesses answer FAULT. CTRL/STAT shows STICKYERR, other reads return zero.
+        let probe = FakeProbe::shared(64, |command| match command {
+            [0x05, _, _, request, ..] if request & 1 != 0 => {
+                Reply::Now(vec![0x05, 0, Ack::Fault as u8])
+            }
+            [0x05, _, count, requests @ ..] => {
+                let mut reply = vec![0x05, *count, Ack::Ok as u8];
+                let mut requests = requests.iter();
+                while let Some(&request) = requests.next() {
+                    match request & 0b1111 {
+                        0b0110 => reply.extend(0x20u32.to_le_bytes()),
+                        r if r & 0b10 != 0 => reply.extend([0; 4]),
+                        _ => _ = requests.nth(3),
+                    }
+                }
+                Reply::Now(reply)
+            }
+            _ => standard_reply(command, 64, 4),
+        });
+        let mut dap = CmsisDap::new_from_device(CmsisDapDevice::Fake(probe.clone())).unwrap();
+        dap.protocol = Some(WireProtocol::Swd);
+
+        let error = dap
+            .transfer(&[(Port::Ap, 0xC, None)], &mut [0])
+            .unwrap_err();
+        assert!(matches!(error, ArmError::Dap(DapError::FaultResponse)));
+        assert_eq!(
+            sent(&probe, 0x05).last().unwrap(),
+            &[0x05, 0, 1, 0b0000, 0x1E, 0, 0, 0]
+        );
     }
 
     #[test]
