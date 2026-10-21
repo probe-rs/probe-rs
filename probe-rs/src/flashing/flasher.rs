@@ -1059,11 +1059,17 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
                 self.core.return_address(),
                 // For ARM Cortex-M cores, we have to add 1 to the return address,
                 // to ensure that we stay in Thumb mode.
-                if self.instruction_set == InstructionSet::Thumb2 {
-                    Some(algo.load_address + 1)
-                } else {
-                    Some(algo.load_address)
-                },
+                // For RISC-V cores, add 4 to the return address so that we point to the
+                // 2nd EBREAK instruction in RISCV_FLASH_BLOB_HEADER, otherwise the riscv
+                // check_for_semihosting fn will walk off the beginning of the algo
+                Some(match self.instruction_set {
+                    InstructionSet::Thumb2 => algo.load_address + 1,
+                    InstructionSet::RV32
+                    | InstructionSet::RV32C
+                    | InstructionSet::RV64
+                    | InstructionSet::RV64C => algo.load_address + 4,
+                    _ => algo.load_address,
+                }),
             ),
         ];
 
