@@ -169,6 +169,9 @@ pub struct CmsisDap {
     /// Whether the probe got the scan chain with `DAP_JTAG_Configure` since it connected.
     /// `DAP_Transfer` over JTAG needs it.
     jtag_configured: bool,
+
+    /// The last value written to DP SELECT. Its DP bank decides what DP address 0x4 reaches.
+    dp_select: u32,
 }
 
 impl std::fmt::Debug for CmsisDap {
@@ -250,6 +253,7 @@ impl CmsisDap {
             jtag_state: JtagChainState::default(),
             reset_line: ResetLine::default(),
             jtag_configured: false,
+            dp_select: 0,
         })
     }
 
@@ -621,17 +625,6 @@ impl CmsisDap {
         }
 
         self.write_dp_register(Abort::ADDRESS, abort.into())
-    }
-
-    /// Clears the sticky error flags of a JTAG-DP.
-    ///
-    /// Its ABORT register has no STKERRCLR. The flags clear when they are written back as one.
-    fn clear_jtag_sticky_err(&mut self) -> Result<(), ArmError> {
-        let ctrl = self.read_ctrl_register()?;
-        if ctrl.sticky_err() {
-            self.write_dp_register(Ctrl::ADDRESS, ctrl.into())?;
-        }
-        Ok(())
     }
 
     fn write_dp_register(

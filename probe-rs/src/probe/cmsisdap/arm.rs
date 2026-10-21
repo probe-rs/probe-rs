@@ -8,12 +8,18 @@ use crate::{
         communication_interface::{
             ApBatch, DapTransport, probe_debug_port_wire, transfer_error_to_dap,
         },
-        dp::{Abort, Ctrl, DpRegister},
+        dp::{Abort, Ctrl, DpRegister, SelectV1},
         traits::DebugPortWire,
     },
     probe::{
         BatchError, BitSequence, DebugProbe, DebugProbeError, JtagChain, WireProtocol,
-        cmsisdap::CmsisDap,
+        cmsisdap::{
+            CmsisDap,
+            commands::{
+                self,
+                transfer::{Ack, TransferRequest},
+            },
+        },
         jtag::{JtagBatch, JtagProbe, TapState},
         swd::{Port, SwdBatch, SwdProbe, SwdTransferError},
     },
@@ -29,6 +35,7 @@ impl CmsisDap {
     fn transfer(&mut self, accesses: &[Access], values: &mut [u32]) -> Result<(), ArmError> {
         let jtag = self.protocol == Some(WireProtocol::Jtag);
         if jtag && !self.jtag_configured {
+            self.track_select(accesses);
             // The probe does not know the scan chain yet, so the accesses run as JTAG scans.
             let mut values = values.iter_mut();
             return probe_debug_port_wire(self, |wire| {
@@ -74,6 +81,8 @@ impl CmsisDap {
         if accesses.is_empty() {
             return Ok(());
         }
+        // The CTRL/STAT check comes after the accesses, so it sees the last SELECT of the run.
+        self.track_select(accesses);
 
         let mut batch = SwdBatch::new();
         let mut reads = Vec::new();
@@ -84,27 +93,115 @@ impl CmsisDap {
             }
         }
         // Over JTAG, a failed AP access is acknowledged as OK, and only CTRL/STAT shows it.
-        let ctrl_addr = RegisterAddress::from(Ctrl::ADDRESS).a2_and_3();
-        let ctrl = (jtag && accesses.iter().any(|(port, ..)| *port == Port::Ap))
-            .then(|| batch.read(Port::Dp, ctrl_addr));
+        let check_ctrl = jtag && accesses.iter().any(|(port, ..)| *port == Port::Ap);
+        // In DP bank 0, the check goes in the same batch. Else it needs the bank switch.
+        let ctrl_in_batch = check_ctrl && self.select_bank_0() == self.dp_select;
+        let ctrl_read = ctrl_in_batch
+            .then(|| batch.read(Port::Dp, RegisterAddress::from(Ctrl::ADDRESS).a2_and_3()));
 
         let mut results = self.run_transfers(&batch)?;
         for read in reads {
             *values.next().unwrap() = results.take(read).unwrap();
         }
 
-        if let Some(ctrl) = ctrl {
-            let ctrl = Ctrl(results.take(ctrl).unwrap());
-            if ctrl.sticky_err() {
-                tracing::debug!("JTAG transfers failed, CTRL/STAT: {ctrl:?}");
-                // A JTAG-DP clears its sticky flags when they are written as one.
-                let mut clear = SwdBatch::new();
-                clear.write(Port::Dp, ctrl_addr, ctrl.into());
-                self.run_transfers(&clear)?;
-                return Err(DapError::FaultResponse.into());
-            }
+        let ctrl = match ctrl_read {
+            Some(read) => Some(Ctrl(results.take(read).unwrap())),
+            None if check_ctrl => Some(Ctrl(self.access_ctrl(None)?)),
+            None => None,
+        };
+        if let Some(ctrl) = ctrl
+            && ctrl.sticky_err()
+        {
+            tracing::debug!("JTAG transfers failed, CTRL/STAT: {ctrl:?}");
+            self.access_ctrl(Some(ctrl.into()))?;
+            return Err(DapError::FaultResponse.into());
         }
         Ok(())
+    }
+
+    /// Clears the sticky error flags of a JTAG-DP.
+    ///
+    /// Its ABORT register has no STKERRCLR. The flags clear when they are written back as one.
+    pub(super) fn clear_jtag_sticky_err(&mut self) -> Result<(), ArmError> {
+        let ctrl = Ctrl(self.access_ctrl(None)?);
+        if ctrl.sticky_err() {
+            self.access_ctrl(Some(ctrl.into()))?;
+        }
+        Ok(())
+    }
+
+    /// The value of DP SELECT with DP bank 0, where DP address 0x4 is CTRL/STAT.
+    fn select_bank_0(&self) -> u32 {
+        // DPBANKSEL is in the same bits in the SELECT of every DP version.
+        let mut select = SelectV1(self.dp_select);
+        select.set_dp_bank_sel(0);
+        select.0
+    }
+
+    /// Read CTRL/STAT, or write `value` to it, in DP bank 0. Returns the value read.
+    ///
+    /// This is one `DAP_Transfer` with no error recovery. The recovery of
+    /// [`SwdProbe::run_batch`] clears the sticky flags, which over JTAG comes back here.
+    ///
+    /// A debug sequence can select another bank through the wire. The bank is set back after
+    /// the access, also when the access fails.
+    fn access_ctrl(&mut self, value: Option<u32>) -> Result<u32, ArmError> {
+        let bank_0 = self.select_bank_0();
+        let switch = bank_0 != self.dp_select;
+
+        let mut request = TransferRequest::empty();
+        request.dap_index = self.jtag_state.chain_params.index as u8;
+        if switch {
+            request.add_write(SelectV1::ADDRESS.into(), bank_0);
+        }
+        match value {
+            Some(value) => request.add_write(Ctrl::ADDRESS.into(), value),
+            None => request.add_read(Ctrl::ADDRESS.into()),
+        }
+        if switch {
+            request.add_write(SelectV1::ADDRESS.into(), self.dp_select);
+        }
+        let count = 1 + 2 * usize::from(switch);
+        let result = commands::send_command(&mut self.device, &request)
+            .map_err(|error| ArmError::Probe(DebugProbeError::from(error)))
+            .and_then(|response| {
+                let last = &response.last_transfer_response;
+                if last.protocol_error {
+                    let protocol = self.protocol.unwrap_or(WireProtocol::Jtag);
+                    return Err(DapError::Protocol(protocol).into());
+                }
+                match last.ack {
+                    Ack::Ok if response.transfers.len() == count => {
+                        Ok(response.transfers[usize::from(switch)].data.unwrap_or(0))
+                    }
+                    Ack::Ok => Err(ArmError::Probe(DebugProbeError::Other(
+                        "the probe ran only a part of the transfers".to_string(),
+                    ))),
+                    Ack::Wait => Err(DapError::WaitResponse.into()),
+                    Ack::Fault => Err(DapError::FaultResponse.into()),
+                    Ack::NoAck => Err(DapError::NoAcknowledge.into()),
+                }
+            });
+
+        if switch && result.is_err() {
+            // The probe stops at the first failed transfer, so the bank is maybe not set back.
+            let mut restore = TransferRequest::write(SelectV1::ADDRESS, self.dp_select);
+            restore.dap_index = self.jtag_state.chain_params.index as u8;
+            if let Err(error) = commands::send_command(&mut self.device, &restore) {
+                tracing::debug!("Failed to select the DP bank again: {error}");
+            }
+        }
+        result
+    }
+
+    /// Record the last write to DP SELECT in `accesses`.
+    fn track_select(&mut self, accesses: &[Access]) {
+        let select_addr = RegisterAddress::from(SelectV1::ADDRESS).a2_and_3();
+        if let Some(&(_, _, Some(select))) = accesses.iter().rev().find(|&&(port, addr, value)| {
+            port == Port::Dp && addr == select_addr && value.is_some()
+        }) {
+            self.dp_select = select;
+        }
     }
 
     fn run_transfers(&mut self, batch: &SwdBatch) -> Result<crate::probe::Results, ArmError> {
@@ -357,6 +454,56 @@ mod tests {
         assert_eq!(
             sent(&probe, 0x05).last().unwrap(),
             &[0x05, 0, 1, 0b0100, 0x20, 0, 0, 0]
+        );
+    }
+
+    #[test]
+    fn ctrl_stat_is_read_in_dp_bank_0() {
+        // A debug sequence selects DP bank 1 through the wire, then accesses an AP.
+        let (mut dap, probe) = jtag_dap(0);
+
+        dap.transfer(&[(Port::Dp, 0x8, Some(0x0100_0001))], &mut [])
+            .unwrap();
+        dap.transfer(&[(Port::Ap, 0xC, None)], &mut [0]).unwrap();
+        assert_eq!(
+            sent(&probe, 0x05).last().unwrap(),
+            &[
+                0x05, 0, 3, 0b1000, 0, 0, 0, 0x01, 0b0110, 0b1000, 0x01, 0, 0, 0x01
+            ]
+        );
+    }
+
+    #[test]
+    fn a_failed_ctrl_stat_access_returns_and_selects_the_dp_bank_again() {
+        // CTRL/STAT reads answer FAULT. Other transfers succeed.
+        let probe = FakeProbe::shared(64, |command| match command {
+            [0x05, _, count, requests @ ..] => {
+                let mut reply = vec![0x05, *count, Ack::Ok as u8];
+                let mut requests = requests.iter();
+                while let Some(&request) = requests.next() {
+                    match request & 0b1111 {
+                        0b0110 => return Reply::Now(vec![0x05, 0, Ack::Fault as u8]),
+                        r if r & 0b10 != 0 => reply.extend([0; 4]),
+                        _ => _ = requests.nth(3),
+                    }
+                }
+                Reply::Now(reply)
+            }
+            _ => standard_reply(command, 64, 4),
+        });
+        let mut dap = CmsisDap::new_from_device(CmsisDapDevice::Fake(probe.clone())).unwrap();
+        dap.protocol = Some(WireProtocol::Jtag);
+        dap.jtag_configured = true;
+        dap.jtag_state.tap_state = TapState::RunTestIdle;
+        dap.transfer(&[(Port::Dp, 0x8, Some(0x0100_0001))], &mut [])
+            .unwrap();
+
+        // Clearing the sticky flags reads CTRL/STAT. Its FAULT must not start another clear.
+        let error = dap.write_abort(Abort(0x1e)).unwrap_err();
+        assert!(matches!(error, ArmError::Dap(DapError::FaultResponse)));
+        assert_eq!(
+            sent(&probe, 0x05).last().unwrap(),
+            &[0x05, 0, 1, 0b1000, 0x01, 0, 0, 0x01]
         );
     }
 
