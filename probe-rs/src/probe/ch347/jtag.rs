@@ -11,7 +11,7 @@ use crate::probe::{
 
 use super::capabilities::Pack;
 use super::device::Ch347Device;
-use super::transport::{HEADER_LEN, frame};
+use super::transport::{Ch347Error, HEADER_LEN, frame};
 
 const CMD_JTAG_INIT: u8 = 0xD0;
 const CMD_BIT_OP: u8 = 0xD1;
@@ -302,6 +302,9 @@ fn rounds(commands: Vec<Command>, wire: Wire) -> Vec<Vec<Command>> {
 
 impl Ch347Device {
     pub(super) fn jtag_init(&mut self, index: u8) -> Result<u8, DebugProbeError> {
+        if self.reset_on_trst() {
+            return Err(Ch347Error::ResetOnTrst.into());
+        }
         self.jtag_tms_low = false;
         // The init drives TMS and TRST high.
         let pins = PIN_TMS | PIN_TRST;

@@ -220,6 +220,9 @@ pub enum DebugProbeError {
     /// Failed to find or attach to the target. Please check the wiring before retrying.
     TargetNotFound,
 
+    /// The reset line of the probe cannot be used: `reset_line_connected` is false for this probe.
+    ResetLineNotConnected,
+
     /// The '{function_name}' functionality is not implemented yet.
     ///
     /// The variant of the function you called is not yet implemented.
@@ -313,21 +316,23 @@ impl<T: ProbeError> From<T> for ProbeCreationError {
 pub struct Probe {
     inner: Box<dyn DebugProbe>,
     attached: bool,
+    reset_line_connected: bool,
 }
 
 impl Probe {
     /// Create a new probe from a more specific probe driver.
     pub fn new(probe: impl DebugProbe + 'static) -> Self {
-        Self {
-            inner: Box::new(probe),
-            attached: false,
-        }
+        Self::from_specific_probe(Box::new(probe))
     }
 
-    pub(crate) fn from_attached_probe(probe: Box<dyn DebugProbe>) -> Self {
+    pub(crate) fn from_attached_probe(
+        probe: Box<dyn DebugProbe>,
+        reset_line_connected: bool,
+    ) -> Self {
         Self {
             inner: probe,
             attached: true,
+            reset_line_connected,
         }
     }
 
@@ -336,6 +341,22 @@ impl Probe {
         Probe {
             inner: probe,
             attached: false,
+            reset_line_connected: true,
+        }
+    }
+
+    /// Sets whether the reset line of the probe is connected to the target. If it is not,
+    /// attaching under reset fails.
+    pub fn set_reset_line_connected(&mut self, connected: bool) {
+        self.reset_line_connected = connected;
+    }
+
+    /// Fails if the reset line is marked as not connected.
+    pub(crate) fn check_reset_line(&self) -> Result<(), DebugProbeError> {
+        if self.reset_line_connected {
+            Ok(())
+        } else {
+            Err(DebugProbeError::ResetLineNotConnected)
         }
     }
 
@@ -419,6 +440,7 @@ impl Probe {
 
     /// A combination of [`Probe::attach_to_unspecified`] and [`Probe::attach_under_reset`].
     pub fn attach_to_unspecified_under_reset(&mut self) -> Result<(), Error> {
+        self.check_reset_line()?;
         if self.inner.try_as_swd_probe_mut().is_some()
             || self.inner.try_as_jtag_chain_access_mut().is_some()
         {
@@ -594,24 +616,30 @@ impl Probe {
             return Err((self, DebugProbeError::NotAttached.into()));
         }
 
-        match self.inner.try_get_arm_debug_interface(sequence.clone()) {
-            Ok(interface) => Ok(interface),
+        let reset_line_connected = self.reset_line_connected;
+        let mut interface = match self.inner.try_get_arm_debug_interface(sequence.clone()) {
+            Ok(interface) => interface,
             Err((probe, err)) => match probe.try_as_swd_probe() {
                 Ok(swd_probe) => {
                     let settings = swd_probe.swd_settings();
                     // A probe that answers WAIT itself paces the transfers, the
                     // others need overrun detection for stable communication.
                     let use_overrun_detect = !swd_probe.handles_wait();
-                    Ok(ArmCommunicationInterface::create_swd(
+                    ArmCommunicationInterface::create_swd(
                         swd_probe,
                         settings,
                         sequence,
                         use_overrun_detect,
-                    ))
+                    )
                 }
-                Err(probe) => Err((Probe::from_attached_probe(probe), err)),
+                Err(probe) => {
+                    return Err((Probe::from_attached_probe(probe, reset_line_connected), err));
+                }
             },
-        }
+        };
+        // The probe that `close` returns keeps the setting.
+        interface.set_reset_line_connected(reset_line_connected);
+        Ok(interface)
     }
 
     /// Check if the probe has an interface to debug RISC-V chips.

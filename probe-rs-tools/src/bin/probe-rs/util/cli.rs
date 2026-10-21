@@ -71,7 +71,47 @@ pub async fn attach_probe(
     {
         anyhow::bail!("elf_chip does not match probe_chip");
     }
+    probe_options.chip = probe_options.chip.or(elf_meta.chip);
 
+    let request = attach_request(client, probe_options, resume_target).await?;
+    let result = with_slow_attach_feedback(client.attach_probe(request)).await?;
+    let session = attach_outcome(client, result).await?;
+
+    Ok(SessionInterface::new(client.clone(), session))
+}
+
+/// Returns the success value of `result`, or the failure as an error.
+pub async fn attach_outcome<T>(client: &RpcClient, result: AttachResult<T>) -> anyhow::Result<T> {
+    match result {
+        AttachResult::Success(value) => Ok(value),
+        AttachResult::ProbeNotFound => {
+            print_setup_hints_if_relevant(client).await;
+            Err(ProbeNotFound.into())
+        }
+        AttachResult::FailedToOpenProbe(error) => {
+            print_setup_hints_if_relevant(client).await;
+            Err(FailedToOpenProbe(error).into())
+        }
+        // A busy probe is accessible, so no setup hint here.
+        AttachResult::ProbeInUse => Err(ProbeInUse.into()),
+        AttachResult::TargetAttachFailed {
+            message,
+            connect_under_reset,
+        } => Err(TargetAttachFailed {
+            message,
+            connect_under_reset,
+        }
+        .into()),
+    }
+}
+
+/// Sends the chip description of `probe_options` to the server, selects the probe and cycles its
+/// power if `probe_options` say so.
+pub async fn attach_request(
+    client: &RpcClient,
+    mut probe_options: ProbeOptions,
+    resume_target: bool,
+) -> anyhow::Result<AttachRequest> {
     // Load the chip description if provided.
     if let Some(chip_description) = probe_options.chip_description_path.take() {
         let file = tokio::fs::read_to_string(&chip_description)
@@ -110,8 +150,8 @@ pub async fn attach_probe(
         probe.usb_location = None;
     }
 
-    let result = with_slow_attach_feedback(client.attach_probe(AttachRequest {
-        chip: probe_options.chip.or(elf_meta.chip),
+    Ok(AttachRequest {
+        chip: probe_options.chip,
         protocol: probe_options.protocol.map(to_wire_protocol),
         probe,
         speed: probe_options.speed,
@@ -119,30 +159,7 @@ pub async fn attach_probe(
         allow_erase_all: probe_options.allow_erase_all,
         resume_target,
         wait_for_probe: probe_options.attach_timeout,
-    }))
-    .await?;
-
-    match result {
-        AttachResult::Success(session) => Ok(SessionInterface::new(client.clone(), session)),
-        AttachResult::ProbeNotFound => {
-            print_setup_hints_if_relevant(client).await;
-            Err(ProbeNotFound.into())
-        }
-        AttachResult::FailedToOpenProbe(error) => {
-            print_setup_hints_if_relevant(client).await;
-            Err(FailedToOpenProbe(error).into())
-        }
-        // A busy probe is accessible, so no setup hint here.
-        AttachResult::ProbeInUse => Err(ProbeInUse.into()),
-        AttachResult::TargetAttachFailed {
-            message,
-            connect_under_reset,
-        } => Err(TargetAttachFailed {
-            message,
-            connect_under_reset,
-        }
-        .into()),
-    }
+    })
 }
 
 /// How long an attach may run before the user gets a progress indicator.
@@ -152,7 +169,7 @@ const ATTACH_FEEDBACK_DELAY: Duration = Duration::from_millis(1500);
 ///
 /// An attach that waits for a busy probe can take as long as the configured
 /// attach timeout, so without this the CLI looks frozen.
-async fn with_slow_attach_feedback<F: Future>(attach: F) -> F::Output {
+pub async fn with_slow_attach_feedback<F: Future>(attach: F) -> F::Output {
     let mut attach = std::pin::pin!(attach);
 
     tokio::select! {

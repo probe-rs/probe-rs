@@ -708,6 +708,7 @@ fn batch_probe_error(error: BatchExecutionError<DebugProbeError>) -> DebugProbeE
 struct FakeArmInterface {
     probe: Box<FakeProbe>,
     current_dp: Option<DpAddress>,
+    reset_line_connected: bool,
 }
 
 impl FakeArmInterface {
@@ -715,6 +716,7 @@ impl FakeArmInterface {
         FakeArmInterface {
             probe,
             current_dp: None,
+            reset_line_connected: true,
         }
     }
 }
@@ -770,7 +772,11 @@ impl ArmDebugInterface for FakeArmInterface {
     }
 
     fn close(self: Box<Self>) -> Probe {
-        Probe::from_attached_probe(self.probe)
+        Probe::from_attached_probe(self.probe, self.reset_line_connected)
+    }
+
+    fn set_reset_line_connected(&mut self, connected: bool) {
+        self.reset_line_connected = connected;
     }
 
     fn current_debug_port(&self) -> Option<DpAddress> {
@@ -862,6 +868,8 @@ impl DapAccess for FakeArmInterface {
 mod test {
     use super::{Direction, FakeProbe, Operation, Port, SwdBatch, SwdProbe};
     use crate::Permissions;
+    use crate::architecture::arm::sequences::DefaultArmSequence;
+    use crate::probe::DebugProbeError;
 
     #[test]
     fn swd_transfer_runs_expected_operation() {
@@ -878,6 +886,24 @@ mod test {
         let handle = batch.read(Port::Dp, 0b0100);
         let mut results = fake_probe.run_batch(&batch).unwrap();
         assert_eq!(results.take(handle).unwrap(), 0xABCD_EF00);
+    }
+
+    #[test]
+    fn closed_arm_interface_keeps_unconnected_reset_line() {
+        let mut probe = FakeProbe::new().into_probe();
+        probe.set_reset_line_connected(false);
+        probe.attach_to_unspecified().unwrap();
+
+        let interface = probe
+            .try_into_arm_debug_interface(DefaultArmSequence::create())
+            .unwrap_or_else(|_| panic!("no ARM interface"));
+        let mut probe = interface.close();
+        probe.detach().unwrap();
+
+        assert!(matches!(
+            probe.attach_to_unspecified_under_reset(),
+            Err(crate::Error::Probe(DebugProbeError::ResetLineNotConnected))
+        ));
     }
 
     #[test]

@@ -6,9 +6,10 @@ mod jtag;
 mod swd;
 mod transport;
 
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 
 use device::Ch347Device;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{
     architecture::{
@@ -43,12 +44,73 @@ impl std::fmt::Display for Ch347Factory {
 /// A CH347-based debug probe.
 ///
 /// JTAG runs on the chip's byte shifts and bit ops, SWD on its transaction engine. Target
-/// reset needs a board whose GPIO wiring the driver knows, recognised by its USB identity. On
-/// a generic CH347 no GPIO is ever written.
+/// reset uses the GPIO wiring of a board the driver knows, recognised by its USB identity, or
+/// the reset pin of [`Ch347Config`]. Without either, the driver writes no GPIO.
 #[derive(Debug)]
 pub struct Ch347 {
     device: Ch347Device,
     jtag_state: JtagChainState,
+}
+
+/// Driver settings of a CH347.
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Ch347Config {
+    /// The pin wired to the target's reset line. Replaces the reset line of a known board.
+    pub reset_pin: Option<Ch347ResetPin>,
+}
+
+/// A CH347 pin that drives the target's reset line. The line is released to an input, so it
+/// needs a pull-up.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Ch347ResetPin {
+    /// The TRST pin. JTAG drives this pin, so this forces SWD.
+    Trst,
+    /// A GPIO, 0 to 7. Check the schematic of the board: the GPIO must carry no other signal.
+    Gpio(u8),
+}
+
+impl FromStr for Ch347ResetPin {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let pin = s.to_ascii_lowercase();
+        if pin == "trst" {
+            return Ok(Self::Trst);
+        }
+        pin.strip_prefix("gpio")
+            .and_then(|gpio| match gpio.as_bytes() {
+                [digit @ b'0'..=b'7'] => Some(digit - b'0'),
+                _ => None,
+            })
+            .map(Self::Gpio)
+            .ok_or_else(|| {
+                format!("invalid reset pin `{s}`, expected `trst` or `gpio0` to `gpio7`")
+            })
+    }
+}
+
+impl std::fmt::Display for Ch347ResetPin {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Trst => f.write_str("trst"),
+            Self::Gpio(gpio) => write!(f, "gpio{gpio}"),
+        }
+    }
+}
+
+impl Serialize for Ch347ResetPin {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_str(self)
+    }
+}
+
+impl<'de> Deserialize<'de> for Ch347ResetPin {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        String::deserialize(deserializer)?
+            .parse()
+            .map_err(serde::de::Error::custom)
+    }
 }
 
 impl ProbeFactory for Ch347Factory {
@@ -68,6 +130,14 @@ impl ProbeFactory for Ch347Factory {
 }
 
 impl Ch347 {
+    /// Applies the driver settings. Call this before attach.
+    pub fn configure(&mut self, config: &Ch347Config) -> Result<(), DebugProbeError> {
+        if let Some(pin) = config.reset_pin {
+            self.device.set_reset_pin(pin)?;
+        }
+        Ok(())
+    }
+
     fn jtag(&self) -> bool {
         self.device.protocol() == WireProtocol::Jtag
     }
