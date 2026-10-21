@@ -1,23 +1,18 @@
 //! CMSIS-DAP as an ARM debug interface. The probe firmware runs the DP and AP accesses.
 
-use std::{collections::BTreeSet, sync::Arc, time::Duration};
+use std::time::Duration;
 
 use crate::{
-    CoreStatus,
     architecture::arm::{
-        ArmDebugInterface, ArmError, DapAccess, DapError, FullyQualifiedApAddress, Pins,
-        RegisterAddress, SwoAccess, SwoConfig,
-        ap::MemoryAp,
+        ArmError, DapError, Pins, RegisterAddress,
         communication_interface::{
-            DpHost, DpManager, probe_debug_port_wire, transfer_error_to_dap,
+            ApBatch, DapTransport, probe_debug_port_wire, transfer_error_to_dap,
         },
-        dp::{Abort, Ctrl, DpAddress, DpRegister, DpRegisterAddress},
-        memory::ArmMemoryInterface,
-        sequences::ArmDebugSequence,
+        dp::{Abort, Ctrl, DpRegister},
         traits::DebugPortWire,
     },
     probe::{
-        BatchError, BitSequence, DebugProbe, DebugProbeError, JtagChain, Probe, WireProtocol,
+        BatchError, BitSequence, DebugProbe, DebugProbeError, JtagChain, WireProtocol,
         cmsisdap::CmsisDap,
         jtag::{JtagBatch, JtagProbe, TapState},
         swd::{Port, SwdBatch, SwdProbe, SwdTransferError},
@@ -220,252 +215,88 @@ impl DebugPortWire for CmsisDapWire<'_> {
     }
 }
 
-/// An ARM debug interface on a CMSIS-DAP probe.
+/// Runs the accesses of an ARM debug interface in the CMSIS-DAP probe firmware.
 #[derive(Debug)]
-pub(crate) struct CmsisDapArmDebug {
-    probe: Option<Box<CmsisDap>>,
-    dp_manager: DpManager,
+pub(crate) struct CmsisDapTransport(pub(crate) Box<CmsisDap>);
+
+impl CmsisDapTransport {
+    fn transfer_register(
+        &mut self,
+        register: RegisterAddress,
+        value: Option<u32>,
+        values: &mut [u32],
+    ) -> Result<(), ArmError> {
+        let port = if register.is_ap() { Port::Ap } else { Port::Dp };
+        self.0
+            .transfer(&[(port, register.a2_and_3(), value)], values)
+    }
 }
 
-impl CmsisDapArmDebug {
-    pub(crate) fn new(probe: Box<CmsisDap>, sequence: Arc<dyn ArmDebugSequence>) -> Self {
-        Self {
-            probe: Some(probe),
-            // The probe firmware retries a WAIT, so no overrun detection is necessary.
-            dp_manager: DpManager::new(sequence, false),
-        }
+impl DapTransport for CmsisDapTransport {
+    fn probe(&mut self) -> &mut dyn DebugProbe {
+        self.0.as_mut()
     }
 
-    fn probe(&mut self) -> &mut CmsisDap {
-        self.probe.as_mut().unwrap()
+    fn probe_ref(&self) -> &dyn DebugProbe {
+        self.0.as_ref()
+    }
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self.0
     }
 
     fn protocol(&self) -> Option<WireProtocol> {
-        self.probe.as_ref().unwrap().protocol
+        self.0.protocol
     }
 
-    /// Select `ap` and the bank of `address`, then run the accesses on the AP.
-    fn ap_transfer(
-        &mut self,
-        ap: &FullyQualifiedApAddress,
-        address: u64,
-        accesses: impl IntoIterator<Item = (u64, Option<u32>)>,
-        values: &mut [u32],
-    ) -> Result<(), ArmError> {
-        self.select_ap_and_ap_bank(ap, address)?;
-        let ap_addr = |address: u64| RegisterAddress::ApRegister(address as u8).a2_and_3();
-        let accesses: Vec<Access> = accesses
-            .into_iter()
-            .map(|(address, value)| (Port::Ap, ap_addr(address), value))
-            .collect();
-        self.probe().transfer(&accesses, values)
-    }
-}
-
-impl Drop for CmsisDapArmDebug {
-    fn drop(&mut self) {
-        if self.probe.is_some() {
-            self.disconnect();
-            self.probe = None;
-        }
-    }
-}
-
-impl DpHost for CmsisDapArmDebug {
-    fn dp_manager(&mut self) -> &mut DpManager {
-        &mut self.dp_manager
+    fn wire(&mut self) -> Box<dyn DebugPortWire + '_> {
+        Box::new(CmsisDapWire(&mut self.0))
     }
 
-    fn with_debug_port_wire<R>(
-        &mut self,
-        f: impl FnOnce(&mut dyn DebugPortWire) -> Result<R, ArmError>,
-    ) -> Result<R, ArmError> {
-        f(&mut CmsisDapWire(self.probe()))
-    }
-}
-
-impl ArmDebugInterface for CmsisDapArmDebug {
-    fn reinitialize(&mut self) -> Result<(), ArmError> {
-        self.reinitialize_dps()
-    }
-
-    fn access_ports(
-        &mut self,
-        dp: DpAddress,
-    ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
-        self.dp_access_ports(dp)
-    }
-
-    fn close(mut self: Box<Self>) -> Probe {
-        self.disconnect();
-        Probe::from_attached_probe(self.probe.take().unwrap())
-    }
-
-    fn select_debug_port(&mut self, dp: DpAddress) -> Result<(), ArmError> {
-        self.select_dp(dp)?;
-        Ok(())
-    }
-
-    fn current_debug_port(&self) -> Option<DpAddress> {
-        self.dp_manager.current_dp
-    }
-
-    fn memory_interface(
-        &mut self,
-        access_port: &FullyQualifiedApAddress,
-    ) -> Result<Box<dyn ArmMemoryInterface + '_>, ArmError> {
-        self.adi_memory_interface(access_port)
-    }
-
-    fn core_status_notification(&mut self, state: CoreStatus) {
-        DebugProbe::core_status_notification(self.probe(), state).ok();
-    }
-
-    fn active_wire_protocol(&self) -> Option<WireProtocol> {
-        self.protocol()
-    }
-
-    fn wire_speed_khz(&self) -> Option<u32> {
-        Some(self.probe.as_ref().unwrap().speed_khz)
-    }
-
-    fn set_wire_speed(&mut self, speed_khz: u32) -> Result<u32, ArmError> {
-        DebugProbe::set_speed(self.probe(), speed_khz).map_err(ArmError::Probe)
-    }
-}
-
-impl DapAccess for CmsisDapArmDebug {
-    fn read_raw_dp_register(
-        &mut self,
-        dp: DpAddress,
-        address: DpRegisterAddress,
-    ) -> Result<u32, ArmError> {
-        self.select_dp_and_dp_bank(dp, &address)?;
-        let addr = RegisterAddress::DpRegister(address).a2_and_3();
+    fn read(&mut self, register: RegisterAddress) -> Result<u32, ArmError> {
         let mut value = [0];
-        self.probe()
-            .transfer(&[(Port::Dp, addr, None)], &mut value)?;
+        self.transfer_register(register, None, &mut value)?;
         Ok(value[0])
     }
 
-    fn write_raw_dp_register(
-        &mut self,
-        dp: DpAddress,
-        address: DpRegisterAddress,
-        value: u32,
-    ) -> Result<(), ArmError> {
-        self.select_dp_and_dp_bank(dp, &address)?;
-        let addr = RegisterAddress::DpRegister(address).a2_and_3();
-        let result = self
-            .probe()
-            .transfer(&[(Port::Dp, addr, Some(value))], &mut []);
-        self.sync_select_cache(dp, address, value, result.is_ok());
-        result
+    fn write(&mut self, register: RegisterAddress, value: u32) -> Result<(), ArmError> {
+        self.transfer_register(register, Some(value), &mut [])
     }
 
-    fn read_raw_ap_register(
-        &mut self,
-        ap: &FullyQualifiedApAddress,
-        address: u64,
-    ) -> Result<u32, ArmError> {
-        self.retry_after_link_loss(ap.dp(), |this| {
-            let mut value = [0];
-            this.ap_transfer(ap, address, [(address, None)], &mut value)?;
-            Ok(value[0])
-        })
+    fn read_ap_repeated(&mut self, address: u8, values: &mut [u32]) -> Result<(), ArmError> {
+        let addr = RegisterAddress::ApRegister(address).a2_and_3();
+        let accesses = vec![(Port::Ap, addr, None); values.len()];
+        self.0.transfer(&accesses, values)
     }
 
-    fn read_raw_ap_register_repeated(
-        &mut self,
-        ap: &FullyQualifiedApAddress,
-        address: u64,
-        values: &mut [u32],
-    ) -> Result<(), ArmError> {
-        let accesses = vec![(address, None); values.len()];
-        self.ap_transfer(ap, address, accesses, values)
+    fn write_ap_repeated(&mut self, address: u8, values: &[u32]) -> Result<(), ArmError> {
+        let addr = RegisterAddress::ApRegister(address).a2_and_3();
+        let accesses: Vec<Access> = values
+            .iter()
+            .map(|&value| (Port::Ap, addr, Some(value)))
+            .collect();
+        self.0.transfer(&accesses, &mut [])
     }
 
-    fn access_raw_ap_registers(
-        &mut self,
-        ap: &FullyQualifiedApAddress,
-        accesses: &[(u64, Option<u32>)],
-        values: &mut [u32],
-    ) -> Result<(), ArmError> {
-        let Some(&(first, _)) = accesses.first() else {
-            return Ok(());
-        };
-        // The bank is selected once, from the first address.
-        assert!(
-            accesses
-                .iter()
-                .all(|&(address, _)| address >> 4 == first >> 4),
-            "every access has to be in the same AP register bank"
-        );
-        if accesses.iter().any(|(_, value)| value.is_some()) {
-            self.forget_memory_ap(ap);
-        }
-        self.ap_transfer(ap, first, accesses.iter().copied(), values)
-    }
-
-    fn write_raw_ap_register(
-        &mut self,
-        ap: &FullyQualifiedApAddress,
-        address: u64,
-        value: u32,
-    ) -> Result<(), ArmError> {
-        self.forget_memory_ap(ap);
-        self.retry_after_link_loss(ap.dp(), |this| {
-            this.ap_transfer(ap, address, [(address, Some(value))], &mut [])
-        })
-    }
-
-    fn write_raw_ap_register_repeated(
-        &mut self,
-        ap: &FullyQualifiedApAddress,
-        address: u64,
-        values: &[u32],
-    ) -> Result<(), ArmError> {
-        self.forget_memory_ap(ap);
-        let accesses = values.iter().map(|&value| (address, Some(value)));
-        self.ap_transfer(ap, address, accesses, &mut [])
-    }
-
-    fn active_wire_protocol(&self) -> Option<WireProtocol> {
-        self.protocol()
-    }
-
-    fn debug_port_reconnect_with(
-        &mut self,
-        connect: &mut dyn FnMut(&mut dyn DebugPortWire) -> Result<(), ArmError>,
-    ) -> Result<(), ArmError> {
-        self.forget_memory_aps();
-        self.with_debug_port_wire(|wire| connect(wire))
-    }
-
-    fn memory_ap_epoch(&self) -> u64 {
-        self.dp_manager.memory_ap_epoch
-    }
-
-    fn take_memory_ap(&mut self, ap: &FullyQualifiedApAddress) -> Option<MemoryAp> {
-        self.dp_manager.take_memory_ap(ap)
-    }
-
-    fn store_memory_ap(&mut self, memory_ap: MemoryAp) {
-        self.dp_manager.store_memory_ap(memory_ap);
+    fn ap_batch(&mut self) -> Option<&mut dyn ApBatch> {
+        Some(self)
     }
 }
 
-impl SwoAccess for CmsisDapArmDebug {
-    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ArmError> {
-        self.probe().enable_swo(config)
-    }
-
-    fn disable_swo(&mut self) -> Result<(), ArmError> {
-        self.probe().disable_swo()
-    }
-
-    fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ArmError> {
-        self.probe().read_swo_timeout(timeout)
+impl ApBatch for CmsisDapTransport {
+    fn access_ap(
+        &mut self,
+        accesses: &[(u64, Option<u32>)],
+        values: &mut [u32],
+    ) -> Result<(), ArmError> {
+        let accesses: Vec<Access> = accesses
+            .iter()
+            .map(|&(address, value)| {
+                let addr = RegisterAddress::ApRegister(address as u8).a2_and_3();
+                (Port::Ap, addr, value)
+            })
+            .collect();
+        self.0.transfer(&accesses, values)
     }
 }
 
@@ -474,6 +305,9 @@ mod tests {
     use std::sync::{Arc, Mutex};
 
     use super::*;
+    use crate::architecture::arm::{
+        FullyQualifiedApAddress, dp::DpAddress, sequences::ArmDebugSequence,
+    };
     use crate::probe::cmsisdap::commands::{
         CmsisDapDevice,
         fake::{FakeProbe, Reply, standard_reply},

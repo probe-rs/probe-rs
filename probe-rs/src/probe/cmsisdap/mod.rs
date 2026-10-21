@@ -9,7 +9,8 @@ use crate::{
     CoreStatus,
     architecture::{
         arm::{
-            ArmDebugInterface, ArmError, DapError, SwoAccess, SwoConfig, SwoMode,
+            ArmCommunicationInterface, ArmDebugInterface, ArmError, DapError, SwoAccess, SwoConfig,
+            SwoMode,
             dp::{Abort, Ctrl, DpRegister, DpRegisterAddress},
             sequences::ArmDebugSequence,
             swo::poll_interval_from_buf_size,
@@ -26,7 +27,7 @@ use crate::{
         DebugProbe, DebugProbeError, DebugProbeSelector, JtagChain, JtagChainAccess,
         JtagChainState, ProbeFactory, ResetLine, WireProtocol,
         cmsisdap::{
-            arm::CmsisDapArmDebug,
+            arm::CmsisDapTransport,
             commands::{
                 CmsisDapError, RequestError,
                 general::info::{
@@ -1050,7 +1051,11 @@ impl DebugProbe for CmsisDap {
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
-        Ok(Box::new(CmsisDapArmDebug::new(self, sequence)))
+        Ok(ArmCommunicationInterface::create(
+            Box::new(CmsisDapTransport(self)),
+            sequence,
+            false,
+        ))
     }
 
     fn has_arm_interface(&self) -> bool {

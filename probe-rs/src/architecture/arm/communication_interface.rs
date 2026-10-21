@@ -213,20 +213,236 @@ impl DpState {
     }
 }
 
-/// The probe driver behind an [`ArmCommunicationInterface`].
-enum ArmProbe {
-    /// An SWD probe with its transaction settings.
-    Swd(Box<dyn SwdProbe>, SwdSettings),
-    /// A JTAG probe with scan chain state and its transaction settings.
-    Jtag(Box<dyn JtagChainAccess>, SwdSettings),
+/// Runs the DP and AP register accesses of an [`ArmCommunicationInterface`].
+///
+/// The interface selects the DP, the AP and the register bank before each access.
+pub(crate) trait DapTransport: Send + Debug {
+    /// The probe that the transport uses.
+    fn probe(&mut self) -> &mut dyn DebugProbe;
+
+    /// The probe that the transport uses.
+    fn probe_ref(&self) -> &dyn DebugProbe;
+
+    /// Returns the probe.
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
+
+    /// The wire protocol of the accesses.
+    fn protocol(&self) -> Option<WireProtocol>;
+
+    /// The wire that the debug sequences use.
+    fn wire(&mut self) -> Box<dyn DebugPortWire + '_>;
+
+    /// Read one register.
+    fn read(&mut self, register: RegisterAddress) -> Result<u32, ArmError>;
+
+    /// Write one register.
+    fn write(&mut self, register: RegisterAddress, value: u32) -> Result<(), ArmError>;
+
+    /// Read one AP register `values.len()` times.
+    fn read_ap_repeated(&mut self, address: u8, values: &mut [u32]) -> Result<(), ArmError>;
+
+    /// Write one AP register once for each of `values`.
+    fn write_ap_repeated(&mut self, address: u8, values: &[u32]) -> Result<(), ArmError>;
+
+    /// The batch for a mix of AP accesses, if the transport has one.
+    fn ap_batch(&mut self) -> Option<&mut dyn ApBatch> {
+        None
+    }
 }
 
-impl std::fmt::Debug for ArmProbe {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Swd(_, _) => f.write_str("Swd(..)"),
-            Self::Jtag(_, _) => f.write_str("Jtag(..)"),
+/// Runs a mix of AP reads and writes as one batch.
+pub(crate) trait ApBatch {
+    /// Run AP reads and writes in order. Each read writes one word to `values`.
+    ///
+    /// Only the low byte of each address is used.
+    fn access_ap(
+        &mut self,
+        accesses: &[(u64, Option<u32>)],
+        values: &mut [u32],
+    ) -> Result<(), ArmError>;
+}
+
+/// Runs the accesses on an SWD probe, with [`SwdPort`].
+#[derive(Debug)]
+struct SwdTransport {
+    probe: Box<dyn SwdProbe>,
+    settings: SwdSettings,
+}
+
+impl SwdTransport {
+    fn with_port<R>(
+        &mut self,
+        f: impl FnOnce(&mut SwdPort<'_>) -> Result<R, SwdPortError>,
+    ) -> Result<R, ArmError> {
+        let mut port = SwdPort::new(self.probe.as_mut(), self.settings.clone());
+        f(&mut port).map_err(ArmCommunicationInterface::swd_port_error)
+    }
+}
+
+impl DapTransport for SwdTransport {
+    fn probe(&mut self) -> &mut dyn DebugProbe {
+        self.probe.as_mut()
+    }
+
+    fn probe_ref(&self) -> &dyn DebugProbe {
+        self.probe.as_ref()
+    }
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self.probe.into_probe()
+    }
+
+    fn protocol(&self) -> Option<WireProtocol> {
+        Some(WireProtocol::Swd)
+    }
+
+    fn wire(&mut self) -> Box<dyn DebugPortWire + '_> {
+        Box::new(SwdDebugPortWire {
+            probe: self.probe.as_mut(),
+            settings: self.settings.clone(),
+        })
+    }
+
+    fn read(&mut self, register: RegisterAddress) -> Result<u32, ArmError> {
+        let addr = register.a2_and_3();
+        if register.is_ap() {
+            return self.with_port(|port| {
+                let mut batch = SwdBatch::new();
+                let handle = port.read_ap_block(&mut batch, addr, 1);
+                let mut results = port.run(batch)?;
+                Ok(results.take(handle).unwrap()[0])
+            });
         }
+        self.with_port(|port| {
+            let mut batch = SwdBatch::new();
+            let handle = batch.read(Port::Dp, addr);
+            let mut results = port.run(batch)?;
+            Ok(results.take(handle).unwrap())
+        })
+    }
+
+    fn write(&mut self, register: RegisterAddress, value: u32) -> Result<(), ArmError> {
+        let port_type = if register.is_ap() { Port::Ap } else { Port::Dp };
+        let addr = register.a2_and_3();
+        self.with_port(|port| {
+            let mut batch = SwdBatch::new();
+            batch.write(port_type, addr, value);
+            port.run(batch)?;
+            Ok(())
+        })
+    }
+
+    fn read_ap_repeated(&mut self, address: u8, values: &mut [u32]) -> Result<(), ArmError> {
+        let addr = RegisterAddress::ApRegister(address).a2_and_3();
+        let count = values.len();
+        self.with_port(|port| {
+            let mut batch = SwdBatch::new();
+            let handle = port.read_ap_block(&mut batch, addr, count);
+            let mut results = port.run(batch)?;
+            let read_values = results.take(handle).unwrap();
+            values.copy_from_slice(&read_values);
+            Ok(())
+        })
+    }
+
+    fn write_ap_repeated(&mut self, address: u8, values: &[u32]) -> Result<(), ArmError> {
+        let addr = RegisterAddress::ApRegister(address).a2_and_3();
+        self.with_port(|port| {
+            let mut batch = SwdBatch::new();
+            port.write_ap_block(&mut batch, addr, values);
+            port.run(batch)?;
+            Ok(())
+        })
+    }
+
+    fn ap_batch(&mut self) -> Option<&mut dyn ApBatch> {
+        Some(self)
+    }
+}
+
+impl ApBatch for SwdTransport {
+    fn access_ap(
+        &mut self,
+        accesses: &[(u64, Option<u32>)],
+        values: &mut [u32],
+    ) -> Result<(), ArmError> {
+        self.with_port(|port| {
+            let mut batch = SwdBatch::new();
+            let mut handles = Vec::new();
+            for &(address, value) in accesses {
+                let addr = RegisterAddress::ApRegister((address & 0xFF) as u8).a2_and_3();
+                match value {
+                    Some(value) => batch.write(Port::Ap, addr, value),
+                    None => handles.push(batch.read(Port::Ap, addr)),
+                }
+            }
+
+            let mut results = port.run(batch)?;
+            for (read, handle) in handles.into_iter().enumerate() {
+                values[read] = results.take(handle).unwrap();
+            }
+            Ok(())
+        })
+    }
+}
+
+/// Runs the accesses on a JTAG probe, as DPACC and APACC scans.
+#[derive(Debug)]
+struct JtagTransport {
+    probe: Box<dyn JtagChainAccess>,
+    settings: SwdSettings,
+}
+
+impl JtagTransport {
+    fn with_chain<R>(
+        &mut self,
+        f: impl FnOnce(&mut JtagChain<'_>, &SwdSettings) -> Result<R, ArmError>,
+    ) -> Result<R, ArmError> {
+        let mut chain = JtagChain::new(self.probe.as_mut());
+        f(&mut chain, &self.settings)
+    }
+}
+
+impl DapTransport for JtagTransport {
+    fn probe(&mut self) -> &mut dyn DebugProbe {
+        self.probe.as_mut()
+    }
+
+    fn probe_ref(&self) -> &dyn DebugProbe {
+        self.probe.as_ref()
+    }
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self.probe.into_probe()
+    }
+
+    fn protocol(&self) -> Option<WireProtocol> {
+        Some(WireProtocol::Jtag)
+    }
+
+    fn wire(&mut self) -> Box<dyn DebugPortWire + '_> {
+        Box::new(JtagDebugPortWire {
+            probe: self.probe.as_mut(),
+            settings: self.settings.clone(),
+        })
+    }
+
+    fn read(&mut self, register: RegisterAddress) -> Result<u32, ArmError> {
+        self.with_chain(|chain, settings| jtag_read_register(chain, register, settings))
+    }
+
+    fn write(&mut self, register: RegisterAddress, value: u32) -> Result<(), ArmError> {
+        self.with_chain(|chain, settings| jtag_write_register(chain, register, value, settings))
+    }
+
+    fn read_ap_repeated(&mut self, address: u8, values: &mut [u32]) -> Result<(), ArmError> {
+        let register = RegisterAddress::ApRegister(address);
+        self.with_chain(|chain, settings| jtag_read_block(chain, register, values, settings))
+    }
+
+    fn write_ap_repeated(&mut self, address: u8, values: &[u32]) -> Result<(), ArmError> {
+        let register = RegisterAddress::ApRegister(address);
+        self.with_chain(|chain, settings| jtag_write_block(chain, register, values, settings))
     }
 }
 
@@ -480,84 +696,110 @@ pub(crate) fn probe_debug_port_wire<R>(
 /// (E.g. CMSIS-DAP and J-Link support this, ST-Link does not)
 #[derive(Debug)]
 pub struct ArmCommunicationInterface {
-    probe: Option<ArmProbe>,
-    dp_manager: DpManager,
-}
+    transport: Option<Box<dyn DapTransport>>,
 
-/// The state of the debug ports that an ARM debug interface is connected to.
-#[derive(Debug)]
-pub(crate) struct DpManager {
     /// Currently selected debug port. For targets without multidrop,
     /// this will always be the single, default debug port in the system.
     ///
     /// If this is None, the interface is in an uninitialized state.
-    pub(crate) current_dp: Option<DpAddress>,
+    current_dp: Option<DpAddress>,
     dps: HashMap<DpAddress, DpState>,
     use_overrun_detect: bool,
     sequence: Arc<dyn ArmDebugSequence>,
     /// Bumped when the debug ports are reset, so memory AP state from before is not kept.
-    pub(crate) memory_ap_epoch: u64,
-}
-
-impl DpManager {
-    /// Create the state of an interface that is not connected to a debug port.
-    pub(crate) fn new(sequence: Arc<dyn ArmDebugSequence>, use_overrun_detect: bool) -> Self {
-        Self {
-            current_dp: None,
-            dps: HashMap::new(),
-            use_overrun_detect,
-            sequence,
-            memory_ap_epoch: 0,
-        }
-    }
-
-    pub(crate) fn take_memory_ap(&mut self, ap: &FullyQualifiedApAddress) -> Option<ap::MemoryAp> {
-        self.dps.get_mut(&ap.dp())?.memory_aps.remove(ap.ap())
-    }
-
-    pub(crate) fn store_memory_ap(&mut self, memory_ap: ap::MemoryAp) {
-        let address = memory_ap.ap_address().clone();
-        if let Some(state) = self.dps.get_mut(&address.dp()) {
-            // Another interface stored this AP while ours was in use, so neither state is trusted.
-            if state.memory_aps.remove(address.ap()).is_none() {
-                state.memory_aps.insert(address.ap().clone(), memory_ap);
-            }
-        }
-    }
+    memory_ap_epoch: u64,
 }
 
 impl Drop for ArmCommunicationInterface {
     fn drop(&mut self) {
-        if self.probe.is_some() {
+        if self.transport.is_some() {
             self.disconnect();
 
             // Ensure we don't disconnect twice
-            self.probe = None;
+            self.transport = None;
         }
     }
 }
 
 impl ArmCommunicationInterface {
-    fn is_swd(&self) -> bool {
-        matches!(self.probe.as_ref(), Some(ArmProbe::Swd(_, _)))
+    /// Forgets the state of all memory APs, also of those in use by a memory interface.
+    fn forget_memory_aps(&mut self) {
+        self.memory_ap_epoch += 1;
+        for state in self.dps.values_mut() {
+            state.memory_aps.clear();
+        }
+    }
+
+    /// Forgets a memory AP's state after a write to its registers.
+    fn forget_memory_ap(&mut self, ap: &FullyQualifiedApAddress) {
+        if let Some(state) = self.dps.get_mut(&ap.dp()) {
+            state.memory_aps.remove(ap.ap());
+        }
+    }
+
+    fn transport(&mut self) -> &mut dyn DapTransport {
+        self.transport.as_deref_mut().expect(
+            "ArmCommunicationInterface is in an inconsistent state. This is a bug, please report it.",
+        )
     }
 
     fn close(mut self) -> Probe {
         self.disconnect();
 
-        let probe = self.probe.take().unwrap();
-        match probe {
-            ArmProbe::Swd(probe, _) => Probe::from_attached_probe(probe.into_probe()),
-            ArmProbe::Jtag(probe, _) => Probe::from_attached_probe(probe.into_probe()),
+        let transport = self.transport.take().unwrap();
+        Probe::from_attached_probe(transport.into_probe())
+    }
+
+    /// Disconnect from all debug ports, by calling `debug_port_stop` on all DPs which we
+    /// are connected to.
+    fn disconnect(&mut self) {
+        if self.transport.is_none() {
+            return;
         }
-    }
 
-    fn swd_addr(address: RegisterAddress) -> u8 {
-        address.a2_and_3()
-    }
+        let sequence = self.sequence.clone();
 
-    fn ap_swd_addr(address: u64) -> u8 {
-        Self::swd_addr(RegisterAddress::ApRegister((address & 0xFF) as u8))
+        // `current_dp` is `None` if the last DP switch failed. Then the wire selects no
+        // known DP, and all DPs need a connection before they can be stopped.
+        let current_dp = self.current_dp.take();
+        let others: Vec<DpAddress> = self
+            .dps
+            .keys()
+            .copied()
+            .filter(|dp| Some(*dp) != current_dp)
+            .collect();
+
+        if current_dp.is_some() || !others.is_empty() {
+            let _ = self.with_debug_port_wire(|wire| {
+                let _stop_span = tracing::debug_span!("debug_port_stop").entered();
+
+                // Stop the current DP, which may not be one of the known ones (i.e. RP2040 rescue DP).
+                if let Some(current_dp) = current_dp {
+                    sequence.debug_port_stop(&mut *wire, current_dp).ok();
+                }
+
+                drop(_stop_span);
+
+                // Stop all intentionally-connected DPs.
+                for dp in others {
+                    // Try to select the debug port we want to shut down.
+                    if sequence.debug_port_connect(&mut *wire, dp).is_ok() {
+                        sequence.debug_port_stop(&mut *wire, dp).ok();
+                    } else {
+                        tracing::warn!("Failed to stop DP {:x?}", dp);
+                    }
+                }
+
+                Ok(())
+            });
+        }
+
+        self.dps.clear();
+        self.forget_memory_aps();
+        let _ = self.with_debug_port_wire(|wire| {
+            wire.raw_flush().ok();
+            Ok(())
+        });
     }
 
     fn swd_port_error(error: SwdPortError) -> ArmError {
@@ -569,79 +811,98 @@ impl ArmCommunicationInterface {
         }
     }
 
-    fn with_swd_port<R>(
-        &mut self,
-        f: impl FnOnce(&mut SwdPort<'_>) -> Result<R, SwdPortError>,
-    ) -> Result<R, ArmError> {
-        match self.probe.as_mut().unwrap() {
-            ArmProbe::Swd(probe, settings) => {
-                let settings = settings.clone();
-                let mut port = SwdPort::new(probe.as_mut(), settings);
-                f(&mut port).map_err(Self::swd_port_error)
-            }
-            _ => panic!("ArmCommunicationInterface does not hold an SwdProbe"),
-        }
+    /// Whether an error means the target stopped answering, rather than answering with a fault.
+    ///
+    /// A target that resets mid-session drops off the wire like this. The debug mailbox of the
+    /// NXP MCX parts resets the chip on purpose, so this is a normal step of attaching to one
+    /// held in ISP mode, not only a sign of broken wiring.
+    fn is_link_lost(error: &ArmError) -> bool {
+        matches!(
+            error,
+            ArmError::Dap(DapError::NoAcknowledge) | ArmError::Dap(DapError::Protocol(_))
+        )
     }
 
-    fn with_jtag_chain<R>(
+    /// Resynchronize the wire after the target stopped answering, then retry `op` once.
+    ///
+    /// ADIv5 (IHI0031G B4.2.5) says that a host which does not receive an expected response
+    /// must stop driving the line and attempt a line reset; that is what `debug_port_connect`
+    /// does. Without it a target that resets during a debug sequence never comes back, because
+    /// every later transfer is issued into a link that is still out of step.
+    fn retry_after_link_loss<T>(
         &mut self,
-        f: impl FnOnce(&mut JtagChain<'_>, &SwdSettings) -> Result<R, ArmError>,
-    ) -> Result<R, ArmError> {
-        match self.probe.as_mut().unwrap() {
-            ArmProbe::Jtag(probe, settings) => {
-                let settings = settings.clone();
-                let mut chain = JtagChain::new(probe.as_mut());
-                f(&mut chain, &settings)
-            }
-            _ => panic!("ArmCommunicationInterface does not hold a JtagChainAccess"),
+        dp: DpAddress,
+        mut op: impl FnMut(&mut Self) -> Result<T, ArmError>,
+    ) -> Result<T, ArmError> {
+        let first = op(self);
+        let Err(error) = first else {
+            return first;
+        };
+        if !Self::is_link_lost(&error) {
+            return Err(error);
         }
-    }
-}
 
-impl DpHost for ArmCommunicationInterface {
-    fn dp_manager(&mut self) -> &mut DpManager {
-        &mut self.dp_manager
+        tracing::debug!("target stopped answering ({error}), resynchronizing the wire");
+        let sequence = self.sequence.clone();
+        self.with_debug_port_wire(|wire| {
+            // The line is already out of step, so a failure to flush it says nothing new.
+            let _ = wire.raw_flush();
+            sequence.debug_port_connect(wire, dp)
+        })
+        .map_err(|reconnect| {
+            tracing::debug!("resynchronizing failed: {reconnect}");
+            error
+        })?;
+
+        // The reset took the selection with it.
+        if let Some(state) = self.dps.get_mut(&dp) {
+            state.select_valid = false;
+        }
+        self.forget_memory_aps();
+
+        op(self)
     }
 
     fn with_debug_port_wire<R>(
         &mut self,
         f: impl FnOnce(&mut dyn DebugPortWire) -> Result<R, ArmError>,
     ) -> Result<R, ArmError> {
-        match self.probe.as_mut().expect(
-            "ArmCommunicationInterface is in an inconsistent state. This is a bug, please report it.",
-        ) {
-            ArmProbe::Swd(probe, settings) => {
-                let mut wire = SwdDebugPortWire {
-                    probe: probe.as_mut(),
-                    settings: settings.clone(),
-                };
-                f(&mut wire)
-            }
-            ArmProbe::Jtag(probe, settings) => {
-                let mut wire = JtagDebugPortWire {
-                    probe: probe.as_mut(),
-                    settings: settings.clone(),
-                };
-                f(&mut wire)
-            }
-        }
+        f(self.transport().wire().as_mut())
     }
 }
 
 impl ArmDebugInterface for ArmCommunicationInterface {
     fn reinitialize(&mut self) -> Result<(), ArmError> {
-        self.reinitialize_dps()
+        let current_dp = self.current_dp;
+
+        // Simulate the drop / close of the initialized communication interface.
+        self.disconnect();
+
+        // This should be set to None by the disconnect call above.
+        assert!(self.current_dp.is_none());
+        assert!(self.dps.is_empty());
+
+        // Reconnect to the DP again
+        if let Some(dp) = current_dp {
+            self.select_dp(dp)?;
+        }
+
+        Ok(())
     }
 
     fn memory_interface(
         &mut self,
         access_port_address: &FullyQualifiedApAddress,
     ) -> Result<Box<dyn ArmMemoryInterface + '_>, ArmError> {
-        self.adi_memory_interface(access_port_address)
+        let memory_interface: Box<dyn ArmMemoryInterface + '_> = match access_port_address.ap() {
+            ApAddress::V1(_) => Box::new(ADIMemoryInterface::new(self, access_port_address)?),
+            ApAddress::V2(_) => ap::v2::new_memory_interface(self, access_port_address)?,
+        };
+        Ok(memory_interface)
     }
 
     fn current_debug_port(&self) -> Option<DpAddress> {
-        self.dp_manager.current_dp
+        self.current_dp
     }
 
     fn close(self: Box<Self>) -> Probe {
@@ -652,7 +913,13 @@ impl ArmDebugInterface for ArmCommunicationInterface {
         &mut self,
         dp: DpAddress,
     ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
-        self.dp_access_ports(dp)
+        match self.select_dp(dp).map(|state| state.debug_port_version)? {
+            DebugPortVersion::DPv0 | DebugPortVersion::DPv1 | DebugPortVersion::DPv2 => {
+                Ok(ap::v1::valid_access_ports(self, dp).into_iter().collect())
+            }
+            DebugPortVersion::DPv3 => ap::v2::enumerate_access_ports(self, dp),
+            DebugPortVersion::Unsupported(_) => unreachable!(),
+        }
     }
 
     fn select_debug_port(&mut self, dp: DpAddress) -> Result<(), ArmError> {
@@ -661,42 +928,32 @@ impl ArmDebugInterface for ArmCommunicationInterface {
     }
 
     fn core_status_notification(&mut self, state: CoreStatus) {
-        if let Some(probe) = self.probe.as_mut() {
-            let debug_probe: &mut dyn DebugProbe = match probe {
-                ArmProbe::Swd(probe, _) => probe.as_mut(),
-                ArmProbe::Jtag(probe, _) => probe.as_mut(),
-            };
-            debug_probe.core_status_notification(state).ok();
+        if let Some(transport) = self.transport.as_mut() {
+            transport.probe().core_status_notification(state).ok();
         }
     }
 
     fn active_wire_protocol(&self) -> Option<WireProtocol> {
-        match self.probe.as_ref()? {
-            ArmProbe::Swd(_, _) => Some(WireProtocol::Swd),
-            ArmProbe::Jtag(_, _) => Some(WireProtocol::Jtag),
-        }
+        self.transport.as_ref()?.protocol()
     }
 
     fn wire_speed_khz(&self) -> Option<u32> {
-        match self.probe.as_ref()? {
-            ArmProbe::Swd(probe, _) => Some(probe.speed_khz()),
-            ArmProbe::Jtag(probe, _) => Some(probe.speed_khz()),
-        }
+        Some(self.transport.as_ref()?.probe_ref().speed_khz())
     }
 
     fn set_wire_speed(&mut self, speed_khz: u32) -> Result<u32, ArmError> {
-        let probe = self
-            .probe
+        let transport = self
+            .transport
             .as_mut()
             .ok_or(ArmError::NotImplemented("set_wire_speed"))?;
-        match probe {
-            ArmProbe::Swd(probe, _) => probe.set_speed(speed_khz).map_err(ArmError::Probe),
-            ArmProbe::Jtag(probe, _) => probe.set_speed(speed_khz).map_err(ArmError::Probe),
-        }
+        transport
+            .probe()
+            .set_speed(speed_khz)
+            .map_err(ArmError::Probe)
     }
 }
 
-impl<T: DpHost> SwdSequence for T {
+impl SwdSequence for ArmCommunicationInterface {
     fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError> {
         self.with_debug_port_wire(|wire| wire.swj_sequence(bits))
             .map_err(wire_probe_error)
@@ -754,12 +1011,11 @@ impl ArmCommunicationInterface {
         sequence: Arc<dyn ArmDebugSequence>,
         use_overrun_detect: bool,
     ) -> Box<dyn ArmDebugInterface> {
-        let interface = ArmCommunicationInterface {
-            probe: Some(ArmProbe::Swd(probe, settings)),
-            dp_manager: DpManager::new(sequence, use_overrun_detect),
-        };
-
-        Box::new(interface)
+        Self::create(
+            Box::new(SwdTransport { probe, settings }),
+            sequence,
+            use_overrun_detect,
+        )
     }
 
     /// Create a new JTAG interface over a layer-0 probe.
@@ -769,156 +1025,42 @@ impl ArmCommunicationInterface {
         sequence: Arc<dyn ArmDebugSequence>,
         use_overrun_detect: bool,
     ) -> Box<dyn ArmDebugInterface> {
-        let interface = ArmCommunicationInterface {
-            probe: Some(ArmProbe::Jtag(probe, settings)),
-            dp_manager: DpManager::new(sequence, use_overrun_detect),
-        };
-
-        Box::new(interface)
-    }
-}
-
-/// An ARM debug interface that selects debug ports and access ports itself.
-///
-/// The provided methods run the debug sequences and keep the SELECT register in step. An
-/// implementation gives the state and the wire, and does the register accesses.
-pub(crate) trait DpHost: ArmDebugInterface + Sized {
-    /// The state of the debug ports.
-    fn dp_manager(&mut self) -> &mut DpManager;
-
-    /// Run `f` with the wire that the debug sequences use.
-    fn with_debug_port_wire<R>(
-        &mut self,
-        f: impl FnOnce(&mut dyn DebugPortWire) -> Result<R, ArmError>,
-    ) -> Result<R, ArmError>;
-
-    /// Forgets the state of all memory APs, also of those in use by a memory interface.
-    fn forget_memory_aps(&mut self) {
-        self.dp_manager().memory_ap_epoch += 1;
-        for state in self.dp_manager().dps.values_mut() {
-            state.memory_aps.clear();
-        }
-    }
-
-    /// Forgets a memory AP's state after a write to its registers.
-    fn forget_memory_ap(&mut self, ap: &FullyQualifiedApAddress) {
-        if let Some(state) = self.dp_manager().dps.get_mut(&ap.dp()) {
-            state.memory_aps.remove(ap.ap());
-        }
-    }
-
-    /// Disconnect from all debug ports, by calling `debug_port_stop` on all DPs which we
-    /// are connected to.
-    fn disconnect(&mut self) {
-        let sequence = self.dp_manager().sequence.clone();
-
-        // `current_dp` is `None` if the last DP switch failed. Then the wire selects no
-        // known DP, and all DPs need a connection before they can be stopped.
-        let current_dp = self.dp_manager().current_dp.take();
-        let others: Vec<DpAddress> = self
-            .dp_manager()
-            .dps
-            .keys()
-            .copied()
-            .filter(|dp| Some(*dp) != current_dp)
-            .collect();
-
-        if current_dp.is_some() || !others.is_empty() {
-            let _ = self.with_debug_port_wire(|wire| {
-                let _stop_span = tracing::debug_span!("debug_port_stop").entered();
-
-                // Stop the current DP, which may not be one of the known ones (i.e. RP2040 rescue DP).
-                if let Some(current_dp) = current_dp {
-                    sequence.debug_port_stop(&mut *wire, current_dp).ok();
-                }
-
-                drop(_stop_span);
-
-                // Stop all intentionally-connected DPs.
-                for dp in others {
-                    // Try to select the debug port we want to shut down.
-                    if sequence.debug_port_connect(&mut *wire, dp).is_ok() {
-                        sequence.debug_port_stop(&mut *wire, dp).ok();
-                    } else {
-                        tracing::warn!("Failed to stop DP {:x?}", dp);
-                    }
-                }
-
-                Ok(())
-            });
-        }
-
-        self.dp_manager().dps.clear();
-        self.forget_memory_aps();
-        let _ = self.with_debug_port_wire(|wire| {
-            wire.raw_flush().ok();
-            Ok(())
-        });
-    }
-
-    /// Whether an error means the target stopped answering, rather than answering with a fault.
-    ///
-    /// A target that resets mid-session drops off the wire like this. The debug mailbox of the
-    /// NXP MCX parts resets the chip on purpose, so this is a normal step of attaching to one
-    /// held in ISP mode, not only a sign of broken wiring.
-    fn is_link_lost(error: &ArmError) -> bool {
-        matches!(
-            error,
-            ArmError::Dap(DapError::NoAcknowledge) | ArmError::Dap(DapError::Protocol(_))
+        Self::create(
+            Box::new(JtagTransport { probe, settings }),
+            sequence,
+            use_overrun_detect,
         )
     }
 
-    /// Resynchronize the wire after the target stopped answering, then retry `op` once.
-    ///
-    /// ADIv5 (IHI0031G B4.2.5) says that a host which does not receive an expected response
-    /// must stop driving the line and attempt a line reset; that is what `debug_port_connect`
-    /// does. Without it a target that resets during a debug sequence never comes back, because
-    /// every later transfer is issued into a link that is still out of step.
-    fn retry_after_link_loss<T>(
-        &mut self,
-        dp: DpAddress,
-        mut op: impl FnMut(&mut Self) -> Result<T, ArmError>,
-    ) -> Result<T, ArmError> {
-        let first = op(self);
-        let Err(error) = first else {
-            return first;
+    /// Create a new interface that runs the register accesses with `transport`.
+    pub(crate) fn create(
+        transport: Box<dyn DapTransport>,
+        sequence: Arc<dyn ArmDebugSequence>,
+        use_overrun_detect: bool,
+    ) -> Box<dyn ArmDebugInterface> {
+        let interface = ArmCommunicationInterface {
+            transport: Some(transport),
+            current_dp: None,
+            dps: Default::default(),
+            use_overrun_detect,
+            sequence,
+            memory_ap_epoch: 0,
         };
-        if !Self::is_link_lost(&error) {
-            return Err(error);
-        }
 
-        tracing::debug!("target stopped answering ({error}), resynchronizing the wire");
-        let sequence = self.dp_manager().sequence.clone();
-        self.with_debug_port_wire(|wire| {
-            // The line is already out of step, so a failure to flush it says nothing new.
-            let _ = wire.raw_flush();
-            sequence.debug_port_connect(wire, dp)
-        })
-        .map_err(|reconnect| {
-            tracing::debug!("resynchronizing failed: {reconnect}");
-            error
-        })?;
-
-        // The reset took the selection with it.
-        if let Some(state) = self.dp_manager().dps.get_mut(&dp) {
-            state.select_valid = false;
-        }
-        self.forget_memory_aps();
-
-        op(self)
+        Box::new(interface)
     }
 
     fn select_dp(&mut self, dp: DpAddress) -> Result<&mut DpState, ArmError> {
         let mut switched_dp = false;
 
-        let sequence = self.dp_manager().sequence.clone();
+        let sequence = self.sequence.clone();
 
-        if self.dp_manager().current_dp != Some(dp) {
+        if self.current_dp != Some(dp) {
             tracing::debug!("Selecting DP {:x?}", dp);
 
             switched_dp = true;
             // If the switch fails, the wire does not select any known DP.
-            let previous_dp = self.dp_manager().current_dp.take();
+            let previous_dp = self.current_dp.take();
 
             self.with_debug_port_wire(|wire| {
                 wire.raw_flush()?;
@@ -936,11 +1078,13 @@ pub(crate) trait DpHost: ArmDebugInterface + Sized {
                 Ok(())
             })?;
 
-            self.dp_manager().current_dp = Some(dp);
+            self.current_dp = Some(dp);
         }
 
         // If we don't have  a state for this DP, this means that we haven't run the necessary init sequence yet.
-        if let hash_map::Entry::Vacant(entry) = self.dp_manager().dps.entry(dp) {
+        if let hash_map::Entry::Vacant(entry) = self.dps.entry(dp) {
+            let sequence = self.sequence.clone();
+
             entry.insert(DpState::new());
 
             self.forget_memory_aps();
@@ -952,13 +1096,10 @@ pub(crate) trait DpHost: ArmDebugInterface + Sized {
             // For "bit-banging" probes, such as JLink or FTDI, we rely on it for good, stable communication.
             // This is required as the default sequence (and most special implementations) does not do this.
             let mut ctrl_reg: Ctrl = self.read_dp_register(dp)?;
-            if ctrl_reg.orun_detect() != self.dp_manager().use_overrun_detect {
-                tracing::debug!(
-                    "Setting orun_detect: {}",
-                    self.dp_manager().use_overrun_detect
-                );
+            if ctrl_reg.orun_detect() != self.use_overrun_detect {
+                tracing::debug!("Setting orun_detect: {}", self.use_overrun_detect);
                 // only write if there’s a need for it.
-                ctrl_reg.set_orun_detect(self.dp_manager().use_overrun_detect);
+                ctrl_reg.set_orun_detect(self.use_overrun_detect);
                 self.write_dp_register(dp, ctrl_reg)?;
             }
 
@@ -970,7 +1111,6 @@ pub(crate) trait DpHost: ArmDebugInterface + Sized {
             );
 
             let state = self
-                .dp_manager()
                 .dps
                 .get_mut(&dp)
                 .expect("This DP State was inserted earlier in this function");
@@ -979,6 +1119,8 @@ pub(crate) trait DpHost: ArmDebugInterface + Sized {
                 state.current_select = SelectCache::DPv3(SelectV3(0), Select1(0));
             }
         } else if switched_dp {
+            let sequence = self.sequence.clone();
+
             self.forget_memory_aps();
             let start_span = tracing::debug_span!("debug_port_start").entered();
             sequence.debug_port_start(self, dp)?;
@@ -986,7 +1128,7 @@ pub(crate) trait DpHost: ArmDebugInterface + Sized {
         }
 
         // note(unwrap): Entry gets inserted above
-        Ok(self.dp_manager().dps.get_mut(&dp).unwrap())
+        Ok(self.dps.get_mut(&dp).unwrap())
     }
 
     fn select_dp_and_dp_bank(
@@ -1050,7 +1192,7 @@ pub(crate) trait DpHost: ArmDebugInterface + Sized {
             return;
         }
 
-        let Some(state) = self.dp_manager().dps.get_mut(&dp) else {
+        let Some(state) = self.dps.get_mut(&dp) else {
             return;
         };
 
@@ -1139,82 +1281,25 @@ pub(crate) trait DpHost: ArmDebugInterface + Sized {
 
         Ok(())
     }
-
-    /// Disconnect from all debug ports, and connect to the current one again.
-    fn reinitialize_dps(&mut self) -> Result<(), ArmError> {
-        let current_dp = self.dp_manager().current_dp;
-
-        // Simulate the drop / close of the initialized communication interface.
-        self.disconnect();
-
-        // This should be set to None by the disconnect call above.
-        assert!(self.dp_manager().current_dp.is_none());
-        assert!(self.dp_manager().dps.is_empty());
-
-        // Reconnect to the DP again
-        if let Some(dp) = current_dp {
-            self.select_dp(dp)?;
-        }
-
-        Ok(())
-    }
-
-    /// Returns all the access ports of `dp`.
-    fn dp_access_ports(
-        &mut self,
-        dp: DpAddress,
-    ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
-        match self.select_dp(dp).map(|state| state.debug_port_version)? {
-            DebugPortVersion::DPv0 | DebugPortVersion::DPv1 | DebugPortVersion::DPv2 => {
-                Ok(ap::v1::valid_access_ports(self, dp).into_iter().collect())
-            }
-            DebugPortVersion::DPv3 => ap::v2::enumerate_access_ports(self, dp),
-            DebugPortVersion::Unsupported(_) => unreachable!(),
-        }
-    }
-
-    /// Returns a memory interface that accesses memory through the AP registers.
-    fn adi_memory_interface(
-        &mut self,
-        access_port_address: &FullyQualifiedApAddress,
-    ) -> Result<Box<dyn ArmMemoryInterface + '_>, ArmError> {
-        let memory_interface: Box<dyn ArmMemoryInterface + '_> = match access_port_address.ap() {
-            ApAddress::V1(_) => Box::new(ADIMemoryInterface::new(self, access_port_address)?),
-            ApAddress::V2(_) => ap::v2::new_memory_interface(self, access_port_address)?,
-        };
-        Ok(memory_interface)
-    }
 }
 
 impl SwoAccess for ArmCommunicationInterface {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ArmError> {
-        let probe: &mut dyn DebugProbe = match self.probe.as_mut().unwrap() {
-            ArmProbe::Swd(probe, _) => probe.as_mut(),
-            ArmProbe::Jtag(probe, _) => probe.as_mut(),
-        };
-        match probe.get_swo_interface_mut() {
+        match self.transport().probe().get_swo_interface_mut() {
             Some(interface) => interface.enable_swo(config),
             None => Err(ArmError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         }
     }
 
     fn disable_swo(&mut self) -> Result<(), ArmError> {
-        let probe: &mut dyn DebugProbe = match self.probe.as_mut().unwrap() {
-            ArmProbe::Swd(probe, _) => probe.as_mut(),
-            ArmProbe::Jtag(probe, _) => probe.as_mut(),
-        };
-        match probe.get_swo_interface_mut() {
+        match self.transport().probe().get_swo_interface_mut() {
             Some(interface) => interface.disable_swo(),
             None => Err(ArmError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         }
     }
 
     fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ArmError> {
-        let probe: &mut dyn DebugProbe = match self.probe.as_mut().unwrap() {
-            ArmProbe::Swd(probe, _) => probe.as_mut(),
-            ArmProbe::Jtag(probe, _) => probe.as_mut(),
-        };
-        match probe.get_swo_interface_mut() {
+        match self.transport().probe().get_swo_interface_mut() {
             Some(interface) => interface.read_swo_timeout(timeout),
             None => Err(ArmError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         }
@@ -1236,18 +1321,7 @@ impl DapAccess for ArmCommunicationInterface {
         address: DpRegisterAddress,
     ) -> Result<u32, ArmError> {
         self.select_dp_and_dp_bank(dp, &address)?;
-        let register = RegisterAddress::DpRegister(address);
-        if self.is_swd() {
-            let addr = Self::swd_addr(register);
-            self.with_swd_port(|port| {
-                let mut batch = SwdBatch::new();
-                let handle = batch.read(Port::Dp, addr);
-                let mut results = port.run(batch)?;
-                Ok(results.take(handle).unwrap())
-            })
-        } else {
-            self.with_jtag_chain(|chain, settings| jtag_read_register(chain, register, settings))
-        }
+        self.transport().read(RegisterAddress::DpRegister(address))
     }
 
     fn write_raw_dp_register(
@@ -1257,20 +1331,9 @@ impl DapAccess for ArmCommunicationInterface {
         value: u32,
     ) -> Result<(), ArmError> {
         self.select_dp_and_dp_bank(dp, &address)?;
-        let register = RegisterAddress::DpRegister(address);
-        let result = if self.is_swd() {
-            let addr = Self::swd_addr(register);
-            self.with_swd_port(|port| {
-                let mut batch = SwdBatch::new();
-                batch.write(Port::Dp, addr, value);
-                port.run(batch)?;
-                Ok(())
-            })
-        } else {
-            self.with_jtag_chain(|chain, settings| {
-                jtag_write_register(chain, register, value, settings)
-            })
-        };
+        let result = self
+            .transport()
+            .write(RegisterAddress::DpRegister(address), value);
 
         self.sync_select_cache(dp, address, value, result.is_ok());
 
@@ -1285,20 +1348,7 @@ impl DapAccess for ArmCommunicationInterface {
         self.retry_after_link_loss(ap.dp(), |this| {
             this.select_ap_and_ap_bank(ap, address)?;
             let register = RegisterAddress::ApRegister((address & 0xFF) as u8);
-
-            if this.is_swd() {
-                let addr = Self::ap_swd_addr(address);
-                this.with_swd_port(|port| {
-                    let mut batch = SwdBatch::new();
-                    let handle = port.read_ap_block(&mut batch, addr, 1);
-                    let mut results = port.run(batch)?;
-                    Ok(results.take(handle).unwrap()[0])
-                })
-            } else {
-                this.with_jtag_chain(|chain, settings| {
-                    jtag_read_register(chain, register, settings)
-                })
-            }
+            this.transport().read(register)
         })
     }
 
@@ -1309,24 +1359,8 @@ impl DapAccess for ArmCommunicationInterface {
         values: &mut [u32],
     ) -> Result<(), ArmError> {
         self.select_ap_and_ap_bank(ap, address)?;
-        let register = RegisterAddress::ApRegister((address & 0xFF) as u8);
-
-        if self.is_swd() {
-            let addr = Self::ap_swd_addr(address);
-            let count = values.len();
-            self.with_swd_port(|port| {
-                let mut batch = SwdBatch::new();
-                let handle = port.read_ap_block(&mut batch, addr, count);
-                let mut results = port.run(batch)?;
-                let read_values = results.take(handle).unwrap();
-                values.copy_from_slice(&read_values);
-                Ok(())
-            })
-        } else {
-            self.with_jtag_chain(|chain, settings| {
-                jtag_read_block(chain, register, values, settings)
-            })
-        }
+        self.transport()
+            .read_ap_repeated((address & 0xFF) as u8, values)
     }
 
     fn access_raw_ap_registers(
@@ -1352,9 +1386,9 @@ impl DapAccess for ArmCommunicationInterface {
             "every read needs a word to land in"
         );
 
-        if !self.is_swd() {
-            // JTAG has no batch to pack, so the list is replayed. A repeat of one register is
-            // still a block transfer here, and one access at a time would undo it.
+        if self.transport().ap_batch().is_none() {
+            // Without a batch to pack, the list is replayed. A repeat of one register is still a
+            // block transfer here, and one access at a time would undo it.
             let mut read = 0;
             for run in accesses.chunk_by(same_run) {
                 match run {
@@ -1389,23 +1423,10 @@ impl DapAccess for ArmCommunicationInterface {
         }
         self.select_ap_and_ap_bank(ap, first)?;
 
-        self.with_swd_port(|port| {
-            let mut batch = SwdBatch::new();
-            let mut handles = Vec::new();
-            for &(address, value) in accesses {
-                let addr = Self::ap_swd_addr(address);
-                match value {
-                    Some(value) => batch.write(Port::Ap, addr, value),
-                    None => handles.push(batch.read(Port::Ap, addr)),
-                }
-            }
-
-            let mut results = port.run(batch)?;
-            for (read, handle) in handles.into_iter().enumerate() {
-                values[read] = results.take(handle).unwrap();
-            }
-            Ok(())
-        })
+        self.transport()
+            .ap_batch()
+            .expect("the transport has an AP batch, checked above")
+            .access_ap(accesses, values)
     }
 
     fn write_raw_ap_register(
@@ -1418,20 +1439,7 @@ impl DapAccess for ArmCommunicationInterface {
         self.retry_after_link_loss(ap.dp(), |this| {
             this.select_ap_and_ap_bank(ap, address)?;
             let register = RegisterAddress::ApRegister((address & 0xFF) as u8);
-
-            if this.is_swd() {
-                let addr = Self::ap_swd_addr(address);
-                this.with_swd_port(|port| {
-                    let mut batch = SwdBatch::new();
-                    batch.write(Port::Ap, addr, value);
-                    port.run(batch)?;
-                    Ok(())
-                })
-            } else {
-                this.with_jtag_chain(|chain, settings| {
-                    jtag_write_register(chain, register, value, settings)
-                })
-            }
+            this.transport().write(register, value)
         })
     }
 
@@ -1443,21 +1451,8 @@ impl DapAccess for ArmCommunicationInterface {
     ) -> Result<(), ArmError> {
         self.forget_memory_ap(ap);
         self.select_ap_and_ap_bank(ap, address)?;
-        let register = RegisterAddress::ApRegister((address & 0xFF) as u8);
-
-        if self.is_swd() {
-            let addr = Self::ap_swd_addr(address);
-            self.with_swd_port(|port| {
-                let mut batch = SwdBatch::new();
-                port.write_ap_block(&mut batch, addr, values);
-                port.run(batch)?;
-                Ok(())
-            })
-        } else {
-            self.with_jtag_chain(|chain, settings| {
-                jtag_write_block(chain, register, values, settings)
-            })
-        }
+        self.transport()
+            .write_ap_repeated((address & 0xFF) as u8, values)
     }
 
     fn flush(&mut self) -> Result<(), ArmError> {
@@ -1465,10 +1460,7 @@ impl DapAccess for ArmCommunicationInterface {
     }
 
     fn active_wire_protocol(&self) -> Option<WireProtocol> {
-        match self.probe.as_ref()? {
-            ArmProbe::Swd(_, _) => Some(WireProtocol::Swd),
-            ArmProbe::Jtag(_, _) => Some(WireProtocol::Jtag),
-        }
+        self.transport.as_ref()?.protocol()
     }
 
     fn debug_port_reconnect_with(
@@ -1480,15 +1472,21 @@ impl DapAccess for ArmCommunicationInterface {
     }
 
     fn memory_ap_epoch(&self) -> u64 {
-        self.dp_manager.memory_ap_epoch
+        self.memory_ap_epoch
     }
 
     fn take_memory_ap(&mut self, ap: &FullyQualifiedApAddress) -> Option<ap::MemoryAp> {
-        self.dp_manager.take_memory_ap(ap)
+        self.dps.get_mut(&ap.dp())?.memory_aps.remove(ap.ap())
     }
 
     fn store_memory_ap(&mut self, memory_ap: ap::MemoryAp) {
-        self.dp_manager.store_memory_ap(memory_ap);
+        let address = memory_ap.ap_address().clone();
+        if let Some(state) = self.dps.get_mut(&address.dp()) {
+            // Another interface stored this AP while ours was in use, so neither state is trusted.
+            if state.memory_aps.remove(address.ap()).is_none() {
+                state.memory_aps.insert(address.ap().clone(), memory_ap);
+            }
+        }
     }
 }
 
