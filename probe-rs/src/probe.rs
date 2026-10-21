@@ -294,6 +294,46 @@ impl<T: ProbeError> From<T> for ProbeCreationError {
     }
 }
 
+/// The `reset_line_connected` setting of a probe.
+///
+/// A probe driver keeps one, and checks it before it asserts the reset line. Release and read
+/// of the reset line stay possible.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ResetLine {
+    connected: bool,
+}
+
+impl Default for ResetLine {
+    fn default() -> Self {
+        Self { connected: true }
+    }
+}
+
+impl ResetLine {
+    /// Sets whether the reset line is connected to the target.
+    pub fn set_connected(&mut self, connected: bool) {
+        self.connected = connected;
+    }
+
+    /// Fails if the reset line is not connected.
+    pub fn check_assert(&self) -> Result<(), DebugProbeError> {
+        if self.connected {
+            Ok(())
+        } else {
+            Err(DebugProbeError::ResetLineNotConnected)
+        }
+    }
+
+    /// Fails if the reset line is not connected and the pins drive nRESET low.
+    pub fn check_pins(&self, out: swd::Pins, select: swd::Pins) -> Result<(), DebugProbeError> {
+        if select.nreset() && !out.nreset() {
+            self.check_assert()
+        } else {
+            Ok(())
+        }
+    }
+}
+
 /// The Probe struct is a generic wrapper over the different
 /// probes supported.
 ///
@@ -316,7 +356,6 @@ impl<T: ProbeError> From<T> for ProbeCreationError {
 pub struct Probe {
     inner: Box<dyn DebugProbe>,
     attached: bool,
-    reset_line_connected: bool,
 }
 
 impl Probe {
@@ -325,14 +364,10 @@ impl Probe {
         Self::from_specific_probe(Box::new(probe))
     }
 
-    pub(crate) fn from_attached_probe(
-        probe: Box<dyn DebugProbe>,
-        reset_line_connected: bool,
-    ) -> Self {
+    pub(crate) fn from_attached_probe(probe: Box<dyn DebugProbe>) -> Self {
         Self {
             inner: probe,
             attached: true,
-            reset_line_connected,
         }
     }
 
@@ -341,25 +376,14 @@ impl Probe {
         Probe {
             inner: probe,
             attached: false,
-            reset_line_connected: true,
         }
     }
 
     /// Sets whether the reset line of the probe is connected to the target. If it is not,
-    /// attaching under reset fails. Some probes, for example the WCH-Link, use their reset line
-    /// only after this is set to `true`.
+    /// all operations that assert the reset line fail. Some probes, for example the WCH-Link,
+    /// use their reset line only after this is set to `true`.
     pub fn set_reset_line_connected(&mut self, connected: bool) {
-        self.reset_line_connected = connected;
         self.inner.set_reset_line_connected(connected);
-    }
-
-    /// Fails if the reset line is marked as not connected.
-    pub(crate) fn check_reset_line(&self) -> Result<(), DebugProbeError> {
-        if self.reset_line_connected {
-            Ok(())
-        } else {
-            Err(DebugProbeError::ResetLineNotConnected)
-        }
     }
 
     /// Get the human readable name for the probe.
@@ -442,7 +466,6 @@ impl Probe {
 
     /// A combination of [`Probe::attach_to_unspecified`] and [`Probe::attach_under_reset`].
     pub fn attach_to_unspecified_under_reset(&mut self) -> Result<(), Error> {
-        self.check_reset_line()?;
         if self.inner.try_as_swd_probe_mut().is_some()
             || self.inner.try_as_jtag_chain_access_mut().is_some()
         {
@@ -618,8 +641,7 @@ impl Probe {
             return Err((self, DebugProbeError::NotAttached.into()));
         }
 
-        let reset_line_connected = self.reset_line_connected;
-        let mut interface = match self.inner.try_get_arm_debug_interface(sequence.clone()) {
+        let interface = match self.inner.try_get_arm_debug_interface(sequence.clone()) {
             Ok(interface) => interface,
             Err((probe, err)) => match probe.try_as_swd_probe() {
                 Ok(swd_probe) => {
@@ -634,13 +656,9 @@ impl Probe {
                         use_overrun_detect,
                     )
                 }
-                Err(probe) => {
-                    return Err((Probe::from_attached_probe(probe, reset_line_connected), err));
-                }
+                Err(probe) => return Err((Probe::from_attached_probe(probe), err)),
             },
         };
-        // The probe that `close` returns keeps the setting.
-        interface.set_reset_line_connected(reset_line_connected);
         Ok(interface)
     }
 
@@ -794,9 +812,12 @@ pub trait DebugProbe: Any + Send + fmt::Debug {
 
     /// Tells the probe that its reset line is connected to the target, or not.
     ///
-    /// Only [`Probe::set_reset_line_connected`] calls this. A probe that does not use its reset
-    /// line by default can use it after this is called with `true`.
-    fn set_reset_line_connected(&mut self, _connected: bool) {}
+    /// Only [`Probe::set_reset_line_connected`] calls this. If `connected` is false, the probe
+    /// must not assert its reset line: [`DebugProbe::target_reset`],
+    /// [`DebugProbe::target_reset_assert`] and pin operations that drive nRESET low fail with
+    /// [`DebugProbeError::ResetLineNotConnected`]. [`ResetLine`] does these checks. A probe that
+    /// does not use its reset line by default can use it after this is called with `true`.
+    fn set_reset_line_connected(&mut self, connected: bool);
 
     /// Selects the transport protocol to be used by the debug probe.
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError>;
@@ -1215,5 +1236,28 @@ mod test {
 
         assert!(probe_info.is_probe_type::<ftdi::FtdiProbeFactory>());
         assert!(!probe_info.is_probe_type::<jlink::JLinkFactory>());
+    }
+
+    #[test]
+    fn reset_line_blocks_only_asserts() {
+        let mut nreset = swd::Pins(0);
+        nreset.set_nreset(true);
+        let low = swd::Pins(0);
+        let mut line = ResetLine::default();
+        line.check_assert().unwrap();
+        line.check_pins(low, nreset).unwrap();
+
+        line.set_connected(false);
+        assert!(matches!(
+            line.check_assert(),
+            Err(DebugProbeError::ResetLineNotConnected)
+        ));
+        assert!(matches!(
+            line.check_pins(low, nreset),
+            Err(DebugProbeError::ResetLineNotConnected)
+        ));
+        // Release, and pins without nRESET, stay possible.
+        line.check_pins(nreset, nreset).unwrap();
+        line.check_pins(low, low).unwrap();
     }
 }

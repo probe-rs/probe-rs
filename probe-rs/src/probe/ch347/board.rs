@@ -252,6 +252,9 @@ impl Ch347Device {
     /// Pulls the target's reset line low or releases it the way the board wants. Returns
     /// the line's level afterwards.
     fn drive_reset(&mut self, pin: ResetPin, assert: bool) -> Result<bool, DebugProbeError> {
+        if assert {
+            self.reset_line.check_assert()?;
+        }
         let drive = if assert { Drive::Low } else { pin.release };
         self.reset_driven = true;
         // Recorded before the write, so a lost reply still gets the line released.

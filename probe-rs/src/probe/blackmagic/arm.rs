@@ -48,8 +48,6 @@ pub(crate) struct BlackMagicProbeArmDebug {
 
     /// Accelerators supported by this probe.
     accelerators: Accelerators,
-
-    reset_line_connected: bool,
 }
 
 #[derive(Debug)]
@@ -74,7 +72,6 @@ impl BlackMagicProbeArmDebug {
             dps: HashMap::new(),
             use_overrun_detect: true,
             accelerators,
-            reset_line_connected: true,
         })
     }
 
@@ -226,11 +223,7 @@ impl ArmDebugInterface for BlackMagicProbeArmDebug {
     }
 
     fn close(self: Box<Self>) -> Probe {
-        Probe::from_attached_probe(self.probe, self.reset_line_connected)
-    }
-
-    fn set_reset_line_connected(&mut self, connected: bool) {
-        self.reset_line_connected = connected;
+        Probe::from_attached_probe(self.probe)
     }
 
     fn current_debug_port(&self) -> Option<DpAddress> {

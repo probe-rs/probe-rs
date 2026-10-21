@@ -22,6 +22,7 @@ use crate::architecture::arm::sequences::{ArmDebugSequence, cortex_m_core_start}
 use crate::architecture::arm::traits::DebugPortWire;
 use crate::architecture::arm::{ArmError, FullyQualifiedApAddress};
 use crate::flashing::DebugFlashSequence;
+use crate::probe::DebugProbeError;
 use probe_rs_target::CoreType;
 
 /// Marker struct for debug and flash sequencing on CC23xx/CC27xx family parts.
@@ -201,10 +202,13 @@ impl ArmDebugSequence for CC23xxCC27xx {
         let Err(error) = self.debug_port_setup_default(interface, dp) else {
             return Ok(());
         };
-        tracing::info!("CC23xx/CC27xx: no answer ({error}), retrying after a pin reset");
 
-        // Assert nRESET (drive low).
-        self.reset_hardware_assert(interface)?;
+        // Assert nRESET (drive low). Without a reset line, there is nothing to retry.
+        match self.reset_hardware_assert(interface) {
+            Err(ArmError::Probe(DebugProbeError::ResetLineNotConnected)) => return Err(error),
+            result => result?,
+        }
+        tracing::info!("CC23xx/CC27xx: no answer ({error}), retrying after a pin reset");
         thread::sleep(Duration::from_millis(5));
 
         // Deassert nRESET: set both pin_output and pin_select bits so the

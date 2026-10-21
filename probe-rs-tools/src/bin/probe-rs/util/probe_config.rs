@@ -66,7 +66,8 @@ pub struct ProbeConfig {
     pub protocol: Option<WireProtocol>,
     /// The reset line of the probe is connected to the target's nRESET. `probe-rs reset` then uses a
     /// pin reset. The other commands use a pin reset only on request, for example for connect under
-    /// reset. If `false`, a pin reset and connect under reset fail.
+    /// reset. If `false`, probe-rs does not assert the reset line, and operations that need a pin
+    /// reset fail.
     /// A WCH-LinkE or WCH-LinkW resets with its RST pin only if this is `true`.
     pub reset_line_connected: Option<bool>,
     /// Settings of the probe driver.
@@ -426,8 +427,10 @@ mod tests {
         let mut probe = lister.open(&probe("0012:0023")).unwrap();
         assert!(matches!(
             probe.attach_to_unspecified_under_reset(),
-            Err(probe_rs::Error::Probe(
-                DebugProbeError::ResetLineNotConnected
+            Err(probe_rs::Error::Arm(
+                probe_rs::architecture::arm::ArmError::Probe(
+                    DebugProbeError::ResetLineNotConnected
+                )
             ))
         ));
     }

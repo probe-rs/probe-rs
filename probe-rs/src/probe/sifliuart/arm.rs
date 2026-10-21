@@ -32,8 +32,6 @@ pub(crate) struct SifliUartArmDebug {
 
     /// A copy of the sequence that was passed during initialization
     _sequence: Arc<dyn ArmDebugSequence>,
-
-    reset_line_connected: bool,
 }
 
 impl SifliUartArmDebug {
@@ -43,7 +41,6 @@ impl SifliUartArmDebug {
             is_connected_to_dp: false,
             _access_ports: BTreeSet::new(),
             _sequence: sequence,
-            reset_line_connected: true,
         }
     }
 }
@@ -166,11 +163,7 @@ impl ArmDebugInterface for SifliUartArmDebug {
     }
 
     fn close(self: Box<Self>) -> Probe {
-        Probe::from_attached_probe(self.probe, self.reset_line_connected)
-    }
-
-    fn set_reset_line_connected(&mut self, connected: bool) {
-        self.reset_line_connected = connected;
+        Probe::from_attached_probe(self.probe)
     }
 
     fn current_debug_port(&self) -> Option<DpAddress> {

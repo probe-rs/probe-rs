@@ -138,6 +138,10 @@ impl DebugProbe for EspUsbJtag {
         Ok(())
     }
 
+    fn set_reset_line_connected(&mut self, _connected: bool) {
+        // The reset is inside the chip. There is no reset line.
+    }
+
     fn try_as_jtag_chain(&mut self) -> Option<JtagChain<'_>> {
         Some(JtagChain::new(self))
     }

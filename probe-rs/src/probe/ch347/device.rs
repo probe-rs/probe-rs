@@ -9,7 +9,8 @@ use nusb::{
 };
 
 use crate::probe::{
-    DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError, WireProtocol,
+    DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError, ResetLine,
+    WireProtocol,
     list::{ProbeListItem, usb_probe_accessibility},
 };
 
@@ -70,6 +71,8 @@ pub(crate) struct Ch347Device {
     /// The GPIO wired to the target's reset line: the board's, or the one the driver settings
     /// name.
     pub(super) reset_pin: Option<ResetPin>,
+    /// The `reset_line_connected` setting. If false, the reset line is never pulled low.
+    pub(super) reset_line: ResetLine,
     /// The reset line while pulled low.
     pub(super) reset_asserted: Option<ResetPin>,
     /// Set once this session drives the reset line.
@@ -171,6 +174,7 @@ impl Ch347Device {
             board,
             protocol: WireProtocol::Jtag,
             reset_pin: board.and_then(|board| board.reset),
+            reset_line: ResetLine::default(),
             reset_asserted: None,
             reset_driven: false,
             led: None,

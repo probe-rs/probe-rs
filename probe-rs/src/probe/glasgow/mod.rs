@@ -3,7 +3,7 @@
 //! This implementation is compatible with the `probe-rs` applet. The Glasgow toolkit must first
 //! be used to build the bitstream and configure the device; probe-rs cannot do that itself.
 
-use crate::probe::Pins;
+use crate::probe::{Pins, ResetLine};
 
 use super::{
     BatchError, BatchExecutionError, BitSequence, CommandResult, DebugProbe, DebugProbeError,
@@ -208,6 +208,7 @@ pub struct Glasgow {
     device: GlasgowDevice,
     ref_clock: u32,
     divisor: u16,
+    reset_line: ResetLine,
 }
 
 impl std::fmt::Debug for Glasgow {
@@ -224,6 +225,7 @@ impl Glasgow {
             device,
             ref_clock,
             divisor: 0,
+            reset_line: ResetLine::default(),
         })
     }
 }
@@ -266,12 +268,17 @@ impl DebugProbe for Glasgow {
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
         tracing::debug!("target_reset_assert()");
+        self.reset_line.check_assert()?;
         self.device.assert_reset()
     }
 
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
         tracing::debug!("target_reset_deassert()");
         self.device.clear_reset()
+    }
+
+    fn set_reset_line_connected(&mut self, connected: bool) {
+        self.reset_line.set_connected(connected);
     }
 
     fn active_protocol(&self) -> Option<super::WireProtocol> {
@@ -376,7 +383,9 @@ impl SwdProbe for Glasgow {
                     } else if out.nreset() {
                         self.device.clear_reset()
                     } else {
-                        self.device.assert_reset()
+                        self.reset_line
+                            .check_assert()
+                            .and_then(|()| self.device.assert_reset())
                     }
                 }
             };
