@@ -4,6 +4,7 @@ mod cmsis_swd;
 mod commands;
 mod tcp;
 mod tools;
+mod udp;
 
 use crate::{
     CoreStatus,
@@ -84,16 +85,26 @@ impl std::fmt::Display for CmsisDapFactory {
 
 impl ProbeFactory for CmsisDapFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
-        let device = match tcp_address(selector) {
-            Some(address) => CmsisDapDevice::Tcp {
+        let device = if let Some(address) = tcp_address(selector) {
+            CmsisDapDevice::Tcp {
                 device: tcp::TcpDevice::connect(address).map_err(|error| {
                     DebugProbeError::ProbeCouldNotBeCreated(CmsisDapError::TcpConnect(error).into())
                 })?,
                 // Large enough for the packet size query; the reply to it replaces this.
                 max_packet_size: 1024,
                 timeout: commands::DEFAULT_USB_TIMEOUT,
-            },
-            None => tools::open_device_from_selector(selector)?,
+            }
+        } else if let Some(address) = udp_address(selector) {
+            CmsisDapDevice::Udp {
+                device: udp::UdpDevice::connect(address).map_err(|error| {
+                    DebugProbeError::ProbeCouldNotBeCreated(CmsisDapError::UdpConnect(error).into())
+                })?,
+                // Large enough for the packet size query; the reply to it replaces this.
+                max_packet_size: 1024,
+                timeout: commands::DEFAULT_USB_TIMEOUT,
+            }
+        } else {
+            tools::open_device_from_selector(selector)?
         };
         CmsisDap::new_from_device(device)
             .map(Box::new)
@@ -108,22 +119,28 @@ impl ProbeFactory for CmsisDapFactory {
         &self,
         selector: Option<&DebugProbeSelector>,
     ) -> Vec<crate::probe::list::ProbeListItem> {
-        // A TCP probe cannot be enumerated, so list it when the selector names one.
-        if let Some(selector) = selector
-            && let Some(address) = tcp_address(selector)
-        {
-            return vec![crate::probe::list::ProbeListItem::accessible(
-                crate::probe::DebugProbeInfo {
-                    identifier: "CMSIS-DAP TCP".to_string(),
-                    vendor_id: tcp::TCP_VID,
-                    product_id: tcp::TCP_PID,
-                    serial_number: Some(address.to_string()),
-                    probe_factory: &Self,
-                    is_hid_interface: false,
-                    interface: None,
-                    usb_location: None,
-                },
-            )];
+        // A network probe cannot be enumerated, so list it when the selector names one.
+        if let Some(selector) = selector {
+            let named = tcp_address(selector)
+                .map(|address| ("CMSIS-DAP TCP", tcp::TCP_VID, tcp::TCP_PID, address))
+                .or_else(|| {
+                    udp_address(selector)
+                        .map(|address| ("CMSIS-DAP UDP", udp::UDP_VID, udp::UDP_PID, address))
+                });
+            if let Some((identifier, vendor_id, product_id, address)) = named {
+                return vec![crate::probe::list::ProbeListItem::accessible(
+                    crate::probe::DebugProbeInfo {
+                        identifier: identifier.to_string(),
+                        vendor_id,
+                        product_id,
+                        serial_number: Some(address.to_string()),
+                        probe_factory: &Self,
+                        is_hid_interface: false,
+                        interface: None,
+                        usb_location: None,
+                    },
+                )];
+            }
         }
         self.list_probes()
             .into_iter()
@@ -134,7 +151,16 @@ impl ProbeFactory for CmsisDapFactory {
 
 /// The address of the TCP probe a selector names, if it names one.
 fn tcp_address(selector: &DebugProbeSelector) -> Option<&str> {
-    if selector.vendor_id != tcp::TCP_VID || selector.product_id != tcp::TCP_PID {
+    network_address(selector, tcp::TCP_VID, tcp::TCP_PID)
+}
+
+/// The address of the UDP probe a selector names, if it names one.
+fn udp_address(selector: &DebugProbeSelector) -> Option<&str> {
+    network_address(selector, udp::UDP_VID, udp::UDP_PID)
+}
+
+fn network_address(selector: &DebugProbeSelector, vendor_id: u16, product_id: u16) -> Option<&str> {
+    if selector.vendor_id != vendor_id || selector.product_id != product_id {
         return None;
     }
     selector
@@ -896,6 +922,10 @@ impl DebugProbe for CmsisDap {
 
             CmsisDapDevice::Tcp { device, .. } => {
                 format!("CMSIS-DAP TCP {}", device.address()).leak()
+            }
+
+            CmsisDapDevice::Udp { device, .. } => {
+                format!("CMSIS-DAP UDP {}", device.address()).leak()
             }
 
             #[cfg(test)]
