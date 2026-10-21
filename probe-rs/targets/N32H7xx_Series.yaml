@@ -1,0 +1,719 @@
+name: N32H7xx Series
+generated_from_pack: true
+pack_file_release: 1.3.0
+variants:
+- name: N32H730xIx7
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x15000000
+      end: 0x151e0000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24040000
+    cores:
+    - main
+  flash_algorithms:
+  - n32h76x_2048
+- name: N32H735xIx7
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x15000000
+      end: 0x151e0000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24040000
+    cores:
+    - main
+  flash_algorithms:
+  - n32h76x_2048
+- name: N32H735xIx7EC
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x15000000
+      end: 0x151e0000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24040000
+    cores:
+    - main
+  flash_algorithms:
+  - n32h76x_2048
+- name: N32H760xIx7
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x15000000
+      end: 0x151e0000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24020000
+    cores:
+    - main
+  flash_algorithms:
+  - n32h76x_2048
+- name: N32H760xKx7
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x15000000
+      end: 0x153e0000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24020000
+    cores:
+    - main
+  flash_algorithms:
+  - n32h76x_4096
+- name: N32H762xIx7
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x15000000
+      end: 0x151e0000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24020000
+    cores:
+    - main
+  flash_algorithms:
+  - n32h76x_2048
+- name: N32H762xKx7
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x15000000
+      end: 0x153e0000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24020000
+    cores:
+    - main
+  flash_algorithms:
+  - n32h76x_4096
+- name: N32H765xIx7
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x15000000
+      end: 0x151e0000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24020000
+    cores:
+    - main
+  flash_algorithms:
+  - n32h76x_2048
+- name: N32H765xIx7EC
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x15000000
+      end: 0x151e0000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24020000
+    cores:
+    - main
+  flash_algorithms:
+  - n32h76x_2048
+- name: N32H765xKx7
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x15000000
+      end: 0x153e0000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24020000
+    cores:
+    - main
+  flash_algorithms:
+  - n32h76x_4096
+- name: N32H765xKx7EC
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x15000000
+      end: 0x153e0000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24020000
+    cores:
+    - main
+  flash_algorithms:
+  - n32h76x_4096
+- name: N32H785xIx7
+  cores:
+  - name: cm7
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  - name: cm4
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 2
+  memory_map:
+  - !Nvm
+    name: FLASH_Bank1
+    range:
+      start: 0x15000000
+      end: 0x151e0000
+    cores:
+    - cm7
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: FLASH_Bank2
+    range:
+      start: 0x15080000
+      end: 0x151e0000
+    cores:
+    - cm4
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24020000
+    cores:
+    - cm7
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm4
+  flash_algorithms:
+  - n32h78x_2048_cm7
+  - n32h78x_2048_cm4
+- name: N32H785xIx7EC
+  cores:
+  - name: cm7
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  - name: cm4
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 2
+  memory_map:
+  - !Nvm
+    name: FLASH_Bank1
+    range:
+      start: 0x15000000
+      end: 0x151e0000
+    cores:
+    - cm7
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: FLASH_Bank2
+    range:
+      start: 0x15080000
+      end: 0x151e0000
+    cores:
+    - cm4
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24020000
+    cores:
+    - cm7
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm4
+  flash_algorithms:
+  - n32h78x_2048_cm7
+  - n32h78x_2048_cm4
+- name: N32H785xKx7
+  cores:
+  - name: cm7
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  - name: cm4
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 2
+  memory_map:
+  - !Nvm
+    name: FLASH_Bank1
+    range:
+      start: 0x15000000
+      end: 0x153e0000
+    cores:
+    - cm7
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: FLASH_Bank2
+    range:
+      start: 0x15080000
+      end: 0x153e0000
+    cores:
+    - cm4
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24020000
+    cores:
+    - cm7
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm4
+  flash_algorithms:
+  - n32h78x_4096_cm7
+  - n32h78x_4096_cm4
+- name: N32H785xKx7EC
+  cores:
+  - name: cm7
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  - name: cm4
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 2
+  memory_map:
+  - !Nvm
+    name: FLASH_Bank1
+    range:
+      start: 0x15000000
+      end: 0x153e0000
+    cores:
+    - cm7
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: FLASH_Bank2
+    range:
+      start: 0x15080000
+      end: 0x153e0000
+    cores:
+    - cm4
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24020000
+    cores:
+    - cm7
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm4
+  flash_algorithms:
+  - n32h78x_4096_cm7
+  - n32h78x_4096_cm4
+- name: N32H787xIx7
+  cores:
+  - name: cm7
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  - name: cm4
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 2
+  memory_map:
+  - !Nvm
+    name: FLASH_Bank1
+    range:
+      start: 0x15000000
+      end: 0x151e0000
+    cores:
+    - cm7
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: FLASH_Bank2
+    range:
+      start: 0x15080000
+      end: 0x151e0000
+    cores:
+    - cm4
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24020000
+    cores:
+    - cm7
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm4
+  flash_algorithms:
+  - n32h78x_2048_cm7
+  - n32h78x_2048_cm4
+- name: N32H787xKx7
+  cores:
+  - name: cm7
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  - name: cm4
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 2
+  memory_map:
+  - !Nvm
+    name: FLASH_Bank1
+    range:
+      start: 0x15000000
+      end: 0x153e0000
+    cores:
+    - cm7
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: FLASH_Bank2
+    range:
+      start: 0x15080000
+      end: 0x153e0000
+    cores:
+    - cm4
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x24000000
+      end: 0x24020000
+    cores:
+    - cm7
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm4
+  flash_algorithms:
+  - n32h78x_4096_cm7
+  - n32h78x_4096_cm4
+flash_algorithms:
+- name: n32h76x_2048
+  description: N32H76x_2048
+  default: true
+  instructions: ACAG4AAhAOBJHLH1+n/720AcsPX6f/XbcEct6fBBBUYORhdGACAtSQhg//fp/yxI0PhMAUDwQEAoSSg5CGApTKBHACC96PCBAUYAIHBHAUYAIHBHcLUkTgAlCOAF8ahQsEcERgyxASBwvQX1gFW19fAf89MAIPfncLUERgTwf0Cw8ahfAtEZSIRCAdkBIHC9FU4gRrBHBUYNuQAg9+cBIPXnLenwQQRGDkYXRgTwf0Cw8ahfAtENSIRCAtkBIL3o8IHf+CyAMkY5RiBGwEcFRg25ACDz5wEg8ecAAHQBA1gAAANYAXr/H4F8/x///x0VgXv/HwAAAAD/AAAA/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  load_address: 0x24000008
+  pc_init: 0x1b
+  pc_uninit: 0x49
+  pc_program_page: 0xa3
+  pc_erase_sector: 0x79
+  pc_erase_all: 0x55
+  data_section_offset: 0xf4
+  flash_properties:
+    address_range:
+      start: 0x15000000
+      end: 0x151e0000
+    page_size: 0x1000
+    erased_byte_value: 0xff
+    program_page_timeout: 100000
+    erase_sector_timeout: 10000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: n32h76x_4096
+  description: N32H76x_4096
+  default: true
+  instructions: ACAG4AAhAOBJHLH1+n/720AcsPX6f/XbcEct6fBBBUYORhdGACAtSQhg//fp/yxI0PhMAUDwQEAoSSg5CGApTKBHACC96PCBAUYAIHBHAUYAIHBHcLUkTgAlCOAF8ahQsEcERgyxASBwvQX1gFW19Xgf89MAIPfncLUERgTwf0Cw8ahfAtEZSIRCAdkBIHC9FU4gRrBHBUYNuQAg9+cBIPXnLenwQQRGDkYXRgTwf0Cw8ahfAtENSIRCAtkBIL3o8IHf+CyAMkY5RiBGwEcFRg25ACDz5wEg8ecAAHQBA1gAAANYAXr/H4F8/x///z0VgXv/HwAAAAD/AAAA/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  load_address: 0x24000008
+  pc_init: 0x1b
+  pc_uninit: 0x49
+  pc_program_page: 0xa3
+  pc_erase_sector: 0x79
+  pc_erase_all: 0x55
+  data_section_offset: 0xf4
+  flash_properties:
+    address_range:
+      start: 0x15000000
+      end: 0x153e0000
+    page_size: 0x1000
+    erased_byte_value: 0xff
+    program_page_timeout: 100000
+    erase_sector_timeout: 10000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: n32h78x_2048_cm7
+  description: N32H78x_2048 (CM7 / FLASH_Bank1)
+  default: true
+  instructions: ACAG4AAhAOBJHLH1+n/720AcsPX6f/XbcEct6fBBBUYORhdGKkgAaEDwQEApScH4TAEpTKBHACC96PCBAUYAIHBHAUYAIHBHcLUkTgAlCOAF8ahQsEcERgyxASBwvQX1gFW19fAf89MAIPfncLUERgTwf0Cw8ahfAtEZSIRCAdkBIHC9FU4gRrBHBUYNuQAg9+cBIPXnLenwQQRGDkYXRgTwf0Cw8ahfAtENSIRCAtkBIL3o8IHf+CyAMkY5RiBGwEcFRg25ACDz5wEg8ecAAEwBA1gAAANYAXr/H4F8/x///x0VgXv/HwAAAAD/AAAA/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  load_address: 0x24000008
+  pc_init: 0x1b
+  pc_uninit: 0x3d
+  pc_program_page: 0x97
+  pc_erase_sector: 0x6d
+  pc_erase_all: 0x49
+  data_section_offset: 0xe8
+  flash_properties:
+    address_range:
+      start: 0x15000000
+      end: 0x151e0000
+    page_size: 0x1000
+    erased_byte_value: 0xff
+    program_page_timeout: 100000
+    erase_sector_timeout: 10000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+  cores:
+  - cm7
+- name: n32h78x_2048_cm4
+  description: N32H78x_2048 (CM4 / FLASH_Bank2)
+  default: true
+  instructions: ACAG4AAhAOBJHLH1+n/720AcsPX6f/XbcEct6fBBBUYORhdGKkgAaEDwQEApScH4TAEpTKBHACC96PCBAUYAIHBHAUYAIHBHcLUkTgAlCOAF8ahQsEcERgyxASBwvQX1gFW19fAf89MAIPfncLUERgTwf0Cw8ahfAtEZSIRCAdkBIHC9FU4gRrBHBUYNuQAg9+cBIPXnLenwQQRGDkYXRgTwf0Cw8ahfAtENSIRCAtkBIL3o8IHf+CyAMkY5RiBGwEcFRg25ACDz5wEg8ecAAEwBA1gAAANYAXr/H4F8/x///x0VgXv/HwAAAAD/AAAA/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  load_address: 0x30000008
+  pc_init: 0x1b
+  pc_uninit: 0x3d
+  pc_program_page: 0x97
+  pc_erase_sector: 0x6d
+  pc_erase_all: 0x49
+  data_section_offset: 0xe8
+  flash_properties:
+    address_range:
+      start: 0x15080000
+      end: 0x151e0000
+    page_size: 0x1000
+    erased_byte_value: 0xff
+    program_page_timeout: 100000
+    erase_sector_timeout: 10000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+  cores:
+  - cm4
+- name: n32h78x_4096_cm7
+  description: N32H78x_4096 (CM7 / FLASH_Bank1)
+  default: true
+  instructions: ACAG4AAhAOBJHLH1+n/720AcsPX6f/XbcEct6fBBBUYORhdGKkgAaEDwQEApScH4TAEpTKBHACC96PCBAUYAIHBHAUYAIHBHcLUkTgAlCOAF8ahQsEcERgyxASBwvQX1gFW19Xgf89MAIPfncLUERgTwf0Cw8ahfAtEZSIRCAdkBIHC9FU4gRrBHBUYNuQAg9+cBIPXnLenwQQRGDkYXRgTwf0Cw8ahfAtENSIRCAtkBIL3o8IHf+CyAMkY5RiBGwEcFRg25ACDz5wEg8ecAAEwBA1gAAANYAXr/H4F8/x///z0VgXv/HwAAAAD/AAAA/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  load_address: 0x24000008
+  pc_init: 0x1b
+  pc_uninit: 0x3d
+  pc_program_page: 0x97
+  pc_erase_sector: 0x6d
+  pc_erase_all: 0x49
+  data_section_offset: 0xe8
+  flash_properties:
+    address_range:
+      start: 0x15000000
+      end: 0x153e0000
+    page_size: 0x1000
+    erased_byte_value: 0xff
+    program_page_timeout: 100000
+    erase_sector_timeout: 10000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+  cores:
+  - cm7
+- name: n32h78x_4096_cm4
+  description: N32H78x_4096 (CM4 / FLASH_Bank2)
+  default: true
+  instructions: ACAG4AAhAOBJHLH1+n/720AcsPX6f/XbcEct6fBBBUYORhdGKkgAaEDwQEApScH4TAEpTKBHACC96PCBAUYAIHBHAUYAIHBHcLUkTgAlCOAF8ahQsEcERgyxASBwvQX1gFW19Xgf89MAIPfncLUERgTwf0Cw8ahfAtEZSIRCAdkBIHC9FU4gRrBHBUYNuQAg9+cBIPXnLenwQQRGDkYXRgTwf0Cw8ahfAtENSIRCAtkBIL3o8IHf+CyAMkY5RiBGwEcFRg25ACDz5wEg8ecAAEwBA1gAAANYAXr/H4F8/x///z0VgXv/HwAAAAD/AAAA/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  load_address: 0x30000008
+  pc_init: 0x1b
+  pc_uninit: 0x3d
+  pc_program_page: 0x97
+  pc_erase_sector: 0x6d
+  pc_erase_all: 0x49
+  data_section_offset: 0xe8
+  flash_properties:
+    address_range:
+      start: 0x15080000
+      end: 0x153e0000
+    page_size: 0x1000
+    erased_byte_value: 0xff
+    program_page_timeout: 100000
+    erase_sector_timeout: 10000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+  cores:
+  - cm4
