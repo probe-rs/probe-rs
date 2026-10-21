@@ -296,6 +296,28 @@ impl WchLinkCommand for ResetTarget {
     }
 }
 
+/// Drive the RST pin of the probe. Only the WCH-LinkE and WCH-LinkW have this pin.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SetRstPin {
+    /// Drive the pin low, which resets the target.
+    Low,
+    /// Release the pin. The pull-up of the target pulls it high.
+    Floating,
+}
+
+impl WchLinkCommand for SetRstPin {
+    const COMMAND_ID: CommandId = CommandId::Control;
+    type Response = ();
+
+    fn payload(&self) -> Vec<u8> {
+        let level = match self {
+            SetRstPin::Low => 0x13,
+            SetRstPin::Floating => 0x15,
+        };
+        vec![0x0e, level]
+    }
+}
+
 /// Check flash protection status
 #[derive(Debug)]
 pub struct CheckFlashProtection;
@@ -317,5 +339,19 @@ impl WchLinkCommand for UnprotectFlash {
 
     fn payload(&self) -> Vec<u8> {
         vec![0x02]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{SetRstPin, WchLinkCommand};
+
+    #[test]
+    fn set_rst_pin_bytes() {
+        let mut buffer = [0u8; 8];
+        let len = SetRstPin::Low.to_bytes(&mut buffer).unwrap();
+        assert_eq!(buffer[..len], [0x81, 0x0d, 0x02, 0x0e, 0x13]);
+        let len = SetRstPin::Floating.to_bytes(&mut buffer).unwrap();
+        assert_eq!(buffer[..len], [0x81, 0x0d, 0x02, 0x0e, 0x15]);
     }
 }

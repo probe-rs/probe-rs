@@ -67,6 +67,7 @@ pub struct ProbeConfig {
     /// The reset line of the probe is connected to the target's nRESET. `probe-rs reset` then uses a
     /// pin reset. The other commands use a pin reset only on request, for example for connect under
     /// reset. If `false`, a pin reset and connect under reset fail.
+    /// A WCH-LinkE or WCH-LinkW resets with its RST pin only if this is `true`.
     pub reset_line_connected: Option<bool>,
     /// Settings of the probe driver.
     pub driver: Option<DriverConfig>,

@@ -346,9 +346,11 @@ impl Probe {
     }
 
     /// Sets whether the reset line of the probe is connected to the target. If it is not,
-    /// attaching under reset fails.
+    /// attaching under reset fails. Some probes, for example the WCH-Link, use their reset line
+    /// only after this is set to `true`.
     pub fn set_reset_line_connected(&mut self, connected: bool) {
         self.reset_line_connected = connected;
+        self.inner.set_reset_line_connected(connected);
     }
 
     /// Fails if the reset line is marked as not connected.
@@ -789,6 +791,12 @@ pub trait DebugProbe: Any + Send + fmt::Debug {
 
     /// This should deassert the reset pin of the target via debug probe.
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError>;
+
+    /// Tells the probe that its reset line is connected to the target, or not.
+    ///
+    /// Only [`Probe::set_reset_line_connected`] calls this. A probe that does not use its reset
+    /// line by default can use it after this is called with `true`.
+    fn set_reset_line_connected(&mut self, _connected: bool) {}
 
     /// Selects the transport protocol to be used by the debug probe.
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError>;

@@ -3,7 +3,7 @@
 //! The protocol is mostly undocumented, and is changing between firmware versions.
 //! For more details see: <https://github.com/ch32-rs/wlink>
 
-use std::fmt;
+use std::{fmt, thread, time::Duration};
 
 use nusb::{DeviceInfo, MaybeFuture};
 
@@ -25,6 +25,9 @@ mod usb_interface;
 
 const VENDOR_ID: u16 = 0x1a86;
 const PRODUCT_ID: u16 = 0x8010;
+
+/// How long a reset pulse holds the RST pin low.
+const RST_PULSE: Duration = Duration::from_millis(50);
 
 // See: RISC-V Debug Specification, 6.1 JTAG DTM Registers
 pub(crate) const DMI_OP_NOP: u8 = 0;
@@ -57,6 +60,11 @@ impl fmt::Display for WchLinkVariant {
 }
 
 impl WchLinkVariant {
+    /// Whether the probe has an RST pin that it can drive.
+    fn has_rst_pin(&self) -> bool {
+        matches!(self, WchLinkVariant::ECh32v305 | WchLinkVariant::WCh32v208)
+    }
+
     fn try_from_u8(value: u8) -> Result<Self, WchLinkError> {
         match value {
             1 => Ok(Self::Ch549),
@@ -177,6 +185,7 @@ impl ProbeFactory for WchLinkFactory {
             chip_family: RiscvChip::CH32V103,
             last_dmi_read: None,
             speed: Speed::default(),
+            use_rst_pin: false,
         };
 
         wlink.init()?;
@@ -203,6 +212,8 @@ pub struct WchLink {
     // Hack to support NOP after READ
     last_dmi_read: Option<(u8, u32, u8)>,
     speed: commands::Speed,
+    /// Reset with the RST pin instead of the debug module. Set by `reset_line_connected`.
+    use_rst_pin: bool,
 }
 
 impl fmt::Debug for WchLink {
@@ -216,6 +227,7 @@ impl fmt::Debug for WchLink {
             .field("chip_id", &self.chip_id)
             .field("last_dmi_read", &self.last_dmi_read)
             .field("speed", &self.speed)
+            .field("use_rst_pin", &self.use_rst_pin)
             .finish()
     }
 }
@@ -294,6 +306,13 @@ impl WchLink {
         Ok((resp.addr, resp.data, resp.op))
     }
 
+    fn set_rst_pin(&mut self, level: commands::SetRstPin) -> Result<(), DebugProbeError> {
+        if !self.variant.has_rst_pin() {
+            return Err(WchLinkError::NoRstPin(self.variant).into());
+        }
+        self.device.send_command(level)
+    }
+
     pub(crate) fn last_dmi_read(&self) -> Option<(u8, u32, u8)> {
         self.last_dmi_read
     }
@@ -357,12 +376,20 @@ impl DebugProbe for WchLink {
     }
 
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
+        if self.use_rst_pin {
+            self.set_rst_pin(commands::SetRstPin::Low)?;
+            thread::sleep(RST_PULSE);
+            return self.set_rst_pin(commands::SetRstPin::Floating);
+        }
         self.device.send_command(commands::ResetTarget)?;
         Ok(())
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
         tracing::info!("target reset assert");
+        if self.use_rst_pin {
+            return self.set_rst_pin(commands::SetRstPin::Low);
+        }
         self.device
             .send_command(commands::DmiOp::write(0x10, 0x80000001))?;
         Ok(())
@@ -370,9 +397,16 @@ impl DebugProbe for WchLink {
 
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
         tracing::info!("target reset deassert");
+        if self.use_rst_pin {
+            return self.set_rst_pin(commands::SetRstPin::Floating);
+        }
         self.device
             .send_command(commands::DmiOp::write(0x10, 0x00000001))?;
         Ok(())
+    }
+
+    fn set_reset_line_connected(&mut self, connected: bool) {
+        self.use_rst_pin = connected;
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
@@ -459,6 +493,8 @@ pub(crate) enum WchLinkError {
     Protocol(u8, Vec<u8>),
     /// Unknown chip {0:#04x}.
     UnknownChip(u8),
+    /// The {0} has no RST pin. Use a WCH-LinkE or WCH-LinkW, or remove `reset_line_connected`.
+    NoRstPin(WchLinkVariant),
 }
 
 impl ProbeError for WchLinkError {}
