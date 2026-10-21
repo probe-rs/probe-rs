@@ -1,9 +1,7 @@
 //! NSING vendor support.
 //!
-//! The vendor renamed from Nationstech to NSING in September 2025.
-//! Their CMSIS-Packs and flash algorithms still carry the old name
-//! (`Nationstech.N32H7xx_DFP`), so a target description generated from one will
-//! spell it that way — that is expected, and not a second vendor.
+//! Nationstech changed its name to NSING in September 2025. The CMSIS-Packs
+//! and flash algorithms still use the old name (`Nationstech.N32H7xx_DFP`).
 
 use probe_rs_target::Chip;
 
@@ -20,9 +18,8 @@ pub struct Nsing;
 
 impl Vendor for Nsing {
     fn try_create_debug_sequence(&self, chip: &Chip) -> Option<DebugSequence> {
-        // Every N32H7xx part needs this sequence, so match the family rather than
-        // individual part numbers. Case-folded because the vendor's own device list
-        // mixes cases (`N32H760xIx7` next to `N32H785XIB7EC`).
+        // All N32H7xx parts use this sequence. The vendor device list mixes
+        // cases (`N32H760xIx7`, `N32H785XIB7EC`), so ignore case.
         if chip.name.to_ascii_uppercase().starts_with("N32H7") {
             return Some(DebugSequence::Arm(
                 sequences::n32h7xx::N32H7xx::create_for_chip(chip),
@@ -41,12 +38,8 @@ mod tests {
         Chip::generic_arm(name, CoreType::Armv7em)
     }
 
-    /// The family match is a name prefix and nothing else, so it is the only
-    /// thing standing between an N32H7xx part and no sequence at all.
-    ///
-    /// Parts from all three families are listed on purpose: 73x and 76x are
-    /// single-core and 78x is dual-core, and the sequence is expected to take
-    /// all of them.
+    /// The sequence must match the single-core 73x/76x and the dual-core 78x
+    /// parts.
     #[test]
     fn picks_up_n32h7_parts() {
         for name in [
@@ -65,15 +58,10 @@ mod tests {
         }
     }
 
-    /// The other half of the same prefix: it has to be narrow enough to leave the
-    /// vendor's *own* other families alone, because nothing else in the registry
-    /// would claim them — a stray match here means a part that gets a sequence it
-    /// was never meant to have.
-    ///
-    /// `N32H47x` is the sharpest of the four: it is one digit away from matching,
-    /// and a real part, not a hypothetical one (the vendor ships
-    /// `N32H47x_256.FLM` for it). The rest are the automotive, general-purpose
-    /// and low-power lines.
+    /// The sequence must not match the other vendor families (automotive,
+    /// general-purpose, low-power). `N32H47x` is a real part with a flash
+    /// algorithm (`N32H47x_256.FLM`), and its name
+    /// is one digit away from a match.
     #[test]
     fn leaves_the_vendors_other_families_alone() {
         for name in ["N32H47x", "N32G45x", "N32L40x", "N32A455"] {
