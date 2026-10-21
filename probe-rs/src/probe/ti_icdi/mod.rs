@@ -14,8 +14,8 @@ use crate::{
     Error,
     architecture::arm::{ArmDebugInterface, ArmError, sequences::ArmDebugSequence},
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeSelector, ProbeError, ProbeFactory, WireProtocol,
-        list::ProbeListItem, ti_icdi::arm::IcdiArmDebug,
+        DebugProbe, DebugProbeError, DebugProbeSelector, ProbeError, ProbeFactory, ResetLine,
+        WireProtocol, list::ProbeListItem, ti_icdi::arm::IcdiArmDebug,
     },
 };
 
@@ -76,6 +76,7 @@ impl ProbeFactory for IcdiFactory {
             name,
             speed_khz: 2000,
             speed_setting: b'0',
+            reset_line: ResetLine::default(),
         }))
     }
 
@@ -92,6 +93,7 @@ pub struct IcdiProbe {
     name: String,
     speed_khz: u32,
     speed_setting: u8,
+    reset_line: ResetLine,
 }
 
 impl DebugProbe for IcdiProbe {
@@ -144,12 +146,14 @@ impl DebugProbe for IcdiProbe {
     }
 
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
+        self.reset_line.check_assert()?;
         self.device
             .send_remote_command(b"debug hreset")?
             .check_cmd_result()
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+        self.reset_line.check_assert()?;
         self.device
             .send_remote_command(b"debug sreset")
             .and_then(|r| r.check_cmd_result())
@@ -159,6 +163,10 @@ impl DebugProbe for IcdiProbe {
         self.device
             .send_remote_command(b"debug hreset")
             .and_then(|r| r.check_cmd_result())
+    }
+
+    fn set_reset_line_connected(&mut self, connected: bool) {
+        self.reset_line.set_connected(connected);
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {

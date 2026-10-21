@@ -21,7 +21,7 @@ use crate::{
     },
     probe::{
         BitSequence, DebugProbe, DebugProbeError, DebugProbeSelector, Probe, ProbeError,
-        ProbeFactory, WireProtocol,
+        ProbeFactory, ResetLine, WireProtocol,
     },
 };
 
@@ -72,6 +72,7 @@ impl ProbeFactory for StLinkFactory {
             swo_enabled: false,
 
             opened_aps: vec![],
+            reset_line: ResetLine::default(),
         };
 
         stlink.init()?;
@@ -98,6 +99,8 @@ pub struct StLink<D: StLinkUsb> {
 
     /// List of opened APs
     opened_aps: Vec<u8>,
+
+    reset_line: ResetLine,
 }
 
 impl DebugProbe for StLink<StLinkUsbDevice> {
@@ -234,6 +237,7 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
     }
 
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
+        self.reset_line.check_assert()?;
         let mut buf = [0; 2];
         self.send_jtag_command(
             &[
@@ -250,6 +254,7 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+        self.reset_line.check_assert()?;
         let mut buf = [0; 2];
         self.send_jtag_command(
             &[
@@ -279,6 +284,10 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
         )?;
 
         Ok(())
+    }
+
+    fn set_reset_line_connected(&mut self, connected: bool) {
+        self.reset_line.set_connected(connected);
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
@@ -1269,8 +1278,6 @@ struct StlinkArmDebug {
     /// Information about the APs of the target.
     /// APs are identified by a number, starting from zero.
     pub access_ports: BTreeSet<FullyQualifiedApAddress>,
-
-    reset_line_connected: bool,
 }
 
 impl StlinkArmDebug {
@@ -1280,7 +1287,6 @@ impl StlinkArmDebug {
             probe,
             access_ports: BTreeSet::new(),
             connected_to_dp: false,
-            reset_line_connected: true,
         }
     }
 
@@ -1435,11 +1441,7 @@ impl ArmDebugInterface for StlinkArmDebug {
     }
 
     fn close(self: Box<Self>) -> Probe {
-        Probe::from_attached_probe(self.probe, self.reset_line_connected)
-    }
-
-    fn set_reset_line_connected(&mut self, connected: bool) {
-        self.reset_line_connected = connected;
+        Probe::from_attached_probe(self.probe)
     }
 
     fn current_debug_port(&self) -> Option<DpAddress> {
@@ -1910,6 +1912,7 @@ mod test {
                 jtag_speed_khz: 0,
                 swo_enabled: false,
                 opened_aps: vec![],
+                reset_line: ResetLine::default(),
             }
         }
     }

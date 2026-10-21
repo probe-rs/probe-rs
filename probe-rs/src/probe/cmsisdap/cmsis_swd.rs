@@ -564,6 +564,7 @@ impl CmsisDap {
         select: SwdPins,
         wait: Duration,
     ) -> Result<SwdPins, DebugProbeError> {
+        self.reset_line.check_pins(out, select)?;
         self.connect_if_needed()?;
 
         let request = commands::swj::pins::SWJPinsRequest::from_raw_values(

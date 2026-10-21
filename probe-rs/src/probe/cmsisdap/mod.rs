@@ -24,7 +24,7 @@ use crate::{
     },
     probe::{
         DebugProbe, DebugProbeError, DebugProbeSelector, JtagChain, JtagChainAccess,
-        JtagChainState, ProbeFactory, WireProtocol,
+        JtagChainState, ProbeFactory, ResetLine, WireProtocol,
         cmsisdap::commands::{
             CmsisDapError, RequestError,
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
@@ -158,6 +158,7 @@ pub struct CmsisDap {
     transfer_wait_retry: u16,
 
     jtag_state: JtagChainState,
+    reset_line: ResetLine,
 }
 
 impl std::fmt::Debug for CmsisDap {
@@ -237,6 +238,7 @@ impl CmsisDap {
             speed_khz: 1_000,
             transfer_wait_retry: 0,
             jtag_state: JtagChainState::default(),
+            reset_line: ResetLine::default(),
         })
     }
 
@@ -946,6 +948,7 @@ impl DebugProbe for CmsisDap {
 
     /// Asserts the nRESET pin.
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
+        self.reset_line.check_assert()?;
         commands::send_command(&mut self.device, &ResetRequest).map(|v: ResetResponse| {
             tracing::info!("Target reset response: {:?}", v);
         })?;
@@ -953,6 +956,7 @@ impl DebugProbe for CmsisDap {
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+        self.reset_line.check_assert()?;
         let request = SWJPinsRequestBuilder::new().nreset(false).build();
 
         commands::send_command(&mut self.device, &request).map(|v: SWJPinsResponse| {
@@ -968,6 +972,10 @@ impl DebugProbe for CmsisDap {
             tracing::info!("Pin response: {:?}", v);
         })?;
         Ok(())
+    }
+
+    fn set_reset_line_connected(&mut self, connected: bool) {
+        self.reset_line.set_connected(connected);
     }
 
     fn get_swo_interface(&self) -> Option<&dyn SwoAccess> {

@@ -226,6 +226,10 @@ impl DebugProbe for Ch347 {
         self.device.target_reset_deassert()
     }
 
+    fn set_reset_line_connected(&mut self, connected: bool) {
+        self.device.reset_line.set_connected(connected);
+    }
+
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
         self.device.select_protocol(protocol)
     }

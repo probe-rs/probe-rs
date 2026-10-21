@@ -378,6 +378,10 @@ impl DebugProbe for LinuxSpidevSwdProbe {
         })
     }
 
+    fn set_reset_line_connected(&mut self, _connected: bool) {
+        // The probe has no reset line.
+    }
+
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
         if protocol != WireProtocol::Swd {
             Err(DebugProbeError::UnsupportedProtocol(protocol))
