@@ -399,11 +399,15 @@ impl ApBatch for CmsisDapTransport {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::{Arc, Mutex};
+    use std::sync::{
+        Arc, Mutex,
+        atomic::{AtomicBool, Ordering},
+    };
 
     use super::*;
     use crate::architecture::arm::{
-        FullyQualifiedApAddress, dp::DpAddress, sequences::ArmDebugSequence,
+        ApV2Address, ArmDebugInterface, FullyQualifiedApAddress, dp::DpAddress,
+        sequences::ArmDebugSequence,
     };
     use crate::probe::cmsisdap::commands::{
         CmsisDapDevice,
@@ -589,58 +593,72 @@ mod tests {
         assert!(!dap.jtag_configured);
     }
 
-    /// Answers each `DAP_Transfer` and `DAP_TransferBlock` request as a powered-up DPv2, and
-    /// connects over `port` (1 is SWD, 2 is JTAG).
-    fn firmware_dap(port: u8) -> (Box<CmsisDap>, Arc<Mutex<FakeProbe>>) {
-        let probe = FakeProbe::shared(64, move |command| match command {
-            // SWD and JTAG.
-            [0x00, 0xF0, ..] => Reply::Now(vec![0x00, 0x01, 0x03]),
-            [0x02, ..] => Reply::Now(vec![0x02, port]),
-            [0x05, _, count, requests @ ..] => {
-                let mut reply = vec![0x05, *count, Ack::Ok as u8];
-                let mut requests = requests.iter();
-                while let Some(&request) = requests.next() {
-                    match request & 0b1111 {
-                        // DPIDR
-                        0b0010 => reply.extend(0x2BA0_1477u32.to_le_bytes()),
-                        // CTRL/STAT, with the power-up requests acknowledged.
-                        0b0110 => reply.extend(0xF000_0000u32.to_le_bytes()),
-                        r if r & 0b10 != 0 => reply.extend([0; 4]),
-                        _ => _ = requests.nth(3),
+    /// The DPIDR of a DPv2.
+    const DPV2: u32 = 0x2BA0_1477;
+
+    /// The DPIDR of a DPv3.
+    const DPV3: u32 = 0x2BA0_3477;
+
+    /// Answers each `DAP_Transfer` and `DAP_TransferBlock` request as a powered-up DP with
+    /// `dpidr`, and connects over `port` (1 is SWD, 2 is JTAG). `answer` can replace a reply.
+    fn firmware_dap(
+        port: u8,
+        dpidr: u32,
+        mut answer: impl FnMut(&[u8]) -> Option<Reply> + Send + 'static,
+    ) -> (Box<CmsisDap>, Arc<Mutex<FakeProbe>>) {
+        let probe = FakeProbe::shared(64, move |command| {
+            if let Some(reply) = answer(command) {
+                return reply;
+            }
+            match command {
+                // SWD and JTAG.
+                [0x00, 0xF0, ..] => Reply::Now(vec![0x00, 0x01, 0x03]),
+                [0x02, ..] => Reply::Now(vec![0x02, port]),
+                [0x05, _, count, requests @ ..] => {
+                    let mut reply = vec![0x05, *count, Ack::Ok as u8];
+                    let mut requests = requests.iter();
+                    while let Some(&request) = requests.next() {
+                        match request & 0b1111 {
+                            0b0010 => reply.extend(dpidr.to_le_bytes()),
+                            // CTRL/STAT, with the power-up requests acknowledged.
+                            0b0110 => reply.extend(0xF000_0000u32.to_le_bytes()),
+                            r if r & 0b10 != 0 => reply.extend([0; 4]),
+                            _ => _ = requests.nth(3),
+                        }
                     }
+                    Reply::Now(reply)
                 }
-                Reply::Now(reply)
-            }
-            [0x06, _, lo, hi, request, ..] => {
-                let mut reply = vec![0x06, *lo, *hi, Ack::Ok as u8];
-                if request & 0b10 != 0 {
-                    reply.resize(
-                        reply.len() + 4 * usize::from(u16::from_le_bytes([*lo, *hi])),
-                        0,
-                    );
-                }
-                Reply::Now(reply)
-            }
-            [0x10, ..] => Reply::Now(vec![0x10, 0xFF]),
-            [0x14, count, sequences @ ..] => {
-                let mut reply = vec![0x14, 0x00];
-                let mut sequences = sequences.iter();
-                for _ in 0..*count {
-                    let info = *sequences.next().unwrap();
-                    let clocks = match info & 0x3F {
-                        0 => 64,
-                        clocks => usize::from(clocks),
-                    };
-                    let bytes = clocks.div_ceil(8);
-                    _ = sequences.nth(bytes - 1);
-                    if info & 0x80 != 0 {
-                        reply.resize(reply.len() + bytes, 0);
+                [0x06, _, lo, hi, request, ..] => {
+                    let mut reply = vec![0x06, *lo, *hi, Ack::Ok as u8];
+                    if request & 0b10 != 0 {
+                        reply.resize(
+                            reply.len() + 4 * usize::from(u16::from_le_bytes([*lo, *hi])),
+                            0,
+                        );
                     }
+                    Reply::Now(reply)
                 }
-                Reply::Now(reply)
+                [0x10, ..] => Reply::Now(vec![0x10, 0xFF]),
+                [0x14, count, sequences @ ..] => {
+                    let mut reply = vec![0x14, 0x00];
+                    let mut sequences = sequences.iter();
+                    for _ in 0..*count {
+                        let info = *sequences.next().unwrap();
+                        let clocks = match info & 0x3F {
+                            0 => 64,
+                            clocks => usize::from(clocks),
+                        };
+                        let bytes = clocks.div_ceil(8);
+                        _ = sequences.nth(bytes - 1);
+                        if info & 0x80 != 0 {
+                            reply.resize(reply.len() + bytes, 0);
+                        }
+                    }
+                    Reply::Now(reply)
+                }
+                [id @ (0x04 | 0x08 | 0x11 | 0x12 | 0x13 | 0x15), ..] => Reply::Now(vec![*id, 0x00]),
+                _ => standard_reply(command, 64, 4),
             }
-            [id @ (0x04 | 0x08 | 0x11 | 0x12 | 0x13 | 0x15), ..] => Reply::Now(vec![*id, 0x00]),
-            _ => standard_reply(command, 64, 4),
         });
         let device = CmsisDapDevice::Fake(probe.clone());
         let dap = CmsisDap::new_from_device(device).unwrap();
@@ -661,13 +679,17 @@ mod tests {
         }
     }
 
-    /// Attaches over `protocol`, then returns the commands that a mix of AP accesses sends.
-    fn ap_access_commands(protocol: WireProtocol) -> Vec<u8> {
+    /// Attaches to a DP with `dpidr` over `protocol`. The probe keeps no commands from the attach.
+    fn attached(
+        protocol: WireProtocol,
+        dpidr: u32,
+        answer: impl FnMut(&[u8]) -> Option<Reply> + Send + 'static,
+    ) -> (Box<dyn ArmDebugInterface>, Arc<Mutex<FakeProbe>>) {
         let port = match protocol {
             WireProtocol::Swd => 1,
             WireProtocol::Jtag => 2,
         };
-        let (mut dap, probe) = firmware_dap(port);
+        let (mut dap, probe) = firmware_dap(port, dpidr, answer);
         let sequence: Arc<dyn ArmDebugSequence> = match protocol {
             WireProtocol::Swd => crate::architecture::arm::sequences::DefaultArmSequence::create(),
             WireProtocol::Jtag => Arc::new(KnownChain),
@@ -684,6 +706,32 @@ mod tests {
             .unwrap();
         interface.select_debug_port(DpAddress::Default).unwrap();
         probe.lock().unwrap().sent.clear();
+        (interface, probe)
+    }
+
+    /// The requests in the `DAP_Transfer` commands that the probe got: the request bits and the
+    /// value of a write.
+    fn transfer_requests(probe: &Arc<Mutex<FakeProbe>>) -> Vec<(u8, Option<u32>)> {
+        let mut requests = Vec::new();
+        for command in sent(probe, 0x05) {
+            let mut rest = &command[3..];
+            while let [request, tail @ ..] = rest {
+                if request & 0b10 != 0 {
+                    requests.push((request & 0b1111, None));
+                    rest = tail;
+                } else {
+                    let value = u32::from_le_bytes(tail[..4].try_into().unwrap());
+                    requests.push((request & 0b1111, Some(value)));
+                    rest = &tail[4..];
+                }
+            }
+        }
+        requests
+    }
+
+    /// Attaches over `protocol`, then returns the commands that a mix of AP accesses sends.
+    fn ap_access_commands(protocol: WireProtocol) -> Vec<u8> {
+        let (mut interface, probe) = attached(protocol, DPV2, |_| None);
 
         let ap = FullyQualifiedApAddress::v1_with_default_dp(0);
         interface.read_raw_ap_register(&ap, 0xFC).unwrap();
@@ -721,5 +769,45 @@ mod tests {
             "{commands:x?}"
         );
         assert!(commands.contains(&0x06), "{commands:x?}");
+    }
+
+    #[test]
+    fn a_lost_link_is_connected_again_and_the_access_repeated() {
+        // The first AP read after the attach gets no acknowledgement.
+        let lose_link = Arc::new(AtomicBool::new(false));
+        let armed = lose_link.clone();
+        let (mut interface, probe) =
+            attached(WireProtocol::Swd, DPV2, move |command| match command {
+                [0x05, _, _, request, ..]
+                    if request & 0b11 == 0b11 && armed.swap(false, Ordering::SeqCst) =>
+                {
+                    Some(Reply::Now(vec![0x05, 0, Ack::NoAck as u8]))
+                }
+                _ => None,
+            });
+        lose_link.store(true, Ordering::SeqCst);
+
+        let ap = FullyQualifiedApAddress::v1_with_default_dp(0);
+        interface.read_raw_ap_register(&ap, 0xFC).unwrap();
+        assert!(!lose_link.load(Ordering::SeqCst));
+        // The line reset of the connect sequence.
+        assert!(!sent(&probe, 0x12).is_empty());
+    }
+
+    #[test]
+    fn a_dpv3_ap_select_writes_select1_before_select() {
+        let (mut interface, probe) = attached(WireProtocol::Swd, DPV3, |_| None);
+
+        let ap = FullyQualifiedApAddress::v2_with_default_dp(ApV2Address::new(0x1_0000_2000));
+        interface.read_raw_ap_register(&ap, 0x0C).unwrap();
+        assert_eq!(
+            transfer_requests(&probe),
+            [
+                (0b1000, Some(0x2005)),
+                (0b0100, Some(1)),
+                (0b1000, Some(0x2000)),
+                (0b1111, None),
+            ]
+        );
     }
 }
