@@ -1,13 +1,14 @@
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 
 use postcard_rpc::{header::VarHeader, server::Sender};
-use probe_rs::probe::{DebugProbeSelector, Probe, list::Lister, target_serial::TargetSerial};
+use probe_rs::probe::{DebugProbeSelector, Probe, list::Lister};
 use probe_rs_rpc::probe::{
     AttachRequest, AttachResult, DebugProbeEntry, ListProbesResponse, SelectProbeRequest,
     SelectProbeResponse, SelectProbeResult, WireProtocol,
 };
 
+use crate::rpc::SharedTargetSerial;
 use crate::rpc::functions::{RpcContext, RpcSpawnContext, WireTxImpl};
 use crate::rpc::probe_broker::ProbeLease;
 use crate::util::common_options::{
@@ -94,25 +95,29 @@ async fn attach_impl(ctx: RpcSpawnContext, request: AttachRequest) -> RpcResult<
         .target_serial
         .then(|| ctx.probe_broker().probe_configs().resolve(&selector).serial);
     let wait_for_probe = request.wait_for_probe.unwrap_or(Duration::ZERO);
+    // The attempts share the serial port, so that the port opens only once.
+    let target_serial = Arc::new(OnceLock::new());
 
     let attempt = {
         let ctx = ctx.clone();
         let selector = selector.clone();
+        let target_serial = target_serial.clone();
         move || {
             attach_once(
                 ctx.clone(),
                 probe_options.clone(),
                 selector.clone(),
                 request.resume_target,
-                serial_config.clone(),
+                serial_config.as_ref(),
+                &target_serial,
             )
         }
     };
 
     let opened = open_with_retry(&ctx, &selector, wait_for_probe, "attach", attempt).await?;
     let result = match opened.into_opened() {
-        Ok(((session, target_serial), lease)) => {
-            let target_serial = target_serial.map(Arc::from);
+        Ok((session, lease)) => {
+            let target_serial = target_serial.get().cloned().flatten();
             AttachResult::Success(ctx.set_session(*session, target_serial, lease).await)
         }
         Err(failure) => failure,
@@ -235,16 +240,14 @@ pub(super) fn open_probe(
     }
 }
 
-/// The session and the open serial port to the target.
-type Attached = (Box<probe_rs::Session>, Option<Box<dyn TargetSerial>>);
-
 fn attach_once(
     ctx: RpcSpawnContext,
     probe_options: ProbeOptions,
     selector: DebugProbeSelector,
     resume_target: bool,
-    serial_config: Option<SerialConfig>,
-) -> RpcResult<Result<Attached, OpenFailure>> {
+    serial_config: Option<&SerialConfig>,
+    target_serial: &OnceLock<Option<SharedTargetSerial>>,
+) -> RpcResult<Result<Box<probe_rs::Session>, OpenFailure>> {
     use crate::rpc::functions::convert::lift;
 
     let lister = ctx.lister();
@@ -257,25 +260,27 @@ fn attach_once(
         Err(failure) => return Ok(Err(failure)),
     };
 
-    // Open the serial port before attach, so that it receives the output after a reset.
-    let target_serial = serial_config.and_then(|config| open_target_serial(&mut probe, &config));
+    if let Some(config) = serial_config {
+        // Open the serial port before attach, so that it receives the output after a reset.
+        target_serial.get_or_init(|| open_target_serial(&mut probe, config));
+    }
 
     let mut session = loaded.attach_session(probe, target)?;
     if resume_target {
         lift(session.resume_all_cores())?;
     }
 
-    Ok(Ok((Box::new(session), target_serial)))
+    Ok(Ok(Box::new(session)))
 }
 
 /// Takes the serial port to the target and opens it. Errors are not fatal for attach.
-fn open_target_serial(probe: &mut Probe, config: &SerialConfig) -> Option<Box<dyn TargetSerial>> {
+fn open_target_serial(probe: &mut Probe, config: &SerialConfig) -> Option<SharedTargetSerial> {
     let result = config.target_serial(probe).and_then(|serial| {
         let Some((mut serial, settings)) = serial else {
             return Ok(None);
         };
         serial.open(&settings)?;
-        Ok(Some(serial))
+        Ok(Some(SharedTargetSerial::from(serial)))
     });
     result.unwrap_or_else(|error| {
         tracing::warn!("Failed to open the serial port to the target: {error:#}");
