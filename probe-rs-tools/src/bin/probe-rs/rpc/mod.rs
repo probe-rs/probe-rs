@@ -25,8 +25,7 @@ pub struct SessionEntry {
 }
 
 /// A serial port to the target that more than one task uses.
-pub type SharedTargetSerial =
-    Arc<parking_lot::Mutex<Box<dyn probe_rs::probe::target_serial::TargetSerial>>>;
+pub type SharedTargetSerial = Arc<dyn probe_rs::probe::target_serial::TargetSerial>;
 
 impl Deref for SessionEntry {
     type Target = probe_rs::Session;

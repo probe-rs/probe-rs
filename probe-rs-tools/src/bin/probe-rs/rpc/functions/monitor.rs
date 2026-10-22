@@ -146,7 +146,7 @@ fn monitor_impl(
     let target_serial = shared_session.target_serial();
     if let (MonitorMode::Run(_), Some(serial)) = (&request.mode, &target_serial) {
         // The port is open from attach. Drop the output from before this boot.
-        if let Err(error) = serial.lock().discard_input() {
+        if let Err(error) = serial.discard_input() {
             tracing::debug!(
                 "Failed to discard the input of the serial port to the target: {error}"
             );
@@ -294,7 +294,7 @@ fn forward_serial(serial: &SharedTargetSerial, stop: &AtomicBool, sender: &Monit
 fn drain_serial(serial: &SharedTargetSerial, sender: &MonitorSender) {
     loop {
         let mut buf = vec![0; 4096];
-        let len = match serial.lock().read(&mut buf, Duration::ZERO) {
+        let len = match serial.read(&mut buf, Duration::ZERO) {
             Ok(len) => len,
             Err(error) => {
                 tracing::debug!("Failed to read the serial port to the target: {error}");
@@ -325,7 +325,6 @@ pub async fn write_serial(
         .await
         .ok_or_else(|| RpcError::from("The session has no serial port to the target"))?;
     let written = serial
-        .lock()
         .write(&request.data)
         .map_err(|error| RpcError::from(error.to_string()))?;
     Ok(written as u32)

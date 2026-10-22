@@ -112,8 +112,7 @@ async fn attach_impl(ctx: RpcSpawnContext, request: AttachRequest) -> RpcResult<
     let opened = open_with_retry(&ctx, &selector, wait_for_probe, "attach", attempt).await?;
     let result = match opened.into_opened() {
         Ok(((session, target_serial), lease)) => {
-            let target_serial =
-                target_serial.map(|serial| Arc::new(parking_lot::Mutex::new(serial)));
+            let target_serial = target_serial.map(Arc::from);
             AttachResult::Success(ctx.set_session(*session, target_serial, lease).await)
         }
         Err(failure) => failure,
