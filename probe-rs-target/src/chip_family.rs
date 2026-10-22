@@ -51,6 +51,10 @@ pub enum CoreType {
     Riscv64,
     /// Xtensa - TODO: may need to split into NX, LX6 and LX7
     Xtensa,
+    /// Infineon AURIX TriCore (TC1.6E, TC1.6P, TC1.6.2P). The cores of a chip share one debug
+    /// model (memory-mapped OCDS registers), so one core type covers them.
+    #[serde(rename = "tricore")]
+    TriCore,
 }
 
 impl CoreType {
@@ -68,6 +72,10 @@ impl CoreType {
 
     fn is_xtensa(&self) -> bool {
         matches!(self, CoreType::Xtensa)
+    }
+
+    fn is_tricore(&self) -> bool {
+        matches!(self, CoreType::TriCore)
     }
 
     fn is_arm(&self) -> bool {
@@ -88,6 +96,7 @@ impl CoreType {
         match self {
             CoreType::Riscv | CoreType::Riscv64 => Architecture::Riscv,
             CoreType::Xtensa => Architecture::Xtensa,
+            CoreType::TriCore => Architecture::TriCore,
             _ => Architecture::Arm,
         }
     }
@@ -102,6 +111,8 @@ pub enum Architecture {
     Riscv,
     /// An Xtensa core.
     Xtensa,
+    /// An Infineon TriCore core.
+    TriCore,
 }
 
 /// Instruction set used by a core
@@ -123,6 +134,8 @@ pub enum InstructionSet {
     RV64C,
     /// Xtensa instruction set
     Xtensa,
+    /// TriCore instruction set (16-bit and 32-bit instructions)
+    TriCore,
 }
 
 impl InstructionSet {
@@ -133,6 +146,7 @@ impl InstructionSet {
             "arm" => Some(InstructionSet::A32),
             "aarch64" => Some(InstructionSet::A64),
             "xtensa" => Some(InstructionSet::Xtensa),
+            "tricore" => Some(InstructionSet::TriCore),
             other => {
                 if let Some(features) = other.strip_prefix("riscv32") {
                     if features.contains('c') {
@@ -168,6 +182,7 @@ impl InstructionSet {
             InstructionSet::RV64 => 4,
             InstructionSet::RV64C => 2,
             InstructionSet::Xtensa => 2,
+            InstructionSet::TriCore => 2,
         }
     }
     /// Get the maximum instruction size in bytes. All supported architectures have a maximum instruction size of 4 bytes.
@@ -346,6 +361,12 @@ impl ChipFamily {
                     CoreAccessOptions::Xtensa(_) if !core.core_type.is_xtensa() => {
                         return Err(format!(
                             "Xtensa options don't match core type {:?} on core {}",
+                            core.core_type, core.name
+                        ));
+                    }
+                    CoreAccessOptions::TriCore(_) if !core.core_type.is_tricore() => {
+                        return Err(format!(
+                            "TriCore options don't match core type {:?} on core {}",
                             core.core_type, core.name
                         ));
                     }

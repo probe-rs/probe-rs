@@ -3,6 +3,7 @@ use crate::{
     architecture::{
         arm::sequences::{ArmDebugSequence, DefaultArmSequence},
         riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
+        tricore::sequences::{DefaultTriCoreSequence, TriCoreDebugSequence},
         xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
     },
     config::DebugSequence,
@@ -11,7 +12,8 @@ use crate::{
 };
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
 use probe_rs_target::{
-    ArmCoreAccessOptions, MemoryRegion, RiscvCoreAccessOptions, XtensaCoreAccessOptions,
+    ArmCoreAccessOptions, MemoryRegion, RiscvCoreAccessOptions, TriCoreCoreAccessOptions,
+    XtensaCoreAccessOptions,
 };
 use std::{sync::Arc, time::Duration};
 
@@ -704,6 +706,10 @@ pub enum ResolvedCoreOptions {
         sequence: Arc<dyn XtensaDebugSequence>,
         options: XtensaCoreAccessOptions,
     },
+    TriCore {
+        sequence: Arc<dyn TriCoreDebugSequence>,
+        options: TriCoreCoreAccessOptions,
+    },
 }
 
 impl ResolvedCoreOptions {
@@ -733,6 +739,13 @@ impl ResolvedCoreOptions {
                 };
                 Self::Xtensa { sequence, options }
             }
+            CoreAccessOptions::TriCore(options) => {
+                let sequence = match &target.debug_sequence {
+                    DebugSequence::TriCore(s) => s.clone(),
+                    _ => DefaultTriCoreSequence::create(),
+                };
+                Self::TriCore { sequence, options }
+            }
         }
     }
 
@@ -741,6 +754,8 @@ impl ResolvedCoreOptions {
             Self::Arm { options, .. } => options.jtag_tap.unwrap_or(0),
             Self::Riscv { options, .. } => options.jtag_tap.unwrap_or(0),
             Self::Xtensa { options, .. } => options.jtag_tap.unwrap_or(0),
+            // TriCore cores are reached through memory-mapped registers, not per-core TAPs.
+            Self::TriCore { .. } => 0,
         }
     }
 }
@@ -761,6 +776,11 @@ impl std::fmt::Debug for ResolvedCoreOptions {
             Self::Xtensa { options, .. } => f
                 .debug_struct("Xtensa")
                 .field("sequence", &"<XtensaDebugSequence>")
+                .field("options", options)
+                .finish(),
+            Self::TriCore { options, .. } => f
+                .debug_struct("TriCore")
+                .field("sequence", &"<TriCoreDebugSequence>")
                 .field("options", options)
                 .finish(),
         }

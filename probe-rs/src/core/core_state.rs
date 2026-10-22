@@ -7,6 +7,7 @@ use crate::{
             dp::DpAddress,
         },
         riscv::{Riscv64, RiscvCoreState, communication_interface::RiscvCommunicationInterface},
+        tricore::{TriCore, TriCoreCoreState, bus::TriCoreBusAccess},
         xtensa::{
             XtensaCoreState,
             communication_interface::{XtensaCommunicationInterface, XtensaDebugInterfaceState},
@@ -263,6 +264,39 @@ impl CombinedCoreState {
         ))
     }
 
+    pub(crate) fn attach_tricore<'probe>(
+        &'probe mut self,
+        target: &'probe Target,
+        bus: &'probe mut dyn TriCoreBusAccess,
+    ) -> Result<Core<'probe>, Error> {
+        let name = &target.cores[self.id].name;
+
+        let ResolvedCoreOptions::TriCore { sequence, options } =
+            &self.core_state.core_access_options
+        else {
+            unreachable!(
+                "The stored core state is not compatible with the TriCore architecture. \
+                This should never happen. Please file a bug if it does."
+            );
+        };
+        let debug_sequence = sequence.clone();
+        let options = options.clone();
+
+        let SpecificCoreState::TriCore(s) = &mut self.specific_state else {
+            unreachable!(
+                "The stored core state is not compatible with the TriCore architecture. \
+                This should never happen. Please file a bug if it does."
+            );
+        };
+
+        Ok(Core::new(
+            self.id,
+            name,
+            target,
+            TriCore::new(bus, s, options, debug_sequence),
+        ))
+    }
+
     /// Get the memory AP for this core.
     ///
     /// ## Panic
@@ -336,6 +370,8 @@ pub enum SpecificCoreState {
     Riscv64(RiscvCoreState),
     /// The state of an Xtensa core.
     Xtensa(XtensaCoreState),
+    /// The state of a TriCore core.
+    TriCore(TriCoreCoreState),
 }
 
 impl SpecificCoreState {
@@ -351,6 +387,7 @@ impl SpecificCoreState {
             CoreType::Riscv => SpecificCoreState::Riscv(RiscvCoreState::new()),
             CoreType::Riscv64 => SpecificCoreState::Riscv64(RiscvCoreState::new()),
             CoreType::Xtensa => SpecificCoreState::Xtensa(XtensaCoreState::new()),
+            CoreType::TriCore => SpecificCoreState::TriCore(TriCoreCoreState::new()),
         }
     }
 
@@ -366,6 +403,7 @@ impl SpecificCoreState {
             SpecificCoreState::Riscv(_) => CoreType::Riscv,
             SpecificCoreState::Riscv64(_) => CoreType::Riscv64,
             SpecificCoreState::Xtensa(_) => CoreType::Xtensa,
+            SpecificCoreState::TriCore(_) => CoreType::TriCore,
         }
     }
 }

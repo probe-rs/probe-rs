@@ -7,6 +7,7 @@ use crate::{
             sequences::{ArmDebugSequence, DefaultArmSequence},
         },
         riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
+        tricore::sequences::{DefaultTriCoreSequence, TriCoreDebugSequence},
         xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
     },
     flashing::{DebugFlashSequence, FlashVerify},
@@ -126,6 +127,7 @@ impl Target {
                 Architecture::Arm => DebugSequence::Arm(DefaultArmSequence::create()),
                 Architecture::Riscv => DebugSequence::Riscv(DefaultRiscvSequence::create()),
                 Architecture::Xtensa => DebugSequence::Xtensa(DefaultXtensaSequence::create()),
+                Architecture::TriCore => DebugSequence::TriCore(DefaultTriCoreSequence::create()),
             }
         });
 
@@ -196,6 +198,8 @@ impl Target {
                 CoreAccessOptions::Arm(options) => options.jtag_tap,
                 CoreAccessOptions::Riscv(options) => options.jtag_tap,
                 CoreAccessOptions::Xtensa(options) => options.jtag_tap,
+                // Not reached over a JTAG scan chain of its own.
+                CoreAccessOptions::TriCore(_) => return true,
             };
             jtag_tap.unwrap_or(0) < scan_chain.len()
         })
@@ -301,6 +305,8 @@ pub enum DebugSequence {
     Riscv(Arc<dyn RiscvDebugSequence>),
     /// An Xtensa debug sequence.
     Xtensa(Arc<dyn XtensaDebugSequence>),
+    /// A TriCore debug sequence.
+    TriCore(Arc<dyn TriCoreDebugSequence>),
 }
 
 impl DebugSequence {
@@ -313,6 +319,7 @@ impl DebugSequence {
             DebugSequence::Arm(seq) => seq.debug_flash_sequence(),
             DebugSequence::Riscv(seq) => seq.debug_flash_sequence(),
             DebugSequence::Xtensa(seq) => seq.debug_flash_sequence(),
+            DebugSequence::TriCore(seq) => seq.debug_flash_sequence(),
         }
     }
 
@@ -326,6 +333,7 @@ impl DebugSequence {
             DebugSequence::Arm(seq) => seq.flash_verify_sequence(),
             DebugSequence::Riscv(seq) => seq.flash_verify_sequence(),
             DebugSequence::Xtensa(seq) => seq.flash_verify_sequence(),
+            DebugSequence::TriCore(seq) => seq.flash_verify_sequence(),
         }
     }
 }
@@ -363,6 +371,7 @@ impl MemoryApExt for Core {
                 .as_ref()
                 .map(|ap| fully_qualified_ap(None, ap)),
             probe_rs_target::CoreAccessOptions::Xtensa(_) => None,
+            probe_rs_target::CoreAccessOptions::TriCore(_) => None,
         }
     }
 }

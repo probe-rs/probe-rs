@@ -15,6 +15,7 @@ use crate::{
             },
             dtm::mem_ap_dtm::MemApDtm,
         },
+        tricore::bus::{TriCoreBusAccess, TriCoreError},
         xtensa::communication_interface::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
         },
@@ -113,11 +114,14 @@ enum ArchitectureInterface {
         riscv_mem_ap_cores: Vec<Option<(FullyQualifiedApAddress, RiscvDebugInterfaceState)>>,
     },
     Jtag(Probe, Vec<JtagInterface>),
+    /// TriCore cores, reached through the memory-mapped debug registers of the probe's bus.
+    TriCore(Probe),
 }
 
 impl fmt::Debug for ArchitectureInterface {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            ArchitectureInterface::TriCore(_) => f.write_str("ArchitectureInterface::TriCore(..)"),
             ArchitectureInterface::Arm(_) => f.write_str("ArchitectureInterface::Arm(..)"),
             ArchitectureInterface::ArmWithRiscv { .. } => {
                 f.write_str("ArchitectureInterface::ArmWithRiscv { .. }")
@@ -175,6 +179,10 @@ impl ArchitectureInterface {
                     }
                 }
             }
+            ArchitectureInterface::TriCore(probe) => {
+                let bus = probe.try_get_tricore_bus()?;
+                combined_state.attach_tricore(target, bus)
+            }
         }
     }
 }
@@ -206,7 +214,9 @@ impl Session {
 
         // Use ARM DAP path when the target connects via SWD/DAP: either ARM cores or RISC-V cores
         // over mem-AP (e.g. RP235x_riscv).
-        let mut session = if target.uses_arm_debug_interface() {
+        let mut session = if target.architecture() == Architecture::TriCore {
+            Self::attach_tricore(probe, target, cores)?
+        } else if target.uses_arm_debug_interface() {
             Self::attach_arm_debug_interface(probe, target, attach_method, permissions, cores)?
         } else {
             Self::attach_jtag(probe, target, attach_method, permissions, cores)?
@@ -545,6 +555,40 @@ impl Session {
         Ok(session)
     }
 
+    fn attach_tricore(
+        mut probe: Probe,
+        target: Target,
+        cores: Vec<CombinedCoreState>,
+    ) -> Result<Self, Error> {
+        probe.attach_to_unspecified()?;
+        if !probe.has_tricore_interface() {
+            return Err(Error::Probe(DebugProbeError::InterfaceNotAvailable {
+                interface_name: "TriCore",
+            }));
+        }
+
+        let mut session = Session {
+            target,
+            interfaces: ArchitectureInterface::TriCore(probe),
+            cores,
+            configured_trace_sink: None,
+        };
+
+        if let DebugSequence::TriCore(sequence) = session.target.debug_sequence.clone() {
+            sequence.on_connect(session.get_tricore_bus()?)?;
+        }
+
+        Ok(session)
+    }
+
+    /// Get the memory and reset access of a TriCore target.
+    pub fn get_tricore_bus(&mut self) -> Result<&mut dyn TriCoreBusAccess, Error> {
+        match &mut self.interfaces {
+            ArchitectureInterface::TriCore(probe) => Ok(probe.try_get_tricore_bus()?),
+            _ => Err(TriCoreError::NoTriCoreTarget.into()),
+        }
+    }
+
     /// Automatically open a probe with the given session config.
     fn auto_probe(session_config: &SessionConfig) -> Result<Probe, Error> {
         // Get a list of all available debug probes.
@@ -660,9 +704,9 @@ impl Session {
                     memory_interface,
                 ))
             }
-            ArchitectureInterface::Jtag(_, _) => Err(Error::NotImplemented(
-                "Memory port access on RISC-V and Xtensa",
-            )),
+            ArchitectureInterface::Jtag(_, _) | ArchitectureInterface::TriCore(_) => Err(
+                Error::NotImplemented("Memory port access on RISC-V, Xtensa and TriCore"),
+            ),
             ArchitectureInterface::ArmWithRiscv {
                 arm: _,
                 riscv_mem_ap_cores: _,
@@ -762,7 +806,9 @@ impl Session {
         let interface = match &mut self.interfaces {
             ArchitectureInterface::Arm(state) => state.deref_mut(),
             ArchitectureInterface::ArmWithRiscv { arm, .. } => arm.deref_mut(),
-            ArchitectureInterface::Jtag(..) => return Err(ArmError::NoArmTarget),
+            ArchitectureInterface::Jtag(..) | ArchitectureInterface::TriCore(_) => {
+                return Err(ArmError::NoArmTarget);
+            }
         };
 
         Ok(interface)
@@ -802,7 +848,9 @@ impl Session {
                     Err(RiscvError::NoRiscvTarget.into())
                 }
             }
-            ArchitectureInterface::Arm(_) => Err(RiscvError::NoRiscvTarget.into()),
+            ArchitectureInterface::Arm(_) | ArchitectureInterface::TriCore(_) => {
+                Err(RiscvError::NoRiscvTarget.into())
+            }
         }
     }
 
@@ -877,6 +925,9 @@ impl Session {
             DebugSequence::Xtensa(xtensa_debug_sequence) => {
                 xtensa_debug_sequence.prepare_running_on_ram(self, vector_table_addr, core_id)
             }
+            DebugSequence::TriCore(tricore_debug_sequence) => {
+                tricore_debug_sequence.prepare_running_on_ram(self, vector_table_addr, core_id)
+            }
         }
     }
 
@@ -891,6 +942,9 @@ impl Session {
             }
             DebugSequence::Xtensa(xtensa_debug_sequence) => {
                 xtensa_debug_sequence.prepare_loading_to_ram(self)
+            }
+            DebugSequence::TriCore(tricore_debug_sequence) => {
+                tricore_debug_sequence.prepare_loading_to_ram(self)
             }
         }
     }
@@ -916,7 +970,7 @@ impl Session {
         let interface_ref = match &mut self.interfaces {
             ArchitectureInterface::Arm(i) => i.deref_mut(),
             ArchitectureInterface::ArmWithRiscv { arm, .. } => arm.deref_mut(),
-            ArchitectureInterface::Jtag(..) => {
+            ArchitectureInterface::Jtag(..) | ArchitectureInterface::TriCore(_) => {
                 return Err(Error::NotImplemented(
                     "Debug Erase Sequence is not implemented for non-ARM targets.",
                 ));
@@ -950,7 +1004,7 @@ impl Session {
                         core_state.enable_arm_debug(arm.deref_mut())?;
                     }
                 }
-                ArchitectureInterface::Jtag(..) => {}
+                ArchitectureInterface::Jtag(..) | ArchitectureInterface::TriCore(_) => {}
             },
             Err(e) => return Err(Error::Arm(e)),
         }
@@ -1057,6 +1111,7 @@ impl Session {
                     Architecture::Xtensa
                 }
             }
+            ArchitectureInterface::TriCore(_) => Architecture::TriCore,
         }
     }
 

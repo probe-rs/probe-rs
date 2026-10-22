@@ -623,6 +623,29 @@ impl Probe {
         }
     }
 
+    /// Check if the probe has an interface to debug TriCore chips.
+    pub fn has_tricore_interface(&mut self) -> bool {
+        self.inner.try_as_tricore_bus().is_some()
+    }
+
+    /// Borrow the memory and reset access of a TriCore device.
+    pub fn try_get_tricore_bus(
+        &mut self,
+    ) -> Result<
+        &mut dyn crate::architecture::tricore::bus::TriCoreBusAccess,
+        crate::architecture::tricore::bus::TriCoreError,
+    > {
+        if !self.attached {
+            return Err(DebugProbeError::NotAttached.into());
+        }
+        self.inner.try_as_tricore_bus().ok_or(
+            DebugProbeError::InterfaceNotAvailable {
+                interface_name: "TriCore",
+            }
+            .into(),
+        )
+    }
+
     /// Checks if the probe supports connecting to chips
     /// using the Arm Debug Interface.
     pub fn has_arm_debug_interface(&self) -> bool {
@@ -884,6 +907,16 @@ pub trait DebugProbe: Any + Send + fmt::Debug {
     /// Check if the probe offers an interface to debug Xtensa chips.
     fn has_xtensa_interface(&self) -> bool {
         false
+    }
+
+    /// Borrow the memory and reset access of a TriCore device, if the probe provides it.
+    ///
+    /// TriCore debug registers are memory mapped, so this is all a probe needs to provide to
+    /// debug TriCore cores.
+    fn try_as_tricore_bus(
+        &mut self,
+    ) -> Option<&mut dyn crate::architecture::tricore::bus::TriCoreBusAccess> {
+        None
     }
 
     /// Get a SWO interface from the debug probe.

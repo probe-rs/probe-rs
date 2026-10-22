@@ -549,6 +549,7 @@ impl CoreRegisters {
                     &XTENSA_CORE_REGISTERS
                 }
             }
+            CoreType::TriCore => &crate::architecture::tricore::registers::TRICORE_CORE_REGISTERS,
         }
     }
 

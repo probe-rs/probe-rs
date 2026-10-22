@@ -191,6 +191,8 @@ pub enum CoreAccessOptions {
     Riscv(RiscvCoreAccessOptions),
     /// Xtensa specific options
     Xtensa(XtensaCoreAccessOptions),
+    /// TriCore specific options
+    TriCore(TriCoreCoreAccessOptions),
 }
 
 /// An address for AP accesses
@@ -259,6 +261,21 @@ pub struct XtensaCoreAccessOptions {
 
     /// CPU properties for this core
     pub core_properties: XtensaCoreProperties,
+}
+
+/// The data required to access a TriCore core
+///
+/// TriCore debug registers are memory mapped: every core has a CSFR (core special function
+/// register) window that holds its debug status, trigger units and core registers.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TriCoreCoreAccessOptions {
+    /// The core index (CPUn). Selects the CSFR window and the local scratchpad aliases.
+    pub core_index: u8,
+
+    /// The base address of the core's CSFR window.
+    #[serde(serialize_with = "hex_u_int")]
+    pub csfr_base: u64,
 }
 
 /// Xtensa CPU properties from a target description
