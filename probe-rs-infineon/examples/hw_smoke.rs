@@ -11,8 +11,8 @@
 use std::time::Duration;
 
 use probe_rs::{
-    BreakpointCause, Core, CoreStatus, HaltReason, InstructionSet, MemoryInterface,
-    Permissions, RegisterId,
+    BreakpointCause, Core, CoreStatus, HaltReason, InstructionSet, MemoryInterface, Permissions,
+    RegisterId,
     architecture::tricore::registers::{CSFR_A0, CSFR_D0, CSFR_ICR, CSFR_PC, CSFR_PCXI},
     probe::{DebugProbeSelector, list::Lister},
 };
@@ -29,7 +29,10 @@ struct Report {
 
 impl Report {
     fn check(&mut self, id: &str, what: &str, ok: bool, detail: String) {
-        println!("[{}] {id} {what}: {detail}", if ok { "PASS" } else { "FAIL" });
+        println!(
+            "[{}] {id} {what}: {detail}",
+            if ok { "PASS" } else { "FAIL" }
+        );
         if !ok {
             self.failed += 1;
         }
@@ -64,7 +67,11 @@ fn symbol_address(elf: &[u8], name: &str) -> Option<u64> {
     let section = |i: usize| shoff + i * shent;
     let symtab = (0..shnum).map(section).find(|&sh| u32_at(sh + 4) == 2)?;
     let strtab = section(u32_at(symtab + 24));
-    let (strings, symbols, size) = (u32_at(strtab + 16), u32_at(symtab + 16), u32_at(symtab + 20));
+    let (strings, symbols, size) = (
+        u32_at(strtab + 16),
+        u32_at(symtab + 16),
+        u32_at(symtab + 20),
+    );
     (symbols..symbols + size).step_by(16).find_map(|sym| {
         let start = strings + u32_at(sym);
         let end = start + elf[start..].iter().position(|&b| b == 0)?;
@@ -96,7 +103,12 @@ fn main() -> Result<()> {
         let mut core = session.core(id)?;
         let info = core.halt(Duration::from_millis(200))?;
         let halted = core.core_halted()?;
-        report.check("T-04", &format!("halt CPU{id}"), halted, format!("PC {:#010x}", info.pc));
+        report.check(
+            "T-04",
+            &format!("halt CPU{id}"),
+            halted,
+            format!("PC {:#010x}", info.pc),
+        );
     }
 
     let mut core = session.core(0)?;
@@ -120,8 +132,14 @@ fn main() -> Result<()> {
     report.check(
         "T-07",
         "D0-D15 write/read/restore",
-        back.iter().enumerate().all(|(n, v)| *v == 0xD000_0000 | n as u32) && restored == saved,
-        format!("D15 {:#010x} -> {:#010x} -> {:#010x}", saved[15], back[15], restored[15]),
+        back.iter()
+            .enumerate()
+            .all(|(n, v)| *v == 0xD000_0000 | n as u32)
+            && restored == saved,
+        format!(
+            "D15 {:#010x} -> {:#010x} -> {:#010x}",
+            saved[15], back[15], restored[15]
+        ),
     );
 
     // T-02: memory, an unaligned range across block boundaries, then restore.
@@ -186,7 +204,12 @@ fn main() -> Result<()> {
         core.set_hw_breakpoint(0x8000_0000 + 0x100 * n)?;
     }
     let ninth = core.set_hw_breakpoint(0x8000_0900);
-    report.check("T-06", "9th breakpoint refused", ninth.is_err(), format!("{ninth:?}"));
+    report.check(
+        "T-06",
+        "9th breakpoint refused",
+        ninth.is_err(),
+        format!("{ninth:?}"),
+    );
     core.clear_all_hw_breakpoints()?;
 
     core.set_hw_breakpoint(square)?;
@@ -197,7 +220,8 @@ fn main() -> Result<()> {
     report.check(
         "T-06",
         "breakpoint at square",
-        pc == square && status == CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Hardware)),
+        pc == square
+            && status == CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Hardware)),
         format!("PC {pc:#010x}, {status:?}"),
     );
 
@@ -211,12 +235,14 @@ fn main() -> Result<()> {
         Some(InstructionSet::TriCore),
         20,
     )?;
-    let names = frames.iter().map(|f| f.function_name.clone()).collect::<Vec<_>>();
+    let names = frames
+        .iter()
+        .map(|f| f.function_name.clone())
+        .collect::<Vec<_>>();
     report.check(
         "T-09",
         "call stack",
-        names.len() >= 5
-            && names[..5] == ["square", "scale", "accumulate", "compute", "main"],
+        names.len() >= 5 && names[..5] == ["square", "scale", "accumulate", "compute", "main"],
         names.join(" <- "),
     );
 
@@ -224,7 +250,12 @@ fn main() -> Result<()> {
     core.run()?;
     core.wait_for_core_halted(Duration::from_secs(2))?;
     let pc = core.read_core_reg::<u32>(RegisterId(CSFR_PC))? as u64;
-    report.check("T-06", "breakpoint hit again", pc == square, format!("PC {pc:#010x}"));
+    report.check(
+        "T-06",
+        "breakpoint hit again",
+        pc == square,
+        format!("PC {pc:#010x}"),
+    );
     core.clear_all_hw_breakpoints()?;
 
     // T-04: run and halt again.
@@ -232,12 +263,22 @@ fn main() -> Result<()> {
     let running = core.status()? == CoreStatus::Running;
     core.halt(Duration::from_millis(200))?;
     let halted = core.status()? == CoreStatus::Halted(HaltReason::Request);
-    report.check("T-04", "run, then halt CPU0", running && halted, String::new());
+    report.check(
+        "T-04",
+        "run, then halt CPU0",
+        running && halted,
+        String::new(),
+    );
 
     // T-08: reset and halt, then reset and run the application again.
     let info = core.reset_and_halt(Duration::from_millis(500))?;
     let halted = core.core_halted()?;
-    report.check("T-08", "reset and halt", halted, format!("PC {:#010x}", info.pc));
+    report.check(
+        "T-08",
+        "reset and halt",
+        halted,
+        format!("PC {:#010x}", info.pc),
+    );
     core.reset()?;
     std::thread::sleep(Duration::from_millis(300));
     let running = core.status()? == CoreStatus::Running;
@@ -245,10 +286,7 @@ fn main() -> Result<()> {
     drop(core);
     drop(session);
 
-    println!(
-        "{} check(s) failed",
-        report.failed
-    );
+    println!("{} check(s) failed", report.failed);
     if report.failed > 0 {
         std::process::exit(1);
     }

@@ -157,7 +157,12 @@ fn options() -> TriCoreCoreAccessOptions {
 }
 
 fn core<'a>(bus: &'a mut FakeBus, state: &'a mut TriCoreCoreState) -> TriCore<'a> {
-    TriCore::new(bus, state, options(), sequences::DefaultTriCoreSequence::create())
+    TriCore::new(
+        bus,
+        state,
+        options(),
+        sequences::DefaultTriCoreSequence::create(),
+    )
 }
 
 #[test]

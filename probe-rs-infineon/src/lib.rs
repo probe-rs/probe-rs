@@ -8,10 +8,11 @@
 use std::sync::Arc;
 
 use probe_rs::{
-    Error, plugin,
+    Error,
     architecture::tricore::sequences::TriCoreDebugSequence,
     config::{DebugSequence, Registry},
     flashing::DebugFlashSequence,
+    plugin,
     probe::{DebugProbe, Probe},
     vendor::Vendor,
 };

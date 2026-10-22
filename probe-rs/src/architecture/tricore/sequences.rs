@@ -23,7 +23,9 @@ pub trait TriCoreDebugSequence: Send + Sync + Debug {
         _entry_point: u64,
         _core_id: usize,
     ) -> Result<(), crate::Error> {
-        Err(crate::Error::NotImplemented("RAM running on TriCore targets"))
+        Err(crate::Error::NotImplemented(
+            "RAM running on TriCore targets",
+        ))
     }
 
     /// Prepares the target before an image that boots from RAM is written.

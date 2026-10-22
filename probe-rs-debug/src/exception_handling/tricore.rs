@@ -144,7 +144,10 @@ impl ExceptionInterface for TriCoreExceptionHandler {
         };
 
         for register in unwind_registers.0.iter_mut() {
-            if register.core_register.register_has_role(RegisterRole::ProgramCounter) {
+            if register
+                .core_register
+                .register_has_role(RegisterRole::ProgramCounter)
+            {
                 continue;
             }
             register.value = match register.core_register.dwarf_id.and_then(upper_context_word) {
@@ -163,9 +166,7 @@ impl ExceptionInterface for TriCoreExceptionHandler {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use probe_rs::{
-        architecture::tricore::registers::TRICORE_CORE_REGISTERS, test::MockMemory,
-    };
+    use probe_rs::{architecture::tricore::registers::TRICORE_CORE_REGISTERS, test::MockMemory};
 
     const CSA: u32 = 0x7000_9000;
 
@@ -174,7 +175,11 @@ mod tests {
             Some(RegisterValue::U32(0))
         });
         let set = |registers: &mut DebugRegisters, dwarf: u16, value: u32| {
-            let id = registers.get_register_by_dwarf_id(dwarf).unwrap().core_register.id;
+            let id = registers
+                .get_register_by_dwarf_id(dwarf)
+                .unwrap()
+                .core_register
+                .id;
             registers.get_register_mut(id).unwrap().value = Some(RegisterValue::U32(value));
         };
         set(&mut registers, DWARF_PCXI, pcxi);
@@ -189,8 +194,22 @@ mod tests {
         let mut memory = MockMemory::new();
         // PCXI, PSW, A10, A11, D8-D11, A12-A15, D12-D15
         let context: [u32; 16] = [
-            0, 0x0B80, 0x7000_BFF0, 0x8021_C0B0, 8, 9, 10, 11, 12, 13, 0x7000_BFF8, 15, 0xC,
-            0xD, 0xE, 0xF,
+            0,
+            0x0B80,
+            0x7000_BFF0,
+            0x8021_C0B0,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            0x7000_BFF8,
+            15,
+            0xC,
+            0xD,
+            0xE,
+            0xF,
         ];
         memory.add_word_range(CSA as u64, &context);
         memory
@@ -207,19 +226,40 @@ mod tests {
         let mut rule = String::new();
 
         let value = |dwarf: u16, memory: &mut MockMemory, rule: &mut String| {
-            let register = callee.get_register_by_dwarf_id(dwarf).unwrap().core_register;
+            let register = callee
+                .get_register_by_dwarf_id(dwarf)
+                .unwrap()
+                .core_register;
             handler
                 .unwind_undefined_register(register, &callee, None, memory, rule)
                 .unwrap()
         };
 
-        assert_eq!(value(26, &mut memory, &mut rule), Some(RegisterValue::U32(0x7000_BFF0)));
-        assert_eq!(value(27, &mut memory, &mut rule), Some(RegisterValue::U32(0x8021_C0B0)));
-        assert_eq!(value(30, &mut memory, &mut rule), Some(RegisterValue::U32(0x7000_BFF8)));
-        assert_eq!(value(DWARF_PCXI, &mut memory, &mut rule), Some(RegisterValue::U32(0)));
-        assert_eq!(value(12, &mut memory, &mut rule), Some(RegisterValue::U32(0xC)));
+        assert_eq!(
+            value(26, &mut memory, &mut rule),
+            Some(RegisterValue::U32(0x7000_BFF0))
+        );
+        assert_eq!(
+            value(27, &mut memory, &mut rule),
+            Some(RegisterValue::U32(0x8021_C0B0))
+        );
+        assert_eq!(
+            value(30, &mut memory, &mut rule),
+            Some(RegisterValue::U32(0x7000_BFF8))
+        );
+        assert_eq!(
+            value(DWARF_PCXI, &mut memory, &mut rule),
+            Some(RegisterValue::U32(0))
+        );
+        assert_eq!(
+            value(12, &mut memory, &mut rule),
+            Some(RegisterValue::U32(0xC))
+        );
         // Global registers keep their value, caller-saved registers are unknown.
-        assert_eq!(value(16, &mut memory, &mut rule), Some(RegisterValue::U32(0xA0A0_A0A0)));
+        assert_eq!(
+            value(16, &mut memory, &mut rule),
+            Some(RegisterValue::U32(0xA0A0_A0A0))
+        );
         assert_eq!(value(4, &mut memory, &mut rule), None);
     }
 
@@ -251,15 +291,21 @@ mod tests {
         assert!(flow.is_continue());
         // The caller PC points into the CALL instruction before the return address.
         assert_eq!(
-            registers.get_register_value_by_role(&RegisterRole::ProgramCounter).unwrap(),
+            registers
+                .get_register_value_by_role(&RegisterRole::ProgramCounter)
+                .unwrap(),
             0x8021_C0A0
         );
         assert_eq!(
-            registers.get_register_value_by_role(&RegisterRole::ReturnAddress).unwrap(),
+            registers
+                .get_register_value_by_role(&RegisterRole::ReturnAddress)
+                .unwrap(),
             0x8021_C0B0
         );
         assert_eq!(
-            registers.get_register_value_by_role(&RegisterRole::StackPointer).unwrap(),
+            registers
+                .get_register_value_by_role(&RegisterRole::StackPointer)
+                .unwrap(),
             0x7000_BFF0
         );
     }

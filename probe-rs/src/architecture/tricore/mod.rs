@@ -16,8 +16,7 @@ use std::{
 use probe_rs_target::{Architecture, CoreType, InstructionSet, TriCoreCoreAccessOptions};
 
 use crate::{
-    CoreInformation, CoreInterface, CoreRegister, CoreStatus, Error, HaltReason,
-    MemoryInterface,
+    CoreInformation, CoreInterface, CoreRegister, CoreStatus, Error, HaltReason, MemoryInterface,
     core::{
         BreakpointCause,
         registers::{CoreRegisters, RegisterId, RegisterValue},
@@ -80,12 +79,41 @@ pub mod ocds {
 
     /// The trigger window values of the debug init, before a single step.
     pub const STEP_TRIGGERS_INIT: [u32; 16] = [
-        0x2000, 0xFFFF_FFFF, 0x2000, 0xFFFF_FFFF, 0x2000, 0xFFFF_FFFF, 0x2000, 0xFFFF_FFFF, 0x2000,
-        0xFFFF_FFFF, 0x2000, 0xFFFF_FFFF, 0x2000, 0xFFFF_FFFF, 0x2000, 0xFFFF_FFFF,
+        0x2000,
+        0xFFFF_FFFF,
+        0x2000,
+        0xFFFF_FFFF,
+        0x2000,
+        0xFFFF_FFFF,
+        0x2000,
+        0xFFFF_FFFF,
+        0x2000,
+        0xFFFF_FFFF,
+        0x2000,
+        0xFFFF_FFFF,
+        0x2000,
+        0xFFFF_FFFF,
+        0x2000,
+        0xFFFF_FFFF,
     ];
     /// The trigger window values that arm the single step trap (`TR0`).
     pub const STEP_TRIGGERS_ARM: [u32; 16] = [
-        0x3002, 0, 0, 0xFFFF_FFFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0x3002,
+        0,
+        0,
+        0xFFFF_FFFF,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
     ];
     /// The value written to [`DBG_CFG`] by the debug init.
     pub const DBG_CFG_VALUE: u32 = 0x2A;
@@ -205,8 +233,8 @@ impl MemoryInterface<TriCoreError> for TriCoreMemory<'_> {
         check_alignment(address, 8)?;
         let mut bytes = vec![0; data.len() * 8];
         self.read_bytes(address, &mut bytes)?;
-        for (word, chunk) in data.iter_mut().zip(bytes.chunks_exact(8)) {
-            *word = u64::from_le_bytes(chunk.try_into().unwrap_or_default());
+        for (word, chunk) in data.iter_mut().zip(bytes.as_chunks::<8>().0) {
+            *word = u64::from_le_bytes(*chunk);
         }
         Ok(())
     }
@@ -215,8 +243,8 @@ impl MemoryInterface<TriCoreError> for TriCoreMemory<'_> {
         check_alignment(address, 4)?;
         let mut bytes = vec![0; data.len() * 4];
         self.read_bytes(address, &mut bytes)?;
-        for (word, chunk) in data.iter_mut().zip(bytes.chunks_exact(4)) {
-            *word = u32::from_le_bytes(chunk.try_into().unwrap_or_default());
+        for (word, chunk) in data.iter_mut().zip(bytes.as_chunks::<4>().0) {
+            *word = u32::from_le_bytes(*chunk);
         }
         Ok(())
     }
@@ -225,8 +253,8 @@ impl MemoryInterface<TriCoreError> for TriCoreMemory<'_> {
         check_alignment(address, 2)?;
         let mut bytes = vec![0; data.len() * 2];
         self.read_bytes(address, &mut bytes)?;
-        for (word, chunk) in data.iter_mut().zip(bytes.chunks_exact(2)) {
-            *word = u16::from_le_bytes(chunk.try_into().unwrap_or_default());
+        for (word, chunk) in data.iter_mut().zip(bytes.as_chunks::<2>().0) {
+            *word = u16::from_le_bytes(*chunk);
         }
         Ok(())
     }
@@ -237,19 +265,28 @@ impl MemoryInterface<TriCoreError> for TriCoreMemory<'_> {
 
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), TriCoreError> {
         check_alignment(address, 8)?;
-        let bytes = data.iter().flat_map(|w| w.to_le_bytes()).collect::<Vec<_>>();
+        let bytes = data
+            .iter()
+            .flat_map(|w| w.to_le_bytes())
+            .collect::<Vec<_>>();
         self.write_bytes(address, &bytes)
     }
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), TriCoreError> {
         check_alignment(address, 4)?;
-        let bytes = data.iter().flat_map(|w| w.to_le_bytes()).collect::<Vec<_>>();
+        let bytes = data
+            .iter()
+            .flat_map(|w| w.to_le_bytes())
+            .collect::<Vec<_>>();
         self.write_bytes(address, &bytes)
     }
 
     fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), TriCoreError> {
         check_alignment(address, 2)?;
-        let bytes = data.iter().flat_map(|w| w.to_le_bytes()).collect::<Vec<_>>();
+        let bytes = data
+            .iter()
+            .flat_map(|w| w.to_le_bytes())
+            .collect::<Vec<_>>();
         self.write_bytes(address, &bytes)
     }
 
@@ -331,7 +368,10 @@ impl<'probe> TriCore<'probe> {
 
     fn write_csfr_words(&mut self, offset: u16, values: &[u32]) -> Result<(), TriCoreError> {
         let address = self.csfr(offset);
-        let bytes = values.iter().flat_map(|w| w.to_le_bytes()).collect::<Vec<_>>();
+        let bytes = values
+            .iter()
+            .flat_map(|w| w.to_le_bytes())
+            .collect::<Vec<_>>();
         self.bus().write_block(AddressMap::Target, address, &bytes)
     }
 
@@ -417,9 +457,12 @@ impl<'probe> TriCore<'probe> {
         // software and the step trap use TR0 too. An instruction breakpoint halts with the PC at
         // its address (break before make), so require that.
         let breakpoint_hit = self.state.breakpoints_enabled
-            && self.state.breakpoints.iter().enumerate().any(|(unit, bp)| {
-                trigger_acc & (1 << unit) != 0 && *bp == Some(pc)
-            });
+            && self
+                .state
+                .breakpoints
+                .iter()
+                .enumerate()
+                .any(|(unit, bp)| trigger_acc & (1 << unit) != 0 && *bp == Some(pc));
 
         let reason = if breakpoint_hit {
             HaltReason::Breakpoint(BreakpointCause::Hardware)

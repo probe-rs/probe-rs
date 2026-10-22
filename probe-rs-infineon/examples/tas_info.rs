@@ -46,7 +46,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         } else {
             "?"
         };
-        println!("CPU{core} DBGSR : {dbgsr:#010x} ({state})");
+        let pc = probe.read_u32(AddressMap::Target, base + 0xFE08)?;
+        println!("CPU{core} DBGSR : {dbgsr:#010x} ({state}), PC {pc:#010x}");
     }
     probe.detach()?;
     Ok(())

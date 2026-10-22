@@ -16,9 +16,7 @@ use std::{
     time::Duration,
 };
 
-use probe_rs::architecture::tricore::bus::{
-    AddressMap, BusTransfer, TransferKind, TransferStatus,
-};
+use probe_rs::architecture::tricore::bus::{AddressMap, BusTransfer, TransferKind, TransferStatus};
 
 /// The default port of a TAS server.
 pub const DEFAULT_PORT: u16 = 24817;
@@ -215,17 +213,17 @@ fn transfer_sizes(transfer: &BusTransfer) -> Result<(usize, usize), TasError> {
     let n = transfer.len();
     let aligned8 = transfer.address.is_multiple_of(8);
     let words = n.div_ceil(4);
-    let invalid = || {
-        TasError::InvalidTransfer(format!(
-            "{} bytes at {:#010x}",
-            n, transfer.address
-        ))
-    };
+    let invalid =
+        || TasError::InvalidTransfer(format!("{} bytes at {:#010x}", n, transfer.address));
     match transfer.kind {
         TransferKind::Write => match n {
             1 | 2 | 4 => Ok((8, 4)),
             8 if aligned8 => Ok((12, 4)),
-            n if n > 8 && n <= 1024 && n.is_multiple_of(4) && transfer.address.is_multiple_of(4) => {
+            n if n > 8
+                && n <= 1024
+                && n.is_multiple_of(4)
+                && transfer.address.is_multiple_of(4) =>
+            {
                 Ok((4 + n, 4))
             }
             _ => Err(invalid()),
@@ -242,7 +240,10 @@ fn transfer_sizes(transfer: &BusTransfer) -> Result<(usize, usize), TasError> {
 /// Splits `transfers` into PL0 frames: at most `max_num_rw` transfers, within the request and
 /// response size limits, and one address map per frame (the server refuses a frame that mixes
 /// map 15 with map 0).
-pub fn plan_frames(transfers: &[BusTransfer], info: &ConInfo) -> Result<Vec<Range<usize>>, TasError> {
+pub fn plan_frames(
+    transfers: &[BusTransfer],
+    info: &ConInfo,
+) -> Result<Vec<Range<usize>>, TasError> {
     let max_rw = match info.pl0_max_num_rw {
         0 => 32,
         n => n as usize,
@@ -269,7 +270,11 @@ pub fn plan_frames(transfers: &[BusTransfer], info: &ConInfo) -> Result<Vec<Rang
             } else {
                 0
             };
-            let base_element = if needs_base(base, transfer.address) { 4 } else { 0 };
+            let base_element = if needs_base(base, transfer.address) {
+                4
+            } else {
+                0
+            };
             let fits = count < max_rw
                 && (count == 0 || transfers[start].map == transfer.map)
                 && rq + map_element + base_element + item_rq <= max_rq
@@ -303,7 +308,10 @@ fn needs_base(base: u32, address: u32) -> bool {
 
 /// Encodes one PL0 frame (the PL2 payload, without the length word).
 pub fn encode_frame(transfers: &[BusTransfer], pl1_cnt: u16) -> Result<Vec<u8>, TasError> {
-    let map = transfers.first().map(|t| t.map).unwrap_or(AddressMap::Target);
+    let map = transfers
+        .first()
+        .map(|t| t.map)
+        .unwrap_or(AddressMap::Target);
     let mask: u16 = 1 << (map as u8);
 
     let mut rq = vec![0x01, PL0_START, 0xFF, 0x00];
@@ -500,7 +508,9 @@ impl Connection {
         self.stream.read_exact(&mut length)?;
         let length = u32::from_le_bytes(length) as usize;
         if !(4..=0x1_0000).contains(&length) {
-            return Err(TasError::Protocol(format!("invalid message length {length}")));
+            return Err(TasError::Protocol(format!(
+                "invalid message length {length}"
+            )));
         }
         let mut payload = vec![0; length - 4];
         self.stream.read_exact(&mut payload)?;
@@ -580,7 +590,11 @@ impl Connection {
     }
 
     /// Runs `transfers` as PL0 frames. Stops after the first frame with a failed transfer.
-    pub fn execute(&mut self, transfers: &mut [BusTransfer], info: &ConInfo) -> Result<(), TasError> {
+    pub fn execute(
+        &mut self,
+        transfers: &mut [BusTransfer],
+        info: &ConInfo,
+    ) -> Result<(), TasError> {
         for frame in plan_frames(transfers, info)? {
             self.pl1_cnt = self.pl1_cnt.wrapping_add(1);
             let request = encode_frame(&transfers[frame.clone()], self.pl1_cnt)?;
@@ -614,15 +628,25 @@ mod tests {
 
     #[test]
     fn read32_frame_matches_the_reference_client() {
-        let frame = encode_frame(&[BusTransfer::read(AddressMap::Target, 0x7000_0000, 4)], 0xFFC1)
-            .unwrap();
-        assert_eq!(frame, hex("01 B0 FF 00 C1 FF 01 00 00 15 00 70 00 25 00 00 00 B1 01 00"));
+        let frame = encode_frame(
+            &[BusTransfer::read(AddressMap::Target, 0x7000_0000, 4)],
+            0xFFC1,
+        )
+        .unwrap();
+        assert_eq!(
+            frame,
+            hex("01 B0 FF 00 C1 FF 01 00 00 15 00 70 00 25 00 00 00 B1 01 00")
+        );
     }
 
     #[test]
     fn write32_frame_matches_the_reference_client() {
         let frame = encode_frame(
-            &[BusTransfer::write_u32(AddressMap::Target, 0x7000_0000, 0x1234_5678)],
+            &[BusTransfer::write_u32(
+                AddressMap::Target,
+                0x7000_0000,
+                0x1234_5678,
+            )],
             0xFFC3,
         )
         .unwrap();
@@ -634,8 +658,11 @@ mod tests {
 
     #[test]
     fn block_read_frame_matches_the_reference_client() {
-        let frame = encode_frame(&[BusTransfer::read(AddressMap::Target, 0x7000_0000, 240)], 0xFFC6)
-            .unwrap();
+        let frame = encode_frame(
+            &[BusTransfer::read(AddressMap::Target, 0x7000_0000, 240)],
+            0xFFC6,
+        )
+        .unwrap();
         assert_eq!(
             frame,
             hex("01 B0 FF 00 C6 FF 01 00 00 15 00 70 01 2C 00 00 3C 00 00 00 00 B1 01 00")
@@ -655,15 +682,20 @@ mod tests {
         .unwrap();
         assert_eq!(
             frame,
-            hex("01 B0 FF 00 C7 FF 01 00 00 15 AD DE 00 21 EF BE 00 23 F0 BE 00 21 F2 BE 00 B1 03 00")
+            hex(
+                "01 B0 FF 00 C7 FF 01 00 00 15 AD DE 00 21 EF BE 00 23 F0 BE 00 21 F2 BE 00 B1 03 00"
+            )
         );
     }
 
     #[test]
     fn server_map_frame_matches_the_reference_client() {
         // The MCDS recorder reads the server registers in map 15 (mcd_tas client log).
-        let frame = encode_frame(&[BusTransfer::read(AddressMap::Server, 0xD000, 104)], 0xFFC1)
-            .unwrap();
+        let frame = encode_frame(
+            &[BusTransfer::read(AddressMap::Server, 0xD000, 104)],
+            0xFFC1,
+        )
+        .unwrap();
         assert_eq!(
             frame,
             hex("01 B0 FF 00 C1 FF 00 80 00 11 0F 00 01 2C 00 D0 1A 00 00 00 00 B1 01 00")
@@ -685,8 +717,12 @@ mod tests {
     #[test]
     fn write_response_is_decoded() {
         let mut transfers = [BusTransfer::write_u32(AddressMap::Target, 0x7000_0000, 1)];
-        decode_frame(&hex("00 B0 81 08 00 24 01 80 00 B1 C3 FF"), &mut transfers, 0xFFC3)
-            .unwrap();
+        decode_frame(
+            &hex("00 B0 81 08 00 24 01 80 00 B1 C3 FF"),
+            &mut transfers,
+            0xFFC3,
+        )
+        .unwrap();
         assert_eq!(transfers[0].status, Some(TransferStatus::Ok));
     }
 
@@ -712,8 +748,12 @@ mod tests {
     fn a_wrong_frame_counter_is_an_error() {
         let mut transfers = [BusTransfer::write_u32(AddressMap::Target, 0x7000_0000, 1)];
         assert!(
-            decode_frame(&hex("00 B0 81 08 00 24 01 80 00 B1 C2 FF"), &mut transfers, 0xFFC3)
-                .is_err()
+            decode_frame(
+                &hex("00 B0 81 08 00 24 01 80 00 B1 C2 FF"),
+                &mut transfers,
+                0xFFC3
+            )
+            .is_err()
         );
     }
 

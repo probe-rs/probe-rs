@@ -19,7 +19,9 @@ pub mod protocol;
 use std::{fmt, time::Duration};
 
 use probe_rs::{
-    architecture::tricore::bus::{BusLimits, BusTransfer, ResetKind, TriCoreBusAccess, TriCoreError},
+    architecture::tricore::bus::{
+        BusLimits, BusTransfer, ResetKind, TriCoreBusAccess, TriCoreError,
+    },
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
         ProbeFactory, WireProtocol, list::ProbeListItem,

@@ -222,9 +222,9 @@ pub fn read_pages(
             let at = address + offset as u32;
             let mut buffer = vec![0; n];
             if memory.read(at as u64, &mut buffer).is_ok() {
-                for (i, chunk) in buffer.chunks_exact(PAGE).enumerate() {
+                for (i, chunk) in buffer.as_chunks::<PAGE>().0.iter().enumerate() {
                     let index = (at - base) as usize / PAGE + i;
-                    pages[index] = Some(chunk.try_into().unwrap_or([0; PAGE]));
+                    pages[index] = Some(*chunk);
                 }
             } else if n > PAGE {
                 walk(memory, base, at, n, if n > 512 { 512 } else { PAGE }, pages);
@@ -271,7 +271,9 @@ impl Tc27xFlash {
     }
 
     fn mailbox_write(session: &mut Session, index: u32, value: u32) -> Result<(), Error> {
-        session.core(0)?.write_word_32((MAILBOX + 4 * index) as u64, value)
+        session
+            .core(0)?
+            .write_word_32((MAILBOX + 4 * index) as u64, value)
     }
 
     fn loader_running(session: &mut Session) -> Result<bool, Error> {
@@ -310,7 +312,11 @@ impl Tc27xFlash {
     }
 
     fn erase(session: &mut Session, sector: Sector) -> Result<(), Error> {
-        tracing::info!("Erasing sector {:#010x} ({} KiB)", sector.base, sector.size / 1024);
+        tracing::info!(
+            "Erasing sector {:#010x} ({} KiB)",
+            sector.base,
+            sector.size / 1024
+        );
         let status = Self::command(session, CMD_ERASE, [sector.base, 1, 0], ERASE_TIMEOUT)?;
         if status != 0 {
             return Err(other(format!(
@@ -322,7 +328,12 @@ impl Tc27xFlash {
     }
 
     /// Writes the pages that hold data, in runs of consecutive pages that fit the payload buffer.
-    fn program_pages(&self, session: &mut Session, base: u32, pages: &[PageImage]) -> Result<(), Error> {
+    fn program_pages(
+        &self,
+        session: &mut Session,
+        base: u32,
+        pages: &[PageImage],
+    ) -> Result<(), Error> {
         let mut index = 0;
         while index < pages.len() {
             if pages[index].is_none() {
@@ -479,7 +490,9 @@ impl DebugFlashSequence for Tc27xFlash {
     fn erase_sector(&self, session: &mut Session, address: u64) -> Result<(), Error> {
         let sector = Self::sector(address)?;
         if sector.base as u64 != to_uncached(address) {
-            return Err(other(format!("{address:#010x} is not the start of a sector")));
+            return Err(other(format!(
+                "{address:#010x} is not the start of a sector"
+            )));
         }
         Self::erase(session, sector)
     }
@@ -548,10 +561,10 @@ impl DebugFlashSequence for Tc27xFlash {
             read_pages(&mut core, base, data.len() / PAGE * PAGE)?
         };
         let programmed = self.programmed.lock().unwrap_or_else(|e| e.into_inner());
-        for (index, (page, expected)) in pages.iter().zip(data.chunks_exact(PAGE)).enumerate() {
+        for (index, (page, expected)) in pages.iter().zip(data.as_chunks::<PAGE>().0).enumerate() {
             let address = base + (index * PAGE) as u32;
             let ok = match page {
-                Some(actual) => actual.as_slice() == expected,
+                Some(actual) => actual == expected,
                 // An erased page stands for bytes the image does not set; it must not be one
                 // that was just written.
                 None => !programmed.contains(&address) && expected.iter().all(|b| *b == 0),
@@ -573,7 +586,13 @@ mod tests {
     fn the_sector_map_has_54_sectors_and_covers_4_mib() {
         let sectors = tc27x_sectors();
         assert_eq!(sectors.len(), 54);
-        assert_eq!(sectors[0], Sector { base: 0xA000_0000, size: 0x4000 });
+        assert_eq!(
+            sectors[0],
+            Sector {
+                base: 0xA000_0000,
+                size: 0x4000
+            }
+        );
         let last = sectors.last().unwrap();
         assert_eq!(last.base + last.size, 0xA040_0000);
         for pair in sectors.windows(2) {
@@ -582,7 +601,10 @@ mod tests {
         // The test sector of the demo.
         assert_eq!(
             sector_at(&sectors, 0xA021_C0B0),
-            Some(Sector { base: 0xA021_C000, size: 0x4000 })
+            Some(Sector {
+                base: 0xA021_C000,
+                size: 0x4000
+            })
         );
         assert_eq!(sector_at(&sectors, 0xA040_0000), None);
     }

@@ -168,7 +168,13 @@ fn pl0(rq: &[u8], memory: &mut HashMap<(u8, u32), u8>) -> Vec<u8> {
                     0x23 => 2,
                     0x25 => 4,
                     0x27 => 8,
-                    _ => 4 * if rq[p + 4] == 0 { 256 } else { rq[p + 4] as usize },
+                    _ => {
+                        4 * if rq[p + 4] == 0 {
+                            256
+                        } else {
+                            rq[p + 4] as usize
+                        }
+                    }
                 };
                 p += if cmd == 0x2C { 8 } else { 4 };
                 let words = n.div_ceil(4);
@@ -240,9 +246,13 @@ fn attach_connects_and_reads_back_memory() {
 
     // An unaligned range of more than two blocks.
     let data = (0..2500).map(|i| (i * 7) as u8).collect::<Vec<_>>();
-    probe.write_block(AddressMap::Target, 0x7000_0003, &data).unwrap();
+    probe
+        .write_block(AddressMap::Target, 0x7000_0003, &data)
+        .unwrap();
     let mut back = vec![0; data.len()];
-    probe.read_block(AddressMap::Target, 0x7000_0003, &mut back).unwrap();
+    probe
+        .read_block(AddressMap::Target, 0x7000_0003, &mut back)
+        .unwrap();
     assert_eq!(back, data);
 
     probe
@@ -253,7 +263,10 @@ fn attach_connects_and_reads_back_memory() {
     assert_eq!(probe.read_u32(AddressMap::Server, 0xF881_FD00).unwrap(), 0);
 
     probe.reset(ResetKind::ResetAndHalt).unwrap();
-    assert_eq!(server.log.lock().unwrap().device_connects, vec![0x0000, 0x0003]);
+    assert_eq!(
+        server.log.lock().unwrap().device_connects,
+        vec![0x0000, 0x0003]
+    );
 }
 
 #[test]
@@ -261,7 +274,10 @@ fn an_unknown_target_is_reported_with_the_available_ones() {
     let server = FakeServer::start(false);
     let mut probe = TasProbe::new(server.endpoint(Some("missing")));
     let error = probe.attach().unwrap_err().to_string();
-    assert!(error.contains("missing") || error.contains("specific"), "{error}");
+    assert!(
+        error.contains("missing") || error.contains("specific"),
+        "{error}"
+    );
 }
 
 #[test]
@@ -274,7 +290,10 @@ fn a_refused_hot_attach_suggests_connecting_under_reset() {
     let mut probe = TasProbe::new(server.endpoint(None));
     probe.target_reset_assert().unwrap();
     probe.attach().unwrap();
-    assert_eq!(server.log.lock().unwrap().device_connects, vec![0x0000, 0x0003]);
+    assert_eq!(
+        server.log.lock().unwrap().device_connects,
+        vec![0x0000, 0x0003]
+    );
 }
 
 #[test]

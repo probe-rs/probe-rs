@@ -370,20 +370,18 @@ fn erase_with_flash_sequence(
             let Some(core_name) = region.cores.first() else {
                 return Err(FlashError::NoNvmCoreAccess(region.clone()));
             };
-            let algo = match FlashLoader::get_flash_algorithm_for_region(
-                region,
-                target,
-                core_name,
-                &[],
-            ) {
-                Ok(algo) => algo,
-                Err(FlashError::NoFlashLoaderAlgorithmAttached { .. }) => continue,
-                Err(error) => return Err(error),
-            };
+            let algo =
+                match FlashLoader::get_flash_algorithm_for_region(region, target, core_name, &[]) {
+                    Ok(algo) => algo,
+                    Err(FlashError::NoFlashLoaderAlgorithmAttached { .. }) => continue,
+                    Err(error) => return Err(error),
+                };
             for info in algo.flash_properties.iter_sectors() {
                 let sector_range = info.address_range();
                 if region.range.contains_range(&sector_range)
-                    && range.as_ref().is_none_or(|r| r.intersects_range(&sector_range))
+                    && range
+                        .as_ref()
+                        .is_none_or(|r| r.intersects_range(&sector_range))
                 {
                     sectors.push(info.base_address);
                 }

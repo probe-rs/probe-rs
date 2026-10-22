@@ -138,7 +138,12 @@ pub const FCX: CoreRegister = reg(
 );
 
 /// The interrupt control register.
-pub const ICR: CoreRegister = reg(&[RegisterRole::Core("icr")], CSFR_ICR, 46, UnwindRule::Preserve);
+pub const ICR: CoreRegister = reg(
+    &[RegisterRole::Core("icr")],
+    CSFR_ICR,
+    46,
+    UnwindRule::Preserve,
+);
 
 use UnwindRule::{Clear, Preserve, SpecialRule};
 
@@ -147,12 +152,36 @@ static TRICORE_REGISTERS_SET: &[CoreRegister] = &[
     // Lower context: caller saved.
     d(0, &[RegisterRole::Core("d0")], Clear),
     d(1, &[RegisterRole::Core("d1")], Clear),
-    d(2, &[RegisterRole::Core("d2"), RegisterRole::Return("d2")], Clear),
-    d(3, &[RegisterRole::Core("d3"), RegisterRole::Return("d3")], Clear),
-    d(4, &[RegisterRole::Core("d4"), RegisterRole::Argument("d4")], Clear),
-    d(5, &[RegisterRole::Core("d5"), RegisterRole::Argument("d5")], Clear),
-    d(6, &[RegisterRole::Core("d6"), RegisterRole::Argument("d6")], Clear),
-    d(7, &[RegisterRole::Core("d7"), RegisterRole::Argument("d7")], Clear),
+    d(
+        2,
+        &[RegisterRole::Core("d2"), RegisterRole::Return("d2")],
+        Clear,
+    ),
+    d(
+        3,
+        &[RegisterRole::Core("d3"), RegisterRole::Return("d3")],
+        Clear,
+    ),
+    d(
+        4,
+        &[RegisterRole::Core("d4"), RegisterRole::Argument("d4")],
+        Clear,
+    ),
+    d(
+        5,
+        &[RegisterRole::Core("d5"), RegisterRole::Argument("d5")],
+        Clear,
+    ),
+    d(
+        6,
+        &[RegisterRole::Core("d6"), RegisterRole::Argument("d6")],
+        Clear,
+    ),
+    d(
+        7,
+        &[RegisterRole::Core("d7"), RegisterRole::Argument("d7")],
+        Clear,
+    ),
     // Upper context: saved into the CSA by CALL.
     d(8, &[RegisterRole::Core("d8")], SpecialRule),
     d(9, &[RegisterRole::Core("d9")], SpecialRule),
@@ -165,12 +194,32 @@ static TRICORE_REGISTERS_SET: &[CoreRegister] = &[
     // A0, A1, A8 and A9 are global registers: no function changes them.
     a(0, &[RegisterRole::Core("a0")], Preserve),
     a(1, &[RegisterRole::Core("a1")], Preserve),
-    a(2, &[RegisterRole::Core("a2"), RegisterRole::Return("a2")], Clear),
+    a(
+        2,
+        &[RegisterRole::Core("a2"), RegisterRole::Return("a2")],
+        Clear,
+    ),
     a(3, &[RegisterRole::Core("a3")], Clear),
-    a(4, &[RegisterRole::Core("a4"), RegisterRole::Argument("a4")], Clear),
-    a(5, &[RegisterRole::Core("a5"), RegisterRole::Argument("a5")], Clear),
-    a(6, &[RegisterRole::Core("a6"), RegisterRole::Argument("a6")], Clear),
-    a(7, &[RegisterRole::Core("a7"), RegisterRole::Argument("a7")], Clear),
+    a(
+        4,
+        &[RegisterRole::Core("a4"), RegisterRole::Argument("a4")],
+        Clear,
+    ),
+    a(
+        5,
+        &[RegisterRole::Core("a5"), RegisterRole::Argument("a5")],
+        Clear,
+    ),
+    a(
+        6,
+        &[RegisterRole::Core("a6"), RegisterRole::Argument("a6")],
+        Clear,
+    ),
+    a(
+        7,
+        &[RegisterRole::Core("a7"), RegisterRole::Argument("a7")],
+        Clear,
+    ),
     a(8, &[RegisterRole::Core("a8")], Preserve),
     a(9, &[RegisterRole::Core("a9")], Preserve),
     SP,
@@ -200,10 +249,10 @@ pub fn upper_context_word(dwarf_id: u16) -> Option<usize> {
     Some(match dwarf_id {
         DWARF_PCXI => 0,
         DWARF_PSW => 1,
-        26 => 2,               // A10
-        27 => 3,               // A11
-        8..=11 => 4 + (dwarf_id - 8) as usize,   // D8-D11
-        28..=31 => 8 + (dwarf_id - 28) as usize, // A12-A15
+        26 => 2,                                  // A10
+        27 => 3,                                  // A11
+        8..=11 => 4 + (dwarf_id - 8) as usize,    // D8-D11
+        28..=31 => 8 + (dwarf_id - 28) as usize,  // A12-A15
         12..=15 => 12 + (dwarf_id - 12) as usize, // D12-D15
         _ => return None,
     })

@@ -103,9 +103,18 @@ fn main() -> Result<()> {
             if head_ok { "matches" } else { "differs" }
         );
         if !ok {
-            for (index, page) in pages.iter().enumerate().filter(|(_, p)| p.is_some()).take(12) {
+            for (index, page) in pages
+                .iter()
+                .enumerate()
+                .filter(|(_, p)| p.is_some())
+                .take(12)
+            {
                 let page = page.unwrap_or_default();
-                println!("    page {index:3} @{:#010x}: {:02x?}", base + (index * PAGE) as u32, &page[..16]);
+                println!(
+                    "    page {index:3} @{:#010x}: {:02x?}",
+                    base + (index * PAGE) as u32,
+                    &page[..16]
+                );
             }
         }
         bad += (!ok) as usize;

@@ -129,15 +129,15 @@ impl BusTransfer {
     /// The first four bytes read, as a little-endian word.
     pub fn read_u32(&self) -> Result<u32, TriCoreError> {
         self.check()?;
-        let bytes: [u8; 4] = self
-            .data
-            .get(..4)
-            .and_then(|b| b.try_into().ok())
-            .ok_or(TriCoreError::Protocol(format!(
-                "read at {:#010x} returned {} bytes, expected 4",
-                self.address,
-                self.data.len()
-            )))?;
+        let bytes: [u8; 4] =
+            self.data
+                .get(..4)
+                .and_then(|b| b.try_into().ok())
+                .ok_or(TriCoreError::Protocol(format!(
+                    "read at {:#010x} returned {} bytes, expected 4",
+                    self.address,
+                    self.data.len()
+                )))?;
         Ok(u32::from_le_bytes(bytes))
     }
 }
@@ -222,7 +222,12 @@ pub trait TriCoreBusAccess: Send + std::fmt::Debug {
     }
 
     /// Writes `data` at `address`, splitting the access into transfers the probe supports.
-    fn write_block(&mut self, map: AddressMap, address: u32, data: &[u8]) -> Result<(), TriCoreError> {
+    fn write_block(
+        &mut self,
+        map: AddressMap,
+        address: u32,
+        data: &[u8],
+    ) -> Result<(), TriCoreError> {
         let limits = self.limits();
         let mut offset = 0;
         let mut transfers = split_access(address, data.len(), limits)
@@ -271,7 +276,11 @@ fn execute_all<B: TriCoreBusAccess + ?Sized>(
 /// Splits an access of `len` bytes at `address` into `(address, len)` transfers that follow the
 /// rules of [`BusTransfer`]. The device requires natural alignment, so unaligned heads and tails
 /// use smaller transfers.
-pub(crate) fn split_access(mut address: u32, mut len: usize, limits: BusLimits) -> Vec<(u32, usize)> {
+pub(crate) fn split_access(
+    mut address: u32,
+    mut len: usize,
+    limits: BusLimits,
+) -> Vec<(u32, usize)> {
     let max_block = (limits.max_block_size / 8 * 8).max(8);
     let mut out = Vec::new();
     while len > 0 {

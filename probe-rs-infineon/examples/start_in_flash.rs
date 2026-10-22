@@ -22,7 +22,9 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 fn main() -> Result<()> {
     let mut args = std::env::args().skip(1);
-    let path = args.next().ok_or("usage: start_in_flash <elf> [stack top]")?;
+    let path = args
+        .next()
+        .ok_or("usage: start_in_flash <elf> [stack top]")?;
     let stack = match args.next() {
         Some(s) => u32::from_str_radix(s.trim_start_matches("0x"), 16)?,
         None => 0x7000_C000,
@@ -57,7 +59,9 @@ fn main() -> Result<()> {
         let mut flash = vec![0; size];
         core.read(address as u64, &mut flash)?;
         if flash != elf[offset..offset + size] {
-            return Err(format!("flash at {address:#010x} does not hold {path}: flash it first").into());
+            return Err(
+                format!("flash at {address:#010x} does not hold {path}: flash it first").into(),
+            );
         }
         println!("flash @{address:#010x} {size} B: matches");
     }

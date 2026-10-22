@@ -22,7 +22,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let debug_info = DebugInfo::from_file(&args[1])?;
     if let Some(address) = args.get(4) {
         let address = u64::from_str_radix(address.trim_start_matches("0x"), 16)?;
-        println!("{address:#010x} -> {:?}", debug_info.get_source_location(address));
+        println!(
+            "{address:#010x} -> {:?}",
+            debug_info.get_source_location(address)
+        );
     }
     let line: u64 = args[3].parse()?;
     for column in [None, Some(1)] {
