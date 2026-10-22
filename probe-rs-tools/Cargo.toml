@@ -20,6 +20,8 @@ default = ["remote", "cmsisdap_v1"]
 cmsisdap_v1 = ["probe-rs/cmsisdap_v1"]
 # Include server/client functionality. Disable with `--no-default-features`.
 remote = ["dep:axum", "probe-rs-rpc/remote", "probe-rs-rpc-client/remote"]
+# The MCD library probe for AURIX (loads an MCD API library at run time).
+mcd = ["probe-rs-infineon/mcd"]
 
 [dependencies]
 anyhow.workspace = true

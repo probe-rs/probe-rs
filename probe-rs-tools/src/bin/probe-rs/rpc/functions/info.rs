@@ -268,6 +268,95 @@ async fn try_show_info(
         .await?;
     }
 
+    if let Err(error) = try_read_tricore_info(ctx, &mut probe, protocol).await {
+        ctx.publish::<TargetInfoDataTopic>(
+            VarSeq::Seq2(0),
+            &InfoEvent::Error {
+                architecture: "TriCore".to_string(),
+                error: format!("{error:?}"),
+            },
+        )
+        .await?;
+    }
+
+    Ok(())
+}
+
+/// Reports the JTAG ID, the chip ID and the cores of a TriCore device.
+///
+/// TriCore probes (TAS, MCD) choose the wire protocol themselves, so the information is shown
+/// once, in the JTAG pass.
+async fn try_read_tricore_info(
+    ctx: &mut RpcContext,
+    probe: &mut Probe,
+    protocol: WireProtocol,
+) -> Result<(), anyhow::Error> {
+    use probe_rs::architecture::tricore::bus::AddressMap;
+
+    /// SCU_CHIPID of AURIX TC2xx and TC3xx.
+    const SCU_CHIPID: u32 = 0xF003_6140;
+    /// The CSFR window of core `n` is at `CSFR_BASE + n * CSFR_STRIDE`. TC3xx place CPU5 in
+    /// window 6, so windows 0 to 6 are probed.
+    const CSFR_BASE: u32 = 0xF881_0000;
+    const CSFR_STRIDE: u32 = 0x2_0000;
+    const CPU_ID: u32 = 0xFE18;
+    const CORE_ID: u32 = 0xFE1C;
+
+    if !probe.has_tricore_interface() {
+        ctx.publish::<TargetInfoDataTopic>(
+            VarSeq::Seq2(0),
+            &InfoEvent::ProbeInterfaceMissing {
+                interface: "TriCore".to_string(),
+                architecture: "TriCore".to_string(),
+            },
+        )
+        .await?;
+        return Ok(());
+    }
+    if protocol != WireProtocol::Jtag {
+        return Ok(());
+    }
+
+    tracing::debug!("Trying to show TriCore chip information");
+    let bus = probe.try_get_tricore_bus()?;
+    let idcode = bus.jtag_id()?;
+    let chip_id = bus.read_u32(AddressMap::Target, SCU_CHIPID);
+    let mut cores = Vec::new();
+    for n in 0..7 {
+        let window = CSFR_BASE + n * CSFR_STRIDE;
+        if let (Ok(cpu_id), Ok(core_id)) = (
+            bus.read_u32(AddressMap::Target, window + CPU_ID),
+            bus.read_u32(AddressMap::Target, window + CORE_ID),
+        ) {
+            cores.push(format!(
+                "  CPU{} at {window:#010x}: CPU_ID {cpu_id:#010x}, CORE_ID {core_id:#x}",
+                core_id & 0x7
+            ));
+        }
+    }
+
+    ctx.publish::<TargetInfoDataTopic>(
+        VarSeq::Seq2(0),
+        &InfoEvent::Idcode {
+            architecture: "TriCore".to_string(),
+            idcode: Some(idcode),
+        },
+    )
+    .await?;
+    let chip_id = match chip_id {
+        Ok(value) => format!("{value:#010x}"),
+        Err(error) => format!("unreadable ({error})"),
+    };
+    ctx.publish::<TargetInfoDataTopic>(
+        VarSeq::Seq2(0),
+        &InfoEvent::Message(format!(
+            "  SCU_CHIPID: {chip_id}\n  {} core(s):\n{}",
+            cores.len(),
+            cores.join("\n")
+        )),
+    )
+    .await?;
+
     Ok(())
 }
 

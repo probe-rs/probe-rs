@@ -1,6 +1,7 @@
 //! Infineon AURIX (TriCore) support for probe-rs.
 //!
 //! - [`tas`]: a debug probe that reaches the device through an Infineon TAS server.
+//! - `mcd` (feature `mcd`): a debug probe that loads an MCD API library.
 //! - The AURIX targets (`targets/*.yaml`) and their debug sequences.
 //!
 //! Call [`register_plugin`] once at startup.
@@ -19,16 +20,23 @@ use probe_rs::{
 use probe_rs_target::{Chip, ChipFamily, CoreType};
 
 pub mod flash;
+#[cfg(feature = "mcd")]
+pub mod mcd;
 pub mod tas;
 
-/// Registers the AURIX targets, the AURIX vendor and the TAS probe driver with probe-rs.
+/// Registers the AURIX targets, the AURIX vendor and the probe drivers (TAS, and MCD with the
+/// `mcd` feature) with probe-rs.
 pub fn register_plugin() {
     let targets = targets();
     plugin::register_plugin(plugin::Plugin {
         vendors: &[&InfineonAurix],
         image_formats: &[],
         targets: &targets,
-        probe_drivers: &[&tas::TasFactory],
+        probe_drivers: &[
+            &tas::TasFactory,
+            #[cfg(feature = "mcd")]
+            &mcd::McdFactory,
+        ],
     });
 }
 
@@ -105,10 +113,14 @@ impl Vendor for InfineonAurix {
         _registry: &Registry,
         probe: &mut Probe,
     ) -> Result<Option<String>, Error> {
-        let Some(tas) = probe.try_into::<tas::TasProbe>() else {
-            return Ok(None);
+        let bus = if probe.try_into::<tas::TasProbe>().is_some() {
+            probe
+                .try_into::<tas::TasProbe>()
+                .and_then(|tas| tas.try_as_tricore_bus())
+        } else {
+            mcd_bus(probe)
         };
-        let Some(bus) = tas.try_as_tricore_bus() else {
+        let Some(bus) = bus else {
             return Ok(None);
         };
         let jtag_id = bus.jtag_id()?;
@@ -116,6 +128,22 @@ impl Vendor for InfineonAurix {
         tracing::debug!("AURIX JTAG ID {jtag_id:#010x}: {target:?}");
         Ok(target.map(String::from))
     }
+}
+
+#[cfg(feature = "mcd")]
+fn mcd_bus(
+    probe: &mut Probe,
+) -> Option<&mut dyn probe_rs::architecture::tricore::bus::TriCoreBusAccess> {
+    probe
+        .try_into::<mcd::McdProbe>()
+        .and_then(|mcd| mcd.try_as_tricore_bus())
+}
+
+#[cfg(not(feature = "mcd"))]
+fn mcd_bus(
+    _probe: &mut Probe,
+) -> Option<&mut dyn probe_rs::architecture::tricore::bus::TriCoreBusAccess> {
+    None
 }
 
 #[cfg(test)]

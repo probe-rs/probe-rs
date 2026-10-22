@@ -1,5 +1,7 @@
 //! Hardware smoke test of TriCore debugging through a TAS server (PRD tests T-02 to T-09).
 //!
+//! The probe's bus is also asked for map 1 (T-03), which this adapter blocks.
+//!
 //! It needs the demo image `demo_flash.elf` in PFLASH (PF1, 0x8021C000) of a TC275. The
 //! application's context on CPU0 is abandoned to run the demo, so the device is reset at the
 //! end. Nothing is written to flash.
@@ -7,13 +9,23 @@
 //! ```text
 //! cargo run -p probe-rs-infineon --example hw_smoke -- path/to/demo_flash.elf
 //! ```
+//!
+//! `PROBE_RS_PROBE` selects another probe, for example the MCD probe (PRD test T-14):
+//!
+//! ```text
+//! set PROBE_RS_PROBE=058b:0001:C:\path\to\mcd_tas.dll
+//! cargo run -p probe-rs-infineon --features mcd --example hw_smoke
+//! ```
 
 use std::time::Duration;
 
 use probe_rs::{
     BreakpointCause, Core, CoreStatus, HaltReason, InstructionSet, MemoryInterface, Permissions,
     RegisterId,
-    architecture::tricore::registers::{CSFR_A0, CSFR_D0, CSFR_ICR, CSFR_PC, CSFR_PCXI},
+    architecture::tricore::{
+        bus::{AddressMap, TriCoreError},
+        registers::{CSFR_A0, CSFR_D0, CSFR_ICR, CSFR_PC, CSFR_PCXI},
+    },
     probe::{DebugProbeSelector, list::Lister},
 };
 use probe_rs_debug::{DebugInfo, DebugRegisters, exception_handler_for_core};
@@ -93,10 +105,25 @@ fn main() -> Result<()> {
     let square = symbol_address(&elf, "square").ok_or("no symbol square")?;
 
     probe_rs_infineon::register_plugin();
-    let selector: DebugProbeSelector = "058b:0000".parse()?;
+    let selector: DebugProbeSelector = std::env::var("PROBE_RS_PROBE")
+        .unwrap_or_else(|_| "058b:0000".to_string())
+        .parse()?;
+    println!("probe {selector}");
     let probe = Lister::new().open(selector)?;
+    println!("{}", probe.get_name());
     let mut session = probe.attach("TC275", Permissions::default())?;
     let mut report = Report { failed: 0 };
+
+    // T-03: map 1 (EEC / MCDS) is blocked on this adapter; the read must fail, not return 0.
+    let eec = session
+        .get_tricore_bus()?
+        .read_u32(AddressMap::Eec, 0xF00E_0080);
+    report.check(
+        "T-03",
+        "map 1 read refused",
+        matches!(eec, Err(TriCoreError::TransferFailed { .. })),
+        format!("{eec:?}"),
+    );
 
     // T-04: halt every core.
     for id in 0..3 {

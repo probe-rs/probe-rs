@@ -27,7 +27,10 @@ fn main() -> Result<()> {
     let extra = args.collect::<Vec<_>>();
 
     probe_rs_infineon::register_plugin();
-    let probe = Lister::new().open("058b:0000".parse::<probe_rs::probe::DebugProbeSelector>()?)?;
+    // `PROBE_RS_PROBE` selects another probe, for example the MCD probe.
+    let selector = std::env::var("PROBE_RS_PROBE").unwrap_or_else(|_| "058b:0000".to_string());
+    let probe = Lister::new().open(selector.parse::<probe_rs::probe::DebugProbeSelector>()?)?;
+    println!("{}", probe.get_name());
     let mut session = probe.attach("TC275", Permissions::default())?;
     let mut core = session.core(0)?;
     let was_running = !core.core_halted()?;

@@ -39,7 +39,9 @@ fn main() -> Result<()> {
     let entry = u32_at(24);
 
     probe_rs_infineon::register_plugin();
-    let probe = Lister::new().open("058b:0000".parse::<probe_rs::probe::DebugProbeSelector>()?)?;
+    // `PROBE_RS_PROBE` selects another probe, for example the MCD probe.
+    let selector = std::env::var("PROBE_RS_PROBE").unwrap_or_else(|_| "058b:0000".to_string());
+    let probe = Lister::new().open(selector.parse::<probe_rs::probe::DebugProbeSelector>()?)?;
     let mut session = probe.attach("TC275", Permissions::default())?;
     let mut core = session.core(0)?;
     core.halt(Duration::from_millis(500))?;

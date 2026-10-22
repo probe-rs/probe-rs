@@ -10,12 +10,17 @@ readme.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
+[features]
+# The MCD probe: loads an MCD API v1.1 library (for example mcd_tas.dll) at run time.
+mcd = ["dep:libloading"]
+
 [dependencies]
 probe-rs.workspace = true
 probe-rs-target.workspace = true
 
 bincode = { version = "2", features = ["serde"] }
 docsplay.workspace = true
+libloading = { version = "0.8", optional = true }
 thiserror.workspace = true
 tracing = "0.1"
 
