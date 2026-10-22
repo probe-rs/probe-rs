@@ -211,6 +211,24 @@ impl TransferRequest {
     ///
     /// The transfer count travels in a single byte, so a command is capped at [`u8::MAX`]
     /// transfers however large the packet is.
+    /// Whether `count` more transfers in direction `rw` fit, as [`Self::has_room_for`] for one.
+    pub fn has_room_for_many(&self, rw: RW, count: usize, packet_size: u16) -> bool {
+        if self.len() + count > u8::MAX as usize {
+            return false;
+        }
+
+        let (added_request, added_response) = InnerTransferRequest::new(
+            RegisterAddress::ApRegister(0),
+            rw,
+            (rw == RW::W).then_some(0),
+        )
+        .lengths();
+
+        let capacity = packet_size as usize;
+        let (request, response) = self.packet_lengths();
+        request + count * added_request <= capacity && response + count * added_response <= capacity
+    }
+
     pub fn has_room_for(&self, rw: RW, packet_size: u16) -> bool {
         if self.len() == u8::MAX as usize {
             return false;
