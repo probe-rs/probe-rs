@@ -102,8 +102,9 @@ const REOPEN_INTERVAL: Duration = Duration::from_millis(500);
 /// The receive buffer keeps at most this many bytes. Older bytes are dropped.
 const RX_BUFFER_LIMIT: usize = 1024 * 1024;
 
-/// A target serial port on a USB CDC-ACM interface, opened through the OS serial driver.
-pub struct UsbCdcSerial {
+/// A target serial port that the host OS gives, for example a USB CDC-ACM port or a USB-UART
+/// bridge.
+pub struct HostSerialPort {
     filter: UsbSerialFilter,
     default_settings: SerialSettings,
     open: Option<OpenPort>,
@@ -124,7 +125,7 @@ struct Shared {
     stop: AtomicBool,
 }
 
-impl UsbCdcSerial {
+impl HostSerialPort {
     /// Creates a handle to the port that `filter` selects. The port is not open yet.
     pub fn new(filter: UsbSerialFilter, default_settings: SerialSettings) -> Self {
         Self {
@@ -144,16 +145,16 @@ impl UsbCdcSerial {
     }
 }
 
-impl fmt::Debug for UsbCdcSerial {
+impl fmt::Debug for HostSerialPort {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("UsbCdcSerial")
+        f.debug_struct("HostSerialPort")
             .field("filter", &self.filter)
             .field("open", &self.open.is_some())
             .finish()
     }
 }
 
-impl TargetSerial for UsbCdcSerial {
+impl TargetSerial for HostSerialPort {
     fn default_settings(&self) -> SerialSettings {
         self.default_settings.clone()
     }
@@ -231,7 +232,7 @@ impl TargetSerial for UsbCdcSerial {
     }
 }
 
-impl Drop for UsbCdcSerial {
+impl Drop for HostSerialPort {
     fn drop(&mut self) {
         self.close();
     }
