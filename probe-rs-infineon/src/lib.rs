@@ -11,11 +11,13 @@ use probe_rs::{
     Error, plugin,
     architecture::tricore::sequences::TriCoreDebugSequence,
     config::{DebugSequence, Registry},
+    flashing::DebugFlashSequence,
     probe::{DebugProbe, Probe},
     vendor::Vendor,
 };
 use probe_rs_target::{Chip, ChipFamily, CoreType};
 
+pub mod flash;
 pub mod tas;
 
 /// Registers the AURIX targets, the AURIX vendor and the TAS probe driver with probe-rs.
@@ -58,16 +60,27 @@ pub fn target_by_jtag_id(jtag_id: u32) -> Option<&'static str> {
 
 /// The debug sequence of AURIX chips.
 #[derive(Debug)]
-pub struct AurixSequence(());
+pub struct AurixSequence {
+    flash: Option<Arc<dyn DebugFlashSequence>>,
+}
 
 impl AurixSequence {
-    /// Creates the AURIX debug sequence.
-    pub fn create() -> Arc<dyn TriCoreDebugSequence> {
-        Arc::new(Self(()))
+    /// Creates the AURIX debug sequence of the chip `name`.
+    pub fn create(name: &str) -> Arc<dyn TriCoreDebugSequence> {
+        let flash: Option<Arc<dyn DebugFlashSequence>> = if name.starts_with("TC27") {
+            Some(Arc::new(flash::Tc27xFlash::default()))
+        } else {
+            None
+        };
+        Arc::new(Self { flash })
     }
 }
 
-impl TriCoreDebugSequence for AurixSequence {}
+impl TriCoreDebugSequence for AurixSequence {
+    fn debug_flash_sequence(&self) -> Option<Arc<dyn DebugFlashSequence>> {
+        self.flash.clone()
+    }
+}
 
 /// The Infineon AURIX vendor.
 #[derive(docsplay::Display)]
@@ -80,7 +93,7 @@ impl Vendor for InfineonAurix {
             .iter()
             .all(|core| core.core_type == CoreType::TriCore)
         {
-            Some(DebugSequence::TriCore(AurixSequence::create()))
+            Some(DebugSequence::TriCore(AurixSequence::create(&chip.name)))
         } else {
             None
         }

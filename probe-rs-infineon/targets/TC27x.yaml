@@ -21,12 +21,13 @@ variants:
       core_index: 2
       csfr_base: 0xf8850000
   memory_map:
-  # Program flash, non-cached. Code is usually linked at the cached alias below.
+  # Program flash. Code is usually linked at the cached addresses (0x8...), the non-cached
+  # alias (0xA...) is the same memory. One region per run of equally sized logical sectors.
   - !Nvm
-    name: PFLASH0
+    name: PFLASH0 16 KiB sectors
     range:
-      start: 0xa0000000
-      end: 0xa0200000
+      start: 0x80000000
+      end: 0x80020000
     cores:
     - cpu0
     - cpu1
@@ -34,19 +35,181 @@ variants:
     access:
       boot: true
   - !Nvm
-    name: PFLASH1
+    name: PFLASH0 32 KiB sectors
     range:
-      start: 0xa0200000
-      end: 0xa0400000
+      start: 0x80020000
+      end: 0x80060000
     cores:
     - cpu0
     - cpu1
     - cpu2
   - !Nvm
-    name: PFLASH cached
+    name: PFLASH0 64 KiB sectors
     range:
-      start: 0x80000000
+      start: 0x80060000
+      end: 0x800a0000
+    cores:
+    - cpu0
+    - cpu1
+    - cpu2
+  - !Nvm
+    name: PFLASH0 128 KiB sectors
+    range:
+      start: 0x800a0000
+      end: 0x80100000
+    cores:
+    - cpu0
+    - cpu1
+    - cpu2
+  - !Nvm
+    name: PFLASH0 256 KiB sectors
+    range:
+      start: 0x80100000
+      end: 0x80200000
+    cores:
+    - cpu0
+    - cpu1
+    - cpu2
+  - !Nvm
+    name: PFLASH1 16 KiB sectors
+    range:
+      start: 0x80200000
+      end: 0x80220000
+    cores:
+    - cpu0
+    - cpu1
+    - cpu2
+  - !Nvm
+    name: PFLASH1 32 KiB sectors
+    range:
+      start: 0x80220000
+      end: 0x80260000
+    cores:
+    - cpu0
+    - cpu1
+    - cpu2
+  - !Nvm
+    name: PFLASH1 64 KiB sectors
+    range:
+      start: 0x80260000
+      end: 0x802a0000
+    cores:
+    - cpu0
+    - cpu1
+    - cpu2
+  - !Nvm
+    name: PFLASH1 128 KiB sectors
+    range:
+      start: 0x802a0000
+      end: 0x80300000
+    cores:
+    - cpu0
+    - cpu1
+    - cpu2
+  - !Nvm
+    name: PFLASH1 256 KiB sectors
+    range:
+      start: 0x80300000
       end: 0x80400000
+    cores:
+    - cpu0
+    - cpu1
+    - cpu2
+  - !Nvm
+    name: PFLASH uncached0 16 KiB sectors
+    range:
+      start: 0xa0000000
+      end: 0xa0020000
+    cores:
+    - cpu0
+    - cpu1
+    - cpu2
+    is_alias: true
+  - !Nvm
+    name: PFLASH uncached0 32 KiB sectors
+    range:
+      start: 0xa0020000
+      end: 0xa0060000
+    cores:
+    - cpu0
+    - cpu1
+    - cpu2
+    is_alias: true
+  - !Nvm
+    name: PFLASH uncached0 64 KiB sectors
+    range:
+      start: 0xa0060000
+      end: 0xa00a0000
+    cores:
+    - cpu0
+    - cpu1
+    - cpu2
+    is_alias: true
+  - !Nvm
+    name: PFLASH uncached0 128 KiB sectors
+    range:
+      start: 0xa00a0000
+      end: 0xa0100000
+    cores:
+    - cpu0
+    - cpu1
+    - cpu2
+    is_alias: true
+  - !Nvm
+    name: PFLASH uncached0 256 KiB sectors
+    range:
+      start: 0xa0100000
+      end: 0xa0200000
+    cores:
+    - cpu0
+    - cpu1
+    - cpu2
+    is_alias: true
+  - !Nvm
+    name: PFLASH uncached1 16 KiB sectors
+    range:
+      start: 0xa0200000
+      end: 0xa0220000
+    cores:
+    - cpu0
+    - cpu1
+    - cpu2
+    is_alias: true
+  - !Nvm
+    name: PFLASH uncached1 32 KiB sectors
+    range:
+      start: 0xa0220000
+      end: 0xa0260000
+    cores:
+    - cpu0
+    - cpu1
+    - cpu2
+    is_alias: true
+  - !Nvm
+    name: PFLASH uncached1 64 KiB sectors
+    range:
+      start: 0xa0260000
+      end: 0xa02a0000
+    cores:
+    - cpu0
+    - cpu1
+    - cpu2
+    is_alias: true
+  - !Nvm
+    name: PFLASH uncached1 128 KiB sectors
+    range:
+      start: 0xa02a0000
+      end: 0xa0300000
+    cores:
+    - cpu0
+    - cpu1
+    - cpu2
+    is_alias: true
+  - !Nvm
+    name: PFLASH uncached1 256 KiB sectors
+    range:
+      start: 0xa0300000
+      end: 0xa0400000
     cores:
     - cpu0
     - cpu1
@@ -104,4 +267,75 @@ variants:
     - cpu0
     - cpu1
     - cpu2
-  flash_algorithms: []
+  flash_algorithms:
+  - tc27x-pflash
+  - tc27x-pflash-uncached
+flash_algorithms:
+- name: tc27x-pflash
+  description: TC27x PFLASH (cached addresses), host-side programming with a RAM loader
+  default: true
+  flash_properties:
+    address_range:
+      start: 0x80000000
+      end: 0x80400000
+    page_size: 0x4000
+    erased_byte_value: 0x0
+    program_page_timeout: 10000
+    erase_sector_timeout: 30000
+    sectors:
+    - size: 0x4000
+      address: 0x0
+    - size: 0x8000
+      address: 0x20000
+    - size: 0x10000
+      address: 0x60000
+    - size: 0x20000
+      address: 0xa0000
+    - size: 0x40000
+      address: 0x100000
+    - size: 0x4000
+      address: 0x200000
+    - size: 0x8000
+      address: 0x220000
+    - size: 0x10000
+      address: 0x260000
+    - size: 0x20000
+      address: 0x2a0000
+    - size: 0x40000
+      address: 0x300000
+  cores:
+  - cpu0
+- name: tc27x-pflash-uncached
+  description: TC27x PFLASH (non-cached addresses), host-side programming with a RAM loader
+  default: true
+  flash_properties:
+    address_range:
+      start: 0xa0000000
+      end: 0xa0400000
+    page_size: 0x4000
+    erased_byte_value: 0x0
+    program_page_timeout: 10000
+    erase_sector_timeout: 30000
+    sectors:
+    - size: 0x4000
+      address: 0x0
+    - size: 0x8000
+      address: 0x20000
+    - size: 0x10000
+      address: 0x60000
+    - size: 0x20000
+      address: 0xa0000
+    - size: 0x40000
+      address: 0x100000
+    - size: 0x4000
+      address: 0x200000
+    - size: 0x8000
+      address: 0x220000
+    - size: 0x10000
+      address: 0x260000
+    - size: 0x20000
+      address: 0x2a0000
+    - size: 0x40000
+      address: 0x300000
+  cores:
+  - cpu0
