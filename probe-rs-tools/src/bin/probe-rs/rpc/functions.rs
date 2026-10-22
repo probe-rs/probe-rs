@@ -223,6 +223,7 @@ impl LimitedLister {
     }
 
     fn is_allowed(&self, selector: &DebugProbeSelector) -> bool {
+        let DebugProbeSelector::Usb(selector) = selector;
         // We aren't using `.to_string()` because it doesn't append an empty serial when missing.
         let sel_without_serial = format!("{:04x}:{:04x}", selector.vendor_id, selector.product_id);
         let mut sel_with_serial = format!("{sel_without_serial}:");

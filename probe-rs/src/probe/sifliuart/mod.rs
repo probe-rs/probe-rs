@@ -437,6 +437,7 @@ impl std::fmt::Display for SifliUartFactory {
 
 impl ProbeFactory for SifliUartFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+        let DebugProbeSelector::Usb(selector) = selector;
         let Ok(ports) = usb_serial_ports() else {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
                 ProbeCreationError::CouldNotOpen,

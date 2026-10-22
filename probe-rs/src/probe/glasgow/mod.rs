@@ -7,7 +7,7 @@ use crate::probe::{Pins, ResetLine};
 
 use super::{
     BatchError, BatchExecutionError, BitSequence, CommandResult, DebugProbe, DebugProbeError,
-    DebugProbeInfo, DebugProbeSelector, ProbeFactory, Results, WireProtocol,
+    DebugProbeInfo, DebugProbeSelector, ProbeFactory, Results, UsbSelector, WireProtocol,
     list::ProbeListItem,
     swd::{Direction, Port, SwdBatch, SwdOp, SwdProbe, SwdTransferError},
 };
@@ -48,13 +48,13 @@ impl ProbeFactory for GlasgowFactory {
     fn list_probes_filtered(&self, selector: Option<&DebugProbeSelector>) -> Vec<ProbeListItem> {
         // Return exactly the specified probe, if it has the option string (which is referred to
         // here as the serial number).
-        if let Some(DebugProbeSelector {
+        if let Some(DebugProbeSelector::Usb(UsbSelector {
             vendor_id,
             product_id,
             serial_number: serial_number @ Some(_),
             interface,
             usb_location: _,
-        }) = selector
+        })) = selector
             && *vendor_id == usb::VID_QIHW
             && *product_id == usb::PID_GLASGOW
         {

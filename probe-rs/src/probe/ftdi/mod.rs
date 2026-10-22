@@ -15,7 +15,7 @@ use crate::{
     probe::{
         BitbangSwd, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
         IoSequenceItem, JtagChain, JtagChainAccess, JtagChainState, JtagOp, JtagProbe,
-        ProbeCreationError, ProbeFactory, SwdProbe, SwdSettings, WireProtocol,
+        ProbeCreationError, ProbeFactory, SwdProbe, SwdSettings, UsbSelector, WireProtocol,
         jtag::{Step, TapState, distribute_captures, walk_batch},
         list::{ProbeListItem, usb_probe_accessibility},
         queue::{BatchExecutionError, Results},
@@ -354,6 +354,7 @@ impl std::fmt::Display for FtdiProbeFactory {
 
 impl ProbeFactory for FtdiProbeFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+        let DebugProbeSelector::Usb(selector) = selector;
         // Only open FTDI-compatible probes
         let Some(ftdi) = FTDI_COMPAT_DEVICES
             .iter()
@@ -403,7 +404,7 @@ impl ProbeFactory for FtdiProbeFactory {
         // listed entries.
         //
         // So match as the default does, but ignoring interface.
-        let selector = selector.map(|selector| DebugProbeSelector {
+        let selector = selector.map(|DebugProbeSelector::Usb(selector)| UsbSelector {
             interface: None,
             ..selector.clone()
         });

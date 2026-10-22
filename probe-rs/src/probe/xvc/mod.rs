@@ -77,7 +77,7 @@ impl ProbeFactory for XvcFactory {
     fn list_probes_filtered(&self, selector: Option<&DebugProbeSelector>) -> Vec<ProbeListItem> {
         // Surface exactly the requested probe when the selector explicitly
         // targets an XVC endpoint (placeholder VID/PID plus a server address).
-        if let Some(selector) = selector
+        if let Some(DebugProbeSelector::Usb(selector)) = selector
             && selector.vendor_id == XVC_VID
             && selector.product_id == XVC_PID
             && let Some(address) = selector.serial_number.clone()

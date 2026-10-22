@@ -1518,6 +1518,7 @@ impl ProbeFactory for BlackMagicProbeFactory {
         &self,
         selector: &super::DebugProbeSelector,
     ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+        let super::DebugProbeSelector::Usb(selector) = selector;
         // Ensure the VID and PID match Black Magic Probes
         if selector.vendor_id != BLACK_MAGIC_PROBE_VID
             || selector.product_id != BLACK_MAGIC_PROBE_PID
@@ -1624,7 +1625,7 @@ impl ProbeFactory for BlackMagicProbeFactory {
 
     fn list_probes_filtered(&self, selector: Option<&DebugProbeSelector>) -> Vec<ProbeListItem> {
         // No selector - list probes as usual
-        let Some(selector) = selector else {
+        let Some(DebugProbeSelector::Usb(selector)) = selector else {
             return self.list_probes();
         };
 

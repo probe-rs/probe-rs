@@ -192,6 +192,7 @@ impl fmt::Display for LinuxGpiodFactory {
 
 impl ProbeFactory for LinuxGpiodFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+        let DebugProbeSelector::Usb(selector) = selector;
         // We're never a USB device; let other factories handle non-zero VID/PID.
         if selector.vendor_id != 0 || selector.product_id != 0 {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
@@ -224,7 +225,7 @@ impl ProbeFactory for LinuxGpiodFactory {
     fn list_probes_filtered(&self, selector: Option<&DebugProbeSelector>) -> Vec<ProbeListItem> {
         // Synthesise an entry for any well-formed gpiod selector — the CLI
         // resolves `--probe` via this method before calling open().
-        let Some(selector) = selector else {
+        let Some(DebugProbeSelector::Usb(selector)) = selector else {
             return Vec::new();
         };
         if selector.vendor_id != 0 || selector.product_id != 0 {

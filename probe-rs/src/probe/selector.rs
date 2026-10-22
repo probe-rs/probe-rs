@@ -6,7 +6,7 @@ use crate::probe::{DebugProbeInfo, usb_util::to_hex};
 
 use nusb::DeviceInfo;
 
-/// A struct to describe the way a probe should be selected.
+/// Describes the way a probe should be selected.
 ///
 /// Construct this from a set of info or from a string. The
 /// string has to be in the format "VID:PID-INTERFACE:SERIALNUMBER".
@@ -21,7 +21,8 @@ use nusb::DeviceInfo;
 ///
 /// ```
 /// use std::str::FromStr;
-/// let selector: probe_rs::probe::DebugProbeSelector = "1942:1337:SERIAL".parse().unwrap();
+/// use probe_rs::probe::DebugProbeSelector;
+/// let DebugProbeSelector::Usb(selector) = "1942:1337:SERIAL".parse().unwrap();
 ///
 /// assert_eq!(selector.vendor_id, 0x1942);
 /// assert_eq!(selector.product_id, 0x1337);
@@ -30,14 +31,43 @@ use nusb::DeviceInfo;
 /// With interface number:
 /// ```
 /// use std::str::FromStr;
-/// let selector: probe_rs::probe::DebugProbeSelector = "1942:1337-3".parse().unwrap();
+/// use probe_rs::probe::DebugProbeSelector;
+/// let DebugProbeSelector::Usb(selector) = "1942:1337-3".parse().unwrap();
 ///
 /// assert_eq!(selector.vendor_id, 0x1942);
 /// assert_eq!(selector.product_id, 0x1337);
 /// assert_eq!(selector.interface, Some(3));
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DebugProbeSelector {
+pub enum DebugProbeSelector {
+    /// A USB probe.
+    Usb(UsbSelector),
+}
+
+impl DebugProbeSelector {
+    /// Returns whether the given USB device info matches this selector.
+    pub fn matches(&self, info: &DeviceInfo) -> bool {
+        let DebugProbeSelector::Usb(selector) = self;
+        selector.matches(info)
+    }
+
+    /// Check if the given probe info matches this selector.
+    pub fn matches_probe(&self, info: &DebugProbeInfo) -> bool {
+        let DebugProbeSelector::Usb(selector) = self;
+        selector.matches_probe(info)
+    }
+
+    /// Returns whether a probe that `probe` selects matches this selector.
+    pub fn matches_selector(&self, probe: &DebugProbeSelector) -> bool {
+        let (DebugProbeSelector::Usb(selector), DebugProbeSelector::Usb(probe)) = (self, probe);
+        selector.matches_selector(probe)
+    }
+}
+
+/// Selects a USB probe by its vendor and product ID, and optionally its interface, serial number
+/// and USB location.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct UsbSelector {
     /// The USB vendor id of the debug probe to be used.
     pub vendor_id: u16,
     /// The USB product id of the debug probe to be used.
@@ -52,11 +82,11 @@ pub struct DebugProbeSelector {
     pub usb_location: Option<(String, u8)>,
 }
 
-impl DebugProbeSelector {
+impl UsbSelector {
     /// Returns whether the given USB device info matches this selector.
     pub fn matches(&self, info: &DeviceInfo) -> bool {
         fn matches_with_interface(
-            selector: &DebugProbeSelector,
+            selector: &UsbSelector,
             info: &DeviceInfo,
             interface: Option<u8>,
         ) -> bool {
@@ -97,7 +127,7 @@ impl DebugProbeSelector {
     }
 
     /// Returns whether a probe that `probe` selects matches this selector.
-    pub fn matches_selector(&self, probe: &DebugProbeSelector) -> bool {
+    pub fn matches_selector(&self, probe: &UsbSelector) -> bool {
         self.match_probe_selector(
             probe.vendor_id,
             probe.product_id,
@@ -166,41 +196,54 @@ impl std::str::FromStr for DebugProbeSelector {
         }?;
         let serial_number = split.next().map(|s| s.to_string());
 
-        Ok(DebugProbeSelector {
+        Ok(DebugProbeSelector::Usb(UsbSelector {
             vendor_id: u16::from_str_radix(vendor_id, 16)?,
             product_id: u16::from_str_radix(product_id, 16)?,
             serial_number,
             interface,
             usb_location: None,
-        })
+        }))
     }
 }
 
 impl From<DebugProbeInfo> for DebugProbeSelector {
     fn from(selector: DebugProbeInfo) -> Self {
-        DebugProbeSelector {
+        DebugProbeSelector::Usb(UsbSelector {
             vendor_id: selector.vendor_id,
             product_id: selector.product_id,
             serial_number: selector.serial_number,
             interface: selector.interface,
             usb_location: selector.usb_location,
-        }
+        })
     }
 }
 
 impl From<&DebugProbeInfo> for DebugProbeSelector {
     fn from(selector: &DebugProbeInfo) -> Self {
-        DebugProbeSelector {
+        DebugProbeSelector::Usb(UsbSelector {
             vendor_id: selector.vendor_id,
             product_id: selector.product_id,
             serial_number: selector.serial_number.clone(),
             interface: selector.interface,
             usb_location: selector.usb_location.clone(),
-        }
+        })
+    }
+}
+
+impl From<UsbSelector> for DebugProbeSelector {
+    fn from(selector: UsbSelector) -> Self {
+        DebugProbeSelector::Usb(selector)
     }
 }
 
 impl fmt::Display for DebugProbeSelector {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let DebugProbeSelector::Usb(selector) = self;
+        selector.fmt(f)
+    }
+}
+
+impl fmt::Display for UsbSelector {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:04x}:{:04x}", self.vendor_id, self.product_id)?;
         if let Some(interface) = self.interface {
@@ -244,11 +287,16 @@ pub enum DebugProbeSelectorParseError {
 
 #[cfg(test)]
 mod test {
-    use crate::probe::DebugProbeSelector;
+    use crate::probe::{DebugProbeSelector, UsbSelector};
+
+    fn usb(selector: &str) -> UsbSelector {
+        let DebugProbeSelector::Usb(selector) = selector.parse().unwrap();
+        selector
+    }
 
     #[test]
     fn test_parsing_many_colons() {
-        let selector: DebugProbeSelector = "303a:1001:DC:DA:0C:D3:FE:D8".parse().unwrap();
+        let selector = usb("303a:1001:DC:DA:0C:D3:FE:D8");
 
         assert_eq!(selector.vendor_id, 0x303a);
         assert_eq!(selector.product_id, 0x1001);
@@ -260,7 +308,7 @@ mod test {
 
     #[test]
     fn missing_serial_is_none() {
-        let selector: DebugProbeSelector = "303a:1001".parse().unwrap();
+        let selector = usb("303a:1001");
 
         assert_eq!(selector.vendor_id, 0x303a);
         assert_eq!(selector.product_id, 0x1001);
@@ -275,7 +323,7 @@ mod test {
 
     #[test]
     fn empty_serial_is_some() {
-        let selector: DebugProbeSelector = "303a:1001:".parse().unwrap();
+        let selector = usb("303a:1001:");
 
         assert_eq!(selector.vendor_id, 0x303a);
         assert_eq!(selector.product_id, 0x1001);
@@ -290,7 +338,7 @@ mod test {
 
     #[test]
     fn missing_interface_is_none() {
-        let selector: DebugProbeSelector = "303a:1001".parse().unwrap();
+        let selector = usb("303a:1001");
 
         assert_eq!(selector.vendor_id, 0x303a);
         assert_eq!(selector.product_id, 0x1001);
@@ -304,7 +352,7 @@ mod test {
 
     #[test]
     fn empty_interface_is_none() {
-        let selector: DebugProbeSelector = "303a:1001-".parse().unwrap();
+        let selector = usb("303a:1001-");
 
         assert_eq!(selector.vendor_id, 0x303a);
         assert_eq!(selector.product_id, 0x1001);
@@ -318,7 +366,7 @@ mod test {
 
     #[test]
     fn set_interface_matches() {
-        let selector: DebugProbeSelector = "303a:1001-0".parse().unwrap();
+        let selector = usb("303a:1001-0");
 
         assert_eq!(selector.vendor_id, 0x303a);
         assert_eq!(selector.product_id, 0x1001);
@@ -335,12 +383,12 @@ mod test {
 
     #[test]
     fn display_round_trips_with_interface() {
-        let selector: DebugProbeSelector = "0403:6010-1".parse().unwrap();
+        let selector = usb("0403:6010-1");
         assert_eq!(selector.interface, Some(1));
         assert_eq!(selector.to_string(), "0403:6010-1");
 
         // Display output must parse back to an equivalent selector.
-        let reparsed: DebugProbeSelector = selector.to_string().parse().unwrap();
+        let reparsed = usb(&selector.to_string());
         assert_eq!(reparsed.vendor_id, selector.vendor_id);
         assert_eq!(reparsed.product_id, selector.product_id);
         assert_eq!(reparsed.interface, selector.interface);
@@ -349,12 +397,12 @@ mod test {
 
     #[test]
     fn display_round_trips_with_interface_and_serial() {
-        let selector: DebugProbeSelector = "0403:6010-1:ABCD1234".parse().unwrap();
+        let selector = usb("0403:6010-1:ABCD1234");
         assert_eq!(selector.interface, Some(1));
         assert_eq!(selector.serial_number, Some("ABCD1234".to_string()));
         assert_eq!(selector.to_string(), "0403:6010-1:ABCD1234");
 
-        let reparsed: DebugProbeSelector = selector.to_string().parse().unwrap();
+        let reparsed = usb(&selector.to_string());
         assert_eq!(reparsed.vendor_id, selector.vendor_id);
         assert_eq!(reparsed.product_id, selector.product_id);
         assert_eq!(reparsed.interface, selector.interface);
@@ -364,7 +412,7 @@ mod test {
     #[test]
     fn display_without_interface_unchanged() {
         // Selectors without interface must continue to display without a dash.
-        let selector: DebugProbeSelector = "0403:6010:ABCD1234".parse().unwrap();
+        let selector = usb("0403:6010:ABCD1234");
         assert_eq!(selector.interface, None);
         assert_eq!(selector.to_string(), "0403:6010:ABCD1234");
     }

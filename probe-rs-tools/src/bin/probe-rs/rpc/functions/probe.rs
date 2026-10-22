@@ -575,6 +575,7 @@ pub(crate) mod convert {
     pub(crate) fn to_wire_debug_probe_selector(
         selector: probe_rs::probe::DebugProbeSelector,
     ) -> probe_rs_rpc::probe::DebugProbeSelector {
+        let probe_rs::probe::DebugProbeSelector::Usb(selector) = selector;
         probe_rs_rpc::probe::DebugProbeSelector {
             vendor_id: selector.vendor_id,
             product_id: selector.product_id,
@@ -587,13 +588,13 @@ pub(crate) mod convert {
     pub(crate) fn from_wire_debug_probe_selector(
         selector: probe_rs_rpc::probe::DebugProbeSelector,
     ) -> probe_rs::probe::DebugProbeSelector {
-        probe_rs::probe::DebugProbeSelector {
+        probe_rs::probe::DebugProbeSelector::Usb(probe_rs::probe::UsbSelector {
             vendor_id: selector.vendor_id,
             product_id: selector.product_id,
             serial_number: selector.serial_number,
             interface: selector.interface,
             usb_location: selector.usb_location,
-        }
+        })
     }
 
     impl From<&AttachRequest> for ProbeOptions {
