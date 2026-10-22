@@ -3141,6 +3141,7 @@ dependencies = [
  "bincode",
  "docsplay",
  "probe-rs",
+ "probe-rs-debug",
  "probe-rs-target",
  "thiserror 2.0.21",
  "tracing",
