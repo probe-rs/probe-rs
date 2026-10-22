@@ -3138,11 +3138,13 @@ dependencies = [
 name = "probe-rs-infineon"
 version = "0.32.0"
 dependencies = [
+ "base64 0.22.1",
  "bincode",
  "docsplay",
  "probe-rs",
  "probe-rs-debug",
  "probe-rs-target",
+ "serde_json",
  "thiserror 2.0.21",
  "tracing",
 ]

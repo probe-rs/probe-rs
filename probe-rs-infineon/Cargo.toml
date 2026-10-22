@@ -21,6 +21,8 @@ tracing = "0.1"
 
 [dev-dependencies]
 probe-rs-debug = { version = "0.32.0", path = "../probe-rs-debug" }
+base64 = "0.22"
+serde_json = "1"
 
 [build-dependencies]
 probe-rs-target = { workspace = true, features = ["bincode"] }

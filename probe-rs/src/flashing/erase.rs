@@ -26,6 +26,11 @@ pub fn erase_all(
 ) -> Result<(), FlashError> {
     tracing::debug!("Erasing all...");
 
+    // A target with a host-side flash sequence has no RAM flash algorithm to run.
+    if let Some(sequence) = session.target().debug_sequence.debug_flash_sequence() {
+        return erase_with_flash_sequence(session, sequence.as_ref(), None);
+    }
+
     // TODO: this first loop is pretty much identical to FlashLoader::prepare_plan - can we simplify?
 
     let mut algos = Vec::<FlasherWithRegions>::new();
@@ -214,6 +219,16 @@ pub fn erase(
 
     let address_range = address_start..address_end;
 
+    // A target with a host-side flash sequence has no RAM flash algorithm to run.
+    if let Some(sequence) = session.target().debug_sequence.debug_flash_sequence() {
+        if restore {
+            return Err(FlashError::Core(crate::Error::NotImplemented(
+                "restoring the bytes around an erased range with a host-side flash sequence",
+            )));
+        }
+        return erase_with_flash_sequence(session, sequence.as_ref(), Some(address_range));
+    }
+
     let mut algos: HashMap<(String, String), Vec<NvmRegion>> = HashMap::new();
     tracing::debug!("Regions:");
     for region in session
@@ -326,6 +341,76 @@ pub fn erase(
     }
 
     Ok(())
+}
+
+/// Erases with a host-side flash sequence: the whole chip (`range` = `None`, when the sequence
+/// supports a chip erase), or else every sector of the flash algorithms that lies in an NVM
+/// region and intersects `range`.
+fn erase_with_flash_sequence(
+    session: &mut Session,
+    sequence: &dyn crate::flashing::DebugFlashSequence,
+    range: Option<std::ops::Range<u64>>,
+) -> Result<(), FlashError> {
+    let mut sectors = Vec::new();
+    if range.is_some() || !sequence.supports_chip_erase() {
+        let target = session.target();
+        for region in target
+            .memory_map
+            .iter()
+            .filter_map(MemoryRegion::as_nvm_region)
+        {
+            let selected = match &range {
+                Some(range) => region.range.intersects_range(range),
+                // Erasing everything skips the aliases of memory that is erased anyway.
+                None => !region.is_alias,
+            };
+            if !selected {
+                continue;
+            }
+            let Some(core_name) = region.cores.first() else {
+                return Err(FlashError::NoNvmCoreAccess(region.clone()));
+            };
+            let algo = match FlashLoader::get_flash_algorithm_for_region(
+                region,
+                target,
+                core_name,
+                &[],
+            ) {
+                Ok(algo) => algo,
+                Err(FlashError::NoFlashLoaderAlgorithmAttached { .. }) => continue,
+                Err(error) => return Err(error),
+            };
+            for info in algo.flash_properties.iter_sectors() {
+                let sector_range = info.address_range();
+                if region.range.contains_range(&sector_range)
+                    && range.as_ref().is_none_or(|r| r.intersects_range(&sector_range))
+                {
+                    sectors.push(info.base_address);
+                }
+            }
+        }
+    }
+
+    sequence.prepare_flash(session).map_err(FlashError::Core)?;
+    let result = if range.is_none() && sequence.supports_chip_erase() {
+        sequence
+            .erase_all(session)
+            .map_err(|e| FlashError::ChipEraseFailed {
+                source: Box::new(e),
+            })
+    } else {
+        sectors.iter().try_for_each(|&address| {
+            tracing::debug!("Host-side: erasing sector at {address:#010x}");
+            sequence
+                .erase_sector(session, address)
+                .map_err(|e| FlashError::EraseFailed {
+                    sector_address: address,
+                    source: Box::new(e),
+                })
+        })
+    };
+    sequence.finish_flash(session).map_err(FlashError::Core)?;
+    result
 }
 
 /// Read bytes that sit in `sectors` but outside `address_start..address_end`.

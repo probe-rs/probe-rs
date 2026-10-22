@@ -6,8 +6,12 @@
 //!
 //! The TC27x PFLASH has logical sectors of 16 KiB to 256 KiB and 32 byte pages. An erased page
 //! does not read as a value: it fails with an uncorrectable ECC error. So the flash is read
-//! page by page, and a page that can not be read is erased. When a sector is changed, its other
-//! pages are kept: the sector is read, erased, and its old and new pages are written back.
+//! page by page, and a page that can not be read is erased.
+//!
+//! A sector the image touches is erased and the image's pages are written, the rest of a
+//! partly written page is 0 (the erased value in the target description). Bytes the image does
+//! not set stay erased, unless `--restore-unwritten` asked probe-rs to read them back first.
+//! A sector that already holds exactly that content is not erased.
 //!
 //! `prepare_flash` saves the CPU0 registers and the RAM the loader uses, and halts all cores.
 //! `finish_flash` restores them and resumes the cores that were running. The application in
@@ -115,12 +119,47 @@ pub type PageImage = Option<[u8; PAGE]>;
 pub type PagePatch = [Option<u8>; PAGE];
 
 /// Collects the bytes `layout` writes, per non-cached page address.
+///
+/// These are the image data, and the fill bytes of the pages the data touches. probe-rs fills
+/// the rest of a sector too: with the old content for `--restore-unwritten`, else with the
+/// erased value 0. A page with only fill bytes is written when one of them is not 0; an
+/// all-zero fill page stays erased.
 pub fn page_patches(layout: &FlashLayout) -> BTreeMap<u32, PagePatch> {
-    let pages = layout.pages();
+    let data = spans_to_patches(
+        layout.pages(),
+        layout.data_blocks().iter().map(|b| (b.address(), b.size())),
+    );
+    let fills = spans_to_patches(
+        layout.pages(),
+        layout.fills().iter().map(|f| (f.address(), f.size())),
+    );
+    let mut patches = data;
+    for (address, fill) in fills {
+        match patches.get_mut(&address) {
+            Some(page) => {
+                for (byte, fill) in page.iter_mut().zip(fill) {
+                    if byte.is_none() {
+                        *byte = fill;
+                    }
+                }
+            }
+            None if fill.iter().any(|b| b.is_some_and(|b| b != 0)) => {
+                patches.insert(address, fill);
+            }
+            None => {}
+        }
+    }
+    patches
+}
+
+fn spans_to_patches(
+    pages: &[FlashPage],
+    spans: impl Iterator<Item = (u64, u64)>,
+) -> BTreeMap<u32, PagePatch> {
     let mut patches = BTreeMap::new();
-    for block in layout.data_blocks() {
-        let end = block.address() + block.size();
-        let mut address = block.address();
+    for (start, size) in spans {
+        let end = start + size;
+        let mut address = start;
         while address < end {
             let Some(page) = find_page(pages, address) else {
                 break;
@@ -148,30 +187,15 @@ fn find_page(pages: &[FlashPage], address: u64) -> Option<&FlashPage> {
         .filter(|p| p.address() <= address && address < p.address() + p.size() as u64)
 }
 
-/// The pages of a sector after the patches: old pages are kept, patched bytes replace the old
-/// ones, and the rest of a newly written page is 0.
-pub fn merge_sector(
-    base: u32,
-    backup: &[PageImage],
-    patches: &BTreeMap<u32, PagePatch>,
-) -> Vec<PageImage> {
-    backup
-        .iter()
-        .enumerate()
-        .map(|(index, old)| {
-            let address = base + (index * PAGE) as u32;
-            match patches.get(&address) {
-                None => *old,
-                Some(patch) => {
-                    let mut page = old.unwrap_or([0; PAGE]);
-                    for (byte, new) in page.iter_mut().zip(patch) {
-                        if let Some(new) = new {
-                            *byte = *new;
-                        }
-                    }
-                    Some(page)
-                }
-            }
+/// The pages of a sector once it is written: the patched pages, with 0 in the bytes a patch
+/// does not set, and erased pages elsewhere.
+pub fn sector_image(sector: Sector, patches: &BTreeMap<u32, PagePatch>) -> Vec<PageImage> {
+    (0..sector.size as usize / PAGE)
+        .map(|index| {
+            let address = sector.base + (index * PAGE) as u32;
+            patches
+                .get(&address)
+                .map(|patch| patch.map(|byte| byte.unwrap_or(0)))
         })
         .collect()
 }
@@ -501,17 +525,17 @@ impl DebugFlashSequence for Tc27xFlash {
                 let mut core = session.core(0)?;
                 read_pages(&mut core, sector.base, sector.size as usize)?
             };
-            let merged = merge_sector(sector.base, &backup, &patches);
-            if merged == backup {
+            let image = sector_image(sector, &patches);
+            if image == backup {
                 tracing::info!("Sector {:#010x} already holds the image", sector.base);
                 continue;
             }
             Self::erase(session, sector)?;
-            self.program_pages(session, sector.base, &merged)?;
+            self.program_pages(session, sector.base, &image)?;
             tracing::info!(
                 "Sector {:#010x}: {} page(s) written",
                 sector.base,
-                merged.iter().filter(|p| p.is_some()).count()
+                image.iter().filter(|p| p.is_some()).count()
             );
         }
         Ok(true)
@@ -571,29 +595,22 @@ mod tests {
     }
 
     #[test]
-    fn merging_keeps_old_pages_and_erased_pages() {
-        let base = 0xA021_C000;
-        let mut backup = vec![None; 4];
-        backup[2] = Some([0x55; PAGE]);
+    fn only_patched_pages_are_written() {
+        let sector = Sector {
+            base: 0xA021_C000,
+            size: 0x4000,
+        };
         let mut patches = BTreeMap::new();
         let mut patch = [None; PAGE];
         patch[1] = Some(0xAB);
-        patches.insert(base, patch);
+        patches.insert(sector.base + 64, patch);
 
-        let merged = merge_sector(base, &backup, &patches);
+        let image = sector_image(sector, &patches);
+        assert_eq!(image.len(), 512);
         let mut expected = [0; PAGE];
         expected[1] = 0xAB;
-        assert_eq!(merged, vec![Some(expected), None, Some([0x55; PAGE]), None]);
-
-        // A patch on an existing page keeps its other bytes.
-        let mut patches = BTreeMap::new();
-        let mut patch = [None; PAGE];
-        patch[0] = Some(0x00);
-        patches.insert(base + 64, patch);
-        let merged = merge_sector(base, &backup, &patches);
-        let mut expected = [0x55; PAGE];
-        expected[0] = 0;
-        assert_eq!(merged[2], Some(expected));
+        assert_eq!(image[2], Some(expected));
+        assert_eq!(image.iter().filter(|p| p.is_some()).count(), 1);
     }
 
     #[test]
