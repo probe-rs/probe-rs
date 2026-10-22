@@ -315,6 +315,7 @@ fn read_loop(
     settings: &SerialSettings,
 ) {
     let mut buf = [0; 4096];
+    let mut overflowed = false;
 
     while !shared.stop.load(Ordering::Relaxed) {
         let Some(reader) = port.as_mut() else {
@@ -339,6 +340,12 @@ fn read_loop(
                 }
                 rx.extend(&buf[..len]);
                 let excess = rx.len().saturating_sub(RX_BUFFER_LIMIT);
+                if excess > 0 && !overflowed {
+                    overflowed = true;
+                    tracing::warn!(
+                        "The receive buffer of target serial port {filter} is full. The oldest data is dropped."
+                    );
+                }
                 rx.drain(..excess);
                 shared.received.notify_all();
                 None
