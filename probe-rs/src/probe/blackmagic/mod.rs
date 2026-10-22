@@ -24,7 +24,7 @@ use crate::{
         BitbangSwd, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
         IoSequenceItem, JtagChain, JtagChainAccess, JtagChainState, JtagOp, JtagProbe,
         ProbeCreationError, ProbeError, ProbeFactory, ProbeTransport, ResetLine, SwdProbe,
-        SwdSettings, UsbProbeInfo, WireProtocol,
+        SwdSettings, TcpAddress, UsbProbeInfo, WireProtocol,
         blackmagic::arm::BlackMagicProbeArmDebug,
         jtag::{Step, TapState, distribute_captures, walk_batch},
         list::ProbeListItem,
@@ -41,6 +41,9 @@ use crate::probe::{Batch, BitSequence};
 const BLACK_MAGIC_PROBE_VID: u16 = 0x1d50;
 const BLACK_MAGIC_PROBE_PID: u16 = 0x6018;
 const BLACK_MAGIC_PROBE: (u16, u16) = (BLACK_MAGIC_PROBE_VID, BLACK_MAGIC_PROBE_PID);
+
+/// The driver name in a `tcp://` selector.
+const DRIVER: &str = "blackmagic";
 const BLACK_MAGIC_PROTOCOL_RESPONSE_START: u8 = b'&';
 const BLACK_MAGIC_PROTOCOL_RESPONSE_END: u8 = b'#';
 /// TMS bits that one remote TMS command carries. The firmware reads two hex digits of state.
@@ -1520,11 +1523,20 @@ impl ProbeFactory for BlackMagicProbeFactory {
         &self,
         selector: &super::DebugProbeSelector,
     ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
-        // Probes of this driver are selected by VID:PID; other selectors are for other drivers.
-        let super::DebugProbeSelector::Usb(selector) = selector else {
-            return Err(DebugProbeError::ProbeCouldNotBeCreated(
-                ProbeCreationError::NotFound,
-            ));
+        let selector = match selector {
+            DebugProbeSelector::Tcp(address) if address.driver == DRIVER => {
+                let connection = std::net::TcpStream::connect(&address.address).map_err(|e| {
+                    DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::Usb(e))
+                })?;
+                return open_tcp(connection);
+            }
+            DebugProbeSelector::Usb(selector) => selector,
+            // Other selectors are for other drivers.
+            _ => {
+                return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                    ProbeCreationError::NotFound,
+                ));
+            }
         };
         // Ensure the VID and PID match Black Magic Probes
         if selector.vendor_id != BLACK_MAGIC_PROBE_VID
@@ -1547,12 +1559,7 @@ impl ProbeFactory for BlackMagicProbeFactory {
         if let Some(serial_number) = &selector.serial_number
             && let Ok(connection) = std::net::TcpStream::connect(serial_number)
         {
-            let reader = connection;
-            let writer = reader
-                .try_clone()
-                .map_err(|e| DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::Usb(e)))?;
-            return BlackMagicProbe::new(Box::new(reader), Box::new(writer))
-                .map(|p| Box::new(p) as Box<dyn DebugProbe>);
+            return open_tcp(connection);
         }
 
         // Otherwise, treat it as a serial port and iterate through all ports.
@@ -1638,7 +1645,12 @@ impl ProbeFactory for BlackMagicProbeFactory {
         let Some(selector) = selector else {
             return self.list_probes();
         };
-        // Probes of this driver are selected by VID:PID; other selectors are for other drivers.
+        if let DebugProbeSelector::Tcp(address) = selector
+            && address.driver == DRIVER
+        {
+            return vec![tcp_probe(address.address.clone())];
+        }
+        // Other selectors are for other drivers.
         let DebugProbeSelector::Usb(selector) = selector else {
             return vec![];
         };
@@ -1674,18 +1686,49 @@ impl ProbeFactory for BlackMagicProbeFactory {
         }
 
         // Filter is a valid probe, and VID:PID is either a BMP or the "not specified" convention.
-        vec![ProbeListItem::accessible(DebugProbeInfo {
-            identifier: format!("{}:{}", ip_port.ip(), ip_port.port()),
-            transport: ProbeTransport::Usb(UsbProbeInfo {
-                vendor_id: BLACK_MAGIC_PROBE_VID,
-                product_id: BLACK_MAGIC_PROBE_PID,
-                serial_number: Some(ip_port.to_string()),
-                interface: None,
-                is_hid_interface: false,
-                usb_location: None,
-            }),
-            probe_factory: &BlackMagicProbeFactory,
-        })]
+        vec![tcp_probe(ip_port.to_string())]
+    }
+}
+
+/// The listing of the probe at `address`, a TCP probe that cannot be enumerated.
+fn tcp_probe(address: String) -> ProbeListItem {
+    ProbeListItem::accessible(DebugProbeInfo {
+        identifier: address.clone(),
+        transport: ProbeTransport::Tcp(TcpAddress {
+            driver: DRIVER.to_string(),
+            address,
+        }),
+        probe_factory: &BlackMagicProbeFactory,
+    })
+}
+
+fn open_tcp(connection: std::net::TcpStream) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+    let reader = connection;
+    let writer = reader
+        .try_clone()
+        .map_err(|e| DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::Usb(e)))?;
+    BlackMagicProbe::new(Box::new(reader), Box::new(writer))
+        .map(|p| Box::new(p) as Box<dyn DebugProbe>)
+}
+
+#[cfg(test)]
+mod tcp_selector_tests {
+    use super::*;
+
+    fn listed(selector: &str) -> Vec<DebugProbeSelector> {
+        BlackMagicProbeFactory
+            .list_probes_filtered(Some(&selector.parse().unwrap()))
+            .iter()
+            .map(|probe| DebugProbeSelector::from(&probe.info))
+            .collect()
+    }
+
+    #[test]
+    fn released_forms_list_the_tcp_probe() {
+        let tcp = listed("tcp://blackmagic@192.168.1.5:2000");
+        assert_eq!(tcp, ["tcp://blackmagic@192.168.1.5:2000".parse().unwrap()]);
+        assert_eq!(listed("1d50:6018:192.168.1.5:2000"), tcp);
+        assert_eq!(listed("0000:0000:192.168.1.5:2000"), tcp);
     }
 }
 
