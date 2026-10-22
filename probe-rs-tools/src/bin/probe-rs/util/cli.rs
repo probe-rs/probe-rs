@@ -4,7 +4,7 @@ use std::future::pending;
 use std::io::{IsTerminal, Write};
 use std::sync::Arc;
 use std::time::Duration;
-use std::{future::Future, ops::DerefMut, path::Path, time::Instant};
+use std::{future::Future, path::Path, time::Instant};
 
 use anyhow::Context;
 use libtest_mimic::{Failed, Trial};
@@ -496,7 +496,6 @@ pub async fn rtt_client(
     session: &SessionInterface,
     meta: &FileMetadata,
     monitor_options: &MonitoringOptions,
-    timestamp_offset: Option<UtcOffset>,
 ) -> anyhow::Result<CliRttClient> {
     let scan_regions = match &meta.scan_regions {
         Some(scan_regions) => scan_regions.clone(),
@@ -532,13 +531,6 @@ pub async fn rtt_client(
     Ok(CliRttClient {
         handle: rtt_client.handle,
         channel_processors: vec![],
-        decoders: DecoderSettings {
-            log_format: monitor_options.log_format.clone(),
-            show_timestamps: !monitor_options.no_timestamps,
-            show_location: !monitor_options.no_location,
-            timestamp_offset,
-            defmt_data: meta.defmt_data.clone(),
-        },
         zephyr_log_dictionary,
     })
 }
@@ -745,7 +737,7 @@ pub async fn monitor(
     mode: MonitorMode,
     path: Option<&Path>,
     monitor_options: &MonitoringOptions,
-    mut rtt_client: Option<CliRttClient>,
+    mut output: TargetOutput,
     vector_catch: VectorCatchConfig,
 ) -> anyhow::Result<()> {
     let semihosting_options = parse_semihosting_options(&monitor_options.semihosting_file)?;
@@ -757,17 +749,14 @@ pub async fn monitor(
         catch_hardfault: vector_catch.catch_hardfault,
         catch_svc: vector_catch.catch_svc,
         catch_hlt: vector_catch.catch_hlt,
-        rtt_client: rtt_client.as_ref().map(|client| client.handle()),
+        rtt_client: output.rtt_handle(),
         semihosting_options,
     };
 
     // The mutex around the context should only be held for a short period of time.
     let ui_context = MonitorUiContext::new(monitor_options.rtt_down_channel);
-    let mut serial_channel = serial_channel(rtt_client.as_ref());
 
     let monitor = session.monitor(mode, options, async |msg| {
-        let mut client = rtt_client.as_mut();
-
         if let MonitorEvent::Rtt(RttEvent::Discovered {
             down_channels,
             up_channels,
@@ -777,7 +766,7 @@ pub async fn monitor(
                 .update(|state| {
                     state.up_channels = up_channels.clone();
                     state.down_channels = down_channels.clone();
-                    state.rtt_client = client.as_ref().map(|client| client.handle());
+                    state.rtt_client = output.rtt_handle();
                 })
                 .await
         };
@@ -786,8 +775,7 @@ pub async fn monitor(
         }
 
         handle_monitor_event(
-            &mut client,
-            &mut serial_channel,
+            &mut output,
             msg,
             &mut target_output_files,
             &async |message| ui_context.lock().await.print(message),
@@ -1145,7 +1133,7 @@ pub async fn test(
     libtest_args: libtest_mimic::Arguments,
     monitor_options: &MonitoringOptions,
     path: &Path,
-    mut rtt_client: Option<CliRttClient>,
+    mut output: TargetOutput,
 ) -> anyhow::Result<()> {
     tracing::info!("libtest args {:?}", libtest_args);
     let token = CancellationToken::new();
@@ -1157,7 +1145,7 @@ pub async fn test(
 
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel::<MonitorEvent>();
 
-    let rtt_handle = rtt_client.as_ref().map(|rtt| rtt.handle);
+    let rtt_handle = output.rtt_handle();
     let test = async {
         let tests = if elf_info.version == 0 {
             // In embedded test < 0.7, we have to query the tests from the target via semihosting
@@ -1205,12 +1193,10 @@ pub async fn test(
         .await?
     };
 
-    let mut serial_channel = serial_channel(rtt_client.as_ref());
     let log = async {
         while let Some(event) = receiver.recv().await {
             handle_monitor_event(
-                &mut rtt_client.as_mut(),
-                &mut serial_channel,
+                &mut output,
                 event,
                 &mut target_output_files,
                 &async |message| print!("{message}"),
@@ -1403,13 +1389,11 @@ pub struct CliRttClient {
     channel_processors: Vec<Channel>,
 
     // Data necessary to create the channel processors once we know the channel names.
-    decoders: DecoderSettings,
     zephyr_log_dictionary: Option<Arc<ZephyrLogDatabase>>,
 }
 
 /// The settings to create the decoders of the target output.
-#[derive(Clone, Default)]
-struct DecoderSettings {
+pub struct DecoderSettings {
     log_format: Option<String>,
     show_timestamps: bool,
     show_location: bool,
@@ -1418,6 +1402,20 @@ struct DecoderSettings {
 }
 
 impl DecoderSettings {
+    pub fn new(
+        meta: &FileMetadata,
+        monitor_options: &MonitoringOptions,
+        timestamp_offset: Option<UtcOffset>,
+    ) -> Self {
+        Self {
+            log_format: monitor_options.log_format.clone(),
+            show_timestamps: !monitor_options.no_timestamps,
+            show_location: !monitor_options.no_location,
+            timestamp_offset,
+            defmt_data: meta.defmt_data.clone(),
+        }
+    }
+
     fn defmt_processor(&self) -> Option<DefmtProcessor> {
         self.defmt_data.clone().map(|defmt_data| {
             DefmtProcessor::new(
@@ -1439,12 +1437,25 @@ impl DecoderSettings {
     }
 }
 
-/// Creates the decoder of the serial port to the target.
-fn serial_channel(rtt_client: Option<&CliRttClient>) -> Channel {
-    let decoders = rtt_client
-        .map(|client| client.decoders.clone())
-        .unwrap_or_default();
-    Channel::new("serial".to_string(), decoders.auto_decoder())
+/// The decoders of the target output: RTT and the serial port to the target.
+pub struct TargetOutput {
+    decoders: DecoderSettings,
+    rtt_client: Option<CliRttClient>,
+    serial: Channel,
+}
+
+impl TargetOutput {
+    pub fn new(decoders: DecoderSettings, rtt_client: Option<CliRttClient>) -> Self {
+        Self {
+            serial: Channel::new("serial".to_string(), decoders.auto_decoder()),
+            decoders,
+            rtt_client,
+        }
+    }
+
+    fn rtt_handle(&self) -> Option<Key<RttClient>> {
+        self.rtt_client.as_ref().map(CliRttClient::handle)
+    }
 }
 
 impl CliRttClient {
@@ -1452,7 +1463,7 @@ impl CliRttClient {
         self.handle
     }
 
-    fn on_channels_discovered(&mut self, up_channels: &[ChannelInfo]) {
+    fn on_channels_discovered(&mut self, up_channels: &[ChannelInfo], decoders: &DecoderSettings) {
         // Already configured.
         if !self.channel_processors.is_empty() {
             return;
@@ -1475,13 +1486,13 @@ impl CliRttClient {
                     processor: ZephyrLogDecoder::new(db.clone()),
                 }
             } else if channel.name == "defmt" {
-                match self.decoders.defmt_processor() {
+                match decoders.defmt_processor() {
                     Some(processor) => StreamDecoder::Defmt { processor },
                     // Not much we can do. Don't silently eat the data.
                     None => StreamDecoder::BinaryLE,
                 }
             } else {
-                self.decoders.auto_decoder()
+                decoders.auto_decoder()
             };
 
             self.channel_processors
@@ -1499,8 +1510,7 @@ impl CliRttClient {
 }
 
 async fn handle_monitor_event(
-    rtt_client: &mut Option<impl DerefMut<Target = CliRttClient>>,
-    serial_channel: &mut Channel,
+    output: &mut TargetOutput,
     event: MonitorEvent,
     target_output_files: &mut TargetOutputFiles,
     shared_writer: &impl AsyncFn(&str),
@@ -1508,14 +1518,14 @@ async fn handle_monitor_event(
 ) {
     match event {
         MonitorEvent::Rtt(RttEvent::Discovered { up_channels, .. }) => {
-            let Some(client) = rtt_client else {
+            let Some(client) = &mut output.rtt_client else {
                 return;
             };
 
-            client.on_channels_discovered(&up_channels);
+            client.on_channels_discovered(&up_channels, &output.decoders);
         }
         MonitorEvent::Rtt(RttEvent::Output { channel, bytes }) => {
-            let Some(client) = rtt_client else {
+            let Some(client) = &mut output.rtt_client else {
                 return;
             };
 
@@ -1558,7 +1568,8 @@ async fn handle_monitor_event(
             let output_file =
                 ChannelIdentifier::Unqualified("serial".to_string()).find_in(target_output_files);
 
-            serial_channel
+            output
+                .serial
                 .process(&bytes, shared_writer, output_file)
                 .await;
         }

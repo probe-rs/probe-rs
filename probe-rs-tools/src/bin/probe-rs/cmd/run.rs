@@ -6,7 +6,7 @@ use probe_rs_rpc::rtt_client::ScanRegion;
 use probe_rs_rpc::test::{Test, TestDefinition};
 use probe_rs_rpc_client::RpcClient;
 
-use crate::util::cli::{self, parse_metadata, rtt_client};
+use crate::util::cli::{self, DecoderSettings, TargetOutput, parse_metadata, rtt_client};
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
 use probe_rs_rpc::format::FormatOptions;
 use probe_rs_rpc::rtt_config::ChannelMode;
@@ -263,13 +263,8 @@ impl Cmd {
         };
         let session = cli::attach_probe(&client, probe_options, elf_meta, false).await?;
 
-        let rtt_client = rtt_client(
-            &session,
-            &file_meta,
-            &self.monitor_options,
-            Some(utc_offset),
-        )
-        .await?;
+        let rtt_client = rtt_client(&session, &file_meta, &self.monitor_options).await?;
+        let decoders = DecoderSettings::new(&file_meta, &self.monitor_options, Some(utc_offset));
 
         // Flash firmware
         let boot_info = cli::flash(
@@ -306,7 +301,7 @@ impl Cmd {
                 },
                 &self.monitor_options,
                 &self.path,
-                Some(rtt_client),
+                TargetOutput::new(decoders, Some(rtt_client)),
             )
             .await
         } else {
@@ -315,7 +310,7 @@ impl Cmd {
                 MonitorMode::Run(boot_info),
                 Some(&self.path),
                 &self.monitor_options,
-                Some(rtt_client),
+                TargetOutput::new(decoders, Some(rtt_client)),
                 VectorCatchConfig {
                     catch_hardfault: !self.run_options.no_catch_hardfault,
                     catch_reset: !self.run_options.no_catch_reset,
