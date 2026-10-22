@@ -1,0 +1,1 @@
+The RPC `DebugProbeSelector` and `DebugProbeEntry` hold their USB fields in a `Usb` variant, like `probe_rs::probe::DebugProbeSelector` and `DebugProbeInfo`. Clients and servers on either side of this change refuse each other as incompatible.
