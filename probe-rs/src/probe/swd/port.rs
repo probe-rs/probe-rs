@@ -271,6 +271,8 @@ fn expand_batch(
     let mut transfer_index = 0usize;
 
     for (handle_id, op) in batch.iter() {
+        // Asked before the expanded transfer clones the handle.
+        let capture = handle_id.should_capture();
         let op = op.clone();
         match op {
             SwdOp::Transfer {
@@ -290,7 +292,7 @@ fn expand_batch(
                     expanded.idle(settings.num_idle_cycles_between_writes as u32);
                 }
                 if direction == Direction::Read {
-                    if handle_id.should_capture() {
+                    if capture {
                         read_handles.push(Some(handle_id.clone()));
                     } else {
                         read_handles.push(None);
@@ -330,7 +332,7 @@ fn expand_batch(
                     pipeline_handles.push(handle);
                 }
 
-                if direction == Direction::Read && handle_id.should_capture() {
+                if direction == Direction::Read && capture {
                     if response_in_next && !probe_handles_pipeline {
                         logical_mappings.push(LogicalMapping::FromNext {
                             handle_id: handle_id.clone(),
@@ -409,17 +411,9 @@ fn schedule_transfer(
         direction,
         data,
     };
-    match direction {
-        Direction::Read if handle_id.should_capture() => {
-            batch.schedule_preserved(handle_id.clone(), op);
-        }
-        Direction::Read => {
-            let _ = batch.schedule(op);
-        }
-        Direction::Write => {
-            let _ = batch.schedule(op);
-        }
-    }
+    // Keep the logical handle: the logical batch is dropped before this one runs, so a handle
+    // nobody holds still reports that nothing is to be captured.
+    let _ = batch.schedule_preserved(handle_id.clone(), op);
 }
 
 fn bump_write_idle(batch: &mut SwdBatch, extra: u32) {
