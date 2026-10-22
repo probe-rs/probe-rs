@@ -46,13 +46,13 @@ pub fn default_probe_index<'a>(
     probes.all(|probe| same_device(first, probe)).then_some(0)
 }
 
-/// Whether two listed probes are the same device: for USB, as far as their location or serial
-/// number tells.
+/// Whether two listed probes are the same device: for USB, as far as their port or serial number
+/// tells.
 fn same_device(a: &DebugProbeInfo, b: &DebugProbeInfo) -> bool {
     match (&a.transport, &b.transport) {
         (ProbeTransport::Usb(a), ProbeTransport::Usb(b)) => {
             (a.vendor_id, a.product_id) == (b.vendor_id, b.product_id)
-                && match (&a.usb_location, &b.usb_location) {
+                && match (&a.usb_port, &b.usb_port) {
                     (Some(a), Some(b)) => a == b,
                     _ => a.serial_number.is_some() && a.serial_number == b.serial_number,
                 }
@@ -194,6 +194,20 @@ pub struct AllProbesLister;
 
 impl ProbeLister for AllProbesLister {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError> {
+        // Drivers open a probe by its VID and PID, so find the probe on the port first.
+        if let DebugProbeSelector::UsbPort(_) = selector {
+            let probes = self.list(Some(selector));
+            if probes.len() > 1 {
+                tracing::warn!("More than one probe matches {selector}; opening the first one.");
+            }
+            let Some(probe) = probes.first() else {
+                return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                    ProbeCreationError::NotFound,
+                ));
+            };
+            return self.open(&DebugProbeSelector::from(probe));
+        }
+
         let mut open_error = None;
         let mut fallback_error = ProbeCreationError::NotFound;
 
@@ -267,7 +281,7 @@ mod linux {
 #[cfg(test)]
 mod tests {
     use super::{ProbeListItem, default_probe_index, group_by_device};
-    use crate::probe::{DebugProbeInfo, ProbeTransport, fake_probe::FakeProbeFactory};
+    use crate::probe::{DebugProbeInfo, ProbeTransport, UsbPort, fake_probe::FakeProbeFactory};
 
     fn probe(serial: Option<&str>, interface: Option<u8>) -> DebugProbeInfo {
         let serial = serial.map(str::to_string);
@@ -293,16 +307,19 @@ mod tests {
         let probes = [probe(Some("A"), Some(2)), probe(Some("B"), Some(2))];
         assert_eq!(default_probe_index(&probes), None);
 
-        // Without a serial number or a USB location, two probes can't be told apart.
+        // Without a serial number or a USB port, two probes can't be told apart.
         let probes = [probe(None, None), probe(None, None)];
         assert_eq!(default_probe_index(&probes), None);
 
         let mut probes = [probe(Some("A"), None), probe(Some("A"), None)];
-        for (probe, address) in probes.iter_mut().zip([1, 2]) {
+        for (probe, port) in probes.iter_mut().zip([1, 2]) {
             let ProbeTransport::Usb(usb) = &mut probe.transport else {
                 unreachable!()
             };
-            usb.usb_location = Some(("1".to_string(), address));
+            usb.usb_port = Some(UsbPort {
+                bus_id: "1".to_string(),
+                ports: vec![port],
+            });
         }
         assert_eq!(default_probe_index(&probes), None);
     }

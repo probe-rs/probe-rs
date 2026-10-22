@@ -398,7 +398,7 @@ impl SifliUartFactory {
                 serial_number: Some(port.port_name.clone()),
                 interface: port.info.interface,
                 is_hid_interface: false,
-                usb_location: None,
+                usb_port: None,
             }),
             probe_factory: &SifliUartFactory,
         })

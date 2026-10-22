@@ -37,7 +37,7 @@ use crate::rpc::{
         test::{list_tests, run_test, test_kickoff},
     },
 };
-use crate::util::probe_config::ConfiguredLister;
+use crate::util::probe_config::{ConfiguredLister, deserialize_config_selectors};
 use probe_rs_rpc::file::FileAccess;
 use probe_rs_rpc::semihosting_options::SemihostingOptions;
 use probe_rs_rpc::transport::{
@@ -250,6 +250,14 @@ impl LimitedLister {
 
 impl ProbeLister for LimitedLister {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError> {
+        if let DebugProbeSelector::UsbPort(_) = selector {
+            return match self.list(Some(selector)).first() {
+                Some(probe) => self.open(&DebugProbeSelector::from(probe)),
+                None => Err(DebugProbeError::ProbeCouldNotBeCreated(
+                    ProbeCreationError::NotFound,
+                )),
+            };
+        }
         if !self.is_allowed(selector) {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
                 ProbeCreationError::CouldNotOpen,
@@ -274,9 +282,9 @@ pub(crate) enum ProbeAccess {
     #[default]
     All,
     /// Only the probes that these selectors select.
-    Allow(Vec<DebugProbeSelector>),
+    Allow(#[serde(deserialize_with = "deserialize_config_selectors")] Vec<DebugProbeSelector>),
     /// All probes except those that these selectors select.
-    Deny(Vec<DebugProbeSelector>),
+    Deny(#[serde(deserialize_with = "deserialize_config_selectors")] Vec<DebugProbeSelector>),
 }
 
 /// Access to the files of the server host.
@@ -768,6 +776,13 @@ mod tests {
         let deny = LimitedLister::new(ProbeAccess::Deny(vec![selector("0483:3748:ABC")]));
         assert!(!deny.is_allowed(&selector("0483:3748:ABC")));
         assert!(deny.is_allowed(&selector("0483:3748:DEF")));
+    }
+
+    #[test]
+    fn access_lists_cannot_name_a_usb_port() {
+        let access = |toml: &str| toml::from_str::<ProbeAccess>(toml);
+        assert!(access(r#"allow = ["0483:3748"]"#).is_ok());
+        assert!(access(r#"allow = ["usb-busid://1-1.2"]"#).is_err());
     }
 
     #[tokio::test]

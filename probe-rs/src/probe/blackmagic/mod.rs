@@ -1512,7 +1512,7 @@ fn black_magic_debug_port_info(port: &UsbSerialPort) -> Option<DebugProbeInfo> {
             serial_number: info.serial_number.clone(),
             interface: port.interface(),
             is_hid_interface: false,
-            usb_location: None,
+            usb_port: None,
         }),
         probe_factory: &BlackMagicProbeFactory,
     })
