@@ -532,7 +532,6 @@ pub async fn rtt_client(
     Ok(CliRttClient {
         handle: rtt_client.handle,
         channel_processors: vec![],
-        semihosting_streams: HashMap::new(),
         zephyr_log_dictionary,
     })
 }
@@ -1404,7 +1403,6 @@ where
 pub struct CliRttClient {
     handle: Key<RttClient>,
     channel_processors: Vec<Channel>,
-    semihosting_streams: HashMap<String, Channel>,
 
     // Data necessary to create the channel processors once we know the channel names.
     zephyr_log_dictionary: Option<Arc<ZephyrLogDatabase>>,
@@ -1455,10 +1453,11 @@ impl DecoderSettings {
     }
 }
 
-/// The decoders of the target output: RTT and the serial port to the target.
+/// The decoders of the target output: RTT, semihosting and the serial port to the target.
 pub struct TargetOutput {
     decoders: DecoderSettings,
     rtt_client: Option<CliRttClient>,
+    semihosting_streams: HashMap<String, Channel>,
     serial: Channel,
 }
 
@@ -1468,7 +1467,14 @@ impl TargetOutput {
             serial: Channel::new("serial".to_string(), decoders.auto_decoder()),
             decoders,
             rtt_client,
+            semihosting_streams: HashMap::new(),
         }
+    }
+
+    fn semihosting_stream(&mut self, stream: &str) -> &mut Channel {
+        self.semihosting_streams
+            .entry(stream.to_string())
+            .or_insert_with(|| Channel::new(stream.to_string(), self.decoders.auto_decoder()))
     }
 
     fn rtt_handle(&self) -> Option<Key<RttClient>> {
@@ -1479,14 +1485,6 @@ impl TargetOutput {
 impl CliRttClient {
     pub fn handle(&self) -> Key<RttClient> {
         self.handle
-    }
-
-    fn semihosting_stream(&mut self, stream: &str, decoders: &DecoderSettings) -> &mut Channel {
-        if !self.semihosting_streams.contains_key(stream) {
-            let channel = Channel::new(stream.to_string(), decoders.auto_decoder());
-            self.semihosting_streams.insert(stream.to_string(), channel);
-        }
-        self.semihosting_streams.get_mut(stream).unwrap()
     }
 
     fn on_channels_discovered(&mut self, up_channels: &[ChannelInfo], decoders: &DecoderSettings) {
@@ -1580,21 +1578,7 @@ async fn handle_monitor_event(
             let output_file =
                 ChannelIdentifier::Semihosting(stream.clone()).find_in(target_output_files);
 
-            let Some(client) = &mut output.rtt_client else {
-                let data = String::from_utf8_lossy(&bytes);
-                match stream.as_str() {
-                    "stdout" => print!("{data}"),
-                    "stderr" => eprint!("{data}"),
-                    _ => {}
-                };
-                if let Some(output_file) = output_file {
-                    // Silently discarding output file errors
-                    _ = output_file.write_all(&bytes).await;
-                }
-                return;
-            };
-
-            let channel = client.semihosting_stream(&stream, &output.decoders);
+            let channel = output.semihosting_stream(&stream);
             if stream == "stderr" {
                 channel
                     .process(&bytes, &async |message| eprint!("{message}"), output_file)
