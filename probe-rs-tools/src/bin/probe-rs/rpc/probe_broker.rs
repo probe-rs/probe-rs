@@ -198,18 +198,19 @@ impl fmt::Debug for ProbeLease {
 mod tests {
     use std::time::Duration;
 
+    use probe_rs::probe::UsbSelector;
     use tokio::time::timeout;
 
     use super::*;
 
     fn selector(serial: &str) -> DebugProbeSelector {
-        DebugProbeSelector {
+        DebugProbeSelector::Usb(UsbSelector {
             vendor_id: 0x1234,
             product_id: 0x5678,
             serial_number: Some(serial.to_owned()),
             interface: None,
             usb_location: None,
-        }
+        })
     }
 
     #[tokio::test]

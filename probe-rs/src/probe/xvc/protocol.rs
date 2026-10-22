@@ -88,6 +88,7 @@ impl XvcDevice {
     pub(crate) fn new_from_selector(
         selector: &DebugProbeSelector,
     ) -> Result<Self, ProbeCreationError> {
+        let DebugProbeSelector::Usb(selector) = selector;
         // Only handle selectors that explicitly target an XVC endpoint, so that
         // we never try to open a TCP connection for unrelated probes.
         if selector.vendor_id != XVC_VID || selector.product_id != XVC_PID {
