@@ -254,6 +254,7 @@ impl ProbeFactory for LinuxGpiodFactory {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use probe_rs::probe::ProbeTransport;
 
     fn sel(s: &str) -> DebugProbeSelector {
         s.parse().unwrap()
@@ -294,8 +295,9 @@ mod tests {
         let s = sel(&format!("0:0:{serial}"));
         let entries = LinuxGpiodFactory.list_probes_filtered(Some(&s));
         assert_eq!(entries.len(), 1);
-        assert_eq!(entries[0].info.vendor_id, 0);
-        assert_eq!(entries[0].info.product_id, 0);
-        assert_eq!(entries[0].info.serial_number.as_deref(), Some(serial));
+        let ProbeTransport::Usb(info) = &entries[0].info.transport;
+        assert_eq!(info.vendor_id, 0);
+        assert_eq!(info.product_id, 0);
+        assert_eq!(info.serial_number.as_deref(), Some(serial));
     }
 }

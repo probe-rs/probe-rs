@@ -34,8 +34,9 @@ use crate::{
     },
     probe::{
         BitbangJtag, BitbangSwd, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-        IoSequenceItem, JtagChain, JtagChainAccess, JtagChainState, ProbeFactory, SwdProbe,
-        SwdSettings, TapState, WireProtocol, list::ProbeListItem, swd::output_levels,
+        IoSequenceItem, JtagChain, JtagChainAccess, JtagChainState, ProbeFactory, ProbeTransport,
+        SwdProbe, SwdSettings, TapState, UsbProbeInfo, WireProtocol, list::ProbeListItem,
+        swd::output_levels,
     },
 };
 
@@ -85,13 +86,15 @@ impl ProbeFactory for XvcFactory {
         {
             return vec![ProbeListItem::accessible(DebugProbeInfo {
                 identifier: "XVC".to_string(),
-                vendor_id: XVC_VID,
-                product_id: XVC_PID,
-                serial_number: Some(address),
+                transport: ProbeTransport::Usb(UsbProbeInfo {
+                    vendor_id: XVC_VID,
+                    product_id: XVC_PID,
+                    serial_number: Some(address),
+                    is_hid_interface: false,
+                    interface: None,
+                    usb_location: None,
+                }),
                 probe_factory: &Self,
-                is_hid_interface: false,
-                interface: None,
-                usb_location: None,
             })];
         }
 

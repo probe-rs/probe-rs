@@ -1,6 +1,6 @@
 use super::CmsisDapDevice;
 use crate::probe::{
-    BoxedProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
+    BoxedProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError, ProbeTransport,
     cmsisdap::{CmsisDapFactory, commands::CmsisDapError, commands::DEFAULT_USB_TIMEOUT},
     list::{ProbeListItem, usb_probe_accessibility},
 };
@@ -411,6 +411,7 @@ pub fn open_device_from_selector(
                     && let Some(device_info) =
                         get_cmsisdap_info(&device, true).into_iter().find(|dpi| {
                             tracing::trace!("DebugProbeInfo: {:?}", dpi);
+                            let ProbeTransport::Usb(dpi) = &dpi.transport;
                             // Only compare if the selector has an interface to compare to
                             selector.interface.is_none_or(|i| Some(i) == dpi.interface)
                         })
@@ -418,7 +419,8 @@ pub fn open_device_from_selector(
                     // If the VID, PID, and potentially SN all match,
                     // and the device is a valid CMSIS-DAP probe,
                     // attempt to open the device in v2 mode.
-                    if let Some(opened) = open_v2_device(&device, device_info.interface)? {
+                    let ProbeTransport::Usb(usb_info) = &device_info.transport;
+                    if let Some(opened) = open_v2_device(&device, usb_info.interface)? {
                         return Ok((opened, device.product_string().map(str::to_owned)));
                     } else {
                         #[cfg(feature = "cmsisdap_v1")]
