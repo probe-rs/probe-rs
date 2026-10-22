@@ -1,0 +1,107 @@
+name: TC27x
+manufacturer:
+  id: 0x41
+  cc: 0x0
+variants:
+- name: TC275
+  cores:
+  - name: cpu0
+    type: tricore
+    core_access_options: !TriCore
+      core_index: 0
+      csfr_base: 0xf8810000
+  - name: cpu1
+    type: tricore
+    core_access_options: !TriCore
+      core_index: 1
+      csfr_base: 0xf8830000
+  - name: cpu2
+    type: tricore
+    core_access_options: !TriCore
+      core_index: 2
+      csfr_base: 0xf8850000
+  memory_map:
+  # Program flash, non-cached. Code is usually linked at the cached alias below.
+  - !Nvm
+    name: PFLASH0
+    range:
+      start: 0xa0000000
+      end: 0xa0200000
+    cores:
+    - cpu0
+    - cpu1
+    - cpu2
+    access:
+      boot: true
+  - !Nvm
+    name: PFLASH1
+    range:
+      start: 0xa0200000
+      end: 0xa0400000
+    cores:
+    - cpu0
+    - cpu1
+    - cpu2
+  - !Nvm
+    name: PFLASH cached
+    range:
+      start: 0x80000000
+      end: 0x80400000
+    cores:
+    - cpu0
+    - cpu1
+    - cpu2
+    is_alias: true
+  # Scratchpad RAMs, global addresses.
+  - !Ram
+    name: DSPR0
+    range:
+      start: 0x70000000
+      end: 0x7001c000
+    cores:
+    - cpu0
+  - !Ram
+    name: PSPR0
+    range:
+      start: 0x70100000
+      end: 0x70106000
+    cores:
+    - cpu0
+  - !Ram
+    name: DSPR1
+    range:
+      start: 0x60000000
+      end: 0x6001e000
+    cores:
+    - cpu1
+  - !Ram
+    name: PSPR1
+    range:
+      start: 0x60100000
+      end: 0x60108000
+    cores:
+    - cpu1
+  - !Ram
+    name: DSPR2
+    range:
+      start: 0x50000000
+      end: 0x5001e000
+    cores:
+    - cpu2
+  - !Ram
+    name: PSPR2
+    range:
+      start: 0x50100000
+      end: 0x50108000
+    cores:
+    - cpu2
+  - !Ram
+    name: LMU
+    range:
+      start: 0x90000000
+      end: 0x90008000
+    cores:
+    - cpu0
+    - cpu1
+    - cpu2
+  flash_algorithms: []

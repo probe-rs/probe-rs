@@ -1,0 +1,26 @@
+[package]
+name = "probe-rs-infineon"
+description = "Infineon AURIX (TriCore) support built on top of the probe-rs crate"
+version.workspace = true
+edition.workspace = true
+documentation.workspace = true
+homepage.workspace = true
+repository.workspace = true
+readme.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+probe-rs.workspace = true
+probe-rs-target.workspace = true
+
+bincode = { version = "2", features = ["serde"] }
+docsplay.workspace = true
+thiserror.workspace = true
+tracing = "0.1"
+
+[build-dependencies]
+probe-rs-target = { workspace = true, features = ["bincode"] }
+
+[lints]
+workspace = true

@@ -348,6 +348,7 @@ async fn main() -> ExitCode {
 
 async fn run() -> Result<()> {
     probe_rs_espressif::register_plugin();
+    probe_rs_infineon::register_plugin();
     #[cfg(target_os = "linux")]
     probe_rs_linux::register_plugin();
 
