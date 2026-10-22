@@ -12,7 +12,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use parking_lot::Mutex;
+use parking_lot::{Condvar, Mutex};
 use serde::{Deserialize, Serialize};
 use serialport::SerialPort;
 
@@ -82,8 +82,8 @@ pub trait TargetSerial: Send + Sync + fmt::Debug {
     /// Opens the port and applies the line states.
     fn open(&mut self, settings: &SerialSettings) -> Result<(), TargetSerialError>;
 
-    /// Reads received data. Does not block. Returns 0 if no data is available.
-    fn read(&self, buf: &mut [u8]) -> Result<usize, TargetSerialError>;
+    /// Reads received data. Waits up to `timeout` for data. Returns 0 if no data arrives.
+    fn read(&self, buf: &mut [u8], timeout: Duration) -> Result<usize, TargetSerialError>;
 
     /// Drops the data that the port received and nobody read yet.
     ///
@@ -121,6 +121,8 @@ struct Shared {
     /// A clone of the reader's port, for writes. `None` while the port is lost.
     writer: Mutex<Option<Box<dyn SerialPort>>>,
     rx: Mutex<VecDeque<u8>>,
+    /// Signals new data in `rx`.
+    received: Condvar,
     /// Counts the discards. The reader drops the data that it read before a discard.
     epoch: AtomicU64,
     stop: AtomicBool,
@@ -167,6 +169,7 @@ impl TargetSerial for HostSerialPort {
         let shared = Arc::new(Shared {
             writer: Mutex::new(Some(writer_port)),
             rx: Mutex::new(VecDeque::new()),
+            received: Condvar::new(),
             epoch: AtomicU64::new(0),
             stop: AtomicBool::new(false),
         });
@@ -187,9 +190,12 @@ impl TargetSerial for HostSerialPort {
         Ok(())
     }
 
-    fn read(&self, buf: &mut [u8]) -> Result<usize, TargetSerialError> {
+    fn read(&self, buf: &mut [u8], timeout: Duration) -> Result<usize, TargetSerialError> {
         let open = self.open.as_ref().ok_or(TargetSerialError::NotOpen)?;
         let mut rx = open.shared.rx.lock();
+        open.shared
+            .received
+            .wait_while_for(&mut rx, |rx| rx.is_empty(), timeout);
         let len = buf.len().min(rx.len());
         for (dst, src) in buf.iter_mut().zip(rx.drain(..len)) {
             *dst = src;
@@ -312,6 +318,7 @@ fn read_loop(
                 rx.extend(&buf[..len]);
                 let excess = rx.len().saturating_sub(RX_BUFFER_LIMIT);
                 rx.drain(..excess);
+                shared.received.notify_all();
             }
             Err(error) if error.kind() == io::ErrorKind::TimedOut => {}
             Err(error) => {
