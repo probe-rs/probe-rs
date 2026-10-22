@@ -15,15 +15,18 @@ use crate::{
     probe::{
         BitbangSwd, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
         IoSequenceItem, JtagChain, JtagChainAccess, JtagChainState, JtagOp, JtagProbe,
-        ProbeCreationError, ProbeFactory, SwdProbe, SwdSettings, WireProtocol,
+        ProbeCreationError, ProbeFactory, ResetLine, SwdProbe, SwdSettings, WireProtocol,
         jtag::{Step, TapState, distribute_captures, walk_batch},
         list::{ProbeListItem, usb_probe_accessibility},
         queue::{BatchExecutionError, Results},
         swd::output_levels,
+        target_serial::{HostSerialPort, SerialSettings, TargetSerial},
+        usb_util::UsbSerialFilter,
     },
 };
 use bitvec::prelude::*;
 use nusb::{DeviceInfo, MaybeFuture};
+use serde::{Deserialize, Serialize};
 use std::{
     io::{Read, Write},
     sync::Arc,
@@ -385,6 +388,8 @@ impl ProbeFactory for FtdiProbeFactory {
             adapter: JtagAdapter::open(ftdi, probes.pop().unwrap(), selector.interface)?,
             jtag_state: JtagChainState::default(),
             swd_settings: SwdSettings::default(),
+            config: FtdiConfig::default(),
+            reset_line: ResetLine::default(),
         };
         tracing::debug!("opened probe: {:?}", probe);
         Ok(Box::new(probe))
@@ -418,12 +423,100 @@ impl ProbeFactory for FtdiProbeFactory {
     }
 }
 
+/// Driver settings of an FTDI probe.
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct FtdiConfig {
+    /// The channel wired to the UART of the target, for example `b` on ESP32 boards with an
+    /// FT2232H. The driver gives it as the serial port to the target.
+    pub uart: Option<FtdiChannel>,
+    /// The reset circuit on the DTR and RTS lines of the UART channel. The driver resets the
+    /// target with it.
+    pub uart_reset: Option<UartReset>,
+}
+
+/// A channel of an FTDI chip.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum FtdiChannel {
+    /// Channel A, USB interface 0.
+    A,
+    /// Channel B, USB interface 1.
+    B,
+    /// Channel C, USB interface 2.
+    C,
+    /// Channel D, USB interface 3.
+    D,
+}
+
+impl From<FtdiChannel> for ftdaye::Interface {
+    fn from(channel: FtdiChannel) -> Self {
+        match channel {
+            FtdiChannel::A => Self::A,
+            FtdiChannel::B => Self::B,
+            FtdiChannel::C => Self::C,
+            FtdiChannel::D => Self::D,
+        }
+    }
+}
+
+/// A reset circuit on the DTR and RTS lines of a UART.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum UartReset {
+    /// The auto-reset circuit of ESP32 boards. RTS pulls EN low and DTR pulls GPIO0 low, only
+    /// while the two lines are different.
+    Esp,
+}
+
+/// How long [`FtdiProbe::target_reset`] holds the target in reset.
+const UART_RESET_PULSE: Duration = Duration::from_millis(100);
+
 /// An FTDI-based debug probe.
 #[derive(Debug)]
 pub struct FtdiProbe {
     adapter: JtagAdapter,
     jtag_state: JtagChainState,
     swd_settings: SwdSettings,
+    config: FtdiConfig,
+    reset_line: ResetLine,
+}
+
+impl FtdiProbe {
+    /// Applies the driver settings. Call this before attach.
+    pub fn configure(&mut self, config: &FtdiConfig) -> Result<(), DebugProbeError> {
+        if let Some(uart) = config.uart
+            && ftdaye::Interface::from(uart) == self.adapter.device.interface()
+        {
+            return Err(DebugProbeError::Other(format!(
+                "The UART channel {uart:?} is the JTAG channel"
+            )));
+        }
+        if config.uart_reset.is_some() && config.uart.is_none() {
+            return Err(DebugProbeError::Other(
+                "`uart_reset` needs the `uart` channel".to_string(),
+            ));
+        }
+        self.config = config.clone();
+        Ok(())
+    }
+
+    /// Sets the reset line of the target through the UART reset circuit.
+    fn set_uart_reset(&mut self, asserted: bool) -> Result<(), DebugProbeError> {
+        let (Some(uart), Some(UartReset::Esp)) = (self.config.uart, self.config.uart_reset) else {
+            return Err(DebugProbeError::NotImplemented {
+                function_name: "target_reset",
+            });
+        };
+        if asserted {
+            self.reset_line.check_assert()?;
+        }
+        // RTS alone pulls EN low. DTR stays low, so that GPIO0 does not select the boot mode.
+        self.adapter
+            .device
+            .set_modem_lines(uart.into(), false, asserted)?;
+        Ok(())
+    }
 }
 
 impl DebugProbe for FtdiProbe {
@@ -451,27 +544,37 @@ impl DebugProbe for FtdiProbe {
     }
 
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        // TODO we could add this by using a GPIO. However, different probes may connect
-        // different pins (if any) to the reset line, so we would need to make this configurable.
-        Err(DebugProbeError::NotImplemented {
-            function_name: "target_reset",
-        })
+        self.set_uart_reset(true)?;
+        std::thread::sleep(UART_RESET_PULSE);
+        self.set_uart_reset(false)
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::NotImplemented {
-            function_name: "target_reset_assert",
-        })
+        self.set_uart_reset(true)
     }
 
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::NotImplemented {
-            function_name: "target_reset_deassert",
-        })
+        self.set_uart_reset(false)
     }
 
-    fn set_reset_line_connected(&mut self, _connected: bool) {
-        // The probe has no reset line.
+    fn set_reset_line_connected(&mut self, connected: bool) {
+        self.reset_line.set_connected(connected);
+    }
+
+    fn target_serial(&mut self) -> Option<Box<dyn TargetSerial>> {
+        let uart = self.config.uart?;
+        let device = &self.adapter.device;
+        let filter = UsbSerialFilter {
+            vendor_id: Some(device.vendor_id()),
+            product_id: Some(device.product_id()),
+            serial_number: device.serial_number().map(str::to_string),
+            interface: Some(ftdaye::Interface::from(uart).usb_interface()),
+        };
+        // The default line states cannot reset the target: DTR and RTS are equal after open.
+        Some(Box::new(HostSerialPort::new(
+            filter,
+            SerialSettings::default(),
+        )))
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {

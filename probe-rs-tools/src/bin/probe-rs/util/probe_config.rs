@@ -6,6 +6,7 @@ use anyhow::Context as _;
 use probe_rs::probe::{
     DebugProbeError, DebugProbeSelector, Probe, WireProtocol,
     ch347::{Ch347, Ch347Config},
+    ftdi::{FtdiConfig, FtdiProbe},
     list::{ProbeListItem, ProbeLister},
     target_serial::{HostSerialPort, LineState, PortSelector, SerialSettings, TargetSerial},
     usb_util::UsbSerialFilter,
@@ -27,6 +28,11 @@ use serde::{Deserialize, Deserializer, Serialize};
 /// [probes."1a86:55dd".driver]
 /// type = "ch347"
 /// reset_pin = "trst"
+///
+/// [probes."0403:6010".driver]
+/// type = "ftdi"
+/// uart = "b"
+/// uart_reset = "esp"
 ///
 /// [probes."0403:6010-1".serial]
 /// usb = "1a86:7523"
@@ -88,6 +94,7 @@ pub struct ProbeConfig {
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum DriverConfig {
     Ch347(Ch347Config),
+    Ftdi(FtdiConfig),
 }
 
 impl DriverConfig {
@@ -105,12 +112,17 @@ impl DriverConfig {
                 .try_into::<Ch347>()
                 .ok_or_else(mismatch)?
                 .configure(config),
+            DriverConfig::Ftdi(config) => probe
+                .try_into::<FtdiProbe>()
+                .ok_or_else(mismatch)?
+                .configure(config),
         }
     }
 
     fn driver_name(&self) -> &'static str {
         match self {
             DriverConfig::Ch347(_) => "CH347",
+            DriverConfig::Ftdi(_) => "FTDI",
         }
     }
 }
@@ -455,7 +467,14 @@ mod tests {
         assert!(is_rejected(
             r#"
             ["0403:6010".driver]
+            type = "jlink"
+            "#
+        ));
+        assert!(is_rejected(
+            r#"
+            ["0403:6010".driver]
             type = "ftdi"
+            uart = "e"
             "#
         ));
         assert!(is_rejected(
