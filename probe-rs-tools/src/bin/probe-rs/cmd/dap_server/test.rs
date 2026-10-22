@@ -4,7 +4,7 @@ use probe_rs::{
     integration::{FakeProbe, ProbeLister},
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError,
-        ProbeFactory, list::ProbeListItem,
+        ProbeFactory, ProbeTransport, list::ProbeListItem,
     },
 };
 use std::fmt::Display;
@@ -50,6 +50,7 @@ impl ProbeLister for TestLister {
         )]
         let mut probes = self.probes.lock().unwrap();
         let probe_index = probes.iter().position(|(info, _)| {
+            let ProbeTransport::Usb(info) = &info.transport;
             info.product_id == selector.product_id
                 && info.vendor_id == selector.vendor_id
                 && info.serial_number == selector.serial_number

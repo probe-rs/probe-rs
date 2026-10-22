@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use probe_rs::probe::{
-    DebugProbeError, DebugProbeSelector, Probe, WireProtocol,
+    DebugProbeError, DebugProbeSelector, Probe, ProbeTransport, WireProtocol,
     ch347::{Ch347, Ch347Config},
     list::{ProbeListItem, ProbeLister},
 };
@@ -185,6 +185,7 @@ impl<L: ProbeLister> ConfiguredLister<L> {
             && let [info] = self.inner.list(Some(&selector)).as_slice()
         {
             let DebugProbeSelector::Usb(usb) = &mut selector;
+            let ProbeTransport::Usb(info) = &info.transport;
             usb.serial_number = info.serial_number.clone();
         }
         selector

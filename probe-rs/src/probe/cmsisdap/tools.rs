@@ -1,6 +1,6 @@
 use super::CmsisDapDevice;
 use crate::probe::{
-    BoxedProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
+    BoxedProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError, ProbeTransport,
     cmsisdap::{CmsisDapFactory, commands::CmsisDapError, commands::DEFAULT_USB_TIMEOUT},
     list::{ProbeListItem, usb_probe_accessibility},
 };
@@ -57,11 +57,13 @@ pub fn list_cmsisdap_devices() -> Vec<ProbeListItem> {
     if let Ok(api) = hidapi::HidApi::new() {
         for device in api.device_list() {
             if let Some(info) = get_cmsisdap_hid_info(device) {
+                let ProbeTransport::Usb(hid) = &info.transport;
                 if !probes.iter().any(|p| {
-                    p.info.vendor_id == info.vendor_id
-                        && p.info.product_id == info.product_id
-                        && p.info.serial_number.as_deref().unwrap_or("")
-                            == info.serial_number.as_deref().unwrap_or("")
+                    let ProbeTransport::Usb(usb) = &p.info.transport;
+                    usb.vendor_id == hid.vendor_id
+                        && usb.product_id == hid.product_id
+                        && usb.serial_number.as_deref().unwrap_or("")
+                            == hid.serial_number.as_deref().unwrap_or("")
                 }) {
                     tracing::trace!("Adding new HID-only probe {:?}", info);
                     // HID-only probes are not opened over usbfs, so the access check doesn't apply.
@@ -458,6 +460,7 @@ pub fn open_device_from_selector(
                     && let Some(device_info) =
                         get_cmsisdap_info(&device, true).into_iter().find(|dpi| {
                             tracing::trace!("DebugProbeInfo: {:?}", dpi);
+                            let ProbeTransport::Usb(dpi) = &dpi.transport;
                             // Only compare if the selector has an interface to compare to
                             selector.interface.is_none_or(|i| Some(i) == dpi.interface)
                         })
@@ -465,7 +468,8 @@ pub fn open_device_from_selector(
                     // If the VID, PID, and potentially SN all match,
                     // and the device is a valid CMSIS-DAP probe,
                     // attempt to open the device in v2 mode.
-                    if let Some(device) = open_v2_device(&device, device_info.interface)? {
+                    let ProbeTransport::Usb(usb_info) = &device_info.transport;
+                    if let Some(device) = open_v2_device(&device, usb_info.interface)? {
                         return Ok(device);
                     } else {
                         #[cfg(feature = "cmsisdap_v1")]
@@ -519,10 +523,10 @@ pub fn open_device_from_selector(
                     device_match &= Some(sn) == info.serial_number();
                 }
 
-                if let Some(hid_interface) = hid_device_info
-                    .as_ref()
-                    .and_then(|info| info.interface.filter(|_| info.is_hid_interface))
-                {
+                if let Some(hid_interface) = hid_device_info.as_ref().and_then(|info| {
+                    let ProbeTransport::Usb(info) = &info.transport;
+                    info.interface.filter(|_| info.is_hid_interface)
+                }) {
                     device_match &= info.interface_number() == hid_interface as i32;
                 }
 

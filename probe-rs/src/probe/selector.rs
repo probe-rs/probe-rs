@@ -2,7 +2,7 @@ use std::fmt;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::probe::{DebugProbeInfo, usb_util::to_hex};
+use crate::probe::{DebugProbeInfo, ProbeTransport, usb_util::to_hex};
 
 use nusb::DeviceInfo;
 
@@ -78,7 +78,7 @@ pub struct UsbSelector {
     pub serial_number: Option<String>,
     /// USB bus ID and device address, if known. Parsing a string never sets it.
     ///
-    /// See [`DebugProbeInfo::usb_location`](crate::probe::DebugProbeInfo::usb_location).
+    /// See [`UsbProbeInfo::usb_location`](crate::probe::UsbProbeInfo::usb_location).
     pub usb_location: Option<(String, u8)>,
 }
 
@@ -114,6 +114,7 @@ impl UsbSelector {
 
     /// Check if the given probe info matches this selector.
     pub fn matches_probe(&self, info: &DebugProbeInfo) -> bool {
+        let ProbeTransport::Usb(info) = &info.transport;
         if self.usb_location.is_some() && info.usb_location != self.usb_location {
             return false;
         }
@@ -208,6 +209,7 @@ impl std::str::FromStr for DebugProbeSelector {
 
 impl From<DebugProbeInfo> for DebugProbeSelector {
     fn from(selector: DebugProbeInfo) -> Self {
+        let ProbeTransport::Usb(selector) = selector.transport;
         DebugProbeSelector::Usb(UsbSelector {
             vendor_id: selector.vendor_id,
             product_id: selector.product_id,
@@ -220,6 +222,7 @@ impl From<DebugProbeInfo> for DebugProbeSelector {
 
 impl From<&DebugProbeInfo> for DebugProbeSelector {
     fn from(selector: &DebugProbeInfo) -> Self {
+        let ProbeTransport::Usb(selector) = &selector.transport;
         DebugProbeSelector::Usb(UsbSelector {
             vendor_id: selector.vendor_id,
             product_id: selector.product_id,

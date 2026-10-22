@@ -7,7 +7,8 @@ use crate::probe::{Pins, ResetLine};
 
 use super::{
     BatchError, BatchExecutionError, BitSequence, CommandResult, DebugProbe, DebugProbeError,
-    DebugProbeInfo, DebugProbeSelector, ProbeFactory, Results, UsbSelector, WireProtocol,
+    DebugProbeInfo, DebugProbeSelector, ProbeFactory, ProbeTransport, Results, UsbProbeInfo,
+    UsbSelector, WireProtocol,
     list::ProbeListItem,
     swd::{Direction, Port, SwdBatch, SwdOp, SwdProbe, SwdTransferError},
 };
@@ -62,13 +63,15 @@ impl ProbeFactory for GlasgowFactory {
             // accessibility against here.
             return vec![ProbeListItem::accessible(DebugProbeInfo {
                 identifier: "Glasgow".to_owned(),
-                vendor_id: *vendor_id,
-                product_id: *product_id,
-                serial_number: serial_number.clone(),
-                is_hid_interface: false,
+                transport: ProbeTransport::Usb(UsbProbeInfo {
+                    vendor_id: *vendor_id,
+                    product_id: *product_id,
+                    serial_number: serial_number.clone(),
+                    is_hid_interface: false,
+                    interface: *interface,
+                    usb_location: None,
+                }),
                 probe_factory: &Self,
-                interface: *interface,
-                usb_location: None,
             })];
         }
 

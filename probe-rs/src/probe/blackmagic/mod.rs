@@ -23,8 +23,8 @@ use crate::{
     probe::{
         BitbangSwd, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
         IoSequenceItem, JtagChain, JtagChainAccess, JtagChainState, JtagOp, JtagProbe,
-        ProbeCreationError, ProbeError, ProbeFactory, ResetLine, SwdProbe, SwdSettings,
-        WireProtocol,
+        ProbeCreationError, ProbeError, ProbeFactory, ProbeTransport, ResetLine, SwdProbe,
+        SwdSettings, UsbProbeInfo, WireProtocol,
         blackmagic::arm::BlackMagicProbeArmDebug,
         jtag::{Step, TapState, distribute_captures, walk_batch},
         list::ProbeListItem,
@@ -1503,13 +1503,15 @@ fn black_magic_debug_port_info(port: &UsbSerialPort) -> Option<DebugProbeInfo> {
             .product
             .clone()
             .unwrap_or_else(|| "Black Magic Probe".to_string()),
-        vendor_id: info.vid,
-        product_id: info.pid,
-        serial_number: info.serial_number.clone(),
+        transport: ProbeTransport::Usb(UsbProbeInfo {
+            vendor_id: info.vid,
+            product_id: info.pid,
+            serial_number: info.serial_number.clone(),
+            interface: port.interface(),
+            is_hid_interface: false,
+            usb_location: None,
+        }),
         probe_factory: &BlackMagicProbeFactory,
-        interface: port.interface(),
-        is_hid_interface: false,
-        usb_location: None,
     })
 }
 
@@ -1560,6 +1562,7 @@ impl ProbeFactory for BlackMagicProbeFactory {
             let Some(info) = black_magic_debug_port_info(&port_description) else {
                 continue;
             };
+            let ProbeTransport::Usb(info) = info.transport;
 
             if selector.serial_number.is_some() && selector.serial_number != info.serial_number {
                 tracing::trace!(
@@ -1662,13 +1665,15 @@ impl ProbeFactory for BlackMagicProbeFactory {
         // Filter is a valid probe, and VID:PID is either a BMP or the "not specified" convention.
         vec![ProbeListItem::accessible(DebugProbeInfo {
             identifier: format!("{}:{}", ip_port.ip(), ip_port.port()),
-            vendor_id: BLACK_MAGIC_PROBE_VID,
-            product_id: BLACK_MAGIC_PROBE_PID,
-            serial_number: Some(ip_port.to_string()),
+            transport: ProbeTransport::Usb(UsbProbeInfo {
+                vendor_id: BLACK_MAGIC_PROBE_VID,
+                product_id: BLACK_MAGIC_PROBE_PID,
+                serial_number: Some(ip_port.to_string()),
+                interface: None,
+                is_hid_interface: false,
+                usb_location: None,
+            }),
             probe_factory: &BlackMagicProbeFactory,
-            interface: None,
-            is_hid_interface: false,
-            usb_location: None,
         })]
     }
 }
