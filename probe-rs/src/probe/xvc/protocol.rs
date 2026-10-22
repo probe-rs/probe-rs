@@ -21,8 +21,6 @@ use bitvec::prelude::*;
 
 use crate::probe::{DebugProbeError, DebugProbeSelector, ProbeCreationError, ProbeError};
 
-use super::{XVC_PID, XVC_VID};
-
 /// Default TCP port used by XVC servers.
 const DEFAULT_PORT: u16 = 2542;
 
@@ -88,23 +86,11 @@ impl XvcDevice {
     pub(crate) fn new_from_selector(
         selector: &DebugProbeSelector,
     ) -> Result<Self, ProbeCreationError> {
-        // Probes of this driver are selected by VID:PID; other selectors are for other drivers.
-        let DebugProbeSelector::Usb(selector) = selector else {
-            return Err(ProbeCreationError::NotFound);
-        };
         // Only handle selectors that explicitly target an XVC endpoint, so that
         // we never try to open a TCP connection for unrelated probes.
-        if selector.vendor_id != XVC_VID || selector.product_id != XVC_PID {
-            return Err(ProbeCreationError::NotFound);
-        }
-
-        let Some(serial) = selector.serial_number.as_deref() else {
+        let Some(serial) = super::xvc_address(selector) else {
             return Err(ProbeCreationError::NotFound);
         };
-
-        if !super::is_xvc_address(serial) {
-            return Err(ProbeCreationError::NotFound);
-        }
 
         let address = normalize_address(serial)?;
 
