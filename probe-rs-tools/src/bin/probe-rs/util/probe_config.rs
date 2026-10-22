@@ -139,6 +139,7 @@ impl ProbeConfigs {
             .filter(|(selector, _)| selector.matches_selector(probe))
             .collect::<Vec<_>>();
         matching.sort_by_key(|(selector, _)| {
+            let DebugProbeSelector::Usb(selector) = selector;
             (
                 selector.serial_number.is_some(),
                 selector.interface.is_some(),
@@ -155,8 +156,9 @@ impl ProbeConfigs {
     /// Returns whether an entry with a serial number can match `probe`. Only these entries need
     /// the serial number of the probe.
     fn needs_serial_number(&self, probe: &DebugProbeSelector) -> bool {
+        let DebugProbeSelector::Usb(probe) = probe;
         probe.serial_number.is_none()
-            && self.0.keys().any(|selector| {
+            && self.0.keys().any(|DebugProbeSelector::Usb(selector)| {
                 selector.serial_number.is_some()
                     && (selector.vendor_id, selector.product_id)
                         == (probe.vendor_id, probe.product_id)
@@ -182,7 +184,8 @@ impl<L: ProbeLister> ConfiguredLister<L> {
         if self.configs.needs_serial_number(&selector)
             && let [info] = self.inner.list(Some(&selector)).as_slice()
         {
-            selector.serial_number = info.serial_number.clone();
+            let DebugProbeSelector::Usb(usb) = &mut selector;
+            usb.serial_number = info.serial_number.clone();
         }
         selector
     }
