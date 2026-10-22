@@ -27,9 +27,7 @@ impl GlasgowNetDevice {
         };
         let stream: Box<dyn ReadWrite + Send> = match *qual_addr.splitn(2, ":").collect::<Vec<_>>()
         {
-            ["tcp", addr] => {
-                Box::new(TcpStream::connect(addr).map_err(DiscoveryError::ConnectionFailed)?)
-            }
+            ["tcp", addr] => return Self::connect_tcp(addr),
             #[cfg(unix)]
             ["unix", addr] => {
                 Box::new(UnixStream::connect(addr).map_err(DiscoveryError::ConnectionFailed)?)
@@ -40,6 +38,13 @@ impl GlasgowNetDevice {
         };
         tracing::info!("opened Glasgow Interface Explorer ({qual_addr})");
         Ok(Self(stream))
+    }
+
+    /// Connects to the Glasgow at `addr`, given as `host:port`.
+    pub fn connect_tcp(addr: &str) -> Result<Self, ProbeCreationError> {
+        let stream = TcpStream::connect(addr).map_err(DiscoveryError::ConnectionFailed)?;
+        tracing::info!("opened Glasgow Interface Explorer (tcp:{addr})");
+        Ok(Self(Box::new(stream)))
     }
 
     pub fn transfer(
