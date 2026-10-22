@@ -22,6 +22,7 @@ use probe_rs_target::{Chip, ChipFamily, CoreType};
 pub mod flash;
 #[cfg(feature = "mcd")]
 pub mod mcd;
+pub mod mcds;
 pub mod tas;
 
 /// Registers the AURIX targets, the AURIX vendor and the probe drivers (TAS, and MCD with the

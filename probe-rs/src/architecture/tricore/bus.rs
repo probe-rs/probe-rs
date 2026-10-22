@@ -11,7 +11,7 @@ use crate::probe::DebugProbeError;
 /// An address map (address space) that a transfer targets.
 ///
 /// The numbers are the ones used by the Infineon Tool Access Socket (TAS) protocol.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, docsplay::Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub enum AddressMap {
     /// The device address space (map 0).
@@ -20,6 +20,16 @@ pub enum AddressMap {
     Eec = 1,
     /// The debug server's own registers (map 15), for example the MCDS timestamp.
     Server = 15,
+}
+
+impl std::fmt::Display for AddressMap {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Target => "0 (device)",
+            Self::Eec => "1 (EEC)",
+            Self::Server => "15 (debug server)",
+        })
+    }
 }
 
 /// The direction and data of a [`BusTransfer`].

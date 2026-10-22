@@ -13,6 +13,7 @@ pub mod gdb_server;
 pub mod info;
 pub mod itm;
 pub mod list;
+pub mod mcds;
 pub mod mi;
 pub mod profile;
 pub mod read;

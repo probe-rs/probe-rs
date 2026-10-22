@@ -157,6 +157,7 @@ impl Cli {
             Subcommand::Erase(cmd) => cmd.run(client).await,
             Subcommand::Trace(cmd) => cmd.run(&mut registry, &lister),
             Subcommand::Itm(cmd) => cmd.run(&mut registry, &lister),
+            Subcommand::Mcds(cmd) => cmd.run(&mut registry, &lister, utc_offset),
             Subcommand::Chip(cmd) => cmd.run(client).await,
             Subcommand::Benchmark(cmd) => cmd.run(&mut registry, &lister),
             Subcommand::Profile(cmd) => cmd.run(&mut registry, &lister),
@@ -210,6 +211,8 @@ enum Subcommand {
     /// Configure and monitor ITM trace packets from the target.
     #[clap(name = "itm")]
     Itm(cmd::itm::Cmd),
+    /// Record MCDS traces on AURIX emulation devices
+    Mcds(cmd::mcds::Cmd),
     Chip(cmd::chip::Cmd),
     /// Measure the throughput of the selected debug probe
     Benchmark(cmd::benchmark::Cmd),
