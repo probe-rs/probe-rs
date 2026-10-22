@@ -7,7 +7,7 @@ use probe_rs::probe::{
     DebugProbeError, DebugProbeSelector, Probe, WireProtocol,
     ch347::{Ch347, Ch347Config},
     list::{ProbeListItem, ProbeLister},
-    target_serial::{HostSerialPort, LineState, SerialSettings, TargetSerial},
+    target_serial::{HostSerialPort, LineState, PortSelector, SerialSettings, TargetSerial},
     usb_util::UsbSerialFilter,
 };
 use serde::{Deserialize, Deserializer, Serialize};
@@ -129,7 +129,8 @@ pub struct SerialConfig {
     pub rts: Option<LineState>,
     /// Use this USB serial port instead of the port of the probe: `VID:PID[:serial]`.
     pub usb: Option<String>,
-    /// Use the USB serial port with this OS name instead of the port of the probe.
+    /// Use the serial port with this OS name instead of the port of the probe, for example `COM7`
+    /// or `/dev/ttyAMA0`.
     pub port: Option<String>,
 }
 
@@ -160,13 +161,10 @@ impl SerialConfig {
         }
     }
 
-    /// The filter of the replacement port, if the config names one.
-    fn replacement(&self) -> anyhow::Result<Option<UsbSerialFilter>> {
+    /// The replacement port, if the config names one.
+    fn replacement(&self) -> anyhow::Result<Option<PortSelector>> {
         if let Some(port) = &self.port {
-            return Ok(Some(UsbSerialFilter {
-                port_name: Some(port.clone()),
-                ..Default::default()
-            }));
+            return Ok(Some(PortSelector::Name(port.clone())));
         }
         let Some(usb) = &self.usb else {
             return Ok(None);
@@ -174,13 +172,12 @@ impl SerialConfig {
         let selector = usb
             .parse::<DebugProbeSelector>()
             .with_context(|| format!("Invalid serial port `{usb}`"))?;
-        Ok(Some(UsbSerialFilter {
+        Ok(Some(PortSelector::Usb(UsbSerialFilter {
             vendor_id: Some(selector.vendor_id),
             product_id: Some(selector.product_id),
             serial_number: selector.serial_number,
             interface: selector.interface,
-            port_name: None,
-        }))
+        })))
     }
 
     /// Takes the serial port to the target from `probe`, or the replacement port, and returns it
@@ -198,7 +195,7 @@ impl SerialConfig {
         }
 
         let serial: Box<dyn TargetSerial> = match self.replacement()? {
-            Some(filter) => Box::new(HostSerialPort::new(filter, SerialSettings::default())),
+            Some(port) => Box::new(HostSerialPort::new(port, SerialSettings::default())),
             None => match probe.target_serial() {
                 Some(serial) => serial,
                 None => return Ok(None),
@@ -599,12 +596,15 @@ mod tests {
         assert_eq!(settings.rts, LineState::Keep);
 
         // The specific entry replaces the replacement port of the general entry.
-        let filter = serial.replacement().unwrap().unwrap();
-        assert_eq!(filter.port_name.as_deref(), Some("COM7"));
-        assert_eq!(filter.vendor_id, None);
+        assert_eq!(
+            serial.replacement().unwrap(),
+            Some(PortSelector::Name("COM7".to_string()))
+        );
 
         let serial = configs.resolve(&probe("303a:1001:OTHER")).serial;
-        let filter = serial.replacement().unwrap().unwrap();
+        let Some(PortSelector::Usb(filter)) = serial.replacement().unwrap() else {
+            panic!("Expected a USB port");
+        };
         assert_eq!(filter.vendor_id, Some(0x1a86));
         assert_eq!(filter.product_id, Some(0x7523));
     }
