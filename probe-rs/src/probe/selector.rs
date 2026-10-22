@@ -12,7 +12,7 @@ use nusb::DeviceInfo;
 /// string has to be in the format "VID:PID-INTERFACE:SERIALNUMBER".
 ///
 /// The interface number and serial number are optional, and VID and PID are
-/// parsed as hexadecimal numbers.
+/// parsed as hexadecimal numbers. The string may start with `usb://`.
 ///
 /// If SERIALNUMBER exists (i.e. the selector contains a second color) and is empty,
 /// probe-rs will select probes that have no serial number, or where the serial number is empty.
@@ -178,9 +178,31 @@ impl UsbSelector {
     }
 }
 
+/// Splits a leading `scheme://` off `s`, if it has one.
+///
+/// A scheme is a letter followed by letters, digits, `+`, `-` and `.`, as in a URI. So a `://` in
+/// the serial number of `VID:PID:SERIAL` does not start a scheme: its prefix contains colons.
+fn split_scheme(s: &str) -> Option<(&str, &str)> {
+    let (scheme, rest) = s.split_once("://")?;
+    let mut chars = scheme.chars();
+    let is_scheme = chars.next()?.is_ascii_alphabetic()
+        && chars.all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.'));
+    is_scheme.then_some((scheme, rest))
+}
+
 impl std::str::FromStr for DebugProbeSelector {
     type Err = DebugProbeSelectorParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = match split_scheme(s) {
+            Some(("usb", rest)) => rest,
+            Some((scheme, _)) => {
+                return Err(DebugProbeSelectorParseError::UnknownScheme(
+                    scheme.to_string(),
+                ));
+            }
+            None => s,
+        };
+
         // Split into at most 3 parts: VID, PID, Serial.
         // We limit the number of splits to allow for colons in the
         // serial number (EspJtag uses MAC address)
@@ -290,6 +312,9 @@ pub enum DebugProbeSelectorParseError {
 
     /// The format of the selector is invalid. Please use a string in the form `VID:PID<-Interface>:<Serial>`, where Serial  and Interface are optional.
     Format,
+
+    /// Unknown probe selector scheme `{0}://`. The only scheme is `usb://`.
+    UnknownScheme(String),
 }
 
 #[cfg(test)]
@@ -414,6 +439,19 @@ mod test {
         assert_eq!(reparsed.product_id, selector.product_id);
         assert_eq!(reparsed.interface, selector.interface);
         assert_eq!(reparsed.serial_number, selector.serial_number);
+    }
+
+    #[test]
+    fn usb_scheme_is_optional() {
+        assert_eq!(usb("usb://0403:6010-1:A://B"), usb("0403:6010-1:A://B"));
+    }
+
+    #[test]
+    fn unknown_scheme_is_rejected() {
+        assert!(matches!(
+            "tcp://localhost:4441".parse::<DebugProbeSelector>(),
+            Err(super::DebugProbeSelectorParseError::UnknownScheme(scheme)) if scheme == "tcp"
+        ));
     }
 
     #[test]
