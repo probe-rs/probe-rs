@@ -546,15 +546,17 @@ pub(crate) mod convert {
     pub(crate) fn to_wire_debug_probe_entry(item: ProbeListItem) -> DebugProbeEntry {
         let inaccessible = item.accessibility == Accessibility::PermissionDenied;
         let probe = item.info;
+        let probe_type = probe.probe_type();
+        let probe_rs::probe::ProbeTransport::Usb(usb) = probe.transport;
         DebugProbeEntry {
-            probe_type: probe.probe_type(),
+            probe_type,
             inaccessible,
             identifier: probe.identifier,
-            vendor_id: probe.vendor_id,
-            product_id: probe.product_id,
-            serial_number: probe.serial_number.unwrap_or_default(),
-            interface: probe.interface,
-            usb_location: probe.usb_location,
+            vendor_id: usb.vendor_id,
+            product_id: usb.product_id,
+            serial_number: usb.serial_number.unwrap_or_default(),
+            interface: usb.interface,
+            usb_location: usb.usb_location,
         }
     }
 
@@ -575,6 +577,7 @@ pub(crate) mod convert {
     pub(crate) fn to_wire_debug_probe_selector(
         selector: probe_rs::probe::DebugProbeSelector,
     ) -> probe_rs_rpc::probe::DebugProbeSelector {
+        let probe_rs::probe::DebugProbeSelector::Usb(selector) = selector;
         probe_rs_rpc::probe::DebugProbeSelector {
             vendor_id: selector.vendor_id,
             product_id: selector.product_id,
@@ -587,13 +590,13 @@ pub(crate) mod convert {
     pub(crate) fn from_wire_debug_probe_selector(
         selector: probe_rs_rpc::probe::DebugProbeSelector,
     ) -> probe_rs::probe::DebugProbeSelector {
-        probe_rs::probe::DebugProbeSelector {
+        probe_rs::probe::DebugProbeSelector::Usb(probe_rs::probe::UsbSelector {
             vendor_id: selector.vendor_id,
             product_id: selector.product_id,
             serial_number: selector.serial_number,
             interface: selector.interface,
             usb_location: selector.usb_location,
-        }
+        })
     }
 
     impl From<&AttachRequest> for ProbeOptions {

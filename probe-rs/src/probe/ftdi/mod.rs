@@ -15,7 +15,8 @@ use crate::{
     probe::{
         BitbangSwd, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
         IoSequenceItem, JtagChain, JtagChainAccess, JtagChainState, JtagOp, JtagProbe,
-        ProbeCreationError, ProbeFactory, SwdProbe, SwdSettings, WireProtocol,
+        ProbeCreationError, ProbeFactory, ProbeTransport, SwdProbe, SwdSettings, UsbProbeInfo,
+        UsbSelector, WireProtocol,
         jtag::{Step, TapState, distribute_captures, walk_batch},
         list::{ProbeListItem, usb_probe_accessibility},
         queue::{BatchExecutionError, Results},
@@ -354,6 +355,7 @@ impl std::fmt::Display for FtdiProbeFactory {
 
 impl ProbeFactory for FtdiProbeFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+        let DebugProbeSelector::Usb(selector) = selector;
         // Only open FTDI-compatible probes
         let Some(ftdi) = FTDI_COMPAT_DEVICES
             .iter()
@@ -403,7 +405,7 @@ impl ProbeFactory for FtdiProbeFactory {
         // listed entries.
         //
         // So match as the default does, but ignoring interface.
-        let selector = selector.map(|selector| DebugProbeSelector {
+        let selector = selector.map(|DebugProbeSelector::Usb(selector)| UsbSelector {
             interface: None,
             ..selector.clone()
         });
@@ -704,13 +706,15 @@ fn get_device_info(device: &DeviceInfo) -> Option<ProbeListItem> {
         ftdi.matches(device).then(|| ProbeListItem {
             info: DebugProbeInfo {
                 identifier: device.product_string().unwrap_or("FTDI").to_string(),
-                vendor_id: device.vendor_id(),
-                product_id: device.product_id(),
-                serial_number: device.serial_number().map(|s| s.to_string()),
+                transport: ProbeTransport::Usb(UsbProbeInfo {
+                    vendor_id: device.vendor_id(),
+                    product_id: device.product_id(),
+                    serial_number: device.serial_number().map(|s| s.to_string()),
+                    is_hid_interface: false,
+                    interface: None,
+                    usb_location: Some((device.bus_id().to_string(), device.device_address())),
+                }),
                 probe_factory: &FtdiProbeFactory,
-                is_hid_interface: false,
-                interface: None,
-                usb_location: Some((device.bus_id().to_string(), device.device_address())),
             },
             accessibility: usb_probe_accessibility(device),
         })
