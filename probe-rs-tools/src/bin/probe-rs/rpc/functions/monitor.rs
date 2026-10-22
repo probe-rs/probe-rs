@@ -1,5 +1,5 @@
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crate::rpc::{
     ObjectStorageSlot, SharedTargetSerial,
@@ -276,38 +276,36 @@ where
     }
 }
 
-/// How often the serial port to the target is read while the monitor runs.
-const SERIAL_POLL_INTERVAL: Duration = Duration::from_millis(10);
+/// How long one read of the serial port to the target waits before the stop flag is checked.
+const SERIAL_READ_TIMEOUT: Duration = Duration::from_millis(10);
+/// After the stop, the data that arrives in this time is still sent.
+const SERIAL_TAIL_TIME: Duration = Duration::from_millis(50);
 
 /// Sends the data from the serial port to the target until `stop` is set, then sends the data
 /// that arrives shortly after.
 fn forward_serial(serial: &SharedTargetSerial, stop: &AtomicBool, sender: &MonitorSender) {
-    while !stop.load(Ordering::Relaxed) {
-        drain_serial(serial, sender);
-        std::thread::sleep(SERIAL_POLL_INTERVAL);
-    }
-    // Data can still be on the way, for example the end of a panic message.
-    std::thread::sleep(SERIAL_POLL_INTERVAL * 5);
-    drain_serial(serial, sender);
-}
+    let mut buf = [0; 4096];
+    let mut stop_at = None;
 
-fn drain_serial(serial: &SharedTargetSerial, sender: &MonitorSender) {
-    loop {
-        let mut buf = vec![0; 4096];
-        let len = match serial.read(&mut buf, Duration::ZERO) {
+    while stop_at.is_none_or(|stop_at| Instant::now() < stop_at) {
+        if stop_at.is_none() && stop.load(Ordering::Relaxed) {
+            // Data can still be on the way, for example the end of a panic message.
+            stop_at = Some(Instant::now() + SERIAL_TAIL_TIME);
+        }
+
+        let len = match serial.read(&mut buf, SERIAL_READ_TIMEOUT) {
             Ok(len) => len,
             Err(error) => {
                 tracing::debug!("Failed to read the serial port to the target: {error}");
-                0
+                return;
             }
         };
-        if len == 0 {
-            return;
-        }
-        buf.truncate(len);
-        if sender
-            .send_serial_event(SerialEvent::Output { bytes: buf })
-            .is_err()
+        if len > 0
+            && sender
+                .send_serial_event(SerialEvent::Output {
+                    bytes: buf[..len].to_vec(),
+                })
+                .is_err()
         {
             return;
         }
