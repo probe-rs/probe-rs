@@ -626,6 +626,15 @@ mod tests {
     }
 
     #[test]
+    fn esp_frame_can_end_in_the_next_chunk() {
+        let mut decoder = auto();
+        assert_eq!(
+            decode(&mut decoder, &[b"text\n\xFF\x00\x07", b"\x00more\n"]),
+            "text\n07\nmore\n"
+        );
+    }
+
+    #[test]
     fn stream_can_start_with_an_esp_frame() {
         let mut decoder = auto();
         assert_eq!(
