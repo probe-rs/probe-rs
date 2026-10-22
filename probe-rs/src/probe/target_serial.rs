@@ -79,7 +79,8 @@ pub trait TargetSerial: Send + Sync + fmt::Debug {
     /// The settings that the driver recommends. The caller can change them before [`open`](Self::open).
     fn default_settings(&self) -> SerialSettings;
 
-    /// Opens the port and applies the line states.
+    /// Opens the port and applies the line states. If the port is not there yet, it opens when it
+    /// appears.
     fn open(&mut self, settings: &SerialSettings) -> Result<(), TargetSerialError>;
 
     /// Reads received data. Waits up to `timeout` for data. Returns 0 if no data arrives.
@@ -98,7 +99,7 @@ pub trait TargetSerial: Send + Sync + fmt::Debug {
 const READ_TIMEOUT: Duration = Duration::from_millis(20);
 /// How long a write waits for the target to take the data.
 const WRITE_TIMEOUT: Duration = Duration::from_secs(1);
-/// The time between two attempts to open a lost port.
+/// The time between two attempts to open a missing port.
 const REOPEN_INTERVAL: Duration = Duration::from_millis(500);
 /// The receive buffer keeps at most this many bytes. Older bytes are dropped.
 const RX_BUFFER_LIMIT: usize = 1024 * 1024;
@@ -165,9 +166,18 @@ impl TargetSerial for HostSerialPort {
     fn open(&mut self, settings: &SerialSettings) -> Result<(), TargetSerialError> {
         self.close();
 
-        let (reader_port, writer_port) = open_port(&self.filter, settings)?;
+        // The port can appear later, for example when the OS loads its driver.
+        let ports = match open_port(&self.filter, settings) {
+            Ok(ports) => Some(ports),
+            Err(TargetSerialError::NotFound(filter)) => {
+                tracing::info!("Waiting for target serial port {filter}");
+                None
+            }
+            Err(error) => return Err(error),
+        };
+        let (reader_port, writer_port) = ports.unzip();
         let shared = Arc::new(Shared {
-            writer: Mutex::new(Some(writer_port)),
+            writer: Mutex::new(writer_port),
             rx: Mutex::new(VecDeque::new()),
             received: Condvar::new(),
             epoch: AtomicU64::new(0),
@@ -299,7 +309,7 @@ fn open_port(
 }
 
 fn read_loop(
-    mut port: Box<dyn SerialPort>,
+    mut port: Option<Box<dyn SerialPort>>,
     shared: &Shared,
     filter: &UsbSerialFilter,
     settings: &SerialSettings,
@@ -307,8 +317,18 @@ fn read_loop(
     let mut buf = [0; 4096];
 
     while !shared.stop.load(Ordering::Relaxed) {
+        let Some(reader) = port.as_mut() else {
+            let Some((reader, writer)) = wait_for_port(shared, filter, settings) else {
+                return;
+            };
+            tracing::info!("Opened target serial port {filter}");
+            port = Some(reader);
+            *shared.writer.lock() = Some(writer);
+            continue;
+        };
+
         let epoch = shared.epoch.load(Ordering::Relaxed);
-        match port.read(&mut buf) {
+        match reader.read(&mut buf) {
             Ok(len) => {
                 let mut rx = shared.rx.lock();
                 if shared.epoch.load(Ordering::Relaxed) != epoch {
@@ -324,19 +344,14 @@ fn read_loop(
             Err(error) => {
                 tracing::warn!("Lost target serial port {filter}: {error}");
                 *shared.writer.lock() = None;
-                let Some((reader, writer)) = reopen(shared, filter, settings) else {
-                    return;
-                };
-                tracing::info!("Target serial port {filter} is back");
-                port = reader;
-                *shared.writer.lock() = Some(writer);
+                port = None;
             }
         }
     }
 }
 
-/// Opens the port again. Returns `None` if the handle stops first.
-fn reopen(
+/// Opens the port when it appears. Returns `None` if the handle stops first.
+fn wait_for_port(
     shared: &Shared,
     filter: &UsbSerialFilter,
     settings: &SerialSettings,
