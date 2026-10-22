@@ -1,7 +1,7 @@
 //! Listing probes of various types.
 
 use crate::probe::{
-    DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError,
+    DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError, ProbeTransport,
 };
 
 use super::DRIVERS;
@@ -49,6 +49,7 @@ pub fn default_probe_index<'a>(
 /// Whether two listed probes are the same USB device, as far as their location or serial number
 /// tells.
 fn same_device(a: &DebugProbeInfo, b: &DebugProbeInfo) -> bool {
+    let (ProbeTransport::Usb(a), ProbeTransport::Usb(b)) = (&a.transport, &b.transport);
     (a.vendor_id, a.product_id) == (b.vendor_id, b.product_id)
         && match (&a.usb_location, &b.usb_location) {
             (Some(a), Some(b)) => a == b,
@@ -261,7 +262,7 @@ mod linux {
 #[cfg(test)]
 mod tests {
     use super::{ProbeListItem, default_probe_index, group_by_device};
-    use crate::probe::{DebugProbeInfo, fake_probe::FakeProbeFactory};
+    use crate::probe::{DebugProbeInfo, ProbeTransport, fake_probe::FakeProbeFactory};
 
     fn probe(serial: Option<&str>, interface: Option<u8>) -> DebugProbeInfo {
         let serial = serial.map(str::to_string);
@@ -292,8 +293,10 @@ mod tests {
         assert_eq!(default_probe_index(&probes), None);
 
         let mut probes = [probe(Some("A"), None), probe(Some("A"), None)];
-        probes[0].usb_location = Some(("1".to_string(), 1));
-        probes[1].usb_location = Some(("1".to_string(), 2));
+        for (probe, address) in probes.iter_mut().zip([1, 2]) {
+            let ProbeTransport::Usb(usb) = &mut probe.transport;
+            usb.usb_location = Some(("1".to_string(), address));
+        }
         assert_eq!(default_probe_index(&probes), None);
     }
 
@@ -311,7 +314,10 @@ mod tests {
 
         let grouped: Vec<_> = group_by_device(list.to_vec())
             .into_iter()
-            .map(|item| (item.info.serial_number, item.info.interface))
+            .map(|item| {
+                let ProbeTransport::Usb(usb) = item.info.transport;
+                (usb.serial_number, usb.interface)
+            })
             .collect();
         let a = || Some("A".to_string());
         let b = || Some("B".to_string());

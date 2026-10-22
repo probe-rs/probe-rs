@@ -2,7 +2,7 @@
 
 use super::{is_cmsis_dap, reject_probe_by_version};
 use crate::probe::{
-    DebugProbeInfo, ProbeCreationError, UsbSelector,
+    DebugProbeInfo, ProbeCreationError, ProbeTransport, UsbSelector,
     cmsisdap::{CmsisDapDevice, CmsisDapFactory, commands::DEFAULT_USB_TIMEOUT},
     list::ProbeListItem,
 };
@@ -20,11 +20,13 @@ pub(super) fn list_hid_only_devices(probes: &mut Vec<ProbeListItem>) {
     };
 
     for info in api.device_list().filter_map(get_cmsisdap_hid_info) {
+        let ProbeTransport::Usb(hid) = &info.transport;
         let duplicate = probes.iter().any(|p| {
-            p.info.vendor_id == info.vendor_id
-                && p.info.product_id == info.product_id
-                && p.info.serial_number.as_deref().unwrap_or("")
-                    == info.serial_number.as_deref().unwrap_or("")
+            let ProbeTransport::Usb(usb) = &p.info.transport;
+            usb.vendor_id == hid.vendor_id
+                && usb.product_id == hid.product_id
+                && usb.serial_number.as_deref().unwrap_or("")
+                    == hid.serial_number.as_deref().unwrap_or("")
         });
         if duplicate {
             tracing::trace!("Ignoring duplicate {:?}", info);
@@ -100,10 +102,10 @@ pub(super) fn open_device(
                 device_match &= Some(sn) == info.serial_number();
             }
 
-            if let Some(hid_interface) = hid_device_info
-                .as_ref()
-                .and_then(|info| info.interface.filter(|_| info.is_hid_interface))
-            {
+            if let Some(hid_interface) = hid_device_info.as_ref().and_then(|info| {
+                let ProbeTransport::Usb(info) = &info.transport;
+                info.interface.filter(|_| info.is_hid_interface)
+            }) {
                 device_match &= info.interface_number() == hid_interface as i32;
             }
 
