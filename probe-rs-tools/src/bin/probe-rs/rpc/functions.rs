@@ -223,7 +223,10 @@ impl LimitedLister {
     }
 
     fn is_allowed(&self, selector: &DebugProbeSelector) -> bool {
-        let DebugProbeSelector::Usb(selector) = selector;
+        // A port does not say which probe it is; `open` finds it among the allowed probes.
+        let DebugProbeSelector::Usb(selector) = selector else {
+            return false;
+        };
         // We aren't using `.to_string()` because it doesn't append an empty serial when missing.
         let sel_without_serial = format!("{:04x}:{:04x}", selector.vendor_id, selector.product_id);
         let mut sel_with_serial = format!("{sel_without_serial}:");
@@ -243,6 +246,14 @@ impl LimitedLister {
 
 impl ProbeLister for LimitedLister {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError> {
+        if let DebugProbeSelector::UsbPort(_) = selector {
+            return match self.list(Some(selector)).first() {
+                Some(probe) => self.open(&DebugProbeSelector::from(probe)),
+                None => Err(DebugProbeError::ProbeCouldNotBeCreated(
+                    ProbeCreationError::NotFound,
+                )),
+            };
+        }
         if !self.is_allowed(selector) {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
                 ProbeCreationError::CouldNotOpen,

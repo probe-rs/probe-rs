@@ -91,12 +91,11 @@ impl ProbeFactory for LinuxSpidevSwdFactory {
         let Some(selector) = selector else {
             return self.list_probes();
         };
-        let DebugProbeSelector::Usb(usb) = selector;
-
-        if usb
-            .serial_number
-            .as_deref()
-            .is_some_and(|serial| is_valid_spidev_path(Path::new(serial)))
+        if let DebugProbeSelector::Usb(usb) = selector
+            && usb
+                .serial_number
+                .as_deref()
+                .is_some_and(|serial| is_valid_spidev_path(Path::new(serial)))
         {
             return vec![ProbeListItem::accessible(probe_info_for_path(Path::new(
                 usb.serial_number.as_deref().unwrap(),
@@ -485,7 +484,11 @@ fn batch_error(
 }
 
 fn find_matching_device(selector: &DebugProbeSelector) -> Result<PathBuf, DebugProbeError> {
-    let DebugProbeSelector::Usb(selector) = selector;
+    let DebugProbeSelector::Usb(selector) = selector else {
+        return Err(DebugProbeError::ProbeCouldNotBeCreated(
+            ProbeCreationError::NotFound,
+        ));
+    };
     let Some(serial_number) = selector.serial_number.as_deref() else {
         return Err(DebugProbeError::ProbeCouldNotBeCreated(
             ProbeCreationError::NotFound,

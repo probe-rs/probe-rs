@@ -1,7 +1,7 @@
 use crate::probe::list::{ProbeListItem, usb_probe_accessibility};
 use crate::probe::stlink::StLinkFactory;
 use crate::probe::usb_util::to_hex;
-use crate::probe::{DebugProbeInfo, ProbeTransport, UsbProbeInfo};
+use crate::probe::{DebugProbeInfo, ProbeTransport, UsbPort, UsbProbeInfo};
 use nusb::MaybeFuture;
 
 use super::usb_interface::USB_PID_EP_MAP;
@@ -36,7 +36,7 @@ pub(super) fn list_stlink_devices() -> Vec<ProbeListItem> {
                     serial_number: read_serial_number(&device),
                     is_hid_interface: false,
                     interface: None,
-                    usb_location: Some((device.bus_id().to_string(), device.device_address())),
+                    usb_port: UsbPort::of(&device),
                 }),
                 probe_factory: &StLinkFactory,
             };

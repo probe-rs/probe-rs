@@ -126,7 +126,7 @@ pub async fn attach_request(
         client.load_chip_family(file).await?;
     }
 
-    let mut probe = match select_probe(
+    let probe = match select_probe(
         client,
         probe_options.probe.map(to_wire_debug_probe_selector),
         probe_options.non_interactive,
@@ -146,9 +146,6 @@ pub async fn attach_request(
             Duration::from_secs(1),
         )
         .await?;
-        // The probe gets a new USB device address when it enumerates again.
-        let probe_rs_rpc::probe::ProbeTransport::Usb(usb) = &mut probe.transport;
-        usb.usb_location = None;
     }
 
     Ok(AttachRequest {

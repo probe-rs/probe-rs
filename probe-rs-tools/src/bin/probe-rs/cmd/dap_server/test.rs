@@ -43,7 +43,11 @@ impl TestLister {
 
 impl ProbeLister for TestLister {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError> {
-        let DebugProbeSelector::Usb(selector) = selector;
+        let DebugProbeSelector::Usb(selector) = selector else {
+            return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                ProbeCreationError::NotFound,
+            ));
+        };
         #[expect(
             clippy::unwrap_used,
             reason = "Test lister: a poisoned mutex is unrecoverable"

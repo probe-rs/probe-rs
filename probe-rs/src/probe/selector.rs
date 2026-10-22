@@ -14,6 +14,9 @@ use nusb::DeviceInfo;
 /// The interface number and serial number are optional, and VID and PID are
 /// parsed as hexadecimal numbers. The string may start with `usb://`.
 ///
+/// `usb-busid://BUS-PORT.PORT` selects the probe plugged into that USB port, as in
+/// `usb-busid://1-1.2`. See [`UsbPort`].
+///
 /// If SERIALNUMBER exists (i.e. the selector contains a second color) and is empty,
 /// probe-rs will select probes that have no serial number, or where the serial number is empty.
 ///
@@ -22,7 +25,9 @@ use nusb::DeviceInfo;
 /// ```
 /// use std::str::FromStr;
 /// use probe_rs::probe::DebugProbeSelector;
-/// let DebugProbeSelector::Usb(selector) = "1942:1337:SERIAL".parse().unwrap();
+/// let Ok(DebugProbeSelector::Usb(selector)) = "1942:1337:SERIAL".parse() else {
+///     unreachable!()
+/// };
 ///
 /// assert_eq!(selector.vendor_id, 0x1942);
 /// assert_eq!(selector.product_id, 0x1337);
@@ -32,7 +37,9 @@ use nusb::DeviceInfo;
 /// ```
 /// use std::str::FromStr;
 /// use probe_rs::probe::DebugProbeSelector;
-/// let DebugProbeSelector::Usb(selector) = "1942:1337-3".parse().unwrap();
+/// let Ok(DebugProbeSelector::Usb(selector)) = "1942:1337-3".parse() else {
+///     unreachable!()
+/// };
 ///
 /// assert_eq!(selector.vendor_id, 0x1942);
 /// assert_eq!(selector.product_id, 0x1337);
@@ -42,30 +49,132 @@ use nusb::DeviceInfo;
 pub enum DebugProbeSelector {
     /// A USB probe.
     Usb(UsbSelector),
+    /// The USB probe plugged into this port.
+    UsbPort(UsbPort),
 }
 
 impl DebugProbeSelector {
     /// Returns whether the given USB device info matches this selector.
     pub fn matches(&self, info: &DeviceInfo) -> bool {
-        let DebugProbeSelector::Usb(selector) = self;
-        selector.matches(info)
+        match self {
+            DebugProbeSelector::Usb(selector) => selector.matches(info),
+            DebugProbeSelector::UsbPort(port) => UsbPort::of(info).as_ref() == Some(port),
+        }
     }
 
     /// Check if the given probe info matches this selector.
     pub fn matches_probe(&self, info: &DebugProbeInfo) -> bool {
-        let DebugProbeSelector::Usb(selector) = self;
-        selector.matches_probe(info)
+        match self {
+            DebugProbeSelector::Usb(selector) => selector.matches_probe(info),
+            DebugProbeSelector::UsbPort(port) => {
+                let ProbeTransport::Usb(info) = &info.transport;
+                info.usb_port.as_ref() == Some(port)
+            }
+        }
     }
 
     /// Returns whether a probe that `probe` selects matches this selector.
     pub fn matches_selector(&self, probe: &DebugProbeSelector) -> bool {
-        let (DebugProbeSelector::Usb(selector), DebugProbeSelector::Usb(probe)) = (self, probe);
-        selector.matches_selector(probe)
+        match (self, probe) {
+            (DebugProbeSelector::Usb(selector), DebugProbeSelector::Usb(probe)) => {
+                selector.matches_selector(probe)
+            }
+            (DebugProbeSelector::UsbPort(port), DebugProbeSelector::Usb(probe)) => {
+                probe.usb_port.as_ref() == Some(port)
+            }
+            (DebugProbeSelector::UsbPort(port), DebugProbeSelector::UsbPort(probe)) => {
+                port == probe
+            }
+            // A port says nothing about the VID, PID or serial number.
+            (DebugProbeSelector::Usb(_), DebugProbeSelector::UsbPort(_)) => false,
+        }
+    }
+}
+
+/// The USB port a device is plugged into: the bus, and the port number on each hub from the root
+/// hub to the device, as in `1-1.2`.
+///
+/// Unlike the device address, it stays the same when the device enumerates again, as long as it
+/// stays in the same port. On Windows, for a device without a location path, the bus is the
+/// instance ID of its hub and the path is its port on that hub.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct UsbPort {
+    /// The bus ID, without leading zeros if it is a decimal number.
+    pub bus_id: String,
+    /// The port numbers from the root hub to the device.
+    pub ports: Vec<u8>,
+}
+
+impl UsbPort {
+    /// The port that `device` is plugged into, if the platform knows it.
+    pub fn of(device: &DeviceInfo) -> Option<Self> {
+        let ports = device.port_chain();
+        if !device.bus_id().is_empty() && !ports.is_empty() {
+            return Some(Self::new(device.bus_id(), ports.to_vec()));
+        }
+
+        // Windows has no location path for some devices, but still knows the hub they are
+        // plugged into and the port on it.
+        #[cfg(windows)]
+        if let hub = device.parent_instance_id().to_string_lossy()
+            && !hub.is_empty()
+            && let Ok(port) = u8::try_from(device.port_number())
+            && port != 0
+        {
+            return Some(Self::new(&hub, vec![port]));
+        }
+
+        None
+    }
+
+    fn new(bus_id: &str, ports: Vec<u8>) -> Self {
+        // Linux numbers buses `001`, but names ports `1-1.2`.
+        let bus_id = if !bus_id.is_empty() && bus_id.bytes().all(|b| b.is_ascii_digit()) {
+            let trimmed = bus_id.trim_start_matches('0');
+            if trimmed.is_empty() { "0" } else { trimmed }
+        } else {
+            bus_id
+        };
+        Self {
+            bus_id: bus_id.to_string(),
+            ports,
+        }
+    }
+}
+
+impl fmt::Display for UsbPort {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}-", self.bus_id)?;
+        for (i, port) in self.ports.iter().enumerate() {
+            if i > 0 {
+                f.write_str(".")?;
+            }
+            write!(f, "{port}")?;
+        }
+        Ok(())
+    }
+}
+
+impl std::str::FromStr for UsbPort {
+    type Err = DebugProbeSelectorParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // The ports come after the last dash; a Windows bus ID may contain dashes.
+        let (bus_id, ports) = s
+            .rsplit_once('-')
+            .ok_or(DebugProbeSelectorParseError::Format)?;
+        if bus_id.is_empty() {
+            return Err(DebugProbeSelectorParseError::Format);
+        }
+        let ports = ports
+            .split('.')
+            .map(str::parse)
+            .collect::<Result<Vec<u8>, _>>()?;
+        Ok(Self::new(bus_id, ports))
     }
 }
 
 /// Selects a USB probe by its vendor and product ID, and optionally its interface, serial number
-/// and USB location.
+/// and USB port.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UsbSelector {
     /// The USB vendor id of the debug probe to be used.
@@ -76,10 +185,12 @@ pub struct UsbSelector {
     pub interface: Option<u8>,
     /// The serial number of the debug probe to be used.
     pub serial_number: Option<String>,
-    /// USB bus ID and device address, if known. Parsing a string never sets it.
+    /// The USB port of the probe, if known. Parsing a `VID:PID` string never sets it.
     ///
-    /// See [`UsbProbeInfo::usb_location`](crate::probe::UsbProbeInfo::usb_location).
-    pub usb_location: Option<(String, u8)>,
+    /// Tells identical probes (same VID/PID and serial number) apart.
+    ///
+    /// See [`UsbProbeInfo::usb_port`](crate::probe::UsbProbeInfo::usb_port).
+    pub usb_port: Option<UsbPort>,
 }
 
 impl UsbSelector {
@@ -98,9 +209,7 @@ impl UsbSelector {
             )
         }
 
-        if let Some((bus_id, device_address)) = &self.usb_location
-            && (bus_id.as_str(), *device_address) != (info.bus_id(), info.device_address())
-        {
+        if self.usb_port.is_some() && self.usb_port != UsbPort::of(info) {
             return false;
         }
 
@@ -115,7 +224,7 @@ impl UsbSelector {
     /// Check if the given probe info matches this selector.
     pub fn matches_probe(&self, info: &DebugProbeInfo) -> bool {
         let ProbeTransport::Usb(info) = &info.transport;
-        if self.usb_location.is_some() && info.usb_location != self.usb_location {
+        if self.usb_port.is_some() && info.usb_port != self.usb_port {
             return false;
         }
 
@@ -180,6 +289,7 @@ impl std::str::FromStr for DebugProbeSelector {
         // A scheme comes before the first colon; a serial number may contain `://`.
         let s = match s.split_once("://") {
             Some(("usb", rest)) => rest,
+            Some(("usb-busid", port)) => return Ok(DebugProbeSelector::UsbPort(port.parse()?)),
             Some((scheme, _)) if !scheme.contains(':') => {
                 return Err(DebugProbeSelectorParseError::UnknownScheme(
                     scheme.to_string(),
@@ -213,7 +323,7 @@ impl std::str::FromStr for DebugProbeSelector {
             product_id: u16::from_str_radix(product_id, 16)?,
             serial_number,
             interface,
-            usb_location: None,
+            usb_port: None,
         }))
     }
 }
@@ -226,7 +336,7 @@ impl From<DebugProbeInfo> for DebugProbeSelector {
             product_id: selector.product_id,
             serial_number: selector.serial_number,
             interface: selector.interface,
-            usb_location: selector.usb_location,
+            usb_port: selector.usb_port,
         })
     }
 }
@@ -239,7 +349,7 @@ impl From<&DebugProbeInfo> for DebugProbeSelector {
             product_id: selector.product_id,
             serial_number: selector.serial_number.clone(),
             interface: selector.interface,
-            usb_location: selector.usb_location.clone(),
+            usb_port: selector.usb_port.clone(),
         })
     }
 }
@@ -252,8 +362,10 @@ impl From<UsbSelector> for DebugProbeSelector {
 
 impl fmt::Display for DebugProbeSelector {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let DebugProbeSelector::Usb(selector) = self;
-        selector.fmt(f)
+        match self {
+            DebugProbeSelector::Usb(selector) => selector.fmt(f),
+            DebugProbeSelector::UsbPort(port) => write!(f, "usb-busid://{port}"),
+        }
     }
 }
 
@@ -298,16 +410,18 @@ pub enum DebugProbeSelectorParseError {
     /// The format of the selector is invalid. Please use a string in the form `VID:PID<-Interface>:<Serial>`, where Serial  and Interface are optional.
     Format,
 
-    /// Unknown probe selector scheme `{0}://`. The only scheme is `usb://`.
+    /// Unknown probe selector scheme `{0}://`. The schemes are `usb://` and `usb-busid://`.
     UnknownScheme(String),
 }
 
 #[cfg(test)]
 mod test {
-    use crate::probe::{DebugProbeSelector, UsbSelector};
+    use crate::probe::{DebugProbeSelector, UsbPort, UsbSelector};
 
     fn usb(selector: &str) -> UsbSelector {
-        let DebugProbeSelector::Usb(selector) = selector.parse().unwrap();
+        let Ok(DebugProbeSelector::Usb(selector)) = selector.parse() else {
+            panic!("{selector} is not a USB selector");
+        };
         selector
     }
 
@@ -429,6 +543,17 @@ mod test {
     #[test]
     fn usb_scheme_is_optional() {
         assert_eq!(usb("usb://0403:6010-1:A://B"), usb("0403:6010-1:A://B"));
+    }
+
+    #[test]
+    fn usb_busid_selects_a_port() {
+        let selector: DebugProbeSelector = "usb-busid://001-1.2".parse().unwrap();
+        let port = UsbPort {
+            bus_id: "1".to_string(),
+            ports: vec![1, 2],
+        };
+        assert_eq!(selector, DebugProbeSelector::UsbPort(port));
+        assert_eq!(selector.to_string(), "usb-busid://1-1.2");
     }
 
     #[test]

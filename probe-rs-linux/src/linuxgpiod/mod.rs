@@ -192,7 +192,11 @@ impl fmt::Display for LinuxGpiodFactory {
 
 impl ProbeFactory for LinuxGpiodFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
-        let DebugProbeSelector::Usb(selector) = selector;
+        let DebugProbeSelector::Usb(selector) = selector else {
+            return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                ProbeCreationError::NotFound,
+            ));
+        };
         // We're never a USB device; let other factories handle non-zero VID/PID.
         if selector.vendor_id != 0 || selector.product_id != 0 {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(

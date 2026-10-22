@@ -151,6 +151,20 @@ pub struct AllProbesLister;
 
 impl ProbeLister for AllProbesLister {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError> {
+        // Drivers open a probe by its VID and PID, so find the probe on the port first.
+        if let DebugProbeSelector::UsbPort(_) = selector {
+            let probes = self.list(Some(selector));
+            if probes.len() > 1 {
+                tracing::warn!("More than one probe matches {selector}; opening the first one.");
+            }
+            let Some(probe) = probes.first() else {
+                return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                    ProbeCreationError::NotFound,
+                ));
+            };
+            return self.open(&DebugProbeSelector::from(probe));
+        }
+
         let mut open_error = None;
         let mut fallback_error = ProbeCreationError::NotFound;
 

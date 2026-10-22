@@ -92,7 +92,7 @@ impl ProbeFactory for XvcFactory {
                     serial_number: Some(address),
                     is_hid_interface: false,
                     interface: None,
-                    usb_location: None,
+                    usb_port: None,
                 }),
                 probe_factory: &Self,
             })];

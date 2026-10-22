@@ -231,7 +231,7 @@ async fn run_embed(
                 product_id: u16::from_str_radix(pid, 16)?,
                 serial_number: config.probe.serial.clone(),
                 interface: config.probe.interface,
-                usb_location: None,
+                usb_port: None,
             })),
             (vid, pid) => {
                 if vid.is_some() {

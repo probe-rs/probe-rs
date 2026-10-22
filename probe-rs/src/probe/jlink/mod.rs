@@ -63,7 +63,11 @@ impl std::fmt::Display for JLinkFactory {
 
 impl ProbeFactory for JLinkFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
-        let DebugProbeSelector::Usb(selector) = selector;
+        let DebugProbeSelector::Usb(selector) = selector else {
+            return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                super::ProbeCreationError::NotFound,
+            ));
+        };
 
         fn open_error(e: std::io::Error, while_: &'static str) -> DebugProbeError {
             let help = if cfg!(windows) {

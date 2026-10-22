@@ -41,9 +41,8 @@ pub struct UsbProbeEntry {
     /// The serial number of the debug probe.
     pub serial_number: String,
 
-    /// USB bus ID and device address, if known.
-    /// See `probe_rs::probe::UsbProbeInfo::usb_location`.
-    pub usb_location: Option<(String, u8)>,
+    /// The USB port, if known. See `probe_rs::probe::UsbProbeInfo::usb_port`.
+    pub usb_port: Option<UsbPort>,
 }
 
 impl Display for DebugProbeEntry {
@@ -61,6 +60,10 @@ impl Display for DebugProbeEntry {
 
         write!(f, ":{} ({})", usb.serial_number, self.probe_type)?;
 
+        if let Some(port) = &usb.usb_port {
+            write!(f, " usb-busid://{port}")?;
+        }
+
         Ok(())
     }
 }
@@ -73,7 +76,7 @@ impl DebugProbeEntry {
             product_id: usb.product_id,
             serial_number: Some(usb.serial_number.clone()),
             interface: usb.interface,
-            usb_location: usb.usb_location.clone(),
+            usb_port: usb.usb_port.clone(),
         })
     }
 }
@@ -119,6 +122,28 @@ pub enum WireProtocol {
 pub enum DebugProbeSelector {
     /// A USB probe.
     Usb(UsbSelector),
+    /// The USB probe plugged into this port.
+    UsbPort(UsbPort),
+}
+
+/// The USB port a device is plugged into. See `probe_rs::probe::UsbPort`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Schema)]
+pub struct UsbPort {
+    pub bus_id: String,
+    pub ports: Vec<u8>,
+}
+
+impl Display for UsbPort {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}-", self.bus_id)?;
+        for (i, port) in self.ports.iter().enumerate() {
+            if i > 0 {
+                f.write_str(".")?;
+            }
+            write!(f, "{port}")?;
+        }
+        Ok(())
+    }
 }
 
 /// Selects a USB probe. See `probe_rs::probe::UsbSelector`.
@@ -132,9 +157,8 @@ pub struct UsbSelector {
     pub interface: Option<u8>,
     /// The the serial number of the debug probe to be used.
     pub serial_number: Option<String>,
-    /// USB bus ID and device address, if known.
-    /// See `probe_rs::probe::UsbProbeInfo::usb_location`.
-    pub usb_location: Option<(String, u8)>,
+    /// The USB port, if known. See `probe_rs::probe::UsbProbeInfo::usb_port`.
+    pub usb_port: Option<UsbPort>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]

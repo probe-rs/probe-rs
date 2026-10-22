@@ -53,7 +53,7 @@ pub use queue::{
 };
 #[allow(deprecated)]
 pub use queue::{DeferredResultIndex, DeferredResultSet, ErasedQueue, Queue};
-pub use selector::{DebugProbeSelector, UsbSelector};
+pub use selector::{DebugProbeSelector, UsbPort, UsbSelector};
 pub use swd::{
     BitbangSwd, Direction, IoSequenceItem, Pins, Port, SwdBatch, SwdOp, SwdPort, SwdProbe,
     SwdSettings, SwdTransferError,
@@ -982,11 +982,11 @@ pub struct UsbProbeInfo {
     /// This is a composite HID device.
     pub is_hid_interface: bool,
 
-    /// USB bus ID and device address, if known.
+    /// The USB port the probe is plugged into, if the platform knows it.
     ///
-    /// Tells identical probes (same VID/PID, no serial number) apart while they stay plugged
-    /// in. It is not part of the string form of a [`DebugProbeSelector`].
-    pub usb_location: Option<(String, u8)>,
+    /// Tells identical probes (same VID/PID and serial number) apart. Select a probe by its port
+    /// with `usb-busid://`, see [`UsbPort`].
+    pub usb_port: Option<UsbPort>,
 }
 
 impl std::fmt::Display for DebugProbeInfo {
@@ -1007,7 +1007,12 @@ impl std::fmt::Display for DebugProbeInfo {
             ":{} ({})",
             usb.serial_number.as_deref().unwrap_or(""),
             self.probe_factory
-        )
+        )?;
+
+        if let Some(port) = &usb.usb_port {
+            write!(f, " usb-busid://{port}")?;
+        }
+        Ok(())
     }
 }
 
@@ -1030,7 +1035,7 @@ impl DebugProbeInfo {
                 serial_number,
                 interface,
                 is_hid_interface,
-                usb_location: None,
+                usb_port: None,
             }),
             probe_factory,
         }

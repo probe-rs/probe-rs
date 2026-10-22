@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use probe_rs::probe::{
-    DebugProbeError, DebugProbeSelector, Probe, ProbeTransport, WireProtocol,
+    DebugProbeError, DebugProbeSelector, Probe, ProbeTransport, UsbSelector, WireProtocol,
     ch347::{Ch347, Ch347Config},
     list::{ProbeListItem, ProbeLister},
 };
@@ -138,12 +138,13 @@ impl ProbeConfigs {
             .iter()
             .filter(|(selector, _)| selector.matches_selector(probe))
             .collect::<Vec<_>>();
-        matching.sort_by_key(|(selector, _)| {
-            let DebugProbeSelector::Usb(selector) = selector;
-            (
+        matching.sort_by_key(|(selector, _)| match selector {
+            DebugProbeSelector::Usb(selector) => (
+                false,
                 selector.serial_number.is_some(),
                 selector.interface.is_some(),
-            )
+            ),
+            DebugProbeSelector::UsbPort(_) => (true, false, false),
         });
 
         let mut resolved = ProbeConfig::default();
@@ -155,13 +156,13 @@ impl ProbeConfigs {
 
     /// Returns whether an entry with a serial number can match `probe`. Only these entries need
     /// the serial number of the probe.
-    fn needs_serial_number(&self, probe: &DebugProbeSelector) -> bool {
-        let DebugProbeSelector::Usb(probe) = probe;
+    fn needs_serial_number(&self, probe: &UsbSelector) -> bool {
         probe.serial_number.is_none()
-            && self.0.keys().any(|DebugProbeSelector::Usb(selector)| {
-                selector.serial_number.is_some()
-                    && (selector.vendor_id, selector.product_id)
-                        == (probe.vendor_id, probe.product_id)
+            && self.0.keys().any(|selector| {
+                matches!(selector, DebugProbeSelector::Usb(selector)
+                    if selector.serial_number.is_some()
+                        && (selector.vendor_id, selector.product_id)
+                            == (probe.vendor_id, probe.product_id))
             })
     }
 }
@@ -178,17 +179,25 @@ impl<L: ProbeLister> ConfiguredLister<L> {
         Self { inner, configs }
     }
 
-    /// Adds the serial number of the probe, so that the entries with a serial number match.
+    /// Adds the serial number of the probe, so that the entries with a serial number match. A
+    /// port becomes the probe listed on it, so that the entries for its VID and PID match.
     fn complete_selector(&self, selector: &DebugProbeSelector) -> DebugProbeSelector {
-        let mut selector = selector.clone();
-        if self.configs.needs_serial_number(&selector)
-            && let [info] = self.inner.list(Some(&selector)).as_slice()
-        {
-            let DebugProbeSelector::Usb(usb) = &mut selector;
-            let ProbeTransport::Usb(info) = &info.transport;
-            usb.serial_number = info.serial_number.clone();
+        match selector {
+            DebugProbeSelector::Usb(usb) => {
+                let mut usb = usb.clone();
+                if self.configs.needs_serial_number(&usb)
+                    && let [info] = self.inner.list(Some(selector)).as_slice()
+                {
+                    let ProbeTransport::Usb(info) = &info.transport;
+                    usb.serial_number = info.serial_number.clone();
+                }
+                DebugProbeSelector::Usb(usb)
+            }
+            DebugProbeSelector::UsbPort(_) => match self.inner.list(Some(selector)).as_slice() {
+                [info] => DebugProbeSelector::from(info),
+                _ => selector.clone(),
+            },
         }
-        selector
     }
 }
 
@@ -469,8 +478,14 @@ mod tests {
             "#,
         );
 
-        assert!(configs.needs_serial_number(&probe("0012:0023")));
-        assert!(!configs.needs_serial_number(&probe("0012:0023:ABC")));
-        assert!(!configs.needs_serial_number(&probe("0012:0024")));
+        let usb = |selector| {
+            let DebugProbeSelector::Usb(selector) = probe(selector) else {
+                unreachable!()
+            };
+            selector
+        };
+        assert!(configs.needs_serial_number(&usb("0012:0023")));
+        assert!(!configs.needs_serial_number(&usb("0012:0023:ABC")));
+        assert!(!configs.needs_serial_number(&usb("0012:0024")));
     }
 }

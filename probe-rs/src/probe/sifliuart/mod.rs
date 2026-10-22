@@ -398,7 +398,7 @@ impl SifliUartFactory {
                 serial_number: Some(port.port_name.clone()),
                 interface: port.info.interface,
                 is_hid_interface: false,
-                usb_location: None,
+                usb_port: None,
             }),
             probe_factory: &SifliUartFactory,
         })
@@ -439,7 +439,11 @@ impl std::fmt::Display for SifliUartFactory {
 
 impl ProbeFactory for SifliUartFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
-        let DebugProbeSelector::Usb(selector) = selector;
+        let DebugProbeSelector::Usb(selector) = selector else {
+            return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                ProbeCreationError::NotFound,
+            ));
+        };
         let Ok(ports) = usb_serial_ports() else {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
                 ProbeCreationError::CouldNotOpen,

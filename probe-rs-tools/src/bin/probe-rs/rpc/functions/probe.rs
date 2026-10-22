@@ -39,10 +39,10 @@ pub async fn select_probe(
     // open() time via the selector. We must propagate the interface from the
     // original selector into the returned DebugProbeEntry so that the subsequent
     // attach() call opens the correct channel.
-    let requested_interface = request
-        .probe
-        .as_ref()
-        .and_then(|probe_rs_rpc::probe::DebugProbeSelector::Usb(s)| s.interface);
+    let requested_interface = request.probe.as_ref().and_then(|selector| match selector {
+        probe_rs_rpc::probe::DebugProbeSelector::Usb(selector) => selector.interface,
+        probe_rs_rpc::probe::DebugProbeSelector::UsbPort(_) => None,
+    });
 
     let mut list = lister.list_with_access(
         request
@@ -562,7 +562,7 @@ pub(crate) mod convert {
                     product_id: usb.product_id,
                     serial_number: usb.serial_number.unwrap_or_default(),
                     interface: usb.interface,
-                    usb_location: usb.usb_location,
+                    usb_port: usb.usb_port.map(to_wire_usb_port),
                 },
             ),
         }
@@ -585,27 +585,53 @@ pub(crate) mod convert {
     pub(crate) fn to_wire_debug_probe_selector(
         selector: probe_rs::probe::DebugProbeSelector,
     ) -> probe_rs_rpc::probe::DebugProbeSelector {
-        let probe_rs::probe::DebugProbeSelector::Usb(selector) = selector;
-        probe_rs_rpc::probe::DebugProbeSelector::Usb(probe_rs_rpc::probe::UsbSelector {
-            vendor_id: selector.vendor_id,
-            product_id: selector.product_id,
-            serial_number: selector.serial_number,
-            interface: selector.interface,
-            usb_location: selector.usb_location,
-        })
+        match selector {
+            probe_rs::probe::DebugProbeSelector::Usb(selector) => {
+                probe_rs_rpc::probe::DebugProbeSelector::Usb(probe_rs_rpc::probe::UsbSelector {
+                    vendor_id: selector.vendor_id,
+                    product_id: selector.product_id,
+                    serial_number: selector.serial_number,
+                    interface: selector.interface,
+                    usb_port: selector.usb_port.map(to_wire_usb_port),
+                })
+            }
+            probe_rs::probe::DebugProbeSelector::UsbPort(port) => {
+                probe_rs_rpc::probe::DebugProbeSelector::UsbPort(to_wire_usb_port(port))
+            }
+        }
     }
 
     pub(crate) fn from_wire_debug_probe_selector(
         selector: probe_rs_rpc::probe::DebugProbeSelector,
     ) -> probe_rs::probe::DebugProbeSelector {
-        let probe_rs_rpc::probe::DebugProbeSelector::Usb(selector) = selector;
-        probe_rs::probe::DebugProbeSelector::Usb(probe_rs::probe::UsbSelector {
-            vendor_id: selector.vendor_id,
-            product_id: selector.product_id,
-            serial_number: selector.serial_number,
-            interface: selector.interface,
-            usb_location: selector.usb_location,
-        })
+        match selector {
+            probe_rs_rpc::probe::DebugProbeSelector::Usb(selector) => {
+                probe_rs::probe::DebugProbeSelector::Usb(probe_rs::probe::UsbSelector {
+                    vendor_id: selector.vendor_id,
+                    product_id: selector.product_id,
+                    serial_number: selector.serial_number,
+                    interface: selector.interface,
+                    usb_port: selector.usb_port.map(from_wire_usb_port),
+                })
+            }
+            probe_rs_rpc::probe::DebugProbeSelector::UsbPort(port) => {
+                probe_rs::probe::DebugProbeSelector::UsbPort(from_wire_usb_port(port))
+            }
+        }
+    }
+
+    fn to_wire_usb_port(port: probe_rs::probe::UsbPort) -> probe_rs_rpc::probe::UsbPort {
+        probe_rs_rpc::probe::UsbPort {
+            bus_id: port.bus_id,
+            ports: port.ports,
+        }
+    }
+
+    fn from_wire_usb_port(port: probe_rs_rpc::probe::UsbPort) -> probe_rs::probe::UsbPort {
+        probe_rs::probe::UsbPort {
+            bus_id: port.bus_id,
+            ports: port.ports,
+        }
     }
 
     impl From<&AttachRequest> for ProbeOptions {
