@@ -4,14 +4,15 @@
 //! remote XVC server (for example an FPGA-based bridge or `hw_server`).
 //!
 //! Because XVC is a network protocol with no USB identity, the probe cannot be
-//! auto-discovered. Select it explicitly by passing the placeholder USB id
-//! `0000:0000` together with the server address as the "serial number", e.g.
+//! auto-discovered. Select it explicitly by its server address, e.g.
 //!
 //! ```text
-//! probe-rs ... --probe 0000:0000:192.168.1.123:2542
+//! probe-rs ... --probe tcp://xvc@192.168.1.123:2542
 //! ```
 //!
-//! The port defaults to 2542 when omitted (`--probe 0:0:192.168.1.123`).
+//! The port defaults to 2542 when omitted (`--probe tcp://xvc@192.168.1.123`). The placeholder
+//! USB id `0000:0000` with the server address as the serial number also works, e.g.
+//! `--probe 0000:0000:192.168.1.123:2542`.
 
 mod protocol;
 
@@ -35,19 +36,19 @@ use crate::{
     probe::{
         BitbangJtag, BitbangSwd, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
         IoSequenceItem, JtagChain, JtagChainAccess, JtagChainState, ProbeFactory, ProbeTransport,
-        SwdProbe, SwdSettings, TapState, UsbProbeInfo, WireProtocol, list::ProbeListItem,
+        SwdProbe, SwdSettings, TapState, TcpAddress, WireProtocol, list::ProbeListItem,
         swd::output_levels,
     },
 };
 
+/// The driver name in a `tcp://` selector.
+const DRIVER: &str = "xvc";
+
 /// Placeholder USB vendor id used to select an XVC probe.
-///
-/// XVC has no USB identity; this value only serves to route a
-/// [`DebugProbeSelector`] to the XVC driver.
-pub(crate) const XVC_VID: u16 = 0x0000;
+const XVC_VID: u16 = 0x0000;
 
 /// Placeholder USB product id used to select an XVC probe.
-pub(crate) const XVC_PID: u16 = 0x0000;
+const XVC_PID: u16 = 0x0000;
 
 /// A factory for creating [`XvcProbe`] instances.
 #[derive(Debug)]
@@ -76,23 +77,15 @@ impl ProbeFactory for XvcFactory {
     }
 
     fn list_probes_filtered(&self, selector: Option<&DebugProbeSelector>) -> Vec<ProbeListItem> {
-        // Surface exactly the requested probe when the selector explicitly
-        // targets an XVC endpoint (placeholder VID/PID plus a server address).
-        if let Some(DebugProbeSelector::Usb(selector)) = selector
-            && selector.vendor_id == XVC_VID
-            && selector.product_id == XVC_PID
-            && let Some(address) = selector.serial_number.clone()
-            && is_xvc_address(&address)
+        // Surface exactly the requested probe when the selector names an XVC server.
+        if let Some(selector) = selector
+            && let Some(address) = xvc_address(selector)
         {
             return vec![ProbeListItem::accessible(DebugProbeInfo {
                 identifier: "XVC".to_string(),
-                transport: ProbeTransport::Usb(UsbProbeInfo {
-                    vendor_id: XVC_VID,
-                    product_id: XVC_PID,
-                    serial_number: Some(address),
-                    is_hid_interface: false,
-                    interface: None,
-                    usb_location: None,
+                transport: ProbeTransport::Tcp(TcpAddress {
+                    driver: DRIVER.to_string(),
+                    address: address.to_string(),
                 }),
                 probe_factory: &Self,
             })];
@@ -100,6 +93,21 @@ impl ProbeFactory for XvcFactory {
 
         Vec::new()
     }
+}
+
+/// The address of the XVC server a selector names, if it names one: `tcp://xvc@ADDRESS`, or the
+/// placeholder `0000:0000:ADDRESS`.
+fn xvc_address(selector: &DebugProbeSelector) -> Option<&str> {
+    let address = match selector {
+        DebugProbeSelector::Tcp(address) if address.driver == DRIVER => &address.address,
+        DebugProbeSelector::Usb(selector)
+            if (selector.vendor_id, selector.product_id) == (XVC_VID, XVC_PID) =>
+        {
+            selector.serial_number.as_ref()?
+        }
+        _ => return None,
+    };
+    is_xvc_address(address).then_some(address.as_str())
 }
 
 fn is_xvc_address(serial: &str) -> bool {
@@ -282,5 +290,22 @@ impl JtagChainAccess for XvcProbe {
 
     fn chain_state_ref(&self) -> &JtagChainState {
         &self.jtag_state
+    }
+}
+
+#[cfg(test)]
+mod xvc_address_tests {
+    use super::{DebugProbeSelector, xvc_address};
+
+    fn address(selector: &str) -> Option<String> {
+        xvc_address(&selector.parse::<DebugProbeSelector>().unwrap()).map(str::to_string)
+    }
+
+    #[test]
+    fn both_forms_name_the_same_server() {
+        let address_of = address("tcp://xvc@192.168.1.123:2542");
+        assert_eq!(address_of.as_deref(), Some("192.168.1.123:2542"));
+        assert_eq!(address("0000:0000:192.168.1.123:2542"), address_of);
+        assert_eq!(address("tcp://cmsis-dap@192.168.1.123:2542"), None);
     }
 }
