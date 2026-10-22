@@ -2,6 +2,8 @@
 
 use std::collections::HashSet;
 
+use rustc_hash::FxBuildHasher;
+
 use super::{Direction, Port, SwdBatch, SwdOp, SwdProbe, SwdTransferError};
 use crate::probe::{
     BatchError, CommandResult, DebugProbeError, Handle, HandleId, Results, SwdSettings,
@@ -536,7 +538,7 @@ fn remap_results(
     mut expanded_results: Results,
     block_read_counts: &[usize],
 ) -> Results {
-    let mut logical_results = Results::new();
+    let mut logical_results = Results::with_capacity(logical.len() + pins_handles.len());
     for handle_id in pins_handles {
         let handle = Handle::from_parts(handle_id.clone(), Box::new(|result| result));
         if let Ok(result) = expanded_results.take(handle) {
@@ -544,7 +546,7 @@ fn remap_results(
         }
     }
     let mut expanded_read_values: Vec<Option<u32>> = vec![None; read_handles.len()];
-    let block_aggregate_ids: HashSet<HandleId> = block_read_counts
+    let block_aggregate_ids: HashSet<HandleId, FxBuildHasher> = block_read_counts
         .iter()
         .filter_map(|&count| {
             block_value_indices(&read_handles, count)
