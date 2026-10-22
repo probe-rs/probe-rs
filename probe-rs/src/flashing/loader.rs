@@ -1138,8 +1138,15 @@ impl FlashLoader {
 
             let target = session.target();
             let core = target.core_index_by_name(core_name).unwrap();
+            let data_range = self
+                .builder
+                .data_in_range(&region.range)
+                .map(|(address, data)| address..address + data.len() as u64)
+                .reduce(|a, b| a.start.min(b.start)..a.end.max(b.end))
+                .expect("region has data");
             let algo = Self::get_flash_algorithm_for_region(
                 &region,
+                &data_range,
                 target,
                 core_name,
                 opt_preferred_algos,
@@ -1276,13 +1283,15 @@ impl FlashLoader {
         Ok(())
     }
 
-    /// Try to find a flash algorithm for the given NvmRegion.
+    /// Try to find a flash algorithm for the given NvmRegion that covers `range`, the part of the
+    /// region that is accessed.
     /// Errors when:
     /// - there's no algo for the region.
     /// - there's multiple default algos for the region.
     /// - there's multiple fitting algos but no default.
     pub(crate) fn get_flash_algorithm_for_region<'a>(
         region: &NvmRegion,
+        range: &Range<u64>,
         target: &'a Target,
         core_name: &String,
         preferred_algos: &[String],
@@ -1304,9 +1313,7 @@ impl FlashLoader {
             .iter()
             // filter for algorithms that contain address range
             .filter(|&fa| {
-                fa.flash_properties
-                    .address_range
-                    .contains_range(&region.range)
+                fa.flash_properties.address_range.contains_range(range)
                     && (fa.cores.is_empty() || fa.cores.contains(core_name))
             })
             .collect::<Vec<_>>();
@@ -1364,5 +1371,82 @@ impl FlashLoader {
             .data
             .iter()
             .map(|(address, data)| (*address, data.as_slice()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use probe_rs_target::FlashProperties;
+
+    use super::*;
+    use crate::config::Registry;
+
+    // The external flash of the STM32H7S78-DK and the NUCLEO-H7S3L8 share a region (#4422).
+    const REGION: Range<u64> = 0x7000_0000..0x7800_0000;
+    const DK: (&str, Range<u64>) = ("dk", REGION);
+    const NUCLEO: (&str, Range<u64>) = ("nucleo", 0x7000_0000..0x7200_0000);
+
+    /// Selects an algorithm for 4 bytes at `address`, returning its name.
+    fn select(
+        algos: &[(&str, Range<u64>)],
+        preferred: &[&str],
+        address: u64,
+    ) -> Result<String, FlashError> {
+        let mut target = Registry::from_builtin_families()
+            .get_target_by_name("nrf51822_Xxaa")
+            .unwrap();
+        target.flash_algorithms = algos
+            .iter()
+            .map(|(name, range)| RawFlashAlgorithm {
+                name: name.to_string(),
+                flash_properties: FlashProperties {
+                    address_range: range.clone(),
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .collect();
+        let core_name = target.cores[0].name.clone();
+        let region = NvmRegion {
+            name: None,
+            range: REGION,
+            cores: vec![core_name.clone()],
+            is_alias: false,
+            access: None,
+        };
+        let preferred = preferred.iter().map(|name| name.to_string()).collect_vec();
+
+        let algo = FlashLoader::get_flash_algorithm_for_region(
+            &region,
+            &(address..address + 4),
+            &target,
+            &core_name,
+            &preferred,
+        )?;
+        Ok(algo.name.clone())
+    }
+
+    #[test]
+    fn preferred_algorithm_narrower_than_region() {
+        assert_eq!(
+            select(&[DK, NUCLEO], &["nucleo"], 0x7000_0000).unwrap(),
+            "nucleo"
+        );
+    }
+
+    #[test]
+    fn algorithms_covering_the_data_need_a_default() {
+        assert!(matches!(
+            select(&[DK, NUCLEO], &[], 0x7000_0000),
+            Err(FlashError::MultipleFlashLoaderAlgorithmsNoDefault { .. })
+        ));
+    }
+
+    #[test]
+    fn preferred_algorithm_must_hold_all_data() {
+        assert_eq!(
+            select(&[DK, NUCLEO], &["nucleo"], 0x7400_0000).unwrap(),
+            "dk"
+        );
     }
 }
