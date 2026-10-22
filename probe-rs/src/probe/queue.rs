@@ -1,4 +1,5 @@
 use core::fmt;
+use rustc_hash::FxBuildHasher;
 use std::{collections::HashMap, marker::PhantomData, sync::Arc};
 
 use crate::probe::{CommandResult, DebugProbeError, JtagCommand};
@@ -211,7 +212,7 @@ impl<Op, E: std::error::Error + Send + Sync + 'static> Batch<Op, E> {
 
 /// The set of results returned by executing a batched command.
 #[derive(Default)]
-pub struct Results(HashMap<HandleId, CommandResult>);
+pub struct Results(HashMap<HandleId, CommandResult, FxBuildHasher>);
 
 impl fmt::Debug for Results {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -227,7 +228,7 @@ impl Results {
 
     /// Creates a new empty result set with the given capacity.
     pub fn with_capacity(capacity: usize) -> Self {
-        Self(HashMap::with_capacity(capacity))
+        Self(HashMap::with_capacity_and_hasher(capacity, FxBuildHasher))
     }
 
     /// Record the result of one operation.
@@ -248,7 +249,12 @@ impl Results {
     }
 
     pub(crate) fn merge_from(&mut self, other: Results) {
-        self.0.extend(other.0);
+        // Take the first set over rather than inserting it again.
+        if self.0.is_empty() {
+            self.0 = other.0;
+        } else {
+            self.0.extend(other.0);
+        }
         self.0.retain(|k, _| k.should_capture());
     }
 

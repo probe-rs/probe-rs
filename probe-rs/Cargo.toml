@@ -65,6 +65,7 @@ serialport = { version = "4.7.0", default-features = false, features = [
 ] }
 tracing = "0.1"
 parking_lot = "0.12.2"
+rustc-hash = "2"
 zerocopy = { version = "0.8.0", features = ["derive"] }
 cobs = "0.5"
 

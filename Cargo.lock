@@ -3082,6 +3082,7 @@ dependencies = [
  "pretty_assertions",
  "probe-rs-target",
  "rmp-serde",
+ "rustc-hash",
  "scroll",
  "serde",
  "serde_json",
