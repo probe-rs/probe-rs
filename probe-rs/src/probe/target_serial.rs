@@ -86,7 +86,8 @@ pub trait TargetSerial: Send + Sync + fmt::Debug {
     /// Reads received data. Waits up to `timeout` for data. Returns 0 if no data arrives.
     fn read(&self, buf: &mut [u8], timeout: Duration) -> Result<usize, TargetSerialError>;
 
-    /// Drops the data that the port received and nobody read yet.
+    /// Drops the data that the port received and nobody read yet. Waits until no data arrives for
+    /// a short time, so that the data in the buffers of the device is dropped too.
     ///
     /// Call this before the target boots, to drop the output of the previous firmware.
     fn discard_input(&self) -> Result<(), TargetSerialError>;
@@ -101,6 +102,10 @@ const READ_TIMEOUT: Duration = Duration::from_millis(20);
 const WRITE_TIMEOUT: Duration = Duration::from_secs(1);
 /// The time between two attempts to open a missing port.
 const REOPEN_INTERVAL: Duration = Duration::from_millis(500);
+/// `discard_input` returns when no data arrives for this long.
+const DISCARD_QUIET_TIME: Duration = Duration::from_millis(50);
+/// `discard_input` returns after this time, also if data continues to arrive.
+const DISCARD_TIMEOUT: Duration = Duration::from_millis(500);
 /// The receive buffer keeps at most this many bytes. Older bytes are dropped.
 const RX_BUFFER_LIMIT: usize = 1024 * 1024;
 
@@ -223,8 +228,20 @@ impl TargetSerial for HostSerialPort {
                 .clear(serialport::ClearBuffer::Input)
                 .map_err(io::Error::from)?;
         }
-        rx.clear();
-        Ok(())
+        // The device can send old data after the clear.
+        let deadline = Instant::now() + DISCARD_TIMEOUT;
+        loop {
+            rx.clear();
+            let quiet = open
+                .shared
+                .received
+                .wait_for(&mut rx, DISCARD_QUIET_TIME)
+                .timed_out();
+            if quiet || Instant::now() >= deadline {
+                rx.clear();
+                return Ok(());
+            }
+        }
     }
 
     /// Writes until all data is written or 1 s passes. Returns the number of bytes written.
