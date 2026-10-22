@@ -339,8 +339,7 @@ pub async fn write_serial(
     request: SerialWriteRequest,
 ) -> SerialWriteResponse {
     let serial = ctx
-        .session_entry_target_serial(request.sessid)
-        .await
+        .target_serial(request.sessid)
         .ok_or_else(|| RpcError::from("The session has no serial port to the target"))?;
     // A write can wait for the target, so it must not block the async runtime.
     let written = tokio::task::spawn_blocking(move || serial.write(&request.data))

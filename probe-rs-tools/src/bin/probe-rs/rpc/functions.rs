@@ -368,17 +368,8 @@ impl RpcContext {
     }
 
     /// Returns the serial port to the target of a session.
-    pub async fn session_entry_target_serial(
-        &self,
-        sid: Key<Session>,
-    ) -> Option<crate::rpc::SharedTargetSerial> {
-        let locked_cell = self.state.object_storage.lock().await.cell(sid);
-        let guard = locked_cell.obj.clone().lock_owned().await;
-        guard
-            .downcast_ref::<SessionEntry>()
-            .unwrap()
-            .target_serial
-            .clone()
+    pub fn target_serial(&self, sid: Key<Session>) -> Option<crate::rpc::SharedTargetSerial> {
+        self.state.target_serial(sid)
     }
 
     pub fn debug_states(&self) -> DebugStatesMap {
