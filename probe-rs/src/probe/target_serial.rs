@@ -22,7 +22,8 @@ use super::usb_util::{UsbSerialFilter, UsbSerialPort, usb_serial_ports};
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum LineState {
-    /// Do not change the line.
+    /// Keep the state that the OS sets when the port opens. Linux and macOS assert the line,
+    /// Windows deasserts it.
     #[default]
     Keep,
     /// Deassert the line.
