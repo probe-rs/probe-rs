@@ -328,7 +328,9 @@ fn read_loop(
         };
 
         let epoch = shared.epoch.load(Ordering::Relaxed);
-        match reader.read(&mut buf) {
+        let lost = match reader.read(&mut buf) {
+            // A read of 0 bytes without a timeout means that the device is gone.
+            Ok(0) => Some("the port closed".to_string()),
             Ok(len) => {
                 let mut rx = shared.rx.lock();
                 if shared.epoch.load(Ordering::Relaxed) != epoch {
@@ -339,13 +341,15 @@ fn read_loop(
                 let excess = rx.len().saturating_sub(RX_BUFFER_LIMIT);
                 rx.drain(..excess);
                 shared.received.notify_all();
+                None
             }
-            Err(error) if error.kind() == io::ErrorKind::TimedOut => {}
-            Err(error) => {
-                tracing::warn!("Lost target serial port {filter}: {error}");
-                *shared.writer.lock() = None;
-                port = None;
-            }
+            Err(error) if error.kind() == io::ErrorKind::TimedOut => None,
+            Err(error) => Some(error.to_string()),
+        };
+        if let Some(reason) = lost {
+            tracing::warn!("Lost target serial port {filter}: {reason}");
+            *shared.writer.lock() = None;
+            port = None;
         }
     }
 }
