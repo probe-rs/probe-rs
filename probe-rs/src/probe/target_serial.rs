@@ -73,8 +73,9 @@ pub enum TargetSerialError {
 ///
 /// A debug probe gives the port with [`DebugProbe::target_serial`](super::DebugProbe::target_serial)
 /// before attach. After that, the port does not depend on the probe or the session. The port is
-/// closed until [`open`](Self::open). To disable the port, do not open it.
-pub trait TargetSerial: Send + fmt::Debug {
+/// closed until [`open`](Self::open). To disable the port, do not open it. After `open`, more
+/// than one thread can read and write the port at the same time.
+pub trait TargetSerial: Send + Sync + fmt::Debug {
     /// The settings that the driver recommends. The caller can change them before [`open`](Self::open).
     fn default_settings(&self) -> SerialSettings;
 
@@ -82,15 +83,15 @@ pub trait TargetSerial: Send + fmt::Debug {
     fn open(&mut self, settings: &SerialSettings) -> Result<(), TargetSerialError>;
 
     /// Reads received data. Does not block. Returns 0 if no data is available.
-    fn read(&mut self, buf: &mut [u8]) -> Result<usize, TargetSerialError>;
+    fn read(&self, buf: &mut [u8]) -> Result<usize, TargetSerialError>;
 
     /// Drops the data that the port received and nobody read yet.
     ///
     /// Call this before the target boots, to drop the output of the previous firmware.
-    fn discard_input(&mut self) -> Result<(), TargetSerialError>;
+    fn discard_input(&self) -> Result<(), TargetSerialError>;
 
     /// Writes data to the target.
-    fn write(&mut self, data: &[u8]) -> Result<usize, TargetSerialError>;
+    fn write(&self, data: &[u8]) -> Result<usize, TargetSerialError>;
 }
 
 /// How long one read waits before the reader checks the stop flag.
@@ -186,7 +187,7 @@ impl TargetSerial for HostSerialPort {
         Ok(())
     }
 
-    fn read(&mut self, buf: &mut [u8]) -> Result<usize, TargetSerialError> {
+    fn read(&self, buf: &mut [u8]) -> Result<usize, TargetSerialError> {
         let open = self.open.as_ref().ok_or(TargetSerialError::NotOpen)?;
         let mut rx = open.shared.rx.lock();
         let len = buf.len().min(rx.len());
@@ -196,7 +197,7 @@ impl TargetSerial for HostSerialPort {
         Ok(len)
     }
 
-    fn discard_input(&mut self) -> Result<(), TargetSerialError> {
+    fn discard_input(&self) -> Result<(), TargetSerialError> {
         let open = self.open.as_ref().ok_or(TargetSerialError::NotOpen)?;
         let mut rx = open.shared.rx.lock();
         open.shared.epoch.fetch_add(1, Ordering::Relaxed);
@@ -211,7 +212,7 @@ impl TargetSerial for HostSerialPort {
     }
 
     /// Writes until all data is written or 1 s passes. Returns the number of bytes written.
-    fn write(&mut self, data: &[u8]) -> Result<usize, TargetSerialError> {
+    fn write(&self, data: &[u8]) -> Result<usize, TargetSerialError> {
         let open = self.open.as_ref().ok_or(TargetSerialError::NotOpen)?;
         let mut writer = open.shared.writer.lock();
         let writer = writer
