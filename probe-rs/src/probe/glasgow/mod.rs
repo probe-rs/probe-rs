@@ -7,8 +7,8 @@ use crate::probe::{Pins, ResetLine};
 
 use super::{
     BatchError, BatchExecutionError, BitSequence, CommandResult, DebugProbe, DebugProbeError,
-    DebugProbeInfo, DebugProbeSelector, ProbeFactory, ProbeTransport, Results, UsbProbeInfo,
-    UsbSelector, WireProtocol,
+    DebugProbeInfo, DebugProbeSelector, ProbeFactory, ProbeTransport, Results, TcpAddress,
+    UsbProbeInfo, UsbSelector, WireProtocol,
     list::ProbeListItem,
     swd::{Direction, Port, SwdBatch, SwdOp, SwdProbe, SwdTransferError},
 };
@@ -47,6 +47,12 @@ impl ProbeFactory for GlasgowFactory {
     }
 
     fn list_probes_filtered(&self, selector: Option<&DebugProbeSelector>) -> Vec<ProbeListItem> {
+        if let Some(DebugProbeSelector::Tcp(address)) = selector
+            && address.driver == DRIVER
+        {
+            return vec![tcp_probe(address.address.clone())];
+        }
+
         // Return exactly the specified probe, if it has the option string (which is referred to
         // here as the serial number).
         if let Some(DebugProbeSelector::Usb(UsbSelector {
@@ -59,6 +65,14 @@ impl ProbeFactory for GlasgowFactory {
             && *vendor_id == usb::VID_QIHW
             && *product_id == usb::PID_GLASGOW
         {
+            if let Some(addr) = serial_number
+                .as_deref()
+                .and_then(|s| s.strip_prefix("tcp:"))
+            {
+                warn_deprecated_tcp_selector(addr);
+                return vec![tcp_probe(addr.to_string())];
+            }
+
             // The probe is built from the selector, so there is no enumerated device to check
             // accessibility against here.
             return vec![ProbeListItem::accessible(DebugProbeInfo {
@@ -77,6 +91,30 @@ impl ProbeFactory for GlasgowFactory {
 
         vec![]
     }
+}
+
+/// The driver name in a `tcp://` selector.
+const DRIVER: &str = "glasgow";
+
+/// Warns that `20b7:9db1:tcp:ADDRESS` is the deprecated way to select the Glasgow at `address`.
+fn warn_deprecated_tcp_selector(address: &str) {
+    tracing::warn!(
+        "The probe selector `{:04x}:{:04x}:tcp:{address}` is deprecated, use `tcp://{DRIVER}@{address}`",
+        usb::VID_QIHW,
+        usb::PID_GLASGOW
+    );
+}
+
+/// The listing of the Glasgow at `address`, which cannot be enumerated.
+fn tcp_probe(address: String) -> ProbeListItem {
+    ProbeListItem::accessible(DebugProbeInfo {
+        identifier: "Glasgow".to_owned(),
+        transport: ProbeTransport::Tcp(TcpAddress {
+            driver: DRIVER.to_string(),
+            address,
+        }),
+        probe_factory: &GlasgowFactory,
+    })
 }
 
 impl GlasgowDevice {
@@ -445,5 +483,25 @@ mod tests {
             SwdPortError::Transfer(SwdTransferError::WaitResponse)
         );
         assert_eq!(probe.transfer_ops().len(), 1);
+    }
+}
+
+#[cfg(test)]
+mod tcp_selector_tests {
+    use super::*;
+
+    fn listed(selector: &str) -> Vec<DebugProbeSelector> {
+        GlasgowFactory
+            .list_probes_filtered(Some(&selector.parse().unwrap()))
+            .iter()
+            .map(|probe| DebugProbeSelector::from(&probe.info))
+            .collect()
+    }
+
+    #[test]
+    fn released_form_lists_the_tcp_probe() {
+        let tcp = listed("tcp://glasgow@192.168.1.5:2222");
+        assert_eq!(tcp, ["tcp://glasgow@192.168.1.5:2222".parse().unwrap()]);
+        assert_eq!(listed("20b7:9db1:tcp:192.168.1.5:2222"), tcp);
     }
 }
