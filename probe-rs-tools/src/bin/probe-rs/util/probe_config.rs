@@ -118,7 +118,7 @@ impl DriverConfig {
 /// Settings of the serial port to the target. A `None` field keeps the driver default.
 ///
 /// The machine with the probe owns these settings. In remote mode, the client can only ask for
-/// the port and its baud rate.
+/// the port.
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct SerialConfig {
