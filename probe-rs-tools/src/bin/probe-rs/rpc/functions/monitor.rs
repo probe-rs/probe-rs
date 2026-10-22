@@ -146,11 +146,7 @@ fn monitor_impl(
     let target_serial = shared_session.target_serial();
     if let (MonitorMode::Run(_), Some(serial)) = (&request.mode, &target_serial) {
         // The port is open from attach. Drop the output from before this boot.
-        if let Err(error) = serial.discard_input() {
-            tracing::debug!(
-                "Failed to discard the input of the serial port to the target: {error}"
-            );
-        }
+        discard_serial_input(serial);
     }
 
     {
@@ -168,14 +164,8 @@ fn monitor_impl(
         },
     });
 
-    // The serial port does not need the session, so a thread reads it next to the run loop.
-    let stop_serial = AtomicBool::new(false);
-    let exit_reason = std::thread::scope(|scope| {
-        if let Some(serial) = &target_serial {
-            scope.spawn(|| forward_serial(serial, &stop_serial, &sender));
-        }
-
-        let exit_reason = run_loop.run_until(
+    let exit_reason = with_serial_forwarding(target_serial.as_ref(), &sender, || {
+        run_loop.run_until(
             &shared_session,
             VectorCatchConfig {
                 catch_hardfault: request.options.catch_hardfault,
@@ -186,9 +176,7 @@ fn monitor_impl(
             rtt_poller,
             None,
             |halt_reason, core| semihosting_sink.handle_halt(halt_reason, core),
-        );
-        stop_serial.store(true, Ordering::Relaxed);
-        exit_reason
+        )
     })?;
 
     match exit_reason {
@@ -280,6 +268,38 @@ where
 const SERIAL_READ_TIMEOUT: Duration = Duration::from_millis(10);
 /// After the stop, the data that arrives in this time is still sent.
 const SERIAL_TAIL_TIME: Duration = Duration::from_millis(50);
+
+/// Runs `f` and sends the data from the serial port to the target while `f` runs. The serial port
+/// does not need the session, so a thread reads it next to `f`.
+pub(crate) fn with_serial_forwarding<R>(
+    serial: Option<&SharedTargetSerial>,
+    sender: &MonitorSender,
+    f: impl FnOnce() -> R,
+) -> R {
+    /// Sets the flag when `f` returns or panics, so that the thread stops.
+    struct StopOnDrop<'a>(&'a AtomicBool);
+    impl Drop for StopOnDrop<'_> {
+        fn drop(&mut self) {
+            self.0.store(true, Ordering::Relaxed);
+        }
+    }
+
+    let stop = AtomicBool::new(false);
+    std::thread::scope(|scope| {
+        if let Some(serial) = serial {
+            scope.spawn(|| forward_serial(serial, &stop, sender));
+        }
+        let _stop = StopOnDrop(&stop);
+        f()
+    })
+}
+
+/// Drops the data that the serial port to the target received before the target boots.
+pub(crate) fn discard_serial_input(serial: &SharedTargetSerial) {
+    if let Err(error) = serial.discard_input() {
+        tracing::debug!("Failed to discard the input of the serial port to the target: {error}");
+    }
+}
 
 /// Sends the data from the serial port to the target until `stop` is set, then sends the data
 /// that arrives shortly after.

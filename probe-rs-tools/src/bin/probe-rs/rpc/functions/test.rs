@@ -12,7 +12,7 @@ use crate::rpc::{
     functions::{
         RpcContext, RpcSpawnContext, WireTxImpl,
         convert::lift,
-        monitor::{MonitorSender, RttPoller},
+        monitor::{MonitorSender, RttPoller, discard_serial_input, with_serial_forwarding},
     },
     utils::{
         run_loop::{ReturnReason, RunLoop, VectorCatchConfig},
@@ -139,6 +139,12 @@ fn run_test_impl(
         .map(|rtt_client| ctx.object_mut_blocking(rtt_client).core_id())
         .unwrap_or(0);
 
+    let target_serial = shared_session.target_serial();
+    if let Some(serial) = &target_serial {
+        // Drop the output from before this test.
+        discard_serial_input(serial);
+    }
+
     {
         let mut session = shared_session.session_blocking();
         let mut core = session.core(core_id)?;
@@ -166,18 +172,21 @@ fn run_test_impl(
         },
     });
 
-    match run_loop.run_until(
-        &shared_session,
-        VectorCatchConfig {
-            catch_hardfault: true,
-            catch_reset: true,
-            catch_svc: true,
-            catch_hlt: true,
-        },
-        poller,
-        Some(timeout),
-        |halt_reason, core| run_handler.handle_halt(halt_reason, core),
-    )? {
+    let return_reason = with_serial_forwarding(target_serial.as_ref(), &sender, || {
+        run_loop.run_until(
+            &shared_session,
+            VectorCatchConfig {
+                catch_hardfault: true,
+                catch_reset: true,
+                catch_svc: true,
+                catch_hlt: true,
+            },
+            poller,
+            Some(timeout),
+            |halt_reason, core| run_handler.handle_halt(halt_reason, core),
+        )
+    })?;
+    match return_reason {
         ReturnReason::Timeout => Ok(TestResult::Failed(format!(
             "Test timed out after {timeout:?}"
         ))),
