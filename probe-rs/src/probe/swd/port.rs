@@ -532,6 +532,17 @@ fn remap_results(
     mut expanded_results: Results,
     block_read_counts: &[usize],
 ) -> Results {
+    // A probe that runs the AP pipeline answers every read under its own handle: unless reads
+    // were aggregated or added, its results already are the logical ones.
+    let passthrough = block_read_counts.is_empty()
+        && logical
+            .iter()
+            .all(|mapping| matches!(mapping, LogicalMapping::Passthrough { .. }))
+        && read_handles.iter().flatten().count() == logical.len();
+    if passthrough {
+        return expanded_results;
+    }
+
     let mut logical_results = Results::with_capacity(logical.len() + pins_handles.len());
     for handle_id in pins_handles {
         let handle = Handle::from_parts(handle_id.clone(), Box::new(|result| result));
