@@ -96,7 +96,10 @@ impl VerifiedBreakpoint {
             //
             // For earlier versions, the current compilation file is not included in the file names, but index 0 still refers to it.
             // To get the correct number of files, we have to add 1 here.
-            if program_unit.unit.header.version() <= 4 {
+            //
+            // This is the version of the line program, which can differ from the one of the unit:
+            // GCC 11 for TriCore emits DWARF 5 units with version 3 line programs.
+            if line_program.header().version() <= 4 {
                 num_files += 1;
             }
 

@@ -85,15 +85,18 @@ fn wire_flash_sectors(target: &probe_rs::Target) -> Vec<WireFlashSector> {
     let mut regions = BTreeMap::new();
     for algo in target.flash_algorithms.iter() {
         let start = algo.flash_properties.address_range.start;
-        let end = if let Some(region) =
-            target.memory_region_by_address(algo.flash_properties.address_range.start)
-        {
+        let mut sectors = algo.flash_properties.sectors.clone();
+        sectors.sort_by_key(|s| s.address);
+        // The sectors end with the memory region that holds the last of them. An algorithm can
+        // serve several regions (one per sector size, for example), so the region at its start
+        // address may end before its last sector.
+        let last = start + sectors.last().map_or(0, |s| s.address);
+        let end = if let Some(region) = target.memory_region_by_address(last) {
             region.address_range().end
         } else {
             algo.flash_properties.address_range.end
         };
-        let mut sectors = algo.flash_properties.sectors.clone();
-        sectors.sort_by_key(|s| s.address);
+        sectors.retain(|s| start + s.address < end);
         sectors.push(probe_rs::config::SectorDescription {
             size: 0,
             address: end - start,
